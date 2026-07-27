@@ -36,12 +36,19 @@ export class StorageService {
   }
 
   // Get a presigned URL for direct browser upload (client never touches our server for file data)
-  async getUploadUrl(key: string, contentType: string, sizeBytes: number): Promise<{ uploadUrl: string; storageKey: string }> {
+  //
+  // Deliberately does NOT sign ContentLength: several callers only have a
+  // maximum-allowed size at this point, not the real file size, and since
+  // ContentLength is a signed header, presigning it forces the actual PUT's
+  // Content-Length to match exactly or the provider rejects it as a
+  // signature mismatch -- breaking every upload that isn't precisely that
+  // many bytes. Real max-size enforcement belongs in a bucket lifecycle
+  // rule or a post-upload check, not the signature.
+  async getUploadUrl(key: string, contentType: string, _maxSizeBytes?: number): Promise<{ uploadUrl: string; storageKey: string }> {
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
       ContentType: contentType,
-      ContentLength: sizeBytes,
       Metadata: { uploadedAt: new Date().toISOString() },
     });
 
