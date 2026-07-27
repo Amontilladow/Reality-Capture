@@ -2,8 +2,10 @@ import axios, { AxiosError, type AxiosRequestConfig } from 'axios';
 import type { ApiResponse, ApiError } from '@engineeringos/types';
 import { useAuthStore } from '../store/auth.store';
 
-// Requests go through the Vite dev proxy at /api -> http://localhost:3000/api/v1
-export const API_BASE = '/api/v1';
+// In dev, requests go through the Vite dev proxy at /api -> http://localhost:3000/api/v1.
+// In production (frontend and backend on separate hosts), VITE_API_BASE must point
+// at the deployed API's full URL — set at build time, baked into the bundle by Vite.
+export const API_BASE = import.meta.env.VITE_API_BASE ?? '/api/v1';
 
 export const http = axios.create({
   baseURL: API_BASE,
