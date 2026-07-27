@@ -19,6 +19,7 @@ export class StorageService {
         secretAccessKey: config.get<string>('storage.secretAccessKey')!,
       },
       forcePathStyle: true,
+      requestChecksumCalculation: 'WHEN_REQUIRED',
     });
   }
 

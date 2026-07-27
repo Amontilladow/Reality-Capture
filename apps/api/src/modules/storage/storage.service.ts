@@ -22,6 +22,10 @@ export class StorageService {
         secretAccessKey: config.get<string>('storage.secretAccessKey')!,
       },
       forcePathStyle: true, // Required for MinIO and Cloudflare R2
+      // Newer SDK versions add a checksum by default to every request/presigned
+      // URL. Cloudflare R2 (and MinIO) don't handle that identically to real S3
+      // in the presigned-URL signing flow, which breaks the signature entirely.
+      requestChecksumCalculation: 'WHEN_REQUIRED',
     });
   }
 
