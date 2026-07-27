@@ -7,6 +7,10 @@
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
+  "packageManager": "pnpm@11.15.1",
+  "pnpm": {
+    "neverBuiltDependencies": ["argon2"]
+  },
   "scripts": {
     "postinstall": "pnpm --filter @engineeringos/types build",
     "dev": "pnpm --parallel --filter './apps/*' dev",
