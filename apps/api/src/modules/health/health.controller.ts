@@ -1,10 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { DatabaseService } from '../../database/database.service';
 import { Public } from '../../common/decorators/public.decorator';
 
 @ApiTags('health')
 @Controller('health')
+@SkipThrottle()
 export class HealthController {
   constructor(private readonly db: DatabaseService) {}
 
