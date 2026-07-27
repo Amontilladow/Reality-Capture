@@ -1,56 +1,16 @@
-import { Controller, Get, Post, Delete, Patch, Body, ConflictException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, ConflictException } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { TenancyService } from './tenancy.service';
 import { RegisterCompanyDto } from './dto/register-company.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { DatabaseService } from '../../database/database.service';
 import type { AuthenticatedUser } from '@engineeringos/types';
 
 @ApiTags('company')
 @Controller('company')
 export class TenancyController {
-  constructor(
-    private readonly tenancy: TenancyService,
-    private readonly db: DatabaseService,
-  ) {}
-
-  // TEMPORARY — deployment verification cleanup, removed in the very next commit.
-  @Public()
-  @Delete('_cleanup-deploy-test')
-  async cleanupDeployTest() {
-    return this.db.withTransaction(async (sql) => {
-      const [company] = await sql`SELECT id FROM companies WHERE slug = 'deploy-test-co'`;
-      if (!company) return { data: { deletedCount: 0, tables: [] }, error: null };
-      const companyId = company.id as string;
-
-      // Many tables carry a direct (non-cascading) company_id FK for RLS
-      // efficiency. Find every one of them from the catalog rather than
-      // hand-maintaining a list, and clear them before the company row.
-      const referencingTables = await sql<{ tableName: string }[]>`
-        SELECT DISTINCT tc.table_name AS "tableName"
-        FROM information_schema.table_constraints tc
-        JOIN information_schema.constraint_column_usage ccu
-          ON tc.constraint_name = ccu.constraint_name AND tc.table_schema = ccu.table_schema
-        JOIN information_schema.key_column_usage kcu
-          ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
-        WHERE tc.constraint_type = 'FOREIGN KEY'
-          AND ccu.table_name = 'companies'
-          AND kcu.column_name = 'company_id'
-          AND tc.table_name != 'companies'
-      `;
-
-      const tables: string[] = [];
-      for (const { tableName } of referencingTables) {
-        await sql`DELETE FROM ${sql(tableName)} WHERE company_id = ${companyId}`;
-        tables.push(tableName);
-      }
-
-      const deleted = await sql`DELETE FROM companies WHERE id = ${companyId} RETURNING id`;
-      return { data: { deletedCount: deleted.length, tables }, error: null };
-    });
-  }
+  constructor(private readonly tenancy: TenancyService) {}
 
   @Public()
   @Post('register')
