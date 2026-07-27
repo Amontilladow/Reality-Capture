@@ -1,0 +1,266 @@
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bull';
+import type { Queue } from 'bull';
+import { DatabaseService } from '../../database/database.service';
+import { StorageService } from '../storage/storage.service';
+import type { PaginationQuery, IfcParseJobData } from '@engineeringos/types';
+import { IFC_PROCESSING_QUEUE, IFC_PARSE_JOB_NAME } from '@engineeringos/types';
+
+@Injectable()
+export class BimService {
+  private readonly logger = new Logger(BimService.name);
+
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly storage: StorageService,
+    @InjectQueue(IFC_PROCESSING_QUEUE) private readonly ifcQueue: Queue<IfcParseJobData>,
+  ) {}
+
+  // ── BIM Models ────────────────────────────────────────────────────────────
+  async getModels(companyId: string, projectId: string) {
+    return this.db.withTenant(companyId, sql => sql`
+      SELECT m.*, u.first_name || ' ' || u.last_name AS uploaded_by_name,
+        COUNT(e.id) AS element_count
+      FROM bim_models m
+      LEFT JOIN users u ON u.id = m.uploaded_by
+      LEFT JOIN bim_elements e ON e.model_id = m.id
+      WHERE m.project_id = ${projectId} AND m.company_id = ${companyId}
+      GROUP BY m.id, u.first_name, u.last_name
+      ORDER BY m.created_at DESC
+    `);
+  }
+
+  async getModelUploadUrl(companyId: string, projectId: string, filename: string) {
+    const key = this.storage.generateKey(companyId, projectId, 'captures', filename);
+    const url = await this.storage.getUploadUrl(key, 'application/octet-stream', 500 * 1024 * 1024);
+    return { ...url, storageKey: key };
+  }
+
+  async registerModel(companyId: string, projectId: string, userId: string, dto: { name: string; storageKey: string; format?: string; ifcSchema?: string }) {
+    const [model] = await this.db.query`
+      INSERT INTO bim_models (company_id, project_id, name, format, ifc_schema, storage_key, status, uploaded_by)
+      VALUES (${companyId}, ${projectId}, ${dto.name}, ${dto.format ?? 'IFC'}, ${dto.ifcSchema ?? null}, ${dto.storageKey}, 'pending', ${userId})
+      RETURNING *
+    `;
+    await this.enqueueParseJob(companyId, projectId, model.id as string, dto.storageKey);
+    return model;
+  }
+
+  // Queues (or re-queues) IFC parsing for a model. Orchestration only —
+  // apps/ifc-service owns everything past this point. Each enqueue gets a
+  // fresh, unique Bull job id — reusing modelId as the job id was tried
+  // first but reverted: Bull treats jobId as a dedup key across a job's
+  // entire lifecycle, not just while active, so a second add() with the
+  // same id after the first job COMPLETED silently no-ops and returns the
+  // stale completed job instead of actually re-running (confirmed via a
+  // reprocess resilience test — see MASTER_BACKLOG.md). Idempotency for
+  // resume/retry is enforced at the application level instead, via
+  // bim_models.stage_completion (see ifc-repository.service.ts).
+  private async enqueueParseJob(companyId: string, projectId: string, modelId: string, storageKey: string) {
+    const job = await this.ifcQueue.add(
+      IFC_PARSE_JOB_NAME,
+      { modelId, companyId, projectId, storageKey } satisfies IfcParseJobData,
+      { jobId: `${modelId}:${Date.now()}` },
+    );
+    await this.db.query`
+      UPDATE bim_models SET job_id = ${job.id as string}, updated_at = NOW()
+      WHERE id = ${modelId} AND company_id = ${companyId}
+    `;
+    this.logger.log(`BIM model ${modelId} — IFC parsing job ${job.id as string} queued.`);
+    return job;
+  }
+
+  async getModel(companyId: string, modelId: string) {
+    const [model] = await this.db.withTenant(companyId, sql => sql`
+      SELECT * FROM bim_models WHERE id = ${modelId} AND company_id = ${companyId}
+    `);
+    if (!model) throw new NotFoundException('BIM model not found.');
+    return model;
+  }
+
+  // Polling-friendly status endpoint for the frontend — deliberately a
+  // thin read of bim_models, no cross-service call, so it stays fast and
+  // available even if apps/ifc-service is temporarily down.
+  async getModelStatus(companyId: string, modelId: string) {
+    const model = await this.getModel(companyId, modelId);
+    return {
+      id: model.id,
+      status: model.status,
+      processingStage: model.processingStage,
+      processingProgress: model.processingProgress,
+      processingError: model.processingError,
+      elementCount: model.elementCount,
+      parsedAt: model.parsedAt,
+    };
+  }
+
+  // Re-queues a failed (or stuck) model for reprocessing without
+  // re-uploading the file — the storage key doesn't change.
+  async reprocessModel(companyId: string, projectId: string, modelId: string) {
+    const model = await this.getModel(companyId, modelId);
+    await this.db.query`
+      UPDATE bim_models
+      SET status = 'pending', processing_progress = 0, processing_stage = NULL, processing_error = NULL
+      WHERE id = ${modelId} AND company_id = ${companyId}
+    `;
+    await this.enqueueParseJob(companyId, projectId, modelId, model.storageKey as string);
+    return this.getModelStatus(companyId, modelId);
+  }
+
+  // Everything the viewer needs to open a ready model: a presigned URL to
+  // the generated Fragments file, plus the current status (so the
+  // frontend can show a clear message instead of a broken viewer if the
+  // model isn't ready or Fragments generation failed/was skipped).
+  async getModelViewerData(companyId: string, modelId: string) {
+    const model = await this.getModel(companyId, modelId);
+    if (model.status !== 'ready') {
+      return { status: model.status, fragmentsUrl: null, processingError: model.processingError };
+    }
+    if (!model.fragmentsStorageKey) {
+      return { status: 'ready', fragmentsUrl: null, processingError: 'Fragments were not generated for this model — see the import report for warnings.' };
+    }
+    const fragmentsUrl = await this.storage.getReadUrl(model.fragmentsStorageKey as string, 3600);
+    return { status: 'ready', fragmentsUrl, processingError: null };
+  }
+
+  // The IFC-native spatial tree (Site → Building → Storey → Space),
+  // returned flat with parent_id so the frontend builds the tree shape —
+  // cheaper to transfer and easier to reason about than a nested payload.
+  async getHierarchy(companyId: string, modelId: string) {
+    return this.db.withTenant(companyId, sql => sql`
+      SELECT n.id, n.parent_id, n.ifc_guid, n.ifc_type, n.name, n.elevation,
+        COUNT(e.id) AS element_count
+      FROM bim_spatial_nodes n
+      LEFT JOIN bim_elements e ON e.spatial_node_id = n.id
+      WHERE n.model_id = ${modelId} AND n.company_id = ${companyId}
+      GROUP BY n.id
+      ORDER BY n.elevation NULLS FIRST, n.name
+    `);
+  }
+
+  // ── BIM Elements ──────────────────────────────────────────────────────────
+  async getElements(companyId: string, projectId: string, query: PaginationQuery & {
+    modelId?: string; ifcType?: string; levelId?: string; constructionStatus?: string;
+  }) {
+    const page    = query.page ?? 1;
+    const perPage = Math.min(query.perPage ?? 50, 200);
+    const offset  = (page - 1) * perPage;
+
+    const rows = await this.db.withTenant(companyId, sql => sql`
+      SELECT e.*,
+        COUNT(i.id) FILTER (WHERE i.status NOT IN ('closed','void')) AS open_issue_count,
+        COUNT(cel.id) AS capture_count,
+        COUNT(*) OVER() AS full_count
+      FROM bim_elements e
+      LEFT JOIN issues i ON i.element_id = e.id
+      LEFT JOIN capture_element_links cel ON cel.element_id = e.id
+      WHERE e.project_id = ${projectId} AND e.company_id = ${companyId}
+        AND (${query.modelId ?? null}::uuid IS NULL OR e.model_id = ${query.modelId ?? null}::uuid)
+        AND (${query.ifcType ?? null}::text IS NULL OR e.ifc_type = ${query.ifcType ?? null}::text)
+        AND (${query.levelId ?? null}::uuid IS NULL OR e.level_id = ${query.levelId ?? null}::uuid)
+        AND (${query.constructionStatus ?? null}::text IS NULL OR e.construction_status = ${query.constructionStatus ?? null}::text)
+        AND (${query.search ?? null}::text IS NULL OR
+          e.ifc_name ILIKE ${'%' + (query.search ?? '') + '%'}
+          OR e.ifc_guid ILIKE ${'%' + (query.search ?? '') + '%'})
+      GROUP BY e.id
+      ORDER BY e.ifc_type, e.ifc_name
+      LIMIT ${perPage} OFFSET ${offset}
+    `);
+
+    return this.db.paginate(rows, page, perPage);
+  }
+
+  async getElement(companyId: string, elementId: string) {
+    const [el] = await this.db.withTenant(companyId, sql => sql`
+      SELECT e.*, m.name AS model_name, l.name AS level_name, sn.name AS spatial_node_name, sn.ifc_type AS spatial_node_type
+      FROM bim_elements e
+      LEFT JOIN bim_models m ON m.id = e.model_id
+      LEFT JOIN levels l ON l.id = e.level_id
+      LEFT JOIN bim_spatial_nodes sn ON sn.id = e.spatial_node_id
+      WHERE e.id = ${elementId} AND e.company_id = ${companyId}
+    `);
+    if (!el) throw new NotFoundException('BIM element not found.');
+
+    const [quantities, materials, classifications] = await Promise.all([
+      this.db.withTenant(companyId, sql => sql`
+        SELECT quantity_set, name, quantity_type, value, unit FROM bim_element_quantities
+        WHERE element_id = ${elementId} AND company_id = ${companyId} ORDER BY quantity_set, name
+      `),
+      this.db.withTenant(companyId, sql => sql`
+        SELECT mat.name, mat.category FROM bim_element_materials em
+        JOIN bim_materials mat ON mat.id = em.material_id
+        WHERE em.element_id = ${elementId} AND em.company_id = ${companyId}
+      `),
+      this.db.withTenant(companyId, sql => sql`
+        SELECT system, code, name FROM bim_element_classifications
+        WHERE element_id = ${elementId} AND company_id = ${companyId}
+      `),
+    ]);
+
+    return { ...el, quantities, materials, classifications };
+  }
+
+  async getElementByGuid(companyId: string, modelId: string, ifcGuid: string) {
+    const [el] = await this.db.withTenant(companyId, sql => sql`
+      SELECT id FROM bim_elements WHERE model_id = ${modelId} AND ifc_guid = ${ifcGuid} AND company_id = ${companyId}
+    `);
+    if (!el) throw new NotFoundException(`No element with GUID ${ifcGuid} in this model.`);
+    return this.getElement(companyId, el.id as string);
+  }
+
+  async updateElementStatus(companyId: string, elementId: string, status: string) {
+    const [el] = await this.db.query`
+      UPDATE bim_elements
+      SET construction_status = ${status},
+          installed_at = CASE WHEN ${status} = 'complete' THEN NOW() ELSE installed_at END,
+          updated_at = NOW()
+      WHERE id = ${elementId} AND company_id = ${companyId}
+      RETURNING *
+    `;
+    if (!el) throw new NotFoundException('BIM element not found.');
+    return el;
+  }
+
+  // ── Capture ↔ Element linking ─────────────────────────────────────────────
+  async linkCaptureToElement(companyId: string, captureId: string, elementId: string, userId: string, linkType = 'documents') {
+    const [link] = await this.db.query`
+      INSERT INTO capture_element_links (capture_id, element_id, company_id, link_type, linked_by)
+      VALUES (${captureId}, ${elementId}, ${companyId}, ${linkType}, ${userId})
+      ON CONFLICT (capture_id, element_id) DO UPDATE SET link_type = ${linkType}
+      RETURNING *
+    `;
+    return link;
+  }
+
+  async getCapturesForElement(companyId: string, elementId: string) {
+    return this.db.withTenant(companyId, sql => sql`
+      SELECT c.id, c.capture_type, c.captured_at, c.phase, c.title, c.status,
+             cel.link_type,
+             u.first_name || ' ' || u.last_name AS captured_by_name
+      FROM capture_element_links cel
+      JOIN captures c ON c.id = cel.capture_id
+      JOIN users u ON u.id = c.captured_by
+      WHERE cel.element_id = ${elementId} AND cel.company_id = ${companyId}
+        AND c.status = 'ready'
+      ORDER BY c.captured_at DESC
+    `);
+  }
+
+  // ── Progress summary by element type ─────────────────────────────────────
+  async getProgressSummary(companyId: string, projectId: string) {
+    return this.db.withTenant(companyId, sql => sql`
+      SELECT
+        e.ifc_type,
+        COUNT(*)                                                      AS total,
+        COUNT(*) FILTER (WHERE e.construction_status = 'complete')   AS complete,
+        COUNT(*) FILTER (WHERE e.construction_status = 'in_progress') AS in_progress,
+        COUNT(*) FILTER (WHERE e.construction_status = 'defective')  AS defective,
+        COUNT(*) FILTER (WHERE e.construction_status IS NULL OR e.construction_status = 'not_started') AS not_started,
+        ROUND(100.0 * COUNT(*) FILTER (WHERE e.construction_status = 'complete') / NULLIF(COUNT(*), 0), 1) AS completion_pct
+      FROM bim_elements e
+      WHERE e.project_id = ${projectId} AND e.company_id = ${companyId}
+      GROUP BY e.ifc_type
+      ORDER BY total DESC
+    `);
+  }
+}

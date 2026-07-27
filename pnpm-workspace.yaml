@@ -1,0 +1,12 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+allowBuilds:
+  '@nestjs/core': true
+  '@swc/core': true
+  argon2: true
+  es5-ext: true
+  esbuild: true
+  msgpackr-extract: true
+minimumReleaseAgeExclude:
+  - '@thatopen/components@3.4.7'

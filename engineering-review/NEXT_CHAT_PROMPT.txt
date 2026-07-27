@@ -1,0 +1,31 @@
+Continue EngineeringOS development from the previous session. The following handover represents the current project state — read it before doing anything else.
+
+Read these files first, in this order, before taking any action:
+1. engineering-review/PROJECT_STATUS.md
+2. engineering-review/ARCHITECTURE_STATE.md
+3. engineering-review/COMPLETED_WORK.md
+4. engineering-review/REMAINING_WORK.md
+5. engineering-review/TECHNICAL_DECISIONS.md
+6. engineering-review/KNOWN_ISSUES.md
+7. engineering-review/MASTER_BACKLOG.md
+8. engineering-review/RC_VERIFICATION_REPORT_v0.1.md
+9. engineering-review/IFC_ENGINE_RELEASE_v1.0.0.md
+
+Current status: EngineeringOS v0.1 is a verified Release Candidate. The complete workflow (login → dashboard → projects → open project → upload IFC → queue processing → processing complete → models list → open viewer → navigate model → search element → select element → properties display) has been verified end-to-end against real Postgres, Redis, and S3-compatible storage. Zero critical, major, or minor bugs are currently open. Full detail in RC_VERIFICATION_REPORT_v0.1.md.
+
+Do NOT redo any of the following — it is complete, verified, and frozen unless you find a genuine, verified bug:
+- Tenancy/auth/RBAC/rate limiting/subscription enforcement
+- Project/building/level/location hierarchy
+- Issues backend (creation/assignment/activity log) — NOT yet integrated into the viewer, see below
+- Documents, timeline, captures backend
+- Notifications (real implementation, already replaced an earlier fake stub)
+- The IFC Processing Engine (apps/ifc-service) — RELEASED v1.0.0, FROZEN. Do not modify without a verified bug/security issue. Read IFC_ENGINE_RELEASE_v1.0.0.md before touching anything under apps/ifc-service.
+- The BIM Viewer core flow (upload, models list, 3D viewer, spatial tree, property panel, search) — built and verified this phase, do not rebuild from scratch.
+
+Do NOT re-diagnose these 8 bugs — they are fixed and documented in COMPLETED_WORK.md with full root-cause detail: (1) Postgres bulk-insert misuse, (2) missing project_id column, (3) camelCase/snake_case RETURNING mismatch, (4) Bull job-id reuse breaking reprocess, (5) jsonb key-casing breaking resume-skip, (6) report_json persisted empty, (7) Vite/Rollup CJS interop gap blocking all production builds, (8) untyped-null Postgres parameter in element search.
+
+The next objective is: Issue Management integrated into the BIM viewer — GUID reference, camera position capture, screenshot, priority/status/assignee/due date/comments/attachments/history, and reopening an issue must restore the exact camera view it was created from. Full scoping detail, dependencies, and risks are in REMAINING_WORK.md item 1.
+
+Before starting: this environment has no browser or screenshot tool. Every piece of frontend verification so far has relied on typecheck, production build, dev-server module transforms, and live API contract checks — never actual rendering. State this limitation explicitly whenever relevant rather than assuming visual correctness. Apply the same empirical-verification practice used throughout this project to any new third-party API surface you touch (check the actual installed .d.ts files and write small real test scripts before writing production code against a library) — this caught multiple real bugs before they ever shipped.
+
+Work autonomously through related tasks. Stop only for genuine architectural decisions, security concerns, destructive operations, or requirement ambiguities — not for routine implementation choices already covered by the technical decisions on file.

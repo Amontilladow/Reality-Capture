@@ -1,0 +1,21 @@
+Deploy EngineeringOS to Render. Read engineering-review/NEXT_CHAT_PROMPT.txt first, then engineering-review/RC_VERIFICATION_REPORT_v0.1.md for the technical deployment guide (environment variables, migration commands, health checks). This file tells you the HOSTING decisions that are already made — don't re-derive them, don't second-guess them, don't suggest a different platform or a pricier tier.
+
+LOCKED-IN HOSTING PLAN — do not deviate from this without asking me first:
+
+- Platform: Render (render.com)
+- Workspace plan: Hobby (the FREE workspace tier). Do NOT upgrade to the Pro workspace ($25/month) — that only adds team seats and compliance features I don't need as a solo user. If anything in Render's dashboard suggests upgrading the workspace plan, decline it and tell me instead.
+- Per-piece hosting, exactly as follows:
+  - apps/web (the frontend) → deploy as a Render Static Site. This should be free.
+  - apps/api (the backend) → deploy as a Render Web Service on the Starter instance tier (~$7/month). Do not pick Standard or higher unless you hit a real resource limit — if you do, stop and tell me what happened and what it would cost before upgrading.
+  - apps/ifc-service (the 3D-model processor) → deploy as a Render Background Worker on the Starter instance tier (~$7/month). Same rule: don't upgrade tiers without telling me first.
+  - PostgreSQL → Render's managed Postgres, Basic tier (~$6-7/month). Do NOT use the free Postgres tier for anything beyond a first throwaway test — it auto-deletes after 30 days with no warning, which would destroy real data.
+  - Redis → try Render's free Key Value tier first. Only move to a paid tier if the free one genuinely isn't enough, and tell me before doing so.
+- Object storage (for uploaded IFC files, photos, drawings): this is NOT something Render hosts. Set up a free Cloudflare R2 account (their free tier is generous — 10GB storage, no charge for downloads) and use that as the S3-compatible storage bucket this app expects. This is a separate account from Render.
+- Total expected cost: roughly $20-30/month. If your setup is trending noticeably above that, stop and tell me why before continuing.
+
+RULES FOR THIS WHOLE DEPLOYMENT:
+- Before spending any money or clicking anything that commits to a paid tier, tell me what it costs and why, and wait for me to say go ahead — except for the specific tiers already approved above, which you can set up directly without asking again.
+- I am not a developer. When you need me to do something only a human can do (create an account, click a button in a dashboard, enter a credit card), give me the exact click-by-click steps, not technical jargon.
+- Follow the deployment guide already written in RC_VERIFICATION_REPORT_v0.1.md for the actual technical steps (environment variables, running database migrations, build commands, health checks) — don't invent a different process.
+- Once everything is deployed and reachable, actually open the site yourself and click through the full flow (register/login, create a project, upload a real IFC file, wait for it to process, open the 3D viewer, click an element, confirm its details show up) since nobody has ever done this in a real browser before. Tell me honestly if anything looks broken, slow, or wrong — don't just report "it's deployed" without having actually looked at it working.
+- At the end, give me: what's live and its web address, total actual cost so far, anything that didn't go as planned, and anything still needing my attention.

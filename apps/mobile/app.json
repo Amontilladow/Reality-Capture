@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "EngineeringOS Capture",
+    "slug": "engineeringos-capture",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "engineeringos",
+    "splash": {
+      "backgroundColor": "#0A141C"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.engineeringos.capture",
+      "infoPlist": {
+        "NSCameraUsageDescription": "EngineeringOS needs camera access to capture site photos, video, and 360° reality captures.",
+        "NSPhotoLibraryUsageDescription": "EngineeringOS needs photo library access to import captures from dedicated 360° cameras.",
+        "NSLocationWhenInUseUsageDescription": "EngineeringOS tags each capture with GPS coordinates so it can be located on the floor plan.",
+        "UIBackgroundModes": ["fetch", "processing"]
+      }
+    },
+    "android": {
+      "package": "com.engineeringos.capture",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#0A141C"
+      }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "EngineeringOS needs camera access to capture site photos, video, and 360° reality captures.",
+          "microphonePermission": "EngineeringOS needs microphone access to capture video with audio."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "EngineeringOS tags each capture with GPS coordinates so it can be located on the floor plan."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "EngineeringOS needs photo library access to import captures from dedicated 360° cameras."
+        }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "http://localhost:3000/api/v1"
+    }
+  }
+}
