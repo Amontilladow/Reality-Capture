@@ -1,0 +1,146 @@
+databases:
+  - name: engineeringos-db
+    plan: basic-256mb
+    region: oregon
+    postgresMajorVersion: "16"
+    ipAllowList: [] # no public internet access; api/ifc-service reach it over Render's private network
+
+services:
+  # ── Redis / Bull queue ──────────────────────────────────────────────────
+  - type: keyvalue
+    name: engineeringos-redis
+    plan: free
+    region: oregon
+    maxmemoryPolicy: noeviction
+    ipAllowList: [] # no public internet access; api/ifc-service reach it over Render's private network
+
+  # ── Backend API ──────────────────────────────────────────────────────────
+  - type: web
+    name: engineeringos-api
+    runtime: docker
+    dockerfilePath: apps/api/Dockerfile
+    dockerContext: .
+    plan: starter
+    region: oregon
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: API_URL
+        value: https://engineeringos-api.onrender.com
+      - key: FRONTEND_URL
+        value: https://engineeringos-web.onrender.com
+      - key: ALLOWED_ORIGINS
+        value: https://engineeringos-web.onrender.com
+      - key: DB_HOST
+        sync: false # filled in manually from engineeringos-db's "Internal Database URL" host
+      - key: DB_PORT
+        sync: false
+      - key: DB_NAME
+        fromDatabase:
+          name: engineeringos-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: engineeringos-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: engineeringos-db
+          property: password
+      - key: DB_SSL
+        value: "true"
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 30d
+      - key: REDIS_HOST
+        sync: false # filled in manually from engineeringos-redis's internal connection info
+      - key: REDIS_PORT
+        sync: false
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false # filled in manually after creating the Cloudflare R2 bucket
+      - key: S3_REGION
+        value: auto
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_PUBLIC_URL
+        sync: false
+      - key: S3_PRESIGN_EXPIRES_IN
+        value: 3600
+      - key: STRIPE_SECRET_KEY
+        value: sk_test_placeholder
+      - key: STRIPE_WEBHOOK_SECRET
+        value: whsec_placeholder
+
+  # ── IFC processing worker ───────────────────────────────────────────────
+  - type: worker
+    name: engineeringos-ifc-service
+    runtime: docker
+    dockerfilePath: apps/ifc-service/Dockerfile
+    dockerContext: .
+    plan: starter
+    region: oregon
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3100
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_NAME
+        fromDatabase:
+          name: engineeringos-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: engineeringos-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: engineeringos-db
+          property: password
+      - key: DB_SSL
+        value: "true"
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        sync: false
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_PRESIGN_EXPIRES_IN
+        value: 3600
+
+  # ── Frontend ─────────────────────────────────────────────────────────────
+  - type: web
+    name: engineeringos-web
+    runtime: static
+    buildCommand: npm install -g pnpm@9 && pnpm install --frozen-lockfile && pnpm --filter web build
+    staticPublishPath: apps/web/dist
+    envVars:
+      - key: VITE_API_BASE
+        value: https://engineeringos-api.onrender.com/api/v1

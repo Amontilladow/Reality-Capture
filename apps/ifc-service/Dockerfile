@@ -1,0 +1,19 @@
+FROM node:20-alpine AS builder
+WORKDIR /app
+RUN npm install -g pnpm
+COPY pnpm-workspace.yaml package.json ./
+COPY packages/ ./packages/
+COPY apps/ifc-service/package.json ./apps/ifc-service/
+RUN pnpm install --frozen-lockfile
+COPY apps/ifc-service/ ./apps/ifc-service/
+RUN pnpm --filter ifc-service build
+
+FROM node:20-alpine
+WORKDIR /app
+RUN npm install -g pnpm
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages ./packages
+COPY --from=builder /app/apps/ifc-service/dist ./apps/ifc-service/dist
+COPY --from=builder /app/apps/ifc-service/package.json ./apps/ifc-service/
+EXPOSE 3100
+CMD ["node", "apps/ifc-service/dist/main"]
