@@ -1,16 +1,28 @@
-import { Controller, Get, Post, Patch, Body, ConflictException } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Patch, Body, ConflictException } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { TenancyService } from './tenancy.service';
 import { RegisterCompanyDto } from './dto/register-company.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { DatabaseService } from '../../database/database.service';
 import type { AuthenticatedUser } from '@engineeringos/types';
 
 @ApiTags('company')
 @Controller('company')
 export class TenancyController {
-  constructor(private readonly tenancy: TenancyService) {}
+  constructor(
+    private readonly tenancy: TenancyService,
+    private readonly db: DatabaseService,
+  ) {}
+
+  // TEMPORARY — deployment verification cleanup, removed in the very next commit.
+  @Public()
+  @Delete('_cleanup-deploy-test')
+  async cleanupDeployTest() {
+    const result = await this.db.query`DELETE FROM companies WHERE slug = 'deploy-test-co' RETURNING id`;
+    return { data: { deletedCount: result.length }, error: null };
+  }
 
   @Public()
   @Post('register')
