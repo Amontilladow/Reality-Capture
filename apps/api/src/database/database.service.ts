@@ -65,8 +65,19 @@ export class DatabaseService {
       await this.sql`SELECT 1`;
       return true;
     } catch (error) {
-      this.logger.error('Database ping failed', error);
+      this.logger.error(`Database ping failed: ${describeError(error)}`);
       return false;
     }
   }
+}
+
+function describeError(error: unknown): string {
+  if (error instanceof AggregateError) {
+    return `AggregateError[${error.errors.map(describeError).join(' | ')}]`;
+  }
+  if (error instanceof Error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    return `${error.name}${code ? ` (${code})` : ''}: ${error.message}`;
+  }
+  return String(error);
 }
