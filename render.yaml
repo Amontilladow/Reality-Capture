@@ -139,8 +139,10 @@ services:
   - type: web
     name: engineeringos-web
     runtime: static
-    buildCommand: npm install -g pnpm@9 && pnpm install --frozen-lockfile && pnpm --filter web build
+    buildCommand: npm install -g pnpm@9 && pnpm install --frozen-lockfile --filter web... && pnpm --filter @engineeringos/types build && pnpm --filter web build
     staticPublishPath: apps/web/dist
     envVars:
       - key: VITE_API_BASE
         value: https://engineeringos-api.onrender.com/api/v1
+      - key: NODE_VERSION
+        value: "20"
