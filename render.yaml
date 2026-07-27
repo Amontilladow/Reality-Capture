@@ -148,3 +148,7 @@ services:
         value: "22"
       - key: PNPM_VERSION
         value: "11.15.1"
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
