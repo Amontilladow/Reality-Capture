@@ -16,6 +16,7 @@ WORKDIR /app
 RUN npm install -g pnpm@11.15.1
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
+COPY --from=builder /app/apps/ifc-service/node_modules ./apps/ifc-service/node_modules
 COPY --from=builder /app/apps/ifc-service/dist ./apps/ifc-service/dist
 COPY --from=builder /app/apps/ifc-service/package.json ./apps/ifc-service/
 EXPOSE 3100
