@@ -145,6 +145,6 @@ services:
       - key: VITE_API_BASE
         value: https://engineeringos-api.onrender.com/api/v1
       - key: NODE_VERSION
-        value: "20"
+        value: "22"
       - key: PNPM_VERSION
         value: "11.15.1"

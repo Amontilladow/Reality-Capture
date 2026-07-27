@@ -4,7 +4,7 @@
   "private": true,
   "description": "EngineeringOS™ Reality Capture Module — monorepo root",
   "engines": {
-    "node": ">=20.0.0",
+    "node": ">=22.13.0",
     "pnpm": ">=9.0.0"
   },
   "packageManager": "pnpm@11.15.1",
