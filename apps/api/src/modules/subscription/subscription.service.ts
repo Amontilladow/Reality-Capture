@@ -19,7 +19,7 @@ export class SubscriptionService {
   async getSubscription(companyId: string) {
     const [sub] = await this.db.query`
       SELECT cs.*, sp.tier, sp.name AS plan_name, sp.max_projects, sp.max_users,
-             sp.max_storage_bytes, sp.feature_flags, sp.price_monthly_usd
+             sp.max_storage_bytes, sp.feature_flags, sp.price_monthly_usd, sp.is_public
       FROM company_subscriptions cs
       JOIN subscription_plans sp ON sp.id = cs.plan_id
       WHERE cs.company_id = ${companyId}`;
@@ -37,7 +37,31 @@ export class SubscriptionService {
       WHERE c.id = ${companyId}
       GROUP BY c.storage_used_bytes`;
 
-    return { ...sub, usage };
+    // The SubscriptionPlan fields come back flat from the join — nest them
+    // under `plan` to match the CompanySubscription type contract that the
+    // frontend actually relies on.
+    const {
+      tier, planName, maxProjects, maxUsers, maxStorageBytes,
+      featureFlags, priceMonthlyUsd, isPublic, planId,
+      ...subscriptionFields
+    } = sub;
+
+    return {
+      ...subscriptionFields,
+      planId,
+      plan: {
+        id: planId,
+        tier,
+        name: planName,
+        priceMonthlyUsd,
+        maxProjects,
+        maxUsers,
+        maxStorageBytes,
+        featureFlags,
+        isPublic,
+      },
+      usage,
+    };
   }
 
   async getPlans() {
