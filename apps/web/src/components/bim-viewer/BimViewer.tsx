@@ -116,18 +116,20 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
     async function loadModel() {
       try {
         await fragments.init(await OBC.FragmentsManager.getWorker());
-        fragments.onFragmentsLoaded.add((model: { object: THREE.Object3D }) => {
-          if (disposed) return;
-          world.scene.three.add(model.object);
-          const box = new THREE.Box3().setFromObject(model.object);
-          if (!box.isEmpty()) world.camera.controls.fitToBox(box, false);
-          setLoading(false);
-        });
 
         const response = await fetch(fragmentsUrl);
         if (!response.ok) throw new Error(`Failed to download Fragments file (HTTP ${response.status})`);
         const buffer = await response.arrayBuffer();
-        await fragments.core.load(buffer, { modelId: modelIdRef.current });
+        // core.load() resolves directly with the loaded FragmentsModel — use that,
+        // rather than waiting on the separate onFragmentsLoaded event, which is not
+        // guaranteed to fire for this specific load call.
+        const model = await fragments.core.load(buffer, { modelId: modelIdRef.current });
+
+        if (disposed) return;
+        world.scene.three.add(model.object);
+        const box = new THREE.Box3().setFromObject(model.object);
+        if (!box.isEmpty()) world.camera.controls.fitToBox(box, false);
+        setLoading(false);
       } catch (err) {
         if (!disposed) setError(err instanceof Error ? err.message : 'Failed to load model');
         setLoading(false);
