@@ -4,7 +4,7 @@ packages:
 allowBuilds:
   '@nestjs/core': true
   '@swc/core': true
-  argon2: true
+  argon2: false # no C++ toolchain on Render's static-site build image; rebuilt explicitly in apps/api's Dockerfile instead
   es5-ext: true
   esbuild: true
   msgpackr-extract: true
