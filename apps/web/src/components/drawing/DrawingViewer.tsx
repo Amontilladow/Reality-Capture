@@ -27,13 +27,25 @@ export function DrawingViewer({
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // fileUrl is a presigned URL: its signature and expiry change on every
+  // query refetch even when the underlying file hasn't. Re-running this
+  // effect on every such refetch (e.g. React Query's refetch-on-window-
+  // focus) would restart the PDF/image render from scratch each time --
+  // if a refetch lands mid-render, the render never gets a chance to
+  // finish. Key the effect on the stable part of the URL (path, no query
+  // string) instead, and read the always-current fileUrl via a ref.
+  const fileUrlRef = useRef(fileUrl);
+  fileUrlRef.current = fileUrl;
+  const stableUrlKey = fileUrl.split('?')[0];
+
   useEffect(() => {
     let cancelled = false;
 
     async function render() {
       try {
+        const currentUrl = fileUrlRef.current;
         if (isPdf) {
-          const doc = await pdfjsLib.getDocument(fileUrl).promise;
+          const doc = await pdfjsLib.getDocument(currentUrl).promise;
           const page = await doc.getPage(1);
           const containerWidth = containerRef.current?.clientWidth ?? 900;
           const baseViewport = page.getViewport({ scale: 1 });
@@ -64,7 +76,7 @@ export function DrawingViewer({
             setSize({ width: w, height: h });
           };
           img.onerror = () => setError('Could not load drawing image.');
-          img.src = fileUrl;
+          img.src = currentUrl;
         }
       } catch {
         if (!cancelled) setError('Could not render this drawing.');
@@ -74,7 +86,8 @@ export function DrawingViewer({
     return () => {
       cancelled = true;
     };
-  }, [fileUrl, isPdf]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stableUrlKey, isPdf]);
 
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
     if (!placingMode || !onPlacePin || !size) return;
