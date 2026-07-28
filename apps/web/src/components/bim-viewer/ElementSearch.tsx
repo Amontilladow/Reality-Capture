@@ -36,7 +36,7 @@ export function ElementSearch({
         onBlur={() => setTimeout(() => setOpen(false), 150)}
       />
       {open && query.trim().length >= 2 && (
-        <div className="absolute z-10 mt-1 max-h-72 w-full overflow-y-auto rounded border border-gray-200 bg-white shadow-lg">
+        <div className="absolute z-10 mt-1 max-h-72 w-full overflow-y-auto rounded border border-gray-200 bg-white text-gray-900 shadow-lg">
           {searchQuery.isFetching && <p className="p-2 text-xs text-gray-400">Searching…</p>}
           {!searchQuery.isFetching && results.length === 0 && (
             <p className="p-2 text-xs text-gray-400">No matches.</p>

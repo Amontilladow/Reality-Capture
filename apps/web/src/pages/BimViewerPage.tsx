@@ -58,7 +58,7 @@ export default function BimViewerPage() {
 
   return (
     <div className="flex h-screen flex-col">
-      <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-2">
+      <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-2 text-gray-900">
         <div className="flex items-center gap-3">
           <Link to={`/projects/${projectId}/bim`} className="text-sm text-gray-500 hover:text-gray-800">
             ← Models
@@ -76,7 +76,7 @@ export default function BimViewerPage() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="w-72 shrink-0 overflow-y-auto border-r border-gray-200 bg-white">
+        <aside className="w-72 shrink-0 overflow-y-auto border-r border-gray-200 bg-white text-gray-900">
           {hierarchyQuery.isLoading && <p className="p-3 text-sm text-gray-400">Loading hierarchy…</p>}
           {hierarchyQuery.data && (
             <SpatialTree
@@ -110,7 +110,7 @@ export default function BimViewerPage() {
           )}
         </main>
 
-        <aside className="w-80 shrink-0 overflow-y-auto border-l border-gray-200 bg-white">
+        <aside className="w-80 shrink-0 overflow-y-auto border-l border-gray-200 bg-white text-gray-900">
           <PropertyPanel element={elementQuery.data ?? null} loading={elementQuery.isFetching} />
         </aside>
       </div>
