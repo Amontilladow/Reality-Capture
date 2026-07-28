@@ -48,9 +48,9 @@ export class DocumentsService {
       FROM documents d
       JOIN users u ON u.id = d.uploaded_by
       WHERE d.project_id = ${projectId} AND d.company_id = ${companyId}
-        AND (${query.docType ?? null} IS NULL OR d.doc_type = ${query.docType ?? null})
-        AND (${query.discipline ?? null} IS NULL OR d.discipline = ${query.discipline ?? null})
-        AND (${query.search ?? null} IS NULL OR d.search_vector @@ plainto_tsquery('english', ${query.search ?? null}))
+        AND (${query.docType ?? null}::text IS NULL OR d.doc_type = ${query.docType ?? null})
+        AND (${query.discipline ?? null}::text IS NULL OR d.discipline = ${query.discipline ?? null})
+        AND (${query.search ?? null}::text IS NULL OR d.search_vector @@ plainto_tsquery('english', ${query.search ?? null}))
       ORDER BY d.created_at DESC
       LIMIT ${perPage} OFFSET ${offset}
     `);

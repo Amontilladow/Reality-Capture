@@ -30,10 +30,10 @@ export class AuditController {
       SELECT *, COUNT(*) OVER() AS full_count
       FROM audit_log
       WHERE company_id = ${user.companyId}
-        AND (${action ?? null} IS NULL OR action = ${action ?? null})
-        AND (${resourceType ?? null} IS NULL OR resource_type = ${resourceType ?? null})
-        AND (${from ?? null} IS NULL OR occurred_at >= ${from ?? null}::timestamptz)
-        AND (${to ?? null} IS NULL OR occurred_at <= ${to ?? null}::timestamptz)
+        AND (${action ?? null}::text IS NULL OR action = ${action ?? null})
+        AND (${resourceType ?? null}::text IS NULL OR resource_type = ${resourceType ?? null})
+        AND (${from ?? null}::timestamptz IS NULL OR occurred_at >= ${from ?? null}::timestamptz)
+        AND (${to ?? null}::timestamptz IS NULL OR occurred_at <= ${to ?? null}::timestamptz)
       ORDER BY occurred_at DESC
       LIMIT ${perPage} OFFSET ${offset}
     `;

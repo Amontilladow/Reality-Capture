@@ -45,7 +45,7 @@ export class DrawingsService {
       LEFT JOIN capture_drawing_links cdl ON cdl.drawing_id = d.id
       WHERE d.project_id = ${projectId} AND d.company_id = ${companyId}
         AND d.is_current = true
-        AND (${levelId ?? null} IS NULL OR d.level_id = ${levelId ?? null}::uuid)
+        AND (${levelId ?? null}::uuid IS NULL OR d.level_id = ${levelId ?? null}::uuid)
       GROUP BY d.id, u.first_name, u.last_name, l.name
       ORDER BY l.name NULLS LAST, d.title
     `);

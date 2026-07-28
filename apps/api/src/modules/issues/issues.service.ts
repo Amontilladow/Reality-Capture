@@ -120,18 +120,18 @@ export class IssuesService {
       LEFT JOIN levels lvl    ON lvl.id = i.level_id
       WHERE i.project_id  = ${projectId}
         AND i.company_id  = ${companyId}
-        AND (${query.status ?? null} IS NULL OR i.status = ${query.status ?? null})
-        AND (${query.priority ?? null} IS NULL OR i.priority = ${query.priority ?? null})
-        AND (${query.issueType ?? null} IS NULL OR i.issue_type = ${query.issueType ?? null})
-        AND (${query.discipline ?? null} IS NULL OR i.discipline = ${query.discipline ?? null})
-        AND (${query.assignedTo ?? null} IS NULL OR i.assigned_to = ${query.assignedTo ?? null}::uuid)
-        AND (${query.locationId ?? null} IS NULL OR i.location_id = ${query.locationId ?? null}::uuid)
-        AND (${query.elementId ?? null} IS NULL OR i.element_id = ${query.elementId ?? null}::uuid)
-        AND (${query.dateFrom ?? null} IS NULL OR i.created_at >= ${query.dateFrom ?? null}::timestamptz)
-        AND (${query.dateTo ?? null} IS NULL OR i.created_at <= ${query.dateTo ?? null}::timestamptz)
+        AND (${query.status ?? null}::text IS NULL OR i.status = ${query.status ?? null})
+        AND (${query.priority ?? null}::text IS NULL OR i.priority = ${query.priority ?? null})
+        AND (${query.issueType ?? null}::text IS NULL OR i.issue_type = ${query.issueType ?? null})
+        AND (${query.discipline ?? null}::text IS NULL OR i.discipline = ${query.discipline ?? null})
+        AND (${query.assignedTo ?? null}::uuid IS NULL OR i.assigned_to = ${query.assignedTo ?? null}::uuid)
+        AND (${query.locationId ?? null}::uuid IS NULL OR i.location_id = ${query.locationId ?? null}::uuid)
+        AND (${query.elementId ?? null}::uuid IS NULL OR i.element_id = ${query.elementId ?? null}::uuid)
+        AND (${query.dateFrom ?? null}::timestamptz IS NULL OR i.created_at >= ${query.dateFrom ?? null}::timestamptz)
+        AND (${query.dateTo ?? null}::timestamptz IS NULL OR i.created_at <= ${query.dateTo ?? null}::timestamptz)
         AND (NOT ${query.overdue ?? false} OR (i.deadline < NOW() AND i.status NOT IN ('closed','void')))
         AND (NOT ${query.myIssues ?? false} OR i.assigned_to = ${query.userId ?? null}::uuid)
-        AND (${query.search ?? null} IS NULL OR
+        AND (${query.search ?? null}::text IS NULL OR
           to_tsvector('english', i.title || ' ' || coalesce(i.description,''))
           @@ plainto_tsquery('english', ${query.search ?? null}))
       ORDER BY

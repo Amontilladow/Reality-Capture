@@ -38,10 +38,10 @@ export class TimelineService {
       LEFT JOIN locations loc ON loc.id = te.location_id
       LEFT JOIN captures c ON c.id = te.capture_id
       WHERE te.project_id = ${projectId} AND te.company_id = ${companyId}
-        AND (${query.phase ?? null} IS NULL OR te.phase = ${query.phase ?? null})
-        AND (${query.locationId ?? null} IS NULL OR te.location_id = ${query.locationId ?? null}::uuid)
-        AND (${query.dateFrom ?? null} IS NULL OR te.entry_date >= ${query.dateFrom ?? null}::date)
-        AND (${query.dateTo ?? null} IS NULL OR te.entry_date <= ${query.dateTo ?? null}::date)
+        AND (${query.phase ?? null}::text IS NULL OR te.phase = ${query.phase ?? null})
+        AND (${query.locationId ?? null}::uuid IS NULL OR te.location_id = ${query.locationId ?? null}::uuid)
+        AND (${query.dateFrom ?? null}::date IS NULL OR te.entry_date >= ${query.dateFrom ?? null}::date)
+        AND (${query.dateTo ?? null}::date IS NULL OR te.entry_date <= ${query.dateTo ?? null}::date)
       ORDER BY te.entry_date DESC, te.created_at DESC
     `);
   }
