@@ -57,7 +57,19 @@ export function DrawingViewer({
           canvas.height = viewport.height;
           const ctx = canvas.getContext('2d');
           if (!ctx) return;
-          await page.render({ canvasContext: ctx, viewport }).promise;
+          // Some CAD-exported PDFs (many hundreds of content streams / form
+          // XObjects for a single page) take pdf.js's canvas renderer an
+          // impractically long time to rasterize -- confirmed against a real
+          // file that hadn't finished after 60+ seconds. Rather than hang
+          // silently forever, cancel and surface a clear message.
+          const renderTask = page.render({ canvasContext: ctx, viewport });
+          const timeout = new Promise<never>((_, reject) => {
+            setTimeout(() => {
+              renderTask.cancel();
+              reject(new Error('RENDER_TIMEOUT'));
+            }, 20000);
+          });
+          await Promise.race([renderTask.promise, timeout]);
           if (!cancelled) setSize({ width: viewport.width, height: viewport.height });
         } else {
           const img = new Image();
@@ -78,8 +90,14 @@ export function DrawingViewer({
           img.onerror = () => setError('Could not load drawing image.');
           img.src = currentUrl;
         }
-      } catch {
-        if (!cancelled) setError('Could not render this drawing.');
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error && err.message === 'RENDER_TIMEOUT'
+              ? 'This drawing is too complex to preview in the browser (took too long to render). Try exporting a simpler or flattened PDF, or an image instead.'
+              : 'Could not render this drawing.',
+          );
+        }
       }
     }
     render();
