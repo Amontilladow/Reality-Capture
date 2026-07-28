@@ -40,7 +40,12 @@ export default function FloorPlanViewer() {
   const unlinkedCapturesQuery = useQuery({
     queryKey: ['captures', projectId, 'unlinked-for-plan'],
     queryFn: () => listCaptures(projectId!, { perPage: 100 }),
-    enabled: Boolean(projectId) && placingMode,
+    // Must be available to populate the "select a capture" dropdown, which is
+    // shown BEFORE placing mode starts (the user picks a capture from this
+    // list, then clicks "Place pin" to enter placing mode) -- gating this on
+    // placingMode meant the dropdown could never have options in the first
+    // place, since placing mode can only start after picking from it.
+    enabled: Boolean(projectId),
   });
 
   const linkMutation = useMutation({
