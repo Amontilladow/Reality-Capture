@@ -55,7 +55,7 @@ export function DrawingUploadModal({
   });
 
   return (
-    <Modal open={open} onClose={onClose} title="Upload floor plan">
+    <Modal open={open} onClose={onClose} title="Upload floor plan" wide>
       <div className="space-y-4">
         <div
           {...getRootProps()}

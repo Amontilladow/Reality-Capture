@@ -56,12 +56,12 @@ export class DrawingsService {
   async findOne(companyId: string, drawingId: string) {
     const [drawing] = await this.db.withTenant(companyId, sql => sql`
       SELECT d.*,
-        json_agg(DISTINCT jsonb_build_object(
+        COALESCE(json_agg(DISTINCT jsonb_build_object(
           'id', cdl.id, 'captureId', cdl.capture_id,
           'posXNorm', cdl.pos_x_norm, 'posYNorm', cdl.pos_y_norm,
           'captureType', c.capture_type, 'capturedAt', c.captured_at,
           'phase', c.phase, 'title', c.title, 'status', c.status
-        )) FILTER (WHERE cdl.id IS NOT NULL) AS capture_links
+        )) FILTER (WHERE cdl.id IS NOT NULL), '[]'::json) AS capture_links
       FROM drawings d
       LEFT JOIN capture_drawing_links cdl ON cdl.drawing_id = d.id
       LEFT JOIN captures c ON c.id = cdl.capture_id AND c.status = 'ready'

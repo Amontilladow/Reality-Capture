@@ -164,12 +164,12 @@ export class CapturesService {
         c.*,
         u.first_name || ' ' || u.last_name AS captured_by_name,
         loc.name AS location_name,
-        json_agg(
+        COALESCE(json_agg(
           json_build_object(
             'type', cr.rendition_type,
             'key',  cr.storage_key
           )
-        ) FILTER (WHERE cr.id IS NOT NULL) AS renditions,
+        ) FILTER (WHERE cr.id IS NOT NULL), '[]'::json) AS renditions,
         COUNT(*) OVER() AS full_count
       FROM captures c
       LEFT JOIN users u ON u.id = c.captured_by
@@ -223,15 +223,15 @@ export class CapturesService {
         u.first_name || ' ' || u.last_name AS captured_by_name,
         u.avatar_url AS captured_by_avatar,
         loc.name AS location_name,
-        json_agg(DISTINCT jsonb_build_object(
+        COALESCE(json_agg(DISTINCT jsonb_build_object(
           'id', cr.id, 'type', cr.rendition_type,
           'key', cr.storage_key, 'widthPx', cr.width_px, 'heightPx', cr.height_px
-        )) FILTER (WHERE cr.id IS NOT NULL) AS renditions,
-        json_agg(DISTINCT jsonb_build_object(
+        )) FILTER (WHERE cr.id IS NOT NULL), '[]'::json) AS renditions,
+        COALESCE(json_agg(DISTINCT jsonb_build_object(
           'id', h.id, 'type', h.hotspot_type, 'label', h.label,
           'yawDeg', h.yaw_deg, 'pitchDeg', h.pitch_deg,
           'targetCaptureId', h.target_capture_id, 'iconName', h.icon_name, 'color', h.color
-        )) FILTER (WHERE h.id IS NOT NULL) AS hotspots
+        )) FILTER (WHERE h.id IS NOT NULL), '[]'::json) AS hotspots
       FROM captures c
       LEFT JOIN users u ON u.id = c.captured_by
       LEFT JOIN locations loc ON loc.id = c.location_id
@@ -402,11 +402,11 @@ export class CapturesService {
              cp.scene_x, cp.scene_y, cp.scene_z, cp.plan_x, cp.plan_y, cp.yaw_deg,
              cr_thumb.storage_key AS thumbnail_key,
              cr_prev.storage_key  AS preview_key,
-             json_agg(DISTINCT jsonb_build_object(
+             COALESCE(json_agg(DISTINCT jsonb_build_object(
                'id', h.id, 'type', h.hotspot_type, 'label', h.label,
                'yawDeg', h.yaw_deg, 'pitchDeg', h.pitch_deg,
                'targetCaptureId', h.target_capture_id, 'iconName', h.icon_name
-             )) FILTER (WHERE h.id IS NOT NULL) AS hotspots
+             )) FILTER (WHERE h.id IS NOT NULL), '[]'::json) AS hotspots
       FROM captures c
       LEFT JOIN capture_points cp ON cp.capture_id = c.id
       LEFT JOIN capture_renditions cr_thumb ON cr_thumb.capture_id = c.id AND cr_thumb.rendition_type = 'thumbnail_sm'

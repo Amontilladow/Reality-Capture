@@ -147,13 +147,16 @@ export class ProjectsService {
   async getHierarchy(companyId: string, projectId: string) {
     const buildings = await this.db.withTenant(companyId, sql => sql`
       SELECT b.id, b.name, b.code, b.total_levels,
-        json_agg(
-          json_build_object(
-            'id', l.id, 'name', l.name, 'levelOrder', l.level_order,
-            'elevationM', l.elevation_m,
-            'locations', COALESCE(loc.locations, '[]'::json)
-          ) ORDER BY l.level_order
-        ) FILTER (WHERE l.id IS NOT NULL) AS levels
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', l.id, 'name', l.name, 'levelOrder', l.level_order,
+              'elevationM', l.elevation_m,
+              'locations', COALESCE(loc.locations, '[]'::json)
+            ) ORDER BY l.level_order
+          ) FILTER (WHERE l.id IS NOT NULL),
+          '[]'::json
+        ) AS levels
       FROM buildings b
       LEFT JOIN levels l ON l.building_id = b.id
       LEFT JOIN LATERAL (

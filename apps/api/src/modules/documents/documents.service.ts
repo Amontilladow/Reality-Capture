@@ -61,10 +61,10 @@ export class DocumentsService {
   async findOne(companyId: string, projectId: string, documentId: string) {
     const [doc] = await this.db.withTenant(companyId, sql => sql`
       SELECT d.*, u.first_name || ' ' || u.last_name AS uploaded_by_name,
-        json_agg(DISTINCT jsonb_build_object(
+        COALESCE(json_agg(DISTINCT jsonb_build_object(
           'id', dl.id, 'captureId', dl.capture_id, 'elementId', dl.element_id,
           'locationId', dl.location_id, 'issueId', dl.issue_id, 'context', dl.link_context
-        )) FILTER (WHERE dl.id IS NOT NULL) AS links
+        )) FILTER (WHERE dl.id IS NOT NULL), '[]'::json) AS links
       FROM documents d
       JOIN users u ON u.id = d.uploaded_by
       LEFT JOIN document_links dl ON dl.document_id = d.id
