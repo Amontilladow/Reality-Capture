@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Capture } from '@engineeringos/types';
+import type { Capture, ProjectPhase } from '@engineeringos/types';
+import { PROJECT_PHASES, PROJECT_PHASE_LABELS } from '@engineeringos/types';
 import { updateCapture } from '../lib/captures.api';
 
 export function CaptureLightbox({
@@ -15,10 +16,14 @@ export function CaptureLightbox({
   const queryClient = useQueryClient();
   const [editingTitle, setEditingTitle] = useState(false);
   const [title, setTitle] = useState('');
+  const [editingPhase, setEditingPhase] = useState(false);
+  const [phase, setPhase] = useState<ProjectPhase | ''>('');
 
   useEffect(() => {
     setTitle(capture?.title ?? '');
+    setPhase((capture?.phase as ProjectPhase) ?? '');
     setEditingTitle(false);
+    setEditingPhase(false);
   }, [capture?.id]);
 
   const renameMutation = useMutation({
@@ -26,6 +31,14 @@ export function CaptureLightbox({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['captures', projectId] });
       setEditingTitle(false);
+    },
+  });
+
+  const phaseMutation = useMutation({
+    mutationFn: () => updateCapture(projectId, capture!.id, { phase: phase || undefined }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['captures', projectId] });
+      setEditingPhase(false);
     },
   });
 
@@ -82,9 +95,36 @@ export function CaptureLightbox({
           )}
         </div>
 
-        <div className="px-4 py-3 border-t border-base-600 flex items-center gap-4 text-xs text-ink-500 shrink-0">
+        <div className="px-4 py-3 border-t border-base-600 flex items-center gap-4 text-xs text-ink-500 shrink-0 flex-wrap">
           <span>{new Date(capture.capturedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-          {capture.phase && <span>{capture.phase.replace(/_/g, ' ')}</span>}
+
+          {editingPhase ? (
+            <div className="flex items-center gap-1.5">
+              <select
+                autoFocus
+                className="field-input !py-1 !text-xs w-auto"
+                value={phase}
+                onChange={(e) => setPhase(e.target.value as ProjectPhase | '')}
+              >
+                <option value="">Unspecified</option>
+                {PROJECT_PHASES.map((p) => (
+                  <option key={p} value={p}>{PROJECT_PHASE_LABELS[p]}</option>
+                ))}
+              </select>
+              <button onClick={() => phaseMutation.mutate()} disabled={phaseMutation.isPending} className="btn-primary !px-2 !py-1 text-xs shrink-0">
+                Save
+              </button>
+              <button onClick={() => { setPhase((capture.phase as ProjectPhase) ?? ''); setEditingPhase(false); }} className="btn-ghost !px-1.5 !py-1 text-xs shrink-0">
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setEditingPhase(true)} className="flex items-center gap-1 hover:text-blueprint">
+              <span>{phase ? PROJECT_PHASE_LABELS[phase] : 'Set phase'}</span>
+              <EditIcon className="w-3 h-3" />
+            </button>
+          )}
+
           <span className="ml-auto uppercase font-mono">{capture.status}</span>
         </div>
       </div>
