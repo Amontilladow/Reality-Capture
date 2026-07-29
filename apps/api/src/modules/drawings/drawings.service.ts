@@ -167,7 +167,7 @@ export class DrawingsService {
       FROM locations loc
       LEFT JOIN captures c ON c.location_id = loc.id AND c.status = 'ready'
       LEFT JOIN capture_renditions cr ON cr.capture_id = c.id AND cr.rendition_type = 'thumbnail_sm'
-      WHERE loc.drawing_id = ${drawingId} AND loc.company_id = ${companyId}
+      WHERE loc.drawing_id = ${drawingId} AND loc.company_id = ${companyId} AND loc.archived_at IS NULL
       GROUP BY loc.id
       ORDER BY loc.created_at DESC
     `);

@@ -6,7 +6,7 @@ import { DrawingViewer } from '../components/drawing/DrawingViewer';
 import { DrawingUploadModal } from '../components/drawing/DrawingUploadModal';
 import { PinPanel } from '../components/drawing/PinPanel';
 import { listDrawings, getDrawing, createPin, getPins, type Pin } from '../lib/drawings.api';
-import { getHierarchy } from '../lib/projects.api';
+import { getHierarchy, updateLocation } from '../lib/projects.api';
 
 export default function FloorPlanViewer() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -14,6 +14,7 @@ export default function FloorPlanViewer() {
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [placingMode, setPlacingMode] = useState(false);
+  const [movingPin, setMovingPin] = useState<Pin | null>(null);
   const [openPin, setOpenPin] = useState<Pin | null>(null);
 
   const drawingsQuery = useQuery({
@@ -52,8 +53,23 @@ export default function FloorPlanViewer() {
     },
   });
 
+  const moveMutation = useMutation({
+    mutationFn: (payload: { xNorm: number; yNorm: number }) =>
+      updateLocation(projectId!, movingPin!.locationId, { posXNorm: payload.xNorm, posYNorm: payload.yNorm }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pins', projectId, activeDrawingId] });
+      setMovingPin(null);
+    },
+  });
+
   function handlePinClick(pin: Pin) {
+    if (movingPin) return; // ignore stray clicks on other pins while repositioning
     setOpenPin(pin);
+  }
+
+  function handlePlaceClick(x: number, y: number) {
+    if (movingPin) moveMutation.mutate({ xNorm: x, yNorm: y });
+    else createPinMutation.mutate({ xNorm: x, yNorm: y });
   }
 
   if (!projectId) return null;
@@ -81,7 +97,7 @@ export default function FloorPlanViewer() {
           {(drawingsQuery.data ?? []).map((d) => (
             <button
               key={d.id}
-              onClick={() => { setSelectedDrawingId(d.id); setPlacingMode(false); }}
+              onClick={() => { setSelectedDrawingId(d.id); setPlacingMode(false); setMovingPin(null); }}
               className={`w-full text-left px-3 py-2.5 rounded text-sm transition-colors ${
                 activeDrawingId === d.id ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-800'
               }`}
@@ -94,7 +110,14 @@ export default function FloorPlanViewer() {
         <div className="lg:col-span-3 space-y-3">
           {activeDrawingId && (
             <div className="flex items-center gap-3">
-              {!placingMode ? (
+              {movingPin ? (
+                <div className="flex items-center gap-2 text-xs text-signal">
+                  <span>Click the drawing to move "{movingPin.name || 'Untitled pin'}"</span>
+                  <button onClick={() => setMovingPin(null)} className="text-ink-500 hover:text-ink-100">
+                    Cancel
+                  </button>
+                </div>
+              ) : !placingMode ? (
                 <button onClick={() => setPlacingMode(true)} className="btn-secondary text-xs !py-1.5">
                   + Add pin
                 </button>
@@ -119,8 +142,8 @@ export default function FloorPlanViewer() {
               fileUrl={drawingQuery.data.downloadUrl ?? ''}
               isPdf={Boolean(drawingQuery.data.downloadUrl?.toLowerCase().includes('.pdf'))}
               pins={pinsQuery.data ?? []}
-              placingMode={placingMode}
-              onPlacePin={(x, y) => createPinMutation.mutate({ xNorm: x, yNorm: y })}
+              placingMode={placingMode || Boolean(movingPin)}
+              onPlacePin={handlePlaceClick}
               onPinClick={handlePinClick}
             />
           )}
@@ -134,7 +157,13 @@ export default function FloorPlanViewer() {
       </div>
 
       <DrawingUploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} projectId={projectId} hierarchy={hierarchyQuery.data ?? []} />
-      <PinPanel projectId={projectId} pin={openPin} onClose={() => setOpenPin(null)} />
+      <PinPanel
+        projectId={projectId}
+        pin={openPin}
+        onClose={() => setOpenPin(null)}
+        onMove={(pin) => { setOpenPin(null); setPlacingMode(false); setMovingPin(pin); }}
+        onDeleted={() => setOpenPin(null)}
+      />
     </>
   );
 }

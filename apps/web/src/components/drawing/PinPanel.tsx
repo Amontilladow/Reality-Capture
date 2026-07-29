@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Pin } from '../../lib/drawings.api';
 import { listCaptures, uploadCapture } from '../../lib/captures.api';
-import { updateLocation } from '../../lib/projects.api';
+import { updateLocation, archiveLocation } from '../../lib/projects.api';
 import { CaptureGrid } from '../CaptureGrid';
 import { apiErrorMessage } from '../../lib/api';
 
@@ -10,10 +10,14 @@ export function PinPanel({
   projectId,
   pin,
   onClose,
+  onMove,
+  onDeleted,
 }: {
   projectId: string;
   pin: Pin | null;
   onClose: () => void;
+  onMove: (pin: Pin) => void;
+  onDeleted: () => void;
 }) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -22,28 +26,48 @@ export function PinPanel({
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [title, setTitle] = useState('');
+  const lastSavedTitle = useRef('');
   const [editingNote, setEditingNote] = useState(false);
   const [note, setNote] = useState('');
+  const lastSavedNote = useRef('');
 
   useEffect(() => {
-    setTitle(pin?.name ?? '');
-    setNote(pin?.description ?? '');
+    const n = pin?.name ?? '';
+    const d = pin?.description ?? '';
+    setTitle(n);
+    lastSavedTitle.current = n;
+    setNote(d);
+    lastSavedNote.current = d;
     setEditingTitle(false);
     setEditingNote(false);
   }, [pin?.locationId]);
 
   function invalidatePin() {
+    // Refreshes the marker list on the plan -- but the panel you're looking
+    // at right now is holding a snapshot `pin` prop, not this query's data,
+    // so it will NOT pick up the change on its own. Display below reads
+    // from `title`/`note` (already holding the just-saved value) instead
+    // of `pin.name`/`pin.description` specifically to avoid that gap.
     queryClient.invalidateQueries({ queryKey: ['pins', projectId] });
   }
 
   const renameMutation = useMutation({
     mutationFn: () => updateLocation(projectId, pin!.locationId, { name: title.trim() || 'Untitled pin' }),
-    onSuccess: () => { invalidatePin(); setEditingTitle(false); },
+    onSuccess: () => {
+      lastSavedTitle.current = title.trim() || 'Untitled pin';
+      setTitle(lastSavedTitle.current);
+      invalidatePin();
+      setEditingTitle(false);
+    },
   });
 
   const noteMutation = useMutation({
     mutationFn: () => updateLocation(projectId, pin!.locationId, { description: note }),
-    onSuccess: () => { invalidatePin(); setEditingNote(false); },
+    onSuccess: () => {
+      lastSavedNote.current = note;
+      invalidatePin();
+      setEditingNote(false);
+    },
   });
 
   const capturesQuery = useQuery({
@@ -51,6 +75,21 @@ export function PinPanel({
     queryFn: () => listCaptures(projectId, { locationId: pin!.locationId, perPage: 50 }),
     enabled: Boolean(pin),
   });
+
+  const archiveMutation = useMutation({
+    mutationFn: () => archiveLocation(projectId, pin!.locationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pins', projectId] });
+      onDeleted();
+    },
+  });
+
+  function handleDelete() {
+    if (!pin) return;
+    if (confirm('Delete this pin? Its photos, videos, and notes will be hidden, not permanently lost.')) {
+      archiveMutation.mutate();
+    }
+  }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -90,26 +129,41 @@ export function PinPanel({
                   className="field-input !py-1.5 text-base font-semibold"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') renameMutation.mutate(); if (e.key === 'Escape') { setTitle(pin.name); setEditingTitle(false); } }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') renameMutation.mutate(); if (e.key === 'Escape') { setTitle(lastSavedTitle.current); setEditingTitle(false); } }}
                 />
                 <button onClick={() => renameMutation.mutate()} disabled={renameMutation.isPending} className="btn-primary !px-3 !py-1.5 text-xs shrink-0">
                   Save
                 </button>
-                <button onClick={() => { setTitle(pin.name); setEditingTitle(false); }} className="btn-ghost !px-2 !py-1.5 text-xs shrink-0">Cancel</button>
+                <button onClick={() => { setTitle(lastSavedTitle.current); setEditingTitle(false); }} className="btn-ghost !px-2 !py-1.5 text-xs shrink-0">Cancel</button>
               </div>
             ) : (
               <button onClick={() => setEditingTitle(true)} className="flex items-center gap-1.5 min-w-0 hover:text-blueprint text-left">
-                <h3 className="text-base font-semibold truncate">{pin.name || 'Untitled pin'}</h3>
+                <h3 className="text-base font-semibold truncate">{title || 'Untitled pin'}</h3>
                 <EditIcon className="w-3.5 h-3.5 text-ink-500 shrink-0" />
               </button>
             )}
           </div>
-          <button onClick={onClose} className="text-ink-500 hover:text-ink-100 shrink-0" aria-label="Close">
-            <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={() => onMove(pin)} className="btn-ghost !px-2.5 !py-1.5 text-xs" title="Move this pin to a new spot on the drawing">
+              Move
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={archiveMutation.isPending}
+              className="btn-ghost !px-2.5 !py-1.5 text-xs text-danger hover:!bg-danger/10"
+            >
+              {archiveMutation.isPending ? 'Deleting…' : 'Delete'}
+            </button>
+            <button onClick={onClose} className="text-ink-500 hover:text-ink-100 !px-1" aria-label="Close">
+              <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
         </div>
+        {archiveMutation.isError && (
+          <p className="field-error px-5 pt-2">{apiErrorMessage(archiveMutation.error)}</p>
+        )}
 
         <div className="p-5 overflow-y-auto space-y-4">
           {/* Note */}
@@ -128,12 +182,12 @@ export function PinPanel({
                   <button onClick={() => noteMutation.mutate()} disabled={noteMutation.isPending} className="btn-primary !px-3 !py-1.5 text-xs">
                     {noteMutation.isPending ? 'Saving…' : 'Save note'}
                   </button>
-                  <button onClick={() => { setNote(pin.description ?? ''); setEditingNote(false); }} className="btn-ghost !px-2 !py-1.5 text-xs">Cancel</button>
+                  <button onClick={() => { setNote(lastSavedNote.current); setEditingNote(false); }} className="btn-ghost !px-2 !py-1.5 text-xs">Cancel</button>
                 </div>
               </div>
-            ) : pin.description ? (
+            ) : note ? (
               <button onClick={() => setEditingNote(true)} className="panel p-3 text-sm text-ink-100 text-left w-full hover:border-blueprint/50 transition-colors">
-                {pin.description}
+                {note}
               </button>
             ) : (
               <button onClick={() => setEditingNote(true)} className="text-sm text-ink-500 hover:text-blueprint">

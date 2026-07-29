@@ -57,19 +57,38 @@ export class BuildingsService {
       FROM locations l
       LEFT JOIN captures c ON c.location_id = l.id
       LEFT JOIN issues i ON i.location_id = l.id
-      WHERE l.level_id = ${levelId}
+      WHERE l.level_id = ${levelId} AND l.archived_at IS NULL
       GROUP BY l.id
       ORDER BY l.name`);
   }
 
-  // Rename / re-describe a location -- covers both building-hierarchy
-  // locations and floor-plan pins (a pin is a location with no level).
-  async updateLocation(companyId: string, locationId: string, dto: { name?: string; description?: string }) {
+  // Rename / re-describe / reposition a location -- covers both
+  // building-hierarchy locations and floor-plan pins (a pin is a location
+  // with no level). posXNorm/posYNorm let a pin be moved to a new spot.
+  async updateLocation(
+    companyId: string,
+    locationId: string,
+    dto: { name?: string; description?: string; posXNorm?: number; posYNorm?: number },
+  ) {
     const [loc] = await this.db.query`
       UPDATE locations SET
         name        = COALESCE(${dto.name ?? null}, name),
-        description = COALESCE(${dto.description ?? null}, description)
-      WHERE id = ${locationId} AND company_id = ${companyId}
+        description = COALESCE(${dto.description ?? null}, description),
+        pos_x_norm  = COALESCE(${dto.posXNorm ?? null}, pos_x_norm),
+        pos_y_norm  = COALESCE(${dto.posYNorm ?? null}, pos_y_norm)
+      WHERE id = ${locationId} AND company_id = ${companyId} AND archived_at IS NULL
+      RETURNING *`;
+    if (!loc) throw new NotFoundException('Location not found.');
+    return loc;
+  }
+
+  // Soft-delete: hides a pin from normal views without destroying it or
+  // anything attached to it (photos, videos, notes all survive). Site
+  // photos are often one-of-a-kind -- a real delete is never worth the risk.
+  async archiveLocation(companyId: string, locationId: string) {
+    const [loc] = await this.db.query`
+      UPDATE locations SET archived_at = NOW()
+      WHERE id = ${locationId} AND company_id = ${companyId} AND archived_at IS NULL
       RETURNING *`;
     if (!loc) throw new NotFoundException('Location not found.');
     return loc;

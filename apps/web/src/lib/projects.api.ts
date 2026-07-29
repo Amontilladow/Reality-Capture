@@ -57,8 +57,16 @@ export function createLocation(
   return apiPost<Location>(`/projects/${projectId}/buildings/${buildingId}/levels/${levelId}/locations`, payload);
 }
 
-export function updateLocation(projectId: string, locationId: string, payload: { name?: string; description?: string }) {
+export function updateLocation(
+  projectId: string,
+  locationId: string,
+  payload: { name?: string; description?: string; posXNorm?: number; posYNorm?: number },
+) {
   return apiPatch<Location>(`/projects/${projectId}/locations/${locationId}`, payload);
+}
+
+export function archiveLocation(projectId: string, locationId: string) {
+  return apiDelete<Location>(`/projects/${projectId}/locations/${locationId}`);
 }
 
 export interface ProjectMember {

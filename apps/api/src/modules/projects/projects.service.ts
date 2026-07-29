@@ -167,7 +167,7 @@ export class ProjectsService {
           ) ORDER BY loc.name
         ) AS locations
         FROM locations loc
-        WHERE loc.level_id = l.id
+        WHERE loc.level_id = l.id AND loc.archived_at IS NULL
       ) loc ON true
       WHERE b.project_id = ${projectId}
       GROUP BY b.id

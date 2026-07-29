@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { BuildingsService } from './buildings.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -46,8 +46,19 @@ export class BuildingsController {
   // Flat route (no building/level in the path) since a floor-plan pin is a
   // location that may not have a level at all.
   @Patch('locations/:id')
-  @ApiOperation({ summary: 'Rename or re-describe a location (including a floor-plan pin)' })
-  async updateLocation(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: { name?: string; description?: string }) {
+  @ApiOperation({ summary: 'Rename, re-describe, or reposition a location (including a floor-plan pin)' })
+  async updateLocation(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: { name?: string; description?: string; posXNorm?: number; posYNorm?: number },
+  ) {
     return { data: await this.svc.updateLocation(u.companyId, id, dto), error: null };
+  }
+
+  @Delete('locations/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Archive a location -- hides it and its pin, but keeps everything attached intact and recoverable' })
+  async archiveLocation(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
+    return { data: await this.svc.archiveLocation(u.companyId, id), error: null };
   }
 }
