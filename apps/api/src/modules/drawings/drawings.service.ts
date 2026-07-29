@@ -136,7 +136,18 @@ export class DrawingsService {
       )
       RETURNING *
     `;
-    return pin;
+
+    // Shaped to match getPins() below (locationId, captureCount, etc.) so the
+    // frontend can treat a freshly-created pin identically to one from the list.
+    return {
+      locationId: pin.id as string,
+      name: pin.name as string,
+      posXNorm: pin.posXNorm as number,
+      posYNorm: pin.posYNorm as number,
+      createdVia: pin.createdVia as string,
+      createdAt: pin.createdAt as string,
+      captureCount: 0,
+    };
   }
 
   // Pins for a drawing — one marker per place, not per photo. A place with

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import type { FloorPlanPin } from '../../lib/drawings.api';
+import type { Pin } from '../../lib/drawings.api';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
@@ -17,10 +17,10 @@ export function DrawingViewer({
 }: {
   fileUrl: string;
   isPdf: boolean;
-  pins: FloorPlanPin[];
+  pins: Pin[];
   placingMode?: boolean;
   onPlacePin?: (xNorm: number, yNorm: number) => void;
-  onPinClick?: (pin: FloorPlanPin) => void;
+  onPinClick?: (pin: Pin) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -128,7 +128,7 @@ export function DrawingViewer({
           <svg className="absolute inset-0 pointer-events-none" width={size.width} height={size.height}>
             {pins.map((pin) => (
               <g
-                key={pin.captureId}
+                key={pin.locationId}
                 transform={`translate(${pin.posXNorm * size.width}, ${pin.posYNorm * size.height})`}
                 className="pointer-events-auto cursor-pointer"
                 onClick={(e) => {
@@ -136,8 +136,16 @@ export function DrawingViewer({
                   onPinClick?.(pin);
                 }}
               >
-                <circle r="9" className="fill-signal stroke-signal-hover" strokeWidth="2" />
-                <circle r="3" className="fill-base-950" />
+                {pin.captureCount > 0 ? (
+                  <>
+                    <circle r="9" className="fill-signal stroke-signal-hover" strokeWidth="2" />
+                    <circle r="3" className="fill-base-950" />
+                  </>
+                ) : (
+                  // No media yet -- a hollow marker so an empty, just-created
+                  // pin reads visually differently from one with a history.
+                  <circle r="9" className="fill-base-950/60 stroke-signal" strokeWidth="2" strokeDasharray="2.5 2" />
+                )}
                 {pin.compassHeadingDeg !== undefined && (
                   <line
                     x1="0" y1="0"

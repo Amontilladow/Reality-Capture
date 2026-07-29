@@ -1,6 +1,29 @@
 import axios from 'axios';
 import { apiGet, apiPost, apiDelete } from './api';
 
+// A pin is a place someone marked on a drawing — it can exist before any
+// photo does. Distinct from the legacy per-photo FloorPlanPin below.
+export interface Pin {
+  locationId: string;
+  name: string;
+  posXNorm: number;
+  posYNorm: number;
+  createdVia: 'manual' | 'floor_plan_tap';
+  createdAt: string;
+  captureCount: number;
+  latestCapturedAt?: string;
+  thumbnailUrl?: string;
+  compassHeadingDeg?: number;
+}
+
+export function createPin(projectId: string, drawingId: string, payload: { posXNorm: number; posYNorm: number; name?: string }) {
+  return apiPost<Pin>(`/projects/${projectId}/drawings/${drawingId}/pins`, payload);
+}
+
+export function getPins(projectId: string, drawingId: string) {
+  return apiGet<Pin[]>(`/projects/${projectId}/drawings/${drawingId}/pins`);
+}
+
 export interface Drawing {
   id: string;
   projectId: string;
