@@ -33,6 +33,8 @@ export interface IssueFilters {
   issueType?: string;
   assignedTo?: string;
   discipline?: string;
+  dateFrom?: string;
+  dateTo?: string;
   overdue?: boolean;
   myIssues?: boolean;
   search?: string;

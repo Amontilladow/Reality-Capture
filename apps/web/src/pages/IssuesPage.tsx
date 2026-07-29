@@ -18,6 +18,11 @@ export default function IssuesPage() {
   const [status, setStatus] = useState('');
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
   const [search, setSearch] = useState('');
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [assignedTo, setAssignedTo] = useState('');
+  const [discipline, setDiscipline] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [editIssue, setEditIssue] = useState<IssueListItem | null>(null);
   const [viewIssueId, setViewIssueId] = useState<string | null>(null);
@@ -41,7 +46,7 @@ export default function IssuesPage() {
   });
 
   const issuesQuery = useQuery({
-    queryKey: ['issues', projectId, status, quickFilter, search],
+    queryKey: ['issues', projectId, status, quickFilter, search, assignedTo, discipline, dateFrom, dateTo],
     queryFn: () =>
       listIssues(projectId!, {
         perPage: 100,
@@ -50,9 +55,21 @@ export default function IssuesPage() {
         overdue: quickFilter === 'overdue' ? true : undefined,
         myIssues: quickFilter === 'mine' ? true : undefined,
         search: search || undefined,
+        assignedTo: assignedTo || undefined,
+        discipline: discipline || undefined,
+        dateFrom: dateFrom ? new Date(dateFrom).toISOString() : undefined,
+        dateTo: dateTo ? new Date(dateTo).toISOString() : undefined,
       }),
     enabled: Boolean(projectId),
   });
+
+  const advancedActive = Boolean(assignedTo || discipline || dateFrom || dateTo);
+  function clearAdvanced() {
+    setAssignedTo('');
+    setDiscipline('');
+    setDateFrom('');
+    setDateTo('');
+  }
 
   if (!projectId) return null;
 
@@ -133,7 +150,46 @@ export default function IssuesPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          <button
+            onClick={() => setAdvancedOpen((v) => !v)}
+            className={`btn-secondary !px-3 !py-1.5 text-xs ${advancedActive ? '!border-signal !text-signal' : ''}`}
+          >
+            Advanced{advancedActive ? ' •' : ''}
+          </button>
         </div>
+
+        {advancedOpen && (
+          <div className="panel p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
+            <div>
+              <label className="field-label" htmlFor="fAssignee">Assignee</label>
+              <select id="fAssignee" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+                <option value="">Anyone</option>
+                {(membersQuery.data ?? []).map((m) => (
+                  <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="field-label" htmlFor="fDiscipline">Discipline</label>
+              <input id="fDiscipline" className="field-input" placeholder="MEP, Structural…" value={discipline} onChange={(e) => setDiscipline(e.target.value)} />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="fDateFrom">Created from</label>
+              <input id="fDateFrom" type="date" className="field-input" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            </div>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="field-label" htmlFor="fDateTo">Created to</label>
+                <input id="fDateTo" type="date" className="field-input" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+              </div>
+              {advancedActive && (
+                <button onClick={clearAdvanced} className="btn-ghost !px-2 text-xs shrink-0" title="Clear advanced filters">
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* List */}
         {issuesQuery.isLoading && <p className="text-sm text-ink-500">Loading issues…</p>}
