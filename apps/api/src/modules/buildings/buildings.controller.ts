@@ -17,7 +17,7 @@ export class BuildingsController {
   }
 
   @Patch('buildings/:bid')
-  async updateBuilding(@CurrentUser() u: AuthenticatedUser, @Param('bid') bid: string, @Body() dto: { name?: string }) {
+  async updateBuilding(@CurrentUser() u: AuthenticatedUser, @Param('bid') bid: string, @Body() dto: { name?: string; phase?: string }) {
     return { data: await this.svc.updateBuilding(u.companyId, bid, dto), error: null };
   }
 

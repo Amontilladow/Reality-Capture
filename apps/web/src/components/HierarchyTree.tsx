@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import type { ProjectPhase } from '@engineeringos/types';
 import type { ProjectHierarchy } from '../lib/projects.api';
+import { PhaseEditor } from './PhaseEditor';
 
 export function HierarchyTree({
   buildings,
@@ -7,12 +9,16 @@ export function HierarchyTree({
   onSelectLocation,
   onAddLevel,
   onAddLocation,
+  onSetBuildingPhase,
+  buildingPhaseSaving,
 }: {
   buildings: ProjectHierarchy[];
   selectedLocationId?: string;
   onSelectLocation: (locationId: string, locationName: string) => void;
   onAddLevel?: (buildingId: string) => void;
   onAddLocation?: (buildingId: string, levelId: string) => void;
+  onSetBuildingPhase?: (buildingId: string, phase: ProjectPhase | '') => void;
+  buildingPhaseSaving?: boolean;
 }) {
   const [openBuildings, setOpenBuildings] = useState<Set<string>>(new Set(buildings.map((b) => b.id)));
   const [openLevels, setOpenLevels] = useState<Set<string>>(new Set());
@@ -59,6 +65,16 @@ export function HierarchyTree({
               </button>
             )}
           </div>
+
+          {onSetBuildingPhase && (
+            <div className="ml-6 mb-1">
+              <PhaseEditor
+                phase={building.phase}
+                onSave={(phase) => onSetBuildingPhase(building.id, phase)}
+                saving={buildingPhaseSaving}
+              />
+            </div>
+          )}
 
           {openBuildings.has(building.id) && (
             <div className="ml-4 pl-3 border-l border-base-600 space-y-1 mt-0.5">

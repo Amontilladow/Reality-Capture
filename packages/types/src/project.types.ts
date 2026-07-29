@@ -11,6 +11,7 @@ export interface Project {
   city?: string;
   coordinates?: { lat: number; lng: number };
   status: ProjectStatus;
+  phase?: ProjectPhase;
   startDate?: string;
   expectedEndDate?: string;
   coverImageUrl?: string;
@@ -40,6 +41,7 @@ export interface Building {
   code?: string;
   description?: string;
   totalLevels?: number;
+  phase?: ProjectPhase;
   createdAt: string;
   updatedAt: string;
   levels?: Level[];

@@ -103,6 +103,7 @@ export class ProjectsService {
         status            = COALESCE(${dto.status ?? null}, status),
         start_date        = COALESCE(${dto.startDate ?? null}, start_date),
         expected_end_date = COALESCE(${dto.expectedEndDate ?? null}, expected_end_date),
+        phase             = COALESCE(${dto.phase ?? null}, phase),
         updated_at        = NOW()
       WHERE id = ${projectId} AND company_id = ${companyId}
       RETURNING *
@@ -146,7 +147,7 @@ export class ProjectsService {
   // ── Building/Level/Location helpers (full CRUD in buildings.module) ─────────
   async getHierarchy(companyId: string, projectId: string) {
     const buildings = await this.db.withTenant(companyId, sql => sql`
-      SELECT b.id, b.name, b.code, b.total_levels,
+      SELECT b.id, b.name, b.code, b.total_levels, b.phase,
         COALESCE(
           json_agg(
             json_build_object(

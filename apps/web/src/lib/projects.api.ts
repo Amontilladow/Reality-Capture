@@ -1,4 +1,4 @@
-import type { Project, Building, Level, Location, PaginationQuery } from '@engineeringos/types';
+import type { Project, Building, Level, Location, PaginationQuery, ProjectPhase } from '@engineeringos/types';
 import { apiGet, apiGetWithMeta, apiPost, apiPatch, apiDelete } from './api';
 
 export function listProjects(query?: PaginationQuery) {
@@ -24,7 +24,7 @@ export function createProject(payload: CreateProjectPayload) {
   return apiPost<Project>('/projects', payload);
 }
 
-export function updateProject(id: string, payload: Partial<CreateProjectPayload> & { status?: string }) {
+export function updateProject(id: string, payload: Partial<CreateProjectPayload> & { status?: string; phase?: ProjectPhase }) {
   return apiPatch<Project>(`/projects/${id}`, payload);
 }
 
@@ -38,6 +38,10 @@ export function getHierarchy(projectId: string) {
 
 export function createBuilding(projectId: string, payload: { name: string; code?: string; totalLevels?: number }) {
   return apiPost<Building>(`/projects/${projectId}/buildings`, payload);
+}
+
+export function updateBuilding(projectId: string, buildingId: string, payload: { name?: string; phase?: ProjectPhase }) {
+  return apiPatch<Building>(`/projects/${projectId}/buildings/${buildingId}`, payload);
 }
 
 export function createLevel(

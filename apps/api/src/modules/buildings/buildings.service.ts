@@ -13,13 +13,14 @@ export class BuildingsService {
     return b;
   }
 
-  async updateBuilding(companyId: string, buildingId: string, dto: Partial<{ name: string; code: string; description: string; totalLevels: number }>) {
+  async updateBuilding(companyId: string, buildingId: string, dto: Partial<{ name: string; code: string; description: string; totalLevels: number; phase: string }>) {
     const [b] = await this.db.query`
       UPDATE buildings SET
         name = COALESCE(${dto.name ?? null}, name),
         code = COALESCE(${dto.code ?? null}, code),
         description = COALESCE(${dto.description ?? null}, description),
         total_levels = COALESCE(${dto.totalLevels ?? null}, total_levels),
+        phase = COALESCE(${dto.phase ?? null}, phase),
         updated_at = NOW()
       WHERE id = ${buildingId} AND company_id = ${companyId}
       RETURNING *`;

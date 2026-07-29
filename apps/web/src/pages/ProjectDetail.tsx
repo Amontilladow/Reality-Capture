@@ -1,18 +1,21 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ProjectPhase } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { HierarchyTree } from '../components/HierarchyTree';
 import { AddHierarchyNodeModal } from '../components/AddHierarchyNodeModal';
 import { CaptureGrid } from '../components/CaptureGrid';
 import { CaptureUploadModal } from '../components/CaptureUploadModal';
-import { getProject, getHierarchy } from '../lib/projects.api';
+import { PhaseEditor } from '../components/PhaseEditor';
+import { getProject, getHierarchy, updateProject, updateBuilding } from '../lib/projects.api';
 import { listCaptures } from '../lib/captures.api';
 
 type NodeModalState = { kind: 'building' } | { kind: 'level'; buildingId: string } | { kind: 'location'; buildingId: string; levelId: string } | null;
 
 export default function ProjectDetail() {
   const { projectId } = useParams<{ projectId: string }>();
+  const queryClient = useQueryClient();
   const [selectedLocation, setSelectedLocation] = useState<{ id: string; name: string } | null>(null);
   const [nodeModal, setNodeModal] = useState<NodeModalState>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -21,6 +24,17 @@ export default function ProjectDetail() {
     queryKey: ['project', projectId],
     queryFn: () => getProject(projectId!),
     enabled: Boolean(projectId),
+  });
+
+  const projectPhaseMutation = useMutation({
+    mutationFn: (phase: ProjectPhase | '') => updateProject(projectId!, { phase: phase || undefined }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['project', projectId] }),
+  });
+
+  const buildingPhaseMutation = useMutation({
+    mutationFn: ({ buildingId, phase }: { buildingId: string; phase: ProjectPhase | '' }) =>
+      updateBuilding(projectId!, buildingId, { phase: phase || undefined }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['hierarchy', projectId] }),
   });
 
   const hierarchyQuery = useQuery({
@@ -66,6 +80,15 @@ export default function ProjectDetail() {
         }
       />
 
+      <div className="px-6 pt-4 flex items-center gap-2 text-xs text-ink-500">
+        <span className="font-mono uppercase tracking-widest">Project phase</span>
+        <PhaseEditor
+          phase={projectQuery.data?.phase}
+          onSave={(phase) => projectPhaseMutation.mutate(phase)}
+          saving={projectPhaseMutation.isPending}
+        />
+      </div>
+
       <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-1">
           <div className="tick-frame panel p-4">
@@ -87,6 +110,8 @@ export default function ProjectDetail() {
                 onSelectLocation={(id, name) => setSelectedLocation({ id, name })}
                 onAddLevel={(buildingId) => setNodeModal({ kind: 'level', buildingId })}
                 onAddLocation={(buildingId, levelId) => setNodeModal({ kind: 'location', buildingId, levelId })}
+                onSetBuildingPhase={(buildingId, phase) => buildingPhaseMutation.mutate({ buildingId, phase })}
+                buildingPhaseSaving={buildingPhaseMutation.isPending}
               />
             )}
           </div>
