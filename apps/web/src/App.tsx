@@ -14,6 +14,7 @@ import FloorPlanViewer from './pages/FloorPlanViewer';
 import Viewer360 from './pages/Viewer360';
 import BimModelsPage from './pages/BimModelsPage';
 import BimViewerPage from './pages/BimViewerPage';
+import IssuesPage from './pages/IssuesPage';
 
 export default function App() {
   return (
@@ -38,7 +39,8 @@ export default function App() {
           <Route path="/projects/:projectId/captures" element={<CapturesPage />} />
           <Route path="/projects/:projectId/drawings" element={<FloorPlanViewer />} />
           <Route path="/projects/:projectId/bim" element={<BimModelsPage />} />
-          {/* Issues and timeline views are planned for the next phase. */}
+          <Route path="/projects/:projectId/issues" element={<IssuesPage />} />
+          {/* Timeline view is planned for a later phase. */}
         </Route>
       </Route>
 
