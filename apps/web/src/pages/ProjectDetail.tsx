@@ -32,12 +32,21 @@ export default function ProjectDetail() {
   const capturesQuery = useQuery({
     queryKey: ['captures', projectId, selectedLocation?.id],
     queryFn: () => listCaptures(projectId!, { locationId: selectedLocation?.id, perPage: 24 }),
-    enabled: Boolean(projectId),
+    // Only fetch once something is actually selected -- there is no
+    // "browse everything" view here by design; an unfiltered fetch would
+    // just be every capture in the project dumped on screen at once.
+    enabled: Boolean(projectId) && Boolean(selectedLocation),
   });
 
   const allLocations = (hierarchyQuery.data ?? []).flatMap((b) =>
     (b.levels ?? []).flatMap((l) => l.locations ?? []),
   );
+
+  // The tree only passes id/name on click -- the note itself lives on the
+  // full location record already loaded as part of the hierarchy.
+  const selectedLocationDetail = selectedLocation
+    ? allLocations.find((l) => l.id === selectedLocation.id)
+    : undefined;
 
   if (!projectId) return null;
 
@@ -84,30 +93,41 @@ export default function ProjectDetail() {
         </div>
 
         <div className="lg:col-span-3 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">
-              {selectedLocation ? `Captures — ${selectedLocation.name}` : 'All captures'}
-            </h2>
-            {selectedLocation && (
-              <div className="flex items-center gap-3">
-                <Link to={`/projects/${projectId}/viewer/${selectedLocation.id}`} className="text-xs text-blueprint hover:text-blueprint-hover">
-                  Open 360° viewer →
-                </Link>
-                <button onClick={() => setSelectedLocation(null)} className="text-xs text-ink-500 hover:text-ink-100">
-                  Clear filter
-                </button>
+          {selectedLocation ? (
+            <>
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold">Captures — {selectedLocation.name}</h2>
+                <div className="flex items-center gap-3">
+                  <Link to={`/projects/${projectId}/viewer/${selectedLocation.id}`} className="text-xs text-blueprint hover:text-blueprint-hover">
+                    Open 360° viewer →
+                  </Link>
+                  <button onClick={() => setSelectedLocation(null)} className="text-xs text-ink-500 hover:text-ink-100">
+                    Clear filter
+                  </button>
+                </div>
               </div>
-            )}
-          </div>
 
-          {capturesQuery.isLoading && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="aspect-video panel animate-pulse bg-base-700/40" />
-              ))}
+              {selectedLocationDetail?.description && (
+                <div className="panel p-3 text-sm text-ink-100">
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500 mb-1">Note</div>
+                  {selectedLocationDetail.description}
+                </div>
+              )}
+
+              {capturesQuery.isLoading && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="aspect-video panel animate-pulse bg-base-700/40" />
+                  ))}
+                </div>
+              )}
+              {capturesQuery.data && <CaptureGrid projectId={projectId} captures={capturesQuery.data.data} />}
+            </>
+          ) : (
+            <div className="tick-frame panel p-12 text-center text-sm text-ink-500">
+              Select a location on the left to see what's there.
             </div>
           )}
-          {capturesQuery.data && <CaptureGrid projectId={projectId} captures={capturesQuery.data.data} />}
         </div>
       </div>
 
