@@ -42,4 +42,12 @@ export class BuildingsController {
   async getLocations(@CurrentUser() u: AuthenticatedUser, @Param('lid') lid: string) {
     return { data: await this.svc.getLocations(u.companyId, lid), error: null };
   }
+
+  // Flat route (no building/level in the path) since a floor-plan pin is a
+  // location that may not have a level at all.
+  @Patch('locations/:id')
+  @ApiOperation({ summary: 'Rename or re-describe a location (including a floor-plan pin)' })
+  async updateLocation(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: { name?: string; description?: string }) {
+    return { data: await this.svc.updateLocation(u.companyId, id, dto), error: null };
+  }
 }

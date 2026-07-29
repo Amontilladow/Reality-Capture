@@ -142,6 +142,7 @@ export class DrawingsService {
     return {
       locationId: pin.id as string,
       name: pin.name as string,
+      description: (pin.description as string | null) ?? undefined,
       posXNorm: pin.posXNorm as number,
       posYNorm: pin.posYNorm as number,
       createdVia: pin.createdVia as string,
@@ -155,7 +156,7 @@ export class DrawingsService {
   async getPins(companyId: string, drawingId: string) {
     const pins = await this.db.withTenant(companyId, sql => sql`
       SELECT
-        loc.id AS location_id, loc.name, loc.pos_x_norm, loc.pos_y_norm,
+        loc.id AS location_id, loc.name, loc.description, loc.pos_x_norm, loc.pos_y_norm,
         loc.created_via, loc.created_at,
         COUNT(c.id) AS capture_count,
         MAX(c.captured_at) AS latest_captured_at,

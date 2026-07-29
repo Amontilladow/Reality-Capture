@@ -61,4 +61,17 @@ export class BuildingsService {
       GROUP BY l.id
       ORDER BY l.name`);
   }
+
+  // Rename / re-describe a location -- covers both building-hierarchy
+  // locations and floor-plan pins (a pin is a location with no level).
+  async updateLocation(companyId: string, locationId: string, dto: { name?: string; description?: string }) {
+    const [loc] = await this.db.query`
+      UPDATE locations SET
+        name        = COALESCE(${dto.name ?? null}, name),
+        description = COALESCE(${dto.description ?? null}, description)
+      WHERE id = ${locationId} AND company_id = ${companyId}
+      RETURNING *`;
+    if (!loc) throw new NotFoundException('Location not found.');
+    return loc;
+  }
 }

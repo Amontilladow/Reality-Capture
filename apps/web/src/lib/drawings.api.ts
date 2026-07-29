@@ -6,6 +6,7 @@ import { apiGet, apiPost, apiDelete } from './api';
 export interface Pin {
   locationId: string;
   name: string;
+  description?: string;
   posXNorm: number;
   posYNorm: number;
   createdVia: 'manual' | 'floor_plan_tap';
