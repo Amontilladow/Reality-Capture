@@ -63,7 +63,13 @@ export function CaptureUploadModal({
         await uploadCapture(
           projectId,
           qf.file,
-          { captureType, locationId: locationId || undefined },
+          {
+            captureType,
+            locationId: locationId || undefined,
+            // No title field in this quick-upload flow — default to the
+            // filename rather than leaving every capture "Untitled".
+            title: qf.file.name.replace(/\.[^./]+$/, ''),
+          },
           (pct) => setFiles((prev) => prev.map((f) => (f.id === qf.id ? { ...f, progress: pct } : f))),
         );
         setFiles((prev) => prev.map((f) => (f.id === qf.id ? { ...f, status: 'done', progress: 100 } : f)));
