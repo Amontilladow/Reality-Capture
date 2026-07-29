@@ -52,8 +52,6 @@ export default function FloorPlanViewer() {
     },
   });
 
-  const allLevels = (hierarchyQuery.data ?? []).flatMap((b) => b.levels ?? []);
-
   function handlePinClick(pin: Pin) {
     setOpenPin(pin);
   }
@@ -135,7 +133,7 @@ export default function FloorPlanViewer() {
         </div>
       </div>
 
-      <DrawingUploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} projectId={projectId} levels={allLevels} />
+      <DrawingUploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} projectId={projectId} hierarchy={hierarchyQuery.data ?? []} />
       <PinPanel projectId={projectId} pin={openPin} onClose={() => setOpenPin(null)} />
     </>
   );

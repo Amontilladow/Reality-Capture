@@ -84,7 +84,7 @@ export function unlinkCaptureFromDrawing(projectId: string, drawingId: string, c
 export async function uploadDrawing(
   projectId: string,
   file: File,
-  meta: { title: string; levelId?: string; widthPx?: number; heightPx?: number },
+  meta: { title: string; levelId?: string; locationId?: string; widthPx?: number; heightPx?: number },
 ): Promise<Drawing> {
   const { uploadUrl, storageKey } = await apiPost<{ uploadUrl: string; storageKey: string; expiresIn: number }>(
     `/projects/${projectId}/drawings/upload-url`,
@@ -97,6 +97,7 @@ export async function uploadDrawing(
     storageKey,
     title: meta.title,
     levelId: meta.levelId,
+    locationId: meta.locationId,
     widthPx: meta.widthPx,
     heightPx: meta.heightPx,
   });

@@ -21,11 +21,11 @@ export class DrawingsService {
   async create(companyId: string, projectId: string, userId: string, dto: CreateDrawingDto) {
     const [drawing] = await this.db.query`
       INSERT INTO drawings (
-        company_id, project_id, level_id, title, drawing_number, revision,
+        company_id, project_id, level_id, location_id, title, drawing_number, revision,
         drawing_type, storage_key, width_px, height_px,
         scale_ratio, scale_px_per_m, is_current, uploaded_by
       ) VALUES (
-        ${companyId}, ${projectId}, ${dto.levelId ?? null}, ${dto.title},
+        ${companyId}, ${projectId}, ${dto.levelId ?? null}, ${dto.locationId ?? null}, ${dto.title},
         ${dto.drawingNumber ?? null}, ${dto.revision ?? null},
         ${dto.drawingType ?? null}, ${dto.storageKey},
         ${dto.widthPx ?? null}, ${dto.heightPx ?? null},

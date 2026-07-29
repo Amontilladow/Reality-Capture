@@ -1,26 +1,27 @@
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Level } from '@engineeringos/types';
 import { Modal } from '../ui/Modal';
 import { uploadDrawing } from '../../lib/drawings.api';
 import { apiErrorMessage } from '../../lib/api';
+import type { ProjectHierarchy } from '../../lib/projects.api';
+import { BuildingLevelRoomPicker, type HierarchySelection } from '../hierarchy/BuildingLevelRoomPicker';
 
 export function DrawingUploadModal({
   open,
   onClose,
   projectId,
-  levels,
+  hierarchy,
 }: {
   open: boolean;
   onClose: () => void;
   projectId: string;
-  levels: Level[];
+  hierarchy: ProjectHierarchy[];
 }) {
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
-  const [levelId, setLevelId] = useState('');
+  const [place, setPlace] = useState<HierarchySelection>({ buildingId: '', levelId: '', locationId: '' });
 
   const onDrop = useCallback((accepted: File[]) => {
     const f = accepted[0];
@@ -38,12 +39,17 @@ export function DrawingUploadModal({
   });
 
   const mutation = useMutation({
-    mutationFn: () => uploadDrawing(projectId, file!, { title, levelId: levelId || undefined }),
+    mutationFn: () =>
+      uploadDrawing(projectId, file!, {
+        title,
+        levelId: place.levelId || undefined,
+        locationId: place.locationId || undefined,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['drawings', projectId] });
       setFile(null);
       setTitle('');
-      setLevelId('');
+      setPlace({ buildingId: '', levelId: '', locationId: '' });
       onClose();
     },
   });
@@ -73,15 +79,7 @@ export function DrawingUploadModal({
           <input id="title" className="field-input" value={title} onChange={(e) => setTitle(e.target.value)} />
         </div>
 
-        <div>
-          <label className="field-label" htmlFor="levelId">Level</label>
-          <select id="levelId" className="field-input" value={levelId} onChange={(e) => setLevelId(e.target.value)}>
-            <option value="">Unassigned</option>
-            {levels.map((l) => (
-              <option key={l.id} value={l.id}>{l.name}</option>
-            ))}
-          </select>
-        </div>
+        <BuildingLevelRoomPicker projectId={projectId} hierarchy={hierarchy} value={place} onChange={setPlace} />
 
         {mutation.isError && (
           <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded px-3 py-2">

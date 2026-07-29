@@ -4,6 +4,7 @@ export class CreateDrawingDto {
   @IsString()  title: string;
   @IsString()  storageKey: string;
   @IsOptional() @IsUUID()   levelId?: string;
+  @IsOptional() @IsUUID()   locationId?: string;
   @IsOptional() @IsString() drawingNumber?: string;
   @IsOptional() @IsString() revision?: string;
   @IsOptional() @IsString() drawingType?: string;
