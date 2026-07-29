@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ProjectPhase } from '@engineeringos/types';
+import { PROJECT_PHASES, PROJECT_PHASE_LABELS } from '@engineeringos/types';
 import type { Pin } from '../../lib/drawings.api';
 import { listCaptures, uploadCapture } from '../../lib/captures.api';
 import { updateLocation, archiveLocation } from '../../lib/projects.api';
@@ -23,6 +25,7 @@ export function PinPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [phase, setPhase] = useState<ProjectPhase | ''>('');
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [title, setTitle] = useState('');
@@ -103,6 +106,7 @@ export function PinPanel({
         captureType: file.type.startsWith('video/') ? 'video' : 'photo_standard',
         locationId: pin.locationId,
         title: file.name.replace(/\.[^./]+$/, ''),
+        phase: phase || undefined,
       });
       queryClient.invalidateQueries({ queryKey: ['captures', projectId, 'pin', pin.locationId] });
       invalidatePin();
@@ -201,6 +205,18 @@ export function PinPanel({
               phone -- included now even though mobile polish is a later phase,
               since it costs nothing extra here. */}
           <div>
+            <label className="field-label" htmlFor="pinPhase">Phase (applies to the next upload)</label>
+            <select
+              id="pinPhase"
+              className="field-input mb-2"
+              value={phase}
+              onChange={(e) => setPhase(e.target.value as ProjectPhase | '')}
+            >
+              <option value="">Unspecified</option>
+              {PROJECT_PHASES.map((p) => (
+                <option key={p} value={p}>{PROJECT_PHASE_LABELS[p]}</option>
+              ))}
+            </select>
             <input
               ref={fileInputRef}
               type="file"

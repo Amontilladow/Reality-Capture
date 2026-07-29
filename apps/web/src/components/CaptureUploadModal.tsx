@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useQueryClient } from '@tanstack/react-query';
-import type { CaptureType, Location } from '@engineeringos/types';
+import type { CaptureType, Location, ProjectPhase } from '@engineeringos/types';
+import { PROJECT_PHASES, PROJECT_PHASE_LABELS } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
 import { uploadCapture } from '../lib/captures.api';
 import { apiErrorMessage } from '../lib/api';
@@ -31,6 +32,7 @@ export function CaptureUploadModal({
   const [files, setFiles] = useState<QueuedFile[]>([]);
   const [captureType, setCaptureType] = useState<CaptureType>('photo_360');
   const [locationId, setLocationId] = useState<string>(defaultLocationId ?? '');
+  const [phase, setPhase] = useState<ProjectPhase | ''>('');
   const [uploading, setUploading] = useState(false);
 
   const onDrop = useCallback((accepted: File[]) => {
@@ -69,6 +71,7 @@ export function CaptureUploadModal({
             // No title field in this quick-upload flow — default to the
             // filename rather than leaving every capture "Untitled".
             title: qf.file.name.replace(/\.[^./]+$/, ''),
+            phase: phase || undefined,
           },
           (pct) => setFiles((prev) => prev.map((f) => (f.id === qf.id ? { ...f, progress: pct } : f))),
         );
@@ -122,6 +125,21 @@ export function CaptureUploadModal({
               ))}
             </select>
           </div>
+        </div>
+
+        <div>
+          <label className="field-label" htmlFor="phase">Phase</label>
+          <select
+            id="phase"
+            className="field-input"
+            value={phase}
+            onChange={(e) => setPhase(e.target.value as ProjectPhase | '')}
+          >
+            <option value="">Unspecified</option>
+            {PROJECT_PHASES.map((p) => (
+              <option key={p} value={p}>{PROJECT_PHASE_LABELS[p]}</option>
+            ))}
+          </select>
         </div>
 
         <div
