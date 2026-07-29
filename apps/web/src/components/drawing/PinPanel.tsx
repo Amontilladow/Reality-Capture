@@ -41,6 +41,7 @@ export function PinPanel({
     lastSavedTitle.current = n;
     setNote(d);
     lastSavedNote.current = d;
+    setPhase(''); // this is a per-upload selection, not a saved pin property -- must reset on every pin switch, not carry over
     setEditingTitle(false);
     setEditingNote(false);
   }, [pin?.locationId]);
