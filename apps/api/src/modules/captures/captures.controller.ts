@@ -43,7 +43,7 @@ export class CapturesController {
   async findAll(
     @CurrentUser() u: AuthenticatedUser,
     @Param('projectId') pid: string,
-    @Query() query: PaginationQuery & { locationId?: string; phase?: string; captureType?: string },
+    @Query() query: PaginationQuery & { locationId?: string; levelId?: string; buildingId?: string; phase?: string; captureType?: string },
   ) {
     const result = await this.svc.findAll(u.companyId, pid, query);
     return { data: result.data, meta: { page: result.page, perPage: result.perPage, total: result.total, totalPages: result.totalPages }, error: null };

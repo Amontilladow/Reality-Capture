@@ -149,6 +149,8 @@ export class CapturesService {
   // ── List captures ─────────────────────────────────────────────────────────
   async findAll(companyId: string, projectId: string, query: PaginationQuery & {
     locationId?: string;
+    levelId?: string;
+    buildingId?: string;
     phase?: string;
     captureType?: string;
     status?: string;
@@ -174,10 +176,13 @@ export class CapturesService {
       FROM captures c
       LEFT JOIN users u ON u.id = c.captured_by
       LEFT JOIN locations loc ON loc.id = c.location_id
+      LEFT JOIN levels lvl ON lvl.id = loc.level_id
       LEFT JOIN capture_renditions cr ON cr.capture_id = c.id
       WHERE c.project_id = ${projectId}
         AND c.company_id = ${companyId}
         AND (${query.locationId ?? null}::uuid IS NULL OR c.location_id = ${query.locationId ?? null})
+        AND (${query.levelId ?? null}::uuid IS NULL OR loc.level_id = ${query.levelId ?? null})
+        AND (${query.buildingId ?? null}::uuid IS NULL OR lvl.building_id = ${query.buildingId ?? null})
         AND (${query.phase ?? null}::text IS NULL OR c.phase = ${query.phase ?? null})
         AND (${query.captureType ?? null}::text IS NULL OR c.capture_type = ${query.captureType ?? null})
         AND (${query.status ?? null}::text IS NULL OR c.status = ${query.status ?? null})

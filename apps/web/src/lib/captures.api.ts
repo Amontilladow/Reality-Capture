@@ -7,7 +7,10 @@ import { apiGet, apiGetWithMeta, apiPost, apiPatch, apiDelete } from './api';
 
 export function listCaptures(
   projectId: string,
-  query?: PaginationQuery & { locationId?: string; phase?: string; captureType?: string; status?: string },
+  query?: PaginationQuery & {
+    locationId?: string; levelId?: string; buildingId?: string;
+    phase?: string; captureType?: string; status?: string;
+  },
 ) {
   return apiGetWithMeta<Capture[]>(`/projects/${projectId}/captures`, { params: query });
 }
