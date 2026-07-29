@@ -73,13 +73,19 @@ export class CapturesService {
 
   // ── Register capture after upload ─────────────────────────────────────────
   async register(companyId: string, projectId: string, userId: string, dto: RegisterCaptureDto) {
-    // Validate location belongs to this project if provided
+    // Validate location belongs to this project if provided. A location
+    // reaches a project either via the building hierarchy (level_id) or,
+    // for a pin created directly on a drawing, via drawing_id — it may
+    // have one, the other, or both, but never neither (enforced by the
+    // locations_has_a_place_check constraint).
     if (dto.locationId) {
       const [loc] = await this.db.withTenant(companyId, sql => sql`
         SELECT l.id FROM locations l
-        JOIN levels lv ON lv.id = l.level_id
-        JOIN buildings b ON b.id = lv.building_id
-        WHERE l.id = ${dto.locationId} AND b.project_id = ${projectId}
+        LEFT JOIN levels lv ON lv.id = l.level_id
+        LEFT JOIN buildings b ON b.id = lv.building_id
+        LEFT JOIN drawings d ON d.id = l.drawing_id
+        WHERE l.id = ${dto.locationId}
+          AND (b.project_id = ${projectId} OR d.project_id = ${projectId})
       `);
       if (!loc) throw new BadRequestException('Location does not belong to this project.');
     }

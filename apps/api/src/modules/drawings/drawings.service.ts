@@ -3,6 +3,7 @@ import { DatabaseService } from '../../database/database.service';
 import { StorageService } from '../storage/storage.service';
 import type { CreateDrawingDto } from './dto/create-drawing.dto';
 import type { LinkCaptureToDrawingDto } from './dto/link-capture.dto';
+import type { CreatePinDto } from './dto/create-pin.dto';
 
 @Injectable()
 export class DrawingsService {
@@ -116,5 +117,55 @@ export class DrawingsService {
         thumbnailUrl: p.thumbnailKey ? urlMap.get(p.thumbnailKey as string) : undefined,
       })),
     };
+  }
+
+  // ── Pins (place-first model — a pin is a Location that can exist before ──
+  // any capture does; captures attach to it afterward via captures.location_id)
+
+  async createPin(companyId: string, drawingId: string, dto: CreatePinDto) {
+    const [drawing] = await this.db.withTenant(companyId, sql => sql`
+      SELECT id, level_id FROM drawings WHERE id = ${drawingId} AND company_id = ${companyId}
+    `);
+    if (!drawing) throw new NotFoundException('Drawing not found.');
+
+    const [pin] = await this.db.query`
+      INSERT INTO locations (company_id, level_id, name, drawing_id, pos_x_norm, pos_y_norm, created_via)
+      VALUES (
+        ${companyId}, ${drawing.levelId ?? null}, ${dto.name ?? 'Untitled pin'},
+        ${drawingId}, ${dto.posXNorm}, ${dto.posYNorm}, 'floor_plan_tap'
+      )
+      RETURNING *
+    `;
+    return pin;
+  }
+
+  // Pins for a drawing — one marker per place, not per photo. A place with
+  // several photos attached still shows as a single pin with a capture count.
+  async getPins(companyId: string, drawingId: string) {
+    const pins = await this.db.withTenant(companyId, sql => sql`
+      SELECT
+        loc.id AS location_id, loc.name, loc.pos_x_norm, loc.pos_y_norm,
+        loc.created_via, loc.created_at,
+        COUNT(c.id) AS capture_count,
+        MAX(c.captured_at) AS latest_captured_at,
+        (ARRAY_AGG(cr.storage_key ORDER BY c.captured_at DESC)
+          FILTER (WHERE cr.storage_key IS NOT NULL))[1] AS thumbnail_key,
+        (ARRAY_AGG(c.compass_heading_deg ORDER BY c.captured_at DESC)
+          FILTER (WHERE c.compass_heading_deg IS NOT NULL))[1] AS compass_heading_deg
+      FROM locations loc
+      LEFT JOIN captures c ON c.location_id = loc.id AND c.status = 'ready'
+      LEFT JOIN capture_renditions cr ON cr.capture_id = c.id AND cr.rendition_type = 'thumbnail_sm'
+      WHERE loc.drawing_id = ${drawingId} AND loc.company_id = ${companyId}
+      GROUP BY loc.id
+      ORDER BY loc.created_at DESC
+    `);
+
+    const keys = pins.map(p => p.thumbnailKey as string).filter(Boolean);
+    const urlMap = await this.storage.resolveUrls(keys);
+
+    return pins.map(p => ({
+      ...p,
+      thumbnailUrl: p.thumbnailKey ? urlMap.get(p.thumbnailKey as string) : undefined,
+    }));
   }
 }

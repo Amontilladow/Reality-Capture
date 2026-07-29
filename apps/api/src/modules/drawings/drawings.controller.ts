@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { DrawingsService } from './drawings.service';
 import { CreateDrawingDto } from './dto/create-drawing.dto';
 import { LinkCaptureToDrawingDto } from './dto/link-capture.dto';
+import { CreatePinDto } from './dto/create-pin.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '@engineeringos/types';
 
@@ -53,5 +54,17 @@ export class DrawingsController {
   @ApiOperation({ summary: 'Remove a capture pin from a drawing' })
   async unlinkCapture(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Param('captureId') cid: string) {
     return { data: await this.svc.unlinkCapture(u.companyId, id, cid), error: null };
+  }
+
+  @Post(':id/pins')
+  @ApiOperation({ summary: 'Create a pin on a drawing at normalized (x,y) coordinates — no capture required yet' })
+  async createPin(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: CreatePinDto) {
+    return { data: await this.svc.createPin(u.companyId, id, dto), error: null };
+  }
+
+  @Get(':id/pins')
+  @ApiOperation({ summary: 'List pins for a drawing — one marker per place, with a capture count and latest thumbnail' })
+  async getPins(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
+    return { data: await this.svc.getPins(u.companyId, id), error: null };
   }
 }
