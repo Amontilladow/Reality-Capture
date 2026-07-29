@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { IssueFormModal } from '../components/issues/IssueFormModal';
 import { IssueDetail } from '../components/issues/IssueDetail';
-import { listIssues, getIssueSummary, type IssueListItem } from '../lib/issues.api';
+import { listIssues, getIssueSummary, type IssueListItem, type IssueDetailItem } from '../lib/issues.api';
 import { getMembers, getHierarchy } from '../lib/projects.api';
 import {
   STATUS_LABELS, STATUS_BADGE_CLASS, PRIORITY_LABELS, PRIORITY_BADGE_CLASS,
@@ -24,7 +24,7 @@ export default function IssuesPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
-  const [editIssue, setEditIssue] = useState<IssueListItem | null>(null);
+  const [editIssue, setEditIssue] = useState<IssueDetailItem | null>(null);
   const [viewIssueId, setViewIssueId] = useState<string | null>(null);
 
   const membersQuery = useQuery({
@@ -81,10 +81,7 @@ export default function IssuesPage() {
           projectId={projectId}
           issueId={viewIssueId}
           onBack={() => setViewIssueId(null)}
-          onEdit={() => {
-            const iss = issuesQuery.data?.data.find((i) => i.id === viewIssueId);
-            if (iss) setEditIssue(iss);
-          }}
+          onEdit={(issue) => setEditIssue(issue)}
         />
         {editIssue && (
           <IssueFormModal
@@ -93,7 +90,7 @@ export default function IssuesPage() {
             projectId={projectId}
             members={membersQuery.data ?? []}
             hierarchy={hierarchyQuery.data ?? []}
-            issue={editIssue as never}
+            issue={editIssue}
           />
         )}
       </>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getIssue, updateIssue, deleteIssue, getActivities, addComment, addEvidenceCapture,
+  type IssueDetailItem,
 } from '../../lib/issues.api';
 import { listCaptures } from '../../lib/captures.api';
 import {
@@ -19,7 +20,7 @@ export function IssueDetail({
   projectId: string;
   issueId: string;
   onBack: () => void;
-  onEdit: () => void;
+  onEdit: (issue: IssueDetailItem) => void;
 }) {
   const queryClient = useQueryClient();
   const [comment, setComment] = useState('');
@@ -110,7 +111,7 @@ export function IssueDetail({
             </div>
           </div>
           <div className="flex flex-col gap-1.5 items-end">
-            <button onClick={onEdit} className="btn-secondary !px-3 !py-1.5 text-xs">Edit</button>
+            <button onClick={() => onEdit(issue)} className="btn-secondary !px-3 !py-1.5 text-xs">Edit</button>
             <button
               onClick={() => { if (confirm('Delete this issue? This cannot be undone.')) deleteMutation.mutate(); }}
               className="btn-danger !px-3 !py-1.5 text-xs"
