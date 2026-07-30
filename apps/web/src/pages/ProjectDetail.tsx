@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ProjectPhase } from '@engineeringos/types';
+import type { Project, ProjectPhase } from '@engineeringos/types';
+import { PROJECT_PHASE_LABELS } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { HierarchyTree } from '../components/HierarchyTree';
 import { AddHierarchyNodeModal } from '../components/AddHierarchyNodeModal';
@@ -79,12 +80,7 @@ export default function ProjectDetail() {
         }
       />
 
-      {projectQuery.data?.phase && (
-        <div className="px-6 pt-4 flex items-center gap-2 text-xs text-ink-500">
-          <span className="font-mono uppercase tracking-widest">Phase</span>
-          <span className="text-ink-300">{projectQuery.data.phase.replace(/_/g, ' ')}</span>
-        </div>
-      )}
+      {projectQuery.data && <ProjectDetailsPanel project={projectQuery.data} />}
 
       <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-1">
@@ -174,6 +170,43 @@ export default function ProjectDetail() {
 
       <EditProjectModal open={editOpen} onClose={() => setEditOpen(false)} project={projectQuery.data} />
     </>
+  );
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  active: 'Active',
+  on_hold: 'On Hold',
+  completed: 'Completed',
+  archived: 'Archived',
+};
+
+function ProjectDetailsPanel({ project }: { project: Project }) {
+  const location = [project.location, project.city, project.country].filter(Boolean).join(', ');
+  const fields: { label: string; value: string }[] = [
+    { label: 'Status', value: STATUS_LABELS[project.status] ?? project.status },
+  ];
+  if (project.phase) fields.push({ label: 'Phase', value: PROJECT_PHASE_LABELS[project.phase] });
+  if (location) fields.push({ label: 'Location', value: location });
+  if (project.code) fields.push({ label: 'Code', value: project.code });
+  if (project.startDate) fields.push({ label: 'Started', value: new Date(project.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) });
+  if (project.expectedEndDate) fields.push({ label: 'Expected end', value: new Date(project.expectedEndDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) });
+
+  return (
+    <div className="px-6 pt-4">
+      <div className="panel p-4 space-y-3">
+        <div className="flex flex-wrap gap-x-6 gap-y-2">
+          {fields.map((f) => (
+            <div key={f.label} className="text-xs">
+              <div className="font-mono uppercase tracking-widest text-ink-500 mb-0.5">{f.label}</div>
+              <div className="text-ink-100">{f.value}</div>
+            </div>
+          ))}
+        </div>
+        {project.description && (
+          <div className="text-sm text-ink-300 pt-2 border-t border-base-600">{project.description}</div>
+        )}
+      </div>
+    </div>
   );
 }
 
