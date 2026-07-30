@@ -140,3 +140,31 @@ export function listElements(
 export function updateElementStatus(projectId: string, elementId: string, status: string) {
   return apiPatch<BimElementDetail>(`/projects/${projectId}/bim/elements/${elementId}/status`, { status });
 }
+
+export interface ElementCapture {
+  id: string;
+  captureType: string;
+  capturedAt: string;
+  phase: string | null;
+  title: string | null;
+  status: string;
+  linkType: string | null;
+  capturedByName?: string;
+}
+
+export function getCapturesForElement(projectId: string, elementId: string) {
+  return apiGet<ElementCapture[]>(`/projects/${projectId}/bim/elements/${elementId}/captures`);
+}
+
+export interface ElementIssue {
+  id: string;
+  issueNumber: string;
+  title: string;
+  status: string;
+  priority: string;
+  assignedToName?: string;
+}
+
+export function getIssuesForElement(elementId: string) {
+  return apiGet<ElementIssue[]>(`/elements/${elementId}/issues`);
+}

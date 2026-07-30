@@ -5,13 +5,16 @@ import { BimViewer, type BimViewerHandle } from '../components/bim-viewer/BimVie
 import { SpatialTree } from '../components/bim-viewer/SpatialTree';
 import { PropertyPanel } from '../components/bim-viewer/PropertyPanel';
 import { ElementSearch } from '../components/bim-viewer/ElementSearch';
+import { IssueFormModal } from '../components/issues/IssueFormModal';
 import { getModelViewerData, getModelHierarchy, getElementByGuid, listBimModels, type BimElementDetail } from '../lib/bim.api';
+import { getMembers, getHierarchy } from '../lib/projects.api';
 
 export default function BimViewerPage() {
   const { projectId, modelId } = useParams<{ projectId: string; modelId: string }>();
   const viewerRef = useRef<BimViewerHandle>(null);
   const [selectedGuid, setSelectedGuid] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [raiseIssueOpen, setRaiseIssueOpen] = useState(false);
 
   const modelsQuery = useQuery({
     queryKey: ['bim-models', projectId],
@@ -36,6 +39,18 @@ export default function BimViewerPage() {
     queryKey: ['bim-element-by-guid', projectId, modelId, selectedGuid],
     queryFn: () => getElementByGuid(projectId!, modelId!, selectedGuid!),
     enabled: Boolean(projectId && modelId && selectedGuid),
+  });
+
+  const membersQuery = useQuery({
+    queryKey: ['project-members', projectId],
+    queryFn: () => getMembers(projectId!),
+    enabled: Boolean(projectId) && raiseIssueOpen,
+  });
+
+  const projectHierarchyQuery = useQuery({
+    queryKey: ['hierarchy', projectId],
+    queryFn: () => getHierarchy(projectId!),
+    enabled: Boolean(projectId) && raiseIssueOpen,
   });
 
   function handleSelectFromViewer(guid: string | null) {
@@ -111,9 +126,26 @@ export default function BimViewerPage() {
         </main>
 
         <aside className="w-80 shrink-0 overflow-y-auto border-l border-gray-200 bg-white text-gray-900">
-          <PropertyPanel element={elementQuery.data ?? null} loading={elementQuery.isFetching} />
+          <PropertyPanel
+            element={elementQuery.data ?? null}
+            loading={elementQuery.isFetching}
+            projectId={projectId}
+            onRaiseIssue={() => setRaiseIssueOpen(true)}
+          />
         </aside>
       </div>
+
+      {elementQuery.data && (
+        <IssueFormModal
+          open={raiseIssueOpen}
+          onClose={() => setRaiseIssueOpen(false)}
+          projectId={projectId}
+          members={membersQuery.data ?? []}
+          hierarchy={projectHierarchyQuery.data ?? []}
+          defaultElementId={elementQuery.data.id}
+          defaultElementName={elementQuery.data.ifcName ?? elementQuery.data.ifcType.replace('IFC', '')}
+        />
+      )}
     </div>
   );
 }

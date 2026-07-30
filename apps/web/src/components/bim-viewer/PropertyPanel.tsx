@@ -1,4 +1,8 @@
+import { useQuery } from '@tanstack/react-query';
 import type { BimElementDetail } from '../../lib/bim.api';
+import { getCapturesForElement, getIssuesForElement } from '../../lib/bim.api';
+import { STATUS_LABELS, STATUS_BADGE_CLASS, PRIORITY_LABELS, PRIORITY_BADGE_CLASS, formatDateTime } from '../../lib/issue-constants';
+import type { IssueStatus, IssuePriority } from '@engineeringos/types';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -18,7 +22,29 @@ function KeyValueRow({ label, value }: { label: string; value: React.ReactNode }
   );
 }
 
-export function PropertyPanel({ element, loading }: { element: BimElementDetail | null; loading: boolean }) {
+export function PropertyPanel({
+  element,
+  loading,
+  projectId,
+  onRaiseIssue,
+}: {
+  element: BimElementDetail | null;
+  loading: boolean;
+  projectId: string;
+  onRaiseIssue: () => void;
+}) {
+  const capturesQuery = useQuery({
+    queryKey: ['bim-element-captures', projectId, element?.id],
+    queryFn: () => getCapturesForElement(projectId, element!.id),
+    enabled: Boolean(element),
+  });
+
+  const issuesQuery = useQuery({
+    queryKey: ['bim-element-issues', element?.id],
+    queryFn: () => getIssuesForElement(element!.id),
+    enabled: Boolean(element),
+  });
+
   if (loading) {
     return <p className="p-3 text-sm text-gray-400">Loading properties…</p>;
   }
@@ -30,12 +56,66 @@ export function PropertyPanel({ element, loading }: { element: BimElementDetail 
 
   return (
     <div className="overflow-y-auto p-3">
+      <div className="pb-3">
+        <button onClick={onRaiseIssue} className="btn-primary w-full text-sm">
+          + Raise an issue here
+        </button>
+      </div>
+
       <Section title="Element">
         <KeyValueRow label="Name" value={element.ifcName ?? '—'} />
         <KeyValueRow label="Type" value={element.ifcType.replace('IFC', '')} />
         <KeyValueRow label="GUID" value={<span className="font-mono text-xs">{element.ifcGuid}</span>} />
         {element.spatialNodeName && (
           <KeyValueRow label="Location" value={`${element.spatialNodeName} (${element.spatialNodeType?.replace('IFC', '')})`} />
+        )}
+      </Section>
+
+      <Section title={`Open issues${issuesQuery.data ? ` (${issuesQuery.data.length})` : ''}`}>
+        {issuesQuery.isLoading && <p className="text-xs text-gray-400">Loading…</p>}
+        {issuesQuery.data && issuesQuery.data.length === 0 && (
+          <p className="text-xs text-gray-400">No open issues linked to this element.</p>
+        )}
+        {issuesQuery.data && issuesQuery.data.length > 0 && (
+          <ul className="space-y-2">
+            {issuesQuery.data.map((issue) => (
+              <li key={issue.id} className="text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-xs text-gray-500">{issue.issueNumber}</span>
+                  <div className="flex gap-1">
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE_CLASS[issue.status as IssueStatus] ?? 'bg-gray-100 text-gray-600'}`}>
+                      {STATUS_LABELS[issue.status as IssueStatus] ?? issue.status}
+                    </span>
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${PRIORITY_BADGE_CLASS[issue.priority as IssuePriority] ?? 'bg-gray-100 text-gray-600'}`}>
+                      {PRIORITY_LABELS[issue.priority as IssuePriority] ?? issue.priority}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-gray-900">{issue.title}</div>
+                {issue.assignedToName && <div className="text-xs text-gray-500">Assigned: {issue.assignedToName}</div>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+
+      <Section title={`Photos${capturesQuery.data ? ` (${capturesQuery.data.length})` : ''}`}>
+        {capturesQuery.isLoading && <p className="text-xs text-gray-400">Loading…</p>}
+        {capturesQuery.data && capturesQuery.data.length === 0 && (
+          <p className="text-xs text-gray-400">No captures linked to this element.</p>
+        )}
+        {capturesQuery.data && capturesQuery.data.length > 0 && (
+          <ul className="space-y-2">
+            {capturesQuery.data.map((c) => (
+              <li key={c.id} className="text-sm">
+                <div className="text-gray-900">{c.title || 'Untitled capture'}</div>
+                <div className="text-xs text-gray-500">
+                  {formatDateTime(c.capturedAt)}
+                  {c.capturedByName ? ` · ${c.capturedByName}` : ''}
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </Section>
 

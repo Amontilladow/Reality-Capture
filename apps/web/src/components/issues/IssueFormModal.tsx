@@ -15,6 +15,8 @@ export function IssueFormModal({
   members,
   hierarchy,
   issue,
+  defaultElementId,
+  defaultElementName,
 }: {
   open: boolean;
   onClose: () => void;
@@ -22,6 +24,8 @@ export function IssueFormModal({
   members: ProjectMember[];
   hierarchy: ProjectHierarchy[];
   issue?: IssueDetailItem;
+  defaultElementId?: string;
+  defaultElementName?: string;
 }) {
   const isEdit = Boolean(issue);
   const queryClient = useQueryClient();
@@ -72,6 +76,7 @@ export function IssueFormModal({
         discipline: discipline || undefined,
         assignedTo: assignedTo || undefined,
         locationId: locationId || undefined,
+        elementId: defaultElementId,
         deadline: deadline ? new Date(deadline).toISOString() : undefined,
       });
     },
@@ -88,6 +93,12 @@ export function IssueFormModal({
     <Modal open={open} onClose={onClose} title={isEdit ? 'Edit issue' : 'New issue'}>
       <div className="space-y-4">
         {error && <p className="field-error">{error}</p>}
+
+        {!isEdit && defaultElementId && (
+          <div className="text-xs text-ink-500 bg-base-700/40 rounded px-3 py-2">
+            BIM element: <span className="text-ink-100">{defaultElementName || defaultElementId}</span>
+          </div>
+        )}
 
         <div>
           <label className="field-label" htmlFor="title">Title *</label>
