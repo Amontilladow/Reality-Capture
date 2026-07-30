@@ -7,8 +7,8 @@ import { HierarchyTree } from '../components/HierarchyTree';
 import { AddHierarchyNodeModal } from '../components/AddHierarchyNodeModal';
 import { CaptureGrid } from '../components/CaptureGrid';
 import { CaptureUploadModal } from '../components/CaptureUploadModal';
-import { PhaseEditor } from '../components/PhaseEditor';
-import { getProject, getHierarchy, updateProject, updateBuilding } from '../lib/projects.api';
+import { EditProjectModal } from '../components/EditProjectModal';
+import { getProject, getHierarchy, updateBuilding } from '../lib/projects.api';
 import { listCaptures } from '../lib/captures.api';
 
 type NodeModalState = { kind: 'building' } | { kind: 'level'; buildingId: string } | { kind: 'location'; buildingId: string; levelId: string } | null;
@@ -19,16 +19,12 @@ export default function ProjectDetail() {
   const [selectedLocation, setSelectedLocation] = useState<{ id: string; name: string } | null>(null);
   const [nodeModal, setNodeModal] = useState<NodeModalState>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const projectQuery = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => getProject(projectId!),
     enabled: Boolean(projectId),
-  });
-
-  const projectPhaseMutation = useMutation({
-    mutationFn: (phase: ProjectPhase | '') => updateProject(projectId!, { phase: phase || undefined }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['project', projectId] }),
   });
 
   const buildingPhaseMutation = useMutation({
@@ -71,6 +67,9 @@ export default function ProjectDetail() {
         title={projectQuery.data?.name ?? 'Loading…'}
         actions={
           <>
+            <button onClick={() => setEditOpen(true)} className="btn-secondary">
+              <EditIcon /> Edit
+            </button>
             <Link to={`/projects/${projectId}/drawings`} className="btn-secondary">Floor plans</Link>
             <Link to={`/projects/${projectId}/bim`} className="btn-secondary">BIM models</Link>
             <button onClick={() => setUploadOpen(true)} className="btn-primary">
@@ -80,14 +79,12 @@ export default function ProjectDetail() {
         }
       />
 
-      <div className="px-6 pt-4 flex items-center gap-2 text-xs text-ink-500">
-        <span className="font-mono uppercase tracking-widest">Project phase</span>
-        <PhaseEditor
-          phase={projectQuery.data?.phase}
-          onSave={(phase) => projectPhaseMutation.mutate(phase)}
-          saving={projectPhaseMutation.isPending}
-        />
-      </div>
+      {projectQuery.data?.phase && (
+        <div className="px-6 pt-4 flex items-center gap-2 text-xs text-ink-500">
+          <span className="font-mono uppercase tracking-widest">Phase</span>
+          <span className="text-ink-300">{projectQuery.data.phase.replace(/_/g, ' ')}</span>
+        </div>
+      )}
 
       <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-1">
@@ -174,10 +171,19 @@ export default function ProjectDetail() {
         locations={allLocations}
         defaultLocationId={selectedLocation?.id}
       />
+
+      <EditProjectModal open={editOpen} onClose={() => setEditOpen(false)} project={projectQuery.data} />
     </>
   );
 }
 
+function EditIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 function UploadIcon() {
   return (
     <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
