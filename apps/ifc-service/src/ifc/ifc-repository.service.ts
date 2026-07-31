@@ -139,14 +139,22 @@ export class IfcRepositoryService {
       uniclassCode: el.uniclassCode ?? null,
       uniformatCode: el.uniformatCode ?? null,
       csiMasterformat: el.csiMasterformat ?? null,
+      bboxMinX: el.bbox?.minX ?? null,
+      bboxMinY: el.bbox?.minY ?? null,
+      bboxMinZ: el.bbox?.minZ ?? null,
+      bboxMaxX: el.bbox?.maxX ?? null,
+      bboxMaxY: el.bbox?.maxY ?? null,
+      bboxMaxZ: el.bbox?.maxZ ?? null,
       properties: JSON.stringify(el.properties ?? {}),
     }));
 
     const inserted = await sql`
-      INSERT INTO bim_elements ${sql(rows, 'companyId', 'modelId', 'projectId', 'spatialNodeId', 'ifcGuid', 'ifcType', 'ifcName', 'ifcDescription', 'omniclassCode', 'uniclassCode', 'uniformatCode', 'csiMasterformat', 'properties')}
+      INSERT INTO bim_elements ${sql(rows, 'companyId', 'modelId', 'projectId', 'spatialNodeId', 'ifcGuid', 'ifcType', 'ifcName', 'ifcDescription', 'omniclassCode', 'uniclassCode', 'uniformatCode', 'csiMasterformat', 'bboxMinX', 'bboxMinY', 'bboxMinZ', 'bboxMaxX', 'bboxMaxY', 'bboxMaxZ', 'properties')}
       ON CONFLICT (model_id, ifc_guid) DO UPDATE SET
         ifc_name = EXCLUDED.ifc_name, ifc_description = EXCLUDED.ifc_description,
-        spatial_node_id = EXCLUDED.spatial_node_id, properties = EXCLUDED.properties
+        spatial_node_id = EXCLUDED.spatial_node_id, properties = EXCLUDED.properties,
+        bbox_min_x = EXCLUDED.bbox_min_x, bbox_min_y = EXCLUDED.bbox_min_y, bbox_min_z = EXCLUDED.bbox_min_z,
+        bbox_max_x = EXCLUDED.bbox_max_x, bbox_max_y = EXCLUDED.bbox_max_y, bbox_max_z = EXCLUDED.bbox_max_z
       RETURNING id, ifc_guid
     `;
     for (const row of inserted) idByGuid.set(row.ifcGuid as string, row.id as string);

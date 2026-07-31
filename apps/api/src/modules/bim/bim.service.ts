@@ -98,9 +98,15 @@ export class BimService {
   // re-uploading the file — the storage key doesn't change.
   async reprocessModel(companyId: string, projectId: string, modelId: string) {
     const model = await this.getModel(companyId, modelId);
+    // stage_completion has to be cleared too, not just status -- otherwise
+    // the resumability logic (built for retrying a crashed job without
+    // redoing committed work) sees every stage as already done and skips
+    // straight to the end, re-running nothing. A deliberate reprocess
+    // should always start over for real.
     await this.db.query`
       UPDATE bim_models
-      SET status = 'pending', processing_progress = 0, processing_stage = NULL, processing_error = NULL
+      SET status = 'pending', processing_progress = 0, processing_stage = NULL,
+          processing_error = NULL, stage_completion = '{}'::jsonb
       WHERE id = ${modelId} AND company_id = ${companyId}
     `;
     await this.enqueueParseJob(companyId, projectId, modelId, model.storageKey as string);

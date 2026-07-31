@@ -296,6 +296,13 @@ export class IfcParserService {
       this.logger.warn(`Failed to read materials for element ${guid} (${ifcType}): ${error instanceof Error ? error.message : String(error)}`);
     }
 
+    let bbox: IfcElementInput['bbox'];
+    try {
+      bbox = this.computeBoundingBox(api, modelId, expressId) ?? undefined;
+    } catch (error) {
+      this.logger.warn(`Failed to compute bounding box for element ${guid} (${ifcType}): ${error instanceof Error ? error.message : String(error)}`);
+    }
+
     return {
       element: {
         ifcGuid: guid,
@@ -303,12 +310,55 @@ export class IfcParserService {
         ifcName: properties.name as string | undefined,
         ifcDescription: properties.description as string | undefined,
         spatialNodeGuid: spatialNodeGuidByElement.get(expressId),
+        bbox,
         properties,
       },
       quantities,
       materials,
       elementMaterials,
     };
+  }
+
+  // World-space AABB for one element, straight from web-ifc's own tessellated
+  // geometry (the same source of truth used to generate the viewer's
+  // Fragments file) -- not re-derived from raw profile/placement math, so it
+  // matches whatever actually gets rendered. An element can have several
+  // placed geometries (e.g. an assembly); the box covers all of them.
+  // Vertex buffers are position(3) + normal(3) interleaved, per web-ifc's
+  // documented format. flatTransformation is a column-major 4x4, matching
+  // Three.js's Matrix4 element order.
+  private computeBoundingBox(api: WebIFC.IfcAPI, modelId: number, expressId: number): IfcElementInput['bbox'] | null {
+    const flatMesh = api.GetFlatMesh(modelId, expressId);
+    try {
+      let minX = Infinity, minY = Infinity, minZ = Infinity;
+      let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+      let found = false;
+
+      for (let i = 0; i < flatMesh.geometries.size(); i++) {
+        const placed = flatMesh.geometries.get(i);
+        const geometry = api.GetGeometry(modelId, placed.geometryExpressID);
+        try {
+          const verts = api.GetVertexArray(geometry.GetVertexData(), geometry.GetVertexDataSize());
+          const m = placed.flatTransformation;
+          for (let v = 0; v < verts.length; v += 6) {
+            const x = verts[v], y = verts[v + 1], z = verts[v + 2];
+            const wx = m[0] * x + m[4] * y + m[8] * z + m[12];
+            const wy = m[1] * x + m[5] * y + m[9] * z + m[13];
+            const wz = m[2] * x + m[6] * y + m[10] * z + m[14];
+            if (wx < minX) minX = wx; if (wx > maxX) maxX = wx;
+            if (wy < minY) minY = wy; if (wy > maxY) maxY = wy;
+            if (wz < minZ) minZ = wz; if (wz > maxZ) maxZ = wz;
+            found = true;
+          }
+        } finally {
+          geometry.delete();
+        }
+      }
+
+      return found ? { minX, minY, minZ, maxX, maxY, maxZ } : null;
+    } finally {
+      flatMesh.delete();
+    }
   }
 }
 
