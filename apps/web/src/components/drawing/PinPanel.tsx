@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Pin } from '../../lib/drawings.api';
 import { listCaptures, uploadCapture } from '../../lib/captures.api';
@@ -237,7 +238,15 @@ export function PinPanel({
                   <div className="text-sm text-ink-100 truncate">{linkedElement.name || 'Unnamed element'}</div>
                   <div className="text-xs text-ink-500">{linkedElement.ifcType.replace('IFC', '')}</div>
                 </div>
-                <div className="flex gap-1 shrink-0">
+                <div className="flex items-center gap-1 shrink-0">
+                  {pin.elementModelId && pin.elementGuid && (
+                    <Link
+                      to={`/projects/${projectId}/bim/${pin.elementModelId}?guid=${pin.elementGuid}`}
+                      className="text-xs text-blueprint hover:text-blueprint-hover px-1"
+                    >
+                      View in 3D →
+                    </Link>
+                  )}
                   <button onClick={() => setPickingElement(true)} className="btn-ghost !px-2 !py-1 text-xs">Change</button>
                   <button
                     onClick={() => elementMutation.mutate(null)}

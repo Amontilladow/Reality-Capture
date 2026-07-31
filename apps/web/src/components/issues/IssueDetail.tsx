@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getIssue, updateIssue, deleteIssue, getActivities, addComment, addEvidenceCapture,
@@ -152,7 +153,23 @@ export function IssueDetail({
           <DetailRow label="Type" value={ISSUE_TYPE_LABELS[issue.issueType]} />
           <DetailRow label="Assignee" value={issue.assignedToName ?? 'Unassigned'} />
           <DetailRow label="Location" value={issue.locationName ?? issue.buildingName ?? '—'} />
-          {issue.elementName && <DetailRow label="BIM element" value={issue.elementName} />}
+          {issue.elementName && (
+            <DetailRow
+              label="BIM element"
+              value={
+                issue.elementModelId && issue.elementGuid ? (
+                  <Link
+                    to={`/projects/${projectId}/bim/${issue.elementModelId}?guid=${issue.elementGuid}`}
+                    className="text-blueprint hover:text-blueprint-hover"
+                  >
+                    {issue.elementName} — view in 3D →
+                  </Link>
+                ) : (
+                  issue.elementName
+                )
+              }
+            />
+          )}
           <DetailRow label="Created" value={formatDateTime(issue.createdAt)} />
           {issue.closedAt && <DetailRow label="Closed" value={formatDateTime(issue.closedAt)} />}
         </div>
@@ -210,7 +227,7 @@ export function IssueDetail({
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex gap-2">
       <span className="text-ink-500 w-24 shrink-0">{label}</span>

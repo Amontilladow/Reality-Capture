@@ -4,7 +4,9 @@ import * as OBC from '@thatopen/components';
 
 export interface BimViewerHandle {
   fitToModel: () => void;
-  selectByGuid: (guid: string) => Promise<void>;
+  // Resolves false if the guid can't be resolved yet (e.g. the model is
+  // still loading) so a caller can retry, rather than silently no-op-ing.
+  selectByGuid: (guid: string) => Promise<boolean>;
 }
 
 interface BimViewerProps {
@@ -57,10 +59,11 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
     },
     selectByGuid: async (guid: string) => {
       const fragments = fragmentsRef.current;
-      if (!fragments) return;
+      if (!fragments) return false;
       const modelIdMap = await fragments.guidsToModelIdMap([guid]);
-      if (Object.keys(modelIdMap).length === 0) return;
+      if (Object.keys(modelIdMap).length === 0) return false;
       await highlightModelIdMap(modelIdMap);
+      return true;
     },
   }));
 

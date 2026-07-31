@@ -151,7 +151,8 @@ export class IssuesService {
         u_a.first_name || ' ' || u_a.last_name AS assigned_to_name,
         u_a.avatar_url AS assigned_to_avatar,
         loc.name AS location_name, bld.name AS building_name, lvl.name AS level_name,
-        be.ifc_type AS element_type, be.ifc_name AS element_name
+        be.ifc_type AS element_type, be.ifc_name AS element_name,
+        be.ifc_guid AS element_guid, be.model_id AS element_model_id
       FROM issues i
       LEFT JOIN users u_c ON u_c.id = i.created_by
       LEFT JOIN users u_a ON u_a.id = i.assigned_to

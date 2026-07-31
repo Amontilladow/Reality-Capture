@@ -13,6 +13,8 @@ export interface IssueListItem extends Issue {
 export interface IssueDetailItem extends IssueListItem {
   elementType?: string;
   elementName?: string;
+  elementGuid?: string;
+  elementModelId?: string;
 }
 
 export interface IssueSummary {

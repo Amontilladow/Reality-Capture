@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { BimViewer, type BimViewerHandle } from '../components/bim-viewer/BimViewer';
 import { SpatialTree } from '../components/bim-viewer/SpatialTree';
@@ -11,10 +11,13 @@ import { getMembers, getHierarchy } from '../lib/projects.api';
 
 export default function BimViewerPage() {
   const { projectId, modelId } = useParams<{ projectId: string; modelId: string }>();
+  const [searchParams] = useSearchParams();
+  const jumpToGuid = searchParams.get('guid');
   const viewerRef = useRef<BimViewerHandle>(null);
   const [selectedGuid, setSelectedGuid] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [raiseIssueOpen, setRaiseIssueOpen] = useState(false);
+  const [jumpApplied, setJumpApplied] = useState(false);
 
   const modelsQuery = useQuery({
     queryKey: ['bim-models', projectId],
@@ -52,6 +55,33 @@ export default function BimViewerPage() {
     queryFn: () => getHierarchy(projectId!),
     enabled: Boolean(projectId) && raiseIssueOpen,
   });
+
+  // Jump straight to an element when arriving from a pin or issue's "View in
+  // 3D" link. Retried with a short delay because the fragments model can
+  // still be loading in BimViewer when this effect first fires.
+  useEffect(() => {
+    if (jumpApplied || !jumpToGuid) return;
+    if (viewerDataQuery.data?.status !== 'ready' || !viewerDataQuery.data.fragmentsUrl) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const tryApply = async () => {
+      if (cancelled) return;
+      const ok = await viewerRef.current?.selectByGuid(jumpToGuid);
+      if (ok) {
+        setSelectedGuid(jumpToGuid);
+        setSelectedNodeId(null);
+        setJumpApplied(true);
+        return;
+      }
+      attempts += 1;
+      if (attempts < 15) setTimeout(tryApply, 300);
+    };
+    tryApply();
+    return () => {
+      cancelled = true;
+    };
+  }, [jumpToGuid, jumpApplied, viewerDataQuery.data]);
 
   function handleSelectFromViewer(guid: string | null) {
     setSelectedGuid(guid);
