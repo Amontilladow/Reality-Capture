@@ -3,6 +3,7 @@ import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { BimViewer, type BimViewerHandle } from '../components/bim-viewer/BimViewer';
 import { SpatialTree } from '../components/bim-viewer/SpatialTree';
+import { ElementList } from '../components/bim-viewer/ElementList';
 import { PropertyPanel } from '../components/bim-viewer/PropertyPanel';
 import { ElementSearch } from '../components/bim-viewer/ElementSearch';
 import { IssueFormModal } from '../components/issues/IssueFormModal';
@@ -18,6 +19,7 @@ export default function BimViewerPage() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [raiseIssueOpen, setRaiseIssueOpen] = useState(false);
   const [jumpApplied, setJumpApplied] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<'tree' | 'list'>('tree');
 
   const modelsQuery = useQuery({
     queryKey: ['bim-models', projectId],
@@ -121,15 +123,44 @@ export default function BimViewerPage() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="w-72 shrink-0 overflow-y-auto border-r border-gray-200 bg-white text-gray-900">
-          {hierarchyQuery.isLoading && <p className="p-3 text-sm text-gray-400">Loading hierarchy…</p>}
-          {hierarchyQuery.data && (
-            <SpatialTree
-              nodes={hierarchyQuery.data}
-              selectedId={selectedNodeId}
-              onSelect={handleSelectFromTree}
-            />
-          )}
+        <aside className="flex w-72 shrink-0 flex-col overflow-hidden border-r border-gray-200 bg-white text-gray-900">
+          <div className="flex shrink-0 border-b border-gray-200 text-xs font-medium">
+            <button
+              type="button"
+              onClick={() => setSidebarTab('tree')}
+              className={`flex-1 px-3 py-2 ${sidebarTab === 'tree' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-500 hover:text-gray-800'}`}
+            >
+              Spatial tree
+            </button>
+            <button
+              type="button"
+              onClick={() => setSidebarTab('list')}
+              className={`flex-1 px-3 py-2 ${sidebarTab === 'list' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-500 hover:text-gray-800'}`}
+            >
+              All elements
+            </button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            {sidebarTab === 'tree' ? (
+              <div className="h-full overflow-y-auto">
+                {hierarchyQuery.isLoading && <p className="p-3 text-sm text-gray-400">Loading hierarchy…</p>}
+                {hierarchyQuery.data && (
+                  <SpatialTree
+                    nodes={hierarchyQuery.data}
+                    selectedId={selectedNodeId}
+                    onSelect={handleSelectFromTree}
+                  />
+                )}
+              </div>
+            ) : (
+              <ElementList
+                projectId={projectId}
+                modelId={modelId}
+                selectedGuid={selectedGuid}
+                onSelect={handleSelectFromSearch}
+              />
+            )}
+          </div>
         </aside>
 
         <main className="relative flex-1 bg-gray-50">
