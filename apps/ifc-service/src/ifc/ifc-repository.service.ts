@@ -93,15 +93,36 @@ export class IfcRepositoryService {
     });
   }
 
-  async clearPriorResults(sql: Sql, companyId: string, modelId: string): Promise<void> {
-    // Order matters for FK constraints (children before parents).
+  // Removes only what's genuinely gone from this run of the file --
+  // elements/nodes still present are left alone here and get updated in
+  // place by the ON CONFLICT upserts below, keeping the same id. That
+  // matters beyond this pipeline: a pin's or issue's element_id points at
+  // a bim_elements row, and used to get silently orphaned (or, since
+  // locations_has_a_place_check started requiring a place, hard-crash the
+  // whole reprocess) every time a model was reprocessed, because the old
+  // version of this method deleted and recreated every element
+  // unconditionally, including ones that hadn't actually changed.
+  // bim_element_relationships and bim_materials have no external
+  // references into them (only bim_elements does, via FK), so a full wipe
+  // there is still safe -- both get freshly rebuilt from the walk anyway.
+  async removeStaleResults(
+    sql: Sql, companyId: string, modelId: string,
+    currentSpatialGuids: string[], currentElementGuids: string[],
+  ): Promise<void> {
+    // Cascades (ON DELETE CASCADE) clean up quantities/material-links/
+    // classifications for whatever elements actually get removed here.
+    await sql`
+      DELETE FROM bim_elements
+      WHERE model_id = ${modelId} AND company_id = ${companyId}
+        AND NOT (ifc_guid = ANY(${currentElementGuids}))
+    `;
+    await sql`
+      DELETE FROM bim_spatial_nodes
+      WHERE model_id = ${modelId} AND company_id = ${companyId}
+        AND NOT (ifc_guid = ANY(${currentSpatialGuids}))
+    `;
     await sql`DELETE FROM bim_element_relationships WHERE model_id = ${modelId} AND company_id = ${companyId}`;
-    await sql`DELETE FROM bim_element_classifications WHERE company_id = ${companyId} AND element_id IN (SELECT id FROM bim_elements WHERE model_id = ${modelId})`;
-    await sql`DELETE FROM bim_element_materials WHERE company_id = ${companyId} AND element_id IN (SELECT id FROM bim_elements WHERE model_id = ${modelId})`;
-    await sql`DELETE FROM bim_element_quantities WHERE company_id = ${companyId} AND element_id IN (SELECT id FROM bim_elements WHERE model_id = ${modelId})`;
     await sql`DELETE FROM bim_materials WHERE model_id = ${modelId} AND company_id = ${companyId}`;
-    await sql`DELETE FROM bim_elements WHERE model_id = ${modelId} AND company_id = ${companyId}`;
-    await sql`DELETE FROM bim_spatial_nodes WHERE model_id = ${modelId} AND company_id = ${companyId}`;
   }
 
   async insertSpatialNodes(sql: Sql, companyId: string, modelId: string, nodes: IfcSpatialNodeInput[]): Promise<Map<string, string>> {
@@ -115,6 +136,9 @@ export class IfcRepositoryService {
       const [row] = await sql`
         INSERT INTO bim_spatial_nodes (company_id, model_id, parent_id, ifc_guid, ifc_type, name, elevation)
         VALUES (${companyId}, ${modelId}, ${parentId}, ${node.ifcGuid}, ${node.ifcType}, ${node.name ?? null}, ${node.elevation ?? null})
+        ON CONFLICT (model_id, ifc_guid) DO UPDATE SET
+          parent_id = EXCLUDED.parent_id, ifc_type = EXCLUDED.ifc_type,
+          name = EXCLUDED.name, elevation = EXCLUDED.elevation
         RETURNING id
       `;
       idByGuid.set(node.ifcGuid, row.id as string);

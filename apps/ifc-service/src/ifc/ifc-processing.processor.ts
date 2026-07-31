@@ -95,7 +95,11 @@ export class IfcProcessingProcessor {
         metrics.startStage('extracting_hierarchy');
         await reportProgress('extracting_hierarchy');
         await this.repo.runStage(companyId, modelId, 'extracting_hierarchy', async (sql) => {
-          await this.repo.clearPriorResults(sql, companyId, modelId);
+          await this.repo.removeStaleResults(
+            sql, companyId, modelId,
+            walk.spatialNodes.map((n) => n.ifcGuid),
+            walk.elementSkeletons.map((s) => s.guid),
+          );
           spatialNodeIdByGuid = await this.repo.insertSpatialNodes(sql, companyId, modelId, walk.spatialNodes);
         });
         metrics.endStage('extracting_hierarchy');
