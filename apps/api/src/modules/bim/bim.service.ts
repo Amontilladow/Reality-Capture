@@ -181,7 +181,7 @@ export class BimService {
     `);
     if (!el) throw new NotFoundException('BIM element not found.');
 
-    const [quantities, materials, classifications] = await Promise.all([
+    const [quantities, materials, classifications, linkedPins] = await Promise.all([
       this.db.withTenant(companyId, sql => sql`
         SELECT quantity_set, name, quantity_type, value, unit FROM bim_element_quantities
         WHERE element_id = ${elementId} AND company_id = ${companyId} ORDER BY quantity_set, name
@@ -195,9 +195,14 @@ export class BimService {
         SELECT system, code, name FROM bim_element_classifications
         WHERE element_id = ${elementId} AND company_id = ${companyId}
       `),
+      this.db.withTenant(companyId, sql => sql`
+        SELECT id AS location_id, name, drawing_id FROM locations
+        WHERE element_id = ${elementId} AND company_id = ${companyId} AND archived_at IS NULL
+        ORDER BY created_at DESC LIMIT 1
+      `),
     ]);
 
-    return { ...el, quantities, materials, classifications };
+    return { ...el, quantities, materials, classifications, linkedPin: linkedPins[0] ?? null };
   }
 
   async getElementByGuid(companyId: string, modelId: string, ifcGuid: string) {

@@ -1,6 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { BimElementDetail } from '../../lib/bim.api';
 import { getCapturesForElement, getIssuesForElement } from '../../lib/bim.api';
+import { updateLocation } from '../../lib/projects.api';
+import type { ProjectPinResult } from '../../lib/drawings.api';
+import { PinSearch } from './PinSearch';
 import { STATUS_LABELS, STATUS_BADGE_CLASS, PRIORITY_LABELS, PRIORITY_BADGE_CLASS, formatDateTime } from '../../lib/issue-constants';
 import type { IssueStatus, IssuePriority } from '@engineeringos/types';
 
@@ -33,6 +37,9 @@ export function PropertyPanel({
   projectId: string;
   onRaiseIssue: () => void;
 }) {
+  const queryClient = useQueryClient();
+  const [pickingPin, setPickingPin] = useState(false);
+
   const capturesQuery = useQuery({
     queryKey: ['bim-element-captures', projectId, element?.id],
     queryFn: () => getCapturesForElement(projectId, element!.id),
@@ -43,6 +50,20 @@ export function PropertyPanel({
     queryKey: ['bim-element-issues', element?.id],
     queryFn: () => getIssuesForElement(element!.id),
     enabled: Boolean(element),
+  });
+
+  const pinLinkMutation = useMutation({
+    mutationFn: (pin: ProjectPinResult | null) =>
+      updateLocation(
+        projectId,
+        pin ? pin.locationId : element!.linkedPin!.locationId,
+        { elementId: pin ? element!.id : null },
+      ),
+    onSuccess: () => {
+      setPickingPin(false);
+      queryClient.invalidateQueries({ queryKey: ['bim-element-by-guid'] });
+      queryClient.invalidateQueries({ queryKey: ['pins', projectId] });
+    },
   });
 
   if (loading) {
@@ -56,10 +77,47 @@ export function PropertyPanel({
 
   return (
     <div className="overflow-y-auto p-3">
-      <div className="pb-3">
+      <div className="space-y-2 pb-3">
         <button onClick={onRaiseIssue} className="btn-primary w-full text-sm">
           + Raise an issue here
         </button>
+
+        {pickingPin ? (
+          <div className="space-y-2">
+            <PinSearch projectId={projectId} onSelect={(pin) => pinLinkMutation.mutate(pin)} />
+            <button
+              type="button"
+              onClick={() => setPickingPin(false)}
+              className="w-full text-center text-xs text-gray-500 hover:text-gray-800"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : element.linkedPin ? (
+          <div className="flex items-center justify-between gap-2 rounded border border-gray-200 px-3 py-2">
+            <div className="min-w-0 text-sm">
+              <span className="text-gray-500">Linked pin: </span>
+              <span className="font-medium text-gray-900">{element.linkedPin.name || 'Untitled pin'}</span>
+            </div>
+            <div className="flex shrink-0 gap-2 text-xs">
+              <button type="button" onClick={() => setPickingPin(true)} className="text-blue-700 hover:text-blue-900">
+                Change
+              </button>
+              <button
+                type="button"
+                disabled={pinLinkMutation.isPending}
+                onClick={() => pinLinkMutation.mutate(null)}
+                className="text-red-600 hover:text-red-800"
+              >
+                Unlink
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setPickingPin(true)} className="btn-secondary w-full text-sm">
+            + Link to a pin
+          </button>
+        )}
       </div>
 
       <Section title="Element">

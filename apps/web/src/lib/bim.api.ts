@@ -73,6 +73,7 @@ export interface BimElementDetail {
   quantities: BimElementQuantity[];
   materials: BimElementMaterial[];
   classifications: BimElementClassification[];
+  linkedPin: { locationId: string; name: string; drawingId: string } | null;
 }
 
 export function listBimModels(projectId: string) {

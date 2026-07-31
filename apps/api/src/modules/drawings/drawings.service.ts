@@ -12,6 +12,24 @@ export class DrawingsService {
     private readonly storage: StorageService,
   ) {}
 
+  // All pins across every drawing in a project, for linking FROM the BIM
+  // viewer side (pick an existing pin to attach to the element you're
+  // looking at) -- the mirror image of ElementSearch, which lets you pick
+  // an element from the pin side. getPins() is deliberately per-drawing;
+  // this is project-wide since you don't know which drawing a pin lives on
+  // when you're starting from an element instead.
+  async searchProjectPins(companyId: string, projectId: string, search?: string) {
+    return this.db.withTenant(companyId, sql => sql`
+      SELECT loc.id AS location_id, loc.name, loc.drawing_id, d.title AS drawing_title
+      FROM locations loc
+      JOIN drawings d ON d.id = loc.drawing_id
+      WHERE d.project_id = ${projectId} AND loc.company_id = ${companyId} AND loc.archived_at IS NULL
+        AND (${search ?? null}::text IS NULL OR loc.name ILIKE ${'%' + (search ?? '') + '%'})
+      ORDER BY loc.created_at DESC
+      LIMIT 50
+    `);
+  }
+
   async getUploadUrl(companyId: string, projectId: string, filename: string) {
     const key = this.storage.generateKey(companyId, projectId, 'drawings', filename);
     const url = await this.storage.getUploadUrl(key, 'application/pdf', 100 * 1024 * 1024);

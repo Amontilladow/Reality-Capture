@@ -30,6 +30,17 @@ export function getPins(projectId: string, drawingId: string) {
   return apiGet<Pin[]>(`/projects/${projectId}/drawings/${drawingId}/pins`);
 }
 
+export interface ProjectPinResult {
+  locationId: string;
+  name: string;
+  drawingId: string;
+  drawingTitle: string;
+}
+
+export function searchProjectPins(projectId: string, search?: string) {
+  return apiGet<ProjectPinResult[]>(`/projects/${projectId}/drawings/pins/search`, { params: { search } });
+}
+
 export interface Drawing {
   id: string;
   projectId: string;

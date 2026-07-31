@@ -31,6 +31,12 @@ export class DrawingsController {
     return { data: await this.svc.findAll(u.companyId, pid, levelId), error: null };
   }
 
+  @Get('pins/search')
+  @ApiOperation({ summary: 'Search pins across every drawing in the project (for linking from a BIM element)' })
+  async searchProjectPins(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Query('search') search?: string) {
+    return { data: await this.svc.searchProjectPins(u.companyId, pid, search), error: null };
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get drawing with all linked capture pins' })
   async findOne(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
