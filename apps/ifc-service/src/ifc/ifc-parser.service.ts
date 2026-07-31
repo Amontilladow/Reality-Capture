@@ -357,7 +357,16 @@ export class IfcParserService {
 
       return found ? { minX, minY, minZ, maxX, maxY, maxZ } : null;
     } finally {
-      flatMesh.delete();
+      // FlatMesh's .d.ts declares delete(), but the installed runtime
+      // doesn't actually implement it -- confirmed directly against this
+      // web-ifc version (throws "flatMesh.delete is not a function"),
+      // which was silently discarding every successfully-computed bbox by
+      // throwing here, after the real work was already done, right before
+      // returning. IfcGeometry.delete() above IS real and still needed
+      // (it frees the WASM-heap vertex/index buffers); FlatMesh has no
+      // such buffer of its own to free.
+      const maybeDelete = (flatMesh as unknown as { delete?: () => void }).delete;
+      if (typeof maybeDelete === 'function') maybeDelete.call(flatMesh);
     }
   }
 }
