@@ -87,17 +87,20 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
     const fragments = components.get(OBC.FragmentsManager);
     fragmentsRef.current = fragments;
 
-    // Thin elements (conduit, cable, rebar) are only a couple of screen
-    // pixels wide, so a single-pixel raycast routinely misses them even
-    // when the cursor looks like it's right on top of the line. Retry in a
-    // small ring around the click point -- cheap (a handful of raycasts,
-    // only on an actual miss) and it's how most BIM viewers handle thin
-    // linear geometry, since the underlying fragments raycast() has no
-    // built-in tolerance/threshold option.
+    // fragments.raycast() expects `mouse` in raw viewport (clientX/clientY)
+    // coordinates -- it does its own `element.getBoundingClientRect()`
+    // subtraction internally. Subtracting the container's offset here too,
+    // on top of that, double-counts it and sends every ray off by however
+    // far the canvas sits from the browser's left/top edge (here: a full
+    // sidebar + header's worth) -- effectively never hitting real geometry
+    // once the viewer isn't flush against the viewport corner. Pass the
+    // raw client coordinates straight through.
+    //
+    // Thin elements (conduit, cable, rebar) are still only a couple of
+    // screen pixels wide even with correct math, so a single raycast can
+    // miss them by a pixel -- retry in a small ring around the click point
+    // as a cheap fallback (only on an actual miss).
     async function raycastWithTolerance(clientX: number, clientY: number) {
-      const rect = container!.getBoundingClientRect();
-      const baseX = clientX - rect.left;
-      const baseY = clientY - rect.top;
       const offsets: [number, number][] = [
         [0, 0],
         [3, 0], [-3, 0], [0, 3], [0, -3],
@@ -105,7 +108,7 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
         [6, 0], [-6, 0], [0, 6], [0, -6],
       ];
       for (const [dx, dy] of offsets) {
-        const mouse = new THREE.Vector2(baseX + dx, baseY + dy);
+        const mouse = new THREE.Vector2(clientX + dx, clientY + dy);
         const result = await fragments.raycast({
           camera: world.camera.three,
           mouse,
