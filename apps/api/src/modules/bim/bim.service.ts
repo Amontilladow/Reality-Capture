@@ -232,16 +232,21 @@ export class BimService {
     return link;
   }
 
+  // Routed through whichever Location (pin) carries this element's
+  // element_id, not through capture_element_links -- a photo attaches to a
+  // Place, and a Place can now be a BIM element, the same as it can be a
+  // floor-plan position. capture_element_links stays in the schema, unused,
+  // same as capture_drawing_links was before the pins work replaced it.
   async getCapturesForElement(companyId: string, elementId: string) {
     return this.db.withTenant(companyId, sql => sql`
       SELECT c.id, c.capture_type, c.captured_at, c.phase, c.title, c.status,
-             cel.link_type,
+             NULL::varchar AS link_type,
              u.first_name || ' ' || u.last_name AS captured_by_name
-      FROM capture_element_links cel
-      JOIN captures c ON c.id = cel.capture_id
+      FROM locations loc
+      JOIN captures c ON c.location_id = loc.id AND c.status = 'ready'
       JOIN users u ON u.id = c.captured_by
-      WHERE cel.element_id = ${elementId} AND cel.company_id = ${companyId}
-        AND c.status = 'ready'
+      WHERE loc.element_id = ${elementId} AND loc.company_id = ${companyId}
+        AND loc.archived_at IS NULL
       ORDER BY c.captured_at DESC
     `);
   }

@@ -5,10 +5,14 @@ import { listElements, type BimElementDetail } from '../../lib/bim.api';
 export function ElementSearch({
   projectId,
   modelId,
+  placeholder,
+  className,
   onSelect,
 }: {
   projectId: string;
-  modelId: string;
+  modelId?: string;
+  placeholder?: string;
+  className?: string;
   onSelect: (element: BimElementDetail) => void;
 }) {
   const [query, setQuery] = useState('');
@@ -23,10 +27,10 @@ export function ElementSearch({
   const results = searchQuery.data?.data ?? [];
 
   return (
-    <div className="relative w-64">
+    <div className={`relative ${className ?? 'w-64'}`}>
       <input
         className="field-input w-full"
-        placeholder="Search elements…"
+        placeholder={placeholder ?? 'Search elements…'}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);

@@ -15,6 +15,11 @@ export interface Pin {
   latestCapturedAt?: string;
   thumbnailUrl?: string;
   compassHeadingDeg?: number;
+  elementId?: string;
+  elementName?: string;
+  elementIfcType?: string;
+  elementGuid?: string;
+  elementModelId?: string;
 }
 
 export function createPin(projectId: string, drawingId: string, payload: { posXNorm: number; posYNorm: number; name?: string }) {

@@ -64,7 +64,7 @@ export function createLocation(
 export function updateLocation(
   projectId: string,
   locationId: string,
-  payload: { name?: string; description?: string; posXNorm?: number; posYNorm?: number },
+  payload: { name?: string; description?: string; posXNorm?: number; posYNorm?: number; elementId?: string | null },
 ) {
   return apiPatch<Location>(`/projects/${projectId}/locations/${locationId}`, payload);
 }

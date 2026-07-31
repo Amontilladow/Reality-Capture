@@ -4,7 +4,11 @@ import type { Pin } from '../../lib/drawings.api';
 import { listCaptures, uploadCapture } from '../../lib/captures.api';
 import { updateLocation, archiveLocation } from '../../lib/projects.api';
 import { CaptureGrid } from '../CaptureGrid';
+import { ElementSearch } from '../bim-viewer/ElementSearch';
+import type { BimElementDetail } from '../../lib/bim.api';
 import { apiErrorMessage } from '../../lib/api';
+
+type LinkedElement = { id: string; name: string; ifcType: string };
 
 export function PinPanel({
   projectId,
@@ -30,6 +34,8 @@ export function PinPanel({
   const [editingNote, setEditingNote] = useState(false);
   const [note, setNote] = useState('');
   const lastSavedNote = useRef('');
+  const [linkedElement, setLinkedElement] = useState<LinkedElement | null>(null);
+  const [pickingElement, setPickingElement] = useState(false);
 
   useEffect(() => {
     const n = pin?.name ?? '';
@@ -38,8 +44,12 @@ export function PinPanel({
     lastSavedTitle.current = n;
     setNote(d);
     lastSavedNote.current = d;
+    setLinkedElement(
+      pin?.elementId ? { id: pin.elementId, name: pin.elementName ?? '', ifcType: pin.elementIfcType ?? '' } : null,
+    );
     setEditingTitle(false);
     setEditingNote(false);
+    setPickingElement(false);
   }, [pin?.locationId]);
 
   function invalidatePin() {
@@ -67,6 +77,16 @@ export function PinPanel({
       lastSavedNote.current = note;
       invalidatePin();
       setEditingNote(false);
+    },
+  });
+
+  const elementMutation = useMutation({
+    mutationFn: (element: BimElementDetail | null) =>
+      updateLocation(projectId, pin!.locationId, { elementId: element?.id ?? null }),
+    onSuccess: (_data, element) => {
+      setLinkedElement(element ? { id: element.id, name: element.ifcName ?? '', ifcType: element.ifcType } : null);
+      setPickingElement(false);
+      invalidatePin();
     },
   });
 
@@ -192,6 +212,45 @@ export function PinPanel({
             ) : (
               <button onClick={() => setEditingNote(true)} className="text-sm text-ink-500 hover:text-blueprint">
                 + Add a note
+              </button>
+            )}
+          </div>
+
+          {/* BIM element link */}
+          <div>
+            <div className="field-label">BIM element</div>
+            {pickingElement ? (
+              <div className="space-y-2">
+                <ElementSearch
+                  projectId={projectId}
+                  placeholder="Search elements to link…"
+                  className="w-full"
+                  onSelect={(el) => elementMutation.mutate(el)}
+                />
+                <button onClick={() => setPickingElement(false)} className="btn-ghost !px-2 !py-1.5 text-xs">
+                  Cancel
+                </button>
+              </div>
+            ) : linkedElement ? (
+              <div className="flex items-center justify-between gap-2 panel p-3">
+                <div className="min-w-0">
+                  <div className="text-sm text-ink-100 truncate">{linkedElement.name || 'Unnamed element'}</div>
+                  <div className="text-xs text-ink-500">{linkedElement.ifcType.replace('IFC', '')}</div>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <button onClick={() => setPickingElement(true)} className="btn-ghost !px-2 !py-1 text-xs">Change</button>
+                  <button
+                    onClick={() => elementMutation.mutate(null)}
+                    disabled={elementMutation.isPending}
+                    className="btn-ghost !px-2 !py-1 text-xs text-danger hover:!bg-danger/10"
+                  >
+                    Unlink
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setPickingElement(true)} className="text-sm text-ink-500 hover:text-blueprint">
+                + Link to a BIM element
               </button>
             )}
           </div>

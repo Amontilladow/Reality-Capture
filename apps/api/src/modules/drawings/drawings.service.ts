@@ -157,7 +157,9 @@ export class DrawingsService {
     const pins = await this.db.withTenant(companyId, sql => sql`
       SELECT
         loc.id AS location_id, loc.name, loc.description, loc.pos_x_norm, loc.pos_y_norm,
-        loc.created_via, loc.created_at,
+        loc.created_via, loc.created_at, loc.element_id,
+        be.ifc_name AS element_name, be.ifc_type AS element_ifc_type,
+        be.ifc_guid AS element_guid, be.model_id AS element_model_id,
         COUNT(c.id) AS capture_count,
         MAX(c.captured_at) AS latest_captured_at,
         (ARRAY_AGG(cr.storage_key ORDER BY c.captured_at DESC)
@@ -167,8 +169,9 @@ export class DrawingsService {
       FROM locations loc
       LEFT JOIN captures c ON c.location_id = loc.id AND c.status = 'ready'
       LEFT JOIN capture_renditions cr ON cr.capture_id = c.id AND cr.rendition_type = 'thumbnail_sm'
+      LEFT JOIN bim_elements be ON be.id = loc.element_id
       WHERE loc.drawing_id = ${drawingId} AND loc.company_id = ${companyId} AND loc.archived_at IS NULL
-      GROUP BY loc.id
+      GROUP BY loc.id, be.ifc_name, be.ifc_type, be.ifc_guid, be.model_id
       ORDER BY loc.created_at DESC
     `);
 

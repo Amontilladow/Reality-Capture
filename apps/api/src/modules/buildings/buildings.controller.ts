@@ -50,7 +50,7 @@ export class BuildingsController {
   async updateLocation(
     @CurrentUser() u: AuthenticatedUser,
     @Param('id') id: string,
-    @Body() dto: { name?: string; description?: string; posXNorm?: number; posYNorm?: number },
+    @Body() dto: { name?: string; description?: string; posXNorm?: number; posYNorm?: number; elementId?: string | null },
   ) {
     return { data: await this.svc.updateLocation(u.companyId, id, dto), error: null };
   }

@@ -69,14 +69,19 @@ export class BuildingsService {
   async updateLocation(
     companyId: string,
     locationId: string,
-    dto: { name?: string; description?: string; posXNorm?: number; posYNorm?: number },
+    dto: { name?: string; description?: string; posXNorm?: number; posYNorm?: number; elementId?: string | null },
   ) {
+    // elementId is distinguished from "not provided" so a pin can be
+    // explicitly unlinked from its BIM element (elementId: null), not just
+    // linked -- the other fields here can only ever be set, never cleared.
+    const elementIdProvided = Object.prototype.hasOwnProperty.call(dto, 'elementId');
     const [loc] = await this.db.query`
       UPDATE locations SET
         name        = COALESCE(${dto.name ?? null}, name),
         description = COALESCE(${dto.description ?? null}, description),
         pos_x_norm  = COALESCE(${dto.posXNorm ?? null}, pos_x_norm),
-        pos_y_norm  = COALESCE(${dto.posYNorm ?? null}, pos_y_norm)
+        pos_y_norm  = COALESCE(${dto.posYNorm ?? null}, pos_y_norm),
+        element_id  = CASE WHEN ${elementIdProvided} THEN ${dto.elementId ?? null} ELSE element_id END
       WHERE id = ${locationId} AND company_id = ${companyId} AND archived_at IS NULL
       RETURNING *`;
     if (!loc) throw new NotFoundException('Location not found.');
