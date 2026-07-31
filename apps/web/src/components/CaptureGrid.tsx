@@ -16,7 +16,15 @@ const STATUS_STYLES: Record<string, string> = {
   failed: 'bg-danger/15 text-danger',
 };
 
-export function CaptureGrid({ projectId, captures }: { projectId: string; captures: Capture[] }) {
+export function CaptureGrid({
+  projectId,
+  projectName,
+  captures,
+}: {
+  projectId: string;
+  projectName?: string;
+  captures: Capture[];
+}) {
   const [lightboxCapture, setLightboxCapture] = useState<Capture | null>(null);
 
   if (captures.length === 0) {
@@ -49,7 +57,7 @@ export function CaptureGrid({ projectId, captures }: { projectId: string; captur
         )}
       </div>
 
-      <CaptureLightbox projectId={projectId} capture={lightboxCapture} onClose={() => setLightboxCapture(null)} />
+      <CaptureLightbox projectId={projectId} projectName={projectName} capture={lightboxCapture} onClose={() => setLightboxCapture(null)} />
     </>
   );
 }
@@ -77,6 +85,11 @@ function CaptureCardBody({ c }: { c: Capture }) {
         <div className="text-[10px] font-mono text-ink-500 mt-0.5">
           {new Date(c.capturedAt).toLocaleDateString()} {c.phase ? `· ${c.phase.replace(/_/g, ' ')}` : ''}
         </div>
+        {(c.buildingName || c.levelName || c.locationName) && (
+          <div className="text-[10px] text-ink-500 mt-0.5 truncate">
+            {[c.buildingName, c.levelName, c.locationName].filter(Boolean).join(' · ')}
+          </div>
+        )}
       </div>
     </>
   );

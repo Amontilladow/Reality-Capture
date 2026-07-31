@@ -166,6 +166,8 @@ export class CapturesService {
         c.*,
         u.first_name || ' ' || u.last_name AS captured_by_name,
         loc.name AS location_name,
+        lvl.name AS level_name,
+        bld.name AS building_name,
         COALESCE(json_agg(
           json_build_object(
             'type', cr.rendition_type,
@@ -177,6 +179,7 @@ export class CapturesService {
       LEFT JOIN users u ON u.id = c.captured_by
       LEFT JOIN locations loc ON loc.id = c.location_id
       LEFT JOIN levels lvl ON lvl.id = loc.level_id
+      LEFT JOIN buildings bld ON bld.id = lvl.building_id
       LEFT JOIN capture_renditions cr ON cr.capture_id = c.id
       WHERE c.project_id = ${projectId}
         AND c.company_id = ${companyId}
@@ -191,7 +194,7 @@ export class CapturesService {
         AND (${query.search ?? null}::text IS NULL OR
           to_tsvector('english', coalesce(c.title,'') || ' ' || coalesce(c.description,''))
           @@ plainto_tsquery('english', ${query.search ?? null}))
-      GROUP BY c.id, u.first_name, u.last_name, loc.name
+      GROUP BY c.id, u.first_name, u.last_name, loc.name, lvl.name, bld.name
       ORDER BY c.captured_at DESC
       LIMIT ${perPage} OFFSET ${offset}
     `);
@@ -228,6 +231,8 @@ export class CapturesService {
         u.first_name || ' ' || u.last_name AS captured_by_name,
         u.avatar_url AS captured_by_avatar,
         loc.name AS location_name,
+        lvl.name AS level_name,
+        bld.name AS building_name,
         COALESCE(json_agg(DISTINCT jsonb_build_object(
           'id', cr.id, 'type', cr.rendition_type,
           'key', cr.storage_key, 'widthPx', cr.width_px, 'heightPx', cr.height_px
@@ -240,10 +245,12 @@ export class CapturesService {
       FROM captures c
       LEFT JOIN users u ON u.id = c.captured_by
       LEFT JOIN locations loc ON loc.id = c.location_id
+      LEFT JOIN levels lvl ON lvl.id = loc.level_id
+      LEFT JOIN buildings bld ON bld.id = lvl.building_id
       LEFT JOIN capture_renditions cr ON cr.capture_id = c.id
       LEFT JOIN hotspots h ON h.source_capture_id = c.id
       WHERE c.id = ${captureId} AND c.project_id = ${projectId} AND c.company_id = ${companyId}
-      GROUP BY c.id, u.first_name, u.last_name, u.avatar_url, loc.name
+      GROUP BY c.id, u.first_name, u.last_name, u.avatar_url, loc.name, lvl.name, bld.name
     `);
 
     if (!capture) throw new NotFoundException(`Capture ${captureId} not found.`);

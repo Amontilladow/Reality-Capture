@@ -6,10 +6,12 @@ import { updateCapture } from '../lib/captures.api';
 
 export function CaptureLightbox({
   projectId,
+  projectName,
   capture,
   onClose,
 }: {
   projectId: string;
+  projectName?: string;
   capture: (Capture & { thumbnailUrl?: string; previewUrl?: string }) | null;
   onClose: () => void;
 }) {
@@ -57,7 +59,8 @@ export function CaptureLightbox({
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-base-950/90 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-3xl max-h-[90vh] tick-frame panel overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-base-600 shrink-0">
+        <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-base-600 shrink-0">
+          <div className="min-w-0 flex-1">
           {editingTitle ? (
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <input
@@ -78,6 +81,12 @@ export function CaptureLightbox({
               <EditIcon className="w-3.5 h-3.5 text-ink-500 shrink-0" />
             </button>
           )}
+          {(projectName || capture.buildingName || capture.levelName || capture.locationName) && (
+            <div className="text-[11px] text-ink-500 mt-1 truncate">
+              {[projectName, capture.buildingName, capture.levelName, capture.locationName].filter(Boolean).join(' · ')}
+            </div>
+          )}
+          </div>
           <button onClick={onClose} className="text-ink-500 hover:text-ink-100 shrink-0" aria-label="Close">
             <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />

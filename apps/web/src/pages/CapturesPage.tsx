@@ -5,7 +5,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { CaptureGrid } from '../components/CaptureGrid';
 import { CaptureUploadModal } from '../components/CaptureUploadModal';
 import { listCaptures } from '../lib/captures.api';
-import { getHierarchy } from '../lib/projects.api';
+import { getHierarchy, getProject } from '../lib/projects.api';
 import { PROJECT_PHASES, PROJECT_PHASE_LABELS } from '@engineeringos/types';
 
 const CAPTURE_TYPES = [
@@ -23,6 +23,12 @@ export default function CapturesPage() {
   const [levelId, setLevelId] = useState('');
   const [locationId, setLocationId] = useState('');
   const [uploadOpen, setUploadOpen] = useState(false);
+
+  const projectQuery = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => getProject(projectId!),
+    enabled: Boolean(projectId),
+  });
 
   const hierarchyQuery = useQuery({
     queryKey: ['hierarchy', projectId],
@@ -58,7 +64,7 @@ export default function CapturesPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Project"
+        eyebrow={projectQuery.data?.name ?? 'Project'}
         title="Captures"
         actions={
           <button onClick={() => setUploadOpen(true)} className="btn-primary">
@@ -128,7 +134,9 @@ export default function CapturesPage() {
             ))}
           </div>
         )}
-        {capturesQuery.data && <CaptureGrid projectId={projectId} captures={capturesQuery.data.data} />}
+        {capturesQuery.data && (
+          <CaptureGrid projectId={projectId} projectName={projectQuery.data?.name} captures={capturesQuery.data.data} />
+        )}
       </div>
 
       <CaptureUploadModal

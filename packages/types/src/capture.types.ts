@@ -38,6 +38,9 @@ export interface Capture {
   hotspots?: Hotspot[];
   thumbnailUrl?: string;    // convenience: resolved URL for the thumbnail_sm rendition
   previewUrl?: string;      // convenience: resolved URL for the preview rendition
+  locationName?: string;
+  levelName?: string;
+  buildingName?: string;
 }
 
 export interface AiDetectedIssue {
