@@ -169,3 +169,10 @@ export interface ElementIssue {
 export function getIssuesForElement(elementId: string) {
   return apiGet<ElementIssue[]>(`/elements/${elementId}/issues`);
 }
+
+export function createPinForElement(projectId: string, elementId: string, name: string) {
+  return apiPost<{ id: string; name: string; elementId: string }>(
+    `/projects/${projectId}/bim/elements/${elementId}/pins`,
+    { name },
+  );
+}

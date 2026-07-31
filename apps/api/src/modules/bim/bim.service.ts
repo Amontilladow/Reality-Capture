@@ -213,6 +213,21 @@ export class BimService {
     return this.getElement(companyId, el.id as string);
   }
 
+  // Creates a pin that starts out attached to nothing but this element --
+  // no drawing, no position yet. It's a real Location like any other pin,
+  // so it shows up normally in the floor-plan pin list and capture picker
+  // once someone (from the floor plan side) gives it a position; until
+  // then it's still valid, since locations_has_a_place_check now accepts
+  // element_id on its own as a place.
+  async createPinForElement(companyId: string, elementId: string, name: string) {
+    const [loc] = await this.db.query`
+      INSERT INTO locations (company_id, name, element_id)
+      VALUES (${companyId}, ${name}, ${elementId})
+      RETURNING id, name, element_id
+    `;
+    return loc;
+  }
+
   async updateElementStatus(companyId: string, elementId: string, status: string) {
     const [el] = await this.db.query`
       UPDATE bim_elements

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { BimElementDetail } from '../../lib/bim.api';
-import { getCapturesForElement, getIssuesForElement } from '../../lib/bim.api';
+import { getCapturesForElement, getIssuesForElement, createPinForElement } from '../../lib/bim.api';
 import { updateLocation } from '../../lib/projects.api';
 import type { ProjectPinResult } from '../../lib/drawings.api';
 import { PinSearch } from './PinSearch';
@@ -39,6 +39,8 @@ export function PropertyPanel({
 }) {
   const queryClient = useQueryClient();
   const [pickingPin, setPickingPin] = useState(false);
+  const [creatingPin, setCreatingPin] = useState(false);
+  const [newPinName, setNewPinName] = useState('');
 
   const capturesQuery = useQuery({
     queryKey: ['bim-element-captures', projectId, element?.id],
@@ -61,6 +63,16 @@ export function PropertyPanel({
       ),
     onSuccess: () => {
       setPickingPin(false);
+      queryClient.invalidateQueries({ queryKey: ['bim-element-by-guid'] });
+      queryClient.invalidateQueries({ queryKey: ['pins', projectId] });
+    },
+  });
+
+  const createPinMutation = useMutation({
+    mutationFn: () => createPinForElement(projectId, element!.id, newPinName.trim() || 'Untitled pin'),
+    onSuccess: () => {
+      setCreatingPin(false);
+      setNewPinName('');
       queryClient.invalidateQueries({ queryKey: ['bim-element-by-guid'] });
       queryClient.invalidateQueries({ queryKey: ['pins', projectId] });
     },
@@ -113,10 +125,49 @@ export function PropertyPanel({
               </button>
             </div>
           </div>
+        ) : creatingPin ? (
+          <div className="space-y-2">
+            <input
+              autoFocus
+              className="field-input w-full text-sm"
+              placeholder="New pin name"
+              value={newPinName}
+              onChange={(e) => setNewPinName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') createPinMutation.mutate();
+                if (e.key === 'Escape') { setCreatingPin(false); setNewPinName(''); }
+              }}
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => createPinMutation.mutate()}
+                disabled={createPinMutation.isPending}
+                className="btn-primary flex-1 text-xs"
+              >
+                {createPinMutation.isPending ? 'Creating…' : 'Create pin'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setCreatingPin(false); setNewPinName(''); }}
+                className="btn-ghost flex-1 text-xs"
+              >
+                Cancel
+              </button>
+            </div>
+            <p className="text-xs text-gray-400">
+              Creates the pin here, with no floor-plan position yet -- place it on a drawing later from the Floor Plans page.
+            </p>
+          </div>
         ) : (
-          <button onClick={() => setPickingPin(true)} className="btn-secondary w-full text-sm">
-            + Link to a pin
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => setPickingPin(true)} className="btn-secondary flex-1 text-sm">
+              + Link to a pin
+            </button>
+            <button onClick={() => setCreatingPin(true)} className="btn-secondary flex-1 text-sm">
+              + Create new pin
+            </button>
+          </div>
         )}
       </div>
 

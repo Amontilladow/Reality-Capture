@@ -93,6 +93,12 @@ export class BimController {
     return { data: await this.svc.getCapturesForElement(u.companyId, eid), error: null };
   }
 
+  @Post('elements/:eid/pins')
+  @ApiOperation({ summary: 'Create a new pin attached to this element, with no floor-plan position yet' })
+  async createPinForElement(@CurrentUser() u: AuthenticatedUser, @Param('eid') eid: string, @Body() body: { name?: string }) {
+    return { data: await this.svc.createPinForElement(u.companyId, eid, body.name || 'Untitled pin'), error: null };
+  }
+
   @Get('progress')
   @ApiOperation({ summary: 'Get construction progress summary by element type' })
   async getProgressSummary(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
