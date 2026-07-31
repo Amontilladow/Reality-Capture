@@ -87,18 +87,38 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
     const fragments = components.get(OBC.FragmentsManager);
     fragmentsRef.current = fragments;
 
+    // Thin elements (conduit, cable, rebar) are only a couple of screen
+    // pixels wide, so a single-pixel raycast routinely misses them even
+    // when the cursor looks like it's right on top of the line. Retry in a
+    // small ring around the click point -- cheap (a handful of raycasts,
+    // only on an actual miss) and it's how most BIM viewers handle thin
+    // linear geometry, since the underlying fragments raycast() has no
+    // built-in tolerance/threshold option.
+    async function raycastWithTolerance(clientX: number, clientY: number) {
+      const rect = container!.getBoundingClientRect();
+      const baseX = clientX - rect.left;
+      const baseY = clientY - rect.top;
+      const offsets: [number, number][] = [
+        [0, 0],
+        [3, 0], [-3, 0], [0, 3], [0, -3],
+        [3, 3], [-3, 3], [3, -3], [-3, -3],
+        [6, 0], [-6, 0], [0, 6], [0, -6],
+      ];
+      for (const [dx, dy] of offsets) {
+        const mouse = new THREE.Vector2(baseX + dx, baseY + dy);
+        const result = await fragments.raycast({
+          camera: world.camera.three,
+          mouse,
+          dom: world.renderer!.three.domElement,
+        });
+        if (result) return result;
+      }
+      return null;
+    }
+
     async function handlePointerClick(event: PointerEvent) {
       if (disposed) return;
-      const mouse = new THREE.Vector2();
-      const rect = container!.getBoundingClientRect();
-      mouse.x = event.clientX - rect.left;
-      mouse.y = event.clientY - rect.top;
-
-      const result = await fragments.raycast({
-        camera: world.camera.three,
-        mouse,
-        dom: world.renderer!.three.domElement,
-      });
+      const result = await raycastWithTolerance(event.clientX, event.clientY);
 
       await clearHighlight();
 
