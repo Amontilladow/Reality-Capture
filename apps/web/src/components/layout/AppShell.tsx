@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth.store';
 import { logout as apiLogout } from '../../lib/auth.api';
+import { NotificationBell } from './NotificationBell';
 
 const NAV_ITEMS = [
   { to: '', label: 'Projects', icon: IconGrid, end: true },
@@ -37,10 +38,11 @@ export function AppShell() {
       <aside className="w-60 shrink-0 border-r border-base-600 bg-base-900 flex flex-col">
         <div className="h-16 flex items-center gap-2 px-5 border-b border-base-600">
           <IconMark />
-          <div className="leading-tight">
+          <div className="leading-tight flex-1 min-w-0">
             <div className="text-sm font-semibold tracking-tight">EngineeringOS</div>
             <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500">Reality Capture</div>
           </div>
+          <NotificationBell />
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-0.5">

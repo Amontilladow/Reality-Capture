@@ -90,3 +90,20 @@ export class ElementIssuesController {
     return { data: await this.svc.getByElement(u.companyId, eid), error: null };
   }
 }
+
+// Flat, project-agnostic lookup — GET /issues/:id. Notifications only carry
+// resourceType/resourceId (no projectId), so this is what resolves a
+// notification into a real "/projects/:projectId/issues" link.
+import { Controller as Ctrl3 } from '@nestjs/common';
+@ApiTags('issues')
+@ApiBearerAuth()
+@Ctrl3('issues')
+export class IssueLookupController {
+  constructor(private readonly svc: IssuesService) {}
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Look up which project an issue belongs to, by id alone' })
+  async lookup(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
+    return { data: await this.svc.lookupProjectForIssue(u.companyId, id), error: null };
+  }
+}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { IssueFormModal } from '../components/issues/IssueFormModal';
@@ -15,6 +15,7 @@ type QuickFilter = 'all' | 'overdue' | 'critical' | 'mine';
 
 export default function IssuesPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams] = useSearchParams();
   const [status, setStatus] = useState('');
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
   const [search, setSearch] = useState('');
@@ -25,7 +26,7 @@ export default function IssuesPage() {
   const [dateTo, setDateTo] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [editIssue, setEditIssue] = useState<IssueDetailItem | null>(null);
-  const [viewIssueId, setViewIssueId] = useState<string | null>(null);
+  const [viewIssueId, setViewIssueId] = useState<string | null>(searchParams.get('issueId'));
 
   const membersQuery = useQuery({
     queryKey: ['members', projectId],

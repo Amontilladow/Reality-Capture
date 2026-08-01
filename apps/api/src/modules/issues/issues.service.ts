@@ -281,6 +281,15 @@ export class IssuesService {
     `);
   }
 
+  // ── Resolve which project an issue belongs to, by id alone ─────────────────
+  async lookupProjectForIssue(companyId: string, issueId: string) {
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      SELECT id, project_id, issue_number FROM issues WHERE id = ${issueId} AND company_id = ${companyId}
+    `);
+    if (!row) throw new NotFoundException(`Issue ${issueId} not found.`);
+    return row;
+  }
+
   // ── Dashboard summary ─────────────────────────────────────────────────────
   async getSummary(companyId: string, projectId: string) {
     const [summary] = await this.db.withTenant(companyId, sql => sql`
