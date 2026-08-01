@@ -154,16 +154,6 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
         if (disposed) return;
         world.scene.three.add(model.object);
 
-        // Confirmed root cause of "most of a model's geometry is silently
-        // missing" (see ThatOpen/engine_fragment#255): until useCamera() is
-        // called at least once, the LOD/culling system falls back to a
-        // degenerate default frustum that discards items. A single call is
-        // what the bug actually requires -- re-firing it on every
-        // onCameraChanged event (which fires continuously during a smooth
-        // zoom/orbit animation) is very likely what broke zooming, probably
-        // by flooding the model's worker-side view state mid-gesture.
-        model.useCamera(world.camera.three);
-
         const box = new THREE.Box3().setFromObject(model.object);
         if (!box.isEmpty()) world.camera.controls.fitToBox(box, false);
         setLoading(false);
