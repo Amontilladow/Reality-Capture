@@ -160,7 +160,26 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
         // setFromObject(model.object) here always reads an empty graph and silently
         // skips the fit, leaving the camera at its default position.
         const box = model.box;
+        // eslint-disable-next-line no-console
+        console.log('[BIM-DEBUG] on load:', {
+          objectChildren: model.object.children.length,
+          boxEmpty: box.isEmpty(),
+          boxMin: box.min.toArray(),
+          boxMax: box.max.toArray(),
+          cameraPosBefore: world.camera.three.position.toArray(),
+        });
         if (!box.isEmpty()) world.camera.controls.fitToBox(box, false);
+        // eslint-disable-next-line no-console
+        console.log('[BIM-DEBUG] right after fitToBox call:', {
+          cameraPosImmediately: world.camera.three.position.toArray(),
+        });
+        setTimeout(() => {
+          // eslint-disable-next-line no-console
+          console.log('[BIM-DEBUG] 1s after load:', {
+            objectChildren: model.object.children.length,
+            cameraPos: world.camera.three.position.toArray(),
+          });
+        }, 1000);
         setLoading(false);
       } catch (err) {
         if (!disposed) setError(err instanceof Error ? err.message : 'Failed to load model');
