@@ -154,7 +154,12 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
         if (disposed) return;
         world.scene.three.add(model.object);
 
-        const box = new THREE.Box3().setFromObject(model.object);
+        // Use the model's own bounding box, not one derived from `model.object`'s
+        // mesh children: `@thatopen/fragments` populates those meshes asynchronously
+        // (via an internal tile/view-refresh cycle) after core.load() resolves, so
+        // setFromObject(model.object) here always reads an empty graph and silently
+        // skips the fit, leaving the camera at its default position.
+        const box = model.box;
         if (!box.isEmpty()) world.camera.controls.fitToBox(box, false);
         setLoading(false);
       } catch (err) {
