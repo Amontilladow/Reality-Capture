@@ -9,6 +9,7 @@ import { AddHierarchyNodeModal } from '../components/AddHierarchyNodeModal';
 import { CaptureGrid } from '../components/CaptureGrid';
 import { CaptureUploadModal } from '../components/CaptureUploadModal';
 import { EditProjectModal } from '../components/EditProjectModal';
+import { ProjectDashboard } from '../components/ProjectDashboard';
 import { getProject, getHierarchy, updateBuilding } from '../lib/projects.api';
 import { listCaptures } from '../lib/captures.api';
 
@@ -81,6 +82,8 @@ export default function ProjectDetail() {
       />
 
       {projectQuery.data && <ProjectDetailsPanel project={projectQuery.data} />}
+
+      <ProjectDashboard projectId={projectId} />
 
       <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-1">
