@@ -160,26 +160,20 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
         // setFromObject(model.object) here always reads an empty graph and silently
         // skips the fit, leaving the camera at its default position.
         const box = model.box;
-        // eslint-disable-next-line no-console
-        console.log('[BIM-DEBUG] on load:', {
-          objectChildren: model.object.children.length,
-          boxEmpty: box.isEmpty(),
-          boxMin: box.min.toArray(),
-          boxMax: box.max.toArray(),
-          cameraPosBefore: world.camera.three.position.toArray(),
-        });
-        if (!box.isEmpty()) world.camera.controls.fitToBox(box, false);
-        // eslint-disable-next-line no-console
-        console.log('[BIM-DEBUG] right after fitToBox call:', {
-          cameraPosImmediately: world.camera.three.position.toArray(),
-        });
-        setTimeout(() => {
-          // eslint-disable-next-line no-console
-          console.log('[BIM-DEBUG] 1s after load:', {
-            objectChildren: model.object.children.length,
-            cameraPos: world.camera.three.position.toArray(),
-          });
-        }, 1000);
+        if (!box.isEmpty()) {
+          world.camera.controls.fitToBox(box, false);
+          // The camera-controls library's default maxDistance (300) is fixed and
+          // unrelated to this model's actual scale. Dollying out past it triggers
+          // a bug where the orbit target itself jumps to a wrong, faraway point
+          // instead of the distance simply being clamped -- confirmed by direct
+          // reproduction: with the default limit, repeated zoom-out eventually
+          // snaps the target dozens of units away from the model ("zoom loses the
+          // model"); raising the limit well beyond normal use avoids ever hitting
+          // that path. Scale it to the model's own size so small and large models
+          // both get generous, but bounded, zoom-out room.
+          const modelSize = box.getSize(new THREE.Vector3()).length();
+          world.camera.controls.maxDistance = Math.max(1000, modelSize * 50);
+        }
         setLoading(false);
       } catch (err) {
         if (!disposed) setError(err instanceof Error ? err.message : 'Failed to load model');
