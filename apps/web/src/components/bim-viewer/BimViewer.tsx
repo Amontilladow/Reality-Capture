@@ -52,9 +52,15 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
   useImperativeHandle(ref, () => ({
     fitToModel: () => {
       const world = worldRef.current;
-      if (!world) return;
-      const box = new THREE.Box3();
-      for (const mesh of world.meshes) box.expandByObject(mesh);
+      const fragments = fragmentsRef.current;
+      if (!world || !fragments) return;
+      // world.meshes is never populated by our own loading code (we only add
+      // model.object to the scene graph directly), so it's always empty --
+      // read the box straight from the loaded model instead, same as the
+      // initial-load fit.
+      const model = fragments.list.get(modelIdRef.current);
+      if (!model) return;
+      const box = model.box;
       if (!box.isEmpty()) world.camera.controls.fitToBox(box, true);
     },
     selectByGuid: async (guid: string) => {
