@@ -66,9 +66,15 @@ export class AuthService {
   async refresh(dto: RefreshTokenDto, ipAddress?: string, userAgent?: string): Promise<AuthTokens> {
     const tokenHash = this.hashToken(dto.refreshToken);
 
+    // Select rt.id under its own alias -- `rt.*` here would otherwise collide
+    // with u.id below (both output as `id`), and the *last* one selected
+    // silently wins when the row is built. That previously left `stored.id`
+    // holding the refresh token's own row id instead of the user's id, which
+    // issueTokens() then used as the new token's `user_id`, violating the
+    // refresh_tokens.user_id -> users.id foreign key on every refresh.
     const [stored] = await this.db.query`
-      SELECT rt.*, u.company_id, u.company_role, u.email, u.first_name, u.last_name,
-             u.is_active, c.is_active AS company_active
+      SELECT rt.id AS refresh_token_id, u.id, u.company_id, u.company_role, u.email,
+             u.first_name, u.last_name, u.is_active, c.is_active AS company_active
       FROM refresh_tokens rt
       JOIN users u ON u.id = rt.user_id
       JOIN companies c ON c.id = u.company_id
@@ -81,7 +87,7 @@ export class AuthService {
     if (!stored.isActive || !stored.companyActive) throw new UnauthorizedException('Account deactivated.');
 
     // Rotate the token — revoke old, issue new (prevents token reuse)
-    await this.db.query`UPDATE refresh_tokens SET revoked_at = NOW() WHERE id = ${stored.id}`;
+    await this.db.query`UPDATE refresh_tokens SET revoked_at = NOW() WHERE id = ${stored.refreshTokenId}`;
 
     return this.issueTokens(stored, ipAddress, userAgent);
   }
