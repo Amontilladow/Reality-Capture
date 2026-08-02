@@ -82,6 +82,18 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
     world.scene.three.background = null;
     worldRef.current = world;
 
+    // The camera-controls library defaults wheel-zoom to "dolly to cursor":
+    // each scroll tick recomputes the orbit target from a ray through the
+    // mouse position, not just the camera distance. Confirmed by direct
+    // reproduction: once the cursor isn't dead-centered on the model (the
+    // normal case for a small/off-center model in a large viewport), this
+    // walks the target away from the model within a handful of scroll
+    // ticks -- this is "zoom loses the model". Disabling it makes wheel-zoom
+    // dolly straight along the current view axis, always toward the target
+    // that was last explicitly set (e.g. by fitToBox), regardless of cursor
+    // position -- standard, predictable CAD-viewer zoom behavior.
+    world.camera.controls.dollyToCursor = false;
+
     components.init();
 
     const fragments = components.get(OBC.FragmentsManager);
