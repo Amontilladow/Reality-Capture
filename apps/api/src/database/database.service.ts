@@ -46,8 +46,13 @@ export class DatabaseService {
     page: number,
     perPage: number,
   ): { data: T[]; total: number; page: number; perPage: number; totalPages: number } {
-    const total = rows.length > 0 && 'full_count' in rows[0]
-      ? Number((rows[0] as Row & { full_count: string }).full_count)
+    // Row keys arrive camelCased (transform: postgres.camel in
+    // database.module.ts), so the window-function alias `full_count` shows
+    // up here as `fullCount` -- checking for the snake_case key always
+    // failed, silently falling back to `rows.length` (the current page's
+    // size) as the "total" on every paginated endpoint in the app.
+    const total = rows.length > 0 && 'fullCount' in rows[0]
+      ? Number((rows[0] as Row & { fullCount: string }).fullCount)
       : rows.length;
 
     return {

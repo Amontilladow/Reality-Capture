@@ -169,7 +169,14 @@ export class BimService {
           e.ifc_name ILIKE ${'%' + (query.search ?? '') + '%'}
           OR e.ifc_guid ILIKE ${'%' + (query.search ?? '') + '%'})
       GROUP BY e.id
-      ORDER BY e.ifc_type, e.ifc_name
+      -- e.id tiebreaker: (ifc_type, ifc_name) is not unique -- many elements
+      -- share a type+name (e.g. generic "Beam"/"Fastener" instances) -- so
+      -- without a unique final sort key, LIMIT/OFFSET pagination over ties
+      -- is unstable and can return the same row on multiple pages while
+      -- skipping others entirely. Confirmed by direct reproduction: paging
+      -- through this exact endpoint with 200/page returned 2999 rows but
+      -- only 2887 distinct ids.
+      ORDER BY e.ifc_type, e.ifc_name, e.id
       LIMIT ${perPage} OFFSET ${offset}
     `);
 
