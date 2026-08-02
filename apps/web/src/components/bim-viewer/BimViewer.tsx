@@ -157,6 +157,33 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
 
     container.addEventListener('click', handlePointerClick);
 
+    let wheelLogCount = 0;
+    function handleWheelDebug(event: WheelEvent) {
+      if (disposed || wheelLogCount >= 12) return;
+      wheelLogCount++;
+      const targetBefore = new THREE.Vector3();
+      world.camera.controls.getTarget(targetBefore);
+      const posBefore = world.camera.three.position.clone();
+      const n = wheelLogCount;
+      setTimeout(() => {
+        const targetAfter = new THREE.Vector3();
+        world.camera.controls.getTarget(targetAfter);
+        const posAfter = world.camera.three.position.clone();
+        // eslint-disable-next-line no-console
+        console.log(`[BIM-DEBUG] wheel #${n}`, {
+          deltaY: event.deltaY,
+          dollyToCursor: world.camera.controls.dollyToCursor,
+          maxDistance: world.camera.controls.maxDistance,
+          targetBefore: targetBefore.toArray(),
+          targetAfter: targetAfter.toArray(),
+          targetDelta: targetAfter.distanceTo(targetBefore),
+          posBefore: posBefore.toArray(),
+          posAfter: posAfter.toArray(),
+        });
+      }, 250);
+    }
+    container.addEventListener('wheel', handleWheelDebug);
+
     async function loadModel() {
       try {
         await fragments.init(await OBC.FragmentsManager.getWorker());
@@ -203,6 +230,7 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
     return () => {
       disposed = true;
       container.removeEventListener('click', handlePointerClick);
+      container.removeEventListener('wheel', handleWheelDebug);
       components.dispose();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
