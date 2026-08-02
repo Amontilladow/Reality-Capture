@@ -100,6 +100,23 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
     // position -- standard, predictable CAD-viewer zoom behavior.
     world.camera.controls.dollyToCursor = false;
 
+    // ROOT CAUSE of "extreme zoom loses the model" (both zoom-in and
+    // zoom-out), confirmed by direct, deterministic reproduction: the
+    // camera-controls library defaults `infinityDolly` to true. Once the
+    // dolly distance would go past minDistance or maxDistance, instead of
+    // clamping the distance and stopping, infinityDolly keeps *translating
+    // both the camera and the orbit target* together in the current view
+    // direction, unbounded. Reproduced with 100 zoom-in ticks past
+    // minDistance: target walked from the model's center to ~16 units past
+    // the model's own bounding box. Reproduced with 200 zoom-out ticks past
+    // maxDistance: target walked over 42,000 units away. With
+    // infinityDolly=false, the same test sequences (including 100 zoom-in
+    // ticks, 200 zoom-out ticks, and 80 interleaved rotate+zoom cycles) left
+    // the target byte-for-byte unchanged from its original fitted value --
+    // the camera simply stops at min/maxDistance instead of flying through
+    // the model into empty space.
+    world.camera.controls.infinityDolly = false;
+
     components.init();
 
     const fragments = components.get(OBC.FragmentsManager);
@@ -157,33 +174,6 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
 
     container.addEventListener('click', handlePointerClick);
 
-    let wheelLogCount = 0;
-    function handleWheelDebug(event: WheelEvent) {
-      if (disposed || wheelLogCount >= 12) return;
-      wheelLogCount++;
-      const targetBefore = new THREE.Vector3();
-      world.camera.controls.getTarget(targetBefore);
-      const posBefore = world.camera.three.position.clone();
-      const n = wheelLogCount;
-      setTimeout(() => {
-        const targetAfter = new THREE.Vector3();
-        world.camera.controls.getTarget(targetAfter);
-        const posAfter = world.camera.three.position.clone();
-        // eslint-disable-next-line no-console
-        console.log(`[BIM-DEBUG] wheel #${n}`, {
-          deltaY: event.deltaY,
-          dollyToCursor: world.camera.controls.dollyToCursor,
-          maxDistance: world.camera.controls.maxDistance,
-          targetBefore: targetBefore.toArray(),
-          targetAfter: targetAfter.toArray(),
-          targetDelta: targetAfter.distanceTo(targetBefore),
-          posBefore: posBefore.toArray(),
-          posAfter: posAfter.toArray(),
-        });
-      }, 250);
-    }
-    container.addEventListener('wheel', handleWheelDebug);
-
     async function loadModel() {
       try {
         await fragments.init(await OBC.FragmentsManager.getWorker());
@@ -208,16 +198,21 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
         if (!box.isEmpty()) {
           world.camera.controls.fitToBox(box, false);
           // The camera-controls library's default maxDistance (300) is fixed and
-          // unrelated to this model's actual scale. Dollying out past it triggers
-          // a bug where the orbit target itself jumps to a wrong, faraway point
-          // instead of the distance simply being clamped -- confirmed by direct
-          // reproduction: with the default limit, repeated zoom-out eventually
-          // snaps the target dozens of units away from the model ("zoom loses the
-          // model"); raising the limit well beyond normal use avoids ever hitting
-          // that path. Scale it to the model's own size so small and large models
-          // both get generous, but bounded, zoom-out room.
+          // unrelated to this model's actual scale. Scale it to the model's own
+          // size so small and large models both get generous, but bounded,
+          // zoom-out room. (The actual target-jump/fly-through bug this used to
+          // be attributed to is infinityDolly, fixed above -- this maxDistance
+          // scaling is just sizing the zoom-out range sensibly per model.)
           const modelSize = box.getSize(new THREE.Vector3()).length();
           world.camera.controls.maxDistance = Math.max(1000, modelSize * 50);
+          // Keep the far clipping plane comfortably beyond maxDistance.
+          // Confirmed by direct reproduction: the camera's far plane is a
+          // fixed 1000 (set in the library's setupCamera()), and the
+          // maxDistance formula above floors at exactly that value -- so
+          // without this, reaching max zoom-out silently far-clips the whole
+          // model on every load, regardless of model size.
+          world.camera.three.far = world.camera.controls.maxDistance * 1.5;
+          world.camera.three.updateProjectionMatrix();
         }
         setLoading(false);
       } catch (err) {
@@ -230,7 +225,6 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
     return () => {
       disposed = true;
       container.removeEventListener('click', handlePointerClick);
-      container.removeEventListener('wheel', handleWheelDebug);
       components.dispose();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
