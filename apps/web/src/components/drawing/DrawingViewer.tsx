@@ -10,17 +10,24 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 export function DrawingViewer({
   fileUrl,
   isPdf,
+  page = 1,
   pins,
   placingMode,
   onPlacePin,
   onPinClick,
+  onNumPages,
 }: {
   fileUrl: string;
   isPdf: boolean;
+  // 1-indexed PDF page to render. Ignored for non-PDF (raster image) drawings.
+  page?: number;
   pins: Pin[];
   placingMode?: boolean;
   onPlacePin?: (xNorm: number, yNorm: number) => void;
   onPinClick?: (pin: Pin) => void;
+  // Fires once per document load with the PDF's total page count, so the
+  // caller can show page navigation controls for multi-page drawings.
+  onNumPages?: (numPages: number) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -46,11 +53,13 @@ export function DrawingViewer({
         const currentUrl = fileUrlRef.current;
         if (isPdf) {
           const doc = await pdfjsLib.getDocument(currentUrl).promise;
-          const page = await doc.getPage(1);
+          if (!cancelled) onNumPages?.(doc.numPages);
+          const pageNum = Math.min(Math.max(1, page), doc.numPages);
+          const pdfPage = await doc.getPage(pageNum);
           const containerWidth = containerRef.current?.clientWidth ?? 900;
-          const baseViewport = page.getViewport({ scale: 1 });
+          const baseViewport = pdfPage.getViewport({ scale: 1 });
           const scale = containerWidth / baseViewport.width;
-          const viewport = page.getViewport({ scale });
+          const viewport = pdfPage.getViewport({ scale });
           const canvas = canvasRef.current;
           if (!canvas || cancelled) return;
           canvas.width = viewport.width;
@@ -62,7 +71,7 @@ export function DrawingViewer({
           // impractically long time to rasterize -- confirmed against a real
           // file that hadn't finished after 60+ seconds. Rather than hang
           // silently forever, cancel and surface a clear message.
-          const renderTask = page.render({ canvasContext: ctx, viewport });
+          const renderTask = pdfPage.render({ canvasContext: ctx, viewport });
           const timeout = new Promise<never>((_, reject) => {
             setTimeout(() => {
               renderTask.cancel();
@@ -105,7 +114,7 @@ export function DrawingViewer({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stableUrlKey, isPdf]);
+  }, [stableUrlKey, isPdf, page]);
 
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
     if (!placingMode || !onPlacePin || !size) return;

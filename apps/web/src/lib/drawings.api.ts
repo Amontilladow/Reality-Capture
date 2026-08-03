@@ -9,6 +9,7 @@ export interface Pin {
   description?: string;
   posXNorm: number;
   posYNorm: number;
+  pageNumber: number;
   createdVia: 'manual' | 'floor_plan_tap';
   createdAt: string;
   captureCount: number;
@@ -22,7 +23,7 @@ export interface Pin {
   elementModelId?: string;
 }
 
-export function createPin(projectId: string, drawingId: string, payload: { posXNorm: number; posYNorm: number; name?: string }) {
+export function createPin(projectId: string, drawingId: string, payload: { posXNorm: number; posYNorm: number; name?: string; pageNumber?: number }) {
   return apiPost<Pin>(`/projects/${projectId}/drawings/${drawingId}/pins`, payload);
 }
 

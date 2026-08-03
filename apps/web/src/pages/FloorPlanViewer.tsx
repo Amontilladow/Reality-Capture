@@ -16,6 +16,8 @@ export default function FloorPlanViewer() {
   const [placingMode, setPlacingMode] = useState(false);
   const [movingPin, setMovingPin] = useState<Pin | null>(null);
   const [openPin, setOpenPin] = useState<Pin | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [numPages, setNumPages] = useState(1);
 
   const drawingsQuery = useQuery({
     queryKey: ['drawings', projectId],
@@ -43,9 +45,14 @@ export default function FloorPlanViewer() {
     enabled: Boolean(projectId && activeDrawingId),
   });
 
+  // Pins carry which page they were placed on; only show the ones for the
+  // page currently rendered so a multi-page drawing doesn't overlay every
+  // page's pins onto whichever page happens to be visible.
+  const pinsForCurrentPage = (pinsQuery.data ?? []).filter((p) => p.pageNumber === currentPage);
+
   const createPinMutation = useMutation({
     mutationFn: (payload: { xNorm: number; yNorm: number }) =>
-      createPin(projectId!, activeDrawingId!, { posXNorm: payload.xNorm, posYNorm: payload.yNorm }),
+      createPin(projectId!, activeDrawingId!, { posXNorm: payload.xNorm, posYNorm: payload.yNorm, pageNumber: currentPage }),
     onSuccess: (pin) => {
       queryClient.invalidateQueries({ queryKey: ['pins', projectId, activeDrawingId] });
       setPlacingMode(false);
@@ -70,6 +77,13 @@ export default function FloorPlanViewer() {
   function handlePlaceClick(x: number, y: number) {
     if (movingPin) moveMutation.mutate({ xNorm: x, yNorm: y });
     else createPinMutation.mutate({ xNorm: x, yNorm: y });
+  }
+
+  function goToPage(p: number) {
+    setCurrentPage(p);
+    setPlacingMode(false);
+    setMovingPin(null);
+    setOpenPin(null);
   }
 
   if (!projectId) return null;
@@ -97,7 +111,7 @@ export default function FloorPlanViewer() {
           {(drawingsQuery.data ?? []).map((d) => (
             <button
               key={d.id}
-              onClick={() => { setSelectedDrawingId(d.id); setPlacingMode(false); setMovingPin(null); }}
+              onClick={() => { setSelectedDrawingId(d.id); setPlacingMode(false); setMovingPin(null); setCurrentPage(1); setNumPages(1); }}
               className={`w-full text-left px-3 py-2.5 rounded text-sm transition-colors ${
                 activeDrawingId === d.id ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-800'
               }`}
@@ -129,9 +143,29 @@ export default function FloorPlanViewer() {
                   </button>
                 </div>
               )}
+              {numPages > 1 && (
+                <div className="flex items-center gap-1.5 text-xs text-ink-300">
+                  <button
+                    onClick={() => goToPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage <= 1}
+                    className="btn-ghost !px-2 !py-1 disabled:opacity-30"
+                  >
+                    ← Prev
+                  </button>
+                  <span className="font-mono">Page {currentPage} of {numPages}</span>
+                  <button
+                    onClick={() => goToPage(Math.min(numPages, currentPage + 1))}
+                    disabled={currentPage >= numPages}
+                    className="btn-ghost !px-2 !py-1 disabled:opacity-30"
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
               {(pinsQuery.data?.length ?? 0) > 0 && (
                 <span className="text-[10px] font-mono text-ink-500 ml-auto">
-                  {pinsQuery.data!.length} pin{pinsQuery.data!.length === 1 ? '' : 's'}
+                  {pinsForCurrentPage.length} pin{pinsForCurrentPage.length === 1 ? '' : 's'}
+                  {numPages > 1 ? ` on this page (${pinsQuery.data!.length} total)` : ''}
                 </span>
               )}
             </div>
@@ -141,7 +175,9 @@ export default function FloorPlanViewer() {
             <DrawingViewer
               fileUrl={drawingQuery.data.downloadUrl ?? ''}
               isPdf={Boolean(drawingQuery.data.downloadUrl?.toLowerCase().includes('.pdf'))}
-              pins={pinsQuery.data ?? []}
+              page={currentPage}
+              onNumPages={setNumPages}
+              pins={pinsForCurrentPage}
               placingMode={placingMode || Boolean(movingPin)}
               onPlacePin={handlePlaceClick}
               onPinClick={handlePinClick}

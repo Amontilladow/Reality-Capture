@@ -147,10 +147,10 @@ export class DrawingsService {
     if (!drawing) throw new NotFoundException('Drawing not found.');
 
     const [pin] = await this.db.query`
-      INSERT INTO locations (company_id, level_id, name, drawing_id, pos_x_norm, pos_y_norm, created_via)
+      INSERT INTO locations (company_id, level_id, name, drawing_id, pos_x_norm, pos_y_norm, page_number, created_via)
       VALUES (
         ${companyId}, ${drawing.levelId ?? null}, ${dto.name ?? 'Untitled pin'},
-        ${drawingId}, ${dto.posXNorm}, ${dto.posYNorm}, 'floor_plan_tap'
+        ${drawingId}, ${dto.posXNorm}, ${dto.posYNorm}, ${dto.pageNumber ?? 1}, 'floor_plan_tap'
       )
       RETURNING *
     `;
@@ -163,6 +163,7 @@ export class DrawingsService {
       description: (pin.description as string | null) ?? undefined,
       posXNorm: pin.posXNorm as number,
       posYNorm: pin.posYNorm as number,
+      pageNumber: pin.pageNumber as number,
       createdVia: pin.createdVia as string,
       createdAt: pin.createdAt as string,
       captureCount: 0,
@@ -175,7 +176,7 @@ export class DrawingsService {
     const pins = await this.db.withTenant(companyId, sql => sql`
       SELECT
         loc.id AS location_id, loc.name, loc.description, loc.pos_x_norm, loc.pos_y_norm,
-        loc.created_via, loc.created_at, loc.element_id,
+        loc.page_number, loc.created_via, loc.created_at, loc.element_id,
         be.ifc_name AS element_name, be.ifc_type AS element_ifc_type,
         be.ifc_guid AS element_guid, be.model_id AS element_model_id,
         COUNT(c.id) AS capture_count,

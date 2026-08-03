@@ -1,0 +1,75 @@
+import { NotFoundException } from '@nestjs/common';
+import { DrawingsService } from './drawings.service';
+
+describe('DrawingsService pin page_number', () => {
+  const companyId = 'company-1';
+  const drawingId = 'drawing-1';
+
+  function makeService(opts: {
+    drawingRow?: Record<string, unknown> | undefined;
+    withTenantResult?: Record<string, unknown>[];
+    insertedPin?: Record<string, unknown>;
+  }) {
+    const withTenant = jest.fn().mockResolvedValue(
+      opts.drawingRow !== undefined ? [opts.drawingRow] : (opts.withTenantResult ?? []),
+    );
+    const query = jest.fn().mockResolvedValue(opts.insertedPin ? [opts.insertedPin] : []);
+    const db = { withTenant, query } as any;
+    const storage = { resolveUrls: jest.fn().mockResolvedValue(new Map()) };
+    return { svc: new DrawingsService(db, storage as any), withTenant, query };
+  }
+
+  describe('createPin', () => {
+    it('defaults pageNumber to 1 when the caller does not specify one', async () => {
+      const { svc, query } = makeService({
+        drawingRow: { id: drawingId, levelId: 'level-1' },
+        insertedPin: {
+          id: 'pin-1', name: 'Untitled pin', posXNorm: 0.5, posYNorm: 0.5,
+          pageNumber: 1, createdVia: 'floor_plan_tap', createdAt: '2026-08-03T00:00:00Z',
+        },
+      });
+
+      const result = await svc.createPin(companyId, drawingId, { posXNorm: 0.5, posYNorm: 0.5 });
+
+      expect(result.pageNumber).toBe(1);
+      const insertSql = (query.mock.calls[0][0] as TemplateStringsArray).join('');
+      expect(insertSql).toContain('page_number');
+      // Values passed alongside the template: [..., posXNorm, posYNorm, pageNumber(=1), ...]
+      expect(query.mock.calls[0]).toContain(1);
+    });
+
+    it('persists a specific pageNumber when the caller places a pin on a later page', async () => {
+      const { svc } = makeService({
+        drawingRow: { id: drawingId, levelId: 'level-1' },
+        insertedPin: {
+          id: 'pin-2', name: 'Untitled pin', posXNorm: 0.2, posYNorm: 0.3,
+          pageNumber: 3, createdVia: 'floor_plan_tap', createdAt: '2026-08-03T00:00:00Z',
+        },
+      });
+
+      const result = await svc.createPin(companyId, drawingId, { posXNorm: 0.2, posYNorm: 0.3, pageNumber: 3 });
+
+      expect(result.pageNumber).toBe(3);
+    });
+
+    it('throws NotFoundException for a drawing that does not exist', async () => {
+      const { svc } = makeService({ drawingRow: undefined });
+      await expect(svc.createPin(companyId, 'missing', { posXNorm: 0, posYNorm: 0 })).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getPins', () => {
+    it('includes pageNumber on every returned pin', async () => {
+      const { svc } = makeService({
+        withTenantResult: [
+          { locationId: 'pin-1', name: 'A', posXNorm: 0.1, posYNorm: 0.1, pageNumber: 1, captureCount: 0 },
+          { locationId: 'pin-2', name: 'B', posXNorm: 0.4, posYNorm: 0.6, pageNumber: 2, captureCount: 0 },
+        ],
+      });
+
+      const pins = await svc.getPins(companyId, drawingId);
+
+      expect(pins.map((p: any) => p.pageNumber)).toEqual([1, 2]);
+    });
+  });
+});
