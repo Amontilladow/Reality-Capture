@@ -158,10 +158,7 @@ export function IssueDetail({
               label="BIM element"
               value={
                 issue.elementModelId && issue.elementGuid ? (
-                  <Link
-                    to={`/projects/${projectId}/bim/${issue.elementModelId}?guid=${issue.elementGuid}`}
-                    className="text-blueprint hover:text-blueprint-hover"
-                  >
+                  <Link to={viewIn3dUrl(projectId, issue)} className="text-blueprint hover:text-blueprint-hover">
                     {issue.elementName} — view in 3D →
                   </Link>
                 ) : (
@@ -170,10 +167,32 @@ export function IssueDetail({
               }
             />
           )}
+          {!issue.elementName && issue.modelId && hasCameraState(issue) && (
+            <DetailRow
+              label="3D view"
+              value={
+                <Link to={viewIn3dUrl(projectId, issue)} className="text-blueprint hover:text-blueprint-hover">
+                  Reopen exact view →
+                </Link>
+              }
+            />
+          )}
           <DetailRow label="Created" value={formatDateTime(issue.createdAt)} />
           {issue.closedAt && <DetailRow label="Closed" value={formatDateTime(issue.closedAt)} />}
         </div>
       </div>
+
+      {/* View-state screenshot, captured automatically when the issue was raised from the viewer */}
+      {issue.screenshotUrl && (
+        <div>
+          <div className="field-label">3D view at time of report</div>
+          <img
+            src={issue.screenshotUrl}
+            alt="BIM viewer screenshot captured when this issue was raised"
+            className="w-full max-w-md rounded border border-base-600"
+          />
+        </div>
+      )}
 
       {/* Evidence photos */}
       <div>
@@ -225,6 +244,31 @@ export function IssueDetail({
       </div>
     </div>
   );
+}
+
+function hasCameraState(issue: IssueDetailItem): boolean {
+  return [issue.cameraPosX, issue.cameraPosY, issue.cameraPosZ, issue.cameraTargetX, issue.cameraTargetY, issue.cameraTargetZ]
+    .every((v) => typeof v === 'number');
+}
+
+// Builds the "view in 3D" link: the model + (if present) the element GUID
+// to re-select, plus (if present) the exact camera position/target to
+// restore, so the viewer reopens looking at what the reporter actually saw
+// rather than only re-selecting the element from its default angle.
+function viewIn3dUrl(projectId: string, issue: IssueDetailItem): string {
+  const modelId = issue.elementModelId ?? issue.modelId;
+  const params = new URLSearchParams();
+  if (issue.elementGuid) params.set('guid', issue.elementGuid);
+  if (hasCameraState(issue)) {
+    params.set('cx', String(issue.cameraPosX));
+    params.set('cy', String(issue.cameraPosY));
+    params.set('cz', String(issue.cameraPosZ));
+    params.set('tx', String(issue.cameraTargetX));
+    params.set('ty', String(issue.cameraTargetY));
+    params.set('tz', String(issue.cameraTargetZ));
+  }
+  const query = params.toString();
+  return `/projects/${projectId}/bim/${modelId}${query ? `?${query}` : ''}`;
 }
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {

@@ -30,7 +30,7 @@ export class StorageService {
   }
 
   // Generate a key for a new object — structured for easy browsing and lifecycle rules
-  generateKey(companyId: string, projectId: string, type: 'captures' | 'drawings' | 'documents' | 'avatars', filename: string): string {
+  generateKey(companyId: string, projectId: string, type: 'captures' | 'drawings' | 'documents' | 'avatars' | 'issues', filename: string): string {
     const ext = filename.split('.').pop()?.toLowerCase() ?? 'bin';
     return `${companyId}/${type}/${projectId}/${randomUUID()}.${ext}`;
   }

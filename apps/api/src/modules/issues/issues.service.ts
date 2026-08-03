@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nest
 import { DatabaseService } from '../../database/database.service';
 import { AiClientService } from '../ai-client/ai-client.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { StorageService } from '../storage/storage.service';
 import type { CreateIssueDto } from './dto/create-issue.dto';
 import type { UpdateIssueDto } from './dto/update-issue.dto';
 import type { AddActivityDto } from './dto/add-activity.dto';
@@ -15,6 +16,7 @@ export class IssuesService {
     private readonly db: DatabaseService,
     private readonly aiClient: AiClientService,
     private readonly notifications: NotificationsService,
+    private readonly storage: StorageService,
   ) {}
 
   // ── Generate issue number ─────────────────────────────────────────────────
@@ -39,7 +41,8 @@ export class IssuesService {
         issue_type, issue_number, title, description, priority, discipline, trade,
         specification_ref, status, assigned_to, responsible_company, deadline,
         capture_id, drawing_id, pos_x_norm, pos_y_norm, hotspot_yaw, hotspot_pitch,
-        tags, created_by
+        tags, created_by, model_id, camera_pos_x, camera_pos_y, camera_pos_z,
+        camera_target_x, camera_target_y, camera_target_z, screenshot_storage_key
       ) VALUES (
         ${companyId}, ${projectId}, ${dto.buildingId ?? null}, ${dto.levelId ?? null},
         ${dto.locationId ?? null}, ${dto.elementId ?? null},
@@ -51,7 +54,10 @@ export class IssuesService {
         ${dto.captureId ?? null}, ${dto.drawingId ?? null},
         ${dto.posXNorm ?? null}, ${dto.posYNorm ?? null},
         ${dto.hotspotYaw ?? null}, ${dto.hotspotPitch ?? null},
-        ${dto.tags ? JSON.stringify(dto.tags) : '{}'}, ${userId}
+        ${dto.tags ? JSON.stringify(dto.tags) : '{}'}, ${userId},
+        ${dto.modelId ?? null}, ${dto.cameraPosX ?? null}, ${dto.cameraPosY ?? null}, ${dto.cameraPosZ ?? null},
+        ${dto.cameraTargetX ?? null}, ${dto.cameraTargetY ?? null}, ${dto.cameraTargetZ ?? null},
+        ${dto.screenshotStorageKey ?? null}
       )
       RETURNING *`;
 
@@ -163,7 +169,20 @@ export class IssuesService {
       WHERE i.id = ${issueId} AND i.project_id = ${projectId} AND i.company_id = ${companyId}
     `);
     if (!issue) throw new NotFoundException(`Issue ${issueId} not found.`);
+    if (issue.screenshotStorageKey) {
+      return { ...issue, screenshotUrl: await this.storage.getReadUrl(issue.screenshotStorageKey as string) };
+    }
     return issue;
+  }
+
+  // ── View-state screenshot upload ────────────────────────────────────────
+  // Mirrors bim.service.ts's getModelUploadUrl -- a lightweight presigned
+  // PUT URL, no DB row of its own. The resulting storageKey is passed
+  // straight into create()'s screenshotStorageKey.
+  async getScreenshotUploadUrl(companyId: string, projectId: string) {
+    const key = this.storage.generateKey(companyId, projectId, 'issues', `${Date.now()}.png`);
+    const url = await this.storage.getUploadUrl(key, 'image/png', 5 * 1024 * 1024);
+    return { ...url, storageKey: key };
   }
 
   // ── Update ────────────────────────────────────────────────────────────────

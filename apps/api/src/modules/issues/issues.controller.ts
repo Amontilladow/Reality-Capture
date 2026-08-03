@@ -21,6 +21,12 @@ export class IssuesController {
     return { data: await this.svc.create(u.companyId, pid, u.id, dto), error: null };
   }
 
+  @Post('screenshot-upload-url')
+  @ApiOperation({ summary: 'Get a presigned URL for uploading a BIM-viewer view-state screenshot, before creating an issue' })
+  async getScreenshotUploadUrl(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
+    return { data: await this.svc.getScreenshotUploadUrl(u.companyId, pid), error: null };
+  }
+
   @Get()
   @ApiOperation({ summary: 'List issues with filtering, search, and pagination' })
   async findAll(

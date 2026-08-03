@@ -9,6 +9,8 @@ import { ElementSearch } from '../components/bim-viewer/ElementSearch';
 import { IssueFormModal } from '../components/issues/IssueFormModal';
 import { getModelViewerData, getModelHierarchy, getElementByGuid, listBimModels, type BimElementDetail } from '../lib/bim.api';
 import { getMembers, getHierarchy } from '../lib/projects.api';
+import { uploadIssueScreenshot } from '../lib/issues.api';
+import type { CameraVector } from '../components/bim-viewer/BimViewer';
 
 export default function BimViewerPage() {
   const { projectId, modelId } = useParams<{ projectId: string; modelId: string }>();
@@ -19,7 +21,15 @@ export default function BimViewerPage() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [raiseIssueOpen, setRaiseIssueOpen] = useState(false);
   const [jumpApplied, setJumpApplied] = useState(false);
+  const [cameraJumpApplied, setCameraJumpApplied] = useState(false);
+  const [modelReady, setModelReady] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<'tree' | 'list'>('tree');
+  const [capturedView, setCapturedView] = useState<{
+    modelId: string;
+    cameraPosition: CameraVector;
+    cameraTarget: CameraVector;
+    screenshotStorageKey: string | null;
+  } | null>(null);
 
   const modelsQuery = useQuery({
     queryKey: ['bim-models', projectId],
@@ -84,6 +94,53 @@ export default function BimViewerPage() {
       cancelled = true;
     };
   }, [jumpToGuid, jumpApplied, viewerDataQuery.data]);
+
+  // Restore the exact camera view an issue was raised from, if the link
+  // that brought us here encoded one (see IssueDetail's "view in 3D" link).
+  // Gated on modelReady (fired by BimViewer after its own initial
+  // fit-to-model has already run) rather than a guessed delay, so this
+  // reliably applies last instead of racing the load sequence's own
+  // positioning.
+  useEffect(() => {
+    if (cameraJumpApplied || !modelReady) return;
+    const cx = searchParams.get('cx');
+    const cy = searchParams.get('cy');
+    const cz = searchParams.get('cz');
+    const tx = searchParams.get('tx');
+    const ty = searchParams.get('ty');
+    const tz = searchParams.get('tz');
+    if ([cx, cy, cz, tx, ty, tz].some((v) => v === null)) return;
+
+    viewerRef.current?.setCameraState({
+      position: { x: Number(cx), y: Number(cy), z: Number(cz) },
+      target: { x: Number(tx), y: Number(ty), z: Number(tz) },
+    });
+    setCameraJumpApplied(true);
+  }, [searchParams, cameraJumpApplied, modelReady]);
+
+  async function handleRaiseIssue() {
+    const cameraState = viewerRef.current?.getCameraState();
+    if (!cameraState || !modelId) {
+      setCapturedView(null);
+      setRaiseIssueOpen(true);
+      return;
+    }
+    const screenshotDataUrl = viewerRef.current?.getScreenshotDataUrl() ?? null;
+    // Open immediately with position/target -- don't make the user wait on
+    // the screenshot upload before they can start filling out the form.
+    // The upload result attaches itself once it resolves.
+    setCapturedView({
+      modelId,
+      cameraPosition: cameraState.position,
+      cameraTarget: cameraState.target,
+      screenshotStorageKey: null,
+    });
+    setRaiseIssueOpen(true);
+    if (screenshotDataUrl && projectId) {
+      const storageKey = await uploadIssueScreenshot(projectId, screenshotDataUrl);
+      setCapturedView((prev) => (prev ? { ...prev, screenshotStorageKey: storageKey } : prev));
+    }
+  }
 
   function handleSelectFromViewer(guid: string | null) {
     setSelectedGuid(guid);
@@ -182,6 +239,7 @@ export default function BimViewerPage() {
               ref={viewerRef}
               fragmentsUrl={viewerDataQuery.data.fragmentsUrl}
               onSelect={handleSelectFromViewer}
+              onModelReady={() => setModelReady(true)}
             />
           )}
         </main>
@@ -191,7 +249,7 @@ export default function BimViewerPage() {
             element={elementQuery.data ?? null}
             loading={elementQuery.isFetching}
             projectId={projectId}
-            onRaiseIssue={() => setRaiseIssueOpen(true)}
+            onRaiseIssue={handleRaiseIssue}
           />
         </aside>
       </div>
@@ -199,12 +257,13 @@ export default function BimViewerPage() {
       {elementQuery.data && (
         <IssueFormModal
           open={raiseIssueOpen}
-          onClose={() => setRaiseIssueOpen(false)}
+          onClose={() => { setRaiseIssueOpen(false); setCapturedView(null); }}
           projectId={projectId}
           members={membersQuery.data ?? []}
           hierarchy={projectHierarchyQuery.data ?? []}
           defaultElementId={elementQuery.data.id}
           defaultElementName={elementQuery.data.ifcName ?? elementQuery.data.ifcType.replace('IFC', '')}
+          viewState={capturedView ?? undefined}
         />
       )}
     </div>

@@ -2,16 +2,40 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import * as THREE from 'three';
 import * as OBC from '@thatopen/components';
 
+export interface CameraVector {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface CameraState {
+  position: CameraVector;
+  target: CameraVector;
+}
+
 export interface BimViewerHandle {
   fitToModel: () => void;
   // Resolves false if the guid can't be resolved yet (e.g. the model is
   // still loading) so a caller can retry, rather than silently no-op-ing.
   selectByGuid: (guid: string) => Promise<boolean>;
+  // Null before the world/camera exists yet (e.g. called before load).
+  getCameraState: () => CameraState | null;
+  setCameraState: (state: CameraState, animate?: boolean) => void;
+  // A PNG data URL of the current frame, for attaching to an issue as a
+  // "this is the view I was looking at" screenshot. Null if the renderer
+  // isn't ready yet.
+  getScreenshotDataUrl: () => string | null;
 }
 
 interface BimViewerProps {
   fragmentsUrl: string;
   onSelect?: (guid: string | null) => void;
+  // Fires once after the model has loaded AND the initial fit-to-model has
+  // run -- the reliable point after which nothing else will move the
+  // camera on its own, so callers doing their own camera restoration
+  // (e.g. reopening an issue's captured view) know their call won't get
+  // silently overwritten by the load sequence's own positioning.
+  onModelReady?: () => void;
 }
 
 // Core BIM model viewer. Loads a pre-generated Fragments file (never parses
@@ -23,7 +47,7 @@ interface BimViewerProps {
 // enhancements on top of this foundation — not implemented here, and not
 // silently stubbed either. See MASTER_BACKLOG.md for status.
 export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function BimViewer(
-  { fragmentsUrl, onSelect },
+  { fragmentsUrl, onSelect, onModelReady },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -70,6 +94,35 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
       if (Object.keys(modelIdMap).length === 0) return false;
       await highlightModelIdMap(modelIdMap);
       return true;
+    },
+    getCameraState: () => {
+      const world = worldRef.current;
+      if (!world) return null;
+      const position = world.camera.controls.getPosition(new THREE.Vector3());
+      const target = world.camera.controls.getTarget(new THREE.Vector3());
+      return {
+        position: { x: position.x, y: position.y, z: position.z },
+        target: { x: target.x, y: target.y, z: target.z },
+      };
+    },
+    setCameraState: (state, animate = false) => {
+      const world = worldRef.current;
+      if (!world) return;
+      world.camera.controls.setLookAt(
+        state.position.x, state.position.y, state.position.z,
+        state.target.x, state.target.y, state.target.z,
+        animate,
+      );
+    },
+    getScreenshotDataUrl: () => {
+      const world = worldRef.current;
+      if (!world || !world.renderer) return null;
+      // Force a render immediately before reading the canvas -- toDataURL()
+      // reads whatever is currently in the drawing buffer, and without a
+      // render call right beforehand that can be stale or blank depending
+      // on when the browser last painted.
+      world.renderer.three.render(world.scene.three, world.camera.three);
+      return world.renderer.three.domElement.toDataURL('image/png');
     },
   }));
 
@@ -215,6 +268,7 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
           world.camera.three.updateProjectionMatrix();
         }
         setLoading(false);
+        onModelReady?.();
       } catch (err) {
         if (!disposed) setError(err instanceof Error ? err.message : 'Failed to load model');
         setLoading(false);

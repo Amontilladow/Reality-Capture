@@ -32,6 +32,14 @@ export interface Issue {
   posYNorm?: number;
   hotspotYaw?: number;
   hotspotPitch?: number;
+  modelId?: string;
+  cameraPosX?: number;
+  cameraPosY?: number;
+  cameraPosZ?: number;
+  cameraTargetX?: number;
+  cameraTargetY?: number;
+  cameraTargetZ?: number;
+  screenshotStorageKey?: string;
   tags: string[];
   createdBy: string;
   createdAt: string;

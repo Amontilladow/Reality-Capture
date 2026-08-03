@@ -26,4 +26,18 @@ export class CreateIssueDto {
   @IsOptional() @IsNumber()  hotspotYaw?: number;
   @IsOptional() @IsNumber()  hotspotPitch?: number;
   @IsOptional() @IsArray()   tags?: string[];
+
+  // View state captured from the BIM viewer at the moment "Raise issue" was
+  // clicked, so "view in 3D" can restore the exact vantage point instead of
+  // only re-selecting the linked element. All optional -- an issue raised
+  // outside the viewer (or before this feature existed) simply has none of
+  // these set.
+  @IsOptional() @IsUUID()   modelId?: string;
+  @IsOptional() @IsNumber() cameraPosX?: number;
+  @IsOptional() @IsNumber() cameraPosY?: number;
+  @IsOptional() @IsNumber() cameraPosZ?: number;
+  @IsOptional() @IsNumber() cameraTargetX?: number;
+  @IsOptional() @IsNumber() cameraTargetY?: number;
+  @IsOptional() @IsNumber() cameraTargetZ?: number;
+  @IsOptional() @IsString() screenshotStorageKey?: string;
 }

@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { IssueType, IssuePriority } from '@engineeringos/types';
 import { Modal } from '../ui/Modal';
 import { createIssue, updateIssue, type IssueDetailItem } from '../../lib/issues.api';
+import type { CameraVector } from '../bim-viewer/BimViewer';
 import type { ProjectMember } from '../../lib/projects.api';
 import type { ProjectHierarchy } from '../../lib/projects.api';
 import { ISSUE_TYPES, ISSUE_TYPE_LABELS, ISSUE_PRIORITIES, PRIORITY_LABELS } from '../../lib/issue-constants';
@@ -17,6 +18,7 @@ export function IssueFormModal({
   issue,
   defaultElementId,
   defaultElementName,
+  viewState,
 }: {
   open: boolean;
   onClose: () => void;
@@ -26,6 +28,14 @@ export function IssueFormModal({
   issue?: IssueDetailItem;
   defaultElementId?: string;
   defaultElementName?: string;
+  // Captured automatically from the BIM viewer when "Raise issue" is
+  // clicked there -- not user-editable, so no corresponding form field.
+  viewState?: {
+    modelId: string;
+    cameraPosition: CameraVector;
+    cameraTarget: CameraVector;
+    screenshotStorageKey?: string | null;
+  };
 }) {
   const isEdit = Boolean(issue);
   const queryClient = useQueryClient();
@@ -78,6 +88,14 @@ export function IssueFormModal({
         locationId: locationId || undefined,
         elementId: defaultElementId,
         deadline: deadline ? new Date(deadline).toISOString() : undefined,
+        modelId: viewState?.modelId,
+        cameraPosX: viewState?.cameraPosition.x,
+        cameraPosY: viewState?.cameraPosition.y,
+        cameraPosZ: viewState?.cameraPosition.z,
+        cameraTargetX: viewState?.cameraTarget.x,
+        cameraTargetY: viewState?.cameraTarget.y,
+        cameraTargetZ: viewState?.cameraTarget.z,
+        screenshotStorageKey: viewState?.screenshotStorageKey ?? undefined,
       });
     },
     onSuccess: () => {
@@ -97,6 +115,12 @@ export function IssueFormModal({
         {!isEdit && defaultElementId && (
           <div className="text-xs text-ink-500 bg-base-700/40 rounded px-3 py-2">
             BIM element: <span className="text-ink-100">{defaultElementName || defaultElementId}</span>
+          </div>
+        )}
+
+        {!isEdit && viewState && (
+          <div className="text-xs text-ink-500 bg-base-700/40 rounded px-3 py-2">
+            3D view captured{viewState.screenshotStorageKey ? ' with screenshot' : ''} — "view in 3D" will reopen this exact vantage point.
           </div>
         )}
 

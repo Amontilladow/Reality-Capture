@@ -1,3 +1,4 @@
+import axios from 'axios';
 import type { Issue, IssueActivity, IssueType, IssuePriority, IssueStatus } from '@engineeringos/types';
 import { apiGet, apiGetWithMeta, apiPost, apiPatch, apiDelete } from './api';
 
@@ -15,6 +16,7 @@ export interface IssueDetailItem extends IssueListItem {
   elementName?: string;
   elementGuid?: string;
   elementModelId?: string;
+  screenshotUrl?: string;
 }
 
 export interface IssueSummary {
@@ -72,10 +74,40 @@ export interface CreateIssuePayload {
   drawingId?: string;
   posXNorm?: number;
   posYNorm?: number;
+  modelId?: string;
+  cameraPosX?: number;
+  cameraPosY?: number;
+  cameraPosZ?: number;
+  cameraTargetX?: number;
+  cameraTargetY?: number;
+  cameraTargetZ?: number;
+  screenshotStorageKey?: string;
 }
 
 export function createIssue(projectId: string, payload: CreateIssuePayload) {
   return apiPost<Issue>(`/projects/${projectId}/issues`, payload);
+}
+
+export function getIssueScreenshotUploadUrl(projectId: string) {
+  return apiPost<{ uploadUrl: string; storageKey: string }>(
+    `/projects/${projectId}/issues/screenshot-upload-url`,
+    {},
+  );
+}
+
+// Uploads a data URL (from BimViewerHandle.getScreenshotDataUrl()) as a
+// view-state screenshot and returns its storage key, ready to pass as
+// CreateIssuePayload.screenshotStorageKey. Returns null on any failure --
+// a screenshot is a nice-to-have, never worth blocking issue creation over.
+export async function uploadIssueScreenshot(projectId: string, dataUrl: string): Promise<string | null> {
+  try {
+    const { uploadUrl, storageKey } = await getIssueScreenshotUploadUrl(projectId);
+    const blob = await (await fetch(dataUrl)).blob();
+    await axios.put(uploadUrl, blob, { headers: { 'Content-Type': 'image/png' } });
+    return storageKey;
+  } catch {
+    return null;
+  }
 }
 
 export interface UpdateIssuePayload {
