@@ -87,7 +87,7 @@ export function getModelUploadUrl(projectId: string, filename: string) {
   );
 }
 
-export function registerBimModel(projectId: string, dto: { name: string; storageKey: string; format?: string }) {
+export function registerBimModel(projectId: string, dto: { name: string; storageKey: string; format?: string; originalFilename?: string }) {
   return apiPost<BimModel>(`/projects/${projectId}/bim/models`, dto);
 }
 
@@ -104,7 +104,7 @@ export async function uploadBimModel(
       if (onProgress && evt.total) onProgress(Math.round((evt.loaded / evt.total) * 100));
     },
   });
-  return registerBimModel(projectId, { name, storageKey, format: 'IFC' });
+  return registerBimModel(projectId, { name, storageKey, format: 'IFC', originalFilename: file.name });
 }
 
 export function getModelStatus(projectId: string, modelId: string) {

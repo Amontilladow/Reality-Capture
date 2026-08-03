@@ -254,6 +254,14 @@ export class IfcRepositoryService {
     warnings: string[];
     fragmentsStorageKey?: string;
     error?: string;
+    sourceSha256?: string;
+    sourceSizeBytes?: number;
+    fragmentsSha256?: string;
+    fragmentsSizeBytes?: number;
+    generationNodeVersion?: string;
+    generationFragmentsVersion?: string;
+    generationWebIfcVersion?: string;
+    generationGitCommit?: string | null;
   }): Promise<void> {
     await this.db.withTenant(companyId, (sql) => sql`
       UPDATE bim_models
@@ -266,6 +274,14 @@ export class IfcRepositoryService {
           fragments_storage_key = ${result.fragmentsStorageKey ?? null},
           processing_error = ${result.error ?? null},
           processing_progress = ${result.status === 'ready' ? 100 : sql`processing_progress`},
+          source_sha256 = ${result.sourceSha256 ?? null},
+          source_size_bytes = ${result.sourceSizeBytes ?? null},
+          fragments_sha256 = ${result.fragmentsSha256 ?? null},
+          fragments_size_bytes = ${result.fragmentsSizeBytes ?? null},
+          generation_node_version = ${result.generationNodeVersion ?? null},
+          generation_fragments_version = ${result.generationFragmentsVersion ?? null},
+          generation_web_ifc_version = ${result.generationWebIfcVersion ?? null},
+          generation_git_commit = ${result.generationGitCommit ?? null},
           completed_at = NOW(),
           updated_at = NOW()
       WHERE id = ${modelId} AND company_id = ${companyId}

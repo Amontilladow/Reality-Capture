@@ -26,7 +26,7 @@ export class BimController {
 
   @Post('models')
   @ApiOperation({ summary: 'Register a BIM model after upload and queue IFC parsing' })
-  async registerModel(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: { name: string; storageKey: string; format?: string }) {
+  async registerModel(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: { name: string; storageKey: string; format?: string; originalFilename?: string }) {
     return { data: await this.svc.registerModel(u.companyId, pid, u.id, dto), error: null };
   }
 
@@ -46,6 +46,12 @@ export class BimController {
   @ApiOperation({ summary: 'Get a presigned Fragments URL + status for opening the model in the viewer' })
   async getModelViewerData(@CurrentUser() u: AuthenticatedUser, @Param('modelId') modelId: string) {
     return { data: await this.svc.getModelViewerData(u.companyId, modelId), error: null };
+  }
+
+  @Get('models/:modelId/provenance')
+  @ApiOperation({ summary: 'Get provenance metadata (checksums, generation environment) for a model\'s artifacts -- diagnostic use, never returns file bytes or storage URLs' })
+  async getModelProvenance(@CurrentUser() u: AuthenticatedUser, @Param('modelId') modelId: string) {
+    return { data: await this.svc.getModelProvenance(u.companyId, modelId), error: null };
   }
 
   @Get('models/:modelId/hierarchy')

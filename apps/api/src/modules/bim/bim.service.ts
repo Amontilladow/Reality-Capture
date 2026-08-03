@@ -36,10 +36,10 @@ export class BimService {
     return { ...url, storageKey: key };
   }
 
-  async registerModel(companyId: string, projectId: string, userId: string, dto: { name: string; storageKey: string; format?: string; ifcSchema?: string }) {
+  async registerModel(companyId: string, projectId: string, userId: string, dto: { name: string; storageKey: string; format?: string; ifcSchema?: string; originalFilename?: string }) {
     const [model] = await this.db.query`
-      INSERT INTO bim_models (company_id, project_id, name, format, ifc_schema, storage_key, status, uploaded_by)
-      VALUES (${companyId}, ${projectId}, ${dto.name}, ${dto.format ?? 'IFC'}, ${dto.ifcSchema ?? null}, ${dto.storageKey}, 'pending', ${userId})
+      INSERT INTO bim_models (company_id, project_id, name, format, ifc_schema, storage_key, status, uploaded_by, original_filename)
+      VALUES (${companyId}, ${projectId}, ${dto.name}, ${dto.format ?? 'IFC'}, ${dto.ifcSchema ?? null}, ${dto.storageKey}, 'pending', ${userId}, ${dto.originalFilename ?? null})
       RETURNING *
     `;
     await this.enqueueParseJob(companyId, projectId, model.id as string, dto.storageKey);
@@ -127,6 +127,30 @@ export class BimService {
     }
     const fragmentsUrl = await this.storage.getReadUrl(model.fragmentsStorageKey as string, 3600);
     return { status: 'ready', fragmentsUrl, processingError: null };
+  }
+
+  // Metadata-only provenance for a model's generated artifacts -- what
+  // produced this .frag, from which exact IFC, in which environment. Never
+  // returns storage credentials, storage URLs, or file bytes; fields are
+  // null until the model has been (re)processed by a worker build that
+  // records them (see migration 011_bim_model_provenance.sql).
+  async getModelProvenance(companyId: string, modelId: string) {
+    const model = await this.getModel(companyId, modelId);
+    return {
+      modelId: model.id,
+      originalFilename: model.originalFilename ?? null,
+      storageProvider: 'cloudflare-r2',
+      sourceSha256: model.sourceSha256 ?? null,
+      sourceSizeBytes: model.sourceSizeBytes ?? null,
+      fragmentsSha256: model.fragmentsSha256 ?? null,
+      fragmentsSizeBytes: model.fragmentsSizeBytes ?? null,
+      generationNodeVersion: model.generationNodeVersion ?? null,
+      generationFragmentsVersion: model.generationFragmentsVersion ?? null,
+      generationWebIfcVersion: model.generationWebIfcVersion ?? null,
+      generationGitCommit: model.generationGitCommit ?? null,
+      uploadedAt: model.createdAt,
+      generatedAt: model.completedAt ?? null,
+    };
   }
 
   // The IFC-native spatial tree (Site → Building → Storey → Space),

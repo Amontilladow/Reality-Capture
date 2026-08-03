@@ -13,6 +13,7 @@ import { IfcFragmentsService } from './ifc-fragments.service';
 import { IfcRepositoryService } from './ifc-repository.service';
 import { IfcReportService } from './ifc-report.service';
 import { JobMetrics } from './job-metrics';
+import { digest, captureGenerationVersions, type GenerationVersions } from './provenance.util';
 
 // Elements are extracted and written in fixed-size batches so memory use
 // stays bounded by batch size, not total element count — see
@@ -55,6 +56,10 @@ export class IfcProcessingProcessor {
     let elementCount = 0;
     let fragmentsSizeBytes: number | undefined;
     let fragmentsStorageKey: string | undefined;
+    let sourceSha256: string | undefined;
+    let sourceSizeBytes: number | undefined;
+    let fragmentsSha256: string | undefined;
+    let versions: GenerationVersions | null = null;
     const objectCounts: Record<string, number> = {};
     let spatialCounts = { sites: 0, buildings: 0, storeys: 0, spaces: 0 };
     let propertiesCount = 0;
@@ -68,6 +73,20 @@ export class IfcProcessingProcessor {
       metrics.startStage('downloading');
       await reportProgress('downloading');
       const bytes = await this.storage.download(storageKey);
+      // Provenance metadata is best-effort: a hashing/version-detection
+      // failure must never fail the actual import. Degrade to NULL and
+      // keep going rather than letting either of these throw out of the
+      // handler entirely (which would skip markFailed and leave the model
+      // stuck in 'processing').
+      try {
+        const sourceDigest = digest(bytes);
+        sourceSha256 = sourceDigest.sha256;
+        sourceSizeBytes = sourceDigest.sizeBytes;
+        versions = captureGenerationVersions();
+      } catch (error) {
+        metrics.warnings.push(`Provenance capture (source hash/versions) failed: ${error instanceof Error ? error.message : String(error)}`);
+        this.logger.warn(`Model ${modelId} — provenance capture failed, continuing without it: ${error instanceof Error ? error.message : String(error)}`);
+      }
       metrics.endStage('downloading');
 
       metrics.startStage('parsing');
@@ -202,7 +221,9 @@ export class IfcProcessingProcessor {
         await reportProgress('generating_fragments');
         try {
           const fragBytes = await this.fragments.generate(bytes);
-          fragmentsSizeBytes = fragBytes.byteLength;
+          const fragmentsDigest = digest(fragBytes);
+          fragmentsSizeBytes = fragmentsDigest.sizeBytes;
+          fragmentsSha256 = fragmentsDigest.sha256;
           metrics.endStage('generating_fragments');
 
           metrics.startStage('uploading_fragments');
@@ -232,6 +253,14 @@ export class IfcProcessingProcessor {
         peakMemoryBytes: metrics.peakMemoryBytes,
         warnings: metrics.warnings,
         fragmentsStorageKey,
+        sourceSha256,
+        sourceSizeBytes,
+        fragmentsSha256,
+        fragmentsSizeBytes,
+        generationNodeVersion: versions?.nodeVersion,
+        generationFragmentsVersion: versions?.fragmentsVersion,
+        generationWebIfcVersion: versions?.webIfcVersion,
+        generationGitCommit: versions?.gitCommit,
       });
 
       const { report: successReportJson, text } = this.report.build({

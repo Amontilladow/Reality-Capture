@@ -236,3 +236,16 @@ overlaps with those.)
 - **[Audit]** Add a proper restricted (non-superuser) database role
   before any real deployment, specifically to make the already-built RLS
   protection actually active.
+- ~~Record IFC import provenance at generation time.~~ **Shipped.** Surfaced
+  by the BIM viewer geometry investigation (`ROOT_CAUSE_REPORT_BIM_VIEWER.md`):
+  there was no way to answer "which exact environment produced this
+  `.frag`?" after the fact. Migration `011_bim_model_provenance.sql` adds
+  nullable `bim_models` columns (original filename, source/fragments
+  SHA-256 + size, Node/`@thatopen/fragments`/`web-ifc` versions, git
+  commit); `apps/ifc-service` computes and persists them during normal
+  processing; `GET .../models/:modelId/provenance` exposes them
+  (metadata only, same auth as the rest of `bim.controller.ts`, never
+  storage keys/URLs/credentials/bytes). Models processed before this
+  migration have NULL provenance fields until reprocessed. Deployed to
+  production and verified against the LATEST STAIR-03 model: not yet —
+  see `ROOT_CAUSE_REPORT_BIM_VIEWER.md`'s Open Questions for status.
