@@ -10,6 +10,12 @@ export default defineConfig({
     },
   },
   build: {
+    rollupOptions: {
+      // Explicit entry point so dev-only HTML (dev-harness/) can never be
+      // picked up by Vite's default multi-page auto-discovery, regardless
+      // of where such files live in the project.
+      input: path.resolve(__dirname, 'index.html'),
+    },
     commonjsOptions: {
       // @engineeringos/types is a CJS-compiled workspace package (pnpm
       // symlink, not a node_modules registry install). Rollup's commonjs

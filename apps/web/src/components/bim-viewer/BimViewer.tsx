@@ -214,13 +214,6 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
           world.camera.three.far = world.camera.controls.maxDistance * 1.5;
           world.camera.three.updateProjectionMatrix();
         }
-        // Temporary, read-only diagnostic hook for the missing-geometry pipeline
-        // audit -- exposes the already-loaded model/fragments/scene for
-        // inspection from the console. No behavior change. To be removed once
-        // the audit is complete.
-        (window as unknown as { __bimAudit?: unknown }).__bimAudit = {
-          world, model, fragments, THREE, modelId: modelIdRef.current,
-        };
         setLoading(false);
       } catch (err) {
         if (!disposed) setError(err instanceof Error ? err.message : 'Failed to load model');

@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Fragments Repro</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #eee; font-family: monospace; }
+      #log { position: fixed; top: 0; left: 0; z-index: 10; background: white; padding: 8px; font-size: 12px; max-width: 500px; max-height: 300px; overflow: auto; white-space: pre-wrap; }
+      #viewer { width: 100%; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <div id="log">loading...</div>
+    <div id="viewer"></div>
+    <script type="module" src="./repro-main.ts"></script>
+  </body>
+</html>

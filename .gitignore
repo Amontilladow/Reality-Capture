@@ -9,3 +9,7 @@ __pycache__/
 .venv/
 *.log
 .DS_Store
+
+# BIM debug tooling: sample/generated .frag fixtures (regenerable via
+# tools/bim-debug/generate-fragment.cjs, not meant to be committed binaries)
+apps/web/public/repro/
