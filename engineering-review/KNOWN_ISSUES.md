@@ -58,6 +58,19 @@ None open.
   worst case is a redundant token issued — but it's a real gap in
   strict one-time-use enforcement. Low severity, straightforward fix.
 
+- **Persistent zero-geometry `IFCMECHANICALFASTENER`.** GUID
+  `32$ek4m5rEgvoHmkRSTjkO` ("Bolt assembly") on LATEST STAIR-03
+  consistently showed 0 vertices/triangles across the checks performed
+  during the BIM viewer root-cause investigation — unlike the 27 weld
+  fasteners found alongside it, which turned out to be victims of the
+  `@thatopen/fragments` generation nondeterminism documented in
+  `ROOT_CAUSE_REPORT_BIM_VIEWER.md` and filed upstream as
+  [engine_fragment#260](https://github.com/ThatOpen/engine_fragment/issues/260).
+  This one did not flip to correct geometry on retest, suggesting a
+  separate cause. Status: not yet investigated — deliberately not
+  combined with the #260 finding without evidence they share a root
+  cause.
+
 (The 8 bugs found and fixed during this project's own development —
 spanning the IFC engine and BIM viewer integration — remain fixed and
 re-verified; see `COMPLETED_WORK.md` for that list. Nothing above
