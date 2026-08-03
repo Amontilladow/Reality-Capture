@@ -203,10 +203,17 @@ overlaps with those.)
   had previously only flagged Issues and Timeline — Documents being
   fully unreachable too was found during this audit round and is now
   recorded precisely.
-- **Issue Management is not integrated into the BIM viewer yet** —
-  backend issue creation/assignment exists and is frozen/working, but
-  camera-position capture, screenshot, and "reopen exact view" have not
-  been built. This is the explicit next objective.
+- ~~Issue Management is not integrated into the BIM viewer yet~~ **Shipped**
+  (`8f29239`, `apps/web/src/components/bim-viewer/BimViewer.tsx` +
+  `apps/web/src/pages/BimViewerPage.tsx` + migration
+  `012_issue_view_state.sql`): "Raise issue" from the viewer now captures
+  camera position/target and a screenshot, and an issue's "view in 3D"
+  link restores that exact vantage point. Not yet verified live in a
+  browser — local dev Postgres credentials are broken in this
+  environment (same blocker noted on the provenance feature in
+  "Future Enhancement" below), so this has only been verified via
+  tests/typecheck/build and a full migration-chain dry run, not a real
+  click-through.
 - **`@thatopen/components`' extended feature APIs** (section planes/box,
   explode, isolation, filters, walk mode) have not been explored in this
   project at all — budget real time for the same empirical
