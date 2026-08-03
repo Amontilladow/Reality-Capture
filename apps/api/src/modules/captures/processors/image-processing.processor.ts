@@ -1,36 +1,43 @@
 import { Processor, Process } from '@nestjs/bull';
 import type { Job } from 'bull';
 import { Logger } from '@nestjs/common';
+import sharp from 'sharp';
+import * as exifr from 'exifr';
 import { DatabaseService } from '../../../database/database.service';
 import { StorageService } from '../../storage/storage.service';
 
 export interface ImageProcessingJob {
   captureId: string;
   companyId: string;
+  projectId: string;
   storageKey: string;
   mimeType: string;
   captureType: 'photo_360' | 'photo_standard' | 'video';
 }
 
+interface RenditionSpec {
+  type: 'thumbnail_sm' | 'thumbnail_lg' | 'preview';
+  build: (pipeline: sharp.Sharp) => sharp.Sharp;
+  quality: number;
+}
+
+// EXIF orientation values 5-8 mean the image is rotated 90/270 degrees --
+// the visually-correct width/height are swapped relative to the raw
+// encoded pixel grid sharp's metadata() reports.
+function isSidewaysOrientation(orientation: number | undefined): boolean {
+  return orientation !== undefined && orientation >= 5 && orientation <= 8;
+}
+
 /**
  * Image Processing Processor
  *
- * Runs in a separate Bull worker — never blocks the API.
- *
- * Phase 2 implementation: the actual image manipulation (resize, thumbnail
- * generation, EXIF extraction) is performed by the Python image-processing
- * microservice, which this processor calls via HTTP. For Phase 1, we mark
- * the capture as ready immediately so the rest of the API can be tested
- * end-to-end without the Python service running.
- *
- * In production (Phase 2+), the Python service:
- *   1. Downloads the original from S3
- *   2. Generates thumbnail_sm (300x300), thumbnail_lg (800x800), preview (1920x960)
- *   3. For 360° images: validates equirectangular 2:1 ratio
- *   4. Extracts EXIF (GPS, timestamp, camera model)
- *   5. Uploads renditions back to S3
- *   6. Returns presigned keys + dimensions
- *   7. This processor writes capture_renditions records and marks status='ready'
+ * Runs in a separate Bull worker -- never blocks the API. Photos
+ * (photo_360, photo_standard) get real thumbnail/preview renditions and
+ * EXIF/GPS extraction via sharp + exifr. Video captures are left as a
+ * pass-through (no frame extraction/thumbnailing) -- that would need
+ * ffmpeg, a separate scope not covered by the original Phase 1 -> Phase 2
+ * design this replaces (see git history for the removed Python-microservice
+ * stub comment).
  */
 @Processor('image-processing')
 export class ImageProcessingProcessor {
@@ -43,23 +50,74 @@ export class ImageProcessingProcessor {
 
   @Process('process-capture')
   async handleProcessCapture(job: Job<ImageProcessingJob>): Promise<void> {
-    const { captureId, companyId, storageKey, captureType } = job.data;
+    const { captureId, companyId, projectId, storageKey, captureType } = job.data;
     this.logger.log(`Processing capture ${captureId} (${captureType})`);
 
     try {
-      // Phase 2: call Python image-processing microservice
-      // const result = await this.callImageService(job.data);
-      // await this.createRenditions(captureId, companyId, result.renditions);
+      if (captureType === 'video') {
+        await this.db.query`UPDATE captures SET status = 'ready', processed_at = NOW() WHERE id = ${captureId}`;
+        this.logger.log(`Capture ${captureId} marked ready (video -- no thumbnailing).`);
+        return;
+      }
 
-      // Phase 1 stub: mark as ready immediately
-      // Remove this block when the Python service is connected in Phase 2
+      const original = await this.storage.download(storageKey);
+      const metadata = await sharp(original).metadata();
+      const sideways = isSidewaysOrientation(metadata.orientation);
+      const widthPx = (sideways ? metadata.height : metadata.width) ?? null;
+      const heightPx = (sideways ? metadata.width : metadata.height) ?? null;
+
+      if (captureType === 'photo_360' && widthPx && heightPx) {
+        const aspect = widthPx / heightPx;
+        if (Math.abs(aspect - 2) > 0.05) {
+          this.logger.warn(
+            `Capture ${captureId} is marked photo_360 but isn't a 2:1 equirectangular image ` +
+            `(${widthPx}x${heightPx}, aspect ${aspect.toFixed(3)}). Proceeding anyway -- this is a ` +
+            `content-quality warning, not a processing failure.`,
+          );
+        }
+      }
+
+      const renditions = this.buildRenditionSpecs(captureType);
+      const uploaded: { type: string; storageKey: string; widthPx: number | null; heightPx: number | null; sizeBytes: number }[] = [];
+
+      for (const spec of renditions) {
+        const pipeline = spec.build(sharp(original).rotate());
+        const buffer = await pipeline.jpeg({ quality: spec.quality }).toBuffer({ resolveWithObject: true });
+        const key = this.storage.generateKey(companyId, projectId, 'captures', `${captureId}-${spec.type}.jpg`);
+        await this.storage.upload(key, buffer.data, 'image/jpeg');
+        uploaded.push({
+          type: spec.type,
+          storageKey: key,
+          widthPx: buffer.info.width,
+          heightPx: buffer.info.height,
+          sizeBytes: buffer.info.size,
+        });
+      }
+
+      for (const r of uploaded) {
+        await this.db.query`
+          INSERT INTO capture_renditions (capture_id, company_id, rendition_type, storage_key, width_px, height_px, size_bytes)
+          VALUES (${captureId}, ${companyId}, ${r.type}, ${r.storageKey}, ${r.widthPx}, ${r.heightPx}, ${r.sizeBytes})
+        `;
+      }
+
+      // EXIF GPS is a fallback enrichment only -- never overwrite GPS the
+      // client already supplied (a live device sensor reading, when
+      // present, is more trustworthy than embedded EXIF metadata).
+      const gps = await exifr.gps(original).catch(() => null);
+
       await this.db.query`
-        UPDATE captures
-        SET status = 'ready', processed_at = NOW()
+        UPDATE captures SET
+          status = 'ready',
+          processed_at = NOW(),
+          original_width_px = COALESCE(original_width_px, ${widthPx}),
+          original_height_px = COALESCE(original_height_px, ${heightPx}),
+          gps_lat = COALESCE(gps_lat, ${gps?.latitude ?? null}),
+          gps_lng = COALESCE(gps_lng, ${gps?.longitude ?? null})
         WHERE id = ${captureId}
       `;
 
-      this.logger.log(`Capture ${captureId} marked ready (Phase 1 stub — no image processing yet)`);
+      this.logger.log(`Capture ${captureId} processed: ${uploaded.length} renditions generated.`);
     } catch (error) {
       this.logger.error(`Processing failed for capture ${captureId}`, error);
       await this.db.query`
@@ -72,14 +130,17 @@ export class ImageProcessingProcessor {
     }
   }
 
-  // Called in Phase 2 when Python service is running
-  // private async callImageService(data: ImageProcessingJob) {
-  //   const response = await fetch(`${process.env.IMAGE_SERVICE_URL}/process`, {
-  //     method: 'POST',
-  //     headers: { 'Content-Type': 'application/json' },
-  //     body: JSON.stringify(data),
-  //   });
-  //   if (!response.ok) throw new Error(`Image service error: ${response.status}`);
-  //   return response.json();
-  // }
+  private buildRenditionSpecs(captureType: 'photo_360' | 'photo_standard'): RenditionSpec[] {
+    return [
+      { type: 'thumbnail_sm', quality: 78, build: (p) => p.resize(300, 300, { fit: 'cover' }) },
+      { type: 'thumbnail_lg', quality: 82, build: (p) => p.resize(800, 800, { fit: 'cover' }) },
+      {
+        type: 'preview',
+        quality: 85,
+        build: (p) => captureType === 'photo_360'
+          ? p.resize(1920, 960, { fit: 'fill' }) // equirectangular -- must stay exactly 2:1, never letterboxed
+          : p.resize(1920, 1920, { fit: 'inside', withoutEnlargement: true }),
+      },
+    ];
+  }
 }

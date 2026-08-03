@@ -1,7 +1,13 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist"
+    "outDir": "./dist",
+    // exifr's bundled .d.ts references HTMLImageElement (a DOM type) in an
+    // overload this app never uses -- skipLibCheck avoids failing the
+    // build over a dependency's own type declaration mismatch rather than
+    // this app's code. Already the norm elsewhere in this monorepo (see
+    // tools/bim-debug/tsconfig.json).
+    "skipLibCheck": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "test"]

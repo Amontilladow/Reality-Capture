@@ -9,5 +9,6 @@ allowBuilds:
   es5-ext: true
   esbuild: true
   msgpackr-extract: true
+  sharp: true # official install script resolves the platform-specific prebuilt libvips binary; needed for apps/api's capture rendition generation
 minimumReleaseAgeExclude:
   - '@thatopen/components@3.4.7'

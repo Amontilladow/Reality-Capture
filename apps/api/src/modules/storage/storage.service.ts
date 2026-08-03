@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
+import type { Readable } from 'stream';
 
 @Injectable()
 export class StorageService {
@@ -79,5 +80,23 @@ export class StorageService {
 
   async delete(key: string): Promise<void> {
     await this.s3.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
+  }
+
+  // Server-side download/upload, for workers that actually need the bytes
+  // (e.g. image-processing.processor.ts generating renditions) rather than
+  // just handing the client a presigned URL. Mirrors
+  // apps/ifc-service/src/storage/storage.service.ts's implementation.
+  async download(key: string): Promise<Buffer> {
+    const result = await this.s3.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+    const stream = result.Body as Readable;
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk as Buffer);
+    }
+    return Buffer.concat(chunks);
+  }
+
+  async upload(key: string, body: Buffer, contentType = 'application/octet-stream'): Promise<void> {
+    await this.s3.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: body, ContentType: contentType }));
   }
 }

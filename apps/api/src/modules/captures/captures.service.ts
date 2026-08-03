@@ -118,6 +118,7 @@ export class CapturesService {
     await this.queue.add('process-capture', {
       captureId: capture.id,
       companyId,
+      projectId,
       storageKey: dto.storageKey,
       mimeType: dto.originalMimeType,
       captureType: dto.captureType,
