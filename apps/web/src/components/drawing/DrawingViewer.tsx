@@ -118,6 +118,16 @@ export function DrawingViewer({
           canvas.height = viewport.height;
           const ctx = canvas.getContext('2d');
           if (!ctx) return;
+          // Setting canvas.width/height only clears the canvas when the
+          // value actually changes -- if a page re-renders at the same
+          // pixel size as a previous (possibly cancelled) attempt, that
+          // implicit clear never happens and the new render's pixels
+          // composite on top of whatever was already painted, producing a
+          // garbled double-exposure. Confirmed by hand: repeated/overlapping
+          // render attempts against a same-size canvas left visibly
+          // corrupted output. Clear explicitly so every render starts from
+          // a blank canvas regardless of whether the size changed.
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
           // Some CAD-exported PDFs (many hundreds of content streams / form
           // XObjects for a single page) take pdf.js's canvas renderer an
           // impractically long time to rasterize -- confirmed against a real
