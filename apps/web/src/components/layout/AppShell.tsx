@@ -13,6 +13,7 @@ const PROJECT_NAV_ITEMS = [
   { to: 'issues', label: 'Issues', icon: IconFlag },
   { to: 'drawings', label: 'Floor Plans', icon: IconMap },
   { to: 'documents', label: 'Documents', icon: IconDocument },
+  { to: 'rfis', label: 'RFIs', icon: IconQuestion },
 ];
 
 export function AppShell() {
@@ -166,6 +167,15 @@ function IconDocument({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M7 3h7l4 4v14H7z" strokeLinejoin="round" /><path d="M14 3v4h4" strokeLinejoin="round" /><path d="M9.5 12h5M9.5 15.5h5" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconQuestion({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9a2.5 2.5 0 014.9.8c0 1.7-2.4 2-2.4 3.7" strokeLinecap="round" />
+      <circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none" />
     </svg>
   );
 }
