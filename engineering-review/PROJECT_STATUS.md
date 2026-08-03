@@ -14,10 +14,14 @@ search, and full property inspection. See
 `engineering-review/RC_VERIFICATION_REPORT_v0.1.md` for the full
 PASS/FAIL matrix.
 
-**Development is currently PAUSED awaiting review of the RC report.**
-The explicit next objective, once resumed, is **Issue Management
-integrated into the BIM viewer** (camera position capture, screenshot,
-GUID reference, reopening the exact view an issue was created from).
+**Development resumed and is now operating under a Sprint-based roadmap**
+(Sprint 1: core platform, done; Sprint 2: Issue Management [shipped] ->
+Reality Capture image processing [shipped] -> Drawings [current] ->
+RFIs/Submittals/Documents; Sprint 3: QA/QC; Sprint 4: AI/reports). The
+BIM viewer geometry-inconsistency investigation is deliberately frozen
+and explicitly not blocking this roadmap — see
+`ROOT_CAUSE_REPORT_BIM_VIEWER.md` and
+[Amontilladow/Reality-Capture#1](https://github.com/Amontilladow/Reality-Capture/issues/1).
 
 ## Overall completion estimate: ~55–60% of the full original EngineeringOS vision
 
@@ -57,16 +61,16 @@ None currently — development is paused pending RC report review.
 
 ## Modules not started
 
-- **Issue Management integrated into the viewer** (next objective):
-  camera position capture, screenshot, GUID reference, reopening exact
-  view, priority/status/assignee/due date/comments/attachments/history.
+- ~~Issue Management integrated into the viewer~~ **Shipped**: camera
+  position capture, screenshot, GUID reference, reopening exact view.
+  Priority/status/assignee/due date/comments/attachments/history were
+  already built beforehand.
 - **Dashboard KPIs** — Active Projects, Processing Queue, Import History,
   Open/Closed Issues, Recently Updated Models, Activity Feed. Currently
   the Projects list page serves as the de facto landing page but has none
   of this.
-- **Reality Capture (image) processing** — thumbnail/rendition
-  generation is still a fallback-to-original-file stub, not a real
-  pipeline.
+- ~~Reality Capture (image) processing~~ **Shipped**: real thumbnail/
+  rendition pipeline, no longer a fallback-to-original-file stub.
 - **AI search/assistant live verification** — code exists
   (`apps/ai-service`), Qdrant is confirmed reachable in this sandbox, but
   the embedding step is blocked by network allowlist (`huggingface.co`
@@ -80,11 +84,11 @@ None currently — development is paused pending RC report review.
 
 ## Current priorities (in order)
 
-1. Review/accept the RC Verification Report (`RC_VERIFICATION_REPORT_v0.1.md`) — pending your input.
-2. Issue Management integrated into the BIM viewer (explicit next objective once resumed).
-3. Dashboard KPIs.
-4. Reality Capture image processing.
-5. Everything else in "Modules not started," roughly in that order.
+1. ~~Issue Management integrated into the BIM viewer~~ — shipped.
+2. ~~Reality Capture image processing~~ — shipped.
+3. Drawings (Sprint 2, next up).
+4. RFIs, Submittals, Documents (rest of Sprint 2).
+5. Dashboard KPIs, and everything else in "Modules not started."
 
 ## Independent audit
 

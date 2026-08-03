@@ -57,24 +57,15 @@ Closed Issues, Recently Updated Models, Activity Feed.
 
 ---
 
-## 3. Reality Capture (image) processing
+## 3. ~~Reality Capture (image) processing~~ — Shipped
 
-**Complexity: Medium.**
-
-Currently a fallback-to-original-file stub (no real thumbnail/rendition
-pipeline). This was flagged as a real gap since the earliest sessions on
-this project, well before the IFC engine work began.
-
-**Dependencies:** None blocking — independent of BIM/IFC work. Given the
-IFC engine's standalone-service pattern worked well, worth a **short
-architecture check-in** (not a full proposal) on whether image processing
-should follow the same standalone-service pattern or stay embedded in
-`apps/api` (current state) before starting — this was flagged at the end
-of the IFC engine work and is still an open question.
-
-**Risks:** Low-medium — image processing libraries are generally more
-mature/predictable than IFC parsing was, but verify library choice
-empirically rather than assuming, per this project's established practice.
+Real thumbnail/rendition pipeline (`sharp` + `exifr`, embedded in
+`apps/api`, not a standalone service — resolves the open architecture
+question below in favor of the faster-to-ship option) now generates
+thumbnail_sm/thumbnail_lg/preview and validates/extracts EXIF GPS. See
+`apps/api/src/modules/captures/processors/image-processing.processor.ts`
+and its test suite. Video captures still pass straight through with no
+thumbnailing — out of scope (would need ffmpeg).
 
 ---
 

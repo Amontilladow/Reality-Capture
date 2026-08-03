@@ -215,10 +215,10 @@ local S3-compatible server — `s3rver`, standing in for MinIO/R2 since
 
 ## Remaining features, priority order
 
-1. **Reality Capture (image) processing** — thumbnail/rendition
-   generation is still the Phase-1 fallback-to-original-file stub (bug #8
-   from an earlier session mitigated the symptom — no crash — not the
-   root gap: no real image-processing pipeline exists yet).
+1. ~~**Reality Capture (image) processing**~~ — **Shipped.** Real
+   thumbnail/rendition pipeline (`sharp` + `exifr`, embedded in
+   `apps/api`) replaces the Phase-1 stub. See
+   `apps/api/src/modules/captures/processors/image-processing.processor.ts`.
 2. **AI validation** — live verification of `search.py` / `assistant.py`
    against a real embedding pipeline. Blocked by network allowlist
    (`huggingface.co` unreachable), not a code defect. Qdrant itself is
@@ -329,12 +329,14 @@ frontend integration (see above).
   limitations above.
 
 ## Exact continuation point
-IFC Processing Engine is done. Next highest-priority item is **Reality
-Capture (image) processing** — replace the current fallback-to-original-
-file stub in `captures/processors/image-processing.processor.ts` with a
-real thumbnail/rendition pipeline. Given the IFC engine's success with a
-dedicated service pattern, consider (but don't assume without asking)
-whether image processing should stay in-process in `apps/api` (current
-state) or follow the same standalone-service pattern — this is worth a
-short architectural check-in before starting, the way the IFC engine's
-approach was confirmed first.
+IFC Processing Engine, Reality Capture image processing, BIM viewer <->
+Issue Management integration (camera/screenshot capture), and artifact
+provenance tracking are all done (see individual commits and
+`KNOWN_ISSUES.md`/`REMAINING_WORK.md` for detail). Operating under a
+Sprint-based roadmap now (Sprint 1: core platform, done; Sprint 2: Issue
+Management [done] -> Reality Capture [done] -> next up: **Drawings**,
+then RFIs/Submittals/Documents; Sprint 3: QA/QC; Sprint 4: AI/reports).
+The BIM viewer geometry-inconsistency investigation is deliberately
+frozen and out of active scope — tracked as
+[Amontilladow/Reality-Capture#1](https://github.com/Amontilladow/Reality-Capture/issues/1),
+not a blocker for this roadmap.
