@@ -10,8 +10,16 @@ import { join } from 'path';
 import postgres from 'postgres';
 import * as dotenv from 'dotenv';
 
-dotenv.config({ path: join(__dirname, '../../../../.env.local') });
-dotenv.config({ path: join(__dirname, '../../../../.env') });
+// __dirname is apps/api/src/database -- two levels up is apps/api, where
+// .env.local/.env actually live. This was previously '../../../../' (four
+// levels, landing at the repo root, which has no such file) -- silently
+// falling through to this script's hardcoded default of port 5432 instead
+// of whatever apps/api/.env.local actually specifies. On a machine with
+// nothing else on 5432 this default happens to match docker-compose's own
+// default and the bug is invisible; it broke the moment anything else
+// (e.g. an unrelated native Postgres install) was also listening there.
+dotenv.config({ path: join(__dirname, '../../.env.local') });
+dotenv.config({ path: join(__dirname, '../../.env') });
 
 const MIGRATIONS_DIR = join(__dirname, 'migrations');
 

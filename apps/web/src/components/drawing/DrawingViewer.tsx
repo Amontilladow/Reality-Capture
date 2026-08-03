@@ -45,17 +45,69 @@ export function DrawingViewer({
   fileUrlRef.current = fileUrl;
   const stableUrlKey = fileUrl.split('?')[0];
 
+  // PDF document loading is split from page rendering: loading is expensive
+  // (fetch + parse the whole file) and should happen once per drawing, not
+  // once per page flip. It's also stateful on pdf.js's side -- a loaded
+  // PDFDocumentProxy owns a worker-side resource that MUST be released via
+  // destroy() when done with it, or replaced with a fresh one, before
+  // starting a new load against the same shared worker. Confirmed by hand:
+  // without this, calling getDocument() again for page 2 while page 1's
+  // document was never destroyed made rendering fail outright.
+  const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
+
+  useEffect(() => {
+    if (!isPdf) {
+      setPdfDoc(null);
+      return;
+    }
+    let cancelled = false;
+    let loaded: pdfjsLib.PDFDocumentProxy | null = null;
+    pdfjsLib.getDocument(fileUrlRef.current).promise.then((doc) => {
+      if (cancelled) {
+        doc.destroy();
+        return;
+      }
+      loaded = doc;
+      setPdfDoc(doc);
+      onNumPages?.(doc.numPages);
+    }).catch(() => {
+      if (!cancelled) setError('Could not load this drawing.');
+    });
+    return () => {
+      cancelled = true;
+      loaded?.destroy();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stableUrlKey, isPdf]);
+
   useEffect(() => {
     let cancelled = false;
+    // Holds this invocation's in-flight pdf.js render task so cleanup can
+    // actually cancel it -- setting the `cancelled` flag alone stops this
+    // invocation's OWN subsequent awaits from acting on a stale result,
+    // but does nothing to stop the real, already-started render() call
+    // against the canvas. Deliberately a plain local variable (like
+    // `cancelled` itself), NOT a ref: a ref is shared across every
+    // invocation of this effect, so if two invocations briefly overlap
+    // (React StrictMode's dev-mode double-invoke, or fast repeated page
+    // navigation queuing up quicker than each render finishes), the
+    // second invocation's task can silently overwrite the first's in a
+    // shared ref -- the first task then never gets cancelled at all.
+    // Confirmed by hand: that exact bug (an earlier, ref-based version of
+    // this fix) still reproduced "Cannot use the same canvas during
+    // multiple render() operations" on repeated back-and-forth page
+    // navigation, because cleanup was cancelling the wrong invocation's
+    // task.
+    let currentRenderTask: ReturnType<pdfjsLib.PDFPageProxy['render']> | null = null;
 
     async function render() {
       try {
         const currentUrl = fileUrlRef.current;
         if (isPdf) {
-          const doc = await pdfjsLib.getDocument(currentUrl).promise;
-          if (!cancelled) onNumPages?.(doc.numPages);
-          const pageNum = Math.min(Math.max(1, page), doc.numPages);
-          const pdfPage = await doc.getPage(pageNum);
+          if (!pdfDoc) return; // document load effect hasn't resolved yet
+          const pageNum = Math.min(Math.max(1, page), pdfDoc.numPages);
+          const pdfPage = await pdfDoc.getPage(pageNum);
+          if (cancelled) return;
           const containerWidth = containerRef.current?.clientWidth ?? 900;
           const baseViewport = pdfPage.getViewport({ scale: 1 });
           const scale = containerWidth / baseViewport.width;
@@ -72,6 +124,7 @@ export function DrawingViewer({
           // file that hadn't finished after 60+ seconds. Rather than hang
           // silently forever, cancel and surface a clear message.
           const renderTask = pdfPage.render({ canvasContext: ctx, viewport });
+          currentRenderTask = renderTask;
           const timeout = new Promise<never>((_, reject) => {
             setTimeout(() => {
               renderTask.cancel();
@@ -100,7 +153,25 @@ export function DrawingViewer({
           img.src = currentUrl;
         }
       } catch (err) {
-        if (!cancelled) {
+        // A cancelled render rejects renderTask.promise with a
+        // RenderingCancelledException. This is expected, not a failure --
+        // it fires whenever a newer render supersedes an older one -- so
+        // it's checked by name/constructor here rather than relying only
+        // on the `cancelled` flag: pdf.js's own cancellation is
+        // asynchronous internally, so a render started just before
+        // cleanup can still get cancelled out from under an invocation
+        // whose `cancelled` flag hasn't flipped yet by the time the
+        // rejection is caught. Confirmed by hand: without this check,
+        // ordinary fast back-and-forth page navigation intermittently
+        // showed "Could not render this drawing" even though the actual
+        // most-recent render succeeded fine right after.
+        const isCancellation = err instanceof Error && err.name === 'RenderingCancelledException';
+        if (!cancelled && !isCancellation) {
+          // Log the real cause -- this catch previously swallowed it
+          // entirely, which is exactly why the underlying render-task-
+          // cancellation bug (see above) took hands-on live debugging to
+          // even find, instead of a two-second console check.
+          console.error('DrawingViewer render failed:', err);
           setError(
             err instanceof Error && err.message === 'RENDER_TIMEOUT'
               ? 'This drawing is too complex to preview in the browser (took too long to render). Try exporting a simpler or flattened PDF, or an image instead.'
@@ -112,9 +183,12 @@ export function DrawingViewer({
     render();
     return () => {
       cancelled = true;
+      // Actually stop any in-flight render() against the canvas -- not
+      // just flagging it stale (see currentRenderTask comment above).
+      currentRenderTask?.cancel();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stableUrlKey, isPdf, page]);
+  }, [stableUrlKey, isPdf, page, pdfDoc]);
 
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
     if (!placingMode || !onPlacePin || !size) return;

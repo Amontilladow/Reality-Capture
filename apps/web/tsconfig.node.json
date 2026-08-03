@@ -4,7 +4,18 @@
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    // composite:true requires emit (tsc errors on noEmit here), but nothing
+    // ever imports this build output -- its only purpose is satisfying
+    // `tsc -b`'s project-reference graph. Routing it into its own
+    // directory instead of emitting vite.config.js/.d.ts next to the
+    // source matters for a real reason: Vite's config-file search checks
+    // vite.config.js *before* .ts, so a stale compiled copy sitting next
+    // to the real source silently wins and gets loaded instead --
+    // confirmed by hand, this caused a real dev-server bug where a
+    // vite.config.ts fix didn't take effect until the stray .js was
+    // deleted.
+    "outDir": "./.tsbuild-node"
   },
   "include": ["vite.config.ts"]
 }

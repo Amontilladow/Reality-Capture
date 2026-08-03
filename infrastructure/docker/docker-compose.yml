@@ -25,7 +25,12 @@ services:
       # Allow the API to set session-level config vars (required for RLS tenant isolation)
       POSTGRES_INITDB_ARGS: '--auth-host=md5'
     ports:
-      - '5432:5432'
+      # Host 5433, not 5432 -- this machine already has a separate, unrelated
+      # native PostgreSQL install bound to 5432 (used for offline forensic
+      # work against restored backups). Remapping here avoids a port
+      # conflict rather than touching that unrelated service. Update
+      # apps/api/.env.local's DB_PORT to match if you copy this.
+      - '5433:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # Auto-run the initial migration on first start
