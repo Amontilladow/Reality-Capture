@@ -12,6 +12,7 @@ const PROJECT_NAV_ITEMS = [
   { to: 'captures', label: 'Captures', icon: IconCamera },
   { to: 'issues', label: 'Issues', icon: IconFlag },
   { to: 'drawings', label: 'Floor Plans', icon: IconMap },
+  { to: 'documents', label: 'Documents', icon: IconDocument },
 ];
 
 export function AppShell() {
@@ -158,6 +159,13 @@ function IconMap({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M9 3L3 5v16l6-2 6 2 6-2V3l-6 2-6-2z" strokeLinejoin="round" />
       <path d="M9 3v16M15 5v16" />
+    </svg>
+  );
+}
+function IconDocument({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M7 3h7l4 4v14H7z" strokeLinejoin="round" /><path d="M14 3v4h4" strokeLinejoin="round" /><path d="M9.5 12h5M9.5 15.5h5" strokeLinecap="round" />
     </svg>
   );
 }
