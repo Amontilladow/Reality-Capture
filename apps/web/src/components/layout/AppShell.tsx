@@ -14,6 +14,7 @@ const PROJECT_NAV_ITEMS = [
   { to: 'drawings', label: 'Floor Plans', icon: IconMap },
   { to: 'documents', label: 'Documents', icon: IconDocument },
   { to: 'rfis', label: 'RFIs', icon: IconQuestion },
+  { to: 'submittals', label: 'Submittals', icon: IconStamp },
 ];
 
 export function AppShell() {
@@ -176,6 +177,15 @@ function IconQuestion({ className }: { className?: string }) {
       <circle cx="12" cy="12" r="9" />
       <path d="M9.5 9a2.5 2.5 0 014.9.8c0 1.7-2.4 2-2.4 3.7" strokeLinecap="round" />
       <circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+function IconStamp({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <rect x="4" y="10" width="16" height="6" rx="1" strokeLinejoin="round" />
+      <path d="M9 10V6a3 3 0 016 0v4" strokeLinecap="round" />
+      <path d="M4 20h16" strokeLinecap="round" />
     </svg>
   );
 }
