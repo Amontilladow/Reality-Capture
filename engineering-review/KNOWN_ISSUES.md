@@ -22,6 +22,19 @@ the independent audit after a source-level security/architecture review.
   Workaround: re-login. Does not block any shipped feature (all verified
   working with a valid token). Fix later.
 
+- **Production deploys never run new migrations.** `apps/api/Dockerfile`'s
+  `CMD` is just `node apps/api/dist/main` — no migration step. Root cause
+  of a real production incident: migration `013_drawing_page_pins.sql`
+  (`page_number` column) shipped in the same deploy as the multi-page
+  drawings feature but was never applied to the production DB, so
+  `GET .../drawings/:id/pins` 500'd (`column loc.page_number does not
+  exist`) for every drawing from that deploy onward until run manually via
+  Render's Shell (`node apps/api/dist/database/run-migrations.js`).
+  Confirmed fixed 2026-08-06. The underlying gap is still open — any
+  future migration (014/015/016 included) needs the same manual step
+  after every deploy until this gets wired into the deploy process itself
+  (e.g. a Render pre-deploy command, or a startup check).
+
 ## Minor
 
 - **[Audit] Rate limiting exists but isn't applied to the sensitive
