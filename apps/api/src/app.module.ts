@@ -14,6 +14,7 @@ import { IssuesModule } from './modules/issues/issues.module';
 import { RfisModule } from './modules/rfis/rfis.module';
 import { SubmittalsModule } from './modules/submittals/submittals.module';
 import { TransmittalsModule } from './modules/transmittals/transmittals.module';
+import { QaModule } from './modules/qa/qa.module';
 import { BimModule } from './modules/bim/bim.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { DrawingsModule } from './modules/drawings/drawings.module';
@@ -71,6 +72,7 @@ import redisConfig from './config/redis.config';
     RfisModule,
     SubmittalsModule,
     TransmittalsModule,
+    QaModule,
     BimModule,
     DocumentsModule,
     DrawingsModule,

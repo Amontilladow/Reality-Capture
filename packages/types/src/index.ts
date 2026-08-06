@@ -13,6 +13,7 @@ export * from './issue.types';
 export * from './rfi.types';
 export * from './submittal.types';
 export * from './transmittal.types';
+export * from './qa-inspection.types';
 export * from './document.types';
 export * from './subscription.types';
 export * from './audit.types';

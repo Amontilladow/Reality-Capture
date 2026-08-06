@@ -16,6 +16,7 @@ const PROJECT_NAV_ITEMS = [
   { to: 'rfis', label: 'RFIs', icon: IconQuestion },
   { to: 'submittals', label: 'Submittals', icon: IconStamp },
   { to: 'transmittals', label: 'Transmittals', icon: IconSend },
+  { to: 'qa', label: 'QA/QC', icon: IconCheckShield },
 ];
 
 export function AppShell() {
@@ -194,6 +195,14 @@ function IconSend({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M4 11l16-7-6.5 16-3-6.5L4 11z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconCheckShield({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" strokeLinejoin="round" />
+      <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
