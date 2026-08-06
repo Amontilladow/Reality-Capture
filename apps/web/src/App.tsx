@@ -18,6 +18,7 @@ import IssuesPage from './pages/IssuesPage';
 import DocumentsPage from './pages/DocumentsPage';
 import RfisPage from './pages/RfisPage';
 import SubmittalsPage from './pages/SubmittalsPage';
+import TransmittalsPage from './pages/TransmittalsPage';
 
 export default function App() {
   return (
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="/projects/:projectId/documents" element={<DocumentsPage />} />
           <Route path="/projects/:projectId/rfis" element={<RfisPage />} />
           <Route path="/projects/:projectId/submittals" element={<SubmittalsPage />} />
+          <Route path="/projects/:projectId/transmittals" element={<TransmittalsPage />} />
           {/* Timeline view is planned for a later phase. */}
         </Route>
       </Route>

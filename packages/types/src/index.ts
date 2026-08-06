@@ -12,6 +12,7 @@ export * from './ifc-processing.types';
 export * from './issue.types';
 export * from './rfi.types';
 export * from './submittal.types';
+export * from './transmittal.types';
 export * from './document.types';
 export * from './subscription.types';
 export * from './audit.types';
