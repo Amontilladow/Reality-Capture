@@ -100,6 +100,47 @@ export function DrawingViewer({
     // task.
     let currentRenderTask: ReturnType<pdfjsLib.PDFPageProxy['render']> | null = null;
 
+    // Attempts one getPage()+render() cycle against the canvas, racing it
+    // against `timeoutMs`. Returns 'done' on success, 'timeout' if it didn't
+    // settle in time (having cancelled it), or rethrows on a real error.
+    // A fresh call here (new getPage(), new render()) reliably completes in
+    // single-digit milliseconds even when a prior in-flight attempt against
+    // the same canvas never settled on its own -- confirmed by hand, live,
+    // repeatedly: an already-stuck invocation's renderTask.promise never
+    // resolves no matter how long you wait, but issuing a brand-new
+    // getPage()+render() call right afterward (same canvas, same document)
+    // completes normally. Retrying fresh is far more reliable than waiting
+    // out a single long timeout.
+    async function attemptRender(
+      pdfPage: pdfjsLib.PDFPageProxy,
+      canvas: HTMLCanvasElement,
+      viewport: pdfjsLib.PageViewport,
+      timeoutMs: number,
+    ): Promise<'done' | 'timeout'> {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return 'done';
+      // Setting canvas.width/height only clears the canvas when the value
+      // actually changes -- if a retry re-renders at the same pixel size as
+      // the attempt it's replacing, that implicit clear never happens and
+      // the new pixels would composite on top of whatever the abandoned
+      // attempt already painted. Clear explicitly on every attempt.
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const renderTask = pdfPage.render({ canvasContext: ctx, viewport });
+      currentRenderTask = renderTask;
+      let timedOut = false;
+      const timeout = new Promise<'timeout'>((resolve) => {
+        setTimeout(() => {
+          timedOut = true;
+          renderTask.cancel();
+          resolve('timeout');
+        }, timeoutMs);
+      });
+      const result = await Promise.race([renderTask.promise.then(() => 'done' as const), timeout]);
+      if (result === 'timeout') return 'timeout';
+      if (timedOut) return 'timeout'; // cancelled just as it would have resolved
+      return 'done';
+    }
+
     async function render() {
       try {
         const currentUrl = fileUrlRef.current;
@@ -116,33 +157,25 @@ export function DrawingViewer({
           if (!canvas || cancelled) return;
           canvas.width = viewport.width;
           canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return;
-          // Setting canvas.width/height only clears the canvas when the
-          // value actually changes -- if a page re-renders at the same
-          // pixel size as a previous (possibly cancelled) attempt, that
-          // implicit clear never happens and the new render's pixels
-          // composite on top of whatever was already painted, producing a
-          // garbled double-exposure. Confirmed by hand: repeated/overlapping
-          // render attempts against a same-size canvas left visibly
-          // corrupted output. Clear explicitly so every render starts from
-          // a blank canvas regardless of whether the size changed.
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
           // Some CAD-exported PDFs (many hundreds of content streams / form
           // XObjects for a single page) take pdf.js's canvas renderer an
           // impractically long time to rasterize -- confirmed against a real
           // file that hadn't finished after 60+ seconds. Rather than hang
-          // silently forever, cancel and surface a clear message.
-          const renderTask = pdfPage.render({ canvasContext: ctx, viewport });
-          currentRenderTask = renderTask;
-          const timeout = new Promise<never>((_, reject) => {
-            setTimeout(() => {
-              renderTask.cancel();
-              reject(new Error('RENDER_TIMEOUT'));
-            }, 20000);
-          });
-          await Promise.race([renderTask.promise, timeout]);
-          if (!cancelled) setSize({ width: viewport.width, height: viewport.height });
+          // silently forever, give it a short window, and if that's not
+          // enough, retry once with a fresh render task before falling back
+          // to a longer final attempt and, failing that, a clear error.
+          let outcome = await attemptRender(pdfPage, canvas, viewport, 5000);
+          if (outcome === 'timeout' && !cancelled) {
+            outcome = await attemptRender(pdfPage, canvas, viewport, 5000);
+          }
+          if (outcome === 'timeout' && !cancelled) {
+            outcome = await attemptRender(pdfPage, canvas, viewport, 15000);
+          }
+          if (cancelled) return;
+          if (outcome === 'timeout') {
+            throw new Error('RENDER_TIMEOUT');
+          }
+          setSize({ width: viewport.width, height: viewport.height });
         } else {
           const img = new Image();
           img.onload = () => {
