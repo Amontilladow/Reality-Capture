@@ -112,7 +112,7 @@ services:
     name: engineeringos-ai-service
     runtime: docker
     dockerfilePath: apps/ai-service/Dockerfile
-    dockerContext: .
+    dockerContext: apps/ai-service
     plan: starter
     region: oregon
     envVars:
