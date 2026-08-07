@@ -17,6 +17,7 @@ const PROJECT_NAV_ITEMS = [
   { to: 'submittals', label: 'Submittals', icon: IconStamp },
   { to: 'transmittals', label: 'Transmittals', icon: IconSend },
   { to: 'qa', label: 'QA/QC', icon: IconCheckShield },
+  { to: 'snagging', label: 'Snagging', icon: IconTag },
 ];
 
 export function AppShell() {
@@ -203,6 +204,14 @@ function IconCheckShield({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" strokeLinejoin="round" />
       <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconTag({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M12 3h6a3 3 0 013 3v6l-9 9-9-9 9-9z" strokeLinejoin="round" />
+      <circle cx="16" cy="8" r="1.5" fill="currentColor" stroke="none" />
     </svg>
   );
 }
