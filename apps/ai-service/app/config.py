@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     ollama_url: str = "http://localhost:11434"
+    omniroute_base_url: str = "http://localhost:20128/v1"
+    omniroute_model: str = "auto/best-coding"
     default_llm_provider: str = "anthropic"
     embedding_model: str = "all-MiniLM-L6-v2"
     s3_endpoint: str = "http://localhost:9000"
