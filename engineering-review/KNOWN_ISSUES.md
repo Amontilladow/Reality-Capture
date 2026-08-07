@@ -11,17 +11,6 @@ None open — none found by this project's own testing, and none found by
 the independent audit after a source-level security/architecture review.
 
 ## Major
-- **Expired JWT returns 500 instead of 401.** Found during Submittals live
-  verification (unrelated to Submittals itself — reproduced against
-  existing GET/POST endpoints too once the access token aged past its
-  15-min expiry). Standard passport-jwt `AuthGuard` should throw
-  `UnauthorizedException` (401) for an expired token; something in this
-  app's chain (JwtStrategy or GlobalExceptionFilter) is converting it to
-  a 500 instead. Root cause: UNKNOWN (not fully verified — plausible
-  hypothesis only, see `apps/api/src/common/guards/jwt-auth.guard.ts`).
-  Workaround: re-login. Does not block any shipped feature (all verified
-  working with a valid token). Fix later.
-
 - **Production deploys never run new migrations.** `apps/api/Dockerfile`'s
   `CMD` is just `node apps/api/dist/main` — no migration step. Root cause
   of a real production incident: migration `013_drawing_page_pins.sql`
