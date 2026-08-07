@@ -9,6 +9,7 @@ export interface CreateNotificationInput {
   body?: string | null;
   resourceType?: string | null;
   resourceId?: string | null;
+  projectId?: string | null;
   createdBy?: string | null;
 }
 
@@ -26,12 +27,12 @@ export class NotificationsService {
   async create(companyId: string, input: CreateNotificationInput) {
     const [row] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO notifications
-        (company_id, user_id, type, title, body, resource_type, resource_id, created_by)
+        (company_id, user_id, type, title, body, resource_type, resource_id, project_id, created_by)
       VALUES
         (${companyId}, ${input.userId}, ${input.type}, ${input.title},
          ${input.body ?? null}, ${input.resourceType ?? null},
-         ${input.resourceId ?? null}, ${input.createdBy ?? null})
-      RETURNING id, user_id, type, title, body, resource_type, resource_id, read_at, created_at
+         ${input.resourceId ?? null}, ${input.projectId ?? null}, ${input.createdBy ?? null})
+      RETURNING id, user_id, type, title, body, resource_type, resource_id, project_id, read_at, created_at
     `);
     return row;
   }
@@ -44,7 +45,7 @@ export class NotificationsService {
 
     const rows = await this.db.withTenant(companyId, sql => sql`
       SELECT
-        id, type, title, body, resource_type, resource_id, read_at, created_at,
+        id, type, title, body, resource_type, resource_id, project_id, read_at, created_at,
         COUNT(*) OVER() AS full_count
       FROM notifications
       WHERE user_id = ${userId}

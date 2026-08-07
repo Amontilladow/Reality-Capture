@@ -42,6 +42,7 @@ export class SubmittalsService {
         type: 'submittal_assigned',
         title: `You were assigned to review submittal ${submittalNumber}: ${dto.title}`,
         resourceType: 'submittal',
+        projectId,
         resourceId: submittal.id as string,
         createdBy: userId,
       });

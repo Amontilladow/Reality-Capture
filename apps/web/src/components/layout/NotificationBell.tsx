@@ -50,16 +50,43 @@ export function NotificationBell() {
     },
   });
 
+  // Route per resource type, once we know which project it belongs to.
+  // Issue links deep-link straight to the record (?issueId=); the other
+  // types don't have an equivalent deep-link target on their list pages
+  // yet, so they land on the list itself -- still a real destination,
+  // just not scrolled-to-and-opened.
+  function routeFor(resourceType: string, projectId: string, resourceId: string): string | null {
+    switch (resourceType) {
+      case 'issue': return `/projects/${projectId}/issues?issueId=${resourceId}`;
+      case 'rfi': return `/projects/${projectId}/rfis`;
+      case 'submittal': return `/projects/${projectId}/submittals`;
+      case 'snag_item': return `/projects/${projectId}/snagging`;
+      default: return null;
+    }
+  }
+
   async function handleClick(n: Notification) {
     if (!n.readAt) markReadMutation.mutate(n.id);
     setOpen(false);
-    if (n.resourceType === 'issue' && n.resourceId) {
+    if (!n.resourceType || !n.resourceId) return;
+
+    if (n.projectId) {
+      const route = routeFor(n.resourceType, n.projectId, n.resourceId);
+      if (route) navigate(route);
+      return;
+    }
+
+    // Notifications created before project_id was added to the table
+    // (migration 019) don't have it -- issue notifications can still
+    // resolve their project via the existing per-issue lookup; the other
+    // types have no equivalent lookup, so they just stay marked read.
+    if (n.resourceType === 'issue') {
       try {
         const issue = await lookupIssueProject(n.resourceId);
         navigate(`/projects/${issue.projectId}/issues?issueId=${n.resourceId}`);
       } catch {
         // Issue may have been deleted since the notification was created —
-        // nothing sensible to navigate to, so just leave it marked read.
+        // nothing sensible to navigate to.
       }
     }
   }

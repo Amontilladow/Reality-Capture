@@ -75,6 +75,7 @@ export class IssuesService {
         title: `You were assigned to issue ${issueNumber}: ${dto.title}`,
         resourceType: 'issue',
         resourceId: issue.id as string,
+        projectId,
         createdBy: userId,
       });
     }
@@ -226,6 +227,7 @@ export class IssuesService {
         title: `You were assigned to issue ${existing.issueNumber as string}: ${updated.title as string}`,
         resourceType: 'issue',
         resourceId: issueId,
+        projectId,
         createdBy: userId,
       });
     }

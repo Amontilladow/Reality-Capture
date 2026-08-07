@@ -39,6 +39,7 @@ export class RfisService {
         type: 'rfi_assigned',
         title: `You were assigned to RFI ${rfiNumber}: ${dto.subject}`,
         resourceType: 'rfi',
+        projectId,
         resourceId: rfi.id as string,
         createdBy: userId,
       });

@@ -7,6 +7,7 @@ export interface Notification {
   body?: string;
   resourceType?: string;
   resourceId?: string;
+  projectId?: string;
   readAt?: string;
   createdAt: string;
 }

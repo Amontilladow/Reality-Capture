@@ -39,6 +39,7 @@ export class SnaggingService {
         type: 'snag_assigned',
         title: `You were assigned snag item ${snagNumber}: ${dto.title}`,
         resourceType: 'snag_item',
+        projectId,
         resourceId: snag.id as string,
         createdBy: userId,
       });
