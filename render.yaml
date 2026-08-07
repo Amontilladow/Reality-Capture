@@ -84,6 +84,66 @@ services:
         value: sk_test_placeholder
       - key: STRIPE_WEBHOOK_SECRET
         value: whsec_placeholder
+      - key: AI_SERVICE_URL
+        value: http://engineeringos-ai-service:8001
+
+  # ── Vector DB for the AI assistant/search (RAG) ─────────────────────────
+  # Private service ONLY -- never expose this publicly. It has no auth of
+  # its own; only engineeringos-ai-service should be able to reach it.
+  - type: pserv
+    name: engineeringos-qdrant
+    runtime: image
+    image:
+      url: docker.io/qdrant/qdrant:latest
+    plan: starter
+    region: oregon
+    disk:
+      name: qdrant-data
+      mountPath: /qdrant/storage
+      sizeGB: 5
+
+  # ── AI assistant / RAG service ──────────────────────────────────────────
+  # Private service ONLY -- /assistant, /search, /ingest trust whatever
+  # company_id/project_id is in the request body with no authentication of
+  # their own. engineeringos-api is what enforces "only your own company's
+  # data" before ever calling this. A public URL here would let anyone
+  # query any company's data directly, bypassing that check entirely.
+  - type: pserv
+    name: engineeringos-ai-service
+    runtime: docker
+    dockerfilePath: apps/ai-service/Dockerfile
+    dockerContext: .
+    plan: starter
+    region: oregon
+    envVars:
+      - key: PORT
+        value: 8001
+      - key: DATABASE_URL
+        fromDatabase:
+          name: engineeringos-db
+          property: connectionString
+      - key: QDRANT_URL
+        value: http://engineeringos-qdrant:6333
+      - key: QDRANT_API_KEY
+        value: ""
+      - key: DEFAULT_LLM_PROVIDER
+        value: anthropic
+      - key: ANTHROPIC_API_KEY
+        sync: false # must be set manually in the Render dashboard -- no key configured yet, /assistant will error until one is added
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OLLAMA_URL
+        value: "" # not deployed; leave unset in production
+      - key: EMBEDDING_MODEL
+        value: all-MiniLM-L6-v2
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_BUCKET
+        sync: false
 
   # ── IFC processing worker ───────────────────────────────────────────────
   - type: worker
