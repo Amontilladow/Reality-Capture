@@ -18,6 +18,7 @@ const PROJECT_NAV_ITEMS = [
   { to: 'transmittals', label: 'Transmittals', icon: IconSend },
   { to: 'qa', label: 'QA/QC', icon: IconCheckShield },
   { to: 'snagging', label: 'Snagging', icon: IconTag },
+  { to: 'assistant', label: 'AI Assistant', icon: IconSpark },
 ];
 
 export function AppShell() {
@@ -212,6 +213,14 @@ function IconTag({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M12 3h6a3 3 0 013 3v6l-9 9-9-9 9-9z" strokeLinejoin="round" />
       <circle cx="16" cy="8" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+function IconSpark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z" strokeLinejoin="round" />
+      <path d="M19 15l0.8 2.2L22 18l-2.2 0.8L19 21l-0.8-2.2L16 18l2.2-0.8L19 15z" strokeLinejoin="round" />
     </svg>
   );
 }

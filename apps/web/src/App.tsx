@@ -21,6 +21,7 @@ import SubmittalsPage from './pages/SubmittalsPage';
 import TransmittalsPage from './pages/TransmittalsPage';
 import QaInspectionsPage from './pages/QaInspectionsPage';
 import SnaggingPage from './pages/SnaggingPage';
+import AssistantPage from './pages/AssistantPage';
 
 export default function App() {
   return (
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="/projects/:projectId/transmittals" element={<TransmittalsPage />} />
           <Route path="/projects/:projectId/qa" element={<QaInspectionsPage />} />
           <Route path="/projects/:projectId/snagging" element={<SnaggingPage />} />
+          <Route path="/projects/:projectId/assistant" element={<AssistantPage />} />
           {/* Timeline view is planned for a later phase. */}
         </Route>
       </Route>

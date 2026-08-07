@@ -81,6 +81,18 @@ export class AiClientService {
     });
   }
 
+  async ask(companyId: string, projectId: string, question: string, conversationHistory?: { role: string; content: string }[]): Promise<{ answer: string; sources: unknown[] }> {
+    const resp = await firstValueFrom(
+      this.http.post(`${this.baseUrl}/assistant/`, {
+        question,
+        company_id: companyId,
+        project_id: projectId,
+        conversation_history: conversationHistory ?? null,
+      }, { timeout: 30_000 }),
+    );
+    return resp.data;
+  }
+
   deleteResource(collection: string, resourceId: string): void {
     firstValueFrom(
       this.http.delete(`${this.baseUrl}/ingest/resource`, {
