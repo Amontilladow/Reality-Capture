@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { BullModule } from '@nestjs/bull';
+import { ScheduleModule } from '@nestjs/schedule';
 
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -50,6 +51,13 @@ import redisConfig from './config/redis.config';
       { name: 'default', ttl: 60_000, limit: 100 },
       { name: 'auth',    ttl: 60_000, limit: 10  },
     ]),
+    // Registered here rather than in IssuesModule, matching how Bull/Throttler's
+    // own forRoot() calls live at the app root rather than in whichever
+    // feature module happens to use them first -- ticket 2b's
+    // IssueWarningService (apps/api/src/modules/issues/issue-warning.service.ts)
+    // is the first @Cron() consumer, but ScheduleModule itself is a
+    // cross-cutting root concern like the other forRoot() modules above it.
+    ScheduleModule.forRoot(),
     BullModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

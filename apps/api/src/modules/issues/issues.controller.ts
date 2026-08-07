@@ -6,7 +6,15 @@ import { IssuesService } from './issues.service';
 import { CreateIssueDto } from './dto/create-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
 import { AddActivityDto } from './dto/add-activity.dto';
+import { ForwardIssueDto } from './dto/forward-issue.dto';
+import { ForceStatusDto } from './dto/force-status.dto';
+import { BulkCloseIssuesDto } from './dto/bulk-close-issues.dto';
+import { BroadcastReminderDto } from './dto/broadcast-reminder.dto';
+import { UserReminderDto } from './dto/user-reminder.dto';
+import { IssueAttachmentUploadUrlDto } from './dto/issue-attachment-upload-url.dto';
+import { AddIssueAttachmentDto } from './dto/add-issue-attachment.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 
 @ApiTags('issues')
@@ -44,6 +52,37 @@ export class IssuesController {
     return { data: await this.svc.getSummary(u.companyId, pid), error: null };
   }
 
+  // ── Bulk close (ticket 2b) ──────────────────────────────────────────────
+  // Declared before ':id' below (like 'summary' above it) so it isn't
+  // swallowed by the ':id' param route.
+  @Post('bulk-close')
+  @ApiOperation({ summary: 'Close multiple issues at once' })
+  async bulkClose(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: BulkCloseIssuesDto) {
+    return { data: await this.svc.bulkClose(u.companyId, pid, u.id, dto), error: null };
+  }
+
+  // ── Reminders (ticket 2b) ────────────────────────────────────────────────
+  @Get('reminders')
+  @ApiOperation({ summary: 'List sent reminders, most recent first' })
+  async listReminders(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Query() query: PaginationQuery) {
+    const result = await this.svc.listReminders(u.companyId, pid, query);
+    return { data: result.data, meta: { page: result.page, perPage: result.perPage, total: result.total, totalPages: result.totalPages }, error: null };
+  }
+
+  @Post('reminders/broadcast')
+  @Roles('company_admin', 'engineering_manager')
+  @ApiOperation({ summary: 'Send a reminder to every open issue in the project' })
+  async broadcastReminder(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: BroadcastReminderDto) {
+    return { data: await this.svc.broadcastReminder(u.companyId, pid, u.id, dto), error: null };
+  }
+
+  @Post('reminders/user')
+  @Roles('company_admin', 'engineering_manager')
+  @ApiOperation({ summary: "Send a reminder for one user's open issues" })
+  async userReminder(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: UserReminderDto) {
+    return { data: await this.svc.userReminder(u.companyId, pid, u.id, dto), error: null };
+  }
+
   @Get(':id')
   async findOne(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
     return { data: await this.svc.findOne(u.companyId, pid, id), error: null };
@@ -79,6 +118,54 @@ export class IssuesController {
     @Body() body: { captureId: string; isPrimary?: boolean; caption?: string },
   ) {
     return { data: await this.svc.addCapture(u.companyId, id, u.id, body.captureId, body.isPrimary, body.caption), error: null };
+  }
+
+  // ── Forward (ticket 2b) ──────────────────────────────────────────────────
+  @Post(':id/forward')
+  @ApiOperation({ summary: 'Forward (reassign) an issue to another user' })
+  async forward(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('id') id: string,
+    @Body() dto: ForwardIssueDto,
+  ) {
+    return { data: await this.svc.forward(u.companyId, pid, id, u.id, dto), error: null };
+  }
+
+  // ── Admin force-status (ticket 2b) ───────────────────────────────────────
+  @Patch(':id/force-status')
+  @Roles('company_admin', 'engineering_manager')
+  @ApiOperation({ summary: 'Force an issue to any status, bypassing normal transition rules' })
+  async forceStatus(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('id') id: string,
+    @Body() dto: ForceStatusDto,
+  ) {
+    return { data: await this.svc.forceStatus(u.companyId, pid, id, u.id, dto), error: null };
+  }
+
+  // ── Attachments (ticket 2b) ───────────────────────────────────────────────
+  // Presigned-PUT pattern, same shape as documents.controller.ts's
+  // upload-url + register endpoints.
+  @Post(':id/attachments/upload-url')
+  @ApiOperation({ summary: 'Get a presigned URL for uploading a file attachment to an issue activity' })
+  async getAttachmentUploadUrl(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Body() dto: IssueAttachmentUploadUrlDto,
+  ) {
+    return { data: await this.svc.getAttachmentUploadUrl(u.companyId, pid, dto), error: null };
+  }
+
+  @Post(':id/attachments')
+  @ApiOperation({ summary: 'Register an uploaded file as an issue activity attachment' })
+  async addAttachment(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: AddIssueAttachmentDto,
+  ) {
+    return { data: await this.svc.addAttachment(u.companyId, id, u.id, dto), error: null };
   }
 }
 

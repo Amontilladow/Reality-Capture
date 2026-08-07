@@ -9,7 +9,16 @@ export class CreateIssueDto {
 
   @IsOptional() @IsString()  description?: string;
   @IsOptional() @IsIn(['critical','high','medium','low']) priority?: string;
-  @IsOptional() @IsString()  discipline?: string;
+
+  @IsIn(['MEP','ARC','STR','CIV','ELE','INFRA','LANDSCAPE','OTHER'])
+  discipline: string;
+
+  @IsOptional()
+  @IsIn(['design_issue','bim_modeling_issue','coordination_issue','clash_detection',
+    'constructability_issue','shop_drawing_issue','site_issue','rfi',
+    'client_comment','consultant_comment','other'])
+  category?: string;
+
   @IsOptional() @IsString()  trade?: string;
   @IsOptional() @IsString()  specificationRef?: string;
   @IsOptional() @IsUUID()    buildingId?: string;
@@ -18,7 +27,10 @@ export class CreateIssueDto {
   @IsOptional() @IsUUID()    elementId?: string;
   @IsOptional() @IsUUID()    assignedTo?: string;
   @IsOptional() @IsString()  responsibleCompany?: string;
-  @IsOptional() @IsDateString() deadline?: string;
+
+  // Required on create (API-level only -- the DB column stays nullable
+  // since existing rows may have no deadline).
+  @IsDateString() deadline: string;
   @IsOptional() @IsUUID()    captureId?: string;
   @IsOptional() @IsUUID()    drawingId?: string;
   @IsOptional() @IsNumber()  posXNorm?: number;
