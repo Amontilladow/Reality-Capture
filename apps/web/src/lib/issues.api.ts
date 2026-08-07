@@ -1,5 +1,7 @@
 import axios from 'axios';
-import type { Issue, IssueActivity, IssueType, IssuePriority, IssueStatus } from '@engineeringos/types';
+import type {
+  Issue, IssueActivity, IssueType, IssuePriority, IssueStatus, IssueDiscipline, IssueCategory, IssueReminder,
+} from '@engineeringos/types';
 import { apiGet, apiGetWithMeta, apiPost, apiPatch, apiDelete } from './api';
 
 export interface IssueListItem extends Issue {
@@ -63,14 +65,19 @@ export interface CreateIssuePayload {
   title: string;
   description?: string;
   priority?: IssuePriority;
-  discipline?: string;
+  discipline: IssueDiscipline;
+  category?: IssueCategory;
   trade?: string;
+  specificationRef?: string;
   buildingId?: string;
   levelId?: string;
   locationId?: string;
   elementId?: string;
   assignedTo?: string;
-  deadline?: string;
+  responsibleCompany?: string;
+  // Required on create — matches CreateIssueDto.deadline (API-level only;
+  // the DB column stays nullable for pre-existing rows).
+  deadline: string;
   drawingId?: string;
   posXNorm?: number;
   posYNorm?: number;
@@ -115,10 +122,16 @@ export interface UpdateIssuePayload {
   description?: string;
   priority?: IssuePriority;
   status?: IssueStatus;
-  discipline?: string;
+  discipline?: IssueDiscipline;
+  category?: IssueCategory;
   trade?: string;
+  buildingId?: string;
+  levelId?: string;
+  locationId?: string;
   assignedTo?: string;
+  responsibleCompany?: string;
   deadline?: string;
+  tags?: string[];
 }
 
 export function updateIssue(projectId: string, issueId: string, payload: UpdateIssuePayload) {
@@ -127,6 +140,81 @@ export function updateIssue(projectId: string, issueId: string, payload: UpdateI
 
 export function deleteIssue(projectId: string, issueId: string) {
   return apiDelete<{ message: string }>(`/projects/${projectId}/issues/${issueId}`);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// Ticket 2b — workflow actions
+// ══════════════════════════════════════════════════════════════════════
+
+// ── Forward (reassign) ──────────────────────────────────────────────────
+export function forwardIssue(projectId: string, issueId: string, payload: { toUserId: string; comment?: string }) {
+  return apiPost<Issue>(`/projects/${projectId}/issues/${issueId}/forward`, payload);
+}
+
+// ── Admin force-status (manager/admin only — gated in the UI via
+// isIssueManager(), enforced server-side by @Roles) ─────────────────────
+export function forceIssueStatus(projectId: string, issueId: string, status: IssueStatus) {
+  return apiPatch<Issue>(`/projects/${projectId}/issues/${issueId}/force-status`, { status });
+}
+
+// ── Bulk close ────────────────────────────────────────────────────────
+export interface BulkCloseResult {
+  closed: number;
+  issueIds: string[];
+}
+
+export function bulkCloseIssues(projectId: string, issueIds: string[]) {
+  return apiPost<BulkCloseResult>(`/projects/${projectId}/issues/bulk-close`, { issueIds });
+}
+
+// ── Reminders (manager/admin only for the two send endpoints) ──────────
+export type IssueReminderRow = IssueReminder & {
+  sentByName?: string;
+  sentToName?: string;
+  issueNumber?: string;
+  issueTitle?: string;
+};
+
+export function listReminders(projectId: string, query?: { page?: number; perPage?: number }) {
+  return apiGetWithMeta<IssueReminderRow[]>(`/projects/${projectId}/issues/reminders`, { params: query });
+}
+
+export function broadcastReminder(projectId: string, message: string) {
+  return apiPost<{ remindersSent: number }>(`/projects/${projectId}/issues/reminders/broadcast`, { message });
+}
+
+export function sendUserReminder(projectId: string, userId: string, message: string) {
+  return apiPost<{ remindersSent: number }>(`/projects/${projectId}/issues/reminders/user`, { userId, message });
+}
+
+// ── Attachments (presigned-PUT, same shape as uploadDrawing() in
+// drawings.api.ts) ───────────────────────────────────────────────────────
+export function getIssueAttachmentUploadUrl(projectId: string, issueId: string, filename: string, sizeBytes: number) {
+  return apiPost<{ uploadUrl: string; storageKey: string }>(
+    `/projects/${projectId}/issues/${issueId}/attachments/upload-url`,
+    { filename, sizeBytes },
+  );
+}
+
+export function addIssueAttachment(
+  projectId: string,
+  issueId: string,
+  payload: { storageKey: string; filename: string; sizeBytes: number; comment?: string },
+) {
+  return apiPost<IssueActivity>(`/projects/${projectId}/issues/${issueId}/attachments`, payload);
+}
+
+// Full client-side flow: request the presigned URL, PUT the file straight
+// to storage, then register it as an issue_activities row.
+export async function uploadIssueAttachment(
+  projectId: string,
+  issueId: string,
+  file: File,
+  comment?: string,
+): Promise<IssueActivity> {
+  const { uploadUrl, storageKey } = await getIssueAttachmentUploadUrl(projectId, issueId, file.name, file.size);
+  await axios.put(uploadUrl, file, { headers: { 'Content-Type': file.type || 'application/octet-stream' } });
+  return addIssueAttachment(projectId, issueId, { storageKey, filename: file.name, sizeBytes: file.size, comment });
 }
 
 export function getActivities(projectId: string, issueId: string) {

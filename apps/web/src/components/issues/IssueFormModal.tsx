@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { IssueType, IssuePriority } from '@engineeringos/types';
+import type { IssueType, IssuePriority, IssueDiscipline, IssueCategory } from '@engineeringos/types';
 import { Modal } from '../ui/Modal';
 import { createIssue, updateIssue, type IssueDetailItem } from '../../lib/issues.api';
 import type { CameraVector } from '../bim-viewer/BimViewer';
 import type { ProjectMember } from '../../lib/projects.api';
 import type { ProjectHierarchy } from '../../lib/projects.api';
-import { ISSUE_TYPES, ISSUE_TYPE_LABELS, ISSUE_PRIORITIES, PRIORITY_LABELS } from '../../lib/issue-constants';
+import { BuildingLevelRoomPicker, type HierarchySelection } from '../hierarchy/BuildingLevelRoomPicker';
+import {
+  ISSUE_TYPES, ISSUE_TYPE_LABELS, ISSUE_PRIORITIES, PRIORITY_LABELS,
+  ISSUE_DISCIPLINES, DISCIPLINE_LABELS, ISSUE_CATEGORIES, CATEGORY_LABELS,
+} from '../../lib/issue-constants';
 import { apiErrorMessage } from '../../lib/api';
 
 export function IssueFormModal({
@@ -44,9 +48,10 @@ export function IssueFormModal({
   const [description, setDescription] = useState('');
   const [issueType, setIssueType] = useState<IssueType>('defect');
   const [priority, setPriority] = useState<IssuePriority>('medium');
-  const [discipline, setDiscipline] = useState('');
+  const [discipline, setDiscipline] = useState<IssueDiscipline | ''>('');
+  const [category, setCategory] = useState<IssueCategory | ''>('');
   const [assignedTo, setAssignedTo] = useState('');
-  const [locationId, setLocationId] = useState('');
+  const [place, setPlace] = useState<HierarchySelection>({ buildingId: '', levelId: '', locationId: '' });
   const [deadline, setDeadline] = useState('');
   const [error, setError] = useState('');
 
@@ -57,25 +62,35 @@ export function IssueFormModal({
     setIssueType(issue?.issueType ?? 'defect');
     setPriority(issue?.priority ?? 'medium');
     setDiscipline(issue?.discipline ?? '');
+    setCategory(issue?.category ?? '');
     setAssignedTo(issue?.assignedTo ?? '');
-    setLocationId(issue?.locationId ?? '');
+    setPlace({
+      buildingId: issue?.buildingId ?? '',
+      levelId: issue?.levelId ?? '',
+      locationId: issue?.locationId ?? '',
+    });
     setDeadline(issue?.deadline ? issue.deadline.slice(0, 10) : '');
     setError('');
   }, [open, issue]);
 
-  const allLocations = hierarchy.flatMap((b) => (b.levels ?? []).flatMap((l) => l.locations ?? []));
-
   const mutation = useMutation({
     mutationFn: async () => {
       if (!title.trim()) throw new Error('Title is required.');
+      if (!discipline) throw new Error('Discipline is required.');
+      if (!deadline) throw new Error('Deadline is required.');
+      const deadlineIso = new Date(deadline).toISOString();
       if (isEdit && issue) {
         return updateIssue(projectId, issue.id, {
           title: title.trim(),
           description: description || undefined,
           priority,
-          discipline: discipline || undefined,
+          discipline,
+          category: category || undefined,
+          buildingId: place.buildingId || undefined,
+          levelId: place.levelId || undefined,
+          locationId: place.locationId || undefined,
           assignedTo: assignedTo || undefined,
-          deadline: deadline ? new Date(deadline).toISOString() : undefined,
+          deadline: deadlineIso,
         });
       }
       return createIssue(projectId, {
@@ -83,11 +98,14 @@ export function IssueFormModal({
         title: title.trim(),
         description: description || undefined,
         priority,
-        discipline: discipline || undefined,
+        discipline,
+        category: category || undefined,
+        buildingId: place.buildingId || undefined,
+        levelId: place.levelId || undefined,
+        locationId: place.locationId || undefined,
         assignedTo: assignedTo || undefined,
-        locationId: locationId || undefined,
         elementId: defaultElementId,
-        deadline: deadline ? new Date(deadline).toISOString() : undefined,
+        deadline: deadlineIso,
         modelId: viewState?.modelId,
         cameraPosX: viewState?.cameraPosition.x,
         cameraPosY: viewState?.cameraPosition.y,
@@ -108,7 +126,7 @@ export function IssueFormModal({
   });
 
   return (
-    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit issue' : 'New issue'}>
+    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit issue' : 'New issue'} wide>
       <div className="space-y-4">
         {error && <p className="field-error">{error}</p>}
 
@@ -166,27 +184,45 @@ export function IssueFormModal({
             </select>
           </div>
           <div>
-            <label className="field-label" htmlFor="deadline">Deadline</label>
-            <input id="deadline" type="date" className="field-input" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+            <label className="field-label" htmlFor="deadline">Deadline *</label>
+            <input id="deadline" type="date" required className="field-input" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="field-label" htmlFor="discipline">Discipline</label>
-            <input id="discipline" className="field-input" value={discipline} onChange={(e) => setDiscipline(e.target.value)} placeholder="MEP, Structural…" />
+            <label className="field-label" htmlFor="discipline">Discipline *</label>
+            <select
+              id="discipline"
+              className="field-input"
+              value={discipline}
+              onChange={(e) => setDiscipline(e.target.value as IssueDiscipline)}
+            >
+              <option value="" disabled>Select discipline…</option>
+              {ISSUE_DISCIPLINES.map((d) => (
+                <option key={d} value={d}>{DISCIPLINE_LABELS[d]}</option>
+              ))}
+            </select>
           </div>
-          {!isEdit && (
-            <div>
-              <label className="field-label" htmlFor="locationId">Location</label>
-              <select id="locationId" className="field-input" value={locationId} onChange={(e) => setLocationId(e.target.value)}>
-                <option value="">Unassigned</option>
-                {allLocations.map((l) => (
-                  <option key={l.id} value={l.id}>{l.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div>
+            <label className="field-label" htmlFor="category">Category</label>
+            <select
+              id="category"
+              className="field-input"
+              value={category}
+              onChange={(e) => setCategory(e.target.value as IssueCategory)}
+            >
+              <option value="">None</option>
+              {ISSUE_CATEGORIES.map((c) => (
+                <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="field-label">Location</label>
+          <BuildingLevelRoomPicker projectId={projectId} hierarchy={hierarchy} value={place} onChange={setPlace} />
         </div>
 
         <div className="flex gap-2 pt-2">
