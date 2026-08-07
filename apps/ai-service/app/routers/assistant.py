@@ -1,4 +1,5 @@
 import asyncio, logging
+from typing import Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
 from app.knowledge.embeddings import embed
@@ -15,8 +16,11 @@ If context is insufficient, say so. Flag safety issues prominently."""
 class AssistantRequest(BaseModel):
     question: str
     company_id: str
-    project_id: str = None
-    conversation_history: list = None
+    # Optional[...] required, not bare `str = None` -- Pydantic v2 rejects an
+    # explicit null against a bare type even with that default. Confirmed by
+    # hand elsewhere in this service (reports.py, ingest.py had the same bug).
+    project_id: Optional[str] = None
+    conversation_history: Optional[list] = None
     top_k: int = 8
 
 @router.post("/")

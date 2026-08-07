@@ -19,6 +19,7 @@ const PROJECT_NAV_ITEMS = [
   { to: 'qa', label: 'QA/QC', icon: IconCheckShield },
   { to: 'snagging', label: 'Snagging', icon: IconTag },
   { to: 'assistant', label: 'AI Assistant', icon: IconSpark },
+  { to: 'reports', label: 'Reports', icon: IconReport },
 ];
 
 export function AppShell() {
@@ -221,6 +222,15 @@ function IconSpark({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z" strokeLinejoin="round" />
       <path d="M19 15l0.8 2.2L22 18l-2.2 0.8L19 21l-0.8-2.2L16 18l2.2-0.8L19 15z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconReport({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M7 3h7l4 4v14H7z" strokeLinejoin="round" />
+      <path d="M14 3v4h4" strokeLinejoin="round" />
+      <path d="M9.5 13l2 2 3.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
 from app.knowledge.ingestion import ingest_capture, ingest_issue, delete_resource
@@ -6,17 +7,24 @@ from app.knowledge.ingestion import ingest_capture, ingest_issue, delete_resourc
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# Every optional field here MUST be Optional[str] (or Optional[list]), not a
+# bare `str = None` -- Pydantic v2 validates the declared type even when the
+# default is None, so a bare `str` field rejects an explicit null with a 422.
+# Confirmed by hand: apps/api's AiClientService always sends these fields as
+# `value ?? null` (never omits the key), so this bug fired on essentially
+# every real capture/issue that had any optional field left blank -- silently,
+# since ingestion calls are fire-and-forget and only logged as a warning.
 class IngestCaptureReq(BaseModel):
     id: str; company_id: str; project_id: str
-    title: str = None; description: str = None; ai_description: str = None
-    ai_tags: list = []; capture_type: str = None; phase: str = None
-    captured_at: str = None; location_name: str = None
+    title: Optional[str] = None; description: Optional[str] = None; ai_description: Optional[str] = None
+    ai_tags: list = []; capture_type: Optional[str] = None; phase: Optional[str] = None
+    captured_at: Optional[str] = None; location_name: Optional[str] = None
 
 class IngestIssueReq(BaseModel):
     id: str; company_id: str; project_id: str; title: str
-    issue_number: str = None; description: str = None; issue_type: str = None
-    priority: str = None; status: str = None; discipline: str = None
-    location_name: str = None; element_name: str = None
+    issue_number: Optional[str] = None; description: Optional[str] = None; issue_type: Optional[str] = None
+    priority: Optional[str] = None; status: Optional[str] = None; discipline: Optional[str] = None
+    location_name: Optional[str] = None; element_name: Optional[str] = None
 
 class DeleteReq(BaseModel):
     collection: str; resource_id: str

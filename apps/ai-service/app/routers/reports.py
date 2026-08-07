@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
 import asyncpg
@@ -12,8 +13,8 @@ class ReportRequest(BaseModel):
     company_id: str
     project_id: str
     report_type: str  # progress, site_condition, handover, dispute_evidence
-    date_from: str = None
-    date_to: str = None
+    date_from: Optional[str] = None
+    date_to: Optional[str] = None
     format: str = "pdf"
 
 @router.post("/generate")

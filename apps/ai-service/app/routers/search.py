@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
 from app.knowledge.embeddings import embed
@@ -11,8 +12,8 @@ router = APIRouter()
 class SearchRequest(BaseModel):
     query: str
     company_id: str
-    project_id: str = None
-    collections: list = None
+    project_id: Optional[str] = None
+    collections: Optional[list] = None
     limit: int = 10
 
 @router.post("/")

@@ -93,6 +93,25 @@ export class AiClientService {
     return resp.data;
   }
 
+  async generateReport(companyId: string, projectId: string, reportType: string, dateFrom?: string, dateTo?: string): Promise<{
+    project: Record<string, unknown>;
+    narrative: string;
+    data: Record<string, unknown>;
+    format: string;
+  }> {
+    const resp = await firstValueFrom(
+      this.http.post(`${this.baseUrl}/report/generate`, {
+        company_id: companyId,
+        project_id: projectId,
+        report_type: reportType,
+        date_from: dateFrom ?? null,
+        date_to: dateTo ?? null,
+        format: 'pdf',
+      }, { timeout: 30_000 }),
+    );
+    return resp.data;
+  }
+
   deleteResource(collection: string, resourceId: string): void {
     firstValueFrom(
       this.http.delete(`${this.baseUrl}/ingest/resource`, {
