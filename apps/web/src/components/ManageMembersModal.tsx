@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PROJECT_ROLES, type ProjectRole } from '@engineeringos/types';
+import { PROJECT_ROLES, COMPANY_ROLES, type ProjectRole, type CompanyRole } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
 import { getMembers, addMember, removeMember } from '../lib/projects.api';
-import { listUsers } from '../lib/users.api';
+import { listUsers, inviteUser } from '../lib/users.api';
 import { apiErrorMessage } from '../lib/api';
 
 const PROJECT_ROLE_LABELS: Record<ProjectRole, string> = {
@@ -13,6 +13,20 @@ const PROJECT_ROLE_LABELS: Record<ProjectRole, string> = {
   document_controller: 'Document Controller',
   capture_operator: 'Capture Operator',
   viewer: 'Viewer',
+};
+
+const COMPANY_ROLE_LABELS: Record<CompanyRole, string> = {
+  super_admin: 'Super Admin',
+  company_admin: 'Company Admin',
+  technical_director: 'Technical Director',
+  engineering_manager: 'Engineering Manager',
+  bim_manager: 'BIM Manager',
+  project_manager: 'Project Manager',
+  construction_manager: 'Construction Manager',
+  qa_qc_manager: 'QA/QC Manager',
+  commercial_manager: 'Commercial Manager',
+  consultant: 'Consultant',
+  client_representative: 'Client Representative',
 };
 
 export function ManageMembersModal({
@@ -27,6 +41,9 @@ export function ManageMembersModal({
   const queryClient = useQueryClient();
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedRole, setSelectedRole] = useState<ProjectRole>('site_engineer');
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<CompanyRole>('consultant');
 
   const membersQuery = useQuery({
     queryKey: ['members', projectId],
@@ -57,6 +74,15 @@ export function ManageMembersModal({
     mutationFn: (userId: string) => removeMember(projectId, userId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['members', projectId] }),
   });
+
+  const inviteMutation = useMutation({
+    mutationFn: (vars: { email: string; companyRole: CompanyRole }) => inviteUser(vars),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['companyUsers'] }),
+  });
+
+  const inviteLink = inviteMutation.data
+    ? `${window.location.origin}/accept-invitation?token=${inviteMutation.data.invitationToken}`
+    : null;
 
   return (
     <Modal open={open} onClose={onClose} title="Project team">
@@ -100,7 +126,7 @@ export function ManageMembersModal({
               </select>
               {usersQuery.isSuccess && addableUsers.length === 0 && (
                 <p className="text-xs text-ink-500 mt-1">
-                  Everyone in the company is already on this project — invite a new person from Users/Settings first if you need someone else.
+                  Everyone in the company is already on this project — invite a new person below if you need someone else.
                 </p>
               )}
             </div>
@@ -124,6 +150,66 @@ export function ManageMembersModal({
           >
             {addMutation.isPending ? 'Adding…' : 'Add to project'}
           </button>
+        </div>
+
+        <div className="pt-2 border-t border-base-600 space-y-3">
+          {!showInvite ? (
+            <button onClick={() => setShowInvite(true)} className="text-sm text-blueprint hover:text-blueprint-hover">
+              + Invite someone new to the company
+            </button>
+          ) : (
+            <>
+              <div className="field-label">Invite a new person</div>
+              <p className="text-xs text-ink-500">
+                Email delivery isn't set up yet -- inviting someone gives you a link to copy and send them yourself (WhatsApp, email, however). It won't land in their inbox automatically.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  type="email"
+                  className="field-input"
+                  placeholder="their.email@company.com"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                />
+                <select
+                  className="field-input"
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as CompanyRole)}
+                >
+                  {COMPANY_ROLES.filter((r) => r !== 'super_admin').map((r) => (
+                    <option key={r} value={r}>{COMPANY_ROLE_LABELS[r]}</option>
+                  ))}
+                </select>
+              </div>
+
+              {inviteMutation.isError && <p className="field-error">{apiErrorMessage(inviteMutation.error)}</p>}
+
+              {inviteLink ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-ink-100">
+                    Invite created for {inviteMutation.data?.email}. Send them this link -- it expires in 7 days:
+                  </p>
+                  <div className="flex gap-2">
+                    <input readOnly className="field-input font-mono text-xs" value={inviteLink} onClick={(e) => e.currentTarget.select()} />
+                    <button
+                      onClick={() => navigator.clipboard.writeText(inviteLink)}
+                      className="btn-secondary shrink-0"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => inviteMutation.mutate({ email: inviteEmail, companyRole: inviteRole })}
+                  className="btn-primary w-full"
+                  disabled={!inviteEmail || inviteMutation.isPending}
+                >
+                  {inviteMutation.isPending ? 'Creating invite…' : 'Create invite link'}
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
     </Modal>

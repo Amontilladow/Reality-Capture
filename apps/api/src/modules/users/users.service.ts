@@ -93,10 +93,12 @@ export class UsersService {
       RETURNING id, email
     `;
 
-    // TODO: send invitation email
-    this.logger.log(`Invitation sent to ${dto.email} (token: ${token})`);
+    // TODO: send invitation email -- until that exists, the caller needs the
+    // raw token back so an admin can build/share the accept-invitation link
+    // themselves rather than it only ever reaching this server log line.
+    this.logger.log(`Invitation created for ${dto.email} (token: ${token})`);
 
-    return { id: newUser.id, email: newUser.email, invitationSent: true };
+    return { id: newUser.id, email: newUser.email, invitationSent: true, invitationToken: token };
   }
 
   async update(companyId: string, requestingUserId: string, requestingUserRole: string, targetUserId: string, dto: UpdateUserDto) {
