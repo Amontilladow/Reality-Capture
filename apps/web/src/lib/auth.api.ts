@@ -1,4 +1,4 @@
-import type { AuthenticatedUser, AuthTokens } from '@engineeringos/types';
+import type { AuthenticatedUser, AuthTokens, CompanyRole } from '@engineeringos/types';
 import { apiPost, apiGet } from './api';
 
 export interface LoginPayload {
@@ -20,7 +20,7 @@ export function logout(refreshToken: string) {
 }
 
 export function fetchMe() {
-  return apiGet<AuthenticatedUser>('/auth/me');
+  return apiGet<AuthenticatedUser & { requestedCompanyRole?: CompanyRole }>('/auth/me');
 }
 
 export interface AcceptInvitationPayload {
@@ -28,6 +28,7 @@ export interface AcceptInvitationPayload {
   firstName: string;
   lastName: string;
   password: string;
+  requestedRole: CompanyRole;
 }
 
 export function acceptInvitation(payload: AcceptInvitationPayload) {

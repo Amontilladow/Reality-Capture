@@ -26,7 +26,7 @@ export class UsersService {
 
     const rows = await this.db.withTenant(companyId, sql => sql`
       SELECT
-        id, email, first_name, last_name, company_role,
+        id, email, first_name, last_name, company_role, requested_company_role,
         phone, avatar_url, is_active, last_login_at, created_at,
         COUNT(*) OVER() AS full_count
       FROM users
@@ -85,7 +85,7 @@ export class UsersService {
         invitation_token, invitation_expires_at,
         email_verified
       ) VALUES (
-        ${companyId}, ${dto.email.toLowerCase()}, ${dto.companyRole},
+        ${companyId}, ${dto.email.toLowerCase()}, ${dto.companyRole ?? 'client_representative'},
         '', '',
         ${token}, ${expiresAt.toISOString()},
         false
@@ -118,16 +118,22 @@ export class UsersService {
       || dto.phone !== undefined || dto.companyRole !== undefined || dto.isActive !== undefined;
     if (!hasUpdates) return target;
 
+    // An admin explicitly setting companyRole here *is* the approval action
+    // for a pending self-selected-role request, whether they approve it
+    // as-requested or override it with something else -- either way clears
+    // requested_company_role so PendingApprovalGuard stops blocking them on
+    // their next token refresh/login.
     const [updated] = await this.db.query`
       UPDATE users SET
         first_name   = COALESCE(${dto.firstName ?? null}, first_name),
         last_name    = COALESCE(${dto.lastName ?? null}, last_name),
         phone        = COALESCE(${dto.phone ?? null}, phone),
         company_role = COALESCE(${dto.companyRole ?? null}, company_role),
+        requested_company_role = CASE WHEN ${dto.companyRole ?? null}::company_role_enum IS NOT NULL THEN NULL ELSE requested_company_role END,
         is_active    = COALESCE(${dto.isActive ?? null}, is_active),
         updated_at   = NOW()
       WHERE id = ${targetUserId} AND company_id = ${companyId}
-      RETURNING id, email, first_name, last_name, company_role, is_active
+      RETURNING id, email, first_name, last_name, company_role, is_active, requested_company_role
     `;
     return updated;
   }

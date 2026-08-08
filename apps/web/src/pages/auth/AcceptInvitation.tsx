@@ -1,16 +1,19 @@
 import { useForm } from 'react-hook-form';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
+import { SELF_REQUESTABLE_COMPANY_ROLES, type CompanyRole } from '@engineeringos/types';
 import { AuthLayout } from './AuthLayout';
 import { acceptInvitation } from '../../lib/auth.api';
 import { apiErrorMessage } from '../../lib/api';
 import { useAuthStore } from '../../store/auth.store';
+import { COMPANY_ROLE_LABELS } from '../../lib/issue-constants';
 
 interface FormValues {
   firstName: string;
   lastName: string;
   password: string;
   confirmPassword: string;
+  requestedRole: CompanyRole;
 }
 
 export default function AcceptInvitation() {
@@ -24,7 +27,7 @@ export default function AcceptInvitation() {
     handleSubmit,
     watch,
     formState: { errors },
-  } = useForm<FormValues>();
+  } = useForm<FormValues>({ defaultValues: { requestedRole: 'consultant' } });
 
   const mutation = useMutation({
     mutationFn: (values: FormValues) =>
@@ -33,10 +36,14 @@ export default function AcceptInvitation() {
         firstName: values.firstName,
         lastName: values.lastName,
         password: values.password,
+        requestedRole: values.requestedRole,
       }),
     onSuccess: (result) => {
       setSession(result.tokens, result.user);
-      navigate('/projects', { replace: true });
+      // Every self-registration lands pending -- ProtectedRoute would send
+      // them here anyway once it checks pendingApproval, but routing there
+      // directly avoids a pointless bounce through /projects first.
+      navigate('/pending-approval', { replace: true });
     },
   });
 
@@ -72,6 +79,18 @@ export default function AcceptInvitation() {
             />
             {errors.lastName && <p className="field-error">{errors.lastName.message}</p>}
           </div>
+        </div>
+
+        <div>
+          <label className="field-label" htmlFor="requestedRole">Your position</label>
+          <select id="requestedRole" className="field-input" {...register('requestedRole', { required: true })}>
+            {SELF_REQUESTABLE_COMPANY_ROLES.map((r) => (
+              <option key={r} value={r}>{COMPANY_ROLE_LABELS[r]}</option>
+            ))}
+          </select>
+          <p className="text-xs text-ink-500 mt-1">
+            An administrator will review and approve this before you get access.
+          </p>
         </div>
 
         <div>

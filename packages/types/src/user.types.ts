@@ -16,6 +16,13 @@ export const COMPANY_ROLES = [
 
 export type CompanyRole = typeof COMPANY_ROLES[number];
 
+// What a newly-invited person can request for themselves at signup, before
+// admin approval -- excludes super_admin, which must always be granted
+// deliberately by an existing admin, never self-selected even as a request.
+export const SELF_REQUESTABLE_COMPANY_ROLES = COMPANY_ROLES.filter(
+  (r): r is Exclude<CompanyRole, 'super_admin'> => r !== 'super_admin',
+);
+
 export const PROJECT_ROLES = [
   'project_lead',
   'site_engineer',
@@ -105,6 +112,10 @@ export interface JwtPayload {
   companyRole: CompanyRole;
   firstName: string;
   lastName: string;
+  // True while requested_company_role is still set (self-selected role
+  // awaiting admin approval) -- PendingApprovalGuard blocks everything
+  // except @AllowPending() routes while this is true.
+  pendingApproval: boolean;
   iat?: number;
   exp?: number;
 }
@@ -117,6 +128,7 @@ export interface AuthenticatedUser {
   companyRole: CompanyRole;
   firstName: string;
   lastName: string;
+  pendingApproval: boolean;
 }
 
 export interface LoginDto {

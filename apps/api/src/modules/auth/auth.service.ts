@@ -58,6 +58,7 @@ export class AuthService {
         companyRole: user.companyRole as CompanyRole,
         firstName: user.firstName as string,
         lastName: user.lastName as string,
+        pendingApproval: Boolean(user.requestedCompanyRole),
       },
     };
   }
@@ -72,9 +73,16 @@ export class AuthService {
     // holding the refresh token's own row id instead of the user's id, which
     // issueTokens() then used as the new token's `user_id`, violating the
     // refresh_tokens.user_id -> users.id foreign key on every refresh.
+    // requested_company_role must be selected here too -- issueTokens() below
+    // uses it to set the JWT's pendingApproval claim, and this is an explicit
+    // column list (unlike login()'s SELECT u.*), so it's easy to silently
+    // lose. Missing it here would mean a still-pending user's access token
+    // stops carrying pendingApproval the moment they refresh it, bypassing
+    // PendingApprovalGuard after as little as 15 minutes.
     const [stored] = await this.db.query`
       SELECT rt.id AS refresh_token_id, u.id, u.company_id, u.company_role, u.email,
-             u.first_name, u.last_name, u.is_active, c.is_active AS company_active
+             u.first_name, u.last_name, u.is_active, u.requested_company_role,
+             c.is_active AS company_active
       FROM refresh_tokens rt
       JOIN users u ON u.id = rt.user_id
       JOIN companies c ON c.id = u.company_id
@@ -122,11 +130,22 @@ export class AuthService {
         email_verified = true,
         invitation_token = NULL,
         invitation_expires_at = NULL,
+        requested_company_role = ${dto.requestedRole},
         updated_at = NOW()
       WHERE id = ${user.id}
     `;
 
-    const updatedUser = { ...user, firstName: dto.firstName, lastName: dto.lastName, emailVerified: true };
+    // `user` was SELECTed before the UPDATE above, so its requestedCompanyRole
+    // is stale (whatever it was pre-signup, normally null) -- override it
+    // explicitly with what this request just set, rather than trusting the
+    // pre-update row issueTokens() would otherwise read.
+    const updatedUser = {
+      ...user,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      emailVerified: true,
+      requestedCompanyRole: dto.requestedRole,
+    };
     const tokens = await this.issueTokens(updatedUser);
 
     return {
@@ -138,6 +157,9 @@ export class AuthService {
         companyRole: user.companyRole as CompanyRole,
         firstName: dto.firstName,
         lastName: dto.lastName,
+        // Always true right after accepting -- every self-registration is
+        // pending until a company_admin/super_admin approves it.
+        pendingApproval: true,
       },
     };
   }
@@ -193,10 +215,13 @@ export class AuthService {
   }
 
   // ── Get current user ──────────────────────────────────────────────────────
-  async getMe(userId: string, companyId: string): Promise<AuthenticatedUser & { phone?: string; avatarUrl?: string; lastLoginAt?: string }> {
+  // @AllowPending() on the controller route -- a pending user can reach this
+  // (needed so the "Awaiting Approval" screen can show who they are and what
+  // they requested) even though PendingApprovalGuard blocks everything else.
+  async getMe(userId: string, companyId: string): Promise<AuthenticatedUser & { phone?: string; avatarUrl?: string; lastLoginAt?: string; requestedCompanyRole?: CompanyRole }> {
     const [user] = await this.db.withTenant(companyId, sql => sql`
       SELECT id, email, first_name, last_name, company_id, company_role,
-             phone, avatar_url, last_login_at
+             phone, avatar_url, last_login_at, requested_company_role
       FROM users WHERE id = ${userId}
     `);
 
@@ -212,6 +237,8 @@ export class AuthService {
       phone: user.phone as string | undefined,
       avatarUrl: user.avatarUrl as string | undefined,
       lastLoginAt: user.lastLoginAt as string | undefined,
+      pendingApproval: Boolean(user.requestedCompanyRole),
+      requestedCompanyRole: user.requestedCompanyRole as CompanyRole | undefined,
     };
   }
 
@@ -228,6 +255,7 @@ export class AuthService {
       companyRole: user.companyRole as CompanyRole,
       firstName: user.firstName as string,
       lastName: user.lastName as string,
+      pendingApproval: Boolean(user.requestedCompanyRole),
     };
 
     const accessToken = this.jwt.sign(payload, {
@@ -242,7 +270,7 @@ export class AuthService {
 
     await this.db.query`
       INSERT INTO refresh_tokens (user_id, company_id, token_hash, expires_at, ip_address, user_agent)
-      VALUES (${user.id}, ${user.companyId}, ${tokenHash}, ${expiresAt.toISOString()},
+      VALUES (${payload.sub}, ${payload.companyId}, ${tokenHash}, ${expiresAt.toISOString()},
               ${ipAddress ?? null}, ${userAgent ?? null})
     `;
 

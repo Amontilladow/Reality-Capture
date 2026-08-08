@@ -33,6 +33,7 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { PendingApprovalGuard } from './common/guards/pending-approval.guard';
 
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
@@ -94,10 +95,14 @@ import redisConfig from './config/redis.config';
   ],
   providers: [
     // Order matters: rate-limit first (cheap, rejects abuse before any auth work),
-    // then JWT auth (populates request.user, honors @Public() routes), then role
-    // checks (reads request.user, so must run after JwtAuthGuard).
+    // then JWT auth (populates request.user, honors @Public() routes), then the
+    // pending-approval gate (blocks a self-registered-but-unapproved user from
+    // everything except @AllowPending() routes), then role checks -- pending
+    // status is checked before role weight so a blocked user gets a clear
+    // PENDING_APPROVAL reason instead of a generic insufficient-role one.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: PendingApprovalGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

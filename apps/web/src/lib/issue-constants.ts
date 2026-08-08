@@ -9,6 +9,20 @@ export const PROJECT_ROLE_LABELS: Record<ProjectRole, string> = {
   viewer: 'Viewer',
 };
 
+export const COMPANY_ROLE_LABELS: Record<CompanyRole, string> = {
+  super_admin: 'Super Admin',
+  company_admin: 'Company Admin',
+  technical_director: 'Technical Director',
+  engineering_manager: 'Engineering Manager',
+  bim_manager: 'BIM Manager',
+  project_manager: 'Project Manager',
+  construction_manager: 'Construction Manager',
+  qa_qc_manager: 'QA/QC Manager',
+  commercial_manager: 'Commercial Manager',
+  consultant: 'Consultant',
+  client_representative: 'Client Representative',
+};
+
 export const ISSUE_STATUSES: IssueStatus[] = [
   'open', 'assigned', 'in_progress', 'under_review', 'waiting_for_information',
   'resolved', 'closed', 'reopened', 'void',

@@ -3,23 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PROJECT_ROLES, COMPANY_ROLES, type ProjectRole, type CompanyRole } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
 import { getMembers, addMember, removeMember } from '../lib/projects.api';
-import { listUsers, inviteUser } from '../lib/users.api';
+import { listUsers, inviteUser, approveUserRole } from '../lib/users.api';
 import { apiErrorMessage } from '../lib/api';
-import { PROJECT_ROLE_LABELS } from '../lib/issue-constants';
-
-const COMPANY_ROLE_LABELS: Record<CompanyRole, string> = {
-  super_admin: 'Super Admin',
-  company_admin: 'Company Admin',
-  technical_director: 'Technical Director',
-  engineering_manager: 'Engineering Manager',
-  bim_manager: 'BIM Manager',
-  project_manager: 'Project Manager',
-  construction_manager: 'Construction Manager',
-  qa_qc_manager: 'QA/QC Manager',
-  commercial_manager: 'Commercial Manager',
-  consultant: 'Consultant',
-  client_representative: 'Client Representative',
-};
+import { PROJECT_ROLE_LABELS, COMPANY_ROLE_LABELS } from '../lib/issue-constants';
 
 export function ManageMembersModal({
   open,
@@ -35,7 +21,7 @@ export function ManageMembersModal({
   const [selectedRole, setSelectedRole] = useState<ProjectRole>('site_engineer');
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<CompanyRole>('consultant');
+  const [overrideRole, setOverrideRole] = useState<Record<string, CompanyRole>>({});
 
   const membersQuery = useQuery({
     queryKey: ['members', projectId],
@@ -68,13 +54,20 @@ export function ManageMembersModal({
   });
 
   const inviteMutation = useMutation({
-    mutationFn: (vars: { email: string; companyRole: CompanyRole }) => inviteUser(vars),
+    mutationFn: (vars: { email: string }) => inviteUser(vars),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['companyUsers'] }),
   });
 
   const inviteLink = inviteMutation.data
     ? `${window.location.origin}/accept-invitation?token=${inviteMutation.data.invitationToken}`
     : null;
+
+  const pendingUsers = (usersQuery.data?.data ?? []).filter((u) => u.requestedCompanyRole);
+
+  const approveMutation = useMutation({
+    mutationFn: (vars: { userId: string; companyRole: CompanyRole }) => approveUserRole(vars.userId, vars.companyRole),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['companyUsers'] }),
+  });
 
   return (
     <Modal open={open} onClose={onClose} title="Project team">
@@ -153,26 +146,16 @@ export function ManageMembersModal({
             <>
               <div className="field-label">Invite a new person</div>
               <p className="text-xs text-ink-500">
+                They'll pick their own position when they accept, and it stays pending until you approve it below.
                 Email delivery isn't set up yet -- inviting someone gives you a link to copy and send them yourself (WhatsApp, email, however). It won't land in their inbox automatically.
               </p>
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  type="email"
-                  className="field-input"
-                  placeholder="their.email@company.com"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                />
-                <select
-                  className="field-input"
-                  value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value as CompanyRole)}
-                >
-                  {COMPANY_ROLES.filter((r) => r !== 'super_admin').map((r) => (
-                    <option key={r} value={r}>{COMPANY_ROLE_LABELS[r]}</option>
-                  ))}
-                </select>
-              </div>
+              <input
+                type="email"
+                className="field-input"
+                placeholder="their.email@company.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+              />
 
               {inviteMutation.isError && <p className="field-error">{apiErrorMessage(inviteMutation.error)}</p>}
 
@@ -193,7 +176,7 @@ export function ManageMembersModal({
                 </div>
               ) : (
                 <button
-                  onClick={() => inviteMutation.mutate({ email: inviteEmail, companyRole: inviteRole })}
+                  onClick={() => inviteMutation.mutate({ email: inviteEmail })}
                   className="btn-primary w-full"
                   disabled={!inviteEmail || inviteMutation.isPending}
                 >
@@ -202,6 +185,47 @@ export function ManageMembersModal({
               )}
             </>
           )}
+        </div>
+
+        <div className="pt-2 border-t border-base-600 space-y-3">
+          <div className="field-label">Pending approvals</div>
+          <p className="text-xs text-ink-500">
+            Company-wide, not specific to this project -- anyone who's accepted an invite but hasn't been approved yet.
+          </p>
+          {pendingUsers.length === 0 && (
+            <p className="text-sm text-ink-500">No one's waiting on approval.</p>
+          )}
+          {pendingUsers.map((u) => {
+            const role = overrideRole[u.id] ?? (u.requestedCompanyRole as CompanyRole);
+            return (
+              <div key={u.id} className="flex items-center justify-between gap-3 text-sm py-1.5 border-b border-base-700/60 last:border-0">
+                <div>
+                  <div className="text-ink-100">{[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}</div>
+                  <div className="text-ink-500 text-xs">
+                    requested: {COMPANY_ROLE_LABELS[u.requestedCompanyRole as CompanyRole] ?? u.requestedCompanyRole}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <select
+                    className="field-input !w-auto text-xs"
+                    value={role}
+                    onChange={(e) => setOverrideRole((prev) => ({ ...prev, [u.id]: e.target.value as CompanyRole }))}
+                  >
+                    {COMPANY_ROLES.filter((r) => r !== 'super_admin').map((r) => (
+                      <option key={r} value={r}>{COMPANY_ROLE_LABELS[r]}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => approveMutation.mutate({ userId: u.id, companyRole: role })}
+                    className="btn-primary !py-1 !px-2 text-xs shrink-0"
+                    disabled={approveMutation.isPending}
+                  >
+                    Approve
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </Modal>

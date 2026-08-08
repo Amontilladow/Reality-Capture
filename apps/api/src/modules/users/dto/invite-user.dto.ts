@@ -7,9 +7,16 @@ export class InviteUserDto {
   @IsEmail()
   email: string;
 
-  @ApiProperty({ enum: COMPANY_ROLES })
+  // No longer required at invite time -- the person accepting now picks
+  // their own intended role (AcceptInvitationDto.requestedRole), which
+  // stays pending until an admin approves it. Kept optional, not removed,
+  // so nothing calling this with an explicit companyRole breaks; if given,
+  // it's just the account's harmless starting company_role before any
+  // request is made, not a final assignment.
+  @ApiProperty({ enum: COMPANY_ROLES, required: false })
+  @IsOptional()
   @IsEnum(COMPANY_ROLES)
-  companyRole: CompanyRole;
+  companyRole?: CompanyRole;
 
   @ApiProperty({ required: false })
   @IsOptional()

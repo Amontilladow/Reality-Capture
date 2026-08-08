@@ -10,6 +10,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { Public } from '../../common/decorators/public.decorator';
+import { AllowPending } from '../../common/decorators/allow-pending.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '@engineeringos/types';
 
@@ -37,6 +38,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @AllowPending()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Revoke the current refresh token' })
@@ -70,6 +72,7 @@ export class AuthController {
   }
 
   @Get('me')
+  @AllowPending()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get the currently authenticated user' })
   async getMe(@CurrentUser() user: AuthenticatedUser) {

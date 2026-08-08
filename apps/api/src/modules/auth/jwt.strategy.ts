@@ -27,6 +27,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       companyRole: payload.companyRole,
       firstName: payload.firstName ?? '',
       lastName: payload.lastName ?? '',
+      pendingApproval: payload.pendingApproval ?? false,
     };
   }
 }
