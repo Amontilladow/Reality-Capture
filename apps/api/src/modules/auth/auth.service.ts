@@ -111,57 +111,72 @@ export class AuthService {
 
   // ── Accept invitation ─────────────────────────────────────────────────────
   async acceptInvitation(dto: AcceptInvitationDto): Promise<{ tokens: AuthTokens; user: AuthenticatedUser }> {
-    const [user] = await this.db.query`
-      SELECT * FROM users
-      WHERE invitation_token = ${dto.token}
-        AND invitation_expires_at > NOW()
-        AND email_verified = false
-    `;
-
-    if (!user) throw new BadRequestException('Invitation token is invalid or has expired.');
-
     const passwordHash = await argon2.hash(dto.password, { type: argon2.argon2id });
 
-    await this.db.query`
+    // Atomic check-and-consume: the old code did a separate SELECT to
+    // validate the token, then a separate UPDATE to consume it. Two
+    // concurrent accept requests on the same fresh token could both pass
+    // that SELECT before either UPDATE committed -- confirmed by hand,
+    // firing two genuinely concurrent requests at the same token: both
+    // returned 200 with a valid session for the same user row, and
+    // whichever UPDATE committed last silently won the name/password,
+    // with no error to either caller. A single UPDATE ... WHERE ...
+    // RETURNING is one indivisible operation per row -- Postgres itself
+    // guarantees only one concurrent request can ever match this WHERE
+    // clause, so this closes the race at the database level rather than
+    // trying to catch it in application code.
+    //
+    // Deliberately does NOT null out invitation_token on success (unlike
+    // before) -- keeping it lets the lookup below, on the failure path,
+    // tell "already used" apart from "never existed"/"expired" instead of
+    // collapsing all three into one generic message. It's permanently
+    // inert either way once email_verified flips to true, since that's
+    // what the WHERE clause actually guards on.
+    const [user] = await this.db.query`
       UPDATE users SET
         first_name = ${dto.firstName},
         last_name  = ${dto.lastName},
         password_hash = ${passwordHash},
         email_verified = true,
-        invitation_token = NULL,
         invitation_expires_at = NULL,
         requested_company_role = ${dto.requestedRole},
         updated_at = NOW()
-      WHERE id = ${user.id}
+      WHERE invitation_token = ${dto.token}
+        AND invitation_expires_at > NOW()
+        AND email_verified = false
+      RETURNING *
     `;
 
-    // `user` was SELECTed before the UPDATE above, so its requestedCompanyRole
-    // is stale (whatever it was pre-signup, normally null) -- override it
-    // explicitly with what this request just set, rather than trusting the
-    // pre-update row issueTokens() would otherwise read.
-    const updatedUser = {
-      ...user,
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-      emailVerified: true,
-      requestedCompanyRole: dto.requestedRole,
-    };
-    const tokens = await this.issueTokens(updatedUser);
+    if (user) {
+      const tokens = await this.issueTokens(user);
+      return {
+        tokens,
+        user: {
+          id: user.id as string,
+          email: user.email as string,
+          companyId: user.companyId as string,
+          companyRole: user.companyRole as CompanyRole,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          // Always true right after accepting -- every self-registration is
+          // pending until a company_admin/super_admin approves it.
+          pendingApproval: true,
+        },
+      };
+    }
 
-    return {
-      tokens,
-      user: {
-        id: user.id as string,
-        email: user.email as string,
-        companyId: user.companyId as string,
-        companyRole: user.companyRole as CompanyRole,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        // Always true right after accepting -- every self-registration is
-        // pending until a company_admin/super_admin approves it.
-        pendingApproval: true,
-      },
-    };
+    // The UPDATE above matched nothing -- work out why, for a clearer
+    // message than one generic catch-all.
+    const [existing] = await this.db.query`
+      SELECT email_verified, invitation_expires_at FROM users WHERE invitation_token = ${dto.token}
+    `;
+    if (existing?.emailVerified) {
+      throw new BadRequestException('This invitation has already been used.');
+    }
+    if (existing && new Date(existing.invitationExpiresAt as string) <= new Date()) {
+      throw new BadRequestException('This invitation has expired.');
+    }
+    throw new BadRequestException('Invitation token is invalid.');
   }
 
   // ── Forgot password ───────────────────────────────────────────────────────
