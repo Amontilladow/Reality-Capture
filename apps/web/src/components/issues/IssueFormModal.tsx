@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { IssueType, IssuePriority, IssueDiscipline, IssueCategory } from '@engineeringos/types';
+import type { IssueType, IssuePriority, IssueDiscipline, IssueCategory, ProjectRole } from '@engineeringos/types';
 import { Modal } from '../ui/Modal';
 import { createIssue, updateIssue, type IssueDetailItem } from '../../lib/issues.api';
 import type { CameraVector } from '../bim-viewer/BimViewer';
@@ -10,6 +10,7 @@ import { BuildingLevelRoomPicker, type HierarchySelection } from '../hierarchy/B
 import {
   ISSUE_TYPES, ISSUE_TYPE_LABELS, ISSUE_PRIORITIES, PRIORITY_LABELS,
   ISSUE_DISCIPLINES, DISCIPLINE_LABELS, ISSUE_CATEGORIES, CATEGORY_LABELS,
+  PROJECT_ROLE_LABELS,
 } from '../../lib/issue-constants';
 import { apiErrorMessage } from '../../lib/api';
 
@@ -178,9 +179,13 @@ export function IssueFormModal({
             <label className="field-label" htmlFor="assignedTo">Assignee</label>
             <select id="assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
               <option value="">Unassigned</option>
-              {members.map((m) => (
-                <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
-              ))}
+              {members.map((m) => {
+                const name = [m.firstName, m.lastName].filter(Boolean).join(' ') || m.email;
+                const roleLabel = PROJECT_ROLE_LABELS[m.role as ProjectRole] ?? m.role;
+                return (
+                  <option key={m.userId} value={m.userId}>{name} ({roleLabel})</option>
+                );
+              })}
             </select>
           </div>
           <div>

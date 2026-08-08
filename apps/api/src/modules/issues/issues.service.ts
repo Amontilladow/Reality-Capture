@@ -11,6 +11,7 @@ import type { ForceStatusDto } from './dto/force-status.dto';
 import type { BulkCloseIssuesDto } from './dto/bulk-close-issues.dto';
 import type { BroadcastReminderDto } from './dto/broadcast-reminder.dto';
 import type { UserReminderDto } from './dto/user-reminder.dto';
+import type { WarnUserDto } from './dto/warn-user.dto';
 import type { IssueAttachmentUploadUrlDto } from './dto/issue-attachment-upload-url.dto';
 import type { AddIssueAttachmentDto } from './dto/add-issue-attachment.dto';
 import type { PaginationQuery } from '@engineeringos/types';
@@ -531,6 +532,37 @@ export class IssuesService {
       }
 
       return { remindersSent: userIssues.length };
+    });
+  }
+
+  // One-click "Warn" from the dashboard's per-user KPI row -- unlike the
+  // scheduled IssueWarningService (which has no real actor and falls back to
+  // attributing to the issue's own creator), this always has a real manager
+  // triggering it, so performed_by is that manager's own id, not a workaround.
+  // Scoped to overdue issues specifically, not all open ones -- matches what
+  // the KPI row's "overdue" count is actually about.
+  async warnUser(companyId: string, projectId: string, performedBy: string, dto: WarnUserDto) {
+    return this.db.withTenant(companyId, async (sql) => {
+      const overdueIssues = await sql`
+        SELECT id, deadline FROM issues
+        WHERE project_id = ${projectId} AND company_id = ${companyId}
+          AND assigned_to = ${dto.userId}::uuid
+          AND status NOT IN ('closed', 'void')
+          AND deadline IS NOT NULL AND deadline < NOW()
+      `;
+
+      for (const issue of overdueIssues) {
+        const overdueDays = Math.max(0, Math.floor((Date.now() - new Date(issue.deadline as string).getTime()) / (1000 * 60 * 60 * 24)));
+        const message = overdueDays >= 1
+          ? `Manual warning: issue is overdue by ${overdueDays} day(s).`
+          : `Manual warning: issue is past its deadline.`;
+        await sql`
+          INSERT INTO issue_activities (issue_id, company_id, activity_type, content, performed_by)
+          VALUES (${issue.id}, ${companyId}, 'manual_warning', ${message}, ${performedBy})
+        `;
+      }
+
+      return { warned: overdueIssues.length };
     });
   }
 

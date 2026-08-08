@@ -1,4 +1,13 @@
-import type { IssueStatus, IssuePriority, IssueType, IssueDiscipline, IssueCategory, CompanyRole } from '@engineeringos/types';
+import type { IssueStatus, IssuePriority, IssueType, IssueDiscipline, IssueCategory, CompanyRole, ProjectRole } from '@engineeringos/types';
+
+export const PROJECT_ROLE_LABELS: Record<ProjectRole, string> = {
+  project_lead: 'Project Lead',
+  site_engineer: 'Site Engineer',
+  surveyor: 'Surveyor',
+  document_controller: 'Document Controller',
+  capture_operator: 'Capture Operator',
+  viewer: 'Viewer',
+};
 
 export const ISSUE_STATUSES: IssueStatus[] = [
   'open', 'assigned', 'in_progress', 'under_review', 'waiting_for_information',

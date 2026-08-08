@@ -75,8 +75,11 @@ export function archiveLocation(projectId: string, locationId: string) {
 
 export interface ProjectMember {
   userId: string;
-  projectId: string;
-  projectRole: string;
+  // Actual field name returned by GET /projects/:id/members -- was
+  // incorrectly declared as `projectRole` here, which silently rendered as
+  // undefined everywhere this type was used (both the Team modal's member
+  // list and the Issues form's assignee dropdown showed no role at all).
+  role: string;
   firstName?: string;
   lastName?: string;
   email?: string;

@@ -11,6 +11,7 @@ import { ForceStatusDto } from './dto/force-status.dto';
 import { BulkCloseIssuesDto } from './dto/bulk-close-issues.dto';
 import { BroadcastReminderDto } from './dto/broadcast-reminder.dto';
 import { UserReminderDto } from './dto/user-reminder.dto';
+import { WarnUserDto } from './dto/warn-user.dto';
 import { IssueAttachmentUploadUrlDto } from './dto/issue-attachment-upload-url.dto';
 import { AddIssueAttachmentDto } from './dto/add-issue-attachment.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -81,6 +82,13 @@ export class IssuesController {
   @ApiOperation({ summary: "Send a reminder for one user's open issues" })
   async userReminder(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: UserReminderDto) {
     return { data: await this.svc.userReminder(u.companyId, pid, u.id, dto), error: null };
+  }
+
+  @Post('warn-user')
+  @Roles('company_admin', 'engineering_manager')
+  @ApiOperation({ summary: "Log a manual warning against one user's overdue issues" })
+  async warnUser(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: WarnUserDto) {
+    return { data: await this.svc.warnUser(u.companyId, pid, u.id, dto), error: null };
   }
 
   @Get(':id')

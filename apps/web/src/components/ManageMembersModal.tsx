@@ -5,15 +5,7 @@ import { Modal } from './ui/Modal';
 import { getMembers, addMember, removeMember } from '../lib/projects.api';
 import { listUsers, inviteUser } from '../lib/users.api';
 import { apiErrorMessage } from '../lib/api';
-
-const PROJECT_ROLE_LABELS: Record<ProjectRole, string> = {
-  project_lead: 'Project Lead',
-  site_engineer: 'Site Engineer',
-  surveyor: 'Surveyor',
-  document_controller: 'Document Controller',
-  capture_operator: 'Capture Operator',
-  viewer: 'Viewer',
-};
+import { PROJECT_ROLE_LABELS } from '../lib/issue-constants';
 
 const COMPANY_ROLE_LABELS: Record<CompanyRole, string> = {
   super_admin: 'Super Admin',
@@ -97,7 +89,7 @@ export function ManageMembersModal({
             <div key={m.userId} className="flex items-center justify-between text-sm py-1.5 border-b border-base-700/60 last:border-0">
               <div>
                 <span className="text-ink-100">{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</span>
-                <span className="text-ink-500 ml-2 text-xs">{PROJECT_ROLE_LABELS[m.projectRole as ProjectRole] ?? m.projectRole}</span>
+                <span className="text-ink-500 ml-2 text-xs">{PROJECT_ROLE_LABELS[m.role as ProjectRole] ?? m.role}</span>
               </div>
               <button
                 onClick={() => removeMutation.mutate(m.userId)}

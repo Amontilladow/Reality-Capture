@@ -187,6 +187,10 @@ export function sendUserReminder(projectId: string, userId: string, message: str
   return apiPost<{ remindersSent: number }>(`/projects/${projectId}/issues/reminders/user`, { userId, message });
 }
 
+export function warnUser(projectId: string, userId: string) {
+  return apiPost<{ warned: number }>(`/projects/${projectId}/issues/warn-user`, { userId });
+}
+
 // ── Attachments (presigned-PUT, same shape as uploadDrawing() in
 // drawings.api.ts) ───────────────────────────────────────────────────────
 export function getIssueAttachmentUploadUrl(projectId: string, issueId: string, filename: string, sizeBytes: number) {

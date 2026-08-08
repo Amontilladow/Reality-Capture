@@ -6,7 +6,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { IssueFormModal } from '../components/issues/IssueFormModal';
 import { IssueDetail } from '../components/issues/IssueDetail';
 import {
-  listIssues, getIssueSummary, bulkCloseIssues, listReminders, broadcastReminder, sendUserReminder,
+  listIssues, getIssueSummary, bulkCloseIssues, listReminders, broadcastReminder, sendUserReminder, warnUser,
   type IssueListItem, type IssueDetailItem,
 } from '../lib/issues.api';
 import { getMembers, getHierarchy } from '../lib/projects.api';
@@ -315,7 +315,7 @@ export default function IssuesPage() {
       )}
 
       {tab === 'dashboard' && isManager && (
-        <IssueDashboard summary={s} dashboardIssues={dashboardIssuesQuery.data?.data ?? []} isLoading={dashboardIssuesQuery.isLoading} />
+        <IssueDashboard projectId={projectId!} summary={s} dashboardIssues={dashboardIssuesQuery.data?.data ?? []} isLoading={dashboardIssuesQuery.isLoading} />
       )}
 
       {tab === 'reminders' && (
@@ -410,16 +410,28 @@ function computeUserKpis(issues: IssueListItem[]): UserKpiRow[] {
 }
 
 function IssueDashboard({
+  projectId,
   summary,
   dashboardIssues,
   isLoading,
 }: {
+  projectId: string;
   summary?: { total: number; open: number; inProgress: number; resolved: number; closed: number; critical: number; overdue: number };
   dashboardIssues: IssueListItem[];
   isLoading: boolean;
 }) {
+  const queryClient = useQueryClient();
   const kpis = useMemo(() => computeUserKpis(dashboardIssues), [dashboardIssues]);
   const completion = summary && summary.total > 0 ? Math.round((summary.closed / summary.total) * 100) : 0;
+
+  const [warnedUserId, setWarnedUserId] = useState<string | null>(null);
+  const warnMutation = useMutation({
+    mutationFn: (userId: string) => warnUser(projectId, userId),
+    onSuccess: (_result, userId) => {
+      setWarnedUserId(userId);
+      queryClient.invalidateQueries({ queryKey: ['issues-dashboard', projectId] });
+    },
+  });
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -473,6 +485,7 @@ function IssueDashboard({
                 <th className="p-2 text-right">Closed</th>
                 <th className="p-2 text-right">Overdue</th>
                 <th className="p-2 text-right">Avg close time</th>
+                <th className="p-2 text-right">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -486,10 +499,26 @@ function IssueDashboard({
                   <td className="p-2 text-right tabular-nums">{k.closed}</td>
                   <td className={`p-2 text-right tabular-nums ${k.overdue > 0 ? 'text-danger' : ''}`}>{k.overdue}</td>
                   <td className="p-2 text-right tabular-nums">{k.avgCloseDays != null ? `${k.avgCloseDays.toFixed(1)}d` : '—'}</td>
+                  <td className="p-2 text-right">
+                    {warnedUserId === k.userId && warnMutation.isSuccess ? (
+                      <span className="text-xs text-ink-500">
+                        {warnMutation.data?.warned ? `Warned (${warnMutation.data.warned})` : 'No overdue issues'}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => warnMutation.mutate(k.userId)}
+                        className="btn-secondary !py-1 !px-2 text-xs"
+                        disabled={k.overdue === 0 || (warnMutation.isPending && warnedUserId === k.userId)}
+                        title={k.overdue === 0 ? "No overdue issues to warn about" : undefined}
+                      >
+                        {warnMutation.isPending && warnedUserId === k.userId ? 'Warning…' : 'Warn'}
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
               {kpis.length === 0 && !isLoading && (
-                <tr><td colSpan={8} className="p-4 text-center text-ink-500">No data yet.</td></tr>
+                <tr><td colSpan={9} className="p-4 text-center text-ink-500">No data yet.</td></tr>
               )}
             </tbody>
           </table>
