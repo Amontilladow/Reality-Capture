@@ -86,7 +86,7 @@ export function getMembers(projectId: string) {
   return apiGet<ProjectMember[]>(`/projects/${projectId}/members`);
 }
 
-export function addMember(projectId: string, payload: { userId: string; projectRole: string }) {
+export function addMember(projectId: string, payload: { userId: string; role: string }) {
   return apiPost<ProjectMember>(`/projects/${projectId}/members`, payload);
 }
 

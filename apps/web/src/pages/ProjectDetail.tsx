@@ -9,6 +9,7 @@ import { AddHierarchyNodeModal } from '../components/AddHierarchyNodeModal';
 import { CaptureGrid } from '../components/CaptureGrid';
 import { CaptureUploadModal } from '../components/CaptureUploadModal';
 import { EditProjectModal } from '../components/EditProjectModal';
+import { ManageMembersModal } from '../components/ManageMembersModal';
 import { ProjectDashboard } from '../components/ProjectDashboard';
 import { getProject, getHierarchy, updateBuilding } from '../lib/projects.api';
 import { listCaptures } from '../lib/captures.api';
@@ -22,6 +23,7 @@ export default function ProjectDetail() {
   const [nodeModal, setNodeModal] = useState<NodeModalState>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
 
   const projectQuery = useQuery({
     queryKey: ['project', projectId],
@@ -71,6 +73,9 @@ export default function ProjectDetail() {
           <>
             <button onClick={() => setEditOpen(true)} className="btn-secondary">
               <EditIcon /> Edit
+            </button>
+            <button onClick={() => setMembersOpen(true)} className="btn-secondary">
+              <TeamIcon /> Team
             </button>
             <Link to={`/projects/${projectId}/drawings`} className="btn-secondary">Floor plans</Link>
             <Link to={`/projects/${projectId}/bim`} className="btn-secondary">BIM models</Link>
@@ -172,6 +177,10 @@ export default function ProjectDetail() {
       />
 
       <EditProjectModal open={editOpen} onClose={() => setEditOpen(false)} project={projectQuery.data} />
+
+      {projectId && (
+        <ManageMembersModal open={membersOpen} onClose={() => setMembersOpen(false)} projectId={projectId} />
+      )}
     </>
   );
 }
@@ -225,6 +234,15 @@ function UploadIcon() {
     <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 16V4M7 9l5-5 5 5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" strokeLinecap="round" />
+    </svg>
+  );
+}
+function TeamIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
