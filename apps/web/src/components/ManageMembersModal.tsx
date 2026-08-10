@@ -19,7 +19,6 @@ export function ManageMembersModal({
 }) {
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((s) => s.user);
-  const isCompanyAdmin = currentUser?.companyRole === 'company_admin' || currentUser?.companyRole === 'super_admin';
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedRole, setSelectedRole] = useState<ProjectRole>('site_engineer');
   const [showInvite, setShowInvite] = useState(false);
@@ -124,24 +123,22 @@ export function ManageMembersModal({
                     <option key={u.id} value={u.id}>{[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}</option>
                   ))}
                 </select>
-                {isCompanyAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => selectedUserId && deactivateMutation.mutate(selectedUserId)}
-                    disabled={!selectedUserId || selectedUserId === currentUser?.id || deactivateMutation.isPending}
-                    className="shrink-0 w-8 h-8 flex items-center justify-center rounded border border-base-600 text-danger hover:bg-danger/10 disabled:opacity-30 disabled:cursor-not-allowed"
-                    title={
-                      !selectedUserId
-                        ? 'Select a person above, then click here to remove them from the company entirely'
-                        : selectedUserId === currentUser?.id
-                        ? "You can't deactivate your own account."
-                        : 'Remove this person from the company (deactivates their account, frees their seat)'
-                    }
-                    aria-label="Deactivate selected person"
-                  >
-                    ✕
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => selectedUserId && deactivateMutation.mutate(selectedUserId)}
+                  disabled={!selectedUserId || selectedUserId === currentUser?.id || deactivateMutation.isPending}
+                  className="shrink-0 w-8 h-8 flex items-center justify-center rounded border border-base-600 text-danger hover:bg-danger/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                  title={
+                    !selectedUserId
+                      ? 'Select a person above, then click here to remove them from the company entirely'
+                      : selectedUserId === currentUser?.id
+                      ? "You can't deactivate your own account."
+                      : 'Remove this person from the company (deactivates their account, frees their seat)'
+                  }
+                  aria-label="Deactivate selected person"
+                >
+                  ✕
+                </button>
               </div>
               {usersQuery.isSuccess && addableUsers.length === 0 && (
                 <p className="text-xs text-ink-500 mt-1">
@@ -262,38 +259,36 @@ export function ManageMembersModal({
           })}
         </div>
 
-        {isCompanyAdmin && (
-          <div className="pt-2 border-t border-base-600 space-y-3">
-            <div className="field-label">Company members</div>
-            <p className="text-xs text-ink-500">
-              Deactivating someone revokes their access company-wide (not just this project) and frees their seat.
-              This includes people who were invited but never accepted -- deactivate them to cancel a stale invite.
-            </p>
-            {deactivateMutation.isError && <p className="field-error">{apiErrorMessage(deactivateMutation.error)}</p>}
-            {(usersQuery.data?.data ?? []).map((u) => {
-              const isSelf = u.id === currentUser?.id;
-              return (
-                <div key={u.id} className="flex items-center justify-between gap-3 text-sm py-1.5 border-b border-base-700/60 last:border-0">
-                  <div>
-                    <div className="text-ink-100">{[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}</div>
-                    <div className="text-ink-500 text-xs">
-                      {u.email}
-                      {!u.firstName && !u.lastName && ' — invited, hasn’t accepted yet'}
-                    </div>
+        <div className="pt-2 border-t border-base-600 space-y-3">
+          <div className="field-label">Company members</div>
+          <p className="text-xs text-ink-500">
+            Deactivating someone revokes their access company-wide (not just this project) and frees their seat.
+            This includes people who were invited but never accepted -- deactivate them to cancel a stale invite.
+          </p>
+          {deactivateMutation.isError && <p className="field-error">{apiErrorMessage(deactivateMutation.error)}</p>}
+          {(usersQuery.data?.data ?? []).map((u) => {
+            const isSelf = u.id === currentUser?.id;
+            return (
+              <div key={u.id} className="flex items-center justify-between gap-3 text-sm py-1.5 border-b border-base-700/60 last:border-0">
+                <div>
+                  <div className="text-ink-100">{[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}</div>
+                  <div className="text-ink-500 text-xs">
+                    {u.email}
+                    {!u.firstName && !u.lastName && ' — invited, hasn’t accepted yet'}
                   </div>
-                  <button
-                    onClick={() => deactivateMutation.mutate(u.id)}
-                    className="text-xs text-danger hover:text-danger/80 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                    disabled={deactivateMutation.isPending || isSelf}
-                    title={isSelf ? "You can't deactivate your own account." : undefined}
-                  >
-                    Deactivate
-                  </button>
                 </div>
-              );
-            })}
-          </div>
-        )}
+                <button
+                  onClick={() => deactivateMutation.mutate(u.id)}
+                  className="text-xs text-danger hover:text-danger/80 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                  disabled={deactivateMutation.isPending || isSelf}
+                  title={isSelf ? "You can't deactivate your own account." : undefined}
+                >
+                  Deactivate
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </Modal>
   );
