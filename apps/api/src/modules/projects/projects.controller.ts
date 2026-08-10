@@ -6,9 +6,11 @@ import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AddMemberDto } from './dto/add-member.dto';
+import { CreatePermissionGrantDto } from './dto/create-permission-grant.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
-import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
+import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
+import type { AuthenticatedUser, PaginationQuery, ProjectPermission } from '@engineeringos/types';
 
 @ApiTags('projects')
 @ApiBearerAuth()
@@ -24,7 +26,7 @@ export class ProjectsController {
   }
 
   @Post()
-  @Roles('engineering_manager', 'project_manager', 'company_admin')
+  @Roles('super_admin', 'company_admin')
   @ApiOperation({ summary: 'Create a new project' })
   async create(@CurrentUser() u: AuthenticatedUser, @Body() dto: CreateProjectDto) {
     return { data: await this.projects.create(u.companyId, u.id, dto), error: null };
@@ -49,16 +51,45 @@ export class ProjectsController {
   }
 
   @Post(':id/members')
+  @RequireProjectPermission('manage_team')
   @ApiOperation({ summary: 'Add a member to the project' })
   async addMember(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: AddMemberDto) {
     return { data: await this.projects.addMember(u.companyId, id, u.id, dto), error: null };
   }
 
   @Delete(':id/members/:userId')
+  @RequireProjectPermission('manage_team')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Remove a member from the project' })
   async removeMember(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Param('userId') userId: string) {
     return { data: await this.projects.removeMember(u.companyId, id, userId), error: null };
+  }
+
+  @Get(':id/permission-grants')
+  @Roles('super_admin')
+  @ApiOperation({ summary: "List a project's per-project permission grants" })
+  async getPermissionGrants(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
+    return { data: await this.projects.getPermissionGrants(u.companyId, id), error: null };
+  }
+
+  @Post(':id/permission-grants')
+  @Roles('super_admin')
+  @ApiOperation({ summary: 'Grant a company_admin a specific permission on this project' })
+  async grantPermission(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: CreatePermissionGrantDto) {
+    return { data: await this.projects.grantPermission(u.companyId, id, u.id, dto), error: null };
+  }
+
+  @Delete(':id/permission-grants/:userId/:permission')
+  @Roles('super_admin')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Revoke a permission grant' })
+  async revokePermission(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+    @Param('permission') permission: ProjectPermission,
+  ) {
+    return { data: await this.projects.revokePermission(u.companyId, id, userId, permission), error: null };
   }
 
   @Get(':id/hierarchy')

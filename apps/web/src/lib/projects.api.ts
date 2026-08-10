@@ -96,3 +96,27 @@ export function addMember(projectId: string, payload: { userId: string; role: st
 export function removeMember(projectId: string, userId: string) {
   return apiDelete<void>(`/projects/${projectId}/members/${userId}`);
 }
+
+export interface PermissionGrant {
+  id: string;
+  permission: string;
+  grantedAt: string;
+  userId: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
+  grantedByFirstName?: string;
+  grantedByLastName?: string;
+}
+
+export function getPermissionGrants(projectId: string) {
+  return apiGet<PermissionGrant[]>(`/projects/${projectId}/permission-grants`);
+}
+
+export function grantPermission(projectId: string, payload: { userId: string; permission: string }) {
+  return apiPost<PermissionGrant>(`/projects/${projectId}/permission-grants`, payload);
+}
+
+export function revokePermission(projectId: string, userId: string, permission: string) {
+  return apiDelete<void>(`/projects/${projectId}/permission-grants/${userId}/${permission}`);
+}

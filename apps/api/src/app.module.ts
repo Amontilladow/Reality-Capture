@@ -34,6 +34,7 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { PendingApprovalGuard } from './common/guards/pending-approval.guard';
+import { ProjectPermissionGuard } from './common/guards/project-permission.guard';
 
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
@@ -100,10 +101,14 @@ import redisConfig from './config/redis.config';
     // everything except @AllowPending() routes), then role checks -- pending
     // status is checked before role weight so a blocked user gets a clear
     // PENDING_APPROVAL reason instead of a generic insufficient-role one.
+    // ProjectPermissionGuard runs last: it's the most specific check (one
+    // project, one named capability) and only matters once the broader
+    // company-role gate above has already passed.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PendingApprovalGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: ProjectPermissionGuard },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],

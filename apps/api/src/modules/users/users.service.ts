@@ -109,9 +109,13 @@ export class UsersService {
   async update(companyId: string, requestingUserId: string, requestingUserRole: string, targetUserId: string, dto: UpdateUserDto) {
     const target = await this.findOne(companyId, targetUserId);
 
-    // Only company_admin and above can change roles or deactivate users
-    if ((dto.companyRole || dto.isActive !== undefined) && !['company_admin', 'super_admin'].includes(requestingUserRole)) {
-      throw new ForbiddenException('Only administrators can change roles or account status.');
+    // Only super_admin can change roles or deactivate users -- company_admin
+    // has no authority here by default under the permission model (its only
+    // inherent authority is creating projects; anything else needs a
+    // super_admin-granted per-project permission, which doesn't apply to
+    // company-wide user management like this).
+    if ((dto.companyRole || dto.isActive !== undefined) && requestingUserRole !== 'super_admin') {
+      throw new ForbiddenException('Only a super_admin can change roles or account status.');
     }
 
     // Users can only edit their own basic profile unless they are admin

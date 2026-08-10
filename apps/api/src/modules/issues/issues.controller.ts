@@ -16,6 +16,7 @@ import { IssueAttachmentUploadUrlDto } from './dto/issue-attachment-upload-url.d
 import { AddIssueAttachmentDto } from './dto/add-issue-attachment.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 
 @ApiTags('issues')
@@ -97,6 +98,7 @@ export class IssuesController {
   }
 
   @Patch(':id')
+  @RequireProjectPermission('manage_issues')
   async update(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: UpdateIssueDto) {
     return { data: await this.svc.update(u.companyId, pid, id, u.id, dto), error: null };
   }

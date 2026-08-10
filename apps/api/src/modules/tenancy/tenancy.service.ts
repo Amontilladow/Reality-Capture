@@ -54,7 +54,13 @@ export class TenancyService {
       const argon2 = await import('argon2');
       const passwordHash = await argon2.hash(dto.adminPassword, { type: argon2.argon2id });
 
-      // 4. Create admin user
+      // 4. Create admin user -- super_admin, not company_admin: under the
+      // permission model, company_admin has zero authority by default
+      // beyond creating projects. Seeding a new company's first (and only)
+      // account as company_admin would leave it unable to approve anyone,
+      // change roles, or touch company settings -- nobody could ever
+      // bootstrap it into a working state. super_admin is the one role
+      // with full authority, so the account that creates the company is it.
       const [user] = await sql`
         INSERT INTO users (
           company_id, email, password_hash, first_name, last_name,
@@ -62,7 +68,7 @@ export class TenancyService {
         ) VALUES (
           ${company.id as string}, ${dto.adminEmail.toLowerCase()}, ${passwordHash},
           ${dto.adminFirstName}, ${dto.adminLastName},
-          'company_admin', true, true
+          'super_admin', true, true
         )
         RETURNING id, email, first_name, last_name, company_role
       `;

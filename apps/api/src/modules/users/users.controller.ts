@@ -47,7 +47,7 @@ export class UsersController {
   }
 
   @Delete(':id')
-  @Roles('company_admin')
+  @Roles('super_admin')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Deactivate a user (soft delete)' })
   async deactivate(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {

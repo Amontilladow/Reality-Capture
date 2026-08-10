@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PROJECT_ROLES, COMPANY_ROLES, type ProjectRole, type CompanyRole } from '@engineeringos/types';
+import { PROJECT_ROLES, COMPANY_ROLES, PROJECT_PERMISSIONS, type ProjectRole, type CompanyRole, type ProjectPermission } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
-import { getMembers, addMember, removeMember } from '../lib/projects.api';
+import { getMembers, addMember, removeMember, getPermissionGrants, grantPermission, revokePermission } from '../lib/projects.api';
 import { listUsers, inviteUser, approveUserRole, deactivateUser } from '../lib/users.api';
 import { apiErrorMessage } from '../lib/api';
-import { PROJECT_ROLE_LABELS, COMPANY_ROLE_LABELS } from '../lib/issue-constants';
+import { PROJECT_ROLE_LABELS, COMPANY_ROLE_LABELS, PROJECT_PERMISSION_LABELS } from '../lib/issue-constants';
 import { useAuthStore } from '../store/auth.store';
 
 export function ManageMembersModal({
@@ -86,6 +86,31 @@ export function ManageMembersModal({
   const changeRoleMutation = useMutation({
     mutationFn: (vars: { userId: string; companyRole: CompanyRole }) => approveUserRole(vars.userId, vars.companyRole),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['companyUsers'] }),
+  });
+
+  // Only company_admin accounts are ever grant targets -- super_admin already
+  // has every permission everywhere, and every other role gets project-level
+  // authority through project_members.role instead, never through a grant.
+  const companyAdmins = (usersQuery.data?.data ?? []).filter((u) => u.companyRole === 'company_admin');
+
+  const permissionGrantsQuery = useQuery({
+    queryKey: ['permissionGrants', projectId],
+    queryFn: () => getPermissionGrants(projectId),
+    enabled: open,
+  });
+
+  const grantedSet = new Set(
+    (permissionGrantsQuery.data ?? []).map((g) => `${g.userId}:${g.permission}`),
+  );
+
+  const grantMutation = useMutation({
+    mutationFn: (vars: { userId: string; permission: ProjectPermission }) => grantPermission(projectId, vars),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['permissionGrants', projectId] }),
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: (vars: { userId: string; permission: ProjectPermission }) => revokePermission(projectId, vars.userId, vars.permission),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['permissionGrants', projectId] }),
   });
 
   return (
@@ -294,7 +319,12 @@ export function ManageMembersModal({
                     value={role}
                     onChange={(e) => setOverrideRole((prev) => ({ ...prev, [u.id]: e.target.value as CompanyRole }))}
                   >
-                    {COMPANY_ROLES.filter((r) => r !== 'super_admin').map((r) => (
+                    {/* Unlike the self-requested-role picker above, super_admin IS a
+                        valid option here -- this is an admin deliberately setting someone
+                        else's role, and excluding it would make an existing super_admin's
+                        own row silently misdisplay as company_admin, with a Save button
+                        one click away from actually demoting them. */}
+                    {COMPANY_ROLES.map((r) => (
                       <option key={r} value={r}>{COMPANY_ROLE_LABELS[r]}</option>
                     ))}
                   </select>
@@ -319,6 +349,49 @@ export function ManageMembersModal({
               </div>
             );
           })}
+        </div>
+
+        <div className="pt-2 border-t border-base-600 space-y-3">
+          <div className="field-label">Project permissions</div>
+          <p className="text-xs text-ink-500">
+            A Company Admin has no authority on a project by default — grant them specific permissions here,
+            scoped to just this project. Only a Super Admin can grant or revoke these.
+          </p>
+          {(grantMutation.isError) && <p className="field-error">{apiErrorMessage(grantMutation.error)}</p>}
+          {(revokeMutation.isError) && <p className="field-error">{apiErrorMessage(revokeMutation.error)}</p>}
+          {companyAdmins.length === 0 && (
+            <p className="text-sm text-ink-500">No Company Admin accounts to grant permissions to.</p>
+          )}
+          {companyAdmins.map((u) => (
+            <div key={u.id} className="py-1.5 border-b border-base-700/60 last:border-0">
+              <div className="text-ink-100 text-sm">{[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}</div>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {PROJECT_PERMISSIONS.map((permission) => {
+                  const granted = grantedSet.has(`${u.id}:${permission}`);
+                  const pending = grantMutation.isPending || revokeMutation.isPending;
+                  return (
+                    <button
+                      key={permission}
+                      onClick={() =>
+                        granted
+                          ? revokeMutation.mutate({ userId: u.id, permission })
+                          : grantMutation.mutate({ userId: u.id, permission })
+                      }
+                      disabled={pending}
+                      className={
+                        granted
+                          ? 'text-xs px-2 py-1 rounded border border-blueprint bg-blueprint/20 text-blueprint disabled:opacity-40'
+                          : 'text-xs px-2 py-1 rounded border border-base-600 text-ink-500 hover:text-ink-100 disabled:opacity-40'
+                      }
+                      title={granted ? `Click to revoke '${permission}'` : `Click to grant '${permission}'`}
+                    >
+                      {PROJECT_PERMISSION_LABELS[permission]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </Modal>

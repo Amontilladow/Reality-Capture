@@ -1,11 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { PaymentRequiredException } from '../../common/exceptions/payment-required.exception';
 import type { CreateProjectDto } from './dto/create-project.dto';
 import type { UpdateProjectDto } from './dto/update-project.dto';
 import type { AddMemberDto } from './dto/add-member.dto';
-import type { PaginationQuery } from '@engineeringos/types';
+import type { CreatePermissionGrantDto } from './dto/create-permission-grant.dto';
+import type { PaginationQuery, ProjectPermission } from '@engineeringos/types';
 
 @Injectable()
 export class ProjectsService {
@@ -155,6 +156,66 @@ export class ProjectsService {
       throw new NotFoundException('That person is not a member of this project.');
     }
     return { message: 'Member removed from project.' };
+  }
+
+  // ── Per-project permission grants ────────────────────────────────────────
+  // super_admin has full authority everywhere and project_lead has it on
+  // their own project by default (see ProjectPermissionGuard) -- these
+  // grants exist purely to extend a specific company_admin's reach to a
+  // specific project without making it company-wide or permanent.
+  async getPermissionGrants(companyId: string, projectId: string) {
+    await this.findOne(companyId, projectId);
+    return this.db.withTenant(companyId, sql => sql`
+      SELECT g.id, g.permission, g.granted_at,
+             u.id AS user_id, u.first_name, u.last_name, u.email,
+             gb.first_name AS granted_by_first_name, gb.last_name AS granted_by_last_name
+      FROM project_permission_grants g
+      JOIN users u ON u.id = g.user_id
+      JOIN users gb ON gb.id = g.granted_by
+      WHERE g.project_id = ${projectId}
+      ORDER BY u.first_name, u.last_name, g.permission
+    `);
+  }
+
+  async grantPermission(companyId: string, projectId: string, grantedBy: string, dto: CreatePermissionGrantDto) {
+    await this.findOne(companyId, projectId);
+
+    // Grants exist to extend company_admin's reach -- anyone else either
+    // already has full authority (super_admin) or gets it a different way
+    // (project_lead on their own project), so granting to any other role
+    // would be meaningless or a way to route around the role system.
+    const [target] = await this.db.withTenant(companyId, sql => sql`
+      SELECT company_role, is_active, requested_company_role FROM users WHERE id = ${dto.userId}
+    `);
+    if (!target) throw new NotFoundException('User not found.');
+    if (target.companyRole !== 'company_admin') {
+      throw new BadRequestException('Permission grants can only be given to a company_admin.');
+    }
+    if (!target.isActive) {
+      throw new BadRequestException('Cannot grant a permission to a deactivated account.');
+    }
+    if (target.requestedCompanyRole) {
+      throw new BadRequestException('This account is still awaiting approval and cannot be granted permissions yet.');
+    }
+
+    const [grant] = await this.db.withTenant(companyId, sql => sql`
+      INSERT INTO project_permission_grants (project_id, user_id, company_id, permission, granted_by)
+      VALUES (${projectId}, ${dto.userId}, ${companyId}, ${dto.permission}, ${grantedBy})
+      ON CONFLICT (project_id, user_id, permission) DO NOTHING
+      RETURNING id, permission, granted_at
+    `);
+    return grant ?? { message: 'That permission was already granted.' };
+  }
+
+  async revokePermission(companyId: string, projectId: string, userId: string, permission: ProjectPermission) {
+    const result = await this.db.withTenant(companyId, sql => sql`
+      DELETE FROM project_permission_grants
+      WHERE project_id = ${projectId} AND user_id = ${userId} AND permission = ${permission}
+    `);
+    if (result.count === 0) {
+      throw new NotFoundException('That permission grant does not exist.');
+    }
+    return { message: 'Permission revoked.' };
   }
 
   // ── Building/Level/Location helpers (full CRUD in buildings.module) ─────────

@@ -1,4 +1,10 @@
-import type { IssueStatus, IssuePriority, IssueType, IssueDiscipline, IssueCategory, CompanyRole, ProjectRole } from '@engineeringos/types';
+import type { IssueStatus, IssuePriority, IssueType, IssueDiscipline, IssueCategory, CompanyRole, ProjectRole, ProjectPermission } from '@engineeringos/types';
+
+export const PROJECT_PERMISSION_LABELS: Record<ProjectPermission, string> = {
+  manage_team: 'Manage team',
+  manage_issues: 'Manage issues',
+  manage_project_records: 'Manage RFIs/submittals/transmittals/QA/snagging',
+};
 
 export const PROJECT_ROLE_LABELS: Record<ProjectRole, string> = {
   project_lead: 'Project Lead',

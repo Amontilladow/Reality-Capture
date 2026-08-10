@@ -4,6 +4,7 @@ import { RfisService } from './rfis.service';
 import { CreateRfiDto } from './dto/create-rfi.dto';
 import { UpdateRfiDto } from './dto/update-rfi.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 
 @ApiTags('rfis')
@@ -41,11 +42,13 @@ export class RfisController {
   }
 
   @Patch(':id')
+  @RequireProjectPermission('manage_project_records')
   async update(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: UpdateRfiDto) {
     return { data: await this.svc.update(u.companyId, pid, id, u.id, dto), error: null };
   }
 
   @Delete(':id')
+  @RequireProjectPermission('manage_project_records')
   @HttpCode(HttpStatus.OK)
   async delete(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
     return { data: await this.svc.delete(u.companyId, pid, id), error: null };

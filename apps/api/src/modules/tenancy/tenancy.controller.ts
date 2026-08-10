@@ -41,7 +41,7 @@ export class TenancyController {
 
   @Patch('settings')
   @ApiBearerAuth()
-  @Roles('company_admin')
+  @Roles('super_admin')
   @ApiOperation({ summary: 'Update company settings' })
   async updateSettings(@CurrentUser() u: AuthenticatedUser, @Body() settings: Record<string, unknown>) {
     return { data: await this.tenancy.updateSettings(u.companyId, settings), error: null };

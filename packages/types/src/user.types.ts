@@ -58,6 +58,20 @@ export const PROJECT_ROLE_WEIGHT: Record<ProjectRole, number> = {
   viewer: 10,
 };
 
+// A specific, named capability a super_admin can grant to a company_admin on
+// one specific project (see project_permission_grants). Unlike CompanyRole,
+// this is not a hierarchy -- each permission is independently granted, and
+// holding one implies nothing about the others. super_admin bypasses these
+// checks everywhere; a project's own project_lead has them by default on
+// their own project without needing a grant.
+export const PROJECT_PERMISSIONS = [
+  'manage_team',
+  'manage_issues',
+  'manage_project_records',
+] as const;
+
+export type ProjectPermission = typeof PROJECT_PERMISSIONS[number];
+
 // ── USER TYPES ────────────────────────────────────────────────────────────────
 
 export interface User {
