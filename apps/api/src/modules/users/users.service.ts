@@ -57,16 +57,21 @@ export class UsersService {
   }
 
   async invite(companyId: string, invitedBy: string, dto: InviteUserDto) {
-    // Check for existing user with same email in this company
-    const [existing] = await this.db.query`
+    // withTenant is required on every statement here -- users has the same
+    // tenant_isolation RLS policy as project_members (see addMember/removeMember
+    // in projects.service.ts). A plain this.db.query() never sets
+    // app.current_company_id, so under any DB role that isn't the table
+    // owner/a superuser this SELECT would see no rows, the reactivate UPDATE
+    // would silently touch 0 rows, and the INSERT would be rejected outright.
+    const [existing] = await this.db.withTenant(companyId, sql => sql`
       SELECT id, is_active FROM users
       WHERE LOWER(email) = LOWER(${dto.email}) AND company_id = ${companyId}
-    `;
+    `);
 
     if (existing) {
       if (existing.isActive) throw new ConflictException('A user with this email already exists in your company.');
       // Reactivate deactivated user
-      await this.db.query`UPDATE users SET is_active = true, updated_at = NOW() WHERE id = ${existing.id}`;
+      await this.db.withTenant(companyId, sql => sql`UPDATE users SET is_active = true, updated_at = NOW() WHERE id = ${existing.id}`);
       return { message: 'User reactivated.' };
     }
 
@@ -78,7 +83,7 @@ export class UsersService {
     const token = randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000); // 7 days
 
-    const [newUser] = await this.db.query`
+    const [newUser] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO users (
         company_id, email, company_role,
         first_name, last_name,
@@ -91,7 +96,7 @@ export class UsersService {
         false
       )
       RETURNING id, email
-    `;
+    `);
 
     // TODO: send invitation email -- until that exists, the caller needs the
     // raw token back so an admin can build/share the accept-invitation link
@@ -123,7 +128,7 @@ export class UsersService {
     // as-requested or override it with something else -- either way clears
     // requested_company_role so PendingApprovalGuard stops blocking them on
     // their next token refresh/login.
-    const [updated] = await this.db.query`
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
       UPDATE users SET
         first_name   = COALESCE(${dto.firstName ?? null}, first_name),
         last_name    = COALESCE(${dto.lastName ?? null}, last_name),
@@ -134,17 +139,26 @@ export class UsersService {
         updated_at   = NOW()
       WHERE id = ${targetUserId} AND company_id = ${companyId}
       RETURNING id, email, first_name, last_name, company_role, is_active, requested_company_role
-    `;
+    `);
     return updated;
   }
 
   async deactivate(companyId: string, userId: string) {
-    await this.db.query`
+    // withTenant required -- same tenant_isolation RLS policy as everywhere
+    // else in this file. Without it this UPDATE silently touches 0 rows under
+    // any DB role that isn't the table owner/a superuser: the endpoint still
+    // returns 200 "deactivated", but the account stays fully active and the
+    // seat stays occupied. Checking result.count turns that into a real 404
+    // instead of a false success.
+    const result = await this.db.withTenant(companyId, sql => sql`
       UPDATE users SET is_active = false, updated_at = NOW()
       WHERE id = ${userId} AND company_id = ${companyId}
-    `;
+    `);
+    if (result.count === 0) {
+      throw new NotFoundException(`User ${userId} not found.`);
+    }
     // Revoke all sessions
-    await this.db.query`UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ${userId}`;
+    await this.db.withTenant(companyId, sql => sql`UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ${userId} AND company_id = ${companyId}`);
     return { message: 'User deactivated and all sessions revoked.' };
   }
 }
