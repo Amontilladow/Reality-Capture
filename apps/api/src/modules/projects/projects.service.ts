@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { PaymentRequiredException } from '../../common/exceptions/payment-required.exception';
@@ -127,20 +127,33 @@ export class ProjectsService {
 
   async addMember(companyId: string, projectId: string, invitedBy: string, dto: AddMemberDto) {
     await this.findOne(companyId, projectId);
-    const [member] = await this.db.query`
+    // Must go through withTenant -- project_members has a tenant_isolation RLS
+    // policy keyed on app.current_company_id. A plain this.db.query() never sets
+    // that, so under any DB role that isn't the table owner/a superuser, the
+    // implicit WITH CHECK (mirroring the USING clause, since none is declared)
+    // rejects the insert outright with "new row violates row-level security policy".
+    const [member] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO project_members (project_id, user_id, company_id, role, invited_by)
       VALUES (${projectId}, ${dto.userId}, ${companyId}, ${dto.role}, ${invitedBy})
       ON CONFLICT (project_id, user_id) DO UPDATE SET role = ${dto.role}
       RETURNING *
-    `;
+    `);
     return member;
   }
 
   async removeMember(companyId: string, projectId: string, userId: string) {
-    await this.db.query`
+    // Same withTenant requirement as addMember() above -- without it, the
+    // DELETE's WHERE-matched rows are invisible under RLS (company_id compared
+    // against a NULL current_company_id), so it silently deletes 0 rows instead
+    // of erroring. Checking result.count turns that into a real 404 instead of
+    // a false "success" that leaves the member still sitting in the list.
+    const result = await this.db.withTenant(companyId, sql => sql`
       DELETE FROM project_members
       WHERE project_id = ${projectId} AND user_id = ${userId} AND company_id = ${companyId}
-    `;
+    `);
+    if (result.count === 0) {
+      throw new NotFoundException('That person is not a member of this project.');
+    }
     return { message: 'Member removed from project.' };
   }
 

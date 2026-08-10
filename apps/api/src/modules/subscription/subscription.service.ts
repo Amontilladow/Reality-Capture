@@ -32,7 +32,9 @@ export class SubscriptionService {
         COUNT(DISTINCT p.id) AS active_projects,
         COALESCE(c.storage_used_bytes, 0) AS storage_bytes
       FROM companies c
-      LEFT JOIN users u ON u.company_id = c.id AND u.is_active = true
+      -- email_verified = true excludes never-accepted invitations from the
+      -- displayed seat usage, matching checkLimit()'s definition of a "used" seat below.
+      LEFT JOIN users u ON u.company_id = c.id AND u.is_active = true AND u.email_verified = true
       LEFT JOIN projects p ON p.company_id = c.id AND p.status = 'active'
       WHERE c.id = ${companyId}
       GROUP BY c.storage_used_bytes`;
@@ -83,7 +85,12 @@ export class SubscriptionService {
       JOIN subscription_plans sp ON sp.id = cs.plan_id
       JOIN companies co ON co.id = cs.company_id
       LEFT JOIN projects p ON p.company_id = co.id AND p.status = 'active'
-      LEFT JOIN users u ON u.company_id = co.id AND u.is_active = true
+      -- email_verified = true excludes invitations that were never accepted:
+      -- invite() inserts a row with is_active defaulting to true (it never
+      -- sets the column) before the invitee has a password or can log in,
+      -- so without this an abandoned/unaccepted invite permanently occupies
+      -- a paid seat until someone thinks to deactivate it.
+      LEFT JOIN users u ON u.company_id = co.id AND u.is_active = true AND u.email_verified = true
       WHERE cs.company_id = ${companyId}
       GROUP BY sp.max_projects, sp.max_users, sp.max_storage_bytes, sp.feature_flags,
                cs.status, cs.trial_ends_at, co.storage_used_bytes`;
@@ -116,7 +123,7 @@ export class SubscriptionService {
     return { url: `${returnUrl}?plan=${tier}&demo=true` };
   }
 
-  async handleStripeWebhook(rawBody: Buffer, signature: string): Promise<void> {
+  async handleStripeWebhook(_rawBody: Buffer, _signature: string): Promise<void> {
     const secret = this.config.get<string>('STRIPE_WEBHOOK_SECRET', '');
     if (!secret) return;
     // Webhook handler — update company_subscriptions based on Stripe events

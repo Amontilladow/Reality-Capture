@@ -1,4 +1,4 @@
-import { apiGetWithMeta, apiPost, apiPatch } from './api';
+import { apiGetWithMeta, apiPost, apiPatch, apiDelete } from './api';
 
 export interface CompanyUser {
   id: string;
@@ -33,4 +33,10 @@ export function inviteUser(payload: { email: string; message?: string }) {
 // as a side effect of this call, not a separate action.
 export function approveUserRole(userId: string, companyRole: string) {
   return apiPatch<CompanyUser>(`/users/${userId}`, { companyRole });
+}
+
+// Soft delete -- sets is_active = false and revokes sessions server-side.
+// Also frees the seat: subscription seat counting only counts is_active users.
+export function deactivateUser(userId: string) {
+  return apiDelete<void>(`/users/${userId}`);
 }

@@ -3,9 +3,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PROJECT_ROLES, COMPANY_ROLES, type ProjectRole, type CompanyRole } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
 import { getMembers, addMember, removeMember } from '../lib/projects.api';
-import { listUsers, inviteUser, approveUserRole } from '../lib/users.api';
+import { listUsers, inviteUser, approveUserRole, deactivateUser } from '../lib/users.api';
 import { apiErrorMessage } from '../lib/api';
 import { PROJECT_ROLE_LABELS, COMPANY_ROLE_LABELS } from '../lib/issue-constants';
+import { useAuthStore } from '../store/auth.store';
 
 export function ManageMembersModal({
   open,
@@ -17,6 +18,8 @@ export function ManageMembersModal({
   projectId: string;
 }) {
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((s) => s.user);
+  const isCompanyAdmin = currentUser?.companyRole === 'company_admin' || currentUser?.companyRole === 'super_admin';
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedRole, setSelectedRole] = useState<ProjectRole>('site_engineer');
   const [showInvite, setShowInvite] = useState(false);
@@ -69,6 +72,14 @@ export function ManageMembersModal({
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['companyUsers'] }),
   });
 
+  const deactivateMutation = useMutation({
+    mutationFn: (userId: string) => deactivateUser(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['companyUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['members', projectId] });
+    },
+  });
+
   return (
     <Modal open={open} onClose={onClose} title="Project team">
       <div className="space-y-4">
@@ -78,6 +89,7 @@ export function ManageMembersModal({
           {membersQuery.data?.length === 0 && (
             <div className="text-sm text-ink-500">No one's been added to this project yet.</div>
           )}
+          {removeMutation.isError && <p className="field-error">{apiErrorMessage(removeMutation.error)}</p>}
           {(membersQuery.data ?? []).map((m) => (
             <div key={m.userId} className="flex items-center justify-between text-sm py-1.5 border-b border-base-700/60 last:border-0">
               <div>
@@ -227,6 +239,39 @@ export function ManageMembersModal({
             );
           })}
         </div>
+
+        {isCompanyAdmin && (
+          <div className="pt-2 border-t border-base-600 space-y-3">
+            <div className="field-label">Company members</div>
+            <p className="text-xs text-ink-500">
+              Deactivating someone revokes their access company-wide (not just this project) and frees their seat.
+              This includes people who were invited but never accepted -- deactivate them to cancel a stale invite.
+            </p>
+            {deactivateMutation.isError && <p className="field-error">{apiErrorMessage(deactivateMutation.error)}</p>}
+            {(usersQuery.data?.data ?? []).map((u) => {
+              const isSelf = u.id === currentUser?.id;
+              return (
+                <div key={u.id} className="flex items-center justify-between gap-3 text-sm py-1.5 border-b border-base-700/60 last:border-0">
+                  <div>
+                    <div className="text-ink-100">{[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}</div>
+                    <div className="text-ink-500 text-xs">
+                      {u.email}
+                      {!u.firstName && !u.lastName && ' — invited, hasn’t accepted yet'}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => deactivateMutation.mutate(u.id)}
+                    className="text-xs text-danger hover:text-danger/80 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                    disabled={deactivateMutation.isPending || isSelf}
+                    title={isSelf ? "You can't deactivate your own account." : undefined}
+                  >
+                    Deactivate
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </Modal>
   );
