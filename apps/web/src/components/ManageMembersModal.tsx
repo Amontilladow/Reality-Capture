@@ -77,6 +77,7 @@ export function ManageMembersModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companyUsers'] });
       queryClient.invalidateQueries({ queryKey: ['members', projectId] });
+      setSelectedUserId('');
     },
   });
 
@@ -109,18 +110,39 @@ export function ManageMembersModal({
 
         <div className="pt-2 border-t border-base-600 space-y-3">
           <div className="field-label">Add a member</div>
+          {deactivateMutation.isError && <p className="field-error">{apiErrorMessage(deactivateMutation.error)}</p>}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <select
-                className="field-input"
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-              >
-                <option value="">Select a person…</option>
-                {addableUsers.map((u) => (
-                  <option key={u.id} value={u.id}>{[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}</option>
-                ))}
-              </select>
+              <div className="flex items-center gap-1.5">
+                <select
+                  className="field-input flex-1"
+                  value={selectedUserId}
+                  onChange={(e) => setSelectedUserId(e.target.value)}
+                >
+                  <option value="">Select a person…</option>
+                  {addableUsers.map((u) => (
+                    <option key={u.id} value={u.id}>{[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}</option>
+                  ))}
+                </select>
+                {isCompanyAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => selectedUserId && deactivateMutation.mutate(selectedUserId)}
+                    disabled={!selectedUserId || selectedUserId === currentUser?.id || deactivateMutation.isPending}
+                    className="shrink-0 w-8 h-8 flex items-center justify-center rounded border border-base-600 text-danger hover:bg-danger/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                    title={
+                      !selectedUserId
+                        ? 'Select a person above, then click here to remove them from the company entirely'
+                        : selectedUserId === currentUser?.id
+                        ? "You can't deactivate your own account."
+                        : 'Remove this person from the company (deactivates their account, frees their seat)'
+                    }
+                    aria-label="Deactivate selected person"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
               {usersQuery.isSuccess && addableUsers.length === 0 && (
                 <p className="text-xs text-ink-500 mt-1">
                   Everyone in the company is already on this project — invite a new person below if you need someone else.
