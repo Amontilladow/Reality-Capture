@@ -80,6 +80,14 @@ export function ManageMembersModal({
     },
   });
 
+  // Same underlying PATCH /users/:id as approveMutation -- separate mutation
+  // instance so its pending/error state doesn't collide with the Approve
+  // button, even though they share the overrideRole picker state below.
+  const changeRoleMutation = useMutation({
+    mutationFn: (vars: { userId: string; companyRole: CompanyRole }) => approveUserRole(vars.userId, vars.companyRole),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['companyUsers'] }),
+  });
+
   return (
     <Modal open={open} onClose={onClose} title="Project team">
       <div className="space-y-4">
@@ -266,8 +274,11 @@ export function ManageMembersModal({
             This includes people who were invited but never accepted -- deactivate them to cancel a stale invite.
           </p>
           {deactivateMutation.isError && <p className="field-error">{apiErrorMessage(deactivateMutation.error)}</p>}
+          {changeRoleMutation.isError && <p className="field-error">{apiErrorMessage(changeRoleMutation.error)}</p>}
           {(usersQuery.data?.data ?? []).map((u) => {
             const isSelf = u.id === currentUser?.id;
+            const role = overrideRole[u.id] ?? (u.companyRole as CompanyRole);
+            const roleChanged = role !== u.companyRole;
             return (
               <div key={u.id} className="flex items-center justify-between gap-3 text-sm py-1.5 border-b border-base-700/60 last:border-0">
                 <div>
@@ -277,14 +288,34 @@ export function ManageMembersModal({
                     {!u.firstName && !u.lastName && ' — invited, hasn’t accepted yet'}
                   </div>
                 </div>
-                <button
-                  onClick={() => deactivateMutation.mutate(u.id)}
-                  className="text-xs text-danger hover:text-danger/80 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                  disabled={deactivateMutation.isPending || isSelf}
-                  title={isSelf ? "You can't deactivate your own account." : undefined}
-                >
-                  Deactivate
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <select
+                    className="field-input !w-auto text-xs"
+                    value={role}
+                    onChange={(e) => setOverrideRole((prev) => ({ ...prev, [u.id]: e.target.value as CompanyRole }))}
+                  >
+                    {COMPANY_ROLES.filter((r) => r !== 'super_admin').map((r) => (
+                      <option key={r} value={r}>{COMPANY_ROLE_LABELS[r]}</option>
+                    ))}
+                  </select>
+                  {roleChanged && (
+                    <button
+                      onClick={() => changeRoleMutation.mutate({ userId: u.id, companyRole: role })}
+                      className="btn-primary !py-1 !px-2 text-xs shrink-0"
+                      disabled={changeRoleMutation.isPending}
+                    >
+                      Save
+                    </button>
+                  )}
+                  <button
+                    onClick={() => deactivateMutation.mutate(u.id)}
+                    className="text-xs text-danger hover:text-danger/80 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                    disabled={deactivateMutation.isPending || isSelf}
+                    title={isSelf ? "You can't deactivate your own account." : undefined}
+                  >
+                    Deactivate
+                  </button>
+                </div>
               </div>
             );
           })}
