@@ -37,11 +37,12 @@ export class BimService {
   }
 
   async registerModel(companyId: string, projectId: string, userId: string, dto: { name: string; storageKey: string; format?: string; ifcSchema?: string; originalFilename?: string }) {
-    const [model] = await this.db.query`
+    // withTenant required -- bim_models carries the tenant_isolation RLS policy.
+    const [model] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO bim_models (company_id, project_id, name, format, ifc_schema, storage_key, status, uploaded_by, original_filename)
       VALUES (${companyId}, ${projectId}, ${dto.name}, ${dto.format ?? 'IFC'}, ${dto.ifcSchema ?? null}, ${dto.storageKey}, 'pending', ${userId}, ${dto.originalFilename ?? null})
       RETURNING *
-    `;
+    `);
     await this.enqueueParseJob(companyId, projectId, model.id as string, dto.storageKey);
     return model;
   }
@@ -62,10 +63,11 @@ export class BimService {
       { modelId, companyId, projectId, storageKey } satisfies IfcParseJobData,
       { jobId: `${modelId}:${Date.now()}` },
     );
-    await this.db.query`
+    // withTenant required -- bim_models carries the tenant_isolation RLS policy.
+    await this.db.withTenant(companyId, sql => sql`
       UPDATE bim_models SET job_id = ${job.id as string}, updated_at = NOW()
       WHERE id = ${modelId} AND company_id = ${companyId}
-    `;
+    `);
     this.logger.log(`BIM model ${modelId} — IFC parsing job ${job.id as string} queued.`);
     return job;
   }
@@ -103,12 +105,13 @@ export class BimService {
     // redoing committed work) sees every stage as already done and skips
     // straight to the end, re-running nothing. A deliberate reprocess
     // should always start over for real.
-    await this.db.query`
+    // withTenant required -- bim_models carries the tenant_isolation RLS policy.
+    await this.db.withTenant(companyId, sql => sql`
       UPDATE bim_models
       SET status = 'pending', processing_progress = 0, processing_stage = NULL,
           processing_error = NULL, stage_completion = '{}'::jsonb
       WHERE id = ${modelId} AND company_id = ${companyId}
-    `;
+    `);
     await this.enqueueParseJob(companyId, projectId, modelId, model.storageKey as string);
     return this.getModelStatus(companyId, modelId);
   }
@@ -257,35 +260,38 @@ export class BimService {
   // then it's still valid, since locations_has_a_place_check now accepts
   // element_id on its own as a place.
   async createPinForElement(companyId: string, elementId: string, name: string) {
-    const [loc] = await this.db.query`
+    // withTenant required -- locations carries the tenant_isolation RLS policy.
+    const [loc] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO locations (company_id, name, element_id)
       VALUES (${companyId}, ${name}, ${elementId})
       RETURNING id, name, element_id
-    `;
+    `);
     return loc;
   }
 
   async updateElementStatus(companyId: string, elementId: string, status: string) {
-    const [el] = await this.db.query`
+    // withTenant required -- bim_elements carries the tenant_isolation RLS policy.
+    const [el] = await this.db.withTenant(companyId, sql => sql`
       UPDATE bim_elements
       SET construction_status = ${status},
           installed_at = CASE WHEN ${status} = 'complete' THEN NOW() ELSE installed_at END,
           updated_at = NOW()
       WHERE id = ${elementId} AND company_id = ${companyId}
       RETURNING *
-    `;
+    `);
     if (!el) throw new NotFoundException('BIM element not found.');
     return el;
   }
 
   // ── Capture ↔ Element linking ─────────────────────────────────────────────
   async linkCaptureToElement(companyId: string, captureId: string, elementId: string, userId: string, linkType = 'documents') {
-    const [link] = await this.db.query`
+    // withTenant required -- capture_element_links carries the tenant_isolation RLS policy.
+    const [link] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO capture_element_links (capture_id, element_id, company_id, link_type, linked_by)
       VALUES (${captureId}, ${elementId}, ${companyId}, ${linkType}, ${userId})
       ON CONFLICT (capture_id, element_id) DO UPDATE SET link_type = ${linkType}
       RETURNING *
-    `;
+    `);
     return link;
   }
 

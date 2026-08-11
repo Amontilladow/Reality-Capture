@@ -8,16 +8,22 @@ import type { PaginationQuery } from '@engineeringos/types';
 export class TransmittalsService {
   constructor(private readonly db: DatabaseService) {}
 
-  private async generateTransmittalNumber(projectId: string): Promise<string> {
-    const [proj] = await this.db.query`SELECT code FROM projects WHERE id = ${projectId}`;
-    const prefix = (proj?.code as string ?? 'PRJ').toUpperCase();
-    const [cnt] = await this.db.query`SELECT COUNT(*) AS n FROM transmittals WHERE project_id = ${projectId}`;
-    const seq = String(Number(cnt.n) + 1).padStart(4, '0');
-    return `${prefix}-TRN-${seq}`;
+  // withTenant required for the projects lookup -- projects carries the tenant_isolation
+  // RLS policy. A plain this.db.query() never sets app.current_company_id, so under any DB
+  // role that isn't the table owner/a superuser this SELECT sees no rows and silently falls
+  // back to the generic 'PRJ' prefix instead of the real project code.
+  private async generateTransmittalNumber(companyId: string, projectId: string): Promise<string> {
+    return this.db.withTenant(companyId, async (sql) => {
+      const [proj] = await sql`SELECT code FROM projects WHERE id = ${projectId} AND company_id = ${companyId}`;
+      const prefix = (proj?.code as string ?? 'PRJ').toUpperCase();
+      const [cnt] = await sql`SELECT COUNT(*) AS n FROM transmittals WHERE project_id = ${projectId}`;
+      const seq = String(Number(cnt.n) + 1).padStart(4, '0');
+      return `${prefix}-TRN-${seq}`;
+    });
   }
 
   async create(companyId: string, projectId: string, userId: string, dto: CreateTransmittalDto) {
-    const transmittalNumber = await this.generateTransmittalNumber(projectId);
+    const transmittalNumber = await this.generateTransmittalNumber(companyId, projectId);
     const [transmittal] = await this.db.query`
       INSERT INTO transmittals (
         company_id, project_id, transmittal_number, subject, recipient_name, recipient_company,

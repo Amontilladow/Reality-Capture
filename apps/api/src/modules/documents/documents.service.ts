@@ -19,7 +19,8 @@ export class DocumentsService {
   }
 
   async create(companyId: string, projectId: string, userId: string, dto: CreateDocumentDto) {
-    const [doc] = await this.db.query`
+    // withTenant required -- documents carries the tenant_isolation RLS policy.
+    const [doc] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO documents (
         company_id, project_id, doc_type, title, document_number, revision,
         status, discipline, source, external_id, external_url, storage_key,
@@ -33,7 +34,7 @@ export class DocumentsService {
         ${dto.documentDate ?? null}, ${dto.receivedDate ?? null},
         ${dto.dueDate ?? null}, ${userId}
       )
-      RETURNING *`;
+      RETURNING *`);
     return doc;
   }
 
@@ -86,7 +87,8 @@ export class DocumentsService {
     const targets = [dto.captureId, dto.elementId, dto.locationId, dto.issueId].filter(Boolean);
     if (targets.length !== 1) throw new BadRequestException('Exactly one link target must be provided (captureId, elementId, locationId, or issueId).');
 
-    const [link] = await this.db.query`
+    // withTenant required -- document_links carries the tenant_isolation RLS policy.
+    const [link] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO document_links (
         company_id, document_id,
         capture_id, element_id, location_id, issue_id,
@@ -98,7 +100,7 @@ export class DocumentsService {
         ${dto.linkContext ?? null}, ${userId}
       )
       RETURNING *
-    `;
+    `);
     return link;
   }
 

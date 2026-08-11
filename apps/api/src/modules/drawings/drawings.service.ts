@@ -37,7 +37,8 @@ export class DrawingsService {
   }
 
   async create(companyId: string, projectId: string, userId: string, dto: CreateDrawingDto) {
-    const [drawing] = await this.db.query`
+    // withTenant required -- drawings carries the tenant_isolation RLS policy.
+    const [drawing] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO drawings (
         company_id, project_id, level_id, location_id, title, drawing_number, revision,
         drawing_type, storage_key, width_px, height_px,
@@ -49,7 +50,7 @@ export class DrawingsService {
         ${dto.widthPx ?? null}, ${dto.heightPx ?? null},
         ${dto.scaleRatio ?? null}, ${dto.scalePxPerM ?? null},
         true, ${userId}
-      ) RETURNING *`;
+      ) RETURNING *`);
     return drawing;
   }
 
@@ -93,20 +94,26 @@ export class DrawingsService {
   }
 
   async linkCapture(companyId: string, drawingId: string, userId: string, dto: LinkCaptureToDrawingDto) {
-    const [link] = await this.db.query`
+    // withTenant required -- capture_drawing_links carries the tenant_isolation RLS policy.
+    const [link] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO capture_drawing_links (capture_id, drawing_id, company_id, pos_x_norm, pos_y_norm, linked_by)
       VALUES (${dto.captureId}, ${drawingId}, ${companyId}, ${dto.posXNorm}, ${dto.posYNorm}, ${userId})
       ON CONFLICT (capture_id, drawing_id) DO UPDATE SET pos_x_norm = ${dto.posXNorm}, pos_y_norm = ${dto.posYNorm}
       RETURNING *
-    `;
+    `);
     return link;
   }
 
   async unlinkCapture(companyId: string, drawingId: string, captureId: string) {
-    await this.db.query`
+    // withTenant required -- capture_drawing_links carries the tenant_isolation RLS policy;
+    // without it this DELETE silently matches zero rows instead of failing.
+    const result = await this.db.withTenant(companyId, sql => sql`
       DELETE FROM capture_drawing_links
       WHERE drawing_id = ${drawingId} AND capture_id = ${captureId} AND company_id = ${companyId}
-    `;
+    `);
+    if (result.count === 0) {
+      throw new NotFoundException('That capture is not linked to this drawing.');
+    }
     return { message: 'Capture unlinked from drawing.' };
   }
 
@@ -146,14 +153,15 @@ export class DrawingsService {
     `);
     if (!drawing) throw new NotFoundException('Drawing not found.');
 
-    const [pin] = await this.db.query`
+    // withTenant required -- locations carries the tenant_isolation RLS policy.
+    const [pin] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO locations (company_id, level_id, name, drawing_id, pos_x_norm, pos_y_norm, page_number, created_via)
       VALUES (
         ${companyId}, ${drawing.levelId ?? null}, ${dto.name ?? 'Untitled pin'},
         ${drawingId}, ${dto.posXNorm}, ${dto.posYNorm}, ${dto.pageNumber ?? 1}, 'floor_plan_tap'
       )
       RETURNING *
-    `;
+    `);
 
     // Shaped to match getPins() below (locationId, captureCount, etc.) so the
     // frontend can treat a freshly-created pin identically to one from the list.

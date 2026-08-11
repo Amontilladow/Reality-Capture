@@ -55,7 +55,10 @@ export class ImageProcessingProcessor {
 
     try {
       if (captureType === 'video') {
-        await this.db.query`UPDATE captures SET status = 'ready', processed_at = NOW() WHERE id = ${captureId}`;
+        // withTenant required -- captures carries the tenant_isolation RLS policy. A plain
+        // this.db.query() never sets app.current_company_id, so under any DB role that isn't
+        // the table owner/a superuser this UPDATE silently touches 0 rows.
+        await this.db.withTenant(companyId, sql => sql`UPDATE captures SET status = 'ready', processed_at = NOW() WHERE id = ${captureId} AND company_id = ${companyId}`);
         this.logger.log(`Capture ${captureId} marked ready (video -- no thumbnailing).`);
         return;
       }
@@ -94,19 +97,25 @@ export class ImageProcessingProcessor {
         });
       }
 
-      for (const r of uploaded) {
-        await this.db.query`
-          INSERT INTO capture_renditions (capture_id, company_id, rendition_type, storage_key, width_px, height_px, size_bytes)
-          VALUES (${captureId}, ${companyId}, ${r.type}, ${r.storageKey}, ${r.widthPx}, ${r.heightPx}, ${r.sizeBytes})
-        `;
-      }
+      // withTenant required -- capture_renditions carries the tenant_isolation RLS policy. A
+      // plain this.db.query() never sets app.current_company_id, so under any DB role that
+      // isn't the table owner/a superuser this INSERT's implicit WITH CHECK rejects it outright.
+      await this.db.withTenant(companyId, async (sql) => {
+        for (const r of uploaded) {
+          await sql`
+            INSERT INTO capture_renditions (capture_id, company_id, rendition_type, storage_key, width_px, height_px, size_bytes)
+            VALUES (${captureId}, ${companyId}, ${r.type}, ${r.storageKey}, ${r.widthPx}, ${r.heightPx}, ${r.sizeBytes})
+          `;
+        }
+      });
 
       // EXIF GPS is a fallback enrichment only -- never overwrite GPS the
       // client already supplied (a live device sensor reading, when
       // present, is more trustworthy than embedded EXIF metadata).
       const gps = await exifr.gps(original).catch(() => null);
 
-      await this.db.query`
+      // withTenant required -- see capture_renditions INSERT above.
+      await this.db.withTenant(companyId, sql => sql`
         UPDATE captures SET
           status = 'ready',
           processed_at = NOW(),
@@ -114,18 +123,19 @@ export class ImageProcessingProcessor {
           original_height_px = COALESCE(original_height_px, ${heightPx}),
           gps_lat = COALESCE(gps_lat, ${gps?.latitude ?? null}),
           gps_lng = COALESCE(gps_lng, ${gps?.longitude ?? null})
-        WHERE id = ${captureId}
-      `;
+        WHERE id = ${captureId} AND company_id = ${companyId}
+      `);
 
       this.logger.log(`Capture ${captureId} processed: ${uploaded.length} renditions generated.`);
     } catch (error) {
       this.logger.error(`Processing failed for capture ${captureId}`, error);
-      await this.db.query`
+      // withTenant required -- see capture_renditions INSERT above.
+      await this.db.withTenant(companyId, sql => sql`
         UPDATE captures
         SET status = 'failed',
             processing_error = ${error instanceof Error ? error.message : 'Unknown error'}
-        WHERE id = ${captureId}
-      `;
+        WHERE id = ${captureId} AND company_id = ${companyId}
+      `);
       throw error; // Re-throw so Bull retries the job
     }
   }

@@ -10,19 +10,28 @@ import { DatabaseService } from '../../database/database.service';
 export class TenancyService {
   constructor(private readonly db: DatabaseService) {}
 
+  // withTenant required -- companies (policy keyed on id, not company_id -- see
+  // migration 001's special case) and company_subscriptions both carry the
+  // tenant_isolation RLS policy. A plain this.db.query() never sets
+  // app.current_company_id, so under any DB role that isn't the table owner/a
+  // superuser this SELECT sees no rows -- every authenticated request that needs
+  // the current company (guards, dashboards, etc.) would 404 here.
   async findById(companyId: string) {
-    const [company] = await this.db.query`
+    const [company] = await this.db.withTenant(companyId, sql => sql`
       SELECT c.*, cs.status AS subscription_status,
              sp.tier AS plan_tier, sp.name AS plan_name
       FROM companies c
       LEFT JOIN company_subscriptions cs ON cs.company_id = c.id
       LEFT JOIN subscription_plans sp ON sp.id = cs.plan_id
       WHERE c.id = ${companyId} AND c.is_active = true
-    `;
+    `);
     if (!company) throw new NotFoundException('Company not found.');
     return company;
   }
 
+  // Deliberately global -- slug is a public, pre-tenant lookup (login/registration flows
+  // that don't have a companyId yet). Same bootstrap category as auth.service.ts's
+  // login-by-email.
   async findBySlug(slug: string) {
     const [company] = await this.db.query`
       SELECT id, name, slug, is_active FROM companies WHERE slug = ${slug}
@@ -34,6 +43,17 @@ export class TenancyService {
    * Register a new company with a Trial subscription.
    * Called during the company self-registration flow (public endpoint).
    * The first user to register becomes company_admin automatically.
+   *
+   * withTransaction (not withTenant) is structurally correct here -- there is no
+   * companyId to scope by yet, since this IS the insert that creates one. NOTE: under the
+   * app's real DB role (app_user, no BYPASS RLS -- see migration 001), the `companies`
+   * INSERT's implicit WITH CHECK (mirroring the tenant_isolation USING clause, since no
+   * separate WITH CHECK is declared) requires company_id/id = current_setting(...), which
+   * is never true with no session var set -- so this INSERT is rejected outright and
+   * self-registration cannot currently succeed in production. This is not fixable by
+   * adding withTenant (no companyId exists to scope by); it needs a deliberate bootstrap
+   * mechanism (e.g. a narrowly-scoped SECURITY DEFINER function or dedicated role for
+   * exactly this operation) -- flagged, not fixed, as part of the RLS/withTenant audit.
    */
   async register(dto: { companyName: string; slug: string; adminEmail: string; adminFirstName: string; adminLastName: string; adminPassword: string }) {
     return this.db.withTransaction(async (sql) => {
@@ -91,29 +111,33 @@ export class TenancyService {
     });
   }
 
+  // withTenant required -- see findById() above.
   async updateSettings(companyId: string, settings: Record<string, unknown>) {
-    const [updated] = await this.db.query`
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
       UPDATE companies
       SET settings = settings || ${JSON.stringify(settings)}::jsonb, updated_at = NOW()
       WHERE id = ${companyId}
       RETURNING id, name, slug, settings
-    `;
+    `);
     return updated;
   }
 
+  // withTenant required -- see findById() above. Without it this silently touches 0 rows,
+  // so storage_used_bytes never actually increments and quota checks never see real usage.
   async incrementStorage(companyId: string, bytes: number) {
-    await this.db.query`
+    await this.db.withTenant(companyId, sql => sql`
       UPDATE companies
       SET storage_used_bytes = storage_used_bytes + ${bytes}
       WHERE id = ${companyId}
-    `;
+    `);
   }
 
+  // withTenant required -- see incrementStorage() above.
   async decrementStorage(companyId: string, bytes: number) {
-    await this.db.query`
+    await this.db.withTenant(companyId, sql => sql`
       UPDATE companies
       SET storage_used_bytes = GREATEST(0, storage_used_bytes - ${bytes})
       WHERE id = ${companyId}
-    `;
+    `);
   }
 }

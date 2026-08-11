@@ -39,6 +39,18 @@ export class IssueWarningService {
 
   // Extracted from handleCron() so unit tests can invoke the logic directly
   // without depending on @Cron's scheduling.
+  // Deliberately cross-tenant -- this is a system cron scanning overdue issues across
+  // every company, not a single tenant's request, so this.db.withTenant(oneCompanyId, ...)
+  // would be the wrong fix even though it's the pattern used everywhere else in this
+  // codebase. NOTE: under the app's real DB role (app_user, no BYPASS RLS -- see migration
+  // 001), a plain this.db.query() against `issues` (an RLS table) with no session var set
+  // sees zero rows, always -- so this cron currently never finds any overdue issues in
+  // production; it isn't scoped wrong, it's fully blocked. Same root cause as
+  // tenancy.service.ts's register() and auth.service.ts's login()/refresh() bootstrap
+  // lookups: RLS has no bypass path for operations that are legitimately not
+  // single-tenant. Not fixable by adding withTenant here -- flagged, not fixed, as part of
+  // the RLS/withTenant audit; needs the same deliberate bootstrap-role/SECURITY DEFINER
+  // decision as those.
   async checkOverdueIssues(): Promise<{ checked: number; warned: number; skipped: number }> {
     const overdue = await this.db.query`
       SELECT id, company_id, created_by, deadline
@@ -57,13 +69,17 @@ export class IssueWarningService {
       const createdBy = issue.createdBy as string;
       const deadline  = new Date(issue.deadline as string);
 
-      const [recent] = await this.db.query`
+      // Unlike the overdue scan above, company_id IS known here (from the row just fetched),
+      // so these two are ordinary single-tenant operations, not part of the cross-tenant
+      // bootstrap problem -- withTenant required, same as everywhere else in this codebase.
+      const [recent] = await this.db.withTenant(companyId, sql => sql`
         SELECT id FROM issue_activities
         WHERE issue_id = ${issueId}
+          AND company_id = ${companyId}
           AND activity_type = 'auto_warning'
           AND created_at > NOW() - INTERVAL '24 hours'
         LIMIT 1
-      `;
+      `);
       if (recent) {
         skipped++;
         continue;
@@ -74,10 +90,10 @@ export class IssueWarningService {
         ? `Auto-warning: issue is overdue by ${overdueDays} day(s).`
         : `Auto-warning: issue is past its deadline.`;
 
-      await this.db.query`
+      await this.db.withTenant(companyId, sql => sql`
         INSERT INTO issue_activities (issue_id, company_id, activity_type, content, performed_by)
         VALUES (${issueId}, ${companyId}, 'auto_warning', ${message}, ${createdBy})
-      `;
+      `);
       warned++;
     }
 

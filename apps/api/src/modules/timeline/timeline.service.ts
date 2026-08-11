@@ -11,7 +11,10 @@ export class TimelineService {
   ) {}
 
   async create(companyId: string, projectId: string, userId: string, dto: CreateTimelineEntryDto) {
-    const [entry] = await this.db.query`
+    // withTenant required -- timeline_entries carries the tenant_isolation RLS policy;
+    // a plain this.db.query() never sets app.current_company_id, so this INSERT
+    // would be rejected outright under any DB role that isn't the table owner/a superuser.
+    const [entry] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO timeline_entries (
         company_id, project_id, location_id, capture_id,
         phase, entry_date, title, description, work_type, created_by
@@ -19,7 +22,7 @@ export class TimelineService {
         ${companyId}, ${projectId}, ${dto.locationId ?? null}, ${dto.captureId ?? null},
         ${dto.phase}, ${dto.entryDate}, ${dto.title},
         ${dto.description ?? null}, ${dto.workType ?? null}, ${userId}
-      ) RETURNING *`;
+      ) RETURNING *`);
     return entry;
   }
 

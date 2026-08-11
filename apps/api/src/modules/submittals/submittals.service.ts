@@ -14,16 +14,22 @@ export class SubmittalsService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  private async generateSubmittalNumber(projectId: string): Promise<string> {
-    const [proj] = await this.db.query`SELECT code FROM projects WHERE id = ${projectId}`;
-    const prefix = (proj?.code as string ?? 'PRJ').toUpperCase();
-    const [cnt] = await this.db.query`SELECT COUNT(*) AS n FROM submittals WHERE project_id = ${projectId}`;
-    const seq = String(Number(cnt.n) + 1).padStart(4, '0');
-    return `${prefix}-SUB-${seq}`;
+  // withTenant required for the projects lookup -- projects carries the tenant_isolation
+  // RLS policy. A plain this.db.query() never sets app.current_company_id, so under any DB
+  // role that isn't the table owner/a superuser this SELECT sees no rows and silently falls
+  // back to the generic 'PRJ' prefix instead of the real project code.
+  private async generateSubmittalNumber(companyId: string, projectId: string): Promise<string> {
+    return this.db.withTenant(companyId, async (sql) => {
+      const [proj] = await sql`SELECT code FROM projects WHERE id = ${projectId} AND company_id = ${companyId}`;
+      const prefix = (proj?.code as string ?? 'PRJ').toUpperCase();
+      const [cnt] = await sql`SELECT COUNT(*) AS n FROM submittals WHERE project_id = ${projectId}`;
+      const seq = String(Number(cnt.n) + 1).padStart(4, '0');
+      return `${prefix}-SUB-${seq}`;
+    });
   }
 
   async create(companyId: string, projectId: string, userId: string, dto: CreateSubmittalDto) {
-    const submittalNumber = await this.generateSubmittalNumber(projectId);
+    const submittalNumber = await this.generateSubmittalNumber(companyId, projectId);
     const [submittal] = await this.db.query`
       INSERT INTO submittals (
         company_id, project_id, submittal_number, title, spec_section, description,

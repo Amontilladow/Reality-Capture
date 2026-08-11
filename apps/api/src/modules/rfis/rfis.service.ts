@@ -12,16 +12,22 @@ export class RfisService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  private async generateRfiNumber(projectId: string): Promise<string> {
-    const [proj] = await this.db.query`SELECT code FROM projects WHERE id = ${projectId}`;
-    const prefix = (proj?.code as string ?? 'PRJ').toUpperCase();
-    const [cnt] = await this.db.query`SELECT COUNT(*) AS n FROM rfis WHERE project_id = ${projectId}`;
-    const seq = String(Number(cnt.n) + 1).padStart(4, '0');
-    return `${prefix}-RFI-${seq}`;
+  // withTenant required for the projects lookup -- projects carries the tenant_isolation
+  // RLS policy. A plain this.db.query() never sets app.current_company_id, so under any DB
+  // role that isn't the table owner/a superuser this SELECT sees no rows and silently falls
+  // back to the generic 'PRJ' prefix instead of the real project code.
+  private async generateRfiNumber(companyId: string, projectId: string): Promise<string> {
+    return this.db.withTenant(companyId, async (sql) => {
+      const [proj] = await sql`SELECT code FROM projects WHERE id = ${projectId} AND company_id = ${companyId}`;
+      const prefix = (proj?.code as string ?? 'PRJ').toUpperCase();
+      const [cnt] = await sql`SELECT COUNT(*) AS n FROM rfis WHERE project_id = ${projectId}`;
+      const seq = String(Number(cnt.n) + 1).padStart(4, '0');
+      return `${prefix}-RFI-${seq}`;
+    });
   }
 
   async create(companyId: string, projectId: string, userId: string, dto: CreateRfiDto) {
-    const rfiNumber = await this.generateRfiNumber(projectId);
+    const rfiNumber = await this.generateRfiNumber(companyId, projectId);
     const [rfi] = await this.db.query`
       INSERT INTO rfis (
         company_id, project_id, rfi_number, subject, question,

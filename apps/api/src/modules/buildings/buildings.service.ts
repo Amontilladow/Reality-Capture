@@ -6,15 +6,19 @@ export class BuildingsService {
   constructor(private readonly db: DatabaseService) {}
 
   async createBuilding(companyId: string, projectId: string, userId: string, dto: { name: string; code?: string; description?: string; totalLevels?: number }) {
-    const [b] = await this.db.query`
+    // withTenant required -- buildings carries the tenant_isolation RLS policy;
+    // a plain this.db.query() never sets app.current_company_id.
+    const [b] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO buildings (company_id, project_id, name, code, description, total_levels)
       VALUES (${companyId}, ${projectId}, ${dto.name}, ${dto.code ?? null}, ${dto.description ?? null}, ${dto.totalLevels ?? null})
-      RETURNING *`;
+      RETURNING *`);
     return b;
   }
 
   async updateBuilding(companyId: string, buildingId: string, dto: Partial<{ name: string; code: string; description: string; totalLevels: number; phase: string }>) {
-    const [b] = await this.db.query`
+    // withTenant required -- buildings carries the tenant_isolation RLS policy;
+    // a plain this.db.query() never sets app.current_company_id.
+    const [b] = await this.db.withTenant(companyId, sql => sql`
       UPDATE buildings SET
         name = COALESCE(${dto.name ?? null}, name),
         code = COALESCE(${dto.code ?? null}, code),
@@ -23,16 +27,18 @@ export class BuildingsService {
         phase = COALESCE(${dto.phase ?? null}, phase),
         updated_at = NOW()
       WHERE id = ${buildingId} AND company_id = ${companyId}
-      RETURNING *`;
+      RETURNING *`);
     if (!b) throw new NotFoundException('Building not found.');
     return b;
   }
 
   async createLevel(companyId: string, buildingId: string, dto: { name: string; elevationM?: number; levelOrder: number }) {
-    const [l] = await this.db.query`
+    // withTenant required -- levels carries the tenant_isolation RLS policy;
+    // a plain this.db.query() never sets app.current_company_id.
+    const [l] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO levels (company_id, building_id, name, elevation_m, level_order)
       VALUES (${companyId}, ${buildingId}, ${dto.name}, ${dto.elevationM ?? null}, ${dto.levelOrder})
-      RETURNING *`;
+      RETURNING *`);
     return l;
   }
 
@@ -43,10 +49,12 @@ export class BuildingsService {
 
   async createLocation(companyId: string, levelId: string, dto: { name: string; description?: string; coordinatesOnPlan?: { x: number; y: number } }) {
     const coords = dto.coordinatesOnPlan ? `(${dto.coordinatesOnPlan.x},${dto.coordinatesOnPlan.y})` : null;
-    const [loc] = await this.db.query`
+    // withTenant required -- locations carries the tenant_isolation RLS policy;
+    // a plain this.db.query() never sets app.current_company_id.
+    const [loc] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO locations (company_id, level_id, name, description, coordinates_on_plan)
       VALUES (${companyId}, ${levelId}, ${dto.name}, ${dto.description ?? null}, ${coords}::point)
-      RETURNING *`;
+      RETURNING *`);
     return loc;
   }
 
@@ -75,7 +83,9 @@ export class BuildingsService {
     // explicitly unlinked from its BIM element (elementId: null), not just
     // linked -- the other fields here can only ever be set, never cleared.
     const elementIdProvided = Object.prototype.hasOwnProperty.call(dto, 'elementId');
-    const [loc] = await this.db.query`
+    // withTenant required -- locations carries the tenant_isolation RLS policy;
+    // a plain this.db.query() never sets app.current_company_id.
+    const [loc] = await this.db.withTenant(companyId, sql => sql`
       UPDATE locations SET
         name        = COALESCE(${dto.name ?? null}, name),
         description = COALESCE(${dto.description ?? null}, description),
@@ -83,7 +93,7 @@ export class BuildingsService {
         pos_y_norm  = COALESCE(${dto.posYNorm ?? null}, pos_y_norm),
         element_id  = CASE WHEN ${elementIdProvided} THEN ${dto.elementId ?? null} ELSE element_id END
       WHERE id = ${locationId} AND company_id = ${companyId} AND archived_at IS NULL
-      RETURNING *`;
+      RETURNING *`);
     if (!loc) throw new NotFoundException('Location not found.');
     return loc;
   }
@@ -92,10 +102,12 @@ export class BuildingsService {
   // anything attached to it (photos, videos, notes all survive). Site
   // photos are often one-of-a-kind -- a real delete is never worth the risk.
   async archiveLocation(companyId: string, locationId: string) {
-    const [loc] = await this.db.query`
+    // withTenant required -- locations carries the tenant_isolation RLS policy;
+    // a plain this.db.query() never sets app.current_company_id.
+    const [loc] = await this.db.withTenant(companyId, sql => sql`
       UPDATE locations SET archived_at = NOW()
       WHERE id = ${locationId} AND company_id = ${companyId} AND archived_at IS NULL
-      RETURNING *`;
+      RETURNING *`);
     if (!loc) throw new NotFoundException('Location not found.');
     return loc;
   }

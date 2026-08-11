@@ -42,8 +42,8 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Revoke the current refresh token' })
-  async logout(@Body() dto: RefreshTokenDto) {
-    await this.auth.logout(dto.refreshToken);
+  async logout(@Body() dto: RefreshTokenDto, @CurrentUser() user: AuthenticatedUser) {
+    await this.auth.logout(dto.refreshToken, user.companyId);
   }
 
   @Public()

@@ -16,28 +16,40 @@ export class SubscriptionService {
     });
   }
 
+  // withTenant required -- company_subscriptions and companies both carry the
+  // tenant_isolation RLS policy (subscription_plans does not, since it's a public,
+  // non-tenant-scoped catalog). A plain this.db.query() never sets
+  // app.current_company_id, so under any DB role that isn't the table owner/a
+  // superuser both SELECTs below see no rows -- the subscription page would 404
+  // for every company in production.
   async getSubscription(companyId: string) {
-    const [sub] = await this.db.query`
-      SELECT cs.*, sp.tier, sp.name AS plan_name, sp.max_projects, sp.max_users,
-             sp.max_storage_bytes, sp.feature_flags, sp.price_monthly_usd, sp.is_public
-      FROM company_subscriptions cs
-      JOIN subscription_plans sp ON sp.id = cs.plan_id
-      WHERE cs.company_id = ${companyId}`;
+    const { sub, usage } = await this.db.withTenant(companyId, async (sql) => {
+      const [sub] = await sql`
+        SELECT cs.*, sp.tier, sp.name AS plan_name, sp.max_projects, sp.max_users,
+               sp.max_storage_bytes, sp.feature_flags, sp.price_monthly_usd, sp.is_public
+        FROM company_subscriptions cs
+        JOIN subscription_plans sp ON sp.id = cs.plan_id
+        WHERE cs.company_id = ${companyId}`;
+
+      if (!sub) return { sub: undefined, usage: undefined };
+
+      const [usage] = await sql`
+        SELECT
+          COUNT(DISTINCT u.id) AS active_users,
+          COUNT(DISTINCT p.id) AS active_projects,
+          COALESCE(c.storage_used_bytes, 0) AS storage_bytes
+        FROM companies c
+        -- email_verified = true excludes never-accepted invitations from the
+        -- displayed seat usage, matching checkLimit()'s definition of a "used" seat below.
+        LEFT JOIN users u ON u.company_id = c.id AND u.is_active = true AND u.email_verified = true
+        LEFT JOIN projects p ON p.company_id = c.id AND p.status = 'active'
+        WHERE c.id = ${companyId}
+        GROUP BY c.storage_used_bytes`;
+
+      return { sub, usage };
+    });
 
     if (!sub) throw new NotFoundException('No subscription found.');
-
-    const [usage] = await this.db.query`
-      SELECT
-        COUNT(DISTINCT u.id) AS active_users,
-        COUNT(DISTINCT p.id) AS active_projects,
-        COALESCE(c.storage_used_bytes, 0) AS storage_bytes
-      FROM companies c
-      -- email_verified = true excludes never-accepted invitations from the
-      -- displayed seat usage, matching checkLimit()'s definition of a "used" seat below.
-      LEFT JOIN users u ON u.company_id = c.id AND u.is_active = true AND u.email_verified = true
-      LEFT JOIN projects p ON p.company_id = c.id AND p.status = 'active'
-      WHERE c.id = ${companyId}
-      GROUP BY c.storage_used_bytes`;
 
     // The SubscriptionPlan fields come back flat from the join — nest them
     // under `plan` to match the CompanySubscription type contract that the
@@ -72,8 +84,15 @@ export class SubscriptionService {
       ORDER BY price_monthly_usd NULLS LAST`;
   }
 
+  // withTenant required -- company_subscriptions and companies both carry the
+  // tenant_isolation RLS policy. A plain this.db.query() never sets
+  // app.current_company_id, so under any DB role that isn't the table owner/a
+  // superuser this SELECT always sees no rows: checkLimit() is called before every
+  // project creation (projects.service.ts) and user invite (users.service.ts), so
+  // this alone would currently block ALL project creation and user invites in
+  // production with "No active subscription found."
   async checkLimit(companyId: string, resource: 'projects' | 'users' | 'storage', additionalBytes = 0): Promise<{ allowed: boolean; reason?: string }> {
-    const [data] = await this.db.query`
+    const [data] = await this.db.withTenant(companyId, sql => sql`
       SELECT
         sp.max_projects, sp.max_users, sp.max_storage_bytes,
         sp.feature_flags,
@@ -93,7 +112,7 @@ export class SubscriptionService {
       LEFT JOIN users u ON u.company_id = co.id AND u.is_active = true AND u.email_verified = true
       WHERE cs.company_id = ${companyId}
       GROUP BY sp.max_projects, sp.max_users, sp.max_storage_bytes, sp.feature_flags,
-               cs.status, cs.trial_ends_at, co.storage_used_bytes`;
+               cs.status, cs.trial_ends_at, co.storage_used_bytes`);
 
     if (!data) return { allowed: false, reason: 'No active subscription found.' };
     if (data.status === 'trial' && data.trialEndsAt && new Date(data.trialEndsAt) < new Date()) {

@@ -46,24 +46,33 @@ export class IssuesService {
   // ticket (2a) moves numbering to discipline to match the reference
   // issue-tracker's scheme. Existing rows' issue_number values are left
   // untouched -- this only affects newly created issues.
+  // withTenant required -- projects and issues both carry the tenant_isolation RLS policy.
+  // A plain this.db.query() never sets app.current_company_id, so under any DB role that
+  // isn't the table owner/a superuser both SELECTs see no rows: the project-code lookup
+  // silently falls back to the generic 'PRJ' prefix, and the sequence count is always 0.
   private async generateIssueNumber(companyId: string, projectId: string, discipline: string): Promise<string> {
-    const [proj] = await this.db.query`SELECT code FROM projects WHERE id = ${projectId}`;
-    const prefix = (proj?.code as string ?? 'PRJ').toUpperCase();
-    // The issue_discipline_enum values (MEP, ARC, STR, CIV, ELE, INFRA,
-    // LANDSCAPE, OTHER) are already short codes -- used directly, no
-    // separate code-lookup table needed.
-    const disciplineCode = discipline.toUpperCase();
-    const [cnt] = await this.db.query`
-      SELECT COUNT(*) AS n FROM issues WHERE project_id = ${projectId} AND discipline = ${discipline}`;
-    const seq = String(Number(cnt.n) + 1).padStart(4, '0');
-    return `${prefix}-${disciplineCode}-${seq}`;
+    return this.db.withTenant(companyId, async (sql) => {
+      const [proj] = await sql`SELECT code FROM projects WHERE id = ${projectId} AND company_id = ${companyId}`;
+      const prefix = (proj?.code as string ?? 'PRJ').toUpperCase();
+      // The issue_discipline_enum values (MEP, ARC, STR, CIV, ELE, INFRA,
+      // LANDSCAPE, OTHER) are already short codes -- used directly, no
+      // separate code-lookup table needed.
+      const disciplineCode = discipline.toUpperCase();
+      const [cnt] = await sql`
+        SELECT COUNT(*) AS n FROM issues WHERE project_id = ${projectId} AND discipline = ${discipline} AND company_id = ${companyId}`;
+      const seq = String(Number(cnt.n) + 1).padStart(4, '0');
+      return `${prefix}-${disciplineCode}-${seq}`;
+    });
   }
 
   // ── Create ────────────────────────────────────────────────────────────────
   async create(companyId: string, projectId: string, userId: string, dto: CreateIssueDto) {
     const issueNumber = await this.generateIssueNumber(companyId, projectId, dto.discipline);
 
-    const [issue] = await this.db.query`
+    // withTenant required -- issues carries the tenant_isolation RLS policy. A plain
+    // this.db.query() never sets app.current_company_id, so under any DB role that isn't
+    // the table owner/a superuser the implicit WITH CHECK rejects this insert outright.
+    const [issue] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO issues (
         company_id, project_id, building_id, level_id, location_id, element_id,
         issue_type, issue_number, title, description, priority, discipline, category, trade,
@@ -87,7 +96,7 @@ export class IssuesService {
         ${dto.cameraTargetX ?? null}, ${dto.cameraTargetY ?? null}, ${dto.cameraTargetZ ?? null},
         ${dto.screenshotStorageKey ?? null}
       )
-      RETURNING *`;
+      RETURNING *`);
 
     // Log creation activity
     await this.addActivity(companyId, issue.id as string, userId, {
@@ -219,7 +228,8 @@ export class IssuesService {
     const existing = await this.findOne(companyId, projectId, issueId);
     const isClosing = dto.status === 'closed' && existing.status !== 'closed';
 
-    const [updated] = await this.db.query`
+    // withTenant required -- see generateIssueNumber() above.
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
       UPDATE issues SET
         title               = COALESCE(${dto.title ?? null}, title),
         description         = COALESCE(${dto.description ?? null}, description),
@@ -240,7 +250,7 @@ export class IssuesService {
         updated_at          = NOW()
       WHERE id = ${issueId} AND project_id = ${projectId} AND company_id = ${companyId}
       RETURNING *
-    `;
+    `);
 
     // Log status change activity automatically
     if (dto.status && dto.status !== existing.status) {
@@ -274,7 +284,10 @@ export class IssuesService {
     if (issue.createdBy !== userId && !['company_admin','engineering_manager'].includes(userRole)) {
       throw new ForbiddenException('Only the issue creator or an administrator can delete an issue.');
     }
-    await this.db.query`DELETE FROM issues WHERE id = ${issueId} AND company_id = ${companyId}`;
+    const result = await this.db.withTenant(companyId, sql => sql`DELETE FROM issues WHERE id = ${issueId} AND company_id = ${companyId}`);
+    if (result.count === 0) {
+      throw new NotFoundException(`Issue ${issueId} not found.`);
+    }
     return { message: `Issue ${issue.issueNumber as string} deleted.` };
   }
 
@@ -304,30 +317,33 @@ export class IssuesService {
   }
 
   async addActivity(companyId: string, issueId: string, userId: string, dto: AddActivityDto) {
-    const [activity] = await this.db.query`
-      INSERT INTO issue_activities (
-        issue_id, company_id, activity_type, content,
-        from_value, to_value, capture_id, performed_by
-      ) VALUES (
-        ${issueId}, ${companyId}, ${dto.activityType}, ${dto.content ?? null},
-        ${dto.fromValue ?? null}, ${dto.toValue ?? null},
-        ${dto.captureId ?? null}, ${userId}
-      )
-      RETURNING *
-    `;
-    // Update issue updated_at
-    await this.db.query`UPDATE issues SET updated_at = NOW() WHERE id = ${issueId}`;
-    return activity;
+    return this.db.withTenant(companyId, async (sql) => {
+      const [activity] = await sql`
+        INSERT INTO issue_activities (
+          issue_id, company_id, activity_type, content,
+          from_value, to_value, capture_id, performed_by
+        ) VALUES (
+          ${issueId}, ${companyId}, ${dto.activityType}, ${dto.content ?? null},
+          ${dto.fromValue ?? null}, ${dto.toValue ?? null},
+          ${dto.captureId ?? null}, ${userId}
+        )
+        RETURNING *
+      `;
+      // Update issue updated_at
+      await sql`UPDATE issues SET updated_at = NOW() WHERE id = ${issueId} AND company_id = ${companyId}`;
+      return activity;
+    });
   }
 
   // ── Add evidence capture ──────────────────────────────────────────────────
   async addCapture(companyId: string, issueId: string, userId: string, captureId: string, isPrimary = false, caption?: string) {
-    const [link] = await this.db.query`
+    // withTenant required -- issue_captures carries the tenant_isolation RLS policy.
+    const [link] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO issue_captures (issue_id, capture_id, company_id, is_primary, caption, added_by)
       VALUES (${issueId}, ${captureId}, ${companyId}, ${isPrimary}, ${caption ?? null}, ${userId})
       ON CONFLICT (issue_id, capture_id) DO UPDATE SET caption = ${caption ?? null}
       RETURNING *
-    `;
+    `);
     await this.addActivity(companyId, issueId, userId, {
       activityType: 'capture_added',
       captureId,
@@ -387,11 +403,12 @@ export class IssuesService {
   async forward(companyId: string, projectId: string, issueId: string, userId: string, dto: ForwardIssueDto) {
     const existing = await this.findOne(companyId, projectId, issueId);
 
-    const [updated] = await this.db.query`
+    // withTenant required -- see generateIssueNumber() above.
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
       UPDATE issues SET assigned_to = ${dto.toUserId}::uuid, updated_at = NOW()
       WHERE id = ${issueId} AND project_id = ${projectId} AND company_id = ${companyId}
       RETURNING *
-    `;
+    `);
 
     await this.addActivity(companyId, issueId, userId, {
       activityType: 'forward',
@@ -425,7 +442,8 @@ export class IssuesService {
     const existing = await this.findOne(companyId, projectId, issueId);
     const isClosing = dto.status === 'closed' && existing.status !== 'closed';
 
-    const [updated] = await this.db.query`
+    // withTenant required -- see generateIssueNumber() above.
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
       UPDATE issues SET
         status     = ${dto.status},
         closed_at  = CASE WHEN ${isClosing} THEN NOW() ELSE closed_at END,
@@ -433,7 +451,7 @@ export class IssuesService {
         updated_at = NOW()
       WHERE id = ${issueId} AND project_id = ${projectId} AND company_id = ${companyId}
       RETURNING *
-    `;
+    `);
 
     await this.addActivity(companyId, issueId, userId, {
       activityType: 'status_force',
@@ -619,17 +637,19 @@ export class IssuesService {
   // same pattern as documents.storageKey / issues.screenshotStorageKey,
   // resolved to a live presigned URL by the caller/read path when needed.
   async addAttachment(companyId: string, issueId: string, userId: string, dto: AddIssueAttachmentDto) {
-    const [activity] = await this.db.query`
-      INSERT INTO issue_activities (
-        issue_id, company_id, activity_type, content,
-        attachment_url, attachment_name, attachment_size_bytes, performed_by
-      ) VALUES (
-        ${issueId}, ${companyId}, 'comment', ${dto.comment ?? `Attached file: ${dto.filename}`},
-        ${dto.storageKey}, ${dto.filename}, ${dto.sizeBytes}, ${userId}
-      )
-      RETURNING *
-    `;
-    await this.db.query`UPDATE issues SET updated_at = NOW() WHERE id = ${issueId}`;
-    return activity;
+    return this.db.withTenant(companyId, async (sql) => {
+      const [activity] = await sql`
+        INSERT INTO issue_activities (
+          issue_id, company_id, activity_type, content,
+          attachment_url, attachment_name, attachment_size_bytes, performed_by
+        ) VALUES (
+          ${issueId}, ${companyId}, 'comment', ${dto.comment ?? `Attached file: ${dto.filename}`},
+          ${dto.storageKey}, ${dto.filename}, ${dto.sizeBytes}, ${userId}
+        )
+        RETURNING *
+      `;
+      await sql`UPDATE issues SET updated_at = NOW() WHERE id = ${issueId} AND company_id = ${companyId}`;
+      return activity;
+    });
   }
 }

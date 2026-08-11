@@ -25,7 +25,13 @@ export class AuthService {
   // ── Login ─────────────────────────────────────────────────────────────────
   async login(dto: LoginDto, ipAddress?: string, userAgent?: string): Promise<{ tokens: AuthTokens; user: AuthenticatedUser }> {
     // Find user — email is globally unique across the platform (unique per company, but
-    // we search globally so users with the same email at different companies get a clear error)
+    // we search globally so users with the same email at different companies get a clear error).
+    // NOTE: under the app's real DB role (app_user, no BYPASS RLS -- migration 001), this
+    // SELECT against `users` (an RLS table) with no session var set sees zero rows, always
+    // -- there's no companyId to withTenant() by here, that's the whole point of a global
+    // lookup. Flagged as part of the RLS/withTenant audit, not fixed: needs a deliberate
+    // bootstrap mechanism (e.g. SECURITY DEFINER function / dedicated role), same as
+    // tenancy.service.ts's register() and issue-warning.service.ts's checkOverdueIssues().
     const [user] = await this.db.query`
       SELECT u.*, c.is_active AS company_active
       FROM users u
@@ -42,8 +48,10 @@ export class AuthService {
     const passwordValid = await argon2.verify(user.passwordHash as string, dto.password);
     if (!passwordValid) throw new UnauthorizedException('Invalid email or password.');
 
-    // Update last login timestamp (fire-and-forget — don't block the response)
-    this.db.query`UPDATE users SET last_login_at = NOW() WHERE id = ${user.id}`.catch(e =>
+    // Update last login timestamp (fire-and-forget — don't block the response).
+    // withTenant required -- users carries the tenant_isolation RLS policy; company_id is
+    // known now that the user row has been found, unlike the lookup above.
+    this.db.withTenant(user.companyId as string, sql => sql`UPDATE users SET last_login_at = NOW() WHERE id = ${user.id} AND company_id = ${user.companyId}`).catch(e =>
       this.logger.error('Failed to update last_login_at', e),
     );
 
@@ -94,19 +102,25 @@ export class AuthService {
     if (!stored) throw new UnauthorizedException('Invalid or expired refresh token.');
     if (!stored.isActive || !stored.companyActive) throw new UnauthorizedException('Account deactivated.');
 
-    // Rotate the token — revoke old, issue new (prevents token reuse)
-    await this.db.query`UPDATE refresh_tokens SET revoked_at = NOW() WHERE id = ${stored.refreshTokenId}`;
+    // Rotate the token — revoke old, issue new (prevents token reuse).
+    // withTenant required -- refresh_tokens carries the tenant_isolation RLS policy;
+    // company_id is known now (stored.companyId), unlike the lookup above.
+    await this.db.withTenant(stored.companyId as string, sql => sql`
+      UPDATE refresh_tokens SET revoked_at = NOW() WHERE id = ${stored.refreshTokenId} AND company_id = ${stored.companyId}
+    `);
 
     return this.issueTokens(stored, ipAddress, userAgent);
   }
 
   // ── Logout ────────────────────────────────────────────────────────────────
-  async logout(refreshToken: string): Promise<void> {
+  // Unlike login()/refresh(), this route is authenticated (not @Public()), so companyId
+  // is already known from the caller's JWT -- withTenant applies here, no bootstrap issue.
+  async logout(refreshToken: string, companyId: string): Promise<void> {
     const tokenHash = this.hashToken(refreshToken);
-    await this.db.query`
+    await this.db.withTenant(companyId, sql => sql`
       UPDATE refresh_tokens SET revoked_at = NOW()
-      WHERE token_hash = ${tokenHash} AND revoked_at IS NULL
-    `;
+      WHERE token_hash = ${tokenHash} AND revoked_at IS NULL AND company_id = ${companyId}
+    `);
   }
 
   // ── Accept invitation ─────────────────────────────────────────────────────
@@ -132,6 +146,14 @@ export class AuthService {
     // collapsing all three into one generic message. It's permanently
     // inert either way once email_verified flips to true, since that's
     // what the WHERE clause actually guards on.
+    //
+    // Deliberately global -- the invitation token itself is the globally-unique secret;
+    // the caller doesn't know (and shouldn't need to know) which company they're in yet.
+    // Same bootstrap category as login(): under the app's real DB role (app_user, no
+    // BYPASS RLS -- migration 001), this UPDATE against `users` (an RLS table) with no
+    // session var set always matches zero rows, so invitation acceptance is currently
+    // broken in production. Not fixable by adding withTenant here (no companyId exists
+    // to scope by) -- flagged as part of the RLS/withTenant audit, not fixed.
     const [user] = await this.db.query`
       UPDATE users SET
         first_name = ${dto.firstName},
@@ -181,8 +203,11 @@ export class AuthService {
 
   // ── Forgot password ───────────────────────────────────────────────────────
   async forgotPassword(email: string): Promise<void> {
+    // Deliberately global -- email is unique platform-wide, and the caller doesn't know
+    // (and shouldn't need to know) which company they're in yet. Same bootstrap category
+    // as login().
     const [user] = await this.db.query`
-      SELECT id FROM users WHERE LOWER(email) = LOWER(${email}) AND is_active = true
+      SELECT id, company_id FROM users WHERE LOWER(email) = LOWER(${email}) AND is_active = true
     `;
 
     // Always return success — never reveal whether an email exists (enumeration attack prevention)
@@ -191,13 +216,15 @@ export class AuthService {
     const token = randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 3600 * 1000); // 1 hour
 
-    await this.db.query`
+    // withTenant required from here on -- company_id is known now that the user row has
+    // been found. users carries the tenant_isolation RLS policy.
+    await this.db.withTenant(user.companyId as string, sql => sql`
       UPDATE users SET
         password_reset_token = ${token},
         password_reset_expires_at = ${expiresAt.toISOString()},
         updated_at = NOW()
-      WHERE id = ${user.id}
-    `;
+      WHERE id = ${user.id} AND company_id = ${user.companyId}
+    `);
 
     // TODO Phase 2: send email via notification service
     this.logger.log(`Password reset token generated for user ${user.id as string}`);
@@ -205,8 +232,11 @@ export class AuthService {
 
   // ── Reset password ────────────────────────────────────────────────────────
   async resetPassword(dto: ResetPasswordDto): Promise<void> {
+    // Deliberately global -- the reset token itself is the globally-unique secret; the
+    // caller doesn't know (and shouldn't need to know) which company they're in yet. Same
+    // bootstrap category as login().
     const [user] = await this.db.query`
-      SELECT id FROM users
+      SELECT id, company_id FROM users
       WHERE password_reset_token = ${dto.token}
         AND password_reset_expires_at > NOW()
         AND is_active = true
@@ -216,17 +246,21 @@ export class AuthService {
 
     const passwordHash = await argon2.hash(dto.newPassword, { type: argon2.argon2id });
 
-    await this.db.query`
-      UPDATE users SET
-        password_hash = ${passwordHash},
-        password_reset_token = NULL,
-        password_reset_expires_at = NULL,
-        updated_at = NOW()
-      WHERE id = ${user.id}
-    `;
+    // withTenant required from here on -- company_id is known now that the user row has
+    // been found. users and refresh_tokens both carry the tenant_isolation RLS policy.
+    await this.db.withTenant(user.companyId as string, async (sql) => {
+      await sql`
+        UPDATE users SET
+          password_hash = ${passwordHash},
+          password_reset_token = NULL,
+          password_reset_expires_at = NULL,
+          updated_at = NOW()
+        WHERE id = ${user.id} AND company_id = ${user.companyId}
+      `;
 
-    // Revoke all existing refresh tokens — force re-login everywhere
-    await this.db.query`UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ${user.id}`;
+      // Revoke all existing refresh tokens — force re-login everywhere
+      await sql`UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ${user.id} AND company_id = ${user.companyId}`;
+    });
   }
 
   // ── Get current user ──────────────────────────────────────────────────────
@@ -283,11 +317,16 @@ export class AuthService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
-    await this.db.query`
+    // withTenant required -- refresh_tokens carries the tenant_isolation RLS policy. A plain
+    // this.db.query() never sets app.current_company_id, so under any DB role that isn't the
+    // table owner/a superuser the implicit WITH CHECK rejects this insert outright with
+    // "new row violates row-level security policy" -- meaning every successful login/refresh/
+    // accept-invitation would currently throw here.
+    await this.db.withTenant(payload.companyId, sql => sql`
       INSERT INTO refresh_tokens (user_id, company_id, token_hash, expires_at, ip_address, user_agent)
       VALUES (${payload.sub}, ${payload.companyId}, ${tokenHash}, ${expiresAt.toISOString()},
               ${ipAddress ?? null}, ${userAgent ?? null})
-    `;
+    `);
 
     return {
       accessToken,

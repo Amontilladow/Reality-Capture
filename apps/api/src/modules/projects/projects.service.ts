@@ -69,31 +69,39 @@ export class ProjectsService {
       throw new PaymentRequiredException('projects', limitCheck.reason);
     }
 
-    const [project] = await this.db.query`
-      INSERT INTO projects (
-        company_id, name, code, description, location, country, city,
-        start_date, expected_end_date, created_by
-      ) VALUES (
-        ${companyId}, ${dto.name}, ${dto.code ?? null}, ${dto.description ?? null},
-        ${dto.location ?? null}, ${dto.country ?? null}, ${dto.city ?? null},
-        ${dto.startDate ?? null}, ${dto.expectedEndDate ?? null}, ${userId}
-      )
-      RETURNING *
-    `;
+    // withTenant required -- projects and project_members both carry the tenant_isolation
+    // RLS policy. A plain this.db.query() never sets app.current_company_id, so under any DB
+    // role that isn't the table owner/a superuser the implicit WITH CHECK (mirroring USING,
+    // since neither table declares a separate one) rejects both inserts outright with
+    // "new row violates row-level security policy".
+    return this.db.withTenant(companyId, async (sql) => {
+      const [project] = await sql`
+        INSERT INTO projects (
+          company_id, name, code, description, location, country, city,
+          start_date, expected_end_date, created_by
+        ) VALUES (
+          ${companyId}, ${dto.name}, ${dto.code ?? null}, ${dto.description ?? null},
+          ${dto.location ?? null}, ${dto.country ?? null}, ${dto.city ?? null},
+          ${dto.startDate ?? null}, ${dto.expectedEndDate ?? null}, ${userId}
+        )
+        RETURNING *
+      `;
 
-    // Auto-add creator as project_lead
-    await this.db.query`
-      INSERT INTO project_members (project_id, user_id, company_id, role, invited_by)
-      VALUES (${project.id}, ${userId}, ${companyId}, 'project_lead', ${userId})
-    `;
+      // Auto-add creator as project_lead
+      await sql`
+        INSERT INTO project_members (project_id, user_id, company_id, role, invited_by)
+        VALUES (${project.id}, ${userId}, ${companyId}, 'project_lead', ${userId})
+      `;
 
-    return project;
+      return project;
+    });
   }
 
   async update(companyId: string, projectId: string, dto: UpdateProjectDto) {
     await this.findOne(companyId, projectId);
 
-    const [updated] = await this.db.query`
+    // withTenant required -- see create() above.
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
       UPDATE projects SET
         name              = COALESCE(${dto.name ?? null}, name),
         code              = COALESCE(${dto.code ?? null}, code),
@@ -108,7 +116,7 @@ export class ProjectsService {
         updated_at        = NOW()
       WHERE id = ${projectId} AND company_id = ${companyId}
       RETURNING *
-    `;
+    `);
 
     return updated;
   }

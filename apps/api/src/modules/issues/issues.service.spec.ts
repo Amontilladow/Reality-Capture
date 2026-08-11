@@ -114,7 +114,11 @@ describe('IssuesService view-state / screenshot behavior', () => {
 
     function makeCreateService(existingCountForDiscipline: number) {
       const { query, calls } = makeQueryMock(existingCountForDiscipline);
-      const db = { query, withTenant: jest.fn() };
+      // generateIssueNumber/create/addActivity all now go through withTenant --
+      // forward its callback to the same query mock so the existing text-keyed
+      // responses still apply.
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const db = { query, withTenant };
       const ingestIssue = jest.fn();
       const aiClient = { ingestIssue };
       const notifications = { create: jest.fn() };
@@ -155,8 +159,8 @@ describe('IssuesService view-state / screenshot behavior', () => {
 
       const countCall = calls.find(c => c.text.includes('SELECT COUNT(*) AS n FROM issues'));
       expect(countCall).toBeDefined();
-      // values = [projectId, discipline] -- notably not issueType ('rfi')
-      expect(countCall!.values).toEqual(['project-1', 'STR']);
+      // values = [projectId, discipline, companyId] -- notably not issueType ('rfi')
+      expect(countCall!.values).toEqual(['project-1', 'STR', 'company-1']);
     });
   });
 
@@ -181,6 +185,9 @@ describe('IssuesService view-state / screenshot behavior', () => {
   describe('forward', () => {
     it('reassigns the issue, logs a forward activity with from/to values, and notifies the new assignee', async () => {
       const { query, calls } = makeQuery((text) => {
+        if (text.includes('FROM issues i')) {
+          return [{ id: 'issue-1', assignedTo: 'user-old', issueNumber: 'TWR-MEP-0001', title: 'Leak', status: 'open' }];
+        }
         if (text.includes('UPDATE issues SET assigned_to')) {
           return [{ id: 'issue-1', assignedTo: 'user-new', issueNumber: 'TWR-MEP-0001', title: 'Leak' }];
         }
@@ -189,9 +196,9 @@ describe('IssuesService view-state / screenshot behavior', () => {
         }
         return undefined;
       });
-      const withTenant = jest.fn().mockResolvedValue([
-        { id: 'issue-1', assignedTo: 'user-old', issueNumber: 'TWR-MEP-0001', title: 'Leak', status: 'open' },
-      ]);
+      // findOne(), the reassignment UPDATE, and addActivity() all now go through
+      // withTenant -- forward its callback to the same text-keyed query mock.
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
       const notifications = { create: jest.fn() };
       const svc = new IssuesService(
         { query, withTenant } as unknown as DatabaseService,
@@ -222,12 +229,17 @@ describe('IssuesService view-state / screenshot behavior', () => {
   describe('forceStatus', () => {
     it('sets status directly and logs a status_force activity (not status_change)', async () => {
       const { query, calls } = makeQuery((text) => {
+        if (text.includes('FROM issues i')) {
+          return [{ id: 'issue-1', status: 'closed' }];
+        }
         if (text.includes('UPDATE issues SET')) {
           return [{ id: 'issue-1', status: 'reopened' }];
         }
         return undefined;
       });
-      const withTenant = jest.fn().mockResolvedValue([{ id: 'issue-1', status: 'closed' }]);
+      // findOne() and the status UPDATE both now go through withTenant -- forward
+      // its callback to the same text-keyed query mock.
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
       const svc = new IssuesService(
         { query, withTenant } as unknown as DatabaseService,
         {} as unknown as AiClientService,
@@ -393,8 +405,11 @@ describe('IssuesService view-state / screenshot behavior', () => {
         }
         return undefined;
       });
+      // addAttachment() now goes through withTenant -- forward its callback to
+      // the same text-keyed query mock.
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
       const svc = new IssuesService(
-        { query } as unknown as DatabaseService,
+        { query, withTenant } as unknown as DatabaseService,
         {} as unknown as AiClientService,
         {} as unknown as NotificationsService,
         {} as unknown as StorageService,
