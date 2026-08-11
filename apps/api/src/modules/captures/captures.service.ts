@@ -90,7 +90,10 @@ export class CapturesService {
       if (!loc) throw new BadRequestException('Location does not belong to this project.');
     }
 
-    const [capture] = await this.db.query`
+    // withTenant required -- captures carries the tenant_isolation RLS policy;
+    // a plain this.db.query() never sets app.current_company_id, so this INSERT
+    // would be rejected outright under any DB role that isn't the table owner/a superuser.
+    const [capture] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO captures (
         company_id, project_id, location_id, captured_by,
         capture_type, phase, title, description, tags,
@@ -109,7 +112,7 @@ export class CapturesService {
         'processing'
       )
       RETURNING *
-    `;
+    `);
 
     // Update company storage usage
     await this.tenancy.incrementStorage(companyId, dto.originalSizeBytes);
@@ -274,7 +277,10 @@ export class CapturesService {
   // ── Update capture metadata ───────────────────────────────────────────────
   async update(companyId: string, projectId: string, captureId: string, dto: UpdateCaptureDto) {
     await this.findOne(companyId, projectId, captureId);
-    const [updated] = await this.db.query`
+    // withTenant required -- captures carries the tenant_isolation RLS policy;
+    // a plain this.db.query() never sets app.current_company_id, so this UPDATE
+    // would silently match 0 rows under any DB role that isn't the table owner/a superuser.
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
       UPDATE captures SET
         title       = COALESCE(${dto.title ?? null}, title),
         description = COALESCE(${dto.description ?? null}, description),
@@ -284,7 +290,7 @@ export class CapturesService {
         updated_at  = NOW()
       WHERE id = ${captureId} AND project_id = ${projectId} AND company_id = ${companyId}
       RETURNING *
-    `;
+    `);
     return updated;
   }
 
@@ -292,15 +298,29 @@ export class CapturesService {
   async delete(companyId: string, projectId: string, captureId: string) {
     const capture = await this.findOne(companyId, projectId, captureId);
 
-    // Get all storage keys (original + renditions) for cleanup
-    const renditions = await this.db.query`
-      SELECT storage_key FROM capture_renditions WHERE capture_id = ${captureId}
-    `;
+    // withTenant required -- capture_renditions and captures both carry the tenant_isolation
+    // RLS policy. A plain this.db.query() never sets app.current_company_id, so under any DB
+    // role that isn't the table owner/a superuser the renditions SELECT would see no rows
+    // (skipping storage cleanup for renditions -- an S3 leak) and the DELETE would silently
+    // match 0 rows (reporting success while the capture row stays in the DB forever).
+    const result = await this.db.withTenant(companyId, async (sql) => {
+      // Get all storage keys (original + renditions) for cleanup
+      const renditions = await sql`
+        SELECT storage_key FROM capture_renditions WHERE capture_id = ${captureId} AND company_id = ${companyId}
+      `;
 
-    // Delete DB record (cascades to renditions, hotspots, links)
-    await this.db.query`
-      DELETE FROM captures WHERE id = ${captureId} AND company_id = ${companyId}
-    `;
+      // Delete DB record (cascades to renditions, hotspots, links)
+      const deleteResult = await sql`
+        DELETE FROM captures WHERE id = ${captureId} AND company_id = ${companyId}
+      `;
+
+      return { renditions, deleteResult };
+    });
+
+    if (result.deleteResult.count === 0) {
+      throw new NotFoundException(`Capture ${captureId} not found.`);
+    }
+    const renditions = result.renditions;
 
     // Clean up storage (fire-and-forget — don't fail delete if storage cleanup fails)
     const keys = [
@@ -319,7 +339,10 @@ export class CapturesService {
 
   // ── Hotspots ──────────────────────────────────────────────────────────────
   async createHotspot(companyId: string, captureId: string, userId: string, dto: CreateHotspotDto) {
-    const [hotspot] = await this.db.query`
+    // withTenant required -- hotspots carries the tenant_isolation RLS policy;
+    // a plain this.db.query() never sets app.current_company_id, so this INSERT
+    // would be rejected outright under any DB role that isn't the table owner/a superuser.
+    const [hotspot] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO hotspots (
         source_capture_id, target_capture_id, company_id,
         hotspot_type, label, content, yaw_deg, pitch_deg,
@@ -331,12 +354,15 @@ export class CapturesService {
         ${dto.iconName ?? null}, ${dto.color ?? null}, ${userId}
       )
       RETURNING *
-    `;
+    `);
     return hotspot;
   }
 
   async updateHotspot(companyId: string, captureId: string, hotspotId: string, dto: Partial<CreateHotspotDto>) {
-    const [updated] = await this.db.query`
+    // withTenant required -- hotspots carries the tenant_isolation RLS policy;
+    // a plain this.db.query() never sets app.current_company_id, so this UPDATE
+    // would silently match 0 rows under any DB role that isn't the table owner/a superuser.
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
       UPDATE hotspots SET
         label            = COALESCE(${dto.label ?? null}, label),
         content          = COALESCE(${dto.content ?? null}, content),
@@ -345,16 +371,22 @@ export class CapturesService {
         target_capture_id = COALESCE(${dto.targetCaptureId ?? null}, target_capture_id)
       WHERE id = ${hotspotId} AND source_capture_id = ${captureId} AND company_id = ${companyId}
       RETURNING *
-    `;
+    `);
     if (!updated) throw new NotFoundException('Hotspot not found.');
     return updated;
   }
 
   async deleteHotspot(companyId: string, captureId: string, hotspotId: string) {
-    await this.db.query`
+    // withTenant required -- hotspots carries the tenant_isolation RLS policy;
+    // a plain this.db.query() never sets app.current_company_id, so this DELETE
+    // would silently match 0 rows under any DB role that isn't the table owner/a superuser.
+    const result = await this.db.withTenant(companyId, sql => sql`
       DELETE FROM hotspots
       WHERE id = ${hotspotId} AND source_capture_id = ${captureId} AND company_id = ${companyId}
-    `;
+    `);
+    if (result.count === 0) {
+      throw new NotFoundException('Hotspot not found.');
+    }
     return { message: 'Hotspot deleted.' };
   }
 
@@ -367,12 +399,15 @@ export class CapturesService {
     for (const item of dto.captures) {
       try {
         // Check if already processed (idempotency)
-        const [existing] = await this.db.query`
+        // withTenant required -- captures carries the tenant_isolation RLS policy;
+        // a plain this.db.query() never sets app.current_company_id, so this SELECT
+        // would see no rows under any DB role that isn't the table owner/a superuser.
+        const [existing] = await this.db.withTenant(companyId, sql => sql`
           SELECT id FROM captures
           WHERE company_id = ${companyId}
             AND original_key = ${item.storageKey}
             AND captured_by = ${userId}
-        `;
+        `);
 
         if (existing) {
           results.push({ idempotencyKey: item.idempotencyKey, captureId: existing.id as string, status: 'already_processed' });
@@ -446,14 +481,20 @@ export class CapturesService {
 
   // ── Private helpers ───────────────────────────────────────────────────────
   private async checkStorageLimit(companyId: string, additionalBytes: number): Promise<{ allowed: boolean; reason?: string }> {
-    const [data] = await this.db.query`
+    // HIGH SEVERITY -- withTenant required. companies and company_subscriptions both
+    // carry the tenant_isolation RLS policy; a plain this.db.query() never sets
+    // app.current_company_id, so under any DB role that isn't the table owner/a superuser
+    // this SELECT always returns undefined, meaning checkStorageLimit always returns
+    // {allowed:false, reason:'Company not found.'} -- every single capture upload is
+    // currently blocked in production.
+    const [data] = await this.db.withTenant(companyId, sql => sql`
       SELECT c.storage_used_bytes,
              COALESCE(cs.custom_storage_bytes, sp.max_storage_bytes) AS max_bytes
       FROM companies c
       LEFT JOIN company_subscriptions cs ON cs.company_id = c.id
       LEFT JOIN subscription_plans sp ON sp.id = cs.plan_id
       WHERE c.id = ${companyId}
-    `;
+    `);
     if (!data) return { allowed: false, reason: 'Company not found.' };
     if (data.maxBytes === null) return { allowed: true }; // unlimited
     if (Number(data.storageUsedBytes) + additionalBytes > Number(data.maxBytes)) {

@@ -98,8 +98,13 @@ export class AuditInterceptor implements NestInterceptor {
     );
   }
 
+  // withTenant required -- audit_log carries the tenant_isolation RLS policy. A plain
+  // this.db.query() never sets app.current_company_id, so under any DB role that isn't the
+  // table owner/a superuser the implicit WITH CHECK rejects this insert outright -- and since
+  // the caller only logs the failure (never surfaces it), the entire audit trail is silently
+  // dark in production.
   private async writeAuditLog(entry: Record<string, unknown>): Promise<void> {
-    await this.db.query`
+    await this.db.withTenant(entry.companyId as string, sql => sql`
       INSERT INTO audit_log (
         company_id, project_id, user_id, user_email, user_name,
         action, resource_type, resource_id, resource_label,
@@ -114,7 +119,7 @@ export class AuditInterceptor implements NestInterceptor {
         ${entry.ipAddress ?? null}, ${entry.userAgent ?? null},
         ${entry.requestId ?? null}, ${entry.source}
       )
-    `;
+    `);
   }
 
   private extractResourceId(body: unknown): string | null {

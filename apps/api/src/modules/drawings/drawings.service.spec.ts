@@ -10,10 +10,19 @@ describe('DrawingsService pin page_number', () => {
     withTenantResult?: Record<string, unknown>[];
     insertedPin?: Record<string, unknown>;
   }) {
-    const withTenant = jest.fn().mockResolvedValue(
-      opts.drawingRow !== undefined ? [opts.drawingRow] : (opts.withTenantResult ?? []),
-    );
     const query = jest.fn().mockResolvedValue(opts.insertedPin ? [opts.insertedPin] : []);
+    // createPin() now makes two withTenant calls (the drawing lookup, then the
+    // locations INSERT -- previously the INSERT went through plain this.db.query).
+    // First call resolves the canned drawing/getPins row; any call after that
+    // forwards to the query mock, so it still only ever sees the INSERT.
+    let callCount = 0;
+    const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => {
+      callCount += 1;
+      if (callCount === 1) {
+        return Promise.resolve(opts.drawingRow !== undefined ? [opts.drawingRow] : (opts.withTenantResult ?? []));
+      }
+      return fn(query);
+    });
     const db = { withTenant, query } as any;
     const storage = { resolveUrls: jest.fn().mockResolvedValue(new Map()) };
     return { svc: new DrawingsService(db, storage as any), withTenant, query };
