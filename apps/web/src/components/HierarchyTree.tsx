@@ -26,14 +26,14 @@ export function HierarchyTree({
   function toggleBuilding(id: string) {
     setOpenBuildings((s) => {
       const next = new Set(s);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   }
   function toggleLevel(id: string) {
     setOpenLevels((s) => {
       const next = new Set(s);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   }

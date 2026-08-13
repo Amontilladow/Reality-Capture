@@ -78,13 +78,14 @@ export class CapturesService {
     // for a pin created directly on a drawing, via drawing_id — it may
     // have one, the other, or both, but never neither (enforced by the
     // locations_has_a_place_check constraint).
-    if (dto.locationId) {
+    const locationId = dto.locationId;
+    if (locationId) {
       const [loc] = await this.db.withTenant(companyId, sql => sql`
         SELECT l.id FROM locations l
         LEFT JOIN levels lv ON lv.id = l.level_id
         LEFT JOIN buildings b ON b.id = lv.building_id
         LEFT JOIN drawings d ON d.id = l.drawing_id
-        WHERE l.id = ${dto.locationId}
+        WHERE l.id = ${locationId}
           AND (b.project_id = ${projectId} OR d.project_id = ${projectId})
       `);
       if (!loc) throw new BadRequestException('Location does not belong to this project.');
@@ -323,8 +324,9 @@ export class CapturesService {
     const renditions = result.renditions;
 
     // Clean up storage (fire-and-forget — don't fail delete if storage cleanup fails)
+    const captureRow = capture as unknown as { originalKey: string; originalSizeBytes: number };
     const keys = [
-      (capture as any).originalKey as string,
+      captureRow.originalKey,
       ...renditions.map(r => r.storageKey as string),
     ];
     Promise.allSettled(keys.map(k => this.storage.delete(k))).catch(err =>
@@ -332,7 +334,7 @@ export class CapturesService {
     );
 
     // Update storage usage
-    await this.tenancy.decrementStorage(companyId, (capture as any).originalSizeBytes as number);
+    await this.tenancy.decrementStorage(companyId, captureRow.originalSizeBytes);
 
     return { message: 'Capture deleted.' };
   }

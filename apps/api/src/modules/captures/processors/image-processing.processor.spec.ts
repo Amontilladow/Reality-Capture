@@ -1,5 +1,8 @@
 import sharp from 'sharp';
-import { ImageProcessingProcessor } from './image-processing.processor';
+import type { Job } from 'bull';
+import { ImageProcessingProcessor, type ImageProcessingJob } from './image-processing.processor';
+import type { DatabaseService } from '../../../database/database.service';
+import type { StorageService } from '../../storage/storage.service';
 
 // Tagged-template mock: `this.db.query\`...\`` just calls query(strings, ...values).
 // A plain jest.fn() works as the tag function directly. All DB access in this processor
@@ -8,7 +11,7 @@ import { ImageProcessingProcessor } from './image-processing.processor';
 function makeDb() {
   const query = jest.fn().mockResolvedValue([]);
   const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
-  return { query, withTenant } as any;
+  return { query, withTenant } as unknown as DatabaseService & { query: jest.Mock; withTenant: jest.Mock };
 }
 
 function makeStorage() {
@@ -20,7 +23,7 @@ function makeStorage() {
     }),
     generateKey: jest.fn((_companyId: string, _projectId: string, _type: string, filename: string) => `key/${filename}`),
     __uploads: uploads,
-  } as any;
+  } as unknown as StorageService & { download: jest.Mock; __uploads: typeof uploads };
 }
 
 function makeJob(overrides: Partial<{
@@ -37,7 +40,7 @@ function makeJob(overrides: Partial<{
       captureType: 'photo_standard',
       ...overrides,
     },
-  } as any;
+  } as unknown as Job<ImageProcessingJob>;
 }
 
 async function makeTestImage(width: number, height: number): Promise<Buffer> {
@@ -84,6 +87,7 @@ describe('ImageProcessingProcessor', () => {
     await processor.handleProcessCapture(makeJob({ captureType: 'photo_360' }));
 
     const preview = storage.__uploads.find((u: { key: string }) => u.key.includes('preview'));
+    if (!preview) throw new Error('Expected a preview rendition to be uploaded.');
     const meta = await sharp(preview.body).metadata();
     expect(meta.width).toBe(1920);
     expect(meta.height).toBe(960);

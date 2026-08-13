@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsDateString, IsUUID, IsNumber, IsArray, IsObject, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsUUID, IsNumber, IsArray, IsIn } from 'class-validator';
 
 export class RegisterCaptureDto {
   @IsString()  storageKey: string;

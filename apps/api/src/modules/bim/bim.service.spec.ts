@@ -1,5 +1,8 @@
 import { NotFoundException } from '@nestjs/common';
+import type { Queue } from 'bull';
 import { BimService } from './bim.service';
+import type { DatabaseService } from '../../database/database.service';
+import type { StorageService } from '../storage/storage.service';
 
 describe('BimService.getModelProvenance', () => {
   const companyId = 'company-1';
@@ -11,7 +14,11 @@ describe('BimService.getModelProvenance', () => {
     const queue = {};
     // BimService only touches db/storage/ifcQueue via `this.x`, so a plain
     // object satisfies it for this unit test without a full Nest DI setup.
-    return new BimService(db as any, storage as any, queue as any);
+    return new BimService(
+      db as unknown as DatabaseService,
+      storage as unknown as StorageService,
+      queue as unknown as Queue,
+    );
   }
 
   it('returns metadata only, never storage credentials/URLs/file bytes', async () => {

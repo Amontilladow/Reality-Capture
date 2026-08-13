@@ -1,5 +1,5 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import type { Sql, Row } from 'postgres';
+import type { Sql, Row, TransactionSql } from 'postgres';
 
 @Injectable()
 export class DatabaseService {
@@ -25,18 +25,18 @@ export class DatabaseService {
   //     // RLS policy ensures only this company's projects are returned,
   //     // even if the SQL has no WHERE clause.
   //   });
-  async withTenant<T>(companyId: string, fn: (sql: Sql) => Promise<T>): Promise<T> {
+  async withTenant<T>(companyId: string, fn: (sql: TransactionSql) => Promise<T>): Promise<T> {
     return this.sql.begin(async (txSql) => {
       // Set the tenant context for RLS — this is the critical line
       await txSql`SELECT set_config('app.current_company_id', ${companyId}, true)`;
       return fn(txSql);
-    });
+    }) as Promise<T>;
   }
 
   // ── Transaction without tenant context ────────────────────────────────────
   // For system-level operations (seed, migration, cross-tenant admin queries)
-  async withTransaction<T>(fn: (sql: Sql) => Promise<T>): Promise<T> {
-    return this.sql.begin(fn);
+  async withTransaction<T>(fn: (sql: TransactionSql) => Promise<T>): Promise<T> {
+    return this.sql.begin(fn) as Promise<T>;
   }
 
   // ── Pagination helper ──────────────────────────────────────────────────────
@@ -52,7 +52,7 @@ export class DatabaseService {
     // failed, silently falling back to `rows.length` (the current page's
     // size) as the "total" on every paginated endpoint in the app.
     const total = rows.length > 0 && 'fullCount' in rows[0]
-      ? Number((rows[0] as Row & { fullCount: string }).fullCount)
+      ? Number((rows[0] as unknown as Row & { fullCount: string }).fullCount)
       : rows.length;
 
     return {

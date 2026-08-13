@@ -2,7 +2,6 @@ import {
   Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger,
 } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
-import { createHash } from 'crypto';
 import type { Request } from 'express';
 import type { AuthenticatedUser } from '@engineeringos/types';
 import { DatabaseService } from '../../database/database.service';
@@ -26,6 +25,24 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   [/\/projects$/,              'project.created',       'project'],
   [/\/bim\/models$/,           'bim.model_uploaded',    'bim_model'],
 ];
+
+interface AuditLogEntry {
+  companyId: string;
+  projectId: string | null;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  action: string;
+  resourceType: string;
+  resourceId: string | null;
+  resourceLabel: string | null;
+  changes: unknown;
+  metadata: Record<string, unknown>;
+  ipAddress: string | null;
+  userAgent: string | null;
+  requestId: string | null;
+  source: string;
+}
 
 function deriveAction(method: string, url: string): { action: string; resourceType: string } {
   for (const [pattern, action, resourceType] of ROUTE_MAP) {
@@ -85,7 +102,7 @@ export class AuditInterceptor implements NestInterceptor {
             resourceLabel: this.extractResourceLabel(responseBody),
             changes: null, // full diff requires before-state capture (Phase 2 enhancement)
             metadata: { durationMs: Date.now() - startedAt },
-            ipAddress: ip,
+            ipAddress: ip ?? null,
             userAgent: req.headers['user-agent'] ?? null,
             requestId: requestId ?? null,
             source,
@@ -103,8 +120,8 @@ export class AuditInterceptor implements NestInterceptor {
   // table owner/a superuser the implicit WITH CHECK rejects this insert outright -- and since
   // the caller only logs the failure (never surfaces it), the entire audit trail is silently
   // dark in production.
-  private async writeAuditLog(entry: Record<string, unknown>): Promise<void> {
-    await this.db.withTenant(entry.companyId as string, sql => sql`
+  private async writeAuditLog(entry: AuditLogEntry): Promise<void> {
+    await this.db.withTenant(entry.companyId, sql => sql`
       INSERT INTO audit_log (
         company_id, project_id, user_id, user_email, user_name,
         action, resource_type, resource_id, resource_label,

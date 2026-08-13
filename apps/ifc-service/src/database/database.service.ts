@@ -1,5 +1,5 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import type { Sql, Row } from 'postgres';
+import type { Sql, Row, TransactionSql } from 'postgres';
 
 @Injectable()
 export class DatabaseService {
@@ -14,15 +14,15 @@ export class DatabaseService {
   // Tenant-scoped transaction — mirrors apps/api's DatabaseService exactly.
   // Every write this service makes goes through this so RLS policies fire
   // the same way they do for user-initiated requests through the API.
-  async withTenant<T>(companyId: string, fn: (sql: Sql) => Promise<T>): Promise<T> {
+  async withTenant<T>(companyId: string, fn: (sql: TransactionSql) => Promise<T>): Promise<T> {
     return this.sql.begin(async (txSql) => {
       await txSql`SELECT set_config('app.current_company_id', ${companyId}, true)`;
       return fn(txSql);
-    });
+    }) as Promise<T>;
   }
 
-  async withTransaction<T>(fn: (sql: Sql) => Promise<T>): Promise<T> {
-    return this.sql.begin(fn);
+  async withTransaction<T>(fn: (sql: TransactionSql) => Promise<T>): Promise<T> {
+    return this.sql.begin(fn) as Promise<T>;
   }
 
   async ping(): Promise<boolean> {

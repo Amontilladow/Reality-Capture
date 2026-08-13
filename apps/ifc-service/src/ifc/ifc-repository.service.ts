@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
-import type { Sql } from 'postgres';
+import type { TransactionSql } from 'postgres';
 import type {
   IfcProcessingStage,
   IfcSpatialNodeInput,
@@ -82,7 +82,7 @@ export class IfcRepositoryService {
   // redoes the whole stage (each stage's fn is expected to clear its own
   // prior output for this model before writing fresh output, making that
   // redo idempotent).
-  async runStage(companyId: string, modelId: string, stage: IfcProcessingStage, fn: (sql: Sql) => Promise<void>): Promise<void> {
+  async runStage(companyId: string, modelId: string, stage: IfcProcessingStage, fn: (sql: TransactionSql) => Promise<void>): Promise<void> {
     await this.db.withTenant(companyId, async (sql) => {
       await fn(sql);
       await sql`
@@ -106,7 +106,7 @@ export class IfcRepositoryService {
   // references into them (only bim_elements does, via FK), so a full wipe
   // there is still safe -- both get freshly rebuilt from the walk anyway.
   async removeStaleResults(
-    sql: Sql, companyId: string, modelId: string,
+    sql: TransactionSql, companyId: string, modelId: string,
     currentSpatialGuids: string[], currentElementGuids: string[],
   ): Promise<void> {
     // Cascades (ON DELETE CASCADE) clean up quantities/material-links/
@@ -125,7 +125,7 @@ export class IfcRepositoryService {
     await sql`DELETE FROM bim_materials WHERE model_id = ${modelId} AND company_id = ${companyId}`;
   }
 
-  async insertSpatialNodes(sql: Sql, companyId: string, modelId: string, nodes: IfcSpatialNodeInput[]): Promise<Map<string, string>> {
+  async insertSpatialNodes(sql: TransactionSql, companyId: string, modelId: string, nodes: IfcSpatialNodeInput[]): Promise<Map<string, string>> {
     const idByGuid = new Map<string, string>();
     // Parent-before-child insert order: nodes are produced in tree-walk
     // (pre-)order already, so a simple sequential insert (not a bulk
@@ -146,7 +146,7 @@ export class IfcRepositoryService {
     return idByGuid;
   }
 
-  async insertElementsBatch(sql: Sql, companyId: string, modelId: string, projectId: string, elements: IfcElementInput[], spatialNodeIdByGuid: Map<string, string>): Promise<Map<string, string>> {
+  async insertElementsBatch(sql: TransactionSql, companyId: string, modelId: string, projectId: string, elements: IfcElementInput[], spatialNodeIdByGuid: Map<string, string>): Promise<Map<string, string>> {
     const idByGuid = new Map<string, string>();
     if (elements.length === 0) return idByGuid;
 
@@ -185,7 +185,7 @@ export class IfcRepositoryService {
     return idByGuid;
   }
 
-  async insertQuantitiesBatch(sql: Sql, companyId: string, quantities: IfcQuantityInput[], elementIdByGuid: Map<string, string>): Promise<number> {
+  async insertQuantitiesBatch(sql: TransactionSql, companyId: string, quantities: IfcQuantityInput[], elementIdByGuid: Map<string, string>): Promise<number> {
     const rows = quantities
       .map((q) => ({ elementId: elementIdByGuid.get(q.elementGuid), quantitySet: q.quantitySet ?? null, name: q.name, quantityType: q.quantityType ?? null, value: q.value ?? null }))
       .filter((r): r is { elementId: string; quantitySet: string | null; name: string; quantityType: string | null; value: number | null } => !!r.elementId);
@@ -197,7 +197,7 @@ export class IfcRepositoryService {
     return rows.length;
   }
 
-  async insertMaterialsAndLinks(sql: Sql, companyId: string, modelId: string, materials: IfcMaterialInput[], elementMaterials: IfcElementMaterialInput[], elementIdByGuid: Map<string, string>): Promise<number> {
+  async insertMaterialsAndLinks(sql: TransactionSql, companyId: string, modelId: string, materials: IfcMaterialInput[], elementMaterials: IfcElementMaterialInput[], elementIdByGuid: Map<string, string>): Promise<number> {
     const uniqueMaterials = [...new Map(materials.map((m) => [m.name, m])).values()];
     if (uniqueMaterials.length === 0) return 0;
 
@@ -225,7 +225,7 @@ export class IfcRepositoryService {
     return uniqueMaterials.length;
   }
 
-  async insertClassifications(sql: Sql, companyId: string, classifications: IfcClassificationInput[], elementIdByGuid: Map<string, string>): Promise<number> {
+  async insertClassifications(sql: TransactionSql, companyId: string, classifications: IfcClassificationInput[], elementIdByGuid: Map<string, string>): Promise<number> {
     const rows = classifications
       .map((c) => ({ elementId: elementIdByGuid.get(c.elementGuid), companyId, system: c.system, code: c.code ?? null, name: c.name ?? null }))
       .filter((r): r is { elementId: string; companyId: string; system: string; code: string | null; name: string | null } => !!r.elementId);
@@ -236,7 +236,7 @@ export class IfcRepositoryService {
     return rows.length;
   }
 
-  async insertRelationships(sql: Sql, companyId: string, modelId: string, relationships: IfcRelationshipInput[]): Promise<number> {
+  async insertRelationships(sql: TransactionSql, companyId: string, modelId: string, relationships: IfcRelationshipInput[]): Promise<number> {
     if (relationships.length === 0) return 0;
     const rows = relationships.map((r) => ({ companyId, modelId, relationshipType: r.relationshipType, relatingGuid: r.relatingGuid, relatedGuid: r.relatedGuid }));
     await sql`

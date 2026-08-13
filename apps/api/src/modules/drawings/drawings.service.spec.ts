@@ -1,5 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { DrawingsService } from './drawings.service';
+import type { DatabaseService } from '../../database/database.service';
+import type { StorageService } from '../storage/storage.service';
 
 describe('DrawingsService pin page_number', () => {
   const companyId = 'company-1';
@@ -23,9 +25,9 @@ describe('DrawingsService pin page_number', () => {
       }
       return fn(query);
     });
-    const db = { withTenant, query } as any;
+    const db = { withTenant, query } as unknown as DatabaseService;
     const storage = { resolveUrls: jest.fn().mockResolvedValue(new Map()) };
-    return { svc: new DrawingsService(db, storage as any), withTenant, query };
+    return { svc: new DrawingsService(db, storage as unknown as StorageService), withTenant, query };
   }
 
   describe('createPin', () => {
@@ -78,7 +80,7 @@ describe('DrawingsService pin page_number', () => {
 
       const pins = await svc.getPins(companyId, drawingId);
 
-      expect(pins.map((p: any) => p.pageNumber)).toEqual([1, 2]);
+      expect(pins.map((p: Record<string, unknown>) => p.pageNumber)).toEqual([1, 2]);
     });
   });
 });

@@ -21,11 +21,18 @@ export function CaptureLightbox({
   const [editingPhase, setEditingPhase] = useState(false);
   const [phase, setPhase] = useState<ProjectPhase | ''>('');
 
+  // Resets the local edit buffer only when the selected capture changes.
+  // Deliberately excludes capture?.title/capture?.phase: once a rename or
+  // phase-change mutation succeeds, the parent's `capture` prop updates to
+  // match, and re-running this on that change would immediately overwrite
+  // the mutation's own onSuccess (e.g. setEditingTitle(false)) with a fresh
+  // reset of the same capture.
   useEffect(() => {
     setTitle(capture?.title ?? '');
     setPhase((capture?.phase as ProjectPhase) ?? '');
     setEditingTitle(false);
     setEditingPhase(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [capture?.id]);
 
   const renameMutation = useMutation({

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsDateString, IsUUID, IsUrl, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsIn } from 'class-validator';
 
 export class CreateDocumentDto {
   @IsIn(['drawing','specification','rfi','submittal','transmittal','inspection_record',

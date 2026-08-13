@@ -38,6 +38,11 @@ export function PinPanel({
   const [linkedElement, setLinkedElement] = useState<LinkedElement | null>(null);
   const [pickingElement, setPickingElement] = useState(false);
 
+  // Resets the local edit buffer only when the selected pin changes.
+  // Deliberately excludes pin?.name/description/elementId/etc: those fields
+  // update on this panel's own rename/note/link-element mutations, and
+  // re-running the reset on that change would fight the mutations' own
+  // onSuccess handlers (see the snapshot-prop note in invalidatePin below).
   useEffect(() => {
     const n = pin?.name ?? '';
     const d = pin?.description ?? '';
@@ -51,6 +56,7 @@ export function PinPanel({
     setEditingTitle(false);
     setEditingNote(false);
     setPickingElement(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pin?.locationId]);
 
   function invalidatePin() {
