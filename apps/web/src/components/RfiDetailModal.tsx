@@ -103,9 +103,22 @@ export function RfiDetailModal({
     }
   }
 
-  function handleDownloadXls() {
+  const [xlsError, setXlsError] = useState('');
+  const [xlsWarning, setXlsWarning] = useState('');
+  const [xlsDownloading, setXlsDownloading] = useState(false);
+  async function handleDownloadXls() {
     if (!rfi) return;
-    downloadRfiXls(rfi, projectQuery.data);
+    setXlsError('');
+    setXlsWarning('');
+    setXlsDownloading(true);
+    try {
+      const warnings = await downloadRfiXls(rfi, projectQuery.data);
+      if (warnings.length > 0) setXlsWarning(warnings.join(' '));
+    } catch (err) {
+      setXlsError(apiErrorMessage(err));
+    } finally {
+      setXlsDownloading(false);
+    }
   }
 
   if (!rfi) return null;
@@ -208,6 +221,8 @@ export function RfiDetailModal({
         </div>
 
         {downloadError && <p className="field-error">{downloadError}</p>}
+        {xlsError && <p className="field-error">{xlsError}</p>}
+        {xlsWarning && <p className="text-xs text-warn">{xlsWarning}</p>}
 
         <div className="flex flex-wrap gap-2 pt-2 border-t border-base-600">
           <button
@@ -226,10 +241,11 @@ export function RfiDetailModal({
           </button>
           <button
             onClick={handleDownloadXls}
+            disabled={xlsDownloading}
             className="btn-secondary !px-3 !py-1.5 text-xs"
-            title="Editable spreadsheet -- doesn't include the logo/stamp"
+            title="Editable spreadsheet, formatted to match the PDF"
           >
-            Download XLS
+            {xlsDownloading ? 'Preparing…' : 'Download XLS'}
           </button>
           {rfi.status !== 'closed' && (
             <button onClick={() => statusMutation.mutate('closed')} disabled={statusMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
