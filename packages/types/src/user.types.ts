@@ -68,6 +68,7 @@ export const PROJECT_PERMISSIONS = [
   'manage_team',
   'manage_issues',
   'manage_project_records',
+  'manage_rfis',
 ] as const;
 
 export type ProjectPermission = typeof PROJECT_PERMISSIONS[number];

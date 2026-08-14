@@ -147,7 +147,7 @@ export class AuditInterceptor implements NestInterceptor {
   private extractResourceLabel(body: unknown): string | null {
     if (!body || typeof body !== 'object') return null;
     const b = body as Record<string, unknown>;
-    return String(b['title'] ?? b['name'] ?? b['email'] ?? b['issueNumber'] ?? '').slice(0, 500) || null;
+    return String(b['title'] ?? b['name'] ?? b['email'] ?? b['issueNumber'] ?? b['subject'] ?? '').slice(0, 500) || null;
   }
 
   private extractProjectId(url: string): string | null {

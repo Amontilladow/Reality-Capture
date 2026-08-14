@@ -6,6 +6,9 @@ import { CreateRfiDto } from './dto/create-rfi.dto';
 import { UpdateRfiDto } from './dto/update-rfi.dto';
 import { RfiAttachmentUploadUrlDto } from './dto/rfi-attachment-upload-url.dto';
 import { AddRfiAttachmentDto } from './dto/add-rfi-attachment.dto';
+import { RequestClarificationDto } from './dto/request-clarification.dto';
+import { RespondToRfiDto } from './dto/respond-to-rfi.dto';
+import { AddRfiCommentDto } from './dto/add-rfi-comment.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
@@ -115,5 +118,77 @@ export class RfisController {
     @Param('attachmentId') attachmentId: string,
   ) {
     return { data: await this.svc.deleteAttachment(u.companyId, id, attachmentId), error: null };
+  }
+
+  // ── Workflow ─────────────────────────────────────────────────────────────
+  // Deliberately NOT @RequireProjectPermission-gated -- the RFI's own
+  // creator must be able to submit it even with no grant. Authorization
+  // (creator OR manage_rfis OR project_lead OR super_admin) happens inside
+  // RfisService.submit() itself, which the route-level guard can't express.
+  @Post(':id/submit')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Submit a draft RFI (creator, manage_rfis grant, project lead, or super admin)' })
+  async submit(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.submit(u.companyId, pid, id, u.id), error: null };
+  }
+
+  @Post(':id/request-clarification')
+  @RequireProjectPermission('manage_rfis')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send an RFI back to its creator for clarification' })
+  async requestClarification(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('id') id: string,
+    @Body() dto: RequestClarificationDto,
+  ) {
+    return { data: await this.svc.requestClarification(u.companyId, pid, id, u.id, dto), error: null };
+  }
+
+  @Post(':id/respond')
+  @RequireProjectPermission('manage_rfis')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Record the formal response to an RFI' })
+  async respond(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('id') id: string,
+    @Body() dto: RespondToRfiDto,
+  ) {
+    return { data: await this.svc.respond(u.companyId, pid, id, u.id, dto), error: null };
+  }
+
+  @Post(':id/close')
+  @RequireProjectPermission('manage_rfis')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Close an RFI' })
+  async close(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.close(u.companyId, pid, id, u.id), error: null };
+  }
+
+  @Post(':id/reopen')
+  @RequireProjectPermission('manage_rfis')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reopen a closed RFI' })
+  async reopen(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.reopen(u.companyId, pid, id, u.id), error: null };
+  }
+
+  // ── Comments ─────────────────────────────────────────────────────────────
+  @Post(':id/comments')
+  @ApiOperation({ summary: 'Add a free-text clarification comment to an RFI' })
+  async addComment(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('id') id: string,
+    @Body() dto: AddRfiCommentDto,
+  ) {
+    return { data: await this.svc.addComment(u.companyId, pid, id, u.id, dto), error: null };
+  }
+
+  @Get(':id/comments')
+  @ApiOperation({ summary: "List this RFI's clarification comments" })
+  async getComments(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
+    return { data: await this.svc.getComments(u.companyId, id), error: null };
   }
 }

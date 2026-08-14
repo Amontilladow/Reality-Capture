@@ -4,6 +4,7 @@ export const PROJECT_PERMISSION_LABELS: Record<ProjectPermission, string> = {
   manage_team: 'Manage team',
   manage_issues: 'Manage issues',
   manage_project_records: 'Manage RFIs/submittals/transmittals/QA/snagging',
+  manage_rfis: 'Review & respond to RFIs',
 };
 
 export const PROJECT_ROLE_LABELS: Record<ProjectRole, string> = {
