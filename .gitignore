@@ -15,3 +15,12 @@ apps/web/.tsbuild-node/
 # BIM debug tooling: sample/generated .frag fixtures (regenerable via
 # tools/bim-debug/generate-fragment.cjs, not meant to be committed binaries)
 apps/web/public/repro/
+
+# Machine-local Claude Code permissions/config -- contains this machine's
+# tool-approval history (which can include secrets pasted into approved
+# commands). Never share; .claude/settings.json is the shared counterpart.
+.claude/settings.local.json
+
+# fable-foreman's per-session run ledger -- ephemeral task-tracking notes,
+# not project documentation.
+.foreman/
