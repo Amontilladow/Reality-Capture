@@ -1,10 +1,7 @@
-import type { Rfi, RfiStatus, RfiPriority } from '@engineeringos/types';
+import type { Rfi, RfiStatus, RfiPriority, RfiDiscipline } from '@engineeringos/types';
 import { apiGet, apiGetWithMeta, apiPost, apiPatch, apiDelete } from './api';
 
-export interface RfiListItem extends Rfi {
-  createdByName?: string;
-  assignedToName?: string;
-}
+export type RfiListItem = Rfi;
 
 export interface RfiSummary {
   total: number;
@@ -36,7 +33,10 @@ export interface CreateRfiPayload {
   subject: string;
   question: string;
   priority?: RfiPriority;
-  discipline?: string;
+  discipline: RfiDiscipline;
+  disciplineOther?: string;
+  costImpact?: boolean;
+  timeImpact?: boolean;
   assignedTo?: string;
   dueDate?: string;
 }
@@ -51,7 +51,10 @@ export interface UpdateRfiPayload {
   answer?: string;
   status?: RfiStatus;
   priority?: RfiPriority;
-  discipline?: string;
+  discipline?: RfiDiscipline;
+  disciplineOther?: string;
+  costImpact?: boolean;
+  timeImpact?: boolean;
   assignedTo?: string;
   dueDate?: string;
 }

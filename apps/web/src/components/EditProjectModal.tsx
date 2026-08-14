@@ -18,6 +18,14 @@ interface EditProjectForm {
   city?: string;
   startDate?: string;
   expectedEndDate?: string;
+  orgCode?: string;
+  clientName?: string;
+  leadDesigner?: string;
+  consultantName?: string;
+  technicalAdvisor?: string;
+  pmcName?: string;
+  mainContractor?: string;
+  subcontractor?: string;
 }
 
 const STATUSES: { value: ProjectStatus; label: string }[] = [
@@ -59,6 +67,14 @@ export function EditProjectModal({
         city: project.city ?? '',
         startDate: project.startDate ? project.startDate.slice(0, 10) : '',
         expectedEndDate: project.expectedEndDate ? project.expectedEndDate.slice(0, 10) : '',
+        orgCode: project.orgCode ?? '',
+        clientName: project.clientName ?? '',
+        leadDesigner: project.leadDesigner ?? '',
+        consultantName: project.consultantName ?? '',
+        technicalAdvisor: project.technicalAdvisor ?? '',
+        pmcName: project.pmcName ?? '',
+        mainContractor: project.mainContractor ?? '',
+        subcontractor: project.subcontractor ?? '',
       });
     }
   }, [open, project, reset]);
@@ -76,6 +92,14 @@ export function EditProjectModal({
         city: values.city || undefined,
         startDate: values.startDate || undefined,
         expectedEndDate: values.expectedEndDate || undefined,
+        orgCode: values.orgCode || undefined,
+        clientName: values.clientName || undefined,
+        leadDesigner: values.leadDesigner || undefined,
+        consultantName: values.consultantName || undefined,
+        technicalAdvisor: values.technicalAdvisor || undefined,
+        pmcName: values.pmcName || undefined,
+        mainContractor: values.mainContractor || undefined,
+        subcontractor: values.subcontractor || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', project!.id] });
@@ -147,6 +171,53 @@ export function EditProjectModal({
           <div>
             <label className="field-label" htmlFor="epEnd">Expected end date</label>
             <input id="epEnd" type="date" className="field-input" {...register('expectedEndDate')} />
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-base-600 space-y-3">
+          <div>
+            <div className="field-label">Stakeholders</div>
+            <p className="text-xs text-ink-500">
+              Set once here — every RFI's exported PDF pulls these in automatically instead of asking again per document.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="field-label" htmlFor="epOrgCode">Org code</label>
+              <input id="epOrgCode" className="field-input font-mono" placeholder="e.g. CSC" {...register('orgCode')} />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="epClient">Client</label>
+              <input id="epClient" className="field-input" {...register('clientName')} />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="epLeadDesigner">Lead designer</label>
+              <input id="epLeadDesigner" className="field-input" {...register('leadDesigner')} />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="field-label" htmlFor="epConsultant">Consultant</label>
+              <input id="epConsultant" className="field-input" {...register('consultantName')} />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="epTechAdvisor">Technical advisor</label>
+              <input id="epTechAdvisor" className="field-input" {...register('technicalAdvisor')} />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="epPmc">PMC</label>
+              <input id="epPmc" className="field-input" {...register('pmcName')} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="field-label" htmlFor="epMainContractor">Main contractor</label>
+              <input id="epMainContractor" className="field-input" {...register('mainContractor')} />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="epSubcontractor">Subcontractor</label>
+              <input id="epSubcontractor" className="field-input" {...register('subcontractor')} />
+            </div>
           </div>
         </div>
 

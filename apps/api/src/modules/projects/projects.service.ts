@@ -78,11 +78,15 @@ export class ProjectsService {
       const [project] = await sql`
         INSERT INTO projects (
           company_id, name, code, description, location, country, city,
-          start_date, expected_end_date, created_by
+          start_date, expected_end_date, created_by,
+          org_code, client_name, lead_designer, consultant_name,
+          technical_advisor, pmc_name, main_contractor, subcontractor
         ) VALUES (
           ${companyId}, ${dto.name}, ${dto.code ?? null}, ${dto.description ?? null},
           ${dto.location ?? null}, ${dto.country ?? null}, ${dto.city ?? null},
-          ${dto.startDate ?? null}, ${dto.expectedEndDate ?? null}, ${userId}
+          ${dto.startDate ?? null}, ${dto.expectedEndDate ?? null}, ${userId},
+          ${dto.orgCode ?? null}, ${dto.clientName ?? null}, ${dto.leadDesigner ?? null}, ${dto.consultantName ?? null},
+          ${dto.technicalAdvisor ?? null}, ${dto.pmcName ?? null}, ${dto.mainContractor ?? null}, ${dto.subcontractor ?? null}
         )
         RETURNING *
       `;
@@ -113,6 +117,14 @@ export class ProjectsService {
         start_date        = COALESCE(${dto.startDate ?? null}, start_date),
         expected_end_date = COALESCE(${dto.expectedEndDate ?? null}, expected_end_date),
         phase             = COALESCE(${dto.phase ?? null}, phase),
+        org_code          = COALESCE(${dto.orgCode ?? null}, org_code),
+        client_name       = COALESCE(${dto.clientName ?? null}, client_name),
+        lead_designer     = COALESCE(${dto.leadDesigner ?? null}, lead_designer),
+        consultant_name   = COALESCE(${dto.consultantName ?? null}, consultant_name),
+        technical_advisor = COALESCE(${dto.technicalAdvisor ?? null}, technical_advisor),
+        pmc_name          = COALESCE(${dto.pmcName ?? null}, pmc_name),
+        main_contractor   = COALESCE(${dto.mainContractor ?? null}, main_contractor),
+        subcontractor     = COALESCE(${dto.subcontractor ?? null}, subcontractor),
         updated_at        = NOW()
       WHERE id = ${projectId} AND company_id = ${companyId}
       RETURNING *

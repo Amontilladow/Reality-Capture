@@ -18,6 +18,14 @@ export interface CreateProjectPayload {
   city?: string;
   startDate?: string;
   expectedEndDate?: string;
+  orgCode?: string;
+  clientName?: string;
+  leadDesigner?: string;
+  consultantName?: string;
+  technicalAdvisor?: string;
+  pmcName?: string;
+  mainContractor?: string;
+  subcontractor?: string;
 }
 
 export function createProject(payload: CreateProjectPayload) {

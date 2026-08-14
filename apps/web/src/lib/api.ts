@@ -95,6 +95,24 @@ export async function apiDelete<T>(url: string, config?: AxiosRequestConfig): Pr
   return res.data.data;
 }
 
+// Downloads a binary response (e.g. a generated PDF) and saves it via the
+// browser, the same way a normal <a href download> would. Goes through the
+// same authenticated `http` instance as every other call here, since these
+// endpoints require the same auth header everything else already gets --
+// unlike the S3 downloads elsewhere in this app (those are presigned URLs
+// with their own auth baked in and don't need this).
+export async function apiDownload(url: string, filename: string): Promise<void> {
+  const res = await http.get(url, { responseType: 'blob' });
+  const blobUrl = URL.createObjectURL(res.data as Blob);
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(blobUrl);
+}
+
 // Meta (pagination) alongside data, for list endpoints.
 export async function apiGetWithMeta<T>(
   url: string,

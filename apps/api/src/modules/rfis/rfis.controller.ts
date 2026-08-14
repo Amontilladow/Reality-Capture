@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Res, HttpCode, HttpStatus, StreamableFile } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { RfisService } from './rfis.service';
 import { CreateRfiDto } from './dto/create-rfi.dto';
 import { UpdateRfiDto } from './dto/update-rfi.dto';
@@ -39,6 +40,26 @@ export class RfisController {
   @Get(':id')
   async findOne(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
     return { data: await this.svc.findOne(u.companyId, pid, id), error: null };
+  }
+
+  // The one binary-response endpoint in this API -- every other controller
+  // returns the standard { data, error } JSON envelope. StreamableFile +
+  // a passthrough Response (for the dynamic filename) is NestJS's standard
+  // way to do this, not a workaround.
+  @Get(':id/pdf')
+  @ApiOperation({ summary: 'Download this RFI as a formatted PDF' })
+  async downloadPdf(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { buffer, filename } = await this.svc.generatePdf(u.companyId, pid, id);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    });
+    return new StreamableFile(buffer);
   }
 
   @Patch(':id')

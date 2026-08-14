@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { RfiPriority } from '@engineeringos/types';
+import type { RfiPriority, RfiDiscipline } from '@engineeringos/types';
+import { RFI_DISCIPLINES, RFI_DISCIPLINE_LABELS } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
 import { createRfi } from '../lib/rfis.api';
 import type { ProjectMember } from '../lib/projects.api';
@@ -19,25 +20,34 @@ export function RfiFormModal({
   const [subject, setSubject] = useState('');
   const [question, setQuestion] = useState('');
   const [priority, setPriority] = useState<RfiPriority>('medium');
-  const [discipline, setDiscipline] = useState('');
+  const [discipline, setDiscipline] = useState<RfiDiscipline | ''>('');
+  const [disciplineOther, setDisciplineOther] = useState('');
+  const [costImpact, setCostImpact] = useState(false);
+  const [timeImpact, setTimeImpact] = useState(false);
   const [assignedTo, setAssignedTo] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState('');
 
   function reset() {
     setSubject(''); setQuestion(''); setPriority('medium');
-    setDiscipline(''); setAssignedTo(''); setDueDate(''); setError('');
+    setDiscipline(''); setDisciplineOther(''); setCostImpact(false); setTimeImpact(false);
+    setAssignedTo(''); setDueDate(''); setError('');
   }
 
   const mutation = useMutation({
     mutationFn: () => {
       if (!subject.trim()) throw new Error('Subject is required.');
       if (!question.trim()) throw new Error('Question is required.');
+      if (!discipline) throw new Error('Discipline is required.');
+      if (discipline === 'other' && !disciplineOther.trim()) throw new Error('Please specify the discipline.');
       return createRfi(projectId, {
         subject: subject.trim(),
         question: question.trim(),
         priority,
-        discipline: discipline || undefined,
+        discipline,
+        disciplineOther: discipline === 'other' ? disciplineOther.trim() : undefined,
+        costImpact,
+        timeImpact,
         assignedTo: assignedTo || undefined,
         dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
       });
@@ -97,9 +107,32 @@ export function RfiFormModal({
             </select>
           </div>
           <div>
-            <label className="field-label" htmlFor="discipline">Discipline</label>
-            <input id="discipline" className="field-input" value={discipline} onChange={(e) => setDiscipline(e.target.value)} placeholder="MEP, Structural…" />
+            <label className="field-label" htmlFor="discipline">Discipline *</label>
+            <select id="discipline" className="field-input" value={discipline} onChange={(e) => setDiscipline(e.target.value as RfiDiscipline)}>
+              <option value="">Select…</option>
+              {RFI_DISCIPLINES.map((d) => (
+                <option key={d} value={d}>{RFI_DISCIPLINE_LABELS[d]}</option>
+              ))}
+            </select>
           </div>
+        </div>
+
+        {discipline === 'other' && (
+          <div>
+            <label className="field-label" htmlFor="disciplineOther">Please specify *</label>
+            <input id="disciplineOther" className="field-input" value={disciplineOther} onChange={(e) => setDisciplineOther(e.target.value)} />
+          </div>
+        )}
+
+        <div className="flex gap-6">
+          <label className="flex items-center gap-2 text-sm text-ink-100">
+            <input type="checkbox" checked={costImpact} onChange={(e) => setCostImpact(e.target.checked)} />
+            Cost impact
+          </label>
+          <label className="flex items-center gap-2 text-sm text-ink-100">
+            <input type="checkbox" checked={timeImpact} onChange={(e) => setTimeImpact(e.target.checked)} />
+            Time impact
+          </label>
         </div>
 
         <div className="flex gap-2 pt-2">

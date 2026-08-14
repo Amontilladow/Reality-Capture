@@ -17,4 +17,14 @@ export class UpdateProjectDto {
   @IsOptional() @IsDateString() expectedEndDate?: string;
   @IsOptional() @IsIn(['active','on_hold','completed','archived']) status?: string;
   @IsOptional() @IsIn(PROJECT_PHASES) phase?: string;
+
+  // Stakeholder directory -- see create-project.dto.ts for context.
+  @IsOptional() @IsString() orgCode?: string;
+  @IsOptional() @IsString() clientName?: string;
+  @IsOptional() @IsString() leadDesigner?: string;
+  @IsOptional() @IsString() consultantName?: string;
+  @IsOptional() @IsString() technicalAdvisor?: string;
+  @IsOptional() @IsString() pmcName?: string;
+  @IsOptional() @IsString() mainContractor?: string;
+  @IsOptional() @IsString() subcontractor?: string;
 }

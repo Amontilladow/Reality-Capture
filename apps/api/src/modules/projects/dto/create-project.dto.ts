@@ -20,4 +20,17 @@ export class CreateProjectDto {
   @IsOptional() @IsDateString() startDate?: string;
 
   @IsOptional() @IsDateString() expectedEndDate?: string;
+
+  // Stakeholder directory -- set once per project, pulled automatically
+  // onto every RFI PDF instead of being re-typed per document.
+  @ApiProperty({ example: 'CSC', required: false })
+  @IsOptional() @IsString() orgCode?: string;
+
+  @IsOptional() @IsString() clientName?: string;
+  @IsOptional() @IsString() leadDesigner?: string;
+  @IsOptional() @IsString() consultantName?: string;
+  @IsOptional() @IsString() technicalAdvisor?: string;
+  @IsOptional() @IsString() pmcName?: string;
+  @IsOptional() @IsString() mainContractor?: string;
+  @IsOptional() @IsString() subcontractor?: string;
 }

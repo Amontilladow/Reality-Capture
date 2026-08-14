@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { RFI_DISCIPLINE_LABELS } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
 import { updateRfi, deleteRfi, type RfiListItem } from '../lib/rfis.api';
 import { RFI_STATUS_LABELS, RFI_STATUS_BADGE_CLASS, RFI_PRIORITY_LABELS, RFI_PRIORITY_BADGE_CLASS, formatDate } from '../lib/rfi-constants';
-import { apiErrorMessage } from '../lib/api';
+import { apiErrorMessage, apiDownload } from '../lib/api';
 
 export function RfiDetailModal({
   open, onClose, projectId, rfi,
@@ -46,6 +47,21 @@ export function RfiDetailModal({
     },
   });
 
+  const [downloadError, setDownloadError] = useState('');
+  const [downloading, setDownloading] = useState(false);
+  async function handleDownload() {
+    if (!rfi) return;
+    setDownloadError('');
+    setDownloading(true);
+    try {
+      await apiDownload(`/projects/${projectId}/rfis/${rfi.id}/pdf`, `${rfi.rfiNumber ?? rfi.id}.pdf`);
+    } catch (err) {
+      setDownloadError(apiErrorMessage(err));
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   if (!rfi) return null;
 
   return (
@@ -54,7 +70,14 @@ export function RfiDetailModal({
         <div className="flex items-center gap-2 flex-wrap">
           <span className={`badge ${RFI_STATUS_BADGE_CLASS[rfi.status]}`}>{RFI_STATUS_LABELS[rfi.status]}</span>
           <span className={`badge ${RFI_PRIORITY_BADGE_CLASS[rfi.priority]}`}>{RFI_PRIORITY_LABELS[rfi.priority]}</span>
-          {rfi.discipline && <span className="badge bg-base-700 text-ink-500">{rfi.discipline}</span>}
+          {rfi.discipline && (
+            <span className="badge bg-base-700 text-ink-500">
+              {RFI_DISCIPLINE_LABELS[rfi.discipline]}
+              {rfi.discipline === 'other' && rfi.disciplineOther ? ` — ${rfi.disciplineOther}` : ''}
+            </span>
+          )}
+          {rfi.costImpact && <span className="badge bg-warn/15 text-warn">Cost impact</span>}
+          {rfi.timeImpact && <span className="badge bg-warn/15 text-warn">Time impact</span>}
           <span className="text-xs text-ink-500 ml-auto">Due {formatDate(rfi.dueDate)}</span>
         </div>
 
@@ -82,6 +105,8 @@ export function RfiDetailModal({
           {answerMutation.isError && <p className="field-error">{apiErrorMessage(answerMutation.error)}</p>}
         </div>
 
+        {downloadError && <p className="field-error">{downloadError}</p>}
+
         <div className="flex flex-wrap gap-2 pt-2 border-t border-base-600">
           <button
             onClick={() => answerMutation.mutate()}
@@ -89,6 +114,13 @@ export function RfiDetailModal({
             className="btn-primary !px-3 !py-1.5 text-xs"
           >
             {answerMutation.isPending ? 'Saving…' : 'Submit answer'}
+          </button>
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="btn-secondary !px-3 !py-1.5 text-xs"
+          >
+            {downloading ? 'Preparing…' : 'Download PDF'}
           </button>
           {rfi.status !== 'closed' && (
             <button onClick={() => statusMutation.mutate('closed')} disabled={statusMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">

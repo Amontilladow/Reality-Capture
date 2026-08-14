@@ -19,6 +19,15 @@ export interface Project {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  // Stakeholder directory -- set once per project, pulled onto every RFI PDF.
+  orgCode?: string;
+  clientName?: string;
+  leadDesigner?: string;
+  consultantName?: string;
+  technicalAdvisor?: string;
+  pmcName?: string;
+  mainContractor?: string;
+  subcontractor?: string;
   // Computed / joined
   memberCount?: number;
   captureCount?: number;
