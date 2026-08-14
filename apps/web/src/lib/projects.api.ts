@@ -1,3 +1,4 @@
+import axios from 'axios';
 import type { Project, Building, Level, Location, PaginationQuery, ProjectPhase } from '@engineeringos/types';
 import { apiGet, apiGetWithMeta, apiPost, apiPatch, apiDelete } from './api';
 
@@ -32,8 +33,28 @@ export function createProject(payload: CreateProjectPayload) {
   return apiPost<Project>('/projects', payload);
 }
 
-export function updateProject(id: string, payload: Partial<CreateProjectPayload> & { status?: string; phase?: ProjectPhase }) {
+export function updateProject(
+  id: string,
+  payload: Partial<CreateProjectPayload> & { status?: string; phase?: ProjectPhase; logoStorageKey?: string; stampStorageKey?: string },
+) {
   return apiPatch<Project>(`/projects/${id}`, payload);
+}
+
+// ── Branding (logo/stamp, presigned-PUT) ───────────────────────────────────
+export function getBrandingUploadUrl(projectId: string, filename: string, sizeBytes: number, kind: 'logo' | 'stamp') {
+  return apiPost<{ uploadUrl: string; storageKey: string }>(
+    `/projects/${projectId}/branding/upload-url`,
+    { filename, sizeBytes, kind },
+  );
+}
+
+// Full client-side flow: request the presigned URL, PUT the file straight
+// to storage, then save the resulting key on the project (reusing the
+// normal update path -- no separate "register" endpoint for branding).
+export async function uploadProjectBranding(projectId: string, file: File, kind: 'logo' | 'stamp'): Promise<Project> {
+  const { uploadUrl, storageKey } = await getBrandingUploadUrl(projectId, file.name, file.size, kind);
+  await axios.put(uploadUrl, file, { headers: { 'Content-Type': file.type || 'application/octet-stream' } });
+  return updateProject(projectId, kind === 'logo' ? { logoStorageKey: storageKey } : { stampStorageKey: storageKey });
 }
 
 export interface ProjectHierarchy extends Building {

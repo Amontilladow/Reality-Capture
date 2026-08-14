@@ -1,9 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { StorageService } from '../storage/storage.service';
 import { renderRfiPdf } from './rfi-pdf.template';
+import { ATTACHMENT_MAX_SIZE, ATTACHMENT_ALLOWED_EXTENSIONS } from '../../common/constants/attachment-limits';
 import type { CreateRfiDto } from './dto/create-rfi.dto';
 import type { UpdateRfiDto } from './dto/update-rfi.dto';
+import type { RfiAttachmentUploadUrlDto } from './dto/rfi-attachment-upload-url.dto';
+import type { AddRfiAttachmentDto } from './dto/add-rfi-attachment.dto';
 import { RFI_DISCIPLINE_LABELS, RFI_DISCIPLINE_CODES, type PaginationQuery, type RfiDiscipline } from '@engineeringos/types';
 
 @Injectable()
@@ -11,6 +15,7 @@ export class RfisService {
   constructor(
     private readonly db: DatabaseService,
     private readonly notifications: NotificationsService,
+    private readonly storage: StorageService,
   ) {}
 
   // withTenant required for the projects lookup -- projects carries the tenant_isolation
@@ -116,7 +121,8 @@ export class RfisService {
     const rfi = await this.findOne(companyId, projectId, rfiId);
     const [project] = await this.db.withTenant(companyId, sql => sql`
       SELECT name, code, location, org_code, client_name, lead_designer,
-        consultant_name, technical_advisor, pmc_name, main_contractor, subcontractor
+        consultant_name, technical_advisor, pmc_name, main_contractor, subcontractor,
+        logo_storage_key, stamp_storage_key
       FROM projects WHERE id = ${projectId} AND company_id = ${companyId}
     `);
     return { rfi, project };
@@ -127,7 +133,18 @@ export class RfisService {
     const discipline = rfi.discipline as RfiDiscipline | undefined;
     const filename = `${(rfi.rfiNumber as string) ?? rfiId}.pdf`;
 
+    // Downloaded straight to a Buffer rather than a presigned URL -- the
+    // template embeds it directly (see rfi-pdf.template.ts), no URL-expiry
+    // race since this all happens synchronously server-side. Both optional:
+    // a project with no logo/stamp set yet still renders a clean PDF.
+    const [logoBuffer, stampBuffer] = await Promise.all([
+      project?.logoStorageKey ? this.storage.download(project.logoStorageKey as string).catch(() => undefined) : undefined,
+      project?.stampStorageKey ? this.storage.download(project.stampStorageKey as string).catch(() => undefined) : undefined,
+    ]);
+
     const buffer = await renderRfiPdf({
+      logoBuffer,
+      stampBuffer,
       rfiNumber: (rfi.rfiNumber as string) ?? rfi.id as string,
       status: rfi.status as string,
       priority: rfi.priority as string,
@@ -206,5 +223,62 @@ export class RfisService {
       WHERE project_id = ${projectId} AND company_id = ${companyId}
     `);
     return summary;
+  }
+
+  // ── Attachments ───────────────────────────────────────────────────────────
+  // Same presigned-PUT pattern, allow-list, and size cap as issues.service.ts's
+  // attachment methods -- RFIs have no activity/comment thread to hang these
+  // off, so they're their own flat table (rfi_attachments) instead.
+  async getAttachmentUploadUrl(companyId: string, projectId: string, dto: RfiAttachmentUploadUrlDto) {
+    const ext = dto.filename.split('.').pop()?.toLowerCase() ?? '';
+    if (!ATTACHMENT_ALLOWED_EXTENSIONS.has(ext)) {
+      throw new BadRequestException(
+        `File type ".${ext}" is not supported. Allowed: ${[...ATTACHMENT_ALLOWED_EXTENSIONS].join(', ')}.`,
+      );
+    }
+    if (dto.sizeBytes > ATTACHMENT_MAX_SIZE) {
+      throw new BadRequestException(
+        `File too large (${(dto.sizeBytes / 1024 / 1024).toFixed(1)} MB). Max: ${ATTACHMENT_MAX_SIZE / 1024 / 1024} MB.`,
+      );
+    }
+
+    const key = this.storage.generateKey(companyId, projectId, 'rfi-attachments', dto.filename);
+    const { uploadUrl } = await this.storage.getUploadUrl(key, 'application/octet-stream', dto.sizeBytes);
+    return { uploadUrl, storageKey: key };
+  }
+
+  // Step 2: client already PUT the bytes to `storageKey` from step 1 --
+  // this registers it as a new rfi_attachments row.
+  async addAttachment(companyId: string, rfiId: string, userId: string, dto: AddRfiAttachmentDto) {
+    const [attachment] = await this.db.withTenant(companyId, sql => sql`
+      INSERT INTO rfi_attachments (rfi_id, company_id, storage_key, filename, size_bytes, uploaded_by)
+      VALUES (${rfiId}, ${companyId}, ${dto.storageKey}, ${dto.filename}, ${dto.sizeBytes}, ${userId})
+      RETURNING *
+    `);
+    return attachment;
+  }
+
+  async getAttachments(companyId: string, rfiId: string) {
+    const rows = await this.db.withTenant(companyId, sql => sql`
+      SELECT ra.*, u.first_name || ' ' || u.last_name AS uploaded_by_name
+      FROM rfi_attachments ra
+      LEFT JOIN users u ON u.id = ra.uploaded_by
+      WHERE ra.rfi_id = ${rfiId} AND ra.company_id = ${companyId}
+      ORDER BY ra.uploaded_at DESC
+    `);
+    // Resolve storage keys to live presigned read URLs at read time --
+    // never persist a URL that can expire, same convention as everywhere
+    // else in this codebase.
+    const urls = await this.storage.resolveUrls(rows.map(r => r.storageKey as string));
+    return rows.map(r => ({ ...r, attachmentReadUrl: urls.get(r.storageKey as string) }));
+  }
+
+  async deleteAttachment(companyId: string, rfiId: string, attachmentId: string) {
+    const result = await this.db.withTenant(companyId, sql => sql`
+      DELETE FROM rfi_attachments
+      WHERE id = ${attachmentId} AND rfi_id = ${rfiId} AND company_id = ${companyId}
+    `);
+    if (result.count === 0) throw new NotFoundException(`Attachment ${attachmentId} not found.`);
+    return { message: 'Attachment deleted.' };
   }
 }

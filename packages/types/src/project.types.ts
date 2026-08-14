@@ -28,6 +28,13 @@ export interface Project {
   pmcName?: string;
   mainContractor?: string;
   subcontractor?: string;
+  // Branding for RFI PDFs -- one logo + one stamp per project. Storage
+  // keys are the persisted values; the Url fields are presigned read URLs
+  // resolved fresh on every fetch, never stored.
+  logoStorageKey?: string;
+  stampStorageKey?: string;
+  logoUrl?: string;
+  stampUrl?: string;
   // Computed / joined
   memberCount?: number;
   captureCount?: number;

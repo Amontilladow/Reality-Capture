@@ -8,6 +8,8 @@ import { createElement as h } from 'react';
 // rfis.service.ts / rfis.controller.ts stay free of PDF-library specifics.
 
 export interface RfiPdfData {
+  logoBuffer?: Buffer;
+  stampBuffer?: Buffer;
   rfiNumber: string;
   status: string;
   priority: string;
@@ -47,11 +49,14 @@ const FIELD_ROWS: Array<[string, keyof RfiPdfData]> = [
 ];
 
 export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
-  const { Document, Page, View, Text, StyleSheet, renderToBuffer } = await import('@react-pdf/renderer');
+  const { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } = await import('@react-pdf/renderer');
 
   const styles = StyleSheet.create({
     page: { padding: 32, fontSize: 9, fontFamily: 'Helvetica', color: '#1a1a1a' },
     headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+    headerLeft: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+    logo: { width: 44, height: 44, objectFit: 'contain' },
+    stamp: { width: 70, height: 70, objectFit: 'contain', marginBottom: 4 },
     title: { fontSize: 16, fontFamily: 'Helvetica-Bold' },
     rfiNumber: { fontSize: 12, fontFamily: 'Helvetica-Bold', color: '#2563eb', marginTop: 2 },
     badge: { fontSize: 8, fontFamily: 'Helvetica-Bold', padding: '3 8', borderRadius: 2, backgroundColor: '#f1f5f9', textTransform: 'uppercase' },
@@ -89,9 +94,12 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
     h(Document, { title: data.rfiNumber },
       h(Page, { size: 'A4', style: styles.page },
         h(View, { style: styles.headerRow },
-          h(View, null,
-            h(Text, { style: styles.title }, 'REQUEST FOR INFORMATION'),
-            h(Text, { style: styles.rfiNumber }, data.rfiNumber),
+          h(View, { style: styles.headerLeft },
+            data.logoBuffer ? h(Image, { style: styles.logo, src: data.logoBuffer }) : null,
+            h(View, null,
+              h(Text, { style: styles.title }, 'REQUEST FOR INFORMATION'),
+              h(Text, { style: styles.rfiNumber }, data.rfiNumber),
+            ),
           ),
           h(Text, { style: styles.badge }, `${data.status} · ${data.priority}`),
         ),
@@ -160,6 +168,7 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
             h(Text, { style: styles.footerLabel },
               data.answeredByName ? `Answered by: ${data.answeredByName}  ·  ${data.answeredAt ?? ''}` : 'Answered by: —',
             ),
+            data.stampBuffer ? h(Image, { style: styles.stamp, src: data.stampBuffer }) : null,
             h(Text, { style: styles.signatureLine }, 'Signature'),
           ),
         ),

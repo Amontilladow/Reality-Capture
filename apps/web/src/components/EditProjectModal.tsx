@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Project, ProjectPhase, ProjectStatus } from '@engineeringos/types';
 import { PROJECT_PHASES, PROJECT_PHASE_LABELS } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
-import { updateProject } from '../lib/projects.api';
+import { updateProject, uploadProjectBranding } from '../lib/projects.api';
 import { apiErrorMessage } from '../lib/api';
 
 interface EditProjectForm {
@@ -106,6 +106,18 @@ export function EditProjectModal({
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       onClose();
     },
+  });
+
+  // Uploaded immediately on file pick, independent of the main form's Save
+  // button, so the thumbnail updates right away -- same "avatar upload"
+  // pattern used elsewhere, not tied into react-hook-form's state.
+  const logoMutation = useMutation({
+    mutationFn: (file: File) => uploadProjectBranding(project!.id, file, 'logo'),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['project', project!.id] }),
+  });
+  const stampMutation = useMutation({
+    mutationFn: (file: File) => uploadProjectBranding(project!.id, file, 'stamp'),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['project', project!.id] }),
   });
 
   if (!project) return null;
@@ -217,6 +229,55 @@ export function EditProjectModal({
             <div>
               <label className="field-label" htmlFor="epSubcontractor">Subcontractor</label>
               <input id="epSubcontractor" className="field-input" {...register('subcontractor')} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <div>
+              <div className="field-label mb-1">Logo</div>
+              <div className="flex items-center gap-2">
+                {project.logoUrl && (
+                  <img src={project.logoUrl} alt="Project logo" className="w-10 h-10 object-contain rounded border border-base-600 bg-white" />
+                )}
+                <label className="btn-secondary !px-3 !py-1.5 text-xs cursor-pointer">
+                  {logoMutation.isPending ? 'Uploading…' : project.logoUrl ? 'Change logo' : 'Upload logo'}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png"
+                    className="hidden"
+                    disabled={logoMutation.isPending}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) logoMutation.mutate(file);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              </div>
+              {logoMutation.isError && <p className="field-error mt-1">{apiErrorMessage(logoMutation.error)}</p>}
+            </div>
+            <div>
+              <div className="field-label mb-1">Stamp</div>
+              <div className="flex items-center gap-2">
+                {project.stampUrl && (
+                  <img src={project.stampUrl} alt="Project stamp" className="w-10 h-10 object-contain rounded border border-base-600 bg-white" />
+                )}
+                <label className="btn-secondary !px-3 !py-1.5 text-xs cursor-pointer">
+                  {stampMutation.isPending ? 'Uploading…' : project.stampUrl ? 'Change stamp' : 'Upload stamp'}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png"
+                    className="hidden"
+                    disabled={stampMutation.isPending}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) stampMutation.mutate(file);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              </div>
+              {stampMutation.isError && <p className="field-error mt-1">{apiErrorMessage(stampMutation.error)}</p>}
             </div>
           </div>
         </div>

@@ -27,4 +27,9 @@ export class UpdateProjectDto {
   @IsOptional() @IsString() pmcName?: string;
   @IsOptional() @IsString() mainContractor?: string;
   @IsOptional() @IsString() subcontractor?: string;
+
+  // Set via POST /projects/:id/branding/upload-url, then this PATCH with
+  // the resulting storageKey -- see projects.service.ts's getBrandingUploadUrl.
+  @IsOptional() @IsString() logoStorageKey?: string;
+  @IsOptional() @IsString() stampStorageKey?: string;
 }

@@ -5,6 +5,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
+import { BrandingUploadUrlDto } from './dto/branding-upload-url.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { CreatePermissionGrantDto } from './dto/create-permission-grant.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -42,6 +43,12 @@ export class ProjectsController {
   @ApiOperation({ summary: 'Update project details' })
   async update(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: UpdateProjectDto) {
     return { data: await this.projects.update(u.companyId, id, dto), error: null };
+  }
+
+  @Post(':id/branding/upload-url')
+  @ApiOperation({ summary: "Get a presigned URL for uploading this project's logo or stamp" })
+  async getBrandingUploadUrl(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: BrandingUploadUrlDto) {
+    return { data: await this.projects.getBrandingUploadUrl(u.companyId, id, dto.filename, dto.sizeBytes, dto.kind), error: null };
   }
 
   @Get(':id/members')

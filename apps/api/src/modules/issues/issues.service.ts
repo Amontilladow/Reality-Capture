@@ -14,20 +14,8 @@ import type { UserReminderDto } from './dto/user-reminder.dto';
 import type { WarnUserDto } from './dto/warn-user.dto';
 import type { IssueAttachmentUploadUrlDto } from './dto/issue-attachment-upload-url.dto';
 import type { AddIssueAttachmentDto } from './dto/add-issue-attachment.dto';
+import { ATTACHMENT_MAX_SIZE as ISSUE_ATTACHMENT_MAX_SIZE, ATTACHMENT_ALLOWED_EXTENSIONS as ISSUE_ATTACHMENT_ALLOWED_EXTENSIONS } from '../../common/constants/attachment-limits';
 import type { PaginationQuery } from '@engineeringos/types';
-
-// Ticket 2b: issue-attachment upload constraints. Same presigned-PUT
-// pattern and enforcement mechanism as captures.service.ts's
-// ALLOWED_MIME/MAX_SIZE_* constants (server-side check against the
-// client-declared size/filename at upload-url request time --
-// StorageService.getUploadUrl's maxSizeBytes parameter is intentionally
-// not enforced by the signature itself, see storage.service.ts's comment
-// on that method), just with the reference tracker's attachment limits
-// instead of captures' photo/video ones.
-const ISSUE_ATTACHMENT_MAX_SIZE = 5 * 1024 * 1024; // 5 MB
-const ISSUE_ATTACHMENT_ALLOWED_EXTENSIONS = new Set([
-  'pdf', 'jpg', 'jpeg', 'png', 'xls', 'xlsx', 'doc', 'docx', 'zip',
-]);
 
 @Injectable()
 export class IssuesService {

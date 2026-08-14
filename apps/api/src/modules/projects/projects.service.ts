@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { SubscriptionService } from '../subscription/subscription.service';
+import { StorageService } from '../storage/storage.service';
 import { PaymentRequiredException } from '../../common/exceptions/payment-required.exception';
 import type { CreateProjectDto } from './dto/create-project.dto';
 import type { UpdateProjectDto } from './dto/update-project.dto';
@@ -13,6 +14,7 @@ export class ProjectsService {
   constructor(
     private readonly db: DatabaseService,
     private readonly subscription: SubscriptionService,
+    private readonly storage: StorageService,
   ) {}
 
   async findAll(companyId: string, query: PaginationQuery) {
@@ -60,7 +62,16 @@ export class ProjectsService {
     `);
 
     if (!project) throw new NotFoundException(`Project ${projectId} not found.`);
-    return project;
+
+    // Resolve branding storage keys to live presigned read URLs at read
+    // time -- never persist a URL that can expire, same convention as
+    // every other file reference in this codebase.
+    const urls = await this.storage.resolveUrls([project.logoStorageKey as string, project.stampStorageKey as string]);
+    return {
+      ...project,
+      logoUrl: project.logoStorageKey ? urls.get(project.logoStorageKey as string) : undefined,
+      stampUrl: project.stampStorageKey ? urls.get(project.stampStorageKey as string) : undefined,
+    };
   }
 
   async create(companyId: string, userId: string, dto: CreateProjectDto) {
@@ -125,12 +136,39 @@ export class ProjectsService {
         pmc_name          = COALESCE(${dto.pmcName ?? null}, pmc_name),
         main_contractor   = COALESCE(${dto.mainContractor ?? null}, main_contractor),
         subcontractor     = COALESCE(${dto.subcontractor ?? null}, subcontractor),
+        logo_storage_key  = COALESCE(${dto.logoStorageKey ?? null}, logo_storage_key),
+        stamp_storage_key = COALESCE(${dto.stampStorageKey ?? null}, stamp_storage_key),
         updated_at        = NOW()
       WHERE id = ${projectId} AND company_id = ${companyId}
       RETURNING *
     `);
 
-    return updated;
+    // Resolve immediately so the frontend can show the new thumbnail
+    // without a second round trip -- same as findOne() above.
+    const urls = await this.storage.resolveUrls([updated.logoStorageKey as string, updated.stampStorageKey as string]);
+    return {
+      ...updated,
+      logoUrl: updated.logoStorageKey ? urls.get(updated.logoStorageKey as string) : undefined,
+      stampUrl: updated.stampStorageKey ? urls.get(updated.stampStorageKey as string) : undefined,
+    };
+  }
+
+  // Presigned upload URL for a project's logo/stamp image -- client PUTs the
+  // file directly to storage, then PATCHes the project with the resulting
+  // storageKey (reusing the same update() path every other project field
+  // uses), no separate "register" endpoint needed.
+  async getBrandingUploadUrl(companyId: string, projectId: string, filename: string, sizeBytes: number, kind: 'logo' | 'stamp') {
+    const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+    if (!['jpg', 'jpeg', 'png'].includes(ext)) {
+      throw new BadRequestException(`Logo/stamp images must be JPG or PNG (got ".${ext}").`);
+    }
+    const maxSize = 2 * 1024 * 1024; // 2 MB -- these are small letterhead/seal images, not photos
+    if (sizeBytes > maxSize) {
+      throw new BadRequestException(`Image too large (${(sizeBytes / 1024 / 1024).toFixed(1)} MB). Max: ${maxSize / 1024 / 1024} MB.`);
+    }
+    const key = this.storage.generateKey(companyId, projectId, 'branding', `${kind}-${filename}`);
+    const { uploadUrl } = await this.storage.getUploadUrl(key, 'application/octet-stream', sizeBytes);
+    return { uploadUrl, storageKey: key };
   }
 
   async getMembers(companyId: string, projectId: string) {

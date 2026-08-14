@@ -1,10 +1,26 @@
 import { useEffect, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RFI_DISCIPLINE_LABELS } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
-import { updateRfi, deleteRfi, type RfiListItem } from '../lib/rfis.api';
+import { updateRfi, deleteRfi, getRfiAttachments, uploadRfiAttachment, deleteRfiAttachment, type RfiListItem } from '../lib/rfis.api';
+import { getProject } from '../lib/projects.api';
+import { downloadRfiXls } from '../lib/rfi-xls';
 import { RFI_STATUS_LABELS, RFI_STATUS_BADGE_CLASS, RFI_PRIORITY_LABELS, RFI_PRIORITY_BADGE_CLASS, formatDate } from '../lib/rfi-constants';
 import { apiErrorMessage, apiDownload } from '../lib/api';
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function PaperclipIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M21 12.5l-8.5 8.5a4 4 0 01-5.7-5.7L15.3 6.8a2.7 2.7 0 013.8 3.8L10.6 19a1.3 1.3 0 01-1.9-1.9l7.5-7.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 export function RfiDetailModal({
   open, onClose, projectId, rfi,
@@ -47,6 +63,31 @@ export function RfiDetailModal({
     },
   });
 
+  const attachmentsQuery = useQuery({
+    queryKey: ['rfi-attachments', projectId, rfi?.id],
+    queryFn: () => getRfiAttachments(projectId, rfi!.id),
+    enabled: open && Boolean(rfi),
+  });
+
+  const attachMutation = useMutation({
+    mutationFn: (file: File) => uploadRfiAttachment(projectId, rfi!.id, file),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rfi-attachments', projectId, rfi?.id] }),
+  });
+
+  const deleteAttachmentMutation = useMutation({
+    mutationFn: (attachmentId: string) => deleteRfiAttachment(projectId, rfi!.id, attachmentId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rfi-attachments', projectId, rfi?.id] }),
+  });
+
+  // Same ['project', projectId] key ProjectDetail.tsx/EditProjectModal.tsx
+  // already use -- opening an RFI from within its own project is very
+  // likely a cache hit, not a new request.
+  const projectQuery = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => getProject(projectId),
+    enabled: open,
+  });
+
   const [downloadError, setDownloadError] = useState('');
   const [downloading, setDownloading] = useState(false);
   async function handleDownload() {
@@ -60,6 +101,11 @@ export function RfiDetailModal({
     } finally {
       setDownloading(false);
     }
+  }
+
+  function handleDownloadXls() {
+    if (!rfi) return;
+    downloadRfiXls(rfi, projectQuery.data);
   }
 
   if (!rfi) return null;
@@ -94,6 +140,62 @@ export function RfiDetailModal({
         </div>
 
         <div>
+          <div className="field-label mb-1.5">Attachments</div>
+          <p className="text-xs text-ink-500 mb-2">
+            Drawings, photos, calculation sheets — kept alongside the RFI, not merged into the exported PDF.
+          </p>
+          <div className="space-y-1.5 mb-2">
+            {(attachmentsQuery.data ?? []).map((a) => (
+              <div key={a.id} className="flex items-center gap-1.5 text-xs bg-base-700/40 rounded px-2 py-1.5">
+                {a.attachmentReadUrl ? (
+                  <a
+                    href={a.attachmentReadUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 text-blueprint hover:text-blueprint-hover flex-1 min-w-0"
+                  >
+                    <PaperclipIcon />
+                    <span className="underline truncate">{a.filename}</span>
+                    <span className="text-ink-500 shrink-0">({formatBytes(Number(a.sizeBytes))})</span>
+                  </a>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-ink-300 flex-1 min-w-0">
+                    <PaperclipIcon />
+                    <span className="truncate">{a.filename}</span>
+                    <span className="text-ink-500 shrink-0">({formatBytes(Number(a.sizeBytes))})</span>
+                  </div>
+                )}
+                <button
+                  onClick={() => deleteAttachmentMutation.mutate(a.id)}
+                  disabled={deleteAttachmentMutation.isPending}
+                  className="text-danger hover:text-danger/80 shrink-0"
+                  title="Remove attachment"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            {attachmentsQuery.isSuccess && attachmentsQuery.data?.length === 0 && (
+              <p className="text-xs text-ink-500">No files attached yet.</p>
+            )}
+          </div>
+          {attachMutation.isError && <p className="field-error">{apiErrorMessage(attachMutation.error)}</p>}
+          <label className="btn-secondary !px-3 !py-1.5 text-xs cursor-pointer inline-block">
+            {attachMutation.isPending ? 'Uploading…' : '+ Attach file'}
+            <input
+              type="file"
+              className="hidden"
+              disabled={attachMutation.isPending}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) attachMutation.mutate(file);
+                e.target.value = '';
+              }}
+            />
+          </label>
+        </div>
+
+        <div>
           <label className="field-label" htmlFor="answer">Answer</label>
           <textarea
             id="answer"
@@ -121,6 +223,13 @@ export function RfiDetailModal({
             className="btn-secondary !px-3 !py-1.5 text-xs"
           >
             {downloading ? 'Preparing…' : 'Download PDF'}
+          </button>
+          <button
+            onClick={handleDownloadXls}
+            className="btn-secondary !px-3 !py-1.5 text-xs"
+            title="Editable spreadsheet -- doesn't include the logo/stamp"
+          >
+            Download XLS
           </button>
           {rfi.status !== 'closed' && (
             <button onClick={() => statusMutation.mutate('closed')} disabled={statusMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
