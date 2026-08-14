@@ -15,6 +15,7 @@ import CapturesPage from './pages/CapturesPage';
 import IssuesPage from './pages/IssuesPage';
 import DocumentsPage from './pages/DocumentsPage';
 import RfisPage from './pages/RfisPage';
+import RfiDetailPage from './pages/RfiDetailPage';
 import SubmittalsPage from './pages/SubmittalsPage';
 import TransmittalsPage from './pages/TransmittalsPage';
 import QaInspectionsPage from './pages/QaInspectionsPage';
@@ -75,6 +76,7 @@ export default function App() {
             <Route path="/projects/:projectId/issues" element={<IssuesPage />} />
             <Route path="/projects/:projectId/documents" element={<DocumentsPage />} />
             <Route path="/projects/:projectId/rfis" element={<RfisPage />} />
+            <Route path="/projects/:projectId/rfis/:rfiId" element={<RfiDetailPage />} />
             <Route path="/projects/:projectId/submittals" element={<SubmittalsPage />} />
             <Route path="/projects/:projectId/transmittals" element={<TransmittalsPage />} />
             <Route path="/projects/:projectId/qa" element={<QaInspectionsPage />} />

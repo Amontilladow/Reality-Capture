@@ -179,6 +179,16 @@ export interface Rfi {
   subject: string;
   question: string;
   answer?: string;
+  // NOTE (Phase 3 finding, not fixed here): the backend's
+  // submit/requestClarification/respond/close/reopen endpoints
+  // (rfis.service.ts) actually write the wider RfiWorkflowStatus vocabulary
+  // into this same column, so this legacy-only type is inaccurate for those
+  // rows. Left as RfiStatus rather than widened here because rfi-xls.ts
+  // indexes RFI_STATUS_LABELS (Record<RfiStatus, string>) with `rfi.status`
+  // and is explicitly out of scope for this ticket ("do not touch
+  // rfi-pdf.template.ts or rfi-xls.ts") -- widening this field breaks that
+  // file's typecheck. apps/web/src/lib/rfis.api.ts's RfiListItem widens
+  // status to RfiWorkflowStatus locally for the pages that need it instead.
   status: RfiStatus;
   priority: RfiPriority;
   discipline?: RfiDiscipline;
@@ -206,4 +216,10 @@ export interface Rfi {
   // Joined
   createdByName?: string;
   assignedToName?: string;
+  // rfis.service.ts findOne()/getPdfData() already join and return this
+  // (u_ans.first_name || ' ' || u_ans.last_name AS answered_by_name) -- it
+  // was missing from this interface even though the backend has always sent
+  // it. Added here rather than worked around with an `as` cast at every
+  // call site.
+  answeredByName?: string;
 }

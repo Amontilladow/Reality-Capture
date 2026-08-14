@@ -1,18 +1,20 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { RfiFormModal } from '../components/RfiFormModal';
-import { RfiDetailModal } from '../components/RfiDetailModal';
-import { listRfis, getRfiSummary, type RfiListItem } from '../lib/rfis.api';
+import { listRfis, getRfiSummary } from '../lib/rfis.api';
 import { getProject, getMembers } from '../lib/projects.api';
-import { RFI_STATUS_LABELS, RFI_STATUS_BADGE_CLASS, RFI_PRIORITY_LABELS, RFI_PRIORITY_BADGE_CLASS, isRfiOverdue, formatDate } from '../lib/rfi-constants';
+import {
+  RFI_STATUS_LABELS, RFI_WORKFLOW_STATUS_LABELS, RFI_WORKFLOW_STATUS_BADGE_CLASS,
+  RFI_PRIORITY_LABELS, RFI_PRIORITY_BADGE_CLASS, isRfiOverdue, formatDate,
+} from '../lib/rfi-constants';
 
 export default function RfisPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
   const [status, setStatus] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
-  const [selected, setSelected] = useState<RfiListItem | null>(null);
 
   const projectQuery = useQuery({
     queryKey: ['project', projectId],
@@ -99,12 +101,12 @@ export default function RfisPage() {
                   return (
                     <tr
                       key={r.id}
-                      onClick={() => setSelected(r)}
+                      onClick={() => navigate(`/projects/${projectId}/rfis/${r.id}`)}
                       className="border-b border-base-700/60 last:border-0 hover:bg-base-800/40 cursor-pointer"
                     >
                       <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{r.rfiNumber ?? '—'}</td>
                       <td className="px-4 py-2.5">{r.subject}</td>
-                      <td className="px-4 py-2.5"><span className={`badge ${RFI_STATUS_BADGE_CLASS[r.status]}`}>{RFI_STATUS_LABELS[r.status]}</span></td>
+                      <td className="px-4 py-2.5"><span className={`badge ${RFI_WORKFLOW_STATUS_BADGE_CLASS[r.status]}`}>{RFI_WORKFLOW_STATUS_LABELS[r.status]}</span></td>
                       <td className="px-4 py-2.5"><span className={`badge ${RFI_PRIORITY_BADGE_CLASS[r.priority]}`}>{RFI_PRIORITY_LABELS[r.priority]}</span></td>
                       <td className="px-4 py-2.5 text-ink-300">{r.assignedToName ?? 'Unassigned'}</td>
                       <td className={`px-4 py-2.5 ${overdue ? 'text-danger' : 'text-ink-300'}`}>{formatDate(r.dueDate)}</td>
@@ -118,7 +120,6 @@ export default function RfisPage() {
       </div>
 
       <RfiFormModal open={createOpen} onClose={() => setCreateOpen(false)} projectId={projectId} members={membersQuery.data ?? []} />
-      <RfiDetailModal open={Boolean(selected)} onClose={() => setSelected(null)} projectId={projectId} rfi={selected} />
     </>
   );
 }

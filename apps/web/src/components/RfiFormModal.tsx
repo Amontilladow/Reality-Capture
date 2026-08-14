@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { RfiPriority, RfiDiscipline } from '@engineeringos/types';
-import { RFI_DISCIPLINES, RFI_DISCIPLINE_LABELS } from '@engineeringos/types';
+import type { RfiPriority, RfiDiscipline, RfiImpactLevel } from '@engineeringos/types';
+import { RFI_DISCIPLINES, RFI_DISCIPLINE_LABELS, RFI_IMPACT_LEVELS, RFI_IMPACT_LEVEL_LABELS } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
+import { RichTextEditor, isRichTextEmpty } from './ui/RichTextEditor';
 import { createRfi } from '../lib/rfis.api';
 import type { ProjectMember } from '../lib/projects.api';
 import { RFI_PRIORITIES, RFI_PRIORITY_LABELS } from '../lib/rfi-constants';
@@ -22,32 +23,50 @@ export function RfiFormModal({
   const [priority, setPriority] = useState<RfiPriority>('medium');
   const [discipline, setDiscipline] = useState<RfiDiscipline | ''>('');
   const [disciplineOther, setDisciplineOther] = useState('');
-  const [costImpact, setCostImpact] = useState(false);
-  const [timeImpact, setTimeImpact] = useState(false);
+
+  // 4-state cost/time impact (Phase 1 backend shape) -- replaces the plain
+  // checkboxes. 'yes'/'potential'/'tbd' all reveal the detail fields per the
+  // original spec's field rules; only 'no' hides them.
+  const [costImpactLevel, setCostImpactLevel] = useState<RfiImpactLevel>('no');
+  const [costImpactAmount, setCostImpactAmount] = useState('');
+  const [costImpactCurrency, setCostImpactCurrency] = useState('');
+  const [costImpactDescription, setCostImpactDescription] = useState('');
+
+  const [timeImpactLevel, setTimeImpactLevel] = useState<RfiImpactLevel>('no');
+  const [timeImpactDays, setTimeImpactDays] = useState('');
+  const [timeImpactDescription, setTimeImpactDescription] = useState('');
+
   const [assignedTo, setAssignedTo] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState('');
 
   function reset() {
     setSubject(''); setQuestion(''); setPriority('medium');
-    setDiscipline(''); setDisciplineOther(''); setCostImpact(false); setTimeImpact(false);
+    setDiscipline(''); setDisciplineOther('');
+    setCostImpactLevel('no'); setCostImpactAmount(''); setCostImpactCurrency(''); setCostImpactDescription('');
+    setTimeImpactLevel('no'); setTimeImpactDays(''); setTimeImpactDescription('');
     setAssignedTo(''); setDueDate(''); setError('');
   }
 
   const mutation = useMutation({
     mutationFn: () => {
       if (!subject.trim()) throw new Error('Subject is required.');
-      if (!question.trim()) throw new Error('Question is required.');
+      if (isRichTextEmpty(question)) throw new Error('Question is required.');
       if (!discipline) throw new Error('Discipline is required.');
       if (discipline === 'other' && !disciplineOther.trim()) throw new Error('Please specify the discipline.');
       return createRfi(projectId, {
         subject: subject.trim(),
-        question: question.trim(),
+        question,
         priority,
         discipline,
         disciplineOther: discipline === 'other' ? disciplineOther.trim() : undefined,
-        costImpact,
-        timeImpact,
+        costImpactLevel,
+        costImpactAmount: costImpactLevel !== 'no' && costImpactAmount ? Number(costImpactAmount) : undefined,
+        costImpactCurrency: costImpactLevel !== 'no' ? costImpactCurrency.trim() || undefined : undefined,
+        costImpactDescription: costImpactLevel !== 'no' ? costImpactDescription.trim() || undefined : undefined,
+        timeImpactLevel,
+        timeImpactDays: timeImpactLevel !== 'no' && timeImpactDays ? Number(timeImpactDays) : undefined,
+        timeImpactDescription: timeImpactLevel !== 'no' ? timeImpactDescription.trim() || undefined : undefined,
         assignedTo: assignedTo || undefined,
         dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
       });
@@ -77,8 +96,8 @@ export function RfiFormModal({
         </div>
 
         <div>
-          <label className="field-label" htmlFor="question">Question *</label>
-          <textarea id="question" className="field-input min-h-[88px]" value={question} onChange={(e) => setQuestion(e.target.value)} />
+          <div className="field-label">Question *</div>
+          <RichTextEditor value={question} onChange={setQuestion} placeholder="Describe the question that needs a formal answer…" />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -124,15 +143,77 @@ export function RfiFormModal({
           </div>
         )}
 
-        <div className="flex gap-6">
-          <label className="flex items-center gap-2 text-sm text-ink-100">
-            <input type="checkbox" checked={costImpact} onChange={(e) => setCostImpact(e.target.checked)} />
-            Cost impact
-          </label>
-          <label className="flex items-center gap-2 text-sm text-ink-100">
-            <input type="checkbox" checked={timeImpact} onChange={(e) => setTimeImpact(e.target.checked)} />
-            Time impact
-          </label>
+        {/* Cost impact -- 4-state, revealing amount/currency/description
+            whenever the level isn't 'no' (Yes/Potential/TBD all reveal, per
+            the original spec's field rules). */}
+        <div className="pt-2 border-t border-base-600 space-y-2">
+          <label className="field-label" htmlFor="costImpactLevel">Cost impact</label>
+          <select
+            id="costImpactLevel"
+            className="field-input"
+            value={costImpactLevel}
+            onChange={(e) => setCostImpactLevel(e.target.value as RfiImpactLevel)}
+          >
+            {RFI_IMPACT_LEVELS.map((l) => (
+              <option key={l} value={l}>{RFI_IMPACT_LEVEL_LABELS[l]}</option>
+            ))}
+          </select>
+          {costImpactLevel !== 'no' && (
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                className="field-input"
+                type="number"
+                placeholder="Amount"
+                value={costImpactAmount}
+                onChange={(e) => setCostImpactAmount(e.target.value)}
+              />
+              <input
+                className="field-input"
+                placeholder="Currency (e.g. USD)"
+                value={costImpactCurrency}
+                onChange={(e) => setCostImpactCurrency(e.target.value)}
+              />
+              <textarea
+                className="field-input col-span-2 min-h-[64px]"
+                placeholder="Cost impact description…"
+                value={costImpactDescription}
+                onChange={(e) => setCostImpactDescription(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Time impact -- same 4-state shape, days + description instead of
+            amount/currency. */}
+        <div className="space-y-2">
+          <label className="field-label" htmlFor="timeImpactLevel">Time impact</label>
+          <select
+            id="timeImpactLevel"
+            className="field-input"
+            value={timeImpactLevel}
+            onChange={(e) => setTimeImpactLevel(e.target.value as RfiImpactLevel)}
+          >
+            {RFI_IMPACT_LEVELS.map((l) => (
+              <option key={l} value={l}>{RFI_IMPACT_LEVEL_LABELS[l]}</option>
+            ))}
+          </select>
+          {timeImpactLevel !== 'no' && (
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                className="field-input"
+                type="number"
+                placeholder="Days"
+                value={timeImpactDays}
+                onChange={(e) => setTimeImpactDays(e.target.value)}
+              />
+              <textarea
+                className="field-input min-h-[64px]"
+                placeholder="Time impact description…"
+                value={timeImpactDescription}
+                onChange={(e) => setTimeImpactDescription(e.target.value)}
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2 pt-2">
