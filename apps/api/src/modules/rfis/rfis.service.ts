@@ -297,11 +297,20 @@ export class RfisService {
   }
 
   // Step 2: client already PUT the bytes to `storageKey` from step 1 --
-  // this registers it as a new rfi_attachments row.
+  // this registers it as a new rfi_attachments row. kind/documentType/etc.
+  // are all optional -- omitting them keeps the DB defaults ('query'/'other')
+  // from migration 028, so older callers that don't know about kinds yet
+  // still work unchanged.
   async addAttachment(companyId: string, rfiId: string, userId: string, dto: AddRfiAttachmentDto) {
     const [attachment] = await this.db.withTenant(companyId, sql => sql`
-      INSERT INTO rfi_attachments (rfi_id, company_id, storage_key, filename, size_bytes, uploaded_by)
-      VALUES (${rfiId}, ${companyId}, ${dto.storageKey}, ${dto.filename}, ${dto.sizeBytes}, ${userId})
+      INSERT INTO rfi_attachments (
+        rfi_id, company_id, storage_key, filename, size_bytes, uploaded_by,
+        kind, document_type, document_type_other, revision, description, comment_id
+      ) VALUES (
+        ${rfiId}, ${companyId}, ${dto.storageKey}, ${dto.filename}, ${dto.sizeBytes}, ${userId},
+        ${dto.kind ?? 'query'}, ${dto.documentType ?? 'other'}, ${dto.documentTypeOther ?? null},
+        ${dto.revision ?? null}, ${dto.description ?? null}, ${dto.commentId ?? null}
+      )
       RETURNING *
     `);
     return attachment;
