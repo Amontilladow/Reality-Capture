@@ -90,6 +90,10 @@ export async function apiPatch<T>(url: string, body?: unknown, config?: AxiosReq
   const res = await http.patch<ApiResponse<T>>(url, body, config);
   return res.data.data;
 }
+export async function apiPut<T>(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<T> {
+  const res = await http.put<ApiResponse<T>>(url, body, config);
+  return res.data.data;
+}
 export async function apiDelete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
   const res = await http.delete<ApiResponse<T>>(url, config);
   return res.data.data;

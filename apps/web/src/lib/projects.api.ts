@@ -1,6 +1,6 @@
 import axios from 'axios';
-import type { Project, Building, Level, Location, PaginationQuery, ProjectPhase } from '@engineeringos/types';
-import { apiGet, apiGetWithMeta, apiPost, apiPatch, apiDelete } from './api';
+import type { Project, Building, Level, Location, PaginationQuery, ProjectPhase, ProjectOrganizationSlot } from '@engineeringos/types';
+import { apiGet, apiGetWithMeta, apiPost, apiPatch, apiPut, apiDelete } from './api';
 
 export function listProjects(query?: PaginationQuery) {
   return apiGetWithMeta<Project[]>('/projects', { params: query });
@@ -100,6 +100,57 @@ export function updateLocation(
 
 export function archiveLocation(projectId: string, locationId: string) {
   return apiDelete<Location>(`/projects/${projectId}/locations/${locationId}`);
+}
+
+// ── Project organizations (Phase 4) ────────────────────────────────────────
+// One row per configured stakeholder slot -- an unconfigured slot simply
+// isn't in this list (see projects.service.ts's getOrganizations()).
+export interface ProjectOrganization {
+  id: string;
+  projectId: string;
+  companyId: string;
+  slot: ProjectOrganizationSlot;
+  name?: string;
+  orgRef?: string;
+  contactName?: string;
+  contactEmail?: string;
+  logoStorageKey?: string;
+  logoUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function getOrganizations(projectId: string) {
+  return apiGet<ProjectOrganization[]>(`/projects/${projectId}/organizations`);
+}
+
+export interface UpsertOrganizationPayload {
+  name?: string;
+  orgRef?: string;
+  contactName?: string;
+  contactEmail?: string;
+  logoStorageKey?: string;
+}
+
+export function upsertOrganization(projectId: string, slot: ProjectOrganizationSlot, data: UpsertOrganizationPayload) {
+  return apiPut<ProjectOrganization>(`/projects/${projectId}/organizations/${slot}`, data);
+}
+
+export function getOrganizationLogoUploadUrl(projectId: string, slot: ProjectOrganizationSlot, filename: string, sizeBytes: number) {
+  return apiPost<{ uploadUrl: string; storageKey: string }>(
+    `/projects/${projectId}/organizations/${slot}/logo-upload-url`,
+    { filename, sizeBytes },
+  );
+}
+
+// Full client-side flow, same shape as uploadProjectBranding() above:
+// request the presigned URL, PUT the file straight to storage, then save
+// the resulting key on the organization row (reusing the normal upsert
+// path -- no separate "register" endpoint).
+export async function uploadOrganizationLogo(projectId: string, slot: ProjectOrganizationSlot, file: File): Promise<ProjectOrganization> {
+  const { uploadUrl, storageKey } = await getOrganizationLogoUploadUrl(projectId, slot, file.name, file.size);
+  await axios.put(uploadUrl, file, { headers: { 'Content-Type': file.type || 'application/octet-stream' } });
+  return upsertOrganization(projectId, slot, { logoStorageKey: storageKey });
 }
 
 export interface ProjectMember {

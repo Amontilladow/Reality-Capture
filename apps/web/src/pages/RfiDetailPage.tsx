@@ -13,7 +13,7 @@ import {
   getRfiComments, addRfiComment, getRfiAttachments, uploadRfiAttachment, deleteRfiAttachment,
   type RfiAttachment,
 } from '../lib/rfis.api';
-import { getProject, getMembers, getPermissionGrants } from '../lib/projects.api';
+import { getProject, getMembers, getPermissionGrants, getOrganizations } from '../lib/projects.api';
 import { getProjectActivity } from '../lib/audit.api';
 import { downloadRfiXls } from '../lib/rfi-xls';
 import {
@@ -288,10 +288,10 @@ export default function RfiDetailPage() {
           </div>
         </div>
 
-        {/* 5-organization header row -- placeholder-only in this ticket, see
-            OrganizationSlotRow below. Becomes live once Phase 4 adds the
-            project_organizations admin endpoints. */}
-        <OrganizationSlotRow />
+        {/* 5-organization header row -- live since Phase 4 (project_organizations
+            admin endpoints + ManageMembersModal's "Project Organizations"
+            section). See OrganizationSlotRow below. */}
+        <OrganizationSlotRow projectId={projectId} />
 
         {/* RFI Information */}
         <section className="panel tick-frame p-5">
@@ -618,21 +618,43 @@ function StampPanel({
   );
 }
 
-// Five stakeholder slots, per project — no project_organizations GET
-// endpoint exists yet (Phase 4), so every slot renders as an empty
-// placeholder. Intentionally does not fetch or error on missing data.
-function OrganizationSlotRow() {
+// Five stakeholder slots, per project -- live since Phase 4. A slot with no
+// configured row (or while the query is loading, or if it errors -- e.g. a
+// viewer without the 'manage_team' permission this endpoint is gated on)
+// simply renders the same placeholder as before; this never blocks or
+// errors the rest of the page.
+function OrganizationSlotRow({ projectId }: { projectId: string }) {
+  const organizationsQuery = useQuery({
+    queryKey: ['project-organizations', projectId],
+    queryFn: () => getOrganizations(projectId),
+    enabled: Boolean(projectId),
+    retry: false,
+  });
+  const bySlot = new Map((organizationsQuery.data ?? []).map((o) => [o.slot, o]));
+
   return (
     <section className="panel tick-frame p-4">
       <div className="grid grid-cols-5 gap-3">
-        {PROJECT_ORGANIZATION_SLOTS.map((slot) => (
-          <div key={slot} className="flex flex-col items-center gap-1.5 text-center">
-            <div className="w-14 h-14 rounded border border-dashed border-base-600 bg-base-900/60 flex items-center justify-center text-ink-500 text-[10px]">
-              No logo
+        {PROJECT_ORGANIZATION_SLOTS.map((slot) => {
+          const org = bySlot.get(slot);
+          return (
+            <div key={slot} className="flex flex-col items-center gap-1.5 text-center">
+              {org?.logoUrl ? (
+                <img
+                  src={org.logoUrl}
+                  alt={org.name ?? PROJECT_ORGANIZATION_SLOT_LABELS[slot]}
+                  className="w-14 h-14 object-contain rounded border border-base-600 bg-white"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded border border-dashed border-base-600 bg-base-900/60 flex items-center justify-center text-ink-500 text-[10px]">
+                  No logo
+                </div>
+              )}
+              <div className="text-[10px] uppercase tracking-wide text-ink-500 font-mono">{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</div>
+              {org?.name && <div className="text-xs text-ink-100 truncate max-w-full">{org.name}</div>}
             </div>
-            <div className="text-[10px] uppercase tracking-wide text-ink-500 font-mono">{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

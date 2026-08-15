@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus,
+  Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { ProjectsService } from './projects.service';
@@ -8,6 +8,8 @@ import { UpdateProjectDto } from './dto/update-project.dto';
 import { BrandingUploadUrlDto } from './dto/branding-upload-url.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { CreatePermissionGrantDto } from './dto/create-permission-grant.dto';
+import { UpsertOrganizationDto } from './dto/upsert-organization.dto';
+import { OrganizationLogoUploadUrlDto } from './dto/organization-logo-upload-url.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
@@ -49,6 +51,47 @@ export class ProjectsController {
   @ApiOperation({ summary: "Get a presigned URL for uploading this project's logo or stamp" })
   async getBrandingUploadUrl(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: BrandingUploadUrlDto) {
     return { data: await this.projects.getBrandingUploadUrl(u.companyId, id, dto.filename, dto.sizeBytes, dto.kind), error: null };
+  }
+
+  // ── Project organizations (Phase 4) ─────────────────────────────────────
+  // Writes are gated on 'manage_team' -- there's no dedicated "manage
+  // project settings" permission; this is the closest existing semantic
+  // fit for project-level administrative configuration, and matches
+  // ManageMembersModal already being where manage_team grant-holders
+  // configure the team. The read below is deliberately NOT gated -- same
+  // convention as RFI attachments' GET :id/attachments: displaying
+  // already-configured branding is not a sensitive action, and every
+  // project member viewing an RFI needs to see its organization header,
+  // not just manage_team holders. Gating the read would silently blank
+  // out the whole header for everyone else, defeating the feature.
+  @Get(':id/organizations')
+  @ApiOperation({ summary: "List this project's configured stakeholder organizations" })
+  async getOrganizations(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
+    return { data: await this.projects.getOrganizations(u.companyId, id), error: null };
+  }
+
+  @Put(':id/organizations/:slot')
+  @RequireProjectPermission('manage_team')
+  @ApiOperation({ summary: "Configure one of this project's 5 stakeholder organization slots" })
+  async upsertOrganization(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('slot') slot: string,
+    @Body() dto: UpsertOrganizationDto,
+  ) {
+    return { data: await this.projects.upsertOrganization(u.companyId, id, slot, dto), error: null };
+  }
+
+  @Post(':id/organizations/:slot/logo-upload-url')
+  @RequireProjectPermission('manage_team')
+  @ApiOperation({ summary: "Get a presigned URL for uploading an organization slot's logo" })
+  async getOrganizationLogoUploadUrl(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('slot') slot: string,
+    @Body() dto: OrganizationLogoUploadUrlDto,
+  ) {
+    return { data: await this.projects.getOrganizationLogoUploadUrl(u.companyId, id, slot, dto.filename, dto.sizeBytes), error: null };
   }
 
   @Get(':id/members')

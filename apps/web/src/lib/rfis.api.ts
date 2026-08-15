@@ -23,6 +23,12 @@ export interface RfiSummary {
 export interface RfiFilters {
   status?: string;
   priority?: string;
+  discipline?: string;
+  costImpactLevel?: string;
+  timeImpactLevel?: string;
+  assignedTo?: string;
+  dateFrom?: string;
+  dateTo?: string;
   page?: number;
   perPage?: number;
 }

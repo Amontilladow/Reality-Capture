@@ -7,7 +7,9 @@ import type { CreateProjectDto } from './dto/create-project.dto';
 import type { UpdateProjectDto } from './dto/update-project.dto';
 import type { AddMemberDto } from './dto/add-member.dto';
 import type { CreatePermissionGrantDto } from './dto/create-permission-grant.dto';
-import type { PaginationQuery, ProjectPermission } from '@engineeringos/types';
+import type { UpsertOrganizationDto } from './dto/upsert-organization.dto';
+import type { PaginationQuery, ProjectPermission, ProjectOrganizationSlot } from '@engineeringos/types';
+import { PROJECT_ORGANIZATION_SLOTS } from '@engineeringos/types';
 
 @Injectable()
 export class ProjectsService {
@@ -167,6 +169,72 @@ export class ProjectsService {
       throw new BadRequestException(`Image too large (${(sizeBytes / 1024 / 1024).toFixed(1)} MB). Max: ${maxSize / 1024 / 1024} MB.`);
     }
     const key = this.storage.generateKey(companyId, projectId, 'branding', `${kind}-${filename}`);
+    const { uploadUrl } = await this.storage.getUploadUrl(key, 'application/octet-stream', sizeBytes);
+    return { uploadUrl, storageKey: key };
+  }
+
+  // ── Project organizations (Phase 4) ─────────────────────────────────────
+  // 5 fixed stakeholder slots per project (client/pmc/ldc/main_contractor/
+  // subcontractor) -- see PROJECT_ORGANIZATION_SLOTS. Rows only exist once
+  // someone has configured that slot; unconfigured slots are simply absent
+  // from this list (not padded with empty placeholders -- the caller, e.g.
+  // RfiDetailPage's OrganizationSlotRow, renders its own placeholder for a
+  // slot with no matching row).
+  private assertValidSlot(slot: string): asserts slot is ProjectOrganizationSlot {
+    if (!(PROJECT_ORGANIZATION_SLOTS as readonly string[]).includes(slot)) {
+      throw new BadRequestException(`Invalid organization slot '${slot}'. Must be one of: ${PROJECT_ORGANIZATION_SLOTS.join(', ')}.`);
+    }
+  }
+
+  async getOrganizations(companyId: string, projectId: string) {
+    await this.findOne(companyId, projectId);
+    const rows = await this.db.withTenant(companyId, sql => sql`
+      SELECT * FROM project_organizations
+      WHERE project_id = ${projectId} AND company_id = ${companyId}
+      ORDER BY slot
+    `);
+    // Resolve storage keys to live presigned read URLs at read time --
+    // never persist a URL that can expire, same convention as everywhere
+    // else in this codebase (see getAttachments() in rfis.service.ts).
+    const urls = await this.storage.resolveUrls(rows.map(r => r.logoStorageKey as string));
+    return rows.map(r => ({ ...r, logoUrl: r.logoStorageKey ? urls.get(r.logoStorageKey as string) : undefined }));
+  }
+
+  async upsertOrganization(companyId: string, projectId: string, slot: string, dto: UpsertOrganizationDto) {
+    this.assertValidSlot(slot);
+    await this.findOne(companyId, projectId);
+
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      INSERT INTO project_organizations (project_id, company_id, slot, name, org_ref, contact_name, contact_email, logo_storage_key)
+      VALUES (${projectId}, ${companyId}, ${slot}, ${dto.name ?? null}, ${dto.orgRef ?? null}, ${dto.contactName ?? null}, ${dto.contactEmail ?? null}, ${dto.logoStorageKey ?? null})
+      ON CONFLICT (project_id, slot) DO UPDATE SET
+        name             = COALESCE(${dto.name ?? null}, project_organizations.name),
+        org_ref          = COALESCE(${dto.orgRef ?? null}, project_organizations.org_ref),
+        contact_name     = COALESCE(${dto.contactName ?? null}, project_organizations.contact_name),
+        contact_email    = COALESCE(${dto.contactEmail ?? null}, project_organizations.contact_email),
+        logo_storage_key = COALESCE(${dto.logoStorageKey ?? null}, project_organizations.logo_storage_key),
+        updated_at       = NOW()
+      RETURNING *
+    `);
+
+    const urls = await this.storage.resolveUrls([row.logoStorageKey as string]);
+    return { ...row, logoUrl: row.logoStorageKey ? urls.get(row.logoStorageKey as string) : undefined };
+  }
+
+  // Mirrors getBrandingUploadUrl() exactly (jpg/jpeg/png only, 2MB max) --
+  // these are the same kind of small letterhead-style logo image, sharing
+  // the generic 'branding' storage-key type rather than a new one.
+  async getOrganizationLogoUploadUrl(companyId: string, projectId: string, slot: string, filename: string, sizeBytes: number) {
+    this.assertValidSlot(slot);
+    const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+    if (!['jpg', 'jpeg', 'png'].includes(ext)) {
+      throw new BadRequestException(`Logo images must be JPG or PNG (got ".${ext}").`);
+    }
+    const maxSize = 2 * 1024 * 1024; // 2 MB -- same cap as project branding
+    if (sizeBytes > maxSize) {
+      throw new BadRequestException(`Image too large (${(sizeBytes / 1024 / 1024).toFixed(1)} MB). Max: ${maxSize / 1024 / 1024} MB.`);
+    }
+    const key = this.storage.generateKey(companyId, projectId, 'branding', `org-${slot}-${filename}`);
     const { uploadUrl } = await this.storage.getUploadUrl(key, 'application/octet-stream', sizeBytes);
     return { uploadUrl, storageKey: key };
   }

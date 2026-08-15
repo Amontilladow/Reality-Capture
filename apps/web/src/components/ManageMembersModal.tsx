@@ -1,8 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PROJECT_ROLES, COMPANY_ROLES, PROJECT_PERMISSIONS, type ProjectRole, type CompanyRole, type ProjectPermission } from '@engineeringos/types';
+import {
+  PROJECT_ROLES, COMPANY_ROLES, PROJECT_PERMISSIONS, PROJECT_ORGANIZATION_SLOTS, PROJECT_ORGANIZATION_SLOT_LABELS,
+  type ProjectRole, type CompanyRole, type ProjectPermission, type ProjectOrganizationSlot,
+} from '@engineeringos/types';
 import { Modal } from './ui/Modal';
-import { getMembers, addMember, removeMember, getPermissionGrants, grantPermission, revokePermission } from '../lib/projects.api';
+import {
+  getMembers, addMember, removeMember, getPermissionGrants, grantPermission, revokePermission,
+  getOrganizations, upsertOrganization, uploadOrganizationLogo, type ProjectOrganization,
+} from '../lib/projects.api';
 import { listUsers, inviteUser, approveUserRole, deactivateUser } from '../lib/users.api';
 import { apiErrorMessage } from '../lib/api';
 import { PROJECT_ROLE_LABELS, COMPANY_ROLE_LABELS, PROJECT_PERMISSION_LABELS } from '../lib/issue-constants';
@@ -112,6 +118,28 @@ export function ManageMembersModal({
     mutationFn: (vars: { userId: string; permission: ProjectPermission }) => revokePermission(projectId, vars.userId, vars.permission),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['permissionGrants', projectId] }),
   });
+
+  // ── Project organizations (Phase 4) ─────────────────────────────────────
+  // Client-side-only optimistic gate -- mirrors the same bypass set
+  // ProjectPermissionGuard enforces server-side for 'manage_team'
+  // (super_admin, this project's own project_lead, or an explicit grant).
+  // Purely a UX nicety: hides the edit controls (and skips firing a doomed
+  // request) for someone who can't use them; the backend is the real
+  // enforcement and 403s regardless of what this computes.
+  const myMembership = (membersQuery.data ?? []).find((m) => m.userId === currentUser?.id);
+  const isProjectLead = myMembership?.role === 'project_lead';
+  const isSuperAdmin = currentUser?.companyRole === 'super_admin';
+  const hasManageTeamGrant = (permissionGrantsQuery.data ?? []).some(
+    (g) => g.userId === currentUser?.id && g.permission === 'manage_team',
+  );
+  const canManageOrganizations = isSuperAdmin || isProjectLead || hasManageTeamGrant;
+
+  const organizationsQuery = useQuery({
+    queryKey: ['project-organizations', projectId],
+    queryFn: () => getOrganizations(projectId),
+    enabled: open && canManageOrganizations,
+  });
+  const organizationsBySlot = new Map((organizationsQuery.data ?? []).map((o) => [o.slot, o]));
 
   return (
     <Modal open={open} onClose={onClose} title="Project team">
@@ -393,7 +421,163 @@ export function ManageMembersModal({
             </div>
           ))}
         </div>
+
+        <div className="pt-2 border-t border-base-600 space-y-3">
+          <div className="field-label">Project Organizations</div>
+          <p className="text-xs text-ink-500">
+            Configure the 5 stakeholder slots shown on every RFI's header and exported PDF -- name, reference,
+            contact, and logo. Requires the 'Manage team' permission on this project.
+          </p>
+          {!canManageOrganizations && (
+            <p className="text-sm text-ink-500">You don't have permission to view or edit this project's organizations.</p>
+          )}
+          {canManageOrganizations && organizationsQuery.isLoading && <div className="text-sm text-ink-500">Loading…</div>}
+          {canManageOrganizations && PROJECT_ORGANIZATION_SLOTS.map((slot) => (
+            <OrganizationRow
+              key={slot}
+              projectId={projectId}
+              slot={slot}
+              org={organizationsBySlot.get(slot)}
+              canEdit={canManageOrganizations}
+            />
+          ))}
+        </div>
       </div>
     </Modal>
+  );
+}
+
+// One row per stakeholder slot. Edits are buffered locally and committed
+// with an explicit "Save" button (shown only once a field actually differs
+// from the server value) -- same "dirty -> Save button appears" pattern
+// this file already uses for the company-role picker above, rather than
+// autosaving on blur. The logo, however, uploads immediately on file pick
+// (EditProjectModal's pattern), independent of the row's Save button.
+function OrganizationRow({
+  projectId, slot, org, canEdit,
+}: {
+  projectId: string;
+  slot: ProjectOrganizationSlot;
+  org?: ProjectOrganization;
+  canEdit: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState(org?.name ?? '');
+  const [orgRef, setOrgRef] = useState(org?.orgRef ?? '');
+  const [contactName, setContactName] = useState(org?.contactName ?? '');
+  const [contactEmail, setContactEmail] = useState(org?.contactEmail ?? '');
+
+  // Re-sync the local buffer whenever the server row changes (e.g. after a
+  // save, or the modal re-fetches) -- same pattern RfiDetailPage uses to
+  // reset its own drafts when the underlying query data changes.
+  useEffect(() => {
+    setName(org?.name ?? '');
+    setOrgRef(org?.orgRef ?? '');
+    setContactName(org?.contactName ?? '');
+    setContactEmail(org?.contactEmail ?? '');
+  }, [org]);
+
+  function invalidate() {
+    queryClient.invalidateQueries({ queryKey: ['project-organizations', projectId] });
+  }
+
+  const saveMutation = useMutation({
+    mutationFn: () => upsertOrganization(projectId, slot, {
+      name: name || undefined,
+      orgRef: orgRef || undefined,
+      contactName: contactName || undefined,
+      contactEmail: contactEmail || undefined,
+    }),
+    onSuccess: invalidate,
+  });
+
+  const logoMutation = useMutation({
+    mutationFn: (file: File) => uploadOrganizationLogo(projectId, slot, file),
+    onSuccess: invalidate,
+  });
+
+  const dirty =
+    name !== (org?.name ?? '') ||
+    orgRef !== (org?.orgRef ?? '') ||
+    contactName !== (org?.contactName ?? '') ||
+    contactEmail !== (org?.contactEmail ?? '');
+
+  return (
+    <div className="py-2 border-b border-base-700/60 last:border-0">
+      <div className="flex items-start gap-3">
+        <div className="shrink-0 flex flex-col items-center gap-1 w-16">
+          {org?.logoUrl ? (
+            <img src={org.logoUrl} alt="" className="w-10 h-10 object-contain rounded border border-base-600 bg-white" />
+          ) : (
+            <div className="w-10 h-10 rounded border border-dashed border-base-600 bg-base-900/60 flex items-center justify-center text-ink-500 text-[9px] text-center">
+              No logo
+            </div>
+          )}
+          {canEdit && (
+            <label className="text-[10px] text-blueprint hover:text-blueprint-hover cursor-pointer text-center">
+              {logoMutation.isPending ? 'Uploading…' : org?.logoUrl ? 'Change' : 'Upload'}
+              <input
+                type="file"
+                accept="image/jpeg,image/png"
+                className="hidden"
+                disabled={logoMutation.isPending}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) logoMutation.mutate(file);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+          )}
+        </div>
+
+        <div className="flex-1 space-y-1.5">
+          <div className="text-xs font-mono uppercase tracking-wide text-ink-500">{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</div>
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              className="field-input !py-1 text-xs"
+              placeholder="Organization name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={!canEdit}
+            />
+            <input
+              className="field-input !py-1 text-xs"
+              placeholder="Reference"
+              value={orgRef}
+              onChange={(e) => setOrgRef(e.target.value)}
+              disabled={!canEdit}
+            />
+            <input
+              className="field-input !py-1 text-xs"
+              placeholder="Contact name"
+              value={contactName}
+              onChange={(e) => setContactName(e.target.value)}
+              disabled={!canEdit}
+            />
+            <input
+              type="email"
+              className="field-input !py-1 text-xs"
+              placeholder="Contact email"
+              value={contactEmail}
+              onChange={(e) => setContactEmail(e.target.value)}
+              disabled={!canEdit}
+            />
+          </div>
+          {saveMutation.isError && <p className="field-error">{apiErrorMessage(saveMutation.error)}</p>}
+          {logoMutation.isError && <p className="field-error">{apiErrorMessage(logoMutation.error)}</p>}
+        </div>
+
+        {canEdit && dirty && (
+          <button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+            className="btn-primary !px-3 !py-1.5 text-xs shrink-0"
+          >
+            {saveMutation.isPending ? 'Saving…' : 'Save'}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }

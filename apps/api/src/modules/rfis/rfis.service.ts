@@ -104,7 +104,11 @@ export class RfisService {
     return rfi;
   }
 
-  async findAll(companyId: string, projectId: string, query: PaginationQuery & { status?: string; priority?: string }) {
+  async findAll(companyId: string, projectId: string, query: PaginationQuery & {
+    status?: string; priority?: string; discipline?: string;
+    costImpactLevel?: string; timeImpactLevel?: string; assignedTo?: string;
+    dateFrom?: string; dateTo?: string;
+  }) {
     const page    = query.page ?? 1;
     const perPage = Math.min(query.perPage ?? 20, 100);
     const offset  = (page - 1) * perPage;
@@ -120,6 +124,12 @@ export class RfisService {
       WHERE r.project_id = ${projectId} AND r.company_id = ${companyId}
         AND (${query.status ?? null}::text IS NULL OR r.status = ${query.status ?? null})
         AND (${query.priority ?? null}::text IS NULL OR r.priority = ${query.priority ?? null})
+        AND (${query.discipline ?? null}::text IS NULL OR r.discipline::text = ${query.discipline ?? null})
+        AND (${query.costImpactLevel ?? null}::text IS NULL OR r.cost_impact_level = ${query.costImpactLevel ?? null})
+        AND (${query.timeImpactLevel ?? null}::text IS NULL OR r.time_impact_level = ${query.timeImpactLevel ?? null})
+        AND (${query.assignedTo ?? null}::uuid IS NULL OR r.assigned_to = ${query.assignedTo ?? null}::uuid)
+        AND (${query.dateFrom ?? null}::timestamptz IS NULL OR r.created_at >= ${query.dateFrom ?? null}::timestamptz)
+        AND (${query.dateTo ?? null}::timestamptz IS NULL OR r.created_at <= ${query.dateTo ?? null}::timestamptz)
       ORDER BY
         CASE r.priority WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
         r.created_at DESC
