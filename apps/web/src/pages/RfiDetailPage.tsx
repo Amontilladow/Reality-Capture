@@ -228,7 +228,16 @@ export default function RfiDetailPage() {
   const canManageRfis = isSuperAdmin || isProjectLead || hasManageRfisGrant;
   const isCreator = rfi.createdBy === currentUser?.id;
 
-  const canEditQuery = rfi.status === 'draft' && (isCreator || canManageRfis);
+  // Editable any time before a formal answer exists -- create() always sets
+  // status='open' (there's no "save as draft" creation path yet), so gating
+  // this to 'draft' alone made every RFI read-only the instant it was
+  // created. 'open' is this RFI's pre-response lifecycle position (same as
+  // 'draft'/'submitted'/'under_review'/'awaiting_clarification' below it),
+  // so the query stays editable through all of those and locks once it's
+  // actually been responded to or closed -- matches the "don't silently
+  // overwrite the original query after it's been answered" rule.
+  const RESPONDED_OR_TERMINAL = new Set(['responded', 'answered', ...TERMINAL_STATUSES]);
+  const canEditQuery = !RESPONDED_OR_TERMINAL.has(rfi.status) && (isCreator || canManageRfis);
   const canSubmit = rfi.status === 'draft' && (isCreator || canManageRfis);
   const canRequestClarification = canManageRfis && CLARIFICATION_SOURCE_STATUSES.has(rfi.status);
   const canRespond = canManageRfis && RESPOND_SOURCE_STATUSES.has(rfi.status);
