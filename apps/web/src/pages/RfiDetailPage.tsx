@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  RFI_DISCIPLINE_LABELS, RFI_IMPACT_LEVEL_LABELS, RFI_DOCUMENT_TYPES, RFI_DOCUMENT_TYPE_LABELS,
+  RFI_DISCIPLINE_LABELS, RFI_IMPACT_LEVELS, RFI_IMPACT_LEVEL_LABELS, RFI_DOCUMENT_TYPES, RFI_DOCUMENT_TYPE_LABELS,
   PROJECT_ORGANIZATION_SLOTS, PROJECT_ORGANIZATION_SLOT_LABELS,
-  type RfiAttachmentKind, type RfiDocumentType, type ProjectOrganizationSlot, type Rfi,
+  type RfiAttachmentKind, type RfiDocumentType, type ProjectOrganizationSlot, type RfiImpactLevel, type Rfi,
 } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { RichTextEditor, isRichTextEmpty } from '../components/ui/RichTextEditor';
@@ -37,6 +37,13 @@ export default function RfiDetailPage() {
 
   const [questionDraft, setQuestionDraft] = useState('');
   const [answerDraft, setAnswerDraft] = useState('');
+  const [costImpactLevel, setCostImpactLevel] = useState<RfiImpactLevel>('no');
+  const [costImpactAmount, setCostImpactAmount] = useState('');
+  const [costImpactCurrency, setCostImpactCurrency] = useState('');
+  const [costImpactDescription, setCostImpactDescription] = useState('');
+  const [timeImpactLevel, setTimeImpactLevel] = useState<RfiImpactLevel>('no');
+  const [timeImpactDays, setTimeImpactDays] = useState('');
+  const [timeImpactDescription, setTimeImpactDescription] = useState('');
   const [clarifyOpen, setClarifyOpen] = useState(false);
   const [clarifyReason, setClarifyReason] = useState('');
   const [commentBody, setCommentBody] = useState('');
@@ -96,6 +103,13 @@ export default function RfiDetailPage() {
     if (rfi) {
       setQuestionDraft(rfi.question ?? '');
       setAnswerDraft(rfi.answer ?? '');
+      setCostImpactLevel(rfi.costImpactLevel ?? (rfi.costImpact ? 'yes' : 'no'));
+      setCostImpactAmount(rfi.costImpactAmount != null ? String(rfi.costImpactAmount) : '');
+      setCostImpactCurrency(rfi.costImpactCurrency ?? '');
+      setCostImpactDescription(rfi.costImpactDescription ?? '');
+      setTimeImpactLevel(rfi.timeImpactLevel ?? (rfi.timeImpact ? 'yes' : 'no'));
+      setTimeImpactDays(rfi.timeImpactDays != null ? String(rfi.timeImpactDays) : '');
+      setTimeImpactDescription(rfi.timeImpactDescription ?? '');
     }
   }, [rfi]);
 
@@ -108,8 +122,23 @@ export default function RfiDetailPage() {
     queryClient.invalidateQueries({ queryKey: ['audit-project', projectId, 'rfi-detail'] });
   }
 
+  // Saves the whole editable pre-response record in one PATCH -- question
+  // plus cost/time impact -- rather than a separate mutation per field.
+  // Triggered from both the RFI Information and Query section "Save"
+  // buttons; either one saves everything, since both live under the same
+  // canEditQuery gate and there's no reason to force two separate saves
+  // for what's conceptually one editable record.
   const saveDraftMutation = useMutation({
-    mutationFn: () => updateRfi(projectId!, rfiId!, { question: questionDraft }),
+    mutationFn: () => updateRfi(projectId!, rfiId!, {
+      question: questionDraft,
+      costImpactLevel,
+      costImpactAmount: costImpactAmount.trim() ? Number(costImpactAmount) : undefined,
+      costImpactCurrency: costImpactCurrency.trim() || undefined,
+      costImpactDescription: costImpactDescription.trim() || undefined,
+      timeImpactLevel,
+      timeImpactDays: timeImpactDays.trim() ? Number(timeImpactDays) : undefined,
+      timeImpactDescription: timeImpactDescription.trim() || undefined,
+    }),
     onSuccess: invalidateAll,
   });
 
@@ -295,7 +324,18 @@ export default function RfiDetailPage() {
 
         {/* RFI Information */}
         <section className="panel tick-frame p-5">
-          <div className="field-label mb-3">RFI Information</div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="field-label !mb-0">RFI Information</div>
+            {canEditQuery && (
+              <button
+                onClick={() => saveDraftMutation.mutate()}
+                disabled={saveDraftMutation.isPending}
+                className="btn-secondary !px-3 !py-1.5 text-xs"
+              >
+                {saveDraftMutation.isPending ? 'Saving…' : 'Save'}
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
             <InfoRow label="RFI Number" value={rfi.rfiNumber ?? '—'} mono />
             <InfoRow label="Discipline" value={rfi.discipline ? RFI_DISCIPLINE_LABELS[rfi.discipline] : '—'} />
@@ -308,21 +348,48 @@ export default function RfiDetailPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-base-600">
-            <ImpactSummary
-              title="Cost impact"
-              level={rfi.costImpactLevel}
-              legacyBool={rfi.costImpact}
-              amount={rfi.costImpactAmount}
-              currency={rfi.costImpactCurrency}
-              description={rfi.costImpactDescription}
-            />
-            <ImpactSummary
-              title="Time impact"
-              level={rfi.timeImpactLevel}
-              legacyBool={rfi.timeImpact}
-              days={rfi.timeImpactDays}
-              description={rfi.timeImpactDescription}
-            />
+            {canEditQuery ? (
+              <>
+                <ImpactEditor
+                  title="Cost impact"
+                  level={costImpactLevel}
+                  onLevelChange={setCostImpactLevel}
+                  amount={costImpactAmount}
+                  onAmountChange={setCostImpactAmount}
+                  currency={costImpactCurrency}
+                  onCurrencyChange={setCostImpactCurrency}
+                  description={costImpactDescription}
+                  onDescriptionChange={setCostImpactDescription}
+                />
+                <ImpactEditor
+                  title="Time impact"
+                  level={timeImpactLevel}
+                  onLevelChange={setTimeImpactLevel}
+                  days={timeImpactDays}
+                  onDaysChange={setTimeImpactDays}
+                  description={timeImpactDescription}
+                  onDescriptionChange={setTimeImpactDescription}
+                />
+              </>
+            ) : (
+              <>
+                <ImpactSummary
+                  title="Cost impact"
+                  level={rfi.costImpactLevel}
+                  legacyBool={rfi.costImpact}
+                  amount={rfi.costImpactAmount}
+                  currency={rfi.costImpactCurrency}
+                  description={rfi.costImpactDescription}
+                />
+                <ImpactSummary
+                  title="Time impact"
+                  level={rfi.timeImpactLevel}
+                  legacyBool={rfi.timeImpact}
+                  days={rfi.timeImpactDays}
+                  description={rfi.timeImpactDescription}
+                />
+              </>
+            )}
           </div>
         </section>
 
@@ -583,6 +650,79 @@ function ImpactSummary({
           {amount != null && <div>{currency ? `${currency} ` : ''}{amount}</div>}
           {days != null && <div>{days} day{days === 1 ? '' : 's'}</div>}
           {description && <p className="text-xs text-ink-500 whitespace-pre-wrap">{description}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Editable counterpart to ImpactSummary, shown instead of it while
+// canEditQuery is true. Amount/currency (cost) or days (time) plus a
+// description only make sense once the level says there's some impact --
+// same "showDetails" gate ImpactSummary already uses for display.
+function ImpactEditor({
+  title, level, onLevelChange, amount, onAmountChange, currency, onCurrencyChange,
+  days, onDaysChange, description, onDescriptionChange,
+}: {
+  title: string;
+  level: RfiImpactLevel;
+  onLevelChange: (level: RfiImpactLevel) => void;
+  amount?: string;
+  onAmountChange?: (value: string) => void;
+  currency?: string;
+  onCurrencyChange?: (value: string) => void;
+  days?: string;
+  onDaysChange?: (value: string) => void;
+  description: string;
+  onDescriptionChange: (value: string) => void;
+}) {
+  const showDetails = level !== 'no';
+  return (
+    <div>
+      <div className="text-xs text-ink-500 mb-1">{title}</div>
+      <select
+        className="field-input !py-1.5 text-xs w-auto"
+        value={level}
+        onChange={(e) => onLevelChange(e.target.value as RfiImpactLevel)}
+      >
+        {RFI_IMPACT_LEVELS.map((l) => (
+          <option key={l} value={l}>{RFI_IMPACT_LEVEL_LABELS[l]}</option>
+        ))}
+      </select>
+      {showDetails && (
+        <div className="mt-2 space-y-1.5">
+          {onAmountChange && (
+            <div className="flex gap-1.5">
+              <input
+                className="field-input !py-1.5 text-xs w-20"
+                placeholder="Currency"
+                value={currency ?? ''}
+                onChange={(e) => onCurrencyChange?.(e.target.value)}
+              />
+              <input
+                type="number"
+                className="field-input !py-1.5 text-xs flex-1"
+                placeholder="Estimated amount (optional)"
+                value={amount ?? ''}
+                onChange={(e) => onAmountChange(e.target.value)}
+              />
+            </div>
+          )}
+          {onDaysChange && (
+            <input
+              type="number"
+              className="field-input !py-1.5 text-xs w-full"
+              placeholder="Estimated days (optional)"
+              value={days ?? ''}
+              onChange={(e) => onDaysChange(e.target.value)}
+            />
+          )}
+          <textarea
+            className="field-input !py-1.5 text-xs w-full min-h-[50px]"
+            placeholder="Description (optional)"
+            value={description}
+            onChange={(e) => onDescriptionChange(e.target.value)}
+          />
         </div>
       )}
     </div>
