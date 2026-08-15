@@ -1,7 +1,53 @@
 import ExcelJS from 'exceljs';
 import type { Rfi, Project } from '@engineeringos/types';
-import { RFI_DISCIPLINE_LABELS } from '@engineeringos/types';
+import {
+  RFI_DISCIPLINE_LABELS, RFI_DOCUMENT_TYPE_LABELS, PROJECT_ORGANIZATION_SLOT_LABELS,
+  type RfiDocumentType, type ProjectOrganizationSlot,
+} from '@engineeringos/types';
 import { RFI_STATUS_LABELS, RFI_PRIORITY_LABELS, formatDate } from './rfi-constants';
+
+// question/answer are stored as HTML from the RichTextEditor (Phase 3) --
+// converts Tiptap's StarterKit output (paragraphs, headings, lists,
+// bold/italic marks) to plain text with real line breaks for a static
+// spreadsheet cell, rather than leaking raw tags like "<p>...</p>". Mirrors
+// rfi-pdf.template.ts's richTextToPlain() exactly, duplicated rather than
+// shared since one lives in apps/api and the other in apps/web.
+function richTextToPlain(html: string): string {
+  return html
+    .replace(/<\/(p|div|li|h[1-6])>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+// Phase 5 additions -- organizations, upload stamps, and query/response
+// attachment lists, threaded in as optional parameters so every existing
+// caller (and every existing test) keeps working unchanged.
+export interface RfiXlsOrganization {
+  slot: ProjectOrganizationSlot;
+  name?: string;
+  orgRef?: string;
+  logoUrl?: string;
+}
+
+export interface RfiXlsUploadStamp {
+  uploadedBy?: string;
+  dateTime?: string;
+  stamp: string;
+}
+
+export interface RfiXlsAttachmentItem {
+  filename: string;
+  documentType?: RfiDocumentType;
+  documentTypeOther?: string;
+}
 
 // Mirrors rfi-pdf.template.ts's palette so the two exports read as the same
 // document family, not two unrelated tools.
@@ -86,13 +132,38 @@ export interface RfiWorkbookResult {
   warnings: string[];
 }
 
+function attachmentLabel(item: RfiXlsAttachmentItem): string {
+  const typeLabel = item.documentType ? RFI_DOCUMENT_TYPE_LABELS[item.documentType] : 'Other';
+  const otherSuffix = item.documentType === 'other' && item.documentTypeOther ? ` — ${item.documentTypeOther}` : '';
+  return `${item.filename} (${typeLabel}${otherSuffix})`;
+}
+
+export interface RfiWorkbookExtras {
+  organizations?: RfiXlsOrganization[];
+  queryStamp?: RfiXlsUploadStamp;
+  answerStamp?: RfiXlsUploadStamp;
+  queryAttachments?: RfiXlsAttachmentItem[];
+  responseAttachments?: RfiXlsAttachmentItem[];
+}
+
 // Split out from downloadRfiXls so the workbook itself (the part worth
 // testing) doesn't depend on DOM globals (document, URL.createObjectURL).
-export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project): Promise<RfiWorkbookResult> {
+// `extras` (Phase 5) is optional so every pre-Phase-5 caller/test keeps
+// working with the same two-argument call unchanged.
+export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras?: RfiWorkbookExtras): Promise<RfiWorkbookResult> {
   const discipline = rfi.discipline ? RFI_DISCIPLINE_LABELS[rfi.discipline] : '—';
   const disciplineDisplay = rfi.discipline === 'other' && rfi.disciplineOther
     ? `${discipline} — ${rfi.disciplineOther}`
     : discipline;
+
+  // Image fetches (project logo/stamp, organization logos) are all a
+  // nice-to-have -- a CORS hiccup or network blip never blocks the export
+  // (same rule the PDF template follows), but unlike the PDF path this
+  // failure is silent to the person clicking the button, so it's worth
+  // telling them rather than just quietly shipping a file that's missing
+  // branding they expected to see. Declared up front since organization
+  // logos (below) are fetched before the project logo/stamp at the bottom.
+  const warnings: string[] = [];
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'EngineeringOS';
@@ -133,6 +204,28 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project): Promi
   fieldRow(sheet, 'Subcontractor', project?.subcontractor ?? '—');
   spacerRow(sheet);
 
+  // The 5 named-organization slots (Phase 4/5) -- distinct from the
+  // free-text stakeholder fields above. Skips entirely when none are
+  // configured, same "don't render empty chrome" rule as the PDF template.
+  if (extras?.organizations && extras.organizations.length > 0) {
+    sectionRow(sheet, 'ORGANIZATIONS');
+    for (const org of extras.organizations) {
+      const row = fieldRow(
+        sheet,
+        PROJECT_ORGANIZATION_SLOT_LABELS[org.slot],
+        [org.name, org.orgRef].filter(Boolean).join(' — ') || '—',
+      );
+      const orgLogo = await tryFetchImage(org.logoUrl);
+      if (orgLogo.status === 'ok') {
+        const imageId = workbook.addImage({ buffer: orgLogo.buffer, extension: orgLogo.extension });
+        sheet.addImage(imageId, { tl: { col: 1.55, row: row.number - 1 }, ext: { width: 20, height: 20 } });
+      } else if (orgLogo.status === 'failed') {
+        warnings.push(`Could not load the ${PROJECT_ORGANIZATION_SLOT_LABELS[org.slot]} logo, so it was left out of this export.`);
+      }
+    }
+    spacerRow(sheet);
+  }
+
   sectionRow(sheet, 'RFI DETAILS');
   fieldRow(sheet, 'Status', RFI_STATUS_LABELS[rfi.status]);
   fieldRow(sheet, 'Priority', RFI_PRIORITY_LABELS[rfi.priority]);
@@ -147,18 +240,37 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project): Promi
   spacerRow(sheet);
 
   sectionRow(sheet, 'QUERY');
-  textBlockRow(sheet, rfi.question);
+  textBlockRow(sheet, richTextToPlain(rfi.question));
+  if (extras?.queryAttachments && extras.queryAttachments.length > 0) {
+    fieldRow(sheet, 'Query Attachments', extras.queryAttachments.map(attachmentLabel).join('; '));
+  }
   spacerRow(sheet);
 
-  sectionRow(sheet, 'RESPONSE');
-  textBlockRow(sheet, rfi.answer ?? '(not yet answered)');
+  // Only rendered when set -- an unsubmitted/legacy RFI has no query_stamp
+  // yet. Same field choice as the PDF template and RfiDetailPage's own
+  // on-screen StampPanel (createdByName/updatedAt) so all three never
+  // disagree with each other.
+  if (extras?.queryStamp) {
+    sectionRow(sheet, 'QUERY UPLOAD STAMP');
+    fieldRow(sheet, 'Uploaded By', extras.queryStamp.uploadedBy ?? '—');
+    fieldRow(sheet, 'Date-Time', extras.queryStamp.dateTime ?? '—');
+    fieldRow(sheet, 'Stamp', extras.queryStamp.stamp);
+    spacerRow(sheet);
+  }
 
-  // Logo/stamp are a nice-to-have -- a CORS hiccup or network blip never
-  // blocks the export (same rule the PDF template follows), but unlike the
-  // PDF path this failure is silent to the person clicking the button, so
-  // it's worth telling them rather than just quietly shipping a file
-  // that's missing branding they expected to see.
-  const warnings: string[] = [];
+  sectionRow(sheet, 'RESPONSE');
+  textBlockRow(sheet, rfi.answer ? richTextToPlain(rfi.answer) : '(not yet answered)');
+  if (extras?.responseAttachments && extras.responseAttachments.length > 0) {
+    fieldRow(sheet, 'Response Attachments', extras.responseAttachments.map(attachmentLabel).join('; '));
+  }
+
+  if (extras?.answerStamp) {
+    spacerRow(sheet);
+    sectionRow(sheet, 'ANSWER UPLOAD STAMP');
+    fieldRow(sheet, 'Uploaded By', extras.answerStamp.uploadedBy ?? '—');
+    fieldRow(sheet, 'Date-Time', extras.answerStamp.dateTime ?? '—');
+    fieldRow(sheet, 'Stamp', extras.answerStamp.stamp);
+  }
 
   const logo = await tryFetchImage(project?.logoUrl);
   if (logo.status === 'ok') {
@@ -180,8 +292,8 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project): Promi
   return { buffer: await workbook.xlsx.writeBuffer(), warnings };
 }
 
-export async function downloadRfiXls(rfi: Rfi, project?: Project): Promise<string[]> {
-  const { buffer, warnings } = await buildRfiWorkbookBuffer(rfi, project);
+export async function downloadRfiXls(rfi: Rfi, project?: Project, extras?: RfiWorkbookExtras): Promise<string[]> {
+  const { buffer, warnings } = await buildRfiWorkbookBuffer(rfi, project, extras);
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

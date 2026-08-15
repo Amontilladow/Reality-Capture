@@ -11,7 +11,10 @@ import type { AddRfiAttachmentDto } from './dto/add-rfi-attachment.dto';
 import type { RequestClarificationDto } from './dto/request-clarification.dto';
 import type { RespondToRfiDto } from './dto/respond-to-rfi.dto';
 import type { AddRfiCommentDto } from './dto/add-rfi-comment.dto';
-import { RFI_DISCIPLINE_LABELS, RFI_DISCIPLINE_CODES, type PaginationQuery, type RfiDiscipline, type RfiImpactLevel } from '@engineeringos/types';
+import {
+  RFI_DISCIPLINE_LABELS, RFI_DISCIPLINE_CODES, PROJECT_ORGANIZATION_SLOT_LABELS,
+  type PaginationQuery, type RfiDiscipline, type RfiImpactLevel, type ProjectOrganizationSlot, type RfiDocumentType,
+} from '@engineeringos/types';
 
 // ── Workflow state machine (Phase 1) ────────────────────────────────────────
 // Legacy 'open'/'answered' are the pre-existing names for the same lifecycle
@@ -158,6 +161,16 @@ export class RfisService {
   // Everything the PDF template needs, joined in one place -- the RFI (with
   // the names already joined above) plus the project's stakeholder fields,
   // which the PDF pulls in automatically rather than asking for them again.
+  //
+  // Phase 5 additions: the 5 named-organization rows and the query/response
+  // attachment lists. RfisModule doesn't import ProjectsModule (and doesn't
+  // export/need ProjectsService for anything else), so rather than wiring up
+  // that whole module import for one read-only SELECT, this queries
+  // project_organizations directly -- the exact same query
+  // ProjectsService.getOrganizations() runs, minus the resolveUrls() call
+  // (the PDF needs raw buffers via storage.download(), not presigned URLs;
+  // see generatePdf() below). Documented here as the judgment call the
+  // ticket asked for.
   async getPdfData(companyId: string, projectId: string, rfiId: string) {
     const rfi = await this.findOne(companyId, projectId, rfiId);
     const [project] = await this.db.withTenant(companyId, sql => sql`
@@ -166,11 +179,26 @@ export class RfisService {
         logo_storage_key, stamp_storage_key
       FROM projects WHERE id = ${projectId} AND company_id = ${companyId}
     `);
-    return { rfi, project };
+    const organizations = await this.db.withTenant(companyId, sql => sql`
+      SELECT slot, name, logo_storage_key
+      FROM project_organizations
+      WHERE project_id = ${projectId} AND company_id = ${companyId}
+      ORDER BY slot
+    `);
+    // Filename + document type only -- no presigned read URL needed, these
+    // render as plain text lines in a static generated document, not
+    // clickable links (see rfi-pdf.template.ts / rfi-xls.ts).
+    const attachmentRows = await this.db.withTenant(companyId, sql => sql`
+      SELECT filename, kind, document_type, document_type_other
+      FROM rfi_attachments
+      WHERE rfi_id = ${rfiId} AND company_id = ${companyId}
+      ORDER BY uploaded_at ASC
+    `);
+    return { rfi, project, organizations, attachmentRows };
   }
 
   async generatePdf(companyId: string, projectId: string, rfiId: string): Promise<{ buffer: Buffer; filename: string }> {
-    const { rfi, project } = await this.getPdfData(companyId, projectId, rfiId);
+    const { rfi, project, organizations, attachmentRows } = await this.getPdfData(companyId, projectId, rfiId);
     const discipline = rfi.discipline as RfiDiscipline | undefined;
     const filename = `${(rfi.rfiNumber as string) ?? rfiId}.pdf`;
 
@@ -183,9 +211,59 @@ export class RfisService {
       project?.stampStorageKey ? this.storage.download(project.stampStorageKey as string).catch(() => undefined) : undefined,
     ]);
 
+    // Same buffer-not-URL reasoning as the project logo/stamp above, just
+    // multiplied by up to 5 rows. A slot with no logo_storage_key, or whose
+    // download fails, is filtered out below rather than passed through as
+    // an empty entry -- the template renders exactly what it's given.
+    const orgLogos = await Promise.all(
+      (organizations as Array<Record<string, unknown>>).map(async (org) => {
+        const key = org.logoStorageKey as string | undefined;
+        if (!key) return undefined;
+        const buffer = await this.storage.download(key).catch(() => undefined);
+        if (!buffer) return undefined;
+        const slot = org.slot as ProjectOrganizationSlot;
+        return {
+          slot,
+          label: (org.name as string | undefined) || PROJECT_ORGANIZATION_SLOT_LABELS[slot],
+          buffer,
+        };
+      }),
+    );
+
+    const queryAttachments = (attachmentRows as Array<Record<string, unknown>>)
+      .filter((a) => (a.kind ?? 'query') === 'query')
+      .map((a) => ({
+        filename: a.filename as string,
+        documentType: a.documentType as RfiDocumentType | undefined,
+        documentTypeOther: a.documentTypeOther as string | undefined,
+      }));
+    const responseAttachments = (attachmentRows as Array<Record<string, unknown>>)
+      .filter((a) => a.kind === 'response')
+      .map((a) => ({
+        filename: a.filename as string,
+        documentType: a.documentType as RfiDocumentType | undefined,
+        documentTypeOther: a.documentTypeOther as string | undefined,
+      }));
+
     const buffer = await renderRfiPdf({
       logoBuffer,
       stampBuffer,
+      organizations: orgLogos.filter((o): o is NonNullable<typeof o> => Boolean(o)),
+      // Only rendered by the template if set -- an unsubmitted/legacy RFI
+      // has no query_stamp/answer_stamp yet. "Uploaded By"/"date-time" mirror
+      // exactly what RfiDetailPage's own StampPanel already shows on screen
+      // for these two stamps (createdByName/updatedAt for the query stamp --
+      // there's no dedicated "submitted at" column, and submit() is the only
+      // thing that touches updated_at at that point; answeredByName/answeredAt
+      // for the answer stamp) so the PDF and the live page never disagree.
+      queryStamp: rfi.queryStamp
+        ? { uploadedBy: rfi.createdByName as string | undefined, dateTime: new Date(rfi.updatedAt as string).toLocaleString('en-GB'), stamp: rfi.queryStamp as string }
+        : undefined,
+      answerStamp: rfi.answerStamp
+        ? { uploadedBy: rfi.answeredByName as string | undefined, dateTime: rfi.answeredAt ? new Date(rfi.answeredAt as string).toLocaleString('en-GB') : undefined, stamp: rfi.answerStamp as string }
+        : undefined,
+      queryAttachments,
+      responseAttachments,
       rfiNumber: (rfi.rfiNumber as string) ?? rfi.id as string,
       status: rfi.status as string,
       priority: rfi.priority as string,

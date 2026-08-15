@@ -15,7 +15,7 @@ import {
 } from '../lib/rfis.api';
 import { getProject, getMembers, getPermissionGrants, getOrganizations } from '../lib/projects.api';
 import { getProjectActivity } from '../lib/audit.api';
-import { downloadRfiXls } from '../lib/rfi-xls';
+import { downloadRfiXls, type RfiWorkbookExtras } from '../lib/rfi-xls';
 import {
   RFI_WORKFLOW_STATUS_LABELS, RFI_WORKFLOW_STATUS_BADGE_CLASS, RFI_PRIORITY_LABELS, RFI_PRIORITY_BADGE_CLASS,
 } from '../lib/rfi-constants';
@@ -85,6 +85,18 @@ export default function RfiDetailPage() {
     queryKey: ['rfi-attachments', projectId, rfiId],
     queryFn: () => getRfiAttachments(projectId!, rfiId!),
     enabled: Boolean(projectId && rfiId),
+  });
+
+  // Same queryKey OrganizationSlotRow uses below -- react-query shares the
+  // one cached fetch between the two subscribers, so this doesn't add a
+  // second network request. Needed here (not just inside OrganizationSlotRow)
+  // so handleDownloadXls can thread the same already-loaded org data into
+  // the XLS export the page already displays live.
+  const organizationsQuery = useQuery({
+    queryKey: ['project-organizations', projectId],
+    queryFn: () => getOrganizations(projectId!),
+    enabled: Boolean(projectId),
+    retry: false,
   });
 
   // No dedicated "audit for one resource" endpoint exists -- fetch the
@@ -209,12 +221,29 @@ export default function RfiDetailPage() {
     setXlsDownloading(true);
     try {
       // rfi-xls.ts's Rfi.status is still the legacy-only vocabulary (see the
-      // comment on Rfi.status in packages/types/src/rfi.types.ts) and is out
-      // of scope for this ticket ("do not touch rfi-xls.ts"). For an RFI in
-      // one of the new workflow statuses, its RFI_STATUS_LABELS lookup will
-      // render blank for that one row -- a known, documented gap, not fixed
-      // here; the export otherwise works. Flagged for Phase 5.
-      const warnings = await downloadRfiXls(rfi as unknown as Rfi, projectQuery.data);
+      // comment on Rfi.status in packages/types/src/rfi.types.ts). For an RFI
+      // in one of the new workflow statuses, its RFI_STATUS_LABELS lookup
+      // still renders blank for that one row -- a known, pre-existing gap,
+      // not fixed here (out of scope: this ticket only threads the Phase 5
+      // sections through, it doesn't touch the legacy status-label lookup).
+      const extras: RfiWorkbookExtras = {
+        organizations: (organizationsQuery.data ?? [])
+          .filter((o) => o.name || o.logoUrl)
+          .map((o) => ({ slot: o.slot, name: o.name, orgRef: o.orgRef, logoUrl: o.logoUrl })),
+        queryStamp: rfi.queryStamp
+          ? { uploadedBy: rfi.createdByName, dateTime: formatDateTime(rfi.updatedAt), stamp: rfi.queryStamp }
+          : undefined,
+        answerStamp: rfi.answerStamp
+          ? { uploadedBy: rfi.answeredByName, dateTime: formatDateTime(rfi.answeredAt), stamp: rfi.answerStamp }
+          : undefined,
+        queryAttachments: queryAttachments.map((a) => ({
+          filename: a.filename, documentType: a.documentType, documentTypeOther: a.documentTypeOther,
+        })),
+        responseAttachments: responseAttachments.map((a) => ({
+          filename: a.filename, documentType: a.documentType, documentTypeOther: a.documentTypeOther,
+        })),
+      };
+      const warnings = await downloadRfiXls(rfi as unknown as Rfi, projectQuery.data, extras);
       if (warnings.length > 0) setXlsWarning(warnings.join(' '));
     } catch (err) {
       setXlsError(apiErrorMessage(err));
