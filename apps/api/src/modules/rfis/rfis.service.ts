@@ -12,8 +12,8 @@ import type { RequestClarificationDto } from './dto/request-clarification.dto';
 import type { RespondToRfiDto } from './dto/respond-to-rfi.dto';
 import type { AddRfiCommentDto } from './dto/add-rfi-comment.dto';
 import {
-  RFI_DISCIPLINE_LABELS, RFI_DISCIPLINE_CODES, PROJECT_ORGANIZATION_SLOT_LABELS,
-  type PaginationQuery, type RfiDiscipline, type RfiImpactLevel, type ProjectOrganizationSlot, type RfiDocumentType,
+  RFI_DISCIPLINE_LABELS, RFI_DISCIPLINE_CODES, PROJECT_ORGANIZATION_SLOT_LABELS, PROJECT_ORGANIZATION_SLOTS,
+  type PaginationQuery, type RfiDiscipline, type RfiImpactLevel, type RfiDocumentType,
 } from '@engineeringos/types';
 
 // ── Workflow state machine (Phase 1) ────────────────────────────────────────
@@ -194,11 +194,34 @@ export class RfisService {
       WHERE rfi_id = ${rfiId} AND company_id = ${companyId}
       ORDER BY uploaded_at ASC
     `);
-    return { rfi, project, organizations, attachmentRows };
+    // Comments and audit trail -- shown live on RfiDetailPage's
+    // Communication/Clarifications and Audit Trail sections, but never made
+    // it into either export. Same data, same read pattern as
+    // getComments()/the audit endpoint, just inlined here for the export.
+    const commentRows = await this.db.withTenant(companyId, sql => sql`
+      SELECT c.body, c.organization_slot, c.created_at, u.first_name || ' ' || u.last_name AS user_name
+      FROM rfi_comments c
+      LEFT JOIN users u ON u.id = c.user_id
+      WHERE c.rfi_id = ${rfiId} AND c.company_id = ${companyId}
+      ORDER BY c.created_at ASC
+    `);
+    // writeRfiAudit() (the workflow state machine below) only ever sets
+    // user_id, not the denormalized user_name/user_email columns the
+    // generic AuditInterceptor fills in for other routes -- resolve the
+    // name via users here rather than showing blank for every RFI-specific
+    // event, which would otherwise be most of this list.
+    const auditRows = await this.db.withTenant(companyId, sql => sql`
+      SELECT a.action, COALESCE(a.user_name, u.first_name || ' ' || u.last_name) AS user_name, a.occurred_at
+      FROM audit_log a
+      LEFT JOIN users u ON u.id = a.user_id
+      WHERE a.resource_type = 'rfi' AND a.resource_id = ${rfiId} AND a.company_id = ${companyId}
+      ORDER BY a.occurred_at ASC
+    `);
+    return { rfi, project, organizations, attachmentRows, commentRows, auditRows };
   }
 
   async generatePdf(companyId: string, projectId: string, rfiId: string): Promise<{ buffer: Buffer; filename: string }> {
-    const { rfi, project, organizations, attachmentRows } = await this.getPdfData(companyId, projectId, rfiId);
+    const { rfi, project, organizations, attachmentRows, commentRows, auditRows } = await this.getPdfData(companyId, projectId, rfiId);
     const discipline = rfi.discipline as RfiDiscipline | undefined;
     const filename = `${(rfi.rfiNumber as string) ?? rfiId}.pdf`;
 
@@ -211,20 +234,19 @@ export class RfisService {
       project?.stampStorageKey ? this.storage.download(project.stampStorageKey as string).catch(() => undefined) : undefined,
     ]);
 
-    // Same buffer-not-URL reasoning as the project logo/stamp above, just
-    // multiplied by up to 5 rows. A slot with no logo_storage_key, or whose
-    // download fails, is filtered out below rather than passed through as
-    // an empty entry -- the template renders exactly what it's given.
+    // Always all 5 slots, matching RfiDetailPage's own OrganizationSlotRow
+    // exactly -- an unconfigured slot still shows up there (as a "No logo"
+    // placeholder), so silently dropping it here would make the export show
+    // less than what the live page shows, not just render it differently.
+    const orgsBySlot = new Map((organizations as Array<Record<string, unknown>>).map(o => [o.slot as string, o]));
     const orgLogos = await Promise.all(
-      (organizations as Array<Record<string, unknown>>).map(async (org) => {
-        const key = org.logoStorageKey as string | undefined;
-        if (!key) return undefined;
-        const buffer = await this.storage.download(key).catch(() => undefined);
-        if (!buffer) return undefined;
-        const slot = org.slot as ProjectOrganizationSlot;
+      PROJECT_ORGANIZATION_SLOTS.map(async (slot) => {
+        const org = orgsBySlot.get(slot);
+        const key = org?.logoStorageKey as string | undefined;
+        const buffer = key ? await this.storage.download(key).catch(() => undefined) : undefined;
         return {
           slot,
-          label: (org.name as string | undefined) || PROJECT_ORGANIZATION_SLOT_LABELS[slot],
+          label: (org?.name as string | undefined) || PROJECT_ORGANIZATION_SLOT_LABELS[slot],
           buffer,
         };
       }),
@@ -245,10 +267,33 @@ export class RfisService {
         documentTypeOther: a.documentTypeOther as string | undefined,
       }));
 
+    const comments = (commentRows as Array<Record<string, unknown>>).map((c) => ({
+      userName: c.userName as string | undefined,
+      organizationSlot: c.organizationSlot as string | undefined,
+      body: c.body as string,
+      createdAt: new Date(c.createdAt as string).toLocaleString('en-GB'),
+    }));
+    const auditEvents = (auditRows as Array<Record<string, unknown>>).map((a) => ({
+      action: a.action as string,
+      userName: a.userName as string | undefined,
+      occurredAt: new Date(a.occurredAt as string).toLocaleString('en-GB'),
+    }));
+
     const buffer = await renderRfiPdf({
       logoBuffer,
       stampBuffer,
-      organizations: orgLogos.filter((o): o is NonNullable<typeof o> => Boolean(o)),
+      organizations: orgLogos,
+      comments,
+      auditEvents,
+      assignedToName: rfi.assignedToName as string | undefined,
+      dueDate: rfi.dueDate ? new Date(rfi.dueDate as string).toLocaleDateString('en-GB') : undefined,
+      costImpactLevel: (rfi.costImpactLevel as string | undefined) ?? (rfi.costImpact ? 'yes' : 'no'),
+      costImpactAmount: rfi.costImpactAmount != null ? Number(rfi.costImpactAmount) : undefined,
+      costImpactCurrency: rfi.costImpactCurrency as string | undefined,
+      costImpactDescription: rfi.costImpactDescription as string | undefined,
+      timeImpactLevel: (rfi.timeImpactLevel as string | undefined) ?? (rfi.timeImpact ? 'yes' : 'no'),
+      timeImpactDays: rfi.timeImpactDays != null ? Number(rfi.timeImpactDays) : undefined,
+      timeImpactDescription: rfi.timeImpactDescription as string | undefined,
       // Only rendered by the template if set -- an unsubmitted/legacy RFI
       // has no query_stamp/answer_stamp yet. "Uploaded By"/"date-time" mirror
       // exactly what RfiDetailPage's own StampPanel already shows on screen
@@ -272,8 +317,6 @@ export class RfisService {
       answer: rfi.answer as string | undefined,
       disciplineLabel: discipline ? RFI_DISCIPLINE_LABELS[discipline] : '—',
       disciplineOther: rfi.disciplineOther as string | undefined,
-      costImpact: Boolean(rfi.costImpact),
-      timeImpact: Boolean(rfi.timeImpact),
       projectName: (project?.name as string) ?? '—',
       projectCode: project?.code as string | undefined,
       location: project?.location as string | undefined,

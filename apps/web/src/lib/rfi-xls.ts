@@ -1,7 +1,8 @@
 import ExcelJS from 'exceljs';
-import type { Rfi, Project } from '@engineeringos/types';
+import type { Rfi, Project, RfiImpactLevel } from '@engineeringos/types';
 import {
-  RFI_DISCIPLINE_LABELS, RFI_DOCUMENT_TYPE_LABELS, PROJECT_ORGANIZATION_SLOT_LABELS,
+  RFI_DISCIPLINE_LABELS, RFI_DOCUMENT_TYPE_LABELS, RFI_IMPACT_LEVEL_LABELS,
+  PROJECT_ORGANIZATION_SLOTS, PROJECT_ORGANIZATION_SLOT_LABELS,
   type RfiDocumentType, type ProjectOrganizationSlot,
 } from '@engineeringos/types';
 import { RFI_STATUS_LABELS, RFI_PRIORITY_LABELS, formatDate } from './rfi-constants';
@@ -47,6 +48,19 @@ export interface RfiXlsAttachmentItem {
   filename: string;
   documentType?: RfiDocumentType;
   documentTypeOther?: string;
+}
+
+export interface RfiXlsComment {
+  userName?: string;
+  organizationSlot?: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface RfiXlsAuditEvent {
+  action: string;
+  userName?: string;
+  occurredAt: string;
 }
 
 // Mirrors rfi-pdf.template.ts's palette exactly -- both apps/web/tailwind
@@ -152,6 +166,8 @@ export interface RfiWorkbookExtras {
   answerStamp?: RfiXlsUploadStamp;
   queryAttachments?: RfiXlsAttachmentItem[];
   responseAttachments?: RfiXlsAttachmentItem[];
+  comments?: RfiXlsComment[];
+  auditEvents?: RfiXlsAuditEvent[];
 }
 
 // Split out from downloadRfiXls so the workbook itself (the part worth
@@ -181,12 +197,16 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
     views: [{ showGridLines: false }],
     pageSetup: { orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
   });
-  sheet.columns = [{ width: 24 }, { width: 62 }];
+  // Column A widened from 24 to 30 -- at 24, "REQUEST FOR INFORMATION" (24
+  // characters) in bold 14pt visually overflowed and got clipped at the
+  // column boundary instead of spilling into the adjacent (non-empty)
+  // cell, which Excel only does for genuinely empty neighbors.
+  sheet.columns = [{ width: 30 }, { width: 62 }];
 
   // Title bar
   const titleRow = sheet.addRow(['REQUEST FOR INFORMATION', rfi.rfiNumber ?? rfi.id]);
   titleRow.height = 28;
-  titleRow.getCell(1).font = { bold: true, size: 14, color: { argb: INK }, name: FONT };
+  titleRow.getCell(1).font = { bold: true, size: 13, color: { argb: INK }, name: FONT };
   titleRow.getCell(2).font = { bold: true, size: 12, color: { argb: ACCENT }, name: FONT };
   titleRow.getCell(1).alignment = { vertical: 'middle' };
   titleRow.getCell(2).alignment = { vertical: 'middle', horizontal: 'right' };
@@ -214,35 +234,53 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
   fieldRow(sheet, 'Subcontractor', project?.subcontractor ?? '—');
   spacerRow(sheet);
 
-  // The 5 named-organization slots (Phase 4/5) -- distinct from the
-  // free-text stakeholder fields above. Skips entirely when none are
-  // configured, same "don't render empty chrome" rule as the PDF template.
-  if (extras?.organizations && extras.organizations.length > 0) {
-    sectionRow(sheet, 'ORGANIZATIONS');
-    for (const org of extras.organizations) {
-      const row = fieldRow(
-        sheet,
-        PROJECT_ORGANIZATION_SLOT_LABELS[org.slot],
-        [org.name, org.orgRef].filter(Boolean).join(' — ') || '—',
-      );
-      const orgLogo = await tryFetchImage(org.logoUrl);
-      if (orgLogo.status === 'ok') {
-        const imageId = workbook.addImage({ buffer: orgLogo.buffer, extension: orgLogo.extension });
-        sheet.addImage(imageId, { tl: { col: 1.55, row: row.number - 1 }, ext: { width: 20, height: 20 } });
-      } else if (orgLogo.status === 'failed') {
-        warnings.push(`Could not load the ${PROJECT_ORGANIZATION_SLOT_LABELS[org.slot]} logo, so it was left out of this export.`);
-      }
+  // Always all 5 named-organization slots (Phase 4/5) -- distinct from the
+  // free-text stakeholder fields above. Matches RfiDetailPage's own
+  // OrganizationSlotRow, which shows a row for every slot whether or not
+  // it's configured yet, rather than only the ones somebody filled in.
+  sectionRow(sheet, 'ORGANIZATIONS');
+  const orgsBySlot = new Map((extras?.organizations ?? []).map((o) => [o.slot, o]));
+  for (const slot of PROJECT_ORGANIZATION_SLOTS) {
+    const org = orgsBySlot.get(slot);
+    const row = fieldRow(
+      sheet,
+      PROJECT_ORGANIZATION_SLOT_LABELS[slot],
+      [org?.name, org?.orgRef].filter(Boolean).join(' — ') || '—',
+    );
+    const orgLogo = await tryFetchImage(org?.logoUrl);
+    if (orgLogo.status === 'ok') {
+      const imageId = workbook.addImage({ buffer: orgLogo.buffer, extension: orgLogo.extension });
+      sheet.addImage(imageId, { tl: { col: 1.55, row: row.number - 1 }, ext: { width: 20, height: 20 } });
+    } else if (orgLogo.status === 'failed') {
+      warnings.push(`Could not load the ${PROJECT_ORGANIZATION_SLOT_LABELS[slot]} logo, so it was left out of this export.`);
     }
-    spacerRow(sheet);
   }
+  spacerRow(sheet);
 
   sectionRow(sheet, 'RFI DETAILS');
   fieldRow(sheet, 'Status', RFI_STATUS_LABELS[rfi.status]);
   fieldRow(sheet, 'Priority', RFI_PRIORITY_LABELS[rfi.priority]);
   fieldRow(sheet, 'Discipline', disciplineDisplay);
-  fieldRow(sheet, 'Cost Impact', rfi.costImpact ? 'Yes' : 'No');
-  fieldRow(sheet, 'Time Impact', rfi.timeImpact ? 'Yes' : 'No');
+  fieldRow(sheet, 'Assigned To', rfi.assignedToName ?? 'Unassigned');
   fieldRow(sheet, 'Due Date', formatDate(rfi.dueDate));
+  spacerRow(sheet);
+
+  // Full 4-state impact detail (level + amount/currency or days +
+  // description), not just a Yes/No boolean -- matches RfiDetailPage's own
+  // ImpactSummary/ImpactEditor exactly. Falls back to the legacy boolean
+  // for RFIs created before the level field existed, same precedence
+  // rfis.service.ts itself uses server-side.
+  const costLevel: RfiImpactLevel = rfi.costImpactLevel ?? (rfi.costImpact ? 'yes' : 'no');
+  const timeLevel: RfiImpactLevel = rfi.timeImpactLevel ?? (rfi.timeImpact ? 'yes' : 'no');
+  sectionRow(sheet, 'IMPACT OF REPLY');
+  fieldRow(sheet, 'Cost Impact', RFI_IMPACT_LEVEL_LABELS[costLevel]);
+  if (rfi.costImpactAmount != null) {
+    fieldRow(sheet, 'Estimated Amount', `${rfi.costImpactCurrency ? rfi.costImpactCurrency + ' ' : ''}${rfi.costImpactAmount}`);
+  }
+  if (rfi.costImpactDescription) fieldRow(sheet, 'Cost Impact Notes', rfi.costImpactDescription);
+  fieldRow(sheet, 'Time Impact', RFI_IMPACT_LEVEL_LABELS[timeLevel]);
+  if (rfi.timeImpactDays != null) fieldRow(sheet, 'Estimated Days', String(rfi.timeImpactDays));
+  if (rfi.timeImpactDescription) fieldRow(sheet, 'Time Impact Notes', rfi.timeImpactDescription);
   spacerRow(sheet);
 
   sectionRow(sheet, 'RFI TITLE');
@@ -280,6 +318,27 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
     fieldRow(sheet, 'Uploaded By', extras.answerStamp.uploadedBy ?? '—');
     fieldRow(sheet, 'Date-Time', extras.answerStamp.dateTime ?? '—');
     fieldRow(sheet, 'Stamp', extras.answerStamp.stamp);
+  }
+  spacerRow(sheet);
+
+  sectionRow(sheet, 'COMMUNICATION / CLARIFICATIONS');
+  if (extras?.comments && extras.comments.length > 0) {
+    for (const c of extras.comments) {
+      const who = `${c.userName ?? 'Someone'}${c.organizationSlot ? ` (${c.organizationSlot})` : ''}  ·  ${c.createdAt}`;
+      textBlockRow(sheet, `${who}\n${c.body}`);
+    }
+  } else {
+    fieldRow(sheet, 'Comments', 'No comments.');
+  }
+  spacerRow(sheet);
+
+  sectionRow(sheet, 'AUDIT TRAIL');
+  if (extras?.auditEvents && extras.auditEvents.length > 0) {
+    for (const a of extras.auditEvents) {
+      fieldRow(sheet, a.action, `${a.userName ?? 'System'}  ·  ${a.occurredAt}`);
+    }
+  } else {
+    fieldRow(sheet, 'Events', 'No audit events recorded.');
   }
 
   const logo = await tryFetchImage(project?.logoUrl);

@@ -242,6 +242,12 @@ export default function RfiDetailPage() {
         responseAttachments: responseAttachments.map((a) => ({
           filename: a.filename, documentType: a.documentType, documentTypeOther: a.documentTypeOther,
         })),
+        comments: (commentsQuery.data ?? []).map((c) => ({
+          userName: c.userName, organizationSlot: c.organizationSlot, body: c.body, createdAt: formatDateTime(c.createdAt),
+        })),
+        auditEvents: rfiAudit.map((a) => ({
+          action: a.action, userName: a.userName, occurredAt: formatDateTime(a.occurredAt),
+        })),
       };
       const warnings = await downloadRfiXls(rfi as unknown as Rfi, projectQuery.data, extras);
       if (warnings.length > 0) setXlsWarning(warnings.join(' '));
