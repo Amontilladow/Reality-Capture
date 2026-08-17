@@ -30,6 +30,54 @@ function richTextToPlain(html: string): string {
 // place in this module that knows about @react-pdf/renderer at all, so
 // rfis.service.ts / rfis.controller.ts stay free of PDF-library specifics.
 
+// ── Brand ────────────────────────────────────────────────────────────────
+// Mirrors apps/web/tailwind.config.js exactly ("Blueprint-dark technical
+// palette -- surveying/drafting instrument feel") so a printed RFI reads as
+// the same product as the live app, not a generic slate-and-blue template.
+// A generated document is printed on white paper, not the app's own dark
+// background, so INK/BASE tones are used here as foreground text/border
+// colors against white rather than as backgrounds -- the palette is the
+// same, the ground it sits on is just inverted, same as any print
+// letterhead vs. its parent app's on-screen theme.
+const INK = '#0A141C';       // base-950 -- primary body text
+const INK_MUTED = '#4A6178'; // base-500 -- secondary text/labels
+const BORDER = '#B9C6CE';    // a lighter tint of base-500 -- print-legible hairline
+const SECTION_FILL = '#EAF0F4'; // ink-100 -- the app's own light tone, reused as a tint
+const SIGNAL = '#E56A1F';    // signal, darkened ~15% for print contrast on white
+const BLUEPRINT = '#1E6E93'; // blueprint, darkened for print contrast on white
+
+// Real product fonts (IBM Plex Sans/Mono, self-hosted via @fontsource --
+// same family the live app loads from Google Fonts in index.html) rather
+// than the PDF's own default Helvetica. Registered once per process, not
+// per render -- Font.register on every request would just redundantly
+// re-parse the same font files.
+let fontsRegistered = false;
+function registerFonts(Font: typeof import('@react-pdf/renderer').Font) {
+  if (fontsRegistered) return;
+  fontsRegistered = true;
+  Font.register({
+    family: 'IBM Plex Sans',
+    fonts: [
+      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff'), fontWeight: 400 },
+      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-600-normal.woff'), fontWeight: 600 },
+      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff'), fontWeight: 700 },
+    ],
+  });
+  // IBM Plex Mono deliberately NOT registered here -- @fontsource's current
+  // "latin" WOFF build of it crashes fontkit's glyph-metrics parser on the
+  // plain space character ("Offset is outside the bounds of the DataView"),
+  // confirmed by isolating it: IBM Plex Sans (all 3 weights, special
+  // characters, real content) renders cleanly, the exact same test with
+  // Mono fails on any string containing a space. Since every real value
+  // here (RFI numbers, stamps, filenames) contains spaces or is adjacent to
+  // text that does, Mono is unusable as shipped. Sans is used everywhere
+  // instead, with weight standing in for the monospace emphasis the live
+  // app gives these fields.
+  // react-pdf/yoga hyphenates justified text by default using a wordlist
+  // this custom font doesn't need -- disabling avoids odd mid-word breaks.
+  Font.registerHyphenationCallback((word) => [word]);
+}
+
 // Phase 5 additions -- the 5 named-organization logos (project_organizations,
 // Phase 4), the two upload stamps (query_stamp/answer_stamp, Phase 1), and
 // the query/response attachment lists (rfi_attachments.kind, Phase 2). All
@@ -100,53 +148,54 @@ const FIELD_ROWS: Array<[string, keyof RfiPdfData]> = [
 ];
 
 export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
-  const { Document, Page, View, Text, Image, StyleSheet, renderToBuffer } = await import('@react-pdf/renderer');
+  const { Document, Page, View, Text, Image, StyleSheet, Font, renderToBuffer } = await import('@react-pdf/renderer');
+  registerFonts(Font);
 
   const styles = StyleSheet.create({
-    page: { padding: 32, fontSize: 9, fontFamily: 'Helvetica', color: '#1a1a1a' },
-    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+    page: { padding: 32, fontSize: 9, fontFamily: 'IBM Plex Sans', color: INK },
+    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, paddingBottom: 10, borderBottom: `2 solid ${SIGNAL}` },
     headerLeft: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
     logo: { width: 44, height: 44, objectFit: 'contain' },
     stamp: { width: 70, height: 70, objectFit: 'contain', marginBottom: 4 },
-    title: { fontSize: 16, fontFamily: 'Helvetica-Bold' },
-    rfiNumber: { fontSize: 12, fontFamily: 'Helvetica-Bold', color: '#2563eb', marginTop: 2 },
-    badge: { fontSize: 8, fontFamily: 'Helvetica-Bold', padding: '3 8', borderRadius: 2, backgroundColor: '#f1f5f9', textTransform: 'uppercase' },
-    section: { border: '1 solid #cbd5e1', borderRadius: 3, padding: 10, marginBottom: 10 },
-    sectionTitle: { fontSize: 8, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', color: '#64748b', marginBottom: 6, letterSpacing: 0.5 },
+    title: { fontSize: 15, fontFamily: 'IBM Plex Sans', fontWeight: 700, letterSpacing: 0.3 },
+    rfiNumber: { fontSize: 12, fontFamily: 'IBM Plex Sans', fontWeight: 700, color: SIGNAL, marginTop: 3, letterSpacing: 0.2 },
+    badge: { fontSize: 8, fontFamily: 'IBM Plex Sans', fontWeight: 700, padding: '3 8', borderRadius: 2, backgroundColor: SECTION_FILL, color: BLUEPRINT, textTransform: 'uppercase', letterSpacing: 0.4 },
+    section: { border: `1 solid ${BORDER}`, borderRadius: 3, padding: 10, marginBottom: 10 },
+    sectionTitle: { fontSize: 8, fontFamily: 'IBM Plex Sans', fontWeight: 700, textTransform: 'uppercase', color: BLUEPRINT, marginBottom: 6, letterSpacing: 0.6 },
     row: { flexDirection: 'row', marginBottom: 4 },
     col: { flex: 1, paddingRight: 8 },
-    label: { fontSize: 8, color: '#64748b', marginBottom: 1 },
+    label: { fontSize: 8, color: INK_MUTED, marginBottom: 1 },
     value: { fontSize: 9.5 },
     checkboxRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     checkboxItem: { flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 12, marginBottom: 4 },
-    checkbox: { width: 9, height: 9, border: '1 solid #1a1a1a' },
-    checkboxChecked: { width: 9, height: 9, border: '1 solid #1a1a1a', backgroundColor: '#1a1a1a' },
+    checkbox: { width: 9, height: 9, border: `1 solid ${INK}` },
+    checkboxChecked: { width: 9, height: 9, border: `1 solid ${SIGNAL}`, backgroundColor: SIGNAL },
     impactRow: { flexDirection: 'row', gap: 24 },
     bodyText: { fontSize: 9.5, lineHeight: 1.5 },
-    footerRow: { flexDirection: 'row', marginTop: 16, paddingTop: 10, borderTop: '1 solid #cbd5e1' },
+    footerRow: { flexDirection: 'row', marginTop: 16, paddingTop: 10, borderTop: `1 solid ${BORDER}` },
     footerCol: { flex: 1 },
-    footerLabel: { fontSize: 8, color: '#64748b', marginBottom: 12 },
-    signatureLine: { borderTop: '1 solid #94a3b8', paddingTop: 3, fontSize: 8.5, width: 160 },
+    footerLabel: { fontSize: 8, color: INK_MUTED, marginBottom: 12 },
+    signatureLine: { borderTop: `1 solid ${INK_MUTED}`, paddingTop: 3, fontSize: 8.5, width: 160 },
     // 5-organization header row (Phase 5) -- sits alongside the existing
     // single authoring-party logo, not in place of it.
     orgRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 },
     orgItem: { alignItems: 'center', width: 52 },
     orgLogo: { width: 34, height: 34, objectFit: 'contain', marginBottom: 2 },
-    orgLabel: { fontSize: 6, color: '#64748b', textAlign: 'center' },
-    // Upload-stamp panels -- visually distinct bordered/shaded box, same
-    // language as `section`/`badge` above but shaded to read as a stamp
-    // rather than another content section.
-    stampPanel: { border: '1 solid #94a3b8', borderRadius: 3, backgroundColor: '#f1f5f9', padding: 8, marginBottom: 10 },
-    stampTitle: { fontSize: 7, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', color: '#2563eb', marginBottom: 4, letterSpacing: 0.5 },
+    orgLabel: { fontSize: 6, fontFamily: 'IBM Plex Sans', color: INK_MUTED, textAlign: 'center' },
+    // Upload-stamp panels -- visually distinct bordered/shaded box, tinted
+    // with the app's own light "ink-100" tone rather than a generic gray,
+    // so it reads as a stamp, not another content section.
+    stampPanel: { border: `1 solid ${SIGNAL}`, borderRadius: 3, backgroundColor: SECTION_FILL, padding: 8, marginBottom: 10 },
+    stampTitle: { fontSize: 7, fontFamily: 'IBM Plex Sans', fontWeight: 700, textTransform: 'uppercase', color: SIGNAL, marginBottom: 4, letterSpacing: 0.6 },
     stampRow: { flexDirection: 'row', gap: 16 },
     stampCol: { flex: 1 },
-    stampLabel: { fontSize: 7, color: '#64748b', marginBottom: 1 },
-    stampValue: { fontSize: 8.5, fontFamily: 'Helvetica-Bold' },
+    stampLabel: { fontSize: 7, color: INK_MUTED, marginBottom: 1 },
+    stampValue: { fontSize: 8.5, fontFamily: 'IBM Plex Sans', fontWeight: 700 },
     // Query/response attachment lists -- plain text lines, not clickable
     // (this is a static generated document, not the live detail page).
     attachmentsBlock: { marginTop: 4 },
-    attachmentsHeading: { fontSize: 7, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', color: '#64748b', marginBottom: 2, letterSpacing: 0.5 },
-    attachmentItem: { fontSize: 8.5, marginBottom: 1.5 },
+    attachmentsHeading: { fontSize: 7, fontFamily: 'IBM Plex Sans', fontWeight: 700, textTransform: 'uppercase', color: INK_MUTED, marginBottom: 2, letterSpacing: 0.6 },
+    attachmentItem: { fontSize: 8.5, fontFamily: 'IBM Plex Sans', marginBottom: 1.5 },
   });
 
   const checkbox = (label: string, checked: boolean) =>

@@ -49,13 +49,21 @@ export interface RfiXlsAttachmentItem {
   documentTypeOther?: string;
 }
 
-// Mirrors rfi-pdf.template.ts's palette so the two exports read as the same
-// document family, not two unrelated tools.
-const INK = 'FF1A1A1A';
-const MUTED = 'FF64748B';
-const BORDER = 'FFCBD5E1';
-const SECTION_FILL = 'FFF1F5F9';
-const ACCENT = 'FF2563EB';
+// Mirrors rfi-pdf.template.ts's palette exactly -- both apps/web/tailwind
+// config.js's real "blueprint-dark technical" tokens, not generic slate/blue
+// -- so the two exports read as the same document family, and that family
+// reads as the same product as the live app, not an unrelated template.
+const INK = 'FF0A141C';          // base-950
+const MUTED = 'FF4A6178';        // base-500
+const BORDER = 'FFB9C6CE';       // lighter tint of base-500, print-legible
+const SECTION_FILL = 'FFEAF0F4'; // ink-100, reused as a light section tint
+const ACCENT = 'FFE56A1F';       // signal, darkened for contrast on white
+const BLUEPRINT = 'FF1E6E93';    // blueprint, darkened for contrast on white
+const FONT = 'IBM Plex Sans';    // matches index.html's Google Fonts load --
+// Excel has no font-embedding concept (unlike the PDF, which does embed
+// this via @fontsource); if a viewer's system doesn't have it installed,
+// Excel silently substitutes its own default, same as any other font name
+// specified in a spreadsheet. Correct either way, no crash risk.
 
 const thin = { style: 'thin' as const, color: { argb: BORDER } };
 const gridBorder = { top: thin, bottom: thin, left: thin, right: thin };
@@ -66,7 +74,7 @@ function sectionRow(sheet: ExcelJS.Worksheet, title: string) {
   row.height = 20;
   row.eachCell({ includeEmpty: true }, (cell) => {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: SECTION_FILL } };
-    cell.font = { bold: true, size: 9, color: { argb: MUTED }, name: 'Calibri' };
+    cell.font = { bold: true, size: 9, color: { argb: BLUEPRINT }, name: FONT };
     cell.alignment = { vertical: 'middle' };
     cell.border = gridBorder;
   });
@@ -77,8 +85,8 @@ function fieldRow(sheet: ExcelJS.Worksheet, label: string, value: string) {
   const row = sheet.addRow([label, value]);
   row.height = 18;
   const [labelCell, valueCell] = [row.getCell(1), row.getCell(2)];
-  labelCell.font = { bold: true, size: 9.5, color: { argb: MUTED }, name: 'Calibri' };
-  valueCell.font = { size: 10, color: { argb: INK }, name: 'Calibri' };
+  labelCell.font = { bold: true, size: 9.5, color: { argb: MUTED }, name: FONT };
+  valueCell.font = { size: 10, color: { argb: INK }, name: FONT };
   labelCell.alignment = { vertical: 'middle' };
   valueCell.alignment = { vertical: 'middle', wrapText: true };
   labelCell.border = gridBorder;
@@ -94,7 +102,7 @@ function textBlockRow(sheet: ExcelJS.Worksheet, text: string) {
   const lines = Math.max(1, Math.ceil(text.length / 95));
   row.height = Math.max(20, lines * 14);
   row.eachCell({ includeEmpty: true }, (cell) => {
-    cell.font = { size: 10, color: { argb: INK }, name: 'Calibri' };
+    cell.font = { size: 10, color: { argb: INK }, name: FONT };
     cell.alignment = { vertical: 'top', wrapText: true };
     cell.border = gridBorder;
   });
@@ -178,12 +186,14 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
   // Title bar
   const titleRow = sheet.addRow(['REQUEST FOR INFORMATION', rfi.rfiNumber ?? rfi.id]);
   titleRow.height = 28;
-  titleRow.getCell(1).font = { bold: true, size: 14, color: { argb: INK }, name: 'Calibri' };
-  titleRow.getCell(2).font = { bold: true, size: 12, color: { argb: ACCENT }, name: 'Calibri' };
+  titleRow.getCell(1).font = { bold: true, size: 14, color: { argb: INK }, name: FONT };
+  titleRow.getCell(2).font = { bold: true, size: 12, color: { argb: ACCENT }, name: FONT };
   titleRow.getCell(1).alignment = { vertical: 'middle' };
   titleRow.getCell(2).alignment = { vertical: 'middle', horizontal: 'right' };
   titleRow.eachCell((cell) => {
-    cell.border = { bottom: { style: 'medium', color: { argb: INK } } };
+    // Matches rfi-pdf.template.ts's header rule exactly -- a signal-orange
+    // underline, not a plain black one.
+    cell.border = { bottom: { style: 'medium', color: { argb: ACCENT } } };
   });
   spacerRow(sheet);
 
