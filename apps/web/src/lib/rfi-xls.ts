@@ -6,6 +6,7 @@ import {
   type RfiDocumentType, type ProjectOrganizationSlot,
 } from '@engineeringos/types';
 import { RFI_STATUS_LABELS, RFI_PRIORITY_LABELS, formatDate } from './rfi-constants';
+import { apiGet } from './api';
 
 // question/answer are stored as HTML from the RichTextEditor (Phase 3) --
 // converts Tiptap's StarterKit output (paragraphs, headings, lists,
@@ -129,24 +130,46 @@ function spacerRow(sheet: ExcelJS.Worksheet) {
   return row;
 }
 
-type ImageFetchResult =
-  | { status: 'absent' }
-  | { status: 'ok'; buffer: ArrayBuffer; extension: 'png' | 'jpeg' }
-  | { status: 'failed' };
+// Project logo/stamp and each organization's logo used to be fetched with a
+// plain browser fetch() straight against their S3 presigned GET URLs. That
+// works for an <img src> (no CORS needed just to paint pixels) and works in
+// Node (fetch() there doesn't enforce CORS), but reading the response body
+// in a real browser strictly requires the bucket to send CORS headers for
+// this app's origin -- easy to be missing in production even when local
+// MinIO's permissive default masks it in dev. Routed through this
+// same-origin backend endpoint instead (mirrors rfis.service.ts's
+// generatePdf(), which has never had this problem since it downloads via
+// the S3 SDK server-side, no browser/CORS involved at all).
+interface RfiExportImageAsset {
+  base64: string;
+  mimeType: string;
+}
+interface RfiExportAssets {
+  logo?: RfiExportImageAsset;
+  stamp?: RfiExportImageAsset;
+  organizations: Array<{ slot: ProjectOrganizationSlot; base64?: string; mimeType?: string }>;
+}
 
-async function tryFetchImage(url?: string): Promise<ImageFetchResult> {
-  if (!url) return { status: 'absent' };
+async function fetchExportAssets(projectId: string, rfiId: string): Promise<RfiExportAssets | undefined> {
   try {
-    const res = await fetch(url);
-    if (!res.ok) return { status: 'failed' };
-    const contentType = res.headers.get('content-type') ?? '';
-    const extension = contentType.includes('png') ? 'png' : 'jpeg';
-    return { status: 'ok', buffer: await res.arrayBuffer(), extension };
+    return await apiGet<RfiExportAssets>(`/projects/${projectId}/rfis/${rfiId}/export-assets`);
   } catch {
-    // A CORS hiccup or network blip shouldn't take down the whole export --
-    // the caller decides whether/how to surface this as a warning.
-    return { status: 'failed' };
+    // A network blip or auth hiccup shouldn't take down the whole export --
+    // the caller decides whether/how to surface this as a warning (same
+    // rule the old per-image tryFetchImage() followed).
+    return undefined;
   }
+}
+
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+function extensionFromMimeType(mimeType?: string): 'png' | 'jpeg' {
+  return mimeType?.includes('png') ? 'png' : 'jpeg';
 }
 
 export interface RfiWorkbookResult {
@@ -181,13 +204,24 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
     : discipline;
 
   // Image fetches (project logo/stamp, organization logos) are all a
-  // nice-to-have -- a CORS hiccup or network blip never blocks the export
-  // (same rule the PDF template follows), but unlike the PDF path this
-  // failure is silent to the person clicking the button, so it's worth
-  // telling them rather than just quietly shipping a file that's missing
-  // branding they expected to see. Declared up front since organization
-  // logos (below) are fetched before the project logo/stamp at the bottom.
+  // nice-to-have -- a network blip never blocks the export (same rule the
+  // PDF template follows), but unlike the PDF path this failure is silent
+  // to the person clicking the button, so it's worth telling them rather
+  // than just quietly shipping a file that's missing branding they expected
+  // to see. Declared up front since organization logos (below) are
+  // referenced before the project logo/stamp at the bottom.
   const warnings: string[] = [];
+
+  // Single same-origin call for every image this export needs (project
+  // logo/stamp + all 5 org logos), instead of one direct browser fetch()
+  // per image against S3 presigned URLs -- see the comment on
+  // fetchExportAssets() above for why. `undefined` here means the whole
+  // request failed (network/auth); the per-image fallbacks below already
+  // treat "no asset for a slot/field that was actually configured" as a
+  // failure regardless of which of the two happened, so no separate
+  // whole-request branch is needed.
+  const exportAssets = await fetchExportAssets(rfi.projectId, rfi.id);
+  const exportAssetsBySlot = new Map((exportAssets?.organizations ?? []).map((o) => [o.slot, o]));
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'EngineeringOS';
@@ -217,27 +251,26 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
   });
   spacerRow(sheet);
 
-  sectionRow(sheet, 'PROJECT');
-  fieldRow(sheet, 'Project Name', project?.name ?? '—');
-  fieldRow(sheet, 'Project No.', project?.code ?? '—');
-  fieldRow(sheet, 'Location', project?.location ?? '—');
-  fieldRow(sheet, 'Date', formatDate(rfi.createdAt));
-  spacerRow(sheet);
+  // Compact "Name · No." line, folded into the header area instead of a
+  // standalone "PROJECT" section -- matches the live page's PageHeader
+  // eyebrow shown just above the RFI number heading. Location/Date dropped
+  // entirely (the live page never shows either; Date is already covered by
+  // the RFI DETAILS section's own creation-adjacent fields below).
+  if (project?.name || project?.code) {
+    const projectLineRow = sheet.addRow([[project?.name, project?.code].filter(Boolean).join(' · '), '']);
+    sheet.mergeCells(projectLineRow.number, 1, projectLineRow.number, 2);
+    projectLineRow.height = 16;
+    projectLineRow.eachCell({ includeEmpty: true }, (cell) => {
+      cell.font = { size: 9, color: { argb: MUTED }, name: FONT };
+      cell.alignment = { vertical: 'middle' };
+    });
+    spacerRow(sheet);
+  }
 
-  sectionRow(sheet, 'STAKEHOLDERS');
-  fieldRow(sheet, 'Client', project?.clientName ?? '—');
-  fieldRow(sheet, 'Lead Designer', project?.leadDesigner ?? '—');
-  fieldRow(sheet, 'Consultant', project?.consultantName ?? '—');
-  fieldRow(sheet, 'Technical Advisor', project?.technicalAdvisor ?? '—');
-  fieldRow(sheet, 'PMC', project?.pmcName ?? '—');
-  fieldRow(sheet, 'Main Contractor', project?.mainContractor ?? '—');
-  fieldRow(sheet, 'Subcontractor', project?.subcontractor ?? '—');
-  spacerRow(sheet);
-
-  // Always all 5 named-organization slots (Phase 4/5) -- distinct from the
-  // free-text stakeholder fields above. Matches RfiDetailPage's own
-  // OrganizationSlotRow, which shows a row for every slot whether or not
-  // it's configured yet, rather than only the ones somebody filled in.
+  // Always all 5 named-organization slots (Phase 4/5). Matches
+  // RfiDetailPage's own OrganizationSlotRow, which shows a row for every
+  // slot whether or not it's configured yet, rather than only the ones
+  // somebody filled in.
   sectionRow(sheet, 'ORGANIZATIONS');
   const orgsBySlot = new Map((extras?.organizations ?? []).map((o) => [o.slot, o]));
   for (const slot of PROJECT_ORGANIZATION_SLOTS) {
@@ -247,11 +280,16 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
       PROJECT_ORGANIZATION_SLOT_LABELS[slot],
       [org?.name, org?.orgRef].filter(Boolean).join(' — ') || '—',
     );
-    const orgLogo = await tryFetchImage(org?.logoUrl);
-    if (orgLogo.status === 'ok') {
-      const imageId = workbook.addImage({ buffer: orgLogo.buffer, extension: orgLogo.extension });
+    const orgAsset = exportAssetsBySlot.get(slot);
+    if (orgAsset?.base64) {
+      const imageId = workbook.addImage({ buffer: base64ToArrayBuffer(orgAsset.base64), extension: extensionFromMimeType(orgAsset.mimeType) });
       sheet.addImage(imageId, { tl: { col: 1.55, row: row.number - 1 }, ext: { width: 20, height: 20 } });
-    } else if (orgLogo.status === 'failed') {
+    } else if (org?.logoUrl) {
+      // A logo was configured (RfiDetailPage's OrganizationSlotRow shows
+      // one on screen) but the backend couldn't resolve it -- either this
+      // slot's own S3 download failed, or the whole export-assets request
+      // failed. Either way, worth telling the person who clicked the
+      // button, same as the old per-image tryFetchImage() did.
       warnings.push(`Could not load the ${PROJECT_ORGANIZATION_SLOT_LABELS[slot]} logo, so it was left out of this export.`);
     }
   }
@@ -306,6 +344,20 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
     spacerRow(sheet);
   }
 
+  // Communication/Clarifications before Response -- matches the live page's
+  // own top-to-bottom order (comment thread renders above the Response
+  // panel on RfiDetailPage).
+  sectionRow(sheet, 'COMMUNICATION / CLARIFICATIONS');
+  if (extras?.comments && extras.comments.length > 0) {
+    for (const c of extras.comments) {
+      const who = `${c.userName ?? 'Someone'}${c.organizationSlot ? ` (${c.organizationSlot})` : ''}  ·  ${c.createdAt}`;
+      textBlockRow(sheet, `${who}\n${c.body}`);
+    }
+  } else {
+    fieldRow(sheet, 'Comments', 'No comments.');
+  }
+  spacerRow(sheet);
+
   sectionRow(sheet, 'RESPONSE');
   textBlockRow(sheet, rfi.answer ? richTextToPlain(rfi.answer) : '(not yet answered)');
   if (extras?.responseAttachments && extras.responseAttachments.length > 0) {
@@ -321,17 +373,6 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
   }
   spacerRow(sheet);
 
-  sectionRow(sheet, 'COMMUNICATION / CLARIFICATIONS');
-  if (extras?.comments && extras.comments.length > 0) {
-    for (const c of extras.comments) {
-      const who = `${c.userName ?? 'Someone'}${c.organizationSlot ? ` (${c.organizationSlot})` : ''}  ·  ${c.createdAt}`;
-      textBlockRow(sheet, `${who}\n${c.body}`);
-    }
-  } else {
-    fieldRow(sheet, 'Comments', 'No comments.');
-  }
-  spacerRow(sheet);
-
   sectionRow(sheet, 'AUDIT TRAIL');
   if (extras?.auditEvents && extras.auditEvents.length > 0) {
     for (const a of extras.auditEvents) {
@@ -341,20 +382,24 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
     fieldRow(sheet, 'Events', 'No audit events recorded.');
   }
 
-  const logo = await tryFetchImage(project?.logoUrl);
-  if (logo.status === 'ok') {
-    const imageId = workbook.addImage({ buffer: logo.buffer, extension: logo.extension });
+  if (exportAssets?.logo?.base64) {
+    const imageId = workbook.addImage({
+      buffer: base64ToArrayBuffer(exportAssets.logo.base64),
+      extension: extensionFromMimeType(exportAssets.logo.mimeType),
+    });
     sheet.addImage(imageId, { tl: { col: 1.55, row: 0.05 }, ext: { width: 36, height: 36 } });
-  } else if (logo.status === 'failed') {
+  } else if (project?.logoUrl) {
     warnings.push('Could not load the project logo, so it was left out of this export.');
   }
 
-  const stamp = await tryFetchImage(project?.stampUrl);
-  if (stamp.status === 'ok') {
-    const stampId = workbook.addImage({ buffer: stamp.buffer, extension: stamp.extension });
+  if (exportAssets?.stamp?.base64) {
+    const stampId = workbook.addImage({
+      buffer: base64ToArrayBuffer(exportAssets.stamp.base64),
+      extension: extensionFromMimeType(exportAssets.stamp.mimeType),
+    });
     const anchorRow = sheet.lastRow ? sheet.lastRow.number - 1 : 0;
     sheet.addImage(stampId, { tl: { col: 1.55, row: anchorRow }, ext: { width: 60, height: 60 } });
-  } else if (stamp.status === 'failed') {
+  } else if (project?.stampUrl) {
     warnings.push('Could not load the project stamp, so it was left out of this export.');
   }
 

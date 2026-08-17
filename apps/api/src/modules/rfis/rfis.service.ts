@@ -173,10 +173,13 @@ export class RfisService {
   // ticket asked for.
   async getPdfData(companyId: string, projectId: string, rfiId: string) {
     const rfi = await this.findOne(companyId, projectId, rfiId);
+    // Stakeholder free-text columns (client_name/lead_designer/etc.) and
+    // location dropped from this SELECT -- the PDF/XLS no longer render a
+    // Stakeholders or standalone Project section (neither exists on the
+    // live RfiDetailPage; see rfi-pdf.template.ts / rfi-xls.ts), so nothing
+    // downstream of this query reads them anymore.
     const [project] = await this.db.withTenant(companyId, sql => sql`
-      SELECT name, code, location, org_code, client_name, lead_designer,
-        consultant_name, technical_advisor, pmc_name, main_contractor, subcontractor,
-        logo_storage_key, stamp_storage_key
+      SELECT name, code, org_code, logo_storage_key, stamp_storage_key
       FROM projects WHERE id = ${projectId} AND company_id = ${companyId}
     `);
     const organizations = await this.db.withTenant(companyId, sql => sql`
@@ -319,15 +322,6 @@ export class RfisService {
       disciplineOther: rfi.disciplineOther as string | undefined,
       projectName: (project?.name as string) ?? '—',
       projectCode: project?.code as string | undefined,
-      location: project?.location as string | undefined,
-      date: new Date(rfi.createdAt as string).toLocaleDateString('en-GB'),
-      clientName: project?.clientName as string | undefined,
-      leadDesigner: project?.leadDesigner as string | undefined,
-      consultantName: project?.consultantName as string | undefined,
-      technicalAdvisor: project?.technicalAdvisor as string | undefined,
-      pmcName: project?.pmcName as string | undefined,
-      mainContractor: project?.mainContractor as string | undefined,
-      subcontractor: project?.subcontractor as string | undefined,
       createdByName: rfi.createdByName as string | undefined,
       createdAt: new Date(rfi.createdAt as string).toLocaleDateString('en-GB'),
       answeredByName: rfi.answeredByName as string | undefined,
@@ -335,6 +329,58 @@ export class RfisService {
     });
 
     return { buffer, filename };
+  }
+
+  // PNG/JPEG magic-byte sniff -- the only two types the org-logo/project-
+  // logo/stamp upload flows accept (see ManageMembersModal's/OrganizationSlotRow's
+  // <input accept="image/jpeg,image/png">), so no need for anything fancier.
+  // Defaults to JPEG when the signature doesn't match PNG, same fallback
+  // rfi-xls.ts's old tryFetchImage() used for a non-PNG content-type.
+  private detectImageMimeType(buffer: Buffer): string {
+    const isPng = buffer.length >= 8
+      && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47
+      && buffer[4] === 0x0d && buffer[5] === 0x0a && buffer[6] === 0x1a && buffer[7] === 0x0a;
+    return isPng ? 'image/png' : 'image/jpeg';
+  }
+
+  private toImageAsset(buffer?: Buffer): { base64: string; mimeType: string } | undefined {
+    if (!buffer) return undefined;
+    return { base64: buffer.toString('base64'), mimeType: this.detectImageMimeType(buffer) };
+  }
+
+  // Same-origin counterpart to generatePdf()'s image handling, for the XLS
+  // export (apps/web/src/lib/rfi-xls.ts) -- exceljs's workbook.addImage()
+  // needs raw image bytes, and fetching those straight from S3 presigned
+  // URLs in a browser fetch() requires the bucket to send CORS headers for
+  // the app's origin, which local MinIO's permissive default masks but a
+  // real production bucket may not have configured. This reuses the exact
+  // same this.storage.download(key).catch(() => undefined) pattern
+  // generatePdf() already uses -- no CORS involved at all, since the
+  // browser only ever talks to this same-origin API endpoint.
+  async getExportAssets(companyId: string, projectId: string, rfiId: string) {
+    const { project, organizations } = await this.getPdfData(companyId, projectId, rfiId);
+
+    const [logoBuffer, stampBuffer] = await Promise.all([
+      project?.logoStorageKey ? this.storage.download(project.logoStorageKey as string).catch(() => undefined) : undefined,
+      project?.stampStorageKey ? this.storage.download(project.stampStorageKey as string).catch(() => undefined) : undefined,
+    ]);
+
+    const orgsBySlot = new Map((organizations as Array<Record<string, unknown>>).map(o => [o.slot as string, o]));
+    const orgAssets = await Promise.all(
+      PROJECT_ORGANIZATION_SLOTS.map(async (slot) => {
+        const org = orgsBySlot.get(slot);
+        const key = org?.logoStorageKey as string | undefined;
+        const buffer = key ? await this.storage.download(key).catch(() => undefined) : undefined;
+        const asset = this.toImageAsset(buffer);
+        return { slot, base64: asset?.base64, mimeType: asset?.mimeType };
+      }),
+    );
+
+    return {
+      logo: this.toImageAsset(logoBuffer),
+      stamp: this.toImageAsset(stampBuffer),
+      organizations: orgAssets,
+    };
   }
 
   async update(companyId: string, projectId: string, rfiId: string, userId: string, dto: UpdateRfiDto) {

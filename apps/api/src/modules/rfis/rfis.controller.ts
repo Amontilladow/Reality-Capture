@@ -71,6 +71,20 @@ export class RfisController {
     return new StreamableFile(buffer);
   }
 
+  // Same-origin counterpart to :id/pdf's server-side image fetch, for the
+  // browser-side XLS export (apps/web/src/lib/rfi-xls.ts). Returns the
+  // project logo/stamp and each of the 5 organization logos as base64 so
+  // the browser never has to fetch() an S3 presigned URL directly (which
+  // requires bucket CORS headers the browser strictly enforces, unlike
+  // Node's fetch() or a plain <img src>). No @RequireProjectPermission --
+  // same as :id and :id/pdf above, gated only by the global auth guard +
+  // this RFI's own company/project scoping.
+  @Get(':id/export-assets')
+  @ApiOperation({ summary: "Get this RFI's project/organization logo images as base64, for the browser-side XLS export" })
+  async getExportAssets(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.getExportAssets(u.companyId, pid, id), error: null };
+  }
+
   @Patch(':id')
   @RequireProjectPermission('manage_project_records')
   async update(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: UpdateRfiDto) {

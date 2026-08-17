@@ -13,7 +13,7 @@ import {
   getRfiComments, addRfiComment, getRfiAttachments, uploadRfiAttachment, deleteRfiAttachment,
   type RfiAttachment,
 } from '../lib/rfis.api';
-import { getProject, getMembers, getPermissionGrants, getOrganizations } from '../lib/projects.api';
+import { getProject, getMembers, getPermissionGrants, getOrganizations, uploadOrganizationLogo } from '../lib/projects.api';
 import { getProjectActivity } from '../lib/audit.api';
 import { downloadRfiXls, type RfiWorkbookExtras } from '../lib/rfi-xls';
 import {
@@ -290,6 +290,12 @@ export default function RfiDetailPage() {
     (g) => g.userId === currentUser?.id && g.permission === 'manage_rfis',
   );
   const canManageRfis = isSuperAdmin || isProjectLead || hasManageRfisGrant;
+  const hasManageTeamGrant = (grantsQuery.data ?? []).some(
+    (g) => g.userId === currentUser?.id && g.permission === 'manage_team',
+  );
+  // Same bypass set ManageMembersModal uses to gate its organizations section --
+  // logo upload here is a shortcut for that same permission, not a separate grant.
+  const canManageOrganizations = isSuperAdmin || isProjectLead || hasManageTeamGrant;
   const isCreator = rfi.createdBy === currentUser?.id;
 
   // Editable regardless of status, per explicit request -- the record (query,
@@ -349,7 +355,7 @@ export default function RfiDetailPage() {
         {/* 5-organization header row -- live since Phase 4 (project_organizations
             admin endpoints + ManageMembersModal's "Project Organizations"
             section). See OrganizationSlotRow below. */}
-        <OrganizationSlotRow projectId={projectId} />
+        <OrganizationSlotRow projectId={projectId} canEdit={canManageOrganizations} />
 
         {/* RFI Information */}
         <section className="panel tick-frame p-5">
@@ -792,7 +798,8 @@ function StampPanel({
 // viewer without the 'manage_team' permission this endpoint is gated on)
 // simply renders the same placeholder as before; this never blocks or
 // errors the rest of the page.
-function OrganizationSlotRow({ projectId }: { projectId: string }) {
+function OrganizationSlotRow({ projectId, canEdit }: { projectId: string; canEdit: boolean }) {
+  const queryClient = useQueryClient();
   const organizationsQuery = useQuery({
     queryKey: ['project-organizations', projectId],
     queryFn: () => getOrganizations(projectId),
@@ -801,11 +808,24 @@ function OrganizationSlotRow({ projectId }: { projectId: string }) {
   });
   const bySlot = new Map((organizationsQuery.data ?? []).map((o) => [o.slot, o]));
 
+  // Inline shortcut for the same upload ManageMembersModal's organizations
+  // section offers -- lets whoever is already looking at the RFI header fix a
+  // missing/wrong logo without leaving the page. Full name/reference/contact
+  // editing still lives only in ManageMembersModal.
+  const logoMutation = useMutation({
+    mutationFn: ({ slot, file }: { slot: ProjectOrganizationSlot; file: File }) =>
+      uploadOrganizationLogo(projectId, slot, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-organizations', projectId] });
+    },
+  });
+
   return (
     <section className="panel tick-frame p-4">
       <div className="grid grid-cols-5 gap-3">
         {PROJECT_ORGANIZATION_SLOTS.map((slot) => {
           const org = bySlot.get(slot);
+          const isUploading = logoMutation.isPending && logoMutation.variables?.slot === slot;
           return (
             <div key={slot} className="flex flex-col items-center gap-1.5 text-center">
               {org?.logoUrl ? (
@@ -821,10 +841,27 @@ function OrganizationSlotRow({ projectId }: { projectId: string }) {
               )}
               <div className="text-[10px] uppercase tracking-wide text-ink-500 font-mono">{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</div>
               {org?.name && <div className="text-xs text-ink-100 truncate max-w-full">{org.name}</div>}
+              {canEdit && (
+                <label className="text-[10px] text-blueprint hover:text-blueprint-hover cursor-pointer">
+                  {isUploading ? 'Uploading…' : org?.logoUrl ? 'Change logo' : 'Upload logo'}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png"
+                    className="hidden"
+                    disabled={logoMutation.isPending}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) logoMutation.mutate({ slot, file });
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              )}
             </div>
           );
         })}
       </div>
+      {logoMutation.isError && <p className="field-error mt-2">{apiErrorMessage(logoMutation.error)}</p>}
     </section>
   );
 }

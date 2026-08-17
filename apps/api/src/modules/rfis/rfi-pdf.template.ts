@@ -150,31 +150,11 @@ export interface RfiPdfData {
   timeImpactDescription?: string;
   projectName: string;
   projectCode?: string;
-  location?: string;
-  date: string;
-  clientName?: string;
-  leadDesigner?: string;
-  consultantName?: string;
-  technicalAdvisor?: string;
-  pmcName?: string;
-  mainContractor?: string;
-  subcontractor?: string;
   createdByName?: string;
   createdAt: string;
   answeredByName?: string;
   answeredAt?: string;
 }
-
-// prettier-ignore
-const FIELD_ROWS: Array<[string, keyof RfiPdfData]> = [
-  ['Client', 'clientName'],
-  ['Lead Designer', 'leadDesigner'],
-  ['Consultant', 'consultantName'],
-  ['Technical Advisor', 'technicalAdvisor'],
-  ['PMC', 'pmcName'],
-  ['Main Contractor', 'mainContractor'],
-  ['Subcontractor', 'subcontractor'],
-];
 
 export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
   const { Document, Page, View, Text, Image, StyleSheet, Font, renderToBuffer } = await import('@react-pdf/renderer');
@@ -186,6 +166,11 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
     headerLeft: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
     logo: { width: 44, height: 44, objectFit: 'contain' },
     stamp: { width: 70, height: 70, objectFit: 'contain', marginBottom: 4 },
+    // Compact "TEST PROJECT"-style eyebrow line -- folds Project Name +
+    // Project No. into the header instead of their own standalone section,
+    // matching the live page's PageHeader eyebrow placed just above the
+    // RFI number heading.
+    projectEyebrow: { fontSize: 7.5, fontFamily: 'IBM Plex Sans', fontWeight: 600, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
     title: { fontSize: 15, fontFamily: 'IBM Plex Sans', fontWeight: 700, letterSpacing: 0.3 },
     rfiNumber: { fontSize: 12, fontFamily: 'IBM Plex Sans', fontWeight: 700, color: SIGNAL, marginTop: 3, letterSpacing: 0.2 },
     badge: { fontSize: 8, fontFamily: 'IBM Plex Sans', fontWeight: 700, padding: '3 8', borderRadius: 2, backgroundColor: SECTION_FILL, color: BLUEPRINT, textTransform: 'uppercase', letterSpacing: 0.4 },
@@ -195,10 +180,6 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
     col: { flex: 1, paddingRight: 8 },
     label: { fontSize: 8, color: INK_MUTED, marginBottom: 1 },
     value: { fontSize: 9.5 },
-    checkboxRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-    checkboxItem: { flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 12, marginBottom: 4 },
-    checkbox: { width: 9, height: 9, border: `1 solid ${INK}` },
-    checkboxChecked: { width: 9, height: 9, border: `1 solid ${SIGNAL}`, backgroundColor: SIGNAL },
     impactRow: { flexDirection: 'row', gap: 24 },
     impactCol: { flex: 1 },
     impactLevelBadge: { fontSize: 7.5, fontFamily: 'IBM Plex Sans', fontWeight: 700, padding: '2 6', borderRadius: 2, alignSelf: 'flex-start', marginBottom: 3 },
@@ -249,11 +230,18 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
 
   const IMPACT_COLORS: Record<string, string> = { no: INK_MUTED, yes: SIGNAL, potential: '#B8860B', tbd: '#B8860B' };
 
-  const checkbox = (label: string, checked: boolean) =>
-    h(View, { style: styles.checkboxItem, key: label },
-      h(View, { style: checked ? styles.checkboxChecked : styles.checkbox }),
-      h(Text, null, label),
-    );
+  // Single discipline value (not the old hardcoded 9-item checkbox grid,
+  // which didn't even match the real RFI_DISCIPLINE_LABELS enum) -- mirrors
+  // RfiDetailPage's own InfoRow treatment of discipline exactly.
+  const disciplineDisplay = data.disciplineLabel === 'Other' && data.disciplineOther
+    ? `${data.disciplineLabel} — ${data.disciplineOther}`
+    : data.disciplineLabel;
+
+  // Compact "Name · Code" eyebrow, folded into the header -- replaces the
+  // old standalone "Project" section (which also carried Location/Date;
+  // both dropped, per the live page never showing either -- Date is
+  // already covered by the footer's "Raised by ... createdAt" line).
+  const projectEyebrowText = data.projectCode ? `${data.projectName} · ${data.projectCode}` : data.projectName;
 
   const field = (label: string, value?: string) =>
     h(View, { style: styles.col, key: label },
@@ -314,6 +302,7 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
           h(View, { style: styles.headerLeft },
             data.logoBuffer ? h(Image, { style: styles.logo, src: data.logoBuffer }) : null,
             h(View, null,
+              h(Text, { style: styles.projectEyebrow }, projectEyebrowText),
               h(Text, { style: styles.title }, 'REQUEST FOR INFORMATION'),
               h(Text, { style: styles.rfiNumber }, data.rfiNumber),
             ),
@@ -334,48 +323,26 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
             )
           : null,
 
+        // Consolidated RFI Information -- RFI Number, Discipline, Priority,
+        // Assigned To, Due Date all in one panel, matching the live page's
+        // own RFI Information panel exactly (no more separate Project /
+        // Discipline sections splitting these across the document).
         h(View, { style: styles.section },
           h(Text, { style: styles.sectionTitle }, 'RFI Information'),
           h(View, { style: styles.row },
+            field('RFI Number', data.rfiNumber),
+            field('Discipline', disciplineDisplay),
             field('Priority', capitalize(data.priority)),
+          ),
+          h(View, { style: styles.row },
             field('Assigned To', data.assignedToName),
             field('Due Date', data.dueDate),
           ),
         ),
 
         h(View, { style: styles.section },
-          h(Text, { style: styles.sectionTitle }, 'Project'),
-          h(View, { style: styles.row },
-            field('Project Name', data.projectName),
-            field('Project No.', data.projectCode),
-          ),
-          h(View, { style: styles.row },
-            field('Location', data.location),
-            field('Date', data.date),
-          ),
-        ),
-
-        h(View, { style: styles.section },
-          h(Text, { style: styles.sectionTitle }, 'Stakeholders'),
-          h(View, { style: styles.row }, ...FIELD_ROWS.slice(0, 3).map(([label, key]) => field(label, data[key] as string | undefined))),
-          h(View, { style: styles.row }, ...FIELD_ROWS.slice(3, 6).map(([label, key]) => field(label, data[key] as string | undefined))),
-          h(View, { style: styles.row }, field(FIELD_ROWS[6][0], data[FIELD_ROWS[6][1]] as string | undefined)),
-        ),
-
-        h(View, { style: styles.section },
           h(Text, { style: styles.sectionTitle }, 'RFI Title'),
           h(Text, { style: styles.bodyText }, data.subject),
-        ),
-
-        h(View, { style: styles.section },
-          h(Text, { style: styles.sectionTitle }, 'Discipline'),
-          h(View, { style: styles.checkboxRow },
-            ...['Civil', 'Structural', 'Architectural', 'Interior Design', 'Mechanical', 'Electrical', 'Plumbing', 'HVAC', 'Other']
-              .map((label) => checkbox(label, data.disciplineLabel === label)),
-          ),
-          data.disciplineLabel === 'Other' && data.disciplineOther
-            ? h(Text, { style: [styles.bodyText, { marginTop: 4 }] }, `Specified: ${data.disciplineOther}`)
-            : null,
         ),
 
         h(View, { style: styles.section },
