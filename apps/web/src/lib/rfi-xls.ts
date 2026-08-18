@@ -235,7 +235,19 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
   // characters) in bold 14pt visually overflowed and got clipped at the
   // column boundary instead of spilling into the adjacent (non-empty)
   // cell, which Excel only does for genuinely empty neighbors.
-  sheet.columns = [{ width: 30 }, { width: 62 }];
+  //
+  // C-G (5 narrow columns) exist only for the organization logo strip
+  // below -- every other row's content stays confined to A/B exactly as
+  // before (mergeCells(row,1,row,2) never touches C-G). A floating
+  // image's fractional column offset (e.g. col: 1.55) does NOT scale
+  // against that column's own declared width -- verified directly against
+  // exceljs's own anchor output, it consistently uses a fixed ~65px unit
+  // regardless of the column's real width, so packing 5 icons into
+  // fractional offsets within column B alone (the original single-icon
+  // approach) would have placed them almost entirely on top of each
+  // other. One real column per icon sidesteps that entirely: an integer
+  // `col` value is unambiguous no matter how that scaling quirk works.
+  sheet.columns = [{ width: 30 }, { width: 62 }, { width: 9 }, { width: 9 }, { width: 9 }, { width: 9 }, { width: 9 }];
 
   // Title bar
   const titleRow = sheet.addRow(['REQUEST FOR INFORMATION', rfi.rfiNumber ?? rfi.id]);
@@ -267,24 +279,50 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
     spacerRow(sheet);
   }
 
-  // Always all 5 named-organization slots (Phase 4/5). Matches
+  // Prominent horizontal logo strip -- the live page's OrganizationSlotRow
+  // and the PDF's own orgRow both show all 5 logos as a row of images
+  // right under the header, not buried one-per-line inside a text table
+  // further down. A single small (20x20) image tucked into a table row's
+  // value cell doesn't read as that at all -- this places up to 5 real
+  // images side by side, in fixed slot order, immediately after the
+  // header, each in its own dedicated narrow column (C-G, declared above)
+  // so every icon's position is a plain integer column index rather than
+  // packed fractional offsets within a single column.
+  const orgsBySlot = new Map((extras?.organizations ?? []).map((o) => [o.slot, o]));
+  const configuredLogoSlots = PROJECT_ORGANIZATION_SLOTS.filter((slot) => exportAssetsBySlot.get(slot)?.base64);
+  if (configuredLogoSlots.length > 0) {
+    const logoStripRow = sheet.addRow(['', '']);
+    logoStripRow.height = 30;
+    const ICON_PX = 28;
+    const LOGO_STRIP_COLS = [2, 3, 4, 5, 6]; // 0-indexed: C, D, E, F, G
+    PROJECT_ORGANIZATION_SLOTS.forEach((slot, i) => {
+      const asset = exportAssetsBySlot.get(slot);
+      if (!asset?.base64) return;
+      const imageId = workbook.addImage({ buffer: base64ToArrayBuffer(asset.base64), extension: extensionFromMimeType(asset.mimeType) });
+      sheet.addImage(imageId, {
+        tl: { col: LOGO_STRIP_COLS[i] + 0.1, row: logoStripRow.number - 1 + 0.08 },
+        ext: { width: ICON_PX, height: ICON_PX },
+      });
+    });
+    spacerRow(sheet);
+  }
+
+  // Always all 5 named-organization slots (Phase 4/5) as a text table --
+  // the strip above is this table's "picture," not a replacement for it;
+  // this is still the only place the org reference code is shown, and the
+  // only place a slot with no logo is identified at all. Matches
   // RfiDetailPage's own OrganizationSlotRow, which shows a row for every
   // slot whether or not it's configured yet, rather than only the ones
   // somebody filled in.
   sectionRow(sheet, 'ORGANIZATIONS');
-  const orgsBySlot = new Map((extras?.organizations ?? []).map((o) => [o.slot, o]));
   for (const slot of PROJECT_ORGANIZATION_SLOTS) {
     const org = orgsBySlot.get(slot);
-    const row = fieldRow(
+    fieldRow(
       sheet,
       PROJECT_ORGANIZATION_SLOT_LABELS[slot],
       [org?.name, org?.orgRef].filter(Boolean).join(' — ') || '—',
     );
-    const orgAsset = exportAssetsBySlot.get(slot);
-    if (orgAsset?.base64) {
-      const imageId = workbook.addImage({ buffer: base64ToArrayBuffer(orgAsset.base64), extension: extensionFromMimeType(orgAsset.mimeType) });
-      sheet.addImage(imageId, { tl: { col: 1.55, row: row.number - 1 }, ext: { width: 20, height: 20 } });
-    } else if (org?.logoUrl) {
+    if (!exportAssetsBySlot.get(slot)?.base64 && org?.logoUrl) {
       // A logo was configured (RfiDetailPage's OrganizationSlotRow shows
       // one on screen) but the backend couldn't resolve it -- either this
       // slot's own S3 download failed, or the whole export-assets request
