@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import sharp from 'sharp';
 import { DatabaseService } from '../../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
@@ -188,11 +189,13 @@ export class RfisService {
       WHERE project_id = ${projectId} AND company_id = ${companyId}
       ORDER BY slot
     `);
-    // Filename + document type only -- no presigned read URL needed, these
-    // render as plain text lines in a static generated document, not
-    // clickable links (see rfi-pdf.template.ts / rfi-xls.ts).
+    // Filename + document type + storage_key -- no presigned read URL
+    // needed (these aren't clickable links in a static generated document,
+    // see rfi-xls.ts), but storage_key is needed here so generatePdf() can
+    // download+embed image-type attachments directly as PDF thumbnails (see
+    // rfi-pdf.template.ts's attachmentsBlock()).
     const attachmentRows = await this.db.withTenant(companyId, sql => sql`
-      SELECT filename, kind, document_type, document_type_other
+      SELECT filename, kind, document_type, document_type_other, storage_key
       FROM rfi_attachments
       WHERE rfi_id = ${rfiId} AND company_id = ${companyId}
       ORDER BY uploaded_at ASC
@@ -255,20 +258,30 @@ export class RfisService {
       }),
     );
 
-    const queryAttachments = (attachmentRows as Array<Record<string, unknown>>)
-      .filter((a) => (a.kind ?? 'query') === 'query')
-      .map((a) => ({
-        filename: a.filename as string,
+    // Image-type attachments (png/jpg/jpeg/gif/webp) get downloaded +
+    // resized to an embeddable thumbnail in parallel with everything else
+    // (same Promise.all-per-row convention as the org-logo fetch above);
+    // non-image attachments and any image whose download/resize fails just
+    // get imageBuffer: undefined, which rfi-pdf.template.ts's
+    // attachmentsBlock() falls back to the plain text line for.
+    const attachmentRowsTyped = attachmentRows as Array<Record<string, unknown>>;
+    const withImageBuffer = async (a: Record<string, unknown>) => {
+      const filename = a.filename as string;
+      const storageKey = a.storageKey as string | undefined;
+      const imageBuffer = storageKey && this.isImageFilename(filename)
+        ? await this.storage.download(storageKey).then((raw) => this.resizeAttachmentImage(raw)).catch(() => undefined)
+        : undefined;
+      return {
+        filename,
         documentType: a.documentType as RfiDocumentType | undefined,
         documentTypeOther: a.documentTypeOther as string | undefined,
-      }));
-    const responseAttachments = (attachmentRows as Array<Record<string, unknown>>)
-      .filter((a) => a.kind === 'response')
-      .map((a) => ({
-        filename: a.filename as string,
-        documentType: a.documentType as RfiDocumentType | undefined,
-        documentTypeOther: a.documentTypeOther as string | undefined,
-      }));
+        imageBuffer,
+      };
+    };
+    const [queryAttachments, responseAttachments] = await Promise.all([
+      Promise.all(attachmentRowsTyped.filter((a) => (a.kind ?? 'query') === 'query').map(withImageBuffer)),
+      Promise.all(attachmentRowsTyped.filter((a) => a.kind === 'response').map(withImageBuffer)),
+    ]);
 
     const comments = (commentRows as Array<Record<string, unknown>>).map((c) => ({
       userName: c.userName as string | undefined,
@@ -329,6 +342,39 @@ export class RfisService {
     });
 
     return { buffer, filename };
+  }
+
+  // Raster-image extensions eligible for inline PDF embedding (see
+  // rfi-pdf.template.ts's attachmentsBlock()) -- everything else (pdf,
+  // docx, dwg, etc.) has no reasonable inline-image treatment and keeps the
+  // existing plain "• filename (type)" text line only.
+  private static readonly IMAGE_ATTACHMENT_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp']);
+
+  private isImageFilename(filename: string): boolean {
+    const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+    return RfisService.IMAGE_ATTACHMENT_EXTENSIONS.has(ext);
+  }
+
+  // Resizes + re-encodes a query/response attachment image before it's
+  // embedded in the PDF -- a handful of multi-MB phone screenshots/photos
+  // would otherwise bloat the generated PDF into something unusable. 900px
+  // on the longest side / JPEG quality 78 is deliberately smaller than
+  // ImageProcessingProcessor's own 1920px "preview" rendition
+  // (image-processing.processor.ts) -- these render as a ~150x110pt
+  // thumbnail card in the PDF (see rfi-pdf.template.ts), not a full-page
+  // image, so there's no reason to carry more pixels than that. fit:
+  // 'inside' (never 'cover'/'fill') means the image is only ever shrunk to
+  // fit within the box, never cropped -- aspect ratio is fully preserved
+  // ("contain, not crop", per the ticket). .rotate() with no args
+  // auto-applies the source image's own EXIF orientation before resizing,
+  // same convention the capture-processing pipeline uses, so a sideways
+  // phone photo doesn't render sideways in the PDF too.
+  private async resizeAttachmentImage(buffer: Buffer): Promise<Buffer> {
+    return sharp(buffer)
+      .rotate()
+      .resize(900, 900, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 78 })
+      .toBuffer();
   }
 
   // PNG/JPEG magic-byte sniff -- the only two types the org-logo/project-

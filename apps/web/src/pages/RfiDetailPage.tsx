@@ -293,9 +293,14 @@ export default function RfiDetailPage() {
   const hasManageTeamGrant = (grantsQuery.data ?? []).some(
     (g) => g.userId === currentUser?.id && g.permission === 'manage_team',
   );
-  // Same bypass set ManageMembersModal uses to gate its organizations section --
-  // logo upload here is a shortcut for that same permission, not a separate grant.
-  const canManageOrganizations = isSuperAdmin || isProjectLead || hasManageTeamGrant;
+  // ManageMembersModal's own organizations section requires manage_team --
+  // this inline shortcut also allows anyone who can already manage_rfis on
+  // this project (i.e. can already answer/close it), since fixing a wrong
+  // logo while working an RFI is a much smaller ask than full org/contact
+  // editing. Without this OR, a user with only manage_rfis (the common
+  // case for whoever's actually driving an RFI to completion) saw no
+  // upload control at all despite being trusted to run the RFI itself.
+  const canManageOrganizations = isSuperAdmin || isProjectLead || hasManageTeamGrant || canManageRfis;
   const isCreator = rfi.createdBy === currentUser?.id;
 
   // Editable regardless of status, per explicit request -- the record (query,

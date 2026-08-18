@@ -106,6 +106,13 @@ export interface RfiPdfAttachmentItem {
   filename: string;
   documentType?: RfiDocumentType;
   documentTypeOther?: string;
+  // Set only for raster-image attachments (.png/.jpg/.jpeg/.gif/.webp) whose
+  // download+resize succeeded server-side (see rfis.service.ts's
+  // generatePdf() -- same storage.download(key).catch(() => undefined)
+  // convention as the logo/stamp/org-logo buffers above). Undefined means
+  // either a non-image attachment (pdf/docx/dwg/etc.) or an image whose
+  // fetch failed -- both fall back to the plain text line only.
+  imageBuffer?: Buffer;
 }
 
 export interface RfiPdfComment {
@@ -213,6 +220,17 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
     attachmentsBlock: { marginTop: 4 },
     attachmentsHeading: { fontSize: 7, fontFamily: 'IBM Plex Sans', fontWeight: 700, textTransform: 'uppercase', color: INK_MUTED, marginBottom: 2, letterSpacing: 0.6 },
     attachmentItem: { fontSize: 8.5, fontFamily: 'IBM Plex Sans', marginBottom: 1.5 },
+    // Image-attachment previews -- a small wrapping grid (react-pdf's flex
+    // wraps like CSS flex-wrap) rather than one-per-row, so a handful of
+    // screenshots don't each eat a full page width. Fixed display box via
+    // style (150x110, objectFit 'contain' so pre-resized-by-sharp images
+    // never distort or get cropped) -- the actual byte-size control comes
+    // from the sharp resize server-side (rfis.service.ts), this is purely
+    // the on-page layout box.
+    attachmentImageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2, marginBottom: 4 },
+    attachmentImageCard: { width: 150, marginBottom: 4 },
+    attachmentImage: { width: 150, height: 110, objectFit: 'contain', border: `1 solid ${BORDER}`, borderRadius: 2, backgroundColor: SECTION_FILL },
+    attachmentImageCaption: { fontSize: 7, fontFamily: 'IBM Plex Sans', color: INK_MUTED, marginTop: 2 },
     // Communication/Clarifications + Audit Trail (this section) -- both
     // shown live on RfiDetailPage but missing from the export until now.
     commentItem: { marginBottom: 6, paddingBottom: 6, borderBottom: `1 solid ${BORDER}` },
@@ -287,13 +305,28 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
     return `• ${item.filename}  (${typeLabel}${otherSuffix})`;
   };
 
-  const attachmentsBlock = (heading: string, items?: RfiPdfAttachmentItem[]) =>
-    items && items.length > 0
-      ? h(View, { style: styles.attachmentsBlock },
-          h(Text, { style: styles.attachmentsHeading }, heading),
-          ...items.map((item, i) => h(Text, { style: styles.attachmentItem, key: i }, attachmentLabel(item))),
-        )
-      : null;
+  // Image attachments (imageBuffer set) render as a thumbnail card --
+  // picture plus filename/type caption, per the ticket's "label still
+  // visible near the image, not a bare picture" requirement -- instead of
+  // the plain text line. Non-image / failed-download attachments keep the
+  // original plain-text "• filename (type)" line, unchanged.
+  const attachmentsBlock = (heading: string, items?: RfiPdfAttachmentItem[]) => {
+    if (!items || items.length === 0) return null;
+    const imageItems = items.filter((item) => item.imageBuffer);
+    const textItems = items.filter((item) => !item.imageBuffer);
+    return h(View, { style: styles.attachmentsBlock },
+      h(Text, { style: styles.attachmentsHeading }, heading),
+      ...textItems.map((item, i) => h(Text, { style: styles.attachmentItem, key: `t${i}` }, attachmentLabel(item))),
+      imageItems.length > 0
+        ? h(View, { style: styles.attachmentImageGrid },
+            ...imageItems.map((item, i) => h(View, { style: styles.attachmentImageCard, key: `i${i}` },
+              h(Image, { style: styles.attachmentImage, src: item.imageBuffer }),
+              h(Text, { style: styles.attachmentImageCaption }, attachmentLabel(item)),
+            )),
+          )
+        : null,
+    );
+  };
 
   return renderToBuffer(
     h(Document, { title: data.rfiNumber },
