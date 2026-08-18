@@ -293,18 +293,32 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
   // column boundary instead of spilling into the adjacent (non-empty)
   // cell, which Excel only does for genuinely empty neighbors.
   //
-  // C-G (5 narrow columns) exist only for the organization logo strip
-  // below -- every other row's content stays confined to A/B exactly as
-  // before (mergeCells(row,1,row,2) never touches C-G). A floating
-  // image's fractional column offset (e.g. col: 1.55) does NOT scale
-  // against that column's own declared width -- verified directly against
-  // exceljs's own anchor output, it consistently uses a fixed ~65px unit
-  // regardless of the column's real width, so packing 5 icons into
-  // fractional offsets within column B alone (the original single-icon
-  // approach) would have placed them almost entirely on top of each
-  // other. One real column per icon sidesteps that entirely: an integer
-  // `col` value is unambiguous no matter how that scaling quirk works.
-  sheet.columns = [{ width: 30 }, { width: 62 }, { width: 9 }, { width: 9 }, { width: 9 }, { width: 9 }, { width: 9 }];
+  // C-G (5 narrow columns) exist for the organization logo strip and the
+  // per-attachment thumbnails below -- every other row's content stays
+  // confined to A/B exactly as before (mergeCells(row,1,row,2) never
+  // touches C-G). A floating image's fractional column offset (e.g.
+  // col: 1.55) does NOT scale against that column's own declared width --
+  // verified directly against exceljs's own anchor output, it consistently
+  // uses a fixed ~65px unit regardless of the column's real width, so
+  // packing icons into fractional offsets within column B alone (the
+  // original single-icon approach) would have placed them almost entirely
+  // on top of each other. One real column per icon sidesteps that: an
+  // integer `col` value is unambiguous no matter how that scaling quirk
+  // works.
+  //
+  // Width is 10, not 9: exceljs's own `DEFAULT_COLUMN_WIDTH` constant
+  // (lib/doc/column.js) is *exactly* 9, and a column whose declared width
+  // equals that constant is treated as "not custom" and silently omitted
+  // from the file's <cols> XML entirely -- confirmed by writing a real
+  // file and inspecting the raw XML directly (unzipped, not re-parsed by
+  // exceljs itself, since that would just as consistently misread its own
+  // bug). With no <col> entry at all for C-G, real Excel falls back to its
+  // own undefined-column default instead of the width this file actually
+  // needs, throwing the floating images anchored in those columns visibly
+  // out of position -- reported directly against Microsoft Excel desktop,
+  // not a third-party-viewer quirk. Any value other than precisely 9 avoids
+  // this; 10 was picked for headroom, not because 9.01 wouldn't also work.
+  sheet.columns = [{ width: 30 }, { width: 62 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }];
 
   // Title bar
   const titleRow = sheet.addRow(['REQUEST FOR INFORMATION', rfi.rfiNumber ?? rfi.id]);
