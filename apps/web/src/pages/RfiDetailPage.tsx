@@ -237,10 +237,10 @@ export default function RfiDetailPage() {
           ? { uploadedBy: rfi.answeredByName, dateTime: formatDateTime(rfi.answeredAt), stamp: rfi.answerStamp }
           : undefined,
         queryAttachments: queryAttachments.map((a) => ({
-          filename: a.filename, documentType: a.documentType, documentTypeOther: a.documentTypeOther,
+          id: a.id, filename: a.filename, documentType: a.documentType, documentTypeOther: a.documentTypeOther,
         })),
         responseAttachments: responseAttachments.map((a) => ({
-          filename: a.filename, documentType: a.documentType, documentTypeOther: a.documentTypeOther,
+          id: a.id, filename: a.filename, documentType: a.documentType, documentTypeOther: a.documentTypeOther,
         })),
         comments: (commentsQuery.data ?? []).map((c) => ({
           userName: c.userName, organizationSlot: c.organizationSlot, body: c.body, createdAt: formatDateTime(c.createdAt),

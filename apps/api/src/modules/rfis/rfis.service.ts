@@ -195,9 +195,12 @@ export class RfisService {
     // needed (these aren't clickable links in a static generated document,
     // see rfi-xls.ts), but storage_key is needed here so generatePdf() can
     // download+embed image-type attachments directly as PDF thumbnails (see
-    // rfi-pdf.template.ts's attachmentsBlock()).
+    // rfi-pdf.template.ts's attachmentsBlock()). id is needed so
+    // getExportAssets() can key its returned thumbnails to the exact
+    // attachment the browser already has (RfiAttachment.id) -- filename
+    // alone isn't a safe key, two attachments can share a name.
     const attachmentRows = await this.db.withTenant(companyId, sql => sql`
-      SELECT filename, kind, document_type, document_type_other, storage_key
+      SELECT id, filename, kind, document_type, document_type_other, storage_key
       FROM rfi_attachments
       WHERE rfi_id = ${rfiId} AND company_id = ${companyId}
       ORDER BY uploaded_at ASC
@@ -550,7 +553,7 @@ export class RfisService {
   // generatePdf() already uses -- no CORS involved at all, since the
   // browser only ever talks to this same-origin API endpoint.
   async getExportAssets(companyId: string, projectId: string, rfiId: string) {
-    const { project, organizations } = await this.getPdfData(companyId, projectId, rfiId);
+    const { project, organizations, attachmentRows } = await this.getPdfData(companyId, projectId, rfiId);
 
     const [logoBuffer, stampBuffer] = await Promise.all([
       project?.logoStorageKey ? this.storage.download(project.logoStorageKey as string).catch(() => undefined) : undefined,
@@ -568,10 +571,31 @@ export class RfisService {
       }),
     );
 
+    // Same small-thumbnail treatment generatePdf() gives image-type query/
+    // response attachments (see withImageBuffer() there) -- reuses the
+    // exact same isImageFilename()/resizeAttachmentImage() pair, just keyed
+    // by attachment id instead of embedded directly into a PDF page. Only
+    // image-type rows are worth the round trip; non-image attachments (pdf/
+    // doc/xls/zip) have no thumbnail either way and rfi-xls.ts already
+    // renders them as a plain text line.
+    const imageAttachmentRows = (attachmentRows as Array<Record<string, unknown>>)
+      .filter((a) => this.isImageFilename(a.filename as string));
+    const attachmentAssets = await Promise.all(
+      imageAttachmentRows.map(async (a) => {
+        const storageKey = a.storageKey as string;
+        const buffer = await this.storage.download(storageKey)
+          .then((raw) => this.resizeAttachmentImage(raw))
+          .catch(() => undefined);
+        const asset = this.toImageAsset(buffer);
+        return { id: a.id as string, base64: asset?.base64, mimeType: asset?.mimeType };
+      }),
+    );
+
     return {
       logo: this.toImageAsset(logoBuffer),
       stamp: this.toImageAsset(stampBuffer),
       organizations: orgAssets,
+      attachments: attachmentAssets,
     };
   }
 

@@ -46,6 +46,7 @@ export interface RfiXlsUploadStamp {
 }
 
 export interface RfiXlsAttachmentItem {
+  id: string;
   filename: string;
   documentType?: RfiDocumentType;
   documentTypeOther?: string;
@@ -148,6 +149,19 @@ interface RfiExportAssets {
   logo?: RfiExportImageAsset;
   stamp?: RfiExportImageAsset;
   organizations: Array<{ slot: ProjectOrganizationSlot; base64?: string; mimeType?: string }>;
+  attachments: Array<{ id: string; base64?: string; mimeType?: string }>;
+}
+
+// Same raster-extension set rfis.service.ts's isImageFilename() uses server-
+// side to decide which attachments are even worth a thumbnail round trip --
+// kept in sync manually (small, stable list) rather than threaded through
+// the API response, since every other attachment already renders correctly
+// via attachmentLabel() with no image at all.
+const IMAGE_ATTACHMENT_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp']);
+
+function isImageAttachment(filename: string): boolean {
+  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+  return IMAGE_ATTACHMENT_EXTENSIONS.has(ext);
 }
 
 async function fetchExportAssets(projectId: string, rfiId: string): Promise<RfiExportAssets | undefined> {
@@ -181,6 +195,48 @@ function attachmentLabel(item: RfiXlsAttachmentItem): string {
   const typeLabel = item.documentType ? RFI_DOCUMENT_TYPE_LABELS[item.documentType] : 'Other';
   const otherSuffix = item.documentType === 'other' && item.documentTypeOther ? ` — ${item.documentTypeOther}` : '';
   return `${item.filename} (${typeLabel}${otherSuffix})`;
+}
+
+// One row per attachment (previously a single row with every filename
+// joined by "; ") so an image-type attachment can carry its own thumbnail,
+// matching the small inline preview the PDF export already gives photos --
+// same underlying export-assets thumbnails, just anchored into a
+// spreadsheet cell instead of a react-pdf <Image>. Non-image attachments
+// (pdf/doc/xls/zip) render exactly as before, just one per row instead of
+// semicolon-joined. Thumbnail anchored at column C (index 2) -- an integer
+// column index, not a fraction of column B -- for the same reason the
+// organization logo strip above uses one dedicated column per icon: a
+// fractional column offset in exceljs does not scale against that column's
+// declared width, confirmed directly against its own anchor output.
+function attachmentListRows(
+  sheet: ExcelJS.Worksheet,
+  workbook: ExcelJS.Workbook,
+  heading: string,
+  items: RfiXlsAttachmentItem[] | undefined,
+  assetsById: Map<string, { base64?: string; mimeType?: string }>,
+  warnings: string[],
+) {
+  if (!items || items.length === 0) return;
+  fieldRow(sheet, heading, '');
+  const THUMB_PX = 20;
+  for (const item of items) {
+    const asset = assetsById.get(item.id);
+    const row = fieldRow(sheet, '', attachmentLabel(item));
+    if (asset?.base64) {
+      row.height = 24;
+      const imageId = workbook.addImage({ buffer: base64ToArrayBuffer(asset.base64), extension: extensionFromMimeType(asset.mimeType) });
+      sheet.addImage(imageId, {
+        tl: { col: 2 + 0.1, row: row.number - 1 + 0.06 },
+        ext: { width: THUMB_PX, height: THUMB_PX },
+      });
+    } else if (isImageAttachment(item.filename)) {
+      // A raster-image attachment whose thumbnail didn't resolve -- either
+      // this one attachment's own S3 download failed, or the whole
+      // export-assets request failed. Worth telling the person who clicked
+      // the button, same as the logo/stamp warnings above.
+      warnings.push(`Could not load a preview for ${item.filename}, so it was listed as text only.`);
+    }
+  }
 }
 
 export interface RfiWorkbookExtras {
@@ -222,6 +278,7 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
   // whole-request branch is needed.
   const exportAssets = await fetchExportAssets(rfi.projectId, rfi.id);
   const exportAssetsBySlot = new Map((exportAssets?.organizations ?? []).map((o) => [o.slot, o]));
+  const exportAssetsByAttachmentId = new Map((exportAssets?.attachments ?? []).map((a) => [a.id, a]));
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'EngineeringOS';
@@ -365,9 +422,7 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
 
   sectionRow(sheet, 'QUERY');
   textBlockRow(sheet, richTextToPlain(rfi.question));
-  if (extras?.queryAttachments && extras.queryAttachments.length > 0) {
-    fieldRow(sheet, 'Query Attachments', extras.queryAttachments.map(attachmentLabel).join('; '));
-  }
+  attachmentListRows(sheet, workbook, 'Query Attachments', extras?.queryAttachments, exportAssetsByAttachmentId, warnings);
   spacerRow(sheet);
 
   // Only rendered when set -- an unsubmitted/legacy RFI has no query_stamp
@@ -398,9 +453,7 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
 
   sectionRow(sheet, 'RESPONSE');
   textBlockRow(sheet, rfi.answer ? richTextToPlain(rfi.answer) : '(not yet answered)');
-  if (extras?.responseAttachments && extras.responseAttachments.length > 0) {
-    fieldRow(sheet, 'Response Attachments', extras.responseAttachments.map(attachmentLabel).join('; '));
-  }
+  attachmentListRows(sheet, workbook, 'Response Attachments', extras?.responseAttachments, exportAssetsByAttachmentId, warnings);
 
   if (extras?.answerStamp) {
     spacerRow(sheet);
