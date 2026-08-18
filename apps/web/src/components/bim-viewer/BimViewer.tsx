@@ -227,9 +227,20 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
 
     container.addEventListener('click', handlePointerClick);
 
+    // Drives @thatopen/fragments' camera-aware LOD/culling/streaming --
+    // without this, the worker never receives a live camera frustum after
+    // the initial (pre-camera) load and simply stops refining the tile set
+    // it produced at load time, which is why elements that exist in the
+    // .frag file never stream in. Registered once fragments.init() has run
+    // (see below), removed in the effect cleanup alongside components.dispose().
+    function onCameraControlsUpdate() {
+      fragments.core.update();
+    }
+
     async function loadModel() {
       try {
         await fragments.init(await OBC.FragmentsManager.getWorker());
+        world.camera.controls.addEventListener('update', onCameraControlsUpdate);
 
         const response = await fetch(fragmentsUrl);
         if (!response.ok) throw new Error(`Failed to download Fragments file (HTTP ${response.status})`);
@@ -241,6 +252,13 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
 
         if (disposed) return;
         world.scene.three.add(model.object);
+
+        // Register the live camera with the model so the worker has a
+        // frustum to compute LOD/culling/streaming against, then force an
+        // immediate refresh rather than waiting for the next camera move --
+        // matches @thatopen/fragments' own canonical usage pattern.
+        model.useCamera(world.camera.three);
+        await fragments.core.update(true);
 
         // Use the model's own bounding box, not one derived from `model.object`'s
         // mesh children: `@thatopen/fragments` populates those meshes asynchronously
@@ -279,6 +297,7 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
     return () => {
       disposed = true;
       container.removeEventListener('click', handlePointerClick);
+      world.camera.controls.removeEventListener('update', onCameraControlsUpdate);
       components.dispose();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
