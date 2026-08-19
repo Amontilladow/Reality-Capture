@@ -407,46 +407,34 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
     spacerRow(sheet);
   }
 
-  // Prominent horizontal logo strip -- the live page's OrganizationSlotRow
-  // and the PDF's own orgRow both show all 5 logos as a row of images
-  // right under the header, not buried one-per-line inside a text table
-  // further down. A single small (20x20) image tucked into a table row's
-  // value cell doesn't read as that at all -- this places up to 5 real
-  // images side by side, in fixed slot order, immediately after the
-  // header, each in its own dedicated narrow column (C-G, declared above)
-  // so every icon's position is a plain integer column index rather than
-  // packed fractional offsets within a single column.
+  // Organization logos -- one image, its name (or slot label if
+  // unconfigured) directly underneath, nothing else. Matches the PDF's own
+  // orgRow exactly (image + `org.name || slotLabel`, no separate text
+  // table listing the same 5 organizations again below it) -- the earlier
+  // version here had both a floating logo strip AND a full ORGANIZATIONS
+  // table repeating the same names, which read as two disconnected things
+  // rather than one. Always all 5 slots (an unconfigured slot still gets
+  // its label, just no image), matching the live page's OrganizationSlotRow.
+  // Each slot gets its own column (C-G) for both the image row and the
+  // label row, so the label is real cell content sitting directly under
+  // its own image, not a separate table -- this also pulls the sheet's
+  // used-range out to column G on its own for any file where at least one
+  // slot is configured, on top of (not instead of) the always-on fallback
+  // touch above.
   const orgsBySlot = new Map((extras?.organizations ?? []).map((o) => [o.slot, o]));
-  const configuredLogoSlots = PROJECT_ORGANIZATION_SLOTS.filter((slot) => exportAssetsBySlot.get(slot)?.base64);
-  if (configuredLogoSlots.length > 0) {
-    const logoStripRow = sheet.addRow(['', '']);
-    logoStripRow.height = 30;
-    const ICON_PX = 28;
-    const LOGO_STRIP_COLS = [2, 3, 4, 5, 6]; // 0-indexed: C, D, E, F, G
-    PROJECT_ORGANIZATION_SLOTS.forEach((slot, i) => {
-      const asset = exportAssetsBySlot.get(slot);
-      if (!asset?.base64) return;
-      addPixelImage(sheet, workbook, base64ToArrayBuffer(asset.base64), extensionFromMimeType(asset.mimeType), LOGO_STRIP_COLS[i], logoStripRow.number - 1, ICON_PX);
-    });
-    spacerRow(sheet);
-  }
-
-  // Always all 5 named-organization slots (Phase 4/5) as a text table --
-  // the strip above is this table's "picture," not a replacement for it;
-  // this is still the only place the org reference code is shown, and the
-  // only place a slot with no logo is identified at all. Matches
-  // RfiDetailPage's own OrganizationSlotRow, which shows a row for every
-  // slot whether or not it's configured yet, rather than only the ones
-  // somebody filled in.
-  sectionRow(sheet, 'ORGANIZATIONS');
-  for (const slot of PROJECT_ORGANIZATION_SLOTS) {
+  const LOGO_STRIP_COLS = [2, 3, 4, 5, 6]; // 0-indexed: C, D, E, F, G
+  const ICON_PX = 26;
+  const logoImageRow = sheet.addRow(['', '']);
+  logoImageRow.height = 28;
+  const logoLabelRow = sheet.addRow(['', '']);
+  logoLabelRow.height = 26;
+  PROJECT_ORGANIZATION_SLOTS.forEach((slot, i) => {
+    const col0 = LOGO_STRIP_COLS[i];
     const org = orgsBySlot.get(slot);
-    fieldRow(
-      sheet,
-      PROJECT_ORGANIZATION_SLOT_LABELS[slot],
-      [org?.name, org?.orgRef].filter(Boolean).join(' — ') || '—',
-    );
-    if (!exportAssetsBySlot.get(slot)?.base64 && org?.logoUrl) {
+    const asset = exportAssetsBySlot.get(slot);
+    if (asset?.base64) {
+      addPixelImage(sheet, workbook, base64ToArrayBuffer(asset.base64), extensionFromMimeType(asset.mimeType), col0, logoImageRow.number - 1, ICON_PX);
+    } else if (org?.logoUrl) {
       // A logo was configured (RfiDetailPage's OrganizationSlotRow shows
       // one on screen) but the backend couldn't resolve it -- either this
       // slot's own S3 download failed, or the whole export-assets request
@@ -454,7 +442,11 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
       // button, same as the old per-image tryFetchImage() did.
       warnings.push(`Could not load the ${PROJECT_ORGANIZATION_SLOT_LABELS[slot]} logo, so it was left out of this export.`);
     }
-  }
+    const labelCell = logoLabelRow.getCell(col0 + 1);
+    labelCell.value = org?.name || PROJECT_ORGANIZATION_SLOT_LABELS[slot];
+    labelCell.font = { size: 7, color: { argb: MUTED }, name: FONT };
+    labelCell.alignment = { horizontal: 'center', vertical: 'top', wrapText: true };
+  });
   spacerRow(sheet);
 
   sectionRow(sheet, 'RFI DETAILS');
