@@ -186,6 +186,45 @@ function extensionFromMimeType(mimeType?: string): 'png' | 'jpeg' {
   return mimeType?.includes('png') ? 'png' : 'jpeg';
 }
 
+// Places a small square image at an exact pixel position/size within a
+// single cell, via `twoCellAnchor` with explicit native (EMU) offsets on
+// both corners -- deliberately NOT exceljs's `{tl: {col, row}, ext}`
+// shorthand this file used before. That shorthand computes the small
+// in-cell offset via `Anchor#col`'s setter (`nativeColOff = fraction *
+// colWidth`), and `colWidth` (lib/doc/anchor.js) falls back to a hardcoded
+// value whenever the target column's width matches exceljs's own
+// DEFAULT_COLUMN_WIDTH (see the sheet.columns comment below for the
+// concrete bug that caused) -- one nine-only symptom already found and
+// fixed, but the same fallback machinery is still in the loop for the
+// offset math even now, and its shorthand also writes `oneCellAnchor`
+// with an `editAs` attribute that isn't actually part of that element's
+// OOXML schema (only `twoCellAnchor` defines `editAs`; confirmed against
+// exceljs's own xform source, lib/xlsx/xform/drawing/one-cell-anchor-xform.js).
+// Passing raw `nativeCol`/`nativeColOff` (EMU, 9525 per px) bypasses the
+// width-dependent setter entirely for both corners, and forces the more
+// common, better-tested twoCellAnchor code path (the same one Excel's own
+// "Insert Picture" UI produces) since `br` is present.
+function addPixelImage(
+  sheet: ExcelJS.Worksheet,
+  workbook: ExcelJS.Workbook,
+  buffer: ArrayBuffer,
+  extension: 'png' | 'jpeg',
+  col: number,
+  row: number,
+  sizePx: number,
+  padPx = 3,
+) {
+  const EMU_PER_PX = 9525;
+  const imageId = workbook.addImage({ buffer, extension });
+  const tl = { nativeCol: col, nativeColOff: padPx * EMU_PER_PX, nativeRow: row, nativeRowOff: padPx * EMU_PER_PX };
+  const br = { nativeCol: col, nativeColOff: (padPx + sizePx) * EMU_PER_PX, nativeRow: row, nativeRowOff: (padPx + sizePx) * EMU_PER_PX };
+  // exceljs's public TS types only describe the fractional {col, row} shape
+  // this deliberately avoids; the native-offset shape is a real, internally
+  // -supported input (lib/doc/anchor.js's Anchor constructor branches on
+  // `address.nativeCol !== undefined`), just not reflected in the .d.ts.
+  sheet.addImage(imageId, { tl, br, editAs: 'oneCell' } as unknown as { tl: ExcelJS.Anchor; br: ExcelJS.Anchor });
+}
+
 export interface RfiWorkbookResult {
   buffer: ExcelJS.Buffer;
   warnings: string[];
@@ -224,11 +263,7 @@ function attachmentListRows(
     const row = fieldRow(sheet, '', attachmentLabel(item));
     if (asset?.base64) {
       row.height = 24;
-      const imageId = workbook.addImage({ buffer: base64ToArrayBuffer(asset.base64), extension: extensionFromMimeType(asset.mimeType) });
-      sheet.addImage(imageId, {
-        tl: { col: 2 + 0.1, row: row.number - 1 + 0.06 },
-        ext: { width: THUMB_PX, height: THUMB_PX },
-      });
+      addPixelImage(sheet, workbook, base64ToArrayBuffer(asset.base64), extensionFromMimeType(asset.mimeType), 2, row.number - 1, THUMB_PX);
     } else if (isImageAttachment(item.filename)) {
       // A raster-image attachment whose thumbnail didn't resolve -- either
       // this one attachment's own S3 download failed, or the whole
@@ -369,11 +404,7 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
     PROJECT_ORGANIZATION_SLOTS.forEach((slot, i) => {
       const asset = exportAssetsBySlot.get(slot);
       if (!asset?.base64) return;
-      const imageId = workbook.addImage({ buffer: base64ToArrayBuffer(asset.base64), extension: extensionFromMimeType(asset.mimeType) });
-      sheet.addImage(imageId, {
-        tl: { col: LOGO_STRIP_COLS[i] + 0.1, row: logoStripRow.number - 1 + 0.08 },
-        ext: { width: ICON_PX, height: ICON_PX },
-      });
+      addPixelImage(sheet, workbook, base64ToArrayBuffer(asset.base64), extensionFromMimeType(asset.mimeType), LOGO_STRIP_COLS[i], logoStripRow.number - 1, ICON_PX);
     });
     spacerRow(sheet);
   }
