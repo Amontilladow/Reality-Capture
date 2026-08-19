@@ -84,9 +84,20 @@ const FONT = 'IBM Plex Sans';    // matches index.html's Google Fonts load --
 const thin = { style: 'thin' as const, color: { argb: BORDER } };
 const gridBorder = { top: thin, bottom: thin, left: thin, right: thin };
 
+// Full row width is 8 columns (A, then 5 narrow org-logo columns B-F, then
+// the wide value column G, then a trailing thumbnail column H) -- see the
+// sheet.columns comment below for why the org columns sit right after A
+// instead of after the value column. Section headers and free-text blocks
+// span the whole thing (1-8); ordinary field rows merge everything from
+// column 2 onward into one value cell, so "Status | High" still reads as
+// two adjacent cells with no dead space in between, exactly as before --
+// only the org-strip rows (built separately, below) deliberately leave
+// columns 2-6 unmerged so each of the 5 slots gets its own real cell.
+const FULL_WIDTH_END = 8;
+
 function sectionRow(sheet: ExcelJS.Worksheet, title: string) {
-  const row = sheet.addRow([title, '']);
-  sheet.mergeCells(row.number, 1, row.number, 2);
+  const row = sheet.addRow([title]);
+  sheet.mergeCells(row.number, 1, row.number, FULL_WIDTH_END);
   row.height = 20;
   row.eachCell({ includeEmpty: true }, (cell) => {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: SECTION_FILL } };
@@ -98,23 +109,28 @@ function sectionRow(sheet: ExcelJS.Worksheet, title: string) {
 }
 
 function fieldRow(sheet: ExcelJS.Worksheet, label: string, value: string) {
-  const row = sheet.addRow([label, value]);
+  const row = sheet.addRow([label]);
+  sheet.mergeCells(row.number, 2, row.number, FULL_WIDTH_END);
   row.height = 18;
-  const [labelCell, valueCell] = [row.getCell(1), row.getCell(2)];
+  const labelCell = row.getCell(1);
   labelCell.font = { bold: true, size: 9.5, color: { argb: MUTED }, name: FONT };
-  valueCell.font = { size: 10, color: { argb: INK }, name: FONT };
   labelCell.alignment = { vertical: 'middle' };
-  valueCell.alignment = { vertical: 'middle', wrapText: true };
   labelCell.border = gridBorder;
-  valueCell.border = gridBorder;
+  row.getCell(2).value = value;
+  row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+    if (colNumber === 1) return;
+    cell.font = { size: 10, color: { argb: INK }, name: FONT };
+    cell.alignment = { vertical: 'middle', wrapText: true };
+    cell.border = gridBorder;
+  });
   return row;
 }
 
 // A merged full-width block for long free text (RFI title, query, response) --
 // same "one big cell" treatment the PDF gives these sections.
 function textBlockRow(sheet: ExcelJS.Worksheet, text: string) {
-  const row = sheet.addRow([text, '']);
-  sheet.mergeCells(row.number, 1, row.number, 2);
+  const row = sheet.addRow([text]);
+  sheet.mergeCells(row.number, 1, row.number, FULL_WIDTH_END);
   const lines = Math.max(1, Math.ceil(text.length / 95));
   row.height = Math.max(20, lines * 14);
   row.eachCell({ includeEmpty: true }, (cell) => {
@@ -242,9 +258,10 @@ function attachmentLabel(item: RfiXlsAttachmentItem): string {
 // same underlying export-assets thumbnails, just anchored into a
 // spreadsheet cell instead of a react-pdf <Image>. Non-image attachments
 // (pdf/doc/xls/zip) render exactly as before, just one per row instead of
-// semicolon-joined. Thumbnail anchored at column C (index 2) -- an integer
-// column index, not a fraction of column B -- for the same reason the
-// organization logo strip above uses one dedicated column per icon: a
+// semicolon-joined. Thumbnail anchored at column H (index 7, the dedicated
+// trailing thumbnail column -- see the sheet.columns comment) -- an integer
+// column index, not a fraction of the value column -- for the same reason
+// the organization logo strip above uses one dedicated column per icon: a
 // fractional column offset in exceljs does not scale against that column's
 // declared width, confirmed directly against its own anchor output.
 function attachmentListRows(
@@ -263,7 +280,7 @@ function attachmentListRows(
     const row = fieldRow(sheet, '', attachmentLabel(item));
     if (asset?.base64) {
       row.height = 24;
-      addPixelImage(sheet, workbook, base64ToArrayBuffer(asset.base64), extensionFromMimeType(asset.mimeType), 2, row.number - 1, THUMB_PX);
+      addPixelImage(sheet, workbook, base64ToArrayBuffer(asset.base64), extensionFromMimeType(asset.mimeType), 7, row.number - 1, THUMB_PX);
     } else if (isImageAttachment(item.filename)) {
       // A raster-image attachment whose thumbnail didn't resolve -- either
       // this one attachment's own S3 download failed, or the whole
@@ -328,65 +345,75 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
   // column boundary instead of spilling into the adjacent (non-empty)
   // cell, which Excel only does for genuinely empty neighbors.
   //
-  // C-G (5 narrow columns) exist for the organization logo strip and the
-  // per-attachment thumbnails below -- every other row's content stays
-  // confined to A/B exactly as before (mergeCells(row,1,row,2) never
-  // touches C-G). A floating image's fractional column offset (e.g.
-  // col: 1.55) does NOT scale against that column's own declared width --
-  // verified directly against exceljs's own anchor output, it consistently
-  // uses a fixed ~65px unit regardless of the column's real width, so
-  // packing icons into fractional offsets within column B alone (the
-  // original single-icon approach) would have placed them almost entirely
-  // on top of each other. One real column per icon sidesteps that: an
-  // integer `col` value is unambiguous no matter how that scaling quirk
-  // works.
+  // B-F (5 narrow columns) hold the organization logo strip; G is the wide
+  // "value" column every fieldRow/textBlockRow/sectionRow merges into; H is
+  // a dedicated trailing column for per-attachment thumbnails. Deliberately
+  // in THIS order -- org columns before the value column, not after it --
+  // because Excel lays columns out strictly left to right: putting the org
+  // strip after the wide value column (the layout this file used to have)
+  // meant it only ever appeared past however much dead space that column's
+  // own width added, regardless of how little text actually filled it,
+  // reported directly as the logo strip reading as a disconnected block far
+  // to the right of the header instead of tucked in next to it. Moving the
+  // org columns to sit immediately after A removes that gap outright.
+  // fieldRow merges columns 2 through H into one value cell so ordinary
+  // rows ("Status | High") still read as two directly-adjacent cells with
+  // no gap, exactly as before -- only the org-strip rows (built separately,
+  // below) deliberately leave columns B-F unmerged, since each of the 5
+  // slots needs its own real cell for its own image and label.
   //
-  // Width is 10, not 9: exceljs's own `DEFAULT_COLUMN_WIDTH` constant
-  // (lib/doc/column.js) is *exactly* 9, and a column whose declared width
-  // equals that constant is treated as "not custom" and silently omitted
-  // from the file's <cols> XML entirely -- confirmed by writing a real
-  // file and inspecting the raw XML directly (unzipped, not re-parsed by
-  // exceljs itself, since that would just as consistently misread its own
-  // bug). With no <col> entry at all for C-G, real Excel falls back to its
-  // own undefined-column default instead of the width this file actually
-  // needs, throwing the floating images anchored in those columns visibly
-  // out of position -- reported directly against Microsoft Excel desktop,
-  // not a third-party-viewer quirk. Any value other than precisely 9 avoids
-  // this; 10 was picked for headroom, not because 9.01 wouldn't also work.
-  sheet.columns = [{ width: 30 }, { width: 62 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }];
+  // A floating image's fractional column offset (e.g. col: 1.55) does NOT
+  // scale against that column's own declared width -- verified directly
+  // against exceljs's own anchor output, it consistently uses a fixed
+  // ~65px unit regardless of the column's real width, so packing icons
+  // into fractional offsets within one column would place them almost
+  // entirely on top of each other. One real column per icon sidesteps
+  // that: an integer `col` value is unambiguous no matter how that scaling
+  // quirk works.
+  //
+  // Narrow-column width is 10, not 9: exceljs's own `DEFAULT_COLUMN_WIDTH`
+  // constant (lib/doc/column.js) is *exactly* 9, and a column whose
+  // declared width equals that constant is treated as "not custom" and
+  // silently omitted from the file's <cols> XML entirely -- confirmed by
+  // writing a real file and inspecting the raw XML directly (unzipped, not
+  // re-parsed by exceljs itself, since that would just as consistently
+  // misread its own bug). With no <col> entry at all, real Excel falls
+  // back to its own undefined-column default instead of the width this
+  // file actually needs, throwing the floating images anchored in those
+  // columns visibly out of position -- reported directly against
+  // Microsoft Excel desktop, not a third-party-viewer quirk. Any value
+  // other than precisely 9 avoids this; 10 was picked for headroom, not
+  // because 9.01 wouldn't also work.
+  sheet.columns = [{ width: 30 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 62 }, { width: 10 }];
 
-  // Title bar
-  const titleRow = sheet.addRow(['REQUEST FOR INFORMATION', rfi.rfiNumber ?? rfi.id]);
+  // Title bar. RFI number lives in the merged value+thumbnail columns
+  // (G:H) rather than column B now that B is the first org-logo column --
+  // right-aligned to the sheet's actual right edge either way.
+  const titleRow = sheet.addRow(['REQUEST FOR INFORMATION']);
+  sheet.mergeCells(titleRow.number, 7, titleRow.number, FULL_WIDTH_END);
+  titleRow.getCell(7).value = rfi.rfiNumber ?? rfi.id;
 
-  // The actual, final root cause of the reported "logo/thumbnail floats
-  // away from its row" bug: floating images (sheet.addImage()) never touch
-  // real cell data, and this sheet otherwise only ever writes into columns
-  // A/B -- so exceljs's own <dimension> element for the file (its
-  // calculated "used range," confirmed directly: A1:B<last-row>, nothing
-  // further right) never includes C-G at all, even after every anchor-math
-  // fix above got the images themselves positioned correctly relative to
-  // those columns. This sheet's own pageSetup below sets fitToWidth: 1 --
-  // real Excel computes that print/page-layout scale factor from the
-  // sheet's dimension, so columns entirely outside it (where every
-  // floating image here lives) don't scale in lockstep with the rest of
-  // the table when printed, which is what actually produced the reported
-  // symptom. Touching the already-created title row's column G is enough
-  // to pull the dimension out that far; empty string is invisible and
-  // doesn't disturb anything else already set on that row. Deliberately
-  // done via `titleRow.getCell(7)` (the row addRow() already returned),
-  // not `sheet.getRow(1)` called before any addRow() -- calling getRow()
-  // to vivify a row ahead of the first addRow() shifts every subsequent
-  // addRow() down by one, silently breaking every row-index assumption
-  // the rest of this function relies on.
-  titleRow.getCell(7).value = '';
+  // exceljs's own <dimension> element for the file (its calculated "used
+  // range") only ever covers cells that actually hold data -- floating
+  // images (sheet.addImage()) never count. This sheet's own pageSetup
+  // below sets fitToWidth: 1, and real Excel computes that print/page-
+  // layout scale factor from the sheet's dimension, so any column entirely
+  // outside it (where a floating image might still visually sit) wouldn't
+  // scale in lockstep with the rest of the table when printed. Merging the
+  // RFI number into column H above already pulls the dimension out to the
+  // sheet's full 8-column width on every file, so no separate empty-string
+  // touch is needed here anymore (previously required when column G was
+  // never otherwise written to).
   titleRow.height = 28;
   titleRow.getCell(1).font = { bold: true, size: 13, color: { argb: INK }, name: FONT };
-  titleRow.getCell(2).font = { bold: true, size: 12, color: { argb: ACCENT }, name: FONT };
+  titleRow.getCell(7).font = { bold: true, size: 12, color: { argb: ACCENT }, name: FONT };
   titleRow.getCell(1).alignment = { vertical: 'middle' };
-  titleRow.getCell(2).alignment = { vertical: 'middle', horizontal: 'right' };
-  titleRow.eachCell((cell) => {
+  titleRow.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
+  titleRow.eachCell({ includeEmpty: true }, (cell) => {
     // Matches rfi-pdf.template.ts's header rule exactly -- a signal-orange
-    // underline, not a plain black one.
+    // underline, not a plain black one. includeEmpty so the underline
+    // spans the full row (columns B-F would otherwise be skipped, since
+    // they're never explicitly touched on this row).
     cell.border = { bottom: { style: 'medium', color: { argb: ACCENT } } };
   });
   spacerRow(sheet);
@@ -397,8 +424,8 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
   // entirely (the live page never shows either; Date is already covered by
   // the RFI DETAILS section's own creation-adjacent fields below).
   if (project?.name || project?.code) {
-    const projectLineRow = sheet.addRow([[project?.name, project?.code].filter(Boolean).join(' · '), '']);
-    sheet.mergeCells(projectLineRow.number, 1, projectLineRow.number, 2);
+    const projectLineRow = sheet.addRow([[project?.name, project?.code].filter(Boolean).join(' · ')]);
+    sheet.mergeCells(projectLineRow.number, 1, projectLineRow.number, FULL_WIDTH_END);
     projectLineRow.height = 16;
     projectLineRow.eachCell({ includeEmpty: true }, (cell) => {
       cell.font = { size: 9, color: { argb: MUTED }, name: FONT };
@@ -410,23 +437,24 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
   // Organization logos -- one image, its name (or slot label if
   // unconfigured) directly underneath, nothing else. Matches the PDF's own
   // orgRow exactly (image + `org.name || slotLabel`, no separate text
-  // table listing the same 5 organizations again below it) -- the earlier
+  // table listing the same 5 organizations again below it) -- an earlier
   // version here had both a floating logo strip AND a full ORGANIZATIONS
   // table repeating the same names, which read as two disconnected things
   // rather than one. Always all 5 slots (an unconfigured slot still gets
   // its label, just no image), matching the live page's OrganizationSlotRow.
-  // Each slot gets its own column (C-G) for both the image row and the
-  // label row, so the label is real cell content sitting directly under
-  // its own image, not a separate table -- this also pulls the sheet's
-  // used-range out to column G on its own for any file where at least one
-  // slot is configured, on top of (not instead of) the always-on fallback
-  // touch above.
+  // Each slot gets its own column (B-F, immediately after the label column
+  // -- see the sheet.columns comment) for both the image row and the label
+  // row, so the label is real cell content sitting directly under its own
+  // image, not a separate table. Deliberately positioned right after A
+  // (not after the wide value column, which now lives at G) so the strip
+  // reads as part of the header block instead of a disconnected block off
+  // to the right past a wide empty column.
   const orgsBySlot = new Map((extras?.organizations ?? []).map((o) => [o.slot, o]));
-  const LOGO_STRIP_COLS = [2, 3, 4, 5, 6]; // 0-indexed: C, D, E, F, G
+  const LOGO_STRIP_COLS = [1, 2, 3, 4, 5]; // 0-indexed: B, C, D, E, F
   const ICON_PX = 26;
-  const logoImageRow = sheet.addRow(['', '']);
+  const logoImageRow = sheet.addRow(['']);
   logoImageRow.height = 28;
-  const logoLabelRow = sheet.addRow(['', '']);
+  const logoLabelRow = sheet.addRow(['']);
   logoLabelRow.height = 26;
   PROJECT_ORGANIZATION_SLOTS.forEach((slot, i) => {
     const col0 = LOGO_STRIP_COLS[i];
@@ -532,23 +560,22 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
     fieldRow(sheet, 'Events', 'No audit events recorded.');
   }
 
+  // Anchored at column G (index 6, the value column) via the same
+  // addPixelImage native-offset technique as everything else in this file
+  // -- the old fractional `{tl: {col: 1.55, row}}` shorthand this used to
+  // use pointed at column B, which now holds the first org-logo slot
+  // instead of the wide value column, and fractional offsets don't scale
+  // against a column's real declared width regardless (see addPixelImage's
+  // own comment).
   if (exportAssets?.logo?.base64) {
-    const imageId = workbook.addImage({
-      buffer: base64ToArrayBuffer(exportAssets.logo.base64),
-      extension: extensionFromMimeType(exportAssets.logo.mimeType),
-    });
-    sheet.addImage(imageId, { tl: { col: 1.55, row: 0.05 }, ext: { width: 36, height: 36 } });
+    addPixelImage(sheet, workbook, base64ToArrayBuffer(exportAssets.logo.base64), extensionFromMimeType(exportAssets.logo.mimeType), 6, 0, 36, 4);
   } else if (project?.logoUrl) {
     warnings.push('Could not load the project logo, so it was left out of this export.');
   }
 
   if (exportAssets?.stamp?.base64) {
-    const stampId = workbook.addImage({
-      buffer: base64ToArrayBuffer(exportAssets.stamp.base64),
-      extension: extensionFromMimeType(exportAssets.stamp.mimeType),
-    });
     const anchorRow = sheet.lastRow ? sheet.lastRow.number - 1 : 0;
-    sheet.addImage(stampId, { tl: { col: 1.55, row: anchorRow }, ext: { width: 60, height: 60 } });
+    addPixelImage(sheet, workbook, base64ToArrayBuffer(exportAssets.stamp.base64), extensionFromMimeType(exportAssets.stamp.mimeType), 6, anchorRow, 60, 4);
   } else if (project?.stampUrl) {
     warnings.push('Could not load the project stamp, so it was left out of this export.');
   }
