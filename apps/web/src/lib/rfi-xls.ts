@@ -357,6 +357,28 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
 
   // Title bar
   const titleRow = sheet.addRow(['REQUEST FOR INFORMATION', rfi.rfiNumber ?? rfi.id]);
+
+  // The actual, final root cause of the reported "logo/thumbnail floats
+  // away from its row" bug: floating images (sheet.addImage()) never touch
+  // real cell data, and this sheet otherwise only ever writes into columns
+  // A/B -- so exceljs's own <dimension> element for the file (its
+  // calculated "used range," confirmed directly: A1:B<last-row>, nothing
+  // further right) never includes C-G at all, even after every anchor-math
+  // fix above got the images themselves positioned correctly relative to
+  // those columns. This sheet's own pageSetup below sets fitToWidth: 1 --
+  // real Excel computes that print/page-layout scale factor from the
+  // sheet's dimension, so columns entirely outside it (where every
+  // floating image here lives) don't scale in lockstep with the rest of
+  // the table when printed, which is what actually produced the reported
+  // symptom. Touching the already-created title row's column G is enough
+  // to pull the dimension out that far; empty string is invisible and
+  // doesn't disturb anything else already set on that row. Deliberately
+  // done via `titleRow.getCell(7)` (the row addRow() already returned),
+  // not `sheet.getRow(1)` called before any addRow() -- calling getRow()
+  // to vivify a row ahead of the first addRow() shifts every subsequent
+  // addRow() down by one, silently breaking every row-index assumption
+  // the rest of this function relies on.
+  titleRow.getCell(7).value = '';
   titleRow.height = 28;
   titleRow.getCell(1).font = { bold: true, size: 13, color: { argb: INK }, name: FONT };
   titleRow.getCell(2).font = { bold: true, size: 12, color: { argb: ACCENT }, name: FONT };
