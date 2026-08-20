@@ -13,7 +13,6 @@ const PROJECT_NAV_ITEMS = [
   { to: 'issues', label: 'Issues', icon: IconFlag },
   { to: 'drawings', label: 'Floor Plans', icon: IconMap },
   { to: 'rfis', label: 'RFIs', icon: IconQuestion },
-  { to: 'elements', label: 'Reinforcement', icon: IconRebar },
   { to: 'transmittals', label: 'Transmittals', icon: IconSend },
   { to: 'snagging', label: 'Snagging', icon: IconTag },
   { to: 'assistant', label: 'AI Assistant', icon: IconSpark },
@@ -173,14 +172,6 @@ function IconQuestion({ className }: { className?: string }) {
       <circle cx="12" cy="12" r="9" />
       <path d="M9.5 9a2.5 2.5 0 014.9.8c0 1.7-2.4 2-2.4 3.7" strokeLinecap="round" />
       <circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-function IconRebar({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M5 4v6a4 4 0 004 4h6a4 4 0 014 4v2" strokeLinecap="round" />
-      <path d="M3 4h4M3 20h4M17 20h4" strokeLinecap="round" />
     </svg>
   );
 }
