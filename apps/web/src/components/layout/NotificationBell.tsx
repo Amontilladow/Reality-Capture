@@ -59,7 +59,6 @@ export function NotificationBell() {
     switch (resourceType) {
       case 'issue': return `/projects/${projectId}/issues?issueId=${resourceId}`;
       case 'rfi': return `/projects/${projectId}/rfis`;
-      case 'submittal': return `/projects/${projectId}/submittals`;
       case 'snag_item': return `/projects/${projectId}/snagging`;
       default: return null;
     }

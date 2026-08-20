@@ -12,11 +12,9 @@ const PROJECT_NAV_ITEMS = [
   { to: 'captures', label: 'Captures', icon: IconCamera },
   { to: 'issues', label: 'Issues', icon: IconFlag },
   { to: 'drawings', label: 'Floor Plans', icon: IconMap },
-  { to: 'documents', label: 'Documents', icon: IconDocument },
   { to: 'rfis', label: 'RFIs', icon: IconQuestion },
-  { to: 'submittals', label: 'Submittals', icon: IconStamp },
+  { to: 'elements', label: 'Reinforcement', icon: IconRebar },
   { to: 'transmittals', label: 'Transmittals', icon: IconSend },
-  { to: 'qa', label: 'QA/QC', icon: IconCheckShield },
   { to: 'snagging', label: 'Snagging', icon: IconTag },
   { to: 'assistant', label: 'AI Assistant', icon: IconSpark },
   { to: 'reports', label: 'Reports', icon: IconReport },
@@ -169,13 +167,6 @@ function IconMap({ className }: { className?: string }) {
     </svg>
   );
 }
-function IconDocument({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M7 3h7l4 4v14H7z" strokeLinejoin="round" /><path d="M14 3v4h4" strokeLinejoin="round" /><path d="M9.5 12h5M9.5 15.5h5" strokeLinecap="round" />
-    </svg>
-  );
-}
 function IconQuestion({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -185,12 +176,11 @@ function IconQuestion({ className }: { className?: string }) {
     </svg>
   );
 }
-function IconStamp({ className }: { className?: string }) {
+function IconRebar({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="4" y="10" width="16" height="6" rx="1" strokeLinejoin="round" />
-      <path d="M9 10V6a3 3 0 016 0v4" strokeLinecap="round" />
-      <path d="M4 20h16" strokeLinecap="round" />
+      <path d="M5 4v6a4 4 0 004 4h6a4 4 0 014 4v2" strokeLinecap="round" />
+      <path d="M3 4h4M3 20h4M17 20h4" strokeLinecap="round" />
     </svg>
   );
 }
@@ -198,14 +188,6 @@ function IconSend({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M4 11l16-7-6.5 16-3-6.5L4 11z" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function IconCheckShield({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" strokeLinejoin="round" />
-      <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

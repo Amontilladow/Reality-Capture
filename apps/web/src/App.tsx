@@ -13,12 +13,11 @@ import ProjectList from './pages/ProjectList';
 import ProjectDetail from './pages/ProjectDetail';
 import CapturesPage from './pages/CapturesPage';
 import IssuesPage from './pages/IssuesPage';
-import DocumentsPage from './pages/DocumentsPage';
 import RfisPage from './pages/RfisPage';
 import RfiDetailPage from './pages/RfiDetailPage';
-import SubmittalsPage from './pages/SubmittalsPage';
+import ReinforcementElementsPage from './pages/ReinforcementElementsPage';
+import ReinforcementElementDetailPage from './pages/ReinforcementElementDetailPage';
 import TransmittalsPage from './pages/TransmittalsPage';
-import QaInspectionsPage from './pages/QaInspectionsPage';
 import SnaggingPage from './pages/SnaggingPage';
 import AssistantPage from './pages/AssistantPage';
 import ReportsPage from './pages/ReportsPage';
@@ -74,12 +73,11 @@ export default function App() {
             <Route path="/projects/:projectId/drawings" element={<FloorPlanViewer />} />
             <Route path="/projects/:projectId/bim" element={<BimModelsPage />} />
             <Route path="/projects/:projectId/issues" element={<IssuesPage />} />
-            <Route path="/projects/:projectId/documents" element={<DocumentsPage />} />
             <Route path="/projects/:projectId/rfis" element={<RfisPage />} />
             <Route path="/projects/:projectId/rfis/:rfiId" element={<RfiDetailPage />} />
-            <Route path="/projects/:projectId/submittals" element={<SubmittalsPage />} />
+            <Route path="/projects/:projectId/elements" element={<ReinforcementElementsPage />} />
+            <Route path="/projects/:projectId/elements/:id" element={<ReinforcementElementDetailPage />} />
             <Route path="/projects/:projectId/transmittals" element={<TransmittalsPage />} />
-            <Route path="/projects/:projectId/qa" element={<QaInspectionsPage />} />
             <Route path="/projects/:projectId/snagging" element={<SnaggingPage />} />
             <Route path="/projects/:projectId/assistant" element={<AssistantPage />} />
             <Route path="/projects/:projectId/reports" element={<ReportsPage />} />
