@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Pin } from '../../lib/drawings.api';
 import { listCaptures, uploadCapture } from '../../lib/captures.api';
 import { updateLocation, archiveLocation } from '../../lib/projects.api';
+import { updateIssue } from '../../lib/issues.api';
 import { CaptureGrid } from '../CaptureGrid';
 import { ElementSearch } from '../bim-viewer/ElementSearch';
 import type { BimElementDetail } from '../../lib/bim.api';
@@ -69,7 +70,13 @@ export function PinPanel({
   }
 
   const renameMutation = useMutation({
-    mutationFn: () => updateLocation(projectId, pin!.locationId, { name: title.trim() || 'Untitled pin' }),
+    mutationFn: async () => {
+      const trimmedTitle = title.trim() || 'Untitled pin';
+      await updateLocation(projectId, pin!.locationId, { name: trimmedTitle });
+      if (pin!.issueId) {
+        await updateIssue(projectId, pin!.issueId, { title: trimmedTitle });
+      }
+    },
     onSuccess: () => {
       lastSavedTitle.current = title.trim() || 'Untitled pin';
       setTitle(lastSavedTitle.current);
@@ -79,7 +86,12 @@ export function PinPanel({
   });
 
   const noteMutation = useMutation({
-    mutationFn: () => updateLocation(projectId, pin!.locationId, { description: note }),
+    mutationFn: async () => {
+      await updateLocation(projectId, pin!.locationId, { description: note });
+      if (pin!.issueId) {
+        await updateIssue(projectId, pin!.issueId, { description: note });
+      }
+    },
     onSuccess: () => {
       lastSavedNote.current = note;
       invalidatePin();
@@ -88,8 +100,12 @@ export function PinPanel({
   });
 
   const elementMutation = useMutation({
-    mutationFn: (element: BimElementDetail | null) =>
-      updateLocation(projectId, pin!.locationId, { elementId: element?.id ?? null }),
+    mutationFn: async (element: BimElementDetail | null) => {
+      await updateLocation(projectId, pin!.locationId, { elementId: element?.id ?? null });
+      if (pin!.issueId) {
+        await updateIssue(projectId, pin!.issueId, { elementId: element?.id ?? null });
+      }
+    },
     onSuccess: (_data, element) => {
       setLinkedElement(element ? { id: element.id, name: element.ifcName ?? '', ifcType: element.ifcType } : null);
       setPickingElement(false);
@@ -168,6 +184,14 @@ export function PinPanel({
                 <h3 className="text-base font-semibold truncate">{title || 'Untitled pin'}</h3>
                 <EditIcon className="w-3.5 h-3.5 text-ink-500 shrink-0" />
               </button>
+            )}
+            {pin.issueId && (
+              <Link
+                to={`/projects/${projectId}/issues?issueId=${pin.issueId}`}
+                className="text-xs text-blueprint hover:text-blueprint-hover px-1"
+              >
+                View in Issues →
+              </Link>
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">

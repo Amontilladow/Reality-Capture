@@ -65,7 +65,7 @@ export class DrawingsController {
   @Post(':id/pins')
   @ApiOperation({ summary: 'Create a pin on a drawing at normalized (x,y) coordinates — no capture required yet' })
   async createPin(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: CreatePinDto) {
-    return { data: await this.svc.createPin(u.companyId, id, dto), error: null };
+    return { data: await this.svc.createPin(u.companyId, id, u.id, dto), error: null };
   }
 
   @Get(':id/pins')

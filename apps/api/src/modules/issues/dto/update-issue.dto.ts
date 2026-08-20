@@ -22,6 +22,7 @@ export class UpdateIssueDto {
   @IsOptional() @IsUUID()    buildingId?: string;
   @IsOptional() @IsUUID()    levelId?: string;
   @IsOptional() @IsUUID()    locationId?: string;
+  @IsOptional() @IsUUID()    elementId?: string | null;
   @IsOptional() @IsUUID()    assignedTo?: string;
   @IsOptional() @IsString()  responsibleCompany?: string;
   @IsOptional() @IsDateString() deadline?: string;

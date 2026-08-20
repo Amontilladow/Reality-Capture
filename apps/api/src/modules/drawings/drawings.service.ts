@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { StorageService } from '../storage/storage.service';
+import { IssuesService } from '../issues/issues.service';
 import type { CreateDrawingDto } from './dto/create-drawing.dto';
 import type { LinkCaptureToDrawingDto } from './dto/link-capture.dto';
 import type { CreatePinDto } from './dto/create-pin.dto';
@@ -10,6 +11,7 @@ export class DrawingsService {
   constructor(
     private readonly db: DatabaseService,
     private readonly storage: StorageService,
+    private readonly issues: IssuesService,
   ) {}
 
   // All pins across every drawing in a project, for linking FROM the BIM
@@ -147,9 +149,9 @@ export class DrawingsService {
   // ── Pins (place-first model — a pin is a Location that can exist before ──
   // any capture does; captures attach to it afterward via captures.location_id)
 
-  async createPin(companyId: string, drawingId: string, dto: CreatePinDto) {
+  async createPin(companyId: string, drawingId: string, userId: string, dto: CreatePinDto) {
     const [drawing] = await this.db.withTenant(companyId, sql => sql`
-      SELECT id, level_id FROM drawings WHERE id = ${drawingId} AND company_id = ${companyId}
+      SELECT id, level_id, project_id FROM drawings WHERE id = ${drawingId} AND company_id = ${companyId}
     `);
     if (!drawing) throw new NotFoundException('Drawing not found.');
 
@@ -163,6 +165,21 @@ export class DrawingsService {
       RETURNING *
     `);
 
+    // Every pin automatically gets a matching Issue, linked via the existing
+    // issues.location_id relationship -- an Issue with location_id = a
+    // pin's location id is that pin's issue. See createPinForElement()'s
+    // equivalent in bim.service.ts for the BIM-viewer side of this.
+    const issue = await this.issues.create(companyId, drawing.projectId as string, userId, {
+      issueType: 'general',
+      title: dto.name || 'Untitled pin',
+      discipline: 'OTHER',
+      deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      locationId: pin.id as string,
+      drawingId,
+      posXNorm: dto.posXNorm,
+      posYNorm: dto.posYNorm,
+    });
+
     // Shaped to match getPins() below (locationId, captureCount, etc.) so the
     // frontend can treat a freshly-created pin identically to one from the list.
     return {
@@ -175,6 +192,7 @@ export class DrawingsService {
       createdVia: pin.createdVia as string,
       createdAt: pin.createdAt as string,
       captureCount: 0,
+      issueId: issue.id as string,
     };
   }
 

@@ -3,6 +3,7 @@ import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import { DatabaseService } from '../../database/database.service';
 import { StorageService } from '../storage/storage.service';
+import { IssuesService } from '../issues/issues.service';
 import type { PaginationQuery, IfcParseJobData } from '@engineeringos/types';
 import { IFC_PROCESSING_QUEUE, IFC_PARSE_JOB_NAME } from '@engineeringos/types';
 
@@ -13,6 +14,7 @@ export class BimService {
   constructor(
     private readonly db: DatabaseService,
     private readonly storage: StorageService,
+    private readonly issues: IssuesService,
     @InjectQueue(IFC_PROCESSING_QUEUE) private readonly ifcQueue: Queue<IfcParseJobData>,
   ) {}
 
@@ -259,14 +261,27 @@ export class BimService {
   // once someone (from the floor plan side) gives it a position; until
   // then it's still valid, since locations_has_a_place_check now accepts
   // element_id on its own as a place.
-  async createPinForElement(companyId: string, elementId: string, name: string) {
+  async createPinForElement(companyId: string, projectId: string, elementId: string, userId: string, name: string) {
     // withTenant required -- locations carries the tenant_isolation RLS policy.
     const [loc] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO locations (company_id, name, element_id)
       VALUES (${companyId}, ${name}, ${elementId})
       RETURNING id, name, element_id
     `);
-    return loc;
+
+    // Every pin automatically gets a matching Issue, linked via
+    // issues.location_id (and, for an element-originated pin, issues.element_id
+    // too) -- see the drawings.service.ts createPin() equivalent.
+    const issue = await this.issues.create(companyId, projectId, userId, {
+      issueType: 'general',
+      title: name,
+      discipline: 'OTHER',
+      deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      locationId: loc.id as string,
+      elementId,
+    });
+
+    return { ...loc, issueId: issue.id as string };
   }
 
   async updateElementStatus(companyId: string, elementId: string, status: string) {

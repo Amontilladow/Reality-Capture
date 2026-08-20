@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { DrawingsService } from './drawings.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { StorageService } from '../storage/storage.service';
+import type { IssuesService } from '../issues/issues.service';
 
 describe('DrawingsService pin page_number', () => {
   const companyId = 'company-1';
@@ -27,7 +28,12 @@ describe('DrawingsService pin page_number', () => {
     });
     const db = { withTenant, query } as unknown as DatabaseService;
     const storage = { resolveUrls: jest.fn().mockResolvedValue(new Map()) };
-    return { svc: new DrawingsService(db, storage as unknown as StorageService), withTenant, query };
+    const issues = { create: jest.fn().mockResolvedValue({ id: 'issue-1' }) };
+    return {
+      svc: new DrawingsService(db, storage as unknown as StorageService, issues as unknown as IssuesService),
+      withTenant,
+      query,
+    };
   }
 
   describe('createPin', () => {
@@ -40,7 +46,7 @@ describe('DrawingsService pin page_number', () => {
         },
       });
 
-      const result = await svc.createPin(companyId, drawingId, { posXNorm: 0.5, posYNorm: 0.5 });
+      const result = await svc.createPin(companyId, drawingId, 'user-1', { posXNorm: 0.5, posYNorm: 0.5 });
 
       expect(result.pageNumber).toBe(1);
       const insertSql = (query.mock.calls[0][0] as TemplateStringsArray).join('');
@@ -58,14 +64,14 @@ describe('DrawingsService pin page_number', () => {
         },
       });
 
-      const result = await svc.createPin(companyId, drawingId, { posXNorm: 0.2, posYNorm: 0.3, pageNumber: 3 });
+      const result = await svc.createPin(companyId, drawingId, 'user-1', { posXNorm: 0.2, posYNorm: 0.3, pageNumber: 3 });
 
       expect(result.pageNumber).toBe(3);
     });
 
     it('throws NotFoundException for a drawing that does not exist', async () => {
       const { svc } = makeService({ drawingRow: undefined });
-      await expect(svc.createPin(companyId, 'missing', { posXNorm: 0, posYNorm: 0 })).rejects.toThrow(NotFoundException);
+      await expect(svc.createPin(companyId, 'missing', 'user-1', { posXNorm: 0, posYNorm: 0 })).rejects.toThrow(NotFoundException);
     });
   });
 

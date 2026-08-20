@@ -3,6 +3,7 @@ import type { Queue } from 'bull';
 import { BimService } from './bim.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { StorageService } from '../storage/storage.service';
+import type { IssuesService } from '../issues/issues.service';
 
 describe('BimService.getModelProvenance', () => {
   const companyId = 'company-1';
@@ -11,12 +12,14 @@ describe('BimService.getModelProvenance', () => {
   function makeService(modelRow: Record<string, unknown> | undefined) {
     const db = { withTenant: jest.fn().mockResolvedValue(modelRow ? [modelRow] : []) };
     const storage = {};
+    const issues = {};
     const queue = {};
-    // BimService only touches db/storage/ifcQueue via `this.x`, so a plain
-    // object satisfies it for this unit test without a full Nest DI setup.
+    // BimService only touches db/storage/issues/ifcQueue via `this.x`, so a
+    // plain object satisfies it for this unit test without a full Nest DI setup.
     return new BimService(
       db as unknown as DatabaseService,
       storage as unknown as StorageService,
+      issues as unknown as IssuesService,
       queue as unknown as Queue,
     );
   }

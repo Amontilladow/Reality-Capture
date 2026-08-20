@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bull';
 import { BimService } from './bim.service';
 import { BimController } from './bim.controller';
 import { IFC_PROCESSING_QUEUE } from '@engineeringos/types';
+import { IssuesModule } from '../issues/issues.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { IFC_PROCESSING_QUEUE } from '@engineeringos/types';
         removeOnFail: 100,
       },
     }),
+    IssuesModule,
   ],
   controllers: [BimController],
   providers: [BimService],

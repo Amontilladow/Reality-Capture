@@ -229,6 +229,7 @@ export class IssuesService {
         building_id         = COALESCE(${dto.buildingId ?? null}::uuid, building_id),
         level_id            = COALESCE(${dto.levelId ?? null}::uuid, level_id),
         location_id         = COALESCE(${dto.locationId ?? null}::uuid, location_id),
+        element_id          = CASE WHEN ${dto.elementId !== undefined} THEN ${dto.elementId ?? null}::uuid ELSE element_id END,
         assigned_to         = COALESCE(${dto.assignedTo ?? null}::uuid, assigned_to),
         responsible_company = COALESCE(${dto.responsibleCompany ?? null}, responsible_company),
         deadline            = COALESCE(${dto.deadline ?? null}::timestamptz, deadline),

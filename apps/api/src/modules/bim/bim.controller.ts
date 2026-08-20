@@ -101,8 +101,8 @@ export class BimController {
 
   @Post('elements/:eid/pins')
   @ApiOperation({ summary: 'Create a new pin attached to this element, with no floor-plan position yet' })
-  async createPinForElement(@CurrentUser() u: AuthenticatedUser, @Param('eid') eid: string, @Body() body: { name?: string }) {
-    return { data: await this.svc.createPinForElement(u.companyId, eid, body.name || 'Untitled pin'), error: null };
+  async createPinForElement(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('eid') eid: string, @Body() body: { name?: string }) {
+    return { data: await this.svc.createPinForElement(u.companyId, pid, eid, u.id, body.name || 'Untitled pin'), error: null };
   }
 
   @Get('progress')

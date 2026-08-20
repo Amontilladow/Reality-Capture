@@ -128,6 +128,7 @@ export interface UpdateIssuePayload {
   buildingId?: string;
   levelId?: string;
   locationId?: string;
+  elementId?: string | null;
   assignedTo?: string;
   responsibleCompany?: string;
   deadline?: string;
