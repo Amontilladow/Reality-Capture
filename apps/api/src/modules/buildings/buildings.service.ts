@@ -1,9 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
+import { IssuesService } from '../issues/issues.service';
+import { SnaggingService } from '../snagging/snagging.service';
 
 @Injectable()
 export class BuildingsService {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly issues: IssuesService,
+    private readonly snagging: SnaggingService,
+  ) {}
 
   async createBuilding(companyId: string, projectId: string, userId: string, dto: { name: string; code?: string; description?: string; totalLevels?: number }) {
     // withTenant required -- buildings carries the tenant_isolation RLS policy;
@@ -110,5 +116,38 @@ export class BuildingsService {
       RETURNING *`);
     if (!loc) throw new NotFoundException('Location not found.');
     return loc;
+  }
+
+  // Converts a pin's auto-created Issue into a Snag item. Works identically
+  // whether the pin came from a floor-plan drawing (drawings.service.ts
+  // createPin()) or a BIM element (bim.service.ts createPinForElement()) --
+  // it's location-based, not drawing/element-based. The new snag item takes
+  // over issues.location_id's role via its own location_id; the Issue is
+  // then deleted so a pin is never linked to both at once.
+  async convertPinToSnag(companyId: string, projectId: string, locationId: string, userId: string, userRole: string) {
+    // withTenant required -- locations carries the tenant_isolation RLS policy;
+    // a plain this.db.query() never sets app.current_company_id.
+    const [loc] = await this.db.withTenant(companyId, sql => sql`
+      SELECT id, name, description FROM locations
+      WHERE id = ${locationId} AND company_id = ${companyId} AND archived_at IS NULL`);
+    if (!loc) throw new NotFoundException('Location not found.');
+
+    // withTenant required -- issues carries the tenant_isolation RLS policy.
+    const [issue] = await this.db.withTenant(companyId, sql => sql`
+      SELECT id, title, description FROM issues
+      WHERE location_id = ${locationId} AND company_id = ${companyId} AND project_id = ${projectId}
+      ORDER BY created_at ASC LIMIT 1`);
+
+    const title = (issue?.title as string | undefined) ?? (loc.name as string | undefined) ?? 'Untitled pin';
+    const description = (issue?.description as string | undefined) ?? (loc.description as string | undefined);
+
+    const snag = await this.snagging.create(companyId, projectId, userId, { title, description, locationId });
+
+    // Only delete the Issue once the Snag item was successfully created.
+    if (issue) {
+      await this.issues.delete(companyId, projectId, issue.id as string, userId, userRole);
+    }
+
+    return snag;
   }
 }

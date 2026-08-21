@@ -10,4 +10,5 @@ export class CreateSnagItemDto {
   @IsOptional() @IsIn(['critical', 'high', 'medium', 'low']) priority?: string;
   @IsOptional() @IsUUID() assignedTo?: string;
   @IsOptional() @IsDateString() dueDate?: string;
+  @IsOptional() @IsUUID() locationId?: string;
 }

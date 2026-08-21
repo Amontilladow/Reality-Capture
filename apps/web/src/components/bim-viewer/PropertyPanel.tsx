@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { BimElementDetail } from '../../lib/bim.api';
 import { getCapturesForElement, getIssuesForElement, createPinForElement } from '../../lib/bim.api';
-import { updateLocation } from '../../lib/projects.api';
+import { updateLocation, convertPinToSnag } from '../../lib/projects.api';
 import type { ProjectPinResult } from '../../lib/drawings.api';
 import { PinSearch } from './PinSearch';
 import { STATUS_LABELS, STATUS_BADGE_CLASS, PRIORITY_LABELS, PRIORITY_BADGE_CLASS, formatDateTime } from '../../lib/issue-constants';
@@ -78,6 +79,18 @@ export function PropertyPanel({
     },
   });
 
+  const convertToSnagMutation = useMutation({
+    mutationFn: () => convertPinToSnag(projectId, element!.linkedPin!.locationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bim-element-by-guid'] });
+      queryClient.invalidateQueries({ queryKey: ['pins', projectId] });
+      // The converted issue is deleted server-side, so the "Open issues"
+      // section (fed by this key) needs to refetch too, or it keeps
+      // showing the now-gone issue until some unrelated remount/refocus.
+      queryClient.invalidateQueries({ queryKey: ['bim-element-issues', element?.id] });
+    },
+  });
+
   if (loading) {
     return <p className="p-3 text-sm text-gray-400">Loading properties…</p>;
   }
@@ -106,24 +119,48 @@ export function PropertyPanel({
             </button>
           </div>
         ) : element.linkedPin ? (
-          <div className="flex items-center justify-between gap-2 rounded border border-gray-200 px-3 py-2">
-            <div className="min-w-0 text-sm">
-              <span className="text-gray-500">Linked pin: </span>
-              <span className="font-medium text-gray-900">{element.linkedPin.name || 'Untitled pin'}</span>
+          <div className="space-y-1.5 rounded border border-gray-200 px-3 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 text-sm">
+                <span className="text-gray-500">Linked pin: </span>
+                <span className="font-medium text-gray-900">{element.linkedPin.name || 'Untitled pin'}</span>
+              </div>
+              <div className="flex shrink-0 gap-2 text-xs">
+                <button type="button" onClick={() => setPickingPin(true)} className="text-blue-700 hover:text-blue-900">
+                  Change
+                </button>
+                <button
+                  type="button"
+                  disabled={pinLinkMutation.isPending}
+                  onClick={() => pinLinkMutation.mutate(null)}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  Unlink
+                </button>
+              </div>
             </div>
-            <div className="flex shrink-0 gap-2 text-xs">
-              <button type="button" onClick={() => setPickingPin(true)} className="text-blue-700 hover:text-blue-900">
-                Change
-              </button>
-              <button
-                type="button"
-                disabled={pinLinkMutation.isPending}
-                onClick={() => pinLinkMutation.mutate(null)}
-                className="text-red-600 hover:text-red-800"
-              >
-                Unlink
-              </button>
-            </div>
+            {element.linkedPin.linkedRecord?.type === 'issue' && (
+              <div className="flex items-center gap-3 text-xs">
+                <Link to={`/projects/${projectId}/issues?issueId=${element.linkedPin.linkedRecord.id}`} className="text-blue-700 hover:text-blue-900">
+                  View in Issues →
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => convertToSnagMutation.mutate()}
+                  disabled={convertToSnagMutation.isPending}
+                  className="text-gray-600 hover:text-gray-900"
+                >
+                  {convertToSnagMutation.isPending ? 'Converting…' : 'Mark as snag'}
+                </button>
+              </div>
+            )}
+            {element.linkedPin.linkedRecord?.type === 'snag' && (
+              <div className="text-xs">
+                <Link to={`/projects/${projectId}/snagging?snagId=${element.linkedPin.linkedRecord.id}`} className="text-blue-700 hover:text-blue-900">
+                  View in Snagging →
+                </Link>
+              </div>
+            )}
           </div>
         ) : creatingPin ? (
           <div className="space-y-2">

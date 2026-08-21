@@ -102,6 +102,10 @@ export function archiveLocation(projectId: string, locationId: string) {
   return apiDelete<Location>(`/projects/${projectId}/locations/${locationId}`);
 }
 
+export function convertPinToSnag(projectId: string, locationId: string) {
+  return apiPost<{ id: string; snagNumber?: string }>(`/projects/${projectId}/locations/${locationId}/convert-to-snag`, {});
+}
+
 // ── Project organizations (Phase 4) ────────────────────────────────────────
 // One row per configured stakeholder slot -- an unconfigured slot simply
 // isn't in this list (see projects.service.ts's getOrganizations()).

@@ -21,7 +21,7 @@ export interface Pin {
   elementIfcType?: string;
   elementGuid?: string;
   elementModelId?: string;
-  issueId?: string;
+  linkedRecord: { type: 'issue' | 'snag'; id: string } | null;
 }
 
 export function createPin(projectId: string, drawingId: string, payload: { posXNorm: number; posYNorm: number; name?: string; pageNumber?: number }) {

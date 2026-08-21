@@ -238,13 +238,31 @@ export class BimService {
         WHERE element_id = ${elementId} AND company_id = ${companyId}
       `),
       this.db.withTenant(companyId, sql => sql`
-        SELECT id AS location_id, name, drawing_id FROM locations
-        WHERE element_id = ${elementId} AND company_id = ${companyId} AND archived_at IS NULL
-        ORDER BY created_at DESC LIMIT 1
+        SELECT loc.id AS location_id, loc.name, loc.drawing_id,
+          (SELECT iss.id FROM issues iss WHERE iss.location_id = loc.id ORDER BY iss.created_at ASC LIMIT 1) AS linked_issue_id,
+          (SELECT sg.id FROM snag_items sg WHERE sg.location_id = loc.id ORDER BY sg.created_at ASC LIMIT 1) AS linked_snag_id
+        FROM locations loc
+        WHERE loc.element_id = ${elementId} AND loc.company_id = ${companyId} AND loc.archived_at IS NULL
+        ORDER BY loc.created_at DESC LIMIT 1
       `),
     ]);
 
-    return { ...el, quantities, materials, classifications, linkedPin: linkedPins[0] ?? null };
+    return {
+      ...el,
+      quantities,
+      materials,
+      classifications,
+      linkedPin: linkedPins[0]
+        ? {
+            ...linkedPins[0],
+            linkedRecord: linkedPins[0].linkedIssueId
+              ? { type: 'issue', id: linkedPins[0].linkedIssueId }
+              : linkedPins[0].linkedSnagId
+                ? { type: 'snag', id: linkedPins[0].linkedSnagId }
+                : null,
+          }
+        : null,
+    };
   }
 
   async getElementByGuid(companyId: string, modelId: string, ifcGuid: string) {

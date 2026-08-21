@@ -30,11 +30,11 @@ export class SnaggingService {
     const snagNumber = await this.generateSnagNumber(companyId, projectId);
     const [snag] = await this.db.query`
       INSERT INTO snag_items (
-        company_id, project_id, snag_number, title, description, location,
+        company_id, project_id, snag_number, title, description, location, location_id,
         trade, priority, assigned_to, due_date, status, created_by
       ) VALUES (
         ${companyId}, ${projectId}, ${snagNumber}, ${dto.title}, ${dto.description ?? null},
-        ${dto.location ?? null}, ${dto.trade ?? null}, ${dto.priority ?? 'medium'},
+        ${dto.location ?? null}, ${dto.locationId ?? null}, ${dto.trade ?? null}, ${dto.priority ?? 'medium'},
         ${dto.assignedTo ?? null}, ${dto.dueDate ?? null}, 'open', ${userId}
       )
       RETURNING *`;

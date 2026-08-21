@@ -61,4 +61,10 @@ export class BuildingsController {
   async archiveLocation(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
     return { data: await this.svc.archiveLocation(u.companyId, id), error: null };
   }
+
+  @Post('locations/:id/convert-to-snag')
+  @ApiOperation({ summary: 'Convert a pin\'s auto-created Issue into a Snag item' })
+  async convertToSnag(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.convertPinToSnag(u.companyId, pid, id, u.id, u.companyRole), error: null };
+  }
 }

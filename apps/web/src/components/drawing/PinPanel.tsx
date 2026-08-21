@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Pin } from '../../lib/drawings.api';
 import { listCaptures, uploadCapture } from '../../lib/captures.api';
-import { updateLocation, archiveLocation } from '../../lib/projects.api';
+import { updateLocation, archiveLocation, convertPinToSnag } from '../../lib/projects.api';
 import { updateIssue } from '../../lib/issues.api';
 import { CaptureGrid } from '../CaptureGrid';
 import { ElementSearch } from '../bim-viewer/ElementSearch';
@@ -38,6 +38,7 @@ export function PinPanel({
   const lastSavedNote = useRef('');
   const [linkedElement, setLinkedElement] = useState<LinkedElement | null>(null);
   const [pickingElement, setPickingElement] = useState(false);
+  const [linkedRecord, setLinkedRecord] = useState(pin?.linkedRecord ?? null);
 
   // Resets the local edit buffer only when the selected pin changes.
   // Deliberately excludes pin?.name/description/elementId/etc: those fields
@@ -54,6 +55,7 @@ export function PinPanel({
     setLinkedElement(
       pin?.elementId ? { id: pin.elementId, name: pin.elementName ?? '', ifcType: pin.elementIfcType ?? '' } : null,
     );
+    setLinkedRecord(pin?.linkedRecord ?? null);
     setEditingTitle(false);
     setEditingNote(false);
     setPickingElement(false);
@@ -73,8 +75,8 @@ export function PinPanel({
     mutationFn: async () => {
       const trimmedTitle = title.trim() || 'Untitled pin';
       await updateLocation(projectId, pin!.locationId, { name: trimmedTitle });
-      if (pin!.issueId) {
-        await updateIssue(projectId, pin!.issueId, { title: trimmedTitle });
+      if (pin!.linkedRecord?.type === 'issue') {
+        await updateIssue(projectId, pin!.linkedRecord.id, { title: trimmedTitle });
       }
     },
     onSuccess: () => {
@@ -88,8 +90,8 @@ export function PinPanel({
   const noteMutation = useMutation({
     mutationFn: async () => {
       await updateLocation(projectId, pin!.locationId, { description: note });
-      if (pin!.issueId) {
-        await updateIssue(projectId, pin!.issueId, { description: note });
+      if (pin!.linkedRecord?.type === 'issue') {
+        await updateIssue(projectId, pin!.linkedRecord.id, { description: note });
       }
     },
     onSuccess: () => {
@@ -102,13 +104,21 @@ export function PinPanel({
   const elementMutation = useMutation({
     mutationFn: async (element: BimElementDetail | null) => {
       await updateLocation(projectId, pin!.locationId, { elementId: element?.id ?? null });
-      if (pin!.issueId) {
-        await updateIssue(projectId, pin!.issueId, { elementId: element?.id ?? null });
+      if (pin!.linkedRecord?.type === 'issue') {
+        await updateIssue(projectId, pin!.linkedRecord.id, { elementId: element?.id ?? null });
       }
     },
     onSuccess: (_data, element) => {
       setLinkedElement(element ? { id: element.id, name: element.ifcName ?? '', ifcType: element.ifcType } : null);
       setPickingElement(false);
+      invalidatePin();
+    },
+  });
+
+  const convertToSnagMutation = useMutation({
+    mutationFn: () => convertPinToSnag(projectId, pin!.locationId),
+    onSuccess: (snag) => {
+      setLinkedRecord({ type: 'snag', id: snag.id });
       invalidatePin();
     },
   });
@@ -185,12 +195,29 @@ export function PinPanel({
                 <EditIcon className="w-3.5 h-3.5 text-ink-500 shrink-0" />
               </button>
             )}
-            {pin.issueId && (
+            {linkedRecord?.type === 'issue' && (
+              <div className="flex items-center gap-1">
+                <Link
+                  to={`/projects/${projectId}/issues?issueId=${linkedRecord.id}`}
+                  className="text-xs text-blueprint hover:text-blueprint-hover px-1"
+                >
+                  View in Issues →
+                </Link>
+                <button
+                  onClick={() => convertToSnagMutation.mutate()}
+                  disabled={convertToSnagMutation.isPending}
+                  className="btn-ghost !px-2 !py-1 text-xs"
+                >
+                  {convertToSnagMutation.isPending ? 'Converting…' : 'Mark as snag'}
+                </button>
+              </div>
+            )}
+            {linkedRecord?.type === 'snag' && (
               <Link
-                to={`/projects/${projectId}/issues?issueId=${pin.issueId}`}
+                to={`/projects/${projectId}/snagging?snagId=${linkedRecord.id}`}
                 className="text-xs text-blueprint hover:text-blueprint-hover px-1"
               >
-                View in Issues →
+                View in Snagging →
               </Link>
             )}
           </div>
