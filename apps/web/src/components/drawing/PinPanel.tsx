@@ -75,8 +75,8 @@ export function PinPanel({
     mutationFn: async () => {
       const trimmedTitle = title.trim() || 'Untitled pin';
       await updateLocation(projectId, pin!.locationId, { name: trimmedTitle });
-      if (pin!.linkedRecord?.type === 'issue') {
-        await updateIssue(projectId, pin!.linkedRecord.id, { title: trimmedTitle });
+      if (linkedRecord?.type === 'issue') {
+        await updateIssue(projectId, linkedRecord.id, { title: trimmedTitle });
       }
     },
     onSuccess: () => {
@@ -90,8 +90,8 @@ export function PinPanel({
   const noteMutation = useMutation({
     mutationFn: async () => {
       await updateLocation(projectId, pin!.locationId, { description: note });
-      if (pin!.linkedRecord?.type === 'issue') {
-        await updateIssue(projectId, pin!.linkedRecord.id, { description: note });
+      if (linkedRecord?.type === 'issue') {
+        await updateIssue(projectId, linkedRecord.id, { description: note });
       }
     },
     onSuccess: () => {
@@ -104,8 +104,8 @@ export function PinPanel({
   const elementMutation = useMutation({
     mutationFn: async (element: BimElementDetail | null) => {
       await updateLocation(projectId, pin!.locationId, { elementId: element?.id ?? null });
-      if (pin!.linkedRecord?.type === 'issue') {
-        await updateIssue(projectId, pin!.linkedRecord.id, { elementId: element?.id ?? null });
+      if (linkedRecord?.type === 'issue') {
+        await updateIssue(projectId, linkedRecord.id, { elementId: element?.id ?? null });
       }
     },
     onSuccess: (_data, element) => {
