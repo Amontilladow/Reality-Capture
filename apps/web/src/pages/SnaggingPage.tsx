@@ -3,8 +3,8 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { SnagItemFormModal } from '../components/SnagItemFormModal';
-import { SnagItemDetailModal } from '../components/SnagItemDetailModal';
-import { listSnagItems, getSnagSummary } from '../lib/snagging.api';
+import { SnagDetail } from '../components/SnagDetail';
+import { listSnagItems, getSnagSummary, type SnagListItem } from '../lib/snagging.api';
 import { getProject, getMembers } from '../lib/projects.api';
 import {
   SNAG_STATUSES, SNAG_STATUS_LABELS, SNAG_STATUS_BADGE_CLASS,
@@ -16,7 +16,8 @@ export default function SnaggingPage() {
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('snagId'));
+  const [editSnag, setEditSnag] = useState<SnagListItem | null>(null);
+  const [viewSnagId, setViewSnagId] = useState<string | null>(searchParams.get('snagId'));
 
   const projectQuery = useQuery({
     queryKey: ['project', projectId],
@@ -42,9 +43,28 @@ export default function SnaggingPage() {
     enabled: Boolean(projectId),
   });
 
-  const selected = selectedId ? (snagItemsQuery.data?.data ?? []).find((s) => s.id === selectedId) ?? null : null;
-
   if (!projectId) return null;
+
+  if (viewSnagId) {
+    return (
+      <>
+        <PageHeader eyebrow="Project" title="Snag item detail" />
+        <SnagDetail
+          projectId={projectId}
+          snagId={viewSnagId}
+          onBack={() => setViewSnagId(null)}
+          onEdit={(snag) => setEditSnag(snag)}
+        />
+        <SnagItemFormModal
+          open={Boolean(editSnag)}
+          onClose={() => setEditSnag(null)}
+          projectId={projectId}
+          members={membersQuery.data ?? []}
+          snag={editSnag ?? undefined}
+        />
+      </>
+    );
+  }
 
   return (
     <>
@@ -110,7 +130,7 @@ export default function SnaggingPage() {
                   return (
                     <tr
                       key={s.id}
-                      onClick={() => setSelectedId(s.id)}
+                      onClick={() => setViewSnagId(s.id)}
                       className="border-b border-base-700/60 last:border-0 hover:bg-base-800/40 cursor-pointer"
                     >
                       <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{s.snagNumber ?? '—'}</td>
@@ -130,7 +150,6 @@ export default function SnaggingPage() {
       </div>
 
       <SnagItemFormModal open={createOpen} onClose={() => setCreateOpen(false)} projectId={projectId} members={membersQuery.data ?? []} />
-      <SnagItemDetailModal open={Boolean(selected)} onClose={() => setSelectedId(null)} projectId={projectId} snag={selected} />
     </>
   );
 }

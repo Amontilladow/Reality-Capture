@@ -1,20 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { SnagPriority } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
-import { createSnagItem } from '../lib/snagging.api';
+import { createSnagItem, updateSnagItem, type SnagListItem } from '../lib/snagging.api';
 import type { ProjectMember } from '../lib/projects.api';
 import { SNAG_PRIORITIES, SNAG_PRIORITY_LABELS } from '../lib/snagging-constants';
 import { apiErrorMessage } from '../lib/api';
 
 export function SnagItemFormModal({
-  open, onClose, projectId, members,
+  open, onClose, projectId, members, snag,
 }: {
   open: boolean;
   onClose: () => void;
   projectId: string;
   members: ProjectMember[];
+  snag?: SnagListItem;
 }) {
+  const isEdit = Boolean(snag);
   const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -25,6 +27,18 @@ export function SnagItemFormModal({
   const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (!open) return;
+    setTitle(snag?.title ?? '');
+    setDescription(snag?.description ?? '');
+    setLocation(snag?.location ?? '');
+    setTrade(snag?.trade ?? '');
+    setPriority(snag?.priority ?? 'medium');
+    setAssignedTo(snag?.assignedTo ?? '');
+    setDueDate(snag?.dueDate ? snag.dueDate.slice(0, 10) : '');
+    setError('');
+  }, [open, snag]);
+
   function reset() {
     setTitle(''); setDescription(''); setLocation(''); setTrade('');
     setPriority('medium'); setAssignedTo(''); setDueDate(''); setError('');
@@ -33,6 +47,17 @@ export function SnagItemFormModal({
   const mutation = useMutation({
     mutationFn: () => {
       if (!title.trim()) throw new Error('Title is required.');
+      if (isEdit && snag) {
+        return updateSnagItem(projectId, snag.id, {
+          title: title.trim(),
+          description: description || undefined,
+          location: location || undefined,
+          trade: trade || undefined,
+          priority,
+          assignedTo: assignedTo || undefined,
+          dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
+        });
+      }
       return createSnagItem(projectId, {
         title: title.trim(),
         description: description || undefined,
@@ -46,6 +71,7 @@ export function SnagItemFormModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['snag-items', projectId] });
       queryClient.invalidateQueries({ queryKey: ['snag-summary', projectId] });
+      if (isEdit && snag) queryClient.invalidateQueries({ queryKey: ['snag', projectId, snag.id] });
       reset();
       onClose();
     },
@@ -58,7 +84,7 @@ export function SnagItemFormModal({
   }
 
   return (
-    <Modal open={open} onClose={handleClose} title="New snag item">
+    <Modal open={open} onClose={handleClose} title={isEdit ? 'Edit snag item' : 'New snag item'}>
       <div className="space-y-4">
         {error && <p className="field-error">{error}</p>}
 
@@ -111,7 +137,7 @@ export function SnagItemFormModal({
         <div className="flex gap-2 pt-2">
           <button type="button" onClick={handleClose} className="btn-secondary flex-1" disabled={mutation.isPending}>Cancel</button>
           <button type="button" onClick={() => mutation.mutate()} className="btn-primary flex-1" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Saving…' : 'Create snag item'}
+            {mutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create snag item'}
           </button>
         </div>
       </div>

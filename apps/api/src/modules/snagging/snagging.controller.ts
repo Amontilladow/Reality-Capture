@@ -3,7 +3,13 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { SnaggingService } from './snagging.service';
 import { CreateSnagItemDto } from './dto/create-snag-item.dto';
 import { UpdateSnagItemDto } from './dto/update-snag-item.dto';
+import { AddSnagActivityDto } from './dto/add-snag-activity.dto';
+import { ForwardSnagDto } from './dto/forward-snag.dto';
+import { ForceSnagStatusDto } from './dto/force-snag-status.dto';
+import { SnagAttachmentUploadUrlDto } from './dto/snag-attachment-upload-url.dto';
+import { AddSnagAttachmentDto } from './dto/add-snag-attachment.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 
@@ -50,5 +56,59 @@ export class SnaggingController {
   @HttpCode(HttpStatus.OK)
   async delete(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
     return { data: await this.svc.delete(u.companyId, pid, id), error: null };
+  }
+
+  @Get(':id/activities')
+  async getActivities(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
+    return { data: await this.svc.getActivities(u.companyId, id), error: null };
+  }
+
+  @Post(':id/activities')
+  @ApiOperation({ summary: 'Add a comment or activity to a snag item' })
+  async addActivity(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: AddSnagActivityDto) {
+    return { data: await this.svc.addActivity(u.companyId, id, u.id, dto), error: null };
+  }
+
+  @Post(':id/forward')
+  @ApiOperation({ summary: 'Forward (reassign) a snag item to another user' })
+  async forward(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('id') id: string,
+    @Body() dto: ForwardSnagDto,
+  ) {
+    return { data: await this.svc.forward(u.companyId, pid, id, u.id, dto), error: null };
+  }
+
+  @Patch(':id/force-status')
+  @Roles('company_admin', 'engineering_manager')
+  @ApiOperation({ summary: 'Force a snag item to any status, bypassing normal transition rules' })
+  async forceStatus(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('id') id: string,
+    @Body() dto: ForceSnagStatusDto,
+  ) {
+    return { data: await this.svc.forceStatus(u.companyId, pid, id, u.id, dto), error: null };
+  }
+
+  @Post(':id/attachments/upload-url')
+  @ApiOperation({ summary: 'Get a presigned URL for uploading a file attachment to a snag item activity' })
+  async getAttachmentUploadUrl(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Body() dto: SnagAttachmentUploadUrlDto,
+  ) {
+    return { data: await this.svc.getAttachmentUploadUrl(u.companyId, pid, dto), error: null };
+  }
+
+  @Post(':id/attachments')
+  @ApiOperation({ summary: 'Register an uploaded file as a snag item activity attachment' })
+  async addAttachment(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: AddSnagAttachmentDto,
+  ) {
+    return { data: await this.svc.addAttachment(u.companyId, id, u.id, dto), error: null };
   }
 }

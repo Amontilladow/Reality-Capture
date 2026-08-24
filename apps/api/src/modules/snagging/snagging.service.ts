@@ -1,8 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { StorageService } from '../storage/storage.service';
 import type { CreateSnagItemDto } from './dto/create-snag-item.dto';
 import type { UpdateSnagItemDto } from './dto/update-snag-item.dto';
+import type { AddSnagActivityDto } from './dto/add-snag-activity.dto';
+import type { ForwardSnagDto } from './dto/forward-snag.dto';
+import type { ForceSnagStatusDto } from './dto/force-snag-status.dto';
+import type { SnagAttachmentUploadUrlDto } from './dto/snag-attachment-upload-url.dto';
+import type { AddSnagAttachmentDto } from './dto/add-snag-attachment.dto';
+import { ATTACHMENT_MAX_SIZE as SNAG_ATTACHMENT_MAX_SIZE, ATTACHMENT_ALLOWED_EXTENSIONS as SNAG_ATTACHMENT_ALLOWED_EXTENSIONS } from '../../common/constants/attachment-limits';
 import type { PaginationQuery } from '@engineeringos/types';
 
 @Injectable()
@@ -10,6 +17,7 @@ export class SnaggingService {
   constructor(
     private readonly db: DatabaseService,
     private readonly notifications: NotificationsService,
+    private readonly storage: StorageService,
   ) {}
 
   // withTenant required for the projects lookup -- projects carries the tenant_isolation
@@ -121,6 +129,17 @@ export class SnaggingService {
       WHERE id = ${snagId} AND project_id = ${projectId} AND company_id = ${companyId}
       RETURNING *
     `;
+
+    // Log status change activity automatically -- mirrors IssuesService.update()'s
+    // existing behavior for issues, added here now for snag items too.
+    if (dto.status && dto.status !== existing.status) {
+      await this.addActivity(companyId, snagId, userId, {
+        activityType: 'status_change',
+        fromValue: existing.status as string,
+        toValue: dto.status,
+      });
+    }
+
     return updated;
   }
 
@@ -141,5 +160,160 @@ export class SnaggingService {
       WHERE project_id = ${projectId} AND company_id = ${companyId}
     `);
     return summary;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Workflow actions -- mirrors IssuesService's equivalent methods exactly
+  // in structure, differing only in table/column names.
+  // ══════════════════════════════════════════════════════════════════════
+
+  // ── Activities ────────────────────────────────────────────────────────────
+  async getActivities(companyId: string, snagId: string) {
+    const activities = await this.db.withTenant(companyId, sql => sql`
+      SELECT a.*, u.first_name || ' ' || u.last_name AS performed_by_name, u.avatar_url
+      FROM snag_activities a
+      JOIN users u ON u.id = a.performed_by
+      WHERE a.snag_item_id = ${snagId} AND a.company_id = ${companyId}
+      ORDER BY a.created_at ASC
+    `);
+
+    // attachment_url stores the raw storage key, not a usable link (see
+    // addAttachment() below) -- resolve it to a presigned read URL under a
+    // *different* field (attachmentReadUrl), same pattern as
+    // issues.service.ts's getActivities().
+    return Promise.all(activities.map(async (activity) => {
+      if (!activity.attachmentUrl) return activity;
+      return { ...activity, attachmentReadUrl: await this.storage.getReadUrl(activity.attachmentUrl as string) };
+    }));
+  }
+
+  async addActivity(companyId: string, snagId: string, userId: string, dto: AddSnagActivityDto) {
+    return this.db.withTenant(companyId, async (sql) => {
+      const [activity] = await sql`
+        INSERT INTO snag_activities (
+          snag_item_id, company_id, activity_type, content,
+          from_value, to_value, performed_by
+        ) VALUES (
+          ${snagId}, ${companyId}, ${dto.activityType}, ${dto.content ?? null},
+          ${dto.fromValue ?? null}, ${dto.toValue ?? null}, ${userId}
+        )
+        RETURNING *
+      `;
+      // Update snag item updated_at
+      await sql`UPDATE snag_items SET updated_at = NOW() WHERE id = ${snagId} AND company_id = ${companyId}`;
+      return activity;
+    });
+  }
+
+  // ── Forward ─────────────────────────────────────────────────────────────
+  // Reassigns the snag item to another user and logs a 'forward' activity.
+  async forward(companyId: string, projectId: string, snagId: string, userId: string, dto: ForwardSnagDto) {
+    const existing = await this.findOne(companyId, projectId, snagId);
+
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
+      UPDATE snag_items SET assigned_to = ${dto.toUserId}::uuid, updated_at = NOW()
+      WHERE id = ${snagId} AND project_id = ${projectId} AND company_id = ${companyId}
+      RETURNING *
+    `);
+
+    await this.addActivity(companyId, snagId, userId, {
+      activityType: 'forward',
+      fromValue: (existing.assignedTo as string | null) ?? undefined,
+      toValue: dto.toUserId,
+      content: dto.comment,
+    });
+
+    if (dto.toUserId !== userId) {
+      await this.notifications.create(companyId, {
+        userId: dto.toUserId,
+        type: 'snag_assigned',
+        title: `Snag item ${existing.snagNumber as string} was forwarded to you: ${existing.title as string}`,
+        resourceType: 'snag_item',
+        resourceId: snagId,
+        projectId,
+        createdBy: userId,
+      });
+    }
+
+    return updated;
+  }
+
+  // ── Admin force-status ─────────────────────────────────────────────────
+  // Bypasses the normal update() path entirely -- distinct, @Roles-gated
+  // path that logs a dedicated 'status_force' activity instead of
+  // 'status_change'. Snag items have no closed_at/closed_by columns (see
+  // 018_snag_items.sql) -- but they DO have fixed_at/fixed_by/verified_at/
+  // verified_by, which update() (above) already stamps on the equivalent
+  // transitions. Bypassing that bookkeeping here left a real gap: a force-
+  // verified snag showed the "Verified" badge with no verified date/actor,
+  // a misleading audit trail. Mirrors update()'s isBeingFixed/isBeingVerified
+  // pattern exactly.
+  async forceStatus(companyId: string, projectId: string, snagId: string, userId: string, dto: ForceSnagStatusDto) {
+    const existing = await this.findOne(companyId, projectId, snagId);
+    const isBeingFixed = Boolean(dto.status === 'fixed' && existing.status !== 'fixed');
+    const isBeingVerified = Boolean(dto.status === 'verified' && existing.status !== 'verified');
+
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
+      UPDATE snag_items SET
+        status      = ${dto.status},
+        fixed_at    = CASE WHEN ${isBeingFixed} THEN NOW() ELSE fixed_at END,
+        fixed_by    = CASE WHEN ${isBeingFixed} THEN ${userId}::uuid ELSE fixed_by END,
+        verified_at = CASE WHEN ${isBeingVerified} THEN NOW() ELSE verified_at END,
+        verified_by = CASE WHEN ${isBeingVerified} THEN ${userId}::uuid ELSE verified_by END,
+        updated_at  = NOW()
+      WHERE id = ${snagId} AND project_id = ${projectId} AND company_id = ${companyId}
+      RETURNING *
+    `);
+
+    await this.addActivity(companyId, snagId, userId, {
+      activityType: 'status_force',
+      fromValue: existing.status as string,
+      toValue: dto.status,
+    });
+
+    return updated;
+  }
+
+  // ── Attachments ─────────────────────────────────────────────────────────
+  // Step 1 of the presigned-PUT pattern: validate extension + declared
+  // size, then hand back a presigned PUT URL. The client uploads directly
+  // to storage; our API never sees the file bytes.
+  async getAttachmentUploadUrl(companyId: string, projectId: string, dto: SnagAttachmentUploadUrlDto) {
+    const ext = dto.filename.split('.').pop()?.toLowerCase() ?? '';
+    if (!SNAG_ATTACHMENT_ALLOWED_EXTENSIONS.has(ext)) {
+      throw new BadRequestException(
+        `File type ".${ext}" is not supported. Allowed: ${[...SNAG_ATTACHMENT_ALLOWED_EXTENSIONS].join(', ')}.`,
+      );
+    }
+    if (dto.sizeBytes > SNAG_ATTACHMENT_MAX_SIZE) {
+      throw new BadRequestException(
+        `File too large (${(dto.sizeBytes / 1024 / 1024).toFixed(1)} MB). Max: ${SNAG_ATTACHMENT_MAX_SIZE / 1024 / 1024} MB.`,
+      );
+    }
+
+    const key = this.storage.generateKey(companyId, projectId, 'snag-items', dto.filename);
+    const { uploadUrl } = await this.storage.getUploadUrl(key, 'application/octet-stream', dto.sizeBytes);
+    return { uploadUrl, storageKey: key };
+  }
+
+  // Step 2: client already PUT the bytes to `storageKey` from step 1 --
+  // this registers it as a new snag_activities row. attachment_url stores
+  // the storage key (not a raw presigned URL, which would expire), resolved
+  // to a live presigned URL by getActivities() when needed.
+  async addAttachment(companyId: string, snagId: string, userId: string, dto: AddSnagAttachmentDto) {
+    return this.db.withTenant(companyId, async (sql) => {
+      const [activity] = await sql`
+        INSERT INTO snag_activities (
+          snag_item_id, company_id, activity_type, content,
+          attachment_url, attachment_name, attachment_size_bytes, performed_by
+        ) VALUES (
+          ${snagId}, ${companyId}, 'comment', ${dto.comment ?? `Attached file: ${dto.filename}`},
+          ${dto.storageKey}, ${dto.filename}, ${dto.sizeBytes}, ${userId}
+        )
+        RETURNING *
+      `;
+      await sql`UPDATE snag_items SET updated_at = NOW() WHERE id = ${snagId} AND company_id = ${companyId}`;
+      return activity;
+    });
   }
 }
