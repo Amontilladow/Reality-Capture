@@ -162,6 +162,54 @@ export class SnaggingService {
     return summary;
   }
 
+  // ── Reports KPI breakdown ────────────────────────────────────────────────
+  // Sibling to getSummary() above -- same reasoning as
+  // IssuesService.getKpiBreakdown(): getSummary()'s shape is left untouched
+  // since other pages already depend on it. Same GROUP BY / fold-in-JS
+  // pattern, keyed on trade instead of discipline.
+  async getKpiBreakdown(companyId: string, projectId: string) {
+    const rows = await this.db.withTenant(companyId, sql => sql`
+      SELECT status, priority, trade, COUNT(*) AS count
+      FROM snag_items
+      WHERE project_id = ${projectId} AND company_id = ${companyId}
+      GROUP BY status, priority, trade
+    `);
+
+    const byStatus: Record<string, number> = {};
+    const byPriority: Record<string, number> = {};
+    const byTrade: Record<string, number> = {};
+    for (const row of rows) {
+      const count = Number(row.count);
+      const status = row.status as string;
+      const priority = row.priority as string;
+      const trade = (row.trade as string | null) ?? 'other';
+      byStatus[status] = (byStatus[status] ?? 0) + count;
+      byPriority[priority] = (byPriority[priority] ?? 0) + count;
+      byTrade[trade] = (byTrade[trade] ?? 0) + count;
+    }
+    return { byStatus, byPriority, byTrade };
+  }
+
+  // Mirrors findAll()'s join pattern (assigned_to_name via u_a) -- used by
+  // the Reports KPI dashboard/PDF for its "currently open" table. 'open'/
+  // 'fixed' matches this codebase's own definition of "active" snag items
+  // (see getSummary()'s overdue filter above).
+  async getOpenList(companyId: string, projectId: string, limit = 50) {
+    return this.db.withTenant(companyId, sql => sql`
+      SELECT
+        s.id, s.snag_number, s.title, s.status, s.priority, s.trade, s.location, s.due_date,
+        u_a.first_name || ' ' || u_a.last_name AS assigned_to_name
+      FROM snag_items s
+      LEFT JOIN users u_a ON u_a.id = s.assigned_to
+      WHERE s.project_id = ${projectId} AND s.company_id = ${companyId}
+        AND s.status IN ('open', 'fixed')
+      ORDER BY
+        CASE s.priority WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+        s.created_at DESC
+      LIMIT ${limit}
+    `);
+  }
+
   // ══════════════════════════════════════════════════════════════════════
   // Workflow actions -- mirrors IssuesService's equivalent methods exactly
   // in structure, differing only in table/column names.

@@ -1,0 +1,15 @@
+-- Adds 'report_attachment' as a legal documents.doc_type value, needed so
+-- photos/PDFs uploaded as supporting material for the Reports feature's PDF
+-- export (reports.service.ts) can be registered as ordinary `documents` rows
+-- and later queried back out by doc_type for merging into the generated PDF.
+--
+-- This is its own migration file, separate from any neighbor, on purpose:
+-- ALTER TYPE ... ADD VALUE cannot have its new value referenced/used within
+-- the same transaction that added it. The migration runner
+-- (run-migrations.ts) executes each file's full contents as a single
+-- `sql.unsafe(content)` call, which Postgres treats as one implicit
+-- transaction for a multi-statement simple-query string -- same reasoning as
+-- 020_issue_status_enum_values.sql's header comment. Keeping this ADD VALUE
+-- isolated in its own file/transaction means any later migration is free to
+-- reference 'report_attachment' immediately.
+ALTER TYPE doc_type_enum ADD VALUE IF NOT EXISTS 'report_attachment';

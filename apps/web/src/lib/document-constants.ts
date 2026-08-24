@@ -3,7 +3,7 @@ import type { DocType } from '@engineeringos/types';
 export const DOC_TYPES: DocType[] = [
   'drawing', 'specification', 'rfi', 'submittal', 'transmittal',
   'inspection_record', 'method_statement', 'risk_assessment',
-  'handover_certificate', 'test_report', 'ncrm', 'other',
+  'handover_certificate', 'test_report', 'ncrm', 'report_attachment', 'other',
 ];
 
 export const DOC_TYPE_LABELS: Record<DocType, string> = {
@@ -18,6 +18,7 @@ export const DOC_TYPE_LABELS: Record<DocType, string> = {
   handover_certificate: 'Handover certificate',
   test_report: 'Test report',
   ncrm: 'NCR',
+  report_attachment: 'Report attachment',
   other: 'Other',
 };
 

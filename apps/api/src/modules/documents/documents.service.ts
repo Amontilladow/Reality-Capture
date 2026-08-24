@@ -12,9 +12,16 @@ export class DocumentsService {
     private readonly storage: StorageService,
   ) {}
 
-  async getUploadUrl(companyId: string, projectId: string, filename: string) {
+  // contentType is optional (defaults to 'application/pdf', the prior
+  // hardcoded value) so existing callers that don't pass one keep working
+  // unchanged -- but a real content type (e.g. from the browser's
+  // file.type) is now threaded through and signed on the S3 PutObjectCommand
+  // itself (see StorageService.getUploadUrl()), which a report attachment
+  // photo/image upload needs to actually succeed with a correctly-signed
+  // content type instead of a hardcoded PDF one.
+  async getUploadUrl(companyId: string, projectId: string, filename: string, contentType?: string) {
     const key = this.storage.generateKey(companyId, projectId, 'documents', filename);
-    const url = await this.storage.getUploadUrl(key, 'application/pdf', 50 * 1024 * 1024);
+    const url = await this.storage.getUploadUrl(key, contentType || 'application/pdf', 50 * 1024 * 1024);
     return { ...url, storageKey: key };
   }
 

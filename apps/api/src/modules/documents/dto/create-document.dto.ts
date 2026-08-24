@@ -2,7 +2,8 @@ import { IsString, IsOptional, IsDateString, IsIn } from 'class-validator';
 
 export class CreateDocumentDto {
   @IsIn(['drawing','specification','rfi','submittal','transmittal','inspection_record',
-    'method_statement','risk_assessment','handover_certificate','test_report','ncrm','other'])
+    'method_statement','risk_assessment','handover_certificate','test_report','ncrm','other',
+    'report_attachment'])
   docType: string;
 
   @IsString() title: string;

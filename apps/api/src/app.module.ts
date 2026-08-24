@@ -18,6 +18,7 @@ import { TransmittalsModule } from './modules/transmittals/transmittals.module';
 import { QaModule } from './modules/qa/qa.module';
 import { SnaggingModule } from './modules/snagging/snagging.module';
 import { AiClientModule } from './modules/ai-client/ai-client.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { BimModule } from './modules/bim/bim.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { DrawingsModule } from './modules/drawings/drawings.module';
@@ -87,6 +88,7 @@ import redisConfig from './config/redis.config';
     QaModule,
     SnaggingModule,
     AiClientModule,
+    ReportsModule,
     BimModule,
     DocumentsModule,
     DrawingsModule,

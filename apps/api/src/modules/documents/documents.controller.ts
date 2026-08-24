@@ -13,8 +13,8 @@ export class DocumentsController {
   constructor(private readonly svc: DocumentsService) {}
 
   @Post('upload-url')
-  async getUploadUrl(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() body: { filename: string }) {
-    return { data: await this.svc.getUploadUrl(u.companyId, pid, body.filename), error: null };
+  async getUploadUrl(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() body: { filename: string; contentType?: string }) {
+    return { data: await this.svc.getUploadUrl(u.companyId, pid, body.filename, body.contentType), error: null };
   }
 
   @Post()

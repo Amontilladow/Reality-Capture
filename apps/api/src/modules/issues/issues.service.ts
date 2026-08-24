@@ -381,6 +381,54 @@ export class IssuesService {
     return summary;
   }
 
+  // ── Reports KPI breakdown ────────────────────────────────────────────────
+  // Sibling to getSummary() above -- deliberately not folded into it, since
+  // other pages already depend on getSummary()'s exact current shape. One
+  // GROUP BY query, folded in JS into three Record<string, number> maps
+  // (status/priority/discipline), for the Reports feature's KPI dashboard
+  // and PDF export (reports.service.ts).
+  async getKpiBreakdown(companyId: string, projectId: string) {
+    const rows = await this.db.withTenant(companyId, sql => sql`
+      SELECT status, priority, discipline, COUNT(*) AS count
+      FROM issues
+      WHERE project_id = ${projectId} AND company_id = ${companyId}
+      GROUP BY status, priority, discipline
+    `);
+
+    const byStatus: Record<string, number> = {};
+    const byPriority: Record<string, number> = {};
+    const byDiscipline: Record<string, number> = {};
+    for (const row of rows) {
+      const count = Number(row.count);
+      const status = row.status as string;
+      const priority = row.priority as string;
+      const discipline = (row.discipline as string | null) ?? 'other';
+      byStatus[status] = (byStatus[status] ?? 0) + count;
+      byPriority[priority] = (byPriority[priority] ?? 0) + count;
+      byDiscipline[discipline] = (byDiscipline[discipline] ?? 0) + count;
+    }
+    return { byStatus, byPriority, byDiscipline };
+  }
+
+  // Mirrors findAll()'s join pattern (assigned_to_name via u_assignee) --
+  // used by the Reports KPI dashboard/PDF for its "currently open" table,
+  // not a general-purpose list endpoint, hence the flat limit + no pagination.
+  async getOpenList(companyId: string, projectId: string, limit = 50) {
+    return this.db.withTenant(companyId, sql => sql`
+      SELECT
+        i.id, i.issue_number, i.title, i.status, i.priority, i.discipline, i.deadline,
+        u_assignee.first_name || ' ' || u_assignee.last_name AS assigned_to_name
+      FROM issues i
+      LEFT JOIN users u_assignee ON u_assignee.id = i.assigned_to
+      WHERE i.project_id = ${projectId} AND i.company_id = ${companyId}
+        AND i.status NOT IN ('closed', 'void')
+      ORDER BY
+        CASE i.priority WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
+        i.created_at DESC
+      LIMIT ${limit}
+    `);
+  }
+
   // ══════════════════════════════════════════════════════════════════════
   // Ticket 2b — workflow actions
   // ══════════════════════════════════════════════════════════════════════
