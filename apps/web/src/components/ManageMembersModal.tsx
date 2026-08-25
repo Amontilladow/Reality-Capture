@@ -142,7 +142,7 @@ export function ManageMembersModal({
   const organizationsBySlot = new Map((organizationsQuery.data ?? []).map((o) => [o.slot, o]));
 
   return (
-    <Modal open={open} onClose={onClose} title="Project team">
+    <Modal open={open} onClose={onClose} title="Project team" wide>
       <div className="space-y-4">
         <div className="space-y-2">
           <div className="field-label">Current members</div>
@@ -432,15 +432,19 @@ export function ManageMembersModal({
             <p className="text-sm text-ink-500">You don't have permission to view or edit this project's organizations.</p>
           )}
           {canManageOrganizations && organizationsQuery.isLoading && <div className="text-sm text-ink-500">Loading…</div>}
-          {canManageOrganizations && PROJECT_ORGANIZATION_SLOTS.map((slot) => (
-            <OrganizationRow
-              key={slot}
-              projectId={projectId}
-              slot={slot}
-              org={organizationsBySlot.get(slot)}
-              canEdit={canManageOrganizations}
-            />
-          ))}
+          {canManageOrganizations && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6">
+              {PROJECT_ORGANIZATION_SLOTS.map((slot) => (
+                <OrganizationRow
+                  key={slot}
+                  projectId={projectId}
+                  slot={slot}
+                  org={organizationsBySlot.get(slot)}
+                  canEdit={canManageOrganizations}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </Modal>
