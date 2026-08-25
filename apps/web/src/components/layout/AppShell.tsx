@@ -2,9 +2,11 @@ import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth.store';
 import { logout as apiLogout } from '../../lib/auth.api';
 import { NotificationBell } from './NotificationBell';
+import { MessagesBell } from './MessagesBell';
 
 const NAV_ITEMS = [
   { to: '', label: 'Projects', icon: IconGrid, end: true },
+  { to: 'messages', label: 'Messages', icon: IconMail },
 ];
 
 const PROJECT_NAV_ITEMS = [
@@ -47,6 +49,7 @@ export function AppShell() {
             <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500">Reality Capture</div>
           </div>
           <NotificationBell />
+          <MessagesBell />
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-0.5">
@@ -196,6 +199,14 @@ function IconReport({ className }: { className?: string }) {
       <path d="M7 3h7l4 4v14H7z" strokeLinejoin="round" />
       <path d="M14 3v4h4" strokeLinejoin="round" />
       <path d="M9.5 13l2 2 3.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconMail({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 7l9 6 9-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

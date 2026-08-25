@@ -18,6 +18,7 @@ import RfiDetailPage from './pages/RfiDetailPage';
 import SnaggingPage from './pages/SnaggingPage';
 import AssistantPage from './pages/AssistantPage';
 import ReportsPage from './pages/ReportsPage';
+import MessagesPage from './pages/MessagesPage';
 
 // These four pull in the heaviest dependencies in the app (Three.js +
 // @thatopen/components + @thatopen/fragments for the two BIM routes,
@@ -65,6 +66,7 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<AppShell />}>
             <Route path="/projects" element={<ProjectList />} />
+            <Route path="/projects/messages" element={<MessagesPage />} />
             <Route path="/projects/:projectId" element={<ProjectDetail />} />
             <Route path="/projects/:projectId/captures" element={<CapturesPage />} />
             <Route path="/projects/:projectId/drawings" element={<FloorPlanViewer />} />
