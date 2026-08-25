@@ -15,7 +15,6 @@ import CapturesPage from './pages/CapturesPage';
 import IssuesPage from './pages/IssuesPage';
 import RfisPage from './pages/RfisPage';
 import RfiDetailPage from './pages/RfiDetailPage';
-import TransmittalsPage from './pages/TransmittalsPage';
 import SnaggingPage from './pages/SnaggingPage';
 import AssistantPage from './pages/AssistantPage';
 import ReportsPage from './pages/ReportsPage';
@@ -73,7 +72,6 @@ export default function App() {
             <Route path="/projects/:projectId/issues" element={<IssuesPage />} />
             <Route path="/projects/:projectId/rfis" element={<RfisPage />} />
             <Route path="/projects/:projectId/rfis/:rfiId" element={<RfiDetailPage />} />
-            <Route path="/projects/:projectId/transmittals" element={<TransmittalsPage />} />
             <Route path="/projects/:projectId/snagging" element={<SnaggingPage />} />
             <Route path="/projects/:projectId/assistant" element={<AssistantPage />} />
             <Route path="/projects/:projectId/reports" element={<ReportsPage />} />

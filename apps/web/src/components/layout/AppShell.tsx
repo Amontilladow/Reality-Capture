@@ -13,7 +13,6 @@ const PROJECT_NAV_ITEMS = [
   { to: 'issues', label: 'Issues', icon: IconFlag },
   { to: 'drawings', label: 'Floor Plans', icon: IconMap },
   { to: 'rfis', label: 'RFIs', icon: IconQuestion },
-  { to: 'transmittals', label: 'Transmittals', icon: IconSend },
   { to: 'snagging', label: 'Snagging', icon: IconTag },
   { to: 'assistant', label: 'AI Assistant', icon: IconSpark },
   { to: 'reports', label: 'Reports', icon: IconReport },
@@ -172,13 +171,6 @@ function IconQuestion({ className }: { className?: string }) {
       <circle cx="12" cy="12" r="9" />
       <path d="M9.5 9a2.5 2.5 0 014.9.8c0 1.7-2.4 2-2.4 3.7" strokeLinecap="round" />
       <circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-function IconSend({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M4 11l16-7-6.5 16-3-6.5L4 11z" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
