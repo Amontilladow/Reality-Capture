@@ -11,7 +11,16 @@ import { apiGet, apiGetWithMeta, apiPost, apiPatch, apiDelete } from './api';
 // vocabulary (submit/requestClarification/respond/close/reopen all write
 // new statuses), so this frontend-only type widens just that one field for
 // every page that needs to render/compare against the full vocabulary.
-export type RfiListItem = Omit<Rfi, 'status'> & { status: RfiWorkflowStatus };
+// noticeLetterStatus/noticeLetterSharedAt: two additional fields the list
+// endpoint (GET /projects/:projectId/rfis) carries per the notice-letter
+// backend contract -- both absent/undefined when no letter exists yet for
+// that RFI. Drives the RfisPage "Notice" column without a separate
+// per-row request.
+export type RfiListItem = Omit<Rfi, 'status'> & {
+  status: RfiWorkflowStatus;
+  noticeLetterStatus?: 'draft' | 'shared';
+  noticeLetterSharedAt?: string;
+};
 
 export interface RfiSummary {
   total: number;

@@ -3,6 +3,7 @@ import { RfisService } from './rfis.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { NotificationsService } from '../notifications/notifications.service';
 import type { StorageService } from '../storage/storage.service';
+import type { MessagingService } from '../messaging/messaging.service';
 import type { CreateRfiDto } from './dto/create-rfi.dto';
 
 // Generic tagged-template mock for this.db.withTenant's `sql` callback --
@@ -34,10 +35,12 @@ function makeService(responder: (text: string, values: unknown[]) => unknown[] |
   const db = { withTenant, paginate };
   const notifications = { create: jest.fn() };
   const storage = {};
+  const messaging = { create: jest.fn() };
   const svc = new RfisService(
     db as unknown as DatabaseService,
     notifications as unknown as NotificationsService,
     storage as unknown as StorageService,
+    messaging as unknown as MessagingService,
   );
   return { svc, calls, notifications, db };
 }

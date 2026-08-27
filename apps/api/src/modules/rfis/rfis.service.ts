@@ -4,7 +4,9 @@ import { PDFDocument, PDFFont, StandardFonts, rgb, PageSizes } from 'pdf-lib';
 import { DatabaseService } from '../../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
+import { MessagingService } from '../messaging/messaging.service';
 import { renderRfiPdf } from './rfi-pdf.template';
+import { renderNoticeLetterPdf } from './rfi-notice-letter-pdf.template';
 import { ATTACHMENT_MAX_SIZE, ATTACHMENT_ALLOWED_EXTENSIONS } from '../../common/constants/attachment-limits';
 import type { CreateRfiDto } from './dto/create-rfi.dto';
 import type { UpdateRfiDto } from './dto/update-rfi.dto';
@@ -13,6 +15,7 @@ import type { AddRfiAttachmentDto } from './dto/add-rfi-attachment.dto';
 import type { RequestClarificationDto } from './dto/request-clarification.dto';
 import type { RespondToRfiDto } from './dto/respond-to-rfi.dto';
 import type { AddRfiCommentDto } from './dto/add-rfi-comment.dto';
+import type { UpsertRfiNoticeLetterDto } from './dto/upsert-rfi-notice-letter.dto';
 import {
   RFI_DISCIPLINE_LABELS, RFI_DISCIPLINE_CODES, RFI_DOCUMENT_TYPE_LABELS,
   PROJECT_ORGANIZATION_SLOT_LABELS, PROJECT_ORGANIZATION_SLOTS,
@@ -37,6 +40,7 @@ export class RfisService {
     private readonly db: DatabaseService,
     private readonly notifications: NotificationsService,
     private readonly storage: StorageService,
+    private readonly messaging: MessagingService,
   ) {}
 
   // withTenant required for the projects lookup -- projects carries the tenant_isolation
@@ -123,10 +127,13 @@ export class RfisService {
       SELECT r.*,
         u_c.first_name || ' ' || u_c.last_name AS created_by_name,
         u_a.first_name || ' ' || u_a.last_name AS assigned_to_name,
+        nl.status AS notice_letter_status,
+        nl.shared_at AS notice_letter_shared_at,
         COUNT(*) OVER() AS full_count
       FROM rfis r
       LEFT JOIN users u_c ON u_c.id = r.created_by
       LEFT JOIN users u_a ON u_a.id = r.assigned_to
+      LEFT JOIN rfi_notice_letters nl ON nl.rfi_id = r.id
       WHERE r.project_id = ${projectId} AND r.company_id = ${companyId}
         AND (${query.status ?? null}::text IS NULL OR r.status = ${query.status ?? null})
         AND (${query.priority ?? null}::text IS NULL OR r.priority = ${query.priority ?? null})
@@ -1062,5 +1069,108 @@ export class RfisService {
       WHERE c.rfi_id = ${rfiId} AND c.company_id = ${companyId}
       ORDER BY c.created_at ASC
     `);
+  }
+
+  // ── Notice Letters ───────────────────────────────────────────────────────
+  // "No letter yet" is a normal, expected state the frontend needs to
+  // distinguish from an actual error -- returns null rather than a 404,
+  // unlike findOne()'s own not-found handling.
+  async getNoticeLetter(companyId: string, projectId: string, rfiId: string) {
+    const [letter] = await this.db.withTenant(companyId, sql => sql`
+      SELECT * FROM rfi_notice_letters
+      WHERE rfi_id = ${rfiId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    return letter ?? null;
+  }
+
+  // Create-or-update, gated on the RFI actually carrying a cost or time
+  // impact (a notice letter with neither makes no sense as a document).
+  // null/undefined impact levels (a pre-Phase-1 row that never got a
+  // *_impact_level value) are treated the same as the explicit 'no' default.
+  // The ON CONFLICT (rfi_id) DO UPDATE deliberately only touches
+  // recipient_user_id/recipient_title/body/updated_at -- status/shared_at/
+  // shared_by are left alone so editing an already-shared letter's text
+  // doesn't silently erase its sharing record.
+  async upsertNoticeLetter(companyId: string, projectId: string, rfiId: string, userId: string, dto: UpsertRfiNoticeLetterDto) {
+    const rfi = await this.findOne(companyId, projectId, rfiId);
+    const costImpactLevel = (rfi.costImpactLevel as string | null | undefined) ?? 'no';
+    const timeImpactLevel = (rfi.timeImpactLevel as string | null | undefined) ?? 'no';
+    if (costImpactLevel === 'no' && timeImpactLevel === 'no') {
+      throw new BadRequestException('Only RFIs with a cost or time impact can have a notice letter.');
+    }
+
+    const [letter] = await this.db.withTenant(companyId, sql => sql`
+      INSERT INTO rfi_notice_letters (
+        company_id, project_id, rfi_id, recipient_user_id, recipient_title, body, created_by
+      ) VALUES (
+        ${companyId}, ${projectId}, ${rfiId}, ${dto.recipientUserId}, ${dto.recipientTitle}, ${dto.body}, ${userId}
+      )
+      ON CONFLICT (rfi_id) DO UPDATE SET
+        recipient_user_id = EXCLUDED.recipient_user_id,
+        recipient_title    = EXCLUDED.recipient_title,
+        body                = EXCLUDED.body,
+        updated_at          = NOW()
+      RETURNING *
+    `);
+    return letter;
+  }
+
+  // Delivers the letter through the internal messaging feature -- the
+  // message landing in the recipient's inbox IS the audit trail proving it
+  // was sent, so this is the sole "share" mechanism (no separate share log).
+  // Re-sharing an already-shared letter is allowed (re-sends the message,
+  // refreshes shared_at/shared_by) rather than blocked -- simpler than
+  // idempotency logic the spec doesn't ask for.
+  async shareNoticeLetter(companyId: string, projectId: string, rfiId: string, userId: string) {
+    const letter = await this.getNoticeLetter(companyId, projectId, rfiId);
+    if (!letter) throw new NotFoundException(`No notice letter exists yet for RFI ${rfiId}.`);
+
+    const rfi = await this.findOne(companyId, projectId, rfiId);
+    const subject = `Notice: RFI ${(rfi.rfiNumber as string) ?? rfi.id} — ${rfi.subject as string}`;
+
+    await this.messaging.create(companyId, userId, {
+      subject,
+      body: letter.body as string,
+      recipientUserIds: [letter.recipientUserId as string],
+      projectId,
+    });
+
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
+      UPDATE rfi_notice_letters
+      SET status = 'shared', shared_at = NOW(), shared_by = ${userId}
+      WHERE id = ${letter.id}
+      RETURNING *
+    `);
+    return updated;
+  }
+
+  // Much simpler than generatePdf() above -- a notice letter has no
+  // attachments of its own, so this is a single branded-letterhead render
+  // with no attachment-merging step.
+  async generateNoticeLetterPdf(companyId: string, projectId: string, rfiId: string): Promise<{ buffer: Buffer; filename: string }> {
+    const letter = await this.getNoticeLetter(companyId, projectId, rfiId);
+    if (!letter) throw new NotFoundException(`No notice letter exists yet for RFI ${rfiId}.`);
+
+    const rfi = await this.findOne(companyId, projectId, rfiId);
+    const [project] = await this.db.withTenant(companyId, sql => sql`
+      SELECT name, code, logo_storage_key FROM projects WHERE id = ${projectId} AND company_id = ${companyId}
+    `);
+
+    // Never blocks on missing branding -- same
+    // this.storage.download(key).catch(() => undefined) convention as
+    // generatePdf() above.
+    const logoBuffer = project?.logoStorageKey
+      ? await this.storage.download(project.logoStorageKey as string).catch(() => undefined)
+      : undefined;
+
+    const buffer = await renderNoticeLetterPdf({
+      projectName: (project?.name as string) ?? '—',
+      projectCode: project?.code as string | undefined,
+      logoBuffer,
+      body: letter.body as string,
+    });
+
+    const filename = `${(rfi.rfiNumber as string) ?? rfiId}-notice-letter.pdf`;
+    return { buffer, filename };
   }
 }

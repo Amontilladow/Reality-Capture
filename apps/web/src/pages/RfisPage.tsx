@@ -4,13 +4,27 @@ import { useQuery } from '@tanstack/react-query';
 import { RFI_DISCIPLINES, RFI_DISCIPLINE_LABELS, RFI_IMPACT_LEVELS, RFI_IMPACT_LEVEL_LABELS } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { RfiFormModal } from '../components/RfiFormModal';
-import { listRfis, getRfiSummary } from '../lib/rfis.api';
+import { RfiNoticeLetterModal } from '../components/RfiNoticeLetterModal';
+import { listRfis, getRfiSummary, type RfiListItem } from '../lib/rfis.api';
 import { getProject, getMembers } from '../lib/projects.api';
 import {
   RFI_STATUS_LABELS, RFI_WORKFLOW_STATUS_LABELS, RFI_WORKFLOW_STATUS_BADGE_CLASS,
   RFI_PRIORITY_LABELS, RFI_PRIORITY_BADGE_CLASS, isRfiOverdue, formatDate,
 } from '../lib/rfi-constants';
 import { getDeadlineTimer, TIMER_BADGE_CLASS } from '../lib/issue-constants';
+
+// Warning-colored badge classes for the Cost/Time impact columns -- uses
+// this codebase's `warn` token, same as RFI_WORKFLOW_STATUS_BADGE_CLASS's
+// own under_review entry (bg-warn/15 text-warn), per the ticket's explicit
+// "warning-colored" call-out.
+const COST_IMPACT_BADGE_CLASS = 'badge bg-warn/15 text-warn';
+const TIME_IMPACT_BADGE_CLASS = 'badge bg-warn/15 text-warn';
+
+// Falls back to the legacy boolean when the 4-state level field is absent,
+// same precedence the backend and RfiDetailPage/RfiFormModal already use.
+function effectiveImpactLevel(level: RfiListItem['costImpactLevel'], legacyBool: boolean | undefined) {
+  return level ?? (legacyBool ? 'yes' : 'no');
+}
 
 export default function RfisPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -23,6 +37,7 @@ export default function RfisPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [letterRfi, setLetterRfi] = useState<RfiListItem | null>(null);
 
   const projectQuery = useQuery({
     queryKey: ['project', projectId],
@@ -160,6 +175,7 @@ export default function RfisPage() {
                   <th className="px-4 py-2.5 font-medium">Assignee</th>
                   <th className="px-4 py-2.5 font-medium">Due</th>
                   <th className="px-4 py-2.5 font-medium">Aging</th>
+                  <th className="px-4 py-2.5 font-medium">Notice</th>
                 </tr>
               </thead>
               <tbody>
@@ -171,22 +187,54 @@ export default function RfisPage() {
                   // functionally correct at runtime; same cast RfiDetailPage already
                   // uses for its own Aging badge.
                   const aging = getDeadlineTimer(r.dueDate, r.status as never);
+                  const costImpacting = effectiveImpactLevel(r.costImpactLevel, r.costImpact) !== 'no';
+                  const timeImpacting = effectiveImpactLevel(r.timeImpactLevel, r.timeImpact) !== 'no';
+                  const hasImpact = costImpacting || timeImpacting;
                   return (
                     <tr
                       key={r.id}
                       onClick={() => navigate(`/projects/${projectId}/rfis/${r.id}`)}
-                      className="border-b border-base-700/60 last:border-0 hover:bg-base-800/40 cursor-pointer"
+                      className={`border-b border-base-700/60 last:border-0 hover:bg-base-800/40 cursor-pointer ${hasImpact ? 'border-l-2 border-l-warn bg-warn/5' : ''}`}
                     >
                       <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{r.rfiNumber ?? '—'}</td>
                       <td className="px-4 py-2.5">{r.subject}</td>
                       <td className="px-4 py-2.5 text-ink-300">{r.discipline ? RFI_DISCIPLINE_LABELS[r.discipline] : '—'}</td>
                       <td className="px-4 py-2.5"><span className={`badge ${RFI_WORKFLOW_STATUS_BADGE_CLASS[r.status]}`}>{RFI_WORKFLOW_STATUS_LABELS[r.status]}</span></td>
                       <td className="px-4 py-2.5"><span className={`badge ${RFI_PRIORITY_BADGE_CLASS[r.priority]}`}>{RFI_PRIORITY_LABELS[r.priority]}</span></td>
-                      <td className="px-4 py-2.5 text-ink-300">{RFI_IMPACT_LEVEL_LABELS[r.costImpactLevel ?? (r.costImpact ? 'yes' : 'no')]}</td>
-                      <td className="px-4 py-2.5 text-ink-300">{RFI_IMPACT_LEVEL_LABELS[r.timeImpactLevel ?? (r.timeImpact ? 'yes' : 'no')]}</td>
+                      <td className="px-4 py-2.5">
+                        {costImpacting ? (
+                          <span className={COST_IMPACT_BADGE_CLASS}>💰 Cost</span>
+                        ) : (
+                          <span className="text-ink-300">{RFI_IMPACT_LEVEL_LABELS[effectiveImpactLevel(r.costImpactLevel, r.costImpact)]}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {timeImpacting ? (
+                          <span className={TIME_IMPACT_BADGE_CLASS}>⏱ Time</span>
+                        ) : (
+                          <span className="text-ink-300">{RFI_IMPACT_LEVEL_LABELS[effectiveImpactLevel(r.timeImpactLevel, r.timeImpact)]}</span>
+                        )}
+                      </td>
                       <td className="px-4 py-2.5 text-ink-300">{r.assignedToName ?? 'Unassigned'}</td>
                       <td className={`px-4 py-2.5 ${overdue ? 'text-danger' : 'text-ink-300'}`}>{formatDate(r.dueDate)}</td>
                       <td className="px-4 py-2.5"><span className={`badge ${TIMER_BADGE_CLASS[aging.state]}`}>{aging.label}</span></td>
+                      <td className="px-4 py-2.5">
+                        {!hasImpact ? (
+                          <span className="text-ink-500">—</span>
+                        ) : r.noticeLetterStatus === 'shared' ? (
+                          <span className="inline-flex items-center gap-1 text-ok text-xs" title={`Shared ${formatDate(r.noticeLetterSharedAt)}`}>
+                            <CheckIcon /> {formatDate(r.noticeLetterSharedAt)}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setLetterRfi(r); }}
+                            className="text-blueprint hover:text-blueprint-hover text-xs underline"
+                          >
+                            {r.noticeLetterStatus === 'draft' ? 'Edit letter' : 'Create letter'}
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -197,6 +245,22 @@ export default function RfisPage() {
       </div>
 
       <RfiFormModal open={createOpen} onClose={() => setCreateOpen(false)} projectId={projectId} members={membersQuery.data ?? []} />
+      <RfiNoticeLetterModal
+        open={Boolean(letterRfi)}
+        onClose={() => setLetterRfi(null)}
+        projectId={projectId}
+        rfi={letterRfi}
+        project={projectQuery.data}
+        members={membersQuery.data ?? []}
+      />
     </>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }

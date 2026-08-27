@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Res, HttpCode, HttpStatus, StreamableFile } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, Res, HttpCode, HttpStatus, StreamableFile } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { RfisService } from './rfis.service';
@@ -9,6 +9,7 @@ import { AddRfiAttachmentDto } from './dto/add-rfi-attachment.dto';
 import { RequestClarificationDto } from './dto/request-clarification.dto';
 import { RespondToRfiDto } from './dto/respond-to-rfi.dto';
 import { AddRfiCommentDto } from './dto/add-rfi-comment.dto';
+import { UpsertRfiNoticeLetterDto } from './dto/upsert-rfi-notice-letter.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
@@ -208,5 +209,52 @@ export class RfisController {
   @ApiOperation({ summary: "List this RFI's clarification comments" })
   async getComments(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
     return { data: await this.svc.getComments(u.companyId, id), error: null };
+  }
+
+  // ── Notice Letters ───────────────────────────────────────────────────────
+  // Ungated read, same as :id/:id/pdf above -- company/project scoping via
+  // the query itself is the only check.
+  @Get(':id/letter')
+  @ApiOperation({ summary: 'Get this RFI\'s notice letter draft, if any' })
+  async getNoticeLetter(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.getNoticeLetter(u.companyId, pid, id), error: null };
+  }
+
+  @Put(':id/letter')
+  @RequireProjectPermission('manage_project_records')
+  @ApiOperation({ summary: 'Create or update this RFI\'s notice letter draft' })
+  async upsertNoticeLetter(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('id') id: string,
+    @Body() dto: UpsertRfiNoticeLetterDto,
+  ) {
+    return { data: await this.svc.upsertNoticeLetter(u.companyId, pid, id, u.id, dto), error: null };
+  }
+
+  @Post(':id/letter/share')
+  @RequireProjectPermission('manage_project_records')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Share this RFI\'s notice letter with its recipient via internal messaging' })
+  async shareNoticeLetter(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.shareNoticeLetter(u.companyId, pid, id, u.id), error: null };
+  }
+
+  // Binary-response endpoint, same StreamableFile + passthrough Response
+  // convention as :id/pdf above. Ungated read.
+  @Get(':id/letter/pdf')
+  @ApiOperation({ summary: 'Download this RFI\'s notice letter as a formatted PDF' })
+  async downloadNoticeLetterPdf(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { buffer, filename } = await this.svc.generateNoticeLetterPdf(u.companyId, pid, id);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    });
+    return new StreamableFile(buffer);
   }
 }
