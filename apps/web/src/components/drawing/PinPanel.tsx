@@ -29,6 +29,7 @@ export function PinPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [is360, setIs360] = useState(false);
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [title, setTitle] = useState('');
@@ -153,12 +154,16 @@ export function PinPanel({
     setError('');
     try {
       await uploadCapture(projectId, file, {
-        captureType: file.type.startsWith('video/') ? 'video' : 'photo_standard',
+        captureType: file.type.startsWith('video/') ? 'video' : (is360 ? 'photo_360' : 'photo_standard'),
         locationId: pin.locationId,
         title: file.name.replace(/\.[^./]+$/, ''),
       });
       queryClient.invalidateQueries({ queryKey: ['captures', projectId, 'pin', pin.locationId] });
       invalidatePin();
+      // Reset rather than leave it checked -- a 360° photo is the
+      // exception here, not the common case, so the next upload from this
+      // same panel shouldn't silently inherit the previous choice.
+      setIs360(false);
     } catch (err) {
       setError(apiErrorMessage(err));
     } finally {
@@ -337,6 +342,16 @@ export function PinPanel({
             <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="btn-primary w-full justify-center">
               {uploading ? 'Uploading…' : '+ Add photo or video'}
             </button>
+            <label className="flex items-center gap-1.5 mt-1.5 text-xs text-ink-500 hover:text-ink-100 cursor-pointer w-fit">
+              <input
+                type="checkbox"
+                checked={is360}
+                onChange={(e) => setIs360(e.target.checked)}
+                disabled={uploading}
+                className="accent-signal"
+              />
+              This is a 360° photo
+            </label>
             {error && <p className="field-error">{error}</p>}
           </div>
 
