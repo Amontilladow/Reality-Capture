@@ -19,6 +19,7 @@ import SnaggingPage from './pages/SnaggingPage';
 import AssistantPage from './pages/AssistantPage';
 import ReportsPage from './pages/ReportsPage';
 import MessagesPage from './pages/MessagesPage';
+import BuildLensPage from './pages/BuildLensPage';
 
 // These four pull in the heaviest dependencies in the app (Three.js +
 // @thatopen/components + @thatopen/fragments for the two BIM routes,
@@ -31,6 +32,11 @@ const Viewer360 = lazy(() => import('./pages/Viewer360'));
 const BimModelsPage = lazy(() => import('./pages/BimModelsPage'));
 const BimViewerPage = lazy(() => import('./pages/BimViewerPage'));
 const FloorPlanViewer = lazy(() => import('./pages/FloorPlanViewer'));
+// BuildLensTimelinePage reuses ThreeJsViewer (the same Three.js panorama
+// renderer Viewer360 uses) -- lazy-loaded for the same bundle-splitting
+// reason as the routes above. The BuildLens landing page has no such
+// dependency and stays a normal eager import.
+const BuildLensTimelinePage = lazy(() => import('./pages/BuildLensTimelinePage'));
 
 function RouteLoading() {
   return (
@@ -70,6 +76,8 @@ export default function App() {
             <Route path="/projects/:projectId" element={<ProjectDetail />} />
             <Route path="/projects/:projectId/captures" element={<CapturesPage />} />
             <Route path="/projects/:projectId/drawings" element={<FloorPlanViewer />} />
+            <Route path="/projects/:projectId/buildlens" element={<BuildLensPage />} />
+            <Route path="/projects/:projectId/buildlens/:locationId" element={<BuildLensTimelinePage />} />
             <Route path="/projects/:projectId/bim" element={<BimModelsPage />} />
             <Route path="/projects/:projectId/issues" element={<IssuesPage />} />
             <Route path="/projects/:projectId/rfis" element={<RfisPage />} />
@@ -77,7 +85,6 @@ export default function App() {
             <Route path="/projects/:projectId/snagging" element={<SnaggingPage />} />
             <Route path="/projects/:projectId/assistant" element={<AssistantPage />} />
             <Route path="/projects/:projectId/reports" element={<ReportsPage />} />
-            {/* Timeline view is planned for a later phase. */}
           </Route>
         </Route>
 

@@ -14,6 +14,7 @@ const PROJECT_NAV_ITEMS = [
   { to: 'captures', label: 'Captures', icon: IconCamera },
   { to: 'issues', label: 'Issues', icon: IconFlag },
   { to: 'drawings', label: 'Floor Plans', icon: IconMap },
+  { to: 'buildlens', label: 'BuildLens', icon: IconTimeline },
   { to: 'rfis', label: 'RFIs', icon: IconQuestion },
   { to: 'snagging', label: 'Snagging', icon: IconTag },
   { to: 'assistant', label: 'AI Assistant', icon: IconSpark },
@@ -165,6 +166,15 @@ function IconMap({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M9 3L3 5v16l6-2 6 2 6-2V3l-6 2-6-2z" strokeLinejoin="round" />
       <path d="M9 3v16M15 5v16" />
+    </svg>
+  );
+}
+function IconTimeline({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M3 12h4l2-6 4 12 2-6h6" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="7" cy="12" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="17" cy="12" r="1.3" fill="currentColor" stroke="none" />
     </svg>
   );
 }

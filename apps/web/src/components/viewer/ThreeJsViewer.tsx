@@ -12,10 +12,16 @@ export function ThreeJsViewer({
   imageUrl,
   hotspots,
   onHotspotClick,
+  initialYaw,
 }: {
   imageUrl: string;
   hotspots: Hotspot[];
   onHotspotClick?: (hotspot: Hotspot) => void;
+  // Optional real-world-bearing-continuation yaw (degrees), set by callers
+  // (e.g. BuildLens) that track compass-heading continuity across capture
+  // switches. Purely additive/opt-in -- when omitted, behavior is identical
+  // to before this prop existed (state.current.lon is left untouched).
+  initialYaw?: number;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [screenHotspots, setScreenHotspots] = useState<ScreenHotspot[]>([]);
@@ -32,6 +38,14 @@ export function ThreeJsViewer({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    // Applied once per imageUrl change, before the first animate() frame --
+    // this is the only place state.current.lon is set from outside the
+    // pointer-drag handlers. When initialYaw is undefined (every call site
+    // except BuildLens), this is a no-op and state.current.lon keeps
+    // whatever value pointer-dragging left it at, exactly as before this
+    // prop existed.
+    if (initialYaw != null) state.current.lon = initialYaw;
 
     let width = container.clientWidth;
     let height = container.clientHeight;

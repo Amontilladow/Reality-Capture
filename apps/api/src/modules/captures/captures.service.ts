@@ -288,6 +288,7 @@ export class CapturesService {
         phase       = COALESCE(${dto.phase ?? null}, phase),
         tags        = COALESCE(${dto.tags ? JSON.stringify(dto.tags) : null}::text[], tags),
         location_id = COALESCE(${dto.locationId ?? null}, location_id),
+        captured_at = COALESCE(${dto.capturedAt ?? null}::timestamptz, captured_at),
         updated_at  = NOW()
       WHERE id = ${captureId} AND project_id = ${projectId} AND company_id = ${companyId}
       RETURNING *
