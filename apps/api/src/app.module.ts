@@ -25,6 +25,7 @@ import { DrawingsModule } from './modules/drawings/drawings.module';
 import { TimelineModule } from './modules/timeline/timeline.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
+import { ChatModule } from './modules/chat/chat.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
@@ -96,6 +97,7 @@ import redisConfig from './config/redis.config';
     TimelineModule,
     NotificationsModule,
     MessagingModule,
+    ChatModule,
     SubscriptionModule,
   ],
   providers: [

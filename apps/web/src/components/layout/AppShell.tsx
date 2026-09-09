@@ -3,6 +3,7 @@ import { useAuthStore } from '../../store/auth.store';
 import { logout as apiLogout } from '../../lib/auth.api';
 import { NotificationBell } from './NotificationBell';
 import { MessagesBell } from './MessagesBell';
+import { ChatWidget } from '../chat/ChatWidget';
 
 const NAV_ITEMS = [
   { to: '', label: 'Projects', icon: IconGrid, end: true },
@@ -119,6 +120,8 @@ export function AppShell() {
       <main className="flex-1 min-w-0 bg-grid-fine bg-grid-fine">
         <Outlet />
       </main>
+
+      <ChatWidget />
     </div>
   );
 }
