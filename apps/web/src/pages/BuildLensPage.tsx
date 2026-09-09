@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
-import { listAllPhoto360Captures } from '../lib/buildlens.api';
+import { listAllProjectCaptures } from '../lib/buildlens.api';
 import { getProject, getHierarchy, type ProjectHierarchy } from '../lib/projects.api';
 
 interface LocationSummary {
@@ -49,16 +49,20 @@ export default function BuildLensPage() {
     enabled: Boolean(projectId),
   });
 
+  // All capture types (360s, standard photos, videos) -- BuildLens shows a
+  // location's full media timeline, not just 360s, per the product decision
+  // to make BuildLens the general "watch this location evolve" view rather
+  // than a 360-only one.
   const capturesQuery = useQuery({
     queryKey: ['buildlens', 'locations', projectId],
-    queryFn: () => listAllPhoto360Captures(projectId!),
+    queryFn: () => listAllProjectCaptures(projectId!),
     enabled: Boolean(projectId),
   });
 
-  // Per-location 360°-capture count/most-recent-date, keyed by locationId.
+  // Per-location capture count/most-recent-date, keyed by locationId.
   // Deliberately separate from getHierarchy()'s own location.captureCount --
-  // that field counts every capture type at a location, not just photo_360,
-  // and carries no date at all, so it can't drive this page on its own.
+  // that field carries no date at all, so it can't drive this page on its
+  // own even though it now counts the same thing (every capture type).
   const summaryByLocation = useMemo(() => {
     const map = new Map<string, LocationSummary>();
     for (const c of capturesQuery.data ?? []) {
@@ -166,7 +170,7 @@ export default function BuildLensPage() {
 
         {isEmpty && (
           <div className="panel p-8 text-center text-sm text-ink-500">
-            No location has any 360° captures yet. Upload 360° captures to a location to build its timeline.
+            No location has any captures yet. Upload a 360° photo, photo, or video to a location to build its timeline.
           </div>
         )}
 
@@ -247,7 +251,7 @@ function LocationRow({ loc, onClick, wide }: { loc: LocationSummary; onClick: ()
       <div className="min-w-0 flex-1">
         <div className="text-sm truncate">{loc.label}</div>
         <div className="text-xs text-ink-500 mt-0.5">
-          {loc.count} 360° capture{loc.count === 1 ? '' : 's'} · most recent{' '}
+          {loc.count} capture{loc.count === 1 ? '' : 's'} · most recent{' '}
           {new Date(loc.mostRecent).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
         </div>
       </div>

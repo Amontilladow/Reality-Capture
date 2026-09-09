@@ -60,6 +60,19 @@ function computeContinuationYaw(
   return currentLon + (outgoingHeadingDeg - incomingHeadingDeg);
 }
 
+// compass_heading_deg is set client-side for any capture type (whatever the
+// device sensor read at capture time), but it only means anything as a
+// panorama zero-point reference for an actual 360° photo -- a regular
+// photo's heading (if a client happened to send one) getting fed into
+// computeContinuationYaw would corrupt the running yaw for no reason, since
+// it's never used to orient a flat photo/video the way it is for a 360.
+// Masking non-360 headings out here (rather than special-casing inside
+// computeContinuationYaw itself) keeps that function's own null-safe
+// fallback as the single place "no reliable heading" is handled.
+function headingFor360(c: Capture): number | null | undefined {
+  return c.captureType === 'photo_360' ? c.compassHeadingDeg : undefined;
+}
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
@@ -69,6 +82,71 @@ function toDatetimeLocalValue(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Renders whatever media a capture actually is -- the panorama viewer for a
+// 360, a plain <img> for a standard photo, a plain <video> for a video --
+// given an already-resolved image/video URL (this component does no data
+// fetching of its own; the main viewer passes its detail-query-resolved
+// preview + hotspots, CompareView passes its own simpler preview/thumbnail
+// fallback with no hotspots, same as before this component existed).
+function CaptureMedia({
+  capture, src, hotspots, onHotspotClick, initialYaw,
+}: {
+  capture: Capture;
+  src?: string;
+  hotspots?: Hotspot[];
+  onHotspotClick?: (h: Hotspot) => void;
+  initialYaw?: number;
+}) {
+  if (!src) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center text-ink-500 text-sm">
+        No {capture.captureType === 'video' ? 'video' : 'image'} available.
+      </div>
+    );
+  }
+  if (capture.captureType === 'photo_360') {
+    return <ThreeJsViewer imageUrl={src} hotspots={hotspots ?? []} onHotspotClick={onHotspotClick} initialYaw={initialYaw} />;
+  }
+  if (capture.captureType === 'video') {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-base-950">
+        <video src={src} controls className="max-w-full max-h-full" />
+      </div>
+    );
+  }
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-base-950">
+      <img src={src} alt={capture.title ?? 'Capture'} className="max-w-full max-h-full object-contain" />
+    </div>
+  );
+}
+
+// Small per-type glyph for timeline points and compare-mode pickers, so the
+// media mix (360 vs photo vs video) reads at a glance, not just from title text.
+function CaptureTypeIcon({ captureType, className }: { captureType: Capture['captureType']; className?: string }) {
+  if (captureType === 'video') {
+    return (
+      <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
+        <rect x="2" y="5" width="14" height="14" rx="2" />
+        <path d="M16 9.5l6-3v11l-6-3z" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (captureType === 'photo_360') {
+    return (
+      <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
+        <ellipse cx="12" cy="12" rx="10" ry="6" />
+        <path d="M12 6c-3.5 0-6.5 1-8.5 2.5M12 18c3.5 0 6.5-1 8.5-2.5" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M4 8h3l2-2h6l2 2h3v11H4z" strokeLinejoin="round" /><circle cx="12" cy="13.5" r="3.2" />
+    </svg>
+  );
 }
 
 export default function BuildLensTimelinePage() {
@@ -100,11 +178,12 @@ export default function BuildLensTimelinePage() {
   });
 
   // getViewerData() returns every capture type at this location, ordered
-  // captured_at DESC. BuildLens only cares about 360° captures, and wants
-  // them oldest-to-newest left-to-right, so filter then reverse.
+  // captured_at DESC. BuildLens's timeline shows the full media mix (360s,
+  // standard photos, videos) in one chronological line, oldest-to-newest
+  // left-to-right, so just reverse -- no type filter.
   const captures = useMemo<Capture[]>(() => {
     const all = viewerQuery.data ?? [];
-    return all.filter((c) => c.captureType === 'photo_360').slice().reverse();
+    return all.slice().reverse();
   }, [viewerQuery.data]);
 
   const active: Capture | undefined = captures.find((c) => c.id === activeCaptureId) ?? captures[0];
@@ -155,7 +234,7 @@ export default function BuildLensTimelinePage() {
 
   function goTo(target: Capture) {
     if (active && target.id !== active.id) {
-      setCurrentYaw((prevYaw) => computeContinuationYaw(prevYaw, active.compassHeadingDeg, target.compassHeadingDeg));
+      setCurrentYaw((prevYaw) => computeContinuationYaw(prevYaw, headingFor360(active), headingFor360(target)));
     }
     setActiveCaptureId(target.id);
   }
@@ -187,7 +266,7 @@ export default function BuildLensTimelinePage() {
     }
     const timer = setTimeout(() => {
       const incoming = captures[idx + 1];
-      setCurrentYaw((prevYaw) => computeContinuationYaw(prevYaw, active.compassHeadingDeg, incoming.compassHeadingDeg));
+      setCurrentYaw((prevYaw) => computeContinuationYaw(prevYaw, headingFor360(active), headingFor360(incoming)));
       setActiveCaptureId(incoming.id);
     }, BASE_STEP_MS / speed);
     return () => clearTimeout(timer);
@@ -231,16 +310,17 @@ export default function BuildLensTimelinePage() {
 
         {viewerQuery.isSuccess && captures.length === 0 && (
           <div className="panel p-8 text-center text-sm text-ink-500">
-            No 360° captures registered at this location yet.
+            No captures registered at this location yet.
           </div>
         )}
 
         {captures.length > 0 && !compareMode && (
           <>
             <div className="relative h-[62vh] panel overflow-hidden">
-              {imageUrl && (
-                <ThreeJsViewer
-                  imageUrl={imageUrl}
+              {active && (
+                <CaptureMedia
+                  capture={active}
+                  src={imageUrl}
                   hotspots={hotspots}
                   onHotspotClick={handleHotspotClick}
                   initialYaw={currentYaw}
@@ -314,10 +394,12 @@ export default function BuildLensTimelinePage() {
                         key={c.id}
                         onClick={() => goTo(c)}
                         className="relative flex flex-col items-center gap-1.5 flex-1 min-w-[80px] group"
+                        title={c.captureType === 'photo_360' ? '360° photo' : c.captureType === 'video' ? 'Video' : 'Photo'}
                       >
-                        <span
-                          className={`w-3 h-3 rounded-full border-2 transition-colors ${
-                            isActive ? 'bg-signal border-signal' : 'bg-base-900 border-base-500 group-hover:border-blueprint'
+                        <CaptureTypeIcon
+                          captureType={c.captureType}
+                          className={`w-3.5 h-3.5 rounded-full border p-0.5 transition-colors ${
+                            isActive ? 'bg-signal/20 border-signal text-signal' : 'bg-base-900 border-base-500 text-ink-500 group-hover:border-blueprint group-hover:text-blueprint'
                           }`}
                         />
                         <span className={`text-[10px] font-mono whitespace-nowrap ${isActive ? 'text-signal' : 'text-ink-500'}`}>
@@ -385,19 +467,18 @@ function CompareView({
               onChange={(e) => col.onChange(e.target.value)}
             >
               {captures.map((c) => (
-                <option key={c.id} value={c.id}>{formatDate(c.capturedAt)}</option>
+                <option key={c.id} value={c.id}>
+                  {formatDate(c.capturedAt)} {c.captureType === 'video' ? '(video)' : c.captureType === 'photo_standard' ? '(photo)' : ''}
+                </option>
               ))}
             </select>
           </div>
           <div className="relative h-[50vh] panel overflow-hidden">
-            {col.capture && (col.capture.previewUrl ?? col.capture.thumbnailUrl) ? (
-              <ThreeJsViewer
-                imageUrl={(col.capture.previewUrl ?? col.capture.thumbnailUrl)!}
-                hotspots={[]}
-              />
+            {col.capture ? (
+              <CaptureMedia capture={col.capture} src={col.capture.previewUrl ?? col.capture.thumbnailUrl} />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-ink-500 text-sm">
-                No image available.
+                No capture selected.
               </div>
             )}
           </div>
