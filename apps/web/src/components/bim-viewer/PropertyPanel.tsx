@@ -98,7 +98,24 @@ export function PropertyPanel({
     return <p className="p-3 text-sm text-gray-400">Select an element in the viewer or spatial tree to inspect it.</p>;
   }
 
-  const propertyEntries = Object.entries(element.properties ?? {}).filter(([, v]) => v !== null && v !== undefined);
+  // element.properties is normally a plain object (the API decodes the
+  // bim_elements.properties JSONB column into one automatically), but a
+  // small number of elements have it stored as a JSON-encoded STRING
+  // instead (a data artifact from how/when they were processed -- see
+  // ifc-repository.service.ts's insertElementsBatch). Object.entries() on
+  // a raw string walks its characters by index, which renders as garbage
+  // numbered rows, so unwrap that case defensively rather than trusting
+  // the stored shape.
+  let rawProperties: unknown = element.properties;
+  if (typeof rawProperties === 'string') {
+    try {
+      rawProperties = JSON.parse(rawProperties);
+    } catch {
+      rawProperties = {};
+    }
+  }
+  const propertyEntries = Object.entries((rawProperties && typeof rawProperties === 'object' ? rawProperties : {}) as Record<string, unknown>)
+    .filter(([, v]) => v !== null && v !== undefined);
 
   return (
     <div className="overflow-y-auto p-3">
