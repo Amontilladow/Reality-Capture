@@ -207,6 +207,7 @@ export default function CapturesPage() {
             projectName={projectQuery.data?.name}
             captures={capturesQuery.data.data}
             hasActiveFilters={hasActiveFilters}
+            groupByLocation
           />
         )}
 
