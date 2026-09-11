@@ -166,7 +166,17 @@ export class CapturesService {
     const perPage = Math.min(query.perPage ?? 20, 100);
     const offset  = (page - 1) * perPage;
 
-    const rows = await this.db.withTenant(companyId, sql => sql`
+    const rows = await this.db.withTenant(companyId, sql => {
+      // Validate against the two known values before handing this to the
+      // query builder -- query.sortOrder is client-controlled, so it must
+      // never be interpolated into the SQL as a raw string. Composing a
+      // `sql` fragment (postgres.js's safe idiom for a dynamic-but-bounded
+      // ORDER BY direction) keeps this injection-proof while still letting
+      // the caller flip it; defaults to DESC to preserve the endpoint's
+      // existing behavior.
+      const orderDirection = query.sortOrder === 'asc' ? sql`ASC` : sql`DESC`;
+
+      return sql`
       SELECT
         c.*,
         u.first_name || ' ' || u.last_name AS captured_by_name,
@@ -200,9 +210,10 @@ export class CapturesService {
           to_tsvector('english', coalesce(c.title,'') || ' ' || coalesce(c.description,''))
           @@ plainto_tsquery('english', ${query.search ?? null}))
       GROUP BY c.id, u.first_name, u.last_name, loc.name, lvl.name, bld.name
-      ORDER BY c.captured_at DESC
+      ORDER BY c.captured_at ${orderDirection}
       LIMIT ${perPage} OFFSET ${offset}
-    `);
+    `;
+    });
 
     // Resolve presigned URLs for renditions and originals (fallback when no rendition exists yet)
     const allKeys: string[] = [];

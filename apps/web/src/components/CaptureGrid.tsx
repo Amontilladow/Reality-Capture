@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Capture } from '@engineeringos/types';
 import { Link } from 'react-router-dom';
 import { CaptureLightbox } from './CaptureLightbox';
+import { CAPTURE_STATUS_LABELS } from '../lib/capture-constants';
 
 const TYPE_LABEL: Record<string, string> = {
   photo_360: '360°',
@@ -20,18 +21,34 @@ export function CaptureGrid({
   projectId,
   projectName,
   captures,
+  hasActiveFilters = false,
 }: {
   projectId: string;
   projectName?: string;
   captures: Capture[];
+  // True when the caller has a filter/search active, so an empty result
+  // means "filters matched nothing" rather than "this project/location has
+  // no captures at all". Optional and defaults to false to stay
+  // backward-compatible with the other two callers (ProjectDetail.tsx,
+  // drawing/PinPanel.tsx) that don't have a filter bar of their own.
+  hasActiveFilters?: boolean;
 }) {
   const [lightboxCapture, setLightboxCapture] = useState<Capture | null>(null);
 
   if (captures.length === 0) {
     return (
       <div className="tick-frame panel p-12 text-center">
-        <div className="text-sm font-medium mb-1">No captures here yet</div>
-        <p className="text-sm text-ink-500">Upload a 360° photo, standard photo, or video to get started.</p>
+        {hasActiveFilters ? (
+          <>
+            <div className="text-sm font-medium mb-1">No captures match these filters</div>
+            <p className="text-sm text-ink-500">Try clearing a filter or your search to see more captures.</p>
+          </>
+        ) : (
+          <>
+            <div className="text-sm font-medium mb-1">No captures here yet</div>
+            <p className="text-sm text-ink-500">Upload a 360° photo, standard photo, or video to get started.</p>
+          </>
+        )}
       </div>
     );
   }
@@ -67,7 +84,19 @@ function CaptureCardBody({ c }: { c: Capture }) {
     <>
       <div className="aspect-video bg-base-900 relative overflow-hidden">
         {c.thumbnailUrl ? (
-          <img src={c.thumbnailUrl} alt={c.title ?? 'Capture'} className="w-full h-full object-cover" />
+          <img
+            src={c.thumbnailUrl}
+            alt={c.title ?? 'Capture'}
+            // photo_360 thumbnails are naturally wide (equirectangular) so
+            // object-cover fills the 16:9 box correctly, same as before.
+            // Non-360 types (portrait phone photos especially) get cropped
+            // badly by object-cover -- object-contain here letterboxes them
+            // against the box's own bg-base-900 fill instead, mirroring how
+            // CaptureLightbox already sizes images (object-contain, no crop).
+            // Video thumbnails are posters generated at capture time and are
+            // typically already ~16:9, so object-cover is kept for them too.
+            className={`w-full h-full ${c.captureType === 'photo_standard' ? 'object-contain' : 'object-cover'}`}
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-ink-500">
             <CameraIcon className="w-6 h-6" />
@@ -77,7 +106,7 @@ function CaptureCardBody({ c }: { c: Capture }) {
           {TYPE_LABEL[c.captureType] ?? c.captureType}
         </span>
         <span className={`absolute top-2 right-2 badge ${STATUS_STYLES[c.status] ?? 'bg-base-700 text-ink-300'}`}>
-          {c.status}
+          {CAPTURE_STATUS_LABELS[c.status] ?? c.status}
         </span>
       </div>
       <div className="p-3">

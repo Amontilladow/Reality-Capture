@@ -15,6 +15,8 @@ const CAPTURE_TYPES = [
   { value: 'video', label: 'Video' },
 ];
 
+const PER_PAGE = 60;
+
 export default function CapturesPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [captureType, setCaptureType] = useState('');
@@ -22,6 +24,9 @@ export default function CapturesPage() {
   const [buildingId, setBuildingId] = useState('');
   const [levelId, setLevelId] = useState('');
   const [locationId, setLocationId] = useState('');
+  const [search, setSearch] = useState('');
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [page, setPage] = useState(1);
   const [uploadOpen, setUploadOpen] = useState(false);
 
   const projectQuery = useQuery({
@@ -37,15 +42,18 @@ export default function CapturesPage() {
   });
 
   const capturesQuery = useQuery({
-    queryKey: ['captures', projectId, 'all', captureType, phase, buildingId, levelId, locationId],
+    queryKey: ['captures', projectId, 'all', captureType, phase, buildingId, levelId, locationId, search, sortOrder, page],
     queryFn: () =>
       listCaptures(projectId!, {
-        perPage: 60,
+        page,
+        perPage: PER_PAGE,
         captureType: captureType || undefined,
         phase: phase || undefined,
         buildingId: buildingId || undefined,
         levelId: levelId || undefined,
         locationId: locationId || undefined,
+        search: search || undefined,
+        sortOrder,
       }),
     enabled: Boolean(projectId),
   });
@@ -58,6 +66,10 @@ export default function CapturesPage() {
   const levelOptions = selectedBuilding?.levels ?? [];
   const selectedLevel = levelOptions.find((l) => l.id === levelId);
   const locationOptions = selectedLevel?.locations ?? [];
+
+  const hasActiveFilters = Boolean(captureType || phase || buildingId || levelId || locationId || search);
+
+  const meta = capturesQuery.data?.meta;
 
   if (!projectId) return null;
 
@@ -74,58 +86,113 @@ export default function CapturesPage() {
       />
 
       <div className="p-6 space-y-4">
-        <div className="flex items-center gap-3 flex-wrap">
-          <select className="field-input w-auto" value={captureType} onChange={(e) => setCaptureType(e.target.value)}>
-            {CAPTURE_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
-          <select className="field-input w-auto" value={phase} onChange={(e) => setPhase(e.target.value)}>
-            <option value="">All phases</option>
-            {PROJECT_PHASES.map((p) => (
-              <option key={p} value={p}>{PROJECT_PHASE_LABELS[p]}</option>
-            ))}
-          </select>
+        <div className="panel p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 items-end">
+          <div>
+            <label className="field-label" htmlFor="fCaptureType">Type</label>
+            <select
+              id="fCaptureType"
+              className="field-input"
+              value={captureType}
+              onChange={(e) => { setCaptureType(e.target.value); setPage(1); }}
+            >
+              {CAPTURE_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
 
-          <select
-            className="field-input w-auto"
-            value={buildingId}
-            onChange={(e) => { setBuildingId(e.target.value); setLevelId(''); setLocationId(''); }}
-          >
-            <option value="">All buildings</option>
-            {(hierarchyQuery.data ?? []).map((b) => (
-              <option key={b.id} value={b.id}>{b.name}</option>
-            ))}
-          </select>
-          <select
-            className="field-input w-auto"
-            value={levelId}
-            disabled={!buildingId}
-            onChange={(e) => { setLevelId(e.target.value); setLocationId(''); }}
-          >
-            <option value="">{buildingId ? 'All levels' : 'Any level'}</option>
-            {levelOptions.map((l) => (
-              <option key={l.id} value={l.id}>{l.name}</option>
-            ))}
-          </select>
-          <select
-            className="field-input w-auto"
-            value={locationId}
-            disabled={!levelId}
-            onChange={(e) => setLocationId(e.target.value)}
-          >
-            <option value="">{levelId ? 'All locations' : 'Any location'}</option>
-            {locationOptions.map((l) => (
-              <option key={l.id} value={l.id}>{l.name}</option>
-            ))}
-          </select>
+          <div>
+            <label className="field-label" htmlFor="fPhase">Phase</label>
+            <select
+              id="fPhase"
+              className="field-input"
+              value={phase}
+              onChange={(e) => { setPhase(e.target.value); setPage(1); }}
+            >
+              <option value="">All phases</option>
+              {PROJECT_PHASES.map((p) => (
+                <option key={p} value={p}>{PROJECT_PHASE_LABELS[p]}</option>
+              ))}
+            </select>
+          </div>
 
-          {capturesQuery.data?.meta && (
-            <span className="text-xs font-mono text-ink-500 ml-auto">
-              {capturesQuery.data.meta.total} capture{capturesQuery.data.meta.total === 1 ? '' : 's'}
-            </span>
-          )}
+          <div>
+            <label className="field-label" htmlFor="fBuilding">Building</label>
+            <select
+              id="fBuilding"
+              className="field-input"
+              value={buildingId}
+              onChange={(e) => { setBuildingId(e.target.value); setLevelId(''); setLocationId(''); setPage(1); }}
+            >
+              <option value="">All buildings</option>
+              {(hierarchyQuery.data ?? []).map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="field-label" htmlFor="fLevel">Level</label>
+            <select
+              id="fLevel"
+              className="field-input"
+              value={levelId}
+              disabled={!buildingId}
+              onChange={(e) => { setLevelId(e.target.value); setLocationId(''); setPage(1); }}
+            >
+              <option value="">{buildingId ? 'All levels' : 'Any level'}</option>
+              {levelOptions.map((l) => (
+                <option key={l.id} value={l.id}>{l.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="field-label" htmlFor="fLocation">Location</label>
+            <select
+              id="fLocation"
+              className="field-input"
+              value={locationId}
+              disabled={!levelId}
+              onChange={(e) => { setLocationId(e.target.value); setPage(1); }}
+            >
+              <option value="">{levelId ? 'All locations' : 'Any location'}</option>
+              {locationOptions.map((l) => (
+                <option key={l.id} value={l.id}>{l.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="field-label" htmlFor="fSearch">Search</label>
+            <input
+              id="fSearch"
+              className="field-input"
+              placeholder="Search title…"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            />
+          </div>
+
+          <div>
+            <label className="field-label" htmlFor="fSort">Sort</label>
+            <select
+              id="fSort"
+              className="field-input"
+              value={sortOrder}
+              onChange={(e) => { setSortOrder(e.target.value as 'desc' | 'asc'); setPage(1); }}
+            >
+              <option value="desc">Newest first</option>
+              <option value="asc">Oldest first</option>
+            </select>
+          </div>
         </div>
+
+        {meta && (
+          <div className="text-xs font-mono text-ink-500">
+            {meta.total} capture{meta.total === 1 ? '' : 's'}
+          </div>
+        )}
 
         {capturesQuery.isLoading && (
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -135,7 +202,34 @@ export default function CapturesPage() {
           </div>
         )}
         {capturesQuery.data && (
-          <CaptureGrid projectId={projectId} projectName={projectQuery.data?.name} captures={capturesQuery.data.data} />
+          <CaptureGrid
+            projectId={projectId}
+            projectName={projectQuery.data?.name}
+            captures={capturesQuery.data.data}
+            hasActiveFilters={hasActiveFilters}
+          />
+        )}
+
+        {meta && meta.totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button
+              className="btn-secondary !px-3 !py-1.5 text-xs"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={meta.page <= 1}
+            >
+              Previous
+            </button>
+            <span className="text-xs text-ink-500 font-mono">
+              Page {meta.page} of {meta.totalPages}
+            </span>
+            <button
+              className="btn-secondary !px-3 !py-1.5 text-xs"
+              onClick={() => setPage((p) => Math.min(meta.totalPages, p + 1))}
+              disabled={meta.page >= meta.totalPages}
+            >
+              Next
+            </button>
+          </div>
         )}
       </div>
 
