@@ -1,0 +1,131 @@
+import { Injectable } from '@nestjs/common';
+import { DatabaseService } from '../../../database/database.service';
+import { PRODUCTIVITY_MODEL_VERSION, type ProductivityFactors } from '@engineeringos/types';
+
+// Engineering-relevant activity types (brief §10's seed taxonomy) used by
+// the v1 formula's "engineering share" factor. Extending this list is a
+// code change here, not a migration -- activity_type stays a plain VARCHAR
+// (see docs/workforce-intelligence-data-model.md).
+const ENGINEERING_ACTIVITY_TYPES = new Set([
+  'ENGINEERING', 'DESIGN', 'MODELING', 'DOCUMENTATION', 'REVIEW', 'COORDINATION',
+]);
+
+// v1 productivity formula -- deliberately simple and fully explainable
+// (brief §14: "explainable, configurable, versioned, auditable,
+// replaceable"). NEVER computed or returned without its `factors`
+// breakdown alongside the score. Utilization and engineering-share are
+// weighted 40/60 because engineering time-on-task matters more to this
+// product's differentiator than raw active-vs-idle time (brief §6) --
+// this weighting is the kind of thing product/leadership should be able
+// to tune, which is exactly why it's isolated in one place, versioned,
+// and never hardcoded into the schema.
+const UTILIZATION_WEIGHT = 0.4;
+const ENGINEERING_SHARE_WEIGHT = 0.6;
+
+@Injectable()
+export class ProductivityService {
+  constructor(private readonly db: DatabaseService) {}
+
+  async getMyScore(companyId: string, userId: string, periodType: 'day' | 'week', periodStart: string) {
+    const { start, end } = resolvePeriod(periodType, periodStart);
+
+    return this.db.withTenant(companyId, async (sql) => {
+      const rows = await sql`
+        SELECT a.duration_seconds, a.activity_type, a.application_id,
+               COALESCE(ar.name, a.application_name_raw) AS application_name,
+               ar.engineering_relevance
+        FROM activities a
+        LEFT JOIN application_registry ar ON ar.id = a.application_id
+        WHERE a.user_id = ${userId}
+          AND a.started_at >= ${start.toISOString()}
+          AND a.started_at < ${end.toISOString()}`;
+
+      const factors = computeFactors(rows as unknown as ActivityAggregateRow[]);
+      const score = clamp(
+        100 * (UTILIZATION_WEIGHT * factors.utilization + ENGINEERING_SHARE_WEIGHT * factors.engineeringShare),
+        0,
+        100,
+      );
+
+      // Recalculable, not appended: a re-request for the same period under
+      // the same model_version replaces the stored row rather than
+      // accumulating history (brief §19).
+      await sql`
+        DELETE FROM productivity_scores
+        WHERE user_id = ${userId} AND project_id IS NULL
+          AND period_type = ${periodType} AND period_start = ${toDateOnly(start)}
+          AND model_version = ${PRODUCTIVITY_MODEL_VERSION}`;
+
+      const [saved] = await sql`
+        INSERT INTO productivity_scores (
+          company_id, user_id, project_id, period_type, period_start, period_end,
+          score, factors, model_version
+        ) VALUES (
+          ${companyId}, ${userId}, NULL, ${periodType}, ${toDateOnly(start)}, ${toDateOnly(end)},
+          ${score}, ${JSON.stringify(factors)}, ${PRODUCTIVITY_MODEL_VERSION}
+        ) RETURNING *`;
+
+      return saved;
+    });
+  }
+}
+
+function resolvePeriod(periodType: 'day' | 'week', periodStartInput?: string): { start: Date; end: Date } {
+  const base = periodStartInput ? new Date(periodStartInput) : new Date();
+  if (periodType === 'day') {
+    const start = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate()));
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    return { start, end };
+  }
+  // Week = Monday-start, matching ISO week convention.
+  const day = base.getUTCDay();
+  const diffToMonday = (day + 6) % 7;
+  const start = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate() - diffToMonday));
+  const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
+  return { start, end };
+}
+
+function toDateOnly(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+export interface ActivityAggregateRow {
+  durationSeconds: number;
+  activityType: string;
+  applicationId: string | null;
+  applicationName: string;
+  engineeringRelevance: boolean | null;
+}
+
+export function computeFactors(rows: ActivityAggregateRow[]): ProductivityFactors {
+  let totalActiveSeconds = 0;
+  let totalEngineeringSeconds = 0;
+  const totalAllSeconds = rows.reduce((sum, r) => sum + Number(r.durationSeconds), 0);
+  const appTotals = new Map<string, { applicationId: string | null; name: string; seconds: number }>();
+
+  for (const row of rows) {
+    const seconds = Number(row.durationSeconds);
+    if (row.activityType !== 'IDLE') totalActiveSeconds += seconds;
+    if (ENGINEERING_ACTIVITY_TYPES.has(row.activityType) || row.engineeringRelevance) {
+      totalEngineeringSeconds += seconds;
+    }
+    const key = row.applicationId ?? row.applicationName;
+    const existing = appTotals.get(key) ?? { applicationId: row.applicationId, name: row.applicationName, seconds: 0 };
+    existing.seconds += seconds;
+    appTotals.set(key, existing);
+  }
+
+  const topApplications = [...appTotals.values()].sort((a, b) => b.seconds - a.seconds).slice(0, 5);
+
+  return {
+    utilization: totalAllSeconds > 0 ? totalActiveSeconds / totalAllSeconds : 0,
+    engineeringShare: totalActiveSeconds > 0 ? totalEngineeringSeconds / totalActiveSeconds : 0,
+    totalActiveSeconds,
+    totalEngineeringSeconds,
+    topApplications,
+  };
+}
+
+function clamp(n: number, min: number, max: number): number {
+  return Math.round(Math.min(max, Math.max(min, n)) * 100) / 100;
+}

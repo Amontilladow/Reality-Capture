@@ -8,6 +8,7 @@ import { ChatWidget } from '../chat/ChatWidget';
 const NAV_ITEMS = [
   { to: '', label: 'Projects', icon: IconGrid, end: true },
   { to: 'messages', label: 'Messages', icon: IconMail },
+  { to: 'workforce', label: 'Workforce', icon: IconGauge },
 ];
 
 const PROJECT_NAV_ITEMS = [
@@ -203,6 +204,15 @@ function IconSpark({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z" strokeLinejoin="round" />
       <path d="M19 15l0.8 2.2L22 18l-2.2 0.8L19 21l-0.8-2.2L16 18l2.2-0.8L19 15z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconGauge({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M12 20a8 8 0 1 1 8-8" strokeLinecap="round" />
+      <path d="M12 12l4-4" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
     </svg>
   );
 }

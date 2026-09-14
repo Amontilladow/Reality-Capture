@@ -29,6 +29,7 @@ import { ChatModule } from './modules/chat/chat.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
+import { WorkforceModule } from './modules/workforce/workforce.module';
 import { HealthModule } from './modules/health/health.module';
 
 import { APP_INTERCEPTOR, APP_FILTER, APP_GUARD } from '@nestjs/core';
@@ -99,6 +100,7 @@ import redisConfig from './config/redis.config';
     MessagingModule,
     ChatModule,
     SubscriptionModule,
+    WorkforceModule,
   ],
   providers: [
     // Order matters: rate-limit first (cheap, rejects abuse before any auth work),
