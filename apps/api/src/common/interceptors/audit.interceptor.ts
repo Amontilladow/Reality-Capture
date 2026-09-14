@@ -24,6 +24,14 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   [/\/projects\/[^/]+$/,       'project.updated',       'project'],
   [/\/projects$/,              'project.created',       'project'],
   [/\/bim\/models$/,           'bim.model_uploaded',    'bim_model'],
+  // Workforce Intelligence -- admin/policy actions only. High-frequency
+  // telemetry (activity ingestion, device heartbeat) is deliberately not
+  // audited here to avoid drowning audit_log in routine traffic.
+  [/\/workforce\/devices$/,               'workforce.device_enrolled',            'device'],
+  [/\/workforce\/devices\/[^/]+$/,        'workforce.device_updated',             'device'],
+  [/\/workforce\/applications$/,          'workforce.application_created',        'application_registry'],
+  [/\/workforce\/applications\/[^/]+$/,   'workforce.application_updated',        'application_registry'],
+  [/\/workforce\/privacy-settings$/,      'workforce.privacy_settings_updated',   'workforce_privacy_settings'],
 ];
 
 interface AuditLogEntry {
