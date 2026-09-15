@@ -23,6 +23,14 @@ services:
     plan: starter
     region: oregon
     healthCheckPath: /api/v1/health
+    # Runs once per deploy, in the new release's own image/environment,
+    # before it takes traffic -- applies any pending SQL migrations
+    # (apps/api/src/database/migrations/*.sql, tracked in the _migrations
+    # table, safe to re-run). Previously this was a manual step a human had
+    # to remember to run via a Render Shell after every deploy that shipped
+    # a new migration; a forgotten run left new code querying tables that
+    # didn't exist yet (e.g. Workforce Intelligence's first deploy).
+    preDeployCommand: node apps/api/dist/database/run-migrations.js
     envVars:
       - key: NODE_ENV
         value: production
