@@ -21,7 +21,7 @@ export function attributeActivity(activityId: string, projectId: string) {
   return apiPost<unknown>(`/workforce/activities/${activityId}/attribute`, { projectId });
 }
 
-export function getMyProductivityScore(params?: { periodType?: 'day' | 'week'; periodStart?: string }) {
+export function getMyProductivityScore(params?: { periodType?: 'day' | 'week'; periodStart?: string; from?: string; to?: string }) {
   return apiGet<ProductivityScore>('/workforce/productivity/me', { params });
 }
 

@@ -25,18 +25,50 @@ const HEX = {
 const SERIES_PALETTE = [HEX.blueprint, HEX.signal, HEX.ok, HEX.warn, HEX.danger, HEX.ink500];
 const TOOLTIP_STYLE = { background: HEX.base800, border: `1px solid ${HEX.base700}`, borderRadius: 4, fontSize: 12, color: '#EAF0F4' };
 
-function formatHm(seconds: number): string {
+// Renders '—' instead of "NaN%"/"NaNh NaNm" whenever a numeric field isn't
+// actually a finite number -- a stale cache, a future backend change, or a
+// malformed row must never surface raw NaN to the user (regardless of the
+// fact that computeFactors() on the backend already guards its own
+// divisions; this is the last line of defense, not a duplicate of that).
+function pct(n: number | undefined | null): string {
+  return typeof n === 'number' && Number.isFinite(n) ? `${Math.round(n * 100)}%` : '—';
+}
+
+function formatHm(seconds: number | undefined | null): string {
+  if (typeof seconds !== 'number' || !Number.isFinite(seconds)) return '—';
   const h = Math.floor(seconds / 3600);
   const m = Math.round((seconds % 3600) / 60);
   return `${h}h ${m}m`;
+}
+
+// productivity_scores.score is a NUMERIC(5,2) column -- postgres.js returns
+// NUMERIC as a string to avoid precision loss, so `score.score` may arrive
+// as "0.00" (a string), not a number, despite the shared type declaring it
+// as `number`. Coerce defensively rather than trusting the wire value.
+function safeNumber(n: unknown): number | undefined {
+  const v = typeof n === 'number' ? n : typeof n === 'string' ? Number(n) : NaN;
+  return Number.isFinite(v) ? v : undefined;
 }
 
 export default function WorkforcePage() {
   const queryClient = useQueryClient();
   const [attributingId, setAttributingId] = useState<string | null>(null);
 
-  const summaryQuery = useQuery({ queryKey: ['workforce', 'activities', 'me'], queryFn: () => getMyActivitySummary() });
-  const productivityQuery = useQuery({ queryKey: ['workforce', 'productivity', 'me'], queryFn: () => getMyProductivityScore() });
+  // Computed once (lazy initializer, not on every render) so both queries
+  // below request the exact same window -- getMyActivitySummary() and
+  // getMyProductivityScore() otherwise default to two different ranges
+  // (trailing 7 days vs. ISO week-to-date) while sharing one "Last 7 days"
+  // heading. Passing this explicit range to both keeps "Tracked time" and
+  // "Productivity score"/"Utilization"/"Engineering share" honestly
+  // describing the same period.
+  const [{ from, to }] = useState(() => {
+    const toDate = new Date();
+    const fromDate = new Date(toDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+    return { from: fromDate.toISOString(), to: toDate.toISOString() };
+  });
+
+  const summaryQuery = useQuery({ queryKey: ['workforce', 'activities', 'me', from, to], queryFn: () => getMyActivitySummary({ from, to }) });
+  const productivityQuery = useQuery({ queryKey: ['workforce', 'productivity', 'me', from, to], queryFn: () => getMyProductivityScore({ from, to }) });
   const privacyQuery = useQuery({ queryKey: ['workforce', 'privacy-settings'], queryFn: getWorkforcePrivacySettings });
   const projectsQuery = useQuery({ queryKey: ['projects', 'all'], queryFn: () => listProjects({ perPage: 100 }) });
 
@@ -51,6 +83,7 @@ export default function WorkforcePage() {
   const summary = summaryQuery.data;
   const score = productivityQuery.data;
   const factors = score?.factors;
+  const scoreValue = score ? safeNumber(score.score) : undefined;
 
   const unattributed = (summary?.activities ?? []).filter((a) => !a.projectId).slice(0, 20);
 
@@ -75,34 +108,37 @@ export default function WorkforcePage() {
         {summary && (
           <section className="space-y-4">
             <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Last 7 days</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <StatTile label="Tracked time" value={formatHm(summary.totalSeconds)} />
-              <StatTile label="Productivity score" value={score ? `${score.score}` : '—'} tone="signal" />
-              {factors && <StatTile label="Utilization" value={`${Math.round(factors.utilization * 100)}%`} />}
-              {factors && <StatTile label="Engineering share" value={`${Math.round(factors.engineeringShare * 100)}%`} />}
-            </div>
-
-            {factors && (
-              <p className="text-xs text-ink-500">
-                Score factors (model {score?.modelVersion}) — utilization {Math.round(factors.utilization * 100)}%, engineering share{' '}
-                {Math.round(factors.engineeringShare * 100)}%, from {formatHm(factors.totalActiveSeconds)} of active time. This is one explainable
-                v1 formula, not a ranking — see the factors, not just the number.
-              </p>
-            )}
 
             {summary.totalSeconds === 0 ? (
               <div className="panel tick-frame p-10 text-center text-sm text-ink-500">
                 No activity recorded yet. Activity appears here once a device is enrolled and reporting.
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <ChartCard title="By application">
-                  <CountBarChart data={summary.byApplication.slice(0, 8).map((d) => ({ key: d.label, name: d.label, value: Math.round(d.seconds / 60) }))} />
-                </ChartCard>
-                <ChartCard title="By activity type">
-                  <StatusPieChart data={summary.byActivityType.map((d) => ({ key: d.label, name: d.label, value: Math.round(d.seconds / 60) }))} />
-                </ChartCard>
-              </div>
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <StatTile label="Tracked time" value={formatHm(summary.totalSeconds)} />
+                  <StatTile label="Productivity score" value={scoreValue !== undefined ? scoreValue.toFixed(2) : '—'} tone="signal" />
+                  {factors && <StatTile label="Utilization" value={pct(factors.utilization)} />}
+                  {factors && <StatTile label="Engineering share" value={pct(factors.engineeringShare)} />}
+                </div>
+
+                {factors && (
+                  <p className="text-xs text-ink-500">
+                    Score factors (model {score?.modelVersion}) — utilization {pct(factors.utilization)}, engineering share{' '}
+                    {pct(factors.engineeringShare)}, from {formatHm(factors.totalActiveSeconds)} of active time. This is one explainable
+                    v1 formula, not a ranking — see the factors, not just the number.
+                  </p>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <ChartCard title="By application">
+                    <CountBarChart data={summary.byApplication.slice(0, 8).map((d) => ({ key: d.label, name: d.label, value: Math.round(d.seconds / 60) }))} />
+                  </ChartCard>
+                  <ChartCard title="By activity type">
+                    <StatusPieChart data={summary.byActivityType.map((d) => ({ key: d.label, name: d.label, value: Math.round(d.seconds / 60) }))} />
+                  </ChartCard>
+                </div>
+              </>
             )}
 
             {summary.byProject.length > 0 && (

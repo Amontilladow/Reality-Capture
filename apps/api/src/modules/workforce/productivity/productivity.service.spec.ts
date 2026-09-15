@@ -68,3 +68,30 @@ describe('ProductivityService.getMyScore', () => {
     expect(deleteCallText).toContain('DELETE FROM productivity_scores');
   });
 });
+
+describe('ProductivityService.getMyScoreForRange', () => {
+  it('computes over the exact [from, to) window given, not a day/week calendar boundary, and persists it as period_type "range"', async () => {
+    const sqlMock = jest.fn()
+      .mockResolvedValueOnce([
+        { durationSeconds: 1800, activityType: 'ENGINEERING', applicationId: 'app-1', applicationName: 'Revit', engineeringRelevance: true },
+      ])
+      .mockResolvedValueOnce([]) // DELETE
+      .mockResolvedValueOnce([{ id: 'score-1' }]); // INSERT ... RETURNING *
+
+    const db = { withTenant: jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(sqlMock)) };
+    const svc = new ProductivityService(db as unknown as DatabaseService);
+
+    // A window spanning last Thursday-Friday to "now" (Tuesday) -- doesn't
+    // align to any ISO week or day boundary, which is exactly the case
+    // resolvePeriod()'s day/week shortcuts can't express.
+    await svc.getMyScoreForRange('company-1', 'user-1', '2026-01-01T00:00:00.000Z', '2026-01-06T12:00:00.000Z');
+
+    const selectCall = sqlMock.mock.calls[0];
+    expect(selectCall[2]).toBe('2026-01-01T00:00:00.000Z'); // started_at >= from
+    expect(selectCall[3]).toBe('2026-01-06T12:00:00.000Z'); // started_at < to
+
+    const insertCall = sqlMock.mock.calls[2];
+    // Positional args after the strings array: companyId, userId, periodType, periodStart, periodEnd, ...
+    expect(insertCall[3]).toBe('range');
+  });
+});
