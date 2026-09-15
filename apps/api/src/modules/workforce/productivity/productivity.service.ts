@@ -28,7 +28,20 @@ export class ProductivityService {
 
   async getMyScore(companyId: string, userId: string, periodType: 'day' | 'week', periodStart: string) {
     const { start, end } = resolvePeriod(periodType, periodStart);
+    return this.computeAndPersist(companyId, userId, periodType, start, end);
+  }
 
+  // Explicit [from, to) range that doesn't align to a day/week boundary --
+  // lets a caller (the Workforce page) request the score over the exact
+  // same window as another endpoint's own from/to range, instead of the
+  // two silently disagreeing (e.g. a trailing-7-days activity summary vs.
+  // an ISO-week-to-date score). Stored as period_type 'range' so it never
+  // collides with a 'day'/'week' row for the same user.
+  async getMyScoreForRange(companyId: string, userId: string, from: string, to: string) {
+    return this.computeAndPersist(companyId, userId, 'range', new Date(from), new Date(to));
+  }
+
+  private async computeAndPersist(companyId: string, userId: string, periodType: string, start: Date, end: Date) {
     return this.db.withTenant(companyId, async (sql) => {
       const rows = await sql`
         SELECT a.duration_seconds, a.activity_type, a.application_id,
