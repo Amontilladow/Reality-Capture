@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../../database/database.service';
-import { PRODUCTIVITY_MODEL_VERSION, type ProductivityFactors } from '@engineeringos/types';
+import { PRODUCTIVITY_MODEL_VERSION, type ProductivityFactors, type CompanyRole } from '@engineeringos/types';
+import { resolveVisibleTargetUserId } from '../workforce-visibility.util';
 
 // Engineering-relevant activity types (brief §10's seed taxonomy) used by
 // the v1 formula's "engineering share" factor. Extending this list is a
@@ -26,7 +27,22 @@ const ENGINEERING_SHARE_WEIGHT = 0.6;
 export class ProductivityService {
   constructor(private readonly db: DatabaseService) {}
 
-  async getMyScore(companyId: string, userId: string, periodType: 'day' | 'week', periodStart: string) {
+  // `callerId` is always the authenticated caller; `targetUserId`/
+  // `callerCompanyRole` are new, trailing, optional params so every
+  // existing self-view call site (which only ever passed the first four
+  // arguments) keeps compiling and behaving exactly as before. When a
+  // target other than the caller is requested, resolveVisibleTargetUserId()
+  // enforces the chain-of-command/leadership visibility rule and throws
+  // ForbiddenException if it fails.
+  async getMyScore(
+    companyId: string,
+    callerId: string,
+    periodType: 'day' | 'week',
+    periodStart: string,
+    targetUserId?: string,
+    callerCompanyRole?: CompanyRole,
+  ) {
+    const userId = await resolveVisibleTargetUserId(this.db, companyId, callerId, callerCompanyRole, targetUserId);
     const { start, end } = resolvePeriod(periodType, periodStart);
     return this.computeAndPersist(companyId, userId, periodType, start, end);
   }
@@ -36,8 +52,17 @@ export class ProductivityService {
   // same window as another endpoint's own from/to range, instead of the
   // two silently disagreeing (e.g. a trailing-7-days activity summary vs.
   // an ISO-week-to-date score). Stored as period_type 'range' so it never
-  // collides with a 'day'/'week' row for the same user.
-  async getMyScoreForRange(companyId: string, userId: string, from: string, to: string) {
+  // collides with a 'day'/'week' row for the same user. Same trailing
+  // targetUserId/callerCompanyRole params and visibility check as getMyScore.
+  async getMyScoreForRange(
+    companyId: string,
+    callerId: string,
+    from: string,
+    to: string,
+    targetUserId?: string,
+    callerCompanyRole?: CompanyRole,
+  ) {
+    const userId = await resolveVisibleTargetUserId(this.db, companyId, callerId, callerCompanyRole, targetUserId);
     return this.computeAndPersist(companyId, userId, 'range', new Date(from), new Date(to));
   }
 

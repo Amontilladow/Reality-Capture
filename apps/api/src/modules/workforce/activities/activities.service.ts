@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { TransactionSql } from 'postgres';
+import type { CompanyRole } from '@engineeringos/types';
 import { DatabaseService } from '../../../database/database.service';
+import { resolveVisibleTargetUserId } from '../workforce-visibility.util';
 import type { IngestActivitiesDto, IngestActivityItemDto } from './dto/ingest-activities.dto';
 
 const DEFAULT_RANGE_DAYS = 7;
@@ -98,8 +100,22 @@ export class ActivitiesService {
   }
 
   // Own-activity summary for the employee self-view dashboard. Defaults to
-  // the trailing 7 days when no range is given.
-  async getMySummary(companyId: string, userId: string, from?: string, to?: string) {
+  // the trailing 7 days when no range is given. `callerId` is always the
+  // authenticated caller; `targetUserId`/`callerCompanyRole` are new,
+  // trailing, optional params so every existing self-view call site
+  // (which only ever passed the first four arguments) keeps compiling and
+  // behaving exactly as before. When a target other than the caller is
+  // requested, resolveVisibleTargetUserId() enforces the chain-of-command/
+  // leadership visibility rule and throws ForbiddenException if it fails.
+  async getMySummary(
+    companyId: string,
+    callerId: string,
+    from?: string,
+    to?: string,
+    targetUserId?: string,
+    callerCompanyRole?: CompanyRole,
+  ) {
+    const userId = await resolveVisibleTargetUserId(this.db, companyId, callerId, callerCompanyRole, targetUserId);
     const rangeEnd = to ? new Date(to) : new Date();
     const rangeStart = from ? new Date(from) : new Date(rangeEnd.getTime() - DEFAULT_RANGE_DAYS * 24 * 60 * 60 * 1000);
 

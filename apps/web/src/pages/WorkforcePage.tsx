@@ -6,9 +6,12 @@ import {
 import { PageHeader } from '../components/layout/PageHeader';
 import {
   getMyActivitySummary, getMyProductivityScore, getWorkforcePrivacySettings, attributeActivity,
+  getMyTeam, listReportingLines, setReportingLine,
 } from '../lib/workforce.api';
 import { listProjects } from '../lib/projects.api';
+import { listUsers } from '../lib/users.api';
 import { apiErrorMessage } from '../lib/api';
+import { useAuthStore } from '../store/auth.store';
 
 // Same "Blueprint-dark technical" palette used by ReportsPage's charts —
 // recharts needs real hex values, it doesn't read Tailwind classes.
@@ -52,7 +55,16 @@ function safeNumber(n: unknown): number | undefined {
 
 export default function WorkforcePage() {
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((s) => s.user);
+  const isCompanyAdmin = currentUser?.companyRole === 'company_admin' || currentUser?.companyRole === 'super_admin';
+
   const [attributingId, setAttributingId] = useState<string | null>(null);
+  // null = viewing your own activity. Set to a team member's userId to
+  // view theirs instead -- the backend enforces who's actually allowed to
+  // see whom (self, weight-based leadership, or reporting-chain
+  // visibility); this is just which one the page currently displays.
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const isSelf = selectedUserId === null;
 
   // Computed once (lazy initializer, not on every render) so both queries
   // below request the exact same window -- getMyActivitySummary() and
@@ -67,8 +79,17 @@ export default function WorkforcePage() {
     return { from: fromDate.toISOString(), to: toDate.toISOString() };
   });
 
-  const summaryQuery = useQuery({ queryKey: ['workforce', 'activities', 'me', from, to], queryFn: () => getMyActivitySummary({ from, to }) });
-  const productivityQuery = useQuery({ queryKey: ['workforce', 'productivity', 'me', from, to], queryFn: () => getMyProductivityScore({ from, to }) });
+  const teamQuery = useQuery({ queryKey: ['workforce', 'team'], queryFn: getMyTeam });
+  const selectedMember = teamQuery.data?.find((m) => m.userId === selectedUserId);
+
+  const summaryQuery = useQuery({
+    queryKey: ['workforce', 'activities', selectedUserId ?? 'me', from, to],
+    queryFn: () => getMyActivitySummary({ from, to }, selectedUserId ?? undefined),
+  });
+  const productivityQuery = useQuery({
+    queryKey: ['workforce', 'productivity', selectedUserId ?? 'me', from, to],
+    queryFn: () => getMyProductivityScore({ from, to }, selectedUserId ?? undefined),
+  });
   const privacyQuery = useQuery({ queryKey: ['workforce', 'privacy-settings'], queryFn: getWorkforcePrivacySettings });
   const projectsQuery = useQuery({ queryKey: ['projects', 'all'], queryFn: () => listProjects({ perPage: 100 }) });
 
@@ -85,23 +106,51 @@ export default function WorkforcePage() {
   const factors = score?.factors;
   const scoreValue = score ? safeNumber(score.score) : undefined;
 
-  const unattributed = (summary?.activities ?? []).filter((a) => !a.projectId).slice(0, 20);
+  // Manual project attribution only ever applies to your own activity
+  // (POST /workforce/activities/:activityId/attribute is caller-scoped
+  // server-side) -- never shown while viewing a team member's data.
+  const unattributed = isSelf ? (summary?.activities ?? []).filter((a) => !a.projectId).slice(0, 20) : [];
 
   return (
     <>
-      <PageHeader eyebrow="My Activity" title="Workforce" />
+      <PageHeader eyebrow={isSelf ? 'My Activity' : `${selectedMember?.name ?? 'Team member'}'s Activity`} title="Workforce" />
 
       <div className="p-6 space-y-8">
+        {teamQuery.data && teamQuery.data.length > 0 && (
+          <section className="space-y-2">
+            <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Team</h2>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setSelectedUserId(null)}
+                className={`px-3 py-1.5 rounded text-xs border ${isSelf ? 'border-signal text-signal bg-signal/10' : 'border-base-600 text-ink-300 hover:bg-base-800'}`}
+              >
+                Me
+              </button>
+              {teamQuery.data.map((member) => (
+                <button
+                  key={member.userId}
+                  onClick={() => setSelectedUserId(member.userId)}
+                  className={`px-3 py-1.5 rounded text-xs border ${selectedUserId === member.userId ? 'border-signal text-signal bg-signal/10' : 'border-base-600 text-ink-300 hover:bg-base-800'}`}
+                >
+                  {member.name} <span className="text-ink-500">· {member.companyRole}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
         {privacyQuery.data && (
           <p className="text-xs text-ink-500">
             Monitoring level: <span className="text-ink-300">{privacyQuery.data.monitoringLevel}</span> · Self-view{' '}
             <span className="text-ink-300">{privacyQuery.data.selfViewEnabled ? 'enabled' : 'disabled'}</span> · Screenshots{' '}
-            <span className="text-ink-300">{privacyQuery.data.screenshotEnabled ? 'enabled' : 'not used'}</span> — this page shows only your own
-            activity.
+            <span className="text-ink-300">{privacyQuery.data.screenshotEnabled ? 'enabled' : 'not used'}</span> —{' '}
+            {isSelf
+              ? 'this page shows only your own activity.'
+              : `you're viewing ${selectedMember?.name ?? 'a team member'}'s activity as their manager or company leadership.`}
           </p>
         )}
 
-        {(summaryQuery.isLoading || productivityQuery.isLoading) && <p className="text-sm text-ink-500">Loading your activity…</p>}
+        {(summaryQuery.isLoading || productivityQuery.isLoading) && <p className="text-sm text-ink-500">Loading activity…</p>}
         {summaryQuery.isError && <p className="field-error">{apiErrorMessage(summaryQuery.error)}</p>}
         {productivityQuery.isError && <p className="field-error">{apiErrorMessage(productivityQuery.error)}</p>}
 
@@ -210,8 +259,78 @@ export default function WorkforcePage() {
             {attributeMutation.isError && <p className="field-error">{apiErrorMessage(attributeMutation.error)}</p>}
           </section>
         )}
+
+        {isCompanyAdmin && <ReportingLinesAdmin />}
       </div>
     </>
+  );
+}
+
+// Minimal company-admin-only screen for setting who reports to whom --
+// not an org-chart builder, just a table with one "manager" dropdown per
+// row (per the brief's own scope: "this is not an HRIS"). Gated
+// client-side on the current user's companyRole for display only; the
+// actual enforcement is server-side (@Roles('company_admin') on
+// ReportingLinesController).
+function ReportingLinesAdmin() {
+  const queryClient = useQueryClient();
+  const usersQuery = useQuery({ queryKey: ['users', 'all'], queryFn: listUsers });
+  const linesQuery = useQuery({ queryKey: ['workforce', 'reporting-lines'], queryFn: listReportingLines });
+
+  const setManagerMutation = useMutation({
+    mutationFn: ({ userId, managerId }: { userId: string; managerId: string }) => setReportingLine(userId, managerId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workforce', 'reporting-lines'] }),
+  });
+
+  const managerByUserId = new Map((linesQuery.data ?? []).map((line) => [line.userId, line.managerId]));
+  const users = usersQuery.data?.data ?? [];
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Reporting lines (admin)</h2>
+      <p className="text-xs text-ink-500">
+        Sets who a manager sees in their Workforce team view -- direct reports and, transitively, the people who report to them.
+      </p>
+      {(usersQuery.isLoading || linesQuery.isLoading) && <p className="text-sm text-ink-500">Loading company users…</p>}
+      {setManagerMutation.isError && <p className="field-error">{apiErrorMessage(setManagerMutation.error)}</p>}
+      {users.length > 0 && (
+        <div className="panel tick-frame overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-ink-500 border-b border-base-600">
+                <th className="px-4 py-2.5 font-medium">User</th>
+                <th className="px-4 py-2.5 font-medium">Role</th>
+                <th className="px-4 py-2.5 font-medium">Manager</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id} className="border-b border-base-700/60 last:border-0">
+                  <td className="px-4 py-2.5">{user.firstName} {user.lastName}</td>
+                  <td className="px-4 py-2.5 text-ink-500">{user.companyRole}</td>
+                  <td className="px-4 py-2.5">
+                    <select
+                      className="input !py-1 !text-xs"
+                      value={managerByUserId.get(user.id) ?? ''}
+                      disabled={setManagerMutation.isPending}
+                      onChange={(e) => {
+                        if (!e.target.value) return;
+                        setManagerMutation.mutate({ userId: user.id, managerId: e.target.value });
+                      }}
+                    >
+                      <option value="">No manager set</option>
+                      {users.filter((candidate) => candidate.id !== user.id).map((candidate) => (
+                        <option key={candidate.id} value={candidate.id}>{candidate.firstName} {candidate.lastName}</option>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 

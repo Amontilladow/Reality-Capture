@@ -27,6 +27,16 @@ export class ActivitiesController {
     return { data: await this.svc.getMySummary(u.companyId, u.id, query.from, query.to), error: null };
   }
 
+  // Declared after 'me' so that literal route keeps matching
+  // /workforce/activities/me -- Nest/Express register routes in class
+  // declaration order, and a ':userId' route declared first would swallow
+  // 'me' as if it were a userId.
+  @Get(':userId')
+  @ApiOperation({ summary: 'Get another user\'s activity summary (manager/leadership visibility only)' })
+  async getSummaryForUser(@CurrentUser() u: AuthenticatedUser, @Param('userId') userId: string, @Query() query: ActivitySummaryQueryDto) {
+    return { data: await this.svc.getMySummary(u.companyId, u.id, query.from, query.to, userId, u.companyRole), error: null };
+  }
+
   @Post(':activityId/attribute')
   @ApiOperation({ summary: 'Manually attribute one of the current user\'s own activities to a project' })
   async attribute(@CurrentUser() u: AuthenticatedUser, @Param('activityId') activityId: string, @Body() dto: AttributeActivityDto) {

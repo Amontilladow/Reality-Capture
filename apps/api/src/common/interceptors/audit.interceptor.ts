@@ -32,6 +32,7 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   [/\/workforce\/applications$/,          'workforce.application_created',        'application_registry'],
   [/\/workforce\/applications\/[^/]+$/,   'workforce.application_updated',        'application_registry'],
   [/\/workforce\/privacy-settings$/,      'workforce.privacy_settings_updated',   'workforce_privacy_settings'],
+  [/\/workforce\/reporting-lines$/,       'workforce.reporting_line_set',         'workforce_reporting_line'],
 ];
 
 interface AuditLogEntry {

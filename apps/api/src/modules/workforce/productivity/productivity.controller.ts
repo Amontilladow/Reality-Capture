@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ProductivityService } from './productivity.service';
 import { ProductivityQueryDto } from './dto/productivity-query.dto';
@@ -24,5 +24,19 @@ export class ProductivityController {
     const periodType = query.periodType ?? 'week';
     const periodStart = query.periodStart ?? new Date().toISOString();
     return { data: await this.svc.getMyScore(u.companyId, u.id, periodType, periodStart), error: null };
+  }
+
+  // Declared after 'me' so that literal route keeps matching
+  // /workforce/productivity/me -- see the identical note on
+  // ActivitiesController.getSummaryForUser.
+  @Get(':userId')
+  @ApiOperation({ summary: 'Get another user\'s explainable productivity score (manager/leadership visibility only)' })
+  async getScoreForUser(@CurrentUser() u: AuthenticatedUser, @Param('userId') userId: string, @Query() query: ProductivityQueryDto) {
+    if (query.from && query.to) {
+      return { data: await this.svc.getMyScoreForRange(u.companyId, u.id, query.from, query.to, userId, u.companyRole), error: null };
+    }
+    const periodType = query.periodType ?? 'week';
+    const periodStart = query.periodStart ?? new Date().toISOString();
+    return { data: await this.svc.getMyScore(u.companyId, u.id, periodType, periodStart, userId, u.companyRole), error: null };
   }
 }

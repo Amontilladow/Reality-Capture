@@ -116,13 +116,39 @@ export interface ProductivityScore {
   companyId: string;
   userId: string;
   projectId?: string;
-  periodType: 'day' | 'week';
+  // 'day' | 'week' | 'range' (an explicit from/to override -- see
+  // ProductivityService.getMyScoreForRange) -- plain string since the
+  // period_type column is an unconstrained VARCHAR(10), not a DB enum.
+  periodType: string;
   periodStart: string;
   periodEnd: string;
   score: number;
   factors: ProductivityFactors;
   modelVersion: string;
   calculatedAt: string;
+}
+
+// Chain-of-command visibility (manager/leadership over an employee's own
+// self-view) -- see docs/workforce-intelligence-architecture.md's RBAC
+// section and workforce-visibility.util.ts. Deliberately its own
+// workforce-scoped table (workforce_reporting_lines), not a manager_id
+// column on the core `users` table.
+export interface WorkforceReportingLine {
+  id: string;
+  companyId: string;
+  userId: string;
+  managerId: string;
+  createdBy?: string;
+  createdAt: string;
+}
+
+// One row per person in a viewer's downward reporting closure (or, for a
+// weight-based leadership viewer, one row per company user) -- returned by
+// GET /workforce/team to populate the team list in the UI.
+export interface WorkforceTeamMember {
+  userId: string;
+  name: string;
+  companyRole: string;
 }
 
 export interface WorkforcePrivacySettings {
