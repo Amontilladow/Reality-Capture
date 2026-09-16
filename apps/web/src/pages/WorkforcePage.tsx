@@ -6,12 +6,13 @@ import {
 import { PageHeader } from '../components/layout/PageHeader';
 import {
   getMyActivitySummary, getMyProductivityScore, getWorkforcePrivacySettings, attributeActivity,
-  getMyTeam, listReportingLines, setReportingLine,
+  getMyTeam, listReportingLines, setReportingLine, updateWorkforcePrivacySettings, getMyScreenshots,
 } from '../lib/workforce.api';
 import { listProjects } from '../lib/projects.api';
 import { listUsers } from '../lib/users.api';
 import { apiErrorMessage } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
+import { MONITORING_LEVELS, type MonitoringLevel } from '@engineeringos/types';
 
 // Same "Blueprint-dark technical" palette used by ReportsPage's charts —
 // recharts needs real hex values, it doesn't read Tailwind classes.
@@ -213,6 +214,15 @@ export default function WorkforcePage() {
           </section>
         )}
 
+        {(selectedUserId ?? currentUser?.id) && (
+          <ScreenshotsPanel
+            userId={selectedUserId ?? currentUser!.id}
+            from={from}
+            to={to}
+            screenshotsEnabled={privacyQuery.data?.screenshotEnabled ?? false}
+          />
+        )}
+
         {unattributed.length > 0 && (
           <section className="space-y-3">
             <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Unattributed activity</h2>
@@ -260,9 +270,144 @@ export default function WorkforcePage() {
           </section>
         )}
 
-        {isCompanyAdmin && <ReportingLinesAdmin />}
+        {isCompanyAdmin && (
+          <>
+            <PrivacySettingsAdmin />
+            <ReportingLinesAdmin />
+          </>
+        )}
       </div>
     </>
+  );
+}
+
+// Chronological thumbnail strip for one user's screenshots in the same
+// from/to range the rest of the page uses, click-to-enlarge. Renders an
+// honest empty state (screenshots off, or none yet) instead of ever
+// showing a broken image icon -- `url` is only used once a row actually
+// has one (a presigned URL that failed to resolve server-side is filtered
+// out, not rendered broken).
+function ScreenshotsPanel({ userId, from, to, screenshotsEnabled }: { userId: string; from: string; to: string; screenshotsEnabled: boolean }) {
+  const [enlarged, setEnlarged] = useState<string | null>(null);
+  const screenshotsQuery = useQuery({
+    queryKey: ['workforce', 'screenshots', userId, from, to],
+    queryFn: () => getMyScreenshots(userId, { from, to }),
+    enabled: screenshotsEnabled,
+  });
+
+  return (
+    <section className="space-y-2">
+      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Screenshots</h2>
+
+      {!screenshotsEnabled && (
+        <div className="panel tick-frame p-6 text-center text-sm text-ink-500">Screenshots are not enabled for this company.</div>
+      )}
+
+      {screenshotsEnabled && screenshotsQuery.isLoading && <p className="text-sm text-ink-500">Loading screenshots…</p>}
+      {screenshotsEnabled && screenshotsQuery.isError && <p className="field-error">{apiErrorMessage(screenshotsQuery.error)}</p>}
+
+      {screenshotsEnabled && !screenshotsQuery.isLoading && (screenshotsQuery.data ?? []).filter((s) => s.url).length === 0 && (
+        <div className="panel tick-frame p-6 text-center text-sm text-ink-500">No screenshots captured in this range yet.</div>
+      )}
+
+      {screenshotsEnabled && (screenshotsQuery.data ?? []).filter((s) => s.url).length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {(screenshotsQuery.data ?? []).filter((s) => s.url).map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setEnlarged(s.url)}
+              className="w-28 h-20 overflow-hidden rounded border border-base-600 hover:border-signal shrink-0"
+              title={new Date(s.capturedAt).toLocaleString()}
+            >
+              <img src={s.url!} alt="" className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {enlarged && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 cursor-zoom-out"
+          onClick={() => setEnlarged(null)}
+        >
+          <img src={enlarged} alt="Enlarged screenshot" className="max-w-[90vw] max-h-[90vh] rounded" />
+        </div>
+      )}
+    </section>
+  );
+}
+
+// Turns the privacy toggle from read-only into real -- the literal switch
+// that turns screenshot capture (§2's server-side pipeline) on for the
+// company. Off by default; each control fires its own update immediately
+// on change, matching the existing dropdown-per-row pattern in
+// ReportingLinesAdmin rather than a separate form + save button.
+function PrivacySettingsAdmin() {
+  const queryClient = useQueryClient();
+  const privacyQuery = useQuery({ queryKey: ['workforce', 'privacy-settings'], queryFn: getWorkforcePrivacySettings });
+
+  const updateMutation = useMutation({
+    mutationFn: (dto: Parameters<typeof updateWorkforcePrivacySettings>[0]) => updateWorkforcePrivacySettings(dto),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workforce', 'privacy-settings'] }),
+  });
+
+  const settings = privacyQuery.data;
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Privacy & monitoring settings (admin)</h2>
+      {privacyQuery.isLoading && <p className="text-sm text-ink-500">Loading…</p>}
+      {updateMutation.isError && <p className="field-error">{apiErrorMessage(updateMutation.error)}</p>}
+      {settings && (
+        <div className="panel tick-frame p-4 space-y-4 max-w-xl">
+          <label className="block space-y-1">
+            <div className="text-xs uppercase tracking-wide text-ink-500">Monitoring level</div>
+            <select
+              className="input"
+              value={settings.monitoringLevel}
+              disabled={updateMutation.isPending}
+              onChange={(e) => updateMutation.mutate({ monitoringLevel: e.target.value as MonitoringLevel })}
+            >
+              {MONITORING_LEVELS.map((level) => (
+                <option key={level} value={level}>{level}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={settings.screenshotEnabled}
+              disabled={updateMutation.isPending}
+              onChange={(e) => updateMutation.mutate({ screenshotEnabled: e.target.checked })}
+            />
+            <span className="text-sm">
+              Enable periodic screenshot capture
+              <span className="block text-xs text-ink-500">
+                Off by default. Confirm your company's employee-monitoring disclosure requirements before turning this on.
+              </span>
+            </span>
+          </label>
+
+          <label className="block space-y-1">
+            <div className="text-xs uppercase tracking-wide text-ink-500">Retention (days)</div>
+            <input
+              type="number"
+              className="input"
+              min={1}
+              max={3650}
+              defaultValue={settings.retentionDays}
+              disabled={updateMutation.isPending}
+              onBlur={(e) => {
+                const value = Number(e.target.value);
+                if (Number.isFinite(value) && value !== settings.retentionDays) updateMutation.mutate({ retentionDays: value });
+              }}
+            />
+          </label>
+        </div>
+      )}
+    </section>
   );
 }
 

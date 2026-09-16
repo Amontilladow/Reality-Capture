@@ -36,6 +36,13 @@ export class StorageService {
     return `${companyId}/${type}/${projectId}/${randomUUID()}.${ext}`;
   }
 
+  // Workforce screenshots have no projectId (they aren't project-scoped),
+  // so they get their own small key builder rather than forcing a fake
+  // project segment through generateKey()'s shape.
+  generateWorkforceScreenshotKey(companyId: string, userId: string): string {
+    return `${companyId}/workforce-screenshots/${userId}/${randomUUID()}.jpg`;
+  }
+
   // Get a presigned URL for direct browser upload (client never touches our server for file data)
   //
   // Deliberately does NOT sign ContentLength: several callers only have a
