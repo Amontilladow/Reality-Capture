@@ -9,6 +9,10 @@ import { ProductivityController } from './productivity/productivity.controller';
 import { ProductivityService } from './productivity/productivity.service';
 import { PrivacyController } from './privacy/privacy.controller';
 import { PrivacyService } from './privacy/privacy.service';
+import { TeamController } from './team/team.controller';
+import { TeamService } from './team/team.service';
+import { ReportingLinesController } from './reporting-lines/reporting-lines.controller';
+import { ReportingLinesService } from './reporting-lines/reporting-lines.service';
 
 @Module({
   controllers: [
@@ -17,6 +21,8 @@ import { PrivacyService } from './privacy/privacy.service';
     ActivitiesController,
     ProductivityController,
     PrivacyController,
+    TeamController,
+    ReportingLinesController,
   ],
   providers: [
     DevicesService,
@@ -24,6 +30,8 @@ import { PrivacyService } from './privacy/privacy.service';
     ActivitiesService,
     ProductivityService,
     PrivacyService,
+    TeamService,
+    ReportingLinesService,
   ],
   exports: [ActivitiesService, ProductivityService],
 })
