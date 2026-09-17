@@ -5,7 +5,9 @@ packages:
 allowBuilds:
   '@nestjs/core': true
   '@swc/core': true
+  active-win: true # apps/agent -- reads the active window's owner name via each OS's native window APIs, no build step beyond its own postinstall
   argon2: false # no C++ toolchain on Render's static-site build image; rebuilt explicitly in apps/api's Dockerfile instead
+  desktop-idle: true # apps/agent -- native addon wrapping each OS's idle-time API (e.g. Windows GetLastInputInfo); needed for real idle/active detection, never a keystroke hook
   es5-ext: true
   esbuild: true
   msgpackr-extract: true

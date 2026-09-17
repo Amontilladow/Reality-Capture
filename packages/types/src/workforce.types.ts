@@ -151,6 +151,15 @@ export interface WorkforceTeamMember {
   companyRole: string;
 }
 
+// A stored screenshot row. `url` is a presigned read URL resolved at
+// request time (GET /workforce/screenshots/:userId) -- never persisted,
+// since it expires.
+export interface WorkforceScreenshotView {
+  id: string;
+  capturedAt: string;
+  url: string | null;
+}
+
 export interface WorkforcePrivacySettings {
   id: string;
   companyId: string;

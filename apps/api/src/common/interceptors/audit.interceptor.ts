@@ -33,6 +33,10 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   [/\/workforce\/applications\/[^/]+$/,   'workforce.application_updated',        'application_registry'],
   [/\/workforce\/privacy-settings$/,      'workforce.privacy_settings_updated',   'workforce_privacy_settings'],
   [/\/workforce\/reporting-lines$/,       'workforce.reporting_line_set',         'workforce_reporting_line'],
+  // Matches only the exact /workforce/screenshots path (the "record" POST)
+  // -- not /workforce/screenshots/upload-url (no state change yet) or the
+  // GET :userId list (read-only).
+  [/\/workforce\/screenshots$/,           'workforce.screenshot_captured',        'workforce_screenshot'],
 ];
 
 interface AuditLogEntry {
