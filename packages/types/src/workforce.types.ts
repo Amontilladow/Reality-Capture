@@ -196,3 +196,61 @@ export interface WorkforcePrivacySettings {
   updatedAt: string;
   createdAt: string;
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// Shift scheduling + absence calendar -- see migration 040's own header
+// comment for why this exists despite this doc's earlier "not this
+// product's job" call on attendance/leave; kept deliberately minimal
+// (no leave-balance accrual, no PTO policy engine).
+// ══════════════════════════════════════════════════════════════════════════
+
+export const ABSENCE_TYPES = ['vacation', 'sick', 'personal', 'other'] as const;
+export type AbsenceType = typeof ABSENCE_TYPES[number];
+
+export const ABSENCE_STATUSES = ['pending', 'approved', 'denied'] as const;
+export type AbsenceStatus = typeof ABSENCE_STATUSES[number];
+
+// A preference, not a schedule -- "which days/times I'd prefer to work,"
+// considered (not guaranteed) by whoever builds the actual schedule
+// (WorkforceShiftAssignment). day_of_week: 0 = Sunday, matching JS
+// Date#getDay(), enforced identically client- and server-side.
+export interface WorkforceShiftPreference {
+  id: string;
+  companyId: string;
+  userId: string;
+  dayOfWeek: number;
+  preferred: boolean;
+  startTime?: string;
+  endTime?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// The actual assigned schedule -- one row per (user, calendar date),
+// admin-managed.
+export interface WorkforceShiftAssignment {
+  id: string;
+  companyId: string;
+  userId: string;
+  shiftDate: string;
+  startTime: string;
+  endTime: string;
+  assignedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkforceAbsence {
+  id: string;
+  companyId: string;
+  userId: string;
+  absenceType: AbsenceType;
+  startDate: string;
+  endDate: string;
+  reason?: string;
+  status: AbsenceStatus;
+  decidedBy?: string;
+  decidedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
