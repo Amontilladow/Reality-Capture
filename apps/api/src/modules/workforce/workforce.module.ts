@@ -15,6 +15,8 @@ import { ReportingLinesController } from './reporting-lines/reporting-lines.cont
 import { ReportingLinesService } from './reporting-lines/reporting-lines.service';
 import { ScreenshotsController } from './screenshots/screenshots.controller';
 import { ScreenshotsService } from './screenshots/screenshots.service';
+import { ReportsController } from './reports/reports.controller';
+import { ReportsService } from './reports/reports.service';
 
 @Module({
   controllers: [
@@ -26,6 +28,7 @@ import { ScreenshotsService } from './screenshots/screenshots.service';
     TeamController,
     ReportingLinesController,
     ScreenshotsController,
+    ReportsController,
   ],
   providers: [
     DevicesService,
@@ -36,6 +39,7 @@ import { ScreenshotsService } from './screenshots/screenshots.service';
     TeamService,
     ReportingLinesService,
     ScreenshotsService,
+    ReportsService,
   ],
   exports: [ActivitiesService, ProductivityService],
 })
