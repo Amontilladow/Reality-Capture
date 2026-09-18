@@ -99,6 +99,33 @@ screenshot cycle to stdout. For this pass, "running the agent" means:
 Stop it with Ctrl+C (or `SIGTERM`) — it flushes whatever's queued,
 including the segment that was still open, before exiting.
 
+## Private Time
+
+DeskTime's own term for it, and the same idea: pause detailed tracking
+without stopping the agent entirely.
+
+```bash
+pnpm --filter agent private:on   # or: tsx src/index.ts private on
+pnpm --filter agent private:off  # or: tsx src/index.ts private off
+```
+
+While Private Time is on, the running agent never reads the real active
+window at all -- every segment is recorded as activity type `PRIVATE` with
+`applicationNameRaw` fixed to the literal string `"Private"`. It still
+counts as tracked/active time (the productivity dashboards show a
+"Private time" total), just with no app, window, or domain details, and
+screenshots keep running on their own schedule regardless (turn off
+screenshot capture separately, company-wide, via the Privacy settings
+admin screen if that's the concern). The API also force-redacts these
+fields server-side regardless of what any client sends, so the guarantee
+holds even against a modified or buggy agent.
+
+There is no tray icon or IPC channel in this plain-Node MVP, so `private
+on`/`private off` are short-lived one-off commands (same shape as
+`enroll`) that flip a marker file the long-running `start` process polls
+on its own next 10-second sample tick -- expect up to ~10s of lag, not
+instant effect.
+
 ## Configuration
 
 Edit `~/.reality-capture-agent/config.json` directly (there is no

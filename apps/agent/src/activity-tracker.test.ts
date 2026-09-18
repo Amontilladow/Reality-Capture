@@ -45,6 +45,33 @@ test('falls back to "Unknown" when the active-window adapter reports no applicat
   assert.equal(closed?.applicationNameRaw, 'Unknown');
 });
 
+test('when isPrivate() is true, redacts the app name at the source instead of reading the real active window', async () => {
+  const tracker = new ActivityTracker(120);
+  let realWindowWasRead = false;
+  const getActiveApplicationName = async () => { realWindowWasRead = true; return 'Gmail'; };
+
+  await tracker.sample(getActiveApplicationName, () => 0, () => 't0', () => true);
+  const closed = tracker.closeCurrent(() => 't1');
+
+  assert.deepEqual(closed, { applicationNameRaw: 'Private', activityType: 'PRIVATE', startedAt: 't0', endedAt: 't1' });
+  assert.equal(realWindowWasRead, false); // the real active-window adapter was never even called
+});
+
+test('private mode ignores idle state -- private time is tracked regardless of idle seconds', async () => {
+  const tracker = new ActivityTracker(120);
+  await tracker.sample(async () => 'Revit', () => 0, () => 't0', () => true);
+  // Idle seconds well past the threshold -- still stays PRIVATE, not IDLE.
+  const closed = await tracker.sample(async () => 'Revit', () => 999, () => 't1', () => true);
+  assert.equal(closed, null); // unchanged segment (still PRIVATE) -- nothing closes
+});
+
+test('leaving private mode closes the private segment and opens a normal one', async () => {
+  const tracker = new ActivityTracker(120);
+  await tracker.sample(async () => 'Revit', () => 0, () => 't0', () => true);
+  const closed = await tracker.sample(async () => 'Revit', () => 0, () => 't1', () => false);
+  assert.deepEqual(closed, { applicationNameRaw: 'Private', activityType: 'PRIVATE', startedAt: 't0', endedAt: 't1' });
+});
+
 test('closeCurrent() closes the open segment on demand (graceful shutdown) and returns null if nothing was open', async () => {
   const tracker = new ActivityTracker(120);
   assert.equal(tracker.closeCurrent(() => 't0'), null);

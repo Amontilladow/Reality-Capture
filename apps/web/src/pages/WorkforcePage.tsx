@@ -202,6 +202,12 @@ export default function WorkforcePage() {
                         Some time is in apps nobody has classified yet — see "Application productivity (admin)" below.
                       </p>
                     )}
+                    {(factors.privateSeconds ?? 0) > 0 && (
+                      <p className="text-xs text-ink-500">
+                        Private time: <span className="text-ink-300 tabular-nums">{formatHm(factors.privateSeconds)}</span> — counted as
+                        tracked time, but app/window details were never captured while Private Time was on.
+                      </p>
+                    )}
                   </div>
                 )}
 

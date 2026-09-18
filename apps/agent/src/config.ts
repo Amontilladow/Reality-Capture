@@ -1,11 +1,19 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import type { AgentConfig } from './types.js';
 
 export const CONFIG_DIR = process.env.AGENT_CONFIG_DIR ?? join(homedir(), '.reality-capture-agent');
 export const CONFIG_PATH = join(CONFIG_DIR, 'config.json');
 export const QUEUE_PATH = join(CONFIG_DIR, 'queue.jsonl');
+// Presence of this file, not its contents, is the on/off switch -- a
+// plain marker file rather than a field in config.json so `agent private
+// on|off` (run as a short-lived one-off process, same as `enroll`) can
+// flip it without racing the long-lived `start` process's own config
+// reads/writes. The running `start` loop just checks existsSync() on
+// every sample tick (see index.ts) -- no IPC/socket needed for a plain
+// Node process with no tray icon.
+export const PRIVATE_MODE_PATH = join(CONFIG_DIR, 'private-mode');
 
 const DEFAULTS = { screenshotIntervalMinutes: 90, idleThresholdSeconds: 120 };
 
@@ -39,4 +47,21 @@ export function saveConfig(config: AgentConfig): void {
 export function updateTokens(accessToken: string, refreshToken: string): void {
   const config = loadConfig();
   saveConfig({ ...config, accessToken, refreshToken });
+}
+
+// `path` defaults to the real marker file but is overridable, same as
+// queue.ts's functions, so tests can exercise this against a temp
+// directory instead of the real (or env-var-overridden) CONFIG_DIR.
+export function isPrivateModeOn(path: string = PRIVATE_MODE_PATH): boolean {
+  return existsSync(path);
+}
+
+export function setPrivateMode(on: boolean, path: string = PRIVATE_MODE_PATH): void {
+  if (on) {
+    const dir = dirname(path);
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true, mode: 0o700 });
+    writeFileSync(path, '');
+  } else if (existsSync(path)) {
+    rmSync(path);
+  }
 }

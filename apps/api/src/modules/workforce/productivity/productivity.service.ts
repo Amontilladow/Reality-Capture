@@ -143,38 +143,54 @@ export function computeFactors(rows: ActivityAggregateRow[]): ProductivityFactor
   let unproductiveSeconds = 0;
   let neutralSeconds = 0;
   let unclassifiedSeconds = 0;
+  let privateSeconds = 0;
   const totalAllSeconds = rows.reduce((sum, r) => sum + Number(r.durationSeconds), 0);
   const appTotals = new Map<string, { applicationId: string | null; name: string; seconds: number }>();
 
   for (const row of rows) {
     const seconds = Number(row.durationSeconds);
+    // Employee-initiated "Private Time" -- counts toward tracked/active
+    // time (utilization) but there is no app to classify or attribute
+    // (ActivitiesService already force-redacts application/domain/
+    // metadata for these rows), so it's its own bucket, excluded from the
+    // productive/neutral/unproductive/unclassified split, engineering
+    // share, and the top-applications list.
+    const isPrivate = row.activityType === 'PRIVATE';
+
     if (row.activityType !== 'IDLE') {
       totalActiveSeconds += seconds;
-      // DeskTime-style productive/unproductive/neutral breakdown -- like
-      // DeskTime, idle time is excluded entirely (it's neither productive
-      // nor unproductive, it's just not tracked activity). An app that's
-      // never been classified by an admin (including one auto-registered
-      // by ingest() moments ago) counts as its own bucket rather than
-      // silently defaulting into "neutral" or "productive" -- an
-      // unreviewed app should read as unreviewed, not as a productivity
-      // verdict nobody actually made.
-      switch (row.productivityClassification) {
-        case 'productive': productiveSeconds += seconds; break;
-        case 'unproductive': unproductiveSeconds += seconds; break;
-        case 'neutral': neutralSeconds += seconds; break;
-        default: unclassifiedSeconds += seconds; break;
+      if (isPrivate) {
+        privateSeconds += seconds;
+      } else {
+        // DeskTime-style productive/unproductive/neutral breakdown -- like
+        // DeskTime, idle time is excluded entirely (it's neither productive
+        // nor unproductive, it's just not tracked activity). An app that's
+        // never been classified by an admin (including one auto-registered
+        // by ingest() moments ago) counts as its own bucket rather than
+        // silently defaulting into "neutral" or "productive" -- an
+        // unreviewed app should read as unreviewed, not as a productivity
+        // verdict nobody actually made.
+        switch (row.productivityClassification) {
+          case 'productive': productiveSeconds += seconds; break;
+          case 'unproductive': unproductiveSeconds += seconds; break;
+          case 'neutral': neutralSeconds += seconds; break;
+          default: unclassifiedSeconds += seconds; break;
+        }
       }
     }
-    if (ENGINEERING_ACTIVITY_TYPES.has(row.activityType) || row.engineeringRelevance) {
+    if (!isPrivate && (ENGINEERING_ACTIVITY_TYPES.has(row.activityType) || row.engineeringRelevance)) {
       totalEngineeringSeconds += seconds;
     }
-    const key = row.applicationId ?? row.applicationName;
-    const existing = appTotals.get(key) ?? { applicationId: row.applicationId, name: row.applicationName, seconds: 0 };
-    existing.seconds += seconds;
-    appTotals.set(key, existing);
+    if (!isPrivate) {
+      const key = row.applicationId ?? row.applicationName;
+      const existing = appTotals.get(key) ?? { applicationId: row.applicationId, name: row.applicationName, seconds: 0 };
+      existing.seconds += seconds;
+      appTotals.set(key, existing);
+    }
   }
 
   const topApplications = [...appTotals.values()].sort((a, b) => b.seconds - a.seconds).slice(0, 5);
+  const classifiableActiveSeconds = totalActiveSeconds - privateSeconds;
 
   return {
     utilization: totalAllSeconds > 0 ? totalActiveSeconds / totalAllSeconds : 0,
@@ -186,13 +202,16 @@ export function computeFactors(rows: ActivityAggregateRow[]): ProductivityFactor
     unproductiveSeconds,
     neutralSeconds,
     unclassifiedSeconds,
+    privateSeconds,
     // DeskTime's own headline metric: productive time as a share of all
-    // tracked (non-idle) time. Deliberately NOT blended into `score` --
-    // the v1 formula above is already versioned/persisted and changing its
-    // weights would silently rewrite the meaning of every already-computed
-    // historical score. This is an additional, explainable breakdown
-    // alongside it, not a competing model.
-    productivityRatio: totalActiveSeconds > 0 ? productiveSeconds / totalActiveSeconds : 0,
+    // tracked, classifiable (non-idle, non-private) time. Deliberately NOT
+    // blended into `score` -- the v1 formula above is already
+    // versioned/persisted and changing its weights would silently rewrite
+    // the meaning of every already-computed historical score. This is an
+    // additional, explainable breakdown alongside it, not a competing
+    // model. Private time is excluded from the denominator entirely
+    // (there's nothing to classify), not counted as a neutral drag on it.
+    productivityRatio: classifiableActiveSeconds > 0 ? productiveSeconds / classifiableActiveSeconds : 0,
   };
 }
 

@@ -1,4 +1,5 @@
 import type { ActivityType } from './types.js';
+import { PRIVATE_APPLICATION_NAME } from './types.js';
 
 interface OpenSegment {
   applicationNameRaw: string;
@@ -25,13 +26,29 @@ export class ActivityTracker {
 
   constructor(private readonly idleThresholdSeconds: number) {}
 
+  // `isPrivate` is a new trailing param (after the already-defaulted `now`)
+  // so every existing call site -- production and every test in
+  // activity-tracker.test.ts -- keeps compiling and behaving exactly as
+  // before without passing it.
   async sample(
     getActiveApplicationName: () => Promise<string | undefined>,
     getIdleSeconds: () => number,
     now: () => string = () => new Date().toISOString(),
+    isPrivate: () => boolean = () => false,
   ): Promise<ClosedSegment | null> {
-    const applicationNameRaw = (await getActiveApplicationName()) ?? 'Unknown';
-    const activityType: ActivityType = getIdleSeconds() >= this.idleThresholdSeconds ? 'IDLE' : 'ACTIVE';
+    let applicationNameRaw: string;
+    let activityType: ActivityType;
+    if (isPrivate()) {
+      // Redacted at the source: while Private Time is on, the real active
+      // window is never even read, let alone queued or sent. Idle
+      // detection is skipped too -- private time counts as tracked time
+      // regardless of idle state, matching DeskTime's own behavior.
+      applicationNameRaw = PRIVATE_APPLICATION_NAME;
+      activityType = 'PRIVATE';
+    } else {
+      applicationNameRaw = (await getActiveApplicationName()) ?? 'Unknown';
+      activityType = getIdleSeconds() >= this.idleThresholdSeconds ? 'IDLE' : 'ACTIVE';
+    }
     const timestamp = now();
 
     if (!this.openSegment) {

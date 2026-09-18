@@ -1,9 +1,17 @@
 // Mirrors apps/api/src/modules/workforce/activities/dto/ingest-activities.dto.ts's
 // IngestActivityItemDto shape exactly. The agent only ever produces
-// 'ACTIVE'/'IDLE' -- the richer engineering/design/etc. classification
-// happens server-side via the application registry, not something this
-// agent decides.
-export type ActivityType = 'ACTIVE' | 'IDLE';
+// 'ACTIVE'/'IDLE'/'PRIVATE' -- the richer engineering/design/etc.
+// classification happens server-side via the application registry, not
+// something this agent decides.
+export type ActivityType = 'ACTIVE' | 'IDLE' | 'PRIVATE';
+
+// The only value this agent ever sends as applicationNameRaw while
+// "Private Time" is on -- see ActivityTracker.sample()'s isPrivate branch.
+// The API force-redacts this server-side too regardless, but the point of
+// doing it here as well is that the real app name is never even read
+// (let alone queued to local disk or sent over the network) during
+// private time.
+export const PRIVATE_APPLICATION_NAME = 'Private';
 
 export interface IngestActivityItem {
   clientEventId: string;

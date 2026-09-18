@@ -7,6 +7,15 @@ import type { IngestActivitiesDto, IngestActivityItemDto } from './dto/ingest-ac
 
 const DEFAULT_RANGE_DAYS = 7;
 
+// Server-side enforcement of "Private Time" (DeskTime's own term): the
+// agent already redacts before it even sends the request (see
+// apps/agent/README.md), but the guarantee that a PRIVATE-flagged row
+// never carries a real app name, domain, or raw_metadata is enforced here
+// too, regardless of what any client actually sends -- a buggy or
+// malicious client must not be able to smuggle real activity details
+// through under this activity_type.
+const PRIVATE_APPLICATION_NAME = 'Private';
+
 @Injectable()
 export class ActivitiesService {
   constructor(private readonly db: DatabaseService) {}
@@ -94,16 +103,28 @@ export class ActivitiesService {
     }
     const durationSeconds = Math.round((endedAt.getTime() - startedAt.getTime()) / 1000);
     const deviceId = item.deviceId && ownedDeviceIds.has(item.deviceId) ? item.deviceId : null;
-    const applicationId = await this.resolveOrRegisterApplicationId(sql, companyId, userId, item.applicationNameRaw, appIdByPattern);
+
+    // 'PRIVATE' never gets an application_id (it's never classified, and
+    // must never auto-register a real app name into the company's shared
+    // registry), and application_name_raw/domain/raw_metadata are
+    // force-redacted here rather than trusted from the request body -- see
+    // the PRIVATE_APPLICATION_NAME comment above.
+    const isPrivate = item.activityType === 'PRIVATE';
+    const applicationId = isPrivate
+      ? null
+      : await this.resolveOrRegisterApplicationId(sql, companyId, userId, item.applicationNameRaw, appIdByPattern);
+    const applicationNameRaw = isPrivate ? PRIVATE_APPLICATION_NAME : item.applicationNameRaw;
+    const domain = isPrivate ? null : (item.domain ?? null);
+    const rawMetadata = isPrivate ? '{}' : (item.rawMetadata ? JSON.stringify(item.rawMetadata) : '{}');
 
     const [row] = await sql`
       INSERT INTO activities (
         company_id, user_id, device_id, client_event_id, application_id, application_name_raw,
         domain, activity_type, started_at, ended_at, duration_seconds, source, raw_metadata
       ) VALUES (
-        ${companyId}, ${userId}, ${deviceId}, ${item.clientEventId ?? null}, ${applicationId}, ${item.applicationNameRaw},
-        ${item.domain ?? null}, ${item.activityType}, ${startedAt.toISOString()}, ${endedAt.toISOString()}, ${durationSeconds}, 'agent',
-        ${item.rawMetadata ? JSON.stringify(item.rawMetadata) : '{}'}
+        ${companyId}, ${userId}, ${deviceId}, ${item.clientEventId ?? null}, ${applicationId}, ${applicationNameRaw},
+        ${domain}, ${item.activityType}, ${startedAt.toISOString()}, ${endedAt.toISOString()}, ${durationSeconds}, 'agent',
+        ${rawMetadata}
       )
       ON CONFLICT (device_id, client_event_id) WHERE device_id IS NOT NULL AND client_event_id IS NOT NULL DO NOTHING
       RETURNING id`;
