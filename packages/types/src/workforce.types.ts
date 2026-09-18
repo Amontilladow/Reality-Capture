@@ -109,6 +109,18 @@ export interface ProductivityFactors {
   totalActiveSeconds: number;
   totalEngineeringSeconds: number;
   topApplications: { applicationId: string | null; name: string; seconds: number }[];
+  // DeskTime-style productive/unproductive/neutral/unclassified time
+  // breakdown, by each activity's application_registry.productivity_
+  // classification (idle time excluded from all four, same as DeskTime).
+  // Optional because productivity_scores rows persisted before this field
+  // existed still have a factors JSONB without it.
+  productiveSeconds?: number;
+  unproductiveSeconds?: number;
+  neutralSeconds?: number;
+  unclassifiedSeconds?: number;
+  // productiveSeconds / totalActiveSeconds -- DeskTime's own headline
+  // ratio, kept separate from `score` (see productivity.service.ts).
+  productivityRatio?: number;
 }
 
 export interface ProductivityScore {

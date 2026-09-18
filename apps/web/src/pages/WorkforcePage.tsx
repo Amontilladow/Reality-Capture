@@ -7,12 +7,16 @@ import { PageHeader } from '../components/layout/PageHeader';
 import {
   getMyActivitySummary, getMyProductivityScore, getWorkforcePrivacySettings, attributeActivity,
   getMyTeam, listReportingLines, setReportingLine, updateWorkforcePrivacySettings, getMyScreenshots,
+  listApplications, updateApplicationClassification,
 } from '../lib/workforce.api';
 import { listProjects } from '../lib/projects.api';
 import { listUsers } from '../lib/users.api';
 import { apiErrorMessage } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
-import { MONITORING_LEVELS, type MonitoringLevel } from '@engineeringos/types';
+import {
+  MONITORING_LEVELS, PRODUCTIVITY_CLASSIFICATIONS,
+  type MonitoringLevel, type ProductivityClassification, type ProductivityFactors,
+} from '@engineeringos/types';
 
 // Same "Blueprint-dark technical" palette used by ReportsPage's charts —
 // recharts needs real hex values, it doesn't read Tailwind classes.
@@ -180,6 +184,27 @@ export default function WorkforcePage() {
                   </p>
                 )}
 
+                {factors?.productivityRatio !== undefined && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs text-ink-500">
+                      <span>Productive time (by app classification)</span>
+                      <span className="text-ink-300 tabular-nums">{pct(factors.productivityRatio)} productive</span>
+                    </div>
+                    <ProductivityBar factors={factors} />
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <StatTile label="Productive" value={formatHm(factors.productiveSeconds)} tone="ok" />
+                      <StatTile label="Neutral" value={formatHm(factors.neutralSeconds)} />
+                      <StatTile label="Unproductive" value={formatHm(factors.unproductiveSeconds)} tone="danger" />
+                      <StatTile label="Unclassified" value={formatHm(factors.unclassifiedSeconds)} tone="warn" />
+                    </div>
+                    {(factors.unclassifiedSeconds ?? 0) > 0 && isCompanyAdmin && (
+                      <p className="text-xs text-ink-500">
+                        Some time is in apps nobody has classified yet — see "Application productivity (admin)" below.
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <ChartCard title="By application">
                     <CountBarChart data={summary.byApplication.slice(0, 8).map((d) => ({ key: d.label, name: d.label, value: Math.round(d.seconds / 60) }))} />
@@ -274,6 +299,7 @@ export default function WorkforcePage() {
           <>
             <PrivacySettingsAdmin />
             <ReportingLinesAdmin />
+            <ApplicationsAdmin />
           </>
         )}
       </div>
@@ -479,12 +505,118 @@ function ReportingLinesAdmin() {
   );
 }
 
-function StatTile({ label, value, tone }: { label: string; value: string; tone?: 'signal' }) {
+const STAT_TILE_TONE_CLASS: Record<string, string> = {
+  signal: 'text-signal',
+  ok: 'text-ok',
+  danger: 'text-danger',
+  warn: 'text-warn',
+};
+
+function StatTile({ label, value, tone }: { label: string; value: string; tone?: 'signal' | 'ok' | 'danger' | 'warn' }) {
   return (
     <div className="panel p-3 text-left">
       <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">{label}</div>
-      <div className={`text-xl font-semibold tabular-nums ${tone === 'signal' ? 'text-signal' : 'text-ink-100'}`}>{value}</div>
+      <div className={`text-xl font-semibold tabular-nums ${tone ? STAT_TILE_TONE_CLASS[tone] : 'text-ink-100'}`}>{value}</div>
     </div>
+  );
+}
+
+// DeskTime's own signature visual: a single stacked bar of
+// productive/neutral/unproductive/unclassified time, in that order, so the
+// productive share always reads left-to-right as "how much of this bar is
+// green." Segments with 0 seconds render nothing rather than a sliver.
+function ProductivityBar({ factors }: { factors: ProductivityFactors }) {
+  const total =
+    (factors.productiveSeconds ?? 0) + (factors.neutralSeconds ?? 0) + (factors.unproductiveSeconds ?? 0) + (factors.unclassifiedSeconds ?? 0);
+  if (total <= 0) return null;
+  const segments: { seconds: number; color: string }[] = [
+    { seconds: factors.productiveSeconds ?? 0, color: HEX.ok },
+    { seconds: factors.neutralSeconds ?? 0, color: HEX.ink500 },
+    { seconds: factors.unproductiveSeconds ?? 0, color: HEX.danger },
+    { seconds: factors.unclassifiedSeconds ?? 0, color: HEX.warn },
+  ];
+  return (
+    <div className="h-2.5 w-full rounded-full overflow-hidden flex bg-base-700">
+      {segments
+        .filter((s) => s.seconds > 0)
+        .map((s, i) => (
+          <div key={i} style={{ width: `${(s.seconds / total) * 100}%`, backgroundColor: s.color }} />
+        ))}
+    </div>
+  );
+}
+
+// Company-admin-only screen for classifying each app the desktop agent has
+// reported as Productive / Neutral / Unproductive -- DeskTime's own
+// "Productivity Calculation" screen. New apps appear here already, as
+// 'unclassified', the moment the agent first reports them (see
+// ActivitiesService.ingest()'s auto-registration) -- an admin doesn't have
+// to pre-populate the registry before it starts working.
+function ApplicationsAdmin() {
+  const queryClient = useQueryClient();
+  const appsQuery = useQuery({ queryKey: ['workforce', 'applications'], queryFn: listApplications });
+
+  const classifyMutation = useMutation({
+    mutationFn: ({ id, classification }: { id: string; classification: ProductivityClassification }) =>
+      updateApplicationClassification(id, classification),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workforce', 'applications'] }),
+  });
+
+  const apps = [...(appsQuery.data ?? [])].sort((a, b) => {
+    if (a.productivityClassification === 'unclassified' && b.productivityClassification !== 'unclassified') return -1;
+    if (b.productivityClassification === 'unclassified' && a.productivityClassification !== 'unclassified') return 1;
+    return a.name.localeCompare(b.name);
+  });
+  const unclassifiedCount = apps.filter((a) => a.productivityClassification === 'unclassified').length;
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Application productivity (admin)</h2>
+      <p className="text-xs text-ink-500">
+        Classify each app or executable the agent has reported as productive, neutral, or unproductive for your team's work — this
+        drives the productivity breakdown above. {unclassifiedCount > 0 && `${unclassifiedCount} app(s) still need review.`}
+      </p>
+      {appsQuery.isLoading && <p className="text-sm text-ink-500">Loading applications…</p>}
+      {classifyMutation.isError && <p className="field-error">{apiErrorMessage(classifyMutation.error)}</p>}
+      {apps.length === 0 && !appsQuery.isLoading && (
+        <div className="panel tick-frame p-6 text-center text-sm text-ink-500">
+          No applications reported yet — they appear here automatically once a device is enrolled and reporting.
+        </div>
+      )}
+      {apps.length > 0 && (
+        <div className="panel tick-frame overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-ink-500 border-b border-base-600">
+                <th className="px-4 py-2.5 font-medium">Application</th>
+                <th className="px-4 py-2.5 font-medium">Match pattern</th>
+                <th className="px-4 py-2.5 font-medium">Classification</th>
+              </tr>
+            </thead>
+            <tbody>
+              {apps.map((app) => (
+                <tr key={app.id} className="border-b border-base-700/60 last:border-0">
+                  <td className="px-4 py-2.5">{app.name}</td>
+                  <td className="px-4 py-2.5 text-ink-500 font-mono text-xs">{app.matchPattern}</td>
+                  <td className="px-4 py-2.5">
+                    <select
+                      className="input !py-1 !text-xs"
+                      value={app.productivityClassification}
+                      disabled={classifyMutation.isPending}
+                      onChange={(e) => classifyMutation.mutate({ id: app.id, classification: e.target.value as ProductivityClassification })}
+                    >
+                      {PRODUCTIVITY_CLASSIFICATIONS.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 

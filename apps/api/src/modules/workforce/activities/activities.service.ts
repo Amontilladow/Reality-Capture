@@ -44,6 +44,41 @@ export class ActivitiesService {
     });
   }
 
+  // First time this exact app/executable name has been seen for the
+  // company, register it as 'unclassified' rather than leaving
+  // application_id null -- this is what surfaces it in the admin's
+  // Application Productivity screen ready to be classified, mirroring how
+  // DeskTime auto-discovers new apps/URLs for the admin to triage instead
+  // of requiring them pre-populated. `appIdByPattern` is mutated so later
+  // items in the same batch (or a retried batch) hit the map, not another
+  // INSERT. ON CONFLICT covers two ingest calls racing to register the
+  // same brand-new pattern concurrently.
+  private async resolveOrRegisterApplicationId(
+    sql: TransactionSql,
+    companyId: string,
+    userId: string,
+    applicationNameRaw: string,
+    appIdByPattern: Map<string, string>,
+  ): Promise<string> {
+    const pattern = applicationNameRaw.toLowerCase();
+    const existing = appIdByPattern.get(pattern);
+    if (existing) return existing;
+
+    const [created] = await sql`
+      INSERT INTO application_registry (company_id, name, match_pattern, productivity_classification, engineering_relevance, created_by)
+      VALUES (${companyId}, ${applicationNameRaw}, ${pattern}, 'unclassified', false, ${userId})
+      ON CONFLICT (company_id, match_pattern) DO NOTHING
+      RETURNING id`;
+
+    let id = created?.id as string | undefined;
+    if (!id) {
+      const [existingRow] = await sql`SELECT id FROM application_registry WHERE company_id = ${companyId} AND match_pattern = ${pattern}`;
+      id = existingRow?.id as string;
+    }
+    appIdByPattern.set(pattern, id);
+    return id;
+  }
+
   private async insertOne(
     sql: TransactionSql,
     companyId: string,
@@ -59,7 +94,7 @@ export class ActivitiesService {
     }
     const durationSeconds = Math.round((endedAt.getTime() - startedAt.getTime()) / 1000);
     const deviceId = item.deviceId && ownedDeviceIds.has(item.deviceId) ? item.deviceId : null;
-    const applicationId = appIdByPattern.get(item.applicationNameRaw.toLowerCase()) ?? null;
+    const applicationId = await this.resolveOrRegisterApplicationId(sql, companyId, userId, item.applicationNameRaw, appIdByPattern);
 
     const [row] = await sql`
       INSERT INTO activities (

@@ -105,6 +105,14 @@ adapter architecture only for now).
   application registry CRUD (company_admin+), own-activity summary,
   a v1 explainable productivity calculation (utilization + engineering-app
   share, from real ingested data only — never fabricated).
+- Per-app productivity classification (productive/neutral/unproductive/
+  unclassified) is now wired end-to-end: newly-seen apps auto-register as
+  `unclassified` on ingest, an admin screen classifies them, and the
+  resulting productive/neutral/unproductive/unclassified time split is
+  surfaced as an additional, transparent breakdown next to the v1 score —
+  deliberately *not* blended into `score` itself, per this doc's own
+  warning above against copying "productivity % = active/total time" as
+  the headline metric. It's shown as one more factor, never a ranking.
 - RBAC: reuses `@Roles()` / `@RequireProjectPermission()` /
   `@RequireFeature()` exactly as designed in the architecture doc.
 - Frontend: employee self-view page (today/this-week activity breakdown,

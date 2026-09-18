@@ -4,9 +4,9 @@ import type { DatabaseService } from '../../../database/database.service';
 describe('computeFactors (v1 productivity formula)', () => {
   it('computes utilization as active time / total time, and engineering share as engineering time / active time', () => {
     const rows: ActivityAggregateRow[] = [
-      { durationSeconds: 3600, activityType: 'ENGINEERING', applicationId: 'app-revit', applicationName: 'Revit', engineeringRelevance: true },
-      { durationSeconds: 1800, activityType: 'IDLE', applicationId: null, applicationName: 'Unknown', engineeringRelevance: null },
-      { durationSeconds: 1800, activityType: 'ADMINISTRATIVE', applicationId: 'app-outlook', applicationName: 'Outlook', engineeringRelevance: false },
+      { durationSeconds: 3600, activityType: 'ENGINEERING', applicationId: 'app-revit', applicationName: 'Revit', engineeringRelevance: true, productivityClassification: 'productive' },
+      { durationSeconds: 1800, activityType: 'IDLE', applicationId: null, applicationName: 'Unknown', engineeringRelevance: null, productivityClassification: null },
+      { durationSeconds: 1800, activityType: 'ADMINISTRATIVE', applicationId: 'app-outlook', applicationName: 'Outlook', engineeringRelevance: false, productivityClassification: 'neutral' },
     ];
 
     const factors = computeFactors(rows);
@@ -22,7 +22,7 @@ describe('computeFactors (v1 productivity formula)', () => {
 
   it('counts an application flagged engineering_relevance even under a non-engineering activity_type', () => {
     const rows: ActivityAggregateRow[] = [
-      { durationSeconds: 1000, activityType: 'REVIEW', applicationId: 'app-x', applicationName: 'CustomTool', engineeringRelevance: true },
+      { durationSeconds: 1000, activityType: 'REVIEW', applicationId: 'app-x', applicationName: 'CustomTool', engineeringRelevance: true, productivityClassification: 'unclassified' },
     ];
     const factors = computeFactors(rows);
     expect(factors.totalEngineeringSeconds).toBe(1000);
@@ -33,6 +33,37 @@ describe('computeFactors (v1 productivity formula)', () => {
     expect(factors.utilization).toBe(0);
     expect(factors.engineeringShare).toBe(0);
     expect(factors.topApplications).toEqual([]);
+    expect(factors.productivityRatio).toBe(0);
+  });
+
+  it('buckets active time by app productivity_classification into a DeskTime-style breakdown, excluding idle', () => {
+    const rows: ActivityAggregateRow[] = [
+      { durationSeconds: 3000, activityType: 'ENGINEERING', applicationId: 'app-revit', applicationName: 'Revit', engineeringRelevance: true, productivityClassification: 'productive' },
+      { durationSeconds: 1000, activityType: 'COMMUNICATION', applicationId: 'app-slack', applicationName: 'Slack', engineeringRelevance: false, productivityClassification: 'neutral' },
+      { durationSeconds: 500, activityType: 'ADMINISTRATIVE', applicationId: 'app-yt', applicationName: 'YouTube', engineeringRelevance: false, productivityClassification: 'unproductive' },
+      { durationSeconds: 400, activityType: 'UNKNOWN', applicationId: 'app-new', applicationName: 'BrandNewTool', engineeringRelevance: false, productivityClassification: 'unclassified' },
+      { durationSeconds: 2000, activityType: 'IDLE', applicationId: null, applicationName: 'Unknown', engineeringRelevance: null, productivityClassification: null },
+    ];
+
+    const factors = computeFactors(rows);
+
+    expect(factors.productiveSeconds).toBe(3000);
+    expect(factors.neutralSeconds).toBe(1000);
+    expect(factors.unproductiveSeconds).toBe(500);
+    expect(factors.unclassifiedSeconds).toBe(400);
+    // active (non-idle) total = 4900s -> productive share = 3000/4900
+    expect(factors.totalActiveSeconds).toBe(4900);
+    expect(factors.productivityRatio).toBeCloseTo(3000 / 4900, 5);
+  });
+
+  it('treats a null/missing productivity_classification as its own unclassified bucket, never defaulting to productive or neutral', () => {
+    const rows: ActivityAggregateRow[] = [
+      { durationSeconds: 600, activityType: 'ENGINEERING', applicationId: null, applicationName: 'Unregistered', engineeringRelevance: null, productivityClassification: undefined },
+    ];
+    const factors = computeFactors(rows);
+    expect(factors.unclassifiedSeconds).toBe(600);
+    expect(factors.productiveSeconds).toBe(0);
+    expect(factors.productivityRatio).toBe(0);
   });
 });
 
