@@ -37,6 +37,8 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   // -- not /workforce/screenshots/upload-url (no state change yet) or the
   // GET :userId list (read-only).
   [/\/workforce\/screenshots$/,           'workforce.screenshot_captured',        'workforce_screenshot'],
+  [/\/workforce\/scheduling\/shifts$/,    'workforce.shift_assigned',             'workforce_shift_assignment'],
+  [/\/workforce\/scheduling\/absences\/[^/]+\/decide$/, 'workforce.absence_decided', 'workforce_absence'],
 ];
 
 interface AuditLogEntry {

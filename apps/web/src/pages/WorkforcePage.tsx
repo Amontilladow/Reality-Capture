@@ -8,15 +8,19 @@ import {
   getMyActivitySummary, getMyProductivityScore, getWorkforcePrivacySettings, attributeActivity,
   getMyTeam, listReportingLines, setReportingLine, updateWorkforcePrivacySettings, getMyScreenshots,
   listApplications, updateApplicationClassification, getCompanyReport, type CompanyReportRow,
+  setMyShiftPreference, getMyShiftPreferences, assignShift, getMyShifts, getCompanyShifts,
+  requestAbsence, getMyAbsences, listCompanyAbsences, decideAbsence,
 } from '../lib/workforce.api';
 import { listProjects } from '../lib/projects.api';
 import { listUsers } from '../lib/users.api';
 import { apiErrorMessage } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
 import {
-  MONITORING_LEVELS, PRODUCTIVITY_CLASSIFICATIONS,
-  type MonitoringLevel, type ProductivityClassification, type ProductivityFactors,
+  MONITORING_LEVELS, PRODUCTIVITY_CLASSIFICATIONS, ABSENCE_TYPES,
+  type MonitoringLevel, type ProductivityClassification, type ProductivityFactors, type AbsenceType,
 } from '@engineeringos/types';
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 // Same "Blueprint-dark technical" palette used by ReportsPage's charts —
 // recharts needs real hex values, it doesn't read Tailwind classes.
@@ -254,6 +258,8 @@ export default function WorkforcePage() {
           />
         )}
 
+        <MyScheduling />
+
         {unattributed.length > 0 && (
           <section className="space-y-3">
             <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Unattributed activity</h2>
@@ -307,6 +313,8 @@ export default function WorkforcePage() {
             <ReportingLinesAdmin />
             <ApplicationsAdmin />
             <CompanyReportAdmin from={from} to={to} />
+            <ShiftSchedulingAdmin />
+            <AbsenceRequestsAdmin />
           </>
         )}
       </div>
@@ -364,6 +372,174 @@ function ScreenshotsPanel({ userId, from, to, screenshotsEnabled }: { userId: st
           onClick={() => setEnlarged(null)}
         >
           <img src={enlarged} alt="Enlarged screenshot" className="max-w-[90vw] max-h-[90vh] rounded" />
+        </div>
+      )}
+    </section>
+  );
+}
+
+// Self-service: "which days/times do I prefer to work" (DeskTime's own
+// shift-preference grid, considered -- not guaranteed -- by whoever
+// builds the actual schedule) + "my upcoming assigned shifts" + "request
+// time off" + "my absence requests." Always about the logged-in user
+// themselves, regardless of which team member's activity the rest of the
+// page is currently showing -- there's no "view someone else's
+// preferences" concept here, only a manager viewing their assigned shifts
+// (a separate, visibility-checked route not used by this component).
+function MyScheduling() {
+  const queryClient = useQueryClient();
+  const preferencesQuery = useQuery({ queryKey: ['workforce', 'shift-preferences', 'me'], queryFn: getMyShiftPreferences });
+  const shiftsQuery = useQuery({ queryKey: ['workforce', 'shifts', 'me'], queryFn: () => getMyShifts() });
+  const absencesQuery = useQuery({ queryKey: ['workforce', 'absences', 'me'], queryFn: () => getMyAbsences() });
+
+  const preferenceMutation = useMutation({
+    mutationFn: (dto: Parameters<typeof setMyShiftPreference>[0]) => setMyShiftPreference(dto),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workforce', 'shift-preferences', 'me'] }),
+  });
+  const absenceMutation = useMutation({
+    mutationFn: (dto: Parameters<typeof requestAbsence>[0]) => requestAbsence(dto),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workforce', 'absences', 'me'] }),
+  });
+
+  const preferenceByDay = new Map((preferencesQuery.data ?? []).map((p) => [p.dayOfWeek, p]));
+
+  const [absenceForm, setAbsenceForm] = useState<{ absenceType: AbsenceType; startDate: string; endDate: string; reason: string }>({
+    absenceType: 'vacation', startDate: '', endDate: '', reason: '',
+  });
+
+  return (
+    <section className="space-y-4">
+      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">My schedule</h2>
+
+      <div className="panel tick-frame overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-ink-500 border-b border-base-600">
+              <th className="px-4 py-2.5 font-medium">Day</th>
+              <th className="px-4 py-2.5 font-medium">Preferred?</th>
+              <th className="px-4 py-2.5 font-medium">Start</th>
+              <th className="px-4 py-2.5 font-medium">End</th>
+            </tr>
+          </thead>
+          <tbody>
+            {DAY_NAMES.map((name, dayOfWeek) => {
+              const pref = preferenceByDay.get(dayOfWeek);
+              return (
+                <tr key={dayOfWeek} className="border-b border-base-700/60 last:border-0">
+                  <td className="px-4 py-2.5">{name}</td>
+                  <td className="px-4 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={pref?.preferred ?? false}
+                      disabled={preferenceMutation.isPending}
+                      onChange={(e) => preferenceMutation.mutate({
+                        dayOfWeek, preferred: e.target.checked, startTime: pref?.startTime, endTime: pref?.endTime,
+                      })}
+                    />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <input
+                      type="time"
+                      className="input !py-1 !text-xs"
+                      defaultValue={pref?.startTime ?? ''}
+                      disabled={preferenceMutation.isPending}
+                      onBlur={(e) => {
+                        if (e.target.value && e.target.value !== pref?.startTime) {
+                          preferenceMutation.mutate({ dayOfWeek, preferred: pref?.preferred ?? true, startTime: e.target.value, endTime: pref?.endTime });
+                        }
+                      }}
+                    />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <input
+                      type="time"
+                      className="input !py-1 !text-xs"
+                      defaultValue={pref?.endTime ?? ''}
+                      disabled={preferenceMutation.isPending}
+                      onBlur={(e) => {
+                        if (e.target.value && e.target.value !== pref?.endTime) {
+                          preferenceMutation.mutate({ dayOfWeek, preferred: pref?.preferred ?? true, startTime: pref?.startTime, endTime: e.target.value });
+                        }
+                      }}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {preferenceMutation.isError && <p className="field-error">{apiErrorMessage(preferenceMutation.error)}</p>}
+
+      <div>
+        <h3 className="text-xs font-semibold text-ink-300 uppercase tracking-wide mb-2">My upcoming shifts</h3>
+        {shiftsQuery.data && shiftsQuery.data.length === 0 && <p className="text-sm text-ink-500">No shifts assigned yet.</p>}
+        {shiftsQuery.data && shiftsQuery.data.length > 0 && (
+          <ul className="text-sm space-y-1">
+            {shiftsQuery.data.map((s) => (
+              <li key={s.id} className="text-ink-300">
+                {s.shiftDate} <span className="text-ink-500">· {s.startTime}–{s.endTime}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <h3 className="text-xs font-semibold text-ink-300 uppercase tracking-wide">Request time off</h3>
+        <div className="flex flex-wrap gap-2 items-end">
+          <label className="text-xs text-ink-500">
+            Type
+            <select
+              className="input !py-1 !text-xs block"
+              value={absenceForm.absenceType}
+              onChange={(e) => setAbsenceForm({ ...absenceForm, absenceType: e.target.value as AbsenceType })}
+            >
+              {ABSENCE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </label>
+          <label className="text-xs text-ink-500">
+            Start
+            <input type="date" className="input !py-1 !text-xs block" value={absenceForm.startDate}
+              onChange={(e) => setAbsenceForm({ ...absenceForm, startDate: e.target.value })} />
+          </label>
+          <label className="text-xs text-ink-500">
+            End
+            <input type="date" className="input !py-1 !text-xs block" value={absenceForm.endDate}
+              onChange={(e) => setAbsenceForm({ ...absenceForm, endDate: e.target.value })} />
+          </label>
+          <label className="text-xs text-ink-500 flex-1 min-w-[140px]">
+            Reason (optional)
+            <input type="text" className="input !py-1 !text-xs block w-full" value={absenceForm.reason}
+              onChange={(e) => setAbsenceForm({ ...absenceForm, reason: e.target.value })} />
+          </label>
+          <button
+            className="btn-secondary !py-1 !px-3 !text-xs"
+            disabled={!absenceForm.startDate || !absenceForm.endDate || absenceMutation.isPending}
+            onClick={() => {
+              absenceMutation.mutate(
+                { absenceType: absenceForm.absenceType, startDate: absenceForm.startDate, endDate: absenceForm.endDate, reason: absenceForm.reason || undefined },
+                { onSuccess: () => setAbsenceForm({ absenceType: 'vacation', startDate: '', endDate: '', reason: '' }) },
+              );
+            }}
+          >
+            Request
+          </button>
+        </div>
+        {absenceMutation.isError && <p className="field-error">{apiErrorMessage(absenceMutation.error)}</p>}
+      </div>
+
+      {absencesQuery.data && absencesQuery.data.length > 0 && (
+        <div>
+          <h3 className="text-xs font-semibold text-ink-300 uppercase tracking-wide mb-2">My absence requests</h3>
+          <ul className="text-sm space-y-1">
+            {absencesQuery.data.map((a) => (
+              <li key={a.id} className="text-ink-300">
+                {a.startDate} → {a.endDate} <span className="text-ink-500">· {a.absenceType} ·</span>{' '}
+                <span className={a.status === 'approved' ? 'text-ok' : a.status === 'denied' ? 'text-danger' : 'text-warn'}>{a.status}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </section>
@@ -587,6 +763,158 @@ function CompanyReportAdmin({ from, to }: { from: string; to: string }) {
                   <td className="px-4 py-2.5 text-ok tabular-nums">{formatHm(r.productiveSeconds)}</td>
                   <td className="px-4 py-2.5 text-danger tabular-nums">{formatHm(r.unproductiveSeconds)}</td>
                   <td className="px-4 py-2.5 text-ink-300 tabular-nums">{pct(r.productivityRatio)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// Company-admin-only: assign shifts and see the company-wide schedule for
+// the next two weeks (SchedulingService's own default lookahead window --
+// no date picker in this minimal MVP, same "not an HRIS" scope as
+// ReportingLinesAdmin's plain table).
+function ShiftSchedulingAdmin() {
+  const queryClient = useQueryClient();
+  const usersQuery = useQuery({ queryKey: ['users', 'all'], queryFn: listUsers });
+  const shiftsQuery = useQuery({ queryKey: ['workforce', 'shifts', 'company'], queryFn: () => getCompanyShifts() });
+
+  const [form, setForm] = useState({ userId: '', shiftDate: '', startTime: '', endTime: '' });
+
+  const assignMutation = useMutation({
+    mutationFn: (dto: Parameters<typeof assignShift>[0]) => assignShift(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workforce', 'shifts', 'company'] });
+      setForm({ userId: '', shiftDate: '', startTime: '', endTime: '' });
+    },
+  });
+
+  const users = usersQuery.data?.data ?? [];
+  const shifts = shiftsQuery.data ?? [];
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Shift schedule (admin)</h2>
+      <p className="text-xs text-ink-500">Assign a shift, and see everyone's assigned shifts for the next two weeks.</p>
+
+      <div className="flex flex-wrap gap-2 items-end">
+        <label className="text-xs text-ink-500">
+          Employee
+          <select className="input !py-1 !text-xs block" value={form.userId} onChange={(e) => setForm({ ...form, userId: e.target.value })}>
+            <option value="">Select…</option>
+            {users.map((u) => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
+          </select>
+        </label>
+        <label className="text-xs text-ink-500">
+          Date
+          <input type="date" className="input !py-1 !text-xs block" value={form.shiftDate} onChange={(e) => setForm({ ...form, shiftDate: e.target.value })} />
+        </label>
+        <label className="text-xs text-ink-500">
+          Start
+          <input type="time" className="input !py-1 !text-xs block" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
+        </label>
+        <label className="text-xs text-ink-500">
+          End
+          <input type="time" className="input !py-1 !text-xs block" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
+        </label>
+        <button
+          className="btn-secondary !py-1 !px-3 !text-xs"
+          disabled={!form.userId || !form.shiftDate || !form.startTime || !form.endTime || assignMutation.isPending}
+          onClick={() => assignMutation.mutate(form)}
+        >
+          Assign
+        </button>
+      </div>
+      {assignMutation.isError && <p className="field-error">{apiErrorMessage(assignMutation.error)}</p>}
+
+      {shifts.length === 0 ? (
+        <p className="text-sm text-ink-500">No shifts assigned in this window yet.</p>
+      ) : (
+        <div className="panel tick-frame overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-ink-500 border-b border-base-600">
+                <th className="px-4 py-2.5 font-medium">Date</th>
+                <th className="px-4 py-2.5 font-medium">Employee</th>
+                <th className="px-4 py-2.5 font-medium">Shift</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shifts.map((s) => (
+                <tr key={s.id} className="border-b border-base-700/60 last:border-0">
+                  <td className="px-4 py-2.5 tabular-nums">{s.shiftDate}</td>
+                  <td className="px-4 py-2.5">{s.firstName} {s.lastName}</td>
+                  <td className="px-4 py-2.5 text-ink-300 tabular-nums">{s.startTime}–{s.endTime}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// Company-admin-only: the actionable queue of pending absence requests,
+// approve/deny inline. Deliberately shows pending-only (SchedulingService's
+// own default) rather than a full history table.
+function AbsenceRequestsAdmin() {
+  const queryClient = useQueryClient();
+  const absencesQuery = useQuery({ queryKey: ['workforce', 'absences', 'company'], queryFn: () => listCompanyAbsences() });
+
+  const decideMutation = useMutation({
+    mutationFn: ({ absenceId, status }: { absenceId: string; status: 'approved' | 'denied' }) => decideAbsence(absenceId, status),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workforce', 'absences', 'company'] }),
+  });
+
+  const absences = absencesQuery.data ?? [];
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Absence requests (admin)</h2>
+      {decideMutation.isError && <p className="field-error">{apiErrorMessage(decideMutation.error)}</p>}
+      {absences.length === 0 ? (
+        <p className="text-sm text-ink-500">No pending absence requests.</p>
+      ) : (
+        <div className="panel tick-frame overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-ink-500 border-b border-base-600">
+                <th className="px-4 py-2.5 font-medium">Employee</th>
+                <th className="px-4 py-2.5 font-medium">Type</th>
+                <th className="px-4 py-2.5 font-medium">Dates</th>
+                <th className="px-4 py-2.5 font-medium">Reason</th>
+                <th className="px-4 py-2.5 font-medium">Decision</th>
+              </tr>
+            </thead>
+            <tbody>
+              {absences.map((a) => (
+                <tr key={a.id} className="border-b border-base-700/60 last:border-0">
+                  <td className="px-4 py-2.5">{a.firstName} {a.lastName}</td>
+                  <td className="px-4 py-2.5 text-ink-500">{a.absenceType}</td>
+                  <td className="px-4 py-2.5 tabular-nums">{a.startDate} → {a.endDate}</td>
+                  <td className="px-4 py-2.5 text-ink-500">{a.reason ?? '—'}</td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex gap-1.5">
+                      <button
+                        className="btn-secondary !py-1 !px-2 !text-xs text-ok"
+                        disabled={decideMutation.isPending}
+                        onClick={() => decideMutation.mutate({ absenceId: a.id, status: 'approved' })}
+                      >
+                        Approve
+                      </button>
+                      <button
+                        className="btn-secondary !py-1 !px-2 !text-xs text-danger"
+                        disabled={decideMutation.isPending}
+                        onClick={() => decideMutation.mutate({ absenceId: a.id, status: 'denied' })}
+                      >
+                        Deny
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -2,6 +2,7 @@ import { apiGet, apiPost, apiPatch } from './api';
 import type {
   Activity, ProductivityScore, WorkforcePrivacySettings, WorkforceTeamMember, WorkforceReportingLine,
   WorkforceScreenshotView, MonitoringLevel, ApplicationRegistryEntry, ProductivityClassification,
+  WorkforceShiftPreference, WorkforceShiftAssignment, WorkforceAbsence, AbsenceType,
 } from '@engineeringos/types';
 
 export interface ActivitySummary {
@@ -119,4 +120,78 @@ export interface CompanyReportRow {
 // screen.
 export function getCompanyReport(params?: { from?: string; to?: string }) {
   return apiGet<CompanyReportRow[]>('/workforce/reports/company-summary', { params });
+}
+
+// ── Shift scheduling + absence calendar ──
+// DeskTime's own shift-scheduling ("which days/times employees prefer
+// working") + a request/approve absence calendar. Deliberately minimal --
+// no leave-balance accrual, this is not an HRIS.
+
+export function setMyShiftPreference(dto: { dayOfWeek: number; preferred?: boolean; startTime?: string; endTime?: string }) {
+  return apiPost<WorkforceShiftPreference>('/workforce/scheduling/shift-preferences', dto);
+}
+
+export function getMyShiftPreferences() {
+  return apiGet<WorkforceShiftPreference[]>('/workforce/scheduling/shift-preferences/me');
+}
+
+export interface CompanyShiftPreferenceRow extends WorkforceShiftPreference {
+  firstName: string;
+  lastName: string;
+}
+
+// company_admin+ only (enforced server-side) -- every user's preferences,
+// for whoever is building the actual schedule.
+export function listCompanyShiftPreferences() {
+  return apiGet<CompanyShiftPreferenceRow[]>('/workforce/scheduling/shift-preferences');
+}
+
+// company_admin+ only (enforced server-side).
+export function assignShift(dto: { userId: string; shiftDate: string; startTime: string; endTime: string }) {
+  return apiPost<WorkforceShiftAssignment>('/workforce/scheduling/shifts', dto);
+}
+
+// Same targetUserId convention as getMyActivitySummary -- switches to the
+// sibling GET /workforce/scheduling/shifts/:userId route (manager/
+// leadership visibility, enforced server-side). Omit params/targetUserId
+// for "today through two weeks out" for the caller's own shifts.
+export function getMyShifts(params?: { from?: string; to?: string }, targetUserId?: string) {
+  const url = targetUserId ? `/workforce/scheduling/shifts/${targetUserId}` : '/workforce/scheduling/shifts/me';
+  return apiGet<WorkforceShiftAssignment[]>(url, { params });
+}
+
+export interface CompanyShiftRow extends WorkforceShiftAssignment {
+  firstName: string;
+  lastName: string;
+}
+
+// company_admin+ only (enforced server-side) -- the full company schedule
+// for a date range.
+export function getCompanyShifts(params?: { from?: string; to?: string }) {
+  return apiGet<CompanyShiftRow[]>('/workforce/scheduling/shifts', { params });
+}
+
+export function requestAbsence(dto: { absenceType: AbsenceType; startDate: string; endDate: string; reason?: string }) {
+  return apiPost<WorkforceAbsence>('/workforce/scheduling/absences', dto);
+}
+
+// Same targetUserId convention as getMyShifts.
+export function getMyAbsences(targetUserId?: string) {
+  const url = targetUserId ? `/workforce/scheduling/absences/${targetUserId}` : '/workforce/scheduling/absences/me';
+  return apiGet<WorkforceAbsence[]>(url);
+}
+
+export interface CompanyAbsenceRow extends WorkforceAbsence {
+  firstName: string;
+  lastName: string;
+}
+
+// company_admin+ only (enforced server-side) -- pending only by default.
+export function listCompanyAbsences(includeDecided = false) {
+  return apiGet<CompanyAbsenceRow[]>('/workforce/scheduling/absences', { params: { includeDecided: includeDecided ? 'true' : undefined } });
+}
+
+// company_admin+ only (enforced server-side).
+export function decideAbsence(absenceId: string, status: 'approved' | 'denied') {
+  return apiPatch<WorkforceAbsence>(`/workforce/scheduling/absences/${absenceId}/decide`, { status });
 }

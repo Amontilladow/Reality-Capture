@@ -17,6 +17,8 @@ import { ScreenshotsController } from './screenshots/screenshots.controller';
 import { ScreenshotsService } from './screenshots/screenshots.service';
 import { ReportsController } from './reports/reports.controller';
 import { ReportsService } from './reports/reports.service';
+import { SchedulingController } from './scheduling/scheduling.controller';
+import { SchedulingService } from './scheduling/scheduling.service';
 
 @Module({
   controllers: [
@@ -29,6 +31,7 @@ import { ReportsService } from './reports/reports.service';
     ReportingLinesController,
     ScreenshotsController,
     ReportsController,
+    SchedulingController,
   ],
   providers: [
     DevicesService,
@@ -40,6 +43,7 @@ import { ReportsService } from './reports/reports.service';
     ReportingLinesService,
     ScreenshotsService,
     ReportsService,
+    SchedulingService,
   ],
   exports: [ActivitiesService, ProductivityService],
 })
