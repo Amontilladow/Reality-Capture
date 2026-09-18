@@ -18,6 +18,12 @@ export const ACTIVITY_TYPES = [
   'ACTIVE', 'IDLE', 'MEETING', 'ENGINEERING', 'DESIGN', 'MODELING',
   'DOCUMENTATION', 'REVIEW', 'COORDINATION', 'COMMUNICATION',
   'ADMINISTRATIVE', 'TRAINING', 'UNKNOWN',
+  // Employee-initiated "Private Time" (DeskTime's own term for it): still
+  // counts as tracked/active time, but application_name_raw/domain are
+  // never the real value for a row carrying this type -- see
+  // ActivitiesService.insertOne(), which force-redacts them server-side
+  // regardless of what any client actually sends.
+  'PRIVATE',
 ] as const;
 export type ActivityType = typeof ACTIVITY_TYPES[number];
 
@@ -118,8 +124,15 @@ export interface ProductivityFactors {
   unproductiveSeconds?: number;
   neutralSeconds?: number;
   unclassifiedSeconds?: number;
-  // productiveSeconds / totalActiveSeconds -- DeskTime's own headline
-  // ratio, kept separate from `score` (see productivity.service.ts).
+  // Time under the employee-initiated 'PRIVATE' activity type -- counted
+  // in totalActiveSeconds (it's still tracked work time) but excluded from
+  // the four buckets above and from productivityRatio's denominator, since
+  // there's no app data to classify.
+  privateSeconds?: number;
+  // productiveSeconds / (totalActiveSeconds - privateSeconds) -- DeskTime's
+  // own headline ratio, kept separate from `score` (see
+  // productivity.service.ts). Private time is excluded entirely rather
+  // than counted as a neutral drag on it.
   productivityRatio?: number;
 }
 

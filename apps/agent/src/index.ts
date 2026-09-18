@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import axios from 'axios';
 import { enroll } from './enroll.js';
-import { loadConfig, QUEUE_PATH } from './config.js';
+import { loadConfig, QUEUE_PATH, isPrivateModeOn, setPrivateMode } from './config.js';
 import { createApiClient } from './api-client.js';
 import { ActivityTracker } from './activity-tracker.js';
 import { flushQueue } from './flush.js';
@@ -37,7 +37,7 @@ async function runStart(): Promise<void> {
   );
 
   const sampleTimer = setInterval(() => {
-    tracker.sample(getActiveApplicationName, getIdleSeconds)
+    tracker.sample(getActiveApplicationName, getIdleSeconds, () => new Date().toISOString(), isPrivateModeOn)
       .then((closed) => { if (closed) enqueueActivity(QUEUE_PATH, toIngestItem(closed, config.deviceId)); })
       .catch((err: Error) => console.warn('Activity sample failed:', err.message));
   }, SAMPLE_INTERVAL_MS);
@@ -87,8 +87,25 @@ async function main(): Promise<void> {
     await runStart();
     return;
   }
+  // A short-lived one-off, same shape as `enroll` -- not a message sent to
+  // the long-running `start` process, just a marker file it polls on its
+  // own next sample tick (see runStart()'s isPrivateModeOn wiring above).
+  // That means it can take up to SAMPLE_INTERVAL_MS to take effect, which
+  // is an acceptable tradeoff for a plain Node process with no tray icon
+  // or IPC channel, not a bug.
+  if (command === 'private') {
+    const mode = process.argv[3];
+    if (mode !== 'on' && mode !== 'off') {
+      console.error('Usage: agent private <on|off>');
+      process.exitCode = 1;
+      return;
+    }
+    setPrivateMode(mode === 'on');
+    console.log(`Private Time turned ${mode}. The running agent picks this up on its next activity sample (within ${SAMPLE_INTERVAL_MS / 1000}s).`);
+    return;
+  }
 
-  console.error('Usage: agent <enroll|start>');
+  console.error('Usage: agent <enroll|start|private on|private off>');
   process.exitCode = 1;
 }
 

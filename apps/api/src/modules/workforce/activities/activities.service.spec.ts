@@ -132,6 +132,35 @@ describe('ActivitiesService.ingest', () => {
     // Positional args after the strings array: companyId, userId, deviceId, clientEventId, ...
     expect(insertCall[3]).toBeNull(); // deviceId written as null, not the spoofed id
   });
+
+  it('force-redacts application name/domain/metadata for a PRIVATE item, regardless of what the client actually sent', async () => {
+    // No application_registry lookup call happens here beyond ingest()'s
+    // initial one -- a PRIVATE item never calls resolveOrRegisterApplicationId,
+    // so there's no auto-registration INSERT to mock.
+    const sqlMock = jest.fn()
+      .mockResolvedValueOnce([])                     // application_registry lookup (ingest's initial appRows)
+      .mockResolvedValueOnce([{ id: 'activity-1' }]); // INSERT activities ... RETURNING id
+    const { svc } = makeService(sqlMock);
+
+    const result = await svc.ingest(companyId, userId, ingestDto([
+      {
+        applicationNameRaw: 'gmail.com (Personal Inbox)', domain: 'gmail.com', activityType: 'PRIVATE',
+        rawMetadata: { windowTitle: 'Re: salary negotiation' },
+        startedAt: '2026-01-01T09:00:00.000Z', endedAt: '2026-01-01T09:30:00.000Z',
+      },
+    ]));
+
+    expect(result).toEqual({ total: 1, inserted: 1, duplicates: 0, rejected: 0 });
+    expect(sqlMock).toHaveBeenCalledTimes(2); // never touched application_registry beyond the initial lookup
+
+    const insertCall = sqlMock.mock.calls[1];
+    // Positional args after the strings array on the activities INSERT:
+    // companyId, userId, deviceId, clientEventId, applicationId, applicationNameRaw, domain, activityType, ...
+    expect(insertCall[5]).toBeNull();          // applicationId -- never classified, never auto-registered
+    expect(insertCall[6]).toBe('Private');     // applicationNameRaw -- the real value never reaches storage
+    expect(insertCall[7]).toBeNull();          // domain -- also redacted
+    expect(insertCall[12]).toBe('{}');         // rawMetadata -- the window title never reaches storage either
+  });
 });
 
 describe('ActivitiesService.attribute', () => {

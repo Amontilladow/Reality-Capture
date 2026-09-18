@@ -8,6 +8,8 @@
   "scripts": {
     "enroll": "tsx src/index.ts enroll",
     "start": "tsx src/index.ts start",
+    "private:on": "tsx src/index.ts private on",
+    "private:off": "tsx src/index.ts private off",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test src/**/*.test.ts"
   },

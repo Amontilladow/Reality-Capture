@@ -65,6 +65,29 @@ describe('computeFactors (v1 productivity formula)', () => {
     expect(factors.productiveSeconds).toBe(0);
     expect(factors.productivityRatio).toBe(0);
   });
+
+  it('counts PRIVATE time as tracked/active but excludes it from the classification buckets, engineering share, and top applications', () => {
+    const rows: ActivityAggregateRow[] = [
+      { durationSeconds: 3000, activityType: 'ENGINEERING', applicationId: 'app-revit', applicationName: 'Revit', engineeringRelevance: true, productivityClassification: 'productive' },
+      { durationSeconds: 1200, activityType: 'PRIVATE', applicationId: null, applicationName: 'Private', engineeringRelevance: null, productivityClassification: null },
+    ];
+
+    const factors = computeFactors(rows);
+
+    // total active (non-idle) time includes private time...
+    expect(factors.totalActiveSeconds).toBe(4200);
+    expect(factors.privateSeconds).toBe(1200);
+    // ...but private time never lands in any classification bucket...
+    expect(factors.productiveSeconds).toBe(3000);
+    expect(factors.unproductiveSeconds).toBe(0);
+    expect(factors.neutralSeconds).toBe(0);
+    expect(factors.unclassifiedSeconds).toBe(0);
+    // ...is excluded from the productivity ratio's denominator (3000/3000, not 3000/4200)...
+    expect(factors.productivityRatio).toBe(1);
+    // ...and never appears as its own row in the top-applications list.
+    expect(factors.topApplications).toHaveLength(1);
+    expect(factors.topApplications[0]).toMatchObject({ applicationId: 'app-revit' });
+  });
 });
 
 describe('ProductivityService.getMyScore', () => {
