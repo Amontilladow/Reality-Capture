@@ -5,6 +5,11 @@ interface OpenSegment {
   applicationNameRaw: string;
   activityType: ActivityType;
   startedAt: string;
+  // Absent, not just undefined -- see sample()'s conditional spread. Never
+  // present at all when window-title capture isn't wired in (every
+  // existing call site/test that doesn't pass getWindowTitle keeps
+  // producing the exact same segment shape as before this field existed).
+  windowTitle?: string;
 }
 
 export interface ClosedSegment extends OpenSegment {
@@ -26,41 +31,58 @@ export class ActivityTracker {
 
   constructor(private readonly idleThresholdSeconds: number) {}
 
-  // `isPrivate` is a new trailing param (after the already-defaulted `now`)
-  // so every existing call site -- production and every test in
-  // activity-tracker.test.ts -- keeps compiling and behaving exactly as
-  // before without passing it.
+  // `isPrivate` and `getWindowTitle` are new trailing params (after the
+  // already-defaulted `now`) so every existing call site -- production and
+  // every test in activity-tracker.test.ts -- keeps compiling and
+  // behaving exactly as before without passing them.
   async sample(
     getActiveApplicationName: () => Promise<string | undefined>,
     getIdleSeconds: () => number,
     now: () => string = () => new Date().toISOString(),
     isPrivate: () => boolean = () => false,
+    getWindowTitle: () => Promise<string | undefined> = async () => undefined,
   ): Promise<ClosedSegment | null> {
     let applicationNameRaw: string;
     let activityType: ActivityType;
+    let windowTitle: string | undefined;
     if (isPrivate()) {
       // Redacted at the source: while Private Time is on, the real active
-      // window is never even read, let alone queued or sent. Idle
+      // window/title is never even read, let alone queued or sent. Idle
       // detection is skipped too -- private time counts as tracked time
       // regardless of idle state, matching DeskTime's own behavior.
       applicationNameRaw = PRIVATE_APPLICATION_NAME;
       activityType = 'PRIVATE';
+      windowTitle = undefined;
     } else {
       applicationNameRaw = (await getActiveApplicationName()) ?? 'Unknown';
       activityType = getIdleSeconds() >= this.idleThresholdSeconds ? 'IDLE' : 'ACTIVE';
+      windowTitle = await getWindowTitle();
     }
     const timestamp = now();
+    // Only ever added to the segment object when actually present --
+    // never a `windowTitle: undefined` key, so a caller that doesn't wire
+    // getWindowTitle in at all produces byte-for-byte the same segment
+    // shape this class has always produced.
+    const titlePart = windowTitle !== undefined ? { windowTitle } : {};
 
     if (!this.openSegment) {
-      this.openSegment = { applicationNameRaw, activityType, startedAt: timestamp };
+      this.openSegment = { applicationNameRaw, activityType, startedAt: timestamp, ...titlePart };
       return null;
     }
 
     const unchanged = this.openSegment.applicationNameRaw === applicationNameRaw && this.openSegment.activityType === activityType;
-    if (unchanged) return null;
+    if (unchanged) {
+      // The title can change within the same app/activity segment (e.g. a
+      // different document opened in the same app) without closing it --
+      // keep whatever was most recently observed for whenever this
+      // segment does eventually close. A momentarily-missing title never
+      // erases a previously-known one.
+      if (windowTitle !== undefined) this.openSegment.windowTitle = windowTitle;
+      return null;
+    }
 
     const closed: ClosedSegment = { ...this.openSegment, endedAt: timestamp };
-    this.openSegment = { applicationNameRaw, activityType, startedAt: timestamp };
+    this.openSegment = { applicationNameRaw, activityType, startedAt: timestamp, ...titlePart };
     return closed;
   }
 

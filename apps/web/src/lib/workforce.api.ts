@@ -49,6 +49,7 @@ export function getWorkforcePrivacySettings() {
 export function updateWorkforcePrivacySettings(dto: {
   monitoringLevel?: MonitoringLevel;
   screenshotEnabled?: boolean;
+  windowTitleEnabled?: boolean;
   retentionDays?: number;
   selfViewEnabled?: boolean;
 }) {

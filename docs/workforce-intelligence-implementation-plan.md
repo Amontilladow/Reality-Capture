@@ -130,6 +130,15 @@ adapter architecture only for now).
   header comment and `google-calendar-client.ts`'s own comment for what
   is and isn't verified. Writing calendar events into `activities` (real
   idempotency/dedup design needed) is an explicit, deferred follow-on.
+- Window title tracking (migration 042) is now wired end-to-end: the
+  desktop agent captures the active window's raw title (see `native.ts`'s
+  `getWindowTitle()`) and always sends it, but the server only persists
+  it when `workforce_privacy_settings.window_title_enabled` is on
+  (off by default) -- the exact same off-by-default/server-enforced/
+  audited treatment as screenshots, and never captured during Private
+  Time. See the architecture doc's own "Window title, update" note for
+  why this is raw title rather than the category-only signal originally
+  designed -- a later, explicit product decision, not scope creep.
 - RBAC: reuses `@Roles()` / `@RequireProjectPermission()` /
   `@RequireFeature()` exactly as designed in the architecture doc.
 - Frontend: employee self-view page (today/this-week activity breakdown,

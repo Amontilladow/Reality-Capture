@@ -78,6 +78,10 @@ started_at, ended_at, duration_seconds, source
 (agent|browser_extension|manual|seed|import), confidence (nullable,
 0-1 — confidence in the activity_type classification itself, distinct
 from project-attribution confidence below), raw_metadata (JSONB),
+window_title (nullable VARCHAR(500), migration 042 — only ever populated
+when workforce_privacy_settings.window_title_enabled was on and this row
+isn't 'PRIVATE' at the moment of ingest; enforced in
+ActivitiesService.insertOne() regardless of what any client sends),
 created_at
 UNIQUE (device_id, client_event_id) — the idempotency guarantee: a
 retried ingestion batch after a dropped connection upserts onto the
@@ -130,14 +134,18 @@ no "just give me the number" endpoint, by design (brief §14).
 ```
 id, company_id (UNIQUE — same one-row-per-tenant pattern as
 company_subscriptions), monitoring_level (minimal|standard|detailed,
-default 'standard'), screenshot_enabled (boolean, default false — no
-code path exists anywhere in this MVP that captures a screenshot even
-when true; this flag exists purely as the documented policy switch a
-future, separately-built capture pipeline would check), retention_days
-(default 90), self_view_enabled (boolean, default true — an admin can
-turn off employee self-view only if company policy requires it, but it
-defaults on because brief §16 treats employee self-view as core, not
-optional), updated_by, updated_at, created_at
+default 'standard'), screenshot_enabled (boolean, default false — a real
+capture pipeline now exists in apps/agent's screenshot cycle, gated
+entirely behind this switch and enforced server-side in
+ScreenshotsService.assertScreenshotsEnabled(), regardless of what any
+client believes its own config says), window_title_enabled (boolean,
+default false, migration 042 — same off-by-default/server-enforced
+treatment as screenshot_enabled, for the desktop agent's window-title
+capture; see ActivitiesService.insertOne()), retention_days (default 90),
+self_view_enabled (boolean, default true — an admin can turn off
+employee self-view only if company policy requires it, but it defaults
+on because brief §16 treats employee self-view as core, not optional),
+updated_by, updated_at, created_at
 ```
 
 `keystroke logging` has no column at all in MVP — there is no partial

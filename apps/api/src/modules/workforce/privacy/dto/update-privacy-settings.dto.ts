@@ -8,6 +8,9 @@ export class UpdatePrivacySettingsDto {
   @IsOptional() @IsBoolean()
   screenshotEnabled?: boolean;
 
+  @IsOptional() @IsBoolean()
+  windowTitleEnabled?: boolean;
+
   @IsOptional() @IsInt() @Min(1) @Max(3650)
   retentionDays?: number;
 

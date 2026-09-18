@@ -95,6 +95,12 @@ export interface Activity {
   confidence?: number;
   rawMetadata: Record<string, unknown>;
   createdAt: string;
+  // The active window's title bar text (e.g. "Q3-Budget.xlsx - Excel") --
+  // absent unless the company has windowTitleEnabled on (see
+  // WorkforcePrivacySettings) and this row isn't 'PRIVATE'; enforced
+  // server-side regardless of what any client sends (see
+  // ActivitiesService.insertOne()).
+  windowTitle?: string;
 }
 
 export interface ActivityProjectAttribution {
@@ -190,6 +196,9 @@ export interface WorkforcePrivacySettings {
   companyId: string;
   monitoringLevel: MonitoringLevel;
   screenshotEnabled: boolean;
+  // Same off-by-default, company-wide-switch, server-enforced-regardless-
+  // of-client treatment as screenshotEnabled -- see migration 042.
+  windowTitleEnabled: boolean;
   retentionDays: number;
   selfViewEnabled: boolean;
   updatedBy?: string;

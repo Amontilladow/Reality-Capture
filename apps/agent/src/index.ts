@@ -7,7 +7,7 @@ import { ActivityTracker } from './activity-tracker.js';
 import { flushQueue } from './flush.js';
 import { runScreenshotCycle } from './screenshot-cycle.js';
 import { enqueueActivity } from './queue.js';
-import { getActiveApplicationName, getIdleSeconds, captureScreenshot } from './native.js';
+import { getActiveApplicationName, getIdleSeconds, captureScreenshot, getWindowTitle } from './native.js';
 import type { ClosedSegment } from './activity-tracker.js';
 import type { IngestActivityItem } from './types.js';
 
@@ -22,6 +22,7 @@ function toIngestItem(segment: ClosedSegment, deviceId: string): IngestActivityI
     activityType: segment.activityType,
     startedAt: segment.startedAt,
     endedAt: segment.endedAt,
+    windowTitle: segment.windowTitle,
   };
 }
 
@@ -37,7 +38,7 @@ async function runStart(): Promise<void> {
   );
 
   const sampleTimer = setInterval(() => {
-    tracker.sample(getActiveApplicationName, getIdleSeconds, () => new Date().toISOString(), isPrivateModeOn)
+    tracker.sample(getActiveApplicationName, getIdleSeconds, () => new Date().toISOString(), isPrivateModeOn, getWindowTitle)
       .then((closed) => { if (closed) enqueueActivity(QUEUE_PATH, toIngestItem(closed, config.deviceId)); })
       .catch((err: Error) => console.warn('Activity sample failed:', err.message));
   }, SAMPLE_INTERVAL_MS);
