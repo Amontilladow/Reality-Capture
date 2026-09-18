@@ -1,7 +1,7 @@
 import { apiGet, apiPost, apiPatch } from './api';
 import type {
   Activity, ProductivityScore, WorkforcePrivacySettings, WorkforceTeamMember, WorkforceReportingLine,
-  WorkforceScreenshotView, MonitoringLevel,
+  WorkforceScreenshotView, MonitoringLevel, ApplicationRegistryEntry, ProductivityClassification,
 } from '@engineeringos/types';
 
 export interface ActivitySummary {
@@ -84,4 +84,18 @@ export function listReportingLines() {
 
 export function setReportingLine(userId: string, managerId: string) {
   return apiPost<WorkforceReportingLine>('/workforce/reporting-lines', { userId, managerId });
+}
+
+// company_admin+ only for writes (GET is open to any authenticated
+// company member, enforced server-side) -- the DeskTime-style "which
+// apps/executables count as productive" registry behind the productivity
+// breakdown. New apps show up here as 'unclassified' the moment the
+// desktop agent first reports them (see ActivitiesService.ingest()'s
+// auto-registration), ready for an admin to triage.
+export function listApplications() {
+  return apiGet<ApplicationRegistryEntry[]>('/workforce/applications');
+}
+
+export function updateApplicationClassification(id: string, productivityClassification: ProductivityClassification) {
+  return apiPatch<ApplicationRegistryEntry>(`/workforce/applications/${id}`, { productivityClassification });
 }

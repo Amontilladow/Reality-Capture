@@ -24,11 +24,13 @@ function ingestDto(items: Partial<IngestActivitiesDto['activities'][number]>[]):
 describe('ActivitiesService.ingest', () => {
   it('inserts a new activity and reports it as inserted', async () => {
     // No deviceId on the item -> the devices-ownership lookup is skipped
-    // entirely, so only two real queries happen: the registry lookup, then
-    // the insert.
+    // entirely. Three real queries happen: the registry lookup (empty --
+    // nothing registered yet), the auto-registration insert for this
+    // brand-new app name, then the activity insert.
     const sqlMock = jest.fn()
-      .mockResolvedValueOnce([])                     // application_registry lookup
-      .mockResolvedValueOnce([{ id: 'activity-1' }]); // INSERT ... RETURNING id -> row present
+      .mockResolvedValueOnce([])                        // application_registry lookup
+      .mockResolvedValueOnce([{ id: 'app-revit-new' }])  // auto-register 'revit.exe' -> INSERT ... RETURNING id
+      .mockResolvedValueOnce([{ id: 'activity-1' }]);    // INSERT activities ... RETURNING id -> row present
     const { svc, db } = makeService(sqlMock);
 
     const result = await svc.ingest(companyId, userId, ingestDto([
@@ -39,11 +41,51 @@ describe('ActivitiesService.ingest', () => {
     expect(db.withTenant).toHaveBeenCalledWith(companyId, expect.any(Function));
   });
 
+  it('auto-registers a never-before-seen app as unclassified, not silently unattributed', async () => {
+    const sqlMock = jest.fn()
+      .mockResolvedValueOnce([])                        // application_registry lookup -- empty
+      .mockResolvedValueOnce([{ id: 'app-new-1' }])      // auto-register INSERT ... RETURNING id
+      .mockResolvedValueOnce([{ id: 'activity-1' }]);
+    const { svc } = makeService(sqlMock);
+
+    await svc.ingest(companyId, userId, ingestDto([
+      { applicationNameRaw: 'SomeNewTool.exe', activityType: 'ENGINEERING', startedAt: '2026-01-01T09:00:00.000Z', endedAt: '2026-01-01T09:30:00.000Z' },
+    ]));
+
+    const registerCall = sqlMock.mock.calls[1];
+    const registerQueryText = (registerCall[0] as string[]).join('');
+    expect(registerQueryText).toContain('INSERT INTO application_registry');
+    expect(registerQueryText).toContain('unclassified');
+
+    const insertCall = sqlMock.mock.calls[2];
+    // Positional args after the strings array on the activities INSERT:
+    // companyId, userId, deviceId, clientEventId, applicationId, ...
+    expect(insertCall[5]).toBe('app-new-1');
+  });
+
+  it('registers a new app name only once per batch, reusing it for later items with the same name', async () => {
+    const sqlMock = jest.fn()
+      .mockResolvedValueOnce([])                     // application_registry lookup -- empty
+      .mockResolvedValueOnce([{ id: 'app-new-1' }])   // auto-register (first item only)
+      .mockResolvedValueOnce([{ id: 'activity-1' }])  // first item's activity insert
+      .mockResolvedValueOnce([{ id: 'activity-2' }]); // second item's activity insert -- no second registry INSERT
+    const { svc } = makeService(sqlMock);
+
+    const result = await svc.ingest(companyId, userId, ingestDto([
+      { applicationNameRaw: 'NewTool.exe', activityType: 'ENGINEERING', startedAt: '2026-01-01T09:00:00.000Z', endedAt: '2026-01-01T09:30:00.000Z' },
+      { applicationNameRaw: 'NewTool.exe', activityType: 'ENGINEERING', startedAt: '2026-01-01T10:00:00.000Z', endedAt: '2026-01-01T10:30:00.000Z' },
+    ]));
+
+    expect(result).toEqual({ total: 2, inserted: 2, duplicates: 0, rejected: 0 });
+    expect(sqlMock).toHaveBeenCalledTimes(4);
+  });
+
   it('treats a retried (deviceId, clientEventId) pair as a no-op duplicate, not an error', async () => {
     const sqlMock = jest.fn()
-      .mockResolvedValueOnce([{ id: 'device-1' }]) // devices lookup: device is owned by this user
-      .mockResolvedValueOnce([])                    // application_registry lookup
-      .mockResolvedValueOnce([]);                   // INSERT ... ON CONFLICT DO NOTHING -> no row returned
+      .mockResolvedValueOnce([{ id: 'device-1' }])  // devices lookup: device is owned by this user
+      .mockResolvedValueOnce([])                     // application_registry lookup
+      .mockResolvedValueOnce([{ id: 'app-new-1' }])  // auto-register
+      .mockResolvedValueOnce([]);                    // INSERT ... ON CONFLICT DO NOTHING -> no row returned
     const { svc } = makeService(sqlMock);
 
     const result = await svc.ingest(companyId, userId, ingestDto([
@@ -67,7 +109,7 @@ describe('ActivitiesService.ingest', () => {
     ]));
 
     expect(result).toEqual({ total: 1, inserted: 0, duplicates: 0, rejected: 1 });
-    // Only the application_registry lookup ran -- the rejected item never reached an INSERT call.
+    // Only the application_registry lookup ran -- the rejected item never reached auto-registration or an INSERT call.
     expect(sqlMock).toHaveBeenCalledTimes(1);
   });
 
@@ -75,6 +117,7 @@ describe('ActivitiesService.ingest', () => {
     const sqlMock = jest.fn()
       .mockResolvedValueOnce([]) // devices lookup: the requested device is NOT owned by this user -> empty
       .mockResolvedValueOnce([]) // application_registry lookup
+      .mockResolvedValueOnce([{ id: 'app-new-1' }]) // auto-register
       .mockResolvedValueOnce([{ id: 'activity-1' }]);
     const { svc } = makeService(sqlMock);
 
@@ -85,7 +128,7 @@ describe('ActivitiesService.ingest', () => {
       },
     ]));
 
-    const insertCall = sqlMock.mock.calls[2];
+    const insertCall = sqlMock.mock.calls[3];
     // Positional args after the strings array: companyId, userId, deviceId, clientEventId, ...
     expect(insertCall[3]).toBeNull(); // deviceId written as null, not the spoofed id
   });

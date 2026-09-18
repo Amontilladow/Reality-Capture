@@ -71,7 +71,7 @@ export class ProductivityService {
       const rows = await sql`
         SELECT a.duration_seconds, a.activity_type, a.application_id,
                COALESCE(ar.name, a.application_name_raw) AS application_name,
-               ar.engineering_relevance
+               ar.engineering_relevance, ar.productivity_classification
         FROM activities a
         LEFT JOIN application_registry ar ON ar.id = a.application_id
         WHERE a.user_id = ${userId}
@@ -133,17 +133,38 @@ export interface ActivityAggregateRow {
   applicationId: string | null;
   applicationName: string;
   engineeringRelevance: boolean | null;
+  productivityClassification?: string | null;
 }
 
 export function computeFactors(rows: ActivityAggregateRow[]): ProductivityFactors {
   let totalActiveSeconds = 0;
   let totalEngineeringSeconds = 0;
+  let productiveSeconds = 0;
+  let unproductiveSeconds = 0;
+  let neutralSeconds = 0;
+  let unclassifiedSeconds = 0;
   const totalAllSeconds = rows.reduce((sum, r) => sum + Number(r.durationSeconds), 0);
   const appTotals = new Map<string, { applicationId: string | null; name: string; seconds: number }>();
 
   for (const row of rows) {
     const seconds = Number(row.durationSeconds);
-    if (row.activityType !== 'IDLE') totalActiveSeconds += seconds;
+    if (row.activityType !== 'IDLE') {
+      totalActiveSeconds += seconds;
+      // DeskTime-style productive/unproductive/neutral breakdown -- like
+      // DeskTime, idle time is excluded entirely (it's neither productive
+      // nor unproductive, it's just not tracked activity). An app that's
+      // never been classified by an admin (including one auto-registered
+      // by ingest() moments ago) counts as its own bucket rather than
+      // silently defaulting into "neutral" or "productive" -- an
+      // unreviewed app should read as unreviewed, not as a productivity
+      // verdict nobody actually made.
+      switch (row.productivityClassification) {
+        case 'productive': productiveSeconds += seconds; break;
+        case 'unproductive': unproductiveSeconds += seconds; break;
+        case 'neutral': neutralSeconds += seconds; break;
+        default: unclassifiedSeconds += seconds; break;
+      }
+    }
     if (ENGINEERING_ACTIVITY_TYPES.has(row.activityType) || row.engineeringRelevance) {
       totalEngineeringSeconds += seconds;
     }
@@ -161,6 +182,17 @@ export function computeFactors(rows: ActivityAggregateRow[]): ProductivityFactor
     totalActiveSeconds,
     totalEngineeringSeconds,
     topApplications,
+    productiveSeconds,
+    unproductiveSeconds,
+    neutralSeconds,
+    unclassifiedSeconds,
+    // DeskTime's own headline metric: productive time as a share of all
+    // tracked (non-idle) time. Deliberately NOT blended into `score` --
+    // the v1 formula above is already versioned/persisted and changing its
+    // weights would silently rewrite the meaning of every already-computed
+    // historical score. This is an additional, explainable breakdown
+    // alongside it, not a competing model.
+    productivityRatio: totalActiveSeconds > 0 ? productiveSeconds / totalActiveSeconds : 0,
   };
 }
 
