@@ -113,6 +113,15 @@ adapter architecture only for now).
   deliberately *not* blended into `score` itself, per this doc's own
   warning above against copying "productivity % = active/total time" as
   the headline metric. It's shown as one more factor, never a ranking.
+- The `apps/browser-extension` package (Manifest V3, no bundler) closes the
+  "URL tracking" half of the "active/idle time, app & URL tracking" row
+  above: it reports the active tab's *hostname only* (never full URL,
+  path, or page content) for the same domain-level productivity
+  classification, and needed zero backend changes since `platform: 'web'`
+  and `source: 'browser_extension'` were already valid, unused values in
+  the original MVP schema. Same "Private Time" control as the desktop
+  agent applies to it for free (same `'PRIVATE'` activity type, same
+  server-side force-redaction).
 - RBAC: reuses `@Roles()` / `@RequireProjectPermission()` /
   `@RequireFeature()` exactly as designed in the architecture doc.
 - Frontend: employee self-view page (today/this-week activity breakdown,

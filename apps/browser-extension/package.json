@@ -1,0 +1,10 @@
+{
+  "name": "browser-extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EngineeringOS Workforce Intelligence -- browser extension reporting the active tab's domain for URL-level productivity classification (Manifest V3, no bundler, no packaging polish -- see README)",
+  "type": "module",
+  "scripts": {
+    "test": "node --test src/*.test.js"
+  }
+}

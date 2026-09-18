@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "EngineeringOS Workforce Intelligence",
+  "version": "0.1.0",
+  "description": "Reports the domain of your browser's active tab to Workforce Intelligence for URL-level productivity classification. Off until you enroll it; see README before installing.",
+  "permissions": ["tabs", "idle", "storage", "alarms"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
