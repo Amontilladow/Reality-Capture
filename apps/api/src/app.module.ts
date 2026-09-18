@@ -45,12 +45,13 @@ import databaseConfig from './config/database.config';
 import jwtConfig from './config/jwt.config';
 import storageConfig from './config/storage.config';
 import redisConfig from './config/redis.config';
+import googleCalendarConfig from './config/google-calendar.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, jwtConfig, storageConfig, redisConfig],
+      load: [appConfig, databaseConfig, jwtConfig, storageConfig, redisConfig, googleCalendarConfig],
       envFilePath: ['.env.local', '.env'],
     }),
     ThrottlerModule.forRoot([

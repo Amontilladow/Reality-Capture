@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { HttpModule } from '@nestjs/axios';
 import { DevicesController } from './devices/devices.controller';
 import { DevicesService } from './devices/devices.service';
 import { ApplicationsController } from './applications/applications.controller';
@@ -19,8 +20,12 @@ import { ReportsController } from './reports/reports.controller';
 import { ReportsService } from './reports/reports.service';
 import { SchedulingController } from './scheduling/scheduling.controller';
 import { SchedulingService } from './scheduling/scheduling.service';
+import { CalendarIntegrationController } from './calendar-integration/calendar-integration.controller';
+import { CalendarIntegrationService } from './calendar-integration/calendar-integration.service';
+import { GoogleCalendarClient } from './calendar-integration/google-calendar-client';
 
 @Module({
+  imports: [HttpModule],
   controllers: [
     DevicesController,
     ApplicationsController,
@@ -32,6 +37,7 @@ import { SchedulingService } from './scheduling/scheduling.service';
     ScreenshotsController,
     ReportsController,
     SchedulingController,
+    CalendarIntegrationController,
   ],
   providers: [
     DevicesService,
@@ -44,6 +50,8 @@ import { SchedulingService } from './scheduling/scheduling.service';
     ScreenshotsService,
     ReportsService,
     SchedulingService,
+    CalendarIntegrationService,
+    GoogleCalendarClient,
   ],
   exports: [ActivitiesService, ProductivityService],
 })

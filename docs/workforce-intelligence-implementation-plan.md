@@ -122,6 +122,14 @@ adapter architecture only for now).
   the original MVP schema. Same "Private Time" control as the desktop
   agent applies to it for free (same `'PRIVATE'` activity type, same
   server-side force-redaction).
+- A Google Calendar integration (OAuth connect/disconnect + a live
+  "today's events" read) exists, scoped deliberately narrow: it does not
+  write calendar events into `activities` or factor them into scoring.
+  Real credentials to a live Google account were never available to test
+  against in the environment this was built in -- see migration 041's
+  header comment and `google-calendar-client.ts`'s own comment for what
+  is and isn't verified. Writing calendar events into `activities` (real
+  idempotency/dedup design needed) is an explicit, deferred follow-on.
 - RBAC: reuses `@Roles()` / `@RequireProjectPermission()` /
   `@RequireFeature()` exactly as designed in the architecture doc.
 - Frontend: employee self-view page (today/this-week activity breakdown,

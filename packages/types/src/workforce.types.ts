@@ -254,3 +254,30 @@ export interface WorkforceAbsence {
   createdAt: string;
   updatedAt: string;
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// Google Calendar integration -- DeskTime's own "integrate with calendar
+// apps to help track offline time," scoped for this pass to OAuth connect/
+// disconnect plus a live "today's events" read (not persisted into
+// `activities`, not factored into scoring -- see migration 041's header
+// comment for why).
+// ══════════════════════════════════════════════════════════════════════════
+
+export const CALENDAR_PROVIDERS = ['google_calendar'] as const;
+export type CalendarProvider = typeof CALENDAR_PROVIDERS[number];
+
+export interface WorkforceCalendarStatus {
+  connected: boolean;
+  connectedAt: string | null;
+  lastUsedAt: string | null;
+}
+
+// A live-fetched event, never persisted server-side -- id/title/startTime/
+// endTime only, nothing else Google's API returns (attendees, description,
+// location, etc. are deliberately not surfaced).
+export interface CalendarEventSummary {
+  id: string;
+  title: string;
+  startTime: string;
+  endTime: string;
+}
