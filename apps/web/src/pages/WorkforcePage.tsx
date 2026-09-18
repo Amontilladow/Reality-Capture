@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -10,6 +11,7 @@ import {
   listApplications, updateApplicationClassification, getCompanyReport, type CompanyReportRow,
   setMyShiftPreference, getMyShiftPreferences, assignShift, getMyShifts, getCompanyShifts,
   requestAbsence, getMyAbsences, listCompanyAbsences, decideAbsence,
+  getGoogleCalendarAuthorizeUrl, getGoogleCalendarStatus, disconnectGoogleCalendar, getTodayCalendarEvents,
 } from '../lib/workforce.api';
 import { listProjects } from '../lib/projects.api';
 import { listUsers } from '../lib/users.api';
@@ -259,6 +261,7 @@ export default function WorkforcePage() {
         )}
 
         <MyScheduling />
+        <CalendarIntegrationPanel />
 
         {unattributed.length > 0 && (
           <section className="space-y-3">
@@ -540,6 +543,94 @@ function MyScheduling() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// Self-service Google Calendar connect/disconnect + "today's meetings."
+// The connect button is a full-page navigation (not a fetch) because
+// Google's OAuth consent screen is a real page the browser has to load --
+// there's no XHR way to do this. `?calendar=connected|declined|failed` is
+// how GET /workforce/calendar-integration/google-calendar/callback reports
+// its outcome back after redirecting the browser here.
+function CalendarIntegrationPanel() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
+  const outcome = searchParams.get('calendar');
+
+  const statusQuery = useQuery({ queryKey: ['workforce', 'calendar-integration', 'status'], queryFn: getGoogleCalendarStatus });
+  const eventsQuery = useQuery({
+    queryKey: ['workforce', 'calendar-integration', 'events', 'today'],
+    queryFn: getTodayCalendarEvents,
+    enabled: !!statusQuery.data?.connected,
+  });
+
+  const connectMutation = useMutation({
+    mutationFn: getGoogleCalendarAuthorizeUrl,
+    onSuccess: (url) => { window.location.href = url; },
+  });
+  const disconnectMutation = useMutation({
+    mutationFn: disconnectGoogleCalendar,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workforce', 'calendar-integration'] }),
+  });
+
+  const clearOutcome = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('calendar');
+    setSearchParams(next, { replace: true });
+  };
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Calendar integration</h2>
+
+      {outcome && (
+        <div className={`panel tick-frame p-3 text-sm flex items-center justify-between ${outcome === 'connected' ? 'text-ok' : 'text-danger'}`}>
+          <span>
+            {outcome === 'connected' && 'Google Calendar connected.'}
+            {outcome === 'declined' && 'Google Calendar connection was declined.'}
+            {outcome === 'failed' && 'Could not connect Google Calendar — please try again.'}
+          </span>
+          <button className="text-ink-500 hover:text-ink-300 text-xs" onClick={clearOutcome}>Dismiss</button>
+        </div>
+      )}
+
+      {connectMutation.isError && <p className="field-error">{apiErrorMessage(connectMutation.error)}</p>}
+      {disconnectMutation.isError && <p className="field-error">{apiErrorMessage(disconnectMutation.error)}</p>}
+
+      {statusQuery.data && !statusQuery.data.connected && (
+        <button className="btn-secondary !py-1.5 !px-3 !text-xs" disabled={connectMutation.isPending} onClick={() => connectMutation.mutate()}>
+          Connect Google Calendar
+        </button>
+      )}
+
+      {statusQuery.data?.connected && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-ink-500">
+              Connected {statusQuery.data.connectedAt ? new Date(statusQuery.data.connectedAt).toLocaleDateString() : ''} — read-only access
+              to event times, never edited or shared beyond this view.
+            </p>
+            <button className="btn-secondary !py-1 !px-2 !text-xs" disabled={disconnectMutation.isPending} onClick={() => disconnectMutation.mutate()}>
+              Disconnect
+            </button>
+          </div>
+          <h3 className="text-xs font-semibold text-ink-300 uppercase tracking-wide">Today's meetings</h3>
+          {eventsQuery.isLoading && <p className="text-sm text-ink-500">Loading…</p>}
+          {eventsQuery.isError && <p className="field-error">{apiErrorMessage(eventsQuery.error)}</p>}
+          {eventsQuery.data && eventsQuery.data.length === 0 && <p className="text-sm text-ink-500">No events today.</p>}
+          {eventsQuery.data && eventsQuery.data.length > 0 && (
+            <ul className="text-sm space-y-1">
+              {eventsQuery.data.map((e) => (
+                <li key={e.id} className="text-ink-300">
+                  {new Date(e.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}–{new Date(e.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {' '}<span className="text-ink-500">{e.title}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </section>

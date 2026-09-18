@@ -1,8 +1,9 @@
-import { apiGet, apiPost, apiPatch } from './api';
+import { apiGet, apiPost, apiPatch, apiDelete } from './api';
 import type {
   Activity, ProductivityScore, WorkforcePrivacySettings, WorkforceTeamMember, WorkforceReportingLine,
   WorkforceScreenshotView, MonitoringLevel, ApplicationRegistryEntry, ProductivityClassification,
   WorkforceShiftPreference, WorkforceShiftAssignment, WorkforceAbsence, AbsenceType,
+  WorkforceCalendarStatus, CalendarEventSummary,
 } from '@engineeringos/types';
 
 export interface ActivitySummary {
@@ -194,4 +195,26 @@ export function listCompanyAbsences(includeDecided = false) {
 // company_admin+ only (enforced server-side).
 export function decideAbsence(absenceId: string, status: 'approved' | 'denied') {
   return apiPatch<WorkforceAbsence>(`/workforce/scheduling/absences/${absenceId}/decide`, { status });
+}
+
+// ── Google Calendar integration ──
+// Self-service only -- there is no admin view of another user's calendar
+// connection. See migration 041's header comment: OAuth connect/disconnect
+// + a live "today's events" read, not persisted or scored.
+
+export async function getGoogleCalendarAuthorizeUrl() {
+  const { url } = await apiGet<{ url: string }>('/workforce/calendar-integration/google-calendar/authorize-url');
+  return url;
+}
+
+export function getGoogleCalendarStatus() {
+  return apiGet<WorkforceCalendarStatus>('/workforce/calendar-integration/google-calendar/status');
+}
+
+export function disconnectGoogleCalendar() {
+  return apiDelete<{ disconnected: boolean }>('/workforce/calendar-integration/google-calendar');
+}
+
+export function getTodayCalendarEvents() {
+  return apiGet<CalendarEventSummary[]>('/workforce/calendar-integration/google-calendar/events/today');
 }
