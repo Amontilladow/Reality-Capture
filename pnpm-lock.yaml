@@ -239,6 +239,8 @@ importers:
         specifier: ^5.4.5
         version: 5.9.3
 
+  apps/browser-extension: {}
+
   apps/ifc-service:
     dependencies:
       '@aws-sdk/client-s3':

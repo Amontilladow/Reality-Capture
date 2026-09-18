@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Workforce Intelligence</title>
+  <style>
+    body { font-family: system-ui, sans-serif; width: 280px; padding: 12px; color: #1a2530; }
+    h3 { margin: 0 0 8px; font-size: 14px; }
+    label { display: block; margin-top: 8px; font-size: 12px; color: #556; }
+    input[type="text"], input[type="password"], input[type="url"] { width: 100%; box-sizing: border-box; padding: 4px; margin-top: 2px; }
+    button { margin-top: 10px; width: 100%; padding: 6px; cursor: pointer; }
+    #status { margin-top: 10px; font-size: 12px; color: #556; }
+    .private-row { margin-top: 12px; display: flex; align-items: center; gap: 6px; border-top: 1px solid #ddd; padding-top: 10px; }
+    .private-row label { margin: 0; font-size: 13px; color: #1a2530; }
+  </style>
+</head>
+<body>
+  <h3>Workforce Intelligence</h3>
+  <div id="enrollForm">
+    <label>Server URL
+      <input type="url" id="serverUrl" placeholder="https://engineeringos-api.onrender.com/api/v1" />
+    </label>
+    <label>Email
+      <input type="text" id="email" />
+    </label>
+    <label>Password
+      <input type="password" id="password" />
+    </label>
+    <button id="enrollButton">Enroll this browser</button>
+  </div>
+  <div class="private-row">
+    <input type="checkbox" id="privateToggle" />
+    <label for="privateToggle">Private Time</label>
+  </div>
+  <div id="status"></div>
+  <script type="module" src="src/popup.js"></script>
+</body>
+</html>
