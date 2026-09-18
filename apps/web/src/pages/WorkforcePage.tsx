@@ -282,7 +282,14 @@ export default function WorkforcePage() {
                 <tbody>
                   {unattributed.map((activity) => (
                     <tr key={activity.id} className="border-b border-base-700/60 last:border-0">
-                      <td className="px-4 py-2.5">{activity.applicationName ?? activity.applicationNameRaw}</td>
+                      <td className="px-4 py-2.5">
+                        {activity.applicationName ?? activity.applicationNameRaw}
+                        {activity.windowTitle && (
+                          <span className="block text-xs text-ink-500 truncate max-w-xs" title={activity.windowTitle}>
+                            {activity.windowTitle}
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-2.5 text-ink-500 tabular-nums">{formatHm(activity.durationSeconds)}</td>
                       <td className="px-4 py-2.5">
                         <select
@@ -686,6 +693,23 @@ function PrivacySettingsAdmin() {
               Enable periodic screenshot capture
               <span className="block text-xs text-ink-500">
                 Off by default. Confirm your company's employee-monitoring disclosure requirements before turning this on.
+              </span>
+            </span>
+          </label>
+
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={settings.windowTitleEnabled}
+              disabled={updateMutation.isPending}
+              onChange={(e) => updateMutation.mutate({ windowTitleEnabled: e.target.checked })}
+            />
+            <span className="text-sm">
+              Enable window title capture
+              <span className="block text-xs text-ink-500">
+                Off by default. More revealing than the app name alone — a title can carry a document name, email subject, or
+                browser tab title. Confirm your company's employee-monitoring disclosure requirements before turning this on.
               </span>
             </span>
           </label>

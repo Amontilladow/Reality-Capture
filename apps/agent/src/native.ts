@@ -18,6 +18,20 @@ export async function getActiveApplicationName(): Promise<string | undefined> {
   return result?.owner?.name;
 }
 
+// The active window's OS-reported title bar text -- the same string
+// already visible at the top of the window on the employee's own screen,
+// nothing scraped from inside the window. This is meaningfully more
+// revealing than the app name alone (a title can carry a document name,
+// an email subject line, a browser tab title), so unlike app name/idle
+// time it is gated server-side by workforce_privacy_settings.
+// window_title_enabled (off by default) -- see ActivitiesService.
+// insertOne(). This adapter itself makes no privacy decision; it just
+// reports what the OS reports, same as getActiveApplicationName().
+export async function getWindowTitle(): Promise<string | undefined> {
+  const result = await activeWindow();
+  return result?.title;
+}
+
 // OS idle-time API only (Windows: GetLastInputInfo via desktop-idle's
 // native binding) -- never a keyboard/mouse hook, and never keystroke
 // content. Seconds since the last user input, system-wide.

@@ -2,8 +2,8 @@
 
 A plain Node.js background process (not Electron) that reports active
 application / idle time to EngineeringOS's Workforce Intelligence API, and
-optionally captures periodic screenshots if the company has explicitly
-enabled that.
+optionally captures periodic screenshots and/or the active window's title
+bar text if the company has explicitly enabled each of those separately.
 
 **This pass deliberately does not build**: a tray icon, auto-launch,
 or a signed installer. Get the core loop proven against a real machine
@@ -13,6 +13,19 @@ global input hooks — idle detection is the OS idle-time API only
 (`desktop-idle`, wrapping `GetLastInputInfo` on Windows and the platform
 equivalent elsewhere), never a keylogger.
 
+**On window titles specifically**: this agent captures the active
+window's title bar text (`native.ts`'s `getWindowTitle()`) — the exact
+same string already visible at the top of the window on the employee's
+own screen — on every sample, same as it captures the app name. That is
+meaningfully more revealing than an app name alone: a title can carry a
+document's filename, an email subject line, a browser tab's page title.
+The agent always *sends* whatever title it observes; whether the server
+actually *stores* it is gated entirely server-side by one company-wide
+switch (`workforce_privacy_settings.window_title_enabled`, **off by
+default**, alongside `screenshot_enabled`), enforced regardless of what
+this or any other client sends — see `ActivitiesService.insertOne()`. It
+is never captured (not even locally) while Private Time is on.
+
 ## What this agent does
 
 1. **Enrollment** (`pnpm --filter agent enroll`): logs in with a real user's
@@ -21,11 +34,13 @@ equivalent elsewhere), never a keylogger.
    `POST /workforce/devices`, and saves the session + device ID to
    `~/.reality-capture-agent/config.json` (`chmod 600`).
 2. **Activity loop** (`pnpm --filter agent start`): samples the active
-   application (`active-win`) and system idle time (`desktop-idle`) every
-   10 seconds. Whenever the app or active/idle state changes, it closes
-   the just-ended segment into a local append-only queue file
-   (`~/.reality-capture-agent/queue.jsonl`) and starts a new one. Every 60
-   seconds it flushes up to 500 queued segments to
+   application (`active-win`), its window title, and system idle time
+   (`desktop-idle`) every 10 seconds. Whenever the app or active/idle
+   state changes, it closes the just-ended segment into a local
+   append-only queue file (`~/.reality-capture-agent/queue.jsonl`) and
+   starts a new one — a title change alone does not close a segment, it
+   just updates the title recorded against the currently-open one. Every
+   60 seconds it flushes up to 500 queued segments to
    `POST /workforce/activities/ingest`, removing them from the queue only
    on a confirmed successful response — a network outage just means the
    same segments retry on the next cycle, nothing is lost.
@@ -158,6 +173,14 @@ server-pushed config for MVP):
   logged — the next cycle ~90 minutes later is the retry. This wasn't
   judged worth a second offline queue for a lower-frequency, best-effort
   signal.
+- **The agent doesn't check `window_title_enabled` itself.** It always
+  captures and sends whatever title `active-win` reports (except during
+  Private Time); the company-wide on/off switch is enforced entirely
+  server-side (`ActivitiesService.insertOne()`). This is deliberate, not
+  an oversight — the same trust model already used for Private Time's
+  redaction (never rely on client good faith alone), and it means the
+  agent doesn't need its own copy of the company's privacy settings to
+  stay correct if an admin changes them.
 
 ## How this was tested
 

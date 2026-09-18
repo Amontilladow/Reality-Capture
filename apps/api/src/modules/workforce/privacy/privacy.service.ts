@@ -31,6 +31,7 @@ export class PrivacyService {
       UPDATE workforce_privacy_settings SET
         monitoring_level = COALESCE(${dto.monitoringLevel ?? null}, monitoring_level),
         screenshot_enabled = COALESCE(${dto.screenshotEnabled ?? null}, screenshot_enabled),
+        window_title_enabled = COALESCE(${dto.windowTitleEnabled ?? null}, window_title_enabled),
         retention_days = COALESCE(${dto.retentionDays ?? null}, retention_days),
         self_view_enabled = COALESCE(${dto.selfViewEnabled ?? null}, self_view_enabled),
         updated_by = ${userId},

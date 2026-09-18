@@ -24,11 +24,13 @@ function ingestDto(items: Partial<IngestActivitiesDto['activities'][number]>[]):
 describe('ActivitiesService.ingest', () => {
   it('inserts a new activity and reports it as inserted', async () => {
     // No deviceId on the item -> the devices-ownership lookup is skipped
-    // entirely. Three real queries happen: the registry lookup (empty --
-    // nothing registered yet), the auto-registration insert for this
+    // entirely. Four real queries happen: the registry lookup (empty --
+    // nothing registered yet), the privacy-settings lookup (none -- window
+    // title capture defaults off), the auto-registration insert for this
     // brand-new app name, then the activity insert.
     const sqlMock = jest.fn()
       .mockResolvedValueOnce([])                        // application_registry lookup
+      .mockResolvedValueOnce([])                        // workforce_privacy_settings lookup -- none, windowTitleEnabled false
       .mockResolvedValueOnce([{ id: 'app-revit-new' }])  // auto-register 'revit.exe' -> INSERT ... RETURNING id
       .mockResolvedValueOnce([{ id: 'activity-1' }]);    // INSERT activities ... RETURNING id -> row present
     const { svc, db } = makeService(sqlMock);
@@ -44,6 +46,7 @@ describe('ActivitiesService.ingest', () => {
   it('auto-registers a never-before-seen app as unclassified, not silently unattributed', async () => {
     const sqlMock = jest.fn()
       .mockResolvedValueOnce([])                        // application_registry lookup -- empty
+      .mockResolvedValueOnce([])                        // workforce_privacy_settings lookup
       .mockResolvedValueOnce([{ id: 'app-new-1' }])      // auto-register INSERT ... RETURNING id
       .mockResolvedValueOnce([{ id: 'activity-1' }]);
     const { svc } = makeService(sqlMock);
@@ -52,12 +55,12 @@ describe('ActivitiesService.ingest', () => {
       { applicationNameRaw: 'SomeNewTool.exe', activityType: 'ENGINEERING', startedAt: '2026-01-01T09:00:00.000Z', endedAt: '2026-01-01T09:30:00.000Z' },
     ]));
 
-    const registerCall = sqlMock.mock.calls[1];
+    const registerCall = sqlMock.mock.calls[2];
     const registerQueryText = (registerCall[0] as string[]).join('');
     expect(registerQueryText).toContain('INSERT INTO application_registry');
     expect(registerQueryText).toContain('unclassified');
 
-    const insertCall = sqlMock.mock.calls[2];
+    const insertCall = sqlMock.mock.calls[3];
     // Positional args after the strings array on the activities INSERT:
     // companyId, userId, deviceId, clientEventId, applicationId, ...
     expect(insertCall[5]).toBe('app-new-1');
@@ -66,8 +69,9 @@ describe('ActivitiesService.ingest', () => {
   it('registers a new app name only once per batch, reusing it for later items with the same name', async () => {
     const sqlMock = jest.fn()
       .mockResolvedValueOnce([])                     // application_registry lookup -- empty
-      .mockResolvedValueOnce([{ id: 'app-new-1' }])   // auto-register (first item only)
-      .mockResolvedValueOnce([{ id: 'activity-1' }])  // first item's activity insert
+      .mockResolvedValueOnce([])                     // workforce_privacy_settings lookup
+      .mockResolvedValueOnce([{ id: 'app-new-1' }])  // auto-register (first item only)
+      .mockResolvedValueOnce([{ id: 'activity-1' }]) // first item's activity insert
       .mockResolvedValueOnce([{ id: 'activity-2' }]); // second item's activity insert -- no second registry INSERT
     const { svc } = makeService(sqlMock);
 
@@ -77,13 +81,14 @@ describe('ActivitiesService.ingest', () => {
     ]));
 
     expect(result).toEqual({ total: 2, inserted: 2, duplicates: 0, rejected: 0 });
-    expect(sqlMock).toHaveBeenCalledTimes(4);
+    expect(sqlMock).toHaveBeenCalledTimes(5);
   });
 
   it('treats a retried (deviceId, clientEventId) pair as a no-op duplicate, not an error', async () => {
     const sqlMock = jest.fn()
       .mockResolvedValueOnce([{ id: 'device-1' }])  // devices lookup: device is owned by this user
       .mockResolvedValueOnce([])                     // application_registry lookup
+      .mockResolvedValueOnce([])                     // workforce_privacy_settings lookup
       .mockResolvedValueOnce([{ id: 'app-new-1' }])  // auto-register
       .mockResolvedValueOnce([]);                    // INSERT ... ON CONFLICT DO NOTHING -> no row returned
     const { svc } = makeService(sqlMock);
@@ -100,8 +105,8 @@ describe('ActivitiesService.ingest', () => {
 
   it('rejects an item with an invalid time range without ever touching the database insert', async () => {
     const sqlMock = jest.fn()
-      .mockResolvedValueOnce([]) // application_registry lookup only -- no deviceId requested
-      .mockResolvedValueOnce([{ id: 'should-not-be-reached' }]);
+      .mockResolvedValueOnce([]) // application_registry lookup -- no deviceId requested
+      .mockResolvedValueOnce([]); // workforce_privacy_settings lookup -- looked up once per batch regardless of any item's validity
     const { svc } = makeService(sqlMock);
 
     const result = await svc.ingest(companyId, userId, ingestDto([
@@ -109,14 +114,15 @@ describe('ActivitiesService.ingest', () => {
     ]));
 
     expect(result).toEqual({ total: 1, inserted: 0, duplicates: 0, rejected: 1 });
-    // Only the application_registry lookup ran -- the rejected item never reached auto-registration or an INSERT call.
-    expect(sqlMock).toHaveBeenCalledTimes(1);
+    // Only the two per-batch lookups ran -- the rejected item never reached auto-registration or an INSERT call.
+    expect(sqlMock).toHaveBeenCalledTimes(2);
   });
 
   it('never trusts a deviceId that does not belong to the ingesting user (writes device_id as null instead)', async () => {
     const sqlMock = jest.fn()
       .mockResolvedValueOnce([]) // devices lookup: the requested device is NOT owned by this user -> empty
       .mockResolvedValueOnce([]) // application_registry lookup
+      .mockResolvedValueOnce([]) // workforce_privacy_settings lookup
       .mockResolvedValueOnce([{ id: 'app-new-1' }]) // auto-register
       .mockResolvedValueOnce([{ id: 'activity-1' }]);
     const { svc } = makeService(sqlMock);
@@ -128,38 +134,79 @@ describe('ActivitiesService.ingest', () => {
       },
     ]));
 
-    const insertCall = sqlMock.mock.calls[3];
+    const insertCall = sqlMock.mock.calls[4];
     // Positional args after the strings array: companyId, userId, deviceId, clientEventId, ...
     expect(insertCall[3]).toBeNull(); // deviceId written as null, not the spoofed id
   });
 
-  it('force-redacts application name/domain/metadata for a PRIVATE item, regardless of what the client actually sent', async () => {
+  it('force-redacts application name/domain/metadata/window title for a PRIVATE item, regardless of what the client actually sent', async () => {
     // No application_registry lookup call happens here beyond ingest()'s
     // initial one -- a PRIVATE item never calls resolveOrRegisterApplicationId,
     // so there's no auto-registration INSERT to mock.
     const sqlMock = jest.fn()
-      .mockResolvedValueOnce([])                     // application_registry lookup (ingest's initial appRows)
-      .mockResolvedValueOnce([{ id: 'activity-1' }]); // INSERT activities ... RETURNING id
+      .mockResolvedValueOnce([])                                        // application_registry lookup (ingest's initial appRows)
+      .mockResolvedValueOnce([{ windowTitleEnabled: true }])            // workforce_privacy_settings -- window titles ARE enabled company-wide
+      .mockResolvedValueOnce([{ id: 'activity-1' }]);                   // INSERT activities ... RETURNING id
     const { svc } = makeService(sqlMock);
 
     const result = await svc.ingest(companyId, userId, ingestDto([
       {
         applicationNameRaw: 'gmail.com (Personal Inbox)', domain: 'gmail.com', activityType: 'PRIVATE',
+        windowTitle: 'Re: salary negotiation - Gmail',
         rawMetadata: { windowTitle: 'Re: salary negotiation' },
         startedAt: '2026-01-01T09:00:00.000Z', endedAt: '2026-01-01T09:30:00.000Z',
       },
     ]));
 
     expect(result).toEqual({ total: 1, inserted: 1, duplicates: 0, rejected: 0 });
-    expect(sqlMock).toHaveBeenCalledTimes(2); // never touched application_registry beyond the initial lookup
+    expect(sqlMock).toHaveBeenCalledTimes(3); // never touched application_registry beyond the initial lookup
 
-    const insertCall = sqlMock.mock.calls[1];
+    const insertCall = sqlMock.mock.calls[2];
     // Positional args after the strings array on the activities INSERT:
     // companyId, userId, deviceId, clientEventId, applicationId, applicationNameRaw, domain, activityType, ...
     expect(insertCall[5]).toBeNull();          // applicationId -- never classified, never auto-registered
     expect(insertCall[6]).toBe('Private');     // applicationNameRaw -- the real value never reaches storage
     expect(insertCall[7]).toBeNull();          // domain -- also redacted
     expect(insertCall[12]).toBe('{}');         // rawMetadata -- the window title never reaches storage either
+    expect(insertCall[13]).toBeNull();         // windowTitle -- redacted even though the company has the feature enabled
+  });
+
+  it('persists windowTitle only when the company has window_title_enabled on', async () => {
+    const sqlMock = jest.fn()
+      .mockResolvedValueOnce([])                              // application_registry lookup
+      .mockResolvedValueOnce([{ windowTitleEnabled: true }])  // workforce_privacy_settings
+      .mockResolvedValueOnce([{ id: 'app-1' }])               // auto-register
+      .mockResolvedValueOnce([{ id: 'activity-1' }]);
+    const { svc } = makeService(sqlMock);
+
+    await svc.ingest(companyId, userId, ingestDto([
+      {
+        applicationNameRaw: 'Excel', windowTitle: 'Q3-Budget.xlsx - Excel', activityType: 'ACTIVE',
+        startedAt: '2026-01-01T09:00:00.000Z', endedAt: '2026-01-01T09:30:00.000Z',
+      },
+    ]));
+
+    const insertCall = sqlMock.mock.calls[3];
+    expect(insertCall[13]).toBe('Q3-Budget.xlsx - Excel');
+  });
+
+  it('drops windowTitle when the company does not have window_title_enabled on, even though the client sent one', async () => {
+    const sqlMock = jest.fn()
+      .mockResolvedValueOnce([])                               // application_registry lookup
+      .mockResolvedValueOnce([{ windowTitleEnabled: false }])  // workforce_privacy_settings -- explicitly off
+      .mockResolvedValueOnce([{ id: 'app-1' }])                // auto-register
+      .mockResolvedValueOnce([{ id: 'activity-1' }]);
+    const { svc } = makeService(sqlMock);
+
+    await svc.ingest(companyId, userId, ingestDto([
+      {
+        applicationNameRaw: 'Excel', windowTitle: 'Q3-Budget.xlsx - Excel', activityType: 'ACTIVE',
+        startedAt: '2026-01-01T09:00:00.000Z', endedAt: '2026-01-01T09:30:00.000Z',
+      },
+    ]));
+
+    const insertCall = sqlMock.mock.calls[3];
+    expect(insertCall[13]).toBeNull();
   });
 });
 

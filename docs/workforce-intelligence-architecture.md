@@ -261,16 +261,24 @@ Design for the eventual agent:
   active-window libraries cover the Windows/macOS active-app/idle
   signals needed.
 - **Signal set (configurable, off by default beyond the minimum)**:
-  active application name + window title category (not full title, to
-  avoid capturing document contents in the title bar), idle/active state
-  (via OS idle-time API, not synthetic), domain (browser extension,
-  optional, off by default), heartbeat, agent version, device
-  fingerprint (hashed, not raw hardware IDs). Screenshots and keystroke
-  logging are **not** built, and are represented in the schema (see the
-  data model doc's `workforce_privacy_settings.screenshot_enabled`)
-  purely as a policy switch a company could one day opt into with
-  its own dedicated capture pipeline and explicit consent flow — no
-  code path for actually capturing a screenshot exists in this MVP.
+  active application name, idle/active state (via OS idle-time API, not
+  synthetic), domain (browser extension, optional, off by default),
+  heartbeat, agent version, device fingerprint (hashed, not raw hardware
+  IDs). Screenshots are gated by `workforce_privacy_settings.
+  screenshot_enabled` (off by default) and a real capture pipeline now
+  exists (`apps/agent`'s screenshot cycle) behind it.
+  **Window title, update**: this originally called for a title *category*
+  rather than the full title, specifically to avoid capturing document
+  names/email subjects. At explicit later product direction, the actual
+  raw title is captured instead (matching what DeskTime/Hubstaff/
+  ActivTrak/Time Doctor all disclose doing, per this doc's own
+  competitive research) — gated by its own dedicated, off-by-default
+  switch (`workforce_privacy_settings.window_title_enabled`, migration
+  042), enforced server-side regardless of client, same treatment as
+  screenshots, and never captured during Private Time. A title-category
+  classifier remains a more conservative option nobody has built; this is
+  a deliberate choice to match the raw-title behavior actually normal for
+  this product category, not an oversight of the original design.
 - **Offline-first queue**: local encrypted append-only log (SQLite or
   flat file with OS keychain-backed encryption key), flushed via the
   batched `/activities/ingest` endpoint on a timer + on reconnect.

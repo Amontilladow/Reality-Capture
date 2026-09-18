@@ -20,6 +20,13 @@ export interface IngestActivityItem {
   activityType: ActivityType;
   startedAt: string;
   endedAt: string;
+  // Sent whenever ActivityTracker captured one -- the server decides
+  // whether to actually persist it (workforce_privacy_settings.
+  // window_title_enabled, off by default) or force-drop it, the same
+  // trust model as PRIVATE_APPLICATION_NAME redaction above: this agent
+  // never assumes the company's setting, the API is the sole enforcement
+  // point.
+  windowTitle?: string;
 }
 
 export interface AgentConfig {

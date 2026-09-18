@@ -28,6 +28,13 @@ export class IngestActivityItemDto {
   @IsOptional() @IsString() @MaxLength(255)
   domain?: string;
 
+  // The active window's title bar text. Only ever persisted server-side
+  // when the company has workforce_privacy_settings.window_title_enabled
+  // on and this item isn't 'PRIVATE' -- see ActivitiesService.insertOne(),
+  // which force-drops this field regardless of what's sent here otherwise.
+  @IsOptional() @IsString() @MaxLength(500)
+  windowTitle?: string;
+
   @IsDateString() startedAt: string;
   @IsDateString() endedAt: string;
 

@@ -38,12 +38,18 @@ export class ActivitiesService {
       const appRows = await sql`SELECT id, match_pattern FROM application_registry WHERE is_active = true`;
       const appIdByPattern = new Map(appRows.map(r => [String(r.matchPattern).toLowerCase(), r.id as string]));
 
+      // Looked up once per batch (the setting can't change mid-batch),
+      // not per item -- same "one extra query per ingest call, not per
+      // item" shape as appRows above.
+      const [privacySettings] = await sql`SELECT window_title_enabled FROM workforce_privacy_settings WHERE company_id = ${companyId}`;
+      const windowTitleEnabled = !!privacySettings?.windowTitleEnabled;
+
       let inserted = 0;
       let duplicates = 0;
       let rejected = 0;
 
       for (const item of items) {
-        const row = await this.insertOne(sql, companyId, userId, item, ownedDeviceIds, appIdByPattern);
+        const row = await this.insertOne(sql, companyId, userId, item, ownedDeviceIds, appIdByPattern, windowTitleEnabled);
         if (row === 'rejected') rejected++;
         else if (row === 'duplicate') duplicates++;
         else inserted++;
@@ -95,6 +101,7 @@ export class ActivitiesService {
     item: IngestActivityItemDto,
     ownedDeviceIds: Set<string>,
     appIdByPattern: Map<string, string>,
+    windowTitleEnabled: boolean,
   ): Promise<'inserted' | 'duplicate' | 'rejected'> {
     const startedAt = new Date(item.startedAt);
     const endedAt = new Date(item.endedAt);
@@ -116,15 +123,20 @@ export class ActivitiesService {
     const applicationNameRaw = isPrivate ? PRIVATE_APPLICATION_NAME : item.applicationNameRaw;
     const domain = isPrivate ? null : (item.domain ?? null);
     const rawMetadata = isPrivate ? '{}' : (item.rawMetadata ? JSON.stringify(item.rawMetadata) : '{}');
+    // Same enforcement shape as screenshots (ScreenshotsService.
+    // assertScreenshotsEnabled): the literal switch is company-wide and
+    // server-side, never trusted from the client, and never captured
+    // during Private Time regardless of the company setting.
+    const windowTitle = (isPrivate || !windowTitleEnabled) ? null : (item.windowTitle ?? null);
 
     const [row] = await sql`
       INSERT INTO activities (
         company_id, user_id, device_id, client_event_id, application_id, application_name_raw,
-        domain, activity_type, started_at, ended_at, duration_seconds, source, raw_metadata
+        domain, activity_type, started_at, ended_at, duration_seconds, source, raw_metadata, window_title
       ) VALUES (
         ${companyId}, ${userId}, ${deviceId}, ${item.clientEventId ?? null}, ${applicationId}, ${applicationNameRaw},
         ${domain}, ${item.activityType}, ${startedAt.toISOString()}, ${endedAt.toISOString()}, ${durationSeconds}, 'agent',
-        ${rawMetadata}
+        ${rawMetadata}, ${windowTitle}
       )
       ON CONFLICT (device_id, client_event_id) WHERE device_id IS NOT NULL AND client_event_id IS NOT NULL DO NOTHING
       RETURNING id`;
@@ -179,7 +191,7 @@ export class ActivitiesService {
       const rows = await sql`
         SELECT
           a.id, a.started_at, a.ended_at, a.duration_seconds, a.activity_type,
-          a.application_name_raw, ar.name AS application_name,
+          a.application_name_raw, a.window_title, ar.name AS application_name,
           apa.project_id, apa.confidence AS attribution_confidence, apa.method AS attribution_method,
           p.name AS project_name
         FROM activities a
