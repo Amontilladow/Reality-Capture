@@ -99,3 +99,24 @@ export function listApplications() {
 export function updateApplicationClassification(id: string, productivityClassification: ProductivityClassification) {
   return apiPatch<ApplicationRegistryEntry>(`/workforce/applications/${id}`, { productivityClassification });
 }
+
+export interface CompanyReportRow {
+  userId: string;
+  name: string;
+  companyRole: string;
+  totalActiveSeconds: number;
+  engineeringShare: number;
+  productiveSeconds: number;
+  unproductiveSeconds: number;
+  neutralSeconds: number;
+  unclassifiedSeconds: number;
+  productivityRatio: number;
+}
+
+// company_admin+ only (enforced server-side) -- one row per active company
+// user for the given period, company-wide (not reporting-chain-scoped like
+// getMyActivitySummary/getMyProductivityScore). DeskTime's own "Reports"
+// screen.
+export function getCompanyReport(params?: { from?: string; to?: string }) {
+  return apiGet<CompanyReportRow[]>('/workforce/reports/company-summary', { params });
+}

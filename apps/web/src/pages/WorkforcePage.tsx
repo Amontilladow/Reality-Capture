@@ -7,7 +7,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import {
   getMyActivitySummary, getMyProductivityScore, getWorkforcePrivacySettings, attributeActivity,
   getMyTeam, listReportingLines, setReportingLine, updateWorkforcePrivacySettings, getMyScreenshots,
-  listApplications, updateApplicationClassification,
+  listApplications, updateApplicationClassification, getCompanyReport, type CompanyReportRow,
 } from '../lib/workforce.api';
 import { listProjects } from '../lib/projects.api';
 import { listUsers } from '../lib/users.api';
@@ -300,6 +300,7 @@ export default function WorkforcePage() {
             <PrivacySettingsAdmin />
             <ReportingLinesAdmin />
             <ApplicationsAdmin />
+            <CompanyReportAdmin from={from} to={to} />
           </>
         )}
       </div>
@@ -511,6 +512,84 @@ const STAT_TILE_TONE_CLASS: Record<string, string> = {
   danger: 'text-danger',
   warn: 'text-warn',
 };
+
+// Builds a CSV blob client-side from already-fetched report rows and
+// triggers a browser download -- DeskTime's own "export report" button.
+// No server-side export endpoint needed since the JSON the page already
+// has is the same data a CSV would contain.
+function downloadCompanyReportCsv(rows: CompanyReportRow[], from: string, to: string) {
+  const header = ['Name', 'Role', 'Tracked time (h)', 'Productive (h)', 'Neutral (h)', 'Unproductive (h)', 'Unclassified (h)', 'Productive %'];
+  const toHours = (seconds: number) => (seconds / 3600).toFixed(2);
+  const lines = rows.map((r) => [
+    r.name, r.companyRole, toHours(r.totalActiveSeconds), toHours(r.productiveSeconds),
+    toHours(r.neutralSeconds), toHours(r.unproductiveSeconds), toHours(r.unclassifiedSeconds),
+    Math.round(r.productivityRatio * 100).toString(),
+  ]);
+  // Quote every field and escape embedded quotes -- a name/role containing
+  // a comma must never silently shift columns in the exported file.
+  const csv = [header, ...lines].map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `workforce-report_${from.slice(0, 10)}_${to.slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Company-wide report (admin) -- every active employee's tracked and
+// productive/neutral/unproductive time for the shared page range, plus a
+// CSV export button. DeskTime's own "Reports" screen; unlike the rest of
+// this page (self-view or one team member at a time), this is
+// deliberately the whole company at once, since it's an admin/payroll/
+// compliance artifact rather than a manager's team view.
+function CompanyReportAdmin({ from, to }: { from: string; to: string }) {
+  const reportQuery = useQuery({ queryKey: ['workforce', 'reports', 'company-summary', from, to], queryFn: () => getCompanyReport({ from, to }) });
+  const rows = reportQuery.data ?? [];
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Company report (admin)</h2>
+        {rows.length > 0 && (
+          <button className="btn-secondary !py-1 !px-3 !text-xs" onClick={() => downloadCompanyReportCsv(rows, from, to)}>
+            Export CSV
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-ink-500">Every active employee's tracked and productive time for the same period shown above.</p>
+      {reportQuery.isLoading && <p className="text-sm text-ink-500">Loading report…</p>}
+      {reportQuery.isError && <p className="field-error">{apiErrorMessage(reportQuery.error)}</p>}
+      {rows.length > 0 && (
+        <div className="panel tick-frame overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-ink-500 border-b border-base-600">
+                <th className="px-4 py-2.5 font-medium">Employee</th>
+                <th className="px-4 py-2.5 font-medium">Tracked time</th>
+                <th className="px-4 py-2.5 font-medium">Productive</th>
+                <th className="px-4 py-2.5 font-medium">Unproductive</th>
+                <th className="px-4 py-2.5 font-medium">Productive %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.userId} className="border-b border-base-700/60 last:border-0">
+                  <td className="px-4 py-2.5">{r.name} <span className="text-ink-500">· {r.companyRole}</span></td>
+                  <td className="px-4 py-2.5 text-ink-300 tabular-nums">{formatHm(r.totalActiveSeconds)}</td>
+                  <td className="px-4 py-2.5 text-ok tabular-nums">{formatHm(r.productiveSeconds)}</td>
+                  <td className="px-4 py-2.5 text-danger tabular-nums">{formatHm(r.unproductiveSeconds)}</td>
+                  <td className="px-4 py-2.5 text-ink-300 tabular-nums">{pct(r.productivityRatio)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
 
 function StatTile({ label, value, tone }: { label: string; value: string; tone?: 'signal' | 'ok' | 'danger' | 'warn' }) {
   return (
