@@ -641,6 +641,68 @@ describe('RfisService', () => {
     });
   });
 
+  describe('markDrawingSentToSite', () => {
+    it("stamps sent_to_site_at/sent_to_site_by and writes 'rfi.drawing_sent_to_site'", async () => {
+      const { svc, calls } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, subject: 'Subj', drawingImpactLevel: 'yes', drawingUpdateSentToSite: false }];
+        }
+        if (text.includes('drawing_update_sent_to_site    = true')) {
+          return [{ id: rfiId, drawingUpdateSentToSite: true }];
+        }
+        return undefined;
+      });
+
+      const result = await svc.markDrawingSentToSite(companyId, projectId, rfiId, 'user-1');
+
+      expect(result.drawingUpdateSentToSite).toBe(true);
+      const auditCall = calls.find((c) => c.text.includes('INSERT INTO audit_log'));
+      expect(auditCall!.values[3]).toBe('rfi.drawing_sent_to_site');
+    });
+
+    it("rejects a 'no'-impact RFI", async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, subject: 'Subj', drawingImpactLevel: 'no' }];
+        }
+        return undefined;
+      });
+
+      await expect(svc.markDrawingSentToSite(companyId, projectId, rfiId, 'user-1')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('markDrawingNotSentToSite', () => {
+    it("clears sent_to_site_at/sent_to_site_by and writes 'rfi.drawing_not_sent_to_site'", async () => {
+      const { svc, calls } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, subject: 'Subj', drawingImpactLevel: 'yes', drawingUpdateSentToSite: true }];
+        }
+        if (text.includes('drawing_update_sent_to_site    = false')) {
+          return [{ id: rfiId, drawingUpdateSentToSite: false }];
+        }
+        return undefined;
+      });
+
+      const result = await svc.markDrawingNotSentToSite(companyId, projectId, rfiId, 'user-1');
+
+      expect(result.drawingUpdateSentToSite).toBe(false);
+      const auditCall = calls.find((c) => c.text.includes('INSERT INTO audit_log'));
+      expect(auditCall!.values[3]).toBe('rfi.drawing_not_sent_to_site');
+    });
+
+    it("rejects a 'no'-impact RFI", async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, subject: 'Subj', drawingImpactLevel: 'no' }];
+        }
+        return undefined;
+      });
+
+      await expect(svc.markDrawingNotSentToSite(companyId, projectId, rfiId, 'user-1')).rejects.toThrow(BadRequestException);
+    });
+  });
+
   describe('remindDrawingUpdate', () => {
     it('notifies drawing_update_owner_id when one is set', async () => {
       const { svc, notifications } = makeService((text) => {

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { RfiPriority, RfiDiscipline, RfiImpactLevel } from '@engineeringos/types';
-import { RFI_DISCIPLINES, RFI_DISCIPLINE_LABELS, RFI_IMPACT_LEVELS, RFI_IMPACT_LEVEL_LABELS } from '@engineeringos/types';
+import {
+  RFI_DISCIPLINES, RFI_DISCIPLINE_LABELS, RFI_IMPACT_LEVELS, RFI_IMPACT_LEVEL_LABELS, DRAWING_UPDATE_STATUS_LABELS,
+} from '@engineeringos/types';
 import { Modal } from './ui/Modal';
 import { RichTextEditor, isRichTextEmpty } from './ui/RichTextEditor';
 import { createRfi } from '../lib/rfis.api';
@@ -230,12 +232,15 @@ export function RfiFormModal({
           )}
         </div>
 
-        {/* Drawing impact -- same 4-state shape as cost/time above, but no
-            amount/currency-or-days companion field, just level + description
-            + a drawing-update owner (only meaningfully shown once level isn't
-            'no'). */}
+        {/* Drawing/Model Updated -- same 4-state shape as cost/time above,
+            but with its own field-specific wording ('potential'/'tbd' are
+            two distinct reasons an update is still undecided, not a
+            generic "maybe" -- see DRAWING_UPDATE_STATUS_LABELS) and no
+            amount/currency-or-days companion field, just status +
+            description + a drawing-update owner (only meaningfully shown
+            once status isn't 'no'). */}
         <div className="space-y-2">
-          <label className="field-label" htmlFor="drawingImpactLevel">Drawing impact</label>
+          <label className="field-label" htmlFor="drawingImpactLevel">Drawing/Model Updated</label>
           <select
             id="drawingImpactLevel"
             className="field-input"
@@ -249,14 +254,14 @@ export function RfiFormModal({
             }}
           >
             {RFI_IMPACT_LEVELS.map((l) => (
-              <option key={l} value={l}>{RFI_IMPACT_LEVEL_LABELS[l]}</option>
+              <option key={l} value={l}>{DRAWING_UPDATE_STATUS_LABELS[l]}</option>
             ))}
           </select>
           {drawingImpactLevel !== 'no' && (
             <div className="space-y-2">
               <textarea
                 className="field-input min-h-[64px]"
-                placeholder="Drawing impact description…"
+                placeholder="Drawing/model update description…"
                 value={drawingImpactDescription}
                 onChange={(e) => setDrawingImpactDescription(e.target.value)}
               />

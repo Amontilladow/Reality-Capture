@@ -150,6 +150,14 @@ export function markRfiDrawingNotApplied(projectId: string, rfiId: string) {
   return apiPost<RfiListItem>(`/projects/${projectId}/rfis/${rfiId}/drawing-update/mark-not-applied`);
 }
 
+export function markRfiDrawingSentToSite(projectId: string, rfiId: string) {
+  return apiPost<RfiListItem>(`/projects/${projectId}/rfis/${rfiId}/drawing-update/mark-sent-to-site`);
+}
+
+export function markRfiDrawingNotSentToSite(projectId: string, rfiId: string) {
+  return apiPost<RfiListItem>(`/projects/${projectId}/rfis/${rfiId}/drawing-update/mark-not-sent-to-site`);
+}
+
 export function remindRfiDrawingUpdate(projectId: string, rfiId: string) {
   return apiPost<{ message: string }>(`/projects/${projectId}/rfis/${rfiId}/remind-drawing-update`);
 }

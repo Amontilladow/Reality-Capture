@@ -55,6 +55,20 @@ export const RFI_IMPACT_LEVEL_LABELS: Record<RfiImpactLevel, string> = {
   tbd: 'TBD',
 };
 
+// Same underlying 4-state values as RfiImpactLevel above (no schema change,
+// no new enum values -- see migration 044/045) but with the field-specific
+// wording requested for "Drawing/Model Updated": 'potential'/'tbd' aren't
+// generic "maybe" states here, they're two distinct reasons a drawing/model
+// update is still undecided. Kept as its own label map rather than
+// overloading RFI_IMPACT_LEVEL_LABELS, which cost/time impact still use
+// unchanged.
+export const DRAWING_UPDATE_STATUS_LABELS: Record<RfiImpactLevel, string> = {
+  no: 'No',
+  yes: 'Yes',
+  potential: 'TBC (Awaiting Engineer Decision)',
+  tbd: 'TBC (Subject to Time/Cost Approval)',
+};
+
 // Five named stakeholder organization slots, one per project, each with its
 // own logo for the RFI PDF header (project_organizations table).
 export const PROJECT_ORGANIZATION_SLOTS = [
@@ -269,6 +283,13 @@ export interface Rfi {
   drawingUpdateApplied?: boolean;
   drawingUpdateAppliedAt?: string;
   drawingUpdateAppliedBy?: string;
+  // A separate milestone from drawingUpdateApplied (migration 045): whether
+  // the updated drawing/model was actually distributed to the site team,
+  // not just updated. Same "only means anything once drawingImpactLevel !=
+  // 'no'" rule.
+  drawingUpdateSentToSite?: boolean;
+  drawingUpdateSentToSiteAt?: string;
+  drawingUpdateSentToSiteBy?: string;
   queryStamp?: string;
   answerStamp?: string;
   assignedTo?: string;

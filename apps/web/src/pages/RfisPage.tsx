@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { RFI_DISCIPLINES, RFI_DISCIPLINE_LABELS, RFI_IMPACT_LEVELS, RFI_IMPACT_LEVEL_LABELS } from '@engineeringos/types';
+import {
+  RFI_DISCIPLINES, RFI_DISCIPLINE_LABELS, RFI_IMPACT_LEVELS, RFI_IMPACT_LEVEL_LABELS, DRAWING_UPDATE_STATUS_LABELS,
+} from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { RfiFormModal } from '../components/RfiFormModal';
 import { RfiNoticeLetterModal } from '../components/RfiNoticeLetterModal';
 import {
-  listRfis, getRfiSummary, markRfiDrawingApplied, markRfiDrawingNotApplied, remindRfiDrawingUpdate,
+  listRfis, getRfiSummary, markRfiDrawingApplied, markRfiDrawingNotApplied,
+  markRfiDrawingSentToSite, markRfiDrawingNotSentToSite, remindRfiDrawingUpdate,
   type RfiListItem,
 } from '../lib/rfis.api';
 import { getProject, getMembers } from '../lib/projects.api';
@@ -87,6 +90,13 @@ export default function RfisPage() {
   const toggleDrawingAppliedMutation = useMutation({
     mutationFn: ({ rfiId, applied }: { rfiId: string; applied: boolean }) =>
       applied ? markRfiDrawingNotApplied(projectId!, rfiId) : markRfiDrawingApplied(projectId!, rfiId),
+    onSuccess: invalidateDrawingViews,
+    onError: (err) => setDrawingActionError(apiErrorMessage(err)),
+  });
+
+  const toggleDrawingSentToSiteMutation = useMutation({
+    mutationFn: ({ rfiId, sent }: { rfiId: string; sent: boolean }) =>
+      sent ? markRfiDrawingNotSentToSite(projectId!, rfiId) : markRfiDrawingSentToSite(projectId!, rfiId),
     onSuccess: invalidateDrawingViews,
     onError: (err) => setDrawingActionError(apiErrorMessage(err)),
   });
@@ -198,7 +208,8 @@ export default function RfisPage() {
                   <th className="px-4 py-2.5 font-medium">Priority</th>
                   <th className="px-4 py-2.5 font-medium">Cost impact</th>
                   <th className="px-4 py-2.5 font-medium">Time impact</th>
-                  <th className="px-4 py-2.5 font-medium">Drawing impact</th>
+                  <th className="px-4 py-2.5 font-medium">Drawing/Model Updated</th>
+                  <th className="px-4 py-2.5 font-medium">Sent to Site</th>
                   <th className="px-4 py-2.5 font-medium">Assignee</th>
                   <th className="px-4 py-2.5 font-medium">Due</th>
                   <th className="px-4 py-2.5 font-medium">Aging</th>
@@ -244,10 +255,15 @@ export default function RfisPage() {
                       </td>
                       <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
                         {(r.drawingImpactLevel ?? 'no') === 'no' ? (
-                          <span className="text-ink-300">{RFI_IMPACT_LEVEL_LABELS.no}</span>
+                          <span className="text-ink-300">{DRAWING_UPDATE_STATUS_LABELS.no}</span>
                         ) : (
-                          <div className="flex items-center gap-1.5">
-                            <span className={DRAWING_IMPACT_BADGE_CLASS}>📐 Drawing</span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span
+                              className={DRAWING_IMPACT_BADGE_CLASS}
+                              title={DRAWING_UPDATE_STATUS_LABELS[r.drawingImpactLevel ?? 'no']}
+                            >
+                              {r.drawingImpactLevel === 'yes' ? 'Yes' : 'TBC'}
+                            </span>
                             <button
                               type="button"
                               onClick={() => toggleDrawingAppliedMutation.mutate({ rfiId: r.id, applied: Boolean(r.drawingUpdateApplied) })}
@@ -267,6 +283,20 @@ export default function RfisPage() {
                               </button>
                             )}
                           </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
+                        {(r.drawingImpactLevel ?? 'no') === 'no' ? (
+                          <span className="text-ink-500">—</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => toggleDrawingSentToSiteMutation.mutate({ rfiId: r.id, sent: Boolean(r.drawingUpdateSentToSite) })}
+                            disabled={toggleDrawingSentToSiteMutation.isPending}
+                            className={`badge cursor-pointer ${r.drawingUpdateSentToSite ? 'bg-ok/15 text-ok' : 'bg-base-600 text-ink-300'}`}
+                          >
+                            {r.drawingUpdateSentToSite ? '✓ Sent' : 'Not sent'}
+                          </button>
                         )}
                       </td>
                       <td className="px-4 py-2.5 text-ink-300">{r.assignedToName ?? 'Unassigned'}</td>

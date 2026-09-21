@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  RFI_DISCIPLINE_LABELS, RFI_IMPACT_LEVELS, RFI_IMPACT_LEVEL_LABELS, RFI_DOCUMENT_TYPES, RFI_DOCUMENT_TYPE_LABELS,
+  RFI_DISCIPLINE_LABELS, RFI_IMPACT_LEVELS, RFI_IMPACT_LEVEL_LABELS, DRAWING_UPDATE_STATUS_LABELS,
+  RFI_DOCUMENT_TYPES, RFI_DOCUMENT_TYPE_LABELS,
   PROJECT_ORGANIZATION_SLOTS, PROJECT_ORGANIZATION_SLOT_LABELS,
   RFI_EXTERNAL_ACCESS_ACTIONS, RFI_EXTERNAL_ACCESS_ACTION_LABELS,
   type RfiAttachmentKind, type RfiDocumentType, type ProjectOrganizationSlot, type RfiImpactLevel, type Rfi,
@@ -13,7 +14,8 @@ import { RichTextEditor, isRichTextEmpty } from '../components/ui/RichTextEditor
 import {
   getRfi, updateRfi, submitRfi, requestClarification, respondToRfi, closeRfi, reopenRfi,
   submitRfiForReview, decideRfiReview,
-  markRfiDrawingApplied, markRfiDrawingNotApplied, remindRfiDrawingUpdate,
+  markRfiDrawingApplied, markRfiDrawingNotApplied, markRfiDrawingSentToSite, markRfiDrawingNotSentToSite,
+  remindRfiDrawingUpdate,
   getRfiComments, addRfiComment, getRfiAttachments, uploadRfiAttachment, deleteRfiAttachment,
   type RfiAttachment,
 } from '../lib/rfis.api';
@@ -194,6 +196,16 @@ export default function RfiDetailPage() {
 
   const markDrawingNotAppliedMutation = useMutation({
     mutationFn: () => markRfiDrawingNotApplied(projectId!, rfiId!),
+    onSuccess: invalidateAll,
+  });
+
+  const markDrawingSentToSiteMutation = useMutation({
+    mutationFn: () => markRfiDrawingSentToSite(projectId!, rfiId!),
+    onSuccess: invalidateAll,
+  });
+
+  const markDrawingNotSentToSiteMutation = useMutation({
+    mutationFn: () => markRfiDrawingNotSentToSite(projectId!, rfiId!),
     onSuccess: invalidateAll,
   });
 
@@ -439,19 +451,33 @@ export default function RfiDetailPage() {
               <span className={`badge ${TIMER_BADGE_CLASS[dueTimer.state]}`} title={`Due ${formatDeadline(rfi.dueDate)}`}>
                 {dueTimer.label}
               </span>
-              {/* Drawing impact never shows any control at all when level
-                  is 'no' -- there is deliberately no third "not applicable"
-                  state to render around (see migration 044's own comment). */}
+              {/* Drawing/Model Updated never shows any control at all when
+                  status is 'no' -- there is deliberately no third "not
+                  applicable" state to render around (see migration 044's
+                  own comment). */}
               {(rfi.drawingImpactLevel ?? 'no') !== 'no' && (
                 <>
-                  <span className={DRAWING_IMPACT_BADGE_CLASS}>📐 Drawing impact</span>
+                  <span className={DRAWING_IMPACT_BADGE_CLASS}>
+                    Drawing/Model Updated: {DRAWING_UPDATE_STATUS_LABELS[rfi.drawingImpactLevel ?? 'no']}
+                  </span>
                   {canEditQuery && (
                     <button
                       onClick={() => (rfi.drawingUpdateApplied ? markDrawingNotAppliedMutation.mutate() : markDrawingAppliedMutation.mutate())}
                       disabled={markDrawingAppliedMutation.isPending || markDrawingNotAppliedMutation.isPending}
                       className={`badge ${rfi.drawingUpdateApplied ? 'bg-ok/15 text-ok' : 'bg-base-600 text-ink-300'} cursor-pointer`}
+                      title="Whether the drawing/model itself has been updated"
                     >
                       {rfi.drawingUpdateApplied ? '✓ Applied' : 'Not applied'}
+                    </button>
+                  )}
+                  {canEditQuery && (
+                    <button
+                      onClick={() => (rfi.drawingUpdateSentToSite ? markDrawingNotSentToSiteMutation.mutate() : markDrawingSentToSiteMutation.mutate())}
+                      disabled={markDrawingSentToSiteMutation.isPending || markDrawingNotSentToSiteMutation.isPending}
+                      className={`badge ${rfi.drawingUpdateSentToSite ? 'bg-ok/15 text-ok' : 'bg-base-600 text-ink-300'} cursor-pointer`}
+                      title="Whether the updated drawing/model has been sent to the site team"
+                    >
+                      {rfi.drawingUpdateSentToSite ? '✓ Sent to site' : 'Not sent to site'}
                     </button>
                   )}
                   {!rfi.drawingUpdateApplied && canManageRfis && (
@@ -467,6 +493,8 @@ export default function RfiDetailPage() {
               )}
             </div>
             {remindDrawingMutation.isError && <p className="field-error mt-1">{apiErrorMessage(remindDrawingMutation.error)}</p>}
+            {markDrawingSentToSiteMutation.isError && <p className="field-error mt-1">{apiErrorMessage(markDrawingSentToSiteMutation.error)}</p>}
+            {markDrawingNotSentToSiteMutation.isError && <p className="field-error mt-1">{apiErrorMessage(markDrawingNotSentToSiteMutation.error)}</p>}
           </div>
         </div>
 
@@ -525,11 +553,12 @@ export default function RfiDetailPage() {
                 />
                 <div>
                   <ImpactEditor
-                    title="Drawing impact"
+                    title="Drawing/Model Updated"
                     level={drawingImpactLevel}
                     onLevelChange={setDrawingImpactLevel}
                     description={drawingImpactDescription}
                     onDescriptionChange={setDrawingImpactDescription}
+                    labels={DRAWING_UPDATE_STATUS_LABELS}
                   />
                   {/* Only meaningfully shown once level isn't 'no', per the
                       ticket -- defaults to whoever assigned_to is already set
@@ -570,9 +599,10 @@ export default function RfiDetailPage() {
                 />
                 <div>
                   <ImpactSummary
-                    title="Drawing impact"
+                    title="Drawing/Model Updated"
                     level={rfi.drawingImpactLevel}
                     description={rfi.drawingImpactDescription}
+                    labels={DRAWING_UPDATE_STATUS_LABELS}
                   />
                   {(rfi.drawingImpactLevel ?? 'no') !== 'no' && (
                     <div className="mt-1.5 text-xs text-ink-500">
@@ -990,7 +1020,7 @@ function InfoRow({ label, value, mono }: { label: string; value: string; mono?: 
 }
 
 function ImpactSummary({
-  title, level, legacyBool, amount, currency, days, description,
+  title, level, legacyBool, amount, currency, days, description, labels = RFI_IMPACT_LEVEL_LABELS,
 }: {
   title: string;
   level?: 'no' | 'yes' | 'potential' | 'tbd';
@@ -999,6 +1029,11 @@ function ImpactSummary({
   currency?: string;
   days?: number;
   description?: string;
+  // Drawing/Model Updated uses its own field-specific wording (see
+  // DRAWING_UPDATE_STATUS_LABELS) for the same 4-state values -- defaults
+  // to the shared cost/time label set so those two call sites don't need
+  // to pass anything.
+  labels?: Record<'no' | 'yes' | 'potential' | 'tbd', string>;
 }) {
   // Falls back to the legacy boolean when the 4-state level field is absent
   // (RFIs created before this field existed) -- same precedence rfis.service.ts
@@ -1009,7 +1044,7 @@ function ImpactSummary({
     <div>
       <div className="text-xs text-ink-500 mb-1">{title}</div>
       <span className={`badge ${showDetails ? 'bg-warn/15 text-warn' : 'bg-base-600 text-ink-500'}`}>
-        {RFI_IMPACT_LEVEL_LABELS[effectiveLevel]}
+        {labels[effectiveLevel]}
       </span>
       {showDetails && (
         <div className="mt-1.5 text-sm text-ink-300 space-y-0.5">
@@ -1028,7 +1063,7 @@ function ImpactSummary({
 // same "showDetails" gate ImpactSummary already uses for display.
 function ImpactEditor({
   title, level, onLevelChange, amount, onAmountChange, currency, onCurrencyChange,
-  days, onDaysChange, description, onDescriptionChange,
+  days, onDaysChange, description, onDescriptionChange, labels = RFI_IMPACT_LEVEL_LABELS,
 }: {
   title: string;
   level: RfiImpactLevel;
@@ -1041,6 +1076,7 @@ function ImpactEditor({
   onDaysChange?: (value: string) => void;
   description: string;
   onDescriptionChange: (value: string) => void;
+  labels?: Record<RfiImpactLevel, string>;
 }) {
   const showDetails = level !== 'no';
   return (
@@ -1052,7 +1088,7 @@ function ImpactEditor({
         onChange={(e) => onLevelChange(e.target.value as RfiImpactLevel)}
       >
         {RFI_IMPACT_LEVELS.map((l) => (
-          <option key={l} value={l}>{RFI_IMPACT_LEVEL_LABELS[l]}</option>
+          <option key={l} value={l}>{labels[l]}</option>
         ))}
       </select>
       {showDetails && (
