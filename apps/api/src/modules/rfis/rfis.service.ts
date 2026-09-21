@@ -179,12 +179,14 @@ export class RfisService {
         u_c.first_name || ' ' || u_c.last_name AS created_by_name,
         u_a.first_name || ' ' || u_a.last_name AS assigned_to_name,
         u_ans.first_name || ' ' || u_ans.last_name AS answered_by_name,
-        u_dwg.first_name || ' ' || u_dwg.last_name AS drawing_update_owner_name
+        u_dwg.first_name || ' ' || u_dwg.last_name AS drawing_update_owner_name,
+        u_cl.first_name || ' ' || u_cl.last_name AS closed_by_name
       FROM rfis r
       LEFT JOIN users u_c ON u_c.id = r.created_by
       LEFT JOIN users u_a ON u_a.id = r.assigned_to
       LEFT JOIN users u_ans ON u_ans.id = r.answered_by
       LEFT JOIN users u_dwg ON u_dwg.id = r.drawing_update_owner_id
+      LEFT JOIN users u_cl ON u_cl.id = r.closed_by
       WHERE r.id = ${rfiId} AND r.project_id = ${projectId} AND r.company_id = ${companyId}
     `);
     if (!rfi) throw new NotFoundException(`RFI ${rfiId} not found.`);
@@ -1263,12 +1265,32 @@ export class RfisService {
     }
 
     const newStatus = dto.decision === 'approved' ? 'closed' : 'awaiting_clarification';
+    const isClosing = newStatus === 'closed';
     const metadata = (dto.comment || externalActor)
       ? { ...(dto.comment ? { comment: dto.comment } : {}), ...(externalActor ? { externalActor } : {}) }
       : null;
+    // DecideReviewDto is shared between the internal :id/decide-review route
+    // and the public /rfis/external/:token/review route (RfiExternalAccessService.
+    // reviewExternal()) -- dto.organizationSlot must never be trusted once
+    // externalActor is present, since that would let an external caller's own
+    // request body claim a different party than the link was actually issued
+    // for. Same "source it from the token, not client input" rule
+    // commentExternal() already applies to organizationSlot.
+    const closingOrganizationSlot = externalActor ? externalActor.organizationSlot : (dto.organizationSlot ?? null);
 
+    // Same "closed by whom, as which party" attribution as close() below --
+    // an approval is the other door that can transition an RFI to 'closed',
+    // so it needs the identical treatment for the summary line (§4) to hold
+    // regardless of which door was used. Only written when actually
+    // closing -- a rejection leaves these columns untouched.
     const [updated] = await this.db.withTenant(companyId, sql => sql`
-      UPDATE rfis SET status = ${newStatus}, updated_at = NOW()
+      UPDATE rfis SET
+        status                       = ${newStatus},
+        closed_at                    = CASE WHEN ${isClosing} THEN NOW() ELSE closed_at END,
+        closed_by                    = CASE WHEN ${isClosing} THEN ${userId}::uuid ELSE closed_by END,
+        closed_as_organization_slot  = CASE WHEN ${isClosing} THEN ${closingOrganizationSlot} ELSE closed_as_organization_slot END,
+        closed_by_external_email     = CASE WHEN ${isClosing} THEN ${externalActor?.recipientEmail ?? null} ELSE closed_by_external_email END,
+        updated_at                   = NOW()
       WHERE id = ${rfiId} AND project_id = ${projectId} AND company_id = ${companyId}
       RETURNING *
     `);
@@ -1302,7 +1324,24 @@ export class RfisService {
   // Manager: Full control, Close RFI" per spec) -- documented here as an
   // intentional broadening, not an oversight. Route-gated with
   // @RequireProjectPermission('manage_rfis').
-  async close(companyId: string, projectId: string, rfiId: string, userId: string) {
+  //
+  // organizationSlot/externalActor: same "closed by whom, as which party"
+  // attribution as decideReview()'s approve branch -- closed_at/closed_by
+  // have existed since migration 001 but were never written to before this.
+  // externalActor has no real caller today (there is no external 'close'
+  // action -- only respond/review/comment_only), but the trailing-optional
+  // param is added for the same reason respond()/decideReview()/addComment()
+  // already carry one: consistency, and so this method doesn't need
+  // reshaping if an external close front door is ever added later.
+  //
+  // reopen() is deliberately left untouched (out of scope) -- these four
+  // columns are NOT cleared on reopen, so a reopened-then-reclosed RFI's
+  // previous closer stays in the row (and the audit trail) until the next
+  // close() call overwrites them with the new close's attribution. The
+  // summary line (RfiDetailPage) only ever renders while status === 'closed',
+  // so stale attribution from before a reopen is never shown while the RFI
+  // is actually open again.
+  async close(companyId: string, projectId: string, rfiId: string, userId: string, organizationSlot?: string, externalActor?: ExternalActorAttribution) {
     const rfi = await this.findOne(companyId, projectId, rfiId);
     const oldStatus = rfi.status as string;
     if (RFI_TERMINAL_STATUSES.has(oldStatus)) {
@@ -1310,7 +1349,13 @@ export class RfisService {
     }
 
     const [updated] = await this.db.withTenant(companyId, sql => sql`
-      UPDATE rfis SET status = 'closed', updated_at = NOW()
+      UPDATE rfis SET
+        status                       = 'closed',
+        closed_at                    = NOW(),
+        closed_by                    = ${userId},
+        closed_as_organization_slot  = ${organizationSlot ?? null},
+        closed_by_external_email     = ${externalActor?.recipientEmail ?? null},
+        updated_at                   = NOW()
       WHERE id = ${rfiId} AND project_id = ${projectId} AND company_id = ${companyId}
       RETURNING *
     `);

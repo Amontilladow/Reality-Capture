@@ -358,7 +358,7 @@ describe('RfisService', () => {
         if (text.includes('FROM rfis r')) {
           return [{ id: rfiId, createdBy: 'user-owner', status: 'responded', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', assignedTo: null }];
         }
-        if (text.includes("UPDATE rfis SET status = 'closed'")) {
+        if (text.includes('closed_at')) {
           return [{ id: rfiId, status: 'closed' }];
         }
         return undefined;
@@ -381,6 +381,62 @@ describe('RfisService', () => {
       });
 
       await expect(svc.close(companyId, projectId, rfiId, 'user-reviewer')).rejects.toThrow(BadRequestException);
+    });
+
+    it('stamps closed_by/closed_at and the chosen organizationSlot -- the fields that have existed since migration 001 but were never written to before this', async () => {
+      const { svc, calls } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, createdBy: 'user-owner', status: 'responded', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', assignedTo: null }];
+        }
+        if (text.includes('closed_at')) {
+          return [{ id: rfiId, status: 'closed', closedBy: 'user-reviewer', closedAsOrganizationSlot: 'ldc' }];
+        }
+        return undefined;
+      });
+
+      await svc.close(companyId, projectId, rfiId, 'user-reviewer', 'ldc');
+
+      const updateCall = calls.find((c) => c.text.includes('closed_at'));
+      // values = [userId, organizationSlot, externalActorEmail, rfiId, projectId, companyId]
+      expect(updateCall!.values[0]).toBe('user-reviewer');
+      expect(updateCall!.values[1]).toBe('ldc');
+      expect(updateCall!.values[2]).toBeNull();
+    });
+
+    it('records the external actor email instead when closed through the external front door', async () => {
+      const { svc, calls } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, createdBy: 'user-owner', status: 'responded', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', assignedTo: null }];
+        }
+        if (text.includes('closed_at')) {
+          return [{ id: rfiId, status: 'closed' }];
+        }
+        return undefined;
+      });
+
+      await svc.close(companyId, projectId, rfiId, 'system-user-1', 'pmc', { recipientEmail: 'consultant@example.com', organizationSlot: 'pmc' });
+
+      const updateCall = calls.find((c) => c.text.includes('closed_at'));
+      expect(updateCall!.values[1]).toBe('pmc');
+      expect(updateCall!.values[2]).toBe('consultant@example.com');
+    });
+
+    it('leaves organizationSlot/externalActor null when the caller supplies neither -- the historical/backward-compatible case', async () => {
+      const { svc, calls } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, createdBy: 'user-owner', status: 'responded', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', assignedTo: null }];
+        }
+        if (text.includes('closed_at')) {
+          return [{ id: rfiId, status: 'closed' }];
+        }
+        return undefined;
+      });
+
+      await svc.close(companyId, projectId, rfiId, 'user-reviewer');
+
+      const updateCall = calls.find((c) => c.text.includes('closed_at'));
+      expect(updateCall!.values[1]).toBeNull();
+      expect(updateCall!.values[2]).toBeNull();
     });
   });
 
@@ -479,7 +535,7 @@ describe('RfisService', () => {
         if (text.includes('FROM rfis r')) {
           return [{ id: rfiId, createdBy: 'user-owner', status: 'under_review', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', assignedTo: null }];
         }
-        if (text.includes("UPDATE rfis SET status = ")) {
+        if (text.includes('closed_at')) {
           return [{ id: rfiId, status: 'closed' }];
         }
         return undefined;
@@ -498,7 +554,7 @@ describe('RfisService', () => {
         if (text.includes('FROM rfis r')) {
           return [{ id: rfiId, createdBy: 'user-owner', status: 'under_review', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', assignedTo: null }];
         }
-        if (text.includes("UPDATE rfis SET status = ")) {
+        if (text.includes('closed_at')) {
           return [{ id: rfiId, status: 'awaiting_clarification' }];
         }
         return undefined;
@@ -525,6 +581,51 @@ describe('RfisService', () => {
       await expect(
         svc.decideReview(companyId, projectId, rfiId, 'user-reviewer', { decision: 'approved' }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('stamps closed_by/closed_as_organization_slot on approval, the same attribution close() writes', async () => {
+      const { svc, calls } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, createdBy: 'user-owner', status: 'under_review', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', assignedTo: null }];
+        }
+        if (text.includes('closed_at')) {
+          return [{ id: rfiId, status: 'closed' }];
+        }
+        return undefined;
+      });
+
+      await svc.decideReview(companyId, projectId, rfiId, 'user-reviewer', { decision: 'approved', organizationSlot: 'client' });
+
+      const updateCall = calls.find((c) => c.text.includes('closed_at'));
+      // values = [newStatus, isClosing, isClosing, userId, isClosing, organizationSlot, isClosing, externalEmail, rfiId, projectId, companyId]
+      expect(updateCall!.values[3]).toBe('user-reviewer');
+      expect(updateCall!.values[5]).toBe('client');
+      expect(updateCall!.values[7]).toBeNull();
+    });
+
+    it("never trusts the external caller's own dto.organizationSlot -- sources it from the token's externalActor instead, the same rule commentExternal() already applies", async () => {
+      const { svc, calls } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, createdBy: 'user-owner', status: 'under_review', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', assignedTo: null }];
+        }
+        if (text.includes('closed_at')) {
+          return [{ id: rfiId, status: 'closed' }];
+        }
+        return undefined;
+      });
+
+      // A malicious/mistaken external request body claims 'ldc', but the
+      // link was actually issued for 'pmc' -- the token's own attribution
+      // must win.
+      await svc.decideReview(
+        companyId, projectId, rfiId, 'system-user-1',
+        { decision: 'approved', organizationSlot: 'ldc' },
+        { recipientEmail: 'consultant@example.com', organizationSlot: 'pmc' },
+      );
+
+      const updateCall = calls.find((c) => c.text.includes('closed_at'));
+      expect(updateCall!.values[5]).toBe('pmc');
+      expect(updateCall!.values[7]).toBe('consultant@example.com');
     });
   });
 

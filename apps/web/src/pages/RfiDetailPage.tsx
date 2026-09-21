@@ -64,6 +64,13 @@ export default function RfiDetailPage() {
   const [commentOrgSlot, setCommentOrgSlot] = useState<ProjectOrganizationSlot | ''>('');
   const [reviewRejectOpen, setReviewRejectOpen] = useState(false);
   const [reviewRejectComment, setReviewRejectComment] = useState('');
+  // Which party is closing this RFI -- shared between the "Close RFI" and
+  // review-approve buttons since only one can apply to a given RFI at a
+  // time (an RFI is either closed directly or via an approved review, never
+  // both). Required by the UI (buttons stay disabled until set) but stays
+  // optional at the API/DTO level -- see CloseRfiDto/DecideReviewDto's own
+  // comments for why.
+  const [closingOrgSlot, setClosingOrgSlot] = useState<ProjectOrganizationSlot | ''>('');
 
   // External access ("send for external response/review") -- link generation form.
   const [extAction, setExtAction] = useState<RfiExternalAccessAction>('respond');
@@ -235,7 +242,7 @@ export default function RfiDetailPage() {
   });
 
   const closeMutation = useMutation({
-    mutationFn: () => closeRfi(projectId!, rfiId!),
+    mutationFn: () => closeRfi(projectId!, rfiId!, { organizationSlot: closingOrgSlot || undefined }),
     onSuccess: invalidateAll,
   });
 
@@ -250,7 +257,8 @@ export default function RfiDetailPage() {
   });
 
   const decideReviewMutation = useMutation({
-    mutationFn: (payload: { decision: 'approved' | 'rejected'; comment?: string }) => decideRfiReview(projectId!, rfiId!, payload),
+    mutationFn: (payload: { decision: 'approved' | 'rejected'; comment?: string; organizationSlot?: ProjectOrganizationSlot }) =>
+      decideRfiReview(projectId!, rfiId!, payload),
     onSuccess: () => {
       setReviewRejectOpen(false);
       setReviewRejectComment('');
@@ -495,6 +503,17 @@ export default function RfiDetailPage() {
             {remindDrawingMutation.isError && <p className="field-error mt-1">{apiErrorMessage(remindDrawingMutation.error)}</p>}
             {markDrawingSentToSiteMutation.isError && <p className="field-error mt-1">{apiErrorMessage(markDrawingSentToSiteMutation.error)}</p>}
             {markDrawingNotSentToSiteMutation.isError && <p className="field-error mt-1">{apiErrorMessage(markDrawingNotSentToSiteMutation.error)}</p>}
+            {/* Who closed it, as which party -- historical RFIs closed before
+                this shipped have all four fields null and render nothing
+                extra here, no placeholder/error. Additive only -- the
+                audit-events timeline below is untouched. */}
+            {rfi.status === 'closed' && rfi.closedAt && (
+              <p className="text-xs text-ink-500 mt-1">
+                Closed by {rfi.closedByName ?? rfi.closedByExternalEmail ?? 'Unknown'}
+                {rfi.closedAsOrganizationSlot ? ` (${PROJECT_ORGANIZATION_SLOT_LABELS[rfi.closedAsOrganizationSlot]})` : ''}
+                {' on '}{formatDateTime(rfi.closedAt)}
+              </p>
+            )}
           </div>
         </div>
 
@@ -946,11 +965,25 @@ export default function RfiDetailPage() {
           )}
           {submitForReviewMutation.isError && <p className="field-error">{apiErrorMessage(submitForReviewMutation.error)}</p>}
 
+          {(canDecideReview || canClose) && (
+            <select
+              value={closingOrgSlot}
+              onChange={(e) => setClosingOrgSlot(e.target.value as ProjectOrganizationSlot | '')}
+              className="field-input w-auto !py-1.5 text-xs"
+              title="Which party is closing this RFI -- required before Close RFI / Approve & close will submit"
+            >
+              <option value="">Closing as…</option>
+              {PROJECT_ORGANIZATION_SLOTS.map((slot) => (
+                <option key={slot} value={slot}>{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</option>
+              ))}
+            </select>
+          )}
+
           {canDecideReview && !reviewRejectOpen && (
             <>
               <button
-                onClick={() => decideReviewMutation.mutate({ decision: 'approved' })}
-                disabled={decideReviewMutation.isPending}
+                onClick={() => decideReviewMutation.mutate({ decision: 'approved', organizationSlot: closingOrgSlot || undefined })}
+                disabled={!closingOrgSlot || decideReviewMutation.isPending}
                 className="btn-primary !px-3 !py-1.5 text-xs"
               >
                 Approve &amp; close
@@ -981,7 +1014,11 @@ export default function RfiDetailPage() {
           {decideReviewMutation.isError && <p className="field-error">{apiErrorMessage(decideReviewMutation.error)}</p>}
 
           {canClose && (
-            <button onClick={() => closeMutation.mutate()} disabled={closeMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
+            <button
+              onClick={() => closeMutation.mutate()}
+              disabled={!closingOrgSlot || closeMutation.isPending}
+              className="btn-secondary !px-3 !py-1.5 text-xs"
+            >
               Close RFI
             </button>
           )}

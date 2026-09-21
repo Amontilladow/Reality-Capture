@@ -10,6 +10,7 @@ import { RequestClarificationDto } from './dto/request-clarification.dto';
 import { RespondToRfiDto } from './dto/respond-to-rfi.dto';
 import { AddRfiCommentDto } from './dto/add-rfi-comment.dto';
 import { DecideReviewDto } from './dto/decide-review.dto';
+import { CloseRfiDto } from './dto/close-rfi.dto';
 import { UpsertRfiNoticeLetterDto } from './dto/upsert-rfi-notice-letter.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
@@ -203,8 +204,13 @@ export class RfisController {
   @RequireProjectPermission('manage_rfis')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Close an RFI' })
-  async close(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
-    return { data: await this.svc.close(u.companyId, pid, id, u.id), error: null };
+  async close(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('id') id: string,
+    @Body() dto: CloseRfiDto,
+  ) {
+    return { data: await this.svc.close(u.companyId, pid, id, u.id, dto.organizationSlot), error: null };
   }
 
   // ── Drawing impact follow-up ─────────────────────────────────────────────

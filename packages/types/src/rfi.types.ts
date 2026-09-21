@@ -236,6 +236,13 @@ export interface RfiExternalDetail {
   answer?: string;
   action: RfiExternalAccessAction;
   organizationSlot: ProjectOrganizationSlot;
+  // "Closed by whom, as which party, when" -- shown to external viewers
+  // too (not just internal ones), same fields/fallback as Rfi's own
+  // closedByName/closedAsOrganizationSlot/closedByExternalEmail/closedAt.
+  closedAt?: string;
+  closedByName?: string;
+  closedAsOrganizationSlot?: ProjectOrganizationSlot;
+  closedByExternalEmail?: string;
   attachments: { id: string; filename: string; attachmentReadUrl?: string }[];
   comments: { id: string; userName?: string; organizationSlot?: ProjectOrganizationSlot; body: string; createdAt: string }[];
 }
@@ -296,12 +303,29 @@ export interface Rfi {
   dueDate?: string;
   answeredAt?: string;
   answeredBy?: string;
+  // closedAt/closedBy columns have existed since migration 001 but were
+  // never written to until close()/decideReview()'s approve branch started
+  // setting them (migration 046) -- a historical RFI closed before that
+  // shipped has all four of these as undefined, which the UI must render as
+  // "nothing extra," not an error or placeholder.
+  closedAt?: string;
+  closedBy?: string;
+  // Which party closed it (client/pmc/ldc/main_contractor/subcontractor) --
+  // same PROJECT_ORGANIZATION_SLOTS vocabulary rfi_comments/
+  // rfi_external_access already use, deliberately not a new list.
+  closedAsOrganizationSlot?: ProjectOrganizationSlot;
+  // Display fallback for when closedBy points at the reserved per-company
+  // external-actions system account (see RfiExternalAccessService), which
+  // has no real human name -- snapshotted from the external actor's email
+  // at the moment of closing, not joined back to rfi_external_access later.
+  closedByExternalEmail?: string;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
   // Joined
   createdByName?: string;
   assignedToName?: string;
+  closedByName?: string;
   // rfis.service.ts findOne()/getPdfData() already join and return this
   // (u_ans.first_name || ' ' || u_ans.last_name AS answered_by_name) -- it
   // was missing from this interface even though the backend has always sent

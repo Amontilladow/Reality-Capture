@@ -1,4 +1,5 @@
-import { IsIn, IsString, MinLength, ValidateIf } from 'class-validator';
+import { IsIn, IsOptional, IsString, MinLength, ValidateIf } from 'class-validator';
+import { PROJECT_ORGANIZATION_SLOTS, type ProjectOrganizationSlot } from '@engineeringos/types';
 
 // Body for POST :id/decide-review. `comment` is required when rejecting
 // (mirrors RequestClarificationDto.reason being required) -- a review
@@ -13,4 +14,12 @@ export class DecideReviewDto {
   @ValidateIf((o: DecideReviewDto) => o.decision === 'rejected')
   @IsString() @MinLength(1)
   comment?: string;
+
+  // Only meaningful when decision === 'approved' (that's the branch that
+  // actually closes the RFI) -- captures which party is closing it. Stays
+  // optional at the DTO level so a historical caller (or a reject) never
+  // breaks; the frontend enforces "must pick one before closing" as a UX
+  // guard, not a backend requirement.
+  @IsOptional() @IsIn(PROJECT_ORGANIZATION_SLOTS)
+  organizationSlot?: ProjectOrganizationSlot;
 }
