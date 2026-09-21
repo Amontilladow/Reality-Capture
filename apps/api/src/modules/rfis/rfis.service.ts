@@ -104,6 +104,7 @@ export class RfisService {
         priority, discipline, discipline_other, cost_impact, time_impact,
         cost_impact_level, cost_impact_amount, cost_impact_currency, cost_impact_description,
         time_impact_level, time_impact_days, time_impact_description,
+        drawing_impact_level, drawing_impact_description, drawing_update_owner_id,
         assigned_to, due_date, status, created_by
       ) VALUES (
         ${companyId}, ${projectId}, ${rfiNumber}, ${dto.subject}, ${dto.question},
@@ -111,6 +112,7 @@ export class RfisService {
         ${costImpactBool}, ${timeImpactBool},
         ${costImpactLevel}, ${dto.costImpactAmount ?? null}, ${dto.costImpactCurrency ?? null}, ${dto.costImpactDescription ?? null},
         ${timeImpactLevel}, ${dto.timeImpactDays ?? null}, ${dto.timeImpactDescription ?? null},
+        ${dto.drawingImpactLevel ?? 'no'}, ${dto.drawingImpactDescription ?? null}, ${dto.drawingUpdateOwnerId ?? null},
         ${dto.assignedTo ?? null},
         ${dto.dueDate ?? null}, 'open', ${userId}
       )
@@ -144,12 +146,14 @@ export class RfisService {
       SELECT r.*,
         u_c.first_name || ' ' || u_c.last_name AS created_by_name,
         u_a.first_name || ' ' || u_a.last_name AS assigned_to_name,
+        u_dwg.first_name || ' ' || u_dwg.last_name AS drawing_update_owner_name,
         nl.status AS notice_letter_status,
         nl.shared_at AS notice_letter_shared_at,
         COUNT(*) OVER() AS full_count
       FROM rfis r
       LEFT JOIN users u_c ON u_c.id = r.created_by
       LEFT JOIN users u_a ON u_a.id = r.assigned_to
+      LEFT JOIN users u_dwg ON u_dwg.id = r.drawing_update_owner_id
       LEFT JOIN rfi_notice_letters nl ON nl.rfi_id = r.id
       WHERE r.project_id = ${projectId} AND r.company_id = ${companyId}
         AND (${query.status ?? null}::text IS NULL OR r.status = ${query.status ?? null})
@@ -174,11 +178,13 @@ export class RfisService {
       SELECT r.*,
         u_c.first_name || ' ' || u_c.last_name AS created_by_name,
         u_a.first_name || ' ' || u_a.last_name AS assigned_to_name,
-        u_ans.first_name || ' ' || u_ans.last_name AS answered_by_name
+        u_ans.first_name || ' ' || u_ans.last_name AS answered_by_name,
+        u_dwg.first_name || ' ' || u_dwg.last_name AS drawing_update_owner_name
       FROM rfis r
       LEFT JOIN users u_c ON u_c.id = r.created_by
       LEFT JOIN users u_a ON u_a.id = r.assigned_to
       LEFT JOIN users u_ans ON u_ans.id = r.answered_by
+      LEFT JOIN users u_dwg ON u_dwg.id = r.drawing_update_owner_id
       WHERE r.id = ${rfiId} AND r.project_id = ${projectId} AND r.company_id = ${companyId}
     `);
     if (!rfi) throw new NotFoundException(`RFI ${rfiId} not found.`);
@@ -657,6 +663,9 @@ export class RfisService {
         time_impact_level         = COALESCE(${timeImpactLevel ?? null}, time_impact_level),
         time_impact_days          = COALESCE(${dto.timeImpactDays ?? null}, time_impact_days),
         time_impact_description   = COALESCE(${dto.timeImpactDescription ?? null}, time_impact_description),
+        drawing_impact_level        = COALESCE(${dto.drawingImpactLevel ?? null}, drawing_impact_level),
+        drawing_impact_description  = COALESCE(${dto.drawingImpactDescription ?? null}, drawing_impact_description),
+        drawing_update_owner_id     = COALESCE(${dto.drawingUpdateOwnerId ?? null}::uuid, drawing_update_owner_id),
         assigned_to      = COALESCE(${dto.assignedTo ?? null}::uuid, assigned_to),
         due_date         = COALESCE(${dto.dueDate ?? null}::timestamptz, due_date),
         answered_at      = CASE WHEN ${isAnswering} THEN NOW() ELSE answered_at END,
@@ -689,6 +698,174 @@ export class RfisService {
       WHERE project_id = ${projectId} AND company_id = ${companyId}
     `);
     return summary;
+  }
+
+  // ── Reports KPI breakdown (drawing-impact rollup) ──────────────────────────
+  // Sibling to getSummary() above, mirroring issues.service.ts's own
+  // getKpiBreakdown()/getOpenList() pair -- getSummary() itself is left
+  // completely untouched (RfisPage's stat tiles already depend on its exact
+  // current shape, same reasoning issues.service.ts's own comment gives for
+  // not folding these into it) and is reused as-is for the new "rfis" key's
+  // summary field in ReportsService.getKpis() (see §0 in the ticket: RFIs
+  // join the Reports module here for the first time).
+  async getKpiBreakdown(companyId: string, projectId: string) {
+    const rows = await this.db.withTenant(companyId, sql => sql`
+      SELECT drawing_impact_level, COUNT(*) AS count,
+        COUNT(*) FILTER (WHERE drawing_update_applied) AS applied_count
+      FROM rfis
+      WHERE project_id = ${projectId} AND company_id = ${companyId}
+      GROUP BY drawing_impact_level
+    `);
+
+    const byDrawingImpact: Record<string, number> = { no: 0, yes: 0, potential: 0, tbd: 0 };
+    let totalRequiringDrawingUpdate = 0;
+    let applied = 0;
+    for (const row of rows) {
+      const level = row.drawingImpactLevel as string;
+      const count = Number(row.count);
+      byDrawingImpact[level] = (byDrawingImpact[level] ?? 0) + count;
+      if (level !== 'no') {
+        totalRequiringDrawingUpdate += count;
+        applied += Number(row.appliedCount);
+      }
+    }
+    return {
+      byDrawingImpact,
+      drawingUpdateStatus: { totalRequiringDrawingUpdate, applied, notApplied: totalRequiringDrawingUpdate - applied },
+    };
+  }
+
+  // Mirrors issues.service.ts's getOpenList() -- used by the Reports
+  // rollup's "one click" not-applied list, not a general-purpose endpoint,
+  // hence the flat limit + no pagination. Only RFIs that actually require a
+  // drawing update and haven't gotten one yet -- an RFI left at 'no' impact
+  // never appears here. drawing_update_owner_name falls back to
+  // assigned_to's name when no owner is explicitly set, exactly the
+  // fallback remindDrawingUpdate() itself uses to resolve who to notify, so
+  // this list always shows the same person a "Send reminder" click would
+  // actually reach. "Days since flagged" (shown by the frontend) is
+  // computed off created_at -- there is no dedicated "impact set at"
+  // timestamp column (not asked for in the schema), so this is the same
+  // judgment call as nextStampSequence()'s format choice: documented here,
+  // not a hidden assumption.
+  async getDrawingUpdatesNotApplied(companyId: string, projectId: string, limit = 50) {
+    return this.db.withTenant(companyId, sql => sql`
+      SELECT
+        r.id, r.rfi_number, r.subject, r.drawing_impact_level, r.created_at,
+        COALESCE(u_owner.first_name || ' ' || u_owner.last_name, u_assignee.first_name || ' ' || u_assignee.last_name) AS drawing_update_owner_name
+      FROM rfis r
+      LEFT JOIN users u_owner    ON u_owner.id = r.drawing_update_owner_id
+      LEFT JOIN users u_assignee ON u_assignee.id = r.assigned_to
+      WHERE r.project_id = ${projectId} AND r.company_id = ${companyId}
+        AND r.drawing_impact_level != 'no' AND r.drawing_update_applied = false
+      ORDER BY r.created_at ASC
+      LIMIT ${limit}
+    `);
+  }
+
+  // ── Drawing-impact follow-up ─────────────────────────────────────────────
+  // drawing_update_applied only means anything once drawing_impact_level !=
+  // 'no' -- both methods below reject a 'no'-impact RFI rather than
+  // silently flipping a flag nothing reads, per the ticket ("leave it
+  // false-and-ignored for 'no'-impact RFIs... the UI should simply not show
+  // applied/not-applied controls at all"). Gated with
+  // @RequireProjectPermission('manage_project_records') at the controller --
+  // the same permission that already gates general RFI field edits
+  // (@Patch(':id')), since flipping this flag is a records-update action,
+  // not an RFI-workflow transition like respond/close (which stay on
+  // manage_rfis). Per the ticket's own explicit invitation to diverge and
+  // state why: kept manage_project_records rather than manage_rfis because
+  // "applied" is a statement about the physical drawings, not about the
+  // RFI's own lifecycle -- someone with manage_project_records but not
+  // manage_rfis (e.g. a drafter maintaining drawing registers) is exactly
+  // who should be able to flip this, and RfisController.update() already
+  // establishes that same permission as this app's "edit RFI fields" gate.
+  async markDrawingApplied(companyId: string, projectId: string, rfiId: string, userId: string) {
+    const rfi = await this.findOne(companyId, projectId, rfiId);
+    if ((rfi.drawingImpactLevel as string) === 'no') {
+      throw new BadRequestException('This RFI has no drawing impact to mark as applied.');
+    }
+
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
+      UPDATE rfis SET
+        drawing_update_applied    = true,
+        drawing_update_applied_at = NOW(),
+        drawing_update_applied_by = ${userId},
+        updated_at                = NOW()
+      WHERE id = ${rfiId} AND project_id = ${projectId} AND company_id = ${companyId}
+      RETURNING *
+    `);
+
+    await this.writeRfiAudit(companyId, projectId, userId, rfiId, rfi.subject as string, 'rfi.drawing_update_applied', {
+      previousValue: false,
+      newValue: true,
+    });
+
+    return updated;
+  }
+
+  // Reverse of markDrawingApplied() above, for correcting a mistaken mark --
+  // same permission gate, same 'no'-impact guard.
+  async markDrawingNotApplied(companyId: string, projectId: string, rfiId: string, userId: string) {
+    const rfi = await this.findOne(companyId, projectId, rfiId);
+    if ((rfi.drawingImpactLevel as string) === 'no') {
+      throw new BadRequestException('This RFI has no drawing impact to mark as not applied.');
+    }
+
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
+      UPDATE rfis SET
+        drawing_update_applied    = false,
+        drawing_update_applied_at = NULL,
+        drawing_update_applied_by = NULL,
+        updated_at                = NOW()
+      WHERE id = ${rfiId} AND project_id = ${projectId} AND company_id = ${companyId}
+      RETURNING *
+    `);
+
+    await this.writeRfiAudit(companyId, projectId, userId, rfiId, rfi.subject as string, 'rfi.drawing_update_unapplied', {
+      previousValue: true,
+      newValue: false,
+    });
+
+    return updated;
+  }
+
+  // ── Drawing-update reminder ──────────────────────────────────────────────
+  // Gated with @RequireProjectPermission('manage_rfis') at the controller --
+  // different reasoning from markDrawingApplied/markDrawingNotApplied's
+  // manage_project_records gate above: nudging a specific person is a
+  // management action, consistent with respond/close's own manage_rfis
+  // gate, not a records-update action. Both gates are defensible; this is
+  // the one used here, per the ticket's invitation to state which.
+  //
+  // Target resolves to drawing_update_owner_id if set, else the RFI's
+  // general assigned_to, else a clear rejection telling the caller to set
+  // an owner first -- never a silent no-op, per the ticket.
+  async remindDrawingUpdate(companyId: string, projectId: string, rfiId: string, userId: string) {
+    const rfi = await this.findOne(companyId, projectId, rfiId);
+    if ((rfi.drawingImpactLevel as string) === 'no') {
+      throw new BadRequestException('This RFI has no drawing impact -- there is nothing to remind about.');
+    }
+    if (rfi.drawingUpdateApplied) {
+      throw new BadRequestException('The drawing update for this RFI has already been applied.');
+    }
+
+    const targetUserId = (rfi.drawingUpdateOwnerId as string | null) ?? (rfi.assignedTo as string | null);
+    if (!targetUserId) {
+      throw new BadRequestException('Set a drawing update owner or assignee on this RFI before sending a reminder.');
+    }
+
+    await this.notifications.create(companyId, {
+      userId: targetUserId,
+      type: 'rfi_drawing_update_reminder',
+      title: `Reminder: drawing update needed for RFI ${rfi.rfiNumber as string}: ${rfi.subject as string}`,
+      resourceType: 'rfi',
+      projectId,
+      resourceId: rfiId,
+      createdBy: userId,
+    });
+
+    return { message: 'Reminder sent.' };
   }
 
   // ── Attachments ───────────────────────────────────────────────────────────

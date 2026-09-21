@@ -259,6 +259,16 @@ export interface Rfi {
   timeImpactLevel?: RfiImpactLevel;
   timeImpactDays?: number;
   timeImpactDescription?: string;
+  // Third impact field (migration 044), structurally identical to cost/time
+  // above but with no amount/currency-or-days companion -- just level +
+  // description. drawingUpdateApplied only means anything once
+  // drawingImpactLevel != 'no' (see RfisService's own comment).
+  drawingImpactLevel?: RfiImpactLevel;
+  drawingImpactDescription?: string;
+  drawingUpdateOwnerId?: string;
+  drawingUpdateApplied?: boolean;
+  drawingUpdateAppliedAt?: string;
+  drawingUpdateAppliedBy?: string;
   queryStamp?: string;
   answerStamp?: string;
   assignedTo?: string;
@@ -277,4 +287,10 @@ export interface Rfi {
   // it. Added here rather than worked around with an `as` cast at every
   // call site.
   answeredByName?: string;
+  // Joined name for drawingUpdateOwnerId -- undefined when no owner is set
+  // (the detail/list views show "Unassigned" in that case, same as
+  // assignedToName). The assignedTo fallback the reminder endpoint and the
+  // Reports not-applied list use only applies at the point of resolving who
+  // to notify -- it's not baked into this field.
+  drawingUpdateOwnerName?: string;
 }

@@ -13,6 +13,7 @@ import { RichTextEditor, isRichTextEmpty } from '../components/ui/RichTextEditor
 import {
   getRfi, updateRfi, submitRfi, requestClarification, respondToRfi, closeRfi, reopenRfi,
   submitRfiForReview, decideRfiReview,
+  markRfiDrawingApplied, markRfiDrawingNotApplied, remindRfiDrawingUpdate,
   getRfiComments, addRfiComment, getRfiAttachments, uploadRfiAttachment, deleteRfiAttachment,
   type RfiAttachment,
 } from '../lib/rfis.api';
@@ -24,6 +25,7 @@ import { getProjectActivity } from '../lib/audit.api';
 import { downloadRfiXls, type RfiWorkbookExtras } from '../lib/rfi-xls';
 import {
   RFI_WORKFLOW_STATUS_LABELS, RFI_WORKFLOW_STATUS_BADGE_CLASS, RFI_PRIORITY_LABELS, RFI_PRIORITY_BADGE_CLASS,
+  DRAWING_IMPACT_BADGE_CLASS,
 } from '../lib/rfi-constants';
 import { getDeadlineTimer, TIMER_BADGE_CLASS, formatDeadline, formatDateTime } from '../lib/issue-constants';
 import { apiErrorMessage, apiDownload } from '../lib/api';
@@ -51,6 +53,9 @@ export default function RfiDetailPage() {
   const [timeImpactLevel, setTimeImpactLevel] = useState<RfiImpactLevel>('no');
   const [timeImpactDays, setTimeImpactDays] = useState('');
   const [timeImpactDescription, setTimeImpactDescription] = useState('');
+  const [drawingImpactLevel, setDrawingImpactLevel] = useState<RfiImpactLevel>('no');
+  const [drawingImpactDescription, setDrawingImpactDescription] = useState('');
+  const [drawingUpdateOwnerId, setDrawingUpdateOwnerId] = useState('');
   const [clarifyOpen, setClarifyOpen] = useState(false);
   const [clarifyReason, setClarifyReason] = useState('');
   const [commentBody, setCommentBody] = useState('');
@@ -144,6 +149,9 @@ export default function RfiDetailPage() {
       setTimeImpactLevel(rfi.timeImpactLevel ?? (rfi.timeImpact ? 'yes' : 'no'));
       setTimeImpactDays(rfi.timeImpactDays != null ? String(rfi.timeImpactDays) : '');
       setTimeImpactDescription(rfi.timeImpactDescription ?? '');
+      setDrawingImpactLevel(rfi.drawingImpactLevel ?? 'no');
+      setDrawingImpactDescription(rfi.drawingImpactDescription ?? '');
+      setDrawingUpdateOwnerId(rfi.drawingUpdateOwnerId ?? '');
     }
   }, [rfi]);
 
@@ -172,8 +180,27 @@ export default function RfiDetailPage() {
       timeImpactLevel,
       timeImpactDays: timeImpactDays.trim() ? Number(timeImpactDays) : undefined,
       timeImpactDescription: timeImpactDescription.trim() || undefined,
+      drawingImpactLevel,
+      drawingImpactDescription: drawingImpactDescription.trim() || undefined,
+      drawingUpdateOwnerId: drawingImpactLevel !== 'no' ? drawingUpdateOwnerId || undefined : undefined,
     }),
     onSuccess: invalidateAll,
+  });
+
+  const markDrawingAppliedMutation = useMutation({
+    mutationFn: () => markRfiDrawingApplied(projectId!, rfiId!),
+    onSuccess: invalidateAll,
+  });
+
+  const markDrawingNotAppliedMutation = useMutation({
+    mutationFn: () => markRfiDrawingNotApplied(projectId!, rfiId!),
+    onSuccess: invalidateAll,
+  });
+
+  const [reminderSent, setReminderSent] = useState(false);
+  const remindDrawingMutation = useMutation({
+    mutationFn: () => remindRfiDrawingUpdate(projectId!, rfiId!),
+    onSuccess: () => setReminderSent(true),
   });
 
   const submitMutation = useMutation({
@@ -412,7 +439,34 @@ export default function RfiDetailPage() {
               <span className={`badge ${TIMER_BADGE_CLASS[dueTimer.state]}`} title={`Due ${formatDeadline(rfi.dueDate)}`}>
                 {dueTimer.label}
               </span>
+              {/* Drawing impact never shows any control at all when level
+                  is 'no' -- there is deliberately no third "not applicable"
+                  state to render around (see migration 044's own comment). */}
+              {(rfi.drawingImpactLevel ?? 'no') !== 'no' && (
+                <>
+                  <span className={DRAWING_IMPACT_BADGE_CLASS}>📐 Drawing impact</span>
+                  {canEditQuery && (
+                    <button
+                      onClick={() => (rfi.drawingUpdateApplied ? markDrawingNotAppliedMutation.mutate() : markDrawingAppliedMutation.mutate())}
+                      disabled={markDrawingAppliedMutation.isPending || markDrawingNotAppliedMutation.isPending}
+                      className={`badge ${rfi.drawingUpdateApplied ? 'bg-ok/15 text-ok' : 'bg-base-600 text-ink-300'} cursor-pointer`}
+                    >
+                      {rfi.drawingUpdateApplied ? '✓ Applied' : 'Not applied'}
+                    </button>
+                  )}
+                  {!rfi.drawingUpdateApplied && canManageRfis && (
+                    <button
+                      onClick={() => remindDrawingMutation.mutate()}
+                      disabled={remindDrawingMutation.isPending}
+                      className="text-blueprint hover:text-blueprint-hover text-xs underline"
+                    >
+                      {remindDrawingMutation.isPending ? 'Sending…' : reminderSent ? 'Reminder sent' : 'Send reminder'}
+                    </button>
+                  )}
+                </>
+              )}
             </div>
+            {remindDrawingMutation.isError && <p className="field-error mt-1">{apiErrorMessage(remindDrawingMutation.error)}</p>}
           </div>
         </div>
 
@@ -446,7 +500,7 @@ export default function RfiDetailPage() {
             {rfi.answeredAt && <InfoRow label="Answered" value={formatDateTime(rfi.answeredAt)} />}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-base-600">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t border-base-600">
             {canEditQuery ? (
               <>
                 <ImpactEditor
@@ -469,6 +523,33 @@ export default function RfiDetailPage() {
                   description={timeImpactDescription}
                   onDescriptionChange={setTimeImpactDescription}
                 />
+                <div>
+                  <ImpactEditor
+                    title="Drawing impact"
+                    level={drawingImpactLevel}
+                    onLevelChange={setDrawingImpactLevel}
+                    description={drawingImpactDescription}
+                    onDescriptionChange={setDrawingImpactDescription}
+                  />
+                  {/* Only meaningfully shown once level isn't 'no', per the
+                      ticket -- defaults to whoever assigned_to is already set
+                      to the first time impact is raised, editable from there. */}
+                  {drawingImpactLevel !== 'no' && (
+                    <div className="mt-2">
+                      <div className="text-xs text-ink-500 mb-1">Drawing update owner</div>
+                      <select
+                        className="field-input !py-1.5 text-xs w-full"
+                        value={drawingUpdateOwnerId}
+                        onChange={(e) => setDrawingUpdateOwnerId(e.target.value)}
+                      >
+                        <option value="">Unassigned</option>
+                        {(membersQuery.data ?? []).map((m) => (
+                          <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <>
@@ -487,6 +568,18 @@ export default function RfiDetailPage() {
                   days={rfi.timeImpactDays}
                   description={rfi.timeImpactDescription}
                 />
+                <div>
+                  <ImpactSummary
+                    title="Drawing impact"
+                    level={rfi.drawingImpactLevel}
+                    description={rfi.drawingImpactDescription}
+                  />
+                  {(rfi.drawingImpactLevel ?? 'no') !== 'no' && (
+                    <div className="mt-1.5 text-xs text-ink-500">
+                      Owner: <span className="text-ink-100">{rfi.drawingUpdateOwnerName ?? rfi.assignedToName ?? 'Unassigned'}</span>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>

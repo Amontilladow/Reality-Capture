@@ -12,7 +12,7 @@ export class ReportsController {
   constructor(private readonly svc: ReportsService) {}
 
   @Get('kpis')
-  @ApiOperation({ summary: 'Get combined Issues + Snagging KPI dashboard data for this project' })
+  @ApiOperation({ summary: 'Get combined Issues + Snagging + RFI KPI dashboard data for this project' })
   async getKpis(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
     return { data: await this.svc.getKpis(u.companyId, pid), error: null };
   }

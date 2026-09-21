@@ -1,17 +1,21 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RFI_DISCIPLINES, RFI_DISCIPLINE_LABELS, RFI_IMPACT_LEVELS, RFI_IMPACT_LEVEL_LABELS } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { RfiFormModal } from '../components/RfiFormModal';
 import { RfiNoticeLetterModal } from '../components/RfiNoticeLetterModal';
-import { listRfis, getRfiSummary, type RfiListItem } from '../lib/rfis.api';
+import {
+  listRfis, getRfiSummary, markRfiDrawingApplied, markRfiDrawingNotApplied, remindRfiDrawingUpdate,
+  type RfiListItem,
+} from '../lib/rfis.api';
 import { getProject, getMembers } from '../lib/projects.api';
 import {
   RFI_STATUS_LABELS, RFI_WORKFLOW_STATUS_LABELS, RFI_WORKFLOW_STATUS_BADGE_CLASS,
-  RFI_PRIORITY_LABELS, RFI_PRIORITY_BADGE_CLASS, isRfiOverdue, formatDate,
+  RFI_PRIORITY_LABELS, RFI_PRIORITY_BADGE_CLASS, DRAWING_IMPACT_BADGE_CLASS, isRfiOverdue, formatDate,
 } from '../lib/rfi-constants';
 import { getDeadlineTimer, TIMER_BADGE_CLASS } from '../lib/issue-constants';
+import { apiErrorMessage } from '../lib/api';
 
 // Warning-colored badge classes for the Cost/Time impact columns -- uses
 // this codebase's `warn` token, same as RFI_WORKFLOW_STATUS_BADGE_CLASS's
@@ -29,6 +33,7 @@ function effectiveImpactLevel(level: RfiListItem['costImpactLevel'], legacyBool:
 export default function RfisPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState('');
   const [discipline, setDiscipline] = useState('');
   const [costImpactLevel, setCostImpactLevel] = useState('');
@@ -70,6 +75,25 @@ export default function RfisPage() {
       dateTo: dateTo || undefined,
     }),
     enabled: Boolean(projectId),
+  });
+
+  const [drawingActionError, setDrawingActionError] = useState('');
+
+  function invalidateDrawingViews() {
+    queryClient.invalidateQueries({ queryKey: ['rfis', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['report-kpis', projectId] });
+  }
+
+  const toggleDrawingAppliedMutation = useMutation({
+    mutationFn: ({ rfiId, applied }: { rfiId: string; applied: boolean }) =>
+      applied ? markRfiDrawingNotApplied(projectId!, rfiId) : markRfiDrawingApplied(projectId!, rfiId),
+    onSuccess: invalidateDrawingViews,
+    onError: (err) => setDrawingActionError(apiErrorMessage(err)),
+  });
+
+  const remindDrawingMutation = useMutation({
+    mutationFn: (rfiId: string) => remindRfiDrawingUpdate(projectId!, rfiId),
+    onError: (err) => setDrawingActionError(apiErrorMessage(err)),
   });
 
   if (!projectId) return null;
@@ -152,6 +176,8 @@ export default function RfisPage() {
           )}
         </div>
 
+        {drawingActionError && <p className="field-error">{drawingActionError}</p>}
+
         {rfisQuery.isLoading && <div className="text-sm text-ink-500">Loading…</div>}
 
         {rfisQuery.data?.data.length === 0 && (
@@ -172,6 +198,7 @@ export default function RfisPage() {
                   <th className="px-4 py-2.5 font-medium">Priority</th>
                   <th className="px-4 py-2.5 font-medium">Cost impact</th>
                   <th className="px-4 py-2.5 font-medium">Time impact</th>
+                  <th className="px-4 py-2.5 font-medium">Drawing impact</th>
                   <th className="px-4 py-2.5 font-medium">Assignee</th>
                   <th className="px-4 py-2.5 font-medium">Due</th>
                   <th className="px-4 py-2.5 font-medium">Aging</th>
@@ -213,6 +240,33 @@ export default function RfisPage() {
                           <span className={TIME_IMPACT_BADGE_CLASS}>⏱ Time</span>
                         ) : (
                           <span className="text-ink-300">{RFI_IMPACT_LEVEL_LABELS[effectiveImpactLevel(r.timeImpactLevel, r.timeImpact)]}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
+                        {(r.drawingImpactLevel ?? 'no') === 'no' ? (
+                          <span className="text-ink-300">{RFI_IMPACT_LEVEL_LABELS.no}</span>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <span className={DRAWING_IMPACT_BADGE_CLASS}>📐 Drawing</span>
+                            <button
+                              type="button"
+                              onClick={() => toggleDrawingAppliedMutation.mutate({ rfiId: r.id, applied: Boolean(r.drawingUpdateApplied) })}
+                              disabled={toggleDrawingAppliedMutation.isPending}
+                              className={r.drawingUpdateApplied ? 'text-ok text-xs underline' : 'text-blueprint hover:text-blueprint-hover text-xs underline'}
+                            >
+                              {r.drawingUpdateApplied ? 'Applied' : 'Not applied'}
+                            </button>
+                            {!r.drawingUpdateApplied && (
+                              <button
+                                type="button"
+                                onClick={() => remindDrawingMutation.mutate(r.id)}
+                                disabled={remindDrawingMutation.isPending}
+                                className="text-ink-500 hover:text-ink-300 text-xs underline"
+                              >
+                                Remind
+                              </button>
+                            )}
+                          </div>
                         )}
                       </td>
                       <td className="px-4 py-2.5 text-ink-300">{r.assignedToName ?? 'Unassigned'}</td>

@@ -4,11 +4,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
+import { RFI_IMPACT_LEVEL_LABELS } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { getReportKpis } from '../lib/reports.api';
 import { downloadReportsXls } from '../lib/reports-xls';
 import { getProject } from '../lib/projects.api';
 import { listDocuments, uploadDocumentFile } from '../lib/documents.api';
+import { remindRfiDrawingUpdate } from '../lib/rfis.api';
 import { apiErrorMessage, apiDownload } from '../lib/api';
 import {
   STATUS_LABELS, PRIORITY_LABELS, DISCIPLINE_LABELS, formatDateTime,
@@ -107,6 +109,18 @@ export default function ReportsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents', projectId, 'report_attachment'] });
     },
+  });
+
+  // The "one click" the ticket asked for: clicking the not-applied stat tile
+  // expands this list inline, right on the Reports page -- following up
+  // never requires leaving it. remindedIds tracks which rows already got a
+  // reminder this session so the button can say "Sent" instead of silently
+  // going back to "Send reminder" after a successful call.
+  const [drawingListOpen, setDrawingListOpen] = useState(false);
+  const [remindedIds, setRemindedIds] = useState<Set<string>>(new Set());
+  const remindMutation = useMutation({
+    mutationFn: (rfiId: string) => remindRfiDrawingUpdate(projectId!, rfiId),
+    onSuccess: (_data, rfiId) => setRemindedIds((prev) => new Set(prev).add(rfiId)),
   });
 
   const [xlsError, setXlsError] = useState('');
@@ -295,6 +309,103 @@ export default function ReportsPage() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+            </section>
+
+            {/* ── RFIs ───────────────────────────────────────────────── */}
+            <section className="space-y-4">
+              <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">RFIs</h2>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <StatTile label="Total" value={kpis.rfis.summary.total} />
+                <StatTile label="Open" value={kpis.rfis.summary.open} />
+                <StatTile label="Overdue" value={kpis.rfis.summary.overdue} tone="danger" />
+                {/* The "one click" -- clicking this tile expands the
+                    not-applied list below, right on this page. */}
+                <button
+                  type="button"
+                  onClick={() => setDrawingListOpen((v) => !v)}
+                  className="panel p-3 text-left hover:bg-base-800/60 transition-colors"
+                >
+                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">Drawing updates applied</div>
+                  <div className={`text-xl font-semibold tabular-nums ${kpis.rfis.drawingUpdateStatus.notApplied > 0 ? 'text-warn' : 'text-ink-100'}`}>
+                    {kpis.rfis.drawingUpdateStatus.applied} of {kpis.rfis.drawingUpdateStatus.totalRequiringDrawingUpdate}
+                  </div>
+                </button>
+              </div>
+
+              {kpis.rfis.summary.total === 0 ? (
+                <div className="panel tick-frame p-10 text-center text-sm text-ink-500">
+                  No RFIs logged on this project yet.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <ChartCard title="By drawing impact">
+                    <CountBarChart
+                      data={countsToChartData(kpis.rfis.byDrawingImpact, (k) => RFI_IMPACT_LEVEL_LABELS[k as keyof typeof RFI_IMPACT_LEVEL_LABELS] ?? k)}
+                      colorFor={(_k, i) => SERIES_PALETTE[i % SERIES_PALETTE.length]}
+                    />
+                  </ChartCard>
+                  <div className="panel p-4">
+                    <div className="field-label !mb-2">Drawing update follow-up</div>
+                    <div className="flex items-center justify-center h-[220px]">
+                      <div className="text-center">
+                        <div className="text-3xl font-semibold tabular-nums text-ink-100">
+                          {kpis.rfis.drawingUpdateStatus.notApplied}
+                        </div>
+                        <div className="text-xs text-ink-500 mt-1">not yet applied</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {drawingListOpen && (
+                <div className="panel tick-frame overflow-hidden">
+                  {kpis.rfis.notAppliedList.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-ink-500">
+                      Every RFI requiring a drawing update has been applied.
+                    </div>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-xs text-ink-500 border-b border-base-600">
+                          <th className="px-4 py-2.5 font-medium">Number</th>
+                          <th className="px-4 py-2.5 font-medium">Subject</th>
+                          <th className="px-4 py-2.5 font-medium">Owner</th>
+                          <th className="px-4 py-2.5 font-medium">Days flagged</th>
+                          <th className="px-4 py-2.5 font-medium" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {kpis.rfis.notAppliedList.map((item) => {
+                          const daysFlagged = Math.max(0, Math.floor((Date.now() - new Date(item.createdAt).getTime()) / (1000 * 60 * 60 * 24)));
+                          const isSending = remindMutation.isPending && remindMutation.variables === item.id;
+                          const wasSent = remindedIds.has(item.id);
+                          return (
+                            <tr key={item.id} className="border-b border-base-700/60 last:border-0">
+                              <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{item.rfiNumber ?? item.id.slice(0, 8)}</td>
+                              <td className="px-4 py-2.5">{item.subject}</td>
+                              <td className="px-4 py-2.5 text-ink-300">{item.drawingUpdateOwnerName ?? 'Unassigned'}</td>
+                              <td className="px-4 py-2.5 text-ink-300">{daysFlagged}</td>
+                              <td className="px-4 py-2.5 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => remindMutation.mutate(item.id)}
+                                  disabled={isSending}
+                                  className="btn-secondary !px-2.5 !py-1 text-xs"
+                                >
+                                  {isSending ? 'Sending…' : wasSent ? 'Sent' : 'Send reminder'}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                  {remindMutation.isError && <p className="field-error p-3">{apiErrorMessage(remindMutation.error)}</p>}
                 </div>
               )}
             </section>

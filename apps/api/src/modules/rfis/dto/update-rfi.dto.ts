@@ -27,6 +27,11 @@ export class UpdateRfiDto {
   @IsOptional() @IsNumber() timeImpactDays?: number;
   @IsOptional() @IsString() timeImpactDescription?: string;
 
+  // Third impact field -- see CreateRfiDto for the same fields.
+  @IsOptional() @IsIn(RFI_IMPACT_LEVELS) drawingImpactLevel?: RfiImpactLevel;
+  @IsOptional() @IsString() drawingImpactDescription?: string;
+  @IsOptional() @IsUUID() drawingUpdateOwnerId?: string;
+
   @IsOptional() @IsUUID() assignedTo?: string;
   @IsOptional() @IsDateString() dueDate?: string;
 }

@@ -4,6 +4,7 @@ import { DatabaseService } from '../../database/database.service';
 import { StorageService } from '../storage/storage.service';
 import { IssuesService } from '../issues/issues.service';
 import { SnaggingService } from '../snagging/snagging.service';
+import { RfisService } from '../rfis/rfis.service';
 import { renderReportsPdf, type ReportsPdfSectionData } from './reports-pdf.template';
 
 @Injectable()
@@ -13,6 +14,7 @@ export class ReportsService {
     private readonly storage: StorageService,
     private readonly issues: IssuesService,
     private readonly snagging: SnaggingService,
+    private readonly rfis: RfisService,
   ) {}
 
   // withTenant required -- projects carries the tenant_isolation RLS policy,
@@ -27,9 +29,19 @@ export class ReportsService {
   // Combines Issues + Snagging's existing getSummary() with the two new
   // sibling methods (getKpiBreakdown/getOpenList) each service gained for
   // this feature -- everything fetched in parallel, folded into one JSON
-  // payload for GET /reports/kpis.
+  // payload for GET /reports/kpis. RFIs join this payload for the first
+  // time here (previously Reports covered only Issues + Snagging) --
+  // rfis.summary reuses RfisService.getSummary() completely unchanged
+  // (same total/open/answered/overdue shape RfisPage's own stat tiles
+  // already depend on), while the new drawing-impact rollup lives in the
+  // sibling getKpiBreakdown()/getDrawingUpdatesNotApplied() methods.
   async getKpis(companyId: string, projectId: string) {
-    const [project, issuesSummary, issuesBreakdown, issuesOpen, snaggingSummary, snaggingBreakdown, snaggingOpen] = await Promise.all([
+    const [
+      project,
+      issuesSummary, issuesBreakdown, issuesOpen,
+      snaggingSummary, snaggingBreakdown, snaggingOpen,
+      rfisSummary, rfisBreakdown, rfisNotApplied,
+    ] = await Promise.all([
       this.getProject(companyId, projectId),
       this.issues.getSummary(companyId, projectId),
       this.issues.getKpiBreakdown(companyId, projectId),
@@ -37,6 +49,9 @@ export class ReportsService {
       this.snagging.getSummary(companyId, projectId),
       this.snagging.getKpiBreakdown(companyId, projectId),
       this.snagging.getOpenList(companyId, projectId),
+      this.rfis.getSummary(companyId, projectId),
+      this.rfis.getKpiBreakdown(companyId, projectId),
+      this.rfis.getDrawingUpdatesNotApplied(companyId, projectId),
     ]);
 
     return {
@@ -54,6 +69,12 @@ export class ReportsService {
         byPriority: snaggingBreakdown.byPriority,
         byTrade: snaggingBreakdown.byTrade,
         openList: snaggingOpen,
+      },
+      rfis: {
+        summary: rfisSummary,
+        byDrawingImpact: rfisBreakdown.byDrawingImpact,
+        drawingUpdateStatus: rfisBreakdown.drawingUpdateStatus,
+        notAppliedList: rfisNotApplied,
       },
     };
   }
