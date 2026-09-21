@@ -22,9 +22,16 @@ export interface Pin {
   elementGuid?: string;
   elementModelId?: string;
   linkedRecord: { type: 'issue' | 'snag'; id: string } | null;
+  // The linked issue's (or, once converted, snag's) assignee -- see
+  // drawings.service.ts's getPins()/createPin() for how this is resolved.
+  assignedTo?: string;
 }
 
-export function createPin(projectId: string, drawingId: string, payload: { posXNorm: number; posYNorm: number; name?: string; pageNumber?: number }) {
+export function createPin(
+  projectId: string,
+  drawingId: string,
+  payload: { posXNorm: number; posYNorm: number; name?: string; pageNumber?: number; assignedTo?: string },
+) {
   return apiPost<Pin>(`/projects/${projectId}/drawings/${drawingId}/pins`, payload);
 }
 

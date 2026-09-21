@@ -33,6 +33,7 @@ describe('DrawingsService pin page_number', () => {
       svc: new DrawingsService(db, storage as unknown as StorageService, issues as unknown as IssuesService),
       withTenant,
       query,
+      issues,
     };
   }
 
@@ -73,6 +74,44 @@ describe('DrawingsService pin page_number', () => {
       const { svc } = makeService({ drawingRow: undefined });
       await expect(svc.createPin(companyId, 'missing', 'user-1', { posXNorm: 0, posYNorm: 0 })).rejects.toThrow(NotFoundException);
     });
+
+    it('forwards assignedTo straight through to the auto-created Issue', async () => {
+      const { svc, issues } = makeService({
+        drawingRow: { id: drawingId, levelId: 'level-1' },
+        insertedPin: {
+          id: 'pin-3', name: 'Untitled pin', posXNorm: 0.5, posYNorm: 0.5,
+          pageNumber: 1, createdVia: 'floor_plan_tap', createdAt: '2026-08-03T00:00:00Z',
+        },
+      });
+
+      const result = await svc.createPin(companyId, drawingId, 'user-1', {
+        posXNorm: 0.5, posYNorm: 0.5, assignedTo: 'user-engineer',
+      });
+
+      expect(issues.create).toHaveBeenCalledWith(
+        companyId, undefined, 'user-1',
+        expect.objectContaining({ assignedTo: 'user-engineer' }),
+      );
+      expect(result.assignedTo).toBe('user-engineer');
+    });
+
+    it('leaves assignedTo undefined when the caller does not specify one', async () => {
+      const { svc, issues } = makeService({
+        drawingRow: { id: drawingId, levelId: 'level-1' },
+        insertedPin: {
+          id: 'pin-4', name: 'Untitled pin', posXNorm: 0.5, posYNorm: 0.5,
+          pageNumber: 1, createdVia: 'floor_plan_tap', createdAt: '2026-08-03T00:00:00Z',
+        },
+      });
+
+      const result = await svc.createPin(companyId, drawingId, 'user-1', { posXNorm: 0.5, posYNorm: 0.5 });
+
+      expect(issues.create).toHaveBeenCalledWith(
+        companyId, undefined, 'user-1',
+        expect.objectContaining({ assignedTo: undefined }),
+      );
+      expect(result.assignedTo).toBeUndefined();
+    });
   });
 
   describe('getPins', () => {
@@ -87,6 +126,19 @@ describe('DrawingsService pin page_number', () => {
       const pins = await svc.getPins(companyId, drawingId);
 
       expect(pins.map((p: Record<string, unknown>) => p.pageNumber)).toEqual([1, 2]);
+    });
+
+    it("takes the linked issue's assignee when a pin has both an issue and (somehow) a snag id, and falls back to the snag's assignee otherwise", async () => {
+      const { svc } = makeService({
+        withTenantResult: [
+          { locationId: 'pin-1', name: 'A', posXNorm: 0.1, posYNorm: 0.1, pageNumber: 1, captureCount: 0, linkedIssueId: 'issue-1', linkedIssueAssignedTo: 'user-a', linkedSnagId: null, linkedSnagAssignedTo: null },
+          { locationId: 'pin-2', name: 'B', posXNorm: 0.4, posYNorm: 0.6, pageNumber: 1, captureCount: 0, linkedIssueId: null, linkedIssueAssignedTo: null, linkedSnagId: 'snag-1', linkedSnagAssignedTo: 'user-b' },
+        ],
+      });
+
+      const pins = await svc.getPins(companyId, drawingId);
+
+      expect(pins.map((p: Record<string, unknown>) => p.assignedTo)).toEqual(['user-a', 'user-b']);
     });
   });
 });

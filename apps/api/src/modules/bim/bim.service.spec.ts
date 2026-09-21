@@ -89,3 +89,51 @@ describe('BimService.getModelProvenance', () => {
     await expect(svc.getModelProvenance(companyId, 'missing')).rejects.toThrow(NotFoundException);
   });
 });
+
+describe('BimService.createPinForElement', () => {
+  const companyId = 'company-1';
+  const projectId = 'project-1';
+  const elementId = 'element-1';
+
+  it("forwards an optional assignedTo straight through to the auto-created Issue, same as drawings.service.ts's createPin()", async () => {
+    const withTenant = jest.fn().mockResolvedValue([{ id: 'loc-1', name: 'Untitled pin', elementId }]);
+    const db = { withTenant };
+    const storage = {};
+    const issues = { create: jest.fn().mockResolvedValue({ id: 'issue-1' }) };
+    const queue = {};
+    const svc = new BimService(
+      db as unknown as DatabaseService,
+      storage as unknown as StorageService,
+      issues as unknown as IssuesService,
+      queue as unknown as Queue,
+    );
+
+    await svc.createPinForElement(companyId, projectId, elementId, 'user-1', 'Untitled pin', 'user-engineer');
+
+    expect(issues.create).toHaveBeenCalledWith(
+      companyId, projectId, 'user-1',
+      expect.objectContaining({ elementId, assignedTo: 'user-engineer' }),
+    );
+  });
+
+  it('passes assignedTo through as undefined when the caller omits it', async () => {
+    const withTenant = jest.fn().mockResolvedValue([{ id: 'loc-1', name: 'Untitled pin', elementId }]);
+    const db = { withTenant };
+    const storage = {};
+    const issues = { create: jest.fn().mockResolvedValue({ id: 'issue-1' }) };
+    const queue = {};
+    const svc = new BimService(
+      db as unknown as DatabaseService,
+      storage as unknown as StorageService,
+      issues as unknown as IssuesService,
+      queue as unknown as Queue,
+    );
+
+    await svc.createPinForElement(companyId, projectId, elementId, 'user-1', 'Untitled pin');
+
+    expect(issues.create).toHaveBeenCalledWith(
+      companyId, projectId, 'user-1',
+      expect.objectContaining({ assignedTo: undefined }),
+    );
+  });
+});

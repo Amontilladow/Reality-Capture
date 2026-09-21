@@ -279,7 +279,7 @@ export class BimService {
   // once someone (from the floor plan side) gives it a position; until
   // then it's still valid, since locations_has_a_place_check now accepts
   // element_id on its own as a place.
-  async createPinForElement(companyId: string, projectId: string, elementId: string, userId: string, name: string) {
+  async createPinForElement(companyId: string, projectId: string, elementId: string, userId: string, name: string, assignedTo?: string) {
     // withTenant required -- locations carries the tenant_isolation RLS policy.
     const [loc] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO locations (company_id, name, element_id)
@@ -289,7 +289,10 @@ export class BimService {
 
     // Every pin automatically gets a matching Issue, linked via
     // issues.location_id (and, for an element-originated pin, issues.element_id
-    // too) -- see the drawings.service.ts createPin() equivalent.
+    // too) -- see the drawings.service.ts createPin() equivalent. assignedTo
+    // forwarded the same way, for consistency -- not currently sent by
+    // PropertyPanel.tsx's "raise issue from element" flow, which has no
+    // assignee picker of its own.
     const issue = await this.issues.create(companyId, projectId, userId, {
       issueType: 'general',
       title: name,
@@ -297,6 +300,7 @@ export class BimService {
       deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
       locationId: loc.id as string,
       elementId,
+      assignedTo,
     });
 
     return { ...loc, issueId: issue.id as string };

@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Pin } from '../../lib/drawings.api';
 import { listCaptures, uploadCapture } from '../../lib/captures.api';
-import { updateLocation, archiveLocation, convertPinToSnag } from '../../lib/projects.api';
+import { updateLocation, archiveLocation, convertPinToSnag, type ProjectMember } from '../../lib/projects.api';
 import { updateIssue } from '../../lib/issues.api';
+import { updateSnagItem } from '../../lib/snagging.api';
 import { CaptureGrid } from '../CaptureGrid';
 import { ElementSearch } from '../bim-viewer/ElementSearch';
 import type { BimElementDetail } from '../../lib/bim.api';
@@ -15,12 +16,14 @@ type LinkedElement = { id: string; name: string; ifcType: string };
 export function PinPanel({
   projectId,
   pin,
+  members,
   onClose,
   onMove,
   onDeleted,
 }: {
   projectId: string;
   pin: Pin | null;
+  members: ProjectMember[];
   onClose: () => void;
   onMove: (pin: Pin) => void;
   onDeleted: () => void;
@@ -40,6 +43,7 @@ export function PinPanel({
   const [linkedElement, setLinkedElement] = useState<LinkedElement | null>(null);
   const [pickingElement, setPickingElement] = useState(false);
   const [linkedRecord, setLinkedRecord] = useState(pin?.linkedRecord ?? null);
+  const [assignedTo, setAssignedTo] = useState(pin?.assignedTo ?? '');
 
   // Resets the local edit buffer only when the selected pin changes.
   // Deliberately excludes pin?.name/description/elementId/etc: those fields
@@ -57,6 +61,7 @@ export function PinPanel({
       pin?.elementId ? { id: pin.elementId, name: pin.elementName ?? '', ifcType: pin.elementIfcType ?? '' } : null,
     );
     setLinkedRecord(pin?.linkedRecord ?? null);
+    setAssignedTo(pin?.assignedTo ?? '');
     setEditingTitle(false);
     setEditingNote(false);
     setPickingElement(false);
@@ -116,10 +121,33 @@ export function PinPanel({
     },
   });
 
+  // Mirrors renameMutation's shape: which record actually gets updated
+  // depends on linkedRecord.type, exactly like title/note/element edits
+  // above -- a pin converted to a snag is assigned against the snag record,
+  // not a now-nonexistent issue.
+  const assignMutation = useMutation({
+    mutationFn: async (newAssignedTo: string) => {
+      const value = newAssignedTo || undefined;
+      if (linkedRecord?.type === 'issue') {
+        await updateIssue(projectId, linkedRecord.id, { assignedTo: value });
+      } else if (linkedRecord?.type === 'snag') {
+        await updateSnagItem(projectId, linkedRecord.id, { assignedTo: value });
+      }
+    },
+    onSuccess: (_data, newAssignedTo) => {
+      setAssignedTo(newAssignedTo);
+      invalidatePin();
+    },
+  });
+
   const convertToSnagMutation = useMutation({
     mutationFn: () => convertPinToSnag(projectId, pin!.locationId),
     onSuccess: (snag) => {
       setLinkedRecord({ type: 'snag', id: snag.id });
+      // convertPinToSnag() carries over title/description but not the
+      // issue's assignee -- the new snag item starts unassigned, so the
+      // select shouldn't keep showing the old issue's assignee.
+      setAssignedTo('');
       invalidatePin();
     },
   });
@@ -200,6 +228,23 @@ export function PinPanel({
                 <EditIcon className="w-3.5 h-3.5 text-ink-500 shrink-0" />
               </button>
             )}
+            {linkedRecord && (
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="text-[10px] uppercase tracking-wide text-ink-500">Assignee</span>
+                <select
+                  className="field-input w-auto !py-1 !text-xs"
+                  value={assignedTo}
+                  onChange={(e) => assignMutation.mutate(e.target.value)}
+                  disabled={assignMutation.isPending}
+                >
+                  <option value="">Unassigned</option>
+                  {members.map((m) => (
+                    <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {assignMutation.isError && <p className="field-error mt-1">{apiErrorMessage(assignMutation.error)}</p>}
             {linkedRecord?.type === 'issue' && (
               <div className="flex items-center gap-1">
                 <Link
