@@ -3,19 +3,20 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   RFI_DISCIPLINES, RFI_DISCIPLINE_LABELS, RFI_IMPACT_LEVELS, RFI_IMPACT_LEVEL_LABELS, DRAWING_UPDATE_STATUS_LABELS,
+  type RfiImpactLevel,
 } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { RfiFormModal } from '../components/RfiFormModal';
 import { RfiNoticeLetterModal } from '../components/RfiNoticeLetterModal';
 import {
-  listRfis, getRfiSummary, markRfiDrawingApplied, markRfiDrawingNotApplied,
+  listRfis, getRfiSummary, updateRfi, markRfiDrawingApplied, markRfiDrawingNotApplied,
   markRfiDrawingSentToSite, markRfiDrawingNotSentToSite, remindRfiDrawingUpdate,
   type RfiListItem,
 } from '../lib/rfis.api';
 import { getProject, getMembers } from '../lib/projects.api';
 import {
   RFI_STATUS_LABELS, RFI_WORKFLOW_STATUS_LABELS, RFI_WORKFLOW_STATUS_BADGE_CLASS,
-  RFI_PRIORITY_LABELS, RFI_PRIORITY_BADGE_CLASS, DRAWING_IMPACT_BADGE_CLASS, isRfiOverdue, formatDate,
+  RFI_PRIORITY_LABELS, RFI_PRIORITY_BADGE_CLASS, isRfiOverdue, formatDate,
 } from '../lib/rfi-constants';
 import { getDeadlineTimer, TIMER_BADGE_CLASS } from '../lib/issue-constants';
 import { apiErrorMessage } from '../lib/api';
@@ -86,6 +87,16 @@ export default function RfisPage() {
     queryClient.invalidateQueries({ queryKey: ['rfis', projectId] });
     queryClient.invalidateQueries({ queryKey: ['report-kpis', projectId] });
   }
+
+  // Lets the Drawing/Model Updated status itself be set right from the
+  // list, not just the Applied/Sent-to-Site follow-up toggles -- same PATCH
+  // endpoint the RFI detail form/edit view already uses for this field.
+  const updateDrawingLevelMutation = useMutation({
+    mutationFn: ({ rfiId, level }: { rfiId: string; level: RfiImpactLevel }) =>
+      updateRfi(projectId!, rfiId, { drawingImpactLevel: level }),
+    onSuccess: invalidateDrawingViews,
+    onError: (err) => setDrawingActionError(apiErrorMessage(err)),
+  });
 
   const toggleDrawingAppliedMutation = useMutation({
     mutationFn: ({ rfiId, applied }: { rfiId: string; applied: boolean }) =>
@@ -254,36 +265,44 @@ export default function RfisPage() {
                         )}
                       </td>
                       <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
-                        {(r.drawingImpactLevel ?? 'no') === 'no' ? (
-                          <span className="text-ink-300">{DRAWING_UPDATE_STATUS_LABELS.no}</span>
-                        ) : (
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span
-                              className={DRAWING_IMPACT_BADGE_CLASS}
-                              title={DRAWING_UPDATE_STATUS_LABELS[r.drawingImpactLevel ?? 'no']}
-                            >
-                              {r.drawingImpactLevel === 'yes' ? 'Yes' : 'TBC'}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => toggleDrawingAppliedMutation.mutate({ rfiId: r.id, applied: Boolean(r.drawingUpdateApplied) })}
-                              disabled={toggleDrawingAppliedMutation.isPending}
-                              className={r.drawingUpdateApplied ? 'text-ok text-xs underline' : 'text-blueprint hover:text-blueprint-hover text-xs underline'}
-                            >
-                              {r.drawingUpdateApplied ? 'Applied' : 'Not applied'}
-                            </button>
-                            {!r.drawingUpdateApplied && (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {/* Editable right from the list, not just the RFI
+                              form -- same PATCH the detail page's own edit
+                              view already sends for this field. */}
+                          <select
+                            value={r.drawingImpactLevel ?? 'no'}
+                            onChange={(e) => updateDrawingLevelMutation.mutate({ rfiId: r.id, level: e.target.value as RfiImpactLevel })}
+                            disabled={updateDrawingLevelMutation.isPending}
+                            title={DRAWING_UPDATE_STATUS_LABELS[r.drawingImpactLevel ?? 'no']}
+                            className={`field-input w-auto !py-1 !text-xs ${(r.drawingImpactLevel ?? 'no') === 'no' ? '!text-ink-300' : '!border-warn/40 !text-warn'}`}
+                          >
+                            {RFI_IMPACT_LEVELS.map((l) => (
+                              <option key={l} value={l}>{DRAWING_UPDATE_STATUS_LABELS[l]}</option>
+                            ))}
+                          </select>
+                          {(r.drawingImpactLevel ?? 'no') !== 'no' && (
+                            <>
                               <button
                                 type="button"
-                                onClick={() => remindDrawingMutation.mutate(r.id)}
-                                disabled={remindDrawingMutation.isPending}
-                                className="text-ink-500 hover:text-ink-300 text-xs underline"
+                                onClick={() => toggleDrawingAppliedMutation.mutate({ rfiId: r.id, applied: Boolean(r.drawingUpdateApplied) })}
+                                disabled={toggleDrawingAppliedMutation.isPending}
+                                className={r.drawingUpdateApplied ? 'text-ok text-xs underline' : 'text-blueprint hover:text-blueprint-hover text-xs underline'}
                               >
-                                Remind
+                                {r.drawingUpdateApplied ? 'Applied' : 'Not applied'}
                               </button>
-                            )}
-                          </div>
-                        )}
+                              {!r.drawingUpdateApplied && (
+                                <button
+                                  type="button"
+                                  onClick={() => remindDrawingMutation.mutate(r.id)}
+                                  disabled={remindDrawingMutation.isPending}
+                                  className="text-ink-500 hover:text-ink-300 text-xs underline"
+                                >
+                                  Remind
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
                         {(r.drawingImpactLevel ?? 'no') === 'no' ? (
