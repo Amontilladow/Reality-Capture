@@ -66,6 +66,11 @@ export const RFI_PRIORITY_BADGE_CLASS: Record<RfiPriority, string> = {
   low: 'bg-base-600 text-ink-500',
 };
 
+// Warning-colored badge for the Drawing impact column/field -- same 'warn'
+// token RfisPage's own Cost/Time impact badges already use, so all three
+// impact fields read as one consistent visual family.
+export const DRAWING_IMPACT_BADGE_CLASS = 'badge bg-warn/15 text-warn';
+
 // Widened to RfiWorkflowStatus -- Rfi.status carries the full workflow
 // vocabulary now (see rfi.types.ts), and every terminal/answered-equivalent
 // value (legacy or new) should stop counting as overdue the same way.

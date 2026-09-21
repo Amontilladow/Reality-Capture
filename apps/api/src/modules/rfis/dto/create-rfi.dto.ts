@@ -36,6 +36,12 @@ export class CreateRfiDto {
   @IsOptional() @IsNumber() timeImpactDays?: number;
   @IsOptional() @IsString() timeImpactDescription?: string;
 
+  // Third impact field, same 4-state vocabulary, no amount/currency-or-days
+  // companion -- just level + description (see migration 044).
+  @IsOptional() @IsIn(RFI_IMPACT_LEVELS) drawingImpactLevel?: RfiImpactLevel;
+  @IsOptional() @IsString() drawingImpactDescription?: string;
+  @IsOptional() @IsUUID() drawingUpdateOwnerId?: string;
+
   @IsOptional() @IsUUID() assignedTo?: string;
   @IsOptional() @IsDateString() dueDate?: string;
 }

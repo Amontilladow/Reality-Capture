@@ -9,6 +9,7 @@ import { AddRfiAttachmentDto } from './dto/add-rfi-attachment.dto';
 import { RequestClarificationDto } from './dto/request-clarification.dto';
 import { RespondToRfiDto } from './dto/respond-to-rfi.dto';
 import { AddRfiCommentDto } from './dto/add-rfi-comment.dto';
+import { DecideReviewDto } from './dto/decide-review.dto';
 import { UpsertRfiNoticeLetterDto } from './dto/upsert-rfi-notice-letter.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
@@ -177,12 +178,63 @@ export class RfisController {
     return { data: await this.svc.respond(u.companyId, pid, id, u.id, dto), error: null };
   }
 
+  @Post(':id/submit-for-review')
+  @RequireProjectPermission('manage_rfis')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send a responded RFI to a stakeholder for review (PMC/client sign-off)' })
+  async submitForReview(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.submitForReview(u.companyId, pid, id, u.id), error: null };
+  }
+
+  @Post(':id/decide-review')
+  @RequireProjectPermission('manage_rfis')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Approve (closes the RFI) or reject (sends it back for clarification) a review' })
+  async decideReview(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('id') id: string,
+    @Body() dto: DecideReviewDto,
+  ) {
+    return { data: await this.svc.decideReview(u.companyId, pid, id, u.id, dto), error: null };
+  }
+
   @Post(':id/close')
   @RequireProjectPermission('manage_rfis')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Close an RFI' })
   async close(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
     return { data: await this.svc.close(u.companyId, pid, id, u.id), error: null };
+  }
+
+  // ── Drawing impact follow-up ─────────────────────────────────────────────
+  // Same gate as the general RFI field edits (@Patch(':id') above) -- see
+  // RfisService.markDrawingApplied()'s own comment for why this is a
+  // records-update action rather than an RFI-workflow transition.
+  @Post(':id/drawing-update/mark-applied')
+  @RequireProjectPermission('manage_project_records')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Mark this RFI\'s drawing update as applied' })
+  async markDrawingApplied(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.markDrawingApplied(u.companyId, pid, id, u.id), error: null };
+  }
+
+  @Post(':id/drawing-update/mark-not-applied')
+  @RequireProjectPermission('manage_project_records')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Correct a mistaken "applied" mark on this RFI\'s drawing update' })
+  async markDrawingNotApplied(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.markDrawingNotApplied(u.companyId, pid, id, u.id), error: null };
+  }
+
+  // manage_rfis, not manage_project_records -- see RfisService.remindDrawingUpdate()'s
+  // own comment for why this gate diverges from the two routes above.
+  @Post(':id/remind-drawing-update')
+  @RequireProjectPermission('manage_rfis')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send an in-app reminder to the drawing update owner (or assignee) for this RFI' })
+  async remindDrawingUpdate(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.remindDrawingUpdate(u.companyId, pid, id, u.id), error: null };
   }
 
   @Post(':id/reopen')

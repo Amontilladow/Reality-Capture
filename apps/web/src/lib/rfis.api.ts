@@ -71,6 +71,11 @@ export interface CreateRfiPayload {
   timeImpactLevel?: RfiImpactLevel;
   timeImpactDays?: number;
   timeImpactDescription?: string;
+  // Third impact field -- same 4-state vocabulary, no amount/currency-or-days
+  // companion (see packages/types/src/rfi.types.ts).
+  drawingImpactLevel?: RfiImpactLevel;
+  drawingImpactDescription?: string;
+  drawingUpdateOwnerId?: string;
   assignedTo?: string;
   dueDate?: string;
 }
@@ -100,6 +105,9 @@ export interface UpdateRfiPayload {
   timeImpactLevel?: RfiImpactLevel;
   timeImpactDays?: number;
   timeImpactDescription?: string;
+  drawingImpactLevel?: RfiImpactLevel;
+  drawingImpactDescription?: string;
+  drawingUpdateOwnerId?: string;
   assignedTo?: string;
   dueDate?: string;
 }
@@ -123,6 +131,27 @@ export function requestClarification(projectId: string, rfiId: string, reason: s
 
 export function respondToRfi(projectId: string, rfiId: string, answer: string) {
   return apiPost<RfiListItem>(`/projects/${projectId}/rfis/${rfiId}/respond`, { answer });
+}
+
+export function submitRfiForReview(projectId: string, rfiId: string) {
+  return apiPost<RfiListItem>(`/projects/${projectId}/rfis/${rfiId}/submit-for-review`);
+}
+
+export function decideRfiReview(projectId: string, rfiId: string, payload: { decision: 'approved' | 'rejected'; comment?: string }) {
+  return apiPost<RfiListItem>(`/projects/${projectId}/rfis/${rfiId}/decide-review`, payload);
+}
+
+// ── Drawing impact follow-up ─────────────────────────────────────────────
+export function markRfiDrawingApplied(projectId: string, rfiId: string) {
+  return apiPost<RfiListItem>(`/projects/${projectId}/rfis/${rfiId}/drawing-update/mark-applied`);
+}
+
+export function markRfiDrawingNotApplied(projectId: string, rfiId: string) {
+  return apiPost<RfiListItem>(`/projects/${projectId}/rfis/${rfiId}/drawing-update/mark-not-applied`);
+}
+
+export function remindRfiDrawingUpdate(projectId: string, rfiId: string) {
+  return apiPost<{ message: string }>(`/projects/${projectId}/rfis/${rfiId}/remind-drawing-update`);
 }
 
 export function closeRfi(projectId: string, rfiId: string) {

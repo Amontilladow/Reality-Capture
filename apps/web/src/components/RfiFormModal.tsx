@@ -36,6 +36,16 @@ export function RfiFormModal({
   const [timeImpactDays, setTimeImpactDays] = useState('');
   const [timeImpactDescription, setTimeImpactDescription] = useState('');
 
+  // Third impact field -- same 4-state shape, no amount/currency-or-days
+  // companion, just level + description + an owner for the follow-up.
+  const [drawingImpactLevel, setDrawingImpactLevel] = useState<RfiImpactLevel>('no');
+  const [drawingImpactDescription, setDrawingImpactDescription] = useState('');
+  // Defaults to whoever assignedTo is already set to once impact is raised
+  // above 'no' -- see the effect below -- but stays freely editable from
+  // there, per the ticket ("defaulting to whoever assigned_to is already
+  // set to, editable").
+  const [drawingUpdateOwnerId, setDrawingUpdateOwnerId] = useState('');
+
   const [assignedTo, setAssignedTo] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState('');
@@ -45,6 +55,7 @@ export function RfiFormModal({
     setDiscipline(''); setDisciplineOther('');
     setCostImpactLevel('no'); setCostImpactAmount(''); setCostImpactCurrency(''); setCostImpactDescription('');
     setTimeImpactLevel('no'); setTimeImpactDays(''); setTimeImpactDescription('');
+    setDrawingImpactLevel('no'); setDrawingImpactDescription(''); setDrawingUpdateOwnerId('');
     setAssignedTo(''); setDueDate(''); setError('');
   }
 
@@ -67,6 +78,9 @@ export function RfiFormModal({
         timeImpactLevel,
         timeImpactDays: timeImpactLevel !== 'no' && timeImpactDays ? Number(timeImpactDays) : undefined,
         timeImpactDescription: timeImpactLevel !== 'no' ? timeImpactDescription.trim() || undefined : undefined,
+        drawingImpactLevel,
+        drawingImpactDescription: drawingImpactLevel !== 'no' ? drawingImpactDescription.trim() || undefined : undefined,
+        drawingUpdateOwnerId: drawingImpactLevel !== 'no' ? drawingUpdateOwnerId || undefined : undefined,
         assignedTo: assignedTo || undefined,
         dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
       });
@@ -212,6 +226,54 @@ export function RfiFormModal({
                 value={timeImpactDescription}
                 onChange={(e) => setTimeImpactDescription(e.target.value)}
               />
+            </div>
+          )}
+        </div>
+
+        {/* Drawing impact -- same 4-state shape as cost/time above, but no
+            amount/currency-or-days companion field, just level + description
+            + a drawing-update owner (only meaningfully shown once level isn't
+            'no'). */}
+        <div className="space-y-2">
+          <label className="field-label" htmlFor="drawingImpactLevel">Drawing impact</label>
+          <select
+            id="drawingImpactLevel"
+            className="field-input"
+            value={drawingImpactLevel}
+            onChange={(e) => {
+              const level = e.target.value as RfiImpactLevel;
+              setDrawingImpactLevel(level);
+              // Defaults the owner to the RFI's general assignee the first
+              // time impact is raised above 'no' -- editable from there.
+              if (level !== 'no' && !drawingUpdateOwnerId && assignedTo) setDrawingUpdateOwnerId(assignedTo);
+            }}
+          >
+            {RFI_IMPACT_LEVELS.map((l) => (
+              <option key={l} value={l}>{RFI_IMPACT_LEVEL_LABELS[l]}</option>
+            ))}
+          </select>
+          {drawingImpactLevel !== 'no' && (
+            <div className="space-y-2">
+              <textarea
+                className="field-input min-h-[64px]"
+                placeholder="Drawing impact description…"
+                value={drawingImpactDescription}
+                onChange={(e) => setDrawingImpactDescription(e.target.value)}
+              />
+              <div>
+                <label className="field-label" htmlFor="drawingUpdateOwnerId">Drawing update owner</label>
+                <select
+                  id="drawingUpdateOwnerId"
+                  className="field-input"
+                  value={drawingUpdateOwnerId}
+                  onChange={(e) => setDrawingUpdateOwnerId(e.target.value)}
+                >
+                  <option value="">Unassigned</option>
+                  {members.map((m) => (
+                    <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           )}
         </div>

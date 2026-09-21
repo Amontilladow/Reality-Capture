@@ -49,6 +49,26 @@ export interface ReportOpenSnag {
   assignedToName?: string;
 }
 
+// RFIs join the Reports module for the first time here (there was no
+// existing RFI reports section to extend) -- see RfisService.getSummary()/
+// getKpiBreakdown()/getDrawingUpdatesNotApplied() (apps/api). summary reuses
+// RfisPage's own RfiSummary shape exactly (total/open/answered/overdue).
+export interface ReportRfiSummary {
+  total: number;
+  open: number;
+  answered: number;
+  overdue: number;
+}
+
+export interface ReportRfiDrawingUpdate {
+  id: string;
+  rfiNumber?: string;
+  subject: string;
+  drawingImpactLevel: string;
+  createdAt: string;
+  drawingUpdateOwnerName?: string;
+}
+
 export interface ReportKpis {
   project: { name?: string; code?: string };
   issues: {
@@ -64,6 +84,12 @@ export interface ReportKpis {
     byPriority: Record<string, number>;
     byTrade: Record<string, number>;
     openList: ReportOpenSnag[];
+  };
+  rfis: {
+    summary: ReportRfiSummary;
+    byDrawingImpact: Record<string, number>;
+    drawingUpdateStatus: { totalRequiringDrawingUpdate: number; applied: number; notApplied: number };
+    notAppliedList: ReportRfiDrawingUpdate[];
   };
 }
 

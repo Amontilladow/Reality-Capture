@@ -6,7 +6,7 @@ import { DrawingViewer } from '../components/drawing/DrawingViewer';
 import { DrawingUploadModal } from '../components/drawing/DrawingUploadModal';
 import { PinPanel } from '../components/drawing/PinPanel';
 import { listDrawings, getDrawing, createPin, getPins, type Pin } from '../lib/drawings.api';
-import { getHierarchy, updateLocation } from '../lib/projects.api';
+import { getHierarchy, updateLocation, getMembers } from '../lib/projects.api';
 
 export default function FloorPlanViewer() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -18,6 +18,16 @@ export default function FloorPlanViewer() {
   const [openPin, setOpenPin] = useState<Pin | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [numPages, setNumPages] = useState(1);
+  // Who a newly-placed pin's auto-created Issue is assigned to -- lets
+  // someone walking a site drop several pins in a row all pre-assigned to
+  // the same person, without opening each pin's panel afterward.
+  const [newPinAssignee, setNewPinAssignee] = useState('');
+
+  const membersQuery = useQuery({
+    queryKey: ['project-members', projectId],
+    queryFn: () => getMembers(projectId!),
+    enabled: Boolean(projectId),
+  });
 
   const drawingsQuery = useQuery({
     queryKey: ['drawings', projectId],
@@ -52,7 +62,10 @@ export default function FloorPlanViewer() {
 
   const createPinMutation = useMutation({
     mutationFn: (payload: { xNorm: number; yNorm: number }) =>
-      createPin(projectId!, activeDrawingId!, { posXNorm: payload.xNorm, posYNorm: payload.yNorm, pageNumber: currentPage }),
+      createPin(projectId!, activeDrawingId!, {
+        posXNorm: payload.xNorm, posYNorm: payload.yNorm, pageNumber: currentPage,
+        assignedTo: newPinAssignee || undefined,
+      }),
     onSuccess: (pin) => {
       queryClient.invalidateQueries({ queryKey: ['pins', projectId, activeDrawingId] });
       setPlacingMode(false);
@@ -143,6 +156,21 @@ export default function FloorPlanViewer() {
                   </button>
                 </div>
               )}
+              {!movingPin && (
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="text-ink-500">New pins assign to</span>
+                  <select
+                    className="field-input w-auto !py-1 !text-xs"
+                    value={newPinAssignee}
+                    onChange={(e) => setNewPinAssignee(e.target.value)}
+                  >
+                    <option value="">Unassigned</option>
+                    {(membersQuery.data ?? []).map((m) => (
+                      <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {numPages > 1 && (
                 <div className="flex items-center gap-1.5 text-xs text-ink-300">
                   <button
@@ -196,6 +224,7 @@ export default function FloorPlanViewer() {
       <PinPanel
         projectId={projectId}
         pin={openPin}
+        members={membersQuery.data ?? []}
         onClose={() => setOpenPin(null)}
         onMove={(pin) => { setOpenPin(null); setPlacingMode(false); setMovingPin(pin); }}
         onDeleted={() => setOpenPin(null)}

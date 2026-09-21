@@ -1,4 +1,4 @@
-import { IsInt, IsNumber, IsOptional, IsString, Min, MaxLength } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsString, IsUUID, Min, MaxLength } from 'class-validator';
 
 export class CreatePinDto {
   @IsNumber() posXNorm: number;   // normalized 0.0–1.0 on the drawing canvas
@@ -8,4 +8,8 @@ export class CreatePinDto {
   // had open when the pin was placed. Defaults to 1 (single-page drawings,
   // or page 1 of a multi-page one).
   @IsOptional() @IsInt() @Min(1) pageNumber?: number;
+  // Forwarded straight through to the pin's auto-created Issue (see
+  // drawings.service.ts createPin()) -- lets several pins in a row be
+  // dropped pre-assigned to the same person.
+  @IsOptional() @IsUUID() assignedTo?: string;
 }

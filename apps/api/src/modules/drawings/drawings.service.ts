@@ -178,6 +178,7 @@ export class DrawingsService {
       drawingId,
       posXNorm: dto.posXNorm,
       posYNorm: dto.posYNorm,
+      assignedTo: dto.assignedTo,
     });
 
     // Shaped to match getPins() below (locationId, captureCount, etc.) so the
@@ -192,6 +193,7 @@ export class DrawingsService {
       createdVia: pin.createdVia as string,
       createdAt: pin.createdAt as string,
       captureCount: 0,
+      assignedTo: dto.assignedTo,
       linkedRecord: { type: 'issue' as const, id: issue.id as string },
     };
   }
@@ -212,7 +214,9 @@ export class DrawingsService {
         (ARRAY_AGG(c.compass_heading_deg ORDER BY c.captured_at DESC)
           FILTER (WHERE c.compass_heading_deg IS NOT NULL))[1] AS compass_heading_deg,
         (SELECT iss.id FROM issues iss WHERE iss.location_id = loc.id ORDER BY iss.created_at ASC LIMIT 1) AS linked_issue_id,
-        (SELECT sg.id FROM snag_items sg WHERE sg.location_id = loc.id ORDER BY sg.created_at ASC LIMIT 1) AS linked_snag_id
+        (SELECT iss.assigned_to FROM issues iss WHERE iss.location_id = loc.id ORDER BY iss.created_at ASC LIMIT 1) AS linked_issue_assigned_to,
+        (SELECT sg.id FROM snag_items sg WHERE sg.location_id = loc.id ORDER BY sg.created_at ASC LIMIT 1) AS linked_snag_id,
+        (SELECT sg.assigned_to FROM snag_items sg WHERE sg.location_id = loc.id ORDER BY sg.created_at ASC LIMIT 1) AS linked_snag_assigned_to
       FROM locations loc
       LEFT JOIN captures c ON c.location_id = loc.id AND c.status = 'ready'
       LEFT JOIN capture_renditions cr ON cr.capture_id = c.id AND cr.rendition_type = 'thumbnail_sm'
@@ -233,6 +237,10 @@ export class DrawingsService {
         : p.linkedSnagId
           ? { type: 'snag', id: p.linkedSnagId }
           : null,
+      // Same "issue takes precedence over snag" pairing as linkedRecord above
+      // -- a pin converted to a snag no longer has a live issue assignee to
+      // prefer instead.
+      assignedTo: p.linkedIssueId ? p.linkedIssueAssignedTo : p.linkedSnagAssignedTo,
     }));
   }
 }

@@ -171,6 +171,61 @@ export const RFI_DISCIPLINE_CODES: Record<RfiDiscipline, string> = {
   other: 'OTH',
 };
 
+// External stakeholder access -- lets a Lead Design Consultant/PMC/Client
+// respond to or review an RFI via an opaque, expiring, revocable link with
+// no EngineeringOS account (rfi_external_access table, migration 043).
+export const RFI_EXTERNAL_ACCESS_ACTIONS = ['respond', 'review', 'comment_only'] as const;
+export type RfiExternalAccessAction = typeof RFI_EXTERNAL_ACCESS_ACTIONS[number];
+
+export const RFI_EXTERNAL_ACCESS_ACTION_LABELS: Record<RfiExternalAccessAction, string> = {
+  respond: 'Respond',
+  review: 'Review (approve/reject)',
+  comment_only: 'Comment only',
+};
+
+// One row per generated link. `token` is only ever present in the response
+// to the generate call itself -- list/revoke responses omit it (see
+// RfiExternalAccessService), same "don't re-display a bearer secret"
+// practice as this codebase already applies to other credential-shaped
+// values.
+export interface RfiExternalAccess {
+  id: string;
+  companyId: string;
+  projectId: string;
+  rfiId: string;
+  organizationSlot: ProjectOrganizationSlot;
+  action: RfiExternalAccessAction;
+  recipientEmail: string;
+  recipientName?: string;
+  token?: string;
+  expiresAt: string;
+  revokedAt?: string;
+  revokedBy?: string;
+  usedAt?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+// The deliberately narrow read model GET /public/rfis/external/:token
+// returns -- subject/question/discipline/due date, this RFI's own
+// query-kind attachments and comment thread, and which action this
+// specific link authorizes. Never the wider findOne() shape, never
+// anything about other RFIs or the rest of the project.
+export interface RfiExternalDetail {
+  rfiNumber?: string;
+  subject: string;
+  question: string;
+  discipline?: RfiDiscipline;
+  disciplineOther?: string;
+  status: RfiWorkflowStatus;
+  dueDate?: string;
+  answer?: string;
+  action: RfiExternalAccessAction;
+  organizationSlot: ProjectOrganizationSlot;
+  attachments: { id: string; filename: string; attachmentReadUrl?: string }[];
+  comments: { id: string; userName?: string; organizationSlot?: ProjectOrganizationSlot; body: string; createdAt: string }[];
+}
+
 export interface Rfi {
   id: string;
   companyId: string;
@@ -204,6 +259,16 @@ export interface Rfi {
   timeImpactLevel?: RfiImpactLevel;
   timeImpactDays?: number;
   timeImpactDescription?: string;
+  // Third impact field (migration 044), structurally identical to cost/time
+  // above but with no amount/currency-or-days companion -- just level +
+  // description. drawingUpdateApplied only means anything once
+  // drawingImpactLevel != 'no' (see RfisService's own comment).
+  drawingImpactLevel?: RfiImpactLevel;
+  drawingImpactDescription?: string;
+  drawingUpdateOwnerId?: string;
+  drawingUpdateApplied?: boolean;
+  drawingUpdateAppliedAt?: string;
+  drawingUpdateAppliedBy?: string;
   queryStamp?: string;
   answerStamp?: string;
   assignedTo?: string;
@@ -222,4 +287,10 @@ export interface Rfi {
   // it. Added here rather than worked around with an `as` cast at every
   // call site.
   answeredByName?: string;
+  // Joined name for drawingUpdateOwnerId -- undefined when no owner is set
+  // (the detail/list views show "Unassigned" in that case, same as
+  // assignedToName). The assignedTo fallback the reminder endpoint and the
+  // Reports not-applied list use only applies at the point of resolving who
+  // to notify -- it's not baked into this field.
+  drawingUpdateOwnerName?: string;
 }

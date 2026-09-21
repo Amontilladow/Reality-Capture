@@ -418,4 +418,304 @@ describe('RfisService', () => {
       await expect(svc.reopen(companyId, projectId, rfiId, 'user-reviewer')).rejects.toThrow(BadRequestException);
     });
   });
+
+  // ══════════════════════════════════════════════════════════════════════
+  // submitForReview() -- new: the previously-missing "PMC/client reviews
+  // the answer" transition into 'under_review'.
+  // ══════════════════════════════════════════════════════════════════════
+  describe('submitForReview', () => {
+    it("moves a 'responded' RFI to 'under_review' and writes the 'rfi.review_submitted' audit row", async () => {
+      const { svc, calls, notifications } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, createdBy: 'user-owner', status: 'responded', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', assignedTo: null }];
+        }
+        if (text.includes("UPDATE rfis SET status = 'under_review'")) {
+          return [{ id: rfiId, status: 'under_review' }];
+        }
+        return undefined;
+      });
+
+      const result = await svc.submitForReview(companyId, projectId, rfiId, 'user-reviewer');
+
+      expect(result.status).toBe('under_review');
+      const auditCall = calls.find((c) => c.text.includes('INSERT INTO audit_log'));
+      expect(auditCall!.values[3]).toBe('rfi.review_submitted');
+      expect(notifications.create).toHaveBeenCalledWith(companyId, expect.objectContaining({ type: 'rfi_review_submitted' }));
+    });
+
+    it("also accepts the legacy 'answered' status, workflow-equivalent to 'responded'", async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, createdBy: 'user-owner', status: 'answered', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', assignedTo: null }];
+        }
+        if (text.includes("UPDATE rfis SET status = 'under_review'")) {
+          return [{ id: rfiId, status: 'under_review' }];
+        }
+        return undefined;
+      });
+
+      await expect(svc.submitForReview(companyId, projectId, rfiId, 'user-reviewer')).resolves.toMatchObject({ status: 'under_review' });
+    });
+
+    it("throws BadRequestException from a non-responded status such as 'submitted'", async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, createdBy: 'user-owner', status: 'submitted', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj' }];
+        }
+        return undefined;
+      });
+
+      await expect(svc.submitForReview(companyId, projectId, rfiId, 'user-reviewer')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════════════
+  // decideReview() -- new: approve closes the RFI, reject sends it back to
+  // 'awaiting_clarification' (see the service's own comment for why).
+  // ══════════════════════════════════════════════════════════════════════
+  describe('decideReview', () => {
+    it("approves an 'under_review' RFI, moving it to 'closed' and writing 'rfi.review_approved'", async () => {
+      const { svc, calls, notifications } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, createdBy: 'user-owner', status: 'under_review', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', assignedTo: null }];
+        }
+        if (text.includes("UPDATE rfis SET status = ")) {
+          return [{ id: rfiId, status: 'closed' }];
+        }
+        return undefined;
+      });
+
+      const result = await svc.decideReview(companyId, projectId, rfiId, 'user-reviewer', { decision: 'approved' });
+
+      expect(result.status).toBe('closed');
+      const auditCall = calls.find((c) => c.text.includes('INSERT INTO audit_log'));
+      expect(auditCall!.values[3]).toBe('rfi.review_approved');
+      expect(notifications.create).toHaveBeenCalledWith(companyId, expect.objectContaining({ type: 'rfi_review_approved' }));
+    });
+
+    it("rejects an 'under_review' RFI, moving it to 'awaiting_clarification' and recording the comment in audit metadata", async () => {
+      const { svc, calls, notifications } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, createdBy: 'user-owner', status: 'under_review', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', assignedTo: null }];
+        }
+        if (text.includes("UPDATE rfis SET status = ")) {
+          return [{ id: rfiId, status: 'awaiting_clarification' }];
+        }
+        return undefined;
+      });
+
+      const result = await svc.decideReview(companyId, projectId, rfiId, 'user-reviewer', { decision: 'rejected', comment: 'Depth still unclear' });
+
+      expect(result.status).toBe('awaiting_clarification');
+      const auditCall = calls.find((c) => c.text.includes('INSERT INTO audit_log'));
+      expect(auditCall!.values[3]).toBe('rfi.review_rejected');
+      // values = [companyId, projectId, userId, action, rfiId, resourceLabel, changesJson, metadataJson]
+      expect(auditCall!.values[7]).toContain('Depth still unclear');
+      expect(notifications.create).toHaveBeenCalledWith(companyId, expect.objectContaining({ type: 'rfi_review_rejected' }));
+    });
+
+    it("throws BadRequestException when called on anything other than 'under_review'", async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, createdBy: 'user-owner', status: 'responded', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj' }];
+        }
+        return undefined;
+      });
+
+      await expect(
+        svc.decideReview(companyId, projectId, rfiId, 'user-reviewer', { decision: 'approved' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Drawing impact -- new: a third impact field (structurally identical to
+  // cost/time impact) plus follow-up tracking (owner, applied/not-applied)
+  // and the Reports rollup that surfaces it.
+  // ══════════════════════════════════════════════════════════════════════
+  describe('getKpiBreakdown', () => {
+    it('buckets counts by drawing_impact_level and splits the non-no total into applied/notApplied', async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('GROUP BY drawing_impact_level')) {
+          return [
+            { drawingImpactLevel: 'no', count: '10', appliedCount: '0' },
+            { drawingImpactLevel: 'yes', count: '3', appliedCount: '1' },
+            { drawingImpactLevel: 'potential', count: '2', appliedCount: '2' },
+          ];
+        }
+        return undefined;
+      });
+
+      const result = await svc.getKpiBreakdown(companyId, projectId);
+
+      expect(result.byDrawingImpact).toEqual({ no: 10, yes: 3, potential: 2, tbd: 0 });
+      expect(result.drawingUpdateStatus).toEqual({ totalRequiringDrawingUpdate: 5, applied: 3, notApplied: 2 });
+    });
+
+    it('returns all-zero buckets when the project has no RFIs at all', async () => {
+      const { svc } = makeService(() => []);
+
+      const result = await svc.getKpiBreakdown(companyId, projectId);
+
+      expect(result.byDrawingImpact).toEqual({ no: 0, yes: 0, potential: 0, tbd: 0 });
+      expect(result.drawingUpdateStatus).toEqual({ totalRequiringDrawingUpdate: 0, applied: 0, notApplied: 0 });
+    });
+  });
+
+  describe('getDrawingUpdatesNotApplied', () => {
+    it('queries only non-no, not-yet-applied RFIs', async () => {
+      const { svc, calls } = makeService((text) => {
+        if (text.includes('drawing_update_owner_name')) {
+          return [{ id: rfiId, rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', drawingImpactLevel: 'yes', drawingUpdateOwnerName: 'Jane Doe' }];
+        }
+        return undefined;
+      });
+
+      const result = await svc.getDrawingUpdatesNotApplied(companyId, projectId);
+
+      expect(result).toHaveLength(1);
+      const listCall = calls.find((c) => c.text.includes('drawing_update_owner_name'));
+      expect(listCall!.text).toContain("AND r.drawing_impact_level != 'no' AND r.drawing_update_applied = false");
+    });
+  });
+
+  describe('markDrawingApplied', () => {
+    it("stamps applied_at/applied_by and writes 'rfi.drawing_update_applied'", async () => {
+      const { svc, calls } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, subject: 'Subj', drawingImpactLevel: 'yes', drawingUpdateApplied: false }];
+        }
+        if (text.includes('drawing_update_applied    = true')) {
+          return [{ id: rfiId, drawingUpdateApplied: true }];
+        }
+        return undefined;
+      });
+
+      const result = await svc.markDrawingApplied(companyId, projectId, rfiId, 'user-1');
+
+      expect(result.drawingUpdateApplied).toBe(true);
+      const auditCall = calls.find((c) => c.text.includes('INSERT INTO audit_log'));
+      expect(auditCall!.values[3]).toBe('rfi.drawing_update_applied');
+    });
+
+    it("rejects a 'no'-impact RFI rather than silently flipping a flag nothing reads", async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, subject: 'Subj', drawingImpactLevel: 'no' }];
+        }
+        return undefined;
+      });
+
+      await expect(svc.markDrawingApplied(companyId, projectId, rfiId, 'user-1')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('markDrawingNotApplied', () => {
+    it("clears applied_at/applied_by and writes 'rfi.drawing_update_unapplied'", async () => {
+      const { svc, calls } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, subject: 'Subj', drawingImpactLevel: 'yes', drawingUpdateApplied: true }];
+        }
+        if (text.includes('drawing_update_applied    = false')) {
+          return [{ id: rfiId, drawingUpdateApplied: false }];
+        }
+        return undefined;
+      });
+
+      const result = await svc.markDrawingNotApplied(companyId, projectId, rfiId, 'user-1');
+
+      expect(result.drawingUpdateApplied).toBe(false);
+      const auditCall = calls.find((c) => c.text.includes('INSERT INTO audit_log'));
+      expect(auditCall!.values[3]).toBe('rfi.drawing_update_unapplied');
+    });
+
+    it("rejects a 'no'-impact RFI", async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, subject: 'Subj', drawingImpactLevel: 'no' }];
+        }
+        return undefined;
+      });
+
+      await expect(svc.markDrawingNotApplied(companyId, projectId, rfiId, 'user-1')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('remindDrawingUpdate', () => {
+    it('notifies drawing_update_owner_id when one is set', async () => {
+      const { svc, notifications } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{
+            id: rfiId, rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj',
+            drawingImpactLevel: 'yes', drawingUpdateApplied: false,
+            drawingUpdateOwnerId: 'user-owner', assignedTo: 'user-assignee',
+          }];
+        }
+        return undefined;
+      });
+
+      await svc.remindDrawingUpdate(companyId, projectId, rfiId, 'user-1');
+
+      expect(notifications.create).toHaveBeenCalledWith(companyId, expect.objectContaining({
+        userId: 'user-owner',
+        type: 'rfi_drawing_update_reminder',
+        resourceType: 'rfi',
+        resourceId: rfiId,
+      }));
+    });
+
+    it('falls back to assigned_to when no drawing_update_owner_id is set', async () => {
+      const { svc, notifications } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{
+            id: rfiId, rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj',
+            drawingImpactLevel: 'yes', drawingUpdateApplied: false,
+            drawingUpdateOwnerId: null, assignedTo: 'user-assignee',
+          }];
+        }
+        return undefined;
+      });
+
+      await svc.remindDrawingUpdate(companyId, projectId, rfiId, 'user-1');
+
+      expect(notifications.create).toHaveBeenCalledWith(companyId, expect.objectContaining({ userId: 'user-assignee' }));
+    });
+
+    it('rejects with a clear error instead of silently no-opping when neither owner nor assignee is set', async () => {
+      const { svc, notifications } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{
+            id: rfiId, subject: 'Subj', drawingImpactLevel: 'yes', drawingUpdateApplied: false,
+            drawingUpdateOwnerId: null, assignedTo: null,
+          }];
+        }
+        return undefined;
+      });
+
+      await expect(svc.remindDrawingUpdate(companyId, projectId, rfiId, 'user-1')).rejects.toThrow(BadRequestException);
+      expect(notifications.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects a 'no'-impact RFI", async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, subject: 'Subj', drawingImpactLevel: 'no' }];
+        }
+        return undefined;
+      });
+
+      await expect(svc.remindDrawingUpdate(companyId, projectId, rfiId, 'user-1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects an already-applied drawing update', async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, subject: 'Subj', drawingImpactLevel: 'yes', drawingUpdateApplied: true }];
+        }
+        return undefined;
+      });
+
+      await expect(svc.remindDrawingUpdate(companyId, projectId, rfiId, 'user-1')).rejects.toThrow(BadRequestException);
+    });
+  });
 });
