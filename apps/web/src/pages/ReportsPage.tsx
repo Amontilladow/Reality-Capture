@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
-import { RFI_IMPACT_LEVEL_LABELS } from '@engineeringos/types';
+import { DRAWING_UPDATE_STATUS_LABELS } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { getReportKpis } from '../lib/reports.api';
 import { downloadReportsXls } from '../lib/reports-xls';
@@ -328,7 +328,7 @@ export default function ReportsPage() {
                   onClick={() => setDrawingListOpen((v) => !v)}
                   className="panel p-3 text-left hover:bg-base-800/60 transition-colors"
                 >
-                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">Drawing updates applied</div>
+                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">Drawing/Model Updated — Applied</div>
                   <div className={`text-xl font-semibold tabular-nums ${kpis.rfis.drawingUpdateStatus.notApplied > 0 ? 'text-warn' : 'text-ink-100'}`}>
                     {kpis.rfis.drawingUpdateStatus.applied} of {kpis.rfis.drawingUpdateStatus.totalRequiringDrawingUpdate}
                   </div>
@@ -341,9 +341,9 @@ export default function ReportsPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <ChartCard title="By drawing impact">
+                  <ChartCard title="By Drawing/Model Updated status">
                     <CountBarChart
-                      data={countsToChartData(kpis.rfis.byDrawingImpact, (k) => RFI_IMPACT_LEVEL_LABELS[k as keyof typeof RFI_IMPACT_LEVEL_LABELS] ?? k)}
+                      data={countsToChartData(kpis.rfis.byDrawingImpact, (k) => DRAWING_UPDATE_STATUS_LABELS[k as keyof typeof DRAWING_UPDATE_STATUS_LABELS] ?? k)}
                       colorFor={(_k, i) => SERIES_PALETTE[i % SERIES_PALETTE.length]}
                     />
                   </ChartCard>

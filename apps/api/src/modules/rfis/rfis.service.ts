@@ -830,6 +830,58 @@ export class RfisService {
     return updated;
   }
 
+  // A separate milestone from applied/not-applied above: whether the
+  // updated drawing/model was actually distributed to the site team, not
+  // just updated. Same guard, same permission gate, same reasoning.
+  async markDrawingSentToSite(companyId: string, projectId: string, rfiId: string, userId: string) {
+    const rfi = await this.findOne(companyId, projectId, rfiId);
+    if ((rfi.drawingImpactLevel as string) === 'no') {
+      throw new BadRequestException('This RFI has no drawing/model update to send to the site team.');
+    }
+
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
+      UPDATE rfis SET
+        drawing_update_sent_to_site    = true,
+        drawing_update_sent_to_site_at = NOW(),
+        drawing_update_sent_to_site_by = ${userId},
+        updated_at                     = NOW()
+      WHERE id = ${rfiId} AND project_id = ${projectId} AND company_id = ${companyId}
+      RETURNING *
+    `);
+
+    await this.writeRfiAudit(companyId, projectId, userId, rfiId, rfi.subject as string, 'rfi.drawing_sent_to_site', {
+      previousValue: false,
+      newValue: true,
+    });
+
+    return updated;
+  }
+
+  // Reverse of markDrawingSentToSite() above, for correcting a mistaken mark.
+  async markDrawingNotSentToSite(companyId: string, projectId: string, rfiId: string, userId: string) {
+    const rfi = await this.findOne(companyId, projectId, rfiId);
+    if ((rfi.drawingImpactLevel as string) === 'no') {
+      throw new BadRequestException('This RFI has no drawing/model update to mark as not sent.');
+    }
+
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
+      UPDATE rfis SET
+        drawing_update_sent_to_site    = false,
+        drawing_update_sent_to_site_at = NULL,
+        drawing_update_sent_to_site_by = NULL,
+        updated_at                     = NOW()
+      WHERE id = ${rfiId} AND project_id = ${projectId} AND company_id = ${companyId}
+      RETURNING *
+    `);
+
+    await this.writeRfiAudit(companyId, projectId, userId, rfiId, rfi.subject as string, 'rfi.drawing_not_sent_to_site', {
+      previousValue: true,
+      newValue: false,
+    });
+
+    return updated;
+  }
+
   // ── Drawing-update reminder ──────────────────────────────────────────────
   // Gated with @RequireProjectPermission('manage_rfis') at the controller --
   // different reasoning from markDrawingApplied/markDrawingNotApplied's

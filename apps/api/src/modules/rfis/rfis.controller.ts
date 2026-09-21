@@ -227,6 +227,22 @@ export class RfisController {
     return { data: await this.svc.markDrawingNotApplied(u.companyId, pid, id, u.id), error: null };
   }
 
+  @Post(':id/drawing-update/mark-sent-to-site')
+  @RequireProjectPermission('manage_project_records')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Mark this RFI\'s drawing/model update as sent to the site team' })
+  async markDrawingSentToSite(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.markDrawingSentToSite(u.companyId, pid, id, u.id), error: null };
+  }
+
+  @Post(':id/drawing-update/mark-not-sent-to-site')
+  @RequireProjectPermission('manage_project_records')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Correct a mistaken "sent to site" mark on this RFI\'s drawing/model update' })
+  async markDrawingNotSentToSite(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.markDrawingNotSentToSite(u.companyId, pid, id, u.id), error: null };
+  }
+
   // manage_rfis, not manage_project_records -- see RfisService.remindDrawingUpdate()'s
   // own comment for why this gate diverges from the two routes above.
   @Post(':id/remind-drawing-update')
