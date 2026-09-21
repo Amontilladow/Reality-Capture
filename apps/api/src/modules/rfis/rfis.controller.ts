@@ -9,6 +9,7 @@ import { AddRfiAttachmentDto } from './dto/add-rfi-attachment.dto';
 import { RequestClarificationDto } from './dto/request-clarification.dto';
 import { RespondToRfiDto } from './dto/respond-to-rfi.dto';
 import { AddRfiCommentDto } from './dto/add-rfi-comment.dto';
+import { DecideReviewDto } from './dto/decide-review.dto';
 import { UpsertRfiNoticeLetterDto } from './dto/upsert-rfi-notice-letter.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
@@ -175,6 +176,27 @@ export class RfisController {
     @Body() dto: RespondToRfiDto,
   ) {
     return { data: await this.svc.respond(u.companyId, pid, id, u.id, dto), error: null };
+  }
+
+  @Post(':id/submit-for-review')
+  @RequireProjectPermission('manage_rfis')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send a responded RFI to a stakeholder for review (PMC/client sign-off)' })
+  async submitForReview(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.submitForReview(u.companyId, pid, id, u.id), error: null };
+  }
+
+  @Post(':id/decide-review')
+  @RequireProjectPermission('manage_rfis')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Approve (closes the RFI) or reject (sends it back for clarification) a review' })
+  async decideReview(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('id') id: string,
+    @Body() dto: DecideReviewDto,
+  ) {
+    return { data: await this.svc.decideReview(u.companyId, pid, id, u.id, dto), error: null };
   }
 
   @Post(':id/close')

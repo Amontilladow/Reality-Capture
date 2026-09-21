@@ -4,15 +4,21 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   RFI_DISCIPLINE_LABELS, RFI_IMPACT_LEVELS, RFI_IMPACT_LEVEL_LABELS, RFI_DOCUMENT_TYPES, RFI_DOCUMENT_TYPE_LABELS,
   PROJECT_ORGANIZATION_SLOTS, PROJECT_ORGANIZATION_SLOT_LABELS,
+  RFI_EXTERNAL_ACCESS_ACTIONS, RFI_EXTERNAL_ACCESS_ACTION_LABELS,
   type RfiAttachmentKind, type RfiDocumentType, type ProjectOrganizationSlot, type RfiImpactLevel, type Rfi,
+  type RfiExternalAccessAction,
 } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { RichTextEditor, isRichTextEmpty } from '../components/ui/RichTextEditor';
 import {
   getRfi, updateRfi, submitRfi, requestClarification, respondToRfi, closeRfi, reopenRfi,
+  submitRfiForReview, decideRfiReview,
   getRfiComments, addRfiComment, getRfiAttachments, uploadRfiAttachment, deleteRfiAttachment,
   type RfiAttachment,
 } from '../lib/rfis.api';
+import {
+  generateRfiExternalAccess, listRfiExternalAccess, revokeRfiExternalAccess,
+} from '../lib/rfi-external-access.api';
 import { getProject, getMembers, getPermissionGrants, getOrganizations, uploadOrganizationLogo } from '../lib/projects.api';
 import { getProjectActivity } from '../lib/audit.api';
 import { downloadRfiXls, type RfiWorkbookExtras } from '../lib/rfi-xls';
@@ -28,6 +34,7 @@ import { useAuthStore } from '../store/auth.store';
 // enforces the real state machine and 400s on an illegal transition either way).
 const CLARIFICATION_SOURCE_STATUSES = new Set(['submitted', 'open', 'under_review']);
 const RESPOND_SOURCE_STATUSES = new Set(['submitted', 'open', 'under_review', 'awaiting_clarification']);
+const REVIEW_SOURCE_STATUSES = new Set(['responded', 'answered']);
 const TERMINAL_STATUSES = new Set(['closed', 'rejected', 'cancelled', 'void']);
 
 export default function RfiDetailPage() {
@@ -48,6 +55,15 @@ export default function RfiDetailPage() {
   const [clarifyReason, setClarifyReason] = useState('');
   const [commentBody, setCommentBody] = useState('');
   const [commentOrgSlot, setCommentOrgSlot] = useState<ProjectOrganizationSlot | ''>('');
+  const [reviewRejectOpen, setReviewRejectOpen] = useState(false);
+  const [reviewRejectComment, setReviewRejectComment] = useState('');
+
+  // External access ("send for external response/review") -- link generation form.
+  const [extAction, setExtAction] = useState<RfiExternalAccessAction>('respond');
+  const [extSlot, setExtSlot] = useState<ProjectOrganizationSlot>('ldc');
+  const [extEmail, setExtEmail] = useState('');
+  const [extName, setExtName] = useState('');
+  const [extGeneratedUrl, setExtGeneratedUrl] = useState('');
 
   const rfiQuery = useQuery({
     queryKey: ['rfi', projectId, rfiId],
@@ -84,6 +100,12 @@ export default function RfiDetailPage() {
   const attachmentsQuery = useQuery({
     queryKey: ['rfi-attachments', projectId, rfiId],
     queryFn: () => getRfiAttachments(projectId!, rfiId!),
+    enabled: Boolean(projectId && rfiId),
+  });
+
+  const externalAccessQuery = useQuery({
+    queryKey: ['rfi-external-access', projectId, rfiId],
+    queryFn: () => listRfiExternalAccess(projectId!, rfiId!),
     enabled: Boolean(projectId && rfiId),
   });
 
@@ -181,6 +203,38 @@ export default function RfiDetailPage() {
   const reopenMutation = useMutation({
     mutationFn: () => reopenRfi(projectId!, rfiId!),
     onSuccess: invalidateAll,
+  });
+
+  const submitForReviewMutation = useMutation({
+    mutationFn: () => submitRfiForReview(projectId!, rfiId!),
+    onSuccess: invalidateAll,
+  });
+
+  const decideReviewMutation = useMutation({
+    mutationFn: (payload: { decision: 'approved' | 'rejected'; comment?: string }) => decideRfiReview(projectId!, rfiId!, payload),
+    onSuccess: () => {
+      setReviewRejectOpen(false);
+      setReviewRejectComment('');
+      invalidateAll();
+    },
+  });
+
+  const generateExternalAccessMutation = useMutation({
+    mutationFn: () => generateRfiExternalAccess(projectId!, rfiId!, {
+      organizationSlot: extSlot,
+      action: extAction,
+      recipientEmail: extEmail.trim(),
+      recipientName: extName.trim() || undefined,
+    }),
+    onSuccess: (result) => {
+      setExtGeneratedUrl(result.externalUrl);
+      queryClient.invalidateQueries({ queryKey: ['rfi-external-access', projectId, rfiId] });
+    },
+  });
+
+  const revokeExternalAccessMutation = useMutation({
+    mutationFn: (accessId: string) => revokeRfiExternalAccess(projectId!, rfiId!, accessId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['rfi-external-access', projectId, rfiId] }),
   });
 
   const commentMutation = useMutation({
@@ -312,6 +366,11 @@ export default function RfiDetailPage() {
   const canRespond = canManageRfis && RESPOND_SOURCE_STATUSES.has(rfi.status);
   const canClose = canManageRfis && !TERMINAL_STATUSES.has(rfi.status);
   const canReopen = canManageRfis && rfi.status === 'closed';
+  const canSubmitForReview = canManageRfis && REVIEW_SOURCE_STATUSES.has(rfi.status);
+  const canDecideReview = canManageRfis && rfi.status === 'under_review';
+  // Same manage_rfis gate as respond/close/reopen -- generating a link that
+  // can answer or close this RFI on someone's behalf is exactly as sensitive.
+  const canManageExternalAccess = canManageRfis;
 
   const queryAttachments = (attachmentsQuery.data ?? []).filter((a) => (a.kind ?? 'query') === 'query');
   const responseAttachments = (attachmentsQuery.data ?? []).filter((a) => a.kind === 'response');
@@ -562,6 +621,135 @@ export default function RfiDetailPage() {
           />
         </section>
 
+        {/* External access -- lets a Lead Design Consultant/PMC/Client respond
+            to or review this one RFI without an EngineeringOS account. No
+            real email is sent here -- the generated link is shown for
+            copy-paste into whatever email/WhatsApp the internal user already
+            uses (real transactional delivery is out of scope). */}
+        {canManageExternalAccess && (
+          <section className="panel tick-frame p-5 space-y-3">
+            <div className="field-label !mb-0">External access</div>
+            <p className="text-xs text-ink-500">
+              Generate a link for a stakeholder with no EngineeringOS account (e.g. the Lead Design
+              Consultant, PMC, or Client) to respond to, review, or comment on this one RFI.
+            </p>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
+              <div>
+                <div className="text-xs text-ink-500 mb-1">Action</div>
+                <select
+                  className="field-input !py-1.5 text-xs"
+                  value={extAction}
+                  onChange={(e) => {
+                    const action = e.target.value as RfiExternalAccessAction;
+                    setExtAction(action);
+                    setExtSlot(action === 'review' ? 'client' : 'ldc');
+                  }}
+                >
+                  {RFI_EXTERNAL_ACCESS_ACTIONS.map((a) => (
+                    <option key={a} value={a}>{RFI_EXTERNAL_ACCESS_ACTION_LABELS[a]}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <div className="text-xs text-ink-500 mb-1">Organization</div>
+                <select
+                  className="field-input !py-1.5 text-xs"
+                  value={extSlot}
+                  onChange={(e) => {
+                    const slot = e.target.value as ProjectOrganizationSlot;
+                    setExtSlot(slot);
+                    const org = (organizationsQuery.data ?? []).find((o) => o.slot === slot);
+                    setExtEmail(org?.contactEmail ?? '');
+                    setExtName(org?.contactName ?? '');
+                  }}
+                >
+                  {PROJECT_ORGANIZATION_SLOTS.map((slot) => (
+                    <option key={slot} value={slot}>{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <div className="text-xs text-ink-500 mb-1">Recipient email</div>
+                <input
+                  type="email"
+                  className="field-input !py-1.5 text-xs"
+                  placeholder="name@company.com"
+                  value={extEmail}
+                  onChange={(e) => setExtEmail(e.target.value)}
+                />
+              </div>
+              <div>
+                <div className="text-xs text-ink-500 mb-1">Recipient name (optional)</div>
+                <input
+                  className="field-input !py-1.5 text-xs"
+                  placeholder="Jane Doe"
+                  value={extName}
+                  onChange={(e) => setExtName(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={() => generateExternalAccessMutation.mutate()}
+              disabled={!extEmail.trim() || generateExternalAccessMutation.isPending}
+              className="btn-primary !px-3 !py-1.5 text-xs"
+            >
+              {generateExternalAccessMutation.isPending ? 'Generating…' : 'Generate link'}
+            </button>
+            {generateExternalAccessMutation.isError && (
+              <p className="field-error">{apiErrorMessage(generateExternalAccessMutation.error)}</p>
+            )}
+            {extGeneratedUrl && (
+              <div className="flex items-center gap-2">
+                <input readOnly className="field-input !py-1.5 text-xs font-mono" value={extGeneratedUrl} onFocus={(e) => e.target.select()} />
+                <button
+                  onClick={() => navigator.clipboard.writeText(extGeneratedUrl)}
+                  className="btn-secondary !px-3 !py-1.5 text-xs shrink-0"
+                >
+                  Copy
+                </button>
+              </div>
+            )}
+            {extGeneratedUrl && (
+              <p className="text-xs text-ink-500">
+                No email is sent automatically — copy this link and paste it into an email or message to the recipient.
+              </p>
+            )}
+
+            <div className="pt-2 border-t border-base-600 space-y-1.5">
+              {(externalAccessQuery.data ?? []).length === 0 && (
+                <p className="text-xs text-ink-500">No external access links generated yet.</p>
+              )}
+              {(externalAccessQuery.data ?? []).map((a) => {
+                const isRevoked = Boolean(a.revokedAt);
+                const isExpired = !isRevoked && new Date(a.expiresAt) <= new Date();
+                const statusLabel = isRevoked ? 'Revoked' : isExpired ? 'Expired' : 'Active';
+                const statusClass = isRevoked || isExpired ? 'bg-base-700 text-ink-500' : 'bg-ok/15 text-ok';
+                return (
+                  <div key={a.id} className="flex items-center gap-2 text-xs flex-wrap bg-base-700/40 rounded px-3 py-2">
+                    <span className={`badge ${statusClass}`}>{statusLabel}</span>
+                    <span className="badge bg-base-600 text-ink-500">{PROJECT_ORGANIZATION_SLOT_LABELS[a.organizationSlot]}</span>
+                    <span className="text-ink-300">{RFI_EXTERNAL_ACCESS_ACTION_LABELS[a.action]}</span>
+                    <span className="text-ink-500">{a.recipientEmail}</span>
+                    <span className="ml-auto text-ink-500">Expires {formatDateTime(a.expiresAt)}</span>
+                    {!isRevoked && !isExpired && (
+                      <button
+                        onClick={() => revokeExternalAccessMutation.mutate(a.id)}
+                        disabled={revokeExternalAccessMutation.isPending}
+                        className="text-danger hover:text-danger/80"
+                      >
+                        Revoke
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              {revokeExternalAccessMutation.isError && <p className="field-error">{apiErrorMessage(revokeExternalAccessMutation.error)}</p>}
+            </div>
+          </section>
+        )}
+
         {/* Audit trail */}
         <section className="panel tick-frame p-5 space-y-2">
           <div className="field-label">Audit trail</div>
@@ -624,6 +812,51 @@ export default function RfiDetailPage() {
               {respondMutation.isPending ? 'Submitting…' : 'Respond'}
             </button>
           )}
+          {canSubmitForReview && (
+            <button
+              onClick={() => submitForReviewMutation.mutate()}
+              disabled={submitForReviewMutation.isPending}
+              className="btn-secondary !px-3 !py-1.5 text-xs"
+            >
+              {submitForReviewMutation.isPending ? 'Sending…' : 'Submit for review'}
+            </button>
+          )}
+          {submitForReviewMutation.isError && <p className="field-error">{apiErrorMessage(submitForReviewMutation.error)}</p>}
+
+          {canDecideReview && !reviewRejectOpen && (
+            <>
+              <button
+                onClick={() => decideReviewMutation.mutate({ decision: 'approved' })}
+                disabled={decideReviewMutation.isPending}
+                className="btn-primary !px-3 !py-1.5 text-xs"
+              >
+                Approve &amp; close
+              </button>
+              <button onClick={() => setReviewRejectOpen(true)} className="btn-secondary !px-3 !py-1.5 text-xs">
+                Reject
+              </button>
+            </>
+          )}
+          {canDecideReview && reviewRejectOpen && (
+            <div className="flex items-center gap-2">
+              <input
+                className="field-input !py-1.5 text-xs"
+                placeholder="Reason for rejection…"
+                value={reviewRejectComment}
+                onChange={(e) => setReviewRejectComment(e.target.value)}
+              />
+              <button
+                onClick={() => decideReviewMutation.mutate({ decision: 'rejected', comment: reviewRejectComment.trim() })}
+                disabled={!reviewRejectComment.trim() || decideReviewMutation.isPending}
+                className="btn-primary !px-3 !py-1.5 text-xs"
+              >
+                Send back
+              </button>
+              <button onClick={() => setReviewRejectOpen(false)} className="btn-ghost !px-2 !py-1.5 text-xs">Cancel</button>
+            </div>
+          )}
+          {decideReviewMutation.isError && <p className="field-error">{apiErrorMessage(decideReviewMutation.error)}</p>}
+
           {canClose && (
             <button onClick={() => closeMutation.mutate()} disabled={closeMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
               Close RFI

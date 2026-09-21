@@ -418,4 +418,113 @@ describe('RfisService', () => {
       await expect(svc.reopen(companyId, projectId, rfiId, 'user-reviewer')).rejects.toThrow(BadRequestException);
     });
   });
+
+  // ══════════════════════════════════════════════════════════════════════
+  // submitForReview() -- new: the previously-missing "PMC/client reviews
+  // the answer" transition into 'under_review'.
+  // ══════════════════════════════════════════════════════════════════════
+  describe('submitForReview', () => {
+    it("moves a 'responded' RFI to 'under_review' and writes the 'rfi.review_submitted' audit row", async () => {
+      const { svc, calls, notifications } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, createdBy: 'user-owner', status: 'responded', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', assignedTo: null }];
+        }
+        if (text.includes("UPDATE rfis SET status = 'under_review'")) {
+          return [{ id: rfiId, status: 'under_review' }];
+        }
+        return undefined;
+      });
+
+      const result = await svc.submitForReview(companyId, projectId, rfiId, 'user-reviewer');
+
+      expect(result.status).toBe('under_review');
+      const auditCall = calls.find((c) => c.text.includes('INSERT INTO audit_log'));
+      expect(auditCall!.values[3]).toBe('rfi.review_submitted');
+      expect(notifications.create).toHaveBeenCalledWith(companyId, expect.objectContaining({ type: 'rfi_review_submitted' }));
+    });
+
+    it("also accepts the legacy 'answered' status, workflow-equivalent to 'responded'", async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, createdBy: 'user-owner', status: 'answered', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', assignedTo: null }];
+        }
+        if (text.includes("UPDATE rfis SET status = 'under_review'")) {
+          return [{ id: rfiId, status: 'under_review' }];
+        }
+        return undefined;
+      });
+
+      await expect(svc.submitForReview(companyId, projectId, rfiId, 'user-reviewer')).resolves.toMatchObject({ status: 'under_review' });
+    });
+
+    it("throws BadRequestException from a non-responded status such as 'submitted'", async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, createdBy: 'user-owner', status: 'submitted', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj' }];
+        }
+        return undefined;
+      });
+
+      await expect(svc.submitForReview(companyId, projectId, rfiId, 'user-reviewer')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════════════
+  // decideReview() -- new: approve closes the RFI, reject sends it back to
+  // 'awaiting_clarification' (see the service's own comment for why).
+  // ══════════════════════════════════════════════════════════════════════
+  describe('decideReview', () => {
+    it("approves an 'under_review' RFI, moving it to 'closed' and writing 'rfi.review_approved'", async () => {
+      const { svc, calls, notifications } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, createdBy: 'user-owner', status: 'under_review', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', assignedTo: null }];
+        }
+        if (text.includes("UPDATE rfis SET status = ")) {
+          return [{ id: rfiId, status: 'closed' }];
+        }
+        return undefined;
+      });
+
+      const result = await svc.decideReview(companyId, projectId, rfiId, 'user-reviewer', { decision: 'approved' });
+
+      expect(result.status).toBe('closed');
+      const auditCall = calls.find((c) => c.text.includes('INSERT INTO audit_log'));
+      expect(auditCall!.values[3]).toBe('rfi.review_approved');
+      expect(notifications.create).toHaveBeenCalledWith(companyId, expect.objectContaining({ type: 'rfi_review_approved' }));
+    });
+
+    it("rejects an 'under_review' RFI, moving it to 'awaiting_clarification' and recording the comment in audit metadata", async () => {
+      const { svc, calls, notifications } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, createdBy: 'user-owner', status: 'under_review', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', assignedTo: null }];
+        }
+        if (text.includes("UPDATE rfis SET status = ")) {
+          return [{ id: rfiId, status: 'awaiting_clarification' }];
+        }
+        return undefined;
+      });
+
+      const result = await svc.decideReview(companyId, projectId, rfiId, 'user-reviewer', { decision: 'rejected', comment: 'Depth still unclear' });
+
+      expect(result.status).toBe('awaiting_clarification');
+      const auditCall = calls.find((c) => c.text.includes('INSERT INTO audit_log'));
+      expect(auditCall!.values[3]).toBe('rfi.review_rejected');
+      // values = [companyId, projectId, userId, action, rfiId, resourceLabel, changesJson, metadataJson]
+      expect(auditCall!.values[7]).toContain('Depth still unclear');
+      expect(notifications.create).toHaveBeenCalledWith(companyId, expect.objectContaining({ type: 'rfi_review_rejected' }));
+    });
+
+    it("throws BadRequestException when called on anything other than 'under_review'", async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, createdBy: 'user-owner', status: 'responded', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj' }];
+        }
+        return undefined;
+      });
+
+      await expect(
+        svc.decideReview(companyId, projectId, rfiId, 'user-reviewer', { decision: 'approved' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
 });

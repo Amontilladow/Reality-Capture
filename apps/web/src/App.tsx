@@ -8,6 +8,7 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 import AcceptInvitation from './pages/auth/AcceptInvitation';
 import PendingApproval from './pages/PendingApproval';
+import RfiExternalPage from './pages/RfiExternalPage';
 
 import ProjectList from './pages/ProjectList';
 import ProjectDetail from './pages/ProjectDetail';
@@ -56,6 +57,12 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/accept-invitation" element={<AcceptInvitation />} />
+
+        {/* No EngineeringOS account, no session -- the opaque token in the URL
+            is the only credential. Deliberately outside ProtectedRoute/AppShell:
+            nothing else in the app is reachable from here (see
+            RfiExternalPage's own comment). */}
+        <Route path="/rfi/external/:token" element={<RfiExternalPage />} />
 
         {/* The 360 viewer and BIM viewer are full-bleed immersive views — no sidebar chrome */}
         <Route element={<ProtectedRoute />}>

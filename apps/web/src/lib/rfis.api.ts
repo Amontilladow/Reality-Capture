@@ -125,6 +125,14 @@ export function respondToRfi(projectId: string, rfiId: string, answer: string) {
   return apiPost<RfiListItem>(`/projects/${projectId}/rfis/${rfiId}/respond`, { answer });
 }
 
+export function submitRfiForReview(projectId: string, rfiId: string) {
+  return apiPost<RfiListItem>(`/projects/${projectId}/rfis/${rfiId}/submit-for-review`);
+}
+
+export function decideRfiReview(projectId: string, rfiId: string, payload: { decision: 'approved' | 'rejected'; comment?: string }) {
+  return apiPost<RfiListItem>(`/projects/${projectId}/rfis/${rfiId}/decide-review`, payload);
+}
+
 export function closeRfi(projectId: string, rfiId: string) {
   return apiPost<RfiListItem>(`/projects/${projectId}/rfis/${rfiId}/close`);
 }

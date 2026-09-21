@@ -15,6 +15,7 @@ import type { AddRfiAttachmentDto } from './dto/add-rfi-attachment.dto';
 import type { RequestClarificationDto } from './dto/request-clarification.dto';
 import type { RespondToRfiDto } from './dto/respond-to-rfi.dto';
 import type { AddRfiCommentDto } from './dto/add-rfi-comment.dto';
+import type { DecideReviewDto } from './dto/decide-review.dto';
 import type { UpsertRfiNoticeLetterDto } from './dto/upsert-rfi-notice-letter.dto';
 import {
   RFI_DISCIPLINE_LABELS, RFI_DISCIPLINE_CODES, RFI_DOCUMENT_TYPE_LABELS,
@@ -33,6 +34,22 @@ const RFI_TERMINAL_STATUSES = new Set(['closed', 'rejected', 'cancelled', 'void'
 // Statuses a request-clarification / respond call may legally start from.
 const CLARIFICATION_SOURCE_STATUSES = new Set(['submitted', 'open', 'under_review']);
 const RESPOND_SOURCE_STATUSES = new Set(['submitted', 'open', 'under_review', 'awaiting_clarification']);
+
+// (responded|answered) -> under_review. 'answered' is the legacy name for
+// the same lifecycle position as 'responded' (see the file header comment).
+const REVIEW_SOURCE_STATUSES = new Set(['responded', 'answered']);
+
+// Carries an external token holder's real identity into the audit row an
+// already-existing internal method (respond/decideReview/addComment) would
+// write anyway, so an action taken through an rfi_external_access link
+// attributes to that identity in metadata rather than silently looking
+// like a real employee acted. Trailing, optional, undefined for every
+// existing internal call site -- see RfiExternalAccessService, the only
+// caller that ever passes one.
+interface ExternalActorAttribution {
+  recipientEmail: string;
+  organizationSlot: string;
+}
 
 @Injectable()
 export class RfisService {
@@ -899,8 +916,11 @@ export class RfisService {
   }
 
   // (submitted|open|under_review|awaiting_clarification) -> responded.
-  // Route-gated with @RequireProjectPermission('manage_rfis') -- reviewer-only.
-  async respond(companyId: string, projectId: string, rfiId: string, userId: string, dto: RespondToRfiDto) {
+  // Route-gated with @RequireProjectPermission('manage_rfis') -- reviewer-only
+  // for the internal front door; RfiExternalAccessService calls this same
+  // method for the external 'respond'-action front door, passing
+  // externalActor so the audit row attributes correctly.
+  async respond(companyId: string, projectId: string, rfiId: string, userId: string, dto: RespondToRfiDto, externalActor?: ExternalActorAttribution) {
     const rfi = await this.findOne(companyId, projectId, rfiId);
     const oldStatus = rfi.status as string;
     if (!RESPOND_SOURCE_STATUSES.has(oldStatus)) {
@@ -924,10 +944,14 @@ export class RfisService {
 
     // Two distinct audit rows, as specced -- stamp generation is its own
     // auditable event, separate from the response submission itself.
+    // externalActor (present only when this was called through an
+    // rfi_external_access link) is attached to the response event only,
+    // not the stamp-generation one -- the stamp is a system-computed
+    // side effect of the response, not a second action someone "did".
     await this.writeRfiAudit(companyId, projectId, userId, rfiId, rfi.subject as string, 'rfi.response_submitted', {
       previousValue: oldStatus,
       newValue: 'responded',
-    });
+    }, externalActor ? { externalActor } : null);
     await this.writeRfiAudit(companyId, projectId, userId, rfiId, rfi.subject as string, 'rfi.answer_stamp_generated', {
       previousValue: null,
       newValue: answerStamp,
@@ -938,6 +962,102 @@ export class RfisService {
         userId: rfi.createdBy as string,
         type: 'rfi_responded',
         title: `RFI ${rfi.rfiNumber as string} was answered: ${rfi.subject as string}`,
+        resourceType: 'rfi',
+        projectId,
+        resourceId: rfiId,
+        createdBy: userId,
+      });
+    }
+
+    return updated;
+  }
+
+  // (responded|answered) -> under_review. The "PMC or client reviews the
+  // answer" stage -- the status value has existed in the CHECK constraint
+  // and RESPOND_SOURCE_STATUSES since migration 028, but nothing ever
+  // transitioned an RFI into it until now. Route-gated with
+  // @RequireProjectPermission('manage_rfis') for the internal front door;
+  // the external front door (RfiExternalAccessService) calls this same
+  // method under a 'review'-action token instead of duplicating the state
+  // machine.
+  async submitForReview(companyId: string, projectId: string, rfiId: string, userId: string) {
+    const rfi = await this.findOne(companyId, projectId, rfiId);
+    const oldStatus = rfi.status as string;
+    if (!REVIEW_SOURCE_STATUSES.has(oldStatus)) {
+      throw new BadRequestException(`RFI cannot move to 'under_review' from status '${oldStatus}'.`);
+    }
+
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
+      UPDATE rfis SET status = 'under_review', updated_at = NOW()
+      WHERE id = ${rfiId} AND project_id = ${projectId} AND company_id = ${companyId}
+      RETURNING *
+    `);
+
+    await this.writeRfiAudit(companyId, projectId, userId, rfiId, rfi.subject as string, 'rfi.review_submitted', {
+      previousValue: oldStatus,
+      newValue: 'under_review',
+    });
+
+    if (rfi.createdBy !== userId) {
+      await this.notifications.create(companyId, {
+        userId: rfi.createdBy as string,
+        type: 'rfi_review_submitted',
+        title: `RFI ${rfi.rfiNumber as string} sent for review: ${rfi.subject as string}`,
+        resourceType: 'rfi',
+        projectId,
+        resourceId: rfiId,
+        createdBy: userId,
+      });
+    }
+
+    return updated;
+  }
+
+  // under_review -> closed (approved) or -> awaiting_clarification (rejected).
+  // Judgment call on the reject branch: routes to 'awaiting_clarification',
+  // not back to 'responded' -- a review rejection is modeled as the
+  // reviewer's own form of "this needs more from the engineer before I can
+  // accept it," the exact same lifecycle position requestClarification()
+  // already puts an RFI in, and 'awaiting_clarification' is already a legal
+  // predecessor to respond() (RESPOND_SOURCE_STATUSES), so the engineer can
+  // simply re-answer and the RFI can be sent for review again. Because of
+  // that, `comment` is required on rejection for the same reason
+  // RequestClarificationDto.reason is required -- see DecideReviewDto.
+  // Route-gated with @RequireProjectPermission('manage_rfis') internally;
+  // the external 'review'-action front door calls this same method,
+  // passing externalActor so the audit row attributes correctly.
+  async decideReview(companyId: string, projectId: string, rfiId: string, userId: string, dto: DecideReviewDto, externalActor?: ExternalActorAttribution) {
+    const rfi = await this.findOne(companyId, projectId, rfiId);
+    const oldStatus = rfi.status as string;
+    if (oldStatus !== 'under_review') {
+      throw new BadRequestException(`RFI cannot be reviewed from status '${oldStatus}'. Only an 'under_review' RFI can be approved or rejected.`);
+    }
+
+    const newStatus = dto.decision === 'approved' ? 'closed' : 'awaiting_clarification';
+    const metadata = (dto.comment || externalActor)
+      ? { ...(dto.comment ? { comment: dto.comment } : {}), ...(externalActor ? { externalActor } : {}) }
+      : null;
+
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
+      UPDATE rfis SET status = ${newStatus}, updated_at = NOW()
+      WHERE id = ${rfiId} AND project_id = ${projectId} AND company_id = ${companyId}
+      RETURNING *
+    `);
+
+    await this.writeRfiAudit(
+      companyId, projectId, userId, rfiId, rfi.subject as string,
+      dto.decision === 'approved' ? 'rfi.review_approved' : 'rfi.review_rejected',
+      { previousValue: oldStatus, newValue: newStatus },
+      metadata,
+    );
+
+    if (rfi.createdBy !== userId) {
+      await this.notifications.create(companyId, {
+        userId: rfi.createdBy as string,
+        type: dto.decision === 'approved' ? 'rfi_review_approved' : 'rfi_review_rejected',
+        title: dto.decision === 'approved'
+          ? `RFI ${rfi.rfiNumber as string} approved and closed: ${rfi.subject as string}`
+          : `RFI ${rfi.rfiNumber as string} review rejected, needs clarification: ${rfi.subject as string}`,
         resourceType: 'rfi',
         projectId,
         resourceId: rfiId,
@@ -1025,7 +1145,11 @@ export class RfisService {
   }
 
   // ── Comments ─────────────────────────────────────────────────────────────
-  async addComment(companyId: string, projectId: string, rfiId: string, userId: string, dto: AddRfiCommentDto) {
+  // externalActor: present only when called through an rfi_external_access
+  // link (RfiExternalAccessService), which also builds `dto.organizationSlot`
+  // from that link's own row rather than trusting any value an external
+  // caller could otherwise claim -- see that service's commentExternal().
+  async addComment(companyId: string, projectId: string, rfiId: string, userId: string, dto: AddRfiCommentDto, externalActor?: ExternalActorAttribution) {
     const rfi = await this.findOne(companyId, projectId, rfiId);
 
     const [comment] = await this.db.withTenant(companyId, sql => sql`
@@ -1037,7 +1161,7 @@ export class RfisService {
     await this.writeRfiAudit(
       companyId, projectId, userId, rfiId, rfi.subject as string, 'rfi.comment_added',
       { previousValue: null, newValue: dto.body },
-      { commentId: comment.id },
+      externalActor ? { commentId: comment.id, externalActor } : { commentId: comment.id },
     );
 
     // Notify created_by + assigned_to, deduped -- same person (and never
