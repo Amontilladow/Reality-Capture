@@ -137,7 +137,11 @@ export function submitRfiForReview(projectId: string, rfiId: string) {
   return apiPost<RfiListItem>(`/projects/${projectId}/rfis/${rfiId}/submit-for-review`);
 }
 
-export function decideRfiReview(projectId: string, rfiId: string, payload: { decision: 'approved' | 'rejected'; comment?: string }) {
+export function decideRfiReview(
+  projectId: string,
+  rfiId: string,
+  payload: { decision: 'approved' | 'rejected'; comment?: string; organizationSlot?: ProjectOrganizationSlot },
+) {
   return apiPost<RfiListItem>(`/projects/${projectId}/rfis/${rfiId}/decide-review`, payload);
 }
 
@@ -162,8 +166,8 @@ export function remindRfiDrawingUpdate(projectId: string, rfiId: string) {
   return apiPost<{ message: string }>(`/projects/${projectId}/rfis/${rfiId}/remind-drawing-update`);
 }
 
-export function closeRfi(projectId: string, rfiId: string) {
-  return apiPost<RfiListItem>(`/projects/${projectId}/rfis/${rfiId}/close`);
+export function closeRfi(projectId: string, rfiId: string, payload?: { organizationSlot?: ProjectOrganizationSlot }) {
+  return apiPost<RfiListItem>(`/projects/${projectId}/rfis/${rfiId}/close`, payload);
 }
 
 export function reopenRfi(projectId: string, rfiId: string) {

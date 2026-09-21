@@ -197,8 +197,12 @@ export class RfiExternalAccessService {
 
     return this.db.withTenant(companyId, async (sql) => {
       const [rfi] = await sql`
-        SELECT rfi_number, subject, question, discipline, discipline_other, status, due_date, answer
-        FROM rfis WHERE id = ${rfiId} AND project_id = ${projectId} AND company_id = ${companyId}
+        SELECT r.rfi_number, r.subject, r.question, r.discipline, r.discipline_other, r.status, r.due_date, r.answer,
+          r.closed_at, r.closed_as_organization_slot, r.closed_by_external_email,
+          u_cl.first_name || ' ' || u_cl.last_name AS closed_by_name
+        FROM rfis r
+        LEFT JOIN users u_cl ON u_cl.id = r.closed_by
+        WHERE r.id = ${rfiId} AND r.project_id = ${projectId} AND r.company_id = ${companyId}
       `;
       if (!rfi) throw new NotFoundException({ code: 'RFI_NOT_FOUND', message: 'RFI not found.' });
 
@@ -228,6 +232,10 @@ export class RfiExternalAccessService {
         answer: rfi.answer as string | undefined,
         action: access.action as RfiExternalAccessAction,
         organizationSlot: access.organizationSlot as ProjectOrganizationSlot,
+        closedAt: rfi.closedAt as string | undefined,
+        closedByName: rfi.closedByName as string | undefined,
+        closedAsOrganizationSlot: rfi.closedAsOrganizationSlot as ProjectOrganizationSlot | undefined,
+        closedByExternalEmail: rfi.closedByExternalEmail as string | undefined,
         attachments: attachmentRows.map(a => ({
           id: a.id as string,
           filename: a.filename as string,

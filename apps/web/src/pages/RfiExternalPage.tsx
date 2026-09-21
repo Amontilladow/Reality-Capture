@@ -113,6 +113,17 @@ export default function RfiExternalPage() {
                   <div className="text-sm text-ink-100 whitespace-pre-wrap">{detailQuery.data.answer}</div>
                 </div>
               )}
+
+              {/* Same "closed by, as which party, when" summary shown on the
+                  internal detail page -- historical RFIs with all four
+                  fields null render nothing extra here. */}
+              {detailQuery.data.status === 'closed' && detailQuery.data.closedAt && (
+                <p className="text-xs text-ink-500 mt-3 pt-3 border-t border-base-600">
+                  Closed by {detailQuery.data.closedByName ?? detailQuery.data.closedByExternalEmail ?? 'Unknown'}
+                  {detailQuery.data.closedAsOrganizationSlot ? ` (${PROJECT_ORGANIZATION_SLOT_LABELS[detailQuery.data.closedAsOrganizationSlot]})` : ''}
+                  {' on '}{formatDateTime(detailQuery.data.closedAt)}
+                </p>
+              )}
             </div>
 
             {detailQuery.data.action === 'respond' && (

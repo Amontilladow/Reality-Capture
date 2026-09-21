@@ -117,7 +117,7 @@ describe('RfiExternalAccessService.getByToken', () => {
       (text) => (text.includes('FROM rfi_external_access') ? [activeRespondAccess] : undefined),
       (text) => {
         if (text.includes('UPDATE rfi_external_access SET used_at')) return [];
-        if (text.includes('FROM rfis WHERE id')) {
+        if (text.includes('FROM rfis r')) {
           return [{ rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', question: 'Q?', status: 'responded' }];
         }
         if (text.includes('FROM rfi_attachments')) return [];
@@ -133,6 +133,31 @@ describe('RfiExternalAccessService.getByToken', () => {
     expect(detail.organizationSlot).toBe('ldc');
     const touchCall = tenantCalls.find((c) => c.text.includes('UPDATE rfi_external_access SET used_at'));
     expect(touchCall).toBeDefined();
+  });
+
+  it("surfaces who closed the RFI, as which party, to external viewers too -- not just internal ones", async () => {
+    const { svc } = makeService(
+      (text) => (text.includes('FROM rfi_external_access') ? [activeRespondAccess] : undefined),
+      (text) => {
+        if (text.includes('UPDATE rfi_external_access SET used_at')) return [];
+        if (text.includes('FROM rfis r')) {
+          return [{
+            rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj', question: 'Q?', status: 'closed',
+            closedAt: '2026-01-05T00:00:00.000Z', closedByName: 'Jane Doe', closedAsOrganizationSlot: 'pmc',
+            closedByExternalEmail: undefined,
+          }];
+        }
+        if (text.includes('FROM rfi_attachments')) return [];
+        if (text.includes('FROM rfi_comments')) return [];
+        return undefined;
+      },
+    );
+
+    const detail = await svc.getByToken(token);
+
+    expect(detail.closedAt).toBe('2026-01-05T00:00:00.000Z');
+    expect(detail.closedByName).toBe('Jane Doe');
+    expect(detail.closedAsOrganizationSlot).toBe('pmc');
   });
 });
 
