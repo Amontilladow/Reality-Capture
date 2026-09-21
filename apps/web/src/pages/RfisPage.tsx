@@ -308,14 +308,15 @@ export default function RfisPage() {
                         {(r.drawingImpactLevel ?? 'no') === 'no' ? (
                           <span className="text-ink-500">—</span>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => toggleDrawingSentToSiteMutation.mutate({ rfiId: r.id, sent: Boolean(r.drawingUpdateSentToSite) })}
+                          <select
+                            value={r.drawingUpdateSentToSite ? 'yes' : 'no'}
+                            onChange={() => toggleDrawingSentToSiteMutation.mutate({ rfiId: r.id, sent: Boolean(r.drawingUpdateSentToSite) })}
                             disabled={toggleDrawingSentToSiteMutation.isPending}
-                            className={`badge cursor-pointer ${r.drawingUpdateSentToSite ? 'bg-ok/15 text-ok' : 'bg-base-600 text-ink-300'}`}
+                            className={`field-input w-auto !py-1 !text-xs ${r.drawingUpdateSentToSite ? '!border-ok/40 !text-ok' : '!text-ink-300'}`}
                           >
-                            {r.drawingUpdateSentToSite ? '✓ Sent' : 'Not sent'}
-                          </button>
+                            <option value="no">Not sent</option>
+                            <option value="yes">Sent</option>
+                          </select>
                         )}
                       </td>
                       <td className="px-4 py-2.5 text-ink-300">{r.assignedToName ?? 'Unassigned'}</td>
