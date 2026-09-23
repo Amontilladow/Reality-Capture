@@ -1,7 +1,8 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus,
+  Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus, Res, StreamableFile,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { IssuesService } from './issues.service';
 import { CreateIssueDto } from './dto/create-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
@@ -12,6 +13,7 @@ import { BulkCloseIssuesDto } from './dto/bulk-close-issues.dto';
 import { BroadcastReminderDto } from './dto/broadcast-reminder.dto';
 import { UserReminderDto } from './dto/user-reminder.dto';
 import { WarnUserDto } from './dto/warn-user.dto';
+import { ScheduleIssueReminderDto } from './dto/schedule-issue-reminder.dto';
 import { IssueAttachmentUploadUrlDto } from './dto/issue-attachment-upload-url.dto';
 import { AddIssueAttachmentDto } from './dto/add-issue-attachment.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -97,6 +99,37 @@ export class IssuesController {
     return { data: await this.svc.findOne(u.companyId, pid, id), error: null };
   }
 
+  // The one binary-response pair in this controller -- same StreamableFile +
+  // passthrough Response pattern rfis.controller.ts's :id/pdf uses.
+  @Get(':id/pdf')
+  @ApiOperation({ summary: 'Download this issue as a formatted PDF, with every attachment printed as appendix pages' })
+  async downloadPdf(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { buffer, filename } = await this.svc.generatePdf(u.companyId, pid, id);
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${filename}"` });
+    return new StreamableFile(buffer);
+  }
+
+  @Get(':id/xls')
+  @ApiOperation({ summary: 'Download this issue as a formatted Excel workbook, with attachment thumbnails embedded' })
+  async downloadXls(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { buffer, filename } = await this.svc.generateXls(u.companyId, pid, id);
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    });
+    return new StreamableFile(buffer);
+  }
+
   @Patch(':id')
   @RequireProjectPermission('manage_issues')
   async update(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: UpdateIssueDto) {
@@ -152,6 +185,39 @@ export class IssuesController {
     @Body() dto: ForwardIssueDto,
   ) {
     return { data: await this.svc.forward(u.companyId, pid, id, u.id, u.companyRole, dto), error: null };
+  }
+
+  // ── Scheduled reminders ──────────────────────────────────────────────────
+  // Deliberately ungated (no @RequireProjectPermission/@Roles) -- open to
+  // anyone who can view the issue, unlike the admin-only, immediate
+  // broadcastReminder()/userReminder() above.
+  @Post(':id/schedule-reminder')
+  @ApiOperation({ summary: 'Schedule a reminder for this issue\'s assignee at a future date/time' })
+  async scheduleReminder(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('id') id: string,
+    @Body() dto: ScheduleIssueReminderDto,
+  ) {
+    return { data: await this.svc.scheduleReminder(u.companyId, pid, id, u.id, dto), error: null };
+  }
+
+  @Get(':id/scheduled-reminders')
+  @ApiOperation({ summary: 'List this issue\'s pending (not yet fired) scheduled reminders' })
+  async listPendingReminders(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.listPendingReminders(u.companyId, pid, id), error: null };
+  }
+
+  @Delete(':id/scheduled-reminders/:reminderId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Cancel a pending scheduled reminder before it fires' })
+  async cancelScheduledReminder(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('id') id: string,
+    @Param('reminderId') reminderId: string,
+  ) {
+    return { data: await this.svc.cancelScheduledReminder(u.companyId, pid, id, reminderId), error: null };
   }
 
   // ── Admin force-status (ticket 2b) ───────────────────────────────────────

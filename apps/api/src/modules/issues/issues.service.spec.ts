@@ -676,4 +676,153 @@ describe('IssuesService view-state / screenshot behavior', () => {
       });
     });
   });
+
+  describe('addActivity -- notifying the assignee on a plain comment', () => {
+    function makeService(existingIssue: Record<string, unknown>) {
+      const calls: Array<{ text: string; values: unknown[] }> = [];
+      const sql = jest.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
+        const text = strings.join('?');
+        calls.push({ text, values });
+        if (text.includes('INSERT INTO issue_activities')) return Promise.resolve([{ id: 'activity-1', content: 'Following up' }]);
+        if (text.includes('UPDATE issues SET updated_at')) return Promise.resolve([]);
+        if (text.includes('SELECT project_id, assigned_to, issue_number, title FROM issues')) return Promise.resolve([existingIssue]);
+        return Promise.resolve([]);
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(sql));
+      const notifications = { create: jest.fn() };
+      const svc = new IssuesService(
+        { withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        notifications as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+      return { svc, calls, notifications };
+    }
+
+    it('notifies the current assignee when someone else comments', async () => {
+      const { svc, notifications } = makeService({
+        projectId: 'project-1', assignedTo: 'user-assignee', issueNumber: 'A-1', title: 'Leak',
+      });
+
+      await svc.addActivity('company-1', 'issue-1', 'user-commenter', { activityType: 'comment', content: 'Following up' });
+
+      expect(notifications.create).toHaveBeenCalledWith('company-1', expect.objectContaining({
+        userId: 'user-assignee', type: 'issue_comment', resourceType: 'issue', resourceId: 'issue-1',
+      }));
+    });
+
+    it('does not notify when the assignee comments on their own issue', async () => {
+      const { svc, notifications } = makeService({
+        projectId: 'project-1', assignedTo: 'user-assignee', issueNumber: 'A-1', title: 'Leak',
+      });
+
+      await svc.addActivity('company-1', 'issue-1', 'user-assignee', { activityType: 'comment', content: 'On it' });
+
+      expect(notifications.create).not.toHaveBeenCalled();
+    });
+
+    it('does not notify when the issue is unassigned', async () => {
+      const { svc, notifications } = makeService({
+        projectId: 'project-1', assignedTo: null, issueNumber: 'A-1', title: 'Leak',
+      });
+
+      await svc.addActivity('company-1', 'issue-1', 'user-commenter', { activityType: 'comment', content: 'Anyone?' });
+
+      expect(notifications.create).not.toHaveBeenCalled();
+    });
+
+    it('does not look up the issue or notify for non-comment activity types', async () => {
+      const { svc, calls, notifications } = makeService({ projectId: 'project-1', assignedTo: 'user-assignee' });
+
+      await svc.addActivity('company-1', 'issue-1', 'user-1', { activityType: 'status_change', fromValue: 'open', toValue: 'closed' });
+
+      expect(notifications.create).not.toHaveBeenCalled();
+      expect(calls.some((c) => c.text.includes('SELECT project_id, assigned_to, issue_number, title FROM issues'))).toBe(false);
+    });
+  });
+
+  describe('scheduleReminder', () => {
+    function makeService(issueRow: Record<string, unknown>) {
+      const db = { withTenant: jest.fn() };
+      const svc = new IssuesService(
+        db as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+      jest.spyOn(svc, 'findOne').mockResolvedValue(issueRow as never);
+      return { svc, db };
+    }
+
+    it('rejects scheduling a reminder on an unassigned issue', async () => {
+      const { svc } = makeService({ id: 'issue-1', assignedTo: null });
+      const future = new Date(Date.now() + 60_000).toISOString();
+      await expect(svc.scheduleReminder('company-1', 'project-1', 'issue-1', 'user-1', { scheduledFor: future, message: 'ping' }))
+        .rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects a scheduledFor time that is not in the future', async () => {
+      const { svc } = makeService({ id: 'issue-1', assignedTo: 'user-assignee' });
+      const past = new Date(Date.now() - 60_000).toISOString();
+      await expect(svc.scheduleReminder('company-1', 'project-1', 'issue-1', 'user-1', { scheduledFor: past, message: 'ping' }))
+        .rejects.toThrow(BadRequestException);
+    });
+
+    it('inserts a scheduled (not-yet-sent) reminder targeting the current assignee', async () => {
+      const { svc, db } = makeService({ id: 'issue-1', assignedTo: 'user-assignee' });
+      const insertedRow = { id: 'reminder-1', sentTo: 'user-assignee', scheduledFor: '2099-01-01T00:00:00.000Z', sentAt: null };
+      (db.withTenant as jest.Mock).mockImplementation((_companyId: string, fn: (sql: unknown) => unknown) => {
+        const sql = jest.fn().mockResolvedValue([insertedRow]);
+        return fn(sql);
+      });
+
+      const future = new Date(Date.now() + 60_000).toISOString();
+      const result = await svc.scheduleReminder('company-1', 'project-1', 'issue-1', 'user-1', { scheduledFor: future, message: 'Please resolve soon' });
+
+      expect(result).toEqual(insertedRow);
+    });
+  });
+
+  describe('listPendingReminders / cancelScheduledReminder', () => {
+    it('lists only pending (not yet fired) scheduled reminders', async () => {
+      const rows = [{ id: 'reminder-1', message: 'ping', scheduledFor: '2099-01-01T00:00:00.000Z', sentToName: 'Sam Assignee' }];
+      const sql = jest.fn().mockResolvedValue(rows);
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(sql));
+      const svc = new IssuesService(
+        { withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      const result = await svc.listPendingReminders('company-1', 'project-1', 'issue-1');
+      expect(result).toEqual(rows);
+    });
+
+    it('throws NotFoundException when cancelling a reminder that does not exist or was already sent', async () => {
+      const sql = jest.fn().mockResolvedValue({ count: 0 });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(sql));
+      const svc = new IssuesService(
+        { withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      await expect(svc.cancelScheduledReminder('company-1', 'project-1', 'issue-1', 'reminder-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('succeeds when a pending reminder is cancelled', async () => {
+      const sql = jest.fn().mockResolvedValue({ count: 1 });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(sql));
+      const svc = new IssuesService(
+        { withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      await expect(svc.cancelScheduledReminder('company-1', 'project-1', 'issue-1', 'reminder-1')).resolves.toEqual({ message: 'Scheduled reminder cancelled.' });
+    });
+  });
 });
