@@ -2,7 +2,7 @@ import axios from 'axios';
 import type {
   Issue, IssueActivity, IssueType, IssuePriority, IssueStatus, IssueDiscipline, IssueCategory, IssueReminder,
 } from '@engineeringos/types';
-import { apiGet, apiGetWithMeta, apiPost, apiPatch, apiDelete } from './api';
+import { apiGet, apiGetWithMeta, apiPost, apiPatch, apiDelete, apiDownload } from './api';
 
 export interface IssueListItem extends Issue {
   createdByName?: string;
@@ -150,6 +150,15 @@ export function closeIssue(projectId: string, issueId: string) {
   return apiPost<Issue>(`/projects/${projectId}/issues/${issueId}/close`, {});
 }
 
+// ── Export (PDF/XLS, single server-side pipeline) ────────────────────────
+export function downloadIssuePdf(projectId: string, issueId: string, filename: string) {
+  return apiDownload(`/projects/${projectId}/issues/${issueId}/pdf`, filename);
+}
+
+export function downloadIssueXls(projectId: string, issueId: string, filename: string) {
+  return apiDownload(`/projects/${projectId}/issues/${issueId}/xls`, filename);
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // Ticket 2b — workflow actions
 // ══════════════════════════════════════════════════════════════════════
@@ -189,6 +198,28 @@ export type IssueReminderRow = IssueReminder & {
 
 export function listReminders(projectId: string, query?: { page?: number; perPage?: number }) {
   return apiGetWithMeta<IssueReminderRow[]>(`/projects/${projectId}/issues/reminders`, { params: query });
+}
+
+// ── Scheduled reminders (per-issue, open to anyone who can view the
+// issue -- unlike the admin-only, immediate reminders above) ────────────
+export interface PendingIssueReminder {
+  id: string;
+  message: string;
+  scheduledFor: string;
+  sentTo?: string;
+  sentToName?: string;
+}
+
+export function scheduleIssueReminder(projectId: string, issueId: string, payload: { scheduledFor: string; message: string }) {
+  return apiPost<PendingIssueReminder>(`/projects/${projectId}/issues/${issueId}/schedule-reminder`, payload);
+}
+
+export function listPendingIssueReminders(projectId: string, issueId: string) {
+  return apiGet<PendingIssueReminder[]>(`/projects/${projectId}/issues/${issueId}/scheduled-reminders`);
+}
+
+export function cancelIssueReminder(projectId: string, issueId: string, reminderId: string) {
+  return apiDelete<{ message: string }>(`/projects/${projectId}/issues/${issueId}/scheduled-reminders/${reminderId}`);
 }
 
 export function broadcastReminder(projectId: string, message: string) {

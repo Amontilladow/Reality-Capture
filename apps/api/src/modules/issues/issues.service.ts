@@ -1,8 +1,12 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
+import { PDFDocument, PDFFont, StandardFonts, rgb, PageSizes } from 'pdf-lib';
+import sharp from 'sharp';
 import { DatabaseService } from '../../database/database.service';
 import { AiClientService } from '../ai-client/ai-client.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
+import { renderIssuePdf } from './issue-pdf.template';
+import { buildIssueWorkbookBuffer } from './issue-xls';
 import type { CreateIssueDto } from './dto/create-issue.dto';
 import type { UpdateIssueDto } from './dto/update-issue.dto';
 import type { AddActivityDto } from './dto/add-activity.dto';
@@ -12,10 +16,29 @@ import type { BulkCloseIssuesDto } from './dto/bulk-close-issues.dto';
 import type { BroadcastReminderDto } from './dto/broadcast-reminder.dto';
 import type { UserReminderDto } from './dto/user-reminder.dto';
 import type { WarnUserDto } from './dto/warn-user.dto';
+import type { ScheduleIssueReminderDto } from './dto/schedule-issue-reminder.dto';
 import type { IssueAttachmentUploadUrlDto } from './dto/issue-attachment-upload-url.dto';
 import type { AddIssueAttachmentDto } from './dto/add-issue-attachment.dto';
 import { ATTACHMENT_MAX_SIZE as ISSUE_ATTACHMENT_MAX_SIZE, ATTACHMENT_ALLOWED_EXTENSIONS as ISSUE_ATTACHMENT_ALLOWED_EXTENSIONS } from '../../common/constants/attachment-limits';
 import type { PaginationQuery } from '@engineeringos/types';
+
+// No shared label maps for these exist in @engineeringos/types (unlike RFI's
+// RFI_DISCIPLINE_LABELS) -- apps/web/src/lib/issue-constants.ts defines its
+// own copies locally and the API can't import a frontend-only file, so these
+// are duplicated here, display-only, for the PDF/XLS export's benefit alone.
+const ISSUE_DISCIPLINE_LABELS: Record<string, string> = {
+  MEP: 'MEP', ARC: 'Architectural', STR: 'Structural', CIV: 'Civil',
+  ELE: 'Electrical', INFRA: 'Infrastructure', LANDSCAPE: 'Landscape', OTHER: 'Other',
+};
+const ISSUE_CATEGORY_LABELS: Record<string, string> = {
+  design_issue: 'Design Issue', bim_modeling_issue: 'BIM Modeling Issue', coordination_issue: 'Coordination Issue',
+  clash_detection: 'Clash Detection', constructability_issue: 'Constructability Issue', shop_drawing_issue: 'Shop Drawing Issue',
+  site_issue: 'Site Issue', rfi: 'RFI', client_comment: 'Client Comment', consultant_comment: 'Consultant Comment', other: 'Other',
+};
+const ISSUE_TYPE_LABELS: Record<string, string> = {
+  defect: 'Defect', punch_item: 'Punch Item', rfi: 'RFI', coordination_clash: 'Coordination Clash',
+  safety_observation: 'Safety Observation', quality_hold: 'Quality Hold', inspection_point: 'Inspection Point', general: 'General',
+};
 
 @Injectable()
 export class IssuesService {
@@ -342,8 +365,13 @@ export class IssuesService {
     }));
   }
 
+  // Notifies the issue's current assignee on a plain comment (unless
+  // they're the one commenting) -- mirrors update()'s existing
+  // reassignment-notification pattern. Only 'comment' triggers this: the
+  // other activity types (status_change, forward, etc.) already notify
+  // through their own dedicated code paths where relevant.
   async addActivity(companyId: string, issueId: string, userId: string, dto: AddActivityDto) {
-    return this.db.withTenant(companyId, async (sql) => {
+    const { activity, issue } = await this.db.withTenant(companyId, async (sql) => {
       const [activity] = await sql`
         INSERT INTO issue_activities (
           issue_id, company_id, activity_type, content,
@@ -357,8 +385,26 @@ export class IssuesService {
       `;
       // Update issue updated_at
       await sql`UPDATE issues SET updated_at = NOW() WHERE id = ${issueId} AND company_id = ${companyId}`;
-      return activity;
+      const [issue] = dto.activityType === 'comment'
+        ? await sql`SELECT project_id, assigned_to, issue_number, title FROM issues WHERE id = ${issueId} AND company_id = ${companyId}`
+        : [undefined];
+      return { activity, issue };
     });
+
+    if (dto.activityType === 'comment' && issue?.assignedTo && issue.assignedTo !== userId) {
+      await this.notifications.create(companyId, {
+        userId: issue.assignedTo as string,
+        type: 'issue_comment',
+        title: `New comment on issue ${(issue.issueNumber as string) ?? ''}: ${issue.title as string}`,
+        body: dto.content,
+        resourceType: 'issue',
+        resourceId: issueId,
+        projectId: issue.projectId as string,
+        createdBy: userId,
+      });
+    }
+
+    return activity;
   }
 
   // ── Add evidence capture ──────────────────────────────────────────────────
@@ -610,8 +656,8 @@ export class IssuesService {
 
       for (const issue of openIssues) {
         await sql`
-          INSERT INTO issue_reminders (company_id, project_id, issue_id, sent_by, sent_to, message)
-          VALUES (${companyId}, ${projectId}, ${issue.id}, ${userId}, ${issue.assignedTo ?? null}, ${dto.message})
+          INSERT INTO issue_reminders (company_id, project_id, issue_id, sent_by, sent_to, message, sent_at)
+          VALUES (${companyId}, ${projectId}, ${issue.id}, ${userId}, ${issue.assignedTo ?? null}, ${dto.message}, NOW())
         `;
         await sql`
           INSERT INTO issue_activities (issue_id, company_id, activity_type, content, performed_by)
@@ -635,8 +681,8 @@ export class IssuesService {
 
       for (const issue of userIssues) {
         await sql`
-          INSERT INTO issue_reminders (company_id, project_id, issue_id, sent_by, sent_to, message)
-          VALUES (${companyId}, ${projectId}, ${issue.id}, ${userId}, ${dto.userId}::uuid, ${dto.message})
+          INSERT INTO issue_reminders (company_id, project_id, issue_id, sent_by, sent_to, message, sent_at)
+          VALUES (${companyId}, ${projectId}, ${issue.id}, ${userId}, ${dto.userId}::uuid, ${dto.message}, NOW())
         `;
         await sql`
           INSERT INTO issue_activities (issue_id, company_id, activity_type, content, performed_by)
@@ -746,5 +792,281 @@ export class IssuesService {
       await sql`UPDATE issues SET updated_at = NOW() WHERE id = ${issueId} AND company_id = ${companyId}`;
       return activity;
     });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Export -- PDF/XLS, shared data-gathering + two renderers
+  // ══════════════════════════════════════════════════════════════════════
+
+  // Single shared query, used by both generatePdf() and generateXls() --
+  // per the ticket's own decision, one server-side pipeline rather than
+  // mirroring RFI's PDF/XLS split. Unlike RFI (separate rfi_comments/
+  // rfi_attachments tables), everything here -- comments, attachments,
+  // status changes -- lives unified in issue_activities (see
+  // getActivities()); the export splits that single feed three ways.
+  private async getExportData(companyId: string, projectId: string, issueId: string) {
+    const issue = await this.findOne(companyId, projectId, issueId);
+    const activities = await this.db.withTenant(companyId, sql => sql`
+      SELECT a.*, u.first_name || ' ' || u.last_name AS performed_by_name
+      FROM issue_activities a
+      JOIN users u ON u.id = a.performed_by
+      WHERE a.issue_id = ${issueId} AND a.company_id = ${companyId}
+      ORDER BY a.created_at ASC
+    `);
+    const [project] = await this.db.withTenant(companyId, sql => sql`
+      SELECT name, code FROM projects WHERE id = ${projectId} AND company_id = ${companyId}
+    `);
+    return { issue, activities: activities as Array<Record<string, unknown>>, project };
+  }
+
+  // Mirrors IssueDetail.tsx's own activityLabel() exactly, for the export's
+  // Activity Log section -- kept as a separate copy since one lives in
+  // apps/web and the other here, same split as richTextToPlain() between
+  // rfi-pdf.template.ts and rfi-xls.ts.
+  private activityActionLabel(activityType: string, fromValue?: string, toValue?: string): string {
+    if (activityType === 'status_change') return `changed status: ${fromValue ?? '?'} → ${toValue ?? '?'}`;
+    if (activityType === 'status_force') return `force-changed status: ${fromValue ?? '?'} → ${toValue ?? '?'}`;
+    if (activityType === 'capture_added') return 'attached a photo';
+    if (activityType === 'assigned') return 'reassigned the issue';
+    if (activityType === 'closed') return 'closed the issue';
+    if (activityType === 'forward') return 'forwarded the issue';
+    if (activityType === 'reopened') return 'reopened the issue';
+    if (activityType === 'auto_warning') return 'sent an automatic deadline warning';
+    if (activityType === 'manual_warning') return 'sent a manual warning';
+    if (activityType === 'reminder') return 'sent a reminder';
+    return 'commented';
+  }
+
+  // A plain comment (activity_type='comment', no attachment) vs. an
+  // attachment (attachment_url set, regardless of activity_type -- see
+  // addAttachment()'s own comment: it always inserts as 'comment') vs.
+  // everything else (status changes, forwards, reminders, etc.) --
+  // three-way split shared by both generatePdf() and generateXls().
+  private splitActivitiesForExport(activities: Array<Record<string, unknown>>) {
+    const comments = activities.filter((a) => a.activityType === 'comment' && !a.attachmentUrl);
+    const attachments = activities.filter((a) => Boolean(a.attachmentUrl));
+    const statusEvents = activities.filter((a) => !(a.activityType === 'comment' && !a.attachmentUrl) && !a.attachmentUrl);
+    return { comments, attachments, statusEvents };
+  }
+
+  async generatePdf(companyId: string, projectId: string, issueId: string): Promise<{ buffer: Buffer; filename: string }> {
+    const { issue, activities, project } = await this.getExportData(companyId, projectId, issueId);
+    const { comments, attachments, statusEvents } = this.splitActivitiesForExport(activities);
+    const filename = `${(issue.issueNumber as string) ?? issueId}.pdf`;
+
+    const attachmentsWithImage = await Promise.all(attachments.map(async (a) => {
+      const filename = a.attachmentName as string;
+      const storageKey = a.attachmentUrl as string;
+      const imageBuffer = this.isImageFilename(filename)
+        ? await this.storage.download(storageKey).then((raw) => this.resizeAttachmentImage(raw)).catch(() => undefined)
+        : undefined;
+      return { filename, imageBuffer };
+    }));
+
+    const summaryBuffer = await renderIssuePdf({
+      issueNumber: (issue.issueNumber as string) ?? (issue.id as string),
+      title: issue.title as string,
+      status: issue.status as string,
+      priority: issue.priority as string,
+      issueTypeLabel: ISSUE_TYPE_LABELS[issue.issueType as string] ?? (issue.issueType as string),
+      disciplineLabel: issue.discipline ? ISSUE_DISCIPLINE_LABELS[issue.discipline as string] : undefined,
+      categoryLabel: issue.category ? ISSUE_CATEGORY_LABELS[issue.category as string] : undefined,
+      description: issue.description as string | undefined,
+      createdByName: issue.createdByName as string | undefined,
+      createdAt: new Date(issue.createdAt as string).toLocaleDateString('en-GB'),
+      assignedToName: issue.assignedToName as string | undefined,
+      deadline: issue.deadline ? new Date(issue.deadline as string).toLocaleDateString('en-GB') : undefined,
+      locationName: (issue.locationName as string | undefined) ?? (issue.buildingName as string | undefined),
+      closedAt: issue.closedAt ? new Date(issue.closedAt as string).toLocaleString('en-GB') : undefined,
+      attachments: attachmentsWithImage,
+      comments: comments.map((c) => ({
+        userName: c.performedByName as string | undefined,
+        body: c.content as string,
+        createdAt: new Date(c.createdAt as string).toLocaleString('en-GB'),
+      })),
+      statusEvents: statusEvents.map((a) => ({
+        action: this.activityActionLabel(a.activityType as string, a.fromValue as string | undefined, a.toValue as string | undefined),
+        userName: a.performedByName as string | undefined,
+        occurredAt: new Date(a.createdAt as string).toLocaleString('en-GB'),
+      })),
+      projectName: (project?.name as string) ?? '—',
+      projectCode: project?.code as string | undefined,
+    });
+
+    const buffer = await this.mergeAttachmentPdfs(summaryBuffer, attachments);
+    return { buffer, filename };
+  }
+
+  async generateXls(companyId: string, projectId: string, issueId: string): Promise<{ buffer: Buffer; filename: string }> {
+    const { issue, activities, project } = await this.getExportData(companyId, projectId, issueId);
+    const { comments, attachments, statusEvents } = this.splitActivitiesForExport(activities);
+    const filename = `${(issue.issueNumber as string) ?? issueId}.xlsx`;
+
+    const attachmentsWithImage = await Promise.all(attachments.map(async (a) => {
+      const filename = a.attachmentName as string;
+      const storageKey = a.attachmentUrl as string;
+      const ext = this.getFileExtension(filename);
+      if (!this.isImageFilename(filename)) return { filename };
+      const imageBuffer = await this.storage.download(storageKey).then((raw) => this.resizeAttachmentImage(raw)).catch(() => undefined);
+      return { filename, imageBuffer, imageExtension: (ext === 'png' ? 'png' : 'jpeg') as 'png' | 'jpeg' };
+    }));
+
+    const buffer = await buildIssueWorkbookBuffer({
+      issueNumber: (issue.issueNumber as string) ?? (issue.id as string),
+      title: issue.title as string,
+      status: issue.status as string,
+      priority: issue.priority as string,
+      issueTypeLabel: ISSUE_TYPE_LABELS[issue.issueType as string] ?? (issue.issueType as string),
+      disciplineLabel: issue.discipline ? ISSUE_DISCIPLINE_LABELS[issue.discipline as string] : undefined,
+      categoryLabel: issue.category ? ISSUE_CATEGORY_LABELS[issue.category as string] : undefined,
+      description: issue.description as string | undefined,
+      createdByName: issue.createdByName as string | undefined,
+      createdAt: new Date(issue.createdAt as string).toLocaleDateString('en-GB'),
+      assignedToName: issue.assignedToName as string | undefined,
+      deadline: issue.deadline ? new Date(issue.deadline as string).toLocaleDateString('en-GB') : undefined,
+      locationName: (issue.locationName as string | undefined) ?? (issue.buildingName as string | undefined),
+      closedAt: issue.closedAt ? new Date(issue.closedAt as string).toLocaleString('en-GB') : undefined,
+      attachments: attachmentsWithImage,
+      comments: comments.map((c) => ({
+        userName: c.performedByName as string | undefined,
+        body: c.content as string,
+        createdAt: new Date(c.createdAt as string).toLocaleString('en-GB'),
+      })),
+      activityEvents: statusEvents.map((a) => ({
+        action: this.activityActionLabel(a.activityType as string, a.fromValue as string | undefined, a.toValue as string | undefined),
+        userName: a.performedByName as string | undefined,
+        occurredAt: new Date(a.createdAt as string).toLocaleString('en-GB'),
+      })),
+      projectName: (project?.name as string) ?? '—',
+      projectCode: project?.code as string | undefined,
+    });
+
+    return { buffer: Buffer.from(buffer), filename };
+  }
+
+  // Raster-image extensions eligible for inline PDF embedding -- everything
+  // else (pdf, docx, dwg, etc.) keeps a plain "• filename" text line only.
+  // Mirrors RfisService's identical constant/method pair exactly.
+  private static readonly IMAGE_ATTACHMENT_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp']);
+  private static readonly MERGEABLE_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png']);
+
+  private getFileExtension(filename: string): string {
+    return filename.split('.').pop()?.toLowerCase() ?? '';
+  }
+
+  private isImageFilename(filename: string): boolean {
+    return IssuesService.IMAGE_ATTACHMENT_EXTENSIONS.has(this.getFileExtension(filename));
+  }
+
+  private async resizeAttachmentImage(buffer: Buffer): Promise<Buffer> {
+    return sharp(buffer).rotate().resize(900, 900, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 78 }).toBuffer();
+  }
+
+  // Full-page section-marker page -- plain drawText(), not routed through
+  // react-pdf. Mirrors RfisService's identical method exactly.
+  private addAttachmentDividerPage(mainDoc: PDFDocument, headingFont: PDFFont, bodyFont: PDFFont, filename: string): void {
+    const [, pageHeight] = PageSizes.A4;
+    const page = mainDoc.addPage(PageSizes.A4);
+    const margin = 50;
+    page.drawText('ATTACHMENT', { x: margin, y: pageHeight - margin - 24, size: 20, font: headingFont, color: rgb(0.04, 0.08, 0.11) });
+    page.drawText(filename, { x: margin, y: pageHeight - margin - 54, size: 13, font: bodyFont, color: rgb(0.04, 0.08, 0.11) });
+  }
+
+  // Mirrors RfisService.appendAttachmentPages() exactly, adapted for
+  // issue_activities' attachment_url/attachment_name fields in place of
+  // rfi_attachments' storage_key/filename.
+  private async appendAttachmentPages(mainDoc: PDFDocument, row: Record<string, unknown>, headingFont: PDFFont, bodyFont: PDFFont): Promise<void> {
+    const filename = row.attachmentName as string;
+    const storageKey = row.attachmentUrl as string | undefined;
+    const ext = this.getFileExtension(filename);
+    const isPdf = ext === 'pdf';
+    const isMergeableImage = IssuesService.MERGEABLE_IMAGE_EXTENSIONS.has(ext);
+    if (!storageKey || (!isPdf && !isMergeableImage)) return;
+
+    try {
+      const bytes = await this.storage.download(storageKey);
+      // MUST copy into a fresh Uint8Array before handing to pdf-lib -- see
+      // RfisService.appendAttachmentPages()'s identical comment on the
+      // Buffer.concat / pdf-lib JpegEmbedder byteOffset bug.
+      const normalizedBytes = Uint8Array.from(bytes);
+
+      if (isPdf) {
+        const attachmentDoc = await PDFDocument.load(normalizedBytes);
+        const copiedPages = await mainDoc.copyPages(attachmentDoc, attachmentDoc.getPageIndices());
+        this.addAttachmentDividerPage(mainDoc, headingFont, bodyFont, filename);
+        copiedPages.forEach((p) => mainDoc.addPage(p));
+      } else {
+        const image = ext === 'png' ? await mainDoc.embedPng(normalizedBytes) : await mainDoc.embedJpg(normalizedBytes);
+        const [pageWidth, pageHeight] = PageSizes.A4;
+        const margin = 40;
+        const { width, height } = image.scaleToFit(pageWidth - margin * 2, pageHeight - margin * 2);
+        this.addAttachmentDividerPage(mainDoc, headingFont, bodyFont, filename);
+        const page = mainDoc.addPage(PageSizes.A4);
+        page.drawImage(image, { x: (pageWidth - width) / 2, y: (pageHeight - height) / 2, width, height });
+      }
+    } catch (err) {
+      this.logger.warn(`[generatePdf] Skipping attachment "${filename}" while merging PDF appendix: ${(err as Error)?.message ?? err}`);
+    }
+  }
+
+  private async mergeAttachmentPdfs(summaryBuffer: Buffer, attachmentRows: Array<Record<string, unknown>>): Promise<Buffer> {
+    const mainDoc = await PDFDocument.load(summaryBuffer);
+    const headingFont = await mainDoc.embedFont(StandardFonts.HelveticaBold);
+    const bodyFont = await mainDoc.embedFont(StandardFonts.Helvetica);
+    for (const row of attachmentRows) {
+      await this.appendAttachmentPages(mainDoc, row, headingFont, bodyFont);
+    }
+    const bytes = await mainDoc.save();
+    return Buffer.from(bytes);
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Scheduled reminders -- a specific future date/time for one issue,
+  // targeting its current assignee. Distinct from broadcastReminder()/
+  // userReminder() above (admin-only, immediate, all-of-a-user's-issues) --
+  // open to anyone who can view the issue (no @RequireProjectPermission or
+  // @Roles gate), same baseline as forward()/addActivity() already have.
+  // ══════════════════════════════════════════════════════════════════════
+
+  async scheduleReminder(companyId: string, projectId: string, issueId: string, userId: string, dto: ScheduleIssueReminderDto) {
+    const issue = await this.findOne(companyId, projectId, issueId);
+    if (!issue.assignedTo) {
+      throw new BadRequestException('This issue has no assignee yet -- assign it to someone before scheduling a reminder.');
+    }
+    const scheduledFor = new Date(dto.scheduledFor);
+    if (Number.isNaN(scheduledFor.getTime()) || scheduledFor.getTime() <= Date.now()) {
+      throw new BadRequestException('scheduledFor must be a valid date/time in the future.');
+    }
+
+    const [reminder] = await this.db.withTenant(companyId, sql => sql`
+      INSERT INTO issue_reminders (company_id, project_id, issue_id, sent_by, sent_to, message, scheduled_for)
+      VALUES (${companyId}, ${projectId}, ${issueId}, ${userId}, ${issue.assignedTo}::uuid, ${dto.message}, ${scheduledFor.toISOString()})
+      RETURNING *
+    `);
+    return reminder;
+  }
+
+  // Pending == scheduled but not yet fired (sent_at IS NULL) -- fired ones
+  // already show up in the issue's own Activity feed as a 'reminder' entry,
+  // so there's no need to surface them here too.
+  async listPendingReminders(companyId: string, projectId: string, issueId: string) {
+    return this.db.withTenant(companyId, sql => sql`
+      SELECT id, message, scheduled_for, sent_to, u.first_name || ' ' || u.last_name AS sent_to_name
+      FROM issue_reminders r
+      LEFT JOIN users u ON u.id = r.sent_to
+      WHERE r.issue_id = ${issueId} AND r.project_id = ${projectId} AND r.company_id = ${companyId}
+        AND r.scheduled_for IS NOT NULL AND r.sent_at IS NULL
+      ORDER BY r.scheduled_for ASC
+    `);
+  }
+
+  async cancelScheduledReminder(companyId: string, projectId: string, issueId: string, reminderId: string) {
+    const result = await this.db.withTenant(companyId, sql => sql`
+      DELETE FROM issue_reminders
+      WHERE id = ${reminderId} AND issue_id = ${issueId} AND project_id = ${projectId} AND company_id = ${companyId}
+        AND sent_at IS NULL
+    `);
+    if (result.count === 0) throw new NotFoundException('No pending scheduled reminder found with that id.');
+    return { message: 'Scheduled reminder cancelled.' };
   }
 }

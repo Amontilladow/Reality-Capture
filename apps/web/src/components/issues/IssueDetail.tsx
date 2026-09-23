@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getIssue, updateIssue, closeIssue, deleteIssue, getActivities, addComment, addEvidenceCapture,
-  forwardIssue, forceIssueStatus, uploadIssueAttachment,
+  forwardIssue, forceIssueStatus, uploadIssueAttachment, downloadIssuePdf, downloadIssueXls,
+  scheduleIssueReminder, listPendingIssueReminders, cancelIssueReminder,
   type IssueDetailItem,
 } from '../../lib/issues.api';
 import { listCaptures } from '../../lib/captures.api';
@@ -39,6 +40,11 @@ export function IssueDetail({
   const [forwardComment, setForwardComment] = useState('');
   const [forceStatusValue, setForceStatusValue] = useState<IssueStatus | ''>('');
   const [attachComment, setAttachComment] = useState('');
+  const [downloading, setDownloading] = useState<'pdf' | 'xls' | null>(null);
+  const [downloadError, setDownloadError] = useState('');
+  const [reminderOpen, setReminderOpen] = useState(false);
+  const [reminderWhen, setReminderWhen] = useState('');
+  const [reminderMessage, setReminderMessage] = useState('');
 
   const issueQuery = useQuery({
     queryKey: ['issue', projectId, issueId],
@@ -53,6 +59,11 @@ export function IssueDetail({
   const membersQuery = useQuery({
     queryKey: ['members', projectId],
     queryFn: () => getMembers(projectId),
+  });
+
+  const pendingRemindersQuery = useQuery({
+    queryKey: ['issue-scheduled-reminders', projectId, issueId],
+    queryFn: () => listPendingIssueReminders(projectId, issueId),
   });
 
   function invalidateAll() {
@@ -118,6 +129,21 @@ export function IssueDetail({
     },
   });
 
+  const scheduleReminderMutation = useMutation({
+    mutationFn: () => scheduleIssueReminder(projectId, issueId, { scheduledFor: new Date(reminderWhen).toISOString(), message: reminderMessage.trim() }),
+    onSuccess: () => {
+      setReminderOpen(false);
+      setReminderWhen('');
+      setReminderMessage('');
+      queryClient.invalidateQueries({ queryKey: ['issue-scheduled-reminders', projectId, issueId] });
+    },
+  });
+
+  const cancelReminderMutation = useMutation({
+    mutationFn: (reminderId: string) => cancelIssueReminder(projectId, issueId, reminderId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['issue-scheduled-reminders', projectId, issueId] }),
+  });
+
   const issue = issueQuery.data;
 
   if (issueQuery.isLoading) return <div className="p-6 text-sm text-ink-500">Loading…</div>;
@@ -134,6 +160,32 @@ export function IssueDetail({
   const canClose = isCreator || isManager;
   const canForward = isCurrentAssignee || (!issue.assignedTo && isCreator) || isManager;
   const members = membersQuery.data ?? [];
+
+  async function handleDownloadPdf() {
+    if (!issue) return;
+    setDownloadError('');
+    setDownloading('pdf');
+    try {
+      await downloadIssuePdf(projectId, issueId, `${issue.issueNumber ?? issue.id}.pdf`);
+    } catch (err) {
+      setDownloadError(apiErrorMessage(err));
+    } finally {
+      setDownloading(null);
+    }
+  }
+
+  async function handleDownloadXls() {
+    if (!issue) return;
+    setDownloadError('');
+    setDownloading('xls');
+    try {
+      await downloadIssueXls(projectId, issueId, `${issue.issueNumber ?? issue.id}.xlsx`);
+    } catch (err) {
+      setDownloadError(apiErrorMessage(err));
+    } finally {
+      setDownloading(null);
+    }
+  }
 
   return (
     <div className="p-6 max-w-3xl space-y-6">
@@ -188,6 +240,15 @@ export function IssueDetail({
                 {forwardOpen ? 'Cancel forward' : 'Forward'}
               </button>
             )}
+            <button onClick={() => setReminderOpen((v) => !v)} className="btn-secondary !px-3 !py-1.5 text-xs">
+              {reminderOpen ? 'Cancel reminder' : 'Remind…'}
+            </button>
+            <button onClick={handleDownloadPdf} disabled={downloading === 'pdf'} className="btn-secondary !px-3 !py-1.5 text-xs">
+              {downloading === 'pdf' ? 'Preparing…' : 'Download PDF'}
+            </button>
+            <button onClick={handleDownloadXls} disabled={downloading === 'xls'} className="btn-secondary !px-3 !py-1.5 text-xs">
+              {downloading === 'xls' ? 'Preparing…' : 'Download XLS'}
+            </button>
             <button
               onClick={() => { if (confirm('Delete this issue? This cannot be undone.')) deleteMutation.mutate(); }}
               className="btn-danger !px-3 !py-1.5 text-xs"
@@ -196,6 +257,7 @@ export function IssueDetail({
             </button>
           </div>
         </div>
+        {downloadError && <p className="field-error">{downloadError}</p>}
 
         {/* Forward form -- only the current assignee (or, if unassigned, the
             creator) or an admin may forward; mirrors IssuesService.forward(). */}
@@ -223,6 +285,62 @@ export function IssueDetail({
               {forwardMutation.isPending ? 'Forwarding…' : 'Send forward'}
             </button>
             {forwardMutation.isError && <p className="field-error">{apiErrorMessage(forwardMutation.error)}</p>}
+          </div>
+        )}
+
+        {/* Schedule a reminder -- open to anyone who can view the issue
+            (unlike the admin-only, immediate Reminders tab on the list
+            page); always targets the current assignee, so it needs one. */}
+        {reminderOpen && (
+          <div className="pt-3 border-t border-base-600 space-y-2">
+            {!issue.assignedTo ? (
+              <p className="text-xs text-ink-500">This issue has no assignee yet -- assign it to someone before scheduling a reminder.</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="datetime-local"
+                    className="field-input"
+                    value={reminderWhen}
+                    onChange={(e) => setReminderWhen(e.target.value)}
+                  />
+                  <input
+                    className="field-input"
+                    placeholder={`Message for ${issue.assignedToName ?? 'the assignee'}…`}
+                    value={reminderMessage}
+                    onChange={(e) => setReminderMessage(e.target.value)}
+                  />
+                </div>
+                <button
+                  onClick={() => scheduleReminderMutation.mutate()}
+                  disabled={!reminderWhen || !reminderMessage.trim() || scheduleReminderMutation.isPending}
+                  className="btn-primary !px-3 !py-1.5 text-xs"
+                >
+                  {scheduleReminderMutation.isPending ? 'Scheduling…' : 'Schedule reminder'}
+                </button>
+                {scheduleReminderMutation.isError && <p className="field-error">{apiErrorMessage(scheduleReminderMutation.error)}</p>}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Pending scheduled reminders on this issue */}
+        {(pendingRemindersQuery.data?.length ?? 0) > 0 && (
+          <div className="pt-3 border-t border-base-600 space-y-1.5">
+            <div className="text-[10px] uppercase tracking-wide text-ink-500 font-mono">Scheduled reminders</div>
+            {pendingRemindersQuery.data!.map((r) => (
+              <div key={r.id} className="flex items-center gap-2 text-xs">
+                <span className="text-ink-500">{formatDateTime(r.scheduledFor)}</span>
+                <span className="text-ink-100">{r.message}</span>
+                <button
+                  onClick={() => cancelReminderMutation.mutate(r.id)}
+                  disabled={cancelReminderMutation.isPending}
+                  className="btn-ghost !px-2 !py-0.5 text-xs ml-auto"
+                >
+                  Cancel
+                </button>
+              </div>
+            ))}
           </div>
         )}
 
