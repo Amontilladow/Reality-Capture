@@ -8,6 +8,7 @@ import {
   type IssueDetailItem,
 } from '../../lib/issues.api';
 import { listCaptures } from '../../lib/captures.api';
+import { CaptureGrid } from '../CaptureGrid';
 import { getMembers } from '../../lib/projects.api';
 import { useAuthStore } from '../../store/auth.store';
 import {
@@ -64,6 +65,17 @@ export function IssueDetail({
   const pendingRemindersQuery = useQuery({
     queryKey: ['issue-scheduled-reminders', projectId, issueId],
     queryFn: () => listPendingIssueReminders(projectId, issueId),
+  });
+
+  // Photos/videos from the pin this issue was raised from, if any -- same
+  // captures.location_id relationship PinPanel.tsx's own "History" grid
+  // reads, so the two stay in sync automatically (adding a photo from
+  // either side shows up in both). Distinct from the "Evidence photos"
+  // section below (issue_captures, manually attached, unrelated pin or not).
+  const pinCapturesQuery = useQuery({
+    queryKey: ['captures', projectId, 'pin', issueQuery.data?.locationId],
+    queryFn: () => listCaptures(projectId, { locationId: issueQuery.data!.locationId, perPage: 50 }),
+    enabled: Boolean(issueQuery.data?.locationId),
   });
 
   function invalidateAll() {
@@ -414,7 +426,21 @@ export function IssueDetail({
           <DetailRow label="Type" value={ISSUE_TYPE_LABELS[issue.issueType]} />
           {issue.category && <DetailRow label="Category" value={CATEGORY_LABELS[issue.category]} />}
           <DetailRow label="Assignee" value={issue.assignedToName ?? 'Unassigned'} />
-          <DetailRow label="Location" value={issue.locationName ?? issue.buildingName ?? '—'} />
+          <DetailRow
+            label="Location"
+            value={
+              issue.drawingId && issue.locationId ? (
+                <Link
+                  to={`/projects/${projectId}/drawings?drawingId=${issue.drawingId}&pinId=${issue.locationId}`}
+                  className="text-blueprint hover:text-blueprint-hover"
+                >
+                  {issue.locationName ?? issue.buildingName ?? 'View pin'} — view on floor plan →
+                </Link>
+              ) : (
+                issue.locationName ?? issue.buildingName ?? '—'
+              )
+            }
+          />
           {issue.elementName && (
             <DetailRow
               label="BIM element"
@@ -453,6 +479,15 @@ export function IssueDetail({
             alt="BIM viewer screenshot captured when this issue was raised"
             className="w-full max-w-md rounded border border-base-600"
           />
+        </div>
+      )}
+
+      {/* Photos from the pin this issue was raised from -- distinct from
+          Evidence photos below (issue_captures, manually attached). */}
+      {issue.locationId && (pinCapturesQuery.data?.data.length ?? 0) > 0 && (
+        <div>
+          <div className="field-label">Photos from pin ({pinCapturesQuery.data!.data.length})</div>
+          <CaptureGrid projectId={projectId} captures={pinCapturesQuery.data!.data} />
         </div>
       )}
 

@@ -816,8 +816,30 @@ export class IssuesService {
     const [project] = await this.db.withTenant(companyId, sql => sql`
       SELECT name, code FROM projects WHERE id = ${projectId} AND company_id = ${companyId}
     `);
-    return { issue, activities: activities as Array<Record<string, unknown>>, project };
+    // Photos/videos belonging to the pin (locations row) this issue was
+    // raised from, if any -- captures.location_id = issue.locationId is
+    // the same relationship PinPanel.tsx's own "History" grid already
+    // reads from (listCaptures({ locationId })), not a new concept.
+    const pinCaptures = issue.locationId
+      ? await this.db.withTenant(companyId, sql => sql`
+          SELECT c.id, c.title, c.capture_type, c.original_key,
+            (SELECT cr.storage_key FROM capture_renditions cr
+             WHERE cr.capture_id = c.id AND cr.rendition_type = 'thumbnail_lg' LIMIT 1) AS thumb_key
+          FROM captures c
+          WHERE c.location_id = ${issue.locationId} AND c.company_id = ${companyId} AND c.status = 'ready'
+          ORDER BY c.captured_at ASC
+        `)
+      : [];
+    return { issue, activities: activities as Array<Record<string, unknown>>, project, pinCaptures: pinCaptures as Array<Record<string, unknown>> };
   }
+
+  // Mirrors CaptureGrid.tsx's TYPE_LABEL exactly -- display-only, kept as
+  // its own copy for the same reason the discipline/category/type label
+  // maps above are (no shared package export, and duplicating three
+  // literals isn't worth a cross-module import for it).
+  private static readonly CAPTURE_TYPE_LABELS: Record<string, string> = {
+    photo_360: '360° Photo', photo_standard: 'Photo', video: 'Video',
+  };
 
   // Mirrors IssueDetail.tsx's own activityLabel() exactly, for the export's
   // Activity Log section -- kept as a separate copy since one lives in
@@ -849,8 +871,25 @@ export class IssuesService {
     return { comments, attachments, statusEvents };
   }
 
+  // Turns a pinCaptures row (see getExportData()) into the {attachmentName,
+  // attachmentUrl} shape appendAttachmentPages()/mergeAttachmentPdfs()
+  // already expect, so pin photos merge into the PDF appendix through the
+  // exact same tested code path as a regular attachment -- not a parallel
+  // implementation. Prefers the thumbnail_lg rendition (a real, always-
+  // present-once-processed .jpg, cheap to download) over the original file
+  // (could be a multi-MB raw upload, and for a 360 photo isn't flat).
+  // Videos have no static rendition at all -- attachmentUrl stays
+  // undefined, so appendAttachmentPages() skips the appendix page for them
+  // and the summary's own text line is their only representation.
+  private pinPhotoAttachmentRow(capture: Record<string, unknown>): Record<string, unknown> {
+    const typeLabel = IssuesService.CAPTURE_TYPE_LABELS[capture.captureType as string] ?? (capture.captureType as string);
+    const label = `${(capture.title as string | undefined) || 'Untitled'} (${typeLabel})`;
+    const key = capture.captureType === 'video' ? undefined : ((capture.thumbKey as string | undefined) ?? (capture.originalKey as string));
+    return { attachmentName: label, attachmentUrl: key };
+  }
+
   async generatePdf(companyId: string, projectId: string, issueId: string): Promise<{ buffer: Buffer; filename: string }> {
-    const { issue, activities, project } = await this.getExportData(companyId, projectId, issueId);
+    const { issue, activities, project, pinCaptures } = await this.getExportData(companyId, projectId, issueId);
     const { comments, attachments, statusEvents } = this.splitActivitiesForExport(activities);
     const filename = `${(issue.issueNumber as string) ?? issueId}.pdf`;
 
@@ -858,6 +897,16 @@ export class IssuesService {
       const filename = a.attachmentName as string;
       const storageKey = a.attachmentUrl as string;
       const imageBuffer = this.isImageFilename(filename)
+        ? await this.storage.download(storageKey).then((raw) => this.resizeAttachmentImage(raw)).catch(() => undefined)
+        : undefined;
+      return { filename, imageBuffer };
+    }));
+
+    const pinPhotoRows = pinCaptures.map((c) => this.pinPhotoAttachmentRow(c));
+    const pinPhotosWithImage = await Promise.all(pinPhotoRows.map(async (row) => {
+      const filename = row.attachmentName as string;
+      const storageKey = row.attachmentUrl as string | undefined;
+      const imageBuffer = storageKey
         ? await this.storage.download(storageKey).then((raw) => this.resizeAttachmentImage(raw)).catch(() => undefined)
         : undefined;
       return { filename, imageBuffer };
@@ -879,6 +928,7 @@ export class IssuesService {
       locationName: (issue.locationName as string | undefined) ?? (issue.buildingName as string | undefined),
       closedAt: issue.closedAt ? new Date(issue.closedAt as string).toLocaleString('en-GB') : undefined,
       attachments: attachmentsWithImage,
+      pinPhotos: pinPhotosWithImage,
       comments: comments.map((c) => ({
         userName: c.performedByName as string | undefined,
         body: c.content as string,
@@ -893,12 +943,12 @@ export class IssuesService {
       projectCode: project?.code as string | undefined,
     });
 
-    const buffer = await this.mergeAttachmentPdfs(summaryBuffer, attachments);
+    const buffer = await this.mergeAttachmentPdfs(summaryBuffer, [...attachments, ...pinPhotoRows]);
     return { buffer, filename };
   }
 
   async generateXls(companyId: string, projectId: string, issueId: string): Promise<{ buffer: Buffer; filename: string }> {
-    const { issue, activities, project } = await this.getExportData(companyId, projectId, issueId);
+    const { issue, activities, project, pinCaptures } = await this.getExportData(companyId, projectId, issueId);
     const { comments, attachments, statusEvents } = this.splitActivitiesForExport(activities);
     const filename = `${(issue.issueNumber as string) ?? issueId}.xlsx`;
 
@@ -909,6 +959,19 @@ export class IssuesService {
       if (!this.isImageFilename(filename)) return { filename };
       const imageBuffer = await this.storage.download(storageKey).then((raw) => this.resizeAttachmentImage(raw)).catch(() => undefined);
       return { filename, imageBuffer, imageExtension: (ext === 'png' ? 'png' : 'jpeg') as 'png' | 'jpeg' };
+    }));
+
+    // Renditions are always .jpg (image-processing.processor.ts always
+    // encodes them via sharp's .jpeg()) -- no need for the label-based
+    // getFileExtension()/isImageFilename() detection attachments use above,
+    // since a pin photo's label has no real extension at all.
+    const pinPhotosWithImage = await Promise.all(pinCaptures.map(async (c) => {
+      const row = this.pinPhotoAttachmentRow(c);
+      const filename = row.attachmentName as string;
+      const storageKey = row.attachmentUrl as string | undefined;
+      if (!storageKey) return { filename };
+      const imageBuffer = await this.storage.download(storageKey).then((raw) => this.resizeAttachmentImage(raw)).catch(() => undefined);
+      return { filename, imageBuffer, imageExtension: 'jpeg' as const };
     }));
 
     const buffer = await buildIssueWorkbookBuffer({
@@ -927,6 +990,7 @@ export class IssuesService {
       locationName: (issue.locationName as string | undefined) ?? (issue.buildingName as string | undefined),
       closedAt: issue.closedAt ? new Date(issue.closedAt as string).toLocaleString('en-GB') : undefined,
       attachments: attachmentsWithImage,
+      pinPhotos: pinPhotosWithImage,
       comments: comments.map((c) => ({
         userName: c.performedByName as string | undefined,
         body: c.content as string,
@@ -974,11 +1038,16 @@ export class IssuesService {
 
   // Mirrors RfisService.appendAttachmentPages() exactly, adapted for
   // issue_activities' attachment_url/attachment_name fields in place of
-  // rfi_attachments' storage_key/filename.
+  // rfi_attachments' storage_key/filename. Extension is read from the
+  // storage key, not the display name -- for a real uploaded attachment
+  // those always match (generateKey() preserves the original extension),
+  // but a pin photo's "filename" here is a human label ("Crack near
+  // entrance (Photo)") with no real extension at all, while its storage
+  // key (a capture_renditions row) always genuinely ends .jpg.
   private async appendAttachmentPages(mainDoc: PDFDocument, row: Record<string, unknown>, headingFont: PDFFont, bodyFont: PDFFont): Promise<void> {
     const filename = row.attachmentName as string;
     const storageKey = row.attachmentUrl as string | undefined;
-    const ext = this.getFileExtension(filename);
+    const ext = this.getFileExtension(storageKey ?? '');
     const isPdf = ext === 'pdf';
     const isMergeableImage = IssuesService.MERGEABLE_IMAGE_EXTENSIONS.has(ext);
     if (!storageKey || (!isPdf && !isMergeableImage)) return;

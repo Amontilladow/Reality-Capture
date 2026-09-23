@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { DrawingViewer } from '../components/drawing/DrawingViewer';
@@ -11,7 +11,14 @@ import { getHierarchy, updateLocation, getMembers } from '../lib/projects.api';
 export default function FloorPlanViewer() {
   const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
-  const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
+  // Deep-link support (e.g. from IssueDetail.tsx's "view on floor plan"
+  // link): /projects/:id/drawings?drawingId=X&pinId=Y. drawingId can be
+  // read straight into initial state, same as IssuesPage.tsx's own
+  // ?issueId= pattern; pinId can't resolve until pinsQuery.data loads --
+  // PinPanel needs the full Pin object, not just an id -- so that part is
+  // handled by the effect below instead.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(searchParams.get('drawingId'));
   const [uploadOpen, setUploadOpen] = useState(false);
   const [placingMode, setPlacingMode] = useState(false);
   const [movingPin, setMovingPin] = useState<Pin | null>(null);
@@ -59,6 +66,26 @@ export default function FloorPlanViewer() {
   // page currently rendered so a multi-page drawing doesn't overlay every
   // page's pins onto whichever page happens to be visible.
   const pinsForCurrentPage = (pinsQuery.data ?? []).filter((p) => p.pageNumber === currentPage);
+
+  // Resolves the ?pinId= deep link once this drawing's pins are in, jumps
+  // to that pin's page, and opens its panel -- then strips both params so
+  // navigating elsewhere and back via the sidebar doesn't keep re-opening
+  // the same pin every time.
+  useEffect(() => {
+    const pinId = searchParams.get('pinId');
+    if (!pinId || !pinsQuery.data) return;
+    const pin = pinsQuery.data.find((p) => p.locationId === pinId);
+    if (!pin) return;
+    setCurrentPage(pin.pageNumber);
+    setOpenPin(pin);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('pinId');
+      next.delete('drawingId');
+      return next;
+    }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinsQuery.data]);
 
   const createPinMutation = useMutation({
     mutationFn: (payload: { xNorm: number; yNorm: number }) =>
