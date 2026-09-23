@@ -1,13 +1,13 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { PDFDocument, PDFFont, StandardFonts, rgb, PageSizes } from 'pdf-lib';
-import ExcelJS from 'exceljs';
+import JSZip from 'jszip';
 import sharp from 'sharp';
 import { DatabaseService } from '../../database/database.service';
 import { AiClientService } from '../ai-client/ai-client.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
 import { renderIssuePdf } from './issue-pdf.template';
-import { buildIssueWorkbookBuffer, addIssueSheet, type IssueXlsData } from './issue-xls';
+import { buildIssueWorkbookBuffer, type IssueXlsData } from './issue-xls';
 import type { CreateIssueDto } from './dto/create-issue.dto';
 import type { UpdateIssueDto } from './dto/update-issue.dto';
 import type { AddActivityDto } from './dto/add-activity.dto';
@@ -1019,48 +1019,62 @@ export class IssuesService {
   }
 
   // ── Bulk export -- mirrors bulkClose()'s selection model (a list of
-  // issue ids from the list page's checkboxes), producing ONE combined
-  // file rather than a zip of per-issue files: a single merged PDF (each
-  // issue's own generatePdf() output, page-concatenated in the given
-  // order) or a single workbook with one sheet per issue.
+  // issue ids from the list page's checkboxes).
+  //
+  // Both PDF and XLS ship as a ZIP containing each selected issue's own
+  // export as its own separate file -- deliberately NOT one merged PDF /
+  // one multi-sheet workbook (an earlier version did that for both; per
+  // explicit feedback, a bulk export of otherwise-independent documents
+  // reads better as separate, individually-shareable files than as one
+  // combined one, the same way downloading multiple invoices/photos from
+  // most apps gives you a zip). Reuses generatePdf() / buildIssueWorkbookBuffer()
+  // wholesale, unchanged, per issue.
   async generateBulkPdf(companyId: string, projectId: string, issueIds: string[]): Promise<{ buffer: Buffer; filename: string }> {
-    const mergedDoc = await PDFDocument.create();
+    const zip = new JSZip();
+    const usedNames = new Set<string>();
     for (const issueId of issueIds) {
-      const { buffer } = await this.generatePdf(companyId, projectId, issueId);
-      const doc = await PDFDocument.load(Uint8Array.from(buffer));
-      const pages = await mergedDoc.copyPages(doc, doc.getPageIndices());
-      pages.forEach((p) => mergedDoc.addPage(p));
+      const { buffer, filename } = await this.generatePdf(companyId, projectId, issueId);
+      zip.file(this.uniqueZipEntryName(filename, usedNames), buffer);
     }
-    const bytes = await mergedDoc.save();
-    return { buffer: Buffer.from(bytes), filename: `issues-export-${new Date().toISOString().slice(0, 10)}.pdf` };
+    const bytes = await zip.generateAsync({ type: 'nodebuffer' });
+    return { buffer: bytes, filename: `issues-export-${new Date().toISOString().slice(0, 10)}.zip` };
   }
 
+  // Same "separate files in a zip" treatment as generateBulkPdf() above,
+  // per the same feedback -- each selected issue gets its own .xlsx
+  // (reusing buildIssueWorkbookBuffer() wholesale, unchanged) rather than
+  // being folded into one multi-sheet workbook.
   async generateBulkXls(companyId: string, projectId: string, issueIds: string[]): Promise<{ buffer: Buffer; filename: string }> {
-    const workbook = new ExcelJS.Workbook();
-    const usedSheetNames = new Set<string>();
+    const zip = new JSZip();
+    const usedNames = new Set<string>();
     for (const issueId of issueIds) {
       const data = await this.buildXlsDataForIssue(companyId, projectId, issueId);
-      addIssueSheet(workbook, this.uniqueSheetName(data.issueNumber, usedSheetNames), data);
+      const buffer = await buildIssueWorkbookBuffer(data);
+      zip.file(this.uniqueZipEntryName(`${data.issueNumber}.xlsx`, usedNames), buffer);
     }
-    const buffer = await workbook.xlsx.writeBuffer();
-    return { buffer: Buffer.from(buffer), filename: `issues-export-${new Date().toISOString().slice(0, 10)}.xlsx` };
+    const bytes = await zip.generateAsync({ type: 'nodebuffer' });
+    return { buffer: bytes, filename: `issues-export-${new Date().toISOString().slice(0, 10)}.zip` };
   }
 
-  // Excel sheet names: max 31 chars, and none of \ / ? * [ ] : -- and must
-  // be unique within the workbook (two selected issues could plausibly
-  // share an issue_number if one is blank/legacy, so dedupe defensively
-  // rather than letting exceljs throw on a duplicate addWorksheet() call).
-  private uniqueSheetName(issueNumber: string | undefined, used: Set<string>): string {
-    const base = (issueNumber || 'Issue').replace(/[\\/?*[\]:]/g, '-').slice(0, 31);
-    let name = base;
-    let i = 2;
-    while (used.has(name)) {
-      const suffix = ` (${i})`;
-      name = `${base.slice(0, 31 - suffix.length)}${suffix}`;
-      i++;
+  // Shared by generateBulkPdf()/generateBulkXls() above -- ensures two
+  // selected issues sharing an issue_number don't silently overwrite one
+  // another as the same zip entry.
+  private uniqueZipEntryName(filename: string, used: Set<string>): string {
+    if (!used.has(filename)) {
+      used.add(filename);
+      return filename;
     }
-    used.add(name);
-    return name;
+    const dot = filename.lastIndexOf('.');
+    const base = dot === -1 ? filename : filename.slice(0, dot);
+    const ext = dot === -1 ? '' : filename.slice(dot);
+    let i = 2;
+    let candidate = `${base} (${i})${ext}`;
+    while (used.has(candidate)) {
+      i++;
+      candidate = `${base} (${i})${ext}`;
+    }
+    used.add(candidate);
+    return candidate;
   }
 
   // Raster-image extensions eligible for inline PDF embedding -- everything

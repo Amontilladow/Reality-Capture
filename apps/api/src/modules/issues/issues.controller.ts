@@ -66,11 +66,11 @@ export class IssuesController {
     return { data: await this.svc.bulkClose(u.companyId, pid, u.id, u.companyRole, dto), error: null };
   }
 
-  // ── Bulk export -- one combined PDF/XLS for every selected issue, same
+  // ── Bulk export -- a ZIP of each selected issue's own PDF/XLS, same
   // binary-response pattern as :id/pdf and :id/xls above. POST (not GET)
   // since the selection is a list of ids, not a single query param.
   @Post('bulk-export/pdf')
-  @ApiOperation({ summary: 'Download a single merged PDF for multiple selected issues' })
+  @ApiOperation({ summary: 'Download a ZIP of each selected issue as its own separate PDF' })
   async bulkExportPdf(
     @CurrentUser() u: AuthenticatedUser,
     @Param('projectId') pid: string,
@@ -78,12 +78,12 @@ export class IssuesController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const { buffer, filename } = await this.svc.generateBulkPdf(u.companyId, pid, dto.issueIds);
-    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${filename}"` });
+    res.set({ 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="${filename}"` });
     return new StreamableFile(buffer);
   }
 
   @Post('bulk-export/xls')
-  @ApiOperation({ summary: 'Download a single Excel workbook (one sheet per issue) for multiple selected issues' })
+  @ApiOperation({ summary: 'Download a ZIP of each selected issue as its own separate Excel file' })
   async bulkExportXls(
     @CurrentUser() u: AuthenticatedUser,
     @Param('projectId') pid: string,
@@ -91,10 +91,7 @@ export class IssuesController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const { buffer, filename } = await this.svc.generateBulkXls(u.companyId, pid, dto.issueIds);
-    res.set({
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="${filename}"`,
-    });
+    res.set({ 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="${filename}"` });
     return new StreamableFile(buffer);
   }
 
