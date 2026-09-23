@@ -292,7 +292,12 @@ export default function IssuesPage() {
           )}
           {bulkCloseMutation.isError && <p className="field-error">{apiErrorMessage(bulkCloseMutation.error)}</p>}
           {bulkCloseMutation.isSuccess && (
-            <p className="text-xs text-ok">Closed {bulkCloseMutation.data.closed} issue(s).</p>
+            <p className="text-xs text-ok">
+              Closed {bulkCloseMutation.data.closed} issue(s).
+              {bulkCloseMutation.data.skipped > 0 && (
+                <> {bulkCloseMutation.data.skipped} skipped — only the issues you raised can be closed this way.</>
+              )}
+            </p>
           )}
 
           {/* List */}
@@ -730,22 +735,53 @@ function IssueRow({
         onChange={onToggleSelect}
       />
       <button onClick={onClick} className="flex-1 text-left min-w-0">
-        <div className="flex items-center gap-2 flex-wrap mb-1.5">
-          <span className="text-[11px] font-mono text-ink-500">{issue.issueNumber ?? issue.id.slice(0, 8)}</span>
-          {issue.locationName && <span className="badge bg-base-700 text-ink-500">{issue.locationName}</span>}
-          {issue.discipline && <span className="badge bg-base-700 text-ink-500">{DISCIPLINE_LABELS[issue.discipline]}</span>}
-          {issue.category && <span className="badge bg-base-700 text-ink-500">{CATEGORY_LABELS[issue.category]}</span>}
+        {/* Row 1: identifying tags, with the due date pulled out to its own
+            corner so it doesn't compete with the badges below. */}
+        <div className="flex items-start justify-between gap-3 mb-1.5">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="text-[11px] font-mono text-ink-500 shrink-0">{issue.issueNumber ?? issue.id.slice(0, 8)}</span>
+            {issue.locationName && <span className="badge bg-base-700 text-ink-500">{issue.locationName}</span>}
+            {issue.discipline && <span className="badge bg-base-700 text-ink-500">{DISCIPLINE_LABELS[issue.discipline]}</span>}
+            {issue.category && <span className="badge bg-base-700 text-ink-500">{CATEGORY_LABELS[issue.category]}</span>}
+          </div>
+          <span className="text-xs text-ink-500 shrink-0">Due {formatDeadline(issue.deadline)}</span>
         </div>
+
+        {/* Row 2: title -- the only thing with real visual weight. */}
         <div className="font-medium text-sm mb-2">{issue.title}</div>
+
+        {/* Row 3: state badges on the left, assignee called out clearly on
+            the right -- previously an unlabeled gray span buried in this
+            same badge row, easy to miss when following up on who owns
+            what. */}
         <div className="flex items-center gap-2 flex-wrap text-xs">
           <span className={`badge ${STATUS_BADGE_CLASS[issue.status]}`}>{STATUS_LABELS[issue.status]}</span>
           <span className={`badge ${PRIORITY_BADGE_CLASS[issue.priority]}`}>{PRIORITY_LABELS[issue.priority]}</span>
           <span className={`badge ${TIMER_BADGE_CLASS[timer.state]}`}>{timer.label}</span>
-          <span className="text-ink-500">{issue.assignedToName ?? 'Unassigned'}</span>
-          <span className="text-ink-500 ml-auto">Due {formatDeadline(issue.deadline)}</span>
+          <AssigneeTag name={issue.assignedToName} className="ml-auto" />
         </div>
       </button>
     </div>
+  );
+}
+
+// A small colored-initial "avatar" plus a labeled name, so the assignee
+// reads as a distinct, glanceable fact rather than one more gray badge --
+// no dependency on assignedToAvatar actually resolving to a loadable image
+// (nothing else in the issues UI renders that field yet either).
+function AssigneeTag({ name, className = '' }: { name?: string; className?: string }) {
+  if (!name) {
+    return <span className={`text-ink-500 italic ${className}`}>Unassigned</span>;
+  }
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join('');
+  return (
+    <span className={`flex items-center gap-1.5 ${className}`}>
+      <span className="w-5 h-5 rounded-full bg-blueprint/20 text-blueprint text-[10px] font-semibold flex items-center justify-center shrink-0">
+        {initials}
+      </span>
+      <span className="text-ink-500">Assigned to</span>
+      <span className="text-ink-100 font-medium">{name}</span>
+    </span>
   );
 }
 

@@ -58,9 +58,9 @@ export class IssuesController {
   // Declared before ':id' below (like 'summary' above it) so it isn't
   // swallowed by the ':id' param route.
   @Post('bulk-close')
-  @ApiOperation({ summary: 'Close multiple issues at once' })
+  @ApiOperation({ summary: 'Close multiple issues at once (only ones the caller created, unless admin)' })
   async bulkClose(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: BulkCloseIssuesDto) {
-    return { data: await this.svc.bulkClose(u.companyId, pid, u.id, dto), error: null };
+    return { data: await this.svc.bulkClose(u.companyId, pid, u.id, u.companyRole, dto), error: null };
   }
 
   // ── Reminders (ticket 2b) ────────────────────────────────────────────────
@@ -103,6 +103,18 @@ export class IssuesController {
     return { data: await this.svc.update(u.companyId, pid, id, u.id, dto), error: null };
   }
 
+  // ── Close ─────────────────────────────────────────────────────────────────
+  // Deliberately NOT gated by @RequireProjectPermission -- authorization is
+  // the creator-or-admin check inside IssuesService.close() itself, so a
+  // plain creator with no 'manage_issues' grant can still close their own
+  // issue (which the generic PATCH :id above can no longer do at all, since
+  // UpdateIssueDto rejects 'closed').
+  @Post(':id/close')
+  @ApiOperation({ summary: "Close an issue -- only the issue's creator or an admin may do this" })
+  async close(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.close(u.companyId, pid, id, u.id, u.companyRole), error: null };
+  }
+
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   async delete(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
@@ -132,14 +144,14 @@ export class IssuesController {
 
   // ── Forward (ticket 2b) ──────────────────────────────────────────────────
   @Post(':id/forward')
-  @ApiOperation({ summary: 'Forward (reassign) an issue to another user' })
+  @ApiOperation({ summary: 'Forward (reassign) an issue to another user -- only the current assignee (or an admin) may do this' })
   async forward(
     @CurrentUser() u: AuthenticatedUser,
     @Param('projectId') pid: string,
     @Param('id') id: string,
     @Body() dto: ForwardIssueDto,
   ) {
-    return { data: await this.svc.forward(u.companyId, pid, id, u.id, dto), error: null };
+    return { data: await this.svc.forward(u.companyId, pid, id, u.id, u.companyRole, dto), error: null };
   }
 
   // ── Admin force-status (ticket 2b) ───────────────────────────────────────

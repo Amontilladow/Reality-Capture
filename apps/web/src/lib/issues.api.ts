@@ -143,6 +143,13 @@ export function deleteIssue(projectId: string, issueId: string) {
   return apiDelete<{ message: string }>(`/projects/${projectId}/issues/${issueId}`);
 }
 
+// Only the issue's creator (or an admin) may call this -- see
+// IssuesService.close() on the backend. The generic updateIssue() above can
+// no longer transition an issue to 'closed' at all.
+export function closeIssue(projectId: string, issueId: string) {
+  return apiPost<Issue>(`/projects/${projectId}/issues/${issueId}/close`, {});
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // Ticket 2b — workflow actions
 // ══════════════════════════════════════════════════════════════════════
@@ -159,9 +166,13 @@ export function forceIssueStatus(projectId: string, issueId: string, status: Iss
 }
 
 // ── Bulk close ────────────────────────────────────────────────────────
+// Only closes the issues in the selection the caller created (or, for an
+// admin, all of them) -- `skipped` counts the rest of the selection so the
+// UI can tell the user some of their picks weren't theirs to close.
 export interface BulkCloseResult {
   closed: number;
   issueIds: string[];
+  skipped: number;
 }
 
 export function bulkCloseIssues(projectId: string, issueIds: string[]) {

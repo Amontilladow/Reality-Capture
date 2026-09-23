@@ -1,4 +1,4 @@
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { IssuesService } from './issues.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { AiClientService } from '../ai-client/ai-client.service';
@@ -183,10 +183,10 @@ describe('IssuesService view-state / screenshot behavior', () => {
   }
 
   describe('forward', () => {
-    it('reassigns the issue, logs a forward activity with from/to values, and notifies the new assignee', async () => {
+    it('reassigns the issue, logs a forward activity with from/to values, and notifies the new assignee, when called by the current assignee', async () => {
       const { query, calls } = makeQuery((text) => {
         if (text.includes('FROM issues i')) {
-          return [{ id: 'issue-1', assignedTo: 'user-old', issueNumber: 'TWR-MEP-0001', title: 'Leak', status: 'open' }];
+          return [{ id: 'issue-1', assignedTo: 'user-1', createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001', title: 'Leak', status: 'open' }];
         }
         if (text.includes('UPDATE issues SET assigned_to')) {
           return [{ id: 'issue-1', assignedTo: 'user-new', issueNumber: 'TWR-MEP-0001', title: 'Leak' }];
@@ -207,7 +207,8 @@ describe('IssuesService view-state / screenshot behavior', () => {
         {} as unknown as StorageService,
       );
 
-      const result = await svc.forward('company-1', 'project-1', 'issue-1', 'user-1', {
+      // Caller ('user-1') is the issue's current assignee.
+      const result = await svc.forward('company-1', 'project-1', 'issue-1', 'user-1', 'site_engineer', {
         toUserId: 'user-new', comment: 'please pick this up',
       });
 
@@ -217,12 +218,168 @@ describe('IssuesService view-state / screenshot behavior', () => {
       expect(activityCall).toBeDefined();
       // values = [issueId, companyId, activityType, content, fromValue, toValue, captureId, userId]
       expect(activityCall!.values[2]).toBe('forward');
-      expect(activityCall!.values[4]).toBe('user-old');
+      expect(activityCall!.values[4]).toBe('user-1');
       expect(activityCall!.values[5]).toBe('user-new');
 
       expect(notifications.create).toHaveBeenCalledWith('company-1', expect.objectContaining({
         userId: 'user-new', type: 'issue_assigned',
       }));
+    });
+
+    it('allows the creator to forward an issue that is still unassigned', async () => {
+      const { query } = makeQuery((text) => {
+        if (text.includes('FROM issues i')) {
+          return [{ id: 'issue-1', assignedTo: null, createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001', title: 'Leak', status: 'open' }];
+        }
+        if (text.includes('UPDATE issues SET assigned_to')) {
+          return [{ id: 'issue-1', assignedTo: 'user-new' }];
+        }
+        return undefined;
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const svc = new IssuesService(
+        { query, withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        { create: jest.fn() } as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      await expect(svc.forward('company-1', 'project-1', 'issue-1', 'user-creator', 'site_engineer', { toUserId: 'user-new' }))
+        .resolves.toMatchObject({ assignedTo: 'user-new' });
+    });
+
+    it('rejects a forward attempt from someone who is neither the current assignee, the creator of an unassigned issue, nor an admin', async () => {
+      const { query } = makeQuery((text) => {
+        if (text.includes('FROM issues i')) {
+          return [{ id: 'issue-1', assignedTo: 'user-1', createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001', title: 'Leak', status: 'open' }];
+        }
+        return undefined;
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const svc = new IssuesService(
+        { query, withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      // Caller is neither the current assignee ('user-1') nor the creator, and holds no admin role.
+      await expect(svc.forward('company-1', 'project-1', 'issue-1', 'user-bystander', 'site_engineer', { toUserId: 'user-new' }))
+        .rejects.toThrow(ForbiddenException);
+    });
+
+    it('allows a company_admin to forward an issue they neither created nor are assigned to', async () => {
+      const { query } = makeQuery((text) => {
+        if (text.includes('FROM issues i')) {
+          return [{ id: 'issue-1', assignedTo: 'user-1', createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001', title: 'Leak', status: 'open' }];
+        }
+        if (text.includes('UPDATE issues SET assigned_to')) {
+          return [{ id: 'issue-1', assignedTo: 'user-new' }];
+        }
+        return undefined;
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const svc = new IssuesService(
+        { query, withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        { create: jest.fn() } as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      await expect(svc.forward('company-1', 'project-1', 'issue-1', 'user-admin', 'company_admin', { toUserId: 'user-new' }))
+        .resolves.toMatchObject({ assignedTo: 'user-new' });
+    });
+  });
+
+  describe('close', () => {
+    it("closes an issue when called by its creator, even without a project 'manage_issues' grant", async () => {
+      const { query, calls } = makeQuery((text) => {
+        if (text.includes('FROM issues i')) {
+          return [{ id: 'issue-1', status: 'resolved', createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001' }];
+        }
+        if (text.includes("UPDATE issues SET")) {
+          return [{ id: 'issue-1', status: 'closed' }];
+        }
+        return undefined;
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const svc = new IssuesService(
+        { query, withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      const result = await svc.close('company-1', 'project-1', 'issue-1', 'user-creator', 'site_engineer');
+
+      expect(result.status).toBe('closed');
+      const updateCall = calls.find(c => c.text.includes('UPDATE issues SET') && c.text.includes('closed_by'));
+      expect(updateCall).toBeDefined();
+      const activityCall = calls.find(c => c.text.includes('INSERT INTO issue_activities'));
+      expect(activityCall!.values[2]).toBe('status_change');
+      expect(activityCall!.values[5]).toBe('closed');
+    });
+
+    it('rejects closing when the caller is neither the creator nor an admin', async () => {
+      const { query } = makeQuery((text) => {
+        if (text.includes('FROM issues i')) {
+          return [{ id: 'issue-1', status: 'resolved', createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001' }];
+        }
+        return undefined;
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const svc = new IssuesService(
+        { query, withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      await expect(svc.close('company-1', 'project-1', 'issue-1', 'user-assignee', 'site_engineer'))
+        .rejects.toThrow(ForbiddenException);
+    });
+
+    it('allows an engineering_manager to close an issue they did not create', async () => {
+      const { query } = makeQuery((text) => {
+        if (text.includes('FROM issues i')) {
+          return [{ id: 'issue-1', status: 'resolved', createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001' }];
+        }
+        if (text.includes("UPDATE issues SET")) {
+          return [{ id: 'issue-1', status: 'closed' }];
+        }
+        return undefined;
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const svc = new IssuesService(
+        { query, withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      await expect(svc.close('company-1', 'project-1', 'issue-1', 'user-admin', 'engineering_manager'))
+        .resolves.toMatchObject({ status: 'closed' });
+    });
+
+    it('is a no-op returning the existing row when the issue is already closed', async () => {
+      const { query } = makeQuery((text) => {
+        if (text.includes('FROM issues i')) {
+          return [{ id: 'issue-1', status: 'closed', createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001' }];
+        }
+        return undefined;
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const svc = new IssuesService(
+        { query, withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      // Even a non-creator, non-admin caller doesn't get a 403 here -- closing
+      // an already-closed issue never reaches the authorization check.
+      const result = await svc.close('company-1', 'project-1', 'issue-1', 'user-bystander', 'site_engineer');
+      expect(result.status).toBe('closed');
     });
   });
 
@@ -279,9 +436,14 @@ describe('IssuesService view-state / screenshot behavior', () => {
         {} as unknown as StorageService,
       );
 
-      const result = await svc.bulkClose('company-1', 'project-1', 'user-1', { issueIds: ['issue-1', 'issue-2'] });
+      // Both targets are, per the (mocked) SELECT's own WHERE clause,
+      // issues this caller created -- see the next test for the case where
+      // the selection also includes issues the caller didn't raise.
+      const result = await svc.bulkClose('company-1', 'project-1', 'user-1', 'site_engineer', { issueIds: ['issue-1', 'issue-2'] });
 
-      expect(result).toEqual({ closed: 2, issueIds: ['issue-1', 'issue-2'] });
+      expect(result).toEqual({ closed: 2, issueIds: ['issue-1', 'issue-2'], skipped: 0 });
+      const selectCall = sqlCalls.find(c => c.text.includes('SELECT id, status, issue_number FROM issues'));
+      expect(selectCall!.text).toContain('created_by');
       const activityInserts = sqlCalls.filter(c => c.text.includes('INSERT INTO issue_activities'));
       expect(activityInserts).toHaveLength(2);
       // 'status_change' and 'closed' are inline SQL literals (not
@@ -289,6 +451,47 @@ describe('IssuesService view-state / screenshot behavior', () => {
       expect(activityInserts[0].text).toContain('status_change');
       expect(activityInserts[0].values).toEqual(['issue-1', 'company-1', 'open', 'user-1']);
       expect(activityInserts[1].values).toEqual(['issue-2', 'company-1', 'assigned', 'user-1']);
+    });
+
+    it('reports the ones outside the selection it could actually close as skipped', async () => {
+      // A non-admin caller selected 3 issues but the SELECT's own
+      // (created_by = userId) filter only matched 1 of them -- the other 2
+      // aren't this caller's to close and are silently skipped, not errored.
+      const sql = jest.fn().mockResolvedValueOnce([{ id: 'issue-1', status: 'open', issueNumber: 'A-1' }]).mockResolvedValue([]);
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(sql));
+      const svc = new IssuesService(
+        { withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      const result = await svc.bulkClose('company-1', 'project-1', 'user-1', 'site_engineer', { issueIds: ['issue-1', 'issue-2', 'issue-3'] });
+      expect(result).toEqual({ closed: 1, issueIds: ['issue-1'], skipped: 2 });
+    });
+
+    it('lets a company_admin bulk-close issues regardless of who created them', async () => {
+      const sqlCalls: Array<{ text: string; values: unknown[] }> = [];
+      const sql = jest.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
+        const text = strings.join('?');
+        sqlCalls.push({ text, values });
+        if (text.includes('SELECT id, status, issue_number FROM issues')) {
+          return Promise.resolve([{ id: 'issue-1', status: 'open', issueNumber: 'A-1' }]);
+        }
+        return Promise.resolve([]);
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(sql));
+      const svc = new IssuesService(
+        { withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      const result = await svc.bulkClose('company-1', 'project-1', 'user-admin', 'company_admin', { issueIds: ['issue-1'] });
+      expect(result).toEqual({ closed: 1, issueIds: ['issue-1'], skipped: 0 });
+      const selectCall = sqlCalls.find(c => c.text.includes('SELECT id, status, issue_number FROM issues'));
+      expect(selectCall!.values).toContain(true); // the interpolated `${isAdmin}` short-circuits the created_by check
     });
 
     it('returns closed: 0 when no targeted issues are open', async () => {
@@ -301,8 +504,8 @@ describe('IssuesService view-state / screenshot behavior', () => {
         {} as unknown as StorageService,
       );
 
-      const result = await svc.bulkClose('company-1', 'project-1', 'user-1', { issueIds: ['issue-9'] });
-      expect(result).toEqual({ closed: 0, issueIds: [] });
+      const result = await svc.bulkClose('company-1', 'project-1', 'user-1', 'site_engineer', { issueIds: ['issue-9'] });
+      expect(result).toEqual({ closed: 0, issueIds: [], skipped: 1 });
     });
   });
 
