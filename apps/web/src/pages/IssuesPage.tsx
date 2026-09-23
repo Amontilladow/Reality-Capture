@@ -116,7 +116,7 @@ export default function IssuesPage() {
     setBulkDownloadError('');
     setBulkDownloading('pdf');
     try {
-      await bulkDownloadIssuesPdf(projectId, [...selectedIds], `issues-export-${new Date().toISOString().slice(0, 10)}.pdf`);
+      await bulkDownloadIssuesPdf(projectId, [...selectedIds], `issues-export-${new Date().toISOString().slice(0, 10)}.zip`);
     } catch (err) {
       setBulkDownloadError(apiErrorMessage(err));
     } finally {
@@ -129,7 +129,7 @@ export default function IssuesPage() {
     setBulkDownloadError('');
     setBulkDownloading('xls');
     try {
-      await bulkDownloadIssuesXls(projectId, [...selectedIds], `issues-export-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      await bulkDownloadIssuesXls(projectId, [...selectedIds], `issues-export-${new Date().toISOString().slice(0, 10)}.zip`);
     } catch (err) {
       setBulkDownloadError(apiErrorMessage(err));
     } finally {
@@ -313,7 +313,7 @@ export default function IssuesPage() {
                     onClick={handleBulkDownloadPdf}
                     disabled={bulkDownloading === 'pdf'}
                     className="btn-secondary !px-3 !py-1 text-xs"
-                    title="One merged PDF with every selected issue"
+                    title="A ZIP with each selected issue as its own PDF"
                   >
                     {bulkDownloading === 'pdf' ? 'Preparing…' : 'Download PDF'}
                   </button>
@@ -321,7 +321,7 @@ export default function IssuesPage() {
                     onClick={handleBulkDownloadXls}
                     disabled={bulkDownloading === 'xls'}
                     className="btn-secondary !px-3 !py-1 text-xs"
-                    title="One workbook, one sheet per selected issue"
+                    title="A ZIP with each selected issue as its own Excel file"
                   >
                     {bulkDownloading === 'xls' ? 'Preparing…' : 'Download XLS'}
                   </button>
