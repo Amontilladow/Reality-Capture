@@ -80,6 +80,11 @@ export interface IssuePdfData {
   locationName?: string;
   closedAt?: string;
   attachments?: IssuePdfAttachmentItem[];
+  // Photos/videos from the pin (floor-plan location) this issue was
+  // raised from, if any -- a distinct set from `attachments` above (those
+  // come from issue_activities, these from captures.location_id), shown
+  // in their own section so the two aren't conflated.
+  pinPhotos?: IssuePdfAttachmentItem[];
   comments?: IssuePdfComment[];
   statusEvents?: IssuePdfStatusEvent[];
   projectName: string;
@@ -192,6 +197,13 @@ export async function renderIssuePdf(data: IssuePdfData): Promise<Buffer> {
           h(Text, { style: styles.sectionTitle }, 'Attachments'),
           attachmentsBlock(data.attachments),
         ),
+
+        data.pinPhotos && data.pinPhotos.length > 0
+          ? h(View, { style: styles.section },
+              h(Text, { style: styles.sectionTitle }, 'Photos from Pin'),
+              attachmentsBlock(data.pinPhotos),
+            )
+          : null,
 
         h(View, { style: styles.section },
           h(Text, { style: styles.sectionTitle }, 'Comments'),

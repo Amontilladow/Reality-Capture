@@ -128,6 +128,9 @@ export interface IssueXlsData {
   locationName?: string;
   closedAt?: string;
   attachments?: IssueXlsAttachmentItem[];
+  // Distinct from `attachments` -- see issue-pdf.template.ts's identical
+  // field for why these are kept separate rather than merged into one list.
+  pinPhotos?: IssueXlsAttachmentItem[];
   comments?: IssueXlsComment[];
   activityEvents?: IssueXlsActivityEvent[];
   projectName: string;
@@ -182,6 +185,18 @@ export async function buildIssueWorkbookBuffer(data: IssueXlsData): Promise<Exce
     textBlockRow(sheet, 'No attachments.');
   }
   spacerRow(sheet);
+
+  if (data.pinPhotos && data.pinPhotos.length > 0) {
+    sectionRow(sheet, 'PHOTOS FROM PIN');
+    for (const item of data.pinPhotos) {
+      const row = fieldRow(sheet, '', item.filename);
+      if (item.imageBuffer && item.imageExtension) {
+        row.height = 24;
+        addPixelImage(sheet, workbook, item.imageBuffer, item.imageExtension, 2, row.number - 1, 20);
+      }
+    }
+    spacerRow(sheet);
+  }
 
   sectionRow(sheet, 'COMMENTS');
   if (data.comments && data.comments.length > 0) {
