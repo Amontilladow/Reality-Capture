@@ -212,9 +212,11 @@ export class IssuesService {
   }
 
   // ── Update ────────────────────────────────────────────────────────────────
+  // Can no longer transition status to 'closed' -- UpdateIssueDto rejects
+  // that value entirely; closing only happens through close() below, which
+  // enforces the creator-only rule this generic endpoint has no way to.
   async update(companyId: string, projectId: string, issueId: string, userId: string, dto: UpdateIssueDto) {
     const existing = await this.findOne(companyId, projectId, issueId);
-    const isClosing = dto.status === 'closed' && existing.status !== 'closed';
 
     // withTenant required -- see generateIssueNumber() above.
     const [updated] = await this.db.withTenant(companyId, sql => sql`
@@ -234,8 +236,6 @@ export class IssuesService {
         responsible_company = COALESCE(${dto.responsibleCompany ?? null}, responsible_company),
         deadline            = COALESCE(${dto.deadline ?? null}::timestamptz, deadline),
         tags                = COALESCE(${dto.tags ? JSON.stringify(dto.tags) : null}::text[], tags),
-        closed_at           = CASE WHEN ${isClosing} THEN NOW() ELSE closed_at END,
-        closed_by           = CASE WHEN ${isClosing} THEN ${userId}::uuid ELSE closed_by END,
         updated_at          = NOW()
       WHERE id = ${issueId} AND project_id = ${projectId} AND company_id = ${companyId}
       RETURNING *
@@ -262,6 +262,43 @@ export class IssuesService {
         createdBy: userId,
       });
     }
+
+    return updated;
+  }
+
+  // ── Close ─────────────────────────────────────────────────────────────────
+  // Deliberately its own endpoint, not reachable via update()'s
+  // @RequireProjectPermission('manage_issues') gate -- closing is
+  // restricted to the issue's own creator (same "creator or admin" escape
+  // hatch delete() already uses) regardless of whether the caller holds
+  // that project-wide permission, so a plain creator with no grant at all
+  // can still close their own issue.
+  async close(companyId: string, projectId: string, issueId: string, userId: string, userRole: string) {
+    const existing = await this.findOne(companyId, projectId, issueId);
+    if (existing.status === 'closed') return existing;
+    if (existing.createdBy !== userId && !['company_admin', 'engineering_manager'].includes(userRole)) {
+      throw new ForbiddenException({
+        code: 'NOT_ISSUE_CREATOR',
+        message: 'Only the person who raised this issue (or an administrator) can close it.',
+      });
+    }
+
+    // withTenant required -- see generateIssueNumber() above.
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
+      UPDATE issues SET
+        status     = 'closed',
+        closed_at  = NOW(),
+        closed_by  = ${userId}::uuid,
+        updated_at = NOW()
+      WHERE id = ${issueId} AND project_id = ${projectId} AND company_id = ${companyId}
+      RETURNING *
+    `);
+
+    await this.addActivity(companyId, issueId, userId, {
+      activityType: 'status_change',
+      fromValue: existing.status as string,
+      toValue: 'closed',
+    });
 
     return updated;
   }
@@ -437,8 +474,22 @@ export class IssuesService {
   // Reassigns the issue to another user and logs a 'forward' activity.
   // Mirrors update()'s existing reassignment-notification behavior for
   // consistency, since this is functionally a targeted reassignment.
-  async forward(companyId: string, projectId: string, issueId: string, userId: string, dto: ForwardIssueDto) {
+  // Restricted to the issue's current assignee -- the one person actually
+  // doing the work is the one who gets to hand it off. If the issue is
+  // still unassigned there's no current assignee to check against, so the
+  // creator may forward it instead (functionally an initial assignment).
+  // Admins keep the same "creator or admin" escape hatch close()/delete()
+  // already use.
+  async forward(companyId: string, projectId: string, issueId: string, userId: string, userRole: string, dto: ForwardIssueDto) {
     const existing = await this.findOne(companyId, projectId, issueId);
+    const isCurrentAssignee = existing.assignedTo === userId;
+    const isCreatorOfUnassigned = !existing.assignedTo && existing.createdBy === userId;
+    if (!isCurrentAssignee && !isCreatorOfUnassigned && !['company_admin', 'engineering_manager'].includes(userRole)) {
+      throw new ForbiddenException({
+        code: 'NOT_ISSUE_ASSIGNEE',
+        message: 'Only the current assignee can forward this issue to someone else.',
+      });
+    }
 
     // withTenant required -- see generateIssueNumber() above.
     const [updated] = await this.db.withTenant(companyId, sql => sql`
@@ -507,15 +558,22 @@ export class IssuesService {
   // findOne()'s tenant scoping elsewhere in this file. Wrapped in
   // withTenant()'s transaction so the status updates and their activity
   // log entries succeed or fail together.
-  async bulkClose(companyId: string, projectId: string, userId: string, dto: BulkCloseIssuesDto) {
+  //
+  // Same creator-only rule as the single-issue close() -- a non-admin
+  // caller only ever closes the issues in their selection that they
+  // themselves raised; anything else in dto.issueIds is silently skipped
+  // (reported back via `skipped`) rather than failing the whole batch.
+  async bulkClose(companyId: string, projectId: string, userId: string, userRole: string, dto: BulkCloseIssuesDto) {
+    const isAdmin = ['company_admin', 'engineering_manager'].includes(userRole);
     return this.db.withTenant(companyId, async (sql) => {
       const targets = await sql`
         SELECT id, status, issue_number FROM issues
         WHERE id = ANY(${dto.issueIds}::uuid[])
           AND project_id = ${projectId} AND company_id = ${companyId}
           AND status <> 'closed'
+          AND (${isAdmin} OR created_by = ${userId}::uuid)
       `;
-      if (targets.length === 0) return { closed: 0, issueIds: [] };
+      if (targets.length === 0) return { closed: 0, issueIds: [], skipped: dto.issueIds.length };
 
       const ids = targets.map(t => t.id as string);
       await sql`
@@ -524,7 +582,7 @@ export class IssuesService {
       `;
 
       // Reuses 'status_change' (the same activity type the single-issue
-      // close path logs via update()) rather than inventing a new one.
+      // close() path logs) rather than inventing a new one.
       for (const target of targets) {
         await sql`
           INSERT INTO issue_activities (issue_id, company_id, activity_type, from_value, to_value, performed_by)
@@ -532,7 +590,7 @@ export class IssuesService {
         `;
       }
 
-      return { closed: targets.length, issueIds: ids };
+      return { closed: targets.length, issueIds: ids, skipped: dto.issueIds.length - targets.length };
     });
   }
 

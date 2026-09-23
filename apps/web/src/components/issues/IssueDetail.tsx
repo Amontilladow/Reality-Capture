@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  getIssue, updateIssue, deleteIssue, getActivities, addComment, addEvidenceCapture,
+  getIssue, updateIssue, closeIssue, deleteIssue, getActivities, addComment, addEvidenceCapture,
   forwardIssue, forceIssueStatus, uploadIssueAttachment,
   type IssueDetailItem,
 } from '../../lib/issues.api';
@@ -67,6 +67,14 @@ export function IssueDetail({
     onSuccess: invalidateAll,
   });
 
+  // Separate from statusMutation -- 'closed' is no longer a status
+  // updateIssue() can set at all; only the creator (or an admin) may
+  // close, enforced server-side by IssuesService.close().
+  const closeMutation = useMutation({
+    mutationFn: () => closeIssue(projectId, issueId),
+    onSuccess: invalidateAll,
+  });
+
   const commentMutation = useMutation({
     mutationFn: () => addComment(projectId, issueId, comment.trim()),
     onSuccess: () => {
@@ -117,6 +125,14 @@ export function IssueDetail({
 
   const timer = getDeadlineTimer(issue.deadline, issue.status);
   const currentStepIdx = ISSUE_STATUS_FLOW.indexOf(issue.status);
+
+  // Mirrors the backend's own authorization exactly (IssuesService.close()/
+  // forward()): closing is creator-or-admin; forwarding is the current
+  // assignee (or the creator, if the issue is still unassigned) or admin.
+  const isCreator = currentUser?.id === issue.createdBy;
+  const isCurrentAssignee = Boolean(currentUser?.id && currentUser.id === issue.assignedTo);
+  const canClose = isCreator || isManager;
+  const canForward = isCurrentAssignee || (!issue.assignedTo && isCreator) || isManager;
   const members = membersQuery.data ?? [];
 
   return (
@@ -167,9 +183,11 @@ export function IssueDetail({
           </div>
           <div className="flex flex-col gap-1.5 items-end">
             <button onClick={() => onEdit(issue)} className="btn-secondary !px-3 !py-1.5 text-xs">Edit</button>
-            <button onClick={() => setForwardOpen((v) => !v)} className="btn-secondary !px-3 !py-1.5 text-xs">
-              {forwardOpen ? 'Cancel forward' : 'Forward'}
-            </button>
+            {canForward && (
+              <button onClick={() => setForwardOpen((v) => !v)} className="btn-secondary !px-3 !py-1.5 text-xs">
+                {forwardOpen ? 'Cancel forward' : 'Forward'}
+              </button>
+            )}
             <button
               onClick={() => { if (confirm('Delete this issue? This cannot be undone.')) deleteMutation.mutate(); }}
               className="btn-danger !px-3 !py-1.5 text-xs"
@@ -179,8 +197,9 @@ export function IssueDetail({
           </div>
         </div>
 
-        {/* Forward form */}
-        {forwardOpen && (
+        {/* Forward form -- only the current assignee (or, if unassigned, the
+            creator) or an admin may forward; mirrors IssuesService.forward(). */}
+        {canForward && forwardOpen && (
           <div className="pt-3 border-t border-base-600 space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <select className="field-input" value={forwardTo} onChange={(e) => setForwardTo(e.target.value)}>
@@ -207,9 +226,12 @@ export function IssueDetail({
           </div>
         )}
 
-        {/* Status actions */}
+        {/* Status actions -- 'closed' is deliberately not in this generic
+            map: it's the one transition restricted to the creator (or an
+            admin), so it gets its own button below with its own mutation
+            and a disabled/tooltip state for everyone else. */}
         <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-base-600">
-          {ISSUE_STATUS_FLOW.filter((s) => s !== issue.status).map((s) => (
+          {ISSUE_STATUS_FLOW.filter((s) => s !== issue.status && s !== 'closed').map((s) => (
             <button
               key={s}
               onClick={() => statusMutation.mutate(s)}
@@ -219,12 +241,23 @@ export function IssueDetail({
               Move to {STATUS_LABELS[s]}
             </button>
           ))}
+          {issue.status !== 'closed' && (
+            <button
+              onClick={() => closeMutation.mutate()}
+              disabled={!canClose || closeMutation.isPending}
+              title={canClose ? undefined : 'Only the person who raised this issue (or an administrator) can close it.'}
+              className="btn-secondary !px-3 !py-1.5 text-xs"
+            >
+              {closeMutation.isPending ? 'Closing…' : `Move to ${STATUS_LABELS.closed}`}
+            </button>
+          )}
           {(issue.status === 'closed' || issue.status === 'resolved') && (
             <button onClick={() => statusMutation.mutate('reopened')} disabled={statusMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
               ↩ Reopen
             </button>
           )}
         </div>
+        {closeMutation.isError && <p className="field-error">{apiErrorMessage(closeMutation.error)}</p>}
 
         {/* Admin force-status override */}
         {isManager && (

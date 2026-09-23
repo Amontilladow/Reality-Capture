@@ -5,8 +5,11 @@ export class UpdateIssueDto {
   @IsOptional() @IsString()  description?: string;
   @IsOptional() @IsIn(['critical','high','medium','low']) priority?: string;
 
+  // 'closed' deliberately excluded -- closing an issue is restricted to its
+  // creator (or an admin) and only reachable through the dedicated
+  // POST :id/close endpoint, not this generic PATCH. See IssuesService.close().
   @IsOptional()
-  @IsIn(['open','assigned','in_progress','resolved','under_review','closed','void',
+  @IsIn(['open','assigned','in_progress','resolved','under_review','void',
     'waiting_for_information','reopened'])
   status?: string;
 
