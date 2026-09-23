@@ -99,6 +99,17 @@ export async function apiDelete<T>(url: string, config?: AxiosRequestConfig): Pr
   return res.data.data;
 }
 
+function saveBlob(blob: Blob, filename: string): void {
+  const blobUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(blobUrl);
+}
+
 // Downloads a binary response (e.g. a generated PDF) and saves it via the
 // browser, the same way a normal <a href download> would. Goes through the
 // same authenticated `http` instance as every other call here, since these
@@ -107,14 +118,14 @@ export async function apiDelete<T>(url: string, config?: AxiosRequestConfig): Pr
 // with their own auth baked in and don't need this).
 export async function apiDownload(url: string, filename: string): Promise<void> {
   const res = await http.get(url, { responseType: 'blob' });
-  const blobUrl = URL.createObjectURL(res.data as Blob);
-  const link = document.createElement('a');
-  link.href = blobUrl;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(blobUrl);
+  saveBlob(res.data as Blob, filename);
+}
+
+// Same as apiDownload(), but POSTs a body first -- for exports whose input
+// (e.g. a bulk selection of issue ids) doesn't belong in a query string.
+export async function apiDownloadPost(url: string, body: unknown, filename: string): Promise<void> {
+  const res = await http.post(url, body, { responseType: 'blob' });
+  saveBlob(res.data as Blob, filename);
 }
 
 // Meta (pagination) alongside data, for list endpoints.

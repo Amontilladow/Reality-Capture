@@ -2,7 +2,7 @@ import axios from 'axios';
 import type {
   Issue, IssueActivity, IssueType, IssuePriority, IssueStatus, IssueDiscipline, IssueCategory, IssueReminder,
 } from '@engineeringos/types';
-import { apiGet, apiGetWithMeta, apiPost, apiPatch, apiDelete, apiDownload } from './api';
+import { apiGet, apiGetWithMeta, apiPost, apiPatch, apiDelete, apiDownload, apiDownloadPost } from './api';
 
 export interface IssueListItem extends Issue {
   createdByName?: string;
@@ -186,6 +186,17 @@ export interface BulkCloseResult {
 
 export function bulkCloseIssues(projectId: string, issueIds: string[]) {
   return apiPost<BulkCloseResult>(`/projects/${projectId}/issues/bulk-close`, { issueIds });
+}
+
+// ── Bulk export -- one combined file for every selected issue (a single
+// merged PDF, or a single workbook with one sheet per issue), same
+// per-issue content as downloadIssuePdf()/downloadIssueXls() above.
+export function bulkDownloadIssuesPdf(projectId: string, issueIds: string[], filename: string) {
+  return apiDownloadPost(`/projects/${projectId}/issues/bulk-export/pdf`, { issueIds }, filename);
+}
+
+export function bulkDownloadIssuesXls(projectId: string, issueIds: string[], filename: string) {
+  return apiDownloadPost(`/projects/${projectId}/issues/bulk-export/xls`, { issueIds }, filename);
 }
 
 // ── Reminders (manager/admin only for the two send endpoints) ──────────

@@ -6,7 +6,8 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { IssueFormModal } from '../components/issues/IssueFormModal';
 import { IssueDetail } from '../components/issues/IssueDetail';
 import {
-  listIssues, getIssueSummary, bulkCloseIssues, listReminders, broadcastReminder, sendUserReminder, warnUser,
+  listIssues, getIssueSummary, bulkCloseIssues, bulkDownloadIssuesPdf, bulkDownloadIssuesXls,
+  listReminders, broadcastReminder, sendUserReminder, warnUser,
   type IssueListItem, type IssueDetailItem,
 } from '../lib/issues.api';
 import { getMembers, getHierarchy } from '../lib/projects.api';
@@ -106,6 +107,35 @@ export default function IssuesPage() {
       queryClient.invalidateQueries({ queryKey: ['issues-dashboard', projectId] });
     },
   });
+
+  const [bulkDownloading, setBulkDownloading] = useState<'pdf' | 'xls' | null>(null);
+  const [bulkDownloadError, setBulkDownloadError] = useState('');
+
+  async function handleBulkDownloadPdf() {
+    if (!projectId) return;
+    setBulkDownloadError('');
+    setBulkDownloading('pdf');
+    try {
+      await bulkDownloadIssuesPdf(projectId, [...selectedIds], `issues-export-${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch (err) {
+      setBulkDownloadError(apiErrorMessage(err));
+    } finally {
+      setBulkDownloading(null);
+    }
+  }
+
+  async function handleBulkDownloadXls() {
+    if (!projectId) return;
+    setBulkDownloadError('');
+    setBulkDownloading('xls');
+    try {
+      await bulkDownloadIssuesXls(projectId, [...selectedIds], `issues-export-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (err) {
+      setBulkDownloadError(apiErrorMessage(err));
+    } finally {
+      setBulkDownloading(null);
+    }
+  }
 
   const advancedActive = Boolean(assignedTo || discipline || dateFrom || dateTo);
   function clearAdvanced() {
@@ -280,6 +310,22 @@ export default function IssuesPage() {
                 <div className="flex items-center gap-2 ml-auto panel !py-1.5 !px-3">
                   <span className="text-ink-300">{selectedIds.size} selected</span>
                   <button
+                    onClick={handleBulkDownloadPdf}
+                    disabled={bulkDownloading === 'pdf'}
+                    className="btn-secondary !px-3 !py-1 text-xs"
+                    title="One merged PDF with every selected issue"
+                  >
+                    {bulkDownloading === 'pdf' ? 'Preparing…' : 'Download PDF'}
+                  </button>
+                  <button
+                    onClick={handleBulkDownloadXls}
+                    disabled={bulkDownloading === 'xls'}
+                    className="btn-secondary !px-3 !py-1 text-xs"
+                    title="One workbook, one sheet per selected issue"
+                  >
+                    {bulkDownloading === 'xls' ? 'Preparing…' : 'Download XLS'}
+                  </button>
+                  <button
                     onClick={() => { if (confirm(`Close ${selectedIds.size} issue(s)?`)) bulkCloseMutation.mutate(); }}
                     disabled={bulkCloseMutation.isPending}
                     className="btn-secondary !px-3 !py-1 text-xs"
@@ -290,6 +336,7 @@ export default function IssuesPage() {
               )}
             </div>
           )}
+          {bulkDownloadError && <p className="field-error">{bulkDownloadError}</p>}
           {bulkCloseMutation.isError && <p className="field-error">{apiErrorMessage(bulkCloseMutation.error)}</p>}
           {bulkCloseMutation.isSuccess && (
             <p className="text-xs text-ok">
