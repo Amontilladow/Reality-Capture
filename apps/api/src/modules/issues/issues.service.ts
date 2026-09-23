@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { PDFDocument, PDFFont, StandardFonts, rgb, PageSizes } from 'pdf-lib';
+import ExcelJS from 'exceljs';
 import sharp from 'sharp';
 import { DatabaseService } from '../../database/database.service';
 import { AiClientService } from '../ai-client/ai-client.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
 import { renderIssuePdf } from './issue-pdf.template';
-import { buildIssueWorkbookBuffer } from './issue-xls';
+import { buildIssueWorkbookBuffer, addIssueSheet, type IssueXlsData } from './issue-xls';
 import type { CreateIssueDto } from './dto/create-issue.dto';
 import type { UpdateIssueDto } from './dto/update-issue.dto';
 import type { AddActivityDto } from './dto/add-activity.dto';
@@ -947,10 +948,15 @@ export class IssuesService {
     return { buffer, filename };
   }
 
-  async generateXls(companyId: string, projectId: string, issueId: string): Promise<{ buffer: Buffer; filename: string }> {
+  // Factored out of generateXls() so generateBulkXls() (below) can gather
+  // each selected issue's data and add it as its own sheet on one shared
+  // workbook, rather than needing N separate un-combinable workbooks --
+  // exceljs has no supported way to merge sheets across workbooks after
+  // the fact, so sharing this step is the only way to avoid re-deriving
+  // the same field-mapping logic twice.
+  private async buildXlsDataForIssue(companyId: string, projectId: string, issueId: string): Promise<IssueXlsData> {
     const { issue, activities, project, pinCaptures } = await this.getExportData(companyId, projectId, issueId);
     const { comments, attachments, statusEvents } = this.splitActivitiesForExport(activities);
-    const filename = `${(issue.issueNumber as string) ?? issueId}.xlsx`;
 
     const attachmentsWithImage = await Promise.all(attachments.map(async (a) => {
       const filename = a.attachmentName as string;
@@ -974,7 +980,7 @@ export class IssuesService {
       return { filename, imageBuffer, imageExtension: 'jpeg' as const };
     }));
 
-    const buffer = await buildIssueWorkbookBuffer({
+    return {
       issueNumber: (issue.issueNumber as string) ?? (issue.id as string),
       title: issue.title as string,
       status: issue.status as string,
@@ -1003,9 +1009,58 @@ export class IssuesService {
       })),
       projectName: (project?.name as string) ?? '—',
       projectCode: project?.code as string | undefined,
-    });
+    };
+  }
 
-    return { buffer: Buffer.from(buffer), filename };
+  async generateXls(companyId: string, projectId: string, issueId: string): Promise<{ buffer: Buffer; filename: string }> {
+    const data = await this.buildXlsDataForIssue(companyId, projectId, issueId);
+    const buffer = await buildIssueWorkbookBuffer(data);
+    return { buffer: Buffer.from(buffer), filename: `${data.issueNumber}.xlsx` };
+  }
+
+  // ── Bulk export -- mirrors bulkClose()'s selection model (a list of
+  // issue ids from the list page's checkboxes), producing ONE combined
+  // file rather than a zip of per-issue files: a single merged PDF (each
+  // issue's own generatePdf() output, page-concatenated in the given
+  // order) or a single workbook with one sheet per issue.
+  async generateBulkPdf(companyId: string, projectId: string, issueIds: string[]): Promise<{ buffer: Buffer; filename: string }> {
+    const mergedDoc = await PDFDocument.create();
+    for (const issueId of issueIds) {
+      const { buffer } = await this.generatePdf(companyId, projectId, issueId);
+      const doc = await PDFDocument.load(Uint8Array.from(buffer));
+      const pages = await mergedDoc.copyPages(doc, doc.getPageIndices());
+      pages.forEach((p) => mergedDoc.addPage(p));
+    }
+    const bytes = await mergedDoc.save();
+    return { buffer: Buffer.from(bytes), filename: `issues-export-${new Date().toISOString().slice(0, 10)}.pdf` };
+  }
+
+  async generateBulkXls(companyId: string, projectId: string, issueIds: string[]): Promise<{ buffer: Buffer; filename: string }> {
+    const workbook = new ExcelJS.Workbook();
+    const usedSheetNames = new Set<string>();
+    for (const issueId of issueIds) {
+      const data = await this.buildXlsDataForIssue(companyId, projectId, issueId);
+      addIssueSheet(workbook, this.uniqueSheetName(data.issueNumber, usedSheetNames), data);
+    }
+    const buffer = await workbook.xlsx.writeBuffer();
+    return { buffer: Buffer.from(buffer), filename: `issues-export-${new Date().toISOString().slice(0, 10)}.xlsx` };
+  }
+
+  // Excel sheet names: max 31 chars, and none of \ / ? * [ ] : -- and must
+  // be unique within the workbook (two selected issues could plausibly
+  // share an issue_number if one is blank/legacy, so dedupe defensively
+  // rather than letting exceljs throw on a duplicate addWorksheet() call).
+  private uniqueSheetName(issueNumber: string | undefined, used: Set<string>): string {
+    const base = (issueNumber || 'Issue').replace(/[\\/?*[\]:]/g, '-').slice(0, 31);
+    let name = base;
+    let i = 2;
+    while (used.has(name)) {
+      const suffix = ` (${i})`;
+      name = `${base.slice(0, 31 - suffix.length)}${suffix}`;
+      i++;
+    }
+    used.add(name);
+    return name;
   }
 
   // Raster-image extensions eligible for inline PDF embedding -- everything

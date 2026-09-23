@@ -10,6 +10,7 @@ import { AddActivityDto } from './dto/add-activity.dto';
 import { ForwardIssueDto } from './dto/forward-issue.dto';
 import { ForceStatusDto } from './dto/force-status.dto';
 import { BulkCloseIssuesDto } from './dto/bulk-close-issues.dto';
+import { BulkExportIssuesDto } from './dto/bulk-export-issues.dto';
 import { BroadcastReminderDto } from './dto/broadcast-reminder.dto';
 import { UserReminderDto } from './dto/user-reminder.dto';
 import { WarnUserDto } from './dto/warn-user.dto';
@@ -63,6 +64,38 @@ export class IssuesController {
   @ApiOperation({ summary: 'Close multiple issues at once (only ones the caller created, unless admin)' })
   async bulkClose(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: BulkCloseIssuesDto) {
     return { data: await this.svc.bulkClose(u.companyId, pid, u.id, u.companyRole, dto), error: null };
+  }
+
+  // ── Bulk export -- one combined PDF/XLS for every selected issue, same
+  // binary-response pattern as :id/pdf and :id/xls above. POST (not GET)
+  // since the selection is a list of ids, not a single query param.
+  @Post('bulk-export/pdf')
+  @ApiOperation({ summary: 'Download a single merged PDF for multiple selected issues' })
+  async bulkExportPdf(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Body() dto: BulkExportIssuesDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { buffer, filename } = await this.svc.generateBulkPdf(u.companyId, pid, dto.issueIds);
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${filename}"` });
+    return new StreamableFile(buffer);
+  }
+
+  @Post('bulk-export/xls')
+  @ApiOperation({ summary: 'Download a single Excel workbook (one sheet per issue) for multiple selected issues' })
+  async bulkExportXls(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Body() dto: BulkExportIssuesDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { buffer, filename } = await this.svc.generateBulkXls(u.companyId, pid, dto.issueIds);
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    });
+    return new StreamableFile(buffer);
   }
 
   // ── Reminders (ticket 2b) ────────────────────────────────────────────────

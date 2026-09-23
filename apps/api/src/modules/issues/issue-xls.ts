@@ -137,9 +137,12 @@ export interface IssueXlsData {
   projectCode?: string;
 }
 
-export async function buildIssueWorkbookBuffer(data: IssueXlsData): Promise<ExcelJS.Buffer> {
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet('Issue');
+// Builds one issue's sheet onto an existing workbook -- factored out of
+// buildIssueWorkbookBuffer() so the bulk export below can add one sheet
+// per selected issue to a single shared workbook, rather than mirroring
+// this whole function to produce N separate uncombinable buffers.
+export function addIssueSheet(workbook: ExcelJS.Workbook, sheetName: string, data: IssueXlsData): void {
+  const sheet = workbook.addWorksheet(sheetName);
   sheet.columns = [{ width: 26 }, { width: 74 }, { width: 14 }];
 
   const titleRow = sheet.addRow([data.projectCode ? `${data.projectName} · ${data.projectCode}` : data.projectName]);
@@ -216,6 +219,10 @@ export async function buildIssueWorkbookBuffer(data: IssueXlsData): Promise<Exce
   } else {
     textBlockRow(sheet, 'No activity recorded.');
   }
+}
 
+export async function buildIssueWorkbookBuffer(data: IssueXlsData): Promise<ExcelJS.Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  addIssueSheet(workbook, 'Issue', data);
   return workbook.xlsx.writeBuffer();
 }
