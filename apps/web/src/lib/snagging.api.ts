@@ -5,6 +5,8 @@ import { apiGet, apiGetWithMeta, apiPost, apiPatch, apiDelete } from './api';
 export interface SnagListItem extends SnagItem {
   createdByName?: string;
   assignedToName?: string;
+  buildingName?: string;
+  levelName?: string;
 }
 
 export interface SnagSummary {
@@ -38,6 +40,9 @@ export interface CreateSnagPayload {
   title: string;
   description?: string;
   location?: string;
+  locationId?: string;
+  buildingId?: string;
+  levelId?: string;
   trade?: string;
   priority?: SnagPriority;
   assignedTo?: string;
@@ -52,6 +57,9 @@ export interface UpdateSnagPayload {
   title?: string;
   description?: string;
   location?: string;
+  locationId?: string;
+  buildingId?: string;
+  levelId?: string;
   trade?: string;
   priority?: SnagPriority;
   status?: SnagStatus;

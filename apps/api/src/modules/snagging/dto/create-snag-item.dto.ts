@@ -11,4 +11,6 @@ export class CreateSnagItemDto {
   @IsOptional() @IsUUID() assignedTo?: string;
   @IsOptional() @IsDateString() dueDate?: string;
   @IsOptional() @IsUUID() locationId?: string;
+  @IsOptional() @IsUUID() buildingId?: string;
+  @IsOptional() @IsUUID() levelId?: string;
 }
