@@ -22,6 +22,11 @@ export function DrawingUploadModal({
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [place, setPlace] = useState<HierarchySelection>({ buildingId: '', levelId: '', locationId: '' });
+  // No existing fixed vocabulary for drawing type elsewhere in the app
+  // (checked issue-constants.ts) -- free text, same as drawingNumber/revision.
+  const [drawingType, setDrawingType] = useState('');
+  const [drawingNumber, setDrawingNumber] = useState('');
+  const [revision, setRevision] = useState('');
 
   const onDrop = useCallback((accepted: File[]) => {
     const f = accepted[0];
@@ -44,12 +49,18 @@ export function DrawingUploadModal({
         title,
         levelId: place.levelId || undefined,
         locationId: place.locationId || undefined,
+        drawingType: drawingType || undefined,
+        drawingNumber: drawingNumber || undefined,
+        revision: revision || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['drawings', projectId] });
       setFile(null);
       setTitle('');
       setPlace({ buildingId: '', levelId: '', locationId: '' });
+      setDrawingType('');
+      setDrawingNumber('');
+      setRevision('');
       onClose();
     },
   });
@@ -80,6 +91,27 @@ export function DrawingUploadModal({
         </div>
 
         <BuildingLevelRoomPicker projectId={projectId} hierarchy={hierarchy} value={place} onChange={setPlace} />
+
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="field-label" htmlFor="drawingType">Drawing type</label>
+            <input
+              id="drawingType"
+              className="field-input"
+              placeholder="e.g. Architectural"
+              value={drawingType}
+              onChange={(e) => setDrawingType(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="drawingNumber">Drawing number</label>
+            <input id="drawingNumber" className="field-input" value={drawingNumber} onChange={(e) => setDrawingNumber(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="revision">Revision</label>
+            <input id="revision" className="field-input" value={revision} onChange={(e) => setRevision(e.target.value)} />
+          </div>
+        </div>
 
         {mutation.isError && (
           <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded px-3 py-2">
