@@ -39,10 +39,11 @@ export class SnaggingService {
     const [snag] = await this.db.query`
       INSERT INTO snag_items (
         company_id, project_id, snag_number, title, description, location, location_id,
-        trade, priority, assigned_to, due_date, status, created_by
+        building_id, level_id, trade, priority, assigned_to, due_date, status, created_by
       ) VALUES (
         ${companyId}, ${projectId}, ${snagNumber}, ${dto.title}, ${dto.description ?? null},
-        ${dto.location ?? null}, ${dto.locationId ?? null}, ${dto.trade ?? null}, ${dto.priority ?? 'medium'},
+        ${dto.location ?? null}, ${dto.locationId ?? null}, ${dto.buildingId ?? null}, ${dto.levelId ?? null},
+        ${dto.trade ?? null}, ${dto.priority ?? 'medium'},
         ${dto.assignedTo ?? null}, ${dto.dueDate ?? null}, 'open', ${userId}
       )
       RETURNING *`;
@@ -71,10 +72,14 @@ export class SnaggingService {
       SELECT s.*,
         u_c.first_name || ' ' || u_c.last_name AS created_by_name,
         u_a.first_name || ' ' || u_a.last_name AS assigned_to_name,
+        bld.name AS building_name,
+        lvl.name AS level_name,
         COUNT(*) OVER() AS full_count
       FROM snag_items s
       LEFT JOIN users u_c ON u_c.id = s.created_by
       LEFT JOIN users u_a ON u_a.id = s.assigned_to
+      LEFT JOIN buildings bld ON bld.id = s.building_id
+      LEFT JOIN levels lvl    ON lvl.id = s.level_id
       WHERE s.project_id = ${projectId} AND s.company_id = ${companyId}
         AND (${query.status ?? null}::text IS NULL OR s.status = ${query.status ?? null})
         AND (${query.priority ?? null}::text IS NULL OR s.priority = ${query.priority ?? null})
@@ -91,10 +96,14 @@ export class SnaggingService {
     const [snag] = await this.db.withTenant(companyId, sql => sql`
       SELECT s.*,
         u_c.first_name || ' ' || u_c.last_name AS created_by_name,
-        u_a.first_name || ' ' || u_a.last_name AS assigned_to_name
+        u_a.first_name || ' ' || u_a.last_name AS assigned_to_name,
+        bld.name AS building_name,
+        lvl.name AS level_name
       FROM snag_items s
       LEFT JOIN users u_c ON u_c.id = s.created_by
       LEFT JOIN users u_a ON u_a.id = s.assigned_to
+      LEFT JOIN buildings bld ON bld.id = s.building_id
+      LEFT JOIN levels lvl    ON lvl.id = s.level_id
       WHERE s.id = ${snagId} AND s.project_id = ${projectId} AND s.company_id = ${companyId}
     `);
     if (!snag) throw new NotFoundException(`Snag item ${snagId} not found.`);
@@ -116,6 +125,9 @@ export class SnaggingService {
         title       = COALESCE(${dto.title ?? null}, title),
         description = COALESCE(${dto.description ?? null}, description),
         location    = COALESCE(${dto.location ?? null}, location),
+        location_id = COALESCE(${dto.locationId ?? null}::uuid, location_id),
+        building_id = COALESCE(${dto.buildingId ?? null}::uuid, building_id),
+        level_id    = COALESCE(${dto.levelId ?? null}::uuid, level_id),
         trade       = COALESCE(${dto.trade ?? null}, trade),
         priority    = COALESCE(${dto.priority ?? null}, priority),
         status      = COALESCE(${dto.status ?? null}, status),

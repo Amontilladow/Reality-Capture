@@ -3,17 +3,19 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { SnagPriority } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
 import { createSnagItem, updateSnagItem, type SnagListItem } from '../lib/snagging.api';
-import type { ProjectMember } from '../lib/projects.api';
+import type { ProjectMember, ProjectHierarchy } from '../lib/projects.api';
 import { SNAG_PRIORITIES, SNAG_PRIORITY_LABELS } from '../lib/snagging-constants';
 import { apiErrorMessage } from '../lib/api';
+import { BuildingLevelRoomPicker, type HierarchySelection } from './hierarchy/BuildingLevelRoomPicker';
 
 export function SnagItemFormModal({
-  open, onClose, projectId, members, snag,
+  open, onClose, projectId, members, hierarchy, snag,
 }: {
   open: boolean;
   onClose: () => void;
   projectId: string;
   members: ProjectMember[];
+  hierarchy: ProjectHierarchy[];
   snag?: SnagListItem;
 }) {
   const isEdit = Boolean(snag);
@@ -21,6 +23,7 @@ export function SnagItemFormModal({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
+  const [place, setPlace] = useState<HierarchySelection>({ buildingId: '', levelId: '', locationId: '' });
   const [trade, setTrade] = useState('');
   const [priority, setPriority] = useState<SnagPriority>('medium');
   const [assignedTo, setAssignedTo] = useState('');
@@ -32,6 +35,11 @@ export function SnagItemFormModal({
     setTitle(snag?.title ?? '');
     setDescription(snag?.description ?? '');
     setLocation(snag?.location ?? '');
+    setPlace({
+      buildingId: snag?.buildingId ?? '',
+      levelId: snag?.levelId ?? '',
+      locationId: snag?.locationId ?? '',
+    });
     setTrade(snag?.trade ?? '');
     setPriority(snag?.priority ?? 'medium');
     setAssignedTo(snag?.assignedTo ?? '');
@@ -40,7 +48,9 @@ export function SnagItemFormModal({
   }, [open, snag]);
 
   function reset() {
-    setTitle(''); setDescription(''); setLocation(''); setTrade('');
+    setTitle(''); setDescription(''); setLocation('');
+    setPlace({ buildingId: '', levelId: '', locationId: '' });
+    setTrade('');
     setPriority('medium'); setAssignedTo(''); setDueDate(''); setError('');
   }
 
@@ -52,6 +62,9 @@ export function SnagItemFormModal({
           title: title.trim(),
           description: description || undefined,
           location: location || undefined,
+          buildingId: place.buildingId || undefined,
+          levelId: place.levelId || undefined,
+          locationId: place.locationId || undefined,
           trade: trade || undefined,
           priority,
           assignedTo: assignedTo || undefined,
@@ -62,6 +75,9 @@ export function SnagItemFormModal({
         title: title.trim(),
         description: description || undefined,
         location: location || undefined,
+        buildingId: place.buildingId || undefined,
+        levelId: place.levelId || undefined,
+        locationId: place.locationId || undefined,
         trade: trade || undefined,
         priority,
         assignedTo: assignedTo || undefined,
@@ -108,6 +124,8 @@ export function SnagItemFormModal({
             <input id="trade" className="field-input" value={trade} onChange={(e) => setTrade(e.target.value)} placeholder="Painting, Electrical…" />
           </div>
         </div>
+
+        <BuildingLevelRoomPicker projectId={projectId} hierarchy={hierarchy} value={place} onChange={setPlace} />
 
         <div className="grid grid-cols-2 gap-3">
           <div>

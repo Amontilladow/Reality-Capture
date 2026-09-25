@@ -9,6 +9,9 @@ export interface SnagItem {
   title: string;
   description?: string;
   location?: string;
+  locationId?: string;
+  buildingId?: string;
+  levelId?: string;
   trade?: string;
   priority: SnagPriority;
   status: SnagStatus;
