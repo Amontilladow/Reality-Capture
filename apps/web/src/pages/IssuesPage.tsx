@@ -10,7 +10,7 @@ import {
   listReminders, broadcastReminder, sendUserReminder, warnUser,
   type IssueListItem, type IssueDetailItem,
 } from '../lib/issues.api';
-import { getMembers, getHierarchy } from '../lib/projects.api';
+import { getMembers, getHierarchy, type ProjectHierarchy } from '../lib/projects.api';
 import { useAuthStore } from '../store/auth.store';
 import {
   STATUS_LABELS, STATUS_BADGE_CLASS, PRIORITY_LABELS, PRIORITY_BADGE_CLASS,
@@ -42,6 +42,15 @@ export default function IssuesPage() {
   const [editIssue, setEditIssue] = useState<IssueDetailItem | null>(null);
   const [viewIssueId, setViewIssueId] = useState<string | null>(searchParams.get('issueId'));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // ── Building/level grouping (same treatment as the Floor plans sidebar) --
+  // issues.building_id/level_id are already joined into buildingName/
+  // levelName server-side (issues.service.ts findAll()), so unlike Floor
+  // plans no per-row lookup against level_id alone is needed here; the
+  // hierarchy tree is only needed for building/level ORDER (levelOrder)
+  // and to scope the Level filter's options to the selected building.
+  const [buildingFilter, setBuildingFilter] = useState('');
+  const [levelFilter, setLevelFilter] = useState('');
 
   const membersQuery = useQuery({
     queryKey: ['members', projectId],
@@ -78,6 +87,71 @@ export default function IssuesPage() {
       }),
     enabled: Boolean(projectId),
   });
+
+  const hierarchy = useMemo(() => hierarchyQuery.data ?? [], [hierarchyQuery.data]);
+
+  type IssueWithLocation = IssueListItem & {
+    _building?: ProjectHierarchy;
+    _level?: ProjectHierarchy['levels'][number];
+  };
+
+  // Resolves each issue's building/level objects from the hierarchy tree
+  // (for level-order sorting) -- an issue whose buildingId/levelId points
+  // at a building/level no longer in the tree (deleted) resolves the same
+  // as one with no building at all, and falls into "Unassigned" below.
+  const issuesWithLocation = useMemo<IssueWithLocation[]>(() => {
+    return (issuesQuery.data?.data ?? []).map((issue) => {
+      if (!issue.buildingId) return issue;
+      const building = hierarchy.find((b) => b.id === issue.buildingId);
+      if (!building) return issue;
+      const level = issue.levelId ? building.levels.find((l) => l.id === issue.levelId) : undefined;
+      return { ...issue, _building: building, _level: level };
+    });
+  }, [issuesQuery.data, hierarchy]);
+
+  const levelOptionsForFilter = useMemo(() => {
+    const building = hierarchy.find((b) => b.id === buildingFilter);
+    return [...(building?.levels ?? [])].sort((a, b) => a.levelOrder - b.levelOrder);
+  }, [hierarchy, buildingFilter]);
+
+  const filteredIssues = useMemo(() => {
+    return issuesWithLocation.filter((issue) => {
+      if (buildingFilter && issue._building?.id !== buildingFilter) return false;
+      if (levelFilter && issue.levelId !== levelFilter) return false;
+      return true;
+    });
+  }, [issuesWithLocation, buildingFilter, levelFilter]);
+
+  // Grouped for render: buildings in hierarchy order, levels within each
+  // sorted by levelOrder (not name), "Unassigned" bucket last -- same
+  // structure as FloorPlanViewer.tsx's groupedDrawings.
+  const groupedIssues = useMemo(() => {
+    const byBuilding = new Map<string, Map<string, { level?: ProjectHierarchy['levels'][number]; issues: IssueWithLocation[] }>>();
+    const unassigned: IssueWithLocation[] = [];
+
+    for (const issue of filteredIssues) {
+      if (!issue._building) {
+        unassigned.push(issue);
+        continue;
+      }
+      if (!byBuilding.has(issue._building.id)) byBuilding.set(issue._building.id, new Map());
+      const levelMap = byBuilding.get(issue._building.id)!;
+      const levelKey = issue._level?.id ?? '__no-level__';
+      if (!levelMap.has(levelKey)) levelMap.set(levelKey, { level: issue._level, issues: [] });
+      levelMap.get(levelKey)!.issues.push(issue);
+    }
+
+    const buildingGroups = hierarchy
+      .filter((b) => byBuilding.has(b.id))
+      .map((b) => ({
+        building: b,
+        levelGroups: [...byBuilding.get(b.id)!.values()].sort(
+          (a, b2) => (a.level?.levelOrder ?? Infinity) - (b2.level?.levelOrder ?? Infinity),
+        ),
+      }));
+
+    return { buildingGroups, unassigned };
+  }, [filteredIssues, hierarchy]);
 
   // Dashboard needs the full (unfiltered) project issue set to compute the
   // per-user KPI table and status/priority breakdown client-side — there's
@@ -154,13 +228,11 @@ export default function IssuesPage() {
   }
 
   function toggleSelectAll() {
-    const rows = issuesQuery.data?.data ?? [];
-    setSelectedIds((prev) => (prev.size === rows.length ? new Set() : new Set(rows.map((r) => r.id))));
+    setSelectedIds((prev) => (prev.size === filteredIssues.length ? new Set() : new Set(filteredIssues.map((r) => r.id))));
   }
 
   function handleExport() {
-    const rows = issuesQuery.data?.data ?? [];
-    exportIssuesToExcel(rows);
+    exportIssuesToExcel(filteredIssues);
   }
 
   if (!projectId) return null;
@@ -191,7 +263,7 @@ export default function IssuesPage() {
 
   const s = summaryQuery.data;
   const rows = issuesQuery.data?.data ?? [];
-  const allSelected = rows.length > 0 && selectedIds.size === rows.length;
+  const allSelected = filteredIssues.length > 0 && selectedIds.size === filteredIssues.length;
 
   return (
     <>
@@ -200,7 +272,7 @@ export default function IssuesPage() {
         title="Issues"
         actions={
           <div className="flex items-center gap-2">
-            <button onClick={handleExport} disabled={rows.length === 0} className="btn-secondary">
+            <button onClick={handleExport} disabled={filteredIssues.length === 0} className="btn-secondary">
               <ExportIcon /> Export to Excel
             </button>
             <button onClick={() => setCreateOpen(true)} className="btn-primary">
@@ -239,6 +311,27 @@ export default function IssuesPage() {
 
             <select
               className="field-input w-auto ml-auto"
+              value={buildingFilter}
+              onChange={(e) => { setBuildingFilter(e.target.value); setLevelFilter(''); }}
+            >
+              <option value="">All buildings</option>
+              {hierarchy.map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+            <select
+              className="field-input w-auto"
+              value={levelFilter}
+              onChange={(e) => setLevelFilter(e.target.value)}
+              disabled={!buildingFilter}
+            >
+              <option value="">{buildingFilter ? 'All levels' : 'Pick a building first'}</option>
+              {levelOptionsForFilter.map((l) => (
+                <option key={l.id} value={l.id}>{l.name}</option>
+              ))}
+            </select>
+            <select
+              className="field-input w-auto"
               value={status}
               onChange={(e) => { setStatus(e.target.value); setQuickFilter('all'); }}
             >
@@ -300,11 +393,11 @@ export default function IssuesPage() {
           )}
 
           {/* Bulk-select action bar */}
-          {rows.length > 0 && (
+          {filteredIssues.length > 0 && (
             <div className="flex items-center gap-3 text-xs">
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
-                Select all ({rows.length})
+                Select all ({filteredIssues.length})
               </label>
               {selectedIds.size > 0 && (
                 <div className="flex items-center gap-2 ml-auto panel !py-1.5 !px-3">
@@ -347,21 +440,64 @@ export default function IssuesPage() {
             </p>
           )}
 
-          {/* List */}
+          {/* List, grouped by building -> level (same treatment as the Floor
+              plans sidebar) -- levels sorted by levelOrder, an "Unassigned"
+              group last for issues with no building or a deleted one. */}
           {issuesQuery.isLoading && <p className="text-sm text-ink-500">Loading issues…</p>}
-          {issuesQuery.data?.data.length === 0 && (
+          {issuesQuery.isSuccess && rows.length === 0 && (
             <div className="panel p-10 text-center text-sm text-ink-500">No issues match this filter.</div>
           )}
-          <div className="space-y-2">
-            {rows.map((issue) => (
-              <IssueRow
-                key={issue.id}
-                issue={issue}
-                selected={selectedIds.has(issue.id)}
-                onToggleSelect={() => toggleSelect(issue.id)}
-                onClick={() => setViewIssueId(issue.id)}
-              />
+          {issuesQuery.isSuccess && rows.length > 0 && filteredIssues.length === 0 && (
+            <div className="panel p-10 text-center text-sm text-ink-500">No issues match these filters.</div>
+          )}
+
+          <div className="space-y-3">
+            {groupedIssues.buildingGroups.map(({ building, levelGroups }) => (
+              <details key={building.id} open>
+                <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-500 px-1 py-1.5 hover:text-ink-300">
+                  {building.name}
+                </summary>
+                <div className="pl-1 space-y-3 mt-1">
+                  {levelGroups.map(({ level, issues }) => (
+                    <div key={level?.id ?? '__no-level__'}>
+                      <div className="text-[11px] font-medium text-ink-500 px-2 py-1">
+                        {level?.name ?? 'No level'}
+                      </div>
+                      <div className="space-y-2">
+                        {issues.map((issue) => (
+                          <IssueRow
+                            key={issue.id}
+                            issue={issue}
+                            selected={selectedIds.has(issue.id)}
+                            onToggleSelect={() => toggleSelect(issue.id)}
+                            onClick={() => setViewIssueId(issue.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </details>
             ))}
+
+            {groupedIssues.unassigned.length > 0 && (
+              <details open>
+                <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-500 px-1 py-1.5 hover:text-ink-300">
+                  Unassigned
+                </summary>
+                <div className="pl-1 space-y-2 mt-1">
+                  {groupedIssues.unassigned.map((issue) => (
+                    <IssueRow
+                      key={issue.id}
+                      issue={issue}
+                      selected={selectedIds.has(issue.id)}
+                      onToggleSelect={() => toggleSelect(issue.id)}
+                      onClick={() => setViewIssueId(issue.id)}
+                    />
+                  ))}
+                </div>
+              </details>
+            )}
           </div>
         </div>
       )}
