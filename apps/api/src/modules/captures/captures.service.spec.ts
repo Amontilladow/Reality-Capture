@@ -102,3 +102,117 @@ describe('CapturesService.syncFromMobile', () => {
     expect(result.summary).toEqual({ total: 1, created: 0, failed: 1, skipped: 0 });
   });
 });
+
+// register()'s real body (not mocked out, unlike the syncFromMobile tests
+// above) -- covers the post-upload size-enforcement fix: the presigned PUT
+// this app hands out has no enforced size limit, so real enforcement has to
+// happen here, against the object actually sitting in storage, not whatever
+// size the client declared. Also covers the project-ownership check added
+// alongside it (captures.controller.ts has no @RequireProjectPermission
+// gate on these routes, unlike issues/rfis/snagging).
+describe('CapturesService.register', () => {
+  const BASE_DTO = {
+    storageKey: 'company-1/captures/project-1/file.jpg',
+    originalMimeType: 'image/jpeg',
+    captureType: 'photo_standard' as const,
+    capturedAt: '2026-01-01T00:00:00.000Z',
+  };
+
+  function makeService(opts: {
+    projectExists?: boolean;
+    actualSizeBytes: number | null;
+    storageUsedBytes?: number;
+    maxStorageBytes?: number | null;
+  }) {
+    const projectExists = opts.projectExists ?? true;
+    const withTenant = jest.fn()
+      // 1. assertProjectBelongsToCompany's SELECT
+      .mockResolvedValueOnce(projectExists ? [{ id: 'project-1' }] : [])
+      // 2. checkStorageLimit's SELECT (only reached if the size check passes)
+      .mockResolvedValueOnce([{
+        storageUsedBytes: opts.storageUsedBytes ?? 0,
+        maxBytes: opts.maxStorageBytes === undefined ? null : opts.maxStorageBytes,
+      }])
+      // 3. the INSERT
+      .mockResolvedValueOnce([{ id: 'capture-1' }]);
+
+    const getObjectSize = jest.fn().mockResolvedValue(opts.actualSizeBytes);
+    const deleteIfExists = jest.fn().mockResolvedValue(undefined);
+    const incrementStorage = jest.fn().mockResolvedValue(undefined);
+    const queueAdd = jest.fn().mockResolvedValue(undefined);
+    const ingestCapture = jest.fn().mockResolvedValue(undefined);
+
+    const db = { withTenant };
+    const storage = { getObjectSize, deleteIfExists };
+    const tenancy = { incrementStorage };
+    const aiClient = { ingestCapture };
+    const queue = { add: queueAdd };
+
+    const svc = new CapturesService(
+      db as unknown as DatabaseService,
+      storage as unknown as StorageService,
+      tenancy as unknown as TenancyService,
+      aiClient as unknown as AiClientService,
+      queue as unknown as Queue,
+    );
+    return { svc, withTenant, getObjectSize, deleteIfExists, incrementStorage, queueAdd };
+  }
+
+  it('registers a capture whose real uploaded size is within the limit', async () => {
+    const { svc, incrementStorage, queueAdd, deleteIfExists } = makeService({ actualSizeBytes: 5 * 1024 * 1024 });
+
+    const capture = await svc.register('company-1', 'project-1', 'user-1', { ...BASE_DTO, originalSizeBytes: 1 });
+
+    expect(capture).toEqual({ id: 'capture-1' });
+    expect(incrementStorage).toHaveBeenCalledWith('company-1', 5 * 1024 * 1024);
+    expect(queueAdd).toHaveBeenCalled();
+    expect(deleteIfExists).not.toHaveBeenCalled();
+  });
+
+  it('rejects and deletes an upload whose real size exceeds the limit for its capture type, regardless of the declared size', async () => {
+    const { svc, deleteIfExists, incrementStorage } = makeService({ actualSizeBytes: 21 * 1024 * 1024 }); // > 20 MB photo limit
+
+    await expect(
+      svc.register('company-1', 'project-1', 'user-1', { ...BASE_DTO, originalSizeBytes: 1 }), // client lied
+    ).rejects.toThrow(/exceeds the limit/);
+
+    expect(deleteIfExists).toHaveBeenCalledWith(BASE_DTO.storageKey);
+    expect(incrementStorage).not.toHaveBeenCalled();
+  });
+
+  it('rejects registration when the declared storage key was never actually uploaded', async () => {
+    const { svc, deleteIfExists } = makeService({ actualSizeBytes: null });
+
+    await expect(
+      svc.register('company-1', 'project-1', 'user-1', { ...BASE_DTO, originalSizeBytes: 1024 }),
+    ).rejects.toThrow(/not found in storage/);
+
+    // Nothing to clean up -- the object never existed.
+    expect(deleteIfExists).not.toHaveBeenCalled();
+  });
+
+  it('rejects registration against a project that does not belong to the caller\'s company', async () => {
+    const { svc, getObjectSize } = makeService({ projectExists: false, actualSizeBytes: 1024 });
+
+    await expect(
+      svc.register('company-1', 'someone-elses-project', 'user-1', { ...BASE_DTO, originalSizeBytes: 1024 }),
+    ).rejects.toThrow(/not found/);
+
+    // Never even gets to checking the upload -- the project check runs first.
+    expect(getObjectSize).not.toHaveBeenCalled();
+  });
+
+  it('rejects and cleans up when the verified size would push the company over its storage quota', async () => {
+    const { svc, deleteIfExists } = makeService({
+      actualSizeBytes: 5 * 1024 * 1024,
+      storageUsedBytes: 99 * 1024 * 1024,
+      maxStorageBytes: 100 * 1024 * 1024, // 5 MB more would exceed the 100 MB cap
+    });
+
+    await expect(
+      svc.register('company-1', 'project-1', 'user-1', { ...BASE_DTO, originalSizeBytes: 1 }),
+    ).rejects.toThrow(/Storage limit reached/);
+
+    expect(deleteIfExists).toHaveBeenCalledWith(BASE_DTO.storageKey);
+  });
+});

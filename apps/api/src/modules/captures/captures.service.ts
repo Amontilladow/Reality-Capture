@@ -41,15 +41,15 @@ export class CapturesService {
   // Client uploads directly to S3 — our API never handles the binary data.
   // On completion, client calls registerCapture() to create the DB record.
   async getUploadUrl(companyId: string, projectId: string, dto: UploadUrlDto) {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+
     // Validate file type
     if (!ALLOWED_MIME.has(dto.mimeType)) {
       throw new BadRequestException(`File type ${dto.mimeType} is not supported. Allowed: JPEG, PNG, WebP, MP4, MOV.`);
     }
 
     // Validate file size
-    const maxSize = dto.captureType === 'photo_360' ? MAX_SIZE_360
-      : dto.captureType === 'video' ? MAX_SIZE_VIDEO
-      : MAX_SIZE_PHOTO;
+    const maxSize = this.maxSizeForCaptureType(dto.captureType);
 
     if (dto.sizeBytes > maxSize) {
       throw new BadRequestException(
@@ -73,6 +73,29 @@ export class CapturesService {
 
   // ── Register capture after upload ─────────────────────────────────────────
   async register(companyId: string, projectId: string, userId: string, dto: RegisterCaptureDto) {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+
+    // The presigned PUT this app hands out has no enforced size limit (see
+    // StorageService.getUploadUrl's comment) -- a client can declare one
+    // size at upload-url time and then upload a larger file. This is the
+    // real enforcement: a HEAD request against the object actually sitting
+    // in storage, checked against the same per-type limit, before this
+    // capture is ever registered or queued for processing. A client-reported
+    // dto.originalSizeBytes is never trusted for the DB row below -- the
+    // verified size from storage is used instead.
+    const maxSize = this.maxSizeForCaptureType(dto.captureType);
+    const actualSizeBytes = await this.storage.getObjectSize(dto.storageKey);
+    if (actualSizeBytes === null) {
+      throw new BadRequestException('Uploaded file not found in storage. Complete the upload before registering the capture.');
+    }
+    if (actualSizeBytes > maxSize) {
+      await this.storage.deleteIfExists(dto.storageKey);
+      throw new BadRequestException(
+        `Uploaded file (${(actualSizeBytes / 1024 / 1024).toFixed(1)} MB) exceeds the limit for ` +
+        `${dto.captureType} (${maxSize / 1024 / 1024} MB). The upload has been rejected and removed.`,
+      );
+    }
+
     // Validate location belongs to this project if provided. A location
     // reaches a project either via the building hierarchy (level_id) or,
     // for a pin created directly on a drawing, via drawing_id — it may
@@ -91,6 +114,15 @@ export class CapturesService {
       if (!loc) throw new BadRequestException('Location does not belong to this project.');
     }
 
+    // Re-check the quota against the verified size, not whatever the client
+    // declared at upload-url time -- a client that under-declared to slip
+    // past that earlier check must not still get to consume real quota.
+    const limitCheck = await this.checkStorageLimit(companyId, actualSizeBytes);
+    if (!limitCheck.allowed) {
+      await this.storage.deleteIfExists(dto.storageKey);
+      throw new ForbiddenException(limitCheck.reason);
+    }
+
     // withTenant required -- captures carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id, so this INSERT
     // would be rejected outright under any DB role that isn't the table owner/a superuser.
@@ -106,7 +138,7 @@ export class CapturesService {
         ${companyId}, ${projectId}, ${dto.locationId ?? null}, ${userId},
         ${dto.captureType}, ${dto.phase ?? null}, ${dto.title ?? null},
         ${dto.description ?? null}, ${dto.tags ? JSON.stringify(dto.tags) : '{}'},
-        ${dto.capturedAt}, ${dto.storageKey}, ${dto.originalSizeBytes},
+        ${dto.capturedAt}, ${dto.storageKey}, ${actualSizeBytes},
         ${dto.originalMimeType}, ${dto.originalWidthPx ?? null}, ${dto.originalHeightPx ?? null},
         ${dto.gpsLat ?? null}, ${dto.gpsLng ?? null},
         ${dto.gpsAccuracyM ?? null}, ${dto.compassHeadingDeg ?? null},
@@ -115,8 +147,8 @@ export class CapturesService {
       RETURNING *
     `);
 
-    // Update company storage usage
-    await this.tenancy.incrementStorage(companyId, dto.originalSizeBytes);
+    // Update company storage usage -- the verified size, not the client's declared one.
+    await this.tenancy.incrementStorage(companyId, actualSizeBytes);
 
     // Queue image processing — thumbnail, preview, metadata extraction
     await this.queue.add('process-capture', {
@@ -496,6 +528,29 @@ export class CapturesService {
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
+  private maxSizeForCaptureType(captureType: string): number {
+    return captureType === 'photo_360' ? MAX_SIZE_360
+      : captureType === 'video' ? MAX_SIZE_VIDEO
+      : MAX_SIZE_PHOTO;
+  }
+
+  // Every capture-upload entry point takes a client-supplied projectId with
+  // no route-level guard verifying it belongs to the caller's company (see
+  // captures.controller.ts -- unlike issues/rfis/snagging, nothing here is
+  // gated by @RequireProjectPermission). Without this, a request naming a
+  // foreign project's id would still insert a row (with the caller's own,
+  // correct company_id) that's an orphan under neither company's queries --
+  // not a cross-tenant data leak, but a real "upload against a project you
+  // have no relationship to" gap. This is deliberately just a company-
+  // ownership check, not a permission grant check: it must not change who is
+  // otherwise allowed to upload into a project they legitimately belong to.
+  private async assertProjectBelongsToCompany(companyId: string, projectId: string): Promise<void> {
+    const [project] = await this.db.withTenant(companyId, sql => sql`
+      SELECT id FROM projects WHERE id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!project) throw new NotFoundException(`Project ${projectId} not found.`);
+  }
+
   private async checkStorageLimit(companyId: string, additionalBytes: number): Promise<{ allowed: boolean; reason?: string }> {
     // HIGH SEVERITY -- withTenant required. companies and company_subscriptions both
     // carry the tenant_isolation RLS policy; a plain this.db.query() never sets

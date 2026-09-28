@@ -57,7 +57,7 @@
       ]
     ],
     "extra": {
-      "apiBaseUrl": "http://localhost:3000/api/v1"
+      "developmentApiBaseUrl": "http://localhost:3000/api/v1"
     }
   }
 }

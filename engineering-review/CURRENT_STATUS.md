@@ -49,22 +49,22 @@ verification, load testing).
 
 ## 2. Partially implemented / notable gaps found in this pass
 
-- **Presigned upload size limits are not enforced anywhere.**
+- **Presigned upload size limits still aren't enforced at the signature level anywhere,
+  but real post-upload enforcement now exists for the two highest-risk paths.**
   `StorageService.getUploadUrl()` (`apps/api/src/modules/storage/storage.service.ts`)
-  takes a `maxSizeBytes` parameter that every caller (BIM models: 500MB,
-  issue/snag/RFI attachments: 5MB, drawings: 100MB, documents) passes — but
-  the parameter is prefixed `_maxSizeBytes` and never wired into the
-  `PutObjectCommand`. There is no `Content-Length-Range` condition on any
-  presigned PUT URL in this codebase. Practically: a client holding any of
-  these presigned URLs can upload an arbitrarily large object; nothing
-  server-side or storage-side rejects it based on size today. Fixing this
-  correctly means switching from presigned PUT (`getSignedUrl` +
-  `PutObjectCommand`) to a presigned POST policy (`createPresignedPost`,
-  which supports `content-length-range`), which changes the request shape
-  every upload caller uses (`axios.put(uploadUrl, file)` → a POST with
-  form fields) across `bim.api.ts`, `drawings.api.ts`, `issues.api.ts`,
-  `snagging.api.ts`, `documents.api.ts`, and their mobile equivalents. That
-  is too broad for this pass — see NEXT_STEPS.md.
+  still never wires `_maxSizeBytes` into the `PutObjectCommand` — there is no
+  `Content-Length-Range` condition on any presigned PUT URL in this codebase, and fixing
+  that properly still means switching to a presigned POST policy
+  (`createPresignedPost`), which changes the request shape every upload caller uses and
+  remains too broad for a narrow pass. **What changed in the corrective-blockers sprint**:
+  `StorageService` gained `getObjectSize()` (a `HeadObjectCommand` against the real
+  object) and `deleteIfExists()` (cleanup for a rejected upload). `CapturesService.register()`
+  and `BimService.registerModel()` now call `getObjectSize()` after upload and reject +
+  delete the object if its *real* size exceeds the type's limit — the client's declared
+  size is no longer trusted for the DB row, the storage-quota accounting, or the limit
+  check itself. Drawings, documents, issue/RFI/snag attachments, and project
+  branding/logo uploads still only have the original declared-size check (client-reported,
+  unverified) — the same class of gap, just not yet closed for those paths.
 - **BIM model uploads had no file-extension validation before this pass.**
   Fixed here: `BimService.getModelUploadUrl()` now rejects anything but a
   `.ifc` filename before issuing a presigned URL. `NWD`/`RVT` remain valid
@@ -312,13 +312,21 @@ follow-up — see the sprint report's "Recommended next step."
    autocannon config found) — IFC processing throughput, Bull queue
    behavior under concurrent jobs, and API behavior under realistic
    concurrent load are all unverified.
-6. `apps/mobile/app.json`'s `expo.extra.apiBaseUrl` is hardcoded to
-   `http://localhost:3000/api/v1`, and `src/lib/config.ts` falls back to
-   the same value if nothing else is configured (with an Android-emulator
-   special case rewriting `localhost` to `10.0.2.2`). There is no
-   environment-specific (dev/preview/production) override mechanism
-   (e.g. EAS build profiles) visible in the repo today. Not touched in
-   this pass — see NEXT_STEPS.md.
+6. **Fixed in the corrective-blockers sprint** (was stale here): `apps/mobile/app.json`'s
+   dev-only API URL is now `expo.extra.developmentApiBaseUrl` (renamed from `apiBaseUrl`
+   to make its dev-only role unambiguous from the file alone), and `src/lib/config.ts`
+   resolves an explicit `EXPO_PUBLIC_APP_ENV` (development/preview/production, set per
+   profile in `apps/mobile/eas.json`) and validates the API URL against it —
+   rejecting empty values, localhost/loopback/emulator-host addresses, and
+   `REPLACE_WITH_*`-style placeholders for preview/production, and additionally
+   requiring HTTPS and rejecting bare private-network IPs for production. A prior
+   version of this fix (from the launch-readiness sprint) added a `!__DEV__` throw
+   check but placed it *after* a fallback to `app.json`'s hardcoded localhost value,
+   which meant that fallback could still fire in a release build if
+   `EXPO_PUBLIC_API_BASE_URL` weren't set — that ordering bug is what's fixed now.
+   `eas.json`'s preview/production profiles no longer commit even a placeholder URL;
+   the real value must be supplied via `eas env:create` (see `MOBILE_STORE_READINESS.md`).
+   12 passing unit tests cover the validation logic (`apiConfigValidation.test.ts`).
 7. `apps/ai-service`'s `ANTHROPIC_API_KEY` is `sync: false` with no value
    configured in `render.yaml` ("no key configured yet, /assistant will
    error until one is added") — the AI assistant feature is implemented

@@ -142,8 +142,14 @@ describe('BimService.getModelUploadUrl', () => {
   const companyId = 'company-1';
   const projectId = 'project-1';
 
-  function makeService(getUploadUrl = jest.fn().mockResolvedValue({ uploadUrl: 'https://example.invalid/put' })) {
-    const db = {};
+  function makeService(opts?: {
+    projectExists?: boolean;
+    getUploadUrl?: jest.Mock;
+  }) {
+    const projectExists = opts?.projectExists ?? true;
+    const withTenant = jest.fn().mockResolvedValue(projectExists ? [{ id: projectId }] : []);
+    const db = { withTenant };
+    const getUploadUrl = opts?.getUploadUrl ?? jest.fn().mockResolvedValue({ uploadUrl: 'https://example.invalid/put' });
     const storage = { generateKey: jest.fn().mockReturnValue('storage/key.ifc'), getUploadUrl };
     const issues = {};
     const queue = {};
@@ -152,7 +158,7 @@ describe('BimService.getModelUploadUrl', () => {
       storage as unknown as StorageService,
       issues as unknown as IssuesService,
       queue as unknown as Queue,
-    ), storage };
+    ), storage, withTenant };
   }
 
   it('rejects a filename with no recognized model extension before issuing an upload URL', async () => {
@@ -165,5 +171,68 @@ describe('BimService.getModelUploadUrl', () => {
     const { svc, storage } = makeService();
     await svc.getModelUploadUrl(companyId, projectId, 'Model.IFC');
     expect(storage.getUploadUrl).toHaveBeenCalled();
+  });
+
+  it("rejects a project that does not belong to the caller's company before issuing an upload URL", async () => {
+    const { svc, storage } = makeService({ projectExists: false });
+    await expect(svc.getModelUploadUrl(companyId, 'someone-elses-project', 'Model.ifc')).rejects.toThrow(NotFoundException);
+    expect(storage.getUploadUrl).not.toHaveBeenCalled();
+  });
+});
+
+describe('BimService.registerModel', () => {
+  const companyId = 'company-1';
+  const projectId = 'project-1';
+  const baseDto = { name: 'Tower A - Level 3', storageKey: 'company-1/captures/project-1/model.ifc' };
+
+  function makeService(opts: {
+    projectExists?: boolean;
+    actualSizeBytes: number | null;
+  }) {
+    const projectExists = opts.projectExists ?? true;
+    const withTenant = jest.fn()
+      .mockResolvedValueOnce(projectExists ? [{ id: projectId }] : [])
+      .mockResolvedValueOnce([{ id: 'model-1' }]);
+    const db = { withTenant };
+    const getObjectSize = jest.fn().mockResolvedValue(opts.actualSizeBytes);
+    const deleteIfExists = jest.fn().mockResolvedValue(undefined);
+    const storage = { getObjectSize, deleteIfExists };
+    const issues = {};
+    const queueAdd = jest.fn().mockResolvedValue({ id: 'job-1' });
+    const queue = { add: queueAdd };
+    const svc = new BimService(
+      db as unknown as DatabaseService,
+      storage as unknown as StorageService,
+      issues as unknown as IssuesService,
+      queue as unknown as Queue,
+    );
+    return { svc, withTenant, getObjectSize, deleteIfExists, queueAdd };
+  }
+
+  it('registers a model whose real uploaded size is within the 500 MB limit', async () => {
+    const { svc, deleteIfExists, queueAdd } = makeService({ actualSizeBytes: 10 * 1024 * 1024 });
+    const model = await svc.registerModel(companyId, projectId, 'user-1', baseDto);
+    expect(model).toEqual({ id: 'model-1' });
+    expect(deleteIfExists).not.toHaveBeenCalled();
+    expect(queueAdd).toHaveBeenCalled();
+  });
+
+  it('rejects and deletes an uploaded model that exceeds the 500 MB limit', async () => {
+    const { svc, deleteIfExists, queueAdd } = makeService({ actualSizeBytes: 501 * 1024 * 1024 });
+    await expect(svc.registerModel(companyId, projectId, 'user-1', baseDto)).rejects.toThrow(/exceeds the/);
+    expect(deleteIfExists).toHaveBeenCalledWith(baseDto.storageKey);
+    expect(queueAdd).not.toHaveBeenCalled();
+  });
+
+  it('rejects registration when the declared storage key was never actually uploaded', async () => {
+    const { svc, deleteIfExists } = makeService({ actualSizeBytes: null });
+    await expect(svc.registerModel(companyId, projectId, 'user-1', baseDto)).rejects.toThrow(/not found in storage/);
+    expect(deleteIfExists).not.toHaveBeenCalled();
+  });
+
+  it("rejects registration against a project that does not belong to the caller's company", async () => {
+    const { svc, getObjectSize } = makeService({ projectExists: false, actualSizeBytes: 1024 });
+    await expect(svc.registerModel(companyId, 'someone-elses-project', 'user-1', baseDto)).rejects.toThrow(NotFoundException);
+    expect(getObjectSize).not.toHaveBeenCalled();
   });
 });
