@@ -19,7 +19,24 @@ function resolveApiBaseUrl(): string {
     // Android emulator's loopback to the host machine.
     return configured.replace('localhost', '10.0.2.2');
   }
-  return configured || 'http://localhost:3000/api/v1';
+
+  if (configured) return configured;
+
+  // __DEV__ is a real React Native/Metro global (true in a dev/Expo-Go
+  // bundle, false in any release build produced by `eas build`), not an
+  // env var that can be silently left unset. A release build shipped with
+  // no EXPO_PUBLIC_API_BASE_URL and no app.json/eas.json `extra.apiBaseUrl`
+  // must not silently start pointing at localhost -- see eas.json's three
+  // build profiles for where each environment's URL actually comes from.
+  if (!__DEV__) {
+    throw new Error(
+      'No API base URL configured for this build. Set EXPO_PUBLIC_API_BASE_URL ' +
+      '(eas.json build profile env, or the shell env for a local release build) ' +
+      'before building for anything other than local development.',
+    );
+  }
+
+  return 'http://localhost:3000/api/v1';
 }
 
 export const API_BASE_URL = resolveApiBaseUrl();

@@ -1,5 +1,8 @@
 import * as FileSystem from 'expo-file-system';
-import type { Capture, CaptureType, ProjectPhase, PaginationQuery, UploadUrlRequest, UploadUrlResponse, RegisterCaptureDto } from '@engineeringos/types';
+import type {
+  Capture, CaptureType, ProjectPhase, PaginationQuery, UploadUrlRequest, UploadUrlResponse,
+  RegisterCaptureDto, SyncCapturesRequest, SyncCapturesResponse,
+} from '@engineeringos/types';
 import { apiGet, apiGetWithMeta, apiPost } from './api';
 
 export function listCaptures(projectId: string, query?: PaginationQuery & { locationId?: string }) {
@@ -22,11 +25,22 @@ export function registerCapture(projectId: string, payload: RegisterCaptureDto) 
   return apiPost<Capture>(`/projects/${projectId}/captures`, payload);
 }
 
+// Batch offline-sync endpoint (see captures.service.ts's syncFromMobile()) --
+// takes an idempotencyKey so a retried sync (e.g. the app is killed between
+// the storage PUT succeeding and this call completing) is recognized as the
+// same item server-side instead of creating a duplicate capture.
+function syncCapture(projectId: string, payload: SyncCapturesRequest['captures'][number]) {
+  return apiPost<SyncCapturesResponse>(`/captures/sync?projectId=${projectId}`, { captures: [payload] });
+}
+
 /**
  * Uploads a file already sitting on local disk (from the offline queue) straight to
- * S3/MinIO via a presigned PUT, then registers the capture. Used by the background
- * sync engine — separate from the web client's File-object upload because React
- * Native only gives us a file:// URI, not a Blob, for camera-captured media.
+ * S3/MinIO via a presigned PUT, then registers the capture via the idempotency-key-
+ * aware batch sync endpoint (not the plain single-capture register endpoint --
+ * a retried queue item must not create a second capture server-side). Used by the
+ * background sync engine -- separate from the web client's File-object upload
+ * because React Native only gives us a file:// URI, not a Blob, for camera-captured
+ * media.
  */
 export async function uploadLocalFile(
   projectId: string,
@@ -34,6 +48,7 @@ export async function uploadLocalFile(
   mimeType: string,
   sizeBytes: number,
   meta: {
+    idempotencyKey: string;
     captureType: CaptureType;
     locationId?: string | null;
     phase?: ProjectPhase | null;
@@ -45,7 +60,7 @@ export async function uploadLocalFile(
     gpsAccuracyM?: number | null;
     compassHeadingDeg?: number | null;
   },
-): Promise<Capture> {
+): Promise<{ captureId: string }> {
   const filename = localUri.split('/').pop() ?? `capture-${Date.now()}`;
 
   const uploadUrlRes = await getUploadUrl(projectId, {
@@ -66,7 +81,8 @@ export async function uploadLocalFile(
     throw new Error(`Storage upload failed (HTTP ${uploadResult.status})`);
   }
 
-  return registerCapture(projectId, {
+  const { results } = await syncCapture(projectId, {
+    idempotencyKey: meta.idempotencyKey,
     storageKey: uploadUrlRes.storageKey,
     originalSizeBytes: sizeBytes,
     originalMimeType: mimeType,
@@ -81,4 +97,10 @@ export async function uploadLocalFile(
     gpsAccuracyM: meta.gpsAccuracyM ?? undefined,
     compassHeadingDeg: meta.compassHeadingDeg ?? undefined,
   });
+
+  const result = results[0];
+  if (!result || result.status === 'failed' || !result.captureId) {
+    throw new Error(result?.error ?? 'Capture sync failed.');
+  }
+  return { captureId: result.captureId };
 }

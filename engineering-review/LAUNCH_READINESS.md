@@ -1,0 +1,70 @@
+# Launch Readiness — EngineeringOS Reality Capture
+
+Produced by a launch-readiness sprint. This is a status report, not a
+go-ahead. Every row below is backed by either a command that was actually
+run, direct source inspection, or an explicitly marked BLOCKED item — nothing
+here is a guess. See `MOBILE_STORE_READINESS.md` for the store-submission
+checklist and the final sprint report (delivered in chat) for the full
+verification log and file-change list.
+
+## Launch level definitions
+
+- **Internal pilot** — a handful of the product team's own accounts, on a
+  private/staging environment, used to shake out obvious breakage before any
+  outside user sees it. Tolerates known rough edges as long as they're
+  documented and don't lose data or leak across tenants.
+- **Private beta** — a limited set of real, external customer accounts, on
+  production infrastructure, under an NDA/agreement rather than public
+  self-signup. Requires the security/tenancy/data-safety basics to actually
+  hold, but can tolerate incomplete polish, missing store listings, and
+  manual onboarding.
+- **Public launch** — open self-signup, public app store listings, no
+  hand-holding. Requires every critical blocker below to be closed — store
+  assets, legal/privacy materials, monitoring, and backup/restore included.
+
+---
+
+## Readiness table
+
+| Area | Status | Evidence | Blocker action |
+|---|---|---|---|
+| Web build | PASS | `pnpm --filter web build` succeeds (see verification log) | None |
+| API startup | PASS | `pnpm --filter api exec tsc --noEmit` clean; API boots against local Postgres/Redis and serves all routes (`Nest application successfully started`) | None |
+| Authentication | Implemented, partially verified | Login/refresh/logout/forgot/reset/accept-invitation endpoints exist and were exercised live (login, JWT issuance) this sprint; throttler (`auth` bucket, 10/min) is registered globally | Rate-limit behavior under real concurrent load, and forgot/reset email delivery, were not exercised live (no SMTP configured in this sandbox) |
+| Tenant isolation | Implemented, partially verified | `withTenant`-scoped queries used consistently in services inspected this sprint and prior sprints; DTO whitelisting confirmed live (`property address should not exist` rejection observed against `/projects`) | Postgres RLS relies on the `app_user` role, but production's actual `DB_USER` (Render-managed, table owner) bypasses RLS by ownership — documented at length in `CURRENT_STATUS.md`. This is a real, unresolved gap: today, tenant isolation in production rests entirely on the application code's own `WHERE company_id = ...` discipline, not on a database-enforced backstop. |
+| Database migrations | Implemented, partially verified | All 48 migrations in `apps/api/src/database/migrations` applied cleanly against a fresh local database this sprint (`node run-migrations.ts`, tracked via `_migrations`); Render's `preDeployCommand` runs this before traffic per `render.yaml` | Rollback story is "re-deploy a prior image," not a scripted down-migration — acceptable for a pre-launch product but should be stated explicitly to whoever is on call |
+| Restricted production DB role | BLOCKED (documented, not fixed) | `app_user` role exists with no password/grants (migration 001); production connects via Render's own superuser/table-owner credential | Deliberately out of scope for a "small, reviewable" sprint change — repointing production's connection role is an infrastructure/credential change this sprint is explicitly not authorized to make |
+| Object storage | Implemented, partially verified | Presigned upload/download flow works end-to-end in code; `StorageService.getUploadUrl`'s `_maxSizeBytes` parameter is never wired into the actual `PutObjectCommand`, so no presigned upload anywhere enforces its declared size limit at the storage layer (documented in `CURRENT_STATUS.md`, confirmed still present this sprint) | Wire `_maxSizeBytes` into a real S3 condition (e.g. `Content-Length-Range` in a presigned POST, or a proxy-side check) before public launch |
+| Redis / queue | Implemented, partially verified | Bull queues (`image-processing`, IFC processing) configured with bounded retries + exponential backoff (`attempts: 3`, `backoff: exponential`) — confirmed via source this sprint | No API/admin visibility into failed jobs was found (no endpoint or dashboard surfaces `queue.getFailed()`); a stuck/failed job is currently only discoverable via direct Redis/Bull inspection, not through the product |
+| IFC processing | Implemented, verified (with a nuance) | `ifc-processing.processor.ts` explicitly distinguishes `SUCCESS`/`PARTIAL`/`FAILED` in its saved processing report, based on `elementsSkipped`, and does not throw the job away on a partial result — it does **not** silently report full success when elements are skipped | The underlying BIM model record's own `status` column is set to `'ready'` in both the SUCCESS and PARTIAL cases — the SUCCESS/PARTIAL distinction lives only in the separately-saved processing report, not in the primary status field a model-list UI would most likely read. Whether the frontend actually surfaces this distinction to the user was not verified this sprint. |
+| BIM viewer | Not independently re-verified this sprint | Prior sprints (`BIM_VIEWER_GAP_ANALYSIS.md`, `ROOT_CAUSE_REPORT_BIM_VIEWER.md`) document known viewer issues in detail | Do not claim BIM viewer readiness beyond what those existing documents state; this sprint did not load a real IFC model through the viewer (no seeded BIM model existed, and generating one needs a real IFC file + working `apps/ifc-service` pipeline, which was out of scope to stand up here) |
+| Browser compatibility | Partially verified (small representative sample, not the full matrix) | Live Playwright/Chromium testing this sprint at 3 viewports (1440×900 desktop, 768×1024 tablet portrait, 360×800 phone) across 6 authenticated routes (Login, Project list, Project detail, Captures, Issues, BIM models). Found and fixed two real, launch-blocking issues: (1) the app shell's sidebar had no mobile treatment at all, forcing horizontal page scroll on every authenticated route at phone/tablet width — fixed with a collapsible off-canvas drawer (`AppShell.tsx`); (2) Project Detail's 5-button toolbar forced page-level horizontal overflow — fixed by making the toolbar scroll within itself instead (`PageHeader.tsx`). After both fixes, all 18 tested viewport×route combinations show zero horizontal overflow (re-verified live). | The remaining 8 routes (Floor Plans/Drawings, BuildLens, Snagging, Reports, Messages, Workforce, BIM viewer, 360° viewer) and the other 3 viewports (1280×800, 1024×768, 390×844) were **not tested this sprint** — no claim is made about them. The BIM/360 viewers specifically need real model/capture data and WebGL rendering verification this sprint did not attempt. Project Detail's title text is now visibly truncated on a 360px-wide phone when combined with its 5-button toolbar — functional (no page scroll, no hidden content) but visually tight; a future pass could move the toolbar to a second row on narrow screens instead of scrolling it, without needing to redesign anything else. |
+| Mobile Android | Implemented, not device-tested | Offline-first capture/sync (SQLite queue, serial upload, bounded retries via the newly-wired idempotent `/captures/sync` endpoint), permission handling, and background sync all verified via source + `tsc --noEmit`; no Android emulator/device was available in this sandbox | Legacy storage permissions should be reviewed against current Android 13+ scoped-storage policy (see `MOBILE_STORE_READINESS.md`); no physical-device test of camera/GPS/background-sync behavior was performed |
+| Mobile iOS/iPad | Implemented, not device-tested | Same offline/permission/sync logic is platform-agnostic (Expo); `app.json` declares `supportsTablet: true` and all iOS usage-description strings except microphone | **Missing `NSMicrophoneUsageDescription`** despite video recording being a real, reachable feature (`CameraScreen.tsx`) — this alone would fail Apple's automated review the first time it's submitted; no physical-device test was performed |
+| Offline sync | Implemented, verified via source + one live fix | Capture-before-upload, app-restart survival (SQLite persistence), bounded retries (`MAX_UPLOAD_RETRIES = 5`), visible per-item retry UI (`SyncStatusScreen.tsx`), and 401→refresh→retry auth handling all confirmed by reading the actual code paths. This sprint found and fixed a real duplicate-upload risk: the mobile app was calling a plain, non-idempotent register endpoint, so a retry after an ambiguous failure (e.g. the app killed between the storage PUT succeeding and the register call completing) could create a second capture. Fixed by wiring the app to the already-built-but-unused idempotent `POST /captures/sync` batch endpoint, with a passing new backend test (`captures.service.spec.ts`, 3/3 tests). | Not tested under an actual interrupted/degraded network condition on a real device — this is a source-level guarantee, not an on-device observation |
+| Monitoring | BLOCKED / not implemented | `/health` only checks database connectivity — it does not check Redis, object storage, the IFC worker, the AI service, or Qdrant. No mobile crash reporting (Sentry/Crashlytics) exists. | Before private beta: extend `/health` (or add a separate `/ready`) to check Redis and object storage at minimum, since a queue or storage outage currently looks identical to "healthy" to any load balancer or uptime check. Before public launch: add mobile crash reporting and alerting on the health endpoint itself. |
+| Backups / restore | Not verified this sprint | No backup/restore procedure or script was found in the repository; Render's managed Postgres offering typically includes automated backups, but this was not confirmed against the actual production database configuration | **Needs owner decision/verification**: confirm what backup retention Render is actually configured with for the production database, and document (even briefly) how a restore would be performed, before accepting real customer data in a private beta |
+| Privacy / legal materials | Not present | No privacy policy, terms of service, or data-processing documentation exists in the repository | Required before public launch (and arguably before private beta, if beta customers are real companies under any kind of agreement); this is legal/business work, not something this sprint could draft credibly from source code alone |
+| Support process | Not defined | No support contact, escalation path, or incident-response process was found or created | Needs owner decision before any external user (pilot or beta) is given access |
+
+---
+
+## Executive verdict
+
+| Target | Verdict |
+|---|---|
+| Web SaaS — internal pilot | **READY WITH CONDITIONS** — core auth/tenancy/upload paths work and were exercised live; conditions: accept the known RLS-bypass-by-role gap as an internal-only risk, and know that `/health` won't tell you about a Redis/storage outage. |
+| Web SaaS — private beta | **NOT READY** — the missing storage-layer size enforcement, the DB-role RLS gap, and the absence of any backup/restore confirmation are real risks once real external customer data is involved. |
+| Web SaaS — public launch | **NOT READY** — all private-beta blockers apply, plus no privacy/legal materials, no monitoring beyond a DB ping, and no confirmed backup/restore process. |
+| Android — internal testing | **READY WITH CONDITIONS** — installable via a development/internal EAS build once one is actually produced (not done this sprint — no store credentials, none requested); offline/permission logic is sound by source inspection but untested on a real device. |
+| Android — public store release | **NOT READY** — no app icon/store assets exist, storage permissions need a currency review, and no store listing/signing has been set up. |
+| iOS — TestFlight | **BLOCKED** — the missing `NSMicrophoneUsageDescription` will likely fail automated review the first time a build with video capture is submitted; fix that string before attempting a TestFlight build. |
+| iOS — App Store release | **NOT READY** — TestFlight blocker applies, plus the same missing store assets and undefined release-ops items as Android. |
+| Desktop browser support | **READY WITH CONDITIONS** — verified this sprint at 1440×900 across 6 core routes with zero layout issues found; the other 8 routes were not tested. |
+| Tablet browser support | **READY WITH CONDITIONS** — verified this sprint at 768×1024 portrait across the same 6 routes, after fixing two real overflow bugs; landscape orientation and the remaining 8 routes were not tested. |
+| Mobile browser support | **READY WITH CONDITIONS** — verified this sprint at 360×800 across the same 6 routes, after the same two fixes; this is a narrow, representative sample, not the full 6-viewport × 14-route matrix the sprint brief specified. |
+| Native phone support | **READY WITH CONDITIONS** — same basis as Android/iOS internal-testing rows above; no physical-device test performed. |
+| Native tablet support | **READY WITH CONDITIONS (iOS) / NOT DECLARED (Android)** — iOS declares `supportsTablet: true` with no tablet-specific layout beyond the phone UI scaling up; Android has no explicit tablet declaration in `app.json` and no tablet-specific layout was found — if phone-only is the intent for Android, that should be stated as policy rather than left implicit. |
+
+No row above claims public-launch readiness, and none should be read that
+way — every "READY WITH CONDITIONS" verdict names its condition explicitly.

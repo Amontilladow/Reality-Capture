@@ -12,8 +12,10 @@ export class SyncCaptureItemDto {
   @IsOptional() @IsUUID()   locationId?: string;
   @IsOptional() @IsString() phase?: string;
   @IsOptional() @IsString() title?: string;
+  @IsOptional() @IsString() description?: string;
   @IsOptional() @IsNumber() gpsLat?: number;
   @IsOptional() @IsNumber() gpsLng?: number;
+  @IsOptional() @IsNumber() gpsAccuracyM?: number;
   @IsOptional() @IsNumber() compassHeadingDeg?: number;
 }
 

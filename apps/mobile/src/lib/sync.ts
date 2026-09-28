@@ -59,6 +59,12 @@ export async function processQueue(): Promise<{ processed: number; succeeded: nu
         }
 
         const capture = await uploadLocalFile(item.projectId, item.localFileUri, item.mimeType, item.sizeBytes, {
+          // The queue row's own id is the idempotency key -- if this exact
+          // retry already reached the server once (e.g. the app was killed
+          // between the storage PUT and this call completing), the sync
+          // endpoint recognizes it and returns the existing capture instead
+          // of creating a duplicate.
+          idempotencyKey: item.id,
           captureType: item.captureType,
           locationId: item.locationId,
           phase: (item.phase as any) ?? undefined,
@@ -71,7 +77,7 @@ export async function processQueue(): Promise<{ processed: number; succeeded: nu
           compassHeadingDeg: item.compassHeadingDeg,
         });
 
-        updateQueueStatus(item.id, 'uploaded', { remoteCaptureId: capture.id });
+        updateQueueStatus(item.id, 'uploaded', { remoteCaptureId: capture.captureId });
         // Free device storage once the server has the file durably stored.
         await FileSystem.deleteAsync(item.localFileUri, { idempotent: true }).catch(() => {});
         succeeded += 1;

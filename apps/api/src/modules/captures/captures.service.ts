@@ -437,8 +437,10 @@ export class CapturesService {
           locationId: item.locationId,
           phase: item.phase,
           title: item.title,
+          description: item.description,
           gpsLat: item.gpsLat,
           gpsLng: item.gpsLng,
+          gpsAccuracyM: item.gpsAccuracyM,
           compassHeadingDeg: item.compassHeadingDeg,
         });
 
