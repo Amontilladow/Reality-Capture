@@ -11,6 +11,8 @@ import type { UpsertOrganizationDto } from './dto/upsert-organization.dto';
 import type { PaginationQuery, ProjectPermission, ProjectOrganizationSlot } from '@engineeringos/types';
 import { PROJECT_ORGANIZATION_SLOTS } from '@engineeringos/types';
 
+const BRANDING_MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB -- small letterhead/seal images, not photos
+
 @Injectable()
 export class ProjectsService {
   constructor(
@@ -117,6 +119,15 @@ export class ProjectsService {
   async update(companyId: string, projectId: string, dto: UpdateProjectDto) {
     await this.findOne(companyId, projectId);
 
+    // Real post-upload size enforcement for a logo/stamp actually being set
+    // in this request -- getBrandingUploadUrl() below only ever checked the
+    // client-declared size, and this generic update() is the one place a
+    // logoStorageKey/stampStorageKey value is ever persisted. Only runs when
+    // the field is actually present in this PATCH, so an update that leaves
+    // the logo/stamp untouched is unaffected.
+    if (dto.logoStorageKey) await this.assertBrandingImageWithinLimit(dto.logoStorageKey);
+    if (dto.stampStorageKey) await this.assertBrandingImageWithinLimit(dto.stampStorageKey);
+
     // withTenant required -- see create() above.
     const [updated] = await this.db.withTenant(companyId, sql => sql`
       UPDATE projects SET
@@ -160,13 +171,17 @@ export class ProjectsService {
   // storageKey (reusing the same update() path every other project field
   // uses), no separate "register" endpoint needed.
   async getBrandingUploadUrl(companyId: string, projectId: string, filename: string, sizeBytes: number, kind: 'logo' | 'stamp') {
+    // getBrandingUploadUrl has no @RequireProjectPermission gate (see
+    // projects.controller.ts) and didn't previously call findOne() either --
+    // confirm the project is actually this company's before issuing a URL.
+    await this.findOne(companyId, projectId);
+
     const ext = filename.split('.').pop()?.toLowerCase() ?? '';
     if (!['jpg', 'jpeg', 'png'].includes(ext)) {
       throw new BadRequestException(`Logo/stamp images must be JPG or PNG (got ".${ext}").`);
     }
-    const maxSize = 2 * 1024 * 1024; // 2 MB -- these are small letterhead/seal images, not photos
-    if (sizeBytes > maxSize) {
-      throw new BadRequestException(`Image too large (${(sizeBytes / 1024 / 1024).toFixed(1)} MB). Max: ${maxSize / 1024 / 1024} MB.`);
+    if (sizeBytes > BRANDING_MAX_SIZE_BYTES) {
+      throw new BadRequestException(`Image too large (${(sizeBytes / 1024 / 1024).toFixed(1)} MB). Max: ${BRANDING_MAX_SIZE_BYTES / 1024 / 1024} MB.`);
     }
     const key = this.storage.generateKey(companyId, projectId, 'branding', `${kind}-${filename}`);
     const { uploadUrl } = await this.storage.getUploadUrl(key, 'application/octet-stream', sizeBytes);
@@ -204,6 +219,11 @@ export class ProjectsService {
     this.assertValidSlot(slot);
     await this.findOne(companyId, projectId);
 
+    // Same rationale as update()'s logo/stamp check -- this is the one place
+    // an organization's logoStorageKey value is ever persisted, and only
+    // runs when the field is actually present in this request.
+    if (dto.logoStorageKey) await this.assertBrandingImageWithinLimit(dto.logoStorageKey);
+
     const [row] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO project_organizations (project_id, company_id, slot, name, org_ref, contact_name, contact_email, logo_storage_key)
       VALUES (${projectId}, ${companyId}, ${slot}, ${dto.name ?? null}, ${dto.orgRef ?? null}, ${dto.contactName ?? null}, ${dto.contactEmail ?? null}, ${dto.logoStorageKey ?? null})
@@ -230,9 +250,8 @@ export class ProjectsService {
     if (!['jpg', 'jpeg', 'png'].includes(ext)) {
       throw new BadRequestException(`Logo images must be JPG or PNG (got ".${ext}").`);
     }
-    const maxSize = 2 * 1024 * 1024; // 2 MB -- same cap as project branding
-    if (sizeBytes > maxSize) {
-      throw new BadRequestException(`Image too large (${(sizeBytes / 1024 / 1024).toFixed(1)} MB). Max: ${maxSize / 1024 / 1024} MB.`);
+    if (sizeBytes > BRANDING_MAX_SIZE_BYTES) {
+      throw new BadRequestException(`Image too large (${(sizeBytes / 1024 / 1024).toFixed(1)} MB). Max: ${BRANDING_MAX_SIZE_BYTES / 1024 / 1024} MB.`);
     }
     const key = this.storage.generateKey(companyId, projectId, 'branding', `org-${slot}-${filename}`);
     const { uploadUrl } = await this.storage.getUploadUrl(key, 'application/octet-stream', sizeBytes);
@@ -375,5 +394,29 @@ export class ProjectsService {
       ORDER BY b.name
     `);
     return buildings;
+  }
+
+  // Real post-upload size enforcement for a branding image (project logo/
+  // stamp or organization logo) -- getBrandingUploadUrl()/
+  // getOrganizationLogoUploadUrl() only ever checked the client-declared
+  // size. Both branding uploads are a two-step flow with no dedicated
+  // "confirm upload" endpoint of their own -- the client PUTs to storage,
+  // then PATCHes the storageKey into update()/upsertOrganization(), which
+  // reuse the same generic field-update path every other project field
+  // uses. Those two call sites *are* the safe, server-controlled completion
+  // point (the actual DB write happens there), so this runs there rather
+  // than needing a new registration endpoint.
+  private async assertBrandingImageWithinLimit(storageKey: string): Promise<void> {
+    const actualSizeBytes = await this.storage.getObjectSize(storageKey);
+    if (actualSizeBytes === null) {
+      throw new BadRequestException('Uploaded image not found in storage. Complete the upload before saving.');
+    }
+    if (actualSizeBytes > BRANDING_MAX_SIZE_BYTES) {
+      await this.storage.deleteIfExists(storageKey);
+      throw new BadRequestException(
+        `Uploaded image (${(actualSizeBytes / 1024 / 1024).toFixed(1)} MB) exceeds the ${BRANDING_MAX_SIZE_BYTES / 1024 / 1024} MB ` +
+        'limit for a logo/stamp image. The upload has been rejected and removed.',
+      );
+    }
   }
 }

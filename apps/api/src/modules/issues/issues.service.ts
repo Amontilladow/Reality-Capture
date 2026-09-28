@@ -41,6 +41,8 @@ const ISSUE_TYPE_LABELS: Record<string, string> = {
   safety_observation: 'Safety Observation', quality_hold: 'Quality Hold', inspection_point: 'Inspection Point', general: 'General',
 };
 
+const ISSUE_SCREENSHOT_MAX_SIZE = 5 * 1024 * 1024; // 5 MB -- matches getScreenshotUploadUrl()'s existing figure
+
 @Injectable()
 export class IssuesService {
   private readonly logger = new Logger(IssuesService.name);
@@ -79,6 +81,27 @@ export class IssuesService {
 
   // ── Create ────────────────────────────────────────────────────────────────
   async create(companyId: string, projectId: string, userId: string, dto: CreateIssueDto) {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+
+    // Real post-upload size enforcement for the optional BIM-viewer
+    // screenshot -- getScreenshotUploadUrl() below signs a max size but
+    // (like every presigned PUT in this codebase) can't enforce it at the
+    // signature level. Verify the actual object before it's ever persisted
+    // or queued.
+    if (dto.screenshotStorageKey) {
+      const actualSizeBytes = await this.storage.getObjectSize(dto.screenshotStorageKey);
+      if (actualSizeBytes === null) {
+        throw new BadRequestException('Uploaded screenshot not found in storage. Complete the upload before creating the issue.');
+      }
+      if (actualSizeBytes > ISSUE_SCREENSHOT_MAX_SIZE) {
+        await this.storage.deleteIfExists(dto.screenshotStorageKey);
+        throw new BadRequestException(
+          `Uploaded screenshot (${(actualSizeBytes / 1024 / 1024).toFixed(1)} MB) exceeds the ` +
+          `${ISSUE_SCREENSHOT_MAX_SIZE / 1024 / 1024} MB limit. The upload has been rejected and removed.`,
+        );
+      }
+    }
+
     const issueNumber = await this.generateIssueNumber(companyId, projectId, dto.discipline);
 
     // withTenant required -- issues carries the tenant_isolation RLS policy. A plain
@@ -230,8 +253,9 @@ export class IssuesService {
   // PUT URL, no DB row of its own. The resulting storageKey is passed
   // straight into create()'s screenshotStorageKey.
   async getScreenshotUploadUrl(companyId: string, projectId: string) {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
     const key = this.storage.generateKey(companyId, projectId, 'issues', `${Date.now()}.png`);
-    const url = await this.storage.getUploadUrl(key, 'image/png', 5 * 1024 * 1024);
+    const url = await this.storage.getUploadUrl(key, 'image/png', ISSUE_SCREENSHOT_MAX_SIZE);
     return { ...url, storageKey: key };
   }
 
@@ -756,6 +780,8 @@ export class IssuesService {
   // declared size, then hand back a presigned PUT URL. The client uploads
   // directly to storage; our API never sees the file bytes.
   async getAttachmentUploadUrl(companyId: string, projectId: string, dto: IssueAttachmentUploadUrlDto) {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+
     const ext = dto.filename.split('.').pop()?.toLowerCase() ?? '';
     if (!ISSUE_ATTACHMENT_ALLOWED_EXTENSIONS.has(ext)) {
       throw new BadRequestException(
@@ -779,6 +805,31 @@ export class IssuesService {
   // same pattern as documents.storageKey / issues.screenshotStorageKey,
   // resolved to a live presigned URL by the caller/read path when needed.
   async addAttachment(companyId: string, issueId: string, userId: string, dto: AddIssueAttachmentDto) {
+    // No projectId is threaded through this route today (see
+    // issues.controller.ts) -- confirming the issue itself exists under this
+    // company is the authorization boundary available here, and also
+    // catches a bogus/foreign issueId before an orphan activity row gets
+    // written for it.
+    const [issue] = await this.db.withTenant(companyId, sql => sql`
+      SELECT id FROM issues WHERE id = ${issueId} AND company_id = ${companyId}
+    `);
+    if (!issue) throw new NotFoundException(`Issue ${issueId} not found.`);
+
+    // Real post-upload size enforcement -- the client-declared dto.sizeBytes
+    // was only ever checked against the limit at upload-url time; it is not
+    // trusted for persistence here.
+    const actualSizeBytes = await this.storage.getObjectSize(dto.storageKey);
+    if (actualSizeBytes === null) {
+      throw new BadRequestException('Uploaded file not found in storage. Complete the upload before adding the attachment.');
+    }
+    if (actualSizeBytes > ISSUE_ATTACHMENT_MAX_SIZE) {
+      await this.storage.deleteIfExists(dto.storageKey);
+      throw new BadRequestException(
+        `Uploaded file (${(actualSizeBytes / 1024 / 1024).toFixed(1)} MB) exceeds the ${ISSUE_ATTACHMENT_MAX_SIZE / 1024 / 1024} MB ` +
+        'limit for an attachment. The upload has been rejected and removed.',
+      );
+    }
+
     return this.db.withTenant(companyId, async (sql) => {
       const [activity] = await sql`
         INSERT INTO issue_activities (
@@ -786,7 +837,7 @@ export class IssuesService {
           attachment_url, attachment_name, attachment_size_bytes, performed_by
         ) VALUES (
           ${issueId}, ${companyId}, 'comment', ${dto.comment ?? `Attached file: ${dto.filename}`},
-          ${dto.storageKey}, ${dto.filename}, ${dto.sizeBytes}, ${userId}
+          ${dto.storageKey}, ${dto.filename}, ${actualSizeBytes}, ${userId}
         )
         RETURNING *
       `;
@@ -1206,5 +1257,16 @@ export class IssuesService {
     `);
     if (result.count === 0) throw new NotFoundException('No pending scheduled reminder found with that id.');
     return { message: 'Scheduled reminder cancelled.' };
+  }
+
+  // Same rationale as captures.service.ts's assertProjectBelongsToCompany --
+  // issues.controller.ts has no @RequireProjectPermission gate on create/
+  // screenshot-upload-url/attachments-upload-url, unlike rfis/snagging's
+  // equivalents.
+  private async assertProjectBelongsToCompany(companyId: string, projectId: string): Promise<void> {
+    const [project] = await this.db.withTenant(companyId, sql => sql`
+      SELECT id FROM projects WHERE id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!project) throw new NotFoundException(`Project ${projectId} not found.`);
   }
 }

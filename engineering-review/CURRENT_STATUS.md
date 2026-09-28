@@ -50,21 +50,45 @@ verification, load testing).
 ## 2. Partially implemented / notable gaps found in this pass
 
 - **Presigned upload size limits still aren't enforced at the signature level anywhere,
-  but real post-upload enforcement now exists for the two highest-risk paths.**
-  `StorageService.getUploadUrl()` (`apps/api/src/modules/storage/storage.service.ts`)
-  still never wires `_maxSizeBytes` into the `PutObjectCommand` — there is no
-  `Content-Length-Range` condition on any presigned PUT URL in this codebase, and fixing
-  that properly still means switching to a presigned POST policy
-  (`createPresignedPost`), which changes the request shape every upload caller uses and
-  remains too broad for a narrow pass. **What changed in the corrective-blockers sprint**:
-  `StorageService` gained `getObjectSize()` (a `HeadObjectCommand` against the real
-  object) and `deleteIfExists()` (cleanup for a rejected upload). `CapturesService.register()`
-  and `BimService.registerModel()` now call `getObjectSize()` after upload and reject +
-  delete the object if its *real* size exceeds the type's limit — the client's declared
-  size is no longer trusted for the DB row, the storage-quota accounting, or the limit
-  check itself. Drawings, documents, issue/RFI/snag attachments, and project
-  branding/logo uploads still only have the original declared-size check (client-reported,
-  unverified) — the same class of gap, just not yet closed for those paths.
+  but real post-upload enforcement now exists for every upload family with a safe
+  completion point.** `StorageService.getUploadUrl()`
+  (`apps/api/src/modules/storage/storage.service.ts`) still never wires `_maxSizeBytes`
+  into the `PutObjectCommand` — there is no `Content-Length-Range` condition on any
+  presigned PUT URL in this codebase, and fixing that properly still means switching to a
+  presigned POST policy (`createPresignedPost`), which changes the request shape every
+  upload caller uses and remains too broad for a narrow pass.
+
+  **What changed, across two corrective-blockers sprints**: `StorageService` gained
+  `getObjectSize()` (a `HeadObjectCommand` against the real object) and `deleteIfExists()`
+  (cleanup for a rejected upload). Every upload family that has a server-controlled
+  persistence point (a create/register/update call this API itself executes after the
+  client's PUT) now calls `getObjectSize()` there and rejects + deletes the object if its
+  *real* size exceeds the type's limit — the client's declared size is never trusted for
+  the DB row, storage-quota accounting, or the limit check itself:
+  - Captures (`CapturesService.register()`) and BIM/IFC models (`BimService.registerModel()`)
+    — first sprint.
+  - Drawings (`DrawingsService.create()`), internal documents
+    (`DocumentsService.create()` — external/metadata-only documents are correctly left
+    alone, since they have no object of ours to verify), issue view-state screenshots and
+    issue/RFI/snag attachments (`IssuesService.create()`/`addAttachment()`,
+    `RfisService.addAttachment()`, `SnaggingService.addAttachment()`), and project/
+    organization branding logos (`ProjectsService.update()`/`upsertOrganization()`,
+    only when a logo/stamp value is actually present in that request) — second sprint.
+
+  The same two sprints also added a project-(or entity-)company-ownership check to every
+  one of those call sites that lacked one: `captures.controller.ts`, `bim.controller.ts`,
+  `drawings.controller.ts`, `documents.controller.ts`, `issues.controller.ts`, and
+  `snagging.controller.ts` have no `@RequireProjectPermission` gate on their
+  upload/create/attach routes (unlike RFIs, whose attachment routes already carry
+  `@RequireProjectPermission('manage_project_records')` — that path only needed the size
+  fix, not a new ownership check). Verified with 47 new/updated passing tests across
+  `captures.service.spec.ts`, `bim.service.spec.ts`, `drawings.service.spec.ts`,
+  `documents.service.spec.ts` (new), `issues.service.spec.ts`, `rfis.service.spec.ts`,
+  `snagging.service.spec.ts` (new), and `projects.service.spec.ts` (new).
+
+  Nothing is left relying on client-declared size alone. True transport-level
+  (presigned-POST signature) enforcement remains a deployment/provider-level task, not
+  done here — see the note above on why that's a broader change than this pass's scope.
 - **BIM model uploads had no file-extension validation before this pass.**
   Fixed here: `BimService.getModelUploadUrl()` now rejects anything but a
   `.ifc` filename before issuing a presigned URL. `NWD`/`RVT` remain valid
@@ -291,7 +315,16 @@ follow-up — see the sprint report's "Recommended next step."
 
 ## 7. Known operational risks (not fixed this pass)
 
-1. Presigned-upload size limits are declared but not enforced anywhere (§2).
+1. Presigned-upload size limits are not enforced at the transport
+   (signature) level for any upload path — only a presigned POST supports a
+   `Content-Length-Range` condition, and this codebase uses presigned PUT
+   throughout (§2). Real, server-side post-upload verification against the
+   actual stored object now exists for every upload family that has a
+   safe, server-controlled persistence point: captures, BIM/IFC models,
+   drawings, internal documents, issue screenshots, issue/RFI/snag
+   attachments, and project/organization branding logos (§2). Nothing
+   remains on the original "declared size only, trusted as-is" gap this
+   line used to describe.
 2. RLS provides no actual tenant-isolation boundary in any environment that
    currently exists (local, CI, or the `render.yaml` production config) —
    tenant isolation today rests entirely on the explicit `WHERE company_id

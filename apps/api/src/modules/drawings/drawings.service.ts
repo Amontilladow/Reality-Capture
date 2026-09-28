@@ -1,10 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { StorageService } from '../storage/storage.service';
 import { IssuesService } from '../issues/issues.service';
 import type { CreateDrawingDto } from './dto/create-drawing.dto';
 import type { LinkCaptureToDrawingDto } from './dto/link-capture.dto';
 import type { CreatePinDto } from './dto/create-pin.dto';
+
+const DRAWING_MAX_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
 
 @Injectable()
 export class DrawingsService {
@@ -33,12 +35,31 @@ export class DrawingsService {
   }
 
   async getUploadUrl(companyId: string, projectId: string, filename: string) {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
     const key = this.storage.generateKey(companyId, projectId, 'drawings', filename);
-    const url = await this.storage.getUploadUrl(key, 'application/pdf', 100 * 1024 * 1024);
+    const url = await this.storage.getUploadUrl(key, 'application/pdf', DRAWING_MAX_SIZE_BYTES);
     return { ...url, storageKey: key };
   }
 
   async create(companyId: string, projectId: string, userId: string, dto: CreateDrawingDto) {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+
+    // Real post-upload size enforcement -- this endpoint never had a
+    // client-declared size to check in the first place (getUploadUrl()
+    // above only takes a filename). This HEAD-based check against the
+    // actual stored object is the only enforcement that exists.
+    const actualSizeBytes = await this.storage.getObjectSize(dto.storageKey);
+    if (actualSizeBytes === null) {
+      throw new BadRequestException('Uploaded file not found in storage. Complete the upload before registering the drawing.');
+    }
+    if (actualSizeBytes > DRAWING_MAX_SIZE_BYTES) {
+      await this.storage.deleteIfExists(dto.storageKey);
+      throw new BadRequestException(
+        `Uploaded file (${(actualSizeBytes / 1024 / 1024).toFixed(1)} MB) exceeds the ${DRAWING_MAX_SIZE_BYTES / 1024 / 1024} MB ` +
+        'limit for a drawing. The upload has been rejected and removed.',
+      );
+    }
+
     // withTenant required -- drawings carries the tenant_isolation RLS policy.
     const [drawing] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO drawings (
@@ -242,5 +263,15 @@ export class DrawingsService {
       // prefer instead.
       assignedTo: p.linkedIssueId ? p.linkedIssueAssignedTo : p.linkedSnagAssignedTo,
     }));
+  }
+
+  // Same rationale as captures.service.ts's assertProjectBelongsToCompany --
+  // this controller has no @RequireProjectPermission gate either, and
+  // getUploadUrl/create both take a client-supplied projectId.
+  private async assertProjectBelongsToCompany(companyId: string, projectId: string): Promise<void> {
+    const [project] = await this.db.withTenant(companyId, sql => sql`
+      SELECT id FROM projects WHERE id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!project) throw new NotFoundException(`Project ${projectId} not found.`);
   }
 }

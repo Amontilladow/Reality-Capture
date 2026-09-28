@@ -950,12 +950,30 @@ export class RfisService {
   // from migration 028, so older callers that don't know about kinds yet
   // still work unchanged.
   async addAttachment(companyId: string, rfiId: string, userId: string, dto: AddRfiAttachmentDto) {
+    // Real post-upload size enforcement -- the client-declared dto.sizeBytes
+    // was only ever checked against the limit at upload-url time (see
+    // getAttachmentUploadUrl() above); it is not trusted for persistence.
+    // (Project authorization for this route is already enforced by
+    // @RequireProjectPermission('manage_project_records') at the controller
+    // -- see rfis.controller.ts.)
+    const actualSizeBytes = await this.storage.getObjectSize(dto.storageKey);
+    if (actualSizeBytes === null) {
+      throw new BadRequestException('Uploaded file not found in storage. Complete the upload before adding the attachment.');
+    }
+    if (actualSizeBytes > ATTACHMENT_MAX_SIZE) {
+      await this.storage.deleteIfExists(dto.storageKey);
+      throw new BadRequestException(
+        `Uploaded file (${(actualSizeBytes / 1024 / 1024).toFixed(1)} MB) exceeds the ${ATTACHMENT_MAX_SIZE / 1024 / 1024} MB ` +
+        'limit for an attachment. The upload has been rejected and removed.',
+      );
+    }
+
     const [attachment] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO rfi_attachments (
         rfi_id, company_id, storage_key, filename, size_bytes, uploaded_by,
         kind, document_type, document_type_other, revision, description, comment_id
       ) VALUES (
-        ${rfiId}, ${companyId}, ${dto.storageKey}, ${dto.filename}, ${dto.sizeBytes}, ${userId},
+        ${rfiId}, ${companyId}, ${dto.storageKey}, ${dto.filename}, ${actualSizeBytes}, ${userId},
         ${dto.kind ?? 'query'}, ${dto.documentType ?? 'other'}, ${dto.documentTypeOther ?? null},
         ${dto.revision ?? null}, ${dto.description ?? null}, ${dto.commentId ?? null}
       )

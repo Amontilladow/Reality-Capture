@@ -881,4 +881,62 @@ describe('RfisService', () => {
       await expect(svc.remindDrawingUpdate(companyId, projectId, rfiId, 'user-1')).rejects.toThrow(BadRequestException);
     });
   });
+
+  // The presigned PUT getAttachmentUploadUrl() hands out has no enforced
+  // size limit -- dto.sizeBytes there is only ever a declared value. Real
+  // enforcement is this HEAD-based check against the object actually
+  // sitting in storage, run here in addAttachment() before it's persisted.
+  // (Project authorization for this route is already enforced by
+  // @RequireProjectPermission('manage_project_records') at the controller,
+  // so no project-ownership check is duplicated here -- see rfis.controller.ts.)
+  describe('addAttachment', () => {
+    function makeAttachmentService(opts: { actualSizeBytes: number | null }) {
+      const insertedRow = { id: 'attachment-1' };
+      const query = jest.fn().mockResolvedValue([insertedRow]);
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const getObjectSize = jest.fn().mockResolvedValue(opts.actualSizeBytes);
+      const deleteIfExists = jest.fn().mockResolvedValue(undefined);
+      const db = { withTenant };
+      const storage = { getObjectSize, deleteIfExists };
+      const svc = new RfisService(
+        db as unknown as DatabaseService,
+        {} as unknown as NotificationsService,
+        storage as unknown as StorageService,
+        {} as unknown as MessagingService,
+      );
+      return { svc, query, getObjectSize, deleteIfExists };
+    }
+
+    it('registers an attachment whose real uploaded size is within the 5MB limit', async () => {
+      const { svc, query } = makeAttachmentService({ actualSizeBytes: 1024 });
+
+      await svc.addAttachment(companyId, rfiId, 'user-1', {
+        storageKey: 'key-1', filename: 'spec.pdf', sizeBytes: 1,
+      });
+
+      // values = [rfiId, companyId, storageKey, filename, sizeBytes, userId, kind, documentType, ...]
+      expect(query.mock.calls[0]).toContain(1024); // the verified size, not the declared 1
+      expect(query.mock.calls[0]).not.toContain(1);
+    });
+
+    it('rejects and cleans up an attachment whose real size exceeds the 5MB limit, regardless of the declared size', async () => {
+      const { svc, deleteIfExists } = makeAttachmentService({ actualSizeBytes: 6 * 1024 * 1024 });
+
+      await expect(svc.addAttachment(companyId, rfiId, 'user-1', {
+        storageKey: 'key-1', filename: 'spec.pdf', sizeBytes: 1,
+      })).rejects.toThrow(BadRequestException);
+
+      expect(deleteIfExists).toHaveBeenCalledWith('key-1');
+    });
+
+    it('rejects registration when the declared storage key was never actually uploaded', async () => {
+      const { svc, deleteIfExists } = makeAttachmentService({ actualSizeBytes: null });
+
+      await expect(svc.addAttachment(companyId, rfiId, 'user-1', {
+        storageKey: 'key-1', filename: 'spec.pdf', sizeBytes: 1024,
+      })).rejects.toThrow(BadRequestException);
+
+      expect(deleteIfExists).not.toHaveBeenCalled();
+    });
+  });
 });

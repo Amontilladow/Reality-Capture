@@ -70,7 +70,10 @@ describe('IssuesService view-state / screenshot behavior', () => {
     it('generates an issues-namespaced key and requests a PNG upload URL', async () => {
       const generateKey = jest.fn().mockReturnValue('company-1/issues/999.png');
       const getUploadUrl = jest.fn().mockResolvedValue({ uploadUrl: 'https://presigned.example/put', storageKey: 'company-1/issues/999.png' });
-      const svc = makeService({ generateKey, getUploadUrl });
+      // issueRow is repurposed here as whatever row the project-ownership
+      // check's SELECT should find -- makeService()'s withTenant mock
+      // doesn't care about the row's shape, only that it's truthy.
+      const svc = makeService({ generateKey, getUploadUrl, issueRow: { id: projectId } });
 
       const result = await svc.getScreenshotUploadUrl(companyId, projectId);
 
@@ -90,6 +93,9 @@ describe('IssuesService view-state / screenshot behavior', () => {
         const text = strings.join('?');
         calls.push({ text, values });
 
+        if (text.includes('SELECT id FROM projects')) {
+          return Promise.resolve([{ id: 'project-1' }]);
+        }
         if (text.includes('SELECT code FROM projects')) {
           return Promise.resolve([{ code: 'twr' }]);
         }
@@ -562,9 +568,16 @@ describe('IssuesService view-state / screenshot behavior', () => {
   });
 
   describe('attachments', () => {
+    // Every getAttachmentUploadUrl test needs a project-ownership check to
+    // pass before it can reach the extension/size validation being tested --
+    // this stands in for a project row existing under the caller's company.
+    function makeProjectOkDb() {
+      return { withTenant: jest.fn().mockResolvedValue([{ id: 'project-1' }]) } as unknown as DatabaseService;
+    }
+
     it('getAttachmentUploadUrl rejects a disallowed extension', async () => {
       const svc = new IssuesService(
-        {} as unknown as DatabaseService,
+        makeProjectOkDb(),
         {} as unknown as AiClientService,
         {} as unknown as NotificationsService,
         {} as unknown as StorageService,
@@ -576,7 +589,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
 
     it('getAttachmentUploadUrl rejects a file over the 5MB cap', async () => {
       const svc = new IssuesService(
-        {} as unknown as DatabaseService,
+        makeProjectOkDb(),
         {} as unknown as AiClientService,
         {} as unknown as NotificationsService,
         {} as unknown as StorageService,
@@ -590,7 +603,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
       const generateKey = jest.fn().mockReturnValue('company-1/issues/project-1/uuid.pdf');
       const getUploadUrl = jest.fn().mockResolvedValue({ uploadUrl: 'https://presigned.example/put', storageKey: 'company-1/issues/project-1/uuid.pdf' });
       const svc = new IssuesService(
-        {} as unknown as DatabaseService,
+        makeProjectOkDb(),
         {} as unknown as AiClientService,
         {} as unknown as NotificationsService,
         { generateKey, getUploadUrl } as unknown as StorageService,
@@ -601,8 +614,11 @@ describe('IssuesService view-state / screenshot behavior', () => {
       expect(result).toEqual({ uploadUrl: 'https://presigned.example/put', storageKey: 'company-1/issues/project-1/uuid.pdf' });
     });
 
-    it('addAttachment stores the storage key (not a raw URL) on a new issue_activities row', async () => {
+    it('addAttachment stores the storage key (not a raw URL) on a new issue_activities row, using the verified size', async () => {
       const { query, calls } = makeQuery((text) => {
+        if (text.includes('SELECT id FROM issues')) {
+          return [{ id: 'issue-1' }];
+        }
         if (text.includes('INSERT INTO issue_activities')) {
           return [{ id: 'activity-1', attachmentUrl: 'company-1/issues/project-1/uuid.pdf' }];
         }
@@ -611,11 +627,44 @@ describe('IssuesService view-state / screenshot behavior', () => {
       // addAttachment() now goes through withTenant -- forward its callback to
       // the same text-keyed query mock.
       const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      // Real object size (1024) intentionally matches the client-declared
+      // sizeBytes below -- the point of this test isn't that they differ,
+      // it's that the INSERT's persisted value comes from storage, not the DTO
+      // (see the next test for the case where they actually diverge).
+      const getObjectSize = jest.fn().mockResolvedValue(1024);
       const svc = new IssuesService(
         { query, withTenant } as unknown as DatabaseService,
         {} as unknown as AiClientService,
         {} as unknown as NotificationsService,
-        {} as unknown as StorageService,
+        { getObjectSize } as unknown as StorageService,
+      );
+
+      await svc.addAttachment('company-1', 'issue-1', 'user-1', {
+        storageKey: 'company-1/issues/project-1/uuid.pdf', filename: 'report.pdf', sizeBytes: 1024,
+      });
+
+      expect(getObjectSize).toHaveBeenCalledWith('company-1/issues/project-1/uuid.pdf');
+      const insertCall = calls.find(c => c.text.includes('INSERT INTO issue_activities'));
+      // values = [issueId, companyId, content, storageKey, filename, sizeBytes, userId]
+      expect(insertCall!.values).toContain('company-1/issues/project-1/uuid.pdf');
+      expect(insertCall!.values).toContain('report.pdf');
+      expect(insertCall!.values).toContain(1024);
+    });
+
+    it('addAttachment persists the actual storage size, not a client-declared one that understates it', async () => {
+      const { query, calls } = makeQuery((text) => {
+        if (text.includes('SELECT id FROM issues')) return [{ id: 'issue-1' }];
+        if (text.includes('INSERT INTO issue_activities')) return [{ id: 'activity-1' }];
+        return undefined;
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      // Client declared 1 KB; the object actually sitting in storage is 2 MB.
+      const getObjectSize = jest.fn().mockResolvedValue(2 * 1024 * 1024);
+      const svc = new IssuesService(
+        { query, withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        { getObjectSize } as unknown as StorageService,
       );
 
       await svc.addAttachment('company-1', 'issue-1', 'user-1', {
@@ -623,10 +672,43 @@ describe('IssuesService view-state / screenshot behavior', () => {
       });
 
       const insertCall = calls.find(c => c.text.includes('INSERT INTO issue_activities'));
-      // values = [issueId, companyId, content, storageKey, filename, sizeBytes, userId]
-      expect(insertCall!.values).toContain('company-1/issues/project-1/uuid.pdf');
-      expect(insertCall!.values).toContain('report.pdf');
-      expect(insertCall!.values).toContain(1024);
+      expect(insertCall!.values).toContain(2 * 1024 * 1024);
+      expect(insertCall!.values).not.toContain(1024);
+    });
+
+    it('addAttachment rejects and cleans up an attachment whose real size exceeds the 5MB cap', async () => {
+      const deleteIfExists = jest.fn().mockResolvedValue(undefined);
+      const getObjectSize = jest.fn().mockResolvedValue(6 * 1024 * 1024);
+      const db = { withTenant: jest.fn().mockResolvedValue([{ id: 'issue-1' }]) };
+      const svc = new IssuesService(
+        db as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        { getObjectSize, deleteIfExists } as unknown as StorageService,
+      );
+
+      await expect(svc.addAttachment('company-1', 'issue-1', 'user-1', {
+        storageKey: 'company-1/issues/project-1/uuid.pdf', filename: 'report.pdf', sizeBytes: 1024,
+      })).rejects.toThrow(BadRequestException);
+
+      expect(deleteIfExists).toHaveBeenCalledWith('company-1/issues/project-1/uuid.pdf');
+    });
+
+    it('addAttachment rejects an attachment for an issue that does not exist under this company', async () => {
+      const db = { withTenant: jest.fn().mockResolvedValue([]) };
+      const getObjectSize = jest.fn();
+      const svc = new IssuesService(
+        db as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        { getObjectSize } as unknown as StorageService,
+      );
+
+      await expect(svc.addAttachment('company-1', 'someone-elses-issue', 'user-1', {
+        storageKey: 'company-1/issues/project-1/uuid.pdf', filename: 'report.pdf', sizeBytes: 1024,
+      })).rejects.toThrow(NotFoundException);
+
+      expect(getObjectSize).not.toHaveBeenCalled();
     });
 
     // Follow-up fix: getActivities() previously returned attachment_url

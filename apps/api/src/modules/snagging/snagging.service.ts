@@ -339,6 +339,8 @@ export class SnaggingService {
   // size, then hand back a presigned PUT URL. The client uploads directly
   // to storage; our API never sees the file bytes.
   async getAttachmentUploadUrl(companyId: string, projectId: string, dto: SnagAttachmentUploadUrlDto) {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+
     const ext = dto.filename.split('.').pop()?.toLowerCase() ?? '';
     if (!SNAG_ATTACHMENT_ALLOWED_EXTENSIONS.has(ext)) {
       throw new BadRequestException(
@@ -361,6 +363,28 @@ export class SnaggingService {
   // the storage key (not a raw presigned URL, which would expire), resolved
   // to a live presigned URL by getActivities() when needed.
   async addAttachment(companyId: string, snagId: string, userId: string, dto: AddSnagAttachmentDto) {
+    // No projectId is threaded through this route today (see
+    // snagging.controller.ts) -- confirming the snag item itself exists
+    // under this company is the authorization boundary available here.
+    const [snag] = await this.db.withTenant(companyId, sql => sql`
+      SELECT id FROM snag_items WHERE id = ${snagId} AND company_id = ${companyId}
+    `);
+    if (!snag) throw new NotFoundException(`Snag item ${snagId} not found.`);
+
+    // Real post-upload size enforcement -- dto.sizeBytes was only ever
+    // checked at upload-url time; it is not trusted for persistence.
+    const actualSizeBytes = await this.storage.getObjectSize(dto.storageKey);
+    if (actualSizeBytes === null) {
+      throw new BadRequestException('Uploaded file not found in storage. Complete the upload before adding the attachment.');
+    }
+    if (actualSizeBytes > SNAG_ATTACHMENT_MAX_SIZE) {
+      await this.storage.deleteIfExists(dto.storageKey);
+      throw new BadRequestException(
+        `Uploaded file (${(actualSizeBytes / 1024 / 1024).toFixed(1)} MB) exceeds the ${SNAG_ATTACHMENT_MAX_SIZE / 1024 / 1024} MB ` +
+        'limit for an attachment. The upload has been rejected and removed.',
+      );
+    }
+
     return this.db.withTenant(companyId, async (sql) => {
       const [activity] = await sql`
         INSERT INTO snag_activities (
@@ -368,12 +392,22 @@ export class SnaggingService {
           attachment_url, attachment_name, attachment_size_bytes, performed_by
         ) VALUES (
           ${snagId}, ${companyId}, 'comment', ${dto.comment ?? `Attached file: ${dto.filename}`},
-          ${dto.storageKey}, ${dto.filename}, ${dto.sizeBytes}, ${userId}
+          ${dto.storageKey}, ${dto.filename}, ${actualSizeBytes}, ${userId}
         )
         RETURNING *
       `;
       await sql`UPDATE snag_items SET updated_at = NOW() WHERE id = ${snagId} AND company_id = ${companyId}`;
       return activity;
     });
+  }
+
+  // Same rationale as captures.service.ts's assertProjectBelongsToCompany --
+  // snagging.controller.ts has no @RequireProjectPermission gate on the
+  // attachment-upload-url route, unlike update/delete/forceStatus.
+  private async assertProjectBelongsToCompany(companyId: string, projectId: string): Promise<void> {
+    const [project] = await this.db.withTenant(companyId, sql => sql`
+      SELECT id FROM projects WHERE id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!project) throw new NotFoundException(`Project ${projectId} not found.`);
   }
 }
