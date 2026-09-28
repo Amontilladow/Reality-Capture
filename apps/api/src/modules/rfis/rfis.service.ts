@@ -426,7 +426,7 @@ export class RfisService {
   // branded font, this is a functional section marker"). Bold heading +
   // regular filename/type line, per the ticket's explicit font split.
   private addAttachmentDividerPage(mainDoc: PDFDocument, headingFont: PDFFont, bodyFont: PDFFont, filename: string, typeLabel: string): void {
-    const [pageWidth, pageHeight] = PageSizes.A4;
+    const [, pageHeight] = PageSizes.A4;
     const page = mainDoc.addPage(PageSizes.A4);
     const margin = 50;
     page.drawText('ATTACHMENT', {

@@ -1,5 +1,12 @@
 # EngineeringOS v0.1 — Release Candidate Verification Report
 
+> **Historical record**, scoped to the v0.1 workflow (login through BIM
+> element property inspection) only — it predates Issues, Drawings, RFIs,
+> Submittals, Transmittals, QA, Snagging, Reports, Chat, Workforce, and
+> the AI assistant. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md) for
+> current, source-verified status across the whole product, including a
+> fresh set of `pnpm typecheck`/`test`/`build`/`lint` results.
+
 Date of verification: this session. Scope: the complete user workflow
 from login through BIM element property inspection, across `apps/api`,
 `apps/ifc-service`, and `apps/web`.

@@ -2,6 +2,7 @@ import {
   Controller, Post, Body, Get, HttpCode, HttpStatus, Req,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -20,6 +21,7 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Public()
+  @Throttle({ auth: { limit: 10, ttl: 60_000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sign in with email and password' })
@@ -29,6 +31,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ auth: { limit: 10, ttl: 60_000 } })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Exchange a refresh token for new tokens' })
@@ -56,6 +59,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ auth: { limit: 10, ttl: 60_000 } })
   @Post('forgot-password')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Request a password reset email' })
@@ -64,6 +68,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ auth: { limit: 10, ttl: 60_000 } })
   @Post('reset-password')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Reset password using a reset token' })

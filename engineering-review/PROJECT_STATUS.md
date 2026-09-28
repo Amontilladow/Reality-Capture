@@ -1,5 +1,12 @@
 # EngineeringOS — PROJECT_STATUS.md
 
+> **Historical record.** This describes the v0.1 Release Candidate /
+> early-Sprint-2 snapshot of the codebase. Many modules this document
+> lists as upcoming (Issue Management, Drawings, RFIs, QA, AI, Workforce)
+> are now implemented. See
+> [`CURRENT_STATUS.md`](CURRENT_STATUS.md) for the current, source-verified
+> state. Kept below for its historical record of decisions and sequencing.
+
 Last updated: end of the session that produced the v0.1 RC Verification
 Report and the BIM Viewer frontend slice.
 

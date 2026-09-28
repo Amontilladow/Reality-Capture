@@ -1,6 +1,11 @@
 import { Controller, Get, Post, Patch, Body, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { BimService } from './bim.service';
+import { GetModelUploadUrlDto } from './dto/get-model-upload-url.dto';
+import { RegisterBimModelDto } from './dto/register-bim-model.dto';
+import { UpdateElementStatusDto } from './dto/update-element-status.dto';
+import { LinkCaptureToElementDto } from './dto/link-capture-to-element.dto';
+import { CreatePinForElementDto } from './dto/create-pin-for-element.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireFeature } from '../../common/decorators/require-feature.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
@@ -20,13 +25,13 @@ export class BimController {
 
   @Post('models/upload-url')
   @ApiOperation({ summary: 'Get presigned URL for IFC model upload' })
-  async getModelUploadUrl(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() body: { filename: string }) {
+  async getModelUploadUrl(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() body: GetModelUploadUrlDto) {
     return { data: await this.svc.getModelUploadUrl(u.companyId, pid, body.filename), error: null };
   }
 
   @Post('models')
   @ApiOperation({ summary: 'Register a BIM model after upload and queue IFC parsing' })
-  async registerModel(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: { name: string; storageKey: string; format?: string; originalFilename?: string }) {
+  async registerModel(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: RegisterBimModelDto) {
     return { data: await this.svc.registerModel(u.companyId, pid, u.id, dto), error: null };
   }
 
@@ -84,13 +89,13 @@ export class BimController {
 
   @Patch('elements/:eid/status')
   @ApiOperation({ summary: 'Update construction status for a BIM element' })
-  async updateStatus(@CurrentUser() u: AuthenticatedUser, @Param('eid') eid: string, @Body() body: { status: string }) {
+  async updateStatus(@CurrentUser() u: AuthenticatedUser, @Param('eid') eid: string, @Body() body: UpdateElementStatusDto) {
     return { data: await this.svc.updateElementStatus(u.companyId, eid, body.status), error: null };
   }
 
   @Post('elements/:eid/captures')
   @ApiOperation({ summary: 'Link a capture to a BIM element' })
-  async linkCapture(@CurrentUser() u: AuthenticatedUser, @Param('eid') eid: string, @Body() body: { captureId: string; linkType?: string }) {
+  async linkCapture(@CurrentUser() u: AuthenticatedUser, @Param('eid') eid: string, @Body() body: LinkCaptureToElementDto) {
     return { data: await this.svc.linkCaptureToElement(u.companyId, body.captureId, eid, u.id, body.linkType), error: null };
   }
 
@@ -101,7 +106,7 @@ export class BimController {
 
   @Post('elements/:eid/pins')
   @ApiOperation({ summary: 'Create a new pin attached to this element, with no floor-plan position yet' })
-  async createPinForElement(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('eid') eid: string, @Body() body: { name?: string; assignedTo?: string }) {
+  async createPinForElement(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('eid') eid: string, @Body() body: CreatePinForElementDto) {
     return { data: await this.svc.createPinForElement(u.companyId, pid, eid, u.id, body.name || 'Untitled pin', body.assignedTo), error: null };
   }
 

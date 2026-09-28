@@ -1,5 +1,4 @@
 import { io, type Socket } from 'socket.io-client';
-import { API_BASE } from './api';
 import { useAuthStore } from '../store/auth.store';
 
 // Singleton Socket.io connection for the live chat widget (namespace /chat).

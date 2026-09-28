@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import type { Queue } from 'bull';
 import { BimService } from './bim.service';
 import type { DatabaseService } from '../../database/database.service';
@@ -135,5 +135,35 @@ describe('BimService.createPinForElement', () => {
       companyId, projectId, 'user-1',
       expect.objectContaining({ assignedTo: undefined }),
     );
+  });
+});
+
+describe('BimService.getModelUploadUrl', () => {
+  const companyId = 'company-1';
+  const projectId = 'project-1';
+
+  function makeService(getUploadUrl = jest.fn().mockResolvedValue({ uploadUrl: 'https://example.invalid/put' })) {
+    const db = {};
+    const storage = { generateKey: jest.fn().mockReturnValue('storage/key.ifc'), getUploadUrl };
+    const issues = {};
+    const queue = {};
+    return { svc: new BimService(
+      db as unknown as DatabaseService,
+      storage as unknown as StorageService,
+      issues as unknown as IssuesService,
+      queue as unknown as Queue,
+    ), storage };
+  }
+
+  it('rejects a filename with no recognized model extension before issuing an upload URL', async () => {
+    const { svc, storage } = makeService();
+    await expect(svc.getModelUploadUrl(companyId, projectId, 'malware.exe')).rejects.toThrow(BadRequestException);
+    expect(storage.getUploadUrl).not.toHaveBeenCalled();
+  });
+
+  it('allows a real .ifc filename, case-insensitively', async () => {
+    const { svc, storage } = makeService();
+    await svc.getModelUploadUrl(companyId, projectId, 'Model.IFC');
+    expect(storage.getUploadUrl).toHaveBeenCalled();
   });
 });
