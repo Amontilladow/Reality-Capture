@@ -1,5 +1,14 @@
 # EngineeringOS Reality Capture — Master Backlog
 
+> **Historical record.** Written at the v0.1 Release Candidate stage; the
+> "highest-priority unfinished task" framing below describes that era's
+> backlog, much of which has since shipped (Issues, Drawings, RFIs,
+> Submittals, Transmittals, QA, Snagging, Reports, Chat, Workforce, AI
+> assistant). See [`CURRENT_STATUS.md`](CURRENT_STATUS.md) for current
+> module status and [`NEXT_STEPS.md`](NEXT_STEPS.md) for the current
+> prioritized backlog. Kept below for historical sequencing/decision
+> context.
+
 **EngineeringOS v0.1 Release Candidate: VERIFIED.** Full RC verification
 (workflow PASS/FAIL matrix, subsystem checks, deployment guide, release
 checklist) is in `engineering-review/RC_VERIFICATION_REPORT_v0.1.md`. Zero

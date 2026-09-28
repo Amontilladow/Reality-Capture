@@ -1,5 +1,17 @@
 # EngineeringOS — KNOWN_ISSUES.md
 
+> **Historical record — at least one entry below is stale.** The "Major"
+> item claiming "Production deploys never run new migrations" is
+> contradicted by the current `render.yaml`, which runs migrations via a
+> `preDeployCommand` before every release takes traffic (this document's
+> own entry notes the underlying incident was "Confirmed fixed
+> 2026-08-06" — the `preDeployCommand` fix was apparently added after this
+> file was last updated). See [`CURRENT_STATUS.md`](CURRENT_STATUS.md) §5
+> for the current, verified migration story, and §2 for gaps found in the
+> latest review pass (not all of which overlap with what's listed below).
+> The rest of this document has not been re-verified line by line; treat
+> it as historical rather than current.
+
 Updated after an independent third-party AI audit of the codebase.
 Findings from that audit are marked **[Audit]** below, each independently
 re-verified against the actual source (not taken on faith from the

@@ -1,5 +1,12 @@
 # EngineeringOS — REMAINING_WORK.md
 
+> **Historical record.** Its "NEXT OBJECTIVE" (Issue Management in the BIM
+> viewer) and the items after it describe a backlog from before Issues,
+> Drawings, RFIs, Submittals, Transmittals, QA, and Snagging existed as
+> real modules — most of that has since shipped in some form. See
+> [`CURRENT_STATUS.md`](CURRENT_STATUS.md) for current module status and
+> [`NEXT_STEPS.md`](NEXT_STEPS.md) for the current prioritized backlog.
+
 Priority order. Each item includes estimated complexity, dependencies,
 and risks.
 

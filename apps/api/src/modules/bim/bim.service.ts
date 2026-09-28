@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import { DatabaseService } from '../../database/database.service';
@@ -6,6 +6,14 @@ import { StorageService } from '../storage/storage.service';
 import { IssuesService } from '../issues/issues.service';
 import type { PaginationQuery, IfcParseJobData } from '@engineeringos/types';
 import { IFC_PROCESSING_QUEUE, IFC_PARSE_JOB_NAME } from '@engineeringos/types';
+
+// apps/ifc-service's processor assumes IFC SPF syntax unconditionally --
+// there is no NWD/RVT parsing path, so those are not accepted for upload
+// even though bim_models.format historically allowed them as column values
+// (see register-bim-model.dto.ts). Restricting the upload itself, not just
+// the registration DTO, closes the actual gap: today ANY filename is
+// accepted here with zero server-side check.
+const BIM_MODEL_ALLOWED_EXTENSIONS = new Set(['ifc']);
 
 @Injectable()
 export class BimService {
@@ -33,7 +41,23 @@ export class BimService {
   }
 
   async getModelUploadUrl(companyId: string, projectId: string, filename: string) {
+    const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+    if (!BIM_MODEL_ALLOWED_EXTENSIONS.has(ext)) {
+      throw new BadRequestException(
+        `File type ".${ext}" is not supported. Allowed: ${[...BIM_MODEL_ALLOWED_EXTENSIONS].join(', ')}.`,
+      );
+    }
     const key = this.storage.generateKey(companyId, projectId, 'captures', filename);
+    // NOTE: the 500 MB figure below is documentation only -- StorageService.
+    // getUploadUrl()'s maxSizeBytes parameter is not actually wired into the
+    // presigned PutObjectCommand (see storage.service.ts's leading-underscore
+    // _maxSizeBytes), so nothing server-side currently rejects a larger
+    // upload. Flagged in CURRENT_STATUS.md as a cross-cutting gap affecting
+    // every presigned-upload caller in this codebase, not fixed here --
+    // properly enforcing it means switching to a presigned POST policy with
+    // a content-length-range condition, which changes every upload caller's
+    // request shape (PUT with a body -> POST with form fields) and is too
+    // broad for this pass.
     const url = await this.storage.getUploadUrl(key, 'application/octet-stream', 500 * 1024 * 1024);
     return { ...url, storageKey: key };
   }

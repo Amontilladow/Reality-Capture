@@ -1,6 +1,11 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { BuildingsService } from './buildings.service';
+import { CreateBuildingDto } from './dto/create-building.dto';
+import { UpdateBuildingDto } from './dto/update-building.dto';
+import { CreateLevelDto } from './dto/create-level.dto';
+import { CreateLocationDto } from './dto/create-location.dto';
+import { UpdateLocationDto } from './dto/update-location.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '@engineeringos/types';
 
@@ -12,18 +17,18 @@ export class BuildingsController {
 
   @Post('buildings')
   @ApiOperation({ summary: 'Add a building to a project' })
-  async createBuilding(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: { name: string; code?: string; totalLevels?: number }) {
+  async createBuilding(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: CreateBuildingDto) {
     return { data: await this.svc.createBuilding(u.companyId, pid, u.id, dto), error: null };
   }
 
   @Patch('buildings/:bid')
-  async updateBuilding(@CurrentUser() u: AuthenticatedUser, @Param('bid') bid: string, @Body() dto: { name?: string; phase?: string }) {
+  async updateBuilding(@CurrentUser() u: AuthenticatedUser, @Param('bid') bid: string, @Body() dto: UpdateBuildingDto) {
     return { data: await this.svc.updateBuilding(u.companyId, bid, dto), error: null };
   }
 
   @Post('buildings/:bid/levels')
   @ApiOperation({ summary: 'Add a level to a building' })
-  async createLevel(@CurrentUser() u: AuthenticatedUser, @Param('bid') bid: string, @Body() dto: { name: string; elevationM?: number; levelOrder: number }) {
+  async createLevel(@CurrentUser() u: AuthenticatedUser, @Param('bid') bid: string, @Body() dto: CreateLevelDto) {
     return { data: await this.svc.createLevel(u.companyId, bid, dto), error: null };
   }
 
@@ -34,7 +39,7 @@ export class BuildingsController {
 
   @Post('buildings/:bid/levels/:lid/locations')
   @ApiOperation({ summary: 'Add a location to a level' })
-  async createLocation(@CurrentUser() u: AuthenticatedUser, @Param('lid') lid: string, @Body() dto: { name: string; description?: string }) {
+  async createLocation(@CurrentUser() u: AuthenticatedUser, @Param('lid') lid: string, @Body() dto: CreateLocationDto) {
     return { data: await this.svc.createLocation(u.companyId, lid, dto), error: null };
   }
 
@@ -50,7 +55,7 @@ export class BuildingsController {
   async updateLocation(
     @CurrentUser() u: AuthenticatedUser,
     @Param('id') id: string,
-    @Body() dto: { name?: string; description?: string; posXNorm?: number; posYNorm?: number; elementId?: string | null },
+    @Body() dto: UpdateLocationDto,
   ) {
     return { data: await this.svc.updateLocation(u.companyId, id, dto), error: null };
   }

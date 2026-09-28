@@ -2,6 +2,7 @@ import { Controller, Get, Post, Delete, Body, Param, Query, HttpCode, HttpStatus
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { DrawingsService } from './drawings.service';
 import { CreateDrawingDto } from './dto/create-drawing.dto';
+import { GetDrawingUploadUrlDto } from './dto/get-upload-url.dto';
 import { LinkCaptureToDrawingDto } from './dto/link-capture.dto';
 import { CreatePinDto } from './dto/create-pin.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -15,7 +16,7 @@ export class DrawingsController {
 
   @Post('upload-url')
   @ApiOperation({ summary: 'Get presigned URL for drawing PDF upload' })
-  async getUploadUrl(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() body: { filename: string }) {
+  async getUploadUrl(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() body: GetDrawingUploadUrlDto) {
     return { data: await this.svc.getUploadUrl(u.companyId, pid, body.filename), error: null };
   }
 

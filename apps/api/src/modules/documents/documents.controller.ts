@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { DocumentsService } from './documents.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { LinkDocumentDto } from './dto/link-document.dto';
+import { GetDocumentUploadUrlDto } from './dto/get-upload-url.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 
@@ -13,7 +14,7 @@ export class DocumentsController {
   constructor(private readonly svc: DocumentsService) {}
 
   @Post('upload-url')
-  async getUploadUrl(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() body: { filename: string; contentType?: string }) {
+  async getUploadUrl(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() body: GetDocumentUploadUrlDto) {
     return { data: await this.svc.getUploadUrl(u.companyId, pid, body.filename, body.contentType), error: null };
   }
 

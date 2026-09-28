@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel superseded runs on the same branch/PR to save CI minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Install, typecheck, test, build, lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # pnpm must be on PATH before actions/setup-node's cache: 'pnpm'
+      # option can resolve the store path.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # No production secrets and no live Postgres/Redis/S3/Qdrant/AI
+      # credentials are required for any of the checks below -- every unit
+      # test in this repo mocks its DB/storage/queue dependencies rather
+      # than hitting real infrastructure. See CURRENT_STATUS.md for what
+      # that leaves unverified (RLS under a real restricted DB role,
+      # browser-level rendering, IFC pipeline performance at scale).
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # install's own postinstall hook already runs this, but it's kept as
+      # an explicit, independently-inspectable step so a change to that
+      # hook can't silently drop typecheck's dependency on it.
+      - name: Build @engineeringos/types
+        run: pnpm --filter @engineeringos/types build
+
+      # Recursive across every workspace package that declares a typecheck
+      # script: packages/types, apps/api, apps/ifc-service, apps/mobile,
+      # apps/agent. apps/web has no standalone typecheck script -- its
+      # tsc -b check is folded into the build step below instead.
+      # apps/browser-extension and tools/bim-debug have no TypeScript
+      # source to typecheck.
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # Recursive across every workspace package that declares a test
+      # script: apps/api (Jest), apps/ifc-service (Jest), apps/agent
+      # (node:test via tsx), apps/browser-extension (node:test),
+      # tools/bim-debug (Jest -- its one spec self-skips without a real
+      # customer IFC file at BIM_DEBUG_SOURCE_IFC; see the file's own
+      # header comment). apps/web and apps/mobile have no test script yet
+      # -- see CURRENT_STATUS.md's browser-verification-gap note.
+      - name: Test
+        run: pnpm test
+
+      # Builds packages/types, then apps/api, apps/ifc-service, and
+      # apps/web (the only apps with a build script). apps/web's build
+      # includes `tsc -b`, which is this repo's only standalone typecheck
+      # of the web app's own source.
+      - name: Build
+        run: pnpm build
+
+      # Recursive across apps/api and apps/web (the only two with a lint
+      # script). Real errors fail this step -- no `|| true`, no
+      # --max-warnings override. Pre-existing warnings (not errors) in
+      # apps/web are left as-is; see CURRENT_STATUS.md.
+      - name: Lint
+        run: pnpm lint

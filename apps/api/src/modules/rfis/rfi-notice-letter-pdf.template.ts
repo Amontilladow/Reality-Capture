@@ -12,8 +12,6 @@ import { createElement as h } from 'react';
 // same product as the RFI PDF export, not a differently-branded document.
 const INK = '#0A141C';
 const INK_MUTED = '#4A6178';
-const BORDER = '#B9C6CE';
-const SECTION_FILL = '#EAF0F4';
 const SIGNAL = '#E56A1F';
 const BLUEPRINT = '#1E6E93';
 

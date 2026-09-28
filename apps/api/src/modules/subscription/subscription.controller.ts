@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Req, Headers, RawBodyRequest } from '@nest
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { SubscriptionService } from './subscription.service';
+import { CheckoutDto } from './dto/checkout.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import type { AuthenticatedUser } from '@engineeringos/types';
@@ -28,7 +29,7 @@ export class SubscriptionController {
   @Post('checkout')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a Stripe checkout session for plan upgrade' })
-  async checkout(@CurrentUser() u: AuthenticatedUser, @Body() dto: { tier: string; returnUrl: string }) {
+  async checkout(@CurrentUser() u: AuthenticatedUser, @Body() dto: CheckoutDto) {
     return { data: await this.sub.createCheckoutSession(u.companyId, dto.tier, dto.returnUrl), error: null };
   }
 

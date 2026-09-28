@@ -7,6 +7,7 @@ import { IssuesService } from './issues.service';
 import { CreateIssueDto } from './dto/create-issue.dto';
 import { UpdateIssueDto } from './dto/update-issue.dto';
 import { AddActivityDto } from './dto/add-activity.dto';
+import { AddCaptureToIssueDto } from './dto/add-capture-to-issue.dto';
 import { ForwardIssueDto } from './dto/forward-issue.dto';
 import { ForceStatusDto } from './dto/force-status.dto';
 import { BulkCloseIssuesDto } from './dto/bulk-close-issues.dto';
@@ -200,7 +201,7 @@ export class IssuesController {
   async addCapture(
     @CurrentUser() u: AuthenticatedUser,
     @Param('id') id: string,
-    @Body() body: { captureId: string; isPrimary?: boolean; caption?: string },
+    @Body() body: AddCaptureToIssueDto,
   ) {
     return { data: await this.svc.addCapture(u.companyId, id, u.id, body.captureId, body.isPrimary, body.caption), error: null };
   }
