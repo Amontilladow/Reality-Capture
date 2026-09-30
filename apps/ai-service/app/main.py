@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 from app.config import settings
-from app.routers import search, assistant, progress, change_detection, reports, ingest
+from app.routers import search, assistant, progress, change_detection, reports, ingest, risk
 from app.knowledge.vector_store import init_collections
 
 logging.basicConfig(level=logging.INFO)
@@ -27,6 +27,7 @@ app.include_router(progress.router,         prefix="/progress",         tags=["p
 app.include_router(change_detection.router, prefix="/change-detection", tags=["change-detection"])
 app.include_router(reports.router,          prefix="/report",           tags=["reports"])
 app.include_router(ingest.router,           prefix="/ingest",           tags=["ingestion"])
+app.include_router(risk.router,             prefix="/risk",             tags=["risk"])
 
 @app.on_event("startup")
 async def startup():

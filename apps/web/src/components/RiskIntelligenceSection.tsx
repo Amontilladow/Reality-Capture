@@ -8,7 +8,7 @@ import { apiErrorMessage } from '../lib/api';
 import {
   recalculateRisk, getRiskSummary, getTopRisks, getEmergingRisks, getRiskByDiscipline,
   getRiskClusters, getRiskDataAvailability, listRisks, getRiskChain, getRiskEvidence, getRiskHistory,
-  overrideRisk, clearRiskOverride, setRiskStatus,
+  overrideRisk, clearRiskOverride, setRiskStatus, getAiBriefing, getAiExplanation,
   type Risk, type RiskLevel, type RiskStatus,
 } from '../lib/risk.api';
 
@@ -86,6 +86,8 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
     mutationFn: () => recalculateRisk(projectId),
     onSuccess: invalidateAll,
   });
+
+  const aiBriefingMutation = useMutation({ mutationFn: () => getAiBriefing(projectId) });
 
   const summary = summaryQuery.data;
   const availability = dataAvailabilityQuery.data;
@@ -167,13 +169,38 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
             <StatTile label="Overdue Items" value={summary.overdueCount} tone={summary.overdueCount > 0 ? 'danger' : undefined} />
           </div>
 
-          {/* AI Project Risk Briefing — deterministic, grounded in the summary above; never a free-floating claim */}
+          {/* Risk Summary — deterministic, grounded in the summary above; never a free-floating claim */}
           {summary.totalOpenRisks > 0 && (
             <div className="panel p-4">
-              <div className="field-label !mb-2">Project Risk Briefing</div>
+              <div className="field-label !mb-2">Risk Summary</div>
               <p className="text-sm text-ink-300 leading-relaxed">
                 {buildBriefing(summary, topQuery.data ?? [], clustersQuery.data ?? [])}
               </p>
+            </div>
+          )}
+
+          {/* AI Project Risk Briefing — an LLM-polished narrative generated
+              on demand from the exact same computed data above, never from
+              a fresh retrieval. Clearly labeled as AI-generated and never
+              auto-fetched, since it's a real model call with real latency. */}
+          {summary.totalOpenRisks > 0 && (
+            <div className="panel p-4">
+              <div className="flex items-center justify-between !mb-2">
+                <div className="field-label !mb-0">AI Project Risk Briefing</div>
+                <button onClick={() => aiBriefingMutation.mutate()} disabled={aiBriefingMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
+                  {aiBriefingMutation.isPending ? 'Generating…' : aiBriefingMutation.data ? 'Regenerate' : 'Generate'}
+                </button>
+              </div>
+              {aiBriefingMutation.isError && <p className="field-error">{apiErrorMessage(aiBriefingMutation.error)}</p>}
+              {aiBriefingMutation.data && 'unavailable' in aiBriefingMutation.data && (
+                <p className="text-sm text-ink-500 italic">{aiBriefingMutation.data.reason}</p>
+              )}
+              {aiBriefingMutation.data && 'narrative' in aiBriefingMutation.data && (
+                <p className="text-sm text-ink-300 leading-relaxed">{aiBriefingMutation.data.narrative}</p>
+              )}
+              {!aiBriefingMutation.data && !aiBriefingMutation.isPending && (
+                <p className="text-xs text-ink-500">Generate an AI-polished narrative of the risk summary above.</p>
+              )}
             </div>
           )}
 
@@ -382,6 +409,7 @@ function RiskDetailDrawer({ projectId, riskId, onClose, onChanged, onViewGraph }
   });
   const clearOverrideMutation = useMutation({ mutationFn: () => clearRiskOverride(projectId, riskId), onSuccess: invalidate });
   const statusMutation = useMutation({ mutationFn: (status: RiskStatus) => setRiskStatus(projectId, riskId, status), onSuccess: invalidate });
+  const aiExplanationMutation = useMutation({ mutationFn: () => getAiExplanation(projectId, riskId) });
 
   const risk = riskQuery.data;
 
@@ -414,6 +442,25 @@ function RiskDetailDrawer({ projectId, riskId, onClose, onChanged, onViewGraph }
               <p className="text-sm text-ink-300">{risk.explanation}</p>
             </div>
           )}
+
+          <div>
+            <div className="flex items-center justify-between !mb-1">
+              <div className="field-label !mb-0">AI explanation</div>
+              <button onClick={() => aiExplanationMutation.mutate()} disabled={aiExplanationMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
+                {aiExplanationMutation.isPending ? 'Generating…' : aiExplanationMutation.data ? 'Regenerate' : 'Generate'}
+              </button>
+            </div>
+            {aiExplanationMutation.isError && <p className="field-error">{apiErrorMessage(aiExplanationMutation.error)}</p>}
+            {aiExplanationMutation.data && 'unavailable' in aiExplanationMutation.data && (
+              <p className="text-sm text-ink-500 italic">{aiExplanationMutation.data.reason}</p>
+            )}
+            {aiExplanationMutation.data && 'narrative' in aiExplanationMutation.data && (
+              <p className="text-sm text-ink-300">{aiExplanationMutation.data.narrative}</p>
+            )}
+            {!aiExplanationMutation.data && !aiExplanationMutation.isPending && (
+              <p className="text-xs text-ink-500">Generate an AI-polished explanation, grounded in the same factors and evidence shown here.</p>
+            )}
+          </div>
 
           <div>
             <div className="field-label !mb-2">Risk factors</div>
