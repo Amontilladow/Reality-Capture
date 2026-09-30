@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import type { RiskLevel, RiskStatus, RiskDiscipline } from '@engineeringos/types';
+import type { RiskLevel, RiskStatus, RiskDiscipline, RiskNodeType } from '@engineeringos/types';
 import { DatabaseService } from '../../database/database.service';
 import { RiskGraphService, type GraphNodeRow } from './risk-graph.service';
 import { RelationshipExtractionService } from './relationship-extraction.service';
@@ -464,6 +464,60 @@ export class RiskService {
   async getRiskHistory(companyId: string, riskId: string) {
     return this.db.withTenant(companyId, sql => sql`
       SELECT * FROM risk_snapshots WHERE risk_id = ${riskId} ORDER BY snapshot_at ASC`);
+  }
+
+  // ── Graph visualization support (brief sections 11, 28-29) ──────────────
+
+  /**
+   * The whole-project (or filtered) graph for the Risk Graph visualization.
+   * Bounded by whatever real data exists for the project -- there is no
+   * separate depth/node cap here the way getNeighborhood has one, since
+   * this reads the already-persisted, already-bounded per-project node set
+   * rather than doing a live traversal. Each node is annotated with its
+   * associated risk's score/level/status when one exists, so the frontend
+   * can filter/color by risk level without a second round trip.
+   */
+  async getProjectGraph(companyId: string, projectId: string, filters: { nodeTypes?: RiskNodeType[]; discipline?: string } = {}) {
+    const nodes = await this.graph.getNodesByProject(companyId, projectId, filters.nodeTypes);
+    const filteredNodes = filters.discipline ? nodes.filter(n => n.discipline === filters.discipline) : nodes;
+    const nodeIds = filteredNodes.map(n => n.id);
+    const edges = await this.graph.getEdgesAmongNodes(companyId, projectId, nodeIds);
+    return { nodes: await this.annotateNodesWithRisk(companyId, projectId, filteredNodes), edges };
+  }
+
+  /** Same shape as getProjectGraph, but scoped to one risk's bounded neighborhood instead of the whole project (section 11's "expand/focus" view). */
+  async getGraphNeighborhood(companyId: string, projectId: string, rootNodeId: string, maxDepth?: number) {
+    const { nodes, edges } = await this.graph.getNeighborhood(companyId, rootNodeId, { maxDepth });
+    return { nodes: await this.annotateNodesWithRisk(companyId, projectId, nodes), edges };
+  }
+
+  private async annotateNodesWithRisk(companyId: string, projectId: string, nodes: GraphNodeRow[]) {
+    const nodeIds = nodes.map(n => n.id);
+    const riskRows = nodeIds.length > 0
+      ? await this.db.withTenant(companyId, sql => sql<{ rootNodeId: string; score: number; level: RiskLevel; status: RiskStatus }[]>`
+          SELECT root_node_id, score, level, status FROM risks WHERE project_id = ${projectId} AND root_node_id = ANY(${nodeIds})`)
+      : [];
+    const riskByNode = new Map(riskRows.map(r => [r.rootNodeId, r]));
+    return nodes.map(n => ({ ...n, risk: riskByNode.get(n.id) ?? null }));
+  }
+
+  /** Node click detail (section 29): the node itself, its associated risk if any, and its direct neighbors with relationship context. */
+  async getNodeDetail(companyId: string, nodeId: string) {
+    const node = await this.graph.getNode(companyId, nodeId);
+    if (!node) throw new NotFoundException('Node not found.');
+
+    const [outgoing, incoming, risk] = await Promise.all([
+      this.graph.getOutgoingEdges(companyId, nodeId),
+      this.graph.getIncomingEdges(companyId, nodeId),
+      this.getRiskByRootNode(companyId, nodeId),
+    ]);
+
+    const related = await Promise.all([
+      ...outgoing.map(async (e) => ({ node: await this.graph.getNode(companyId, e.toNodeId), relationshipType: e.relationshipType, direction: 'outgoing' as const, source: e.source, confidence: e.confidence })),
+      ...incoming.map(async (e) => ({ node: await this.graph.getNode(companyId, e.fromNodeId), relationshipType: e.relationshipType, direction: 'incoming' as const, source: e.source, confidence: e.confidence })),
+    ]);
+
+    return { node, risk, related: related.filter(r => r.node !== null) };
   }
 
   /** Empty-state / data-availability honesty (brief section 44). */

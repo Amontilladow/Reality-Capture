@@ -1,9 +1,8 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Delete } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import type { AuthenticatedUser } from '@engineeringos/types';
+import type { AuthenticatedUser, RiskNodeType } from '@engineeringos/types';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RiskService } from './risk.service';
-import { RiskGraphService } from './risk-graph.service';
 import { OverrideRiskDto } from './dto/override-risk.dto';
 import { SetRiskStatusDto } from './dto/set-risk-status.dto';
 import { AssignRiskOwnerDto } from './dto/assign-risk-owner.dto';
@@ -14,7 +13,6 @@ import { AssignRiskOwnerDto } from './dto/assign-risk-owner.dto';
 export class RiskController {
   constructor(
     private readonly risk: RiskService,
-    private readonly graph: RiskGraphService,
   ) {}
 
   @Post('recalculate')
@@ -73,19 +71,30 @@ export class RiskController {
   }
 
   @Get('graph')
-  @ApiOperation({ summary: 'Bounded graph neighborhood for the Risk Graph visualization' })
+  @ApiOperation({ summary: 'Project Risk Graph for visualization -- the whole project graph (optionally filtered), or one risk\'s bounded neighborhood' })
   async getGraph(
     @CurrentUser() u: AuthenticatedUser,
     @Param('projectId') pid: string,
     @Query('rootNodeId') rootNodeId?: string,
     @Query('maxDepth') maxDepth?: string,
+    @Query('nodeTypes') nodeTypes?: string,
+    @Query('discipline') discipline?: string,
   ) {
     if (rootNodeId) {
-      const neighborhood = await this.graph.getNeighborhood(u.companyId, rootNodeId, { maxDepth: maxDepth ? Number(maxDepth) : undefined });
-      return { data: neighborhood, error: null };
+      const result = await this.risk.getGraphNeighborhood(u.companyId, pid, rootNodeId, maxDepth ? Number(maxDepth) : undefined);
+      return { data: result, error: null };
     }
-    const nodes = await this.graph.getNodesByProject(u.companyId, pid);
-    return { data: { nodes, edges: [] }, error: null };
+    const result = await this.risk.getProjectGraph(u.companyId, pid, {
+      nodeTypes: nodeTypes ? (nodeTypes.split(',') as RiskNodeType[]) : undefined,
+      discipline,
+    });
+    return { data: result, error: null };
+  }
+
+  @Get('graph/nodes/:nodeId')
+  @ApiOperation({ summary: 'Node detail for the graph visualization: the node, its associated risk if any, and its direct neighbors' })
+  async getGraphNodeDetail(@CurrentUser() u: AuthenticatedUser, @Param('nodeId') nodeId: string) {
+    return { data: await this.risk.getNodeDetail(u.companyId, nodeId), error: null };
   }
 
   @Get()

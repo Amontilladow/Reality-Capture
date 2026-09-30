@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
 import { Modal } from './ui/Modal';
+import { RiskGraphView } from './RiskGraphView';
 import { apiErrorMessage } from '../lib/api';
 import {
   recalculateRisk, getRiskSummary, getTopRisks, getEmergingRisks, getRiskByDiscipline,
@@ -65,6 +66,8 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
   const [levelFilter, setLevelFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [graphOpen, setGraphOpen] = useState(false);
+  const [graphFocusNodeId, setGraphFocusNodeId] = useState<string | undefined>(undefined);
 
   const invalidateAll = () => {
     ['risk-summary', 'risk-top', 'risk-emerging', 'risk-by-discipline', 'risk-clusters', 'risk-data-availability', 'risk-register']
@@ -106,9 +109,14 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
           <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Project Risk Intelligence</h2>
           <p className="text-xs text-ink-500 mt-0.5">Last updated {timeAgo(lastUpdated)}</p>
         </div>
-        <button onClick={() => recalcMutation.mutate()} disabled={recalcMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
-          {recalcMutation.isPending ? 'Analyzing…' : 'Refresh analysis'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setGraphOpen(true)} className="btn-secondary !px-3 !py-1.5 text-xs">
+            View Risk Graph
+          </button>
+          <button onClick={() => recalcMutation.mutate()} disabled={recalcMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
+            {recalcMutation.isPending ? 'Analyzing…' : 'Refresh analysis'}
+          </button>
+        </div>
       </div>
 
       {recalcMutation.isError && <p className="field-error">{apiErrorMessage(recalcMutation.error)}</p>}
@@ -306,7 +314,17 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
       )}
 
       {detailRiskId && (
-        <RiskDetailDrawer projectId={projectId} riskId={detailRiskId} onClose={() => setDetailRiskId(null)} onChanged={invalidateAll} />
+        <RiskDetailDrawer
+          projectId={projectId}
+          riskId={detailRiskId}
+          onClose={() => setDetailRiskId(null)}
+          onChanged={invalidateAll}
+          onViewGraph={(rootNodeId) => { setGraphFocusNodeId(rootNodeId); setGraphOpen(true); setDetailRiskId(null); }}
+        />
+      )}
+
+      {graphOpen && (
+        <RiskGraphView projectId={projectId} initialRootNodeId={graphFocusNodeId} onClose={() => { setGraphOpen(false); setGraphFocusNodeId(undefined); }} />
       )}
     </section>
   );
@@ -343,7 +361,7 @@ function StatTile({ label, value, tone }: { label: string; value: number; tone?:
   );
 }
 
-function RiskDetailDrawer({ projectId, riskId, onClose, onChanged }: { projectId: string; riskId: string; onClose: () => void; onChanged: () => void }) {
+function RiskDetailDrawer({ projectId, riskId, onClose, onChanged, onViewGraph }: { projectId: string; riskId: string; onClose: () => void; onChanged: () => void; onViewGraph: (rootNodeId: string) => void }) {
   const queryClient = useQueryClient();
   const riskQuery = useQuery({ queryKey: ['risk-detail', projectId, riskId], queryFn: () => listRisks(projectId).then((rs) => rs.find((r) => r.id === riskId)) });
   const chainQuery = useQuery({ queryKey: ['risk-chain', riskId], queryFn: () => getRiskChain(projectId, riskId) });
@@ -415,6 +433,10 @@ function RiskDetailDrawer({ projectId, riskId, onClose, onChanged }: { projectId
               <p className="text-sm text-ink-300">{risk.recommendedAction}</p>
             </div>
           )}
+
+          <button onClick={() => onViewGraph(risk.rootNodeId)} className="btn-secondary !px-2.5 !py-1 text-xs">
+            View in Risk Graph
+          </button>
 
           {(chainQuery.data?.steps.length ?? 0) > 1 && (
             <div>

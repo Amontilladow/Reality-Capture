@@ -137,6 +137,21 @@ export class RiskGraphService {
       : sql<GraphNodeRow[]>`SELECT * FROM risk_graph_nodes WHERE project_id = ${projectId}`);
   }
 
+  /**
+   * Every edge whose endpoints are BOTH within nodeIds (brief section 28 —
+   * the whole-project graph view). Dangling edges to a node outside the
+   * given set are intentionally omitted, the standard behavior for a
+   * filtered graph view (e.g. after a node-type/discipline filter narrows
+   * the node set) rather than pulling in extra out-of-scope nodes just to
+   * keep an edge.
+   */
+  async getEdgesAmongNodes(companyId: string, projectId: string, nodeIds: string[]): Promise<GraphEdgeRow[]> {
+    if (nodeIds.length === 0) return [];
+    return this.db.withTenant(companyId, sql => sql<GraphEdgeRow[]>`
+      SELECT * FROM risk_graph_edges
+      WHERE project_id = ${projectId} AND from_node_id = ANY(${nodeIds}) AND to_node_id = ANY(${nodeIds})`);
+  }
+
   /** Edges pointing out of nodeId (this node AFFECTS / REFERENCES / ... something). */
   async getOutgoingEdges(companyId: string, nodeId: string): Promise<GraphEdgeRow[]> {
     return this.db.withTenant(companyId, sql => sql<GraphEdgeRow[]>`
