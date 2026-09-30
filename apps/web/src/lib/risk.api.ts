@@ -107,6 +107,7 @@ export interface RiskGraphNode {
   status?: string;
   priority?: string;
   dueDate?: string;
+  risk?: { rootNodeId: string; score: number; level: RiskLevel; status: RiskStatus } | null;
 }
 
 export interface RiskGraphEdge {
@@ -116,6 +117,18 @@ export interface RiskGraphEdge {
   relationshipType: string;
   source: string;
   confidence: number;
+}
+
+export interface RiskGraphNodeDetail {
+  node: RiskGraphNode;
+  risk: Risk | null;
+  related: {
+    node: RiskGraphNode;
+    relationshipType: string;
+    direction: 'outgoing' | 'incoming';
+    source: string;
+    confidence: number;
+  }[];
 }
 
 export interface RiskEvidenceItem {
@@ -149,8 +162,12 @@ export const getRisk = (projectId: string, riskId: string) => apiGet<Risk>(`${ba
 export const getRiskChain = (projectId: string, riskId: string) => apiGet<RiskChain>(`${base(projectId)}/${riskId}/chain`);
 export const getRiskEvidence = (projectId: string, riskId: string) => apiGet<RiskEvidenceItem[]>(`${base(projectId)}/${riskId}/evidence`);
 export const getRiskHistory = (projectId: string, riskId: string) => apiGet<RiskSnapshot[]>(`${base(projectId)}/${riskId}/history`);
-export const getRiskGraph = (projectId: string, rootNodeId?: string, maxDepth?: number) =>
-  apiGet<{ nodes: RiskGraphNode[]; edges: RiskGraphEdge[] }>(`${base(projectId)}/graph`, { params: { rootNodeId, maxDepth } });
+export const getRiskGraph = (projectId: string, opts: { rootNodeId?: string; maxDepth?: number; nodeTypes?: string[]; discipline?: string } = {}) =>
+  apiGet<{ nodes: RiskGraphNode[]; edges: RiskGraphEdge[] }>(`${base(projectId)}/graph`, {
+    params: { rootNodeId: opts.rootNodeId, maxDepth: opts.maxDepth, nodeTypes: opts.nodeTypes?.join(','), discipline: opts.discipline },
+  });
+export const getGraphNodeDetail = (projectId: string, nodeId: string) =>
+  apiGet<RiskGraphNodeDetail>(`${base(projectId)}/graph/nodes/${nodeId}`);
 
 export const overrideRisk = (projectId: string, riskId: string, dto: { score?: number; level?: RiskLevel; reason: string }) =>
   apiPatch<Risk>(`${base(projectId)}/${riskId}/override`, dto);
