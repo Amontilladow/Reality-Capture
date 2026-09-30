@@ -5,10 +5,11 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { Modal } from './ui/Modal';
 import { RiskGraphView } from './RiskGraphView';
 import { apiErrorMessage } from '../lib/api';
+import { getProject } from '../lib/projects.api';
 import {
   recalculateRisk, getRiskSummary, getTopRisks, getEmergingRisks, getRiskByDiscipline,
   getRiskClusters, getRiskDataAvailability, listRisks, getRiskChain, getRiskEvidence, getRiskHistory,
-  overrideRisk, clearRiskOverride, setRiskStatus, getAiBriefing, getAiExplanation,
+  overrideRisk, clearRiskOverride, setRiskStatus, getAiBriefing, getAiExplanation, downloadRiskPdf,
   type Risk, type RiskLevel, type RiskStatus,
 } from '../lib/risk.api';
 
@@ -89,6 +90,30 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
 
   const aiBriefingMutation = useMutation({ mutationFn: () => getAiBriefing(projectId) });
 
+  const projectQuery = useQuery({ queryKey: ['project', projectId], queryFn: () => getProject(projectId) });
+
+  const [pdfDownloading, setPdfDownloading] = useState(false);
+  const [pdfError, setPdfError] = useState('');
+  async function handleDownloadPdf() {
+    setPdfError('');
+    setPdfDownloading(true);
+    try {
+      // If the user already generated an AI briefing on this page, it's
+      // passed through verbatim -- the PDF never triggers its own AI call
+      // and can never show a different narrative than what's on screen.
+      const briefingText = aiBriefingMutation.data && 'narrative' in aiBriefingMutation.data
+        ? aiBriefingMutation.data.narrative
+        : undefined;
+      const date = new Date().toISOString().slice(0, 10);
+      const filename = `${projectQuery.data?.code ?? projectId}-risk-report-${date}.pdf`;
+      await downloadRiskPdf(projectId, filename, briefingText);
+    } catch (err) {
+      setPdfError(apiErrorMessage(err));
+    } finally {
+      setPdfDownloading(false);
+    }
+  }
+
   const summary = summaryQuery.data;
   const availability = dataAvailabilityQuery.data;
   const hasAnyData = availability && (availability.rfisAvailable + availability.issuesAvailable + availability.snagItemsAvailable + availability.qaInspectionsAvailable) > 0;
@@ -115,6 +140,9 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
           <button onClick={() => setGraphOpen(true)} className="btn-secondary !px-3 !py-1.5 text-xs">
             View Risk Graph
           </button>
+          <button onClick={handleDownloadPdf} disabled={pdfDownloading || !hasAnyData} className="btn-secondary !px-3 !py-1.5 text-xs">
+            {pdfDownloading ? 'Preparing…' : 'Download Risk Report'}
+          </button>
           <button onClick={() => recalcMutation.mutate()} disabled={recalcMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
             {recalcMutation.isPending ? 'Analyzing…' : 'Refresh analysis'}
           </button>
@@ -122,6 +150,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
       </div>
 
       {recalcMutation.isError && <p className="field-error">{apiErrorMessage(recalcMutation.error)}</p>}
+      {pdfError && <p className="field-error">{pdfError}</p>}
 
       {!hasAnyData && !dataAvailabilityQuery.isLoading && (
         <div className="panel tick-frame p-8 text-center space-y-2">

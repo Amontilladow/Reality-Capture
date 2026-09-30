@@ -1,11 +1,13 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Delete } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Delete, Res, StreamableFile } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import type { Response } from 'express';
 import type { AuthenticatedUser, RiskNodeType } from '@engineeringos/types';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RiskService } from './risk.service';
 import { OverrideRiskDto } from './dto/override-risk.dto';
 import { SetRiskStatusDto } from './dto/set-risk-status.dto';
 import { AssignRiskOwnerDto } from './dto/assign-risk-owner.dto';
+import { GenerateRiskPdfDto } from './dto/generate-risk-pdf.dto';
 
 @ApiTags('risk')
 @ApiBearerAuth()
@@ -74,6 +76,28 @@ export class RiskController {
   @ApiOperation({ summary: 'AI-generated project risk briefing, grounded in the executive summary/top risks/clusters -- never a raw model call' })
   async getAiBriefing(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
     return { data: await this.risk.generateAiBriefing(u.companyId, pid), error: null };
+  }
+
+  // Binary-response endpoint -- same StreamableFile + passthrough Response
+  // pattern as reports.controller.ts's own :projectId/reports/pdf route.
+  // POST (not GET) because aiBriefing can run to a few paragraphs -- too
+  // long to carry safely in a query string, same reasoning apiDownloadPost()
+  // documents on the frontend.
+  @Post('pdf')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Download this project\'s Risk Intelligence Report as a formatted PDF' })
+  async downloadPdf(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Body() dto: GenerateRiskPdfDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { buffer, filename } = await this.risk.generatePdf(u.companyId, pid, dto.aiBriefing);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    });
+    return new StreamableFile(buffer);
   }
 
   @Get('graph')
