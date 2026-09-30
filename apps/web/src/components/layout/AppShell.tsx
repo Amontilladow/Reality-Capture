@@ -21,6 +21,7 @@ const PROJECT_NAV_ITEMS = [
   { to: 'rfis', label: 'RFIs', icon: IconQuestion },
   { to: 'snagging', label: 'Snagging', icon: IconTag },
   { to: 'assistant', label: 'AI Assistant', icon: IconSpark },
+  { to: 'risk', label: 'Risk', icon: IconShield },
   { to: 'reports', label: 'Reports', icon: IconReport },
 ];
 
@@ -253,6 +254,15 @@ function IconGauge({ className }: { className?: string }) {
       <path d="M12 20a8 8 0 1 1 8-8" strokeLinecap="round" />
       <path d="M12 12l4-4" strokeLinecap="round" />
       <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+function IconShield({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6z" strokeLinejoin="round" />
+      <path d="M12 8v5" strokeLinecap="round" />
+      <circle cx="12" cy="16" r="0.6" fill="currentColor" stroke="none" />
     </svg>
   );
 }

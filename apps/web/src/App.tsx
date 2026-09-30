@@ -19,6 +19,7 @@ import RfiDetailPage from './pages/RfiDetailPage';
 import SnaggingPage from './pages/SnaggingPage';
 import AssistantPage from './pages/AssistantPage';
 import ReportsPage from './pages/ReportsPage';
+import RiskPage from './pages/RiskPage';
 import MessagesPage from './pages/MessagesPage';
 import WorkforcePage from './pages/WorkforcePage';
 import BuildLensPage from './pages/BuildLensPage';
@@ -93,6 +94,7 @@ export default function App() {
             <Route path="/projects/:projectId/rfis/:rfiId" element={<RfiDetailPage />} />
             <Route path="/projects/:projectId/snagging" element={<SnaggingPage />} />
             <Route path="/projects/:projectId/assistant" element={<AssistantPage />} />
+            <Route path="/projects/:projectId/risk" element={<RiskPage />} />
             <Route path="/projects/:projectId/reports" element={<ReportsPage />} />
           </Route>
         </Route>
