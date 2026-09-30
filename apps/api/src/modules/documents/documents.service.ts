@@ -5,6 +5,8 @@ import type { CreateDocumentDto } from './dto/create-document.dto';
 import type { LinkDocumentDto } from './dto/link-document.dto';
 import type { PaginationQuery } from '@engineeringos/types';
 
+const DOCUMENT_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB -- matches getUploadUrl()'s existing figure
+
 @Injectable()
 export class DocumentsService {
   constructor(
@@ -20,12 +22,36 @@ export class DocumentsService {
   // photo/image upload needs to actually succeed with a correctly-signed
   // content type instead of a hardcoded PDF one.
   async getUploadUrl(companyId: string, projectId: string, filename: string, contentType?: string) {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
     const key = this.storage.generateKey(companyId, projectId, 'documents', filename);
-    const url = await this.storage.getUploadUrl(key, contentType || 'application/pdf', 50 * 1024 * 1024);
+    const url = await this.storage.getUploadUrl(key, contentType || 'application/pdf', DOCUMENT_MAX_SIZE_BYTES);
     return { ...url, storageKey: key };
   }
 
   async create(companyId: string, projectId: string, userId: string, dto: CreateDocumentDto) {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+
+    // A document is either an internal storage-backed upload (storageKey
+    // set, source 'internal' -- the DB default when source is omitted) or a
+    // metadata-only reference to an external system (Procore/Aconex/
+    // SharePoint/BIM360/a manual link) with no object of ours to verify.
+    // Real size enforcement only makes sense for the former -- an external
+    // document legitimately has no storageKey at all.
+    const isInternalUpload = (dto.source ?? 'internal') === 'internal' && Boolean(dto.storageKey);
+    if (isInternalUpload) {
+      const actualSizeBytes = await this.storage.getObjectSize(dto.storageKey!);
+      if (actualSizeBytes === null) {
+        throw new BadRequestException('Uploaded file not found in storage. Complete the upload before registering the document.');
+      }
+      if (actualSizeBytes > DOCUMENT_MAX_SIZE_BYTES) {
+        await this.storage.deleteIfExists(dto.storageKey!);
+        throw new BadRequestException(
+          `Uploaded file (${(actualSizeBytes / 1024 / 1024).toFixed(1)} MB) exceeds the ${DOCUMENT_MAX_SIZE_BYTES / 1024 / 1024} MB ` +
+          'limit for a document. The upload has been rejected and removed.',
+        );
+      }
+    }
+
     // withTenant required -- documents carries the tenant_isolation RLS policy.
     const [doc] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO documents (
@@ -119,5 +145,15 @@ export class DocumentsService {
       WHERE dl.issue_id = ${issueId} AND dl.company_id = ${companyId}
       ORDER BY d.created_at DESC
     `);
+  }
+
+  // Same rationale as captures.service.ts's assertProjectBelongsToCompany --
+  // this controller has no @RequireProjectPermission gate either, and
+  // getUploadUrl/create both take a client-supplied projectId.
+  private async assertProjectBelongsToCompany(companyId: string, projectId: string): Promise<void> {
+    const [project] = await this.db.withTenant(companyId, sql => sql`
+      SELECT id FROM projects WHERE id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!project) throw new NotFoundException(`Project ${projectId} not found.`);
   }
 }

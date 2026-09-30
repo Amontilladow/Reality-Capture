@@ -1,4 +1,5 @@
-import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth.store';
 import { logout as apiLogout } from '../../lib/auth.api';
 import { NotificationBell } from './NotificationBell';
@@ -28,7 +29,15 @@ export function AppShell() {
   const refreshToken = useAuthStore((s) => s.refreshToken);
   const clear = useAuthStore((s) => s.clear);
   const navigate = useNavigate();
+  const location = useLocation();
   const params = useParams<{ projectId?: string }>();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // A route change means the user picked a destination — close the drawer
+  // so it doesn't stay covering the page it just navigated to.
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
 
   async function handleLogout() {
     try {
@@ -43,8 +52,32 @@ export function AppShell() {
   const inProject = Boolean(params.projectId);
 
   return (
-    <div className="min-h-screen flex">
-      <aside className="w-60 shrink-0 border-r border-base-600 bg-base-900 flex flex-col">
+    <div className="min-h-screen flex flex-col md:flex-row">
+      <div className="h-14 flex md:hidden items-center gap-2 px-4 border-b border-base-600 bg-base-900 shrink-0">
+        <button
+          onClick={() => setMobileNavOpen(true)}
+          aria-label="Open navigation menu"
+          className="p-2 -ml-2 text-ink-300 hover:text-ink-100"
+        >
+          <IconMenu className="w-5 h-5" />
+        </button>
+        <IconMark className="w-5 h-5" />
+        <div className="text-sm font-semibold tracking-tight">EngineeringOS</div>
+      </div>
+
+      {mobileNavOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setMobileNavOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`w-60 shrink-0 border-r border-base-600 bg-base-900 flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-200 md:static md:translate-x-0 ${
+          mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         <div className="h-16 flex items-center gap-2 px-5 border-b border-base-600">
           <IconMark />
           <div className="leading-tight flex-1 min-w-0">
@@ -53,9 +86,16 @@ export function AppShell() {
           </div>
           <NotificationBell />
           <MessagesBell />
+          <button
+            onClick={() => setMobileNavOpen(false)}
+            aria-label="Close navigation menu"
+            className="md:hidden p-1 text-ink-300 hover:text-ink-100"
+          >
+            <IconClose className="w-4 h-4" />
+          </button>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {!inProject &&
             NAV_ITEMS.map((item) => (
               <NavLink
@@ -245,6 +285,20 @@ function IconLogout({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" strokeLinecap="round" />
       <path d="M16 17l5-5-5-5M21 12H9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconMenu({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconClose({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
     </svg>
   );
 }

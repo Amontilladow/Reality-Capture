@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { DrawingsService } from './drawings.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { StorageService } from '../storage/storage.service';
@@ -139,6 +139,77 @@ describe('DrawingsService pin page_number', () => {
       const pins = await svc.getPins(companyId, drawingId);
 
       expect(pins.map((p: Record<string, unknown>) => p.assignedTo)).toEqual(['user-a', 'user-b']);
+    });
+  });
+});
+
+// getUploadUrl() never had a client-declared size to check (it only takes a
+// filename); create() is the sole place where a drawing's storage key is
+// ever persisted, so real size enforcement happens there against the
+// object actually sitting in storage. Also covers the project-ownership
+// check that was previously entirely absent (drawings.controller.ts has no
+// @RequireProjectPermission gate at all).
+describe('DrawingsService upload enforcement', () => {
+  const companyId = 'company-1';
+  const projectId = 'project-1';
+
+  function makeUploadService(opts: {
+    projectExists?: boolean;
+    actualSizeBytes: number | null;
+  }) {
+    const projectExists = opts.projectExists ?? true;
+    const withTenant = jest.fn()
+      .mockResolvedValueOnce(projectExists ? [{ id: projectId }] : [])
+      .mockResolvedValueOnce([{ id: 'drawing-1', title: 'Level 3 Plan' }]);
+    const db = { withTenant };
+    const getObjectSize = jest.fn().mockResolvedValue(opts.actualSizeBytes);
+    const deleteIfExists = jest.fn().mockResolvedValue(undefined);
+    const generateKey = jest.fn().mockReturnValue('company-1/drawings/project-1/plan.pdf');
+    const getUploadUrl = jest.fn().mockResolvedValue({ uploadUrl: 'https://presigned.example/put' });
+    const storage = { getObjectSize, deleteIfExists, generateKey, getUploadUrl };
+    const issues = {};
+    const svc = new DrawingsService(
+      db as unknown as DatabaseService,
+      storage as unknown as StorageService,
+      issues as unknown as IssuesService,
+    );
+    return { svc, getObjectSize, deleteIfExists, getUploadUrl };
+  }
+
+  describe('getUploadUrl', () => {
+    it("rejects a project that does not belong to the caller's company", async () => {
+      const { svc, getUploadUrl } = makeUploadService({ projectExists: false, actualSizeBytes: 1024 });
+      await expect(svc.getUploadUrl(companyId, 'someone-elses-project', 'plan.pdf')).rejects.toThrow(NotFoundException);
+      expect(getUploadUrl).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('create', () => {
+    const baseDto = { title: 'Level 3 Plan', storageKey: 'company-1/drawings/project-1/plan.pdf' };
+
+    it('registers a drawing whose real uploaded size is within the 100 MB limit', async () => {
+      const { svc, deleteIfExists } = makeUploadService({ actualSizeBytes: 10 * 1024 * 1024 });
+      const drawing = await svc.create(companyId, projectId, 'user-1', baseDto);
+      expect(drawing).toEqual({ id: 'drawing-1', title: 'Level 3 Plan' });
+      expect(deleteIfExists).not.toHaveBeenCalled();
+    });
+
+    it('rejects and deletes an uploaded drawing that exceeds the 100 MB limit', async () => {
+      const { svc, deleteIfExists } = makeUploadService({ actualSizeBytes: 101 * 1024 * 1024 });
+      await expect(svc.create(companyId, projectId, 'user-1', baseDto)).rejects.toThrow(BadRequestException);
+      expect(deleteIfExists).toHaveBeenCalledWith(baseDto.storageKey);
+    });
+
+    it('rejects registration when the declared storage key was never actually uploaded', async () => {
+      const { svc, deleteIfExists } = makeUploadService({ actualSizeBytes: null });
+      await expect(svc.create(companyId, projectId, 'user-1', baseDto)).rejects.toThrow(BadRequestException);
+      expect(deleteIfExists).not.toHaveBeenCalled();
+    });
+
+    it("rejects registration against a project that does not belong to the caller's company", async () => {
+      const { svc, getObjectSize } = makeUploadService({ projectExists: false, actualSizeBytes: 1024 });
+      await expect(svc.create(companyId, 'someone-elses-project', 'user-1', baseDto)).rejects.toThrow(NotFoundException);
+      expect(getObjectSize).not.toHaveBeenCalled();
     });
   });
 });

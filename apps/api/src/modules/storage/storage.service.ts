@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, HeadBucketCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
 import type { Readable } from 'stream';
@@ -89,6 +89,37 @@ export class StorageService {
     await this.s3.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
   }
 
+  // Deletes an object and swallows the error -- used to clean up an object a
+  // client already PUT to storage but that failed a post-upload check (e.g.
+  // real size exceeds the declared limit). The upload already happened; a
+  // failed cleanup attempt must not be allowed to turn into the caller's own
+  // error, or mask the original rejection reason.
+  async deleteIfExists(key: string): Promise<void> {
+    try {
+      await this.delete(key);
+    } catch (err) {
+      this.logger.warn(`Could not clean up rejected object ${key}`, err);
+    }
+  }
+
+  // The presigned PUT this class hands out (see getUploadUrl's comment) has
+  // no enforced size limit -- a client can declare one size and upload a
+  // different, larger one. This is the other half of real enforcement: a
+  // HEAD request against the actual stored object, checked by the caller
+  // against its real limit *before* trusting the upload or queuing it for
+  // processing. Returns null if the object doesn't exist (upload never
+  // completed, or was already cleaned up).
+  async getObjectSize(key: string): Promise<number | null> {
+    try {
+      const result = await this.s3.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));
+      return result.ContentLength ?? null;
+    } catch (err) {
+      const code = (err as { name?: string; $metadata?: { httpStatusCode?: number } })?.name;
+      if (code === 'NotFound' || code === 'NoSuchKey') return null;
+      throw err;
+    }
+  }
+
   // Server-side download/upload, for workers that actually need the bytes
   // (e.g. image-processing.processor.ts generating renditions) rather than
   // just handing the client a presigned URL. Mirrors
@@ -105,5 +136,20 @@ export class StorageService {
 
   async upload(key: string, body: Buffer, contentType = 'application/octet-stream'): Promise<void> {
     await this.s3.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: body, ContentType: contentType }));
+  }
+
+  // Cheap reachability probe for the readiness check -- confirms the bucket
+  // is reachable with these credentials, without reading or returning any
+  // object data or exposing the endpoint/credentials themselves. Deliberately
+  // returns a plain boolean rather than throwing, so a transient provider
+  // blip degrades one field of the readiness response instead of a 5xx.
+  async checkConnectivity(): Promise<boolean> {
+    try {
+      await this.s3.send(new HeadBucketCommand({ Bucket: this.bucket }));
+      return true;
+    } catch (err) {
+      this.logger.warn('Object storage connectivity check failed', err);
+      return false;
+    }
   }
 }

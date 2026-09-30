@@ -111,3 +111,40 @@ export interface RegisterCaptureDto {
   gpsAccuracyM?: number;
   compassHeadingDeg?: number;
 }
+
+// Mobile offline-queue batch sync (POST /captures/sync?projectId=...) --
+// mirrors RegisterCaptureDto's fields plus idempotencyKey, the client-
+// generated UUID the server uses to recognize a retried item instead of
+// creating a duplicate capture. See captures.service.ts's syncFromMobile().
+export interface SyncCaptureItem {
+  idempotencyKey: string;
+  storageKey: string;
+  originalSizeBytes: number;
+  originalMimeType: string;
+  captureType: CaptureType;
+  capturedAt: string;
+  locationId?: string;
+  phase?: ProjectPhase;
+  title?: string;
+  description?: string;
+  gpsLat?: number;
+  gpsLng?: number;
+  gpsAccuracyM?: number;
+  compassHeadingDeg?: number;
+}
+
+export interface SyncCapturesRequest {
+  captures: SyncCaptureItem[];
+}
+
+export interface SyncCaptureResult {
+  idempotencyKey: string;
+  captureId: string | null;
+  status: 'created' | 'already_processed' | 'failed';
+  error?: string;
+}
+
+export interface SyncCapturesResponse {
+  results: SyncCaptureResult[];
+  summary: { total: number; created: number; failed: number; skipped: number };
+}

@@ -429,6 +429,9 @@ importers:
       babel-preset-expo:
         specifier: ~11.0.0
         version: 11.0.15(@babel/core@7.29.7(supports-color@8.1.1))(@babel/preset-env@7.29.7(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(supports-color@8.1.1)
+      tsx:
+        specifier: ^4.19.2
+        version: 4.23.13
       typescript:
         specifier: ~5.3.3
         version: 5.3.3

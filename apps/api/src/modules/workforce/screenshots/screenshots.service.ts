@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import type { CompanyRole } from '@engineeringos/types';
 import { DatabaseService } from '../../../database/database.service';
@@ -7,6 +7,9 @@ import { resolveVisibleTargetUserId } from '../workforce-visibility.util';
 import type { RecordScreenshotDto } from './dto/record-screenshot.dto';
 
 const DEFAULT_RANGE_DAYS = 7;
+// A desktop/laptop screen capture, JPEG-compressed. Generous ceiling for a
+// single frame; not a video, so nowhere near the capture-module's limits.
+const MAX_SCREENSHOT_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
 @Injectable()
 export class ScreenshotsService {
@@ -32,6 +35,31 @@ export class ScreenshotsService {
     // called first, or that screenshot_enabled hasn't been turned off in
     // between the two calls.
     await this.assertScreenshotsEnabled(companyId);
+
+    // A client-supplied storageKey with no ownership check would let a
+    // caller record (and later have resolveUrls sign a GET for) any key in
+    // the bucket, not just one from their own generateWorkforceScreenshotKey()
+    // upload -- including another company's object. Reject anything outside
+    // this caller's own namespace before it ever reaches the DB row.
+    const expectedPrefix = `${companyId}/workforce-screenshots/${userId}/`;
+    if (!dto.storageKey.startsWith(expectedPrefix)) {
+      throw new ForbiddenException('storageKey does not belong to this user.');
+    }
+
+    // As with every other upload family: never trust that the presigned PUT
+    // actually happened, or trust a client-declared size -- verify the real
+    // stored object and reject (with cleanup) if it's missing or oversized.
+    const actualSizeBytes = await this.storage.getObjectSize(dto.storageKey);
+    if (actualSizeBytes === null) {
+      throw new BadRequestException('Uploaded file not found in storage. Complete the upload before recording the screenshot.');
+    }
+    if (actualSizeBytes > MAX_SCREENSHOT_SIZE_BYTES) {
+      await this.storage.deleteIfExists(dto.storageKey);
+      throw new BadRequestException(
+        `Uploaded file (${(actualSizeBytes / 1024 / 1024).toFixed(1)} MB) exceeds the ${MAX_SCREENSHOT_SIZE_BYTES / 1024 / 1024} MB limit for screenshots. The upload has been rejected and removed.`,
+      );
+    }
+
     const [row] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO workforce_screenshots (company_id, user_id, device_id, storage_key, captured_at)
       VALUES (${companyId}, ${userId}, ${dto.deviceId ?? null}, ${dto.storageKey}, ${dto.capturedAt})

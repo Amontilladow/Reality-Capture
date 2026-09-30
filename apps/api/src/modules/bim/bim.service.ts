@@ -14,6 +14,7 @@ import { IFC_PROCESSING_QUEUE, IFC_PARSE_JOB_NAME } from '@engineeringos/types';
 // the registration DTO, closes the actual gap: today ANY filename is
 // accepted here with zero server-side check.
 const BIM_MODEL_ALLOWED_EXTENSIONS = new Set(['ifc']);
+const BIM_MODEL_MAX_SIZE_BYTES = 500 * 1024 * 1024; // 500 MB
 
 @Injectable()
 export class BimService {
@@ -41,6 +42,8 @@ export class BimService {
   }
 
   async getModelUploadUrl(companyId: string, projectId: string, filename: string) {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+
     const ext = filename.split('.').pop()?.toLowerCase() ?? '';
     if (!BIM_MODEL_ALLOWED_EXTENSIONS.has(ext)) {
       throw new BadRequestException(
@@ -48,21 +51,36 @@ export class BimService {
       );
     }
     const key = this.storage.generateKey(companyId, projectId, 'captures', filename);
-    // NOTE: the 500 MB figure below is documentation only -- StorageService.
-    // getUploadUrl()'s maxSizeBytes parameter is not actually wired into the
-    // presigned PutObjectCommand (see storage.service.ts's leading-underscore
-    // _maxSizeBytes), so nothing server-side currently rejects a larger
-    // upload. Flagged in CURRENT_STATUS.md as a cross-cutting gap affecting
-    // every presigned-upload caller in this codebase, not fixed here --
-    // properly enforcing it means switching to a presigned POST policy with
-    // a content-length-range condition, which changes every upload caller's
-    // request shape (PUT with a body -> POST with form fields) and is too
-    // broad for this pass.
-    const url = await this.storage.getUploadUrl(key, 'application/octet-stream', 500 * 1024 * 1024);
+    // The 500 MB figure below is still documentation only as far as this
+    // presigned PUT's signature goes -- see storage.service.ts's
+    // getUploadUrl() comment on why _maxSizeBytes isn't wired into the
+    // signature itself. Real enforcement now happens in registerModel()
+    // below, against the object actually sitting in storage.
+    const url = await this.storage.getUploadUrl(key, 'application/octet-stream', BIM_MODEL_MAX_SIZE_BYTES);
     return { ...url, storageKey: key };
   }
 
   async registerModel(companyId: string, projectId: string, userId: string, dto: { name: string; storageKey: string; format?: string; ifcSchema?: string; originalFilename?: string }) {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+
+    // Real post-upload size enforcement -- getModelUploadUrl() never had any
+    // client-declared size to check in the first place (unlike captures),
+    // so this HEAD-based check against the actual stored object is the only
+    // enforcement that exists for IFC uploads. Worth getting right: an
+    // oversized IFC file feeds directly into apps/ifc-service's parser, the
+    // most resource-hungry consumer of an upload in this codebase.
+    const actualSizeBytes = await this.storage.getObjectSize(dto.storageKey);
+    if (actualSizeBytes === null) {
+      throw new BadRequestException('Uploaded file not found in storage. Complete the upload before registering the model.');
+    }
+    if (actualSizeBytes > BIM_MODEL_MAX_SIZE_BYTES) {
+      await this.storage.deleteIfExists(dto.storageKey);
+      throw new BadRequestException(
+        `Uploaded file (${(actualSizeBytes / 1024 / 1024).toFixed(1)} MB) exceeds the ${BIM_MODEL_MAX_SIZE_BYTES / 1024 / 1024} MB ` +
+        'limit for a BIM model. The upload has been rejected and removed.',
+      );
+    }
+
     // withTenant required -- bim_models carries the tenant_isolation RLS policy.
     const [model] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO bim_models (company_id, project_id, name, format, ifc_schema, storage_key, status, uploaded_by, original_filename)
@@ -71,6 +89,16 @@ export class BimService {
     `);
     await this.enqueueParseJob(companyId, projectId, model.id as string, dto.storageKey);
     return model;
+  }
+
+  // Same rationale as captures.service.ts's assertProjectBelongsToCompany --
+  // this controller has no @RequireProjectPermission gate either, and
+  // getModelUploadUrl/registerModel both take a client-supplied projectId.
+  private async assertProjectBelongsToCompany(companyId: string, projectId: string): Promise<void> {
+    const [project] = await this.db.withTenant(companyId, sql => sql`
+      SELECT id FROM projects WHERE id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!project) throw new NotFoundException(`Project ${projectId} not found.`);
   }
 
   // Queues (or re-queues) IFC parsing for a model. Orchestration only —

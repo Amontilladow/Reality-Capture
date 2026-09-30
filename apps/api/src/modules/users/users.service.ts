@@ -98,10 +98,12 @@ export class UsersService {
       RETURNING id, email
     `);
 
-    // TODO: send invitation email -- until that exists, the caller needs the
-    // raw token back so an admin can build/share the accept-invitation link
-    // themselves rather than it only ever reaching this server log line.
-    this.logger.log(`Invitation created for ${dto.email} (token: ${token})`);
+    // TODO: send invitation email -- until that exists, the caller (an
+    // authenticated admin) gets the raw token back in the response below so
+    // they can build/share the accept-invitation link themselves. It must
+    // not also go to the server log -- a bearer credential for completing
+    // account setup has no business sitting in plaintext log output.
+    this.logger.log(`Invitation created for ${dto.email}`);
 
     return { id: newUser.id, email: newUser.email, invitationSent: true, invitationToken: token };
   }
