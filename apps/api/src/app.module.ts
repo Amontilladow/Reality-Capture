@@ -30,6 +30,7 @@ import { StorageModule } from './modules/storage/storage.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { WorkforceModule } from './modules/workforce/workforce.module';
+import { RiskModule } from './modules/risk/risk.module';
 import { HealthModule } from './modules/health/health.module';
 
 import { APP_INTERCEPTOR, APP_FILTER, APP_GUARD } from '@nestjs/core';
@@ -102,6 +103,7 @@ import googleCalendarConfig from './config/google-calendar.config';
     ChatModule,
     SubscriptionModule,
     WorkforceModule,
+    RiskModule,
   ],
   providers: [
     // Order matters: rate-limit first (cheap, rejects abuse before any auth work),
