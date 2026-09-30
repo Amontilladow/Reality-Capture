@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { DRAWING_UPDATE_STATUS_LABELS } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
+import { RiskIntelligenceSection } from '../components/RiskIntelligenceSection';
 import { getReportKpis } from '../lib/reports.api';
 import { downloadReportsXls } from '../lib/reports-xls';
 import { getProject } from '../lib/projects.api';
@@ -187,6 +188,8 @@ export default function ReportsPage() {
             {pdfError && <p className="field-error">{pdfError}</p>}
           </div>
         )}
+
+        <RiskIntelligenceSection projectId={projectId} />
 
         {kpisQuery.isLoading && <p className="text-sm text-ink-500">Loading report data…</p>}
         {kpisQuery.isError && <p className="field-error">{apiErrorMessage(kpisQuery.error)}</p>}
