@@ -5,6 +5,7 @@ import { RiskGraphService, type GraphNodeRow } from './risk-graph.service';
 import { RelationshipExtractionService } from './relationship-extraction.service';
 import { SignalsService } from './signals.service';
 import { ScoringService } from './scoring.service';
+import { AiClientService } from '../ai-client/ai-client.service';
 
 const RISK_WORTHY_NODE_TYPES = ['rfi', 'issue', 'snag_item', 'drawing', 'qa_inspection'] as const;
 
@@ -82,6 +83,7 @@ export class RiskService {
     private readonly extraction: RelationshipExtractionService,
     private readonly signals: SignalsService,
     private readonly scoring: ScoringService,
+    private readonly aiClient: AiClientService,
   ) {}
 
   /** Full pipeline for one project: rebuild the graph, redetect signals, recalculate every risk-worthy node. */
@@ -539,4 +541,105 @@ export class RiskService {
       procurementData: 'Not connected — no procurement/material module exists in this system yet.',
     };
   }
+
+  // ── AI reasoning layer (brief sections 13, 21, 39) ──────────────────────
+  //
+  // The AI never computes a score, never decides a recommended action, and
+  // never sees raw project data directly -- it only receives a plain-text
+  // context string built here from already-computed, real values (the same
+  // risk/evidence/chain data the deterministic UI already shows) and turns
+  // it into readable prose. If the AI service is unreachable or the LLM
+  // call fails, this degrades to an explicit "unavailable" result rather
+  // than a 500 or a fabricated narrative -- the deterministic explanation/
+  // recommendedAction on the Risk itself remain the ground truth either way.
+
+  async generateAiBriefing(companyId: string, projectId: string): Promise<{ narrative: string } | { unavailable: true; reason: string }> {
+    const [summary, topRisks, clusters] = await Promise.all([
+      this.getExecutiveSummary(companyId, projectId),
+      this.getTopRisks(companyId, projectId, 5),
+      this.getRiskClusters(companyId, projectId),
+    ]);
+    if (summary.totalOpenRisks === 0) {
+      return { unavailable: true, reason: 'No open risks to summarize yet.' };
+    }
+    const context = buildRiskBriefingContext(summary, topRisks, clusters);
+    try {
+      const { narrative } = await this.aiClient.generateRiskBriefing(companyId, projectId, context);
+      return { narrative };
+    } catch (err) {
+      this.logger.warn(`AI briefing generation failed: ${err instanceof Error ? err.message : String(err)}`);
+      return { unavailable: true, reason: 'AI briefing is not available right now.' };
+    }
+  }
+
+  async generateAiExplanation(companyId: string, projectId: string, riskId: string): Promise<{ narrative: string } | { unavailable: true; reason: string }> {
+    const [risk, evidence, chain] = await Promise.all([
+      this.getRisk(companyId, riskId),
+      this.getEvidenceWithNodes(companyId, riskId),
+      this.getRiskChain(companyId, riskId),
+    ]);
+    const context = buildRiskExplanationContext(risk, evidence, chain);
+    try {
+      const { narrative } = await this.aiClient.explainRisk(companyId, projectId, context);
+      return { narrative };
+    } catch (err) {
+      this.logger.warn(`AI risk explanation failed: ${err instanceof Error ? err.message : String(err)}`);
+      return { unavailable: true, reason: 'AI explanation is not available right now.' };
+    }
+  }
+}
+
+// ── Pure context-building functions (exported for direct unit testing) ─────
+
+type ExecutiveSummary = Awaited<ReturnType<RiskService['getExecutiveSummary']>>;
+type RiskCluster = { location: string; connectedRiskCount: number; averageScore: number };
+type EvidenceWithNode = Awaited<ReturnType<RiskService['getEvidenceWithNodes']>>[number];
+type RiskChainResult = Awaited<ReturnType<RiskService['getRiskChain']>>;
+
+export function buildRiskBriefingContext(summary: ExecutiveSummary, topRisks: RiskRow[], clusters: RiskCluster[]): string {
+  const lines: string[] = [];
+  lines.push(`Overall risk score: ${summary.overallScore}/100 (${summary.overallLevel})`);
+  if (summary.overallScoreTrendPct !== null) {
+    lines.push(`7-day trend: ${summary.overallScoreTrendPct > 0 ? '+' : ''}${summary.overallScoreTrendPct}%`);
+  }
+  lines.push(`Open risks: ${summary.totalOpenRisks} (Critical: ${summary.criticalCount}, High: ${summary.highCount}, Increasing: ${summary.increasingCount}, Overdue items: ${summary.overdueCount})`);
+  if (topRisks.length > 0) {
+    lines.push('Top risks:');
+    topRisks.forEach((r, i) => lines.push(`${i + 1}. [${r.level}, ${r.score}] ${r.title} (trend: ${r.trend.toLowerCase()})`));
+  } else {
+    lines.push('No open risks currently recorded.');
+  }
+  if (clusters.length > 0) {
+    lines.push('Risk clusters (locations with concentrated open risk):');
+    clusters.forEach(c => lines.push(`- ${c.location}: ${c.connectedRiskCount} connected risks, average score ${c.averageScore}`));
+  } else {
+    lines.push('No risk clusters detected.');
+  }
+  return lines.join('\n');
+}
+
+export function buildRiskExplanationContext(risk: RiskRow, evidence: EvidenceWithNode[], chain: RiskChainResult): string {
+  const lines: string[] = [];
+  lines.push(`Risk: ${risk.title}`);
+  lines.push(`Category: ${risk.category}${risk.discipline ? ` | Discipline: ${risk.discipline}` : ''}${risk.locationLabel ? ` | Location: ${risk.locationLabel}` : ''}`);
+  lines.push(`Score: ${risk.score}/100 (${risk.level}) | Trend: ${risk.trend} | Confidence: ${risk.confidenceLevel}${risk.confidenceReason ? ` (${risk.confidenceReason})` : ''}`);
+  lines.push(`Factors: Probability ${risk.probability}, Impact ${risk.impact}, Exposure ${risk.exposure}, Dependency ${risk.dependency}, Urgency ${risk.urgency}, Recurrence ${risk.recurrence}`);
+  if (risk.explanation) lines.push(`Deterministic explanation (already computed -- do not contradict): ${risk.explanation}`);
+  if (risk.recommendedAction) lines.push(`Recommended action (already determined -- restate, don't replace): ${risk.recommendedAction}`);
+  if (evidence.length > 0) {
+    lines.push('Evidence:');
+    for (const e of evidence) {
+      if (e.node) lines.push(`- ${e.role}: ${e.node.nodeType} — ${e.node.label}`);
+    }
+  }
+  if (chain.steps.length > 1) {
+    const chainText = chain.steps.map((s, i) => {
+      if (i === 0) return s.label;
+      const inferredNote = s.confidence !== null && s.confidence !== undefined && s.confidence < 1
+        ? ` (inferred, ${Math.round((s.confidence ?? 0) * 100)}%)` : '';
+      return `${s.relationshipFromPrevious}${inferredNote} -> ${s.label}`;
+    }).join(' ');
+    lines.push(`Risk chain: ${chainText}`);
+  }
+  return lines.join('\n');
 }

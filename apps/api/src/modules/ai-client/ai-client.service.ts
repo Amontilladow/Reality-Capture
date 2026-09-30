@@ -93,6 +93,28 @@ export class AiClientService {
     return resp.data;
   }
 
+  /**
+   * Risk reasoning layer (brief section 13): the caller builds `context` from
+   * real, already-computed risk data (never raw retrieval) -- this call is
+   * awaited, not fire-and-forget, since its result is shown directly to the
+   * user, but it throws on failure exactly like ask() does. Callers must
+   * catch and degrade gracefully (never surface a 500 for an AI outage) --
+   * see RiskService.generateAiBriefing()/generateAiExplanation().
+   */
+  async generateRiskBriefing(companyId: string, projectId: string, context: string): Promise<{ narrative: string }> {
+    const resp = await firstValueFrom(
+      this.http.post(`${this.baseUrl}/risk/briefing`, { company_id: companyId, project_id: projectId, context }, { timeout: 30_000 }),
+    );
+    return resp.data;
+  }
+
+  async explainRisk(companyId: string, projectId: string, context: string): Promise<{ narrative: string }> {
+    const resp = await firstValueFrom(
+      this.http.post(`${this.baseUrl}/risk/explain`, { company_id: companyId, project_id: projectId, context }, { timeout: 30_000 }),
+    );
+    return resp.data;
+  }
+
   deleteResource(collection: string, resourceId: string): void {
     firstValueFrom(
       this.http.delete(`${this.baseUrl}/ingest/resource`, {

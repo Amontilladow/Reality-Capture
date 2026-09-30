@@ -70,6 +70,12 @@ export class RiskController {
     return { data: await this.risk.getDataAvailability(u.companyId, pid), error: null };
   }
 
+  @Get('briefing')
+  @ApiOperation({ summary: 'AI-generated project risk briefing, grounded in the executive summary/top risks/clusters -- never a raw model call' })
+  async getAiBriefing(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
+    return { data: await this.risk.generateAiBriefing(u.companyId, pid), error: null };
+  }
+
   @Get('graph')
   @ApiOperation({ summary: 'Project Risk Graph for visualization -- the whole project graph (optionally filtered), or one risk\'s bounded neighborhood' })
   async getGraph(
@@ -124,6 +130,12 @@ export class RiskController {
   @ApiOperation({ summary: 'Historical score snapshots for this risk' })
   async getHistory(@CurrentUser() u: AuthenticatedUser, @Param('riskId') riskId: string) {
     return { data: await this.risk.getRiskHistory(u.companyId, riskId), error: null };
+  }
+
+  @Get(':riskId/ai-explanation')
+  @ApiOperation({ summary: 'AI-generated explanation of this risk, grounded in its own factors/evidence/chain -- never a different recommendation than the deterministic one' })
+  async getAiExplanation(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('riskId') riskId: string) {
+    return { data: await this.risk.generateAiExplanation(u.companyId, pid, riskId), error: null };
   }
 
   @Patch(':riskId/override')
