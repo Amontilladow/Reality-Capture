@@ -11,6 +11,17 @@ verification commands below, not by trusting prior write-ups.
   on branch `claude/awesome-ride-6e1dzu`, as of the verification date below.
 - **Verification date:** 2026-09-28.
 
+**Addendum (final validation sprint, 2026-09-30):** a subsequent sprint ran a
+full 6-viewport × 13-route live browser pass, re-confirmed every claim in
+`LAUNCH_READINESS.md`/`MOBILE_STORE_READINESS.md` against fresh command
+output, found and fixed one real web layout bug (RFIs page overflow at
+360×800) and one real upload-integrity gap (`ScreenshotsService.record()`
+trusted an unverified client-supplied storage key and size), and directly
+confirmed — rather than inferred — that no Android or iOS device/emulator/
+simulator tooling exists in this sandbox. Nothing in this document's §4
+(DB role/RLS) or §7 (operational risks) changed as a result; those remain
+accurate. See `LAUNCH_READINESS.md` for the updated evidence.
+
 ---
 
 ## 1. Implemented modules

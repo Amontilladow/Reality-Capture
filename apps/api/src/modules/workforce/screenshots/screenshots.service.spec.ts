@@ -1,15 +1,19 @@
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ScreenshotsService } from './screenshots.service';
 import type { DatabaseService } from '../../../database/database.service';
 import type { StorageService } from '../../storage/storage.service';
 
+const OWN_KEY = 'company-1/workforce-screenshots/user-1/abc.jpg';
+
 function makeService(sqlMock: jest.Mock, storageOverrides: Partial<StorageService> = {}) {
   const db = { withTenant: jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(sqlMock)) };
   const storage = {
-    generateWorkforceScreenshotKey: jest.fn(() => 'company-1/workforce-screenshots/user-1/abc.jpg'),
+    generateWorkforceScreenshotKey: jest.fn(() => OWN_KEY),
     getUploadUrl: jest.fn(async (key: string) => ({ uploadUrl: `https://upload/${key}`, storageKey: key })),
     resolveUrls: jest.fn(async (keys: string[]) => new Map(keys.map(k => [k, `https://read/${k}`]))),
     delete: jest.fn(async () => undefined),
+    getObjectSize: jest.fn(async () => 1024),
+    deleteIfExists: jest.fn(async () => undefined),
     ...storageOverrides,
   };
   return { svc: new ScreenshotsService(db as unknown as DatabaseService, storage as unknown as StorageService), db, storage };
@@ -48,18 +52,47 @@ describe('ScreenshotsService.record -- defense in depth', () => {
     const sqlMock = jest.fn().mockResolvedValueOnce([{ screenshotEnabled: false }]);
     const { svc } = makeService(sqlMock);
 
-    await expect(svc.record('company-1', 'user-1', { storageKey: 'k', capturedAt: '2026-01-01T00:00:00.000Z' })).rejects.toThrow(ForbiddenException);
+    await expect(svc.record('company-1', 'user-1', { storageKey: OWN_KEY, capturedAt: '2026-01-01T00:00:00.000Z' })).rejects.toThrow(ForbiddenException);
     expect(sqlMock).toHaveBeenCalledTimes(1); // never reached the INSERT
   });
 
-  it('records the screenshot when enabled', async () => {
+  it('rejects a storageKey outside the caller\'s own namespace (cross-user/cross-company key)', async () => {
+    const sqlMock = jest.fn().mockResolvedValueOnce([{ screenshotEnabled: true }]);
+    const { svc, storage } = makeService(sqlMock);
+
+    await expect(svc.record('company-1', 'user-1', { storageKey: 'company-2/workforce-screenshots/someone-else/x.jpg', capturedAt: '2026-01-01T00:00:00.000Z' }))
+      .rejects.toThrow(ForbiddenException);
+    expect(storage.getObjectSize).not.toHaveBeenCalled();
+    expect(sqlMock).toHaveBeenCalledTimes(1); // never reached the INSERT
+  });
+
+  it('rejects, with no cleanup attempted, when the object was never actually uploaded', async () => {
+    const sqlMock = jest.fn().mockResolvedValueOnce([{ screenshotEnabled: true }]);
+    const { svc, storage } = makeService(sqlMock, { getObjectSize: jest.fn(async () => null) });
+
+    await expect(svc.record('company-1', 'user-1', { storageKey: OWN_KEY, capturedAt: '2026-01-01T00:00:00.000Z' })).rejects.toThrow(BadRequestException);
+    expect(storage.deleteIfExists).not.toHaveBeenCalled();
+    expect(sqlMock).toHaveBeenCalledTimes(1); // never reached the INSERT
+  });
+
+  it('rejects and cleans up an oversized upload instead of trusting the client', async () => {
+    const sqlMock = jest.fn().mockResolvedValueOnce([{ screenshotEnabled: true }]);
+    const oversized = 11 * 1024 * 1024;
+    const { svc, storage } = makeService(sqlMock, { getObjectSize: jest.fn(async () => oversized) });
+
+    await expect(svc.record('company-1', 'user-1', { storageKey: OWN_KEY, capturedAt: '2026-01-01T00:00:00.000Z' })).rejects.toThrow(BadRequestException);
+    expect(storage.deleteIfExists).toHaveBeenCalledWith(OWN_KEY);
+    expect(sqlMock).toHaveBeenCalledTimes(1); // never reached the INSERT
+  });
+
+  it('records the screenshot when enabled, in-namespace, and within the real verified size', async () => {
     const sqlMock = jest.fn()
       .mockResolvedValueOnce([{ screenshotEnabled: true }])
-      .mockResolvedValueOnce([{ id: 'shot-1', storageKey: 'k' }]);
+      .mockResolvedValueOnce([{ id: 'shot-1', storageKey: OWN_KEY }]);
     const { svc } = makeService(sqlMock);
 
-    const result = await svc.record('company-1', 'user-1', { storageKey: 'k', capturedAt: '2026-01-01T00:00:00.000Z' });
-    expect(result).toEqual({ id: 'shot-1', storageKey: 'k' });
+    const result = await svc.record('company-1', 'user-1', { storageKey: OWN_KEY, capturedAt: '2026-01-01T00:00:00.000Z' });
+    expect(result).toEqual({ id: 'shot-1', storageKey: OWN_KEY });
   });
 });
 

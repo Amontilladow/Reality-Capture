@@ -59,6 +59,17 @@ a real Play Store submission — this was not changed in this sprint because
 removing a permission the app may still depend on for a device/OS
 combination in its current Expo SDK version needs an actual on-device check
 this sandbox can't perform. **Needs owner/dev decision** after a physical
+device test — see below for a related, newly-observed but separate finding.
+
+**Duplicate permission entries (new this sprint, not fixed)**: `npx expo
+config --type public` shows `CAMERA`, `RECORD_AUDIO`, `ACCESS_COARSE_LOCATION`,
+and `ACCESS_FINE_LOCATION` each appearing twice in the resolved
+`android.permissions` array — once from `app.json`'s own explicit list, once
+auto-added by the `expo-camera`/`expo-location` config plugins. Android's
+manifest merger de-dupes identical `<uses-permission>` tags, so this is very
+likely harmless and not a functional defect; left unfixed deliberately to
+keep this sprint's diff to reproduced, verified issues only, rather than a
+speculative cleanup of something not shown to be broken.
 Android 13+ device test.
 
 **Privacy policy / data-safety form (Play) / privacy nutrition label (App
