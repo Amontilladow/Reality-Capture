@@ -125,7 +125,7 @@ describe('ScreenshotsService.cleanupExpiredScreenshots', () => {
       .mockResolvedValueOnce([]); // DELETE
     const db = {
       withTenant: jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(sqlMock)),
-      withTransaction: jest.fn(async (fn: (sql: unknown) => unknown) => fn(jest.fn().mockResolvedValueOnce([{ companyId: 'company-1', retentionDays: 90 }]))),
+      withSystemBypass: jest.fn(async (fn: (sql: unknown) => unknown) => fn(jest.fn().mockResolvedValueOnce([{ companyId: 'company-1', retentionDays: 90 }]))),
     };
     const storage = { delete: jest.fn(async () => undefined) };
     const svc = new ScreenshotsService(db as unknown as DatabaseService, storage as unknown as StorageService);
@@ -138,7 +138,7 @@ describe('ScreenshotsService.cleanupExpiredScreenshots', () => {
 
   it('never throws even if a per-company cleanup fails (logged, not fatal to the cron)', async () => {
     const db = {
-      withTransaction: jest.fn(async () => { throw new Error('RLS bootstrap gap -- see comment'); }),
+      withSystemBypass: jest.fn(async () => { throw new Error('cross-company retention scan failed'); }),
     };
     const svc = new ScreenshotsService(db as unknown as DatabaseService, {} as unknown as StorageService);
 

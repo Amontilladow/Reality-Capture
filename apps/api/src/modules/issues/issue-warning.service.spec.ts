@@ -13,13 +13,15 @@ describe('IssueWarningService.checkOverdueIssues', () => {
     });
     // The per-issue recent-warning check and auto_warning insert now go through withTenant
     // (company_id is known at that point) -- forward its callback to the same text-keyed
-    // query mock. Only the outer overdue scan still uses plain query, unchanged.
+    // query mock. The outer overdue scan now uses withSystemBypass (migration 052;
+    // it's a cross-company scan, so plain query would be RLS-blocked by app_user).
     const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
-    return { query: query as unknown as DatabaseService['query'], withTenant, calls };
+    const withSystemBypass = jest.fn((fn: (sql: unknown) => unknown) => fn(query));
+    return { query: query as unknown as DatabaseService['query'], withTenant, withSystemBypass, calls };
   }
 
   it('inserts an auto_warning activity for an overdue issue with no recent warning', async () => {
-    const { query, withTenant, calls } = makeQuery((text) => {
+    const { query, withTenant, withSystemBypass, calls } = makeQuery((text) => {
       if (text.includes('FROM issues')) {
         return [{ id: 'issue-1', companyId: 'company-1', createdBy: 'user-1', deadline: yesterday }];
       }
@@ -28,7 +30,7 @@ describe('IssueWarningService.checkOverdueIssues', () => {
       }
       return undefined;
     });
-    const svc = new IssueWarningService({ query, withTenant } as unknown as DatabaseService);
+    const svc = new IssueWarningService({ query, withTenant, withSystemBypass } as unknown as DatabaseService);
 
     const result = await svc.checkOverdueIssues();
 
@@ -42,7 +44,7 @@ describe('IssueWarningService.checkOverdueIssues', () => {
   });
 
   it('dedupes: skips an issue that already has an auto_warning activity within the last 24h', async () => {
-    const { query, withTenant, calls } = makeQuery((text) => {
+    const { query, withTenant, withSystemBypass, calls } = makeQuery((text) => {
       if (text.includes('FROM issues')) {
         return [{ id: 'issue-1', companyId: 'company-1', createdBy: 'user-1', deadline: yesterday }];
       }
@@ -51,7 +53,7 @@ describe('IssueWarningService.checkOverdueIssues', () => {
       }
       return undefined;
     });
-    const svc = new IssueWarningService({ query, withTenant } as unknown as DatabaseService);
+    const svc = new IssueWarningService({ query, withTenant, withSystemBypass } as unknown as DatabaseService);
 
     const result = await svc.checkOverdueIssues();
 
@@ -60,8 +62,8 @@ describe('IssueWarningService.checkOverdueIssues', () => {
   });
 
   it('is a no-op when there are no overdue issues', async () => {
-    const { query, withTenant } = makeQuery(() => []);
-    const svc = new IssueWarningService({ query, withTenant } as unknown as DatabaseService);
+    const { query, withTenant, withSystemBypass } = makeQuery(() => []);
+    const svc = new IssueWarningService({ query, withTenant, withSystemBypass } as unknown as DatabaseService);
 
     const result = await svc.checkOverdueIssues();
     expect(result).toEqual({ checked: 0, warned: 0, skipped: 0 });
