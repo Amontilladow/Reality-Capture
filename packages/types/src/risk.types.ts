@@ -181,7 +181,11 @@ export type RiskSignalType = typeof RISK_SIGNAL_TYPES[number];
 export type RiskLevel = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
 export type RiskConfidenceLevel = 'HIGH' | 'MODERATE' | 'LOW';
 export type RiskTrend = 'NEW' | 'INCREASING' | 'STABLE' | 'DECREASING';
-export type RiskStatus = 'DETECTED' | 'ACTIVE' | 'MITIGATION_IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+// MONITORING/ACCEPTED/ESCALATED added for the Risk Matrix brief's lifecycle
+// (section 6) -- purely additive to the original 5 values, DETECTED doubles
+// as that brief's "Not Assessed" (a risk the engine found but no human has
+// assigned Probability/Impact to yet).
+export type RiskStatus = 'DETECTED' | 'ACTIVE' | 'MITIGATION_IN_PROGRESS' | 'MONITORING' | 'ACCEPTED' | 'ESCALATED' | 'RESOLVED' | 'CLOSED';
 
 export interface RiskScoreFactors {
   probability: number;
@@ -234,6 +238,93 @@ export function scoreToRiskLevel(score: number, thresholds: RiskLevelThresholds 
   return 'LOW';
 }
 
+// ── Risk Matrix: Human/AI Probability × Impact assessment ───────────────────
+//
+// A second, deliberately separate scoring system from the 6-factor engine
+// above (automatedScore/overrideScore/score, 0-100, 4-level) -- that engine
+// stays exactly as-is and continues to drive exposure amplification,
+// clustering, trend math, and every existing dashboard/PDF number. This is
+// the Risk Assessment brief's own 5x5 Probability x Impact matrix (1-25,
+// 5-level), which exists for a different purpose: giving an engineer a fast,
+// industry-standard manual assessment, and giving the deterministic engine's
+// output a directly comparable "AI Score" on the same scale so the two can
+// be shown side by side and reconciled. Never conflate the two scales.
+export const RISK_MATRIX_LEVELS = ['LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH', 'CRITICAL'] as const;
+export type RiskMatrixLevel = typeof RISK_MATRIX_LEVELS[number];
+
+export interface RiskMatrixThresholds {
+  low: [number, number];
+  medium: [number, number];
+  high: [number, number];
+  veryHigh: [number, number];
+  critical: [number, number];
+}
+
+// The exact 5x5 table the brief specifies (section 4) -- a company can
+// override this via PATCH /company/settings { riskMatrix: { thresholds } },
+// which RiskService reads at assessment time rather than this constant
+// being hardcoded into any UI component.
+export const DEFAULT_RISK_MATRIX_THRESHOLDS: RiskMatrixThresholds = {
+  low: [1, 4],
+  medium: [5, 9],
+  high: [10, 14],
+  veryHigh: [15, 19],
+  critical: [20, 25],
+};
+
+export function scoreToMatrixLevel(score: number, thresholds: RiskMatrixThresholds = DEFAULT_RISK_MATRIX_THRESHOLDS): RiskMatrixLevel {
+  if (score >= thresholds.critical[0]) return 'CRITICAL';
+  if (score >= thresholds.veryHigh[0]) return 'VERY_HIGH';
+  if (score >= thresholds.high[0]) return 'HIGH';
+  if (score >= thresholds.medium[0]) return 'MEDIUM';
+  return 'LOW';
+}
+
+// Primary/secondary Risk Driver taxonomy (brief section 5) -- a company can
+// extend this list via PATCH /company/settings { riskMatrix: { drivers } };
+// this is the default/fallback list.
+export const RISK_DRIVERS = [
+  'PROGRAMME_DELAY', 'COST', 'QUALITY', 'SAFETY', 'DESIGN', 'BIM_COORDINATION',
+  'PROCUREMENT', 'MATERIAL', 'INTERFACE', 'CONSTRUCTABILITY', 'APPROVAL',
+  'REWORK', 'HANDOVER', 'CLIENT_CONSULTANT', 'CONTRACTOR_SUBCONTRACTOR',
+  'ACCESS_LOGISTICS', 'OTHER',
+] as const;
+export type RiskDriver = typeof RISK_DRIVERS[number];
+
+export const RISK_DRIVER_LABELS: Record<RiskDriver, string> = {
+  PROGRAMME_DELAY: 'Programme / Delay', COST: 'Cost', QUALITY: 'Quality', SAFETY: 'Safety',
+  DESIGN: 'Design', BIM_COORDINATION: 'BIM / Coordination', PROCUREMENT: 'Procurement',
+  MATERIAL: 'Material', INTERFACE: 'Interface', CONSTRUCTABILITY: 'Constructability',
+  APPROVAL: 'Approval', REWORK: 'Rework', HANDOVER: 'Handover',
+  CLIENT_CONSULTANT: 'Client / Consultant', CONTRACTOR_SUBCONTRACTOR: 'Contractor / Subcontractor',
+  ACCESS_LOGISTICS: 'Access / Logistics', OTHER: 'Other',
+};
+
+// Company-level configuration, read from companies.settings.riskMatrix (the
+// existing generic settings JSONB column + PATCH /company/settings endpoint
+// -- no new settings table/endpoint needed). Both fields optional: unset
+// means "use the brief's own defaults above."
+export interface RiskMatrixSettings {
+  thresholds?: RiskMatrixThresholds;
+  drivers?: string[];
+}
+
+export interface RiskAssessmentHistoryEntry {
+  id: string;
+  riskId: string;
+  assessmentType: 'HUMAN' | 'AI' | 'OVERRIDE';
+  probability?: number;
+  impact?: number;
+  score?: number;
+  level?: RiskMatrixLevel;
+  primaryDriver?: RiskDriver;
+  secondaryDriver?: RiskDriver;
+  confidence?: number;
+  reason?: string;
+  performedBy?: string;
+  performedAt: string;
+}
+
 // ── Risk entity (brief section 16) ──────────────────────────────────────────
 
 export interface Risk {
@@ -268,6 +359,37 @@ export interface Risk {
 
   confidenceLevel: RiskConfidenceLevel;
   confidenceReason?: string;
+
+  // ── Risk Matrix (Probability x Impact, 1-25) — see the block above this
+  // interface. Independent of automatedScore/score/level above. humanScore/
+  // humanLevel are null until an engineer actually assesses this risk
+  // (status stays DETECTED, the brief's "Not Assessed", until then).
+  humanProbability?: number;
+  humanImpact?: number;
+  humanScore?: number;
+  humanLevel?: RiskMatrixLevel;
+  primaryDriver?: RiskDriver;
+  secondaryDriver?: RiskDriver;
+  humanAssessedBy?: string;
+  humanAssessedAt?: string;
+
+  // Phase 18 populates these: the deterministic engine's own output
+  // re-expressed on the same 1-25/5-level scale as humanScore/humanLevel,
+  // purely so the two can be compared — never a second, independent LLM
+  // guess (brief section 36).
+  aiScore?: number;
+  aiLevel?: RiskMatrixLevel;
+  aiConfidence?: number;
+
+  // The number actually shown as "the" risk score on this matrix: an
+  // explicit engineer override if one was made, else the human assessment
+  // if one exists, else the AI score. Kept in sync by application code,
+  // like score/level above — never written to directly.
+  finalScore?: number;
+  finalLevel?: RiskMatrixLevel;
+  matrixOverrideBy?: string;
+  matrixOverrideAt?: string;
+  matrixOverrideReason?: string;
 
   trend: RiskTrend;
   status: RiskStatus;

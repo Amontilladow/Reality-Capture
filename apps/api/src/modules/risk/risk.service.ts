@@ -1,5 +1,6 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import type { RiskLevel, RiskStatus, RiskDiscipline, RiskNodeType } from '@engineeringos/types';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import type { RiskLevel, RiskStatus, RiskDiscipline, RiskNodeType, RiskMatrixLevel, RiskDriver, RiskMatrixSettings } from '@engineeringos/types';
+import { RISK_DRIVERS, DEFAULT_RISK_MATRIX_THRESHOLDS, scoreToMatrixLevel } from '@engineeringos/types';
 import { DatabaseService } from '../../database/database.service';
 import { RiskGraphService, type GraphNodeRow } from './risk-graph.service';
 import { RelationshipExtractionService } from './relationship-extraction.service';
@@ -56,6 +57,16 @@ export interface RiskRow {
   score: number; level: RiskLevel;
   probability: number; impact: number; exposure: number; dependency: number; urgency: number; recurrence: number;
   confidenceLevel: 'HIGH' | 'MODERATE' | 'LOW'; confidenceReason: string | null;
+  // ── Risk Matrix (Probability x Impact, 1-25) -- see packages/types'
+  // risk.types.ts comment block for how this relates to automatedScore/
+  // score above (a separate, parallel scoring system, not a replacement).
+  humanProbability: number | null; humanImpact: number | null;
+  humanScore: number | null; humanLevel: RiskMatrixLevel | null;
+  primaryDriver: RiskDriver | null; secondaryDriver: RiskDriver | null;
+  humanAssessedBy: string | null; humanAssessedAt: string | null;
+  aiScore: number | null; aiLevel: RiskMatrixLevel | null; aiConfidence: number | null;
+  finalScore: number | null; finalLevel: RiskMatrixLevel | null;
+  matrixOverrideBy: string | null; matrixOverrideAt: string | null; matrixOverrideReason: string | null;
   trend: 'NEW' | 'INCREASING' | 'STABLE' | 'DECREASING';
   status: RiskStatus;
   ownerId: string | null; dueDate: string | null;
@@ -352,6 +363,102 @@ export class RiskService {
       const [row] = await sql<RiskRow[]>`UPDATE risks SET owner_id = ${ownerId}, updated_at = now() WHERE id = ${riskId} RETURNING *`;
       return row;
     });
+  }
+
+  // ── Risk Matrix: human Probability x Impact assessment (sections 3-6, 40) ──
+  //
+  // A second, parallel scoring system to the automated/override/score
+  // columns above -- see RiskRow's own comment and packages/types'
+  // risk.types.ts for why these never mix. probability/impact are never
+  // delegated to an LLM (section 36): humanScore is pure multiplication,
+  // computed here, not asked of the AI service.
+
+  // Configurable matrix thresholds (section 4) reuse the existing
+  // companies.settings JSONB column + PATCH /company/settings endpoint
+  // (tenancy.controller.ts) -- no new settings table/endpoint needed.
+  private async getRiskMatrixSettings(companyId: string): Promise<RiskMatrixSettings> {
+    const [row] = await this.db.withTenant(companyId, sql => sql<{ settings: Record<string, unknown> }[]>`
+      SELECT settings FROM companies WHERE id = ${companyId}`);
+    return (row?.settings?.riskMatrix as RiskMatrixSettings | undefined) ?? {};
+  }
+
+  /**
+   * Records (or updates) an engineer's manual Probability x Impact
+   * assessment for one risk. A fresh human assessment is never itself an
+   * "override" -- per section 11, keeping the human assessment is the
+   * default once one exists, so this becomes the new final value and
+   * clears out any earlier matrix override (which was made against a now-
+   * superseded assessment and would otherwise silently keep applying).
+   */
+  async setHumanAssessment(
+    companyId: string, projectId: string, riskId: string, userId: string,
+    input: { probability: number; impact: number; primaryDriver: RiskDriver; secondaryDriver?: RiskDriver | null },
+  ): Promise<RiskRow> {
+    if (!Number.isInteger(input.probability) || input.probability < 1 || input.probability > 5) {
+      throw new BadRequestException('Probability must be an integer between 1 and 5.');
+    }
+    if (!Number.isInteger(input.impact) || input.impact < 1 || input.impact > 5) {
+      throw new BadRequestException('Impact must be an integer between 1 and 5.');
+    }
+    if (!RISK_DRIVERS.includes(input.primaryDriver)) {
+      throw new BadRequestException(`Unknown risk driver "${input.primaryDriver}".`);
+    }
+    if (input.secondaryDriver && !RISK_DRIVERS.includes(input.secondaryDriver)) {
+      throw new BadRequestException(`Unknown secondary risk driver "${input.secondaryDriver}".`);
+    }
+
+    const existing = await this.getRisk(companyId, riskId);
+    const settings = await this.getRiskMatrixSettings(companyId);
+    const humanScore = input.probability * input.impact;
+    const humanLevel = scoreToMatrixLevel(humanScore, settings.thresholds ?? DEFAULT_RISK_MATRIX_THRESHOLDS);
+    const { finalScore, finalLevel } = computeFinalMatrix({ humanScore, humanLevel, aiScore: existing.aiScore, aiLevel: existing.aiLevel });
+
+    // A risk sitting at DETECTED is the brief's own "Not Assessed" (section
+    // 6) -- the engine found it, but no human has assigned Probability/
+    // Impact yet. The very act of doing so is what "assessed" means, so it
+    // moves to ACTIVE here. Any other status (already ACTIVE, MONITORING,
+    // ESCALATED, etc.) reflects a deliberate lifecycle decision a human
+    // already made and is left exactly as it was.
+    const nextStatus: RiskStatus = existing.status === 'DETECTED' ? 'ACTIVE' : existing.status;
+
+    const row = await this.db.withTenant(companyId, async (sql) => {
+      const [r] = await sql<RiskRow[]>`
+        UPDATE risks SET
+          human_probability = ${input.probability}, human_impact = ${input.impact},
+          human_score = ${humanScore}, human_level = ${humanLevel},
+          primary_driver = ${input.primaryDriver}, secondary_driver = ${input.secondaryDriver ?? null},
+          human_assessed_by = ${userId}, human_assessed_at = now(),
+          final_score = ${finalScore}, final_level = ${finalLevel},
+          matrix_override_by = NULL, matrix_override_at = NULL, matrix_override_reason = NULL,
+          status = ${nextStatus},
+          updated_at = now()
+        WHERE id = ${riskId} RETURNING *`;
+      return r;
+    });
+
+    await this.db.withTenant(companyId, sql => sql`
+      INSERT INTO risk_assessment_history (
+        company_id, project_id, risk_id, assessment_type, probability, impact, score, level,
+        primary_driver, secondary_driver, performed_by
+      ) VALUES (
+        ${companyId}, ${projectId}, ${riskId}, 'HUMAN', ${input.probability}, ${input.impact}, ${humanScore}, ${humanLevel},
+        ${input.primaryDriver}, ${input.secondaryDriver ?? null}, ${userId}
+      )`);
+
+    if (nextStatus !== existing.status) {
+      await this.recordStatusChange(companyId, projectId, riskId, existing.status, nextStatus, userId, 'Risk Matrix assessment recorded.');
+    }
+
+    return row;
+  }
+
+  async getRiskAssessmentHistory(companyId: string, riskId: string) {
+    return this.db.withTenant(companyId, sql => sql`
+      SELECT h.*, u.first_name || ' ' || u.last_name AS performed_by_name
+      FROM risk_assessment_history h
+      LEFT JOIN users u ON u.id = h.performed_by
+      WHERE h.risk_id = ${riskId}
+      ORDER BY h.performed_at DESC`);
   }
 
   // ── Reports tab aggregations (brief sections 19-27, 32-33) ──────────────
@@ -654,6 +761,16 @@ export class RiskService {
 }
 
 // ── Pure context-building functions (exported for direct unit testing) ─────
+
+/** The one number/level actually shown as "the" risk on the Risk Matrix: an explicit override, else human judgment, else the AI score (brief sections 11-12). */
+export function computeFinalMatrix(
+  input: { humanScore: number | null; humanLevel: RiskMatrixLevel | null; aiScore: number | null; aiLevel: RiskMatrixLevel | null },
+  override?: { score: number; level: RiskMatrixLevel } | null,
+): { finalScore: number | null; finalLevel: RiskMatrixLevel | null } {
+  if (override) return { finalScore: override.score, finalLevel: override.level };
+  if (input.humanScore != null && input.humanLevel != null) return { finalScore: input.humanScore, finalLevel: input.humanLevel };
+  return { finalScore: input.aiScore, finalLevel: input.aiLevel };
+}
 
 type ExecutiveSummary = Awaited<ReturnType<RiskService['getExecutiveSummary']>>;
 type RiskCluster = { location: string; connectedRiskCount: number; averageScore: number };
