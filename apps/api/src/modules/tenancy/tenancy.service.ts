@@ -112,13 +112,38 @@ export class TenancyService {
   }
 
   // withTenant required -- see findById() above.
+  //
+  // Bug fix: this previously bound ${JSON.stringify(settings)}::jsonb --
+  // postgres.js has no way to tell "this JS string is already-serialized
+  // JSON text to parse" apart from "this is a plain string that needs
+  // escaping into a JSON string value," so it conservatively treated the
+  // pre-stringified text as the latter, producing a JSON *string scalar*
+  // holding the escaped JSON text rather than the parsed object. Postgres's
+  // jsonb `||` then saw an object on the left and a scalar on the right --
+  // a type mismatch it resolves by wrapping both into a 2-element array --
+  // so every call to this method silently corrupted companies.settings
+  // into an ever-growing array instead of merging. sql.json(settings) is
+  // postgres.js's documented helper for binding a JS value as a real jsonb
+  // parameter (no cast needed, no re-stringification ambiguity), which
+  // merges correctly. Confirmed against a live reproduction before and
+  // after this fix.
   async updateSettings(companyId: string, settings: Record<string, unknown>) {
-    const [updated] = await this.db.withTenant(companyId, sql => sql`
-      UPDATE companies
-      SET settings = settings || ${JSON.stringify(settings)}::jsonb, updated_at = NOW()
-      WHERE id = ${companyId}
-      RETURNING id, name, slug, settings
-    `);
+    const [updated] = await this.db.withTenant(companyId, (sql) => {
+      // sql.json()'s JSONValue type recursively requires every nested value
+      // to itself already be a known-JSON-safe type, which
+      // Record<string, unknown> (arbitrary parsed request-body JSON) can
+      // never structurally satisfy -- this boundary is inherently "any
+      // JSON-safe shape," same as the Record<string, unknown> the
+      // controller already accepts.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const settingsJson = sql.json(settings as any);
+      return sql`
+        UPDATE companies
+        SET settings = settings || ${settingsJson}, updated_at = NOW()
+        WHERE id = ${companyId}
+        RETURNING id, name, slug, settings
+      `;
+    });
     return updated;
   }
 

@@ -1,9 +1,12 @@
 import { apiGet, apiPatch, apiDelete, apiPost, apiDownloadPost } from './api';
+import type { RiskMatrixLevel, RiskDriver } from '@engineeringos/types';
+export { RISK_DRIVERS, RISK_DRIVER_LABELS, type RiskMatrixLevel, type RiskDriver } from '@engineeringos/types';
 
 export type RiskLevel = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
 export type RiskConfidenceLevel = 'HIGH' | 'MODERATE' | 'LOW';
 export type RiskTrend = 'NEW' | 'INCREASING' | 'STABLE' | 'DECREASING';
-export type RiskStatus = 'DETECTED' | 'ACTIVE' | 'MITIGATION_IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+// MONITORING/ACCEPTED/ESCALATED: see @engineeringos/types' identical comment on RiskStatus.
+export type RiskStatus = 'DETECTED' | 'ACTIVE' | 'MITIGATION_IN_PROGRESS' | 'MONITORING' | 'ACCEPTED' | 'ESCALATED' | 'RESOLVED' | 'CLOSED';
 
 export interface Risk {
   id: string;
@@ -32,6 +35,24 @@ export interface Risk {
   recurrence: number;
   confidenceLevel: RiskConfidenceLevel;
   confidenceReason?: string;
+  // Risk Matrix (Probability x Impact, 1-25) -- a separate scoring system
+  // from automatedScore/score/level above; see risk.service.ts's comment.
+  humanProbability?: number;
+  humanImpact?: number;
+  humanScore?: number;
+  humanLevel?: RiskMatrixLevel;
+  primaryDriver?: RiskDriver;
+  secondaryDriver?: RiskDriver;
+  humanAssessedBy?: string;
+  humanAssessedAt?: string;
+  aiScore?: number;
+  aiLevel?: RiskMatrixLevel;
+  aiConfidence?: number;
+  finalScore?: number;
+  finalLevel?: RiskMatrixLevel;
+  matrixOverrideBy?: string;
+  matrixOverrideAt?: string;
+  matrixOverrideReason?: string;
   trend: RiskTrend;
   status: RiskStatus;
   ownerId?: string;
@@ -162,6 +183,30 @@ export const getRisk = (projectId: string, riskId: string) => apiGet<Risk>(`${ba
 export const getRiskChain = (projectId: string, riskId: string) => apiGet<RiskChain>(`${base(projectId)}/${riskId}/chain`);
 export const getRiskEvidence = (projectId: string, riskId: string) => apiGet<RiskEvidenceItem[]>(`${base(projectId)}/${riskId}/evidence`);
 export const getRiskHistory = (projectId: string, riskId: string) => apiGet<RiskSnapshot[]>(`${base(projectId)}/${riskId}/history`);
+
+export interface RiskAssessmentHistoryEntry {
+  id: string;
+  assessmentType: 'HUMAN' | 'AI' | 'OVERRIDE';
+  probability?: number;
+  impact?: number;
+  score?: number;
+  level?: RiskMatrixLevel;
+  primaryDriver?: RiskDriver;
+  secondaryDriver?: RiskDriver;
+  confidence?: number;
+  reason?: string;
+  performedBy?: string;
+  performedByName?: string;
+  performedAt: string;
+}
+export const getRiskAssessmentHistory = (projectId: string, riskId: string) =>
+  apiGet<RiskAssessmentHistoryEntry[]>(`${base(projectId)}/${riskId}/assessment-history`);
+
+// probability/impact are 1-5 each; the server computes the 1-25 score and
+// matrix level -- never computed client-side and sent, so the UI can never
+// disagree with what's actually persisted.
+export const setHumanAssessment = (projectId: string, riskId: string, dto: { probability: number; impact: number; primaryDriver: RiskDriver; secondaryDriver?: RiskDriver | null }) =>
+  apiPatch<Risk>(`${base(projectId)}/${riskId}/human-assessment`, dto);
 export const getRiskGraph = (projectId: string, opts: { rootNodeId?: string; maxDepth?: number; nodeTypes?: string[]; discipline?: string } = {}) =>
   apiGet<{ nodes: RiskGraphNode[]; edges: RiskGraphEdge[] }>(`${base(projectId)}/graph`, {
     params: { rootNodeId: opts.rootNodeId, maxDepth: opts.maxDepth, nodeTypes: opts.nodeTypes?.join(','), discipline: opts.discipline },

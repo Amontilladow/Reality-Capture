@@ -10,7 +10,8 @@ import {
   recalculateRisk, getRiskSummary, getTopRisks, getEmergingRisks, getRiskByDiscipline,
   getRiskClusters, getRiskDataAvailability, listRisks, getRiskChain, getRiskEvidence, getRiskHistory,
   overrideRisk, clearRiskOverride, setRiskStatus, getAiBriefing, getAiExplanation, downloadRiskPdf,
-  type Risk, type RiskLevel, type RiskStatus,
+  setHumanAssessment, RISK_DRIVERS, RISK_DRIVER_LABELS,
+  type Risk, type RiskLevel, type RiskStatus, type RiskMatrixLevel, type RiskDriver,
 } from '../lib/risk.api';
 
 const HEX = {
@@ -27,7 +28,25 @@ const LEVEL_LABELS: Record<RiskLevel, string> = {
 };
 
 const STATUS_LABELS: Record<RiskStatus, string> = {
-  DETECTED: 'Detected', ACTIVE: 'Active', MITIGATION_IN_PROGRESS: 'Mitigation in progress', RESOLVED: 'Resolved', CLOSED: 'Closed',
+  DETECTED: 'Detected', ACTIVE: 'Active', MITIGATION_IN_PROGRESS: 'Mitigation in progress',
+  MONITORING: 'Monitoring', ACCEPTED: 'Accepted', ESCALATED: 'Escalated',
+  RESOLVED: 'Resolved', CLOSED: 'Closed',
+};
+
+// Risk Matrix (1-25, 5-level) -- deliberately a different palette/label set
+// from LEVEL_COLORS/LEVEL_LABELS above, which belong to the 0-100/4-level
+// deterministic engine score. Never mix the two scales in one place.
+const MATRIX_LEVEL_COLORS: Record<RiskMatrixLevel, string> = {
+  LOW: HEX.ok, MEDIUM: HEX.warn, HIGH: '#FB923C', VERY_HIGH: '#F97316', CRITICAL: HEX.danger,
+};
+const MATRIX_LEVEL_LABELS: Record<RiskMatrixLevel, string> = {
+  LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High', VERY_HIGH: 'Very High', CRITICAL: 'Critical',
+};
+const PROBABILITY_LABELS: Record<number, string> = {
+  1: '1 - Rare', 2: '2 - Unlikely', 3: '3 - Possible', 4: '4 - Likely', 5: '5 - Almost Certain',
+};
+const IMPACT_LABELS: Record<number, string> = {
+  1: '1 - Negligible', 2: '2 - Minor', 3: '3 - Moderate', 4: '4 - Major', 5: '5 - Severe',
 };
 
 const TOOLTIP_STYLE = { background: HEX.base800, border: `1px solid ${HEX.base700}`, borderRadius: 4, fontSize: 12, color: '#EAF0F4' };
@@ -510,6 +529,8 @@ function RiskDetailDrawer({ projectId, riskId, onClose, onChanged, onViewGraph }
             </div>
           )}
 
+          <HumanAssessmentPanel projectId={projectId} riskId={riskId} risk={risk} onChanged={invalidate} />
+
           <button onClick={() => onViewGraph(risk.rootNodeId)} className="btn-secondary !px-2.5 !py-1 text-xs">
             View in Risk Graph
           </button>
@@ -596,6 +617,100 @@ function RiskDetailDrawer({ projectId, riskId, onClose, onChanged, onViewGraph }
         </div>
       )}
     </Modal>
+  );
+}
+
+// Progressive-disclosure Human Risk Assessment: Probability x Impact (brief
+// sections 3-6, 42-43). A separate component (not inline in
+// RiskDetailDrawer) purely so its form state initializes from `risk`'s
+// already-loaded values via plain useState lazy init -- no useEffect sync
+// needed, since this never mounts before `risk` exists (see the !risk
+// guard in RiskDetailDrawer above).
+function HumanAssessmentPanel({ projectId, riskId, risk, onChanged }: { projectId: string; riskId: string; risk: Risk; onChanged: () => void }) {
+  const [probability, setProbability] = useState(String(risk.humanProbability ?? ''));
+  const [impact, setImpact] = useState(String(risk.humanImpact ?? ''));
+  const [primaryDriver, setPrimaryDriver] = useState<RiskDriver | ''>(risk.primaryDriver ?? '');
+  const [secondaryDriver, setSecondaryDriver] = useState<RiskDriver | ''>(risk.secondaryDriver ?? '');
+  const [expanded, setExpanded] = useState(risk.humanScore == null);
+
+  const mutation = useMutation({
+    mutationFn: () => setHumanAssessment(projectId, riskId, {
+      probability: Number(probability), impact: Number(impact),
+      primaryDriver: primaryDriver as RiskDriver, secondaryDriver: secondaryDriver || null,
+    }),
+    onSuccess: () => { onChanged(); setExpanded(false); },
+  });
+
+  // Client-side preview only, purely for immediate feedback while picking
+  // values -- the actually-persisted score/level always comes back from
+  // the server response (see risk.humanScore/humanLevel above), never
+  // computed here and trusted as the real answer.
+  const previewScore = probability && impact ? Number(probability) * Number(impact) : null;
+  const canSave = Boolean(probability && impact && primaryDriver);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between !mb-2">
+        <div className="field-label !mb-0">Human Risk Assessment (Probability × Impact)</div>
+        {risk.humanScore != null && (
+          <button onClick={() => setExpanded((v) => !v)} className="text-xs text-blueprint hover:underline">
+            {expanded ? 'Collapse' : 'Edit'}
+          </button>
+        )}
+      </div>
+
+      {risk.humanScore != null && !expanded ? (
+        <div className="flex items-center gap-3 flex-wrap text-sm">
+          <span className="text-2xl font-semibold tabular-nums" style={{ color: MATRIX_LEVEL_COLORS[risk.humanLevel!] }}>{risk.humanScore}</span>
+          <span className="text-xs text-ink-500">/ 25</span>
+          <span className="px-2 py-0.5 rounded text-xs font-semibold uppercase" style={{ color: MATRIX_LEVEL_COLORS[risk.humanLevel!], backgroundColor: `${MATRIX_LEVEL_COLORS[risk.humanLevel!]}22` }}>
+            {MATRIX_LEVEL_LABELS[risk.humanLevel!]}
+          </span>
+          {risk.primaryDriver && <span className="text-xs text-ink-500">Driver: {RISK_DRIVER_LABELS[risk.primaryDriver]}{risk.secondaryDriver ? ` / ${RISK_DRIVER_LABELS[risk.secondaryDriver]}` : ''}</span>}
+        </div>
+      ) : (
+        <div className="panel p-3 space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <select value={probability} onChange={(e) => setProbability(e.target.value)} className="field-input !py-1 text-xs">
+              <option value="">Probability…</option>
+              {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{PROBABILITY_LABELS[n]}</option>)}
+            </select>
+            <select value={impact} onChange={(e) => setImpact(e.target.value)} className="field-input !py-1 text-xs">
+              <option value="">Impact…</option>
+              {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{IMPACT_LABELS[n]}</option>)}
+            </select>
+            <select value={primaryDriver} onChange={(e) => setPrimaryDriver(e.target.value as RiskDriver)} className="field-input !py-1 text-xs">
+              <option value="">Primary driver…</option>
+              {RISK_DRIVERS.map((d) => <option key={d} value={d}>{RISK_DRIVER_LABELS[d]}</option>)}
+            </select>
+            <select value={secondaryDriver} onChange={(e) => setSecondaryDriver(e.target.value as RiskDriver)} className="field-input !py-1 text-xs">
+              <option value="">Secondary driver (optional)…</option>
+              {RISK_DRIVERS.map((d) => <option key={d} value={d}>{RISK_DRIVER_LABELS[d]}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-3">
+            {previewScore !== null ? (
+              <span className="text-sm text-ink-300">
+                Risk Score <span className="font-semibold tabular-nums">{previewScore}</span> / 25
+              </span>
+            ) : (
+              <span className="text-xs text-ink-500">Select probability and impact to see the score.</span>
+            )}
+            <button onClick={() => mutation.mutate()} disabled={!canSave || mutation.isPending} className="btn-primary !px-2.5 !py-1 text-xs ml-auto">
+              {mutation.isPending ? 'Saving…' : 'Save assessment'}
+            </button>
+          </div>
+          {mutation.isError && <p className="field-error">{apiErrorMessage(mutation.error)}</p>}
+        </div>
+      )}
+
+      {risk.aiScore != null && (
+        <p className="text-xs text-ink-500 mt-2">
+          AI score: <span className="font-semibold">{risk.aiScore}/25</span> ({risk.aiLevel ? MATRIX_LEVEL_LABELS[risk.aiLevel] : '—'})
+          {risk.aiConfidence != null && ` · Confidence: ${risk.aiConfidence}%`}
+        </p>
+      )}
+    </div>
   );
 }
 

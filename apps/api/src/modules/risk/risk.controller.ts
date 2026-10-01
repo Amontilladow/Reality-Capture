@@ -8,6 +8,7 @@ import { OverrideRiskDto } from './dto/override-risk.dto';
 import { SetRiskStatusDto } from './dto/set-risk-status.dto';
 import { AssignRiskOwnerDto } from './dto/assign-risk-owner.dto';
 import { GenerateRiskPdfDto } from './dto/generate-risk-pdf.dto';
+import { SetHumanAssessmentDto } from './dto/set-human-assessment.dto';
 
 @ApiTags('risk')
 @ApiBearerAuth()
@@ -154,6 +155,23 @@ export class RiskController {
   @ApiOperation({ summary: 'Historical score snapshots for this risk' })
   async getHistory(@CurrentUser() u: AuthenticatedUser, @Param('riskId') riskId: string) {
     return { data: await this.risk.getRiskHistory(u.companyId, riskId), error: null };
+  }
+
+  @Patch(':riskId/human-assessment')
+  @ApiOperation({ summary: 'Record an engineer\'s manual Probability x Impact Risk Matrix assessment for this risk' })
+  async setHumanAssessment(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('riskId') riskId: string,
+    @Body() dto: SetHumanAssessmentDto,
+  ) {
+    return { data: await this.risk.setHumanAssessment(u.companyId, pid, riskId, u.id, dto), error: null };
+  }
+
+  @Get(':riskId/assessment-history')
+  @ApiOperation({ summary: 'Audit trail of human/AI/override Risk Matrix assessments for this risk' })
+  async getAssessmentHistory(@CurrentUser() u: AuthenticatedUser, @Param('riskId') riskId: string) {
+    return { data: await this.risk.getRiskAssessmentHistory(u.companyId, riskId), error: null };
   }
 
   @Get(':riskId/ai-explanation')
