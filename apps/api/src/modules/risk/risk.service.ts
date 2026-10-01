@@ -6,6 +6,7 @@ import { RelationshipExtractionService } from './relationship-extraction.service
 import { SignalsService } from './signals.service';
 import { ScoringService } from './scoring.service';
 import { AiClientService } from '../ai-client/ai-client.service';
+import { renderRiskPdf, type RiskPdfTopRisk } from './risk-pdf.template';
 
 const RISK_WORTHY_NODE_TYPES = ['rfi', 'issue', 'snag_item', 'drawing', 'qa_inspection'] as const;
 
@@ -540,6 +541,69 @@ export class RiskService {
       programmeData: 'Not connected — no programme/schedule module exists in this system yet.',
       procurementData: 'Not connected — no procurement/material module exists in this system yet.',
     };
+  }
+
+  // ── Management report export (brief section 15) ─────────────────────────
+  //
+  // aiBriefing is the exact narrative text the caller already generated (and
+  // the user already read) via generateAiBriefing() above -- this method
+  // never calls the AI itself, so the PDF can never show a different
+  // narrative than what's on screen, and never blocks/slows PDF generation
+  // on an LLM round trip. Omitted entirely, not replaced with a
+  // placeholder, when the caller never generated one.
+  async generatePdf(companyId: string, projectId: string, aiBriefing?: string): Promise<{ buffer: Buffer; filename: string }> {
+    const [project, summary, topRisks, allRisks, byDiscipline, clusters, availability] = await Promise.all([
+      this.db.withTenant(companyId, sql => sql<{ name: string; code: string | null }[]>`
+        SELECT name, code FROM projects WHERE id = ${projectId} AND company_id = ${companyId}`).then(rows => rows[0]),
+      this.getExecutiveSummary(companyId, projectId),
+      this.getTopRisks(companyId, projectId, 10),
+      this.listRisks(companyId, projectId),
+      this.getRiskByDiscipline(companyId, projectId),
+      this.getRiskClusters(companyId, projectId),
+      this.getDataAvailability(companyId, projectId),
+    ]);
+
+    const toRow = (r: RiskRow): RiskPdfTopRisk => ({
+      title: r.title, category: r.category, discipline: r.discipline ?? undefined,
+      score: r.score, level: r.level, status: r.status, trend: r.trend,
+    });
+
+    const register = allRisks.filter(r => this.isOpenStatus(r.status)).map(toRow);
+
+    const dataAvailabilityNotes = [
+      `RFIs available: ${availability.rfisAvailable}`,
+      `Issues available: ${availability.issuesAvailable}`,
+      `Snag items available: ${availability.snagItemsAvailable}`,
+      `QA inspections available: ${availability.qaInspectionsAvailable}`,
+      `BIM element relationships: ${availability.bimElementRelationships}`,
+      `Programme data: ${availability.programmeData}`,
+      `Procurement data: ${availability.procurementData}`,
+    ];
+
+    const buffer = await renderRiskPdf({
+      projectName: project?.name ?? '—',
+      projectCode: project?.code ?? undefined,
+      generatedAt: new Date().toLocaleString('en-GB'),
+      overallScore: summary.overallScore,
+      overallLevel: summary.overallLevel,
+      overallScoreTrendPct: summary.overallScoreTrendPct,
+      criticalCount: summary.criticalCount,
+      highCount: summary.highCount,
+      increasingCount: summary.increasingCount,
+      overdueCount: summary.overdueCount,
+      totalOpenRisks: summary.totalOpenRisks,
+      byDiscipline: byDiscipline.map(g => ({ label: g.discipline, count: g.count })),
+      clusters: clusters.map(c => ({ location: c.location, connectedRiskCount: c.connectedRiskCount, averageScore: c.averageScore })),
+      topRisks: topRisks.map(toRow),
+      register,
+      aiBriefing: aiBriefing?.trim() ? aiBriefing.trim() : undefined,
+      dataAvailabilityNotes,
+    });
+
+    const date = new Date().toISOString().slice(0, 10);
+    const filename = `${project?.code ?? 'project'}-risk-report-${date}.pdf`;
+
+    return { buffer, filename };
   }
 
   // ── AI reasoning layer (brief sections 13, 21, 39) ──────────────────────

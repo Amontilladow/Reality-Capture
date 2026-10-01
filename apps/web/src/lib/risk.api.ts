@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiDelete, apiPost } from './api';
+import { apiGet, apiPatch, apiDelete, apiPost, apiDownloadPost } from './api';
 
 export type RiskLevel = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
 export type RiskConfidenceLevel = 'HIGH' | 'MODERATE' | 'LOW';
@@ -180,3 +180,10 @@ export const assignRiskOwner = (projectId: string, riskId: string, ownerId: stri
 export type AiNarrativeResult = { narrative: string } | { unavailable: true; reason: string };
 export const getAiBriefing = (projectId: string) => apiGet<AiNarrativeResult>(`${base(projectId)}/briefing`);
 export const getAiExplanation = (projectId: string, riskId: string) => apiGet<AiNarrativeResult>(`${base(projectId)}/${riskId}/ai-explanation`);
+
+// aiBriefing (optional) is the exact narrative text already shown on screen
+// (from getAiBriefing() above) -- passed through verbatim so the PDF never
+// shows a different narrative than what the user already read, and never
+// triggers a fresh (possibly slow, possibly unavailable) AI call of its own.
+export const downloadRiskPdf = (projectId: string, filename: string, aiBriefing?: string) =>
+  apiDownloadPost(`${base(projectId)}/pdf`, { aiBriefing }, filename);
