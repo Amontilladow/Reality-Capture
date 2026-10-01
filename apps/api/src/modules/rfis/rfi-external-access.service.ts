@@ -75,26 +75,21 @@ export class RfiExternalAccessService {
   }
 
   // ── Public, unauthenticated side ───────────────────────────────────────────
-  // Deliberately global (this.db.query, no withTenant) -- the token itself
+  // Deliberately global (withSystemBypass, no withTenant) -- the token itself
   // is the globally-unique secret; the caller has no session, no
   // company_id, nothing else to identify itself with. Same bootstrap
-  // category as auth.service.ts's forgotPassword()/resetPassword(): under
-  // the app's real DB role (app_user, no BYPASS RLS -- migration 001),
-  // this SELECT against an RLS table with no session var set always sees
-  // zero rows in production; flagged as part of the existing RLS/
-  // withTenant audit, not fixed here -- this is the same, already-accepted
-  // limitation every other pre-tenant lookup in this codebase has, not a
-  // new one.
+  // category as auth.service.ts's forgotPassword()/resetPassword(). See
+  // DatabaseService.withSystemBypass() and migration 052.
   private async validateToken(token: string, requiredAction?: RfiExternalAccessAction): Promise<Record<string, unknown>> {
-    const [access] = await this.db.query`
+    const [access] = await this.db.withSystemBypass(sql => sql`
       SELECT * FROM rfi_external_access
       WHERE token = ${token} AND expires_at > NOW() AND revoked_at IS NULL
-    `;
+    `);
 
     if (!access) {
       // Same "distinguish why, not just that it failed" courtesy
       // auth.service.ts's acceptInvitation() gives a bad token.
-      const [existing] = await this.db.query`SELECT expires_at, revoked_at FROM rfi_external_access WHERE token = ${token}`;
+      const [existing] = await this.db.withSystemBypass(sql => sql`SELECT expires_at, revoked_at FROM rfi_external_access WHERE token = ${token}`);
       if (existing?.revokedAt) {
         throw new ForbiddenException({ code: 'LINK_REVOKED', message: 'This link has been revoked. Ask the project team to send a new one.' });
       }

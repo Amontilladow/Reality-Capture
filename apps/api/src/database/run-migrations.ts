@@ -24,12 +24,21 @@ dotenv.config({ path: join(__dirname, '../../.env') });
 const MIGRATIONS_DIR = join(__dirname, 'migrations');
 
 async function runMigrations() {
+  // Migrations need to run as whatever role owns the tables (or a superuser) --
+  // that's a different identity from the one the running application should use
+  // at runtime once migration 052 makes app_user genuinely RLS-subject. Falls
+  // back to DB_USER/DB_PASSWORD when DB_MIGRATOR_* is unset, so a single-
+  // credential setup (local dev, anyone who hasn't adopted the split yet) keeps
+  // working exactly as before.
+  const migratorUser     = process.env.DB_MIGRATOR_USER     ?? process.env.DB_USER     ?? 'postgres';
+  const migratorPassword = process.env.DB_MIGRATOR_PASSWORD ?? process.env.DB_PASSWORD ?? 'postgres';
+
   const sql = postgres({
     host:     process.env.DB_HOST     ?? 'localhost',
     port:     parseInt(process.env.DB_PORT ?? '5432', 10),
     database: process.env.DB_NAME     ?? 'engineeringos',
-    username: process.env.DB_USER     ?? 'postgres',
-    password: process.env.DB_PASSWORD ?? 'postgres',
+    username: migratorUser,
+    password: migratorPassword,
     ssl:      process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
     max:      1,
   });
@@ -74,6 +83,28 @@ async function runMigrations() {
       console.log('\nAll migrations already applied — database is up to date.');
     } else {
       console.log(`\n${ran} migration(s) applied successfully.`);
+    }
+
+    // Keep app_user's password in sync with whatever the running application
+    // will actually connect with (DB_PASSWORD), using the migrator connection's
+    // privilege to do it. ALTER ROLE ... PASSWORD does not accept a bind
+    // parameter directly (confirmed by hand: Postgres rejects `ALTER ROLE x
+    // WITH PASSWORD $1` with a syntax error, even via the extended query
+    // protocol) -- a session-local SQL function is the safe way to pass the
+    // password through as a real, parameterized function argument rather than
+    // interpolating it into a SQL string. format('%L', ...) inside the
+    // function does the actual literal-quoting server-side.
+    if (process.env.DB_PASSWORD) {
+      await sql`
+        CREATE OR REPLACE FUNCTION pg_temp.set_role_password(role_name text, new_password text)
+        RETURNS void AS $f$
+        BEGIN
+          EXECUTE format('ALTER ROLE %I WITH PASSWORD %L', role_name, new_password);
+        END;
+        $f$ LANGUAGE plpgsql
+      `;
+      await sql`SELECT pg_temp.set_role_password('app_user', ${process.env.DB_PASSWORD})`;
+      console.log('  OK    synced app_user password');
     }
   } catch (error) {
     console.error('\nMigration failed:', error);

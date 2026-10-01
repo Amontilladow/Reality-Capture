@@ -27,7 +27,8 @@ class IngestIssueReq(BaseModel):
     location_name: Optional[str] = None; element_name: Optional[str] = None
 
 class DeleteReq(BaseModel):
-    collection: str; resource_id: str
+    collection: str; resource_id: str; company_id: str
+    project_id: Optional[str] = None
 
 @router.post("/capture")
 async def ingest_capture_ep(req: IngestCaptureReq):
@@ -41,5 +42,5 @@ async def ingest_issue_ep(req: IngestIssueReq):
 
 @router.delete("/resource")
 async def delete_ep(req: DeleteReq):
-    await delete_resource(req.collection, req.resource_id)
+    await delete_resource(req.collection, req.resource_id, req.company_id, req.project_id)
     return {"status": "deleted", "collection": req.collection, "resource_id": req.resource_id}

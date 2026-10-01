@@ -9,16 +9,45 @@ services:
     restart: always
     environment:
       POSTGRES_DB: engineeringos
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # This is the database's owning/superuser credential -- used to create
+      # the database and to run migrations (see the `migrate` service below),
+      # never by a running application. `api`/`ifc-service` connect at
+      # runtime as app_user (DB_USER/DB_PASSWORD below), a separate,
+      # narrowly-privileged role that migration 052 makes genuinely subject
+      # to row-level security, unlike this one.
+      POSTGRES_USER: ${DB_MIGRATOR_USER}
+      POSTGRES_PASSWORD: ${DB_MIGRATOR_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./apps/api/src/database/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql:ro
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d engineeringos']
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_MIGRATOR_USER} -d engineeringos']
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # One-off migration runner: `docker compose run --rm migrate`. Applies
+  # every file in apps/api/src/database/migrations/ (the postgres service
+  # above only auto-runs 001_initial_schema.sql via Postgres's own
+  # docker-entrypoint-initdb.d, which fires once on first volume
+  # initialization -- this is what applies 002+ and every future migration,
+  # and what keeps app_user's password (below) in sync). Connects with the
+  # owner/superuser credential, exactly like Render's preDeployCommand does.
+  migrate:
+    build: ./apps/api
+    profiles: ['tools']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: engineeringos
+      DB_MIGRATOR_USER: ${DB_MIGRATOR_USER}
+      DB_MIGRATOR_PASSWORD: ${DB_MIGRATOR_PASSWORD}
+      DB_USER: app_user
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD (app_user's password, >=32 random chars) before deploying}
+    entrypoint: ['node', 'apps/api/dist/database/run-migrations.js']
 
   redis:
     image: redis:7-alpine
@@ -59,10 +88,14 @@ services:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: engineeringos
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      # Narrowly-privileged, RLS-subject role (migration 052) -- not the
+      # database owner (DB_MIGRATOR_USER/PASSWORD, used only by `migrate`
+      # above). DB_PASSWORD is app_user's own password, kept in sync by
+      # run-migrations.ts each time `migrate` runs.
+      DB_USER: app_user
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD (app_user's password, >=32 random chars) before deploying}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET (>=32 random chars) before deploying}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET (>=32 random chars) before deploying}
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
@@ -71,6 +104,10 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       ALLOWED_ORIGINS: ${FRONTEND_URL}
+      # Internal network hostname -- ai-service has no public port (see below),
+      # so it's reachable only from other containers on this compose network.
+      AI_SERVICE_URL: http://ai-service:8001
+      INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET:?Set INTERNAL_SERVICE_SECRET (>=32 random chars) before deploying}
     ports:
       - '3000:3000'
 
@@ -81,7 +118,15 @@ services:
       - postgres
       - qdrant
     environment:
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/engineeringos
+      # Intentionally the owner/migrator credential, not app_user -- this
+      # service's direct Postgres reads (progress/report routers) filter by
+      # company_id/project_id in application code rather than setting RLS's
+      # session var, so connecting as the RLS-subject app_user would make
+      # every one of those queries silently return nothing. ai-service's own
+      # lack of request-level tenant scoping is a separate, already-flagged
+      # concern (see its require_service_auth dependency in app/main.py),
+      # not something this migration's RLS fix addresses.
+      DATABASE_URL: postgresql://${DB_MIGRATOR_USER}:${DB_MIGRATOR_PASSWORD}@postgres:5432/engineeringos
       QDRANT_URL: http://qdrant:6333
       QDRANT_API_KEY: ${QDRANT_API_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
@@ -90,8 +135,14 @@ services:
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
       S3_BUCKET: engineeringos
-    ports:
-      - '8001:8001'
+      INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET:?Set INTERNAL_SERVICE_SECRET (>=32 random chars) before deploying}
+    # No published host port: this service has no auth beyond the shared
+    # secret above and trusts whatever company_id/project_id it's given, so
+    # it must only be reachable from `api` over the internal compose network
+    # -- never from the host/public internet. `expose` documents the port
+    # without publishing it (other services can already reach it either way).
+    expose:
+      - '8001'
 
 volumes:
   postgres_data:

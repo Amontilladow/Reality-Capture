@@ -252,6 +252,33 @@ migration of ownership/grants — doing this wrong (e.g., revoking access
 the app actually needs) is a self-inflicted outage. This is flagged as a
 priority operational item in NEXT_STEPS.md, not fixed here.
 
+**RESOLVED** (migration `052_app_user_rls_enforcement.sql`): `app_user` now
+receives real `GRANT`s, every RLS-enabled table has `FORCE ROW LEVEL
+SECURITY`, and `DB_USER`/`DB_PASSWORD` in both `render.yaml` and
+`docker-compose.prod.yml` now point at `app_user` specifically —
+migrations run as a separate `DB_MIGRATOR_USER`/`DB_MIGRATOR_PASSWORD`
+credential instead. The "cross-tenant background job" question this
+section left open is also resolved: `DatabaseService.withSystemBypass()`
+gives the fixed set of genuinely pre-tenant/cross-tenant operations
+(login-by-email, password reset/invitation-accept by token, company
+self-registration, the RFI external-access token lookup, and the two
+cross-tenant crons this section names) an explicit, narrowly-scoped,
+`NOLOGIN`+`BYPASSRLS` role (`app_bypass_rls`) they assume only for the
+duration of one transaction via `SET LOCAL ROLE`. All of this was verified
+against a live Postgres container (migrations applied end-to-end, `app_user`
+confirmed to see zero rows with no tenant context, confirmed to see exactly
+one company's rows under `withTenant`, and confirmed the bypass role cannot
+be used to log in directly or persist outside its own transaction) before
+being considered done, including a previously-unknown Postgres GUC quirk
+this same testing surfaced and fixed: a custom session parameter that has
+never been read reports as `NULL` (safe), but after a transaction-local
+`set_config(..., true)` reverts, it reports as `''` instead — which the
+original `tenant_isolation` policy's `::UUID` cast would throw on. Every
+`tenant_isolation` policy was rewritten with a `CASE` guard against this
+(migration 052) rather than a plain `AND`, since Postgres's planner can
+reorder/split a top-level `AND` in a policy's `USING` clause and evaluate
+the cast before the guard.
+
 ## 5. Migration behavior — documented
 
 - Migrations live in `apps/api/src/database/migrations/*.sql`, numbered
