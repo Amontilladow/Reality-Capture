@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, Optional, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import sharp from 'sharp';
 import { PDFDocument, PDFFont, StandardFonts, rgb, PageSizes } from 'pdf-lib';
 import { DatabaseService } from '../../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
 import { MessagingService } from '../messaging/messaging.service';
+import { RiskService } from '../risk/risk.service';
 import { renderRfiPdf } from './rfi-pdf.template';
 import { renderNoticeLetterPdf } from './rfi-notice-letter-pdf.template';
 import { ATTACHMENT_MAX_SIZE, ATTACHMENT_ALLOWED_EXTENSIONS } from '../../common/constants/attachment-limits';
@@ -53,12 +54,37 @@ interface ExternalActorAttribution {
 
 @Injectable()
 export class RfisService {
+  private readonly logger = new Logger(RfisService.name);
+
   constructor(
     private readonly db: DatabaseService,
     private readonly notifications: NotificationsService,
     private readonly storage: StorageService,
     private readonly messaging: MessagingService,
+    // @Optional(): RfisModule registers RiskModule as a real provider, so
+    // production always gets a live instance here -- this stays optional
+    // purely so the many existing rfis.service.spec.ts call sites that
+    // construct RfisService directly with the pre-existing 4-arg list keep
+    // working unchanged (they get undefined here, and triggerRiskRecalc()
+    // below is a no-op whenever that's the case).
+    @Optional() private readonly risk?: RiskService,
   ) {}
+
+  // Event-driven incremental risk recalculation (brief section 41) -- fired
+  // after any write that can change an RFI's overdue/priority/impact/
+  // drawing-impact/open-vs-closed state, i.e. every real risk signal input.
+  // Never allowed to fail or slow down the RFI write it's attached to: a
+  // recalculation error is logged and swallowed, exactly like this
+  // codebase's existing AI-call degradation pattern (see
+  // RiskService.generateAiBriefing), never a 500 on the caller's RFI action.
+  private async triggerRiskRecalc(companyId: string, projectId: string, rfiId: string): Promise<void> {
+    if (!this.risk) return;
+    try {
+      await this.risk.recalculateForEntity(companyId, projectId, 'rfi', rfiId);
+    } catch (err) {
+      this.logger.warn(`Risk recalculation failed for RFI ${rfiId}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   // withTenant required for the projects lookup -- projects carries the tenant_isolation
   // RLS policy. A plain this.db.query() never sets app.current_company_id, so under any DB
@@ -130,6 +156,7 @@ export class RfisService {
       });
     }
 
+    await this.triggerRiskRecalc(companyId, projectId, rfi.id as string);
     return rfi;
   }
 
@@ -676,6 +703,7 @@ export class RfisService {
       WHERE id = ${rfiId} AND project_id = ${projectId} AND company_id = ${companyId}
       RETURNING *
     `);
+    await this.triggerRiskRecalc(companyId, projectId, rfiId);
     return updated;
   }
 
@@ -803,6 +831,7 @@ export class RfisService {
       newValue: true,
     });
 
+    await this.triggerRiskRecalc(companyId, projectId, rfiId);
     return updated;
   }
 
@@ -829,6 +858,7 @@ export class RfisService {
       newValue: false,
     });
 
+    await this.triggerRiskRecalc(companyId, projectId, rfiId);
     return updated;
   }
 
@@ -1334,6 +1364,7 @@ export class RfisService {
       });
     }
 
+    await this.triggerRiskRecalc(companyId, projectId, rfiId);
     return updated;
   }
 
@@ -1395,6 +1426,7 @@ export class RfisService {
       });
     }
 
+    await this.triggerRiskRecalc(companyId, projectId, rfiId);
     return updated;
   }
 
@@ -1433,6 +1465,7 @@ export class RfisService {
       });
     }
 
+    await this.triggerRiskRecalc(companyId, projectId, rfiId);
     return updated;
   }
 

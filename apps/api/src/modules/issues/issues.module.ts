@@ -6,9 +6,10 @@ import { IssuesController, ElementIssuesController, IssueLookupController } from
 import { AiClientModule } from '../ai-client/ai-client.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { StorageModule } from '../storage/storage.module';
+import { RiskModule } from '../risk/risk.module';
 
 @Module({
-  imports: [AiClientModule, NotificationsModule, StorageModule],
+  imports: [AiClientModule, NotificationsModule, StorageModule, RiskModule],
   controllers: [IssuesController, ElementIssuesController, IssueLookupController],
   // IssueWarningService / IssueScheduledRemindersService: server-side
   // @Cron jobs (auto-warning, and firing due scheduleReminder() rows).
