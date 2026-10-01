@@ -8,18 +8,19 @@ import { NotificationsService } from '../notifications/notifications.service';
 // IssuesService.scheduleReminder(). Same 5-minute cadence as
 // IssueWarningService's auto-warning cron.
 //
-// Same cross-tenant bootstrap gap as IssueWarningService.checkOverdueIssues()
-// and ScreenshotsService's retention cron (see IssueWarningService's own
-// comment for the full explanation): this.db.query has no
-// app.current_company_id session var set, so under the app's real DB role
-// (app_user, no BYPASS RLS) it currently sees zero rows in production --
-// this cron isn't scoped wrong, it's fully blocked, the same way those two
-// already-shipped crons are. Flagged, not fixed, as part of the same
-// RLS/withTenant audit those cite -- fixing it needs a deliberate
-// bootstrap-role/SECURITY DEFINER decision that affects every cross-tenant
-// system job in this codebase, not just this one, so it's out of scope
-// here rather than being silently "fixed" as a side effect of adding a
-// new feature.
+// Unlike IssueWarningService.checkOverdueIssues() and ScreenshotsService's
+// retention cron, this.db.query() here is correct as-is and does not need
+// DatabaseService.withSystemBypass() (migration 052): issue_reminders never
+// received a tenant_isolation RLS policy in any migration (confirmed by
+// grepping every migration's RLS-enabling table list), unlike issues and
+// workforce_privacy_settings, which those two crons scan. Querying a table
+// with no RLS policy at all behaves the same under app_user as it always
+// did -- this cron was never affected by the ownership-bypass gap migration
+// 052 fixes, because there was no policy here for ownership to bypass.
+// (issue_reminders itself joining the small set of tenant tables that
+// never got RLS -- alongside rfis/submittals/transmittals/qa_inspections/
+// snag_items, a separate, already-tracked finding -- is worth fixing
+// someday, but is not a correctness problem for this specific cron.)
 @Injectable()
 export class IssueScheduledRemindersService {
   private readonly logger = new Logger(IssueScheduledRemindersService.name);

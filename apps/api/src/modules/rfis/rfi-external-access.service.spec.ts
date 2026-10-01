@@ -26,7 +26,11 @@ function makeService(
   const { fn: query, calls: queryCalls } = makeQueryMock(queryResponder);
   const { fn: tenantSql, calls: tenantCalls } = makeQueryMock(tenantResponder);
   const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(tenantSql));
-  const db = { query, withTenant };
+  // validateToken() has no tenant context yet (migration 052's withSystemBypass,
+  // same bootstrap category as auth.service.ts) -- forward its callback to the
+  // same query mock that used to be this.db.query directly.
+  const withSystemBypass = jest.fn((fn: (sql: unknown) => unknown) => fn(query));
+  const db = { query, withTenant, withSystemBypass };
   const config = { get: jest.fn(() => 'https://app.example.com') };
   const storage = { resolveUrls: jest.fn().mockResolvedValue(new Map()) };
   const rfis = {

@@ -26,19 +26,15 @@ export class AuthService {
   async login(dto: LoginDto, ipAddress?: string, userAgent?: string): Promise<{ tokens: AuthTokens; user: AuthenticatedUser }> {
     // Find user — email is globally unique across the platform (unique per company, but
     // we search globally so users with the same email at different companies get a clear error).
-    // NOTE: under the app's real DB role (app_user, no BYPASS RLS -- migration 001), this
-    // SELECT against `users` (an RLS table) with no session var set sees zero rows, always
-    // -- there's no companyId to withTenant() by here, that's the whole point of a global
-    // lookup. Flagged as part of the RLS/withTenant audit, not fixed: needs a deliberate
-    // bootstrap mechanism (e.g. SECURITY DEFINER function / dedicated role), same as
-    // tenancy.service.ts's register() and issue-warning.service.ts's checkOverdueIssues().
-    const [user] = await this.db.query`
+    // withSystemBypass required -- there's no companyId to withTenant() by here, that's the
+    // whole point of a global lookup. See DatabaseService.withSystemBypass() and migration 052.
+    const [user] = await this.db.withSystemBypass(sql => sql`
       SELECT u.*, c.is_active AS company_active
       FROM users u
       JOIN companies c ON c.id = u.company_id
       WHERE LOWER(u.email) = LOWER(${dto.email})
       LIMIT 1
-    `;
+    `);
 
     if (!user) throw new UnauthorizedException('Invalid email or password.');
     if (!user.isActive) throw new UnauthorizedException('Your account has been deactivated. Contact your administrator.');
@@ -87,7 +83,9 @@ export class AuthService {
     // lose. Missing it here would mean a still-pending user's access token
     // stops carrying pendingApproval the moment they refresh it, bypassing
     // PendingApprovalGuard after as little as 15 minutes.
-    const [stored] = await this.db.query`
+    // withSystemBypass required -- the token hash is the only identifier here, no
+    // companyId yet. See DatabaseService.withSystemBypass() and migration 052.
+    const [stored] = await this.db.withSystemBypass(sql => sql`
       SELECT rt.id AS refresh_token_id, u.id, u.company_id, u.company_role, u.email,
              u.first_name, u.last_name, u.is_active, u.requested_company_role,
              c.is_active AS company_active
@@ -97,7 +95,7 @@ export class AuthService {
       WHERE rt.token_hash = ${tokenHash}
         AND rt.revoked_at IS NULL
         AND rt.expires_at > NOW()
-    `;
+    `);
 
     if (!stored) throw new UnauthorizedException('Invalid or expired refresh token.');
     if (!stored.isActive || !stored.companyActive) throw new UnauthorizedException('Account deactivated.');
@@ -149,12 +147,9 @@ export class AuthService {
     //
     // Deliberately global -- the invitation token itself is the globally-unique secret;
     // the caller doesn't know (and shouldn't need to know) which company they're in yet.
-    // Same bootstrap category as login(): under the app's real DB role (app_user, no
-    // BYPASS RLS -- migration 001), this UPDATE against `users` (an RLS table) with no
-    // session var set always matches zero rows, so invitation acceptance is currently
-    // broken in production. Not fixable by adding withTenant here (no companyId exists
-    // to scope by) -- flagged as part of the RLS/withTenant audit, not fixed.
-    const [user] = await this.db.query`
+    // withSystemBypass required -- no companyId exists to scope by here. See
+    // DatabaseService.withSystemBypass() and migration 052.
+    const [user] = await this.db.withSystemBypass(sql => sql`
       UPDATE users SET
         first_name = ${dto.firstName},
         last_name  = ${dto.lastName},
@@ -167,7 +162,7 @@ export class AuthService {
         AND invitation_expires_at > NOW()
         AND email_verified = false
       RETURNING *
-    `;
+    `);
 
     if (user) {
       const tokens = await this.issueTokens(user);
@@ -189,9 +184,9 @@ export class AuthService {
 
     // The UPDATE above matched nothing -- work out why, for a clearer
     // message than one generic catch-all.
-    const [existing] = await this.db.query`
+    const [existing] = await this.db.withSystemBypass(sql => sql`
       SELECT email_verified, invitation_expires_at FROM users WHERE invitation_token = ${dto.token}
-    `;
+    `);
     if (existing?.emailVerified) {
       throw new BadRequestException('This invitation has already been used.');
     }
@@ -204,11 +199,11 @@ export class AuthService {
   // ── Forgot password ───────────────────────────────────────────────────────
   async forgotPassword(email: string): Promise<void> {
     // Deliberately global -- email is unique platform-wide, and the caller doesn't know
-    // (and shouldn't need to know) which company they're in yet. Same bootstrap category
-    // as login().
-    const [user] = await this.db.query`
+    // (and shouldn't need to know) which company they're in yet. withSystemBypass required
+    // -- see DatabaseService.withSystemBypass() and migration 052.
+    const [user] = await this.db.withSystemBypass(sql => sql`
       SELECT id, company_id FROM users WHERE LOWER(email) = LOWER(${email}) AND is_active = true
-    `;
+    `);
 
     // Always return success — never reveal whether an email exists (enumeration attack prevention)
     if (!user) return;
@@ -233,14 +228,14 @@ export class AuthService {
   // ── Reset password ────────────────────────────────────────────────────────
   async resetPassword(dto: ResetPasswordDto): Promise<void> {
     // Deliberately global -- the reset token itself is the globally-unique secret; the
-    // caller doesn't know (and shouldn't need to know) which company they're in yet. Same
-    // bootstrap category as login().
-    const [user] = await this.db.query`
+    // caller doesn't know (and shouldn't need to know) which company they're in yet.
+    // withSystemBypass required -- see DatabaseService.withSystemBypass() and migration 052.
+    const [user] = await this.db.withSystemBypass(sql => sql`
       SELECT id, company_id FROM users
       WHERE password_reset_token = ${dto.token}
         AND password_reset_expires_at > NOW()
         AND is_active = true
-    `;
+    `);
 
     if (!user) throw new BadRequestException('Reset token is invalid or has expired.');
 

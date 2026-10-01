@@ -30,12 +30,12 @@ export class TenancyService {
   }
 
   // Deliberately global -- slug is a public, pre-tenant lookup (login/registration flows
-  // that don't have a companyId yet). Same bootstrap category as auth.service.ts's
-  // login-by-email.
+  // that don't have a companyId yet). withSystemBypass required -- see
+  // DatabaseService.withSystemBypass() and migration 052.
   async findBySlug(slug: string) {
-    const [company] = await this.db.query`
+    const [company] = await this.db.withSystemBypass(sql => sql`
       SELECT id, name, slug, is_active FROM companies WHERE slug = ${slug}
-    `;
+    `);
     return company ?? null;
   }
 
@@ -44,19 +44,16 @@ export class TenancyService {
    * Called during the company self-registration flow (public endpoint).
    * The first user to register becomes company_admin automatically.
    *
-   * withTransaction (not withTenant) is structurally correct here -- there is no
-   * companyId to scope by yet, since this IS the insert that creates one. NOTE: under the
-   * app's real DB role (app_user, no BYPASS RLS -- see migration 001), the `companies`
+   * withSystemBypass (not withTenant) is structurally correct here -- there is no
+   * companyId to scope by yet, since this IS the insert that creates one. The `companies`
    * INSERT's implicit WITH CHECK (mirroring the tenant_isolation USING clause, since no
    * separate WITH CHECK is declared) requires company_id/id = current_setting(...), which
-   * is never true with no session var set -- so this INSERT is rejected outright and
-   * self-registration cannot currently succeed in production. This is not fixable by
-   * adding withTenant (no companyId exists to scope by); it needs a deliberate bootstrap
-   * mechanism (e.g. a narrowly-scoped SECURITY DEFINER function or dedicated role for
-   * exactly this operation) -- flagged, not fixed, as part of the RLS/withTenant audit.
+   * is never true with no session var set, so this needs the explicit, narrow RLS bypass
+   * role from migration 052 for exactly this operation -- see
+   * DatabaseService.withSystemBypass().
    */
   async register(dto: { companyName: string; slug: string; adminEmail: string; adminFirstName: string; adminLastName: string; adminPassword: string }) {
-    return this.db.withTransaction(async (sql) => {
+    return this.db.withSystemBypass(async (sql) => {
       // 1. Get trial plan (needed up front so the company's stored limit matches
       //    the plan actually being assigned, not the column's generic default)
       const [trialPlan] = await sql`

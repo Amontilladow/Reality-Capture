@@ -111,21 +111,14 @@ export class ScreenshotsService {
   //
   // This is cross-company by nature -- it has to look at every company's
   // own retention_days, not just one caller's -- so it can't use
-  // withTenant the way every other query in this module does. Under this
-  // app's real production DB role (app_user, no RLS BYPASS -- see
-  // migration 001's comments), a cross-tenant read like this has the
-  // identical bootstrap-role limitation TenancyService.register() already
-  // documents and flags for company self-registration: it needs a
-  // narrowly-scoped bypass mechanism this app doesn't have yet, which is a
-  // pre-existing, shared gap to fix once, not something to invent here.
-  // Written the structurally correct way so it works today under a
-  // superuser DB role (e.g. local dev's default `postgres` user, per
-  // apps/api/.env.example) and is ready to work in production once that
-  // gap is addressed.
+  // withTenant the way every other query in this module does.
+  // withSystemBypass required -- see DatabaseService.withSystemBypass() and
+  // migration 052, same mechanism TenancyService.register() and
+  // IssueWarningService.checkOverdueIssues() use for the same reason.
   @Cron('17 3 * * *')
   async cleanupExpiredScreenshots(): Promise<void> {
     try {
-      const companies = await this.db.withTransaction(sql => sql`
+      const companies = await this.db.withSystemBypass(sql => sql`
         SELECT company_id, retention_days FROM workforce_privacy_settings`);
 
       for (const company of companies) {
