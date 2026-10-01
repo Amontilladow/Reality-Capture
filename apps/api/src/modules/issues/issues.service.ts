@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger, Optional } from '@nestjs/common';
 import { PDFDocument, PDFFont, StandardFonts, rgb, PageSizes } from 'pdf-lib';
 import JSZip from 'jszip';
 import sharp from 'sharp';
@@ -6,6 +6,7 @@ import { DatabaseService } from '../../database/database.service';
 import { AiClientService } from '../ai-client/ai-client.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
+import { RiskService } from '../risk/risk.service';
 import { renderIssuePdf } from './issue-pdf.template';
 import { buildIssueWorkbookBuffer, type IssueXlsData } from './issue-xls';
 import type { CreateIssueDto } from './dto/create-issue.dto';
@@ -52,7 +53,27 @@ export class IssuesService {
     private readonly aiClient: AiClientService,
     private readonly notifications: NotificationsService,
     private readonly storage: StorageService,
+    // @Optional(): see RfisService's identical comment on its own
+    // constructor -- keeps the many existing issues.service.spec.ts call
+    // sites (which construct IssuesService with the pre-existing 4-arg
+    // list) working unchanged; IssuesModule registers RiskModule as a real
+    // provider, so production always gets a live instance here.
+    @Optional() private readonly risk?: RiskService,
   ) {}
+
+  // Event-driven incremental risk recalculation (brief section 41) -- see
+  // RfisService.triggerRiskRecalc()'s identical comment for the full
+  // rationale (fired after any write that can change an issue's overdue/
+  // severity/reopened/location/open-vs-closed state; never allowed to fail
+  // or slow down the issue write it's attached to).
+  private async triggerRiskRecalc(companyId: string, projectId: string, issueId: string): Promise<void> {
+    if (!this.risk) return;
+    try {
+      await this.risk.recalculateForEntity(companyId, projectId, 'issue', issueId);
+    } catch (err) {
+      this.logger.warn(`Risk recalculation failed for issue ${issueId}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   // ── Generate issue number ─────────────────────────────────────────────────
   // Sequential per (project, discipline): {projectCode}-{disciplineCode}-{0001}.
@@ -167,6 +188,7 @@ export class IssuesService {
       discipline: issue.discipline as string | null,
     });
 
+    await this.triggerRiskRecalc(companyId, projectId, issue.id as string);
     return issue;
   }
 
@@ -311,6 +333,7 @@ export class IssuesService {
       });
     }
 
+    await this.triggerRiskRecalc(companyId, projectId, issueId);
     return updated;
   }
 
@@ -348,6 +371,7 @@ export class IssuesService {
       toValue: 'closed',
     });
 
+    await this.triggerRiskRecalc(companyId, projectId, issueId);
     return updated;
   }
 
@@ -618,6 +642,7 @@ export class IssuesService {
       toValue: dto.status,
     });
 
+    await this.triggerRiskRecalc(companyId, projectId, issueId);
     return updated;
   }
 
@@ -636,7 +661,7 @@ export class IssuesService {
   // (reported back via `skipped`) rather than failing the whole batch.
   async bulkClose(companyId: string, projectId: string, userId: string, userRole: string, dto: BulkCloseIssuesDto) {
     const isAdmin = ['company_admin', 'engineering_manager'].includes(userRole);
-    return this.db.withTenant(companyId, async (sql) => {
+    const result = await this.db.withTenant(companyId, async (sql) => {
       const targets = await sql`
         SELECT id, status, issue_number FROM issues
         WHERE id = ANY(${dto.issueIds}::uuid[])
@@ -663,6 +688,17 @@ export class IssuesService {
 
       return { closed: targets.length, issueIds: ids, skipped: dto.issueIds.length - targets.length };
     });
+
+    // Recalculated one at a time, after (not inside) the transaction above
+    // commits -- recalculateForEntity() opens its own withTenant transaction
+    // internally, which would otherwise read this batch's rows before they
+    // were actually committed (Postgres transaction isolation: an
+    // in-progress transaction's writes are invisible to a second, separate
+    // connection/transaction until it commits).
+    for (const issueId of result.issueIds) {
+      await this.triggerRiskRecalc(companyId, projectId, issueId);
+    }
+    return result;
   }
 
   // ── Reminders ───────────────────────────────────────────────────────────

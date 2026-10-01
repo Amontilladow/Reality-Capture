@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, Optional, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
+import { RiskService } from '../risk/risk.service';
 import type { CreateSnagItemDto } from './dto/create-snag-item.dto';
 import type { UpdateSnagItemDto } from './dto/update-snag-item.dto';
 import type { AddSnagActivityDto } from './dto/add-snag-activity.dto';
@@ -14,11 +15,31 @@ import type { PaginationQuery } from '@engineeringos/types';
 
 @Injectable()
 export class SnaggingService {
+  private readonly logger = new Logger(SnaggingService.name);
+
   constructor(
     private readonly db: DatabaseService,
     private readonly notifications: NotificationsService,
     private readonly storage: StorageService,
+    // @Optional(): see RfisService's identical comment on its own
+    // constructor -- keeps the existing snagging.service.spec.ts call sites
+    // (which construct SnaggingService with the pre-existing 3-arg list)
+    // working unchanged; SnaggingModule registers RiskModule as a real
+    // provider, so production always gets a live instance here.
+    @Optional() private readonly risk?: RiskService,
   ) {}
+
+  // Event-driven incremental risk recalculation (brief section 41) -- see
+  // RfisService.triggerRiskRecalc()'s identical comment for the full
+  // rationale.
+  private async triggerRiskRecalc(companyId: string, projectId: string, snagId: string): Promise<void> {
+    if (!this.risk) return;
+    try {
+      await this.risk.recalculateForEntity(companyId, projectId, 'snag_item', snagId);
+    } catch (err) {
+      this.logger.warn(`Risk recalculation failed for snag item ${snagId}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   // withTenant required for the projects lookup -- projects carries the tenant_isolation
   // RLS policy. A plain this.db.query() never sets app.current_company_id, so under any DB
@@ -60,6 +81,7 @@ export class SnaggingService {
       });
     }
 
+    await this.triggerRiskRecalc(companyId, projectId, snag.id as string);
     return snag;
   }
 
@@ -152,6 +174,7 @@ export class SnaggingService {
       });
     }
 
+    await this.triggerRiskRecalc(companyId, projectId, snagId);
     return updated;
   }
 
@@ -331,6 +354,7 @@ export class SnaggingService {
       toValue: dto.status,
     });
 
+    await this.triggerRiskRecalc(companyId, projectId, snagId);
     return updated;
   }
 
