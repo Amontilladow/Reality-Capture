@@ -377,7 +377,28 @@ committed and pushed (`5379e88`). Verified live: report generation and
 PDF export for a real project, share-link creation, logged-out public
 access, revocation, and post-revocation 403 blocking, all via direct API
 calls, plus a full browser pass on the in-app page, Share modal, and
-public external page. No known risks or follow-ups. F2 starting now.
+public external page. No known risks or follow-ups.
+
+**Status: F2 shipped.** Migration 055 (`bim_elements.completion_pct`,
+`bim_element_status_history`, `zone_progress`, `zone_progress_history`),
+extended `bim.service.ts`/`bim.controller.ts` (status update with
+completion %/evidence capture + audit trail, per-level progress summary,
+zone upsert + history, flat element status-map), a new BIM viewer
+"Progress" sidebar tab (`ProgressPanel.tsx`) with inline zone-status
+editing, a construction-status editor with history in `PropertyPanel.tsx`,
+and a persistent multi-colour `BimViewer` overlay
+(`applyStatusOverlay`/`clearStatusOverlay`) are committed and pushed
+(`a09b126`). F1's report gained an `elementProgress` section (in-app,
+public share page, and PDF). Verified live via direct API calls against
+a synthetic BIM fixture (object storage/minio isn't available in this
+environment to run the real IFC pipeline, so a fixture was used instead
+of a real processed model) and a full browser pass of the Progress tab,
+zone editor, and element status editor. Known gap: the 3D colour overlay
+itself could not be visually confirmed here for the same storage-pipeline
+reason — it reuses the existing, working `guidsToModelIdMap`/`highlight`
+calls, so it should work against a real processed model in the live app;
+flagging for a follow-up visual check once one is available. F3 starting
+now.
 
 ## Exact continuation point
 IFC Processing Engine, Reality Capture image processing, BIM viewer <->
