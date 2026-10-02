@@ -208,7 +208,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
       {summary && hasAnyData && (
         <>
           {/* Executive Risk Summary */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
             <div className="panel p-3">
               <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">Overall Project Risk</div>
               <div className="flex items-baseline gap-2">
@@ -228,6 +228,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
             <StatTile label="High Risks" value={summary.highCount} tone={summary.highCount > 0 ? 'warn' : undefined} />
             <StatTile label="Increasing" value={summary.increasingCount} tone={summary.increasingCount > 0 ? 'danger' : undefined} />
             <StatTile label="Overdue Items" value={summary.overdueCount} tone={summary.overdueCount > 0 ? 'danger' : undefined} />
+            <StatTile label="Open Discrepancies" value={summary.openDiscrepancyCount} tone={summary.openDiscrepancyCount > 0 ? 'warn' : undefined} />
           </div>
 
           {/* Risk Summary — deterministic, grounded in the summary above; never a free-floating claim */}

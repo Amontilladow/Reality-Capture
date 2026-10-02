@@ -735,9 +735,7 @@ export class RiskService {
     const risks = await this.listRisks(companyId, projectId);
     const openRisks = risks.filter(r => this.isOpenStatus(r.status));
 
-    const overallScore = openRisks.length > 0
-      ? Math.round(openRisks.reduce((sum, r) => sum + r.score, 0) / openRisks.length)
-      : 0;
+    const overallScore = computeProjectRiskIndex(openRisks);
     const overallLevel = this.scoring.levelForScore(overallScore);
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
@@ -753,12 +751,22 @@ export class RiskService {
       }
     }
 
+    // Open, unreviewed Human-vs-AI discrepancies (Phase 18/21) -- ties the
+    // Risk Matrix system into the headline Executive Summary for the first
+    // time. Computed inline over the already-fetched openRisks rather than
+    // a second getMatrixDiscrepancies() round trip.
+    const openDiscrepancyCount = openRisks.filter(r => {
+      const d = RiskService.detectMatrixDiscrepancy(r);
+      return d !== null && d.hasDiscrepancy && !d.reviewed;
+    }).length;
+
     return {
       overallScore, overallLevel, overallScoreTrendPct,
       criticalCount: openRisks.filter(r => r.level === 'CRITICAL').length,
       highCount: openRisks.filter(r => r.level === 'HIGH').length,
       increasingCount: openRisks.filter(r => r.trend === 'INCREASING').length,
       overdueCount: openRisks.filter(r => r.dueDate && new Date(r.dueDate).getTime() < Date.now()).length,
+      openDiscrepancyCount,
       totalOpenRisks: openRisks.length,
     };
   }
@@ -1024,6 +1032,24 @@ export class RiskService {
 }
 
 // ── Pure context-building functions (exported for direct unit testing) ─────
+
+// Each level up weighs twice as much as the one below it -- a project
+// dominated by a handful of CRITICAL risks should read as far riskier than
+// the same count of LOW ones, which a flat average of 0-100 scores could
+// easily wash out (ten LOW risks at 5 and one CRITICAL at 90 averages to
+// 12.7 -- barely distinguishable from "no real risk here"). This is still
+// a plain weighted average of the SAME real 0-100 scores already computed
+// by the deterministic engine, never a fabricated or AI-guessed number,
+// and it stays within [0,100] by construction (Phase 22).
+const PROJECT_RISK_INDEX_LEVEL_WEIGHT: Record<RiskLevel, number> = { LOW: 1, MODERATE: 2, HIGH: 4, CRITICAL: 8 };
+
+/** The Project Risk Index (brief section 19/Phase 22): a severity-weighted average of open risks' automated scores, never their Risk Matrix (1-25) scores -- the two scales are never mixed (see RiskRow's own comment). 0 when there are no open risks -- never a fabricated non-zero baseline. */
+export function computeProjectRiskIndex(openRisks: { score: number; level: RiskLevel }[]): number {
+  if (openRisks.length === 0) return 0;
+  const weightedSum = openRisks.reduce((sum, r) => sum + r.score * PROJECT_RISK_INDEX_LEVEL_WEIGHT[r.level], 0);
+  const weightTotal = openRisks.reduce((sum, r) => sum + PROJECT_RISK_INDEX_LEVEL_WEIGHT[r.level], 0);
+  return Math.round(weightedSum / weightTotal);
+}
 
 /** The one number/level actually shown as "the" risk on the Risk Matrix: an explicit override, else human judgment, else the AI score (brief sections 11-12). */
 export function computeFinalMatrix(

@@ -75,6 +75,7 @@ export interface RiskExecutiveSummary {
   highCount: number;
   increasingCount: number;
   overdueCount: number;
+  openDiscrepancyCount: number;
   totalOpenRisks: number;
 }
 
