@@ -16,6 +16,12 @@ import { IfcReportService } from './ifc-report.service';
         backoff: { type: 'exponential', delay: 10000 },
         removeOnComplete: 100,
         removeOnFail: 100,
+        // Bounds a single parse job's runtime: without this, a structurally
+        // pathological (but <500MB) IFC file has no kill switch, and since
+        // main.ts runs this worker in the same process as the /health
+        // endpoint, an unbounded job can degrade liveness checks for the
+        // whole instance.
+        timeout: 20 * 60 * 1000,
       },
     }),
   ],

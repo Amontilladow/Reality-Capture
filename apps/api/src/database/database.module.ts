@@ -17,7 +17,13 @@ import { DatabaseService } from './database.service';
           database: config.get('database.name'),
           username: config.get('database.user'),
           password: config.get('database.password'),
-          ssl: config.get('database.ssl') === 'true' ? { rejectUnauthorized: false } : false,
+          // Verify the server's certificate against Node's trust store (or the
+          // optional caCert override below) rather than accepting any cert --
+          // rejectUnauthorized:false would let a network-positioned attacker
+          // MITM the connection while TLS looks nominally "enabled".
+          ssl: config.get('database.ssl') === 'true'
+            ? { rejectUnauthorized: true, ca: config.get('database.caCert') || undefined }
+            : false,
           max: 20,              // connection pool size
           idle_timeout: 30,     // seconds before idle connection is closed
           connect_timeout: 10,

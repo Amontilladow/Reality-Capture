@@ -10,6 +10,10 @@ export const API_BASE = import.meta.env.VITE_API_BASE ?? '/api/v1';
 export const http = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
+  // Sends the httpOnly refresh-token cookie on same-site/CORS requests to
+  // the API origin. Harmless on routes that ignore it; required for
+  // /auth/refresh and /auth/logout, which read it server-side.
+  withCredentials: true,
 });
 
 http.interceptors.request.use((config) => {
@@ -24,20 +28,23 @@ http.interceptors.request.use((config) => {
 // Single-flight refresh: if multiple requests 401 at once, only refresh once.
 let refreshPromise: Promise<string | null> | null = null;
 
-async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = useAuthStore.getState().refreshToken;
-  if (!refreshToken) return null;
-
+// No refreshToken to pass -- the API reads it from the httpOnly cookie
+// `withCredentials: true` above already sends along. Exported so
+// bootstrapSession() (called once on app start) can reuse the identical
+// single-flight logic to re-establish a session after a page reload, since
+// the access token itself was never persisted.
+export async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = axios
-      .post<ApiResponse<{ accessToken: string; refreshToken: string; expiresIn: number }>>(
+      .post<ApiResponse<{ tokens: { accessToken: string; expiresIn: number } }>>(
         `${API_BASE}/auth/refresh`,
-        { refreshToken },
+        {},
+        { withCredentials: true },
       )
       .then((res) => {
-        const tokens = res.data.data;
-        useAuthStore.getState().setTokens(tokens.accessToken, tokens.refreshToken);
-        return tokens.accessToken;
+        const { accessToken } = res.data.data.tokens;
+        useAuthStore.getState().setAccessToken(accessToken);
+        return accessToken;
       })
       .catch(() => {
         useAuthStore.getState().clear();
@@ -48,6 +55,16 @@ async function refreshAccessToken(): Promise<string | null> {
       });
   }
   return refreshPromise;
+}
+
+// Re-establishes a session on app load from the httpOnly refresh cookie,
+// since the access token itself is kept in memory only and doesn't survive
+// a page reload. Call once at startup; safe to call when there's no cookie
+// at all (a logged-out visitor) -- it just resolves with null and
+// ProtectedRoute sends them to /login as before.
+export async function bootstrapSession(): Promise<void> {
+  await refreshAccessToken();
+  useAuthStore.getState().setHydrated();
 }
 
 http.interceptors.response.use(

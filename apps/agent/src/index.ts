@@ -52,6 +52,15 @@ async function runStart(): Promise<void> {
   }, FLUSH_INTERVAL_MS);
 
   const screenshotTimer = setInterval(() => {
+    // Private Time is named and documented as pausing monitoring; before this
+    // check, it only gated the activity-sampling loop (above) while
+    // screenshots kept firing on schedule regardless -- a silent scope gap
+    // between what the feature claims and what it actually did, inconsistent
+    // with window-title capture (also suppressed during Private Time).
+    if (isPrivateModeOn()) {
+      console.log('Private Time is on -- skipping this screenshot cycle.');
+      return;
+    }
     runScreenshotCycle({
       requestUploadUrl: () => client.requestScreenshotUploadUrl(),
       capture: captureScreenshot,
@@ -102,7 +111,7 @@ async function main(): Promise<void> {
       return;
     }
     setPrivateMode(mode === 'on');
-    console.log(`Private Time turned ${mode}. The running agent picks this up on its next activity sample (within ${SAMPLE_INTERVAL_MS / 1000}s).`);
+    console.log(`Private Time turned ${mode}. The running agent picks this up on its next activity sample or screenshot cycle (within ${SAMPLE_INTERVAL_MS / 1000}s for activity, up to the screenshot interval for screenshots).`);
     return;
   }
 

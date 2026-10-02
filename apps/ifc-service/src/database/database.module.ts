@@ -21,7 +21,11 @@ import { DatabaseService } from './database.service';
           database: config.get('database.name'),
           username: config.get('database.user'),
           password: config.get('database.password'),
-          ssl: config.get('database.ssl') === 'true' ? { rejectUnauthorized: false } : false,
+          // See apps/api/src/database/database.module.ts's identical change --
+          // verify the server certificate instead of accepting any cert.
+          ssl: config.get('database.ssl') === 'true'
+            ? { rejectUnauthorized: true, ca: config.get('database.caCert') || undefined }
+            : false,
           max: 10,
           idle_timeout: 30,
           connect_timeout: 10,
