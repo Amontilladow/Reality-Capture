@@ -23,6 +23,7 @@ const PROJECT_NAV_ITEMS = [
   { to: 'submittals', label: 'Submittals', icon: IconInbox },
   { to: 'assistant', label: 'AI Assistant', icon: IconSpark },
   { to: 'risk', label: 'Risk', icon: IconShield },
+  { to: 'progress-report', label: 'Progress Report', icon: IconTrending },
   { to: 'reports', label: 'Reports', icon: IconReport },
 ];
 
@@ -280,6 +281,14 @@ function IconReport({ className }: { className?: string }) {
       <path d="M7 3h7l4 4v14H7z" strokeLinejoin="round" />
       <path d="M14 3v4h4" strokeLinejoin="round" />
       <path d="M9.5 13l2 2 3.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconTrending({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M3 17l6-6 4 4 8-8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M15 7h6v6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
