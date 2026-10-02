@@ -1,0 +1,206 @@
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { PageHeader } from '../components/layout/PageHeader';
+import { listApiKeys, createApiKey, revokeApiKey, type ApiKey } from '../lib/api-keys.api';
+import {
+  listWebhookEndpoints, createWebhookEndpoint, deleteWebhookEndpoint, setWebhookActive,
+  listWebhookDeliveries, WEBHOOK_EVENT_TYPES, type WebhookEndpoint,
+} from '../lib/webhooks.api';
+import { apiErrorMessage } from '../lib/api';
+
+function SecretReveal({ label, secret }: { label: string; secret: string }) {
+  const [copied, setCopied] = useState(false);
+  async function handleCopy() {
+    await navigator.clipboard.writeText(secret);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+  return (
+    <div className="panel p-3 space-y-1">
+      <p className="text-xs text-danger font-medium">{label} — copy it now, it won't be shown again.</p>
+      <div className="flex items-center gap-2">
+        <input readOnly value={secret} className="field-input flex-1 text-xs font-mono" onFocus={(e) => e.target.select()} />
+        <button onClick={handleCopy} className="btn-secondary !px-3 !py-1.5 text-xs">{copied ? 'Copied!' : 'Copy'}</button>
+      </div>
+    </div>
+  );
+}
+
+function ApiKeysSection() {
+  const queryClient = useQueryClient();
+  const [name, setName] = useState('');
+
+  const keysQuery = useQuery({ queryKey: ['api-keys'], queryFn: listApiKeys });
+  const createMutation = useMutation({
+    mutationFn: () => createApiKey(name.trim()),
+    onSuccess: () => { setName(''); queryClient.invalidateQueries({ queryKey: ['api-keys'] }); },
+  });
+  const revokeMutation = useMutation({
+    mutationFn: (keyId: string) => revokeApiKey(keyId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['api-keys'] }),
+  });
+
+  return (
+    <div className="panel tick-frame p-5 space-y-4">
+      <div>
+        <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Public API Keys</h2>
+        <p className="text-xs text-ink-500 mt-1">
+          Authenticate read-only requests to projects, captures, issues and progress via the X-API-Key header.
+        </p>
+      </div>
+
+      <div className="flex items-end gap-2">
+        <div className="flex-1">
+          <label className="field-label" htmlFor="apikey-name">Name</label>
+          <input id="apikey-name" className="field-input" placeholder="e.g. Procore sync" value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <button onClick={() => createMutation.mutate()} disabled={!name.trim() || createMutation.isPending} className="btn-primary">
+          {createMutation.isPending ? 'Generating…' : 'Generate key'}
+        </button>
+      </div>
+      {createMutation.isError && <p className="field-error">{apiErrorMessage(createMutation.error)}</p>}
+      {createMutation.data && <SecretReveal label="API key" secret={createMutation.data.apiKey} />}
+
+      {(keysQuery.data?.length ?? 0) === 0 ? (
+        <p className="text-sm text-ink-500">No API keys yet.</p>
+      ) : (
+        <div className="divide-y divide-base-700/60">
+          {(keysQuery.data ?? []).map((k: ApiKey) => (
+            <div key={k.id} className="flex items-center justify-between py-2.5 text-sm">
+              <div>
+                <span className="text-ink-100">{k.name}</span>
+                <span className="text-ink-500 ml-2 text-xs font-mono">{k.keyPrefix}…</span>
+                {k.revokedAt && <span className="badge bg-base-700 text-ink-500 ml-2">Revoked</span>}
+              </div>
+              {!k.revokedAt && (
+                <button onClick={() => revokeMutation.mutate(k.id)} disabled={revokeMutation.isPending} className="btn-ghost !px-2 !py-1 text-xs text-danger">
+                  Revoke
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DeliveriesList({ endpointId }: { endpointId: string }) {
+  const deliveriesQuery = useQuery({ queryKey: ['webhook-deliveries', endpointId], queryFn: () => listWebhookDeliveries(endpointId) });
+  if ((deliveriesQuery.data?.length ?? 0) === 0) return <p className="text-xs text-ink-500 px-3 pb-2">No deliveries yet.</p>;
+  return (
+    <div className="px-3 pb-2 space-y-1">
+      {(deliveriesQuery.data ?? []).slice(0, 10).map((d) => (
+        <div key={d.id} className="flex items-center justify-between text-xs">
+          <span className="text-ink-300">{d.eventType}</span>
+          <span className={d.status === 'delivered' ? 'text-ok' : 'text-danger'}>
+            {d.status} ({d.attempts} attempt{d.attempts === 1 ? '' : 's'})
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function WebhooksSection() {
+  const queryClient = useQueryClient();
+  const [url, setUrl] = useState('');
+  const [eventTypes, setEventTypes] = useState<string[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const endpointsQuery = useQuery({ queryKey: ['webhook-endpoints'], queryFn: listWebhookEndpoints });
+  const createMutation = useMutation({
+    mutationFn: () => createWebhookEndpoint(url.trim(), eventTypes),
+    onSuccess: () => { setUrl(''); setEventTypes([]); queryClient.invalidateQueries({ queryKey: ['webhook-endpoints'] }); },
+  });
+  const toggleActiveMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => setWebhookActive(id, isActive),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['webhook-endpoints'] }),
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteWebhookEndpoint(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['webhook-endpoints'] }),
+  });
+
+  function toggleEventType(type: string) {
+    setEventTypes((prev) => (prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]));
+  }
+
+  return (
+    <div className="panel tick-frame p-5 space-y-4">
+      <div>
+        <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Webhooks</h2>
+        <p className="text-xs text-ink-500 mt-1">
+          Receive an HMAC-signed POST (X-Webhook-Signature) on issue created, issue status changed, and capture uploaded.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <div>
+          <label className="field-label" htmlFor="webhook-url">Endpoint URL (https)</label>
+          <input id="webhook-url" className="field-input" placeholder="https://example.com/webhooks/engineeringos" value={url} onChange={(e) => setUrl(e.target.value)} />
+        </div>
+        <div className="flex gap-3">
+          {WEBHOOK_EVENT_TYPES.map((type) => (
+            <label key={type} className="flex items-center gap-1.5 text-xs text-ink-300">
+              <input type="checkbox" checked={eventTypes.includes(type)} onChange={() => toggleEventType(type)} />
+              {type}
+            </label>
+          ))}
+        </div>
+        <button
+          onClick={() => createMutation.mutate()}
+          disabled={!url.trim() || eventTypes.length === 0 || createMutation.isPending}
+          className="btn-primary"
+        >
+          {createMutation.isPending ? 'Creating…' : 'Add webhook'}
+        </button>
+      </div>
+      {createMutation.isError && <p className="field-error">{apiErrorMessage(createMutation.error)}</p>}
+      {createMutation.data && <SecretReveal label="Signing secret" secret={createMutation.data.secret} />}
+
+      {(endpointsQuery.data?.length ?? 0) === 0 ? (
+        <p className="text-sm text-ink-500">No webhook endpoints yet.</p>
+      ) : (
+        <div className="panel tick-frame divide-y divide-base-700/60">
+          {(endpointsQuery.data ?? []).map((e: WebhookEndpoint) => (
+            <div key={e.id}>
+              <div className="flex items-center justify-between px-3 py-2.5 text-sm">
+                <div className="min-w-0">
+                  <div className="text-ink-100 truncate">{e.url}</div>
+                  <div className="text-xs text-ink-500">{e.eventTypes.join(', ')}</div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`badge ${e.isActive ? 'bg-ok/15 text-ok' : 'bg-base-700 text-ink-500'}`}>{e.isActive ? 'Active' : 'Disabled'}</span>
+                  <button onClick={() => setExpandedId(expandedId === e.id ? null : e.id)} className="text-xs text-blue-400 hover:text-blue-300">
+                    {expandedId === e.id ? 'Hide' : 'Deliveries'}
+                  </button>
+                  <button
+                    onClick={() => toggleActiveMutation.mutate({ id: e.id, isActive: !e.isActive })}
+                    className="text-xs text-ink-500 hover:text-ink-300"
+                  >
+                    {e.isActive ? 'Disable' : 'Enable'}
+                  </button>
+                  <button onClick={() => deleteMutation.mutate(e.id)} className="text-xs text-danger hover:text-danger/80">Delete</button>
+                </div>
+              </div>
+              {expandedId === e.id && <DeliveriesList endpointId={e.id} />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function DeveloperSettingsPage() {
+  return (
+    <>
+      <PageHeader eyebrow="Company Settings" title="Developer" />
+      <div className="p-6 space-y-6 max-w-3xl">
+        <ApiKeysSection />
+        <WebhooksSection />
+      </div>
+    </>
+  );
+}

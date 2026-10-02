@@ -12,6 +12,12 @@ const NAV_ITEMS = [
   { to: 'workforce', label: 'Workforce', icon: IconGauge },
 ];
 
+// Company-admin-only -- API keys and webhooks are per-tenant (company_id),
+// not per-project, so this lives alongside the other company-level nav
+// items, not under PROJECT_NAV_ITEMS. Same role check WorkforcePage.tsx
+// uses for its own admin-only sections.
+const DEVELOPER_NAV_ITEM = { to: 'developer', label: 'Developer', icon: IconKey, end: false };
+
 const PROJECT_NAV_ITEMS = [
   { to: '', label: 'Overview', icon: IconLayers, end: true },
   { to: 'captures', label: 'Captures', icon: IconCamera },
@@ -52,6 +58,8 @@ export function AppShell() {
   }
 
   const inProject = Boolean(params.projectId);
+  const isCompanyAdmin = user?.companyRole === 'company_admin' || user?.companyRole === 'super_admin';
+  const navItems = isCompanyAdmin ? [...NAV_ITEMS, DEVELOPER_NAV_ITEM] : NAV_ITEMS;
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
@@ -99,7 +107,7 @@ export function AppShell() {
 
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {!inProject &&
-            NAV_ITEMS.map((item) => (
+            navItems.map((item) => (
               <NavLink
                 key={item.label}
                 to={`/projects/${item.to}`}
@@ -289,6 +297,14 @@ function IconTrending({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M3 17l6-6 4 4 8-8" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M15 7h6v6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconKey({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <circle cx="8" cy="15" r="4" />
+      <path d="M11 12l9-9M17 6l3 3M14 9l2 2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
