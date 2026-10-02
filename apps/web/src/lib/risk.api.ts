@@ -216,6 +216,17 @@ export const getRiskAssessmentHistory = (projectId: string, riskId: string) =>
 export const setHumanAssessment = (projectId: string, riskId: string, dto: { probability: number; impact: number; primaryDriver: RiskDriver; secondaryDriver?: RiskDriver | null }) =>
   apiPatch<Risk>(`${base(projectId)}/${riskId}/human-assessment`, dto);
 
+// Resolves an issue/RFI/snag's own entity ID to its Risk (if any has been
+// detected/assessed yet) -- for the inline Human Risk Assessment widget on
+// those forms. Never creates anything; null means "nothing to show yet".
+export const getRiskByEntity = (projectId: string, nodeType: string, entityId: string) =>
+  apiGet<(Risk & { discrepancy: RiskMatrixDiscrepancy | null }) | null>(`${base(projectId)}/by-entity`, { params: { nodeType, entityId } });
+
+// Same validation/scoring as setHumanAssessment, but bootstraps a Risk row
+// first if the automated engine hasn't flagged this item yet.
+export const setHumanAssessmentByEntity = (projectId: string, nodeType: string, entityId: string, dto: { probability: number; impact: number; primaryDriver: RiskDriver; secondaryDriver?: RiskDriver | null }) =>
+  apiPatch<Risk>(`${base(projectId)}/by-entity/human-assessment`, dto, { params: { nodeType, entityId } });
+
 // Resolves a Human-vs-AI Risk Matrix discrepancy. "Update Assessment" is not
 // included here -- it's just a fresh setHumanAssessment() call.
 export const setMatrixOverride = (projectId: string, riskId: string, dto: { decision: 'ACCEPT_AI' | 'KEEP_HUMAN' | 'CUSTOM'; score?: number; level?: RiskMatrixLevel; reason?: string }) =>

@@ -10,7 +10,7 @@ import {
   recalculateRisk, getRiskSummary, getTopRisks, getEmergingRisks, getRiskByDiscipline,
   getRiskClusters, getRiskDataAvailability, listRisks, getRisk, getRiskChain, getRiskEvidence, getRiskHistory,
   overrideRisk, clearRiskOverride, setRiskStatus, getAiBriefing, getAiExplanation, downloadRiskPdf,
-  setHumanAssessment, setMatrixOverride, RISK_DRIVERS, RISK_DRIVER_LABELS,
+  setHumanAssessment, setHumanAssessmentByEntity, setMatrixOverride, getRiskByEntity, RISK_DRIVERS, RISK_DRIVER_LABELS,
   type Risk, type RiskLevel, type RiskStatus, type RiskMatrixLevel, type RiskDriver, type RiskMatrixDiscrepancy,
 } from '../lib/risk.api';
 
@@ -529,7 +529,7 @@ function RiskDetailDrawer({ projectId, riskId, onClose, onChanged, onViewGraph }
             </div>
           )}
 
-          <HumanAssessmentPanel projectId={projectId} riskId={riskId} risk={risk} onChanged={invalidate} />
+          <HumanAssessmentPanel projectId={projectId} risk={risk} onChanged={invalidate} />
 
           <button onClick={() => onViewGraph(risk.rootNodeId)} className="btn-secondary !px-2.5 !py-1 text-xs">
             View in Risk Graph
@@ -621,36 +621,50 @@ function RiskDetailDrawer({ projectId, riskId, onClose, onChanged, onViewGraph }
 }
 
 // Progressive-disclosure Human Risk Assessment: Probability x Impact (brief
-// sections 3-6, 42-43). A separate component (not inline in
-// RiskDetailDrawer) purely so its form state initializes from `risk`'s
-// already-loaded values via plain useState lazy init -- no useEffect sync
-// needed, since this never mounts before `risk` exists (see the !risk
-// guard in RiskDetailDrawer above).
-function HumanAssessmentPanel({ projectId, riskId, risk, onChanged }: { projectId: string; riskId: string; risk: Risk & { discrepancy: RiskMatrixDiscrepancy | null }; onChanged: () => void }) {
-  const [probability, setProbability] = useState(String(risk.humanProbability ?? ''));
-  const [impact, setImpact] = useState(String(risk.humanImpact ?? ''));
-  const [primaryDriver, setPrimaryDriver] = useState<RiskDriver | ''>(risk.primaryDriver ?? '');
-  const [secondaryDriver, setSecondaryDriver] = useState<RiskDriver | ''>(risk.secondaryDriver ?? '');
-  const [expanded, setExpanded] = useState(risk.humanScore == null);
+// sections 3-6, 42-43). A separate component (not inline in its callers)
+// purely so its form state initializes from `risk`'s already-loaded values
+// via plain useState lazy init -- no useEffect sync needed, since the
+// RiskDetailDrawer usage never mounts this before `risk` exists (see its
+// own !risk guard). `risk` is nullable here specifically for the inline
+// Issue/RFI/Snag widget (InlineRiskAssessment below): an item the automated
+// engine hasn't flagged yet has no Risk row at all, but a human must still
+// be able to record an assessment -- nodeType/entityId are required in
+// that case so the mutation can bootstrap one (setHumanAssessmentByEntity).
+export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onChanged }: {
+  projectId: string;
+  risk: (Risk & { discrepancy: RiskMatrixDiscrepancy | null }) | null;
+  nodeType?: string; entityId?: string;
+  onChanged: () => void;
+}) {
+  const [probability, setProbability] = useState(String(risk?.humanProbability ?? ''));
+  const [impact, setImpact] = useState(String(risk?.humanImpact ?? ''));
+  const [primaryDriver, setPrimaryDriver] = useState<RiskDriver | ''>(risk?.primaryDriver ?? '');
+  const [secondaryDriver, setSecondaryDriver] = useState<RiskDriver | ''>(risk?.secondaryDriver ?? '');
+  const [expanded, setExpanded] = useState(risk?.humanScore == null);
 
   const mutation = useMutation({
-    mutationFn: () => setHumanAssessment(projectId, riskId, {
-      probability: Number(probability), impact: Number(impact),
-      primaryDriver: primaryDriver as RiskDriver, secondaryDriver: secondaryDriver || null,
-    }),
+    mutationFn: () => {
+      const input = {
+        probability: Number(probability), impact: Number(impact),
+        primaryDriver: primaryDriver as RiskDriver, secondaryDriver: secondaryDriver || null,
+      };
+      return risk
+        ? setHumanAssessment(projectId, risk.id, input)
+        : setHumanAssessmentByEntity(projectId, nodeType!, entityId!, input);
+    },
     onSuccess: () => { onChanged(); setExpanded(false); },
   });
 
   const acceptAiMutation = useMutation({
-    mutationFn: () => setMatrixOverride(projectId, riskId, { decision: 'ACCEPT_AI' }),
+    mutationFn: () => setMatrixOverride(projectId, risk!.id, { decision: 'ACCEPT_AI' }),
     onSuccess: onChanged,
   });
   const keepHumanMutation = useMutation({
-    mutationFn: () => setMatrixOverride(projectId, riskId, { decision: 'KEEP_HUMAN' }),
+    mutationFn: () => setMatrixOverride(projectId, risk!.id, { decision: 'KEEP_HUMAN' }),
     onSuccess: onChanged,
   });
 
-  const showDiscrepancyBanner = risk.discrepancy?.hasDiscrepancy && !risk.discrepancy.reviewed;
+  const showDiscrepancyBanner = Boolean(risk?.discrepancy?.hasDiscrepancy && !risk.discrepancy.reviewed);
 
   // Client-side preview only, purely for immediate feedback while picking
   // values -- the actually-persisted score/level always comes back from
@@ -663,14 +677,14 @@ function HumanAssessmentPanel({ projectId, riskId, risk, onChanged }: { projectI
     <div>
       <div className="flex items-center justify-between !mb-2">
         <div className="field-label !mb-0">Human Risk Assessment (Probability × Impact)</div>
-        {risk.humanScore != null && (
+        {risk?.humanScore != null && (
           <button onClick={() => setExpanded((v) => !v)} className="text-xs text-blueprint hover:underline">
             {expanded ? 'Collapse' : 'Edit'}
           </button>
         )}
       </div>
 
-      {showDiscrepancyBanner && (
+      {showDiscrepancyBanner && risk && (
         <div className="panel p-3 mb-2 border border-warn/40 bg-warn/5 space-y-2">
           <p className="text-xs text-ink-100">
             <span className="font-semibold">Human and AI disagree:</span> human assessment is{' '}
@@ -695,11 +709,11 @@ function HumanAssessmentPanel({ projectId, riskId, risk, onChanged }: { projectI
         </div>
       )}
 
-      {risk.matrixOverrideBy && risk.discrepancy?.hasDiscrepancy && (
+      {risk?.matrixOverrideBy && risk.discrepancy?.hasDiscrepancy && (
         <p className="text-xs text-ink-500 mb-2">Discrepancy reviewed: {risk.matrixOverrideReason}</p>
       )}
 
-      {risk.humanScore != null && !expanded ? (
+      {risk?.humanScore != null && !expanded ? (
         <div className="flex items-center gap-3 flex-wrap text-sm">
           <span className="text-2xl font-semibold tabular-nums" style={{ color: MATRIX_LEVEL_COLORS[risk.humanLevel!] }}>{risk.humanScore}</span>
           <span className="text-xs text-ink-500">/ 25</span>
@@ -744,13 +758,39 @@ function HumanAssessmentPanel({ projectId, riskId, risk, onChanged }: { projectI
         </div>
       )}
 
-      {risk.aiScore != null && (
+      {risk?.aiScore != null ? (
         <p className="text-xs text-ink-500 mt-2">
           AI score: <span className="font-semibold">{risk.aiScore}/25</span> ({risk.aiLevel ? MATRIX_LEVEL_LABELS[risk.aiLevel] : '—'})
           {risk.aiConfidence != null && ` · Confidence: ${risk.aiConfidence}%`}
         </p>
+      ) : !risk && (
+        <p className="text-xs text-ink-500 mt-2">No automated risk signals detected for this item yet — your assessment will still be recorded.</p>
       )}
     </div>
+  );
+}
+
+/**
+ * Wires HumanAssessmentPanel into an Issue/RFI/Snag detail view (brief
+ * sections 42-43): looks up the Risk for this entity (if any exists yet)
+ * and lets the panel itself handle both the "already has a Risk" case and
+ * the "nothing detected yet, bootstrap on save" case.
+ */
+export function InlineRiskAssessment({ projectId, nodeType, entityId }: { projectId: string; nodeType: 'issue' | 'rfi' | 'snag_item'; entityId: string }) {
+  const queryClient = useQueryClient();
+  const queryKey = ['risk-by-entity', projectId, nodeType, entityId];
+  const riskQuery = useQuery({ queryKey, queryFn: () => getRiskByEntity(projectId, nodeType, entityId) });
+
+  if (riskQuery.isLoading) return null;
+
+  return (
+    <HumanAssessmentPanel
+      projectId={projectId}
+      risk={riskQuery.data ?? null}
+      nodeType={nodeType}
+      entityId={entityId}
+      onChanged={() => queryClient.invalidateQueries({ queryKey })}
+    />
   );
 }
 

@@ -9,7 +9,7 @@ import { ScoringService } from './scoring.service';
 import { AiClientService } from '../ai-client/ai-client.service';
 import { renderRiskPdf, type RiskPdfTopRisk } from './risk-pdf.template';
 
-const RISK_WORTHY_NODE_TYPES = ['rfi', 'issue', 'snag_item', 'drawing', 'qa_inspection'] as const;
+export const RISK_WORTHY_NODE_TYPES = ['rfi', 'issue', 'snag_item', 'drawing', 'qa_inspection'] as const;
 
 const CATEGORY_BY_NODE_TYPE: Record<string, string> = {
   rfi: 'Design / RFI',
@@ -205,6 +205,77 @@ export class RiskService {
   async getRiskByRootNode(companyId: string, rootNodeId: string): Promise<RiskRow | null> {
     const [row] = await this.db.withTenant(companyId, sql => sql<RiskRow[]>`SELECT * FROM risks WHERE root_node_id = ${rootNodeId}`);
     return row ?? null;
+  }
+
+  /**
+   * Resolves an issue/RFI/snag's own entity ID to its Risk, for the inline
+   * Human Risk Assessment widget on those forms (brief sections 42-43).
+   * Read-only: returns null rather than creating anything when the
+   * automated engine hasn't flagged this item yet -- a plain page view
+   * must never have a side effect.
+   */
+  async getRiskByEntity(companyId: string, nodeType: typeof RISK_WORTHY_NODE_TYPES[number], entityId: string) {
+    const node = await this.graph.getNodeByEntity(companyId, nodeType, entityId);
+    if (!node) return null;
+    const risk = await this.getRiskByRootNode(companyId, node.id);
+    if (!risk) return null;
+    return { ...risk, discrepancy: RiskService.detectMatrixDiscrepancy(risk) };
+  }
+
+  /**
+   * Same resolution as getRiskByEntity(), but bootstraps a Risk row (with
+   * every automated factor at 0 -- an honest "nothing detected yet", not a
+   * fabricated value) when none exists. Only called from the human-
+   * assessment-by-entity write path: an engineer choosing to record a
+   * Probability x Impact judgment is exactly the case the brief says must
+   * not be gated behind the automated engine having already flagged
+   * something (sections 3, 42-43) -- without this, an item with zero
+   * automated signals could never receive a human assessment at all, since
+   * setHumanAssessment() needs an existing risk row to attach to.
+   */
+  private async getOrCreateRiskForEntity(companyId: string, projectId: string, nodeType: typeof RISK_WORTHY_NODE_TYPES[number], entityId: string): Promise<RiskRow> {
+    const node = await this.graph.getNodeByEntity(companyId, nodeType, entityId);
+    if (!node) throw new NotFoundException(`No ${nodeType.replace('_', ' ')} was found to assess.`);
+
+    const existing = await this.getRiskByRootNode(companyId, node.id);
+    if (existing) return existing;
+
+    const zeroFactors = { probability: 0, impact: 0, exposure: 0, dependency: 0, urgency: 0, recurrence: 0 };
+    const matrixSettings = await this.getRiskMatrixSettings(companyId);
+    const { score: aiScore, level: aiLevel } = this.scoring.computeAiMatrixScore(zeroFactors, matrixSettings.thresholds ?? DEFAULT_RISK_MATRIX_THRESHOLDS);
+    const title = node.label;
+    const category = CATEGORY_BY_NODE_TYPE[nodeType] ?? 'Other';
+
+    return this.db.withTenant(companyId, async (sql) => {
+      const [row] = await sql<RiskRow[]>`
+        INSERT INTO risks (
+          company_id, project_id, root_node_id, title, category, discipline,
+          automated_score, automated_level, score, level,
+          probability, impact, exposure, dependency, urgency, recurrence,
+          confidence_level, confidence_reason,
+          ai_score, ai_level, ai_confidence, final_score, final_level,
+          trend, status
+        ) VALUES (
+          ${companyId}, ${projectId}, ${node.id}, ${title}, ${category}, ${(node.discipline as RiskDiscipline | null) ?? null},
+          0, 'LOW', 0, 'LOW',
+          0, 0, 0, 0, 0, 0,
+          'LOW', 'No automated risk signals detected yet — created from a manual Risk Matrix assessment.',
+          ${aiScore}, ${aiLevel}, 0, ${aiScore}, ${aiLevel},
+          'NEW', 'DETECTED'
+        )
+        ON CONFLICT (root_node_id) DO UPDATE SET updated_at = now()
+        RETURNING *`;
+      return row;
+    });
+  }
+
+  /** The human-assessment-by-entity write path the inline widget uses: bootstraps a Risk row if needed, then records the assessment exactly as setHumanAssessment() does by risk ID. */
+  async setHumanAssessmentByEntity(
+    companyId: string, projectId: string, nodeType: typeof RISK_WORTHY_NODE_TYPES[number], entityId: string, userId: string,
+    input: { probability: number; impact: number; primaryDriver: RiskDriver; secondaryDriver?: RiskDriver | null },
+  ): Promise<RiskRow> {
+    const risk = await this.getOrCreateRiskForEntity(companyId, projectId, nodeType, entityId);
+    return this.setHumanAssessment(companyId, projectId, risk.id, userId, input);
   }
 
   async getRisk(companyId: string, riskId: string): Promise<RiskRow> {

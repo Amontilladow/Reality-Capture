@@ -11,6 +11,7 @@ import {
 } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { RichTextEditor, isRichTextEmpty } from '../components/ui/RichTextEditor';
+import { InlineRiskAssessment } from '../components/RiskIntelligenceSection';
 import {
   getRfi, updateRfi, submitRfi, requestClarification, respondToRfi, closeRfi, reopenRfi,
   submitRfiForReview, decideRfiReview,
@@ -632,6 +633,11 @@ export default function RfiDetailPage() {
               </>
             )}
           </div>
+        </section>
+
+        {/* Human Risk Assessment */}
+        <section className="panel tick-frame p-5">
+          <InlineRiskAssessment projectId={projectId} nodeType="rfi" entityId={rfiId} />
         </section>
 
         {/* Query */}

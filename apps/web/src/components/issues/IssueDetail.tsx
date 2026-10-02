@@ -9,6 +9,7 @@ import {
 } from '../../lib/issues.api';
 import { listCaptures } from '../../lib/captures.api';
 import { CaptureGrid } from '../CaptureGrid';
+import { InlineRiskAssessment } from '../RiskIntelligenceSection';
 import { getMembers } from '../../lib/projects.api';
 import { useAuthStore } from '../../store/auth.store';
 import {
@@ -469,6 +470,8 @@ export function IssueDetail({
           {issue.closedAt && <DetailRow label="Closed" value={formatDateTime(issue.closedAt)} />}
         </div>
       </div>
+
+      <InlineRiskAssessment projectId={projectId} nodeType="issue" entityId={issueId} />
 
       {/* View-state screenshot, captured automatically when the issue was raised from the viewer */}
       {issue.screenshotUrl && (
