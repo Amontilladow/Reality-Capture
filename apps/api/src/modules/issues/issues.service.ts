@@ -7,6 +7,7 @@ import { AiClientService } from '../ai-client/ai-client.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
 import { RiskService } from '../risk/risk.service';
+import { WebhooksService } from '../webhooks/webhooks.service';
 import { renderIssuePdf } from './issue-pdf.template';
 import { buildIssueWorkbookBuffer, type IssueXlsData } from './issue-xls';
 import type { CreateIssueDto } from './dto/create-issue.dto';
@@ -59,6 +60,10 @@ export class IssuesService {
     // list) working unchanged; IssuesModule registers RiskModule as a real
     // provider, so production always gets a live instance here.
     @Optional() private readonly risk?: RiskService,
+    // @Optional(): same rationale as `risk` above -- keeps every existing
+    // issues.service.spec.ts call site (built against the pre-F3 arg list)
+    // working unchanged.
+    @Optional() private readonly webhooks?: WebhooksService,
   ) {}
 
   // Event-driven incremental risk recalculation (brief section 41) -- see
@@ -159,6 +164,8 @@ export class IssuesService {
       activityType: 'comment',
       content: `Issue created: ${issueNumber}`,
     });
+
+    void this.webhooks?.emitEvent(companyId, 'issue.created', { issue });
 
     // Notify assignee if set
     if (dto.assignedTo && dto.assignedTo !== userId) {
@@ -317,6 +324,9 @@ export class IssuesService {
         activityType: 'status_change',
         fromValue: existing.status as string,
         toValue: dto.status,
+      });
+      void this.webhooks?.emitEvent(companyId, 'issue.status_changed', {
+        issue: updated, fromStatus: existing.status, toStatus: dto.status,
       });
     }
 
@@ -641,6 +651,12 @@ export class IssuesService {
       fromValue: existing.status as string,
       toValue: dto.status,
     });
+
+    if (dto.status !== existing.status) {
+      void this.webhooks?.emitEvent(companyId, 'issue.status_changed', {
+        issue: updated, fromStatus: existing.status, toStatus: dto.status,
+      });
+    }
 
     await this.triggerRiskRecalc(companyId, projectId, issueId);
     return updated;

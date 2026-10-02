@@ -1,10 +1,11 @@
 import { Processor, Process } from '@nestjs/bull';
 import type { Job } from 'bull';
-import { Logger } from '@nestjs/common';
+import { Logger, Optional } from '@nestjs/common';
 import sharp from 'sharp';
 import * as exifr from 'exifr';
 import { DatabaseService } from '../../../database/database.service';
 import { StorageService } from '../../storage/storage.service';
+import { WebhooksService } from '../../webhooks/webhooks.service';
 
 export interface ImageProcessingJob {
   captureId: string;
@@ -46,6 +47,10 @@ export class ImageProcessingProcessor {
   constructor(
     private readonly db: DatabaseService,
     private readonly storage: StorageService,
+    // @Optional(): same rationale as issues.service.ts's `risk`/`webhooks`
+    // params -- keeps the existing image-processing.processor.spec.ts call
+    // sites (built against the pre-F3 2-arg list) working unchanged.
+    @Optional() private readonly webhooks?: WebhooksService,
   ) {}
 
   @Process('process-capture')
@@ -60,6 +65,7 @@ export class ImageProcessingProcessor {
         // the table owner/a superuser this UPDATE silently touches 0 rows.
         await this.db.withTenant(companyId, sql => sql`UPDATE captures SET status = 'ready', processed_at = NOW() WHERE id = ${captureId} AND company_id = ${companyId}`);
         this.logger.log(`Capture ${captureId} marked ready (video -- no thumbnailing).`);
+        void this.webhooks?.emitEvent(companyId, 'capture.uploaded', { captureId, projectId, captureType });
         return;
       }
 
@@ -127,6 +133,7 @@ export class ImageProcessingProcessor {
       `);
 
       this.logger.log(`Capture ${captureId} processed: ${uploaded.length} renditions generated.`);
+      void this.webhooks?.emitEvent(companyId, 'capture.uploaded', { captureId, projectId, captureType });
     } catch (error) {
       this.logger.error(`Processing failed for capture ${captureId}`, error);
       // withTenant required -- see capture_renditions INSERT above.

@@ -5,11 +5,13 @@ import { CapturesController, CapturesSyncController } from './captures.controlle
 import { ImageProcessingProcessor } from './processors/image-processing.processor';
 import { TenancyModule } from '../tenancy/tenancy.module';
 import { AiClientModule } from '../ai-client/ai-client.module';
+import { WebhooksModule } from '../webhooks/webhooks.module';
 
 @Module({
   imports: [
     TenancyModule,
     AiClientModule,
+    WebhooksModule,
     BullModule.registerQueue({
       name: 'image-processing',
       defaultJobOptions: {

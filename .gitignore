@@ -24,3 +24,5 @@ apps/web/public/repro/
 # fable-foreman's per-session run ledger -- ephemeral task-tracking notes,
 # not project documentation.
 .foreman/
+
+dump.rdb
