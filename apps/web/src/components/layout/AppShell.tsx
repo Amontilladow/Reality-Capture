@@ -20,6 +20,7 @@ const PROJECT_NAV_ITEMS = [
   { to: 'buildlens', label: 'BuildLens', icon: IconTimeline },
   { to: 'rfis', label: 'RFIs', icon: IconQuestion },
   { to: 'snagging', label: 'Snagging', icon: IconTag },
+  { to: 'submittals', label: 'Submittals', icon: IconInbox },
   { to: 'assistant', label: 'AI Assistant', icon: IconSpark },
   { to: 'risk', label: 'Risk', icon: IconShield },
   { to: 'reports', label: 'Reports', icon: IconReport },
@@ -237,6 +238,14 @@ function IconTag({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M12 3h6a3 3 0 013 3v6l-9 9-9-9 9-9z" strokeLinejoin="round" />
       <circle cx="16" cy="8" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+function IconInbox({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M4 12h4l2 3h4l2-3h4" strokeLinejoin="round" strokeLinecap="round" />
+      <path d="M4 12l1.5-6.5A1 1 0 016.47 4.7h11.06a1 1 0 01.97.8L20 12v6a1.6 1.6 0 01-1.6 1.6H5.6A1.6 1.6 0 014 18v-6z" strokeLinejoin="round" />
     </svg>
   );
 }

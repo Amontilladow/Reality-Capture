@@ -79,6 +79,25 @@ describe('ScoringService.computeFactorsFromSignals — deterministic per-factor 
     expect(Object.values(factors).every(v => v === 0)).toBe(true);
     expect(svc.computeScore(factors)).toBe(0);
   });
+
+  it('Phase 20: an overdue submittal increases probability and urgency, exactly like an overdue RFI', () => {
+    const svc = new ScoringService({} as RiskGraphService);
+    const factors = svc.computeFactorsFromSignals([{ signalType: 'SUBMITTAL_OVERDUE', severityContribution: 60 }], noExposure);
+    expect(factors.probability).toBeGreaterThan(0);
+    expect(factors.urgency).toBeGreaterThan(0);
+  });
+
+  it('Phase 20: a rejected submittal increases impact, exactly like a failed QA inspection', () => {
+    const svc = new ScoringService({} as RiskGraphService);
+    const factors = svc.computeFactorsFromSignals([{ signalType: 'SUBMITTAL_REJECTED', severityContribution: 45 }], noExposure);
+    expect(factors.impact).toBeGreaterThan(0);
+  });
+
+  it('Phase 20: a high-priority submittal increases impact via the max-of-priority-signals path', () => {
+    const svc = new ScoringService({} as RiskGraphService);
+    const factors = svc.computeFactorsFromSignals([{ signalType: 'SUBMITTAL_HIGH_PRIORITY', severityContribution: 55 }], noExposure);
+    expect(factors.impact).toBe(55);
+  });
 });
 
 describe('ScoringService.computeScore / levelForScore — deterministic, configurable thresholds', () => {

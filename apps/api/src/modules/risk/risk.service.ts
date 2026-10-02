@@ -9,7 +9,7 @@ import { ScoringService } from './scoring.service';
 import { AiClientService } from '../ai-client/ai-client.service';
 import { renderRiskPdf, type RiskPdfTopRisk } from './risk-pdf.template';
 
-export const RISK_WORTHY_NODE_TYPES = ['rfi', 'issue', 'snag_item', 'drawing', 'qa_inspection'] as const;
+export const RISK_WORTHY_NODE_TYPES = ['rfi', 'issue', 'snag_item', 'drawing', 'qa_inspection', 'submittal'] as const;
 
 const CATEGORY_BY_NODE_TYPE: Record<string, string> = {
   rfi: 'Design / RFI',
@@ -17,6 +17,7 @@ const CATEGORY_BY_NODE_TYPE: Record<string, string> = {
   snag_item: 'Quality / Snagging',
   qa_inspection: 'Quality / Inspection',
   drawing: 'Design / Drawing',
+  submittal: 'Procurement / Submittal',
 };
 
 const TITLE_PREFIX_BY_NODE_TYPE: Record<string, string> = {
@@ -25,6 +26,7 @@ const TITLE_PREFIX_BY_NODE_TYPE: Record<string, string> = {
   snag_item: 'Open Snag',
   qa_inspection: 'Failed QA Inspection',
   drawing: 'Repeated Drawing Revisions',
+  submittal: 'Submittal Pending Review',
 };
 
 // Ordered by how directly actionable/severe the recommendation is — the
@@ -33,18 +35,22 @@ const RECOMMENDED_ACTION_BY_SIGNAL: [string, string][] = [
   ['RFI_OVERDUE', 'Escalate this RFI for an immediate response — it is already overdue.'],
   ['ISSUE_OVERDUE', 'Escalate this issue past its deadline for immediate resolution.'],
   ['SNAG_OVERDUE', 'Escalate this snag item — it has passed its due date.'],
+  ['SUBMITTAL_OVERDUE', 'Escalate this submittal for review — it is already overdue.'],
   ['RFI_DRAWING_UPDATE_NOT_APPLIED', 'Apply the drawing update this RFI requires before dependent work proceeds.'],
   ['QA_FAILED_INSPECTION', 'Re-inspect and remediate the failed scope before covering or proceeding past it.'],
+  ['SUBMITTAL_REJECTED', 'Coordinate a prompt resubmission with the responsible party to avoid a procurement delay.'],
   ['ISSUE_RECURRING_LOCATION', 'Investigate the root cause at this location — multiple issues have recurred here.'],
   ['SNAG_RECURRING_LOCATION', 'Investigate the root cause at this location — multiple snags have recurred here.'],
   ['DRAWING_REPEATED_REVISIONS', 'Confirm the latest revision has been communicated to all affected disciplines.'],
   ['RFI_APPROACHING_DUE', 'Ensure a response is issued before the due date to avoid this becoming overdue.'],
+  ['SUBMITTAL_APPROACHING_DUE', 'Ensure this submittal is reviewed before its due date to avoid becoming overdue.'],
   ['RFI_MULTIPLE_RELATED_ISSUES', 'Coordinate the related issues together with this RFI\'s resolution.'],
   ['ISSUE_MULTIPLE_RELATED_RFIS', 'Coordinate the related RFIs together with this issue\'s resolution.'],
   ['ISSUE_REOPENED', 'Confirm the underlying cause was actually addressed, not just the symptom.'],
   ['RFI_COST_IMPACT', 'Route this RFI\'s cost impact through the appropriate commercial review.'],
   ['RFI_TIME_IMPACT', 'Assess this RFI\'s programme impact with the project schedule owner.'],
   ['RFI_HIGH_PRIORITY', 'Confirm ownership and a response timeline given this RFI\'s priority.'],
+  ['SUBMITTAL_HIGH_PRIORITY', 'Confirm ownership and a review timeline given this submittal\'s priority.'],
   ['ISSUE_HIGH_SEVERITY', 'Confirm ownership and a resolution timeline given this issue\'s severity.'],
 ];
 
@@ -117,6 +123,7 @@ export class RiskService {
       case 'snag_item': await this.extraction.extractSnagItems(companyId, projectId, entityId); break;
       case 'drawing': await this.extraction.extractDrawings(companyId, projectId, entityId); break;
       case 'qa_inspection': await this.extraction.extractQaInspections(companyId, projectId, entityId); break;
+      case 'submittal': await this.extraction.extractSubmittals(companyId, projectId, entityId); break;
     }
     // RFI<->Issue inference is symmetric and cheap enough to redo project-wide
     // whenever either side changes, rather than tracking which pairs to revisit.

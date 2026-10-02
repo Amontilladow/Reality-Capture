@@ -17,6 +17,7 @@ import IssuesPage from './pages/IssuesPage';
 import RfisPage from './pages/RfisPage';
 import RfiDetailPage from './pages/RfiDetailPage';
 import SnaggingPage from './pages/SnaggingPage';
+import SubmittalsPage from './pages/SubmittalsPage';
 import AssistantPage from './pages/AssistantPage';
 import ReportsPage from './pages/ReportsPage';
 import RiskPage from './pages/RiskPage';
@@ -93,6 +94,7 @@ export default function App() {
             <Route path="/projects/:projectId/rfis" element={<RfisPage />} />
             <Route path="/projects/:projectId/rfis/:rfiId" element={<RfiDetailPage />} />
             <Route path="/projects/:projectId/snagging" element={<SnaggingPage />} />
+            <Route path="/projects/:projectId/submittals" element={<SubmittalsPage />} />
             <Route path="/projects/:projectId/assistant" element={<AssistantPage />} />
             <Route path="/projects/:projectId/risk" element={<RiskPage />} />
             <Route path="/projects/:projectId/reports" element={<ReportsPage />} />

@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { RiskService } from '../risk/risk.service';
 import type { CreateSubmittalDto } from './dto/create-submittal.dto';
 import type { UpdateSubmittalDto } from './dto/update-submittal.dto';
 import type { PaginationQuery } from '@engineeringos/types';
@@ -9,10 +10,32 @@ const REVIEW_OUTCOMES = new Set(['approved', 'approved_as_noted', 'revise_and_re
 
 @Injectable()
 export class SubmittalsService {
+  private readonly logger = new Logger(SubmittalsService.name);
+
   constructor(
     private readonly db: DatabaseService,
     private readonly notifications: NotificationsService,
+    // @Optional(): SubmittalsModule registers RiskModule as a real provider,
+    // so production always gets a live instance here -- this stays optional
+    // purely so existing test call sites constructing SubmittalsService
+    // directly keep working unchanged (see rfis.service.ts's identical
+    // reasoning for its own `risk` dependency).
+    @Optional() private readonly risk?: RiskService,
   ) {}
+
+  // Event-driven incremental risk recalculation (brief section 41, Phase 20)
+  // -- fired after any write that can change a submittal's overdue/priority/
+  // review-outcome state. Never allowed to fail or slow down the submittal
+  // write it's attached to, exactly like the identical pattern in
+  // rfis.service.ts/issues.service.ts/snagging.service.ts.
+  private async triggerRiskRecalc(companyId: string, projectId: string, submittalId: string): Promise<void> {
+    if (!this.risk) return;
+    try {
+      await this.risk.recalculateForEntity(companyId, projectId, 'submittal', submittalId);
+    } catch (err) {
+      this.logger.warn(`Risk recalculation failed for submittal ${submittalId}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   // withTenant required for the projects lookup -- projects carries the tenant_isolation
   // RLS policy. A plain this.db.query() never sets app.current_company_id, so under any DB
@@ -54,6 +77,7 @@ export class SubmittalsService {
       });
     }
 
+    await this.triggerRiskRecalc(companyId, projectId, submittal.id as string);
     return submittal;
   }
 
@@ -118,6 +142,7 @@ export class SubmittalsService {
       WHERE id = ${submittalId} AND project_id = ${projectId} AND company_id = ${companyId}
       RETURNING *
     `;
+    await this.triggerRiskRecalc(companyId, projectId, submittalId);
     return updated;
   }
 
