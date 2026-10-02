@@ -43,12 +43,16 @@ export interface IngestIssuePayload {
 export class AiClientService {
   private readonly logger = new Logger(AiClientService.name);
   private readonly baseUrl: string;
+  private readonly authHeaders: Record<string, string>;
 
   constructor(
     private readonly http: HttpService,
     private readonly config: ConfigService,
   ) {
     this.baseUrl = this.config.get<string>('app.aiServiceUrl') ?? 'http://localhost:8001';
+    // Proves our identity to the AI service on every call -- it has no auth
+    // of its own otherwise and trusts whatever company_id/project_id we send.
+    this.authHeaders = { 'X-Internal-Service-Secret': this.config.get<string>('app.internalServiceSecret') ?? '' };
   }
 
   ingestCapture(payload: IngestCapturePayload): void {
@@ -88,7 +92,7 @@ export class AiClientService {
         company_id: companyId,
         project_id: projectId,
         conversation_history: conversationHistory ?? null,
-      }, { timeout: 30_000 }),
+      }, { timeout: 30_000, headers: this.authHeaders }),
     );
     return resp.data;
   }
@@ -103,29 +107,30 @@ export class AiClientService {
    */
   async generateRiskBriefing(companyId: string, projectId: string, context: string): Promise<{ narrative: string }> {
     const resp = await firstValueFrom(
-      this.http.post(`${this.baseUrl}/risk/briefing`, { company_id: companyId, project_id: projectId, context }, { timeout: 30_000 }),
+      this.http.post(`${this.baseUrl}/risk/briefing`, { company_id: companyId, project_id: projectId, context }, { timeout: 30_000, headers: this.authHeaders }),
     );
     return resp.data;
   }
 
   async explainRisk(companyId: string, projectId: string, context: string): Promise<{ narrative: string }> {
     const resp = await firstValueFrom(
-      this.http.post(`${this.baseUrl}/risk/explain`, { company_id: companyId, project_id: projectId, context }, { timeout: 30_000 }),
+      this.http.post(`${this.baseUrl}/risk/explain`, { company_id: companyId, project_id: projectId, context }, { timeout: 30_000, headers: this.authHeaders }),
     );
     return resp.data;
   }
 
-  deleteResource(collection: string, resourceId: string): void {
+  deleteResource(collection: string, resourceId: string, companyId: string, projectId?: string): void {
     firstValueFrom(
       this.http.delete(`${this.baseUrl}/ingest/resource`, {
-        data: { collection, resource_id: resourceId },
+        data: { collection, resource_id: resourceId, company_id: companyId, project_id: projectId ?? null },
         timeout: 5000,
+        headers: this.authHeaders,
       }),
     ).catch(err => this.logDown('delete', err));
   }
 
   private post(path: string, body: Record<string, unknown>): void {
-    firstValueFrom(this.http.post(`${this.baseUrl}${path}`, body, { timeout: 5000 }))
+    firstValueFrom(this.http.post(`${this.baseUrl}${path}`, body, { timeout: 5000, headers: this.authHeaders }))
       .catch(err => this.logDown(path, err));
   }
 

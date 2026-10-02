@@ -59,8 +59,18 @@ async def search_vectors(collection, query_vector, company_id, project_id=None, 
     )
     return [{"id": str(r.id), "score": r.score, "payload": r.payload} for r in response.points]
 
-async def delete_by_resource(collection: str, resource_id: str):
+async def delete_by_resource(collection: str, resource_id: str, company_id: str, project_id: str = None):
+    # Scoped by company_id (and project_id when given), matching search_vectors'
+    # tenant scoping -- previously this deleted by resource_id alone, so any
+    # caller able to reach this service could delete ANY tenant's vector-store
+    # entries just by guessing/enumerating a resource_id.
+    must = [
+        FieldCondition(key="resource_id", match=MatchValue(value=resource_id)),
+        FieldCondition(key="company_id", match=MatchValue(value=company_id)),
+    ]
+    if project_id:
+        must.append(FieldCondition(key="project_id", match=MatchValue(value=project_id)))
     await get_client().delete(
         collection_name=collection,
-        points_selector=Filter(must=[FieldCondition(key="resource_id", match=MatchValue(value=resource_id))]),
+        points_selector=Filter(must=must),
     )

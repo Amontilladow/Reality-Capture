@@ -1,3 +1,24 @@
+envVarGroups:
+  # Shared secret engineeringos-api presents to engineeringos-ai-service on every
+  # request (X-Internal-Service-Secret header) -- the AI service has no auth of
+  # its own otherwise and trusts whatever company_id/project_id it's given.
+  # generateValue produces one random value for the group, shared by every
+  # service that references it below, rather than a separate value per service.
+  - name: engineeringos-internal-secrets
+    envVars:
+      - key: INTERNAL_SERVICE_SECRET
+        generateValue: true
+      # app_user's own login password, shared by every service that connects
+      # to Postgres at runtime (engineeringos-api, engineeringos-ifc-service).
+      # Deliberately NOT the database's own owner credential (DB_MIGRATOR_*
+      # below) -- app_user is a narrowly-privileged, genuinely RLS-subject
+      # role (migration 052); the owner/superuser credential bypasses RLS
+      # by ownership and must only be used to run migrations, never to run
+      # the application. See DatabaseService.withTenant()'s doc comment and
+      # migration 052 for the full history of why this split exists.
+      - key: DB_PASSWORD
+        generateValue: true
+
 databases:
   - name: engineeringos-db
     plan: basic-256mb
@@ -31,6 +52,8 @@ services:
     # a new migration; a forgotten run left new code querying tables that
     # didn't exist yet (e.g. Workforce Intelligence's first deploy).
     preDeployCommand: node apps/api/dist/database/run-migrations.js
+    envVarGroups:
+      - engineeringos-internal-secrets
     envVars:
       - key: NODE_ENV
         value: production
@@ -50,11 +73,20 @@ services:
         fromDatabase:
           name: engineeringos-db
           property: database
+      # Runtime identity -- a narrowly-privileged, RLS-subject role (migration
+      # 052), NOT the database's owner. DB_PASSWORD comes from the
+      # engineeringos-internal-secrets group above, shared with
+      # engineeringos-ifc-service so both connect as the same app_user.
       - key: DB_USER
+        value: app_user
+      # Owner/superuser credential, used ONLY by preDeployCommand's migration
+      # run (run-migrations.ts prefers DB_MIGRATOR_* over DB_USER/DB_PASSWORD
+      # when present) -- never by the running application itself.
+      - key: DB_MIGRATOR_USER
         fromDatabase:
           name: engineeringos-db
           property: user
-      - key: DB_PASSWORD
+      - key: DB_MIGRATOR_PASSWORD
         fromDatabase:
           name: engineeringos-db
           property: password
@@ -123,6 +155,8 @@ services:
     dockerContext: apps/ai-service
     plan: starter
     region: oregon
+    envVarGroups:
+      - engineeringos-internal-secrets
     envVars:
       - key: PORT
         value: 8001
@@ -161,6 +195,8 @@ services:
     dockerContext: .
     plan: starter
     region: oregon
+    envVarGroups:
+      - engineeringos-internal-secrets
     envVars:
       - key: NODE_ENV
         value: production
@@ -174,14 +210,12 @@ services:
         fromDatabase:
           name: engineeringos-db
           property: database
+      # Narrowly-privileged, RLS-subject role (migration 052) -- not the
+      # database owner. DB_PASSWORD comes from the engineeringos-internal-secrets
+      # group, the same shared value engineeringos-api uses, since this worker
+      # never runs migrations itself and doesn't need owner-level access.
       - key: DB_USER
-        fromDatabase:
-          name: engineeringos-db
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: engineeringos-db
-          property: password
+        value: app_user
       - key: DB_SSL
         value: "true"
       - key: REDIS_HOST

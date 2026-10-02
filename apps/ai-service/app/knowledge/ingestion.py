@@ -70,5 +70,5 @@ async def ingest_issue(issue: dict):
         },
     )])
 
-async def delete_resource(collection: str, resource_id: str):
-    await delete_by_resource(collection, resource_id)
+async def delete_resource(collection: str, resource_id: str, company_id: str, project_id: str = None):
+    await delete_by_resource(collection, resource_id, company_id, project_id)

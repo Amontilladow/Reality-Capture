@@ -42,23 +42,17 @@ export class IssueWarningService {
   // Deliberately cross-tenant -- this is a system cron scanning overdue issues across
   // every company, not a single tenant's request, so this.db.withTenant(oneCompanyId, ...)
   // would be the wrong fix even though it's the pattern used everywhere else in this
-  // codebase. NOTE: under the app's real DB role (app_user, no BYPASS RLS -- see migration
-  // 001), a plain this.db.query() against `issues` (an RLS table) with no session var set
-  // sees zero rows, always -- so this cron currently never finds any overdue issues in
-  // production; it isn't scoped wrong, it's fully blocked. Same root cause as
-  // tenancy.service.ts's register() and auth.service.ts's login()/refresh() bootstrap
-  // lookups: RLS has no bypass path for operations that are legitimately not
-  // single-tenant. Not fixable by adding withTenant here -- flagged, not fixed, as part of
-  // the RLS/withTenant audit; needs the same deliberate bootstrap-role/SECURITY DEFINER
-  // decision as those.
+  // codebase. withSystemBypass required -- see DatabaseService.withSystemBypass() and
+  // migration 052. Same root cause as tenancy.service.ts's register() and
+  // auth.service.ts's login()/refresh() bootstrap lookups.
   async checkOverdueIssues(): Promise<{ checked: number; warned: number; skipped: number }> {
-    const overdue = await this.db.query`
+    const overdue = await this.db.withSystemBypass(sql => sql`
       SELECT id, company_id, created_by, deadline
       FROM issues
       WHERE deadline IS NOT NULL
         AND deadline < NOW()
         AND status NOT IN ('closed', 'void')
-    `;
+    `);
 
     let warned = 0;
     let skipped = 0;

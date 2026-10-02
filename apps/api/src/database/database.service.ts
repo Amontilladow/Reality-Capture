@@ -39,6 +39,37 @@ export class DatabaseService {
     return this.sql.begin(fn) as Promise<T>;
   }
 
+  // ── Explicit, narrow RLS bypass for genuinely pre-tenant/cross-tenant
+  // system operations ────────────────────────────────────────────────────────
+  // For the small, fixed set of queries that cannot be scoped to one
+  // company_id because no company is known yet (login by email, password
+  // reset/invitation-accept by token, company self-registration, the RFI
+  // external-access token lookup) or because the operation is a deliberate
+  // cross-tenant system scan by design (the overdue-issues cron, the
+  // screenshot-retention cron). Every one of these used to run as a plain
+  // this.db.query()/withTransaction() call, which only worked because the
+  // app's runtime DB role was (accidentally) the table owner and so bypassed
+  // RLS entirely -- see migration 052's comment for the full history. Now
+  // that the runtime role is genuinely RLS-subject, these specific
+  // operations need an explicit, auditable escape hatch instead.
+  //
+  // app_bypass_rls (migration 052) is NOLOGIN and has BYPASSRLS; app_user
+  // may only assume it for the lifetime of one transaction via
+  // `SET LOCAL ROLE`, after which it's gone -- there is no way to leave this
+  // elevated context active outside the exact transaction that requested it
+  // (confirmed by hand against a live database: a later plain query on the
+  // same pooled connection is unaffected).
+  //
+  // Do not reach for this to avoid writing withTenant() -- if a company_id
+  // is available, use withTenant(). This is only for the operations listed
+  // above, where one genuinely is not.
+  async withSystemBypass<T>(fn: (sql: TransactionSql) => Promise<T>): Promise<T> {
+    return this.sql.begin(async (txSql) => {
+      await txSql`SET LOCAL ROLE app_bypass_rls`;
+      return fn(txSql);
+    }) as Promise<T>;
+  }
+
   // ── Pagination helper ──────────────────────────────────────────────────────
   // Returns { data, total } from any query result set
   paginate<T extends Row>(

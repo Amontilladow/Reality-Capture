@@ -8,4 +8,5 @@ export default registerAs('app', () => ({
   apiUrl: process.env.API_URL ?? 'http://localhost:3000',
   frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:5173',
   aiServiceUrl: process.env.AI_SERVICE_URL ?? 'http://localhost:8001',
+  internalServiceSecret: process.env.INTERNAL_SERVICE_SECRET ?? '',
 }));

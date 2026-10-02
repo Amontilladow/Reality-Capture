@@ -17,6 +17,16 @@ class Settings(BaseSettings):
     s3_secret_access_key: str = "minioadmin"
     s3_bucket: str = "engineeringos"
 
+    # Shared secret that apps/api must present (via the X-Internal-Service-Secret
+    # header) on every request. This service has no auth of its own otherwise and
+    # trusts whatever company_id/project_id a caller supplies -- network placement
+    # (Render private service, docker-compose internal network) was the only prior
+    # boundary, and the repo's own docker-compose.prod.yml showed that isn't
+    # reliable. Left empty by default so the service fails closed (rejects every
+    # request) until an operator explicitly sets it, rather than silently running
+    # unauthenticated.
+    internal_service_secret: str = ""
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
