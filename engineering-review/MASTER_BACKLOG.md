@@ -370,8 +370,14 @@ item-by-item); update this section's status line after each feature ships.
    captures of the same Place across two dates, with a date slider.
    Automated change detection explicitly deferred to a later phase.
 
-**Status: F1 starting now.** Sequenced first for the most visible value
-for the least effort.
+**Status: F1 shipped.** Migration 054 (`progress_report_shares`), the
+`progress-reports` API module (service/controller/PDF template/DTO),
+and the `ProgressReportPage`/`ProgressReportExternalPage` frontend are
+committed and pushed (`5379e88`). Verified live: report generation and
+PDF export for a real project, share-link creation, logged-out public
+access, revocation, and post-revocation 403 blocking, all via direct API
+calls, plus a full browser pass on the in-app page, Share modal, and
+public external page. No known risks or follow-ups. F2 starting now.
 
 ## Exact continuation point
 IFC Processing Engine, Reality Capture image processing, BIM viewer <->
