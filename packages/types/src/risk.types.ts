@@ -483,20 +483,28 @@ export interface RiskDataConfidenceInput {
   missingCriticalFields: string[];
 }
 
-export function computeConfidenceLevel(input: RiskDataConfidenceInput): { level: RiskConfidenceLevel; reason: string } {
+// percent (0-100) is the same underlying direct-vs-inferred-relationship
+// signal as level, just continuous rather than bucketed into HIGH/MODERATE/
+// LOW -- added for the Risk Matrix's AI Confidence (brief sections 7-10),
+// which the brief explicitly wants shown as a percentage ("Confidence:
+// 91%") rather than a 3-level bucket. Both are derived from the exact same
+// inferredShare computation below, so they can never disagree with each
+// other -- level is just percent read through the existing breakpoints.
+export function computeConfidenceLevel(input: RiskDataConfidenceInput): { level: RiskConfidenceLevel; reason: string; percent: number } {
   if (input.missingCriticalFields.length > 0) {
-    return { level: 'LOW', reason: `Missing: ${input.missingCriticalFields.join(', ')}` };
+    return { level: 'LOW', reason: `Missing: ${input.missingCriticalFields.join(', ')}`, percent: 30 };
   }
   const total = input.directRelationshipCount + input.inferredRelationshipCount;
   if (total === 0) {
-    return { level: 'LOW', reason: 'No supporting relationships found.' };
+    return { level: 'LOW', reason: 'No supporting relationships found.', percent: 20 };
   }
   const inferredShare = input.inferredRelationshipCount / total;
+  const percent = Math.round((1 - inferredShare) * 100);
   if (inferredShare <= 0.25) {
-    return { level: 'HIGH', reason: `${input.directRelationshipCount} direct relationship(s), ${input.inferredRelationshipCount} inferred.` };
+    return { level: 'HIGH', reason: `${input.directRelationshipCount} direct relationship(s), ${input.inferredRelationshipCount} inferred.`, percent };
   }
   if (inferredShare <= 0.6) {
-    return { level: 'MODERATE', reason: `${input.directRelationshipCount} direct relationship(s), ${input.inferredRelationshipCount} inferred.` };
+    return { level: 'MODERATE', reason: `${input.directRelationshipCount} direct relationship(s), ${input.inferredRelationshipCount} inferred.`, percent };
   }
-  return { level: 'LOW', reason: `Assessment relies mostly on inferred relationships (${input.inferredRelationshipCount} of ${total}).` };
+  return { level: 'LOW', reason: `Assessment relies mostly on inferred relationships (${input.inferredRelationshipCount} of ${total}).`, percent };
 }

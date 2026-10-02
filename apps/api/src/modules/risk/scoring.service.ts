@@ -2,9 +2,13 @@ import { Injectable } from '@nestjs/common';
 import {
   DEFAULT_RISK_LEVEL_THRESHOLDS,
   DEFAULT_RISK_SCORING_WEIGHTS,
+  DEFAULT_RISK_MATRIX_THRESHOLDS,
   scoreToRiskLevel,
+  scoreToMatrixLevel,
   computeConfidenceLevel,
   type RiskLevelThresholds,
+  type RiskMatrixThresholds,
+  type RiskMatrixLevel,
   type RiskScoreFactors,
   type RiskScoringWeights,
   type RiskConfidenceLevel,
@@ -178,7 +182,30 @@ export class ScoringService {
     directRelationshipCount: number,
     inferredRelationshipCount: number,
     missingCriticalFields: string[],
-  ): { level: RiskConfidenceLevel; reason: string } {
+  ): { level: RiskConfidenceLevel; reason: string; percent: number } {
     return computeConfidenceLevel({ directRelationshipCount, inferredRelationshipCount, missingCriticalFields });
+  }
+
+  // Rescales a 0-100 engine factor into the Risk Matrix's 1-5 band. Never 0
+  // -- "1 (Rare/Negligible)" is the floor, since the matrix has no "no
+  // probability/impact at all" value (brief sections 3-4's own 5-point
+  // scales both start at 1).
+  private toMatrixBand(value: number): number {
+    return Math.max(1, Math.min(5, Math.ceil(value / 20)));
+  }
+
+  /**
+   * The AI Score (brief sections 7, 36): the deterministic engine's own
+   * probability/impact factors, re-expressed on the Risk Matrix's 1-25/
+   * 5-level scale purely so they're directly comparable to a human's
+   * Probability x Impact assessment -- never a second, independent LLM
+   * guess, and never computed from anything the engine didn't already
+   * compute for automatedScore.
+   */
+  computeAiMatrixScore(factors: RiskScoreFactors, thresholds: RiskMatrixThresholds = DEFAULT_RISK_MATRIX_THRESHOLDS): { score: number; level: RiskMatrixLevel } {
+    const probability = this.toMatrixBand(factors.probability);
+    const impact = this.toMatrixBand(factors.impact);
+    const score = probability * impact;
+    return { score, level: scoreToMatrixLevel(score, thresholds) };
   }
 }

@@ -150,7 +150,10 @@ export class RiskService {
     const { directCount, inferredCount } = await this.countRelationshipConfidence(companyId, node.id);
     const missingFields: string[] = [];
     if (!node.discipline) missingFields.push('discipline');
-    const { level: confidenceLevel, reason: confidenceReason } = this.scoring.confidenceForNode(directCount, inferredCount, missingFields);
+    const { level: confidenceLevel, reason: confidenceReason, percent: aiConfidence } = this.scoring.confidenceForNode(directCount, inferredCount, missingFields);
+
+    const matrixSettings = await this.getRiskMatrixSettings(companyId);
+    const { score: aiScore, level: aiLevel } = this.scoring.computeAiMatrixScore(factors, matrixSettings.thresholds ?? DEFAULT_RISK_MATRIX_THRESHOLDS);
 
     const location = await this.findNearestLocation(companyId, node.id);
     const title = `${TITLE_PREFIX_BY_NODE_TYPE[node.nodeType] ?? 'Detected Risk'}: ${node.label}`;
@@ -173,7 +176,7 @@ export class RiskService {
       automatedScore, automatedLevel,
       probability: factors.probability, impact: factors.impact, exposure: factors.exposure,
       dependency: factors.dependency, urgency: factors.urgency, recurrence: factors.recurrence,
-      confidenceLevel, confidenceReason, trend, explanation, recommendedAction,
+      confidenceLevel, confidenceReason, aiScore, aiLevel, aiConfidence, trend, explanation, recommendedAction,
       resurrect: existing?.status === 'RESOLVED',
     });
 
@@ -186,6 +189,12 @@ export class RiskService {
       UPDATE risks SET automated_score = 0, automated_level = 'LOW',
         score = CASE WHEN override_score IS NOT NULL THEN override_score ELSE 0 END,
         level = CASE WHEN override_level IS NOT NULL THEN override_level ELSE 'LOW' END,
+        -- AI Score floors at 1 (there is no "0" on the Risk Matrix's 1-25
+        -- scale); final_score/final_level follow the same override > human
+        -- > AI priority as upsertRisk() above.
+        ai_score = 1, ai_level = 'LOW',
+        final_score = CASE WHEN matrix_override_by IS NOT NULL THEN final_score WHEN human_score IS NOT NULL THEN human_score ELSE 1 END,
+        final_level = CASE WHEN matrix_override_by IS NOT NULL THEN final_level WHEN human_level IS NOT NULL THEN human_level ELSE 'LOW' END,
         trend = 'DECREASING', status = 'RESOLVED', resolved_at = now(), last_calculated_at = now(), updated_at = now()
       WHERE id = ${existing.id}`);
     await this.recordStatusChange(companyId, projectId, existing.id, existing.status, 'RESOLVED', null, 'All contributing signals cleared.');
@@ -215,6 +224,7 @@ export class RiskService {
     automatedScore: number; automatedLevel: RiskLevel;
     probability: number; impact: number; exposure: number; dependency: number; urgency: number; recurrence: number;
     confidenceLevel: 'HIGH' | 'MODERATE' | 'LOW'; confidenceReason: string;
+    aiScore: number; aiLevel: RiskMatrixLevel; aiConfidence: number;
     trend: RiskRow['trend']; explanation: string; recommendedAction: string; resurrect: boolean;
   }): Promise<RiskRow> {
     return this.db.withTenant(companyId, async (sql) => {
@@ -223,14 +233,18 @@ export class RiskService {
           company_id, project_id, root_node_id, title, category, discipline, location_node_id, location_label,
           automated_score, automated_level, score, level,
           probability, impact, exposure, dependency, urgency, recurrence,
-          confidence_level, confidence_reason, trend, status, explanation, recommended_action
+          confidence_level, confidence_reason,
+          ai_score, ai_level, ai_confidence, final_score, final_level,
+          trend, status, explanation, recommended_action
         )
         VALUES (
           ${companyId}, ${projectId}, ${input.rootNodeId}, ${input.title}, ${input.category}, ${input.discipline},
           ${input.locationNodeId}, ${input.locationLabel},
           ${input.automatedScore}, ${input.automatedLevel}, ${input.automatedScore}, ${input.automatedLevel},
           ${input.probability}, ${input.impact}, ${input.exposure}, ${input.dependency}, ${input.urgency}, ${input.recurrence},
-          ${input.confidenceLevel}, ${input.confidenceReason}, ${input.trend}, 'DETECTED', ${input.explanation}, ${input.recommendedAction}
+          ${input.confidenceLevel}, ${input.confidenceReason},
+          ${input.aiScore}, ${input.aiLevel}, ${input.aiConfidence}, ${input.aiScore}, ${input.aiLevel},
+          ${input.trend}, 'DETECTED', ${input.explanation}, ${input.recommendedAction}
         )
         ON CONFLICT (root_node_id) DO UPDATE SET
           title = EXCLUDED.title, category = EXCLUDED.category, discipline = EXCLUDED.discipline,
@@ -241,6 +255,21 @@ export class RiskService {
           probability = EXCLUDED.probability, impact = EXCLUDED.impact, exposure = EXCLUDED.exposure,
           dependency = EXCLUDED.dependency, urgency = EXCLUDED.urgency, recurrence = EXCLUDED.recurrence,
           confidence_level = EXCLUDED.confidence_level, confidence_reason = EXCLUDED.confidence_reason,
+          -- AI Score always reflects the latest deterministic recalculation
+          -- (it's not a user-settable value, so there's nothing to
+          -- preserve). final_score/final_level follow the Risk Matrix's own
+          -- override > human > AI priority (brief sections 11-12) -- an
+          -- active matrix override or an existing human assessment must
+          -- never be silently overwritten by a routine recalculation.
+          ai_score = EXCLUDED.ai_score, ai_level = EXCLUDED.ai_level, ai_confidence = EXCLUDED.ai_confidence,
+          final_score = CASE
+            WHEN risks.matrix_override_by IS NOT NULL THEN risks.final_score
+            WHEN risks.human_score IS NOT NULL THEN risks.human_score
+            ELSE EXCLUDED.ai_score END,
+          final_level = CASE
+            WHEN risks.matrix_override_by IS NOT NULL THEN risks.final_level
+            WHEN risks.human_level IS NOT NULL THEN risks.human_level
+            ELSE EXCLUDED.ai_level END,
           trend = EXCLUDED.trend, explanation = EXCLUDED.explanation, recommended_action = EXCLUDED.recommended_action,
           status = CASE WHEN risks.status = 'RESOLVED' AND EXCLUDED.automated_score > 0 THEN 'ACTIVE' ELSE risks.status END,
           resolved_at = CASE WHEN risks.status = 'RESOLVED' AND EXCLUDED.automated_score > 0 THEN NULL ELSE risks.resolved_at END,
