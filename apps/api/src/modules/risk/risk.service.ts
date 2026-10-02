@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import type { RiskLevel, RiskStatus, RiskDiscipline, RiskNodeType, RiskMatrixLevel, RiskDriver, RiskMatrixSettings } from '@engineeringos/types';
-import { RISK_DRIVERS, DEFAULT_RISK_MATRIX_THRESHOLDS, scoreToMatrixLevel } from '@engineeringos/types';
+import { RISK_DRIVERS, RISK_MATRIX_LEVELS, DEFAULT_RISK_MATRIX_THRESHOLDS, scoreToMatrixLevel } from '@engineeringos/types';
 import { DatabaseService } from '../../database/database.service';
 import { RiskGraphService, type GraphNodeRow } from './risk-graph.service';
 import { RelationshipExtractionService } from './relationship-extraction.service';
@@ -488,6 +488,129 @@ export class RiskService {
       LEFT JOIN users u ON u.id = h.performed_by
       WHERE h.risk_id = ${riskId}
       ORDER BY h.performed_at DESC`);
+  }
+
+  /**
+   * Human-vs-AI discrepancy (brief section 11/40): null whenever either side
+   * hasn't been computed yet -- a risk that's never had a human assessment
+   * has nothing to disagree with, and that is not itself a discrepancy.
+   * levelGap is the distance between the two levels on the matrix's own
+   * ordered 5-level scale (RISK_MATRIX_LEVELS), not a raw score difference,
+   * since a 1-level gap near a threshold boundary is a much smaller
+   * disagreement than the same score delta straddling two bands further apart.
+   */
+  static detectMatrixDiscrepancy(
+    risk: Pick<RiskRow, 'humanScore' | 'humanLevel' | 'aiScore' | 'aiLevel' | 'matrixOverrideBy'>,
+  ): { hasDiscrepancy: boolean; levelGap: number; scoreDelta: number; reviewed: boolean } | null {
+    if (risk.humanScore == null || risk.humanLevel == null || risk.aiScore == null || risk.aiLevel == null) return null;
+    const levelGap = Math.abs(RISK_MATRIX_LEVELS.indexOf(risk.humanLevel) - RISK_MATRIX_LEVELS.indexOf(risk.aiLevel));
+    return { hasDiscrepancy: levelGap > 0, levelGap, scoreDelta: Math.abs(risk.humanScore - risk.aiScore), reviewed: risk.matrixOverrideBy != null };
+  }
+
+  async getRiskWithDiscrepancy(companyId: string, riskId: string): Promise<RiskRow & { discrepancy: ReturnType<typeof RiskService.detectMatrixDiscrepancy> }> {
+    const risk = await this.getRisk(companyId, riskId);
+    return { ...risk, discrepancy: RiskService.detectMatrixDiscrepancy(risk) };
+  }
+
+  /** Open, not-yet-reviewed Human-vs-AI discrepancies, for an alerts/review list (brief section 11). Once an engineer accepts AI, keeps human, or applies a custom override, it drops off this list. */
+  async getMatrixDiscrepancies(companyId: string, projectId: string) {
+    const risks = await this.listRisks(companyId, projectId);
+    return risks
+      .filter(r => this.isOpenStatus(r.status))
+      .map(r => ({ risk: r, discrepancy: RiskService.detectMatrixDiscrepancy(r) }))
+      .filter((x): x is { risk: RiskRow; discrepancy: NonNullable<ReturnType<typeof RiskService.detectMatrixDiscrepancy>> } =>
+        x.discrepancy !== null && x.discrepancy.hasDiscrepancy && !x.discrepancy.reviewed);
+  }
+
+  /**
+   * The audited Risk Matrix override layer (brief sections 11, 40):
+   * "Accept AI Assessment" / "Keep Human Assessment" / "Update Assessment"
+   * (the last of these is just a fresh setHumanAssessment() call -- it
+   * already clears any override, no separate code path needed) plus a
+   * free-form CUSTOM override for an engineer who disagrees with both.
+   * Every decision is written to risk_assessment_history, including
+   * KEEP_HUMAN even though it stores the same score/level the human
+   * assessment already produced -- recording an explicit override is what
+   * marks the discrepancy as reviewed/dismissed (detectMatrixDiscrepancy()
+   * still reports a level gap purely from humanLevel vs aiLevel, so without
+   * this the UI would have no way to know a human already looked at it and
+   * chose to keep their own assessment rather than silently never asking).
+   */
+  async setMatrixOverride(
+    companyId: string, projectId: string, riskId: string, userId: string,
+    input: { decision: 'ACCEPT_AI' | 'KEEP_HUMAN' | 'CUSTOM'; score?: number; level?: RiskMatrixLevel; reason?: string },
+  ): Promise<RiskRow> {
+    const existing = await this.getRisk(companyId, riskId);
+
+    let score: number;
+    let level: RiskMatrixLevel;
+    let reason: string;
+
+    if (input.decision === 'ACCEPT_AI') {
+      if (existing.aiScore == null || existing.aiLevel == null) {
+        throw new BadRequestException('No AI score is available for this risk yet.');
+      }
+      score = existing.aiScore; level = existing.aiLevel;
+      reason = input.reason?.trim() || 'Accepted AI assessment over human assessment.';
+    } else if (input.decision === 'KEEP_HUMAN') {
+      if (existing.humanScore == null || existing.humanLevel == null) {
+        throw new BadRequestException('This risk has no human assessment to keep.');
+      }
+      score = existing.humanScore; level = existing.humanLevel;
+      reason = input.reason?.trim() || 'Reviewed discrepancy — kept human assessment.';
+    } else {
+      if (!Number.isInteger(input.score) || (input.score as number) < 1 || (input.score as number) > 25) {
+        throw new BadRequestException('Custom override score must be an integer between 1 and 25.');
+      }
+      if (!input.level || !RISK_MATRIX_LEVELS.includes(input.level)) {
+        throw new BadRequestException('Custom override requires a valid risk level.');
+      }
+      if (!input.reason?.trim()) {
+        throw new BadRequestException('A reason is required for a custom Risk Matrix override.');
+      }
+      score = input.score as number; level = input.level; reason = input.reason.trim();
+    }
+
+    const row = await this.db.withTenant(companyId, async (sql) => {
+      const [r] = await sql<RiskRow[]>`
+        UPDATE risks SET
+          matrix_override_by = ${userId}, matrix_override_at = now(), matrix_override_reason = ${reason},
+          final_score = ${score}, final_level = ${level},
+          updated_at = now()
+        WHERE id = ${riskId} RETURNING *`;
+      return r;
+    });
+
+    await this.db.withTenant(companyId, sql => sql`
+      INSERT INTO risk_assessment_history (company_id, project_id, risk_id, assessment_type, score, level, reason, performed_by)
+      VALUES (${companyId}, ${projectId}, ${riskId}, 'OVERRIDE', ${score}, ${level}, ${reason}, ${userId})`);
+
+    return row;
+  }
+
+  /** Reverts to the default Risk Matrix priority (human assessment, else AI score) by clearing any explicit override. */
+  async clearMatrixOverride(companyId: string, projectId: string, riskId: string, userId: string): Promise<RiskRow> {
+    const existing = await this.getRisk(companyId, riskId);
+    const { finalScore, finalLevel } = computeFinalMatrix({
+      humanScore: existing.humanScore, humanLevel: existing.humanLevel,
+      aiScore: existing.aiScore, aiLevel: existing.aiLevel,
+    });
+
+    const row = await this.db.withTenant(companyId, async (sql) => {
+      const [r] = await sql<RiskRow[]>`
+        UPDATE risks SET
+          matrix_override_by = NULL, matrix_override_at = NULL, matrix_override_reason = NULL,
+          final_score = ${finalScore}, final_level = ${finalLevel},
+          updated_at = now()
+        WHERE id = ${riskId} RETURNING *`;
+      return r;
+    });
+
+    await this.db.withTenant(companyId, sql => sql`
+      INSERT INTO risk_assessment_history (company_id, project_id, risk_id, assessment_type, score, level, reason, performed_by)
+      VALUES (${companyId}, ${projectId}, ${riskId}, 'OVERRIDE', ${finalScore}, ${finalLevel}, 'Override cleared.', ${userId})`);
+
+    return row;
   }
 
   // ── Reports tab aggregations (brief sections 19-27, 32-33) ──────────────

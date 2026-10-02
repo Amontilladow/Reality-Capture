@@ -8,10 +8,10 @@ import { apiErrorMessage } from '../lib/api';
 import { getProject } from '../lib/projects.api';
 import {
   recalculateRisk, getRiskSummary, getTopRisks, getEmergingRisks, getRiskByDiscipline,
-  getRiskClusters, getRiskDataAvailability, listRisks, getRiskChain, getRiskEvidence, getRiskHistory,
+  getRiskClusters, getRiskDataAvailability, listRisks, getRisk, getRiskChain, getRiskEvidence, getRiskHistory,
   overrideRisk, clearRiskOverride, setRiskStatus, getAiBriefing, getAiExplanation, downloadRiskPdf,
-  setHumanAssessment, RISK_DRIVERS, RISK_DRIVER_LABELS,
-  type Risk, type RiskLevel, type RiskStatus, type RiskMatrixLevel, type RiskDriver,
+  setHumanAssessment, setMatrixOverride, RISK_DRIVERS, RISK_DRIVER_LABELS,
+  type Risk, type RiskLevel, type RiskStatus, type RiskMatrixLevel, type RiskDriver, type RiskMatrixDiscrepancy,
 } from '../lib/risk.api';
 
 const HEX = {
@@ -438,7 +438,7 @@ function StatTile({ label, value, tone }: { label: string; value: number; tone?:
 
 function RiskDetailDrawer({ projectId, riskId, onClose, onChanged, onViewGraph }: { projectId: string; riskId: string; onClose: () => void; onChanged: () => void; onViewGraph: (rootNodeId: string) => void }) {
   const queryClient = useQueryClient();
-  const riskQuery = useQuery({ queryKey: ['risk-detail', projectId, riskId], queryFn: () => listRisks(projectId).then((rs) => rs.find((r) => r.id === riskId)) });
+  const riskQuery = useQuery({ queryKey: ['risk-detail', projectId, riskId], queryFn: () => getRisk(projectId, riskId) });
   const chainQuery = useQuery({ queryKey: ['risk-chain', riskId], queryFn: () => getRiskChain(projectId, riskId) });
   const evidenceQuery = useQuery({ queryKey: ['risk-evidence', riskId], queryFn: () => getRiskEvidence(projectId, riskId) });
   const historyQuery = useQuery({ queryKey: ['risk-history', riskId], queryFn: () => getRiskHistory(projectId, riskId) });
@@ -626,7 +626,7 @@ function RiskDetailDrawer({ projectId, riskId, onClose, onChanged, onViewGraph }
 // already-loaded values via plain useState lazy init -- no useEffect sync
 // needed, since this never mounts before `risk` exists (see the !risk
 // guard in RiskDetailDrawer above).
-function HumanAssessmentPanel({ projectId, riskId, risk, onChanged }: { projectId: string; riskId: string; risk: Risk; onChanged: () => void }) {
+function HumanAssessmentPanel({ projectId, riskId, risk, onChanged }: { projectId: string; riskId: string; risk: Risk & { discrepancy: RiskMatrixDiscrepancy | null }; onChanged: () => void }) {
   const [probability, setProbability] = useState(String(risk.humanProbability ?? ''));
   const [impact, setImpact] = useState(String(risk.humanImpact ?? ''));
   const [primaryDriver, setPrimaryDriver] = useState<RiskDriver | ''>(risk.primaryDriver ?? '');
@@ -640,6 +640,17 @@ function HumanAssessmentPanel({ projectId, riskId, risk, onChanged }: { projectI
     }),
     onSuccess: () => { onChanged(); setExpanded(false); },
   });
+
+  const acceptAiMutation = useMutation({
+    mutationFn: () => setMatrixOverride(projectId, riskId, { decision: 'ACCEPT_AI' }),
+    onSuccess: onChanged,
+  });
+  const keepHumanMutation = useMutation({
+    mutationFn: () => setMatrixOverride(projectId, riskId, { decision: 'KEEP_HUMAN' }),
+    onSuccess: onChanged,
+  });
+
+  const showDiscrepancyBanner = risk.discrepancy?.hasDiscrepancy && !risk.discrepancy.reviewed;
 
   // Client-side preview only, purely for immediate feedback while picking
   // values -- the actually-persisted score/level always comes back from
@@ -658,6 +669,35 @@ function HumanAssessmentPanel({ projectId, riskId, risk, onChanged }: { projectI
           </button>
         )}
       </div>
+
+      {showDiscrepancyBanner && (
+        <div className="panel p-3 mb-2 border border-warn/40 bg-warn/5 space-y-2">
+          <p className="text-xs text-ink-100">
+            <span className="font-semibold">Human and AI disagree:</span> human assessment is{' '}
+            <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[risk.humanLevel!] }}>{MATRIX_LEVEL_LABELS[risk.humanLevel!]}</span>, AI score is{' '}
+            <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[risk.aiLevel!] }}>{MATRIX_LEVEL_LABELS[risk.aiLevel!]}</span>
+            {' '}({risk.discrepancy!.levelGap} level{risk.discrepancy!.levelGap === 1 ? '' : 's'} apart).
+          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={() => keepHumanMutation.mutate()} disabled={keepHumanMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
+              Keep Human Assessment
+            </button>
+            <button onClick={() => acceptAiMutation.mutate()} disabled={acceptAiMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
+              Accept AI Assessment
+            </button>
+            <button onClick={() => setExpanded(true)} className="btn-secondary !px-2.5 !py-1 text-xs">
+              Update Assessment
+            </button>
+          </div>
+          {(acceptAiMutation.isError || keepHumanMutation.isError) && (
+            <p className="field-error">{apiErrorMessage(acceptAiMutation.error ?? keepHumanMutation.error)}</p>
+          )}
+        </div>
+      )}
+
+      {risk.matrixOverrideBy && risk.discrepancy?.hasDiscrepancy && (
+        <p className="text-xs text-ink-500 mb-2">Discrepancy reviewed: {risk.matrixOverrideReason}</p>
+      )}
 
       {risk.humanScore != null && !expanded ? (
         <div className="flex items-center gap-3 flex-wrap text-sm">

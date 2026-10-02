@@ -179,7 +179,15 @@ export const getRiskClusters = (projectId: string) => apiGet<RiskCluster[]>(`${b
 export const getRiskTrend = (projectId: string, days: 7 | 14 | 30 | 90) => apiGet<RiskTrendPoint[]>(`${base(projectId)}/trend`, { params: { days } });
 export const getRiskDataAvailability = (projectId: string) => apiGet<RiskDataAvailability>(`${base(projectId)}/data-availability`);
 export const listRisks = (projectId: string) => apiGet<Risk[]>(base(projectId));
-export const getRisk = (projectId: string, riskId: string) => apiGet<Risk>(`${base(projectId)}/${riskId}`);
+export interface RiskMatrixDiscrepancy {
+  hasDiscrepancy: boolean;
+  levelGap: number;
+  scoreDelta: number;
+  reviewed: boolean;
+}
+export const getRisk = (projectId: string, riskId: string) => apiGet<Risk & { discrepancy: RiskMatrixDiscrepancy | null }>(`${base(projectId)}/${riskId}`);
+export const getMatrixDiscrepancies = (projectId: string) =>
+  apiGet<{ risk: Risk; discrepancy: RiskMatrixDiscrepancy }[]>(`${base(projectId)}/discrepancies`);
 export const getRiskChain = (projectId: string, riskId: string) => apiGet<RiskChain>(`${base(projectId)}/${riskId}/chain`);
 export const getRiskEvidence = (projectId: string, riskId: string) => apiGet<RiskEvidenceItem[]>(`${base(projectId)}/${riskId}/evidence`);
 export const getRiskHistory = (projectId: string, riskId: string) => apiGet<RiskSnapshot[]>(`${base(projectId)}/${riskId}/history`);
@@ -207,6 +215,13 @@ export const getRiskAssessmentHistory = (projectId: string, riskId: string) =>
 // disagree with what's actually persisted.
 export const setHumanAssessment = (projectId: string, riskId: string, dto: { probability: number; impact: number; primaryDriver: RiskDriver; secondaryDriver?: RiskDriver | null }) =>
   apiPatch<Risk>(`${base(projectId)}/${riskId}/human-assessment`, dto);
+
+// Resolves a Human-vs-AI Risk Matrix discrepancy. "Update Assessment" is not
+// included here -- it's just a fresh setHumanAssessment() call.
+export const setMatrixOverride = (projectId: string, riskId: string, dto: { decision: 'ACCEPT_AI' | 'KEEP_HUMAN' | 'CUSTOM'; score?: number; level?: RiskMatrixLevel; reason?: string }) =>
+  apiPatch<Risk>(`${base(projectId)}/${riskId}/matrix-override`, dto);
+export const clearMatrixOverride = (projectId: string, riskId: string) =>
+  apiDelete<Risk>(`${base(projectId)}/${riskId}/matrix-override`);
 export const getRiskGraph = (projectId: string, opts: { rootNodeId?: string; maxDepth?: number; nodeTypes?: string[]; discipline?: string } = {}) =>
   apiGet<{ nodes: RiskGraphNode[]; edges: RiskGraphEdge[] }>(`${base(projectId)}/graph`, {
     params: { rootNodeId: opts.rootNodeId, maxDepth: opts.maxDepth, nodeTypes: opts.nodeTypes?.join(','), discipline: opts.discipline },

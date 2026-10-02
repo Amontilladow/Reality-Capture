@@ -9,6 +9,7 @@ import { SetRiskStatusDto } from './dto/set-risk-status.dto';
 import { AssignRiskOwnerDto } from './dto/assign-risk-owner.dto';
 import { GenerateRiskPdfDto } from './dto/generate-risk-pdf.dto';
 import { SetHumanAssessmentDto } from './dto/set-human-assessment.dto';
+import { SetMatrixOverrideDto } from './dto/set-matrix-override.dto';
 
 @ApiTags('risk')
 @ApiBearerAuth()
@@ -134,9 +135,15 @@ export class RiskController {
     return { data: await this.risk.listRisks(u.companyId, pid), error: null };
   }
 
+  @Get('discrepancies')
+  @ApiOperation({ summary: 'Open risks where the human Risk Matrix assessment and the AI Score disagree on level' })
+  async getDiscrepancies(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
+    return { data: await this.risk.getMatrixDiscrepancies(u.companyId, pid), error: null };
+  }
+
   @Get(':riskId')
   async getOne(@CurrentUser() u: AuthenticatedUser, @Param('riskId') riskId: string) {
-    return { data: await this.risk.getRisk(u.companyId, riskId), error: null };
+    return { data: await this.risk.getRiskWithDiscrepancy(u.companyId, riskId), error: null };
   }
 
   @Get(':riskId/chain')
@@ -166,6 +173,23 @@ export class RiskController {
     @Body() dto: SetHumanAssessmentDto,
   ) {
     return { data: await this.risk.setHumanAssessment(u.companyId, pid, riskId, u.id, dto), error: null };
+  }
+
+  @Patch(':riskId/matrix-override')
+  @ApiOperation({ summary: 'Resolve a Human-vs-AI Risk Matrix discrepancy: Accept AI Assessment, Keep Human Assessment, or a custom engineer override -- always audited' })
+  async setMatrixOverride(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('riskId') riskId: string,
+    @Body() dto: SetMatrixOverrideDto,
+  ) {
+    return { data: await this.risk.setMatrixOverride(u.companyId, pid, riskId, u.id, dto), error: null };
+  }
+
+  @Delete(':riskId/matrix-override')
+  @ApiOperation({ summary: 'Clear a Risk Matrix override, reverting to the default priority (human assessment, else AI score)' })
+  async clearMatrixOverride(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('riskId') riskId: string) {
+    return { data: await this.risk.clearMatrixOverride(u.companyId, pid, riskId, u.id), error: null };
   }
 
   @Get(':riskId/assessment-history')
