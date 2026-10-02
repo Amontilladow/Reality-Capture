@@ -69,6 +69,12 @@ export class BimController {
     return { data: await this.svc.getHierarchy(u.companyId, modelId), error: null };
   }
 
+  @Get('models/:modelId/elements/status-map')
+  @ApiOperation({ summary: 'Get a flat {guid, status, completionPct} list for every element in a model, for the viewer\'s colour-coded overlay' })
+  async getElementStatusMap(@CurrentUser() u: AuthenticatedUser, @Param('modelId') modelId: string) {
+    return { data: await this.svc.getElementStatusMap(u.companyId, modelId), error: null };
+  }
+
   @Get('models/:modelId/elements/by-guid/:guid')
   @ApiOperation({ summary: 'Look up a BIM element by its IFC GUID (for viewer selection)' })
   async getElementByGuid(@CurrentUser() u: AuthenticatedUser, @Param('modelId') modelId: string, @Param('guid') guid: string) {
@@ -93,9 +99,15 @@ export class BimController {
 
   @Patch('elements/:eid/status')
   @RequireProjectPermission('manage_project_records')
-  @ApiOperation({ summary: 'Update construction status for a BIM element' })
-  async updateStatus(@CurrentUser() u: AuthenticatedUser, @Param('eid') eid: string, @Body() body: UpdateElementStatusDto) {
-    return { data: await this.svc.updateElementStatus(u.companyId, eid, body.status), error: null };
+  @ApiOperation({ summary: 'Update construction status (and optional completion %) for a BIM element, with an optional evidence capture' })
+  async updateStatus(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('eid') eid: string, @Body() body: UpdateElementStatusDto) {
+    return { data: await this.svc.updateElementStatus(u.companyId, pid, eid, u.id, body), error: null };
+  }
+
+  @Get('elements/:eid/status-history')
+  @ApiOperation({ summary: 'Get the full status-change audit trail for a BIM element' })
+  async getElementStatusHistory(@CurrentUser() u: AuthenticatedUser, @Param('eid') eid: string) {
+    return { data: await this.svc.getElementStatusHistory(u.companyId, eid), error: null };
   }
 
   @Post('elements/:eid/captures')
@@ -121,5 +133,24 @@ export class BimController {
   @ApiOperation({ summary: 'Get construction progress summary by element type' })
   async getProgressSummary(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
     return { data: await this.svc.getProgressSummary(u.companyId, pid), error: null };
+  }
+
+  @Get('progress/levels')
+  @ApiOperation({ summary: 'Get element-completion and zone status rolled up per level (and, by extension, per building)' })
+  async getLevelProgressSummary(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
+    return { data: await this.svc.getLevelProgressSummary(u.companyId, pid), error: null };
+  }
+
+  @Patch('zones/:levelId/progress')
+  @RequireProjectPermission('manage_project_records')
+  @ApiOperation({ summary: 'Set the overall progress status (and optional completion %) for a level/zone, with an optional evidence capture' })
+  async upsertZoneProgress(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('levelId') levelId: string, @Body() body: UpdateElementStatusDto) {
+    return { data: await this.svc.upsertZoneProgress(u.companyId, pid, levelId, u.id, body), error: null };
+  }
+
+  @Get('zones/:levelId/progress-history')
+  @ApiOperation({ summary: 'Get the full status-change audit trail for a level/zone' })
+  async getZoneProgressHistory(@CurrentUser() u: AuthenticatedUser, @Param('levelId') levelId: string) {
+    return { data: await this.svc.getZoneProgressHistory(u.companyId, levelId), error: null };
   }
 }

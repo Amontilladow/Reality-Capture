@@ -7,7 +7,7 @@ import { getProject, getHierarchy } from '../lib/projects.api';
 import {
   getProgressReport, downloadProgressReportPdf, createProgressReportShare,
   listProgressReportShares, revokeProgressReportShare,
-  type ProgressReportFilters, type ProgressReportIssueRow,
+  type ProgressReportFilters, type ProgressReportIssueRow, type ProgressReport,
 } from '../lib/progress-reports.api';
 import { apiErrorMessage } from '../lib/api';
 
@@ -22,6 +22,41 @@ function StatTile({ label, value, tone }: { label: string; value: number; tone?:
     <div className="panel p-3 text-left">
       <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">{label}</div>
       <div className={`text-xl font-semibold tabular-nums ${tone === 'danger' && value > 0 ? 'text-danger' : 'text-ink-100'}`}>{value}</div>
+    </div>
+  );
+}
+
+function ElementProgressSection({ elementProgress }: { elementProgress: ProgressReport['elementProgress'] }) {
+  if (!elementProgress || elementProgress.byLevel.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">
+        Planned vs Actual Progress ({elementProgress.overallCompletionPct ?? 0}% complete)
+      </h2>
+      <div className="panel tick-frame overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-ink-500 border-b border-base-600">
+              <th className="px-4 py-2.5 font-medium">Level</th>
+              <th className="px-4 py-2.5 font-medium">Building</th>
+              <th className="px-4 py-2.5 font-medium">Elements</th>
+              <th className="px-4 py-2.5 font-medium">Complete</th>
+              <th className="px-4 py-2.5 font-medium">Zone Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {elementProgress.byLevel.map((lvl) => (
+              <tr key={lvl.levelId} className="border-b border-base-700/60 last:border-0">
+                <td className="px-4 py-2.5">{lvl.levelName}</td>
+                <td className="px-4 py-2.5 text-ink-500">{lvl.buildingName}</td>
+                <td className="px-4 py-2.5 text-ink-300">{lvl.elementComplete}/{lvl.elementTotal}</td>
+                <td className="px-4 py-2.5 text-ink-300">{lvl.elementCompletionPct ?? 0}%</td>
+                <td className="px-4 py-2.5 text-ink-500">{lvl.zoneStatus ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -190,6 +225,8 @@ export default function ProgressReportPage() {
                 </div>
               )}
             </div>
+
+            <ElementProgressSection elementProgress={report.elementProgress} />
 
             <IssueSection title="New Issues" items={report.newIssues} emptyText="No new issues in this date range." />
             <IssueSection title="Closed Issues" items={report.closedIssues} emptyText="No issues closed in this date range." />

@@ -101,6 +101,22 @@ export default function ProgressReportExternalPage() {
               </div>
             )}
 
+            {report.elementProgress && report.elementProgress.byLevel.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-ink-100 uppercase tracking-wide mb-2">
+                  Planned vs Actual Progress ({report.elementProgress.overallCompletionPct ?? 0}% complete)
+                </h3>
+                <div className="space-y-1">
+                  {report.elementProgress.byLevel.map((lvl) => (
+                    <div key={lvl.levelId} className="flex items-center justify-between text-sm panel px-3 py-2">
+                      <span className="text-ink-100">{lvl.levelName} <span className="text-ink-500 text-xs">· {lvl.buildingName}</span></span>
+                      <span className="text-xs text-ink-500">{lvl.elementComplete}/{lvl.elementTotal} ({lvl.elementCompletionPct ?? 0}%)</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <IssueList title="New Issues" items={report.newIssues} emptyText="No new issues in this date range." />
             <IssueList title="Closed Issues" items={report.closedIssues} emptyText="No issues closed in this date range." />
             <IssueList title="Overdue Issues" items={report.overdueIssues} emptyText="No overdue issues." />

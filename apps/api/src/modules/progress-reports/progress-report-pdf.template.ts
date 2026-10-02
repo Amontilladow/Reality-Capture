@@ -47,6 +47,15 @@ export interface ProgressReportPdfCapture {
   imageBuffer?: Buffer;
 }
 
+export interface ProgressReportPdfLevelRow {
+  levelName: string;
+  buildingName: string;
+  elementTotal: number;
+  elementComplete: number;
+  elementCompletionPct: number | null;
+  zoneStatus?: string;
+}
+
 export interface ProgressReportPdfData {
   projectName: string;
   projectCode?: string;
@@ -60,6 +69,7 @@ export interface ProgressReportPdfData {
   closedIssues: ProgressReportPdfIssueRow[];
   overdueIssues: ProgressReportPdfIssueRow[];
   blockers: ProgressReportPdfIssueRow[];
+  elementProgress?: { overallCompletionPct: number | null; byLevel: ProgressReportPdfLevelRow[] };
 }
 
 export async function renderProgressReportPdf(data: ProgressReportPdfData): Promise<Buffer> {
@@ -101,6 +111,11 @@ export async function renderProgressReportPdf(data: ProgressReportPdfData): Prom
     colPriority: { width: '12%' },
     colLocation: { width: '15%' },
     colAssignee: { width: '15%' },
+
+    colLevel: { width: '30%' },
+    colBuilding: { width: '25%' },
+    colElementCount: { width: '20%' },
+    colElementPct: { width: '25%' },
   });
 
   const statTiles = (tiles: Array<{ label: string; value: number; danger?: boolean }>) =>
@@ -145,6 +160,29 @@ export async function renderProgressReportPdf(data: ProgressReportPdfData): Prom
     );
   };
 
+  const elementProgressSection = () => {
+    if (!data.elementProgress || data.elementProgress.byLevel.length === 0) return null;
+    const { overallCompletionPct, byLevel } = data.elementProgress;
+    return h(View, {},
+      h(Text, { style: styles.sectionHeading }, 'Planned vs Actual Progress'),
+      h(Text, { style: styles.emptyNote }, `Overall element completion: ${overallCompletionPct ?? 0}%`),
+      h(View, { style: styles.table },
+        h(View, { style: styles.tableHeaderRow },
+          h(Text, { style: [styles.tableHeaderCell, styles.colLevel] }, 'Level'),
+          h(Text, { style: [styles.tableHeaderCell, styles.colBuilding] }, 'Building'),
+          h(Text, { style: [styles.tableHeaderCell, styles.colElementCount] }, 'Elements'),
+          h(Text, { style: [styles.tableHeaderCell, styles.colElementPct] }, 'Complete'),
+        ),
+        ...byLevel.map((lvl, i) => h(View, { style: styles.tableRow, key: i },
+          h(Text, { style: [styles.tableCell, styles.colLevel] }, lvl.levelName),
+          h(Text, { style: [styles.tableCell, styles.colBuilding] }, lvl.buildingName),
+          h(Text, { style: [styles.tableCell, styles.colElementCount] }, `${lvl.elementComplete}/${lvl.elementTotal}`),
+          h(Text, { style: [styles.tableCell, styles.colElementPct] }, `${lvl.elementCompletionPct ?? 0}%`),
+        )),
+      ),
+    );
+  };
+
   const projectEyebrowText = data.projectCode ? `${data.projectName} · ${data.projectCode}` : data.projectName;
   const scopeParts = [data.buildingName, data.levelName].filter(Boolean);
   const dateRangeText = `${new Date(data.dateFrom).toLocaleDateString('en-GB')} – ${new Date(data.dateTo).toLocaleDateString('en-GB')}`;
@@ -170,6 +208,8 @@ export async function renderProgressReportPdf(data: ProgressReportPdfData): Prom
 
         h(Text, { style: styles.sectionHeading }, 'Captures'),
         captureGrid(),
+
+        elementProgressSection(),
 
         h(Text, { style: styles.sectionHeading }, 'New Issues'),
         issuesTable(data.newIssues, 'No new issues in this date range.'),

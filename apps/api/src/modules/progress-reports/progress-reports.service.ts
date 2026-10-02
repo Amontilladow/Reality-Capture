@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from '../../database/database.service';
 import { StorageService } from '../storage/storage.service';
 import { CapturesService } from '../captures/captures.service';
+import { BimService } from '../bim/bim.service';
 import { renderProgressReportPdf, type ProgressReportPdfData, type ProgressReportPdfIssueRow } from './progress-report-pdf.template';
 import type { GenerateProgressReportShareDto } from './dto/generate-progress-report-share.dto';
 
@@ -34,6 +35,12 @@ export interface ProgressReportCapture {
   locationName?: string;
 }
 
+export interface ProgressReportLevelSummary {
+  levelId: string; levelName: string; buildingName: string;
+  elementTotal: number; elementComplete: number; elementCompletionPct: number | null;
+  zoneStatus?: string;
+}
+
 export interface ProgressReportData {
   project: { name: string; code?: string };
   building?: { name: string };
@@ -47,6 +54,11 @@ export interface ProgressReportData {
   closedIssues: IssueSummaryRow[];
   overdueIssues: IssueSummaryRow[];
   blockers: IssueSummaryRow[];
+  // F2: planned-vs-actual element/zone completion, scoped by the same
+  // building/level filters as everything else in this report. Undefined
+  // (not an empty array) when the project has no BIM elements at all, so
+  // the UI/PDF can omit the section instead of showing an empty table.
+  elementProgress?: { overallCompletionPct: number | null; byLevel: ProgressReportLevelSummary[] };
 }
 
 /**
@@ -65,6 +77,7 @@ export class ProgressReportsService {
     private readonly config: ConfigService,
     private readonly storage: StorageService,
     private readonly captures: CapturesService,
+    private readonly bim: BimService,
   ) {}
 
   async generate(companyId: string, projectId: string, filters: ProgressReportFilters): Promise<ProgressReportData> {
@@ -88,11 +101,12 @@ export class ProgressReportsService {
       id: string; thumbnailUrl?: string; capturedAt: string; title?: string; locationName?: string;
     }>;
 
-    const [newIssues, closedIssues, overdueIssues, blockers] = await Promise.all([
+    const [newIssues, closedIssues, overdueIssues, blockers, elementProgress] = await Promise.all([
       this.queryIssues(companyId, projectId, filters, 'new'),
       this.queryIssues(companyId, projectId, filters, 'closed'),
       this.queryIssues(companyId, projectId, filters, 'overdue'),
       this.queryIssues(companyId, projectId, filters, 'blockers'),
+      this.getElementProgress(companyId, projectId, filters),
     ]);
 
     return {
@@ -105,6 +119,35 @@ export class ProgressReportsService {
         id: c.id, thumbnailUrl: c.thumbnailUrl, capturedAt: c.capturedAt, title: c.title, locationName: c.locationName,
       })),
       newIssues, closedIssues, overdueIssues, blockers,
+      elementProgress,
+    };
+  }
+
+  // F2: reuses BimService.getLevelProgressSummary() (the same query the BIM
+  // viewer's per-level panel reads) rather than a second, duplicate rollup
+  // query here.
+  private async getElementProgress(
+    companyId: string, projectId: string, filters: ProgressReportFilters,
+  ): Promise<{ overallCompletionPct: number | null; byLevel: ProgressReportLevelSummary[] } | undefined> {
+    const rows = await this.bim.getLevelProgressSummary(companyId, projectId, {
+      buildingId: filters.buildingId, levelId: filters.levelId,
+    }) as unknown as Array<{
+      levelId: string; levelName: string; buildingName: string;
+      elementTotal: number; elementComplete: number; elementCompletionPct: number | null; zoneStatus?: string;
+    }>;
+
+    const totalElements = rows.reduce((sum, r) => sum + Number(r.elementTotal), 0);
+    if (totalElements === 0) return undefined;
+
+    const totalComplete = rows.reduce((sum, r) => sum + Number(r.elementComplete), 0);
+    return {
+      overallCompletionPct: Math.round((totalComplete / totalElements) * 1000) / 10,
+      byLevel: rows.filter(r => Number(r.elementTotal) > 0).map(r => ({
+        levelId: r.levelId, levelName: r.levelName, buildingName: r.buildingName,
+        elementTotal: Number(r.elementTotal), elementComplete: Number(r.elementComplete),
+        elementCompletionPct: r.elementCompletionPct === null ? null : Number(r.elementCompletionPct),
+        zoneStatus: r.zoneStatus,
+      })),
     };
   }
 
@@ -253,6 +296,7 @@ export class ProgressReportsService {
       dateFrom: data.dateFrom, dateTo: data.dateTo,
       generatedAt: new Date().toLocaleString('en-GB'),
       captures: capturesWithBuffers,
+      elementProgress: data.elementProgress,
       newIssues: data.newIssues.map(toRow),
       closedIssues: data.closedIssues.map(toRow),
       overdueIssues: data.overdueIssues.map(toRow),

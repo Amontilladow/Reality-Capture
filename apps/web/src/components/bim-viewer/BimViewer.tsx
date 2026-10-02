@@ -25,6 +25,14 @@ export interface BimViewerHandle {
   // "this is the view I was looking at" screenshot. Null if the renderer
   // isn't ready yet.
   getScreenshotDataUrl: () => string | null;
+  // F2: a persistent, multi-colour status overlay (one colour per status
+  // bucket), independent of click-to-select highlighting below. Known
+  // overlap: selecting an element that's also part of the overlay
+  // temporarily shows the selection colour, then reverts to no colour
+  // (not back to its status colour) on deselect -- reapplying the overlay
+  // is the workaround until these two highlight layers are unified.
+  applyStatusOverlay: (groups: Array<{ guids: string[]; color: string }>) => Promise<void>;
+  clearStatusOverlay: () => Promise<void>;
 }
 
 interface BimViewerProps {
@@ -57,6 +65,7 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
   const fragmentsRef = useRef<OBC.FragmentsManager | null>(null);
   const modelIdRef = useRef<string>('main');
   const highlightedRef = useRef<OBC.ModelIdMap>({});
+  const statusOverlayGroupsRef = useRef<OBC.ModelIdMap[]>([]);
 
   async function clearHighlight() {
     const fragments = fragmentsRef.current;
@@ -71,6 +80,15 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
     await clearHighlight();
     await fragments.highlight({ color: new THREE.Color('#3b82f6'), renderedFaces: 0, opacity: 1, transparent: false }, modelIdMap);
     highlightedRef.current = modelIdMap;
+  }
+
+  async function clearStatusOverlay() {
+    const fragments = fragmentsRef.current;
+    if (!fragments) return;
+    for (const modelIdMap of statusOverlayGroupsRef.current) {
+      await fragments.resetHighlight(modelIdMap);
+    }
+    statusOverlayGroupsRef.current = [];
   }
 
   useImperativeHandle(ref, () => ({
@@ -124,6 +142,21 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
       world.renderer.three.render(world.scene.three, world.camera.three);
       return world.renderer.three.domElement.toDataURL('image/png');
     },
+    applyStatusOverlay: async (groups) => {
+      const fragments = fragmentsRef.current;
+      if (!fragments) return;
+      await clearStatusOverlay();
+      const maps: OBC.ModelIdMap[] = [];
+      for (const group of groups) {
+        if (group.guids.length === 0) continue;
+        const modelIdMap = await fragments.guidsToModelIdMap(group.guids);
+        if (Object.keys(modelIdMap).length === 0) continue;
+        await fragments.highlight({ color: new THREE.Color(group.color), renderedFaces: 0, opacity: 1, transparent: false }, modelIdMap);
+        maps.push(modelIdMap);
+      }
+      statusOverlayGroupsRef.current = maps;
+    },
+    clearStatusOverlay,
   }));
 
   useEffect(() => {

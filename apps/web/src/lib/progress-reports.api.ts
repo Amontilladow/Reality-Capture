@@ -33,6 +33,16 @@ export interface ProgressReportCapture {
   locationName?: string;
 }
 
+export interface ProgressReportLevelSummary {
+  levelId: string;
+  levelName: string;
+  buildingName: string;
+  elementTotal: number;
+  elementComplete: number;
+  elementCompletionPct: number | null;
+  zoneStatus?: string;
+}
+
 export interface ProgressReport {
   project: { name: string; code?: string };
   building?: { name: string };
@@ -46,6 +56,7 @@ export interface ProgressReport {
   closedIssues: ProgressReportIssueRow[];
   overdueIssues: ProgressReportIssueRow[];
   blockers: ProgressReportIssueRow[];
+  elementProgress?: { overallCompletionPct: number | null; byLevel: ProgressReportLevelSummary[] };
 }
 
 const toParams = (filters: ProgressReportFilters) => {
