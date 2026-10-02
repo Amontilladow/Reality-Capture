@@ -337,6 +337,42 @@ frontend integration (see above).
 - No true multi-GB IFC test fixture was obtainable — see IFC engine
   limitations above.
 
+## Reality Capture Module feature set (F1-F6) — IN PROGRESS
+
+Added as a new phase per an explicit product brief: six BIM-native site
+documentation/coordination features, built one at a time as small, tested,
+independently releasable increments. Do NOT build procurement, finance, or
+estimating — integrate with those systems instead, never replace them.
+Tracked session-to-session via this repo's task list (not duplicated here
+item-by-item); update this section's status line after each feature ships.
+
+1. **F1 — Automated Progress Report.** Per project/building/level report
+   from captures/pins/issues over a date range (thumbnails, new/closed/
+   overdue issues, blockers). In-app view + PDF + expiring public share
+   link + WhatsApp `wa.me` deep link (no WhatsApp API provider — budget
+   paused).
+2. **F2 — Planned vs Actual Progress by Element/Zone.** Status per BIM
+   element/zone (not started/in progress/complete, optional %), each
+   change linked to its evidencing capture. Colour-coded BIM viewer
+   overlay + per-level summary, feeding F1's totals.
+3. **F3 — Public API and Webhooks.** Per-tenant API keys (hashed,
+   revocable), tenant-scoped read endpoints (projects/captures/issues/
+   progress), outbound HMAC-signed webhooks with retry/backoff, OpenAPI
+   spec.
+4. **F4 — Subcontractor Issue Assignment.** Assignee/due date/status
+   workflow + overdue flag/filter on Issues and Overview, respecting the
+   existing role model (Super Admin approves users; Company Admin default
+   authority is project creation only).
+5. **F5 — Evidence-Based Issue Close-Out.** Closing an issue requires at
+   least one evidence photo/capture plus approver sign-off from a
+   permitted role; backend-enforced, not just UI; full audit trail.
+6. **F6 — Scheduled Capture Comparison.** Side-by-side comparison of two
+   captures of the same Place across two dates, with a date slider.
+   Automated change detection explicitly deferred to a later phase.
+
+**Status: F1 starting now.** Sequenced first for the most visible value
+for the least effort.
+
 ## Exact continuation point
 IFC Processing Engine, Reality Capture image processing, BIM viewer <->
 Issue Management integration (camera/screenshot capture), and artifact
