@@ -15,8 +15,10 @@ export function login(payload: LoginPayload) {
   return apiPost<LoginResult>('/auth/login', payload);
 }
 
-export function logout(refreshToken: string) {
-  return apiPost<void>('/auth/logout', { refreshToken });
+// No refreshToken to pass -- the API reads it from the httpOnly cookie
+// (see api.ts's `http` instance, which always sends withCredentials: true).
+export function logout() {
+  return apiPost<void>('/auth/logout', {});
 }
 
 export function fetchMe() {

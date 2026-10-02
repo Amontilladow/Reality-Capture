@@ -1,7 +1,8 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppShell } from './components/layout/AppShell';
+import { bootstrapSession } from './lib/api';
 
 import Login from './pages/auth/Login';
 import ForgotPassword from './pages/auth/ForgotPassword';
@@ -51,6 +52,14 @@ function RouteLoading() {
 }
 
 export default function App() {
+  // Re-establishes a session from the httpOnly refresh cookie once per full
+  // page load -- the access token is kept in memory only (see auth.store.ts)
+  // and doesn't survive a reload on its own. ProtectedRoute waits on
+  // isHydrated before deciding whether to redirect to /login.
+  useEffect(() => {
+    void bootstrapSession();
+  }, []);
+
   return (
     <Suspense fallback={<RouteLoading />}>
       <Routes>

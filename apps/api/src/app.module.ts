@@ -40,6 +40,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { PendingApprovalGuard } from './common/guards/pending-approval.guard';
 import { ProjectPermissionGuard } from './common/guards/project-permission.guard';
+import { TenancyGuard } from './common/guards/tenancy.guard';
 
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
@@ -109,15 +110,19 @@ import googleCalendarConfig from './config/google-calendar.config';
     // Order matters: rate-limit first (cheap, rejects abuse before any auth work),
     // then JWT auth (populates request.user, honors @Public() routes), then the
     // pending-approval gate (blocks a self-registered-but-unapproved user from
-    // everything except @AllowPending() routes), then role checks -- pending
-    // status is checked before role weight so a blocked user gets a clear
-    // PENDING_APPROVAL reason instead of a generic insufficient-role one.
-    // ProjectPermissionGuard runs last: it's the most specific check (one
+    // everything except @AllowPending() routes), then TenancyGuard (re-checks
+    // companies.is_active on every request, not just login/refresh -- was
+    // implemented but never wired up, leaving a deactivated company's
+    // already-issued access tokens live until they expire), then role checks
+    // -- pending status is checked before role weight so a blocked user gets
+    // a clear PENDING_APPROVAL reason instead of a generic insufficient-role
+    // one. ProjectPermissionGuard runs last: it's the most specific check (one
     // project, one named capability) and only matters once the broader
     // company-role gate above has already passed.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PendingApprovalGuard },
+    { provide: APP_GUARD, useClass: TenancyGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: ProjectPermissionGuard },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },

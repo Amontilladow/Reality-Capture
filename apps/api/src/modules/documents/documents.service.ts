@@ -7,6 +7,15 @@ import type { PaginationQuery } from '@engineeringos/types';
 
 const DOCUMENT_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB -- matches getUploadUrl()'s existing figure
 
+// Mirrors captures.service.ts's ALLOWED_MIME pattern -- without this,
+// contentType was an unconstrained client-supplied string signed straight
+// onto the presigned PUT's Content-Type header, and later served back with
+// that same attacker-chosen value (a stored content-type-confusion risk if
+// ever rendered inline).
+const DOCUMENT_ALLOWED_MIME = new Set([
+  'application/pdf', 'image/jpeg', 'image/png', 'image/webp',
+]);
+
 @Injectable()
 export class DocumentsService {
   constructor(
@@ -23,8 +32,12 @@ export class DocumentsService {
   // content type instead of a hardcoded PDF one.
   async getUploadUrl(companyId: string, projectId: string, filename: string, contentType?: string) {
     await this.assertProjectBelongsToCompany(companyId, projectId);
+    const effectiveType = contentType || 'application/pdf';
+    if (!DOCUMENT_ALLOWED_MIME.has(effectiveType)) {
+      throw new BadRequestException(`File type ${effectiveType} is not supported. Allowed: PDF, JPEG, PNG, WebP.`);
+    }
     const key = this.storage.generateKey(companyId, projectId, 'documents', filename);
-    const url = await this.storage.getUploadUrl(key, contentType || 'application/pdf', DOCUMENT_MAX_SIZE_BYTES);
+    const url = await this.storage.getUploadUrl(key, effectiveType, DOCUMENT_MAX_SIZE_BYTES);
     return { ...url, storageKey: key };
   }
 

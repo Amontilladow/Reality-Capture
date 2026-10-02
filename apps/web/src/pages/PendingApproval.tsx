@@ -12,13 +12,13 @@ import { COMPANY_ROLE_LABELS } from '../lib/issue-constants';
 // so this is the real, enforced dead end, not just a UI convenience.
 export default function PendingApproval() {
   const navigate = useNavigate();
-  const { refreshToken, clear } = useAuthStore();
+  const { clear } = useAuthStore();
 
   const meQuery = useQuery({ queryKey: ['me'], queryFn: fetchMe });
 
   async function handleLogout() {
     try {
-      if (refreshToken) await apiLogout(refreshToken);
+      await apiLogout();
     } catch {
       // best-effort — clear local session regardless
     }

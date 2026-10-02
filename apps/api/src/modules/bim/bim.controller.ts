@@ -8,6 +8,7 @@ import { LinkCaptureToElementDto } from './dto/link-capture-to-element.dto';
 import { CreatePinForElementDto } from './dto/create-pin-for-element.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireFeature } from '../../common/decorators/require-feature.decorator';
+import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 
 @ApiTags('bim')
@@ -24,12 +25,14 @@ export class BimController {
   }
 
   @Post('models/upload-url')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Get presigned URL for IFC model upload' })
   async getModelUploadUrl(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() body: GetModelUploadUrlDto) {
     return { data: await this.svc.getModelUploadUrl(u.companyId, pid, body.filename), error: null };
   }
 
   @Post('models')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Register a BIM model after upload and queue IFC parsing' })
   async registerModel(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: RegisterBimModelDto) {
     return { data: await this.svc.registerModel(u.companyId, pid, u.id, dto), error: null };
@@ -42,6 +45,7 @@ export class BimController {
   }
 
   @Post('models/:modelId/reprocess')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Re-queue IFC parsing for a failed or stuck model' })
   async reprocessModel(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('modelId') modelId: string) {
     return { data: await this.svc.reprocessModel(u.companyId, pid, modelId), error: null };
@@ -88,12 +92,14 @@ export class BimController {
   }
 
   @Patch('elements/:eid/status')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Update construction status for a BIM element' })
   async updateStatus(@CurrentUser() u: AuthenticatedUser, @Param('eid') eid: string, @Body() body: UpdateElementStatusDto) {
     return { data: await this.svc.updateElementStatus(u.companyId, eid, body.status), error: null };
   }
 
   @Post('elements/:eid/captures')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Link a capture to a BIM element' })
   async linkCapture(@CurrentUser() u: AuthenticatedUser, @Param('eid') eid: string, @Body() body: LinkCaptureToElementDto) {
     return { data: await this.svc.linkCaptureToElement(u.companyId, body.captureId, eid, u.id, body.linkType), error: null };
@@ -105,6 +111,7 @@ export class BimController {
   }
 
   @Post('elements/:eid/pins')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Create a new pin attached to this element, with no floor-plan position yet' })
   async createPinForElement(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('eid') eid: string, @Body() body: CreatePinForElementDto) {
     return { data: await this.svc.createPinForElement(u.companyId, pid, eid, u.id, body.name || 'Untitled pin', body.assignedTo), error: null };

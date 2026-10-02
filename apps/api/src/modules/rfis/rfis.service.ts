@@ -122,8 +122,10 @@ export class RfisService {
     const timeImpactBool = dto.timeImpactLevel ? dto.timeImpactLevel === 'yes' : (dto.timeImpact ?? false);
 
     // withTenant required -- rfis carries the tenant_isolation RLS policy, same as
-    // every other table. A plain this.db.query() would silently reject this insert
-    // under any non-owner/non-superuser DB role.
+    // every other table (migration 053 added it here -- rfis/submittals/transmittals/
+    // qa_inspections/snag_items/snag_activities had no RLS policy at all before that,
+    // despite every other table's own child tables getting one). A plain this.db.query()
+    // would silently reject this insert under any non-owner/non-superuser DB role.
     const [rfi] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO rfis (
         company_id, project_id, rfi_number, subject, question,

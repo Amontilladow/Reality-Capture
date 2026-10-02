@@ -39,7 +39,8 @@ async function runMigrations() {
     database: process.env.DB_NAME     ?? 'engineeringos',
     username: migratorUser,
     password: migratorPassword,
-    ssl:      process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+    // Verify the server certificate -- see database.module.ts's identical fix.
+    ssl:      process.env.DB_SSL === 'true' ? { rejectUnauthorized: true, ca: process.env.DB_CA_CERT || undefined } : false,
     max:      1,
   });
 
