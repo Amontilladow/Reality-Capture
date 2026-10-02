@@ -7,7 +7,6 @@ import * as argon2 from 'argon2';
 import { randomBytes, createHash } from 'crypto';
 import { DatabaseService } from '../../database/database.service';
 import type { LoginDto } from './dto/login.dto';
-import type { RefreshTokenDto } from './dto/refresh-token.dto';
 import type { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import type { ResetPasswordDto } from './dto/reset-password.dto';
 import type { AuthTokens, JwtPayload, AuthenticatedUser, CompanyRole } from '@engineeringos/types';
@@ -68,8 +67,11 @@ export class AuthService {
   }
 
   // ── Refresh ───────────────────────────────────────────────────────────────
-  async refresh(dto: RefreshTokenDto, ipAddress?: string, userAgent?: string): Promise<AuthTokens> {
-    const tokenHash = this.hashToken(dto.refreshToken);
+  // Takes the raw token rather than RefreshTokenDto -- the controller resolves
+  // it from either the web SPA's httpOnly cookie or (mobile) the request body
+  // before calling this, so by the time it gets here it's always a real string.
+  async refresh(refreshToken: string, ipAddress?: string, userAgent?: string): Promise<AuthTokens> {
+    const tokenHash = this.hashToken(refreshToken);
 
     // Select rt.id under its own alias -- `rt.*` here would otherwise collide
     // with u.id below (both output as `id`), and the *last* one selected

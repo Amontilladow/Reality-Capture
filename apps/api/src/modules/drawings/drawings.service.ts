@@ -8,6 +8,12 @@ import type { CreatePinDto } from './dto/create-pin.dto';
 
 const DRAWING_MAX_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
 
+// Mirrors bim.service.ts's BIM_MODEL_ALLOWED_EXTENSIONS pattern -- the
+// signed Content-Type here is hardcoded to 'application/pdf' regardless of
+// the actual file, so without an extension check a non-PDF file could be
+// uploaded and registered as a drawing with no validation at all.
+const DRAWING_ALLOWED_EXTENSIONS = new Set(['pdf']);
+
 @Injectable()
 export class DrawingsService {
   constructor(
@@ -36,6 +42,10 @@ export class DrawingsService {
 
   async getUploadUrl(companyId: string, projectId: string, filename: string) {
     await this.assertProjectBelongsToCompany(companyId, projectId);
+    const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+    if (!DRAWING_ALLOWED_EXTENSIONS.has(ext)) {
+      throw new BadRequestException(`File type ".${ext}" is not supported. Allowed: PDF.`);
+    }
     const key = this.storage.generateKey(companyId, projectId, 'drawings', filename);
     const url = await this.storage.getUploadUrl(key, 'application/pdf', DRAWING_MAX_SIZE_BYTES);
     return { ...url, storageKey: key };

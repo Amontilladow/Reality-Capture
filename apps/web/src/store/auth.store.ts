@@ -1,18 +1,25 @@
 import { create } from 'zustand';
 import type { AuthenticatedUser } from '@engineeringos/types';
 
-const ACCESS_KEY = 'eos.accessToken';
-const REFRESH_KEY = 'eos.refreshToken';
 const USER_KEY = 'eos.user';
 
 interface AuthState {
+  // In memory only -- never persisted. The refresh token lives entirely in
+  // an httpOnly cookie the API sets (see apps/api's auth.controller.ts),
+  // unreadable by any page-context JavaScript, so a future XSS bug can't
+  // exfiltrate it the way it previously could from localStorage. A page
+  // reload loses this and re-establishes it via a silent refresh against
+  // that cookie (see api.ts's bootstrapSession()).
   accessToken: string | null;
-  refreshToken: string | null;
   user: AuthenticatedUser | null;
+  // False until bootstrapSession() resolves (or fails) once on app start.
+  // ProtectedRoute waits on this instead of redirecting to /login the
+  // instant a fresh page load has no in-memory access token yet.
   isHydrated: boolean;
-  setSession: (tokens: { accessToken: string; refreshToken: string }, user: AuthenticatedUser) => void;
-  setTokens: (accessToken: string, refreshToken: string) => void;
+  setSession: (tokens: { accessToken: string }, user: AuthenticatedUser) => void;
+  setAccessToken: (accessToken: string) => void;
   setUser: (user: AuthenticatedUser) => void;
+  setHydrated: () => void;
   clear: () => void;
 }
 
@@ -26,22 +33,17 @@ function readUser(): AuthenticatedUser | null {
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  accessToken: localStorage.getItem(ACCESS_KEY),
-  refreshToken: localStorage.getItem(REFRESH_KEY),
+  accessToken: null,
   user: readUser(),
-  isHydrated: true,
+  isHydrated: false,
 
   setSession: (tokens, user) => {
-    localStorage.setItem(ACCESS_KEY, tokens.accessToken);
-    localStorage.setItem(REFRESH_KEY, tokens.refreshToken);
     localStorage.setItem(USER_KEY, JSON.stringify(user));
-    set({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, user });
+    set({ accessToken: tokens.accessToken, user });
   },
 
-  setTokens: (accessToken, refreshToken) => {
-    localStorage.setItem(ACCESS_KEY, accessToken);
-    localStorage.setItem(REFRESH_KEY, refreshToken);
-    set({ accessToken, refreshToken });
+  setAccessToken: (accessToken) => {
+    set({ accessToken });
   },
 
   setUser: (user) => {
@@ -49,10 +51,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user });
   },
 
+  setHydrated: () => set({ isHydrated: true }),
+
   clear: () => {
-    localStorage.removeItem(ACCESS_KEY);
-    localStorage.removeItem(REFRESH_KEY);
     localStorage.removeItem(USER_KEY);
-    set({ accessToken: null, refreshToken: null, user: null });
+    set({ accessToken: null, user: null });
   },
 }));

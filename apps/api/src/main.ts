@@ -2,6 +2,7 @@ import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe, ClassSerializerInterceptor, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -16,6 +17,12 @@ async function bootstrap() {
 
   // ── Global prefix ────────────────────────────────────────────────────────
   app.setGlobalPrefix('api/v1');
+
+  // Parses the Cookie request header into req.cookies -- needed to read the
+  // httpOnly refresh-token cookie the web SPA relies on (see auth.controller.ts).
+  // Setting a cookie on the response (res.cookie()) needs no middleware;
+  // this is only for reading one back on a later request.
+  app.use(cookieParser());
 
   // ── CORS ─────────────────────────────────────────────────────────────────
   app.enableCors({

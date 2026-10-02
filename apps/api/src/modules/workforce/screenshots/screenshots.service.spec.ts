@@ -98,17 +98,27 @@ describe('ScreenshotsService.record -- defense in depth', () => {
 
 describe('ScreenshotsService.listForUser -- reuses workforce-visibility.util verbatim', () => {
   it('throws ForbiddenException when the caller has no visibility into the target (identical rule to activities/productivity)', async () => {
-    // resolveVisibleTargetUserId's own downline-resolution query returns no match
-    const sqlMock = jest.fn().mockResolvedValueOnce([]);
+    const sqlMock = jest.fn()
+      .mockResolvedValueOnce([{ screenshotEnabled: true }]) // assertScreenshotsEnabled
+      .mockResolvedValueOnce([]); // resolveVisibleTargetUserId's own downline-resolution query returns no match
     const { svc } = makeService(sqlMock);
 
     await expect(svc.listForUser('company-1', 'someone-else', 'project_manager', 'target-1')).rejects.toThrow(ForbiddenException);
   });
 
+  it('throws ForbiddenException when the company has since disabled screenshots, even for a self-view of historical data', async () => {
+    const sqlMock = jest.fn().mockResolvedValueOnce([{ screenshotEnabled: false }]);
+    const { svc } = makeService(sqlMock);
+
+    await expect(svc.listForUser('company-1', 'user-1', 'client_representative', 'user-1')).rejects.toThrow(ForbiddenException);
+  });
+
   it("returns presigned read URLs for the caller's own screenshots (self-view, no visibility query needed)", async () => {
-    const sqlMock = jest.fn().mockResolvedValueOnce([
-      { id: 'shot-1', storageKey: 'k1', capturedAt: '2026-01-02T00:00:00.000Z' },
-    ]);
+    const sqlMock = jest.fn()
+      .mockResolvedValueOnce([{ screenshotEnabled: true }]) // assertScreenshotsEnabled
+      .mockResolvedValueOnce([
+        { id: 'shot-1', storageKey: 'k1', capturedAt: '2026-01-02T00:00:00.000Z' },
+      ]);
     const { svc, storage } = makeService(sqlMock);
 
     const result = await svc.listForUser('company-1', 'user-1', 'client_representative', 'user-1');

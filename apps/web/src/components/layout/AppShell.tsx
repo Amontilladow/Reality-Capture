@@ -27,7 +27,6 @@ const PROJECT_NAV_ITEMS = [
 
 export function AppShell() {
   const user = useAuthStore((s) => s.user);
-  const refreshToken = useAuthStore((s) => s.refreshToken);
   const clear = useAuthStore((s) => s.clear);
   const navigate = useNavigate();
   const location = useLocation();
@@ -42,7 +41,7 @@ export function AppShell() {
 
   async function handleLogout() {
     try {
-      if (refreshToken) await apiLogout(refreshToken);
+      await apiLogout();
     } catch {
       // best-effort — clear local session regardless
     }

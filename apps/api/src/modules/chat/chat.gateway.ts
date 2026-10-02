@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -10,7 +10,8 @@ import {
 } from '@nestjs/websockets';
 import { JwtService } from '@nestjs/jwt';
 import type { Server, Socket } from 'socket.io';
-import { ChatService, type ChatChannelType } from './chat.service';
+import { ChatService } from './chat.service';
+import { ChatJoinDto, ChatSendDto } from './dto/chat-gateway.dto';
 import { DatabaseService } from '../../database/database.service';
 import type { JwtPayload, AuthenticatedUser } from '@engineeringos/types';
 
@@ -79,9 +80,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('chat:join')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async handleJoin(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { channelType: ChatChannelType; channelId: string },
+    @MessageBody() payload: ChatJoinDto,
   ) {
     const user = client.data.user as AuthenticatedUser | undefined;
     if (!user) return;
@@ -101,9 +103,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('chat:send')
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async handleSend(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { channelType: ChatChannelType; channelId: string; body: string },
+    @MessageBody() payload: ChatSendDto,
   ) {
     const user = client.data.user as AuthenticatedUser | undefined;
     if (!user) return;

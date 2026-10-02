@@ -10,6 +10,7 @@ import { UpdateCaptureDto } from './dto/update-capture.dto';
 import { CreateHotspotDto } from './dto/create-hotspot.dto';
 import { SyncCapturesDto } from './dto/sync-captures.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 
 @ApiTags('captures')
@@ -19,6 +20,7 @@ export class CapturesController {
   constructor(private readonly svc: CapturesService) {}
 
   @Post('upload-url')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Get a presigned S3 URL for direct browser/mobile upload' })
   async getUploadUrl(
     @CurrentUser() u: AuthenticatedUser,
@@ -29,6 +31,7 @@ export class CapturesController {
   }
 
   @Post()
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Register a capture after direct upload to S3 completes' })
   async register(
     @CurrentUser() u: AuthenticatedUser,
@@ -56,6 +59,7 @@ export class CapturesController {
   }
 
   @Patch(':id')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Update capture metadata' })
   async update(
     @CurrentUser() u: AuthenticatedUser,
@@ -67,6 +71,7 @@ export class CapturesController {
   }
 
   @Delete(':id')
+  @RequireProjectPermission('manage_project_records')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete a capture and all its renditions from storage' })
   async delete(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
@@ -75,17 +80,20 @@ export class CapturesController {
 
   // ── Hotspots ──────────────────────────────────────────────────────────────
   @Post(':id/hotspots')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Add a hotspot to a 360° capture' })
   async createHotspot(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: CreateHotspotDto) {
     return { data: await this.svc.createHotspot(u.companyId, id, u.id, dto), error: null };
   }
 
   @Patch(':id/hotspots/:hid')
+  @RequireProjectPermission('manage_project_records')
   async updateHotspot(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Param('hid') hid: string, @Body() dto: Partial<CreateHotspotDto>) {
     return { data: await this.svc.updateHotspot(u.companyId, id, hid, dto), error: null };
   }
 
   @Delete(':id/hotspots/:hid')
+  @RequireProjectPermission('manage_project_records')
   @HttpCode(HttpStatus.OK)
   async deleteHotspot(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Param('hid') hid: string) {
     return { data: await this.svc.deleteHotspot(u.companyId, id, hid), error: null };

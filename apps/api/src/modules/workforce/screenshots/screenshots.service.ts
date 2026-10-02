@@ -72,6 +72,12 @@ export class ScreenshotsService {
   // productivity have, since self is just the userId === callerId case of
   // the identical visibility check every other target-user endpoint uses.
   async listForUser(companyId: string, callerId: string, callerCompanyRole: CompanyRole, targetUserId: string, from?: string, to?: string) {
+    // Disabling screenshot_enabled is meant to stop exposure of this data,
+    // not just new capture -- without this call, a manager with legitimate
+    // reporting-line visibility could keep viewing/downloading screenshots
+    // captured before the company disabled the feature, for the rest of the
+    // retention window (default 90 days).
+    await this.assertScreenshotsEnabled(companyId);
     const userId = await resolveVisibleTargetUserId(this.db, companyId, callerId, callerCompanyRole, targetUserId);
     const rangeEnd = to ? new Date(to) : new Date();
     const rangeStart = from ? new Date(from) : new Date(rangeEnd.getTime() - DEFAULT_RANGE_DAYS * 24 * 60 * 60 * 1000);

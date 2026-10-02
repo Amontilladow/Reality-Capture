@@ -6,6 +6,7 @@ import { GetDrawingUploadUrlDto } from './dto/get-upload-url.dto';
 import { LinkCaptureToDrawingDto } from './dto/link-capture.dto';
 import { CreatePinDto } from './dto/create-pin.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
 import type { AuthenticatedUser } from '@engineeringos/types';
 
 @ApiTags('drawings')
@@ -15,12 +16,14 @@ export class DrawingsController {
   constructor(private readonly svc: DrawingsService) {}
 
   @Post('upload-url')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Get presigned URL for drawing PDF upload' })
   async getUploadUrl(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() body: GetDrawingUploadUrlDto) {
     return { data: await this.svc.getUploadUrl(u.companyId, pid, body.filename), error: null };
   }
 
   @Post()
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Register a drawing after upload' })
   async create(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: CreateDrawingDto) {
     return { data: await this.svc.create(u.companyId, pid, u.id, dto), error: null };
@@ -51,12 +54,14 @@ export class DrawingsController {
   }
 
   @Post(':id/link-capture')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Place a capture pin on a drawing at normalized (x,y) coordinates' })
   async linkCapture(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: LinkCaptureToDrawingDto) {
     return { data: await this.svc.linkCapture(u.companyId, id, u.id, dto), error: null };
   }
 
   @Delete(':id/captures/:captureId')
+  @RequireProjectPermission('manage_project_records')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Remove a capture pin from a drawing' })
   async unlinkCapture(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Param('captureId') cid: string) {
@@ -64,6 +69,7 @@ export class DrawingsController {
   }
 
   @Post(':id/pins')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Create a pin on a drawing at normalized (x,y) coordinates — no capture required yet' })
   async createPin(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: CreatePinDto) {
     return { data: await this.svc.createPin(u.companyId, id, u.id, dto), error: null };

@@ -5,6 +5,7 @@ import { CreateDocumentDto } from './dto/create-document.dto';
 import { LinkDocumentDto } from './dto/link-document.dto';
 import { GetDocumentUploadUrlDto } from './dto/get-upload-url.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 
 @ApiTags('documents')
@@ -14,11 +15,13 @@ export class DocumentsController {
   constructor(private readonly svc: DocumentsService) {}
 
   @Post('upload-url')
+  @RequireProjectPermission('manage_project_records')
   async getUploadUrl(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() body: GetDocumentUploadUrlDto) {
     return { data: await this.svc.getUploadUrl(u.companyId, pid, body.filename, body.contentType), error: null };
   }
 
   @Post()
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Register a document (internal upload or external reference)' })
   async create(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: CreateDocumentDto) {
     return { data: await this.svc.create(u.companyId, pid, u.id, dto), error: null };
@@ -36,6 +39,7 @@ export class DocumentsController {
   }
 
   @Post(':id/link')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Link a document to a capture, element, location, or issue' })
   async link(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: LinkDocumentDto) {
     return { data: await this.svc.link(u.companyId, id, u.id, dto), error: null };
