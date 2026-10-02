@@ -397,8 +397,26 @@ zone editor, and element status editor. Known gap: the 3D colour overlay
 itself could not be visually confirmed here for the same storage-pipeline
 reason — it reuses the existing, working `guidsToModelIdMap`/`highlight`
 calls, so it should work against a real processed model in the live app;
-flagging for a follow-up visual check once one is available. F3 starting
-now.
+flagging for a follow-up visual check once one is available.
+
+**Status: F3 shipped.** Migration 056 (`api_keys`, `webhook_endpoints`,
+`webhook_deliveries`), a new `ApiKeyAuthGuard` (X-API-Key header, runs
+outside the global JWT guard chain), `api-keys`/`webhooks`/`public-api`
+modules, a Bull-backed webhook delivery queue (HMAC-SHA256 signing,
+5 attempts, exponential backoff), and a company-admin-only "Developer"
+settings page are committed and pushed (`49d0ef9`, `0d2e5b9`). Wired into
+issue created/status-changed (both normal and forced paths) and capture
+upload completion. OpenAPI spec (`/api/docs`) documents the new
+endpoints with an api-key security scheme. Verified live: full API-key
+lifecycle (create/use/revoke/post-revoke-block), strict tenant isolation
+(a cross-tenant project id returns empty/404, never leaked data), a real
+signed webhook delivery with an independently-recomputed HMAC match, and
+retry-with-backoff recovering after an endpoint outage (attempts 1→4).
+Caught and fixed a real bug during verification: webhook payloads were
+double-JSON-encoded because the JSONB insert used `JSON.stringify()`
+instead of postgres.js's `sql.json()` — same failure mode already
+documented in `tenancy.service.ts`. No known risks or follow-ups. F4
+starting now.
 
 ## Exact continuation point
 IFC Processing Engine, Reality Capture image processing, BIM viewer <->
