@@ -189,8 +189,11 @@ export class ScoringService {
   // Rescales a 0-100 engine factor into the Risk Matrix's 1-5 band. Never 0
   // -- "1 (Rare/Negligible)" is the floor, since the matrix has no "no
   // probability/impact at all" value (brief sections 3-4's own 5-point
-  // scales both start at 1).
-  private toMatrixBand(value: number): number {
+  // scales both start at 1). Public so RiskService.getRiskHeatmap() can
+  // place an AI-only-assessed risk on the same 5x5 grid as a human-assessed
+  // one, reusing the already-stored 0-100 automated factors rather than a
+  // second persisted copy of the AI's own probability/impact bands.
+  toMatrixBand(value: number): number {
     return Math.max(1, Math.min(5, Math.ceil(value / 20)));
   }
 

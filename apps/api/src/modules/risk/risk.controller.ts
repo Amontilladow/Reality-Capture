@@ -141,6 +141,12 @@ export class RiskController {
     return { data: await this.risk.getMatrixDiscrepancies(u.companyId, pid), error: null };
   }
 
+  @Get('heatmap')
+  @ApiOperation({ summary: 'The 5x5 Risk Matrix heatmap -- open-risk counts per Probability x Impact cell' })
+  async getHeatmap(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
+    return { data: await this.risk.getRiskHeatmap(u.companyId, pid), error: null };
+  }
+
   private parseNodeType(nodeType: string): typeof RISK_WORTHY_NODE_TYPES[number] {
     if (!RISK_WORTHY_NODE_TYPES.includes(nodeType as typeof RISK_WORTHY_NODE_TYPES[number])) {
       throw new BadRequestException(`nodeType must be one of: ${RISK_WORTHY_NODE_TYPES.join(', ')}.`);

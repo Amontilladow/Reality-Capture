@@ -188,6 +188,16 @@ export interface RiskMatrixDiscrepancy {
 export const getRisk = (projectId: string, riskId: string) => apiGet<Risk & { discrepancy: RiskMatrixDiscrepancy | null }>(`${base(projectId)}/${riskId}`);
 export const getMatrixDiscrepancies = (projectId: string) =>
   apiGet<{ risk: Risk; discrepancy: RiskMatrixDiscrepancy }[]>(`${base(projectId)}/discrepancies`);
+
+export interface RiskHeatmapCell {
+  probability: number;
+  impact: number;
+  score: number;
+  level: RiskMatrixLevel;
+  count: number;
+  riskIds: string[];
+}
+export const getRiskHeatmap = (projectId: string) => apiGet<RiskHeatmapCell[]>(`${base(projectId)}/heatmap`);
 export const getRiskChain = (projectId: string, riskId: string) => apiGet<RiskChain>(`${base(projectId)}/${riskId}/chain`);
 export const getRiskEvidence = (projectId: string, riskId: string) => apiGet<RiskEvidenceItem[]>(`${base(projectId)}/${riskId}/evidence`);
 export const getRiskHistory = (projectId: string, riskId: string) => apiGet<RiskSnapshot[]>(`${base(projectId)}/${riskId}/history`);

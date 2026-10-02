@@ -601,6 +601,39 @@ export class RiskService {
   }
 
   /**
+   * The 5x5 Risk Matrix heatmap (brief sections 4, 20-21): how many open
+   * risks fall into each Probability x Impact cell. A risk's cell uses its
+   * human assessment when one exists (that's the actual judgment call an
+   * engineer made), else the AI's own probability/impact bands -- derived
+   * here from the SAME stored 0-100 automated factors computeAiMatrixScore
+   * already rescales, never a second persisted copy of the AI's bands.
+   * Always returns all 25 cells (zero-count ones included) so the frontend
+   * grid never has to guess at a cell's existence.
+   */
+  async getRiskHeatmap(companyId: string, projectId: string) {
+    const risks = await this.listRisks(companyId, projectId);
+    const open = risks.filter(r => this.isOpenStatus(r.status));
+    const matrixSettings = await this.getRiskMatrixSettings(companyId);
+    const thresholds = matrixSettings.thresholds ?? DEFAULT_RISK_MATRIX_THRESHOLDS;
+
+    const cells = new Map<string, { probability: number; impact: number; riskIds: string[] }>();
+    for (let p = 1; p <= 5; p++) {
+      for (let i = 1; i <= 5; i++) cells.set(`${p}-${i}`, { probability: p, impact: i, riskIds: [] });
+    }
+
+    for (const r of open) {
+      const probability = r.humanProbability ?? this.scoring.toMatrixBand(r.probability);
+      const impact = r.humanImpact ?? this.scoring.toMatrixBand(r.impact);
+      cells.get(`${probability}-${impact}`)?.riskIds.push(r.id);
+    }
+
+    return Array.from(cells.values()).map(c => {
+      const score = c.probability * c.impact;
+      return { probability: c.probability, impact: c.impact, score, level: scoreToMatrixLevel(score, thresholds), count: c.riskIds.length, riskIds: c.riskIds };
+    });
+  }
+
+  /**
    * The audited Risk Matrix override layer (brief sections 11, 40):
    * "Accept AI Assessment" / "Keep Human Assessment" / "Update Assessment"
    * (the last of these is just a fresh setHumanAssessment() call -- it

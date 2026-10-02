@@ -10,8 +10,9 @@ import {
   recalculateRisk, getRiskSummary, getTopRisks, getEmergingRisks, getRiskByDiscipline,
   getRiskClusters, getRiskDataAvailability, listRisks, getRisk, getRiskChain, getRiskEvidence, getRiskHistory,
   overrideRisk, clearRiskOverride, setRiskStatus, getAiBriefing, getAiExplanation, downloadRiskPdf,
-  setHumanAssessment, setHumanAssessmentByEntity, setMatrixOverride, getRiskByEntity, RISK_DRIVERS, RISK_DRIVER_LABELS,
-  type Risk, type RiskLevel, type RiskStatus, type RiskMatrixLevel, type RiskDriver, type RiskMatrixDiscrepancy,
+  setHumanAssessment, setHumanAssessmentByEntity, setMatrixOverride, getRiskByEntity,
+  getMatrixDiscrepancies, getRiskHeatmap, RISK_DRIVERS, RISK_DRIVER_LABELS,
+  type Risk, type RiskLevel, type RiskStatus, type RiskMatrixLevel, type RiskDriver, type RiskMatrixDiscrepancy, type RiskHeatmapCell,
 } from '../lib/risk.api';
 
 const HEX = {
@@ -62,6 +63,16 @@ function timeAgo(iso?: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+// Mirrors RiskService.detectMatrixDiscrepancy() server-side, purely for a
+// display-only register indicator -- never trusted for an action (Accept
+// AI / Keep Human / Update Assessment all go through the server, which
+// recomputes this itself).
+const MATRIX_LEVEL_ORDER: RiskMatrixLevel[] = ['LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH', 'CRITICAL'];
+function hasUnreviewedMatrixDiscrepancy(r: Risk): boolean {
+  if (!r.humanLevel || !r.aiLevel || r.matrixOverrideBy) return false;
+  return MATRIX_LEVEL_ORDER.indexOf(r.humanLevel) !== MATRIX_LEVEL_ORDER.indexOf(r.aiLevel);
+}
+
 function LevelBadge({ level }: { level: RiskLevel }) {
   return (
     <span
@@ -90,7 +101,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
   const [graphFocusNodeId, setGraphFocusNodeId] = useState<string | undefined>(undefined);
 
   const invalidateAll = () => {
-    ['risk-summary', 'risk-top', 'risk-emerging', 'risk-by-discipline', 'risk-clusters', 'risk-data-availability', 'risk-register']
+    ['risk-summary', 'risk-top', 'risk-emerging', 'risk-by-discipline', 'risk-clusters', 'risk-data-availability', 'risk-register', 'risk-discrepancies', 'risk-heatmap']
       .forEach((key) => queryClient.invalidateQueries({ queryKey: [key, projectId] }));
   };
 
@@ -101,6 +112,8 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
   const clustersQuery = useQuery({ queryKey: ['risk-clusters', projectId], queryFn: () => getRiskClusters(projectId) });
   const dataAvailabilityQuery = useQuery({ queryKey: ['risk-data-availability', projectId], queryFn: () => getRiskDataAvailability(projectId) });
   const registerQuery = useQuery({ queryKey: ['risk-register', projectId], queryFn: () => listRisks(projectId) });
+  const discrepanciesQuery = useQuery({ queryKey: ['risk-discrepancies', projectId], queryFn: () => getMatrixDiscrepancies(projectId) });
+  const heatmapQuery = useQuery({ queryKey: ['risk-heatmap', projectId], queryFn: () => getRiskHeatmap(projectId) });
 
   const recalcMutation = useMutation({
     mutationFn: () => recalculateRisk(projectId),
@@ -227,6 +240,27 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
             </div>
           )}
 
+          {/* Alerts — unreviewed Human-vs-AI discrepancies needing a decision (brief section 11) */}
+          {(discrepanciesQuery.data?.length ?? 0) > 0 && (
+            <div className="panel tick-frame p-4 border border-warn/40 bg-warn/5 space-y-2">
+              <div className="field-label !mb-1">
+                Alerts — {discrepanciesQuery.data!.length} risk{discrepanciesQuery.data!.length === 1 ? '' : 's'} need{discrepanciesQuery.data!.length === 1 ? 's' : ''} discrepancy review
+              </div>
+              <div className="divide-y divide-base-700/60">
+                {(discrepanciesQuery.data ?? []).map(({ risk: r, discrepancy }) => (
+                  <button key={r.id} onClick={() => setDetailRiskId(r.id)} className="w-full flex items-center justify-between gap-4 py-2 text-left hover:bg-base-800/60 transition-colors">
+                    <span className="text-sm text-ink-100">{r.title}</span>
+                    <span className="text-xs text-ink-500 shrink-0">
+                      Human <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[r.humanLevel!] }}>{MATRIX_LEVEL_LABELS[r.humanLevel!]}</span>
+                      {' '}vs AI <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[r.aiLevel!] }}>{MATRIX_LEVEL_LABELS[r.aiLevel!]}</span>
+                      {' '}({discrepancy.levelGap} apart)
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* AI Project Risk Briefing — an LLM-polished narrative generated
               on demand from the exact same computed data above, never from
               a fresh retrieval. Clearly labeled as AI-generated and never
@@ -295,6 +329,13 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
             </div>
           )}
 
+          {/* Risk Matrix Heatmap -- brief sections 4, 20-21: a human-assessed
+              risk sits at its own Probability x Impact cell, else at the
+              AI's own derived bands (see RiskHeatmap's own comment). */}
+          {(heatmapQuery.data?.some((c) => c.count > 0)) && (
+            <RiskHeatmap cells={heatmapQuery.data!} risks={registerQuery.data ?? []} onSelectRisk={(riskId) => setDetailRiskId(riskId)} />
+          )}
+
           {/* Risk by Discipline */}
           {(byDisciplineQuery.data?.length ?? 0) > 0 && (
             <div className="panel p-4">
@@ -360,26 +401,42 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
                     <th className="px-4 py-2.5 font-medium">Location</th>
                     <th className="px-4 py-2.5 font-medium">Score</th>
                     <th className="px-4 py-2.5 font-medium">Level</th>
+                    <th className="px-4 py-2.5 font-medium">Matrix (H / AI)</th>
+                    <th className="px-4 py-2.5 font-medium">Driver</th>
                     <th className="px-4 py-2.5 font-medium">Trend</th>
                     <th className="px-4 py-2.5 font-medium">Status</th>
                     <th className="px-4 py-2.5 font-medium">Updated</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {register.map((r) => (
-                    <tr key={r.id} onClick={() => setDetailRiskId(r.id)} className="border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-800/60">
-                      <td className="px-4 py-2.5">{r.title}</td>
-                      <td className="px-4 py-2.5 text-ink-300">{r.category}</td>
-                      <td className="px-4 py-2.5 text-ink-500">{r.locationLabel ?? '—'}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-ink-100">{r.score}</td>
-                      <td className="px-4 py-2.5"><LevelBadge level={r.level} /></td>
-                      <td className="px-4 py-2.5"><TrendIndicator trend={r.trend} /></td>
-                      <td className="px-4 py-2.5 text-ink-500">{STATUS_LABELS[r.status]}</td>
-                      <td className="px-4 py-2.5 text-ink-500">{timeAgo(r.lastCalculatedAt)}</td>
-                    </tr>
-                  ))}
+                  {register.map((r) => {
+                    const unreviewedDiscrepancy = hasUnreviewedMatrixDiscrepancy(r);
+                    return (
+                      <tr key={r.id} onClick={() => setDetailRiskId(r.id)} className="border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-800/60">
+                        <td className="px-4 py-2.5">{r.title}</td>
+                        <td className="px-4 py-2.5 text-ink-300">{r.category}</td>
+                        <td className="px-4 py-2.5 text-ink-500">{r.locationLabel ?? '—'}</td>
+                        <td className="px-4 py-2.5 tabular-nums text-ink-100">{r.score}</td>
+                        <td className="px-4 py-2.5"><LevelBadge level={r.level} /></td>
+                        <td className="px-4 py-2.5 text-xs whitespace-nowrap">
+                          {r.finalScore != null ? (
+                            <span className="flex items-center gap-1">
+                              {unreviewedDiscrepancy && <span title="Human and AI disagree — needs review" className="text-warn">⚠</span>}
+                              <span style={{ color: r.humanLevel ? MATRIX_LEVEL_COLORS[r.humanLevel] : HEX.ink500 }}>{r.humanScore ?? '—'}</span>
+                              <span className="text-ink-500">/</span>
+                              <span style={{ color: r.aiLevel ? MATRIX_LEVEL_COLORS[r.aiLevel] : HEX.ink500 }}>{r.aiScore ?? '—'}</span>
+                            </span>
+                          ) : '—'}
+                        </td>
+                        <td className="px-4 py-2.5 text-ink-500">{r.primaryDriver ? RISK_DRIVER_LABELS[r.primaryDriver] : '—'}</td>
+                        <td className="px-4 py-2.5"><TrendIndicator trend={r.trend} /></td>
+                        <td className="px-4 py-2.5 text-ink-500">{STATUS_LABELS[r.status]}</td>
+                        <td className="px-4 py-2.5 text-ink-500">{timeAgo(r.lastCalculatedAt)}</td>
+                      </tr>
+                    );
+                  })}
                   {register.length === 0 && (
-                    <tr><td colSpan={8} className="px-4 py-8 text-center text-ink-500">No risks match the current filters.</td></tr>
+                    <tr><td colSpan={10} className="px-4 py-8 text-center text-ink-500">No risks match the current filters.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -432,6 +489,78 @@ function StatTile({ label, value, tone }: { label: string; value: number; tone?:
     <div className="panel p-3 text-left">
       <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">{label}</div>
       <div className={`text-xl font-semibold tabular-nums ${color}`}>{value}</div>
+    </div>
+  );
+}
+
+// 5x5 Risk Matrix heatmap (brief sections 4, 20-21). Probability increases
+// upward, impact increases rightward -- the standard risk-matrix reading
+// convention. A cell's count/color come straight from the server
+// (RiskService.getRiskHeatmap -- see its own comment on how a cell is
+// chosen for an AI-only-assessed risk); `risks` is only used here to
+// resolve a cell's riskIds into titles for its tooltip/popover, never to
+// recompute anything already decided server-side.
+function RiskHeatmap({ cells, risks, onSelectRisk }: { cells: RiskHeatmapCell[]; risks: Risk[]; onSelectRisk: (riskId: string) => void }) {
+  const [openCellKey, setOpenCellKey] = useState<string | null>(null);
+  const byId = new Map(risks.map((r) => [r.id, r]));
+  const cellByCoords = new Map(cells.map((c) => [`${c.probability}-${c.impact}`, c]));
+
+  return (
+    <div className="panel p-4">
+      <div className="field-label !mb-2">Risk Matrix Heatmap</div>
+      <div className="flex gap-2">
+        <div className="flex flex-col justify-between text-[10px] text-ink-500 py-1">
+          {[5, 4, 3, 2, 1].map((p) => <div key={p} className="h-14 flex items-center">{p}</div>)}
+        </div>
+        <div className="flex-1">
+          <div className="grid grid-cols-5 gap-1">
+            {[5, 4, 3, 2, 1].flatMap((p) => [1, 2, 3, 4, 5].map((i) => {
+              const cell = cellByCoords.get(`${p}-${i}`);
+              const key = `${p}-${i}`;
+              const count = cell?.count ?? 0;
+              return (
+                <div key={key} className="relative">
+                  <button
+                    onClick={() => {
+                      if (!cell || count === 0) return;
+                      if (count === 1) onSelectRisk(cell.riskIds[0]);
+                      else setOpenCellKey(openCellKey === key ? null : key);
+                    }}
+                    className="h-14 w-full rounded flex items-center justify-center text-sm font-semibold tabular-nums transition-opacity hover:opacity-80"
+                    style={{
+                      backgroundColor: cell ? `${MATRIX_LEVEL_COLORS[cell.level]}${count > 0 ? '55' : '1a'}` : 'transparent',
+                      color: count > 0 ? MATRIX_LEVEL_COLORS[cell!.level] : HEX.base700,
+                      cursor: count > 0 ? 'pointer' : 'default',
+                    }}
+                    title={cell ? `Probability ${p} x Impact ${i} = ${cell.score} (${MATRIX_LEVEL_LABELS[cell.level]})` : undefined}
+                  >
+                    {count > 0 ? count : ''}
+                  </button>
+                  {openCellKey === key && cell && cell.riskIds.length > 1 && (
+                    <div className="absolute z-10 top-full left-0 mt-1 w-56 panel tick-frame p-1 shadow-lg">
+                      {cell.riskIds.map((id) => (
+                        <button
+                          key={id} onClick={() => { onSelectRisk(id); setOpenCellKey(null); }}
+                          className="w-full text-left px-2 py-1.5 text-xs text-ink-100 hover:bg-base-800/60 rounded truncate"
+                        >
+                          {byId.get(id)?.title ?? id}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            }))}
+          </div>
+          <div className="flex justify-between text-[10px] text-ink-500 mt-1 px-1">
+            {[1, 2, 3, 4, 5].map((i) => <span key={i}>{i}</span>)}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center justify-between text-[10px] text-ink-500 mt-1">
+        <span>↑ Probability</span>
+        <span>Impact →</span>
+      </div>
     </div>
   );
 }
