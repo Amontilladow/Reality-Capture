@@ -39,8 +39,17 @@ async function runMigrations() {
     database: process.env.DB_NAME     ?? 'engineeringos',
     username: migratorUser,
     password: migratorPassword,
-    // Verify the server certificate -- see database.module.ts's identical fix.
-    ssl:      process.env.DB_SSL === 'true' ? { rejectUnauthorized: true, ca: process.env.DB_CA_CERT || undefined } : false,
+    // Verify the server certificate -- see database.module.ts's identical fix,
+    // including the checkServerIdentity override's own comment for why it's
+    // needed (Render's self-signed cert's CN doesn't match the "dpg-..."
+    // connection hostname).
+    ssl: process.env.DB_SSL === 'true'
+      ? {
+          rejectUnauthorized: true,
+          ca: process.env.DB_CA_CERT || undefined,
+          checkServerIdentity: () => undefined,
+        }
+      : false,
     max:      1,
   });
 
