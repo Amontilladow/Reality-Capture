@@ -188,11 +188,76 @@ describe('IssuesService view-state / screenshot behavior', () => {
     return { query: query as unknown as DatabaseService['query'], calls };
   }
 
+  describe('create/update — assignee must be a project member (F4)', () => {
+    const baseCreateDto: CreateIssueDto = {
+      issueType: 'defect', title: 'Cracked beam', discipline: 'MEP',
+      deadline: '2026-12-01T00:00:00.000Z', assignedTo: 'user-outsider',
+    };
+
+    it('create() rejects assigning to a user who is not a project member', async () => {
+      const { query } = makeQuery((text) => {
+        if (text.includes('SELECT id FROM projects')) return [{ id: 'project-1' }];
+        if (text.includes('FROM project_members')) return []; // not a member
+        return undefined;
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const svc = new IssuesService(
+        { withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      await expect(svc.create('company-1', 'project-1', 'user-1', baseCreateDto)).rejects.toThrow(BadRequestException);
+    });
+
+    it('create() proceeds past the membership check when the assignee is a project member', async () => {
+      const { query } = makeQuery((text) => {
+        if (text.includes('SELECT id FROM projects')) return [{ id: 'project-1' }];
+        if (text.includes('FROM project_members')) return [{}]; // is a member
+        if (text.includes('SELECT code FROM projects')) return [{ code: 'TWR' }];
+        if (text.includes('SELECT COUNT(*) AS n FROM issues')) return [{ n: '0' }];
+        if (text.includes('INSERT INTO issues')) return [{ id: 'issue-1', status: 'open' }];
+        return undefined;
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const svc = new IssuesService(
+        { withTenant } as unknown as DatabaseService,
+        { ingestIssue: jest.fn() } as unknown as AiClientService,
+        { create: jest.fn() } as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      await expect(svc.create('company-1', 'project-1', 'user-1', baseCreateDto)).resolves.toMatchObject({ id: 'issue-1' });
+    });
+
+    it('update() rejects reassigning to a user who is not a project member', async () => {
+      const { query } = makeQuery((text) => {
+        if (text.includes('FROM issues i')) return [{ id: 'issue-1', status: 'open' }];
+        if (text.includes('FROM project_members')) return []; // not a member
+        return undefined;
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const svc = new IssuesService(
+        { withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      await expect(svc.update('company-1', 'project-1', 'issue-1', 'user-1', { assignedTo: 'user-outsider' }))
+        .rejects.toThrow(BadRequestException);
+    });
+  });
+
   describe('forward', () => {
     it('reassigns the issue, logs a forward activity with from/to values, and notifies the new assignee, when called by the current assignee', async () => {
       const { query, calls } = makeQuery((text) => {
         if (text.includes('FROM issues i')) {
           return [{ id: 'issue-1', assignedTo: 'user-1', createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001', title: 'Leak', status: 'open' }];
+        }
+        if (text.includes('FROM project_members')) {
+          return [{}]; // F4: 'user-new' is a member of this project
         }
         if (text.includes('UPDATE issues SET assigned_to')) {
           return [{ id: 'issue-1', assignedTo: 'user-new', issueNumber: 'TWR-MEP-0001', title: 'Leak' }];
@@ -237,6 +302,9 @@ describe('IssuesService view-state / screenshot behavior', () => {
         if (text.includes('FROM issues i')) {
           return [{ id: 'issue-1', assignedTo: null, createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001', title: 'Leak', status: 'open' }];
         }
+        if (text.includes('FROM project_members')) {
+          return [{}]; // F4: 'user-new' is a member of this project
+        }
         if (text.includes('UPDATE issues SET assigned_to')) {
           return [{ id: 'issue-1', assignedTo: 'user-new' }];
         }
@@ -279,6 +347,9 @@ describe('IssuesService view-state / screenshot behavior', () => {
         if (text.includes('FROM issues i')) {
           return [{ id: 'issue-1', assignedTo: 'user-1', createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001', title: 'Leak', status: 'open' }];
         }
+        if (text.includes('FROM project_members')) {
+          return [{}]; // F4: 'user-new' is a member of this project
+        }
         if (text.includes('UPDATE issues SET assigned_to')) {
           return [{ id: 'issue-1', assignedTo: 'user-new' }];
         }
@@ -294,6 +365,28 @@ describe('IssuesService view-state / screenshot behavior', () => {
 
       await expect(svc.forward('company-1', 'project-1', 'issue-1', 'user-admin', 'company_admin', { toUserId: 'user-new' }))
         .resolves.toMatchObject({ assignedTo: 'user-new' });
+    });
+
+    it('rejects forwarding to a user who is not a member of this project, even when the caller is otherwise authorized', async () => {
+      const { query } = makeQuery((text) => {
+        if (text.includes('FROM issues i')) {
+          return [{ id: 'issue-1', assignedTo: 'user-1', createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001', title: 'Leak', status: 'open' }];
+        }
+        if (text.includes('FROM project_members')) {
+          return []; // 'user-outsider' has no project_members row for this project
+        }
+        return undefined;
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const svc = new IssuesService(
+        { query, withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        { create: jest.fn() } as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      await expect(svc.forward('company-1', 'project-1', 'issue-1', 'user-1', 'site_engineer', { toUserId: 'user-outsider' }))
+        .rejects.toThrow(BadRequestException);
     });
   });
 

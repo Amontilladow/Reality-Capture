@@ -105,6 +105,25 @@ export class IssuesService {
     });
   }
 
+  // F4: assignment was previously accepted for any UUID with no check that
+  // the user is even on this project -- holding manage_issues lets a caller
+  // reassign to someone with no visibility into the project at all, which
+  // defeats "assign to a subcontractor" as a meaningful access boundary.
+  // project_members is the single source of truth for project membership
+  // (project_lead is a role value within it, not a separate table/column --
+  // see projects.service.ts's own createProject()).
+  private async assertAssigneeIsProjectMember(companyId: string, projectId: string, assigneeId: string): Promise<void> {
+    const [member] = await this.db.withTenant(companyId, sql => sql`
+      SELECT 1 FROM project_members WHERE project_id = ${projectId} AND user_id = ${assigneeId} AND company_id = ${companyId}
+    `);
+    if (!member) {
+      throw new BadRequestException({
+        code: 'ASSIGNEE_NOT_PROJECT_MEMBER',
+        message: 'This issue can only be assigned to a member of this project.',
+      });
+    }
+  }
+
   // ── Create ────────────────────────────────────────────────────────────────
   async create(companyId: string, projectId: string, userId: string, dto: CreateIssueDto) {
     await this.assertProjectBelongsToCompany(companyId, projectId);
@@ -127,6 +146,8 @@ export class IssuesService {
         );
       }
     }
+
+    if (dto.assignedTo) await this.assertAssigneeIsProjectMember(companyId, projectId, dto.assignedTo);
 
     const issueNumber = await this.generateIssueNumber(companyId, projectId, dto.discipline);
 
@@ -210,6 +231,21 @@ export class IssuesService {
     const perPage = Math.min(query.perPage ?? 20, 100);
     const offset  = (page - 1) * perPage;
 
+    // F4: `overdue`/`myIssues` arrive over the wire as the query-string
+    // STRING "true"/"false" -- `@Query()` here has no decorated DTO class
+    // for the global ValidationPipe's transform step to coerce against, so
+    // `query.overdue` is never actually converted to a real boolean before
+    // this point. That alone would just be a silent no-op (a truthy string
+    // interpolated into `NOT ${...}` below), but it's worse than that:
+    // confirmed by direct reproduction against postgres.js, a JS *string*
+    // bound as a parameter and cast with `::boolean` in SQL comes back
+    // `false` for every input ('true', 'false', 'hello', 't' all cast to
+    // `false`) -- a real serialization bug, not just a missing cast. A
+    // genuine JS *boolean* bound the same way behaves correctly. Coercing
+    // here, before the value ever reaches the SQL template, is the fix.
+    const overdue = query.overdue === true || (query.overdue as unknown) === 'true';
+    const myIssues = query.myIssues === true || (query.myIssues as unknown) === 'true';
+
     const rows = await this.db.withTenant(companyId, sql => sql`
       SELECT
         i.*,
@@ -237,8 +273,8 @@ export class IssuesService {
         AND (${query.elementId ?? null}::uuid IS NULL OR i.element_id = ${query.elementId ?? null}::uuid)
         AND (${query.dateFrom ?? null}::timestamptz IS NULL OR i.created_at >= ${query.dateFrom ?? null}::timestamptz)
         AND (${query.dateTo ?? null}::timestamptz IS NULL OR i.created_at <= ${query.dateTo ?? null}::timestamptz)
-        AND (NOT ${query.overdue ?? false} OR (i.deadline < NOW() AND i.status NOT IN ('closed','void')))
-        AND (NOT ${query.myIssues ?? false} OR i.assigned_to = ${query.userId ?? null}::uuid)
+        AND (NOT ${overdue} OR (i.deadline < NOW() AND i.status NOT IN ('closed','void')))
+        AND (NOT ${myIssues} OR i.assigned_to = ${query.userId ?? null}::uuid)
         AND (${query.search ?? null}::text IS NULL OR
           to_tsvector('english', i.title || ' ' || coalesce(i.description,''))
           @@ plainto_tsquery('english', ${query.search ?? null}))
@@ -294,6 +330,8 @@ export class IssuesService {
   // enforces the creator-only rule this generic endpoint has no way to.
   async update(companyId: string, projectId: string, issueId: string, userId: string, dto: UpdateIssueDto) {
     const existing = await this.findOne(companyId, projectId, issueId);
+
+    if (dto.assignedTo) await this.assertAssigneeIsProjectMember(companyId, projectId, dto.assignedTo);
 
     // withTenant required -- see generateIssueNumber() above.
     const [updated] = await this.db.withTenant(companyId, sql => sql`
@@ -595,6 +633,8 @@ export class IssuesService {
         message: 'Only the current assignee can forward this issue to someone else.',
       });
     }
+
+    await this.assertAssigneeIsProjectMember(companyId, projectId, dto.toUserId);
 
     // withTenant required -- see generateIssueNumber() above.
     const [updated] = await this.db.withTenant(companyId, sql => sql`
