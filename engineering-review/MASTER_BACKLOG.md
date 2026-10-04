@@ -337,7 +337,7 @@ frontend integration (see above).
 - No true multi-GB IFC test fixture was obtainable — see IFC engine
   limitations above.
 
-## Reality Capture Module feature set (F1-F6) — IN PROGRESS
+## Reality Capture Module feature set (F1-F6) — COMPLETE
 
 Added as a new phase per an explicit product brief: six BIM-native site
 documentation/coordination features, built one at a time as small, tested,
@@ -468,7 +468,38 @@ attached; a permitted approver — tested for both company_admin-tier and
 super_admin — succeeds once evidence exists, with the capture recorded
 on the audit row) and in the browser (Close button disabled with "No
 evidence attached yet" until a capture is attached, then enables). No
-known risks or follow-ups. F6 starting now.
+known risks or follow-ups.
+
+**Status: F6 shipped.** Researched before building: BuildLens
+(`BuildLensTimelinePage.tsx`) already had a "Compare" mode rendering two
+captures of the same location side by side, each picked via a plain
+`<select>` dropdown — it already satisfied F6's literal acceptance test
+("two captures of the same pin load side by side") but not its "with a
+date slider" requirement, and no other page in the app had any
+comparison UI. Rather than duplicate this as a new page (same data,
+same location model, same existing
+`GET /projects/:projectId/captures/viewer/:locationId` endpoint already
+returns the full dated capture list for a pin), replaced each side's
+dropdown with an `<input type="range">` bound to that side's position
+in the (already chronologically sorted) capture array — dragging it
+steps through that pin's capture history by date, with the resolved
+date and capture-type icon shown live above each slider. No backend
+change needed; the existing `CaptureMedia` component already branches
+correctly per capture type (360/photo/video) on each side, so a Place's
+typical mix of capture types needed no new handling. Automated change
+detection explicitly deferred, per the brief. Committed and pushed.
+Verified live in the browser (seeded three dated test captures at a
+throwaway building/level/location in the Phase 18 Verify Project,
+confirmed dragging the "Before" slider via real keyboard interaction
+moves it from one capture's date to the next while the "After" side
+stays independently fixed, then deleted all seeded test fixtures). No
+known risks or follow-ups.
+
+**F1-F6 complete.** All six Reality Capture Module features from the
+original brief are implemented, tested, and verified live: F1 Automated
+Progress Report, F2 Planned vs Actual Progress by Element/Zone, F3
+Public API and Webhooks, F4 Subcontractor Issue Assignment, F5
+Evidence-Based Issue Close-Out, F6 Scheduled Capture Comparison.
 
 ## Exact continuation point
 IFC Processing Engine, Reality Capture image processing, BIM viewer <->
