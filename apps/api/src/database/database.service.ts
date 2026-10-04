@@ -53,19 +53,25 @@ export class DatabaseService {
   // that the runtime role is genuinely RLS-subject, these specific
   // operations need an explicit, auditable escape hatch instead.
   //
-  // app_bypass_rls (migration 052) is NOLOGIN and has BYPASSRLS; app_user
-  // may only assume it for the lifetime of one transaction via
-  // `SET LOCAL ROLE`, after which it's gone -- there is no way to leave this
-  // elevated context active outside the exact transaction that requested it
-  // (confirmed by hand against a live database: a later plain query on the
-  // same pooled connection is unaffected).
+  // Originally a role switch (`SET LOCAL ROLE app_bypass_rls`, a NOLOGIN
+  // BYPASSRLS role from migration 052) -- replaced by migration 057 with a
+  // session-local GUC flag instead, after confirming live that Render's
+  // managed Postgres doesn't grant the database owner CREATEROLE, which
+  // silently left that role never created and every operation above broken
+  // in production. A custom "app.*" parameter needs no special privilege to
+  // set (same mechanism withTenant() below already uses for
+  // app.current_company_id), and an additional permissive RLS policy per
+  // table (migration 057) makes rows visible exactly when this flag is set
+  // -- same transaction-scoped lifetime as the role switch had (set_config's
+  // third argument, `true`, makes it local to this transaction only; it's
+  // gone the moment the transaction ends, same as SET LOCAL ROLE was).
   //
   // Do not reach for this to avoid writing withTenant() -- if a company_id
   // is available, use withTenant(). This is only for the operations listed
   // above, where one genuinely is not.
   async withSystemBypass<T>(fn: (sql: TransactionSql) => Promise<T>): Promise<T> {
     return this.sql.begin(async (txSql) => {
-      await txSql`SET LOCAL ROLE app_bypass_rls`;
+      await txSql`SELECT set_config('app.system_bypass', 'true', true)`;
       return fn(txSql);
     }) as Promise<T>;
   }
