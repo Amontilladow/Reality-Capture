@@ -415,8 +415,32 @@ retry-with-backoff recovering after an endpoint outage (attempts 1→4).
 Caught and fixed a real bug during verification: webhook payloads were
 double-JSON-encoded because the JSONB insert used `JSON.stringify()`
 instead of postgres.js's `sql.json()` — same failure mode already
-documented in `tenancy.service.ts`. No known risks or follow-ups. F4
-starting now.
+documented in `tenancy.service.ts`. No known risks or follow-ups.
+
+**Status: F4 shipped.** Most of
+F4's surface (assignee, due date, status workflow, the overdue flag/
+filter on the Issues tab and Overview page) already existed from
+earlier phases. Two real gaps found and fixed, committed and pushed
+(`89f7169`): (1) assignment had no project-membership check — any
+caller with `manage_issues` could assign to any UUID, including a user
+with no visibility into the project; added
+`assertAssigneeIsProjectMember()` and wired it into `create()`,
+`update()`, and `forward()`. (2) the `overdue`/`myIssues` query filters
+were silently broken — `query.overdue` never gets coerced from the
+query-string string `"true"`/`"false"` to a real boolean on this
+undecorated `@Query()` endpoint, and a JS *string* parameter cast with
+`::boolean` in SQL comes back `false` for every input (confirmed by
+direct reproduction against postgres.js — a real client-library
+serialization bug, not just a missing cast). `?overdue=true` and
+`?overdue=false` were previously indistinguishable from no filter at
+all. Fixed by coercing to a genuine JS boolean before SQL
+interpolation. Found and fixed the identical bug in
+`notifications.service.ts`'s `unreadOnly` filter while here. Verified
+live via raw API calls (membership rejection, successful member
+assignment, `manage_issues`/admin-only 403s) and in the browser (the
+Issues tab's Overdue filter chip now correctly narrows the list; the
+Overview page's overdue stat tile was never affected — it computes its
+count directly in SQL). No known risks or follow-ups. F5 starting now.
 
 ## Exact continuation point
 IFC Processing Engine, Reality Capture image processing, BIM viewer <->
