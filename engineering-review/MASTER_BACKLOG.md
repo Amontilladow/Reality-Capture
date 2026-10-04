@@ -440,7 +440,35 @@ live via raw API calls (membership rejection, successful member
 assignment, `manage_issues`/admin-only 403s) and in the browser (the
 Issues tab's Overdue filter chip now correctly narrows the list; the
 Overview page's overdue stat tile was never affected — it computes its
-count directly in SQL). No known risks or follow-ups. F5 starting now.
+count directly in SQL). No known risks or follow-ups.
+
+**Status: F5 shipped.** `close()`/`forceStatus()` (when closing)/
+`bulkClose()` now require (1) at least one evidence capture attached
+(`issue_captures`, new `getEvidenceCaptureId()` check, 400
+`EVIDENCE_REQUIRED` otherwise, with the evidencing `capture_id` recorded
+on the closure's own `issue_activities` row — no migration needed) and
+(2) sign-off from a permitted-approver role via a new
+`isPermittedApprover()` weight comparison — the old "creator can always
+close their own issue" bypass is gone. Caught and fixed a real gap
+during this change's own verification: the obvious hardcoded
+`['company_admin','engineering_manager']` array check would have
+silently excluded `super_admin`/`technical_director` despite both
+outranking `engineering_manager` everywhere else in this app (`RolesGuard`
+resolves `@Roles(...)` via weight, not list membership) — fixed to reuse
+`COMPANY_ROLE_WEIGHT`, and the identical frontend gap in
+`isIssueManager()`/`ISSUE_MANAGER_ROLES` fixed the same way, since
+removing the creator bypass there too would have newly hidden the Close
+button from those roles. New `GET :id/evidence` endpoint backs an
+Evidence Photos display in `IssueDetail.tsx` (previously add-only, no
+way to see what was already attached) and gates the Close button's
+disabled/tooltip state client-side. Committed and pushed (`36182a8`).
+Verified live via raw API calls (evidence-less closure rejected
+regardless of role; a non-permitted creator rejected even with evidence
+attached; a permitted approver — tested for both company_admin-tier and
+super_admin — succeeds once evidence exists, with the capture recorded
+on the audit row) and in the browser (Close button disabled with "No
+evidence attached yet" until a capture is attached, then enables). No
+known risks or follow-ups. F6 starting now.
 
 ## Exact continuation point
 IFC Processing Engine, Reality Capture image processing, BIM viewer <->
