@@ -390,13 +390,16 @@ describe('IssuesService view-state / screenshot behavior', () => {
     });
   });
 
-  describe('close', () => {
-    it("closes an issue when called by its creator, even without a project 'manage_issues' grant", async () => {
+  describe('close (F5 -- requires evidence + a permitted-approver role)', () => {
+    it('closes an issue when called by a permitted approver (engineering_manager) with evidence attached, logging the evidence capture on the activity row', async () => {
       const { query, calls } = makeQuery((text) => {
         if (text.includes('FROM issues i')) {
           return [{ id: 'issue-1', status: 'resolved', createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001' }];
         }
-        if (text.includes("UPDATE issues SET")) {
+        if (text.includes('FROM issue_captures')) {
+          return [{ captureId: 'capture-1' }];
+        }
+        if (text.includes('UPDATE issues SET')) {
           return [{ id: 'issue-1', status: 'closed' }];
         }
         return undefined;
@@ -409,7 +412,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
         {} as unknown as StorageService,
       );
 
-      const result = await svc.close('company-1', 'project-1', 'issue-1', 'user-creator', 'site_engineer');
+      const result = await svc.close('company-1', 'project-1', 'issue-1', 'user-admin', 'engineering_manager');
 
       expect(result.status).toBe('closed');
       const updateCall = calls.find(c => c.text.includes('UPDATE issues SET') && c.text.includes('closed_by'));
@@ -417,9 +420,11 @@ describe('IssuesService view-state / screenshot behavior', () => {
       const activityCall = calls.find(c => c.text.includes('INSERT INTO issue_activities'));
       expect(activityCall!.values[2]).toBe('status_change');
       expect(activityCall!.values[5]).toBe('closed');
+      // AddActivityDto field order: activityType, content, fromValue, toValue, captureId
+      expect(activityCall!.values[6]).toBe('capture-1');
     });
 
-    it('rejects closing when the caller is neither the creator nor an admin', async () => {
+    it("rejects closing when the caller is not a permitted approver, even when they created the issue -- self-closing one's own work is no longer allowed", async () => {
       const { query } = makeQuery((text) => {
         if (text.includes('FROM issues i')) {
           return [{ id: 'issue-1', status: 'resolved', createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001' }];
@@ -434,14 +439,39 @@ describe('IssuesService view-state / screenshot behavior', () => {
         {} as unknown as StorageService,
       );
 
-      await expect(svc.close('company-1', 'project-1', 'issue-1', 'user-assignee', 'site_engineer'))
+      await expect(svc.close('company-1', 'project-1', 'issue-1', 'user-creator', 'site_engineer'))
         .rejects.toThrow(ForbiddenException);
     });
 
-    it('allows an engineering_manager to close an issue they did not create', async () => {
+    it('rejects closing when no evidence capture has been attached, even for a permitted approver', async () => {
       const { query } = makeQuery((text) => {
         if (text.includes('FROM issues i')) {
           return [{ id: 'issue-1', status: 'resolved', createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001' }];
+        }
+        if (text.includes('FROM issue_captures')) {
+          return []; // no evidence attached
+        }
+        return undefined;
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const svc = new IssuesService(
+        { query, withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      await expect(svc.close('company-1', 'project-1', 'issue-1', 'user-admin', 'company_admin'))
+        .rejects.toThrow(BadRequestException);
+    });
+
+    it('allows a company_admin to close an issue they did not create, once evidence exists', async () => {
+      const { query } = makeQuery((text) => {
+        if (text.includes('FROM issues i')) {
+          return [{ id: 'issue-1', status: 'resolved', createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001' }];
+        }
+        if (text.includes('FROM issue_captures')) {
+          return [{ captureId: 'capture-9' }];
         }
         if (text.includes("UPDATE issues SET")) {
           return [{ id: 'issue-1', status: 'closed' }];
@@ -456,7 +486,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
         {} as unknown as StorageService,
       );
 
-      await expect(svc.close('company-1', 'project-1', 'issue-1', 'user-admin', 'engineering_manager'))
+      await expect(svc.close('company-1', 'project-1', 'issue-1', 'user-admin', 'company_admin'))
         .resolves.toMatchObject({ status: 'closed' });
     });
 
@@ -475,15 +505,15 @@ describe('IssuesService view-state / screenshot behavior', () => {
         {} as unknown as StorageService,
       );
 
-      // Even a non-creator, non-admin caller doesn't get a 403 here -- closing
-      // an already-closed issue never reaches the authorization check.
+      // Even a non-approver caller doesn't get a 403 here -- closing an
+      // already-closed issue never reaches the authorization/evidence checks.
       const result = await svc.close('company-1', 'project-1', 'issue-1', 'user-bystander', 'site_engineer');
       expect(result.status).toBe('closed');
     });
   });
 
   describe('forceStatus', () => {
-    it('sets status directly and logs a status_force activity (not status_change)', async () => {
+    it('sets status directly and logs a status_force activity (not status_change) for a non-closing transition', async () => {
       const { query, calls } = makeQuery((text) => {
         if (text.includes('FROM issues i')) {
           return [{ id: 'issue-1', status: 'closed' }];
@@ -511,18 +541,67 @@ describe('IssuesService view-state / screenshot behavior', () => {
       expect(activityCall!.values[4]).toBe('closed');    // fromValue
       expect(activityCall!.values[5]).toBe('reopened');  // toValue
     });
+
+    it('rejects forcing status to closed when no evidence capture has been attached (F5)', async () => {
+      const { query } = makeQuery((text) => {
+        if (text.includes('FROM issues i')) {
+          return [{ id: 'issue-1', status: 'open' }];
+        }
+        if (text.includes('FROM issue_captures')) {
+          return []; // no evidence attached
+        }
+        return undefined;
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const svc = new IssuesService(
+        { query, withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      await expect(svc.forceStatus('company-1', 'project-1', 'issue-1', 'user-admin', { status: 'closed' }))
+        .rejects.toThrow(BadRequestException);
+    });
+
+    it('force-closes with evidence present and logs the evidence capture on the status_force activity row (F5)', async () => {
+      const { query, calls } = makeQuery((text) => {
+        if (text.includes('FROM issues i')) {
+          return [{ id: 'issue-1', status: 'open' }];
+        }
+        if (text.includes('FROM issue_captures')) {
+          return [{ captureId: 'capture-5' }];
+        }
+        if (text.includes('UPDATE issues SET')) {
+          return [{ id: 'issue-1', status: 'closed' }];
+        }
+        return undefined;
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const svc = new IssuesService(
+        { query, withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      const result = await svc.forceStatus('company-1', 'project-1', 'issue-1', 'user-admin', { status: 'closed' });
+      expect(result.status).toBe('closed');
+      const activityCall = calls.find(c => c.text.includes('INSERT INTO issue_activities'));
+      expect(activityCall!.values[6]).toBe('capture-5'); // captureId
+    });
   });
 
-  describe('bulkClose', () => {
-    it('closes only the targeted, not-already-closed issues and logs one status_change activity each', async () => {
+  describe('bulkClose (F5 -- requires evidence + a permitted-approver role)', () => {
+    it('closes only the targeted, not-already-closed issues that have evidence attached, logging one status_change activity each with its evidence capture', async () => {
       const sqlCalls: Array<{ text: string; values: unknown[] }> = [];
       const sql = jest.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
         const text = strings.join('?');
         sqlCalls.push({ text, values });
-        if (text.includes('SELECT id, status, issue_number FROM issues')) {
+        if (text.includes('FROM issues i')) {
           return Promise.resolve([
-            { id: 'issue-1', status: 'open', issueNumber: 'A-1' },
-            { id: 'issue-2', status: 'assigned', issueNumber: 'A-2' },
+            { id: 'issue-1', status: 'open', issueNumber: 'A-1', evidenceCaptureId: 'capture-1' },
+            { id: 'issue-2', status: 'assigned', issueNumber: 'A-2', evidenceCaptureId: 'capture-2' },
           ]);
         }
         return Promise.resolve([]);
@@ -535,28 +614,35 @@ describe('IssuesService view-state / screenshot behavior', () => {
         {} as unknown as StorageService,
       );
 
-      // Both targets are, per the (mocked) SELECT's own WHERE clause,
-      // issues this caller created -- see the next test for the case where
-      // the selection also includes issues the caller didn't raise.
-      const result = await svc.bulkClose('company-1', 'project-1', 'user-1', 'site_engineer', { issueIds: ['issue-1', 'issue-2'] });
+      const result = await svc.bulkClose('company-1', 'project-1', 'user-admin', 'company_admin', { issueIds: ['issue-1', 'issue-2'] });
 
       expect(result).toEqual({ closed: 2, issueIds: ['issue-1', 'issue-2'], skipped: 0 });
-      const selectCall = sqlCalls.find(c => c.text.includes('SELECT id, status, issue_number FROM issues'));
-      expect(selectCall!.text).toContain('created_by');
       const activityInserts = sqlCalls.filter(c => c.text.includes('INSERT INTO issue_activities'));
       expect(activityInserts).toHaveLength(2);
-      // 'status_change' and 'closed' are inline SQL literals (not
-      // interpolated), so values = [issueId, companyId, fromValue, userId].
       expect(activityInserts[0].text).toContain('status_change');
-      expect(activityInserts[0].values).toEqual(['issue-1', 'company-1', 'open', 'user-1']);
-      expect(activityInserts[1].values).toEqual(['issue-2', 'company-1', 'assigned', 'user-1']);
+      expect(activityInserts[0].values).toEqual(['issue-1', 'company-1', 'open', 'capture-1', 'user-admin']);
+      expect(activityInserts[1].values).toEqual(['issue-2', 'company-1', 'assigned', 'capture-2', 'user-admin']);
     });
 
-    it('reports the ones outside the selection it could actually close as skipped', async () => {
-      // A non-admin caller selected 3 issues but the SELECT's own
-      // (created_by = userId) filter only matched 1 of them -- the other 2
-      // aren't this caller's to close and are silently skipped, not errored.
-      const sql = jest.fn().mockResolvedValueOnce([{ id: 'issue-1', status: 'open', issueNumber: 'A-1' }]).mockResolvedValue([]);
+    it('skips targeted issues that have no evidence attached, without failing the rest of the batch', async () => {
+      const sql = jest.fn().mockResolvedValueOnce([
+        { id: 'issue-1', status: 'open', issueNumber: 'A-1', evidenceCaptureId: 'capture-1' },
+        { id: 'issue-2', status: 'open', issueNumber: 'A-2', evidenceCaptureId: null }, // no evidence
+      ]).mockResolvedValue([]);
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(sql));
+      const svc = new IssuesService(
+        { withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+
+      const result = await svc.bulkClose('company-1', 'project-1', 'user-admin', 'company_admin', { issueIds: ['issue-1', 'issue-2'] });
+      expect(result).toEqual({ closed: 1, issueIds: ['issue-1'], skipped: 1 });
+    });
+
+    it('a non-admin caller closes nothing -- bulk-close is restricted to the permitted-approver roles, same as single-issue close()', async () => {
+      const sql = jest.fn().mockResolvedValue([]); // the SQL's own `AND ${isAdmin}` filter excludes everything for a non-admin
       const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(sql));
       const svc = new IssuesService(
         { withTenant } as unknown as DatabaseService,
@@ -566,16 +652,16 @@ describe('IssuesService view-state / screenshot behavior', () => {
       );
 
       const result = await svc.bulkClose('company-1', 'project-1', 'user-1', 'site_engineer', { issueIds: ['issue-1', 'issue-2', 'issue-3'] });
-      expect(result).toEqual({ closed: 1, issueIds: ['issue-1'], skipped: 2 });
+      expect(result).toEqual({ closed: 0, issueIds: [], skipped: 3 });
     });
 
-    it('lets a company_admin bulk-close issues regardless of who created them', async () => {
+    it('lets a company_admin bulk-close an issue with evidence regardless of who created it', async () => {
       const sqlCalls: Array<{ text: string; values: unknown[] }> = [];
       const sql = jest.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
         const text = strings.join('?');
         sqlCalls.push({ text, values });
-        if (text.includes('SELECT id, status, issue_number FROM issues')) {
-          return Promise.resolve([{ id: 'issue-1', status: 'open', issueNumber: 'A-1' }]);
+        if (text.includes('FROM issues i')) {
+          return Promise.resolve([{ id: 'issue-1', status: 'open', issueNumber: 'A-1', evidenceCaptureId: 'capture-1' }]);
         }
         return Promise.resolve([]);
       });
@@ -589,8 +675,8 @@ describe('IssuesService view-state / screenshot behavior', () => {
 
       const result = await svc.bulkClose('company-1', 'project-1', 'user-admin', 'company_admin', { issueIds: ['issue-1'] });
       expect(result).toEqual({ closed: 1, issueIds: ['issue-1'], skipped: 0 });
-      const selectCall = sqlCalls.find(c => c.text.includes('SELECT id, status, issue_number FROM issues'));
-      expect(selectCall!.values).toContain(true); // the interpolated `${isAdmin}` short-circuits the created_by check
+      const selectCall = sqlCalls.find(c => c.text.includes('FROM issues i'));
+      expect(selectCall!.values).toContain(true); // the interpolated `${isAdmin}`
     });
 
     it('returns closed: 0 when no targeted issues are open', async () => {
@@ -603,7 +689,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
         {} as unknown as StorageService,
       );
 
-      const result = await svc.bulkClose('company-1', 'project-1', 'user-1', 'site_engineer', { issueIds: ['issue-9'] });
+      const result = await svc.bulkClose('company-1', 'project-1', 'user-admin', 'company_admin', { issueIds: ['issue-9'] });
       expect(result).toEqual({ closed: 0, issueIds: [], skipped: 1 });
     });
   });

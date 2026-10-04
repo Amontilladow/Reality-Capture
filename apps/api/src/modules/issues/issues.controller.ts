@@ -168,13 +168,14 @@ export class IssuesController {
   }
 
   // ── Close ─────────────────────────────────────────────────────────────────
-  // Deliberately NOT gated by @RequireProjectPermission -- authorization is
-  // the creator-or-admin check inside IssuesService.close() itself, so a
-  // plain creator with no 'manage_issues' grant can still close their own
-  // issue (which the generic PATCH :id above can no longer do at all, since
-  // UpdateIssueDto rejects 'closed').
+  // F5: closing requires (a) at least one evidence capture attached and
+  // (b) a permitted-approver role (company_admin/engineering_manager) --
+  // enforced inside IssuesService.close() itself, same as before, so this
+  // stays deliberately NOT gated by @RequireProjectPermission at the
+  // controller (which the generic PATCH :id above can no longer do at all
+  // either way, since UpdateIssueDto rejects 'closed').
   @Post(':id/close')
-  @ApiOperation({ summary: "Close an issue -- only the issue's creator or an admin may do this" })
+  @ApiOperation({ summary: 'Close an issue -- requires at least one evidence capture and a permitted approver role (company admin or engineering manager)' })
   async close(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
     return { data: await this.svc.close(u.companyId, pid, id, u.id, u.companyRole), error: null };
   }
@@ -204,6 +205,12 @@ export class IssuesController {
     @Body() body: AddCaptureToIssueDto,
   ) {
     return { data: await this.svc.addCapture(u.companyId, id, u.id, body.captureId, body.isPrimary, body.caption), error: null };
+  }
+
+  @Get(':id/evidence')
+  @ApiOperation({ summary: 'List the evidence captures attached to this issue (F5 close-out requires at least one)' })
+  async getEvidence(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
+    return { data: await this.svc.getEvidence(u.companyId, id), error: null };
   }
 
   // ── Forward (ticket 2b) ──────────────────────────────────────────────────

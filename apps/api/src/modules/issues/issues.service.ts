@@ -23,7 +23,7 @@ import type { ScheduleIssueReminderDto } from './dto/schedule-issue-reminder.dto
 import type { IssueAttachmentUploadUrlDto } from './dto/issue-attachment-upload-url.dto';
 import type { AddIssueAttachmentDto } from './dto/add-issue-attachment.dto';
 import { ATTACHMENT_MAX_SIZE as ISSUE_ATTACHMENT_MAX_SIZE, ATTACHMENT_ALLOWED_EXTENSIONS as ISSUE_ATTACHMENT_ALLOWED_EXTENSIONS } from '../../common/constants/attachment-limits';
-import type { PaginationQuery } from '@engineeringos/types';
+import { COMPANY_ROLE_WEIGHT, type PaginationQuery, type CompanyRole } from '@engineeringos/types';
 
 // No shared label maps for these exist in @engineeringos/types (unlike RFI's
 // RFI_DISCIPLINE_LABELS) -- apps/web/src/lib/issue-constants.ts defines its
@@ -386,19 +386,35 @@ export class IssuesService {
   }
 
   // ── Close ─────────────────────────────────────────────────────────────────
-  // Deliberately its own endpoint, not reachable via update()'s
-  // @RequireProjectPermission('manage_issues') gate -- closing is
-  // restricted to the issue's own creator (same "creator or admin" escape
-  // hatch delete() already uses) regardless of whether the caller holds
-  // that project-wide permission, so a plain creator with no grant at all
-  // can still close their own issue.
+  // Deliberately its own endpoint, not reachable via update()'s DTO (which
+  // rejects 'closed' outright -- see UpdateIssueDto).
+  //
+  // F5 — Evidence-Based Issue Close-Out. Closing is no longer "the creator
+  // can always close their own issue": the brief specifically wants
+  // evidence plus "an approver sign-off from a permitted role," so the
+  // old creator-or-admin bypass (matching delete()'s own escape hatch) is
+  // gone -- only a permitted role (same weight-based threshold RolesGuard
+  // applies for @Roles('company_admin','engineering_manager') elsewhere --
+  // see isPermittedApprover() below) may close, and only once at least one
+  // capture is attached as evidence. Still deliberately NOT gated by
+  // @RequireProjectPermission at the controller -- the role check happens
+  // here, same place as before.
   async close(companyId: string, projectId: string, issueId: string, userId: string, userRole: string) {
     const existing = await this.findOne(companyId, projectId, issueId);
     if (existing.status === 'closed') return existing;
-    if (existing.createdBy !== userId && !['company_admin', 'engineering_manager'].includes(userRole)) {
+
+    if (!this.isPermittedApprover(userRole)) {
       throw new ForbiddenException({
-        code: 'NOT_ISSUE_CREATOR',
-        message: 'Only the person who raised this issue (or an administrator) can close it.',
+        code: 'NOT_PERMITTED_APPROVER',
+        message: 'Closing an issue requires sign-off from a permitted role (an engineering manager or company admin).',
+      });
+    }
+
+    const evidenceCaptureId = await this.getEvidenceCaptureId(companyId, issueId);
+    if (!evidenceCaptureId) {
+      throw new BadRequestException({
+        code: 'EVIDENCE_REQUIRED',
+        message: 'Closing an issue requires at least one photo or capture attached as evidence.',
       });
     }
 
@@ -413,10 +429,13 @@ export class IssuesService {
       RETURNING *
     `);
 
+    // capture_id links this closure's audit row to the specific evidence
+    // that justified it, not just "status changed to closed."
     await this.addActivity(companyId, issueId, userId, {
       activityType: 'status_change',
       fromValue: existing.status as string,
       toValue: 'closed',
+      captureId: evidenceCaptureId,
     });
 
     await this.triggerRiskRecalc(companyId, projectId, issueId);
@@ -502,6 +521,60 @@ export class IssuesService {
     }
 
     return activity;
+  }
+
+  // F5: the same "permitted role" threshold @Roles('company_admin',
+  // 'engineering_manager') resolves to via RolesGuard's weight comparison
+  // (roles.guard.ts) -- close()/bulkClose() can't use that decorator
+  // (close() is deliberately ungated at the controller so a plain
+  // @Roles() check isn't available there), so this reimplements the same
+  // weight-based logic rather than a hardcoded two-role array, which would
+  // otherwise silently exclude super_admin/technical_director despite
+  // both outranking engineering_manager everywhere else in this app.
+  private isPermittedApprover(userRole: string): boolean {
+    const weight = COMPANY_ROLE_WEIGHT[userRole as CompanyRole] ?? 0;
+    return weight >= COMPANY_ROLE_WEIGHT.engineering_manager;
+  }
+
+  // F5: the capture that justifies closing this issue, for the closure's
+  // own audit-trail row (issue_activities.capture_id) -- the primary
+  // evidence photo if one was marked, else the most recently attached one.
+  // Returns null when no evidence exists at all, which callers treat as
+  // "closure not allowed."
+  private async getEvidenceCaptureId(companyId: string, issueId: string): Promise<string | null> {
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      SELECT capture_id FROM issue_captures
+      WHERE issue_id = ${issueId} AND company_id = ${companyId}
+      ORDER BY is_primary DESC, created_at DESC
+      LIMIT 1
+    `);
+    return (row?.captureId as string | undefined) ?? null;
+  }
+
+  // F5: the evidence photos attached to this issue, for the close-out UI to
+  // display and to gate its own "Close" button client-side (the backend
+  // enforces the real requirement in close()/forceStatus()/bulkClose();
+  // this is purely for the UI to show the right thing, not a second source
+  // of truth).
+  async getEvidence(companyId: string, issueId: string) {
+    const rows = await this.db.withTenant(companyId, sql => sql`
+      SELECT ic.id, ic.capture_id, ic.is_primary, ic.caption, ic.created_at,
+             c.capture_type, c.captured_at, c.title, c.original_key,
+             cr.storage_key AS thumbnail_key,
+             u.first_name || ' ' || u.last_name AS added_by_name
+      FROM issue_captures ic
+      JOIN captures c ON c.id = ic.capture_id
+      LEFT JOIN capture_renditions cr ON cr.capture_id = c.id AND cr.rendition_type = 'thumbnail_sm'
+      JOIN users u ON u.id = ic.added_by
+      WHERE ic.issue_id = ${issueId} AND ic.company_id = ${companyId}
+      ORDER BY ic.is_primary DESC, ic.created_at DESC
+    `);
+    const keys = rows.flatMap(r => [r.thumbnailKey, r.originalKey].filter(Boolean)) as string[];
+    const urlMap = await this.storage.resolveUrls(keys);
+    return rows.map(r => ({
+      ...r,
+      thumbnailUrl: (r.thumbnailKey ? urlMap.get(r.thumbnailKey as string) : undefined) ?? urlMap.get(r.originalKey as string),
+    }));
   }
 
   // ── Add evidence capture ──────────────────────────────────────────────────
@@ -675,6 +748,21 @@ export class IssuesService {
     const existing = await this.findOne(companyId, projectId, issueId);
     const isClosing = dto.status === 'closed' && existing.status !== 'closed';
 
+    // F5: the force-status path is already @Roles-gated to the same
+    // permitted-approver set close() requires, but it had no evidence
+    // check at all -- "closing an issue requires... evidence" applies
+    // here too, there's no force-path exception for it in the brief.
+    let evidenceCaptureId: string | null = null;
+    if (isClosing) {
+      evidenceCaptureId = await this.getEvidenceCaptureId(companyId, issueId);
+      if (!evidenceCaptureId) {
+        throw new BadRequestException({
+          code: 'EVIDENCE_REQUIRED',
+          message: 'Closing an issue requires at least one photo or capture attached as evidence.',
+        });
+      }
+    }
+
     // withTenant required -- see generateIssueNumber() above.
     const [updated] = await this.db.withTenant(companyId, sql => sql`
       UPDATE issues SET
@@ -690,6 +778,7 @@ export class IssuesService {
       activityType: 'status_force',
       fromValue: existing.status as string,
       toValue: dto.status,
+      captureId: evidenceCaptureId ?? undefined,
     });
 
     if (dto.status !== existing.status) {
@@ -711,38 +800,46 @@ export class IssuesService {
   // withTenant()'s transaction so the status updates and their activity
   // log entries succeed or fail together.
   //
-  // Same creator-only rule as the single-issue close() -- a non-admin
-  // caller only ever closes the issues in their selection that they
-  // themselves raised; anything else in dto.issueIds is silently skipped
-  // (reported back via `skipped`) rather than failing the whole batch.
+  // F5: same permitted-role-and-evidence rule as the single-issue close()
+  // -- the old creator-only bypass is gone, and an issue with no evidence
+  // attached is treated the same as one the caller isn't allowed to touch:
+  // silently skipped (reported back via `skipped`) rather than failing the
+  // whole batch, same "don't let one bad item block the rest" shape this
+  // method already had.
   async bulkClose(companyId: string, projectId: string, userId: string, userRole: string, dto: BulkCloseIssuesDto) {
-    const isAdmin = ['company_admin', 'engineering_manager'].includes(userRole);
+    const isAdmin = this.isPermittedApprover(userRole);
     const result = await this.db.withTenant(companyId, async (sql) => {
       const targets = await sql`
-        SELECT id, status, issue_number FROM issues
-        WHERE id = ANY(${dto.issueIds}::uuid[])
-          AND project_id = ${projectId} AND company_id = ${companyId}
-          AND status <> 'closed'
-          AND (${isAdmin} OR created_by = ${userId}::uuid)
+        SELECT i.id, i.status, i.issue_number,
+          (SELECT ic.capture_id FROM issue_captures ic WHERE ic.issue_id = i.id AND ic.company_id = ${companyId}
+           ORDER BY ic.is_primary DESC, ic.created_at DESC LIMIT 1) AS evidence_capture_id
+        FROM issues i
+        WHERE i.id = ANY(${dto.issueIds}::uuid[])
+          AND i.project_id = ${projectId} AND i.company_id = ${companyId}
+          AND i.status <> 'closed'
+          AND ${isAdmin}
       `;
-      if (targets.length === 0) return { closed: 0, issueIds: [], skipped: dto.issueIds.length };
+      const withEvidence = targets.filter(t => t.evidenceCaptureId);
+      if (withEvidence.length === 0) return { closed: 0, issueIds: [], skipped: dto.issueIds.length };
 
-      const ids = targets.map(t => t.id as string);
+      const ids = withEvidence.map(t => t.id as string);
       await sql`
         UPDATE issues SET status = 'closed', closed_at = NOW(), closed_by = ${userId}::uuid, updated_at = NOW()
         WHERE id = ANY(${ids}::uuid[])
       `;
 
       // Reuses 'status_change' (the same activity type the single-issue
-      // close() path logs) rather than inventing a new one.
-      for (const target of targets) {
+      // close() path logs) rather than inventing a new one. capture_id
+      // links each closure to the evidence that justified it, same as
+      // close()'s own activity row.
+      for (const target of withEvidence) {
         await sql`
-          INSERT INTO issue_activities (issue_id, company_id, activity_type, from_value, to_value, performed_by)
-          VALUES (${target.id}, ${companyId}, 'status_change', ${target.status}, 'closed', ${userId})
+          INSERT INTO issue_activities (issue_id, company_id, activity_type, from_value, to_value, capture_id, performed_by)
+          VALUES (${target.id}, ${companyId}, 'status_change', ${target.status}, 'closed', ${target.evidenceCaptureId}, ${userId})
         `;
       }
 
-      return { closed: targets.length, issueIds: ids, skipped: dto.issueIds.length - targets.length };
+      return { closed: withEvidence.length, issueIds: ids, skipped: dto.issueIds.length - withEvidence.length };
     });
 
     // Recalculated one at a time, after (not inside) the transaction above
