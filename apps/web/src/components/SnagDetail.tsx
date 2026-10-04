@@ -6,6 +6,7 @@ import {
   type SnagListItem,
 } from '../lib/snagging.api';
 import { getMembers } from '../lib/projects.api';
+import { InlineRiskAssessment } from './RiskIntelligenceSection';
 import { useAuthStore } from '../store/auth.store';
 import {
   SNAG_STATUS_LABELS, SNAG_STATUS_BADGE_CLASS, SNAG_PRIORITY_LABELS, SNAG_PRIORITY_BADGE_CLASS,
@@ -244,6 +245,8 @@ export function SnagDetail({
           {snag.verifiedAt && <DetailRow label="Verified" value={formatDateTime(snag.verifiedAt)} />}
         </div>
       </div>
+
+      <InlineRiskAssessment projectId={projectId} nodeType="snag_item" entityId={snagId} />
 
       {/* Activity / comments */}
       <div>

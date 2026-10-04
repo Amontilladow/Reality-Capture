@@ -41,7 +41,16 @@ export class NotificationsService {
     const page    = query.page ?? 1;
     const perPage = Math.min(query.perPage ?? 20, 100);
     const offset  = (page - 1) * perPage;
-    const unreadOnly = query.unreadOnly ?? false;
+    // `@Query()` has no decorated DTO class here, so query.unreadOnly never
+    // gets coerced from the query-string value "true"/"false" to a real
+    // boolean before this point -- and interpolating that string with an
+    // explicit `::boolean` cast doesn't save it either: confirmed by direct
+    // reproduction against postgres.js, a JS *string* parameter cast with
+    // `::boolean` comes back `false` for every input, a real serialization
+    // bug, not just a missing cast (see issues.service.ts findAll()'s
+    // identical fix for the full writeup). Coercing to a genuine JS
+    // boolean here, before it reaches the SQL template, is the fix.
+    const unreadOnly = query.unreadOnly === true || (query.unreadOnly as unknown) === 'true';
 
     const rows = await this.db.withTenant(companyId, sql => sql`
       SELECT
@@ -49,7 +58,7 @@ export class NotificationsService {
         COUNT(*) OVER() AS full_count
       FROM notifications
       WHERE user_id = ${userId}
-        AND (${unreadOnly}::boolean IS FALSE OR read_at IS NULL)
+        AND (NOT ${unreadOnly} OR read_at IS NULL)
       ORDER BY created_at DESC
       LIMIT ${perPage} OFFSET ${offset}
     `);

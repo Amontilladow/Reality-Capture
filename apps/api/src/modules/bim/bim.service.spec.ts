@@ -180,6 +180,97 @@ describe('BimService.getModelUploadUrl', () => {
   });
 });
 
+describe('BimService.updateElementStatus (F2)', () => {
+  const companyId = 'company-1';
+  const projectId = 'project-1';
+  const elementId = 'element-1';
+
+  function makeService(existingStatus: string | null) {
+    const withTenant = jest.fn()
+      .mockResolvedValueOnce([{ constructionStatus: existingStatus }])
+      .mockResolvedValueOnce([{ id: elementId, constructionStatus: 'in_progress', completionPct: 50 }])
+      .mockResolvedValueOnce([]);
+    const db = { withTenant };
+    const storage = {};
+    const issues = {};
+    const queue = {};
+    const svc = new BimService(
+      db as unknown as DatabaseService,
+      storage as unknown as StorageService,
+      issues as unknown as IssuesService,
+      queue as unknown as Queue,
+    );
+    return { svc, withTenant };
+  }
+
+  it('logs the from/to status, completion %, and evidence capture on bim_element_status_history', async () => {
+    const { svc, withTenant } = makeService('not_started');
+
+    await svc.updateElementStatus(companyId, projectId, elementId, 'user-1', {
+      status: 'in_progress', completionPct: 50, captureId: 'capture-9',
+    });
+
+    // Third withTenant call is the INSERT into bim_element_status_history --
+    // postgres.js's tagged-template sql`` is captured here as the strings
+    // array plus interpolated values, in call order.
+    const historyCall = withTenant.mock.calls[2];
+    const sqlFn = historyCall[1] as (sql: unknown) => unknown;
+    const capturedValues: unknown[] = [];
+    const fakeSql = (_strings: TemplateStringsArray, ...values: unknown[]) => { capturedValues.push(...values); return []; };
+    sqlFn(fakeSql);
+
+    expect(capturedValues).toEqual(
+      expect.arrayContaining([companyId, projectId, elementId, 'not_started', 'in_progress', 50, 'capture-9', 'user-1']),
+    );
+  });
+
+  it('throws NotFoundException for an element that does not exist', async () => {
+    const withTenant = jest.fn().mockResolvedValueOnce([]);
+    const db = { withTenant };
+    const svc = new BimService(
+      db as unknown as DatabaseService, {} as unknown as StorageService,
+      {} as unknown as IssuesService, {} as unknown as Queue,
+    );
+    await expect(svc.updateElementStatus(companyId, projectId, 'missing', 'user-1', { status: 'complete' }))
+      .rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('BimService.upsertZoneProgress (F2)', () => {
+  const companyId = 'company-1';
+  const projectId = 'project-1';
+  const levelId = 'level-1';
+
+  it('rejects a level that does not belong to this project', async () => {
+    const withTenant = jest.fn().mockResolvedValueOnce([]);
+    const db = { withTenant };
+    const svc = new BimService(
+      db as unknown as DatabaseService, {} as unknown as StorageService,
+      {} as unknown as IssuesService, {} as unknown as Queue,
+    );
+    await expect(svc.upsertZoneProgress(companyId, projectId, levelId, 'user-1', { status: 'complete' }))
+      .rejects.toThrow(NotFoundException);
+  });
+
+  it('upserts the current zone_progress row and logs the change to zone_progress_history', async () => {
+    const withTenant = jest.fn()
+      .mockResolvedValueOnce([{ id: levelId }])               // level exists
+      .mockResolvedValueOnce([{ status: 'not_started' }])      // existing zone_progress row
+      .mockResolvedValueOnce([{ id: 'zone-1', status: 'in_progress', completionPct: 40 }]) // upsert RETURNING
+      .mockResolvedValueOnce([]);                               // history insert
+    const db = { withTenant };
+    const svc = new BimService(
+      db as unknown as DatabaseService, {} as unknown as StorageService,
+      {} as unknown as IssuesService, {} as unknown as Queue,
+    );
+
+    const result = await svc.upsertZoneProgress(companyId, projectId, levelId, 'user-1', { status: 'in_progress', completionPct: 40 });
+
+    expect(result).toEqual({ id: 'zone-1', status: 'in_progress', completionPct: 40 });
+    expect(withTenant).toHaveBeenCalledTimes(4);
+  });
+});
+
 describe('BimService.registerModel', () => {
   const companyId = 'company-1';
   const projectId = 'project-1';

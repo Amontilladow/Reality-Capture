@@ -1,3 +1,4 @@
+import { COMPANY_ROLE_WEIGHT } from '@engineeringos/types';
 import type { IssueStatus, IssuePriority, IssueType, IssueDiscipline, IssueCategory, CompanyRole, ProjectRole, ProjectPermission } from '@engineeringos/types';
 
 export const PROJECT_PERMISSION_LABELS: Record<ProjectPermission, string> = {
@@ -135,13 +136,22 @@ export const ISSUE_STATUS_FLOW: IssueStatus[] = [
 ];
 
 // Roles allowed to use the manager-only issue-tracker actions (dashboard,
-// reminders, force-status) — mirrors the backend's
+// reminders, force-status, F5 close-out sign-off) — mirrors the backend's
 // @Roles('company_admin', 'engineering_manager') gate on those same
-// endpoints (issues.controller.ts).
-export const ISSUE_MANAGER_ROLES: CompanyRole[] = ['company_admin', 'engineering_manager'];
+// endpoints (issues.controller.ts). That decorator is enforced by
+// RolesGuard via a WEIGHT comparison (roles.guard.ts), not a literal list
+// membership check, so it actually also passes technical_director (80)
+// and super_admin (100) -- both outrank engineering_manager (70) already.
+// A plain `=== 'company_admin' || === 'engineering_manager'` list here
+// would silently disagree with the backend for those two roles (exactly
+// the gap IssuesService.isPermittedApprover() was introduced to close on
+// the backend side for F5's close()/bulkClose()), so this mirrors the
+// weight comparison instead of the literal pair.
+export const ISSUE_MANAGER_ROLES: CompanyRole[] = (Object.keys(COMPANY_ROLE_WEIGHT) as CompanyRole[])
+  .filter((role) => COMPANY_ROLE_WEIGHT[role] >= COMPANY_ROLE_WEIGHT.engineering_manager);
 
 export function isIssueManager(role: CompanyRole | undefined): boolean {
-  return Boolean(role && ISSUE_MANAGER_ROLES.includes(role));
+  return Boolean(role && COMPANY_ROLE_WEIGHT[role] >= COMPANY_ROLE_WEIGHT.engineering_manager);
 }
 
 export function isOverdue(deadline: string | undefined, status: IssueStatus): boolean {

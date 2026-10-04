@@ -1,14 +1,15 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Delete, Res, StreamableFile } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Delete, Res, StreamableFile } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import type { Response } from 'express';
 import type { AuthenticatedUser, RiskNodeType } from '@engineeringos/types';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { RiskService } from './risk.service';
+import { RiskService, RISK_WORTHY_NODE_TYPES } from './risk.service';
 import { OverrideRiskDto } from './dto/override-risk.dto';
 import { SetRiskStatusDto } from './dto/set-risk-status.dto';
 import { AssignRiskOwnerDto } from './dto/assign-risk-owner.dto';
 import { GenerateRiskPdfDto } from './dto/generate-risk-pdf.dto';
 import { SetHumanAssessmentDto } from './dto/set-human-assessment.dto';
+import { SetMatrixOverrideDto } from './dto/set-matrix-override.dto';
 
 @ApiTags('risk')
 @ApiBearerAuth()
@@ -134,9 +135,46 @@ export class RiskController {
     return { data: await this.risk.listRisks(u.companyId, pid), error: null };
   }
 
+  @Get('discrepancies')
+  @ApiOperation({ summary: 'Open risks where the human Risk Matrix assessment and the AI Score disagree on level' })
+  async getDiscrepancies(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
+    return { data: await this.risk.getMatrixDiscrepancies(u.companyId, pid), error: null };
+  }
+
+  @Get('heatmap')
+  @ApiOperation({ summary: 'The 5x5 Risk Matrix heatmap -- open-risk counts per Probability x Impact cell' })
+  async getHeatmap(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
+    return { data: await this.risk.getRiskHeatmap(u.companyId, pid), error: null };
+  }
+
+  private parseNodeType(nodeType: string): typeof RISK_WORTHY_NODE_TYPES[number] {
+    if (!RISK_WORTHY_NODE_TYPES.includes(nodeType as typeof RISK_WORTHY_NODE_TYPES[number])) {
+      throw new BadRequestException(`nodeType must be one of: ${RISK_WORTHY_NODE_TYPES.join(', ')}.`);
+    }
+    return nodeType as typeof RISK_WORTHY_NODE_TYPES[number];
+  }
+
+  @Get('by-entity')
+  @ApiOperation({ summary: 'The Risk (if any) for a given issue/RFI/snag/etc -- for the inline Human Risk Assessment widget on those forms. Read-only: never creates a Risk.' })
+  async getByEntity(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Query('nodeType') nodeType: string, @Query('entityId') entityId: string) {
+    return { data: await this.risk.getRiskByEntity(u.companyId, this.parseNodeType(nodeType), entityId), error: null };
+  }
+
+  @Patch('by-entity/human-assessment')
+  @ApiOperation({ summary: 'Record a Human Risk Assessment for an issue/RFI/snag directly, bootstrapping a Risk row if the automated engine has not flagged it yet' })
+  async setHumanAssessmentByEntity(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Query('nodeType') nodeType: string,
+    @Query('entityId') entityId: string,
+    @Body() dto: SetHumanAssessmentDto,
+  ) {
+    return { data: await this.risk.setHumanAssessmentByEntity(u.companyId, pid, this.parseNodeType(nodeType), entityId, u.id, dto), error: null };
+  }
+
   @Get(':riskId')
   async getOne(@CurrentUser() u: AuthenticatedUser, @Param('riskId') riskId: string) {
-    return { data: await this.risk.getRisk(u.companyId, riskId), error: null };
+    return { data: await this.risk.getRiskWithDiscrepancy(u.companyId, riskId), error: null };
   }
 
   @Get(':riskId/chain')
@@ -166,6 +204,23 @@ export class RiskController {
     @Body() dto: SetHumanAssessmentDto,
   ) {
     return { data: await this.risk.setHumanAssessment(u.companyId, pid, riskId, u.id, dto), error: null };
+  }
+
+  @Patch(':riskId/matrix-override')
+  @ApiOperation({ summary: 'Resolve a Human-vs-AI Risk Matrix discrepancy: Accept AI Assessment, Keep Human Assessment, or a custom engineer override -- always audited' })
+  async setMatrixOverride(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Param('riskId') riskId: string,
+    @Body() dto: SetMatrixOverrideDto,
+  ) {
+    return { data: await this.risk.setMatrixOverride(u.companyId, pid, riskId, u.id, dto), error: null };
+  }
+
+  @Delete(':riskId/matrix-override')
+  @ApiOperation({ summary: 'Clear a Risk Matrix override, reverting to the default priority (human assessment, else AI score)' })
+  async clearMatrixOverride(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('riskId') riskId: string) {
+    return { data: await this.risk.clearMatrixOverride(u.companyId, pid, riskId, u.id), error: null };
   }
 
   @Get(':riskId/assessment-history')

@@ -22,7 +22,7 @@ const baseRisk: RiskRow = {
 describe('buildRiskBriefingContext — grounds the AI briefing prompt in real computed data only', () => {
   it('includes the overall score, level, and trend when a trend exists', () => {
     const context = buildRiskBriefingContext(
-      { overallScore: 62, overallLevel: 'HIGH', overallScoreTrendPct: 12, criticalCount: 2, highCount: 5, increasingCount: 3, overdueCount: 1, totalOpenRisks: 14 },
+      { overallScore: 62, overallLevel: 'HIGH', overallScoreTrendPct: 12, criticalCount: 2, highCount: 5, increasingCount: 3, overdueCount: 1, openDiscrepancyCount: 0, totalOpenRisks: 14 },
       [baseRisk],
       [],
     );
@@ -33,7 +33,7 @@ describe('buildRiskBriefingContext — grounds the AI briefing prompt in real co
 
   it('never claims a trend when none was computed (no fabricated percentage)', () => {
     const context = buildRiskBriefingContext(
-      { overallScore: 0, overallLevel: 'LOW', overallScoreTrendPct: null, criticalCount: 0, highCount: 0, increasingCount: 0, overdueCount: 0, totalOpenRisks: 0 },
+      { overallScore: 0, overallLevel: 'LOW', overallScoreTrendPct: null, criticalCount: 0, highCount: 0, increasingCount: 0, overdueCount: 0, openDiscrepancyCount: 0, totalOpenRisks: 0 },
       [], [],
     );
     expect(context).not.toContain('%');
@@ -42,7 +42,7 @@ describe('buildRiskBriefingContext — grounds the AI briefing prompt in real co
 
   it('lists real top risks by title and score, never inventing risks not passed in', () => {
     const context = buildRiskBriefingContext(
-      { overallScore: 50, overallLevel: 'MODERATE', overallScoreTrendPct: null, criticalCount: 0, highCount: 1, increasingCount: 0, overdueCount: 0, totalOpenRisks: 1 },
+      { overallScore: 50, overallLevel: 'MODERATE', overallScoreTrendPct: null, criticalCount: 0, highCount: 1, increasingCount: 0, overdueCount: 0, openDiscrepancyCount: 0, totalOpenRisks: 1 },
       [baseRisk], [],
     );
     expect(context).toContain(baseRisk.title);
@@ -51,7 +51,7 @@ describe('buildRiskBriefingContext — grounds the AI briefing prompt in real co
 
   it('states plainly when no clusters exist, rather than omitting the topic entirely', () => {
     const context = buildRiskBriefingContext(
-      { overallScore: 50, overallLevel: 'MODERATE', overallScoreTrendPct: null, criticalCount: 0, highCount: 0, increasingCount: 0, overdueCount: 0, totalOpenRisks: 1 },
+      { overallScore: 50, overallLevel: 'MODERATE', overallScoreTrendPct: null, criticalCount: 0, highCount: 0, increasingCount: 0, overdueCount: 0, openDiscrepancyCount: 0, totalOpenRisks: 1 },
       [baseRisk], [],
     );
     expect(context).toContain('No risk clusters detected.');
@@ -59,7 +59,7 @@ describe('buildRiskBriefingContext — grounds the AI briefing prompt in real co
 
   it('includes real cluster data when clusters are passed in', () => {
     const context = buildRiskBriefingContext(
-      { overallScore: 50, overallLevel: 'MODERATE', overallScoreTrendPct: null, criticalCount: 0, highCount: 0, increasingCount: 0, overdueCount: 0, totalOpenRisks: 1 },
+      { overallScore: 50, overallLevel: 'MODERATE', overallScoreTrendPct: null, criticalCount: 0, highCount: 0, increasingCount: 0, overdueCount: 0, openDiscrepancyCount: 0, totalOpenRisks: 1 },
       [baseRisk],
       [{ location: 'Level 12', connectedRiskCount: 6, averageScore: 58 }],
     );

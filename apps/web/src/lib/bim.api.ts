@@ -69,6 +69,7 @@ export interface BimElementDetail {
   spatialNodeName?: string | null;
   spatialNodeType?: string | null;
   constructionStatus: string | null;
+  completionPct: number | null;
   properties: Record<string, unknown>;
   quantities: BimElementQuantity[];
   materials: BimElementMaterial[];
@@ -138,8 +139,85 @@ export function listElements(
   return apiGetWithMeta<BimElementDetail[]>(`/projects/${projectId}/bim/elements`, { params: query });
 }
 
-export function updateElementStatus(projectId: string, elementId: string, status: string) {
-  return apiPatch<BimElementDetail>(`/projects/${projectId}/bim/elements/${elementId}/status`, { status });
+export const CONSTRUCTION_STATUS_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'not_started', label: 'Not started' },
+  { value: 'in_progress', label: 'In progress' },
+  { value: 'complete', label: 'Complete' },
+  { value: 'defective', label: 'Defective' },
+];
+
+export const CONSTRUCTION_STATUS_COLORS: Record<string, string> = {
+  not_started: '#9CA3AF',
+  in_progress: '#F59E0B',
+  complete: '#22C55E',
+  defective: '#EF4444',
+};
+
+export interface UpdateProgressStatusDto {
+  status: string;
+  completionPct?: number;
+  captureId?: string;
+}
+
+export function updateElementStatus(projectId: string, elementId: string, dto: UpdateProgressStatusDto) {
+  return apiPatch<BimElementDetail>(`/projects/${projectId}/bim/elements/${elementId}/status`, dto);
+}
+
+export interface ElementStatusHistoryEntry {
+  id: string;
+  fromStatus: string | null;
+  toStatus: string;
+  completionPct: number | null;
+  captureId: string | null;
+  performedByName: string;
+  createdAt: string;
+  captureType?: string;
+  captureTitle?: string;
+}
+
+export function getElementStatusHistory(projectId: string, elementId: string) {
+  return apiGet<ElementStatusHistoryEntry[]>(`/projects/${projectId}/bim/elements/${elementId}/status-history`);
+}
+
+export interface BimElementStatusMapRow {
+  ifcGuid: string;
+  constructionStatus: string | null;
+  completionPct: number | null;
+}
+
+export function getElementStatusMap(projectId: string, modelId: string) {
+  return apiGet<BimElementStatusMapRow[]>(`/projects/${projectId}/bim/models/${modelId}/elements/status-map`);
+}
+
+export interface BimLevelProgress {
+  levelId: string;
+  levelName: string;
+  levelOrder: number;
+  buildingId: string;
+  buildingName: string;
+  elementTotal: number;
+  elementComplete: number;
+  elementInProgress: number;
+  elementDefective: number;
+  elementNotStarted: number;
+  elementCompletionPct: number | null;
+  zoneStatus: string | null;
+  zoneCompletionPct: number | null;
+  zoneUpdatedAt: string | null;
+}
+
+export function getLevelProgressSummary(projectId: string) {
+  return apiGet<BimLevelProgress[]>(`/projects/${projectId}/bim/progress/levels`);
+}
+
+export function upsertZoneProgress(projectId: string, levelId: string, dto: UpdateProgressStatusDto) {
+  return apiPatch<{ id: string; status: string; completionPct: number | null }>(
+    `/projects/${projectId}/bim/zones/${levelId}/progress`, dto,
+  );
+}
+
+export function getZoneProgressHistory(projectId: string, levelId: string) {
+  return apiGet<ElementStatusHistoryEntry[]>(`/projects/${projectId}/bim/zones/${levelId}/progress-history`);
 }
 
 export interface ElementCapture {

@@ -291,3 +291,23 @@ export function addComment(projectId: string, issueId: string, content: string) 
 export function addEvidenceCapture(projectId: string, issueId: string, captureId: string, caption?: string) {
   return apiPost<unknown>(`/projects/${projectId}/issues/${issueId}/captures`, { captureId, caption });
 }
+
+export interface IssueEvidence {
+  id: string;
+  captureId: string;
+  isPrimary: boolean;
+  caption?: string;
+  createdAt: string;
+  captureType: string;
+  capturedAt: string;
+  title?: string;
+  addedByName: string;
+  thumbnailUrl?: string;
+}
+
+// F5: the evidence list IssueDetail.tsx reads to gate the Close button
+// client-side -- close()/forceStatus()/bulkClose() enforce the real
+// requirement server-side regardless of what this shows.
+export function getIssueEvidence(projectId: string, issueId: string) {
+  return apiGet<IssueEvidence[]>(`/projects/${projectId}/issues/${issueId}/evidence`);
+}

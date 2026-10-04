@@ -53,6 +53,7 @@ async function bootstrap() {
       .setDescription('Architecture Specification v1.1 — Phase 1')
       .setVersion('1.0')
       .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' })
+      .addApiKey({ type: 'apiKey', name: 'X-API-Key', in: 'header' }, 'api-key')
       .addTag('auth', 'Authentication and session management')
       .addTag('projects', 'Project hierarchy management')
       .addTag('captures', 'Reality capture operations')
@@ -61,6 +62,8 @@ async function bootstrap() {
       .addTag('documents', 'Construction document integration')
       .addTag('audit', 'Audit log access and export')
       .addTag('subscription', 'Subscription and billing management')
+      .addTag('public-api', 'API-key-authenticated read endpoints and key management for external integrations')
+      .addTag('webhooks', 'Outbound webhook endpoint management (issue created/status changed, capture uploaded)')
       .build();
 
     const document = SwaggerModule.createDocument(app, swaggerConfig);

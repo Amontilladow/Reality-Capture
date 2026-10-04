@@ -5,9 +5,10 @@ import { BimViewer, type BimViewerHandle } from '../components/bim-viewer/BimVie
 import { SpatialTree } from '../components/bim-viewer/SpatialTree';
 import { ElementList } from '../components/bim-viewer/ElementList';
 import { PropertyPanel } from '../components/bim-viewer/PropertyPanel';
+import { ProgressPanel } from '../components/bim-viewer/ProgressPanel';
 import { ElementSearch } from '../components/bim-viewer/ElementSearch';
 import { IssueFormModal } from '../components/issues/IssueFormModal';
-import { getModelViewerData, getModelHierarchy, getElementByGuid, listBimModels, type BimElementDetail } from '../lib/bim.api';
+import { getModelViewerData, getModelHierarchy, getElementByGuid, listBimModels, getElementStatusMap, CONSTRUCTION_STATUS_COLORS, type BimElementDetail } from '../lib/bim.api';
 import { getMembers, getHierarchy } from '../lib/projects.api';
 import { uploadIssueScreenshot } from '../lib/issues.api';
 import type { CameraVector } from '../components/bim-viewer/BimViewer';
@@ -23,7 +24,8 @@ export default function BimViewerPage() {
   const [jumpApplied, setJumpApplied] = useState(false);
   const [cameraJumpApplied, setCameraJumpApplied] = useState(false);
   const [modelReady, setModelReady] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<'tree' | 'list'>('tree');
+  const [sidebarTab, setSidebarTab] = useState<'tree' | 'list' | 'progress'>('tree');
+  const [showStatusOverlay, setShowStatusOverlay] = useState(false);
   const [capturedView, setCapturedView] = useState<{
     modelId: string;
     cameraPosition: CameraVector;
@@ -49,6 +51,34 @@ export default function BimViewerPage() {
     queryFn: () => getModelHierarchy(projectId!, modelId!),
     enabled: Boolean(projectId && modelId),
   });
+
+  // F2 colour-coded overlay: only fetched once the model has loaded (needs
+  // guidsToModelIdMap, which needs a loaded FragmentsModel) and the
+  // overlay toggle is on. Refetches (and the effect below reapplies it)
+  // whenever a status is saved elsewhere, via this same query key.
+  const statusMapQuery = useQuery({
+    queryKey: ['bim-element-status-map', projectId, modelId],
+    queryFn: () => getElementStatusMap(projectId!, modelId!),
+    enabled: Boolean(projectId && modelId) && showStatusOverlay,
+  });
+
+  useEffect(() => {
+    if (!modelReady) return;
+    if (!showStatusOverlay || !statusMapQuery.data) {
+      viewerRef.current?.clearStatusOverlay();
+      return;
+    }
+    const byStatus = new Map<string, string[]>();
+    for (const row of statusMapQuery.data) {
+      const status = row.constructionStatus ?? 'not_started';
+      if (!byStatus.has(status)) byStatus.set(status, []);
+      byStatus.get(status)!.push(row.ifcGuid);
+    }
+    const groups = [...byStatus.entries()].map(([status, guids]) => ({
+      guids, color: CONSTRUCTION_STATUS_COLORS[status] ?? CONSTRUCTION_STATUS_COLORS.not_started,
+    }));
+    viewerRef.current?.applyStatusOverlay(groups);
+  }, [modelReady, showStatusOverlay, statusMapQuery.data]);
 
   const elementQuery = useQuery({
     queryKey: ['bim-element-by-guid', projectId, modelId, selectedGuid],
@@ -172,6 +202,13 @@ export default function BimViewerPage() {
         {viewerDataQuery.data?.status === 'ready' && viewerDataQuery.data.fragmentsUrl && (
           <div className="flex items-center gap-3">
             <ElementSearch projectId={projectId} modelId={modelId} onSelect={handleSelectFromSearch} />
+            <button
+              className={showStatusOverlay ? 'btn-primary' : 'btn-secondary'}
+              onClick={() => setShowStatusOverlay((v) => !v)}
+              title="Colour-code every element by construction status"
+            >
+              {showStatusOverlay ? 'Hide progress overlay' : 'Show progress overlay'}
+            </button>
             <button className="btn-secondary" onClick={() => viewerRef.current?.fitToModel()}>
               Fit to model
             </button>
@@ -196,6 +233,13 @@ export default function BimViewerPage() {
             >
               All elements
             </button>
+            <button
+              type="button"
+              onClick={() => setSidebarTab('progress')}
+              className={`flex-1 px-3 py-2 ${sidebarTab === 'progress' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-500 hover:text-gray-800'}`}
+            >
+              Progress
+            </button>
           </div>
           <div className="flex-1 overflow-hidden">
             {sidebarTab === 'tree' ? (
@@ -209,13 +253,15 @@ export default function BimViewerPage() {
                   />
                 )}
               </div>
-            ) : (
+            ) : sidebarTab === 'list' ? (
               <ElementList
                 projectId={projectId}
                 modelId={modelId}
                 selectedGuid={selectedGuid}
                 onSelect={handleSelectFromSearch}
               />
+            ) : (
+              <ProgressPanel projectId={projectId} />
             )}
           </div>
         </aside>

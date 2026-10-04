@@ -12,6 +12,12 @@ const NAV_ITEMS = [
   { to: 'workforce', label: 'Workforce', icon: IconGauge },
 ];
 
+// Company-admin-only -- API keys and webhooks are per-tenant (company_id),
+// not per-project, so this lives alongside the other company-level nav
+// items, not under PROJECT_NAV_ITEMS. Same role check WorkforcePage.tsx
+// uses for its own admin-only sections.
+const DEVELOPER_NAV_ITEM = { to: 'developer', label: 'Developer', icon: IconKey, end: false };
+
 const PROJECT_NAV_ITEMS = [
   { to: '', label: 'Overview', icon: IconLayers, end: true },
   { to: 'captures', label: 'Captures', icon: IconCamera },
@@ -20,8 +26,10 @@ const PROJECT_NAV_ITEMS = [
   { to: 'buildlens', label: 'BuildLens', icon: IconTimeline },
   { to: 'rfis', label: 'RFIs', icon: IconQuestion },
   { to: 'snagging', label: 'Snagging', icon: IconTag },
+  { to: 'submittals', label: 'Submittals', icon: IconInbox },
   { to: 'assistant', label: 'AI Assistant', icon: IconSpark },
   { to: 'risk', label: 'Risk', icon: IconShield },
+  { to: 'progress-report', label: 'Progress Report', icon: IconTrending },
   { to: 'reports', label: 'Reports', icon: IconReport },
 ];
 
@@ -50,6 +58,8 @@ export function AppShell() {
   }
 
   const inProject = Boolean(params.projectId);
+  const isCompanyAdmin = user?.companyRole === 'company_admin' || user?.companyRole === 'super_admin';
+  const navItems = isCompanyAdmin ? [...NAV_ITEMS, DEVELOPER_NAV_ITEM] : NAV_ITEMS;
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
@@ -97,7 +107,7 @@ export function AppShell() {
 
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {!inProject &&
-            NAV_ITEMS.map((item) => (
+            navItems.map((item) => (
               <NavLink
                 key={item.label}
                 to={`/projects/${item.to}`}
@@ -239,6 +249,14 @@ function IconTag({ className }: { className?: string }) {
     </svg>
   );
 }
+function IconInbox({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M4 12h4l2 3h4l2-3h4" strokeLinejoin="round" strokeLinecap="round" />
+      <path d="M4 12l1.5-6.5A1 1 0 016.47 4.7h11.06a1 1 0 01.97.8L20 12v6a1.6 1.6 0 01-1.6 1.6H5.6A1.6 1.6 0 014 18v-6z" strokeLinejoin="round" />
+    </svg>
+  );
+}
 function IconSpark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -271,6 +289,22 @@ function IconReport({ className }: { className?: string }) {
       <path d="M7 3h7l4 4v14H7z" strokeLinejoin="round" />
       <path d="M14 3v4h4" strokeLinejoin="round" />
       <path d="M9.5 13l2 2 3.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconTrending({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M3 17l6-6 4 4 8-8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M15 7h6v6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconKey({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <circle cx="8" cy="15" r="4" />
+      <path d="M11 12l9-9M17 6l3 3M14 9l2 2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

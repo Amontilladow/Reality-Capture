@@ -79,6 +79,25 @@ describe('ScoringService.computeFactorsFromSignals — deterministic per-factor 
     expect(Object.values(factors).every(v => v === 0)).toBe(true);
     expect(svc.computeScore(factors)).toBe(0);
   });
+
+  it('Phase 20: an overdue submittal increases probability and urgency, exactly like an overdue RFI', () => {
+    const svc = new ScoringService({} as RiskGraphService);
+    const factors = svc.computeFactorsFromSignals([{ signalType: 'SUBMITTAL_OVERDUE', severityContribution: 60 }], noExposure);
+    expect(factors.probability).toBeGreaterThan(0);
+    expect(factors.urgency).toBeGreaterThan(0);
+  });
+
+  it('Phase 20: a rejected submittal increases impact, exactly like a failed QA inspection', () => {
+    const svc = new ScoringService({} as RiskGraphService);
+    const factors = svc.computeFactorsFromSignals([{ signalType: 'SUBMITTAL_REJECTED', severityContribution: 45 }], noExposure);
+    expect(factors.impact).toBeGreaterThan(0);
+  });
+
+  it('Phase 20: a high-priority submittal increases impact via the max-of-priority-signals path', () => {
+    const svc = new ScoringService({} as RiskGraphService);
+    const factors = svc.computeFactorsFromSignals([{ signalType: 'SUBMITTAL_HIGH_PRIORITY', severityContribution: 55 }], noExposure);
+    expect(factors.impact).toBe(55);
+  });
 });
 
 describe('ScoringService.computeScore / levelForScore — deterministic, configurable thresholds', () => {
@@ -121,5 +140,45 @@ describe('ScoringService.confidenceForNode — confidence is separate from sever
     const { level, reason } = svc.confidenceForNode(10, 0, ['discipline']);
     expect(level).toBe('LOW');
     expect(reason).toContain('discipline');
+  });
+
+  it('also returns a numeric confidence percent alongside level/reason', () => {
+    const svc = new ScoringService({} as RiskGraphService);
+    const { percent } = svc.confidenceForNode(8, 1, []);
+    expect(typeof percent).toBe('number');
+    expect(percent).toBeGreaterThan(0);
+    expect(percent).toBeLessThanOrEqual(100);
+  });
+});
+
+describe('ScoringService.computeAiMatrixScore — a deterministic rescale of the existing engine factors, never a second LLM guess', () => {
+  const factors = { probability: 0, impact: 0, exposure: 0, dependency: 0, urgency: 0, recurrence: 0 };
+
+  it('floors both probability and impact bands at 1 when the underlying factor is 0', () => {
+    const svc = new ScoringService({} as RiskGraphService);
+    const { score, level } = svc.computeAiMatrixScore(factors);
+    expect(score).toBe(1);
+    expect(level).toBe('LOW');
+  });
+
+  it('caps both bands at 5 (score 25, CRITICAL) when the underlying factor is maxed out', () => {
+    const svc = new ScoringService({} as RiskGraphService);
+    const { score, level } = svc.computeAiMatrixScore({ ...factors, probability: 100, impact: 100 });
+    expect(score).toBe(25);
+    expect(level).toBe('CRITICAL');
+  });
+
+  it('is a pure function of probability/impact — exposure/dependency/urgency/recurrence never factor into the matrix score', () => {
+    const svc = new ScoringService({} as RiskGraphService);
+    const a = svc.computeAiMatrixScore({ ...factors, probability: 60, impact: 40 });
+    const b = svc.computeAiMatrixScore({ ...factors, probability: 60, impact: 40, exposure: 90, dependency: 90, urgency: 90, recurrence: 90 });
+    expect(a).toEqual(b);
+  });
+
+  it('honors company-configured matrix thresholds rather than the hardcoded default', () => {
+    const svc = new ScoringService({} as RiskGraphService);
+    // probability 60 -> band 3, impact 40 -> band 2 -> score 6
+    const { level } = svc.computeAiMatrixScore({ ...factors, probability: 60, impact: 40 }, { low: [1, 4], medium: [5, 9], high: [6, 14], veryHigh: [15, 19], critical: [20, 25] });
+    expect(level).toBe('HIGH');
   });
 });

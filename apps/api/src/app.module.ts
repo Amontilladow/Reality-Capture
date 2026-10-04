@@ -19,6 +19,7 @@ import { QaModule } from './modules/qa/qa.module';
 import { SnaggingModule } from './modules/snagging/snagging.module';
 import { AiClientModule } from './modules/ai-client/ai-client.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { ProgressReportsModule } from './modules/progress-reports/progress-reports.module';
 import { BimModule } from './modules/bim/bim.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { DrawingsModule } from './modules/drawings/drawings.module';
@@ -32,6 +33,9 @@ import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { WorkforceModule } from './modules/workforce/workforce.module';
 import { RiskModule } from './modules/risk/risk.module';
 import { HealthModule } from './modules/health/health.module';
+import { ApiKeysModule } from './modules/api-keys/api-keys.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { PublicApiModule } from './modules/public-api/public-api.module';
 
 import { APP_INTERCEPTOR, APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
@@ -95,6 +99,7 @@ import googleCalendarConfig from './config/google-calendar.config';
     SnaggingModule,
     AiClientModule,
     ReportsModule,
+    ProgressReportsModule,
     BimModule,
     DocumentsModule,
     DrawingsModule,
@@ -105,6 +110,9 @@ import googleCalendarConfig from './config/google-calendar.config';
     SubscriptionModule,
     WorkforceModule,
     RiskModule,
+    ApiKeysModule,
+    WebhooksModule,
+    PublicApiModule,
   ],
   providers: [
     // Order matters: rate-limit first (cheap, rejects abuse before any auth work),

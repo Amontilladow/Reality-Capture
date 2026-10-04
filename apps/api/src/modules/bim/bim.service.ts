@@ -317,6 +317,19 @@ export class BimService {
     };
   }
 
+  // Flat {ifcGuid, constructionStatus, completionPct} list for every element
+  // in a model -- deliberately unpaginated and two-three columns wide, for
+  // the BIM viewer's colour-coded status overlay (F2), which needs every
+  // element's status at once to build its per-status GUID groups, not a
+  // page of full element detail. Mirrors getHierarchy()'s "cheap flat read"
+  // rationale above.
+  async getElementStatusMap(companyId: string, modelId: string) {
+    return this.db.withTenant(companyId, sql => sql`
+      SELECT ifc_guid, construction_status, completion_pct
+      FROM bim_elements WHERE model_id = ${modelId} AND company_id = ${companyId}
+    `);
+  }
+
   async getElementByGuid(companyId: string, modelId: string, ifcGuid: string) {
     const [el] = await this.db.withTenant(companyId, sql => sql`
       SELECT id FROM bim_elements WHERE model_id = ${modelId} AND ifc_guid = ${ifcGuid} AND company_id = ${companyId}
@@ -358,18 +371,51 @@ export class BimService {
     return { ...loc, issueId: issue.id as string };
   }
 
-  async updateElementStatus(companyId: string, elementId: string, status: string) {
+  // F2: records completion_pct alongside construction_status, and logs
+  // every change to bim_element_status_history with the from/to status and
+  // an optional evidence capture_id -- same from_value/to_value/capture_id
+  // shape as issues.service.ts's addActivity(), so this element's status
+  // timeline is auditable the same way an issue's is.
+  async updateElementStatus(
+    companyId: string, projectId: string, elementId: string, userId: string,
+    dto: { status: string; completionPct?: number; captureId?: string },
+  ) {
     // withTenant required -- bim_elements carries the tenant_isolation RLS policy.
+    const [existing] = await this.db.withTenant(companyId, sql => sql`
+      SELECT construction_status FROM bim_elements WHERE id = ${elementId} AND company_id = ${companyId}
+    `);
+    if (!existing) throw new NotFoundException('BIM element not found.');
+
     const [el] = await this.db.withTenant(companyId, sql => sql`
       UPDATE bim_elements
-      SET construction_status = ${status},
-          installed_at = CASE WHEN ${status} = 'complete' THEN NOW() ELSE installed_at END,
+      SET construction_status = ${dto.status},
+          completion_pct = ${dto.completionPct ?? null},
+          installed_at = CASE WHEN ${dto.status} = 'complete' THEN NOW() ELSE installed_at END,
           updated_at = NOW()
       WHERE id = ${elementId} AND company_id = ${companyId}
       RETURNING *
     `);
-    if (!el) throw new NotFoundException('BIM element not found.');
+
+    // withTenant required -- bim_element_status_history carries the tenant_isolation RLS policy.
+    await this.db.withTenant(companyId, sql => sql`
+      INSERT INTO bim_element_status_history (company_id, project_id, element_id, from_status, to_status, completion_pct, capture_id, performed_by)
+      VALUES (${companyId}, ${projectId}, ${elementId}, ${existing.constructionStatus as string | null}, ${dto.status}, ${dto.completionPct ?? null}, ${dto.captureId ?? null}, ${userId})
+    `);
+
     return el;
+  }
+
+  async getElementStatusHistory(companyId: string, elementId: string) {
+    return this.db.withTenant(companyId, sql => sql`
+      SELECT h.id, h.from_status, h.to_status, h.completion_pct, h.capture_id, h.created_at,
+             u.first_name || ' ' || u.last_name AS performed_by_name,
+             c.capture_type, c.title AS capture_title
+      FROM bim_element_status_history h
+      JOIN users u ON u.id = h.performed_by
+      LEFT JOIN captures c ON c.id = h.capture_id
+      WHERE h.element_id = ${elementId} AND h.company_id = ${companyId}
+      ORDER BY h.created_at DESC
+    `);
   }
 
   // ── Capture ↔ Element linking ─────────────────────────────────────────────
@@ -418,6 +464,87 @@ export class BimService {
       WHERE e.project_id = ${projectId} AND e.company_id = ${companyId}
       GROUP BY e.ifc_type
       ORDER BY total DESC
+    `);
+  }
+
+  // F2: element-completion rollup per level (building is a live rollup of
+  // its levels, computed on the frontend from this same row set -- no
+  // separate building-level query needed). zone_progress is LEFT JOINed in
+  // so a level with no elements yet (or an explicitly-set zone status with
+  // no elements at all) still shows up.
+  async getLevelProgressSummary(companyId: string, projectId: string, filters?: { buildingId?: string; levelId?: string }) {
+    return this.db.withTenant(companyId, sql => {
+      const buildingFilter = filters?.buildingId ? sql`AND b.id = ${filters.buildingId}` : sql``;
+      const levelFilter = filters?.levelId ? sql`AND lvl.id = ${filters.levelId}` : sql``;
+      return sql`
+        SELECT
+          lvl.id AS level_id, lvl.name AS level_name, lvl.level_order,
+          b.id AS building_id, b.name AS building_name,
+          COUNT(e.id)                                                     AS element_total,
+          COUNT(e.id) FILTER (WHERE e.construction_status = 'complete')   AS element_complete,
+          COUNT(e.id) FILTER (WHERE e.construction_status = 'in_progress') AS element_in_progress,
+          COUNT(e.id) FILTER (WHERE e.construction_status = 'defective')  AS element_defective,
+          COUNT(e.id) FILTER (WHERE e.construction_status IS NULL OR e.construction_status = 'not_started') AS element_not_started,
+          ROUND(100.0 * COUNT(e.id) FILTER (WHERE e.construction_status = 'complete') / NULLIF(COUNT(e.id), 0), 1) AS element_completion_pct,
+          zp.status AS zone_status, zp.completion_pct AS zone_completion_pct, zp.updated_at AS zone_updated_at
+        FROM levels lvl
+        JOIN buildings b ON b.id = lvl.building_id
+        LEFT JOIN bim_elements e ON e.level_id = lvl.id AND e.project_id = ${projectId} AND e.company_id = ${companyId}
+        LEFT JOIN zone_progress zp ON zp.level_id = lvl.id AND zp.company_id = ${companyId}
+        WHERE b.project_id = ${projectId} AND b.company_id = ${companyId} ${buildingFilter} ${levelFilter}
+        GROUP BY lvl.id, lvl.name, lvl.level_order, b.id, b.name, zp.status, zp.completion_pct, zp.updated_at
+        ORDER BY b.name, lvl.level_order
+      `;
+    });
+  }
+
+  // ── Zone (level) progress ─────────────────────────────────────────────────
+  // "Zone" maps onto the existing levels table -- see migration 055's header
+  // comment. One current-status row per level (upserted here), with every
+  // change logged to zone_progress_history, mirroring bim_element_status_history.
+  async upsertZoneProgress(
+    companyId: string, projectId: string, levelId: string, userId: string,
+    dto: { status: string; completionPct?: number; captureId?: string },
+  ) {
+    const [level] = await this.db.withTenant(companyId, sql => sql`
+      SELECT lvl.id FROM levels lvl JOIN buildings b ON b.id = lvl.building_id
+      WHERE lvl.id = ${levelId} AND b.project_id = ${projectId} AND b.company_id = ${companyId}
+    `);
+    if (!level) throw new NotFoundException('Level not found in this project.');
+
+    const [existing] = await this.db.withTenant(companyId, sql => sql`
+      SELECT status FROM zone_progress WHERE level_id = ${levelId} AND company_id = ${companyId}
+    `);
+
+    // withTenant required -- zone_progress carries the tenant_isolation RLS policy.
+    const [zone] = await this.db.withTenant(companyId, sql => sql`
+      INSERT INTO zone_progress (company_id, project_id, level_id, status, completion_pct, capture_id, updated_by)
+      VALUES (${companyId}, ${projectId}, ${levelId}, ${dto.status}, ${dto.completionPct ?? null}, ${dto.captureId ?? null}, ${userId})
+      ON CONFLICT (level_id) DO UPDATE SET
+        status = ${dto.status}, completion_pct = ${dto.completionPct ?? null},
+        capture_id = ${dto.captureId ?? null}, updated_by = ${userId}, updated_at = NOW()
+      RETURNING *
+    `);
+
+    // withTenant required -- zone_progress_history carries the tenant_isolation RLS policy.
+    await this.db.withTenant(companyId, sql => sql`
+      INSERT INTO zone_progress_history (company_id, project_id, level_id, from_status, to_status, completion_pct, capture_id, performed_by)
+      VALUES (${companyId}, ${projectId}, ${levelId}, ${existing?.status as string | undefined ?? null}, ${dto.status}, ${dto.completionPct ?? null}, ${dto.captureId ?? null}, ${userId})
+    `);
+
+    return zone;
+  }
+
+  async getZoneProgressHistory(companyId: string, levelId: string) {
+    return this.db.withTenant(companyId, sql => sql`
+      SELECT h.id, h.from_status, h.to_status, h.completion_pct, h.capture_id, h.created_at,
+             u.first_name || ' ' || u.last_name AS performed_by_name,
+             c.capture_type, c.title AS capture_title
+      FROM zone_progress_history h
+      JOIN users u ON u.id = h.performed_by
+      LEFT JOIN captures c ON c.id = h.capture_id
+      WHERE h.level_id = ${levelId} AND h.company_id = ${companyId}
+      ORDER BY h.created_at DESC
     `);
   }
 }

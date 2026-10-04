@@ -2,9 +2,13 @@ import { Injectable } from '@nestjs/common';
 import {
   DEFAULT_RISK_LEVEL_THRESHOLDS,
   DEFAULT_RISK_SCORING_WEIGHTS,
+  DEFAULT_RISK_MATRIX_THRESHOLDS,
   scoreToRiskLevel,
+  scoreToMatrixLevel,
   computeConfidenceLevel,
   type RiskLevelThresholds,
+  type RiskMatrixThresholds,
+  type RiskMatrixLevel,
   type RiskScoreFactors,
   type RiskScoringWeights,
   type RiskConfidenceLevel,
@@ -130,15 +134,15 @@ export class ScoringService {
     const maxOf = (types: string[]) => types.reduce((acc, t) => Math.max(acc, byType.get(t) ?? 0), 0);
 
     const probability = Math.min(100, sumOf([
-      'RFI_OVERDUE', 'ISSUE_OVERDUE', 'SNAG_OVERDUE', 'RFI_AGING', 'ISSUE_UNRESOLVED_AGING', 'SNAG_UNRESOLVED_AGING',
+      'RFI_OVERDUE', 'ISSUE_OVERDUE', 'SNAG_OVERDUE', 'SUBMITTAL_OVERDUE', 'RFI_AGING', 'ISSUE_UNRESOLVED_AGING', 'SNAG_UNRESOLVED_AGING',
     ]) * 0.6);
 
     const impact = Math.min(100, Math.max(
-      maxOf(['RFI_HIGH_PRIORITY', 'ISSUE_HIGH_SEVERITY']),
-      sumOf(['RFI_COST_IMPACT', 'RFI_TIME_IMPACT', 'RFI_DRAWING_UPDATE_NOT_APPLIED', 'QA_FAILED_INSPECTION', 'DRAWING_REPEATED_REVISIONS']) * 0.5,
+      maxOf(['RFI_HIGH_PRIORITY', 'ISSUE_HIGH_SEVERITY', 'SUBMITTAL_HIGH_PRIORITY']),
+      sumOf(['RFI_COST_IMPACT', 'RFI_TIME_IMPACT', 'RFI_DRAWING_UPDATE_NOT_APPLIED', 'QA_FAILED_INSPECTION', 'DRAWING_REPEATED_REVISIONS', 'SUBMITTAL_REJECTED']) * 0.5,
     ));
 
-    const urgency = Math.min(100, sumOf(['RFI_OVERDUE', 'ISSUE_OVERDUE', 'SNAG_OVERDUE', 'RFI_APPROACHING_DUE']) * 0.7);
+    const urgency = Math.min(100, sumOf(['RFI_OVERDUE', 'ISSUE_OVERDUE', 'SNAG_OVERDUE', 'SUBMITTAL_OVERDUE', 'RFI_APPROACHING_DUE', 'SUBMITTAL_APPROACHING_DUE']) * 0.7);
 
     const recurrence = Math.min(100, sumOf([
       'ISSUE_REOPENED', 'ISSUE_RECURRING_LOCATION', 'SNAG_RECURRING_LOCATION', 'RFI_MULTIPLE_RELATED_ISSUES', 'ISSUE_MULTIPLE_RELATED_RFIS',
@@ -178,7 +182,33 @@ export class ScoringService {
     directRelationshipCount: number,
     inferredRelationshipCount: number,
     missingCriticalFields: string[],
-  ): { level: RiskConfidenceLevel; reason: string } {
+  ): { level: RiskConfidenceLevel; reason: string; percent: number } {
     return computeConfidenceLevel({ directRelationshipCount, inferredRelationshipCount, missingCriticalFields });
+  }
+
+  // Rescales a 0-100 engine factor into the Risk Matrix's 1-5 band. Never 0
+  // -- "1 (Rare/Negligible)" is the floor, since the matrix has no "no
+  // probability/impact at all" value (brief sections 3-4's own 5-point
+  // scales both start at 1). Public so RiskService.getRiskHeatmap() can
+  // place an AI-only-assessed risk on the same 5x5 grid as a human-assessed
+  // one, reusing the already-stored 0-100 automated factors rather than a
+  // second persisted copy of the AI's own probability/impact bands.
+  toMatrixBand(value: number): number {
+    return Math.max(1, Math.min(5, Math.ceil(value / 20)));
+  }
+
+  /**
+   * The AI Score (brief sections 7, 36): the deterministic engine's own
+   * probability/impact factors, re-expressed on the Risk Matrix's 1-25/
+   * 5-level scale purely so they're directly comparable to a human's
+   * Probability x Impact assessment -- never a second, independent LLM
+   * guess, and never computed from anything the engine didn't already
+   * compute for automatedScore.
+   */
+  computeAiMatrixScore(factors: RiskScoreFactors, thresholds: RiskMatrixThresholds = DEFAULT_RISK_MATRIX_THRESHOLDS): { score: number; level: RiskMatrixLevel } {
+    const probability = this.toMatrixBand(factors.probability);
+    const impact = this.toMatrixBand(factors.impact);
+    const score = probability * impact;
+    return { score, level: scoreToMatrixLevel(score, thresholds) };
   }
 }

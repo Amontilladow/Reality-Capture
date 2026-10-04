@@ -1,4 +1,4 @@
-import { computeInferredRfiIssueConfidence, jaccard, titleWords } from './relationship-extraction.service';
+import { canonicalizeFreeTextDiscipline, computeInferredRfiIssueConfidence, jaccard, titleWords } from './relationship-extraction.service';
 
 describe('titleWords / jaccard — pure text-similarity helpers', () => {
   it('ignores short words and stopwords, keeping only meaningful terms', () => {
@@ -15,6 +15,25 @@ describe('titleWords / jaccard — pure text-similarity helpers', () => {
   it('computes a high similarity for near-identical titles', () => {
     const sim = jaccard(titleWords('Ceiling coordination clash near duct'), titleWords('Ceiling coordination clash at Level 12'));
     expect(sim).toBeGreaterThan(0.3);
+  });
+});
+
+describe('canonicalizeFreeTextDiscipline — Submittals.discipline is free text, so this never invents a classification', () => {
+  it('returns null for null/undefined/empty input', () => {
+    expect(canonicalizeFreeTextDiscipline(null)).toBeNull();
+    expect(canonicalizeFreeTextDiscipline(undefined)).toBeNull();
+    expect(canonicalizeFreeTextDiscipline('')).toBeNull();
+  });
+
+  it('recognizes an exact (case-insensitive) match against the canonical RiskDiscipline vocabulary', () => {
+    expect(canonicalizeFreeTextDiscipline('Structural')).toBe('STRUCTURAL');
+    expect(canonicalizeFreeTextDiscipline('mep')).toBe('MEP');
+    expect(canonicalizeFreeTextDiscipline('interior design')).toBe('INTERIOR_DESIGN');
+  });
+
+  it('returns null for arbitrary free text that does not match any canonical discipline, rather than guessing', () => {
+    expect(canonicalizeFreeTextDiscipline('Fire Suppression Subcontractor')).toBeNull();
+    expect(canonicalizeFreeTextDiscipline('misc')).toBeNull();
   });
 });
 

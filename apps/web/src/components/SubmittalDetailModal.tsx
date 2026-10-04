@@ -8,6 +8,7 @@ import {
   REVIEW_OUTCOMES, formatDate,
 } from '../lib/submittal-constants';
 import { apiErrorMessage } from '../lib/api';
+import { InlineRiskAssessment } from './RiskIntelligenceSection';
 
 export function SubmittalDetailModal({
   open, onClose, projectId, submittal,
@@ -70,6 +71,8 @@ export function SubmittalDetailModal({
           <span>Submitted by {submittal.createdByName ?? '—'}</span>
           <span>Reviewer {submittal.assignedToName ?? 'Unassigned'}</span>
         </div>
+
+        <InlineRiskAssessment projectId={projectId} nodeType="submittal" entityId={submittal.id} />
 
         <div>
           <label className="field-label" htmlFor="comments">Review comments</label>

@@ -436,6 +436,11 @@ export default function BuildLensTimelinePage() {
   );
 }
 
+// F6: `captures` is already sorted oldest-to-newest (see the `.reverse()` at
+// the top of BuildLensTimelinePage), so each side's position in that array
+// doubles as a 0..n-1 date-slider position -- dragging the slider to index i
+// means "the i-th capture at this location by date," with no separate
+// date-to-index lookup needed.
 function CompareView({
   captures,
   leftId,
@@ -449,30 +454,42 @@ function CompareView({
   onLeftChange: (id: string) => void;
   onRightChange: (id: string) => void;
 }) {
-  const left = captures.find((c) => c.id === leftId);
-  const right = captures.find((c) => c.id === rightId);
+  const leftIndex = Math.max(0, captures.findIndex((c) => c.id === leftId));
+  const rightIndex = Math.max(0, captures.findIndex((c) => c.id === rightId));
+  const left = captures[leftIndex];
+  const right = captures[rightIndex];
+  const maxIndex = Math.max(captures.length - 1, 0);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {[
-        { capture: left, value: leftId, onChange: onLeftChange, label: 'Before' },
-        { capture: right, value: rightId, onChange: onRightChange, label: 'After' },
+        { capture: left, index: leftIndex, onChange: onLeftChange, label: 'Before' },
+        { capture: right, index: rightIndex, onChange: onRightChange, label: 'After' },
       ].map((col, i) => (
         <div key={i} className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono uppercase tracking-widest text-ink-500 w-14 shrink-0">{col.label}</span>
-            <select
-              className="field-input w-auto flex-1"
-              value={col.value}
-              onChange={(e) => col.onChange(e.target.value)}
-            >
-              {captures.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {formatDate(c.capturedAt)} {c.captureType === 'video' ? '(video)' : c.captureType === 'photo_standard' ? '(photo)' : ''}
-                </option>
-              ))}
-            </select>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-mono uppercase tracking-widest text-ink-500">{col.label}</span>
+            <span className="text-sm font-medium flex items-center gap-1.5">
+              {col.capture && (
+                <CaptureTypeIcon captureType={col.capture.captureType} className="w-3.5 h-3.5 text-ink-500" />
+              )}
+              {col.capture ? formatDate(col.capture.capturedAt) : '—'}
+            </span>
           </div>
+          <input
+            type="range"
+            aria-label={`${col.label} capture date`}
+            min={0}
+            max={maxIndex}
+            step={1}
+            value={col.index}
+            disabled={captures.length < 2}
+            onChange={(e) => {
+              const picked = captures[Number(e.target.value)];
+              if (picked) col.onChange(picked.id);
+            }}
+            className="w-full accent-signal disabled:opacity-40"
+          />
           <div className="relative h-[50vh] panel overflow-hidden">
             {col.capture ? (
               <CaptureMedia capture={col.capture} src={col.capture.previewUrl ?? col.capture.thumbnailUrl} />

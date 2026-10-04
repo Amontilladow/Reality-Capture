@@ -337,6 +337,170 @@ frontend integration (see above).
 - No true multi-GB IFC test fixture was obtainable — see IFC engine
   limitations above.
 
+## Reality Capture Module feature set (F1-F6) — COMPLETE
+
+Added as a new phase per an explicit product brief: six BIM-native site
+documentation/coordination features, built one at a time as small, tested,
+independently releasable increments. Do NOT build procurement, finance, or
+estimating — integrate with those systems instead, never replace them.
+Tracked session-to-session via this repo's task list (not duplicated here
+item-by-item); update this section's status line after each feature ships.
+
+1. **F1 — Automated Progress Report.** Per project/building/level report
+   from captures/pins/issues over a date range (thumbnails, new/closed/
+   overdue issues, blockers). In-app view + PDF + expiring public share
+   link + WhatsApp `wa.me` deep link (no WhatsApp API provider — budget
+   paused).
+2. **F2 — Planned vs Actual Progress by Element/Zone.** Status per BIM
+   element/zone (not started/in progress/complete, optional %), each
+   change linked to its evidencing capture. Colour-coded BIM viewer
+   overlay + per-level summary, feeding F1's totals.
+3. **F3 — Public API and Webhooks.** Per-tenant API keys (hashed,
+   revocable), tenant-scoped read endpoints (projects/captures/issues/
+   progress), outbound HMAC-signed webhooks with retry/backoff, OpenAPI
+   spec.
+4. **F4 — Subcontractor Issue Assignment.** Assignee/due date/status
+   workflow + overdue flag/filter on Issues and Overview, respecting the
+   existing role model (Super Admin approves users; Company Admin default
+   authority is project creation only).
+5. **F5 — Evidence-Based Issue Close-Out.** Closing an issue requires at
+   least one evidence photo/capture plus approver sign-off from a
+   permitted role; backend-enforced, not just UI; full audit trail.
+6. **F6 — Scheduled Capture Comparison.** Side-by-side comparison of two
+   captures of the same Place across two dates, with a date slider.
+   Automated change detection explicitly deferred to a later phase.
+
+**Status: F1 shipped.** Migration 054 (`progress_report_shares`), the
+`progress-reports` API module (service/controller/PDF template/DTO),
+and the `ProgressReportPage`/`ProgressReportExternalPage` frontend are
+committed and pushed (`5379e88`). Verified live: report generation and
+PDF export for a real project, share-link creation, logged-out public
+access, revocation, and post-revocation 403 blocking, all via direct API
+calls, plus a full browser pass on the in-app page, Share modal, and
+public external page. No known risks or follow-ups.
+
+**Status: F2 shipped.** Migration 055 (`bim_elements.completion_pct`,
+`bim_element_status_history`, `zone_progress`, `zone_progress_history`),
+extended `bim.service.ts`/`bim.controller.ts` (status update with
+completion %/evidence capture + audit trail, per-level progress summary,
+zone upsert + history, flat element status-map), a new BIM viewer
+"Progress" sidebar tab (`ProgressPanel.tsx`) with inline zone-status
+editing, a construction-status editor with history in `PropertyPanel.tsx`,
+and a persistent multi-colour `BimViewer` overlay
+(`applyStatusOverlay`/`clearStatusOverlay`) are committed and pushed
+(`a09b126`). F1's report gained an `elementProgress` section (in-app,
+public share page, and PDF). Verified live via direct API calls against
+a synthetic BIM fixture (object storage/minio isn't available in this
+environment to run the real IFC pipeline, so a fixture was used instead
+of a real processed model) and a full browser pass of the Progress tab,
+zone editor, and element status editor. Known gap: the 3D colour overlay
+itself could not be visually confirmed here for the same storage-pipeline
+reason — it reuses the existing, working `guidsToModelIdMap`/`highlight`
+calls, so it should work against a real processed model in the live app;
+flagging for a follow-up visual check once one is available.
+
+**Status: F3 shipped.** Migration 056 (`api_keys`, `webhook_endpoints`,
+`webhook_deliveries`), a new `ApiKeyAuthGuard` (X-API-Key header, runs
+outside the global JWT guard chain), `api-keys`/`webhooks`/`public-api`
+modules, a Bull-backed webhook delivery queue (HMAC-SHA256 signing,
+5 attempts, exponential backoff), and a company-admin-only "Developer"
+settings page are committed and pushed (`49d0ef9`, `0d2e5b9`). Wired into
+issue created/status-changed (both normal and forced paths) and capture
+upload completion. OpenAPI spec (`/api/docs`) documents the new
+endpoints with an api-key security scheme. Verified live: full API-key
+lifecycle (create/use/revoke/post-revoke-block), strict tenant isolation
+(a cross-tenant project id returns empty/404, never leaked data), a real
+signed webhook delivery with an independently-recomputed HMAC match, and
+retry-with-backoff recovering after an endpoint outage (attempts 1→4).
+Caught and fixed a real bug during verification: webhook payloads were
+double-JSON-encoded because the JSONB insert used `JSON.stringify()`
+instead of postgres.js's `sql.json()` — same failure mode already
+documented in `tenancy.service.ts`. No known risks or follow-ups.
+
+**Status: F4 shipped.** Most of
+F4's surface (assignee, due date, status workflow, the overdue flag/
+filter on the Issues tab and Overview page) already existed from
+earlier phases. Two real gaps found and fixed, committed and pushed
+(`89f7169`): (1) assignment had no project-membership check — any
+caller with `manage_issues` could assign to any UUID, including a user
+with no visibility into the project; added
+`assertAssigneeIsProjectMember()` and wired it into `create()`,
+`update()`, and `forward()`. (2) the `overdue`/`myIssues` query filters
+were silently broken — `query.overdue` never gets coerced from the
+query-string string `"true"`/`"false"` to a real boolean on this
+undecorated `@Query()` endpoint, and a JS *string* parameter cast with
+`::boolean` in SQL comes back `false` for every input (confirmed by
+direct reproduction against postgres.js — a real client-library
+serialization bug, not just a missing cast). `?overdue=true` and
+`?overdue=false` were previously indistinguishable from no filter at
+all. Fixed by coercing to a genuine JS boolean before SQL
+interpolation. Found and fixed the identical bug in
+`notifications.service.ts`'s `unreadOnly` filter while here. Verified
+live via raw API calls (membership rejection, successful member
+assignment, `manage_issues`/admin-only 403s) and in the browser (the
+Issues tab's Overdue filter chip now correctly narrows the list; the
+Overview page's overdue stat tile was never affected — it computes its
+count directly in SQL). No known risks or follow-ups.
+
+**Status: F5 shipped.** `close()`/`forceStatus()` (when closing)/
+`bulkClose()` now require (1) at least one evidence capture attached
+(`issue_captures`, new `getEvidenceCaptureId()` check, 400
+`EVIDENCE_REQUIRED` otherwise, with the evidencing `capture_id` recorded
+on the closure's own `issue_activities` row — no migration needed) and
+(2) sign-off from a permitted-approver role via a new
+`isPermittedApprover()` weight comparison — the old "creator can always
+close their own issue" bypass is gone. Caught and fixed a real gap
+during this change's own verification: the obvious hardcoded
+`['company_admin','engineering_manager']` array check would have
+silently excluded `super_admin`/`technical_director` despite both
+outranking `engineering_manager` everywhere else in this app (`RolesGuard`
+resolves `@Roles(...)` via weight, not list membership) — fixed to reuse
+`COMPANY_ROLE_WEIGHT`, and the identical frontend gap in
+`isIssueManager()`/`ISSUE_MANAGER_ROLES` fixed the same way, since
+removing the creator bypass there too would have newly hidden the Close
+button from those roles. New `GET :id/evidence` endpoint backs an
+Evidence Photos display in `IssueDetail.tsx` (previously add-only, no
+way to see what was already attached) and gates the Close button's
+disabled/tooltip state client-side. Committed and pushed (`36182a8`).
+Verified live via raw API calls (evidence-less closure rejected
+regardless of role; a non-permitted creator rejected even with evidence
+attached; a permitted approver — tested for both company_admin-tier and
+super_admin — succeeds once evidence exists, with the capture recorded
+on the audit row) and in the browser (Close button disabled with "No
+evidence attached yet" until a capture is attached, then enables). No
+known risks or follow-ups.
+
+**Status: F6 shipped.** Researched before building: BuildLens
+(`BuildLensTimelinePage.tsx`) already had a "Compare" mode rendering two
+captures of the same location side by side, each picked via a plain
+`<select>` dropdown — it already satisfied F6's literal acceptance test
+("two captures of the same pin load side by side") but not its "with a
+date slider" requirement, and no other page in the app had any
+comparison UI. Rather than duplicate this as a new page (same data,
+same location model, same existing
+`GET /projects/:projectId/captures/viewer/:locationId` endpoint already
+returns the full dated capture list for a pin), replaced each side's
+dropdown with an `<input type="range">` bound to that side's position
+in the (already chronologically sorted) capture array — dragging it
+steps through that pin's capture history by date, with the resolved
+date and capture-type icon shown live above each slider. No backend
+change needed; the existing `CaptureMedia` component already branches
+correctly per capture type (360/photo/video) on each side, so a Place's
+typical mix of capture types needed no new handling. Automated change
+detection explicitly deferred, per the brief. Committed and pushed.
+Verified live in the browser (seeded three dated test captures at a
+throwaway building/level/location in the Phase 18 Verify Project,
+confirmed dragging the "Before" slider via real keyboard interaction
+moves it from one capture's date to the next while the "After" side
+stays independently fixed, then deleted all seeded test fixtures). No
+known risks or follow-ups.
+
+**F1-F6 complete.** All six Reality Capture Module features from the
+original brief are implemented, tested, and verified live: F1 Automated
+Progress Report, F2 Planned vs Actual Progress by Element/Zone, F3
+Public API and Webhooks, F4 Subcontractor Issue Assignment, F5
+Evidence-Based Issue Close-Out, F6 Scheduled Capture Comparison.
+
 ## Exact continuation point
 IFC Processing Engine, Reality Capture image processing, BIM viewer <->
 Issue Management integration (camera/screenshot capture), and artifact
