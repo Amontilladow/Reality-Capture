@@ -63,21 +63,44 @@ END $$;
 -- may only assume it for the duration of a single transaction via
 -- `SET LOCAL ROLE app_bypass_rls` (see DatabaseService.withSystemBypass()),
 -- after which the transaction ends and the elevated context is gone.
+--
+-- Wrapped in its own exception handler: some managed-Postgres providers
+-- (confirmed live against this project's own hosted database) don't grant
+-- CREATEROLE to the database's own "owner" role, so CREATE ROLE here can
+-- fail with insufficient_privilege even though every other statement in
+-- this migration succeeds. That's a real platform restriction, not a bug
+-- in this migration -- failing the whole migration over it would block
+-- every other (unrelated, uncontroversial) hardening step above and below
+-- this block. Instead: warn loudly and skip only this role's own setup if
+-- creation fails, so DatabaseService.withSystemBypass() callers get a
+-- real, visible runtime error ("role app_bypass_rls does not exist")
+-- instead of a silently-incomplete deploy. This migration is idempotent
+-- and safe to rerun once the role has been created by hand (whatever
+-- elevated-access path the hosting provider offers) -- rerunning it will
+-- then finish this section's grants on its own. Verified locally against
+-- both a superuser role (happy path, including re-run idempotency) and a
+-- deliberately CREATEROLE-less role (reproduces the exact failure seen
+-- live) before shipping.
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_bypass_rls') THEN
-    CREATE ROLE app_bypass_rls NOLOGIN BYPASSRLS;
+  BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_bypass_rls') THEN
+      CREATE ROLE app_bypass_rls NOLOGIN BYPASSRLS;
+    END IF;
+  EXCEPTION WHEN insufficient_privilege THEN
+    RAISE WARNING 'Could not create role app_bypass_rls (insufficient privilege -- likely a managed-Postgres platform restriction on CREATE ROLE). DatabaseService.withSystemBypass() will raise "role does not exist" until this role is created manually with elevated database access, after which rerunning this migration will finish its setup.';
+  END;
+
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_bypass_rls') THEN
+    GRANT USAGE ON SCHEMA public TO app_bypass_rls;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_bypass_rls;
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_bypass_rls;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_bypass_rls;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO app_bypass_rls;
+    REVOKE UPDATE, DELETE ON audit_log FROM app_bypass_rls;
+    GRANT app_bypass_rls TO app_user;
   END IF;
 END $$;
-
-GRANT USAGE ON SCHEMA public TO app_bypass_rls;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_bypass_rls;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_bypass_rls;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_bypass_rls;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO app_bypass_rls;
-REVOKE UPDATE, DELETE ON audit_log FROM app_bypass_rls;
-
-GRANT app_bypass_rls TO app_user;
 
 -- 4. Harden every tenant_isolation policy against a real Postgres GUC quirk,
 -- confirmed by hand against a live database while validating this migration:
