@@ -3,7 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import postgres from 'postgres';
 import { DatabaseService } from './database.service';
 
-// Global so every module can inject DatabaseService without re-importing DatabaseModule
+// Global so every module in this service can inject DatabaseService.
+// Deliberately a small, independent copy of apps/api's database module —
+// not a shared import — so this service can be built, deployed, and
+// scaled without any dependency on apps/api's code. Both connect to the
+// same Postgres database using the same env var names by convention.
 @Global()
 @Module({
   providers: [
@@ -17,16 +21,14 @@ import { DatabaseService } from './database.service';
           database: config.get('database.name'),
           username: config.get('database.user'),
           password: config.get('database.password'),
-          // Verify the server's certificate against Node's trust store (or the
-          // optional caCert override below) rather than accepting any cert --
-          // rejectUnauthorized:false would let a network-positioned attacker
-          // MITM the connection while TLS looks nominally "enabled".
+          // See apps/api/src/database/database.module.ts's identical change --
+          // verify the server certificate instead of accepting any cert.
           ssl: config.get('database.ssl') === 'true'
             ? {
                 rejectUnauthorized: true,
                 ca: config.get('database.caCert') || undefined,
                 // Render's self-signed Postgres cert's CN is the database's
-                // internal UUID (e.g. "120228f6-..."), not the "dpg-..."
+                // internal UUID (e.g. "120228f6-...), not the "dpg-..."
                 // hostname actually used to connect -- Node's default
                 // checkServerIdentity rejects that mismatch with
                 // ERR_TLS_CERT_ALTNAME_INVALID even once the cert's chain
@@ -39,11 +41,11 @@ import { DatabaseService } from './database.service';
                 checkServerIdentity: () => undefined,
               }
             : false,
-          max: 20,              // connection pool size
-          idle_timeout: 30,     // seconds before idle connection is closed
+          max: 10,
+          idle_timeout: 30,
           connect_timeout: 10,
-          transform: postgres.camel, // snake_case DB columns → camelCase in JS
-          onnotice: () => {},   // silence NOTICE messages in tests
+          transform: postgres.camel,
+          onnotice: () => {},
         });
       },
     },
