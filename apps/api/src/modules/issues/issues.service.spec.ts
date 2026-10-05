@@ -1,5 +1,6 @@
 import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { IssuesService } from './issues.service';
+import { ProjectAuthorizationService } from '../../common/authorization/project-authorization.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { AiClientService } from '../ai-client/ai-client.service';
 import type { NotificationsService } from '../notifications/notifications.service';
@@ -441,6 +442,44 @@ describe('IssuesService view-state / screenshot behavior', () => {
 
       await expect(svc.close('company-1', 'project-1', 'issue-1', 'user-creator', 'site_engineer'))
         .rejects.toThrow(ForbiddenException);
+    });
+
+    it("allows the project's own project_lead to close, even with no company-wide engineering_manager+ title", async () => {
+      const { query, calls } = makeQuery((text) => {
+        if (text.includes('FROM issues i')) {
+          return [{ id: 'issue-1', status: 'resolved', createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001' }];
+        }
+        if (text.includes('FROM issue_captures')) {
+          return [{ captureId: 'capture-1' }];
+        }
+        if (text.includes('SELECT role FROM project_members')) {
+          return [{ role: 'project_lead' }];
+        }
+        if (text.includes('UPDATE issues SET')) {
+          return [{ id: 'issue-1', status: 'closed' }];
+        }
+        return undefined;
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const db = { query, withTenant } as unknown as DatabaseService;
+      const svc = new IssuesService(
+        db,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+        undefined, // risk
+        undefined, // webhooks
+        new ProjectAuthorizationService(db),
+      );
+
+      // 'site_engineer' alone (no company-wide title) would normally be
+      // rejected -- see the previous test -- but this user is specifically
+      // this project's project_lead, confirmed via the project_members
+      // lookup above.
+      const result = await svc.close('company-1', 'project-1', 'issue-1', 'user-lead', 'site_engineer');
+
+      expect(result.status).toBe('closed');
+      expect(calls.some(c => c.text.includes('SELECT role FROM project_members'))).toBe(true);
     });
 
     it('rejects closing when no evidence capture has been attached, even for a permitted approver', async () => {

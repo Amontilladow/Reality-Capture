@@ -150,7 +150,7 @@ export class RfisController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Submit a draft RFI (creator, manage_rfis grant, project lead, or super admin)' })
   async submit(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
-    return { data: await this.svc.submit(u.companyId, pid, id, u.id), error: null };
+    return { data: await this.svc.submit(u.companyId, pid, id, u.id, u.companyRole), error: null };
   }
 
   @Post(':id/request-clarification')
