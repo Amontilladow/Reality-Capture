@@ -6,7 +6,9 @@ import {
   listWebhookEndpoints, createWebhookEndpoint, deleteWebhookEndpoint, setWebhookActive,
   listWebhookDeliveries, WEBHOOK_EVENT_TYPES, type WebhookEndpoint,
 } from '../lib/webhooks.api';
+import { getSignupCode, regenerateSignupCode } from '../lib/tenancy.api';
 import { apiErrorMessage } from '../lib/api';
+import { useAuthStore } from '../store/auth.store';
 
 function SecretReveal({ label, secret }: { label: string; secret: string }) {
   const [copied, setCopied] = useState(false);
@@ -22,6 +24,61 @@ function SecretReveal({ label, secret }: { label: string; secret: string }) {
         <input readOnly value={secret} className="field-input flex-1 text-xs font-mono" onFocus={(e) => e.target.select()} />
         <button onClick={handleCopy} className="btn-secondary !px-3 !py-1.5 text-xs">{copied ? 'Copied!' : 'Copy'}</button>
       </div>
+    </div>
+  );
+}
+
+// Gated server-side to super_admin (see TenancyController) -- the code
+// shown/regenerated here is a credential that lets anyone holding it create
+// an account under this company, so it gets the same sensitivity level as
+// an API key above.
+function SignupCodeSection() {
+  const queryClient = useQueryClient();
+  const codeQuery = useQuery({ queryKey: ['signup-code'], queryFn: getSignupCode });
+  const regenerateMutation = useMutation({
+    mutationFn: regenerateSignupCode,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['signup-code'] }),
+  });
+
+  const code = codeQuery.data?.signupCode;
+  const signupLink = code ? `${window.location.origin}/signup?code=${code}` : null;
+
+  async function copyLink() {
+    if (signupLink) await navigator.clipboard.writeText(signupLink);
+  }
+
+  return (
+    <div className="panel tick-frame p-5 space-y-4">
+      <div>
+        <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Self-Signup Code</h2>
+        <p className="text-xs text-ink-500 mt-1">
+          Share this code (or the link below) with anyone who needs their own account -- clients, PMC,
+          consultants, contractors. They pick their own organization and position at signup; every new
+          account lands pending until a Super Admin approves it, same as an accepted invitation.
+        </p>
+      </div>
+
+      {codeQuery.isLoading && <p className="text-sm text-ink-500">Loading…</p>}
+      {!codeQuery.isLoading && !code && (
+        <p className="text-sm text-ink-500">No signup code has been generated yet.</p>
+      )}
+
+      {code && (
+        <div className="flex items-center gap-2">
+          <input readOnly value={signupLink ?? ''} className="field-input flex-1 text-xs font-mono" onFocus={(e) => e.target.select()} />
+          <button onClick={copyLink} className="btn-secondary !px-3 !py-1.5 text-xs">Copy link</button>
+        </div>
+      )}
+
+      {regenerateMutation.isError && <p className="field-error">{apiErrorMessage(regenerateMutation.error)}</p>}
+
+      <button
+        onClick={() => regenerateMutation.mutate()}
+        className="btn-secondary text-xs"
+        disabled={regenerateMutation.isPending}
+      >
+        {regenerateMutation.isPending ? 'Generating…' : code ? 'Regenerate code (invalidates the old one)' : 'Generate signup code'}
+      </button>
     </div>
   );
 }
@@ -194,10 +251,20 @@ function WebhooksSection() {
 }
 
 export default function DeveloperSettingsPage() {
+  // Unlike ApiKeysSection/WebhooksSection (both @Roles('company_admin') --
+  // company_admin or above), the signup code is gated to super_admin only
+  // server-side (TenancyController), same sensitivity level as
+  // updateSettings(). This nav item is reachable by any company_admin, so
+  // render the section only when the API would actually accept the
+  // request -- a company_admin otherwise sees ApiKeys/Webhooks work fine
+  // and the signup-code section silently absent, not an error.
+  const isSuperAdmin = useAuthStore((s) => s.user?.companyRole === 'super_admin');
+
   return (
     <>
       <PageHeader eyebrow="Company Settings" title="Developer" />
       <div className="p-6 space-y-6 max-w-3xl">
+        {isSuperAdmin && <SignupCodeSection />}
         <ApiKeysSection />
         <WebhooksSection />
       </div>

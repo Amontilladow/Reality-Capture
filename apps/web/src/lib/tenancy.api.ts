@@ -1,23 +1,14 @@
-import { apiPost, apiGet, apiPatch } from './api';
-import type { AuthenticatedUser } from '@engineeringos/types';
+import { apiGet, apiPost } from './api';
 
-export interface RegisterCompanyPayload {
-  companyName: string;
-  slug: string;
-  adminEmail: string;
-  adminFirstName: string;
-  adminLastName: string;
-  adminPassword: string;
+export interface SignupCodeResult {
+  signupCode: string | null;
 }
 
-export function registerCompany(payload: RegisterCompanyPayload) {
-  return apiPost<{ company: unknown; user: AuthenticatedUser }>('/company/register', payload);
+export function getSignupCode() {
+  return apiGet<SignupCodeResult>('/company/signup-code');
 }
 
-export function fetchCompany() {
-  return apiGet<Record<string, unknown>>('/company');
-}
-
-export function updateCompanySettings(settings: Record<string, unknown>) {
-  return apiPatch<Record<string, unknown>>('/company/settings', settings);
+// Overwrites any existing code -- the old one stops working immediately.
+export function regenerateSignupCode() {
+  return apiPost<SignupCodeResult>('/company/signup-code/regenerate', {});
 }

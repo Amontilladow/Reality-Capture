@@ -88,6 +88,9 @@ export default function Login() {
       <p className="text-xs text-ink-500 mt-6 text-center">
         Have an invitation? Follow the link in your invitation email to accept it.
       </p>
+      <p className="text-xs text-ink-500 mt-2 text-center">
+        Don't have an account? <Link to="/signup" className="text-blueprint hover:text-blueprint-hover">Sign up</Link> with your company's signup code.
+      </p>
     </AuthLayout>
   );
 }

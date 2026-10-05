@@ -1,5 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { DatabaseService } from '../../database/database.service';
+
+// 8 chars from an unambiguous 32-symbol alphabet (no 0/O/1/I/L) -- short
+// enough to read aloud or type by hand, with a keyspace (32^8 ≈ 1.1
+// trillion) large enough that a random collision on UNIQUE insert is not a
+// realistic concern, same judgment call this codebase already makes for
+// invitation/reset tokens (randomBytes with no collision-retry loop).
+const SIGNUP_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+export function generateSignupCode(): string {
+  const bytes = randomBytes(8);
+  let code = '';
+  for (let i = 0; i < 8; i++) code += SIGNUP_CODE_ALPHABET[bytes[i] % SIGNUP_CODE_ALPHABET.length];
+  return code;
+}
 
 /**
  * TenancyService — company-level operations.
@@ -142,6 +156,28 @@ export class TenancyService {
       `;
     });
     return updated;
+  }
+
+  // ── Self-signup code (RBAC follow-up) ────────────────────────────────────
+  // withTenant required -- see findById() above.
+  async getSignupCode(companyId: string) {
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      SELECT signup_code FROM companies WHERE id = ${companyId}
+    `);
+    return { signupCode: (row?.signupCode as string | null) ?? null };
+  }
+
+  // Overwrites any existing code -- the old one stops working immediately,
+  // same "rotate, don't append" model webhooks.rotate-secret already uses
+  // elsewhere in this app. withTenant required -- see findById() above.
+  async regenerateSignupCode(companyId: string) {
+    const code = generateSignupCode();
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      UPDATE companies SET signup_code = ${code}, updated_at = NOW()
+      WHERE id = ${companyId}
+      RETURNING signup_code
+    `);
+    return { signupCode: row.signupCode as string };
   }
 
   // withTenant required -- see findById() above. Without it this silently touches 0 rows,

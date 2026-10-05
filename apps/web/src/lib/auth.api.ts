@@ -37,6 +37,22 @@ export function acceptInvitation(payload: AcceptInvitationPayload) {
   return apiPost<LoginResult>('/auth/accept-invitation', payload);
 }
 
+export interface SelfSignupPayload {
+  signupCode: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  // The external firm this person actually works for (e.g. "AECOM") --
+  // distinct from requestedRole, their internal position.
+  organizationName: string;
+  requestedRole: CompanyRole;
+}
+
+export function selfSignup(payload: SelfSignupPayload) {
+  return apiPost<LoginResult>('/auth/self-signup', payload);
+}
+
 export function forgotPassword(email: string) {
   return apiPost<{ message: string }>('/auth/forgot-password', { email });
 }

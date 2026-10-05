@@ -9,6 +9,9 @@ export interface CompanyUser {
   // Set while the account is self-registered and awaiting admin approval;
   // absent/undefined once resolved.
   requestedCompanyRole?: string;
+  // The external firm this person actually works for (e.g. "AECOM"),
+  // captured at self-signup. Absent for invite-based accounts.
+  organizationName?: string;
 }
 
 export function listUsers() {

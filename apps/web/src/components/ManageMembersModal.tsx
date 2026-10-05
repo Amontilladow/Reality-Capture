@@ -331,7 +331,10 @@ export function ManageMembersModal({
             return (
               <div key={u.id} className="flex items-center justify-between gap-3 text-sm py-1.5 border-b border-base-700/60 last:border-0">
                 <div>
-                  <div className="text-ink-100">{[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}</div>
+                  <div className="text-ink-100">
+                    {[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}
+                    {u.organizationName && <span className="text-ink-500 font-normal"> ({u.organizationName})</span>}
+                  </div>
                   <div className="text-ink-500 text-xs">
                     requested: {COMPANY_ROLE_LABELS[u.requestedCompanyRole as CompanyRole] ?? u.requestedCompanyRole}
                   </div>
@@ -374,7 +377,10 @@ export function ManageMembersModal({
             return (
               <div key={u.id} className="flex items-center justify-between gap-3 text-sm py-1.5 border-b border-base-700/60 last:border-0">
                 <div>
-                  <div className="text-ink-100">{[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}</div>
+                  <div className="text-ink-100">
+                    {[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}
+                    {u.organizationName && <span className="text-ink-500 font-normal"> ({u.organizationName})</span>}
+                  </div>
                   <div className="text-ink-500 text-xs">
                     {u.email}
                     {!u.firstName && !u.lastName && ' — invited, hasn’t accepted yet'}

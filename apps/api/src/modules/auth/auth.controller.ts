@@ -12,6 +12,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { SelfSignupDto } from './dto/self-signup.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { AllowPending } from '../../common/decorators/allow-pending.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -101,6 +102,17 @@ export class AuthController {
   @ApiOperation({ summary: 'Accept an invitation and create account' })
   async acceptInvitation(@Body() dto: AcceptInvitationDto, @Res({ passthrough: true }) res: Response) {
     const result = await this.auth.acceptInvitation(dto);
+    this.setRefreshCookie(res, result.tokens.refreshToken);
+    return { data: result, error: null };
+  }
+
+  @Public()
+  @Throttle({ auth: { limit: 10, ttl: 60_000 } })
+  @Post('self-signup')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Create an account directly, using a company-issued signup code' })
+  async selfSignup(@Body() dto: SelfSignupDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.selfSignup(dto);
     this.setRefreshCookie(res, result.tokens.refreshToken);
     return { data: result, error: null };
   }
