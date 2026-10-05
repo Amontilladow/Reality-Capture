@@ -157,6 +157,37 @@ export async function uploadOrganizationLogo(projectId: string, slot: ProjectOrg
   return upsertOrganization(projectId, slot, { logoStorageKey: storageKey });
 }
 
+// ── Project organization membership (RBAC Phase 4) ─────────────────────────
+// Which of the project's 5 stakeholder slots an existing project member
+// personally belongs to -- distinct from both their own project role
+// (ProjectMember.role below) and the slot's own branding/contact row
+// (ProjectOrganization above, which has no user link at all).
+export interface ProjectOrganizationMember {
+  id: string;
+  slot: ProjectOrganizationSlot;
+  addedAt: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  avatarUrl?: string;
+}
+
+export function getOrganizationMembers(projectId: string) {
+  return apiGet<ProjectOrganizationMember[]>(`/projects/${projectId}/organizations/members`);
+}
+
+// The target must already be a project member (see ProjectsService.
+// addOrganizationMember()'s own comment) -- add them via addMember() below
+// first if they aren't one yet.
+export function addOrganizationMember(projectId: string, slot: ProjectOrganizationSlot, userId: string) {
+  return apiPost<ProjectOrganizationMember>(`/projects/${projectId}/organizations/${slot}/members`, { userId });
+}
+
+export function removeOrganizationMember(projectId: string, userId: string) {
+  return apiDelete<{ message: string }>(`/projects/${projectId}/organizations/members/${userId}`);
+}
+
 export interface ProjectMember {
   userId: string;
   // Actual field name returned by GET /projects/:id/members -- was
