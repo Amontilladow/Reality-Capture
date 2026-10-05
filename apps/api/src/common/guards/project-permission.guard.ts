@@ -12,13 +12,13 @@ export class ProjectPermissionGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const permission = this.reflector.getAllAndOverride<ProjectPermission>(PROJECT_PERMISSION_KEY, [
+    const permissions = this.reflector.getAllAndOverride<ProjectPermission[]>(PROJECT_PERMISSION_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
 
     // No @RequireProjectPermission() -- not a gated route
-    if (!permission) return true;
+    if (!permissions || permissions.length === 0) return true;
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
@@ -36,14 +36,23 @@ export class ProjectPermissionGuard implements CanActivate {
     // IssuesService, which need the same check for logic a route guard
     // alone can't express (e.g. "the RFI's own creator may act on it even
     // with no grant").
-    const authorized = await this.projectAuth.hasProjectPermission(
-      user.companyId, user.companyRole, user.id, projectId, permission,
-    );
-    if (authorized) return true;
+    //
+    // A route naming more than one permission (e.g. 'manage_rfis' OR
+    // 'approve_rfis') is satisfied by any one of them -- checked in order,
+    // short-circuiting on the first match so the common case (holding the
+    // first-listed, broader permission) never pays for a second query.
+    for (const permission of permissions) {
+      const authorized = await this.projectAuth.hasProjectPermission(
+        user.companyId, user.companyRole, user.id, projectId, permission,
+      );
+      if (authorized) return true;
+    }
 
     throw new ForbiddenException({
       code: 'INSUFFICIENT_PROJECT_PERMISSION',
-      message: `This project requires the '${permission}' permission.`,
+      message: permissions.length === 1
+        ? `This project requires the '${permissions[0]}' permission.`
+        : `This project requires one of these permissions: ${permissions.join(', ')}.`,
     });
   }
 }
