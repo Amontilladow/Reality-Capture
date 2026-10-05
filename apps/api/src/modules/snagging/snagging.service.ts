@@ -3,6 +3,7 @@ import { DatabaseService } from '../../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
 import { RiskService } from '../risk/risk.service';
+import { ProjectAuthorizationService } from '../../common/authorization/project-authorization.service';
 import type { CreateSnagItemDto } from './dto/create-snag-item.dto';
 import type { UpdateSnagItemDto } from './dto/update-snag-item.dto';
 import type { AddSnagActivityDto } from './dto/add-snag-activity.dto';
@@ -21,6 +22,7 @@ export class SnaggingService {
     private readonly db: DatabaseService,
     private readonly notifications: NotificationsService,
     private readonly storage: StorageService,
+    private readonly projectAuth: ProjectAuthorizationService,
     // @Optional(): see RfisService's identical comment on its own
     // constructor -- keeps the existing snagging.service.spec.ts call sites
     // (which construct SnaggingService with the pre-existing 3-arg list)
@@ -318,6 +320,46 @@ export class SnaggingService {
       });
     }
 
+    return updated;
+  }
+
+  // ── Verify ────────────────────────────────────────────────────────────
+  // RBAC Phase 3: a dedicated fixed -> verified transition, distinct from
+  // the generic update() path above. update() stays exactly as it was --
+  // still reachable by anyone holding manage_project_records for every
+  // status value including 'verified', so nothing existing loses access.
+  // This route exists so an admin can ALSO grant just this one step (via
+  // the narrower verify_snag_items permission) to someone who should sign
+  // off on a fix without being able to mark their own fix as fixed, edit
+  // the snag, or do anything else manage_project_records covers --
+  // segregation of duties, same rationale as RFI's manage_rfis/approve_rfis
+  // split (Phase 2). Gated at the controller with
+  // @RequireProjectPermission('manage_project_records', 'verify_snag_items')
+  // (OR, not AND) -- this method itself only re-validates the state
+  // transition, not authorization, which the guard already covers.
+  async verify(companyId: string, projectId: string, snagId: string, userId: string) {
+    const existing = await this.findOne(companyId, projectId, snagId);
+    if (existing.status !== 'fixed') {
+      throw new BadRequestException(`Only a 'fixed' snag item can be verified (current status: '${existing.status as string}').`);
+    }
+
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
+      UPDATE snag_items SET
+        status      = 'verified',
+        verified_at = NOW(),
+        verified_by = ${userId}::uuid,
+        updated_at  = NOW()
+      WHERE id = ${snagId} AND project_id = ${projectId} AND company_id = ${companyId}
+      RETURNING *
+    `);
+
+    await this.addActivity(companyId, snagId, userId, {
+      activityType: 'status_change',
+      fromValue: 'fixed',
+      toValue: 'verified',
+    });
+
+    await this.triggerRiskRecalc(companyId, projectId, snagId);
     return updated;
   }
 

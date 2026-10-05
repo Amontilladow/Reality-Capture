@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getSnagItem, updateSnagItem, deleteSnagItem, getSnagActivities, addSnagComment,
-  forwardSnag, forceSnagStatus, uploadSnagAttachment,
+  forwardSnag, forceSnagStatus, uploadSnagAttachment, verifySnagItem,
   type SnagListItem,
 } from '../lib/snagging.api';
 import { getMembers } from '../lib/projects.api';
@@ -61,6 +61,15 @@ export function SnagDetail({
 
   const statusMutation = useMutation({
     mutationFn: (status: string) => updateSnagItem(projectId, snagId, { status: status as never }),
+    onSuccess: invalidateAll,
+  });
+
+  // RBAC Phase 3: a dedicated endpoint, not statusMutation above -- this one
+  // also works for someone granted only the narrower verify_snag_items
+  // permission (not manage_project_records), who'd get a 403 from the
+  // generic PATCH statusMutation hits.
+  const verifyMutation = useMutation({
+    mutationFn: () => verifySnagItem(projectId, snagId),
     onSuccess: invalidateAll,
   });
 
@@ -190,7 +199,7 @@ export function SnagDetail({
             </button>
           )}
           {snag.status === 'fixed' && (
-            <button onClick={() => statusMutation.mutate('verified')} disabled={statusMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
+            <button onClick={() => verifyMutation.mutate()} disabled={verifyMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
               Verify
             </button>
           )}
@@ -201,6 +210,7 @@ export function SnagDetail({
           )}
         </div>
         {statusMutation.isError && <p className="field-error">{apiErrorMessage(statusMutation.error)}</p>}
+        {verifyMutation.isError && <p className="field-error">{apiErrorMessage(verifyMutation.error)}</p>}
 
         {/* Admin force-status override */}
         {isManager && (
