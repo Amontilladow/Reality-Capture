@@ -482,6 +482,42 @@ describe('IssuesService view-state / screenshot behavior', () => {
       expect(calls.some(c => c.text.includes('SELECT role FROM project_members'))).toBe(true);
     });
 
+    // RBAC Phase 6: the previous two tests cover the two ALLOW paths
+    // (company-role-weight threshold, and project_lead via a real
+    // ProjectAuthorizationService) -- this is the complementary real-world
+    // DENY path with a live ProjectAuthorizationService wired in (not just
+    // the "projectAuth is undefined" stand-in the very first close() test
+    // above uses): below-threshold company role, not this project's
+    // project_lead, and no manage_issues grant either.
+    it('rejects closing when the caller is below the company-role threshold, is not this project\'s lead, and holds no manage_issues grant', async () => {
+      const { query } = makeQuery((text) => {
+        if (text.includes('FROM issues i')) {
+          return [{ id: 'issue-1', status: 'resolved', createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001' }];
+        }
+        if (text.includes('SELECT role FROM project_members')) {
+          return [{ role: 'surveyor' }]; // a real member, just not the project_lead
+        }
+        if (text.includes('SELECT id FROM project_permission_grants')) {
+          return []; // no manage_issues grant
+        }
+        return undefined;
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const db = { query, withTenant } as unknown as DatabaseService;
+      const svc = new IssuesService(
+        db,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+        undefined, // risk
+        undefined, // webhooks
+        new ProjectAuthorizationService(db),
+      );
+
+      await expect(svc.close('company-1', 'project-1', 'issue-1', 'user-surveyor', 'site_engineer'))
+        .rejects.toThrow(ForbiddenException);
+    });
+
     it('rejects closing when no evidence capture has been attached, even for a permitted approver', async () => {
       const { query } = makeQuery((text) => {
         if (text.includes('FROM issues i')) {
