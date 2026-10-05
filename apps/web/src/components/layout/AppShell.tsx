@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/auth.store';
 import { logout as apiLogout } from '../../lib/auth.api';
 import { NotificationBell } from './NotificationBell';
 import { MessagesBell } from './MessagesBell';
+import { ProjectContextPanel } from './ProjectContextPanel';
 import { ChatWidget } from '../chat/ChatWidget';
 
 const NAV_ITEMS = [
@@ -123,7 +124,7 @@ export function AppShell() {
               </NavLink>
             ))}
 
-          {inProject && (
+          {inProject && params.projectId && (
             <>
               <NavLink
                 to="/projects"
@@ -131,6 +132,7 @@ export function AppShell() {
               >
                 <IconArrowLeft className="w-3.5 h-3.5" /> All projects
               </NavLink>
+              <ProjectContextPanel projectId={params.projectId} />
               {PROJECT_NAV_ITEMS.map((item) => (
                 <NavLink
                   key={item.label}
