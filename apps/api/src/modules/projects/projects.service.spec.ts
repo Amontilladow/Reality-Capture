@@ -124,4 +124,74 @@ describe('ProjectsService branding enforcement', () => {
       expect(deleteIfExists).not.toHaveBeenCalled();
     });
   });
+
+  // RBAC Phase 4: real user membership for the project_organizations slots
+  // -- addOrganizationMember() requires the target to already be a project
+  // member (checked via a SELECT against project_members before the
+  // INSERT), and removeOrganizationMember() mirrors removeMember()'s own
+  // "0 rows deleted -> 404" handling.
+  describe('addOrganizationMember', () => {
+    const userId = 'user-1';
+
+    function makeService(opts: { isProjectMember: boolean }) {
+      const withTenant = jest.fn()
+        .mockResolvedValueOnce([{ id: projectId }]) // findOne()
+        .mockResolvedValueOnce(opts.isProjectMember ? [{ '?column?': 1 }] : []) // the project_members SELECT
+        .mockResolvedValueOnce([{ id: 'org-member-1', slot: 'client', userId }]); // the INSERT ... RETURNING *
+      const db = { withTenant };
+      const resolveUrls = jest.fn().mockResolvedValue(new Map());
+      const storage = { resolveUrls };
+      const svc = new ProjectsService(
+        db as unknown as DatabaseService,
+        {} as unknown as SubscriptionService,
+        storage as unknown as StorageService,
+      );
+      return { svc, withTenant };
+    }
+
+    it('assigns an existing project member to an organization slot', async () => {
+      const { svc } = makeService({ isProjectMember: true });
+      const result = await svc.addOrganizationMember(companyId, projectId, 'client', userId, 'admin-1');
+      expect(result).toMatchObject({ slot: 'client', userId });
+    });
+
+    it('rejects assigning someone who is not yet a project member', async () => {
+      const { svc, withTenant } = makeService({ isProjectMember: false });
+      await expect(svc.addOrganizationMember(companyId, projectId, 'client', userId, 'admin-1'))
+        .rejects.toThrow(BadRequestException);
+      // Only findOne()'s own call plus the membership check happened -- no INSERT was attempted.
+      expect(withTenant).toHaveBeenCalledTimes(2);
+    });
+
+    it('rejects an invalid slot before touching the database at all', async () => {
+      const { svc, withTenant } = makeService({ isProjectMember: true });
+      await expect(svc.addOrganizationMember(companyId, projectId, 'not-a-real-slot', userId, 'admin-1'))
+        .rejects.toThrow(BadRequestException);
+      expect(withTenant).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('removeOrganizationMember', () => {
+    it('removes an existing organization membership', async () => {
+      const withTenant = jest.fn().mockResolvedValue({ count: 1 });
+      const svc = new ProjectsService(
+        { withTenant } as unknown as DatabaseService,
+        {} as unknown as SubscriptionService,
+        {} as unknown as StorageService,
+      );
+      await expect(svc.removeOrganizationMember(companyId, projectId, 'user-1')).resolves.toMatchObject({
+        message: 'Organization membership removed.',
+      });
+    });
+
+    it('404s when the person holds no organization slot on this project', async () => {
+      const withTenant = jest.fn().mockResolvedValue({ count: 0 });
+      const svc = new ProjectsService(
+        { withTenant } as unknown as DatabaseService,
+        {} as unknown as SubscriptionService,
+        {} as unknown as StorageService,
+      );
+      await expect(svc.removeOrganizationMember(companyId, projectId, 'user-1')).rejects.toThrow(NotFoundException);
+    });
+  });
 });

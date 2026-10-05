@@ -9,6 +9,7 @@ import { BrandingUploadUrlDto } from './dto/branding-upload-url.dto';
 import { AddMemberDto } from './dto/add-member.dto';
 import { CreatePermissionGrantDto } from './dto/create-permission-grant.dto';
 import { UpsertOrganizationDto } from './dto/upsert-organization.dto';
+import { AddOrganizationMemberDto } from './dto/add-organization-member.dto';
 import { OrganizationLogoUploadUrlDto } from './dto/organization-logo-upload-url.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -92,6 +93,39 @@ export class ProjectsController {
     @Body() dto: OrganizationLogoUploadUrlDto,
   ) {
     return { data: await this.projects.getOrganizationLogoUploadUrl(u.companyId, id, slot, dto.filename, dto.sizeBytes), error: null };
+  }
+
+  // ── Project organization membership (RBAC Phase 4) ──────────────────────
+  // Which stakeholder party (client/pmc/ldc/main_contractor/subcontractor)
+  // an existing project member personally belongs to -- gated the same as
+  // every other project-organization write above ('manage_team'). The read
+  // is deliberately NOT gated, same rationale as getOrganizations() above:
+  // every project member needs to see who's on which stakeholder party,
+  // not just manage_team holders.
+  @Get(':id/organizations/members')
+  @ApiOperation({ summary: "List every project member's organization slot assignment" })
+  async getOrganizationMembers(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
+    return { data: await this.projects.getOrganizationMembers(u.companyId, id), error: null };
+  }
+
+  @Post(':id/organizations/:slot/members')
+  @RequireProjectPermission('manage_team')
+  @ApiOperation({ summary: 'Assign an existing project member to this organization slot' })
+  async addOrganizationMember(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('slot') slot: string,
+    @Body() dto: AddOrganizationMemberDto,
+  ) {
+    return { data: await this.projects.addOrganizationMember(u.companyId, id, slot, dto.userId, u.id), error: null };
+  }
+
+  @Delete(':id/organizations/members/:userId')
+  @RequireProjectPermission('manage_team')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Remove a project member's organization slot assignment" })
+  async removeOrganizationMember(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Param('userId') userId: string) {
+    return { data: await this.projects.removeOrganizationMember(u.companyId, id, userId), error: null };
   }
 
   @Get(':id/members')
