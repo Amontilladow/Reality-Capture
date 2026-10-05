@@ -5,6 +5,7 @@ import { BullModule } from '@nestjs/bull';
 import { ScheduleModule } from '@nestjs/schedule';
 
 import { DatabaseModule } from './database/database.module';
+import { AuthorizationModule } from './common/authorization/authorization.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { TenancyModule } from './modules/tenancy/tenancy.module';
 import { UsersModule } from './modules/users/users.module';
@@ -82,6 +83,7 @@ import googleCalendarConfig from './config/google-calendar.config';
       }),
     }),
     DatabaseModule,
+    AuthorizationModule,
     StorageModule,
     AuditModule,
     HealthModule,

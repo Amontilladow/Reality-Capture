@@ -24,6 +24,7 @@ import type { IssueAttachmentUploadUrlDto } from './dto/issue-attachment-upload-
 import type { AddIssueAttachmentDto } from './dto/add-issue-attachment.dto';
 import { ATTACHMENT_MAX_SIZE as ISSUE_ATTACHMENT_MAX_SIZE, ATTACHMENT_ALLOWED_EXTENSIONS as ISSUE_ATTACHMENT_ALLOWED_EXTENSIONS } from '../../common/constants/attachment-limits';
 import { COMPANY_ROLE_WEIGHT, type PaginationQuery, type CompanyRole } from '@engineeringos/types';
+import { ProjectAuthorizationService } from '../../common/authorization/project-authorization.service';
 
 // No shared label maps for these exist in @engineeringos/types (unlike RFI's
 // RFI_DISCIPLINE_LABELS) -- apps/web/src/lib/issue-constants.ts defines its
@@ -64,6 +65,10 @@ export class IssuesService {
     // issues.service.spec.ts call site (built against the pre-F3 arg list)
     // working unchanged.
     @Optional() private readonly webhooks?: WebhooksService,
+    // @Optional(): same rationale again -- see isPermittedApprover() below.
+    // Every existing spec call site only exercises the company-role-weight
+    // path, which this.projectAuth being undefined there doesn't change.
+    @Optional() private readonly projectAuth?: ProjectAuthorizationService,
   ) {}
 
   // Event-driven incremental risk recalculation (brief section 41) -- see
@@ -403,7 +408,7 @@ export class IssuesService {
     const existing = await this.findOne(companyId, projectId, issueId);
     if (existing.status === 'closed') return existing;
 
-    if (!this.isPermittedApprover(userRole)) {
+    if (!(await this.isPermittedApprover(companyId, userRole, projectId, userId))) {
       throw new ForbiddenException({
         code: 'NOT_PERMITTED_APPROVER',
         message: 'Closing an issue requires sign-off from a permitted role (an engineering manager or company admin).',
@@ -531,9 +536,18 @@ export class IssuesService {
   // weight-based logic rather than a hardcoded two-role array, which would
   // otherwise silently exclude super_admin/technical_director despite
   // both outranking engineering_manager everywhere else in this app.
-  private isPermittedApprover(userRole: string): boolean {
+  //
+  // Also an OR with ProjectAuthorizationService's own check (manage_issues
+  // grant, or the project's own project_lead) -- previously this method
+  // only ever considered company role, so a project's own project_lead
+  // with no company-wide engineering_manager+ title could not close an
+  // issue on their own project, a real gap relative to how every other
+  // project-permission-gated route in this app already treats project_lead.
+  private async isPermittedApprover(companyId: string, userRole: string, projectId: string, userId: string): Promise<boolean> {
     const weight = COMPANY_ROLE_WEIGHT[userRole as CompanyRole] ?? 0;
-    return weight >= COMPANY_ROLE_WEIGHT.engineering_manager;
+    if (weight >= COMPANY_ROLE_WEIGHT.engineering_manager) return true;
+    if (!this.projectAuth) return false;
+    return this.projectAuth.hasProjectPermission(companyId, userRole, userId, projectId, 'manage_issues');
   }
 
   // F5: the capture that justifies closing this issue, for the closure's
@@ -807,7 +821,7 @@ export class IssuesService {
   // whole batch, same "don't let one bad item block the rest" shape this
   // method already had.
   async bulkClose(companyId: string, projectId: string, userId: string, userRole: string, dto: BulkCloseIssuesDto) {
-    const isAdmin = this.isPermittedApprover(userRole);
+    const isAdmin = await this.isPermittedApprover(companyId, userRole, projectId, userId);
     const result = await this.db.withTenant(companyId, async (sql) => {
       const targets = await sql`
         SELECT i.id, i.status, i.issue_number,

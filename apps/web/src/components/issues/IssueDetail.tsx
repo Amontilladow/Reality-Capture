@@ -497,6 +497,7 @@ export function IssueDetail({
           <img
             src={issue.screenshotUrl}
             alt="BIM viewer screenshot captured when this issue was raised"
+            loading="lazy"
             className="w-full max-w-md rounded border border-base-600"
           />
         </div>
@@ -533,7 +534,7 @@ export function IssueDetail({
             {evidenceQuery.data!.map((e) => (
               <div key={e.id} className="space-y-1">
                 {e.thumbnailUrl
-                  ? <img src={e.thumbnailUrl} alt="" className="w-full h-20 object-cover rounded border border-base-600" />
+                  ? <img src={e.thumbnailUrl} alt="" loading="lazy" className="w-full h-20 object-cover rounded border border-base-600" />
                   : <div className="w-full h-20 rounded bg-base-800 border border-base-600" />}
                 <div className="text-[10px] text-ink-500 truncate">{e.title ?? e.addedByName}</div>
               </div>

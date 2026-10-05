@@ -95,7 +95,7 @@ export default function ProgressReportExternalPage() {
                 <h3 className="text-sm font-semibold text-ink-100 uppercase tracking-wide mb-2">Captures</h3>
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                   {report.captures.map((c) => (
-                    <img key={c.id} src={c.thumbnailUrl} alt="" className="w-full h-20 object-cover rounded border border-base-600" />
+                    <img key={c.id} src={c.thumbnailUrl} alt="" loading="lazy" className="w-full h-20 object-cover rounded border border-base-600" />
                   ))}
                 </div>
               </div>

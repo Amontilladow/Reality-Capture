@@ -370,7 +370,7 @@ function ScreenshotsPanel({ userId, from, to, screenshotsEnabled }: { userId: st
               className="w-28 h-20 overflow-hidden rounded border border-base-600 hover:border-signal shrink-0"
               title={new Date(s.capturedAt).toLocaleString()}
             >
-              <img src={s.url!} alt="" className="w-full h-full object-cover" />
+              <img src={s.url!} alt="" loading="lazy" className="w-full h-full object-cover" />
             </button>
           ))}
         </div>

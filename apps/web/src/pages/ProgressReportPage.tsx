@@ -217,7 +217,7 @@ export default function ProgressReportPage() {
                   {report.captures.map((c) => (
                     <div key={c.id} className="space-y-1">
                       {c.thumbnailUrl
-                        ? <img src={c.thumbnailUrl} alt="" className="w-full h-24 object-cover rounded border border-base-600" />
+                        ? <img src={c.thumbnailUrl} alt="" loading="lazy" className="w-full h-24 object-cover rounded border border-base-600" />
                         : <div className="w-full h-24 rounded bg-base-800 border border-base-600" />}
                       <div className="text-[10px] text-ink-500 truncate">{c.locationName ?? c.title ?? 'Capture'}</div>
                     </div>
