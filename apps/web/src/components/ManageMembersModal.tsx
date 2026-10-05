@@ -511,7 +511,7 @@ function OrganizationRow({
       <div className="flex items-start gap-3">
         <div className="shrink-0 flex flex-col items-center gap-1 w-16">
           {org?.logoUrl ? (
-            <img src={org.logoUrl} alt="" className="w-10 h-10 object-contain rounded border border-base-600 bg-white" />
+            <img src={org.logoUrl} alt="" loading="lazy" className="w-10 h-10 object-contain rounded border border-base-600 bg-white" />
           ) : (
             <div className="w-10 h-10 rounded border border-dashed border-base-600 bg-base-900/60 flex items-center justify-center text-ink-500 text-[9px] text-center">
               No logo

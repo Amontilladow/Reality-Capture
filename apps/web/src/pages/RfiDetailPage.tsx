@@ -1242,6 +1242,7 @@ function OrganizationSlotRow({ projectId, canEdit }: { projectId: string; canEdi
                 <img
                   src={org.logoUrl}
                   alt={org.name ?? PROJECT_ORGANIZATION_SLOT_LABELS[slot]}
+                  loading="lazy"
                   className="w-14 h-14 object-contain rounded border border-base-600 bg-white"
                 />
               ) : (

@@ -1,0 +1,6 @@
+# This app is an authenticated SaaS product with no public marketing
+# content -- every route either requires login or is a private, token-gated
+# share link (e.g. /rfi/external/:token) meant for one recipient, never for
+# discovery. There is nothing here that should be crawled or indexed.
+User-agent: *
+Disallow: /
