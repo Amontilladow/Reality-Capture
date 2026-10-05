@@ -10,5 +10,10 @@ export const PROJECT_PERMISSION_KEY = 'projectPermission';
 // :projectId or :id param naming the target project -- every controller
 // this is applied to is nested under projects/:projectId/... except
 // projects.controller.ts itself, whose member routes use :id directly.
-export const RequireProjectPermission = (permission: ProjectPermission) =>
-  SetMetadata(PROJECT_PERMISSION_KEY, permission);
+//
+// Accepts one or more permissions -- a route passing more than one is
+// satisfied by ANY of them (OR, not AND), e.g.
+// @RequireProjectPermission('manage_rfis', 'approve_rfis') lets either the
+// broad manage_rfis grant or the narrower approve_rfis grant through.
+export const RequireProjectPermission = (...permissions: ProjectPermission[]) =>
+  SetMetadata(PROJECT_PERMISSION_KEY, permissions);
