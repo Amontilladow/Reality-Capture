@@ -71,7 +71,7 @@ export default function Viewer360() {
           </button>
           <div className="min-w-0">
             <div className="text-xs font-mono text-ink-500 truncate">{locationLabel ?? 'Reality capture'}</div>
-            <div className="text-sm font-medium truncate">{active?.title ?? 'Untitled capture'}</div>
+            <h1 className="text-sm font-medium truncate">{active?.title ?? 'Untitled capture'}</h1>
           </div>
         </div>
 

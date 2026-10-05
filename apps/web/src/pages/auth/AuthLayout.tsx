@@ -15,9 +15,12 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
             </svg>
             <span className="font-semibold tracking-tight">EngineeringOS</span>
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight leading-tight mb-4">
+          {/* Decorative marketing copy, identical on every auth screen -- the
+              page's actual topic (Login, Sign up, Reset password, ...) is the
+              real h1, rendered once per page below via the `title` prop. */}
+          <p className="text-3xl font-semibold tracking-tight leading-tight mb-4">
             Every site condition,<br />surveyed and searchable.
-          </h1>
+          </p>
           <p className="text-ink-300 text-sm leading-relaxed">
             Register 360° captures against building, level, and location — link them to BIM
             elements, floor plans, and open issues — and hand every stakeholder a verifiable
@@ -48,7 +51,7 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
             <span className="font-semibold tracking-tight">EngineeringOS</span>
           </div>
           <div className="tick-frame panel p-8">
-            <h2 className="text-xl font-semibold mb-1">{title}</h2>
+            <h1 className="text-xl font-semibold mb-1">{title}</h1>
             <p className="text-sm text-ink-500 mb-6">{subtitle}</p>
             {children}
           </div>

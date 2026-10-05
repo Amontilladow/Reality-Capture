@@ -46,4 +46,25 @@ export class TenancyController {
   async updateSettings(@CurrentUser() u: AuthenticatedUser, @Body() settings: Record<string, unknown>) {
     return { data: await this.tenancy.updateSettings(u.companyId, settings), error: null };
   }
+
+  // ── Self-signup code ──────────────────────────────────────────────────────
+  // Both gated to super_admin, same as updateSettings() above -- whoever
+  // holds this code can create an account under this company, so viewing
+  // and regenerating it get the same sensitivity level as any other
+  // company-wide security setting.
+  @Get('signup-code')
+  @ApiBearerAuth()
+  @Roles('super_admin')
+  @ApiOperation({ summary: "Get this company's current self-signup code, if one has been generated" })
+  async getSignupCode(@CurrentUser() u: AuthenticatedUser) {
+    return { data: await this.tenancy.getSignupCode(u.companyId), error: null };
+  }
+
+  @Post('signup-code/regenerate')
+  @ApiBearerAuth()
+  @Roles('super_admin')
+  @ApiOperation({ summary: 'Generate a new self-signup code, invalidating the previous one immediately' })
+  async regenerateSignupCode(@CurrentUser() u: AuthenticatedUser) {
+    return { data: await this.tenancy.regenerateSignupCode(u.companyId), error: null };
+  }
 }

@@ -27,7 +27,7 @@ export class UsersService {
     const rows = await this.db.withTenant(companyId, sql => sql`
       SELECT
         id, email, first_name, last_name, company_role, requested_company_role,
-        phone, avatar_url, is_active, last_login_at, created_at,
+        organization_name, phone, avatar_url, is_active, last_login_at, created_at,
         COUNT(*) OVER() AS full_count
       FROM users
       WHERE company_id = ${companyId}

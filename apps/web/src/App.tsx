@@ -8,6 +8,7 @@ import Login from './pages/auth/Login';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 import AcceptInvitation from './pages/auth/AcceptInvitation';
+import SelfSignup from './pages/auth/SelfSignup';
 import PendingApproval from './pages/PendingApproval';
 import RfiExternalPage from './pages/RfiExternalPage';
 import ProgressReportExternalPage from './pages/ProgressReportExternalPage';
@@ -71,6 +72,7 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/accept-invitation" element={<AcceptInvitation />} />
+        <Route path="/signup" element={<SelfSignup />} />
 
         {/* No EngineeringOS account, no session -- the opaque token in the URL
             is the only credential. Deliberately outside ProtectedRoute/AppShell:

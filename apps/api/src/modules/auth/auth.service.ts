@@ -1,5 +1,5 @@
 import {
-  Injectable, UnauthorizedException, BadRequestException, Logger,
+  Injectable, UnauthorizedException, BadRequestException, ConflictException, Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -8,6 +8,7 @@ import { randomBytes, createHash } from 'crypto';
 import { DatabaseService } from '../../database/database.service';
 import type { LoginDto } from './dto/login.dto';
 import type { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import type { SelfSignupDto } from './dto/self-signup.dto';
 import type { ResetPasswordDto } from './dto/reset-password.dto';
 import type { AuthTokens, JwtPayload, AuthenticatedUser, CompanyRole } from '@engineeringos/types';
 
@@ -196,6 +197,69 @@ export class AuthService {
       throw new BadRequestException('This invitation has expired.');
     }
     throw new BadRequestException('Invitation token is invalid.');
+  }
+
+  // ── Self-signup ───────────────────────────────────────────────────────────
+  // Distinct from acceptInvitation() above: there is no pre-created
+  // placeholder row and no per-email token here -- the company-wide
+  // signup_code is the only credential, and this INSERTs a brand new user
+  // row directly rather than UPDATEing an existing one. Same end state as
+  // accepting an invitation, though: requested_company_role is set
+  // (pendingApproval: true), company_role stays at the generic default
+  // until a company_admin/super_admin actually approves it.
+  async selfSignup(dto: SelfSignupDto): Promise<{ tokens: AuthTokens; user: AuthenticatedUser }> {
+    // Deliberately global/pre-tenant lookup -- the caller doesn't have a
+    // companyId yet, that's the whole point of the code. withSystemBypass
+    // required -- see DatabaseService.withSystemBypass() and migration 052.
+    const [company] = await this.db.withSystemBypass(sql => sql`
+      SELECT id, is_active FROM companies WHERE signup_code = ${dto.signupCode}
+    `);
+    if (!company || !company.isActive) {
+      throw new BadRequestException('Invalid signup code. Check the code with your company administrator.');
+    }
+    const companyId = company.id as string;
+
+    const passwordHash = await argon2.hash(dto.password, { type: argon2.argon2id });
+
+    // withTenant required from here on -- company_id is known now. users
+    // carries the tenant_isolation RLS policy, same as invite()/
+    // acceptInvitation() elsewhere in this file.
+    const [user] = await this.db.withTenant(companyId, async (sql) => {
+      const [existing] = await sql`
+        SELECT id FROM users WHERE LOWER(email) = LOWER(${dto.email}) AND company_id = ${companyId}
+      `;
+      if (existing) {
+        throw new ConflictException('An account with this email already exists for this company.');
+      }
+
+      return sql`
+        INSERT INTO users (
+          company_id, email, password_hash, first_name, last_name,
+          organization_name, company_role, requested_company_role,
+          email_verified, is_active
+        ) VALUES (
+          ${companyId}, ${dto.email.toLowerCase()}, ${passwordHash}, ${dto.firstName}, ${dto.lastName},
+          ${dto.organizationName}, 'client_representative', ${dto.requestedRole},
+          true, true
+        )
+        RETURNING *
+      `;
+    });
+
+    const tokens = await this.issueTokens(user);
+    return {
+      tokens,
+      user: {
+        id: user.id as string,
+        email: user.email as string,
+        companyId: user.companyId as string,
+        companyRole: user.companyRole as CompanyRole,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        // Always true right after self-signup -- same as acceptInvitation().
+        pendingApproval: true,
+      },
+    };
   }
 
   // ── Forgot password ───────────────────────────────────────────────────────
