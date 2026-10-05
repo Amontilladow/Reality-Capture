@@ -8,6 +8,7 @@ import { Modal } from './ui/Modal';
 import {
   getMembers, addMember, removeMember, getPermissionGrants, grantPermission, revokePermission,
   getOrganizations, upsertOrganization, uploadOrganizationLogo, type ProjectOrganization,
+  getOrganizationMembers, addOrganizationMember, removeOrganizationMember, type ProjectOrganizationMember,
 } from '../lib/projects.api';
 import { listUsers, inviteUser, approveUserRole, deactivateUser } from '../lib/users.api';
 import { apiErrorMessage } from '../lib/api';
@@ -141,6 +142,25 @@ export function ManageMembersModal({
   });
   const organizationsBySlot = new Map((organizationsQuery.data ?? []).map((o) => [o.slot, o]));
 
+  // Which organization slot (if any) each project member personally belongs
+  // to (RBAC Phase 4) -- distinct from the 5 slots' own branding/contact
+  // rows above. Same manage_team gate as those, since assigning membership
+  // is the same kind of project-team administration.
+  const organizationMembersQuery = useQuery({
+    queryKey: ['organizationMembers', projectId],
+    queryFn: () => getOrganizationMembers(projectId),
+    enabled: open && canManageOrganizations,
+  });
+  const orgSlotByUserId = new Map((organizationMembersQuery.data ?? []).map((m) => [m.userId, m.slot]));
+
+  const setOrgSlotMutation = useMutation<ProjectOrganizationMember | { message: string }, Error, { userId: string; slot: ProjectOrganizationSlot | '' }>({
+    mutationFn: (vars) =>
+      vars.slot
+        ? addOrganizationMember(projectId, vars.slot, vars.userId)
+        : removeOrganizationMember(projectId, vars.userId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['organizationMembers', projectId] }),
+  });
+
   return (
     <Modal open={open} onClose={onClose} title="Project team" wide>
       <div className="space-y-4">
@@ -152,20 +172,39 @@ export function ManageMembersModal({
           )}
           {removeMutation.isError && <p className="field-error">{apiErrorMessage(removeMutation.error)}</p>}
           {(membersQuery.data ?? []).map((m) => (
-            <div key={m.userId} className="flex items-center justify-between text-sm py-1.5 border-b border-base-700/60 last:border-0">
-              <div>
+            <div key={m.userId} className="flex items-center justify-between gap-2 text-sm py-1.5 border-b border-base-700/60 last:border-0">
+              <div className="min-w-0">
                 <span className="text-ink-100">{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</span>
                 <span className="text-ink-500 ml-2 text-xs">{PROJECT_ROLE_LABELS[m.role as ProjectRole] ?? m.role}</span>
               </div>
-              <button
-                onClick={() => removeMutation.mutate(m.userId)}
-                className="text-xs text-danger hover:text-danger/80"
-                disabled={removeMutation.isPending}
-              >
-                Remove
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                {canManageOrganizations && (
+                  <select
+                    className="field-input !py-0.5 !w-auto text-xs"
+                    value={orgSlotByUserId.get(m.userId) ?? ''}
+                    onChange={(e) =>
+                      setOrgSlotMutation.mutate({ userId: m.userId, slot: e.target.value as ProjectOrganizationSlot | '' })
+                    }
+                    disabled={setOrgSlotMutation.isPending}
+                    title="This person's organization on this project (client/PMC/LDC/main contractor/subcontractor)"
+                  >
+                    <option value="">No organization</option>
+                    {PROJECT_ORGANIZATION_SLOTS.map((slot) => (
+                      <option key={slot} value={slot}>{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</option>
+                    ))}
+                  </select>
+                )}
+                <button
+                  onClick={() => removeMutation.mutate(m.userId)}
+                  className="text-xs text-danger hover:text-danger/80"
+                  disabled={removeMutation.isPending}
+                >
+                  Remove
+                </button>
+              </div>
             </div>
           ))}
+          {setOrgSlotMutation.isError && <p className="field-error">{apiErrorMessage(setOrgSlotMutation.error)}</p>}
         </div>
 
         <div className="pt-2 border-t border-base-600 space-y-3">
