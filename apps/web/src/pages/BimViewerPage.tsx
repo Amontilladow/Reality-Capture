@@ -197,7 +197,7 @@ export default function BimViewerPage() {
           <Link to={`/projects/${projectId}/bim`} className="text-sm text-gray-500 hover:text-gray-800">
             ← Models
           </Link>
-          <span className="font-medium">{modelName ?? 'Model'}</span>
+          <h1 className="font-medium text-base">{modelName ?? 'Model'}</h1>
         </div>
         {viewerDataQuery.data?.status === 'ready' && viewerDataQuery.data.fragmentsUrl && (
           <div className="flex items-center gap-3">

@@ -94,7 +94,7 @@ export default function ProjectDetail() {
         <div className="lg:col-span-1">
           <div className="tick-frame panel p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-mono uppercase tracking-widest text-ink-500">Hierarchy</h3>
+              <h2 className="text-xs font-mono uppercase tracking-widest text-ink-500">Hierarchy</h2>
               <button
                 onClick={() => setNodeModal({ kind: 'building' })}
                 className="text-ink-500 hover:text-blueprint"
