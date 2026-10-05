@@ -258,6 +258,66 @@ export class ProjectsService {
     return { uploadUrl, storageKey: key };
   }
 
+  // ── Project organization membership (RBAC Phase 4) ──────────────────────
+  // Which of the project's 5 stakeholder slots an existing project member
+  // personally belongs to -- distinct from both their own project role
+  // (project_members.role, their individual capability on the project) and
+  // the slot's own branding/contact row (project_organizations above, which
+  // has no user link at all). One slot per user per project (see migration
+  // 060's UNIQUE(project_id, user_id)): someone acts as exactly one
+  // stakeholder party on a given project, not several at once.
+  async getOrganizationMembers(companyId: string, projectId: string) {
+    await this.findOne(companyId, projectId);
+    return this.db.withTenant(companyId, sql => sql`
+      SELECT m.id, m.slot, m.added_at,
+             u.id AS user_id, u.first_name, u.last_name, u.email, u.avatar_url
+      FROM project_organization_members m
+      JOIN users u ON u.id = m.user_id
+      WHERE m.project_id = ${projectId} AND m.company_id = ${companyId}
+      ORDER BY m.slot, u.first_name, u.last_name
+    `);
+  }
+
+  // The target must already be a project member -- an organization slot
+  // describes which stakeholder party an existing project member belongs
+  // to, not a separate way onto the project. Reassigning someone already
+  // in a different slot just moves them (ON CONFLICT ... DO UPDATE), since
+  // a person holds at most one slot per project.
+  async addOrganizationMember(companyId: string, projectId: string, slot: string, userId: string, addedBy: string) {
+    this.assertValidSlot(slot);
+    await this.findOne(companyId, projectId);
+
+    const [existingMember] = await this.db.withTenant(companyId, sql => sql`
+      SELECT 1 FROM project_members WHERE project_id = ${projectId} AND user_id = ${userId} AND company_id = ${companyId}
+    `);
+    if (!existingMember) {
+      throw new BadRequestException('That person must already be a project member before being assigned an organization slot.');
+    }
+
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      INSERT INTO project_organization_members (project_id, company_id, slot, user_id, added_by)
+      VALUES (${projectId}, ${companyId}, ${slot}, ${userId}, ${addedBy})
+      ON CONFLICT (project_id, user_id) DO UPDATE SET
+        slot = ${slot}, added_by = ${addedBy}, added_at = NOW()
+      RETURNING *
+    `);
+    return row;
+  }
+
+  async removeOrganizationMember(companyId: string, projectId: string, userId: string) {
+    // Same withTenant requirement as removeMember() below -- without it the
+    // DELETE's WHERE-matched rows are invisible under RLS, so it silently
+    // deletes 0 rows instead of erroring.
+    const result = await this.db.withTenant(companyId, sql => sql`
+      DELETE FROM project_organization_members
+      WHERE project_id = ${projectId} AND user_id = ${userId} AND company_id = ${companyId}
+    `);
+    if (result.count === 0) {
+      throw new NotFoundException('That person does not currently hold an organization slot on this project.');
+    }
+    return { message: 'Organization membership removed.' };
+  }
+
   async getMembers(companyId: string, projectId: string) {
     await this.findOne(companyId, projectId);
     return this.db.withTenant(companyId, sql => sql`

@@ -2,8 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   ISSUE_DISCIPLINE_TO_RISK_DISCIPLINE,
   RFI_DISCIPLINE_TO_RISK_DISCIPLINE,
+  RISK_DISCIPLINES,
   type IssueDiscipline,
   type RfiDiscipline,
+  type RiskDiscipline,
 } from '@engineeringos/types';
 import { DatabaseService } from '../../database/database.service';
 import { RiskGraphService } from './risk-graph.service';
@@ -23,6 +25,20 @@ export function jaccard(a: Set<string>, b: Set<string>): number {
   for (const w of a) if (b.has(w)) intersection++;
   const union = a.size + b.size - intersection;
   return union === 0 ? 0 : intersection / union;
+}
+
+// Submittals.discipline is free-text (no fixed vocabulary, unlike RFIs/
+// Issues), so there's no lookup table to translate it the way
+// RFI_DISCIPLINE_TO_RISK_DISCIPLINE/ISSUE_DISCIPLINE_TO_RISK_DISCIPLINE do.
+// Rather than inventing a classification for arbitrary free text, this only
+// recognizes an exact (case-insensitive) match against the canonical
+// RiskDiscipline vocabulary itself -- a real, very common way for someone to
+// type "Structural" or "MEP" -- and leaves anything else unclassified
+// (null) rather than guessing.
+export function canonicalizeFreeTextDiscipline(value: string | null | undefined): RiskDiscipline | null {
+  if (!value) return null;
+  const normalized = value.trim().toUpperCase().replace(/[\s-]+/g, '_');
+  return (RISK_DISCIPLINES as readonly string[]).includes(normalized) ? (normalized as RiskDiscipline) : null;
 }
 
 export const RFI_ISSUE_MAX_DAY_GAP = 14;
@@ -79,6 +95,7 @@ export class RelationshipExtractionService {
     await this.extractIssues(companyId, projectId);
     await this.extractSnagItems(companyId, projectId);
     await this.extractQaInspections(companyId, projectId);
+    await this.extractSubmittals(companyId, projectId);
     await this.extractInferredRfiIssueLinks(companyId, projectId);
   }
 
@@ -270,6 +287,43 @@ export class RelationshipExtractionService {
         });
       }
       const ownerNodeId = await this.ensureUserNode(companyId, projectId, rfi.createdBy);
+      if (ownerNodeId) {
+        await this.graph.upsertEdge(companyId, {
+          projectId, fromNodeId: node.id, toNodeId: ownerNodeId,
+          relationshipType: 'OWNED_BY', source: 'EXPLICIT', confidence: 1,
+        });
+      }
+    }
+  }
+
+  // ── Submittals (no location/drawing FK exists on this table today, exactly like RFIs) ──
+
+  async extractSubmittals(companyId: string, projectId: string, onlyId?: string): Promise<void> {
+    const rows = await this.db.withTenant(companyId, sql => sql<{
+      id: string; submittalNumber: string; title: string; discipline: string | null; priority: string;
+      status: string; dueDate: string | null; assignedTo: string | null; createdBy: string; createdAt: string;
+    }[]>`
+      SELECT id, submittal_number, title, discipline, priority, status, due_date, assigned_to, created_by, created_at
+      FROM submittals
+      WHERE project_id = ${projectId} ${onlyId ? sql`AND id = ${onlyId}` : sql``}`);
+
+    for (const s of rows) {
+      const node = await this.graph.upsertNode(companyId, {
+        projectId, nodeType: 'submittal', entityId: s.id, entityTable: 'submittals',
+        label: `${s.submittalNumber} — ${s.title}`,
+        discipline: canonicalizeFreeTextDiscipline(s.discipline),
+        status: s.status, priority: s.priority, dueDate: s.dueDate,
+        metadata: { createdAt: s.createdAt },
+      });
+
+      const assignedNodeId = await this.ensureUserNode(companyId, projectId, s.assignedTo);
+      if (assignedNodeId) {
+        await this.graph.upsertEdge(companyId, {
+          projectId, fromNodeId: node.id, toNodeId: assignedNodeId,
+          relationshipType: 'ASSIGNED_TO', source: 'EXPLICIT', confidence: 1,
+        });
+      }
+      const ownerNodeId = await this.ensureUserNode(companyId, projectId, s.createdBy);
       if (ownerNodeId) {
         await this.graph.upsertEdge(companyId, {
           projectId, fromNodeId: node.id, toNodeId: ownerNodeId,

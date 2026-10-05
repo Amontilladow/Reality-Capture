@@ -4,6 +4,39 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EngineeringOS™ — Reality Capture</title>
+    <meta name="description" content="EngineeringOS Reality Capture — site documentation, BIM coordination, and issue tracking for construction projects." />
+
+    <!-- This is an authenticated app with no public content to index (see
+         public/robots.txt) -- the meta tag is defense in depth for a page
+         fetched directly despite the disallow, e.g. one already indexed
+         before robots.txt existed. -->
+    <meta name="robots" content="noindex, nofollow" />
+
+    <!-- A single-page app has one static index.html shared by every route
+         (client-side routing, no per-route SSR), so a self-referencing
+         canonical can only point at the app's root, not the current route
+         -- there is no server-rendered alternative to deep-link to anyway,
+         since every route requires a login redirect or is a private,
+         token-gated share link (never meant for public discovery). -->
+    <link rel="canonical" href="https://engineeringos-web.onrender.com/" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Generic, site-wide only -- there's no per-route SSR to vary these
+         by page (see the canonical comment above), so this is what shows
+         if any link into the app is ever pasted somewhere with a link
+         preview (e.g. the token-gated RFI/progress-report share links). -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="EngineeringOS" />
+    <meta property="og:title" content="EngineeringOS™ — Reality Capture" />
+    <meta property="og:description" content="Site documentation, BIM coordination, and issue tracking for construction projects." />
+    <meta property="og:image" content="https://engineeringos-web.onrender.com/og-image.png" />
+    <meta property="og:url" content="https://engineeringos-web.onrender.com/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="EngineeringOS™ — Reality Capture" />
+    <meta name="twitter:description" content="Site documentation, BIM coordination, and issue tracking for construction projects." />
+    <meta name="twitter:image" content="https://engineeringos-web.onrender.com/og-image.png" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

@@ -92,6 +92,20 @@ services:
           property: password
       - key: DB_SSL
         value: "true"
+      # Render's managed Postgres presents a self-signed certificate on its
+      # internal/private network connection (confirmed live: a
+      # rejectUnauthorized: true connection with this unset fails pre-deploy
+      # migrations with DEPTH_ZERO_SELF_SIGNED_CERT, since there's no public
+      # CA to chain to). database.module.ts/run-migrations.ts both already
+      # verify against this when set -- it just needs a real value here.
+      # To get it: open a Render Shell on this service (it's already inside
+      # Render's private network, same as the running app) and run
+      #   openssl s_client -starttls postgres -connect "$DB_HOST:$DB_PORT" -showcerts </dev/null 2>/dev/null | openssl x509 -outform PEM
+      # then paste the full "-----BEGIN CERTIFICATE-----"..."-----END
+      # CERTIFICATE-----" output (Render's env var editor accepts multi-line
+      # values) as this var's value in the dashboard.
+      - key: DB_CA_CERT
+        sync: false
       - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
@@ -218,6 +232,11 @@ services:
         value: app_user
       - key: DB_SSL
         value: "true"
+      # Same self-signed-certificate requirement as engineeringos-api's
+      # identical var above -- set it to the same PEM value (see that
+      # entry's comment for how to obtain it).
+      - key: DB_CA_CERT
+        sync: false
       - key: REDIS_HOST
         sync: false
       - key: REDIS_PORT

@@ -150,7 +150,7 @@ export class RfisController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Submit a draft RFI (creator, manage_rfis grant, project lead, or super admin)' })
   async submit(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
-    return { data: await this.svc.submit(u.companyId, pid, id, u.id), error: null };
+    return { data: await this.svc.submit(u.companyId, pid, id, u.id, u.companyRole), error: null };
   }
 
   @Post(':id/request-clarification')
@@ -179,16 +179,23 @@ export class RfisController {
     return { data: await this.svc.respond(u.companyId, pid, id, u.id, dto), error: null };
   }
 
+  // Phase 2 RBAC: gated on manage_rfis OR the narrower approve_rfis -- the
+  // PMC/client reviewer doing sign-off doesn't need the full manage_rfis
+  // grant (which also lets its holder answer/close RFIs directly); either
+  // permission is accepted so nothing already holding manage_rfis loses
+  // access.
   @Post(':id/submit-for-review')
-  @RequireProjectPermission('manage_rfis')
+  @RequireProjectPermission('manage_rfis', 'approve_rfis')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Send a responded RFI to a stakeholder for review (PMC/client sign-off)' })
   async submitForReview(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
     return { data: await this.svc.submitForReview(u.companyId, pid, id, u.id), error: null };
   }
 
+  // Same manage_rfis OR approve_rfis gate as submit-for-review above -- this
+  // is the actual approve/reject decision of that same PMC/client review.
   @Post(':id/decide-review')
-  @RequireProjectPermission('manage_rfis')
+  @RequireProjectPermission('manage_rfis', 'approve_rfis')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Approve (closes the RFI) or reject (sends it back for clarification) a review' })
   async decideReview(

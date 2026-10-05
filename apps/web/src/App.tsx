@@ -10,6 +10,7 @@ import ResetPassword from './pages/auth/ResetPassword';
 import AcceptInvitation from './pages/auth/AcceptInvitation';
 import PendingApproval from './pages/PendingApproval';
 import RfiExternalPage from './pages/RfiExternalPage';
+import ProgressReportExternalPage from './pages/ProgressReportExternalPage';
 
 import ProjectList from './pages/ProjectList';
 import ProjectDetail from './pages/ProjectDetail';
@@ -18,11 +19,14 @@ import IssuesPage from './pages/IssuesPage';
 import RfisPage from './pages/RfisPage';
 import RfiDetailPage from './pages/RfiDetailPage';
 import SnaggingPage from './pages/SnaggingPage';
+import SubmittalsPage from './pages/SubmittalsPage';
+import ProgressReportPage from './pages/ProgressReportPage';
 import AssistantPage from './pages/AssistantPage';
 import ReportsPage from './pages/ReportsPage';
 import RiskPage from './pages/RiskPage';
 import MessagesPage from './pages/MessagesPage';
 import WorkforcePage from './pages/WorkforcePage';
+import DeveloperSettingsPage from './pages/DeveloperSettingsPage';
 import BuildLensPage from './pages/BuildLensPage';
 
 // These four pull in the heaviest dependencies in the app (Three.js +
@@ -73,6 +77,7 @@ export default function App() {
             nothing else in the app is reachable from here (see
             RfiExternalPage's own comment). */}
         <Route path="/rfi/external/:token" element={<RfiExternalPage />} />
+        <Route path="/progress-report/:token" element={<ProgressReportExternalPage />} />
 
         {/* The 360 viewer and BIM viewer are full-bleed immersive views — no sidebar chrome */}
         <Route element={<ProtectedRoute />}>
@@ -92,6 +97,7 @@ export default function App() {
             <Route path="/projects" element={<ProjectList />} />
             <Route path="/projects/messages" element={<MessagesPage />} />
             <Route path="/projects/workforce" element={<WorkforcePage />} />
+            <Route path="/projects/developer" element={<DeveloperSettingsPage />} />
             <Route path="/projects/:projectId" element={<ProjectDetail />} />
             <Route path="/projects/:projectId/captures" element={<CapturesPage />} />
             <Route path="/projects/:projectId/drawings" element={<FloorPlanViewer />} />
@@ -102,6 +108,8 @@ export default function App() {
             <Route path="/projects/:projectId/rfis" element={<RfisPage />} />
             <Route path="/projects/:projectId/rfis/:rfiId" element={<RfiDetailPage />} />
             <Route path="/projects/:projectId/snagging" element={<SnaggingPage />} />
+            <Route path="/projects/:projectId/submittals" element={<SubmittalsPage />} />
+            <Route path="/projects/:projectId/progress-report" element={<ProgressReportPage />} />
             <Route path="/projects/:projectId/assistant" element={<AssistantPage />} />
             <Route path="/projects/:projectId/risk" element={<RiskPage />} />
             <Route path="/projects/:projectId/reports" element={<ReportsPage />} />

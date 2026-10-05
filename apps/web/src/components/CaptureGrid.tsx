@@ -182,6 +182,7 @@ function CaptureCardBody({ c }: { c: Capture }) {
           <img
             src={c.thumbnailUrl}
             alt={c.title ?? 'Capture'}
+            loading="lazy"
             // The box is now sized to the capture's own (clamped) aspect
             // ratio rather than a forced 16:9, so object-contain never
             // crops: when the box ratio matches the image exactly (the

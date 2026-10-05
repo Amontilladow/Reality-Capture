@@ -80,6 +80,18 @@ export class SnaggingController {
     return { data: await this.svc.forward(u.companyId, pid, id, u.id, dto), error: null };
   }
 
+  // RBAC Phase 3: either manage_project_records (everyone who could already
+  // verify) OR the narrower verify_snag_items permission -- see
+  // SnaggingService.verify()'s own comment for the segregation-of-duties
+  // rationale.
+  @Post(':id/verify')
+  @RequireProjectPermission('manage_project_records', 'verify_snag_items')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Verify a 'fixed' snag item" })
+  async verify(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.verify(u.companyId, pid, id, u.id), error: null };
+  }
+
   @Patch(':id/force-status')
   @Roles('company_admin', 'engineering_manager')
   @ApiOperation({ summary: 'Force a snag item to any status, bypassing normal transition rules' })

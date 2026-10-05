@@ -4,11 +4,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getIssue, updateIssue, closeIssue, deleteIssue, getActivities, addComment, addEvidenceCapture,
   forwardIssue, forceIssueStatus, uploadIssueAttachment, downloadIssuePdf, downloadIssueXls,
-  scheduleIssueReminder, listPendingIssueReminders, cancelIssueReminder,
+  scheduleIssueReminder, listPendingIssueReminders, cancelIssueReminder, getIssueEvidence,
   type IssueDetailItem,
 } from '../../lib/issues.api';
 import { listCaptures } from '../../lib/captures.api';
 import { CaptureGrid } from '../CaptureGrid';
+import { InlineRiskAssessment } from '../RiskIntelligenceSection';
 import { getMembers } from '../../lib/projects.api';
 import { useAuthStore } from '../../store/auth.store';
 import {
@@ -78,11 +79,20 @@ export function IssueDetail({
     enabled: Boolean(issueQuery.data?.locationId),
   });
 
+  // F5: drives the Close button's client-side gating below -- the backend
+  // is the real enforcement point (close()/forceStatus()/bulkClose() all
+  // reject with no evidence regardless of what this query returns).
+  const evidenceQuery = useQuery({
+    queryKey: ['issue-evidence', projectId, issueId],
+    queryFn: () => getIssueEvidence(projectId, issueId),
+  });
+
   function invalidateAll() {
     queryClient.invalidateQueries({ queryKey: ['issue', projectId, issueId] });
     queryClient.invalidateQueries({ queryKey: ['issue-activities', projectId, issueId] });
     queryClient.invalidateQueries({ queryKey: ['issues', projectId] });
     queryClient.invalidateQueries({ queryKey: ['issue-summary', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['issue-evidence', projectId, issueId] });
   }
 
   const statusMutation = useMutation({
@@ -90,9 +100,10 @@ export function IssueDetail({
     onSuccess: invalidateAll,
   });
 
-  // Separate from statusMutation -- 'closed' is no longer a status
-  // updateIssue() can set at all; only the creator (or an admin) may
-  // close, enforced server-side by IssuesService.close().
+  // F5: closing an issue now requires (a) at least one evidence capture
+  // attached and (b) a permitted-approver role (company admin or
+  // engineering manager) -- "the creator can always close their own work"
+  // is gone, enforced server-side by IssuesService.close().
   const closeMutation = useMutation({
     mutationFn: () => closeIssue(projectId, issueId),
     onSuccess: invalidateAll,
@@ -165,11 +176,14 @@ export function IssueDetail({
   const currentStepIdx = ISSUE_STATUS_FLOW.indexOf(issue.status);
 
   // Mirrors the backend's own authorization exactly (IssuesService.close()/
-  // forward()): closing is creator-or-admin; forwarding is the current
-  // assignee (or the creator, if the issue is still unassigned) or admin.
+  // forward()). F5: closing requires a permitted-approver role (the old
+  // "creator can always close their own issue" bypass is gone) AND at
+  // least one evidence capture attached -- isManager alone decided this
+  // before; now hasEvidence gates it too.
   const isCreator = currentUser?.id === issue.createdBy;
   const isCurrentAssignee = Boolean(currentUser?.id && currentUser.id === issue.assignedTo);
-  const canClose = isCreator || isManager;
+  const hasEvidence = (evidenceQuery.data?.length ?? 0) > 0;
+  const canClose = isManager && hasEvidence;
   const canForward = isCurrentAssignee || (!issue.assignedTo && isCreator) || isManager;
   const members = membersQuery.data ?? [];
 
@@ -375,7 +389,11 @@ export function IssueDetail({
             <button
               onClick={() => closeMutation.mutate()}
               disabled={!canClose || closeMutation.isPending}
-              title={canClose ? undefined : 'Only the person who raised this issue (or an administrator) can close it.'}
+              title={
+                canClose ? undefined
+                : !isManager ? 'Closing requires sign-off from a permitted role (an engineering manager or company admin).'
+                : 'Attach at least one evidence photo before closing.'
+              }
               className="btn-secondary !px-3 !py-1.5 text-xs"
             >
               {closeMutation.isPending ? 'Closing…' : `Move to ${STATUS_LABELS.closed}`}
@@ -470,6 +488,8 @@ export function IssueDetail({
         </div>
       </div>
 
+      <InlineRiskAssessment projectId={projectId} nodeType="issue" entityId={issueId} />
+
       {/* View-state screenshot, captured automatically when the issue was raised from the viewer */}
       {issue.screenshotUrl && (
         <div>
@@ -477,6 +497,7 @@ export function IssueDetail({
           <img
             src={issue.screenshotUrl}
             alt="BIM viewer screenshot captured when this issue was raised"
+            loading="lazy"
             className="w-full max-w-md rounded border border-base-600"
           />
         </div>
@@ -491,14 +512,35 @@ export function IssueDetail({
         </div>
       )}
 
-      {/* Evidence photos */}
+      {/* Evidence photos -- F5: at least one of these is required before this
+          issue can be closed (enforced server-side; hasEvidence above just
+          mirrors it for the Close button's disabled/tooltip state). */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <div className="field-label !mb-0">Evidence photos</div>
+          <div className="field-label !mb-0">
+            Evidence photos {evidenceQuery.data ? `(${evidenceQuery.data.length})` : ''}
+          </div>
           <button onClick={() => setPickerOpen((v) => !v)} className="btn-ghost !px-2 !py-1 text-xs">
             {pickerOpen ? 'Cancel' : '+ Attach existing capture'}
           </button>
         </div>
+        {!evidenceQuery.isLoading && (evidenceQuery.data?.length ?? 0) === 0 && (
+          <p className="text-xs text-ink-500 mb-2">
+            No evidence attached yet -- required before this issue can be closed.
+          </p>
+        )}
+        {(evidenceQuery.data?.length ?? 0) > 0 && (
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-2">
+            {evidenceQuery.data!.map((e) => (
+              <div key={e.id} className="space-y-1">
+                {e.thumbnailUrl
+                  ? <img src={e.thumbnailUrl} alt="" loading="lazy" className="w-full h-20 object-cover rounded border border-base-600" />
+                  : <div className="w-full h-20 rounded bg-base-800 border border-base-600" />}
+                <div className="text-[10px] text-ink-500 truncate">{e.title ?? e.addedByName}</div>
+              </div>
+            ))}
+          </div>
+        )}
         {pickerOpen && (
           <EvidencePicker
             projectId={projectId}
@@ -663,6 +705,7 @@ function EvidencePicker({ projectId, issueId, onDone }: { projectId: string; iss
     mutationFn: (captureId: string) => addEvidenceCapture(projectId, issueId, captureId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['issue-activities', projectId, issueId] });
+      queryClient.invalidateQueries({ queryKey: ['issue-evidence', projectId, issueId] });
       onDone();
     },
   });

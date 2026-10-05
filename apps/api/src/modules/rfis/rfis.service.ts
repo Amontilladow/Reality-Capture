@@ -6,6 +6,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
 import { MessagingService } from '../messaging/messaging.service';
 import { RiskService } from '../risk/risk.service';
+import { ProjectAuthorizationService } from '../../common/authorization/project-authorization.service';
 import { renderRfiPdf } from './rfi-pdf.template';
 import { renderNoticeLetterPdf } from './rfi-notice-letter-pdf.template';
 import { ATTACHMENT_MAX_SIZE, ATTACHMENT_ALLOWED_EXTENSIONS } from '../../common/constants/attachment-limits';
@@ -61,6 +62,7 @@ export class RfisService {
     private readonly notifications: NotificationsService,
     private readonly storage: StorageService,
     private readonly messaging: MessagingService,
+    private readonly projectAuth: ProjectAuthorizationService,
     // @Optional(): RfisModule registers RiskModule as a real provider, so
     // production always gets a live instance here -- this stays optional
     // purely so the many existing rfis.service.spec.ts call sites that
@@ -1041,29 +1043,15 @@ export class RfisService {
   // ── Workflow (Phase 1) ──────────────────────────────────────────────────────
   // Resource-level authorization for submit() -- "is the creator" can't be
   // expressed by the route-level ProjectPermissionGuard alone (a creator
-  // with no grant must still be able to submit their own RFI), so this
-  // mirrors the guard's own bypass logic (super_admin, project_lead,
-  // manage_rfis grant) for the "not the creator" branch. The four
-  // reviewer-only transitions below (requestClarification/respond/close/
-  // reopen) are gated at the route with @RequireProjectPermission('manage_rfis')
-  // instead -- that guard already covers this exact same bypass set, so
-  // those methods don't repeat the check.
-  private async canManageRfiReview(companyId: string, projectId: string, userId: string): Promise<boolean> {
-    return this.db.withTenant(companyId, async (sql) => {
-      const [user] = await sql`SELECT company_role FROM users WHERE id = ${userId} AND company_id = ${companyId}`;
-      if (user?.companyRole === 'super_admin') return true;
-
-      const [membership] = await sql`
-        SELECT role FROM project_members WHERE project_id = ${projectId} AND user_id = ${userId}
-      `;
-      if (membership?.role === 'project_lead') return true;
-
-      const [grant] = await sql`
-        SELECT id FROM project_permission_grants
-        WHERE project_id = ${projectId} AND user_id = ${userId} AND permission = 'manage_rfis'
-      `;
-      return Boolean(grant);
-    });
+  // with no grant must still be able to submit their own RFI), so this calls
+  // through to ProjectAuthorizationService (the same shared check the guard
+  // itself uses: super_admin, project_lead, manage_rfis grant) for the
+  // "not the creator" branch. The four reviewer-only transitions below
+  // (requestClarification/respond/close/reopen) are gated at the route with
+  // @RequireProjectPermission('manage_rfis') instead -- that guard already
+  // covers this exact same bypass set, so those methods don't repeat it.
+  private canManageRfiReview(companyId: string, companyRole: string, projectId: string, userId: string): Promise<boolean> {
+    return this.projectAuth.hasProjectPermission(companyId, companyRole, userId, projectId, 'manage_rfis');
   }
 
   // Deterministic, unique-per-RFI stamp sequence: counts how many RFIs in
@@ -1113,11 +1101,11 @@ export class RfisService {
   // an explicit "save as draft" creation path. Implemented per the state
   // machine as specified regardless, so it's correct the moment that
   // exists.
-  async submit(companyId: string, projectId: string, rfiId: string, userId: string) {
+  async submit(companyId: string, projectId: string, rfiId: string, userId: string, userRole: string) {
     const rfi = await this.findOne(companyId, projectId, rfiId);
     const isCreator = rfi.createdBy === userId;
     if (!isCreator) {
-      const authorized = await this.canManageRfiReview(companyId, projectId, userId);
+      const authorized = await this.canManageRfiReview(companyId, userRole, projectId, userId);
       if (!authorized) {
         throw new ForbiddenException(
           "Only this RFI's creator, someone holding the 'manage_rfis' permission, the project lead, or a super admin can submit it.",

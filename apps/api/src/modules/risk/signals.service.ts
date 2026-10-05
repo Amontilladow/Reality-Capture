@@ -11,6 +11,12 @@ const CLOSED_ISSUE_STATUSES = ['resolved', 'closed', 'void'];
 // Snag two-step closure: 'fixed' means work is done but not yet verified --
 // still counted as active for overdue/aging, since it can still slip back.
 const CLOSED_SNAG_STATUSES = ['verified', 'void'];
+// Mirrors submittals.service.ts's own getSummary() "approved" bucket --
+// 'rejected'/'revise_and_resubmit' are NOT closed: both require real
+// further work (a resubmission), which is exactly what SUBMITTAL_REJECTED
+// below exists to flag.
+const CLOSED_SUBMITTAL_STATUSES = ['approved', 'approved_as_noted'];
+const REJECTED_SUBMITTAL_STATUSES = ['rejected', 'revise_and_resubmit'];
 
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 
@@ -31,6 +37,7 @@ export class SignalsService {
     await this.detectRfiSignals(companyId, projectId);
     await this.detectIssueSignals(companyId, projectId);
     await this.detectSnagSignals(companyId, projectId);
+    await this.detectSubmittalSignals(companyId, projectId);
     await this.detectDrawingSignals(companyId, projectId);
     await this.detectQaSignals(companyId, projectId);
   }
@@ -253,6 +260,57 @@ export class SignalsService {
         }
       } else {
         await this.clearSignal(companyId, snag.nodeId, 'SNAG_RECURRING_LOCATION');
+      }
+    }
+  }
+
+  // ── Submittal signals ────────────────────────────────────────────────────
+
+  async detectSubmittalSignals(companyId: string, projectId: string): Promise<void> {
+    const rows = await this.db.withTenant(companyId, sql => sql<{
+      nodeId: string; status: string; priority: string; dueDate: string | null;
+    }[]>`
+      SELECT n.id AS node_id, s.status, s.priority, s.due_date
+      FROM submittals s
+      JOIN risk_graph_nodes n ON n.node_type = 'submittal' AND n.entity_id = s.id
+      WHERE s.project_id = ${projectId}`);
+
+    const now = Date.now();
+    for (const s of rows) {
+      const isOpen = !CLOSED_SUBMITTAL_STATUSES.includes(s.status);
+
+      if (isOpen && s.dueDate && new Date(s.dueDate).getTime() < now) {
+        const overdueDays = (now - new Date(s.dueDate).getTime()) / 86400000;
+        await this.upsertSignal(companyId, projectId, s.nodeId, 'SUBMITTAL_OVERDUE', 40 + overdueDays * 3, { overdueDays: Math.round(overdueDays) });
+      } else {
+        await this.clearSignal(companyId, s.nodeId, 'SUBMITTAL_OVERDUE');
+      }
+
+      if (isOpen && s.dueDate) {
+        const daysToDue = (new Date(s.dueDate).getTime() - now) / 86400000;
+        if (daysToDue >= 0 && daysToDue <= 5) {
+          await this.upsertSignal(companyId, projectId, s.nodeId, 'SUBMITTAL_APPROACHING_DUE', 30 + (5 - daysToDue) * 4, { daysToDue: Math.round(daysToDue) });
+        } else {
+          await this.clearSignal(companyId, s.nodeId, 'SUBMITTAL_APPROACHING_DUE');
+        }
+      } else {
+        await this.clearSignal(companyId, s.nodeId, 'SUBMITTAL_APPROACHING_DUE');
+      }
+
+      if (isOpen && (s.priority === 'high' || s.priority === 'critical')) {
+        await this.upsertSignal(companyId, projectId, s.nodeId, 'SUBMITTAL_HIGH_PRIORITY', s.priority === 'critical' ? 55 : 35, { priority: s.priority });
+      } else {
+        await this.clearSignal(companyId, s.nodeId, 'SUBMITTAL_HIGH_PRIORITY');
+      }
+
+      // Not gated on isOpen -- rejected/revise_and_resubmit ARE the open,
+      // needs-action states this signal exists to flag (a resubmission
+      // cycle is real schedule risk, not something this codebase tracks a
+      // count of, so severity reflects the current outcome only).
+      if (REJECTED_SUBMITTAL_STATUSES.includes(s.status)) {
+        await this.upsertSignal(companyId, projectId, s.nodeId, 'SUBMITTAL_REJECTED', s.status === 'rejected' ? 45 : 30, { status: s.status });
+      } else {
+        await this.clearSignal(companyId, s.nodeId, 'SUBMITTAL_REJECTED');
       }
     }
   }

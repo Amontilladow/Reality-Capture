@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { RfisService } from './rfis.service';
+import { ProjectAuthorizationService } from '../../common/authorization/project-authorization.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { NotificationsService } from '../notifications/notifications.service';
 import type { StorageService } from '../storage/storage.service';
@@ -36,11 +37,18 @@ function makeService(responder: (text: string, values: unknown[]) => unknown[] |
   const notifications = { create: jest.fn() };
   const storage = {};
   const messaging = { create: jest.fn() };
+  // A real ProjectAuthorizationService wrapping the same mock db -- its own
+  // queries (project_members role lookup, project_permission_grants lookup)
+  // are the exact same two queries canManageRfiReview() used to run inline,
+  // so they're still intercepted transparently by each test's own
+  // substring-matching `responder`, same as before this was extracted out.
+  const projectAuth = new ProjectAuthorizationService(db as unknown as DatabaseService);
   const svc = new RfisService(
     db as unknown as DatabaseService,
     notifications as unknown as NotificationsService,
     storage as unknown as StorageService,
     messaging as unknown as MessagingService,
+    projectAuth,
   );
   return { svc, calls, notifications, db };
 }
@@ -221,7 +229,7 @@ describe('RfisService', () => {
         return undefined;
       });
 
-      const result = await svc.submit(companyId, projectId, rfiId, 'user-1');
+      const result = await svc.submit(companyId, projectId, rfiId, 'user-1', 'member');
 
       expect(result.status).toBe('submitted');
       expect(result.queryStamp).toBe('P1-ORG-RFI-CIV-0001-Q-001');
@@ -243,9 +251,6 @@ describe('RfisService', () => {
         if (text.includes('FROM rfis r')) {
           return [{ id: rfiId, createdBy: 'user-owner', status: 'draft', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj' }];
         }
-        if (text.includes('SELECT company_role FROM users')) {
-          return [{ companyRole: 'member' }];
-        }
         if (text.includes('SELECT role FROM project_members')) {
           return [{ role: 'member' }];
         }
@@ -255,7 +260,7 @@ describe('RfisService', () => {
         return undefined;
       });
 
-      await expect(svc.submit(companyId, projectId, rfiId, 'user-other')).rejects.toThrow(ForbiddenException);
+      await expect(svc.submit(companyId, projectId, rfiId, 'user-other', 'member')).rejects.toThrow(ForbiddenException);
     });
 
     it("throws BadRequestException when called on a non-'draft' RFI, even for the creator", async () => {
@@ -266,7 +271,7 @@ describe('RfisService', () => {
         return undefined;
       });
 
-      await expect(svc.submit(companyId, projectId, rfiId, 'user-1')).rejects.toThrow(BadRequestException);
+      await expect(svc.submit(companyId, projectId, rfiId, 'user-1', 'member')).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -903,6 +908,7 @@ describe('RfisService', () => {
         {} as unknown as NotificationsService,
         storage as unknown as StorageService,
         {} as unknown as MessagingService,
+        {} as unknown as ProjectAuthorizationService, // unused -- addAttachment() has no project-ownership check of its own
       );
       return { svc, query, getObjectSize, deleteIfExists };
     }

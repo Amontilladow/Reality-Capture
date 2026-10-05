@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -11,6 +11,7 @@ import { downloadReportsXls } from '../lib/reports-xls';
 import { getProject } from '../lib/projects.api';
 import { listDocuments, uploadDocumentFile } from '../lib/documents.api';
 import { remindRfiDrawingUpdate } from '../lib/rfis.api';
+import { getRiskSummary, getTopRisks, downloadRiskPdf, type RiskLevel } from '../lib/risk.api';
 import { apiErrorMessage, apiDownload } from '../lib/api';
 import {
   STATUS_LABELS, PRIORITY_LABELS, DISCIPLINE_LABELS, formatDateTime,
@@ -62,6 +63,13 @@ const SNAG_STATUS_COLORS: Record<string, string> = {
   void: HEX.ink500,
 };
 
+// Mirrors RiskIntelligenceSection.tsx's own LEVEL_COLORS exactly -- the
+// 0-100/4-level deterministic-engine palette, never the separate 1-25
+// Risk Matrix one (this page never shows Risk Matrix numbers).
+const RISK_LEVEL_COLORS: Record<RiskLevel, string> = {
+  LOW: HEX.ok, MODERATE: HEX.warn, HIGH: '#FB923C', CRITICAL: HEX.danger,
+};
+
 // Rotating palette for axes with no fixed status/priority meaning
 // (discipline, trade) -- reuses the same accent colors as everything else
 // on this page instead of inventing a new chart palette.
@@ -111,6 +119,22 @@ export default function ReportsPage() {
     },
   });
 
+  // Risk Intelligence lives on its own top-level tab (moved out of Reports
+  // per an earlier, explicit decision) -- this just surfaces its headline
+  // numbers here too, with a link to the full page and a download button
+  // for the SAME PDF export that page already offers, never a second
+  // generator for the same data (Phase 22).
+  const riskSummaryQuery = useQuery({
+    queryKey: ['risk-summary', projectId],
+    queryFn: () => getRiskSummary(projectId!),
+    enabled: Boolean(projectId),
+  });
+  const topRisksQuery = useQuery({
+    queryKey: ['risk-top', projectId],
+    queryFn: () => getTopRisks(projectId!, 3),
+    enabled: Boolean(projectId),
+  });
+
   // The "one click" the ticket asked for: clicking the not-applied stat tile
   // expands this list inline, right on the Reports page -- following up
   // never requires leaving it. remindedIds tracks which rows already got a
@@ -153,6 +177,22 @@ export default function ReportsPage() {
     }
   }
 
+  const [riskPdfError, setRiskPdfError] = useState('');
+  const [riskPdfDownloading, setRiskPdfDownloading] = useState(false);
+  async function handleDownloadRiskPdf() {
+    if (!projectId) return;
+    setRiskPdfError('');
+    setRiskPdfDownloading(true);
+    try {
+      const date = new Date().toISOString().slice(0, 10);
+      await downloadRiskPdf(projectId, `${projectQuery.data?.code ?? projectId}-risk-report-${date}.pdf`);
+    } catch (err) {
+      setRiskPdfError(apiErrorMessage(err));
+    } finally {
+      setRiskPdfDownloading(false);
+    }
+  }
+
   function handleFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) uploadMutation.mutate(file);
@@ -186,6 +226,53 @@ export default function ReportsPage() {
             {xlsError && <p className="field-error">{xlsError}</p>}
             {pdfError && <p className="field-error">{pdfError}</p>}
           </div>
+        )}
+
+        {/* ── Risk ───────────────────────────────────────────────────── */}
+        {riskSummaryQuery.data && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Risk</h2>
+              <div className="flex items-center gap-2">
+                <Link to={`/projects/${projectId}/risk`} className="btn-secondary !px-3 !py-1.5 text-xs">
+                  View full Risk Intelligence →
+                </Link>
+                <button
+                  onClick={handleDownloadRiskPdf}
+                  disabled={riskPdfDownloading || riskSummaryQuery.data.totalOpenRisks === 0}
+                  className="btn-secondary !px-3 !py-1.5 text-xs"
+                >
+                  {riskPdfDownloading ? 'Preparing…' : 'Download Risk Report'}
+                </button>
+              </div>
+            </div>
+            {riskPdfError && <p className="field-error">{riskPdfError}</p>}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <div className="panel p-3">
+                <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">Project Risk Index</div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xl font-semibold tabular-nums" style={{ color: RISK_LEVEL_COLORS[riskSummaryQuery.data.overallLevel] }}>
+                    {riskSummaryQuery.data.overallScore}
+                  </span>
+                  <span className="text-xs text-ink-500">/ 100 · {riskSummaryQuery.data.overallLevel}</span>
+                </div>
+              </div>
+              <StatTile label="Critical Risks" value={riskSummaryQuery.data.criticalCount} tone="danger" />
+              <StatTile label="Overdue Items" value={riskSummaryQuery.data.overdueCount} tone="danger" />
+              <StatTile label="Open Discrepancies" value={riskSummaryQuery.data.openDiscrepancyCount} />
+              <StatTile label="Total Open Risks" value={riskSummaryQuery.data.totalOpenRisks} />
+            </div>
+            {(topRisksQuery.data?.length ?? 0) > 0 && (
+              <div className="panel tick-frame divide-y divide-base-700/60">
+                {(topRisksQuery.data ?? []).map((r) => (
+                  <div key={r.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                    <span className="text-ink-100">{r.title}</span>
+                    <span className="tabular-nums" style={{ color: RISK_LEVEL_COLORS[r.level] }}>{r.score}/100</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         )}
 
         {kpisQuery.isLoading && <p className="text-sm text-ink-500">Loading report data…</p>}

@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import type { RiskLevel, RiskStatus, RiskDiscipline, RiskNodeType, RiskMatrixLevel, RiskDriver, RiskMatrixSettings } from '@engineeringos/types';
-import { RISK_DRIVERS, DEFAULT_RISK_MATRIX_THRESHOLDS, scoreToMatrixLevel } from '@engineeringos/types';
+import { RISK_DRIVERS, RISK_MATRIX_LEVELS, DEFAULT_RISK_MATRIX_THRESHOLDS, scoreToMatrixLevel } from '@engineeringos/types';
 import { DatabaseService } from '../../database/database.service';
 import { RiskGraphService, type GraphNodeRow } from './risk-graph.service';
 import { RelationshipExtractionService } from './relationship-extraction.service';
@@ -9,7 +9,7 @@ import { ScoringService } from './scoring.service';
 import { AiClientService } from '../ai-client/ai-client.service';
 import { renderRiskPdf, type RiskPdfTopRisk } from './risk-pdf.template';
 
-const RISK_WORTHY_NODE_TYPES = ['rfi', 'issue', 'snag_item', 'drawing', 'qa_inspection'] as const;
+export const RISK_WORTHY_NODE_TYPES = ['rfi', 'issue', 'snag_item', 'drawing', 'qa_inspection', 'submittal'] as const;
 
 const CATEGORY_BY_NODE_TYPE: Record<string, string> = {
   rfi: 'Design / RFI',
@@ -17,6 +17,7 @@ const CATEGORY_BY_NODE_TYPE: Record<string, string> = {
   snag_item: 'Quality / Snagging',
   qa_inspection: 'Quality / Inspection',
   drawing: 'Design / Drawing',
+  submittal: 'Procurement / Submittal',
 };
 
 const TITLE_PREFIX_BY_NODE_TYPE: Record<string, string> = {
@@ -25,6 +26,7 @@ const TITLE_PREFIX_BY_NODE_TYPE: Record<string, string> = {
   snag_item: 'Open Snag',
   qa_inspection: 'Failed QA Inspection',
   drawing: 'Repeated Drawing Revisions',
+  submittal: 'Submittal Pending Review',
 };
 
 // Ordered by how directly actionable/severe the recommendation is — the
@@ -33,18 +35,22 @@ const RECOMMENDED_ACTION_BY_SIGNAL: [string, string][] = [
   ['RFI_OVERDUE', 'Escalate this RFI for an immediate response — it is already overdue.'],
   ['ISSUE_OVERDUE', 'Escalate this issue past its deadline for immediate resolution.'],
   ['SNAG_OVERDUE', 'Escalate this snag item — it has passed its due date.'],
+  ['SUBMITTAL_OVERDUE', 'Escalate this submittal for review — it is already overdue.'],
   ['RFI_DRAWING_UPDATE_NOT_APPLIED', 'Apply the drawing update this RFI requires before dependent work proceeds.'],
   ['QA_FAILED_INSPECTION', 'Re-inspect and remediate the failed scope before covering or proceeding past it.'],
+  ['SUBMITTAL_REJECTED', 'Coordinate a prompt resubmission with the responsible party to avoid a procurement delay.'],
   ['ISSUE_RECURRING_LOCATION', 'Investigate the root cause at this location — multiple issues have recurred here.'],
   ['SNAG_RECURRING_LOCATION', 'Investigate the root cause at this location — multiple snags have recurred here.'],
   ['DRAWING_REPEATED_REVISIONS', 'Confirm the latest revision has been communicated to all affected disciplines.'],
   ['RFI_APPROACHING_DUE', 'Ensure a response is issued before the due date to avoid this becoming overdue.'],
+  ['SUBMITTAL_APPROACHING_DUE', 'Ensure this submittal is reviewed before its due date to avoid becoming overdue.'],
   ['RFI_MULTIPLE_RELATED_ISSUES', 'Coordinate the related issues together with this RFI\'s resolution.'],
   ['ISSUE_MULTIPLE_RELATED_RFIS', 'Coordinate the related RFIs together with this issue\'s resolution.'],
   ['ISSUE_REOPENED', 'Confirm the underlying cause was actually addressed, not just the symptom.'],
   ['RFI_COST_IMPACT', 'Route this RFI\'s cost impact through the appropriate commercial review.'],
   ['RFI_TIME_IMPACT', 'Assess this RFI\'s programme impact with the project schedule owner.'],
   ['RFI_HIGH_PRIORITY', 'Confirm ownership and a response timeline given this RFI\'s priority.'],
+  ['SUBMITTAL_HIGH_PRIORITY', 'Confirm ownership and a review timeline given this submittal\'s priority.'],
   ['ISSUE_HIGH_SEVERITY', 'Confirm ownership and a resolution timeline given this issue\'s severity.'],
 ];
 
@@ -117,6 +123,7 @@ export class RiskService {
       case 'snag_item': await this.extraction.extractSnagItems(companyId, projectId, entityId); break;
       case 'drawing': await this.extraction.extractDrawings(companyId, projectId, entityId); break;
       case 'qa_inspection': await this.extraction.extractQaInspections(companyId, projectId, entityId); break;
+      case 'submittal': await this.extraction.extractSubmittals(companyId, projectId, entityId); break;
     }
     // RFI<->Issue inference is symmetric and cheap enough to redo project-wide
     // whenever either side changes, rather than tracking which pairs to revisit.
@@ -150,7 +157,10 @@ export class RiskService {
     const { directCount, inferredCount } = await this.countRelationshipConfidence(companyId, node.id);
     const missingFields: string[] = [];
     if (!node.discipline) missingFields.push('discipline');
-    const { level: confidenceLevel, reason: confidenceReason } = this.scoring.confidenceForNode(directCount, inferredCount, missingFields);
+    const { level: confidenceLevel, reason: confidenceReason, percent: aiConfidence } = this.scoring.confidenceForNode(directCount, inferredCount, missingFields);
+
+    const matrixSettings = await this.getRiskMatrixSettings(companyId);
+    const { score: aiScore, level: aiLevel } = this.scoring.computeAiMatrixScore(factors, matrixSettings.thresholds ?? DEFAULT_RISK_MATRIX_THRESHOLDS);
 
     const location = await this.findNearestLocation(companyId, node.id);
     const title = `${TITLE_PREFIX_BY_NODE_TYPE[node.nodeType] ?? 'Detected Risk'}: ${node.label}`;
@@ -173,7 +183,7 @@ export class RiskService {
       automatedScore, automatedLevel,
       probability: factors.probability, impact: factors.impact, exposure: factors.exposure,
       dependency: factors.dependency, urgency: factors.urgency, recurrence: factors.recurrence,
-      confidenceLevel, confidenceReason, trend, explanation, recommendedAction,
+      confidenceLevel, confidenceReason, aiScore, aiLevel, aiConfidence, trend, explanation, recommendedAction,
       resurrect: existing?.status === 'RESOLVED',
     });
 
@@ -186,6 +196,12 @@ export class RiskService {
       UPDATE risks SET automated_score = 0, automated_level = 'LOW',
         score = CASE WHEN override_score IS NOT NULL THEN override_score ELSE 0 END,
         level = CASE WHEN override_level IS NOT NULL THEN override_level ELSE 'LOW' END,
+        -- AI Score floors at 1 (there is no "0" on the Risk Matrix's 1-25
+        -- scale); final_score/final_level follow the same override > human
+        -- > AI priority as upsertRisk() above.
+        ai_score = 1, ai_level = 'LOW',
+        final_score = CASE WHEN matrix_override_by IS NOT NULL THEN final_score WHEN human_score IS NOT NULL THEN human_score ELSE 1 END,
+        final_level = CASE WHEN matrix_override_by IS NOT NULL THEN final_level WHEN human_level IS NOT NULL THEN human_level ELSE 'LOW' END,
         trend = 'DECREASING', status = 'RESOLVED', resolved_at = now(), last_calculated_at = now(), updated_at = now()
       WHERE id = ${existing.id}`);
     await this.recordStatusChange(companyId, projectId, existing.id, existing.status, 'RESOLVED', null, 'All contributing signals cleared.');
@@ -196,6 +212,77 @@ export class RiskService {
   async getRiskByRootNode(companyId: string, rootNodeId: string): Promise<RiskRow | null> {
     const [row] = await this.db.withTenant(companyId, sql => sql<RiskRow[]>`SELECT * FROM risks WHERE root_node_id = ${rootNodeId}`);
     return row ?? null;
+  }
+
+  /**
+   * Resolves an issue/RFI/snag's own entity ID to its Risk, for the inline
+   * Human Risk Assessment widget on those forms (brief sections 42-43).
+   * Read-only: returns null rather than creating anything when the
+   * automated engine hasn't flagged this item yet -- a plain page view
+   * must never have a side effect.
+   */
+  async getRiskByEntity(companyId: string, nodeType: typeof RISK_WORTHY_NODE_TYPES[number], entityId: string) {
+    const node = await this.graph.getNodeByEntity(companyId, nodeType, entityId);
+    if (!node) return null;
+    const risk = await this.getRiskByRootNode(companyId, node.id);
+    if (!risk) return null;
+    return { ...risk, discrepancy: RiskService.detectMatrixDiscrepancy(risk) };
+  }
+
+  /**
+   * Same resolution as getRiskByEntity(), but bootstraps a Risk row (with
+   * every automated factor at 0 -- an honest "nothing detected yet", not a
+   * fabricated value) when none exists. Only called from the human-
+   * assessment-by-entity write path: an engineer choosing to record a
+   * Probability x Impact judgment is exactly the case the brief says must
+   * not be gated behind the automated engine having already flagged
+   * something (sections 3, 42-43) -- without this, an item with zero
+   * automated signals could never receive a human assessment at all, since
+   * setHumanAssessment() needs an existing risk row to attach to.
+   */
+  private async getOrCreateRiskForEntity(companyId: string, projectId: string, nodeType: typeof RISK_WORTHY_NODE_TYPES[number], entityId: string): Promise<RiskRow> {
+    const node = await this.graph.getNodeByEntity(companyId, nodeType, entityId);
+    if (!node) throw new NotFoundException(`No ${nodeType.replace('_', ' ')} was found to assess.`);
+
+    const existing = await this.getRiskByRootNode(companyId, node.id);
+    if (existing) return existing;
+
+    const zeroFactors = { probability: 0, impact: 0, exposure: 0, dependency: 0, urgency: 0, recurrence: 0 };
+    const matrixSettings = await this.getRiskMatrixSettings(companyId);
+    const { score: aiScore, level: aiLevel } = this.scoring.computeAiMatrixScore(zeroFactors, matrixSettings.thresholds ?? DEFAULT_RISK_MATRIX_THRESHOLDS);
+    const title = node.label;
+    const category = CATEGORY_BY_NODE_TYPE[nodeType] ?? 'Other';
+
+    return this.db.withTenant(companyId, async (sql) => {
+      const [row] = await sql<RiskRow[]>`
+        INSERT INTO risks (
+          company_id, project_id, root_node_id, title, category, discipline,
+          automated_score, automated_level, score, level,
+          probability, impact, exposure, dependency, urgency, recurrence,
+          confidence_level, confidence_reason,
+          ai_score, ai_level, ai_confidence, final_score, final_level,
+          trend, status
+        ) VALUES (
+          ${companyId}, ${projectId}, ${node.id}, ${title}, ${category}, ${(node.discipline as RiskDiscipline | null) ?? null},
+          0, 'LOW', 0, 'LOW',
+          0, 0, 0, 0, 0, 0,
+          'LOW', 'No automated risk signals detected yet — created from a manual Risk Matrix assessment.',
+          ${aiScore}, ${aiLevel}, 0, ${aiScore}, ${aiLevel},
+          'NEW', 'DETECTED'
+        )
+        ON CONFLICT (root_node_id) DO UPDATE SET updated_at = now()
+        RETURNING *`;
+      return row;
+    });
+  }
+
+  /** The human-assessment-by-entity write path the inline widget uses: bootstraps a Risk row if needed, then records the assessment exactly as setHumanAssessment() does by risk ID. */
+  async setHumanAssessmentByEntity(
+    companyId: string, projectId: string, nodeType: typeof RISK_WORTHY_NODE_TYPES[number], entityId: string, userId: string,
+    input: { probability: number; impact: number; primaryDriver: RiskDriver; secondaryDriver?: RiskDriver | null },
+  ): Promise<RiskRow> {
+    const risk = await this.getOrCreateRiskForEntity(companyId, projectId, nodeType, entityId);
+    return this.setHumanAssessment(companyId, projectId, risk.id, userId, input);
   }
 
   async getRisk(companyId: string, riskId: string): Promise<RiskRow> {
@@ -215,6 +302,7 @@ export class RiskService {
     automatedScore: number; automatedLevel: RiskLevel;
     probability: number; impact: number; exposure: number; dependency: number; urgency: number; recurrence: number;
     confidenceLevel: 'HIGH' | 'MODERATE' | 'LOW'; confidenceReason: string;
+    aiScore: number; aiLevel: RiskMatrixLevel; aiConfidence: number;
     trend: RiskRow['trend']; explanation: string; recommendedAction: string; resurrect: boolean;
   }): Promise<RiskRow> {
     return this.db.withTenant(companyId, async (sql) => {
@@ -223,14 +311,18 @@ export class RiskService {
           company_id, project_id, root_node_id, title, category, discipline, location_node_id, location_label,
           automated_score, automated_level, score, level,
           probability, impact, exposure, dependency, urgency, recurrence,
-          confidence_level, confidence_reason, trend, status, explanation, recommended_action
+          confidence_level, confidence_reason,
+          ai_score, ai_level, ai_confidence, final_score, final_level,
+          trend, status, explanation, recommended_action
         )
         VALUES (
           ${companyId}, ${projectId}, ${input.rootNodeId}, ${input.title}, ${input.category}, ${input.discipline},
           ${input.locationNodeId}, ${input.locationLabel},
           ${input.automatedScore}, ${input.automatedLevel}, ${input.automatedScore}, ${input.automatedLevel},
           ${input.probability}, ${input.impact}, ${input.exposure}, ${input.dependency}, ${input.urgency}, ${input.recurrence},
-          ${input.confidenceLevel}, ${input.confidenceReason}, ${input.trend}, 'DETECTED', ${input.explanation}, ${input.recommendedAction}
+          ${input.confidenceLevel}, ${input.confidenceReason},
+          ${input.aiScore}, ${input.aiLevel}, ${input.aiConfidence}, ${input.aiScore}, ${input.aiLevel},
+          ${input.trend}, 'DETECTED', ${input.explanation}, ${input.recommendedAction}
         )
         ON CONFLICT (root_node_id) DO UPDATE SET
           title = EXCLUDED.title, category = EXCLUDED.category, discipline = EXCLUDED.discipline,
@@ -241,6 +333,21 @@ export class RiskService {
           probability = EXCLUDED.probability, impact = EXCLUDED.impact, exposure = EXCLUDED.exposure,
           dependency = EXCLUDED.dependency, urgency = EXCLUDED.urgency, recurrence = EXCLUDED.recurrence,
           confidence_level = EXCLUDED.confidence_level, confidence_reason = EXCLUDED.confidence_reason,
+          -- AI Score always reflects the latest deterministic recalculation
+          -- (it's not a user-settable value, so there's nothing to
+          -- preserve). final_score/final_level follow the Risk Matrix's own
+          -- override > human > AI priority (brief sections 11-12) -- an
+          -- active matrix override or an existing human assessment must
+          -- never be silently overwritten by a routine recalculation.
+          ai_score = EXCLUDED.ai_score, ai_level = EXCLUDED.ai_level, ai_confidence = EXCLUDED.ai_confidence,
+          final_score = CASE
+            WHEN risks.matrix_override_by IS NOT NULL THEN risks.final_score
+            WHEN risks.human_score IS NOT NULL THEN risks.human_score
+            ELSE EXCLUDED.ai_score END,
+          final_level = CASE
+            WHEN risks.matrix_override_by IS NOT NULL THEN risks.final_level
+            WHEN risks.human_level IS NOT NULL THEN risks.human_level
+            ELSE EXCLUDED.ai_level END,
           trend = EXCLUDED.trend, explanation = EXCLUDED.explanation, recommended_action = EXCLUDED.recommended_action,
           status = CASE WHEN risks.status = 'RESOLVED' AND EXCLUDED.automated_score > 0 THEN 'ACTIVE' ELSE risks.status END,
           resolved_at = CASE WHEN risks.status = 'RESOLVED' AND EXCLUDED.automated_score > 0 THEN NULL ELSE risks.resolved_at END,
@@ -461,6 +568,162 @@ export class RiskService {
       ORDER BY h.performed_at DESC`);
   }
 
+  /**
+   * Human-vs-AI discrepancy (brief section 11/40): null whenever either side
+   * hasn't been computed yet -- a risk that's never had a human assessment
+   * has nothing to disagree with, and that is not itself a discrepancy.
+   * levelGap is the distance between the two levels on the matrix's own
+   * ordered 5-level scale (RISK_MATRIX_LEVELS), not a raw score difference,
+   * since a 1-level gap near a threshold boundary is a much smaller
+   * disagreement than the same score delta straddling two bands further apart.
+   */
+  static detectMatrixDiscrepancy(
+    risk: Pick<RiskRow, 'humanScore' | 'humanLevel' | 'aiScore' | 'aiLevel' | 'matrixOverrideBy'>,
+  ): { hasDiscrepancy: boolean; levelGap: number; scoreDelta: number; reviewed: boolean } | null {
+    if (risk.humanScore == null || risk.humanLevel == null || risk.aiScore == null || risk.aiLevel == null) return null;
+    const levelGap = Math.abs(RISK_MATRIX_LEVELS.indexOf(risk.humanLevel) - RISK_MATRIX_LEVELS.indexOf(risk.aiLevel));
+    return { hasDiscrepancy: levelGap > 0, levelGap, scoreDelta: Math.abs(risk.humanScore - risk.aiScore), reviewed: risk.matrixOverrideBy != null };
+  }
+
+  async getRiskWithDiscrepancy(companyId: string, riskId: string): Promise<RiskRow & { discrepancy: ReturnType<typeof RiskService.detectMatrixDiscrepancy> }> {
+    const risk = await this.getRisk(companyId, riskId);
+    return { ...risk, discrepancy: RiskService.detectMatrixDiscrepancy(risk) };
+  }
+
+  /** Open, not-yet-reviewed Human-vs-AI discrepancies, for an alerts/review list (brief section 11). Once an engineer accepts AI, keeps human, or applies a custom override, it drops off this list. */
+  async getMatrixDiscrepancies(companyId: string, projectId: string) {
+    const risks = await this.listRisks(companyId, projectId);
+    return risks
+      .filter(r => this.isOpenStatus(r.status))
+      .map(r => ({ risk: r, discrepancy: RiskService.detectMatrixDiscrepancy(r) }))
+      .filter((x): x is { risk: RiskRow; discrepancy: NonNullable<ReturnType<typeof RiskService.detectMatrixDiscrepancy>> } =>
+        x.discrepancy !== null && x.discrepancy.hasDiscrepancy && !x.discrepancy.reviewed);
+  }
+
+  /**
+   * The 5x5 Risk Matrix heatmap (brief sections 4, 20-21): how many open
+   * risks fall into each Probability x Impact cell. A risk's cell uses its
+   * human assessment when one exists (that's the actual judgment call an
+   * engineer made), else the AI's own probability/impact bands -- derived
+   * here from the SAME stored 0-100 automated factors computeAiMatrixScore
+   * already rescales, never a second persisted copy of the AI's bands.
+   * Always returns all 25 cells (zero-count ones included) so the frontend
+   * grid never has to guess at a cell's existence.
+   */
+  async getRiskHeatmap(companyId: string, projectId: string) {
+    const risks = await this.listRisks(companyId, projectId);
+    const open = risks.filter(r => this.isOpenStatus(r.status));
+    const matrixSettings = await this.getRiskMatrixSettings(companyId);
+    const thresholds = matrixSettings.thresholds ?? DEFAULT_RISK_MATRIX_THRESHOLDS;
+
+    const cells = new Map<string, { probability: number; impact: number; riskIds: string[] }>();
+    for (let p = 1; p <= 5; p++) {
+      for (let i = 1; i <= 5; i++) cells.set(`${p}-${i}`, { probability: p, impact: i, riskIds: [] });
+    }
+
+    for (const r of open) {
+      const probability = r.humanProbability ?? this.scoring.toMatrixBand(r.probability);
+      const impact = r.humanImpact ?? this.scoring.toMatrixBand(r.impact);
+      cells.get(`${probability}-${impact}`)?.riskIds.push(r.id);
+    }
+
+    return Array.from(cells.values()).map(c => {
+      const score = c.probability * c.impact;
+      return { probability: c.probability, impact: c.impact, score, level: scoreToMatrixLevel(score, thresholds), count: c.riskIds.length, riskIds: c.riskIds };
+    });
+  }
+
+  /**
+   * The audited Risk Matrix override layer (brief sections 11, 40):
+   * "Accept AI Assessment" / "Keep Human Assessment" / "Update Assessment"
+   * (the last of these is just a fresh setHumanAssessment() call -- it
+   * already clears any override, no separate code path needed) plus a
+   * free-form CUSTOM override for an engineer who disagrees with both.
+   * Every decision is written to risk_assessment_history, including
+   * KEEP_HUMAN even though it stores the same score/level the human
+   * assessment already produced -- recording an explicit override is what
+   * marks the discrepancy as reviewed/dismissed (detectMatrixDiscrepancy()
+   * still reports a level gap purely from humanLevel vs aiLevel, so without
+   * this the UI would have no way to know a human already looked at it and
+   * chose to keep their own assessment rather than silently never asking).
+   */
+  async setMatrixOverride(
+    companyId: string, projectId: string, riskId: string, userId: string,
+    input: { decision: 'ACCEPT_AI' | 'KEEP_HUMAN' | 'CUSTOM'; score?: number; level?: RiskMatrixLevel; reason?: string },
+  ): Promise<RiskRow> {
+    const existing = await this.getRisk(companyId, riskId);
+
+    let score: number;
+    let level: RiskMatrixLevel;
+    let reason: string;
+
+    if (input.decision === 'ACCEPT_AI') {
+      if (existing.aiScore == null || existing.aiLevel == null) {
+        throw new BadRequestException('No AI score is available for this risk yet.');
+      }
+      score = existing.aiScore; level = existing.aiLevel;
+      reason = input.reason?.trim() || 'Accepted AI assessment over human assessment.';
+    } else if (input.decision === 'KEEP_HUMAN') {
+      if (existing.humanScore == null || existing.humanLevel == null) {
+        throw new BadRequestException('This risk has no human assessment to keep.');
+      }
+      score = existing.humanScore; level = existing.humanLevel;
+      reason = input.reason?.trim() || 'Reviewed discrepancy — kept human assessment.';
+    } else {
+      if (!Number.isInteger(input.score) || (input.score as number) < 1 || (input.score as number) > 25) {
+        throw new BadRequestException('Custom override score must be an integer between 1 and 25.');
+      }
+      if (!input.level || !RISK_MATRIX_LEVELS.includes(input.level)) {
+        throw new BadRequestException('Custom override requires a valid risk level.');
+      }
+      if (!input.reason?.trim()) {
+        throw new BadRequestException('A reason is required for a custom Risk Matrix override.');
+      }
+      score = input.score as number; level = input.level; reason = input.reason.trim();
+    }
+
+    const row = await this.db.withTenant(companyId, async (sql) => {
+      const [r] = await sql<RiskRow[]>`
+        UPDATE risks SET
+          matrix_override_by = ${userId}, matrix_override_at = now(), matrix_override_reason = ${reason},
+          final_score = ${score}, final_level = ${level},
+          updated_at = now()
+        WHERE id = ${riskId} RETURNING *`;
+      return r;
+    });
+
+    await this.db.withTenant(companyId, sql => sql`
+      INSERT INTO risk_assessment_history (company_id, project_id, risk_id, assessment_type, score, level, reason, performed_by)
+      VALUES (${companyId}, ${projectId}, ${riskId}, 'OVERRIDE', ${score}, ${level}, ${reason}, ${userId})`);
+
+    return row;
+  }
+
+  /** Reverts to the default Risk Matrix priority (human assessment, else AI score) by clearing any explicit override. */
+  async clearMatrixOverride(companyId: string, projectId: string, riskId: string, userId: string): Promise<RiskRow> {
+    const existing = await this.getRisk(companyId, riskId);
+    const { finalScore, finalLevel } = computeFinalMatrix({
+      humanScore: existing.humanScore, humanLevel: existing.humanLevel,
+      aiScore: existing.aiScore, aiLevel: existing.aiLevel,
+    });
+
+    const row = await this.db.withTenant(companyId, async (sql) => {
+      const [r] = await sql<RiskRow[]>`
+        UPDATE risks SET
+          matrix_override_by = NULL, matrix_override_at = NULL, matrix_override_reason = NULL,
+          final_score = ${finalScore}, final_level = ${finalLevel},
+          updated_at = now()
+        WHERE id = ${riskId} RETURNING *`;
+      return r;
+    });
+
+    await this.db.withTenant(companyId, sql => sql`
+      INSERT INTO risk_assessment_history (company_id, project_id, risk_id, assessment_type, score, level, reason, performed_by)
+      VALUES (${companyId}, ${projectId}, ${riskId}, 'OVERRIDE', ${finalScore}, ${finalLevel}, 'Override cleared.', ${userId})`);
+
+    return row;
+  }
+
   // ── Reports tab aggregations (brief sections 19-27, 32-33) ──────────────
 
   private isOpenStatus(status: RiskStatus): boolean {
@@ -472,9 +735,7 @@ export class RiskService {
     const risks = await this.listRisks(companyId, projectId);
     const openRisks = risks.filter(r => this.isOpenStatus(r.status));
 
-    const overallScore = openRisks.length > 0
-      ? Math.round(openRisks.reduce((sum, r) => sum + r.score, 0) / openRisks.length)
-      : 0;
+    const overallScore = computeProjectRiskIndex(openRisks);
     const overallLevel = this.scoring.levelForScore(overallScore);
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
@@ -490,12 +751,22 @@ export class RiskService {
       }
     }
 
+    // Open, unreviewed Human-vs-AI discrepancies (Phase 18/21) -- ties the
+    // Risk Matrix system into the headline Executive Summary for the first
+    // time. Computed inline over the already-fetched openRisks rather than
+    // a second getMatrixDiscrepancies() round trip.
+    const openDiscrepancyCount = openRisks.filter(r => {
+      const d = RiskService.detectMatrixDiscrepancy(r);
+      return d !== null && d.hasDiscrepancy && !d.reviewed;
+    }).length;
+
     return {
       overallScore, overallLevel, overallScoreTrendPct,
       criticalCount: openRisks.filter(r => r.level === 'CRITICAL').length,
       highCount: openRisks.filter(r => r.level === 'HIGH').length,
       increasingCount: openRisks.filter(r => r.trend === 'INCREASING').length,
       overdueCount: openRisks.filter(r => r.dueDate && new Date(r.dueDate).getTime() < Date.now()).length,
+      openDiscrepancyCount,
       totalOpenRisks: openRisks.length,
     };
   }
@@ -761,6 +1032,24 @@ export class RiskService {
 }
 
 // ── Pure context-building functions (exported for direct unit testing) ─────
+
+// Each level up weighs twice as much as the one below it -- a project
+// dominated by a handful of CRITICAL risks should read as far riskier than
+// the same count of LOW ones, which a flat average of 0-100 scores could
+// easily wash out (ten LOW risks at 5 and one CRITICAL at 90 averages to
+// 12.7 -- barely distinguishable from "no real risk here"). This is still
+// a plain weighted average of the SAME real 0-100 scores already computed
+// by the deterministic engine, never a fabricated or AI-guessed number,
+// and it stays within [0,100] by construction (Phase 22).
+const PROJECT_RISK_INDEX_LEVEL_WEIGHT: Record<RiskLevel, number> = { LOW: 1, MODERATE: 2, HIGH: 4, CRITICAL: 8 };
+
+/** The Project Risk Index (brief section 19/Phase 22): a severity-weighted average of open risks' automated scores, never their Risk Matrix (1-25) scores -- the two scales are never mixed (see RiskRow's own comment). 0 when there are no open risks -- never a fabricated non-zero baseline. */
+export function computeProjectRiskIndex(openRisks: { score: number; level: RiskLevel }[]): number {
+  if (openRisks.length === 0) return 0;
+  const weightedSum = openRisks.reduce((sum, r) => sum + r.score * PROJECT_RISK_INDEX_LEVEL_WEIGHT[r.level], 0);
+  const weightTotal = openRisks.reduce((sum, r) => sum + PROJECT_RISK_INDEX_LEVEL_WEIGHT[r.level], 0);
+  return Math.round(weightedSum / weightTotal);
+}
 
 /** The one number/level actually shown as "the" risk on the Risk Matrix: an explicit override, else human judgment, else the AI score (brief sections 11-12). */
 export function computeFinalMatrix(

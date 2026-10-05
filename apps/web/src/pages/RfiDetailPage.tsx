@@ -11,6 +11,7 @@ import {
 } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { RichTextEditor, isRichTextEmpty } from '../components/ui/RichTextEditor';
+import { InlineRiskAssessment } from '../components/RiskIntelligenceSection';
 import {
   getRfi, updateRfi, submitRfi, requestClarification, respondToRfi, closeRfi, reopenRfi,
   submitRfiForReview, decideRfiReview,
@@ -634,6 +635,11 @@ export default function RfiDetailPage() {
           </div>
         </section>
 
+        {/* Human Risk Assessment */}
+        <section className="panel tick-frame p-5">
+          <InlineRiskAssessment projectId={projectId} nodeType="rfi" entityId={rfiId} />
+        </section>
+
         {/* Query */}
         <section className="panel tick-frame p-5 space-y-3">
           <div className="flex items-center justify-between">
@@ -1236,6 +1242,7 @@ function OrganizationSlotRow({ projectId, canEdit }: { projectId: string; canEdi
                 <img
                   src={org.logoUrl}
                   alt={org.name ?? PROJECT_ORGANIZATION_SLOT_LABELS[slot]}
+                  loading="lazy"
                   className="w-14 h-14 object-contain rounded border border-base-600 bg-white"
                 />
               ) : (

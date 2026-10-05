@@ -39,6 +39,23 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   [/\/workforce\/screenshots$/,           'workforce.screenshot_captured',        'workforce_screenshot'],
   [/\/workforce\/scheduling\/shifts$/,    'workforce.shift_assigned',             'workforce_shift_assignment'],
   [/\/workforce\/scheduling\/absences\/[^/]+\/decide$/, 'workforce.absence_decided', 'workforce_absence'],
+  // RBAC Phase 6 -- "who has access to what" is exactly the kind of mutation
+  // this audit trail exists for, but every one of these fell through to the
+  // generic URL-derived fallback below (deriveAction()'s last-segment
+  // heuristic), giving unreadable labels like "verify.created" or
+  // "members.created" with no indication these are access-control changes.
+  // Each pair below is two separate regexes (collection POST vs item-level
+  // DELETE), not one pattern relying on the method==='DELETE' auto-rewrite
+  // below -- the two URL shapes differ by a trailing /:id segment, so they
+  // never share a single regex anyway; writing the exact verb directly is
+  // clearer than threading them through the created/updated->deleted rewrite.
+  [/\/projects\/[^/]+\/members$/,                                  'project_member.added',           'project_member'],
+  [/\/projects\/[^/]+\/members\/[^/]+$/,                           'project_member.removed',         'project_member'],
+  [/\/projects\/[^/]+\/permission-grants$/,                        'project_permission.granted',     'project_permission_grant'],
+  [/\/projects\/[^/]+\/permission-grants\/[^/]+\/[^/]+$/,          'project_permission.revoked',     'project_permission_grant'],
+  [/\/projects\/[^/]+\/organizations\/[^/]+\/members$/,            'project_organization.member_added',   'project_organization_member'],
+  [/\/projects\/[^/]+\/organizations\/members\/[^/]+$/,            'project_organization.member_removed', 'project_organization_member'],
+  [/\/snag-items\/[^/]+\/verify$/,                                 'snag_item.verified',             'snag_item'],
 ];
 
 interface AuditLogEntry {
@@ -59,7 +76,7 @@ interface AuditLogEntry {
   source: string;
 }
 
-function deriveAction(method: string, url: string): { action: string; resourceType: string } {
+export function deriveAction(method: string, url: string): { action: string; resourceType: string } {
   for (const [pattern, action, resourceType] of ROUTE_MAP) {
     if (pattern.test(url)) {
       // Override action verb for DELETE

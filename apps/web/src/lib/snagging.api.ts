@@ -75,6 +75,17 @@ export function deleteSnagItem(projectId: string, snagId: string) {
   return apiDelete<{ message: string }>(`/projects/${projectId}/snag-items/${snagId}`);
 }
 
+// ── Verify (RBAC Phase 3) ────────────────────────────────────────────────
+// Distinct from updateSnagItem({ status: 'verified' }) above, which still
+// works unchanged for anyone holding manage_project_records -- this hits a
+// dedicated endpoint so someone granted only the narrower
+// verify_snag_items permission (not manage_project_records) can also
+// perform just this one sign-off step. See SnagDetail.tsx's "Verify"
+// button, which calls this instead of the generic status mutation.
+export function verifySnagItem(projectId: string, snagId: string) {
+  return apiPost<SnagItem>(`/projects/${projectId}/snag-items/${snagId}/verify`, {});
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // Detail-view workflow actions — mirrors issues.api.ts's equivalent
 // activities/forward/force-status/attachments functions one-to-one.

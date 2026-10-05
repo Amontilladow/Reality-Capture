@@ -8,10 +8,11 @@ import { apiErrorMessage } from '../lib/api';
 import { getProject } from '../lib/projects.api';
 import {
   recalculateRisk, getRiskSummary, getTopRisks, getEmergingRisks, getRiskByDiscipline,
-  getRiskClusters, getRiskDataAvailability, listRisks, getRiskChain, getRiskEvidence, getRiskHistory,
+  getRiskClusters, getRiskDataAvailability, listRisks, getRisk, getRiskChain, getRiskEvidence, getRiskHistory,
   overrideRisk, clearRiskOverride, setRiskStatus, getAiBriefing, getAiExplanation, downloadRiskPdf,
-  setHumanAssessment, RISK_DRIVERS, RISK_DRIVER_LABELS,
-  type Risk, type RiskLevel, type RiskStatus, type RiskMatrixLevel, type RiskDriver,
+  setHumanAssessment, setHumanAssessmentByEntity, setMatrixOverride, getRiskByEntity,
+  getMatrixDiscrepancies, getRiskHeatmap, RISK_DRIVERS, RISK_DRIVER_LABELS,
+  type Risk, type RiskLevel, type RiskStatus, type RiskMatrixLevel, type RiskDriver, type RiskMatrixDiscrepancy, type RiskHeatmapCell,
 } from '../lib/risk.api';
 
 const HEX = {
@@ -62,6 +63,16 @@ function timeAgo(iso?: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+// Mirrors RiskService.detectMatrixDiscrepancy() server-side, purely for a
+// display-only register indicator -- never trusted for an action (Accept
+// AI / Keep Human / Update Assessment all go through the server, which
+// recomputes this itself).
+const MATRIX_LEVEL_ORDER: RiskMatrixLevel[] = ['LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH', 'CRITICAL'];
+function hasUnreviewedMatrixDiscrepancy(r: Risk): boolean {
+  if (!r.humanLevel || !r.aiLevel || r.matrixOverrideBy) return false;
+  return MATRIX_LEVEL_ORDER.indexOf(r.humanLevel) !== MATRIX_LEVEL_ORDER.indexOf(r.aiLevel);
+}
+
 function LevelBadge({ level }: { level: RiskLevel }) {
   return (
     <span
@@ -90,7 +101,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
   const [graphFocusNodeId, setGraphFocusNodeId] = useState<string | undefined>(undefined);
 
   const invalidateAll = () => {
-    ['risk-summary', 'risk-top', 'risk-emerging', 'risk-by-discipline', 'risk-clusters', 'risk-data-availability', 'risk-register']
+    ['risk-summary', 'risk-top', 'risk-emerging', 'risk-by-discipline', 'risk-clusters', 'risk-data-availability', 'risk-register', 'risk-discrepancies', 'risk-heatmap']
       .forEach((key) => queryClient.invalidateQueries({ queryKey: [key, projectId] }));
   };
 
@@ -101,6 +112,8 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
   const clustersQuery = useQuery({ queryKey: ['risk-clusters', projectId], queryFn: () => getRiskClusters(projectId) });
   const dataAvailabilityQuery = useQuery({ queryKey: ['risk-data-availability', projectId], queryFn: () => getRiskDataAvailability(projectId) });
   const registerQuery = useQuery({ queryKey: ['risk-register', projectId], queryFn: () => listRisks(projectId) });
+  const discrepanciesQuery = useQuery({ queryKey: ['risk-discrepancies', projectId], queryFn: () => getMatrixDiscrepancies(projectId) });
+  const heatmapQuery = useQuery({ queryKey: ['risk-heatmap', projectId], queryFn: () => getRiskHeatmap(projectId) });
 
   const recalcMutation = useMutation({
     mutationFn: () => recalculateRisk(projectId),
@@ -195,7 +208,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
       {summary && hasAnyData && (
         <>
           {/* Executive Risk Summary */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
             <div className="panel p-3">
               <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">Overall Project Risk</div>
               <div className="flex items-baseline gap-2">
@@ -215,6 +228,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
             <StatTile label="High Risks" value={summary.highCount} tone={summary.highCount > 0 ? 'warn' : undefined} />
             <StatTile label="Increasing" value={summary.increasingCount} tone={summary.increasingCount > 0 ? 'danger' : undefined} />
             <StatTile label="Overdue Items" value={summary.overdueCount} tone={summary.overdueCount > 0 ? 'danger' : undefined} />
+            <StatTile label="Open Discrepancies" value={summary.openDiscrepancyCount} tone={summary.openDiscrepancyCount > 0 ? 'warn' : undefined} />
           </div>
 
           {/* Risk Summary — deterministic, grounded in the summary above; never a free-floating claim */}
@@ -224,6 +238,27 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
               <p className="text-sm text-ink-300 leading-relaxed">
                 {buildBriefing(summary, topQuery.data ?? [], clustersQuery.data ?? [])}
               </p>
+            </div>
+          )}
+
+          {/* Alerts — unreviewed Human-vs-AI discrepancies needing a decision (brief section 11) */}
+          {(discrepanciesQuery.data?.length ?? 0) > 0 && (
+            <div className="panel tick-frame p-4 border border-warn/40 bg-warn/5 space-y-2">
+              <div className="field-label !mb-1">
+                Alerts — {discrepanciesQuery.data!.length} risk{discrepanciesQuery.data!.length === 1 ? '' : 's'} need{discrepanciesQuery.data!.length === 1 ? 's' : ''} discrepancy review
+              </div>
+              <div className="divide-y divide-base-700/60">
+                {(discrepanciesQuery.data ?? []).map(({ risk: r, discrepancy }) => (
+                  <button key={r.id} onClick={() => setDetailRiskId(r.id)} className="w-full flex items-center justify-between gap-4 py-2 text-left hover:bg-base-800/60 transition-colors">
+                    <span className="text-sm text-ink-100">{r.title}</span>
+                    <span className="text-xs text-ink-500 shrink-0">
+                      Human <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[r.humanLevel!] }}>{MATRIX_LEVEL_LABELS[r.humanLevel!]}</span>
+                      {' '}vs AI <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[r.aiLevel!] }}>{MATRIX_LEVEL_LABELS[r.aiLevel!]}</span>
+                      {' '}({discrepancy.levelGap} apart)
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -295,6 +330,13 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
             </div>
           )}
 
+          {/* Risk Matrix Heatmap -- brief sections 4, 20-21: a human-assessed
+              risk sits at its own Probability x Impact cell, else at the
+              AI's own derived bands (see RiskHeatmap's own comment). */}
+          {(heatmapQuery.data?.some((c) => c.count > 0)) && (
+            <RiskHeatmap cells={heatmapQuery.data!} risks={registerQuery.data ?? []} onSelectRisk={(riskId) => setDetailRiskId(riskId)} />
+          )}
+
           {/* Risk by Discipline */}
           {(byDisciplineQuery.data?.length ?? 0) > 0 && (
             <div className="panel p-4">
@@ -360,26 +402,42 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
                     <th className="px-4 py-2.5 font-medium">Location</th>
                     <th className="px-4 py-2.5 font-medium">Score</th>
                     <th className="px-4 py-2.5 font-medium">Level</th>
+                    <th className="px-4 py-2.5 font-medium">Matrix (H / AI)</th>
+                    <th className="px-4 py-2.5 font-medium">Driver</th>
                     <th className="px-4 py-2.5 font-medium">Trend</th>
                     <th className="px-4 py-2.5 font-medium">Status</th>
                     <th className="px-4 py-2.5 font-medium">Updated</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {register.map((r) => (
-                    <tr key={r.id} onClick={() => setDetailRiskId(r.id)} className="border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-800/60">
-                      <td className="px-4 py-2.5">{r.title}</td>
-                      <td className="px-4 py-2.5 text-ink-300">{r.category}</td>
-                      <td className="px-4 py-2.5 text-ink-500">{r.locationLabel ?? '—'}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-ink-100">{r.score}</td>
-                      <td className="px-4 py-2.5"><LevelBadge level={r.level} /></td>
-                      <td className="px-4 py-2.5"><TrendIndicator trend={r.trend} /></td>
-                      <td className="px-4 py-2.5 text-ink-500">{STATUS_LABELS[r.status]}</td>
-                      <td className="px-4 py-2.5 text-ink-500">{timeAgo(r.lastCalculatedAt)}</td>
-                    </tr>
-                  ))}
+                  {register.map((r) => {
+                    const unreviewedDiscrepancy = hasUnreviewedMatrixDiscrepancy(r);
+                    return (
+                      <tr key={r.id} onClick={() => setDetailRiskId(r.id)} className="border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-800/60">
+                        <td className="px-4 py-2.5">{r.title}</td>
+                        <td className="px-4 py-2.5 text-ink-300">{r.category}</td>
+                        <td className="px-4 py-2.5 text-ink-500">{r.locationLabel ?? '—'}</td>
+                        <td className="px-4 py-2.5 tabular-nums text-ink-100">{r.score}</td>
+                        <td className="px-4 py-2.5"><LevelBadge level={r.level} /></td>
+                        <td className="px-4 py-2.5 text-xs whitespace-nowrap">
+                          {r.finalScore != null ? (
+                            <span className="flex items-center gap-1">
+                              {unreviewedDiscrepancy && <span title="Human and AI disagree — needs review" className="text-warn">⚠</span>}
+                              <span style={{ color: r.humanLevel ? MATRIX_LEVEL_COLORS[r.humanLevel] : HEX.ink500 }}>{r.humanScore ?? '—'}</span>
+                              <span className="text-ink-500">/</span>
+                              <span style={{ color: r.aiLevel ? MATRIX_LEVEL_COLORS[r.aiLevel] : HEX.ink500 }}>{r.aiScore ?? '—'}</span>
+                            </span>
+                          ) : '—'}
+                        </td>
+                        <td className="px-4 py-2.5 text-ink-500">{r.primaryDriver ? RISK_DRIVER_LABELS[r.primaryDriver] : '—'}</td>
+                        <td className="px-4 py-2.5"><TrendIndicator trend={r.trend} /></td>
+                        <td className="px-4 py-2.5 text-ink-500">{STATUS_LABELS[r.status]}</td>
+                        <td className="px-4 py-2.5 text-ink-500">{timeAgo(r.lastCalculatedAt)}</td>
+                      </tr>
+                    );
+                  })}
                   {register.length === 0 && (
-                    <tr><td colSpan={8} className="px-4 py-8 text-center text-ink-500">No risks match the current filters.</td></tr>
+                    <tr><td colSpan={10} className="px-4 py-8 text-center text-ink-500">No risks match the current filters.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -436,9 +494,81 @@ function StatTile({ label, value, tone }: { label: string; value: number; tone?:
   );
 }
 
+// 5x5 Risk Matrix heatmap (brief sections 4, 20-21). Probability increases
+// upward, impact increases rightward -- the standard risk-matrix reading
+// convention. A cell's count/color come straight from the server
+// (RiskService.getRiskHeatmap -- see its own comment on how a cell is
+// chosen for an AI-only-assessed risk); `risks` is only used here to
+// resolve a cell's riskIds into titles for its tooltip/popover, never to
+// recompute anything already decided server-side.
+function RiskHeatmap({ cells, risks, onSelectRisk }: { cells: RiskHeatmapCell[]; risks: Risk[]; onSelectRisk: (riskId: string) => void }) {
+  const [openCellKey, setOpenCellKey] = useState<string | null>(null);
+  const byId = new Map(risks.map((r) => [r.id, r]));
+  const cellByCoords = new Map(cells.map((c) => [`${c.probability}-${c.impact}`, c]));
+
+  return (
+    <div className="panel p-4">
+      <div className="field-label !mb-2">Risk Matrix Heatmap</div>
+      <div className="flex gap-2">
+        <div className="flex flex-col justify-between text-[10px] text-ink-500 py-1">
+          {[5, 4, 3, 2, 1].map((p) => <div key={p} className="h-14 flex items-center">{p}</div>)}
+        </div>
+        <div className="flex-1">
+          <div className="grid grid-cols-5 gap-1">
+            {[5, 4, 3, 2, 1].flatMap((p) => [1, 2, 3, 4, 5].map((i) => {
+              const cell = cellByCoords.get(`${p}-${i}`);
+              const key = `${p}-${i}`;
+              const count = cell?.count ?? 0;
+              return (
+                <div key={key} className="relative">
+                  <button
+                    onClick={() => {
+                      if (!cell || count === 0) return;
+                      if (count === 1) onSelectRisk(cell.riskIds[0]);
+                      else setOpenCellKey(openCellKey === key ? null : key);
+                    }}
+                    className="h-14 w-full rounded flex items-center justify-center text-sm font-semibold tabular-nums transition-opacity hover:opacity-80"
+                    style={{
+                      backgroundColor: cell ? `${MATRIX_LEVEL_COLORS[cell.level]}${count > 0 ? '55' : '1a'}` : 'transparent',
+                      color: count > 0 ? MATRIX_LEVEL_COLORS[cell!.level] : HEX.base700,
+                      cursor: count > 0 ? 'pointer' : 'default',
+                    }}
+                    title={cell ? `Probability ${p} x Impact ${i} = ${cell.score} (${MATRIX_LEVEL_LABELS[cell.level]})` : undefined}
+                  >
+                    {count > 0 ? count : ''}
+                  </button>
+                  {openCellKey === key && cell && cell.riskIds.length > 1 && (
+                    <div className="absolute z-10 top-full left-0 mt-1 w-56 panel tick-frame p-1 shadow-lg">
+                      {cell.riskIds.map((id) => (
+                        <button
+                          key={id} onClick={() => { onSelectRisk(id); setOpenCellKey(null); }}
+                          className="w-full text-left px-2 py-1.5 text-xs text-ink-100 hover:bg-base-800/60 rounded truncate"
+                        >
+                          {byId.get(id)?.title ?? id}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            }))}
+          </div>
+          <div className="flex justify-between text-[10px] text-ink-500 mt-1 px-1">
+            {[1, 2, 3, 4, 5].map((i) => <span key={i}>{i}</span>)}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center justify-between text-[10px] text-ink-500 mt-1">
+        <span>↑ Probability</span>
+        <span>Impact →</span>
+      </div>
+    </div>
+  );
+}
+
 function RiskDetailDrawer({ projectId, riskId, onClose, onChanged, onViewGraph }: { projectId: string; riskId: string; onClose: () => void; onChanged: () => void; onViewGraph: (rootNodeId: string) => void }) {
   const queryClient = useQueryClient();
-  const riskQuery = useQuery({ queryKey: ['risk-detail', projectId, riskId], queryFn: () => listRisks(projectId).then((rs) => rs.find((r) => r.id === riskId)) });
+  const riskQuery = useQuery({ queryKey: ['risk-detail', projectId, riskId], queryFn: () => getRisk(projectId, riskId) });
   const chainQuery = useQuery({ queryKey: ['risk-chain', riskId], queryFn: () => getRiskChain(projectId, riskId) });
   const evidenceQuery = useQuery({ queryKey: ['risk-evidence', riskId], queryFn: () => getRiskEvidence(projectId, riskId) });
   const historyQuery = useQuery({ queryKey: ['risk-history', riskId], queryFn: () => getRiskHistory(projectId, riskId) });
@@ -529,7 +659,7 @@ function RiskDetailDrawer({ projectId, riskId, onClose, onChanged, onViewGraph }
             </div>
           )}
 
-          <HumanAssessmentPanel projectId={projectId} riskId={riskId} risk={risk} onChanged={invalidate} />
+          <HumanAssessmentPanel projectId={projectId} risk={risk} onChanged={invalidate} />
 
           <button onClick={() => onViewGraph(risk.rootNodeId)} className="btn-secondary !px-2.5 !py-1 text-xs">
             View in Risk Graph
@@ -621,25 +751,50 @@ function RiskDetailDrawer({ projectId, riskId, onClose, onChanged, onViewGraph }
 }
 
 // Progressive-disclosure Human Risk Assessment: Probability x Impact (brief
-// sections 3-6, 42-43). A separate component (not inline in
-// RiskDetailDrawer) purely so its form state initializes from `risk`'s
-// already-loaded values via plain useState lazy init -- no useEffect sync
-// needed, since this never mounts before `risk` exists (see the !risk
-// guard in RiskDetailDrawer above).
-function HumanAssessmentPanel({ projectId, riskId, risk, onChanged }: { projectId: string; riskId: string; risk: Risk; onChanged: () => void }) {
-  const [probability, setProbability] = useState(String(risk.humanProbability ?? ''));
-  const [impact, setImpact] = useState(String(risk.humanImpact ?? ''));
-  const [primaryDriver, setPrimaryDriver] = useState<RiskDriver | ''>(risk.primaryDriver ?? '');
-  const [secondaryDriver, setSecondaryDriver] = useState<RiskDriver | ''>(risk.secondaryDriver ?? '');
-  const [expanded, setExpanded] = useState(risk.humanScore == null);
+// sections 3-6, 42-43). A separate component (not inline in its callers)
+// purely so its form state initializes from `risk`'s already-loaded values
+// via plain useState lazy init -- no useEffect sync needed, since the
+// RiskDetailDrawer usage never mounts this before `risk` exists (see its
+// own !risk guard). `risk` is nullable here specifically for the inline
+// Issue/RFI/Snag widget (InlineRiskAssessment below): an item the automated
+// engine hasn't flagged yet has no Risk row at all, but a human must still
+// be able to record an assessment -- nodeType/entityId are required in
+// that case so the mutation can bootstrap one (setHumanAssessmentByEntity).
+export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onChanged }: {
+  projectId: string;
+  risk: (Risk & { discrepancy: RiskMatrixDiscrepancy | null }) | null;
+  nodeType?: string; entityId?: string;
+  onChanged: () => void;
+}) {
+  const [probability, setProbability] = useState(String(risk?.humanProbability ?? ''));
+  const [impact, setImpact] = useState(String(risk?.humanImpact ?? ''));
+  const [primaryDriver, setPrimaryDriver] = useState<RiskDriver | ''>(risk?.primaryDriver ?? '');
+  const [secondaryDriver, setSecondaryDriver] = useState<RiskDriver | ''>(risk?.secondaryDriver ?? '');
+  const [expanded, setExpanded] = useState(risk?.humanScore == null);
 
   const mutation = useMutation({
-    mutationFn: () => setHumanAssessment(projectId, riskId, {
-      probability: Number(probability), impact: Number(impact),
-      primaryDriver: primaryDriver as RiskDriver, secondaryDriver: secondaryDriver || null,
-    }),
+    mutationFn: () => {
+      const input = {
+        probability: Number(probability), impact: Number(impact),
+        primaryDriver: primaryDriver as RiskDriver, secondaryDriver: secondaryDriver || null,
+      };
+      return risk
+        ? setHumanAssessment(projectId, risk.id, input)
+        : setHumanAssessmentByEntity(projectId, nodeType!, entityId!, input);
+    },
     onSuccess: () => { onChanged(); setExpanded(false); },
   });
+
+  const acceptAiMutation = useMutation({
+    mutationFn: () => setMatrixOverride(projectId, risk!.id, { decision: 'ACCEPT_AI' }),
+    onSuccess: onChanged,
+  });
+  const keepHumanMutation = useMutation({
+    mutationFn: () => setMatrixOverride(projectId, risk!.id, { decision: 'KEEP_HUMAN' }),
+    onSuccess: onChanged,
+  });
+
+  const showDiscrepancyBanner = Boolean(risk?.discrepancy?.hasDiscrepancy && !risk.discrepancy.reviewed);
 
   // Client-side preview only, purely for immediate feedback while picking
   // values -- the actually-persisted score/level always comes back from
@@ -652,14 +807,43 @@ function HumanAssessmentPanel({ projectId, riskId, risk, onChanged }: { projectI
     <div>
       <div className="flex items-center justify-between !mb-2">
         <div className="field-label !mb-0">Human Risk Assessment (Probability × Impact)</div>
-        {risk.humanScore != null && (
+        {risk?.humanScore != null && (
           <button onClick={() => setExpanded((v) => !v)} className="text-xs text-blueprint hover:underline">
             {expanded ? 'Collapse' : 'Edit'}
           </button>
         )}
       </div>
 
-      {risk.humanScore != null && !expanded ? (
+      {showDiscrepancyBanner && risk && (
+        <div className="panel p-3 mb-2 border border-warn/40 bg-warn/5 space-y-2">
+          <p className="text-xs text-ink-100">
+            <span className="font-semibold">Human and AI disagree:</span> human assessment is{' '}
+            <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[risk.humanLevel!] }}>{MATRIX_LEVEL_LABELS[risk.humanLevel!]}</span>, AI score is{' '}
+            <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[risk.aiLevel!] }}>{MATRIX_LEVEL_LABELS[risk.aiLevel!]}</span>
+            {' '}({risk.discrepancy!.levelGap} level{risk.discrepancy!.levelGap === 1 ? '' : 's'} apart).
+          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={() => keepHumanMutation.mutate()} disabled={keepHumanMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
+              Keep Human Assessment
+            </button>
+            <button onClick={() => acceptAiMutation.mutate()} disabled={acceptAiMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
+              Accept AI Assessment
+            </button>
+            <button onClick={() => setExpanded(true)} className="btn-secondary !px-2.5 !py-1 text-xs">
+              Update Assessment
+            </button>
+          </div>
+          {(acceptAiMutation.isError || keepHumanMutation.isError) && (
+            <p className="field-error">{apiErrorMessage(acceptAiMutation.error ?? keepHumanMutation.error)}</p>
+          )}
+        </div>
+      )}
+
+      {risk?.matrixOverrideBy && risk.discrepancy?.hasDiscrepancy && (
+        <p className="text-xs text-ink-500 mb-2">Discrepancy reviewed: {risk.matrixOverrideReason}</p>
+      )}
+
+      {risk?.humanScore != null && !expanded ? (
         <div className="flex items-center gap-3 flex-wrap text-sm">
           <span className="text-2xl font-semibold tabular-nums" style={{ color: MATRIX_LEVEL_COLORS[risk.humanLevel!] }}>{risk.humanScore}</span>
           <span className="text-xs text-ink-500">/ 25</span>
@@ -704,13 +888,39 @@ function HumanAssessmentPanel({ projectId, riskId, risk, onChanged }: { projectI
         </div>
       )}
 
-      {risk.aiScore != null && (
+      {risk?.aiScore != null ? (
         <p className="text-xs text-ink-500 mt-2">
           AI score: <span className="font-semibold">{risk.aiScore}/25</span> ({risk.aiLevel ? MATRIX_LEVEL_LABELS[risk.aiLevel] : '—'})
           {risk.aiConfidence != null && ` · Confidence: ${risk.aiConfidence}%`}
         </p>
+      ) : !risk && (
+        <p className="text-xs text-ink-500 mt-2">No automated risk signals detected for this item yet — your assessment will still be recorded.</p>
       )}
     </div>
+  );
+}
+
+/**
+ * Wires HumanAssessmentPanel into an Issue/RFI/Snag detail view (brief
+ * sections 42-43): looks up the Risk for this entity (if any exists yet)
+ * and lets the panel itself handle both the "already has a Risk" case and
+ * the "nothing detected yet, bootstrap on save" case.
+ */
+export function InlineRiskAssessment({ projectId, nodeType, entityId }: { projectId: string; nodeType: 'issue' | 'rfi' | 'snag_item' | 'submittal'; entityId: string }) {
+  const queryClient = useQueryClient();
+  const queryKey = ['risk-by-entity', projectId, nodeType, entityId];
+  const riskQuery = useQuery({ queryKey, queryFn: () => getRiskByEntity(projectId, nodeType, entityId) });
+
+  if (riskQuery.isLoading) return null;
+
+  return (
+    <HumanAssessmentPanel
+      projectId={projectId}
+      risk={riskQuery.data ?? null}
+      nodeType={nodeType}
+      entityId={entityId}
+      onChanged={() => queryClient.invalidateQueries({ queryKey })}
+    />
   );
 }
 
@@ -721,6 +931,7 @@ const EVIDENCE_LINK_ROUTE: Record<string, (projectId: string) => string> = {
   qa_inspection: (pid) => `/projects/${pid}/reports`,
   drawing: (pid) => `/projects/${pid}/drawings`,
   bim_element: (pid) => `/projects/${pid}/bim`,
+  submittal: (pid) => `/projects/${pid}/submittals`,
 };
 
 function EvidenceLink({ projectId, node, role }: { projectId: string; node?: { nodeType: string; label: string }; role: string }) {

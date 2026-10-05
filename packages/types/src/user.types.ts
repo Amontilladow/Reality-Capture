@@ -69,6 +69,20 @@ export const PROJECT_PERMISSIONS = [
   'manage_issues',
   'manage_project_records',
   'manage_rfis',
+  // Narrower than manage_rfis: only the PMC/client review-and-approval step
+  // (submit-for-review, decide-review), not answering or closing an RFI
+  // directly. manage_rfis still covers this transition too -- this is an
+  // additional, more restricted grant an admin can hand to a pure reviewer,
+  // not a replacement.
+  'approve_rfis',
+  // Segregation-of-duties counterpart for snag items: only the
+  // fixed -> verified sign-off step, not marking a snag fixed, editing it,
+  // or anything else manage_project_records already covers. Additive, same
+  // as approve_rfis -- manage_project_records still verifies too, so
+  // nobody who can verify today loses that; this just lets an admin also
+  // grant *only* the verification step to someone who shouldn't also be
+  // able to mark their own fix as fixed in the first place.
+  'verify_snag_items',
 ] as const;
 
 export type ProjectPermission = typeof PROJECT_PERMISSIONS[number];
