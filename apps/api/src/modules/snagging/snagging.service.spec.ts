@@ -3,6 +3,7 @@ import { SnaggingService } from './snagging.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { NotificationsService } from '../notifications/notifications.service';
 import type { StorageService } from '../storage/storage.service';
+import type { ProjectAuthorizationService } from '../../common/authorization/project-authorization.service';
 
 // The presigned PUT getAttachmentUploadUrl() hands out has no enforced size
 // limit -- dto.sizeBytes there is only ever a declared value. Real
@@ -28,6 +29,7 @@ describe('SnaggingService attachment enforcement', () => {
         db as unknown as DatabaseService,
         {} as unknown as NotificationsService,
         storage as unknown as StorageService,
+        {} as unknown as ProjectAuthorizationService,
       );
       return { svc, getUploadUrl };
     }
@@ -82,6 +84,7 @@ describe('SnaggingService attachment enforcement', () => {
         db as unknown as DatabaseService,
         {} as unknown as NotificationsService,
         storage as unknown as StorageService,
+        {} as unknown as ProjectAuthorizationService,
       );
       return { svc, getObjectSize, deleteIfExists };
     }
@@ -111,6 +114,44 @@ describe('SnaggingService attachment enforcement', () => {
       const { svc, getObjectSize } = makeService({ snagExists: false, actualSizeBytes: 1024 });
       await expect(svc.addAttachment(companyId, 'someone-elses-snag', 'user-1', baseDto)).rejects.toThrow(NotFoundException);
       expect(getObjectSize).not.toHaveBeenCalled();
+    });
+  });
+
+  // RBAC Phase 3: verify() is a dedicated fixed -> verified transition,
+  // gated at the controller on ('manage_project_records' OR
+  // 'verify_snag_items') -- authorization itself is the guard's job, not
+  // this method's, so these tests only cover the state-transition guard and
+  // that it stamps verified_at/verified_by the same way update() always has.
+  describe('verify', () => {
+    function makeService(opts: { existingStatus: string }) {
+      const existingRow = { id: snagId, projectId, companyId, status: opts.existingStatus };
+      const updatedRow = { id: snagId, status: 'verified', verifiedAt: '2026-01-01T00:00:00Z', verifiedBy: 'user-1' };
+      const withTenant = jest.fn()
+        .mockResolvedValueOnce([existingRow]) // findOne() inside verify()
+        .mockResolvedValueOnce([updatedRow])  // the UPDATE ... RETURNING *
+        .mockResolvedValueOnce(undefined)     // addActivity()'s INSERT
+        .mockResolvedValueOnce(undefined);    // addActivity()'s UPDATE snag_items.updated_at
+      const db = { withTenant };
+      const svc = new SnaggingService(
+        db as unknown as DatabaseService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+        {} as unknown as ProjectAuthorizationService,
+      );
+      return { svc, withTenant };
+    }
+
+    it("verifies a 'fixed' snag item", async () => {
+      const { svc } = makeService({ existingStatus: 'fixed' });
+      const result = await svc.verify(companyId, projectId, snagId, 'user-1');
+      expect(result).toMatchObject({ status: 'verified' });
+    });
+
+    it("rejects verifying a snag item that is not currently 'fixed'", async () => {
+      const { svc, withTenant } = makeService({ existingStatus: 'open' });
+      await expect(svc.verify(companyId, projectId, snagId, 'user-1')).rejects.toThrow(BadRequestException);
+      // Only findOne()'s own withTenant call happened -- no UPDATE was attempted.
+      expect(withTenant).toHaveBeenCalledTimes(1);
     });
   });
 });
