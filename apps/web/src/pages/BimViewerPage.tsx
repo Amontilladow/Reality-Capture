@@ -12,6 +12,7 @@ import { getModelViewerData, getModelHierarchy, getElementByGuid, listBimModels,
 import { getMembers, getHierarchy } from '../lib/projects.api';
 import { uploadIssueScreenshot } from '../lib/issues.api';
 import type { CameraVector } from '../components/bim-viewer/BimViewer';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 export default function BimViewerPage() {
   const { projectId, modelId } = useParams<{ projectId: string; modelId: string }>();
@@ -39,6 +40,7 @@ export default function BimViewerPage() {
     enabled: Boolean(projectId),
   });
   const modelName = modelsQuery.data?.find((m) => m.id === modelId)?.name;
+  useDocumentTitle(modelName ? `BIM Viewer — ${modelName}` : undefined);
 
   const viewerDataQuery = useQuery({
     queryKey: ['bim-viewer-data', projectId, modelId],
