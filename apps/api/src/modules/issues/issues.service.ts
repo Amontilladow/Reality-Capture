@@ -1443,7 +1443,7 @@ export class IssuesService {
   // so there's no need to surface them here too.
   async listPendingReminders(companyId: string, projectId: string, issueId: string) {
     return this.db.withTenant(companyId, sql => sql`
-      SELECT id, message, scheduled_for, sent_to, u.first_name || ' ' || u.last_name AS sent_to_name
+      SELECT r.id, r.message, r.scheduled_for, r.sent_to, u.first_name || ' ' || u.last_name AS sent_to_name
       FROM issue_reminders r
       LEFT JOIN users u ON u.id = r.sent_to
       WHERE r.issue_id = ${issueId} AND r.project_id = ${projectId} AND r.company_id = ${companyId}
