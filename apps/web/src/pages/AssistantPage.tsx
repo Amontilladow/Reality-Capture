@@ -8,6 +8,8 @@ import { apiErrorMessage } from '../lib/api';
 import { RfiFormModal } from '../components/RfiFormModal';
 import { IssueFormModal } from '../components/issues/IssueFormModal';
 import { SnagItemFormModal } from '../components/SnagItemFormModal';
+import { Alert } from '../components/ui/Alert';
+import { Button } from '../components/ui/Button';
 
 interface ChatMessage extends AssistantMessage {
   blocked?: boolean;
@@ -122,16 +124,20 @@ export default function AssistantPage() {
 
           {messages.map((m, i) => (
             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[75%] rounded-md px-4 py-2.5 text-sm ${
-                m.role === 'user' ? 'bg-signal text-base-950' : m.blocked ? 'panel border-ink-500/40 text-ink-500' : 'panel'
-              }`}>
-                <p className="whitespace-pre-wrap">{m.content}</p>
-                {m.draft && (
-                  <button onClick={() => openDraft(m.draft)} className="btn-secondary !text-xs mt-2">
-                    Review draft {m.draft.type === 'rfi' ? 'RFI' : m.draft.type === 'issue' ? 'issue' : 'snag item'}
-                  </button>
-                )}
-              </div>
+              {m.blocked ? (
+                <div className="max-w-[75%]">
+                  <Alert tone="warning">{m.content}</Alert>
+                </div>
+              ) : (
+                <div className={`max-w-[75%] rounded-md px-4 py-2.5 text-sm ${m.role === 'user' ? 'bg-signal text-base-950' : 'panel'}`}>
+                  <p className="whitespace-pre-wrap">{m.content}</p>
+                  {m.draft && (
+                    <button onClick={() => openDraft(m.draft)} className="btn-secondary !text-xs mt-2">
+                      Review draft {m.draft.type === 'rfi' ? 'RFI' : m.draft.type === 'issue' ? 'issue' : 'snag item'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           ))}
 
@@ -144,7 +150,7 @@ export default function AssistantPage() {
           <div ref={bottomRef} />
         </div>
 
-        {error && <p className="field-error mb-2">{error}</p>}
+        {error && <div className="mb-2"><Alert tone="danger">{error}</Alert></div>}
 
         <div className="flex gap-2 pt-3 border-t border-base-600">
           <input
@@ -155,9 +161,9 @@ export default function AssistantPage() {
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
             disabled={askMutation.isPending}
           />
-          <button onClick={handleSend} className="btn-primary" disabled={askMutation.isPending || !question.trim()}>
+          <Button onClick={handleSend} loading={askMutation.isPending} disabled={!question.trim()}>
             Send
-          </button>
+          </Button>
         </div>
       </div>
 
