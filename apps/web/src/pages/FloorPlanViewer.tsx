@@ -7,6 +7,7 @@ import { DrawingUploadModal } from '../components/drawing/DrawingUploadModal';
 import { PinPanel } from '../components/drawing/PinPanel';
 import { listDrawings, getDrawing, createPin, getPins, type Drawing, type Pin } from '../lib/drawings.api';
 import { getHierarchy, updateLocation, getMembers, type ProjectHierarchy } from '../lib/projects.api';
+import { Input, Select } from '../components/ui/Field';
 
 export default function FloorPlanViewer() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -245,15 +246,15 @@ export default function FloorPlanViewer() {
           )}
 
           {(drawingsQuery.data ?? []).length > 0 && (
-            <div className="space-y-1.5">
-              <input
-                className="field-input !py-1.5 !text-xs"
+            <div className="space-y-2.5">
+              <Input
+                label="Search"
                 placeholder="Search by title…"
                 value={titleSearch}
                 onChange={(e) => setTitleSearch(e.target.value)}
               />
-              <select
-                className="field-input !py-1.5 !text-xs"
+              <Select
+                label="Building"
                 value={buildingFilter}
                 onChange={(e) => { setBuildingFilter(e.target.value); setLevelFilter(''); }}
               >
@@ -261,9 +262,9 @@ export default function FloorPlanViewer() {
                 {hierarchy.map((b) => (
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
-              </select>
-              <select
-                className="field-input !py-1.5 !text-xs"
+              </Select>
+              <Select
+                label="Level"
                 value={levelFilter}
                 onChange={(e) => setLevelFilter(e.target.value)}
                 disabled={!buildingFilter}
@@ -272,10 +273,10 @@ export default function FloorPlanViewer() {
                 {levelOptionsForFilter.map((l) => (
                   <option key={l.id} value={l.id}>{l.name}</option>
                 ))}
-              </select>
+              </Select>
               {drawingTypeOptions.length > 0 && (
-                <select
-                  className="field-input !py-1.5 !text-xs"
+                <Select
+                  label="Drawing type"
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
                 >
@@ -283,7 +284,7 @@ export default function FloorPlanViewer() {
                   {drawingTypeOptions.map((t) => (
                     <option key={t} value={t}>{t}</option>
                   ))}
-                </select>
+                </Select>
               )}
             </div>
           )}
