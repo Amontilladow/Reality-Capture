@@ -4,7 +4,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { ProjectCard } from '../components/ProjectCard';
 import { CreateProjectModal } from '../components/CreateProjectModal';
 import { SubscriptionBanner } from '../components/SubscriptionBanner';
-import { Card } from '../components/ui/Card';
+import { StatTile } from '../components/ui/StatTile';
 import { listProjects } from '../lib/projects.api';
 import { getSubscription } from '../lib/subscription.api';
 
@@ -51,10 +51,10 @@ export default function ProjectList() {
         <div className="xl:col-span-3">
           {projectsQuery.isSuccess && projects.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-              <KpiTile label="Projects" value={kpis.total} />
-              <KpiTile label="Active" value={kpis.active} />
-              <KpiTile label="Open Issues" value={kpis.openIssues} tone={kpis.openIssues > 0 ? 'danger' : undefined} />
-              <KpiTile label="Captures" value={kpis.captures} />
+              <StatTile size="lg" label="Projects" value={kpis.total} />
+              <StatTile size="lg" label="Active" value={kpis.active} />
+              <StatTile size="lg" label="Open Issues" value={kpis.openIssues} tone={kpis.openIssues > 0 ? 'danger' : undefined} />
+              <StatTile size="lg" label="Captures" value={kpis.captures} />
             </div>
           )}
 
@@ -107,16 +107,5 @@ function PlusIcon() {
     <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 5v14M5 12h14" strokeLinecap="round" />
     </svg>
-  );
-}
-
-function KpiTile({ label, value, tone }: { label: string; value: number; tone?: 'danger' }) {
-  return (
-    <Card>
-      <div className={`text-kpi font-semibold tabular-nums ${tone === 'danger' && value > 0 ? 'text-danger' : 'text-ink-100'}`}>
-        {value}
-      </div>
-      <div className="text-xs text-ink-500 mt-0.5">{label}</div>
-    </Card>
   );
 }
