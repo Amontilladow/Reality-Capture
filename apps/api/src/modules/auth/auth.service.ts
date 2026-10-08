@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
 import { randomBytes, createHash } from 'crypto';
 import { DatabaseService } from '../../database/database.service';
+import { EmailService } from '../email/email.service';
 import type { LoginDto } from './dto/login.dto';
 import type { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import type { SelfSignupDto } from './dto/self-signup.dto';
@@ -20,6 +21,7 @@ export class AuthService {
     private readonly db: DatabaseService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly email: EmailService,
   ) {}
 
   // ── Login ─────────────────────────────────────────────────────────────────
@@ -263,32 +265,61 @@ export class AuthService {
   }
 
   // ── Forgot password ───────────────────────────────────────────────────────
+
+  // Shared by forgotPassword() (below, emails the link) and
+  // UsersService.adminResetPassword() (the admin-assisted fallback, returns
+  // the link directly for an admin to deliver by hand) -- same secure,
+  // opaque, 1-hour-expiring, single-use token either way. Only the delivery
+  // mechanism differs between the two callers, never the token scheme.
+  async generatePasswordResetToken(companyId: string, userId: string): Promise<{ token: string; expiresAt: Date }> {
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 3600 * 1000); // 1 hour
+
+    // withTenant required -- users carries the tenant_isolation RLS policy.
+    await this.db.withTenant(companyId, sql => sql`
+      UPDATE users SET
+        password_reset_token = ${token},
+        password_reset_expires_at = ${expiresAt.toISOString()},
+        updated_at = NOW()
+      WHERE id = ${userId} AND company_id = ${companyId}
+    `);
+
+    return { token, expiresAt };
+  }
+
+  // Same frontend-URL convention RfiExternalAccessService uses for its own
+  // token-bearing links (app.frontendUrl + a path + the token).
+  buildPasswordResetLink(token: string): string {
+    const frontendUrl = this.config.get<string>('app.frontendUrl');
+    return `${frontendUrl}/reset-password?token=${token}`;
+  }
+
   async forgotPassword(email: string): Promise<void> {
     // Deliberately global -- email is unique platform-wide, and the caller doesn't know
     // (and shouldn't need to know) which company they're in yet. withSystemBypass required
     // -- see DatabaseService.withSystemBypass() and migration 052.
     const [user] = await this.db.withSystemBypass(sql => sql`
-      SELECT id, company_id FROM users WHERE LOWER(email) = LOWER(${email}) AND is_active = true
+      SELECT id, company_id, email FROM users WHERE LOWER(email) = LOWER(${email}) AND is_active = true
     `);
 
     // Always return success — never reveal whether an email exists (enumeration attack prevention)
     if (!user) return;
 
-    const token = randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 3600 * 1000); // 1 hour
+    const { token } = await this.generatePasswordResetToken(user.companyId as string, user.id as string);
+    const resetLink = this.buildPasswordResetLink(token);
 
-    // withTenant required from here on -- company_id is known now that the user row has
-    // been found. users carries the tenant_isolation RLS policy.
-    await this.db.withTenant(user.companyId as string, sql => sql`
-      UPDATE users SET
-        password_reset_token = ${token},
-        password_reset_expires_at = ${expiresAt.toISOString()},
-        updated_at = NOW()
-      WHERE id = ${user.id} AND company_id = ${user.companyId}
-    `);
-
-    // TODO Phase 2: send email via notification service
-    this.logger.log(`Password reset token generated for user ${user.id as string}`);
+    // Judgment call: SMTP being unconfigured, unreachable, or rejecting the
+    // send must never surface to the caller -- that would both leak a 500
+    // where the enumeration-protected "always succeed" response is expected,
+    // and (worse) let response timing/shape reveal whether the email existed.
+    // Log it server-side and move on; the token is already stored either
+    // way, so the admin-assisted fallback (UsersService.adminResetPassword)
+    // still works for this user even if delivery silently failed here.
+    try {
+      await this.email.sendPasswordResetEmail(user.email as string, resetLink);
+    } catch (err) {
+      this.logger.error(`Failed to send password reset email to ${user.email as string}: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   // ── Reset password ────────────────────────────────────────────────────────

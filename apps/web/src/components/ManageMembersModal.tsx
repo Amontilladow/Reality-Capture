@@ -10,7 +10,7 @@ import {
   getOrganizations, upsertOrganization, uploadOrganizationLogo, type ProjectOrganization,
   getOrganizationMembers, addOrganizationMember, removeOrganizationMember, type ProjectOrganizationMember,
 } from '../lib/projects.api';
-import { listUsers, inviteUser, approveUserRole, deactivateUser } from '../lib/users.api';
+import { listUsers, inviteUser, approveUserRole, deactivateUser, adminResetPassword, type AdminResetPasswordResult } from '../lib/users.api';
 import { apiErrorMessage } from '../lib/api';
 import { PROJECT_ROLE_LABELS, COMPANY_ROLE_LABELS, PROJECT_PERMISSION_LABELS } from '../lib/issue-constants';
 import { useAuthStore } from '../store/auth.store';
@@ -86,6 +86,18 @@ export function ManageMembersModal({
       setSelectedUserId('');
     },
   });
+
+  // Admin-assisted password reset (fallback for when email isn't practical
+  // -- site-based engineers/draftsmen). Keyed per-user since several rows
+  // could each generate their own link independently.
+  const [resetLinks, setResetLinks] = useState<Record<string, AdminResetPasswordResult>>({});
+  const resetPasswordMutation = useMutation({
+    mutationFn: (userId: string) => adminResetPassword(userId),
+    onSuccess: (result, userId) => setResetLinks((prev) => ({ ...prev, [userId]: result })),
+  });
+  // Gated the same as the server (company_admin or above) -- purely a UX
+  // nicety to hide a doomed button; the 403 is the real enforcement.
+  const canResetPasswords = currentUser?.companyRole === 'company_admin' || currentUser?.companyRole === 'super_admin';
 
   // Same underlying PATCH /users/:id as approveMutation -- separate mutation
   // instance so its pending/error state doesn't collide with the Approve
@@ -370,55 +382,85 @@ export function ManageMembersModal({
           </p>
           {deactivateMutation.isError && <p className="field-error">{apiErrorMessage(deactivateMutation.error)}</p>}
           {changeRoleMutation.isError && <p className="field-error">{apiErrorMessage(changeRoleMutation.error)}</p>}
+          {resetPasswordMutation.isError && <p className="field-error">{apiErrorMessage(resetPasswordMutation.error)}</p>}
           {(usersQuery.data?.data ?? []).map((u) => {
             const isSelf = u.id === currentUser?.id;
             const role = overrideRole[u.id] ?? (u.companyRole as CompanyRole);
             const roleChanged = role !== u.companyRole;
+            const resetResult = resetLinks[u.id];
             return (
-              <div key={u.id} className="flex items-center justify-between gap-3 text-sm py-1.5 border-b border-base-700/60 last:border-0">
-                <div>
-                  <div className="text-ink-100">
-                    {[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}
-                    {u.organizationName && <span className="text-ink-500 font-normal"> ({u.organizationName})</span>}
+              <div key={u.id} className="py-1.5 border-b border-base-700/60 last:border-0">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <div>
+                    <div className="text-ink-100">
+                      {[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}
+                      {u.organizationName && <span className="text-ink-500 font-normal"> ({u.organizationName})</span>}
+                    </div>
+                    <div className="text-ink-500 text-xs">
+                      {u.email}
+                      {!u.firstName && !u.lastName && ' — invited, hasn’t accepted yet'}
+                    </div>
                   </div>
-                  <div className="text-ink-500 text-xs">
-                    {u.email}
-                    {!u.firstName && !u.lastName && ' — invited, hasn’t accepted yet'}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <select
-                    className="field-input !w-auto text-xs"
-                    value={role}
-                    onChange={(e) => setOverrideRole((prev) => ({ ...prev, [u.id]: e.target.value as CompanyRole }))}
-                  >
-                    {/* Unlike the self-requested-role picker above, super_admin IS a
-                        valid option here -- this is an admin deliberately setting someone
-                        else's role, and excluding it would make an existing super_admin's
-                        own row silently misdisplay as company_admin, with a Save button
-                        one click away from actually demoting them. */}
-                    {COMPANY_ROLES.map((r) => (
-                      <option key={r} value={r}>{COMPANY_ROLE_LABELS[r]}</option>
-                    ))}
-                  </select>
-                  {roleChanged && (
-                    <button
-                      onClick={() => changeRoleMutation.mutate({ userId: u.id, companyRole: role })}
-                      className="btn-primary !py-1 !px-2 text-xs shrink-0"
-                      disabled={changeRoleMutation.isPending}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <select
+                      className="field-input !w-auto text-xs"
+                      value={role}
+                      onChange={(e) => setOverrideRole((prev) => ({ ...prev, [u.id]: e.target.value as CompanyRole }))}
                     >
-                      Save
+                      {/* Unlike the self-requested-role picker above, super_admin IS a
+                          valid option here -- this is an admin deliberately setting someone
+                          else's role, and excluding it would make an existing super_admin's
+                          own row silently misdisplay as company_admin, with a Save button
+                          one click away from actually demoting them. */}
+                      {COMPANY_ROLES.map((r) => (
+                        <option key={r} value={r}>{COMPANY_ROLE_LABELS[r]}</option>
+                      ))}
+                    </select>
+                    {roleChanged && (
+                      <button
+                        onClick={() => changeRoleMutation.mutate({ userId: u.id, companyRole: role })}
+                        className="btn-primary !py-1 !px-2 text-xs shrink-0"
+                        disabled={changeRoleMutation.isPending}
+                      >
+                        Save
+                      </button>
+                    )}
+                    {canResetPasswords && (
+                      <button
+                        onClick={() => resetPasswordMutation.mutate(u.id)}
+                        className="text-xs text-blueprint hover:text-blueprint-hover shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                        disabled={resetPasswordMutation.isPending}
+                        title="Generate a password reset link to copy and send this person yourself -- for when email isn't practical (site-based roles, etc.)"
+                      >
+                        Reset password
+                      </button>
+                    )}
+                    <button
+                      onClick={() => deactivateMutation.mutate(u.id)}
+                      className="text-xs text-danger hover:text-danger/80 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                      disabled={deactivateMutation.isPending || isSelf}
+                      title={isSelf ? "You can't deactivate your own account." : undefined}
+                    >
+                      Deactivate
                     </button>
-                  )}
-                  <button
-                    onClick={() => deactivateMutation.mutate(u.id)}
-                    className="text-xs text-danger hover:text-danger/80 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-                    disabled={deactivateMutation.isPending || isSelf}
-                    title={isSelf ? "You can't deactivate your own account." : undefined}
-                  >
-                    Deactivate
-                  </button>
+                  </div>
                 </div>
+                {resetResult && (
+                  <div className="mt-2 space-y-1">
+                    <p className="text-xs text-ink-100">
+                      Reset link for {[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email} -- expires {new Date(resetResult.expiresAt).toLocaleString()}:
+                    </p>
+                    <div className="flex gap-2">
+                      <input readOnly className="field-input font-mono text-xs" value={resetResult.resetLink} onClick={(e) => e.currentTarget.select()} />
+                      <button onClick={() => navigator.clipboard.writeText(resetResult.resetLink)} className="btn-secondary shrink-0 !py-1.5 text-xs">
+                        Copy
+                      </button>
+                    </div>
+                    <p className="text-xs text-ink-500">
+                      No email is sent automatically -- copy this link and send it to them yourself (WhatsApp, email, in person).
+                    </p>
+                  </div>
+                )}
               </div>
             );
           })}

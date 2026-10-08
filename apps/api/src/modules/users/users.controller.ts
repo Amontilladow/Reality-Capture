@@ -53,4 +53,20 @@ export class UsersController {
   async deactivate(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return { data: await this.users.deactivate(user.companyId, id), error: null };
   }
+
+  // Deliberately tighter than invite()'s 3 roles: this hands back a live
+  // credential (a link that lets anyone holding it set that user's
+  // password), and RolesGuard only checks the CALLER's weight, never the
+  // TARGET's -- gating this the same as invite() would let an
+  // engineering_manager or project_manager reset a company_admin's own
+  // password and take over their account. company_admin (RolesGuard's
+  // minimum-weight check also lets super_admin through) matches how
+  // deactivate() above is already gated tighter than invite() for the
+  // same reason: account-security actions aren't invite-level.
+  @Post(':id/admin-reset-password')
+  @Roles('company_admin')
+  @ApiOperation({ summary: "Generate a password reset link for a user, to deliver by hand (email fallback)" })
+  async adminResetPassword(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return { data: await this.users.adminResetPassword(user.companyId, id), error: null };
+  }
 }

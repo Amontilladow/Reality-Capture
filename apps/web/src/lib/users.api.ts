@@ -43,3 +43,16 @@ export function approveUserRole(userId: string, companyRole: string) {
 export function deactivateUser(userId: string) {
   return apiDelete<void>(`/users/${userId}`);
 }
+
+export interface AdminResetPasswordResult {
+  // Same token mechanism as the self-service "Forgot password" email --
+  // delivery is just manual here (copy and send however actually reaches
+  // this person: WhatsApp, in person, printed on-site), the same fallback
+  // the invite flow above already uses for invitationToken.
+  resetLink: string;
+  expiresAt: string;
+}
+
+export function adminResetPassword(userId: string) {
+  return apiPost<AdminResetPasswordResult>(`/users/${userId}/admin-reset-password`);
+}
