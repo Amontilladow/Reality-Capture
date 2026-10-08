@@ -15,10 +15,12 @@ import {
 } from '../lib/rfis.api';
 import { getProject, getMembers } from '../lib/projects.api';
 import {
-  RFI_STATUS_LABELS, RFI_WORKFLOW_STATUS_LABELS, RFI_WORKFLOW_STATUS_BADGE_CLASS,
-  RFI_PRIORITY_LABELS, RFI_PRIORITY_BADGE_CLASS, isRfiOverdue, formatDate,
+  RFI_STATUS_LABELS, RFI_WORKFLOW_STATUS_LABELS,
+  RFI_PRIORITY_LABELS, isRfiOverdue, formatDate,
 } from '../lib/rfi-constants';
 import { getDeadlineTimer, TIMER_BADGE_CLASS } from '../lib/issue-constants';
+import { RFI_WORKFLOW_STATUS_TONE, RFI_PRIORITY_TONE } from '../lib/status-tone';
+import { StatusBadge } from '../components/ui/Badge';
 import { apiErrorMessage } from '../lib/api';
 
 // Warning-colored badge classes for the Cost/Time impact columns -- uses
@@ -248,8 +250,8 @@ export default function RfisPage() {
                       <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{r.rfiNumber ?? '—'}</td>
                       <td className="px-4 py-2.5">{r.subject}</td>
                       <td className="px-4 py-2.5 text-ink-300">{r.discipline ? RFI_DISCIPLINE_LABELS[r.discipline] : '—'}</td>
-                      <td className="px-4 py-2.5"><span className={`badge ${RFI_WORKFLOW_STATUS_BADGE_CLASS[r.status]}`}>{RFI_WORKFLOW_STATUS_LABELS[r.status]}</span></td>
-                      <td className="px-4 py-2.5"><span className={`badge ${RFI_PRIORITY_BADGE_CLASS[r.priority]}`}>{RFI_PRIORITY_LABELS[r.priority]}</span></td>
+                      <td className="px-4 py-2.5"><StatusBadge tone={RFI_WORKFLOW_STATUS_TONE[r.status]} label={RFI_WORKFLOW_STATUS_LABELS[r.status]} /></td>
+                      <td className="px-4 py-2.5"><StatusBadge tone={RFI_PRIORITY_TONE[r.priority]} label={RFI_PRIORITY_LABELS[r.priority]} /></td>
                       <td className="px-4 py-2.5">
                         {costImpacting ? (
                           <span className={COST_IMPACT_BADGE_CLASS}>💰 Cost</span>

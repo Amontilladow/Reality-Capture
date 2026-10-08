@@ -1,6 +1,6 @@
 import type {
   IssueStatus, IssuePriority, RfiStatus, RfiWorkflowStatus, RfiPriority,
-  SnagStatus, SubmittalStatus, TransmittalStatus, QaInspectionStatus,
+  SnagStatus, SnagPriority, SubmittalStatus, SubmittalPriority, TransmittalStatus, QaInspectionStatus,
   ProjectStatus, BimModelStatus, CaptureStatus,
 } from '@engineeringos/types';
 
@@ -53,12 +53,19 @@ export const ISSUE_STATUS_TONE: Record<IssueStatus, StatusTone> = {
   void: 'neutral',
 };
 
-export const ISSUE_PRIORITY_TONE: Record<IssuePriority, StatusTone> = {
+// IssuePriority/RfiPriority/SnagPriority/SubmittalPriority are all the exact
+// same 'critical'|'high'|'medium'|'low' union -- one shared map instead of
+// four hand-copied duplicates, aliased per module below purely for
+// call-site readability (ISSUE_PRIORITY_TONE reads better at an Issues call
+// site than a generic PRIORITY_TONE would).
+export const PRIORITY_TONE: Record<'critical' | 'high' | 'medium' | 'low', StatusTone> = {
   critical: 'critical',
   high: 'danger',
   medium: 'progress',
   low: 'neutral',
 };
+
+export const ISSUE_PRIORITY_TONE: Record<IssuePriority, StatusTone> = PRIORITY_TONE;
 
 // Legacy RFI status ('open'/'answered'/'closed'/'void') -- still live for
 // rows created before the Phase 1 workflow existed. See rfi.types.ts.
@@ -83,19 +90,21 @@ export const RFI_WORKFLOW_STATUS_TONE: Record<RfiWorkflowStatus, StatusTone> = {
   void: 'neutral',
 };
 
-export const RFI_PRIORITY_TONE: Record<RfiPriority, StatusTone> = {
-  critical: 'critical',
-  high: 'danger',
-  medium: 'progress',
-  low: 'neutral',
-};
+export const RFI_PRIORITY_TONE: Record<RfiPriority, StatusTone> = PRIORITY_TONE;
 
+// 'open' here (an unfixed defect sitting unaddressed) is intentionally
+// 'danger', not 'info' like Issues/RFIs' own 'open' -- matches
+// snagging-constants.ts's original SNAG_STATUS_BADGE_CLASS, a deliberate
+// product choice (a found-but-unfixed snag already IS the problem) this
+// consolidation preserves rather than overrides.
 export const SNAG_STATUS_TONE: Record<SnagStatus, StatusTone> = {
-  open: 'info',
+  open: 'danger',
   fixed: 'progress',
   verified: 'success',
   void: 'neutral',
 };
+
+export const SNAG_PRIORITY_TONE: Record<SnagPriority, StatusTone> = PRIORITY_TONE;
 
 export const SUBMITTAL_STATUS_TONE: Record<SubmittalStatus, StatusTone> = {
   submitted: 'info',
@@ -106,6 +115,8 @@ export const SUBMITTAL_STATUS_TONE: Record<SubmittalStatus, StatusTone> = {
   rejected: 'danger',
   void: 'neutral',
 };
+
+export const SUBMITTAL_PRIORITY_TONE: Record<SubmittalPriority, StatusTone> = PRIORITY_TONE;
 
 export const TRANSMITTAL_STATUS_TONE: Record<TransmittalStatus, StatusTone> = {
   draft: 'neutral',

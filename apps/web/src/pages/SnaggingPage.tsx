@@ -7,9 +7,11 @@ import { SnagDetail } from '../components/SnagDetail';
 import { listSnagItems, getSnagSummary, type SnagListItem } from '../lib/snagging.api';
 import { getProject, getMembers, getHierarchy, type ProjectHierarchy } from '../lib/projects.api';
 import {
-  SNAG_STATUSES, SNAG_STATUS_LABELS, SNAG_STATUS_BADGE_CLASS,
-  SNAG_PRIORITY_LABELS, SNAG_PRIORITY_BADGE_CLASS, isSnagOverdue, formatDate,
+  SNAG_STATUSES, SNAG_STATUS_LABELS,
+  SNAG_PRIORITY_LABELS, isSnagOverdue, formatDate,
 } from '../lib/snagging-constants';
+import { SNAG_STATUS_TONE, SNAG_PRIORITY_TONE } from '../lib/status-tone';
+import { StatusBadge } from '../components/ui/Badge';
 
 export default function SnaggingPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -305,8 +307,8 @@ function SnagRow({ snag: s, onClick }: { snag: SnagListItem; onClick: () => void
       <td className="px-4 py-2.5">{s.title}</td>
       <td className="px-4 py-2.5 text-ink-300">{s.location ?? '—'}</td>
       <td className="px-4 py-2.5 text-ink-300">{s.trade ?? '—'}</td>
-      <td className="px-4 py-2.5"><span className={`badge ${SNAG_STATUS_BADGE_CLASS[s.status]}`}>{SNAG_STATUS_LABELS[s.status]}</span></td>
-      <td className="px-4 py-2.5"><span className={`badge ${SNAG_PRIORITY_BADGE_CLASS[s.priority]}`}>{SNAG_PRIORITY_LABELS[s.priority]}</span></td>
+      <td className="px-4 py-2.5"><StatusBadge tone={SNAG_STATUS_TONE[s.status]} label={SNAG_STATUS_LABELS[s.status]} /></td>
+      <td className="px-4 py-2.5"><StatusBadge tone={SNAG_PRIORITY_TONE[s.priority]} label={SNAG_PRIORITY_LABELS[s.priority]} /></td>
       <td className={`px-4 py-2.5 ${overdue ? 'text-danger' : 'text-ink-300'}`}>{formatDate(s.dueDate)}</td>
     </tr>
   );

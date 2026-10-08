@@ -9,9 +9,11 @@ import { getMembers } from '../lib/projects.api';
 import { InlineRiskAssessment } from './RiskIntelligenceSection';
 import { useAuthStore } from '../store/auth.store';
 import {
-  SNAG_STATUS_LABELS, SNAG_STATUS_BADGE_CLASS, SNAG_PRIORITY_LABELS, SNAG_PRIORITY_BADGE_CLASS,
+  SNAG_STATUS_LABELS, SNAG_PRIORITY_LABELS,
   SNAG_STATUSES, getSnagDeadlineTimer, TIMER_BADGE_CLASS, isSnagManager, formatDate, formatDateTime,
 } from '../lib/snagging-constants';
+import { SNAG_STATUS_TONE, SNAG_PRIORITY_TONE } from '../lib/status-tone';
+import { StatusBadge } from './ui/Badge';
 import { apiErrorMessage } from '../lib/api';
 import type { SnagStatus } from '@engineeringos/types';
 
@@ -137,8 +139,8 @@ export function SnagDetail({
             <div className="text-[10px] font-mono text-ink-500 mb-1">{snag.snagNumber ?? snag.id}</div>
             <h2 className="text-lg font-semibold mb-2">{snag.title}</h2>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`badge ${SNAG_STATUS_BADGE_CLASS[snag.status]}`}>{SNAG_STATUS_LABELS[snag.status]}</span>
-              <span className={`badge ${SNAG_PRIORITY_BADGE_CLASS[snag.priority]}`}>{SNAG_PRIORITY_LABELS[snag.priority]}</span>
+              <StatusBadge tone={SNAG_STATUS_TONE[snag.status]} label={SNAG_STATUS_LABELS[snag.status]} />
+              <StatusBadge tone={SNAG_PRIORITY_TONE[snag.priority]} label={SNAG_PRIORITY_LABELS[snag.priority]} />
               <span className={`badge ${TIMER_BADGE_CLASS[timer.state]}`} title={`Due ${formatDate(snag.dueDate)}`}>
                 {timer.label}
               </span>
