@@ -4,6 +4,7 @@ import {
 import { randomBytes } from 'crypto';
 import { DatabaseService } from '../../database/database.service';
 import { SubscriptionService } from '../subscription/subscription.service';
+import { AuthService } from '../auth/auth.service';
 import { PaymentRequiredException } from '../../common/exceptions/payment-required.exception';
 import type { InviteUserDto } from './dto/invite-user.dto';
 import type { UpdateUserDto } from './dto/update-user.dto';
@@ -16,6 +17,7 @@ export class UsersService {
   constructor(
     private readonly db: DatabaseService,
     private readonly subscription: SubscriptionService,
+    private readonly auth: AuthService,
   ) {}
 
   async findAll(companyId: string, query: PaginationQuery) {
@@ -166,5 +168,28 @@ export class UsersService {
     // Revoke all sessions
     await this.db.withTenant(companyId, sql => sql`UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ${userId} AND company_id = ${companyId}`);
     return { message: 'User deactivated and all sessions revoked.' };
+  }
+
+  // Admin-assisted password reset -- the fallback for people who can't
+  // reliably rely on email (realistic for site-based engineers/draftsmen).
+  // Reuses AuthService.forgotPassword()'s exact token scheme
+  // (generatePasswordResetToken/buildPasswordResetLink) so a token
+  // generated here and one emailed via forgotPassword() are
+  // indistinguishable to resetPassword() -- same expiry, same single-use
+  // consumption. The only difference is delivery: this returns the raw
+  // link in the response for the calling admin to copy and hand to the
+  // person directly (WhatsApp, in person, printed on-site), the same
+  // manual-delivery pattern invite() already uses for invitationToken.
+  async adminResetPassword(companyId: string, targetUserId: string) {
+    const target = await this.findOne(companyId, targetUserId); // throws NotFoundException if missing
+    if (!target.isActive) {
+      throw new ForbiddenException('Cannot reset the password of a deactivated account.');
+    }
+
+    const { token, expiresAt } = await this.auth.generatePasswordResetToken(companyId, targetUserId);
+    return {
+      resetLink: this.auth.buildPasswordResetLink(token),
+      expiresAt: expiresAt.toISOString(),
+    };
   }
 }

@@ -33,10 +33,22 @@ export class ProviderFactory implements OnModuleInit {
 
   constructor(private readonly config: ConfigService) {}
 
+  // Deliberately non-fatal: an unconfigured/misconfigured AI provider is a
+  // real gap, but it shouldn't take the rest of the app down with it (every
+  // other module -- auth, projects, issues, RFIs, BIM, etc. -- has nothing
+  // to do with AI and would otherwise fail to boot too). getProvider()
+  // below still fails closed, just lazily -- the first AI request after a
+  // bad config gets a clear error instead of the whole API never starting.
   onModuleInit() {
-    this.provider = this.resolve();
-    const info = this.provider.getModelInfo();
-    this.logger.log(`AI provider active: ${info.provider} (${info.model})`);
+    try {
+      this.provider = this.resolve();
+      const info = this.provider.getModelInfo();
+      this.logger.log(`AI provider active: ${info.provider} (${info.model})`);
+    } catch (err) {
+      this.logger.warn(
+        `AI provider not available at startup -- AI requests will fail until this is fixed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
   getProvider(): AIProvider {

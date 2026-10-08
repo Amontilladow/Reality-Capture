@@ -31,6 +31,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { MessagingModule } from './modules/messaging/messaging.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { StorageModule } from './modules/storage/storage.module';
+import { EmailModule } from './modules/email/email.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { WorkforceModule } from './modules/workforce/workforce.module';
@@ -57,12 +58,13 @@ import storageConfig from './config/storage.config';
 import redisConfig from './config/redis.config';
 import googleCalendarConfig from './config/google-calendar.config';
 import aiConfig from './config/ai.config';
+import emailConfig from './config/email.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, jwtConfig, storageConfig, redisConfig, googleCalendarConfig, aiConfig],
+      load: [appConfig, databaseConfig, jwtConfig, storageConfig, redisConfig, googleCalendarConfig, aiConfig, emailConfig],
       envFilePath: ['.env.local', '.env'],
     }),
     ThrottlerModule.forRoot([
@@ -89,6 +91,7 @@ import aiConfig from './config/ai.config';
     DatabaseModule,
     AuthorizationModule,
     StorageModule,
+    EmailModule,
     AuditModule,
     HealthModule,
     TenancyModule,
