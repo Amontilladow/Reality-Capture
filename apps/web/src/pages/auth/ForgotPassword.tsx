@@ -5,6 +5,9 @@ import { useMutation } from '@tanstack/react-query';
 import { AuthLayout } from './AuthLayout';
 import { forgotPassword } from '../../lib/auth.api';
 import { apiErrorMessage } from '../../lib/api';
+import { Input } from '../../components/ui/Field';
+import { Alert } from '../../components/ui/Alert';
+import { Button } from '../../components/ui/Button';
 
 interface FormValues {
   email: string;
@@ -41,28 +44,20 @@ export default function ForgotPassword() {
         onSubmit={handleSubmit((values) => mutation.mutate(values))}
         className="space-y-4"
       >
-        <div>
-          <label className="field-label" htmlFor="email">Work email</label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            className="field-input"
-            placeholder="you@company.com"
-            {...register('email', { required: 'Email is required' })}
-          />
-          {errors.email && <p className="field-error">{errors.email.message}</p>}
-        </div>
+        <Input
+          label="Work email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@company.com"
+          error={errors.email?.message}
+          {...register('email', { required: 'Email is required' })}
+        />
 
-        {mutation.isError && (
-          <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded px-3 py-2">
-            {apiErrorMessage(mutation.error)}
-          </div>
-        )}
+        {mutation.isError && <Alert tone="danger">{apiErrorMessage(mutation.error)}</Alert>}
 
-        <button type="submit" className="btn-primary w-full" disabled={mutation.isPending}>
+        <Button type="submit" className="w-full" loading={mutation.isPending}>
           {mutation.isPending ? 'Sending…' : 'Send reset link'}
-        </button>
+        </Button>
         <Link to="/login" className="btn-ghost w-full">Back to sign in</Link>
       </form>
     </AuthLayout>

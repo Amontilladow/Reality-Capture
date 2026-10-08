@@ -19,6 +19,7 @@ function FieldShell({
   id,
   label,
   requirement = 'required',
+  labelAddon,
   hint,
   error,
   children,
@@ -26,6 +27,11 @@ function FieldShell({
   id: string;
   label: string;
   requirement?: Requirement;
+  // A trailing element on the label's own row (e.g. Login's "Forgot
+  // password?" link) -- rare enough not to warrant every field reasoning
+  // about layout, common enough that re-deriving this flex row per form
+  // isn't worth it either.
+  labelAddon?: ReactNode;
   hint?: string;
   error?: string;
   children: ReactNode;
@@ -34,10 +40,13 @@ function FieldShell({
   const errorId = error ? `${id}-error` : undefined;
   return (
     <div>
-      <label htmlFor={id} className="field-label">
-        {label}
-        {REQUIREMENT_SUFFIX[requirement] && <span className="ml-1.5 font-normal normal-case tracking-normal text-ink-500">{REQUIREMENT_SUFFIX[requirement]}</span>}
-      </label>
+      <div className="flex items-center justify-between">
+        <label htmlFor={id} className="field-label">
+          {label}
+          {REQUIREMENT_SUFFIX[requirement] && <span className="ml-1.5 font-normal normal-case tracking-normal text-ink-500">{REQUIREMENT_SUFFIX[requirement]}</span>}
+        </label>
+        {labelAddon}
+      </div>
       {children}
       {hint && !error && <p id={hintId} className="text-xs text-ink-500 mt-1">{hint}</p>}
       {error && <p id={errorId} role="alert" className="field-error">{error}</p>}
@@ -48,15 +57,16 @@ function FieldShell({
 type SharedProps = {
   label: string;
   requirement?: Requirement;
+  labelAddon?: ReactNode;
   hint?: string;
   error?: string;
 };
 
-export function Input({ label, requirement, hint, error, id, ...rest }: SharedProps & InputHTMLAttributes<HTMLInputElement>) {
+export function Input({ label, requirement, labelAddon, hint, error, id, ...rest }: SharedProps & InputHTMLAttributes<HTMLInputElement>) {
   const autoId = useId();
   const fieldId = id ?? autoId;
   return (
-    <FieldShell id={fieldId} label={label} requirement={requirement} hint={hint} error={error}>
+    <FieldShell id={fieldId} label={label} requirement={requirement} labelAddon={labelAddon} hint={hint} error={error}>
       <input
         id={fieldId}
         className="field-input"
@@ -68,11 +78,11 @@ export function Input({ label, requirement, hint, error, id, ...rest }: SharedPr
   );
 }
 
-export function Textarea({ label, requirement, hint, error, id, ...rest }: SharedProps & TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function Textarea({ label, requirement, labelAddon, hint, error, id, ...rest }: SharedProps & TextareaHTMLAttributes<HTMLTextAreaElement>) {
   const autoId = useId();
   const fieldId = id ?? autoId;
   return (
-    <FieldShell id={fieldId} label={label} requirement={requirement} hint={hint} error={error}>
+    <FieldShell id={fieldId} label={label} requirement={requirement} labelAddon={labelAddon} hint={hint} error={error}>
       <textarea
         id={fieldId}
         className="field-input"
@@ -84,11 +94,11 @@ export function Textarea({ label, requirement, hint, error, id, ...rest }: Share
   );
 }
 
-export function Select({ label, requirement, hint, error, id, children, ...rest }: SharedProps & SelectHTMLAttributes<HTMLSelectElement>) {
+export function Select({ label, requirement, labelAddon, hint, error, id, children, ...rest }: SharedProps & SelectHTMLAttributes<HTMLSelectElement>) {
   const autoId = useId();
   const fieldId = id ?? autoId;
   return (
-    <FieldShell id={fieldId} label={label} requirement={requirement} hint={hint} error={error}>
+    <FieldShell id={fieldId} label={label} requirement={requirement} labelAddon={labelAddon} hint={hint} error={error}>
       <select
         id={fieldId}
         className="field-input"
