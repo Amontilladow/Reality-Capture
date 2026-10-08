@@ -85,7 +85,7 @@ export default function SubmittalsPage() {
         )}
 
         {(submittalsQuery.data?.data.length ?? 0) > 0 && (
-          <div className="panel tick-frame overflow-hidden">
+          <div className="panel tick-frame overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-ink-500 border-b border-base-600">

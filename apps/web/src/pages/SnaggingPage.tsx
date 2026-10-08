@@ -229,7 +229,7 @@ export default function SnaggingPage() {
               <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-500 px-1 py-1.5 hover:text-ink-300">
                 {building.name}
               </summary>
-              <div className="panel tick-frame overflow-hidden mt-1">
+              <div className="panel tick-frame overflow-x-auto mt-1">
                 <SnagTable levelGroups={levelGroups} onRowClick={setViewSnagId} />
               </div>
             </details>
@@ -240,7 +240,7 @@ export default function SnaggingPage() {
               <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-500 px-1 py-1.5 hover:text-ink-300">
                 Unassigned
               </summary>
-              <div className="panel tick-frame overflow-hidden mt-1">
+              <div className="panel tick-frame overflow-x-auto mt-1">
                 <SnagTable levelGroups={[{ level: undefined, snags: groupedSnags.unassigned }]} onRowClick={setViewSnagId} hideLevelHeader />
               </div>
             </details>
