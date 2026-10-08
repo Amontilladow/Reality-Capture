@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
+import { useDocumentTitle } from '../../lib/useDocumentTitle';
 
 export function AuthLayout({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
+  useDocumentTitle(title);
+
   return (
     <div className="min-h-screen flex">
       <div className="hidden lg:flex w-1/2 relative bg-base-900 overflow-hidden items-center justify-center">

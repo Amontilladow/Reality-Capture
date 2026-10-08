@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { RfiPriority, RfiDiscipline, RfiImpactLevel } from '@engineeringos/types';
 import {
@@ -12,12 +12,16 @@ import { RFI_PRIORITIES, RFI_PRIORITY_LABELS } from '../lib/rfi-constants';
 import { apiErrorMessage } from '../lib/api';
 
 export function RfiFormModal({
-  open, onClose, projectId, members,
+  open, onClose, projectId, members, initialValues,
 }: {
   open: boolean;
   onClose: () => void;
   projectId: string;
   members: ProjectMember[];
+  // Pre-fills a brand-new (never submitted) RFI, e.g. from an AI-generated
+  // draft -- the user still edits and submits through this exact same form
+  // and createRfi() call, nothing about the write path changes.
+  initialValues?: { subject?: string; question?: string; discipline?: RfiDiscipline; priority?: RfiPriority };
 }) {
   const queryClient = useQueryClient();
   const [subject, setSubject] = useState('');
@@ -60,6 +64,15 @@ export function RfiFormModal({
     setDrawingImpactLevel('no'); setDrawingImpactDescription(''); setDrawingUpdateOwnerId('');
     setAssignedTo(''); setDueDate(''); setError('');
   }
+
+  useEffect(() => {
+    if (!open || !initialValues) return;
+    if (initialValues.subject !== undefined) setSubject(initialValues.subject);
+    if (initialValues.question !== undefined) setQuestion(initialValues.question);
+    if (initialValues.discipline !== undefined) setDiscipline(initialValues.discipline);
+    if (initialValues.priority !== undefined) setPriority(initialValues.priority);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-apply when the modal is (re)opened, not on every initialValues identity change
+  }, [open]);
 
   const mutation = useMutation({
     mutationFn: () => {

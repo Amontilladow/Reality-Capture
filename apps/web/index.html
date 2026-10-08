@@ -39,10 +39,32 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- A plain rel="stylesheet" link here would block first paint on a
+         network round-trip to fonts.googleapis.com, even with preconnect
+         (which cuts connection setup time but not the fetch itself). Loading
+         it as a non-blocking preload and swapping its media to "all" once
+         fetched (the standard loadCSS pattern) keeps the font stylesheet off
+         the critical rendering path; font-display: swap (already in the
+         URL) then shows fallback-font text immediately and swaps once this
+         loads, rather than the page waiting on it to paint anything at all.
+         The <noscript> fallback covers the rare case of JS disabled. -->
     <link
+      rel="preload"
+      as="style"
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
     />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      />
+    </noscript>
   </head>
   <body class="bg-base-950 text-ink-100">
     <div id="root"></div>

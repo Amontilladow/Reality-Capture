@@ -5,6 +5,7 @@ import type { Capture, Hotspot } from '@engineeringos/types';
 import { ThreeJsViewer } from '../components/viewer/ThreeJsViewer';
 import { getViewerData, getCapture } from '../lib/captures.api';
 import { getHierarchy } from '../lib/projects.api';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 export default function Viewer360() {
   const { projectId, locationId } = useParams<{ projectId: string; locationId: string }>();
@@ -45,6 +46,8 @@ export default function Viewer360() {
     }
     return null;
   }, [hierarchyQuery.data, locationId]);
+
+  useDocumentTitle(active?.title ? `360° Viewer — ${active.title}` : undefined);
 
   function handleHotspotClick(h: Hotspot) {
     if (h.hotspotType === 'navigation' && h.targetCaptureId) {

@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getProgressReportByToken, type ProgressReportIssueRow } from '../lib/progress-reports.api';
 import { apiErrorMessage } from '../lib/api';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 function IssueList({ title, items, emptyText }: { title: string; items: ProgressReportIssueRow[]; emptyText: string }) {
   return (
@@ -40,6 +41,8 @@ export default function ProgressReportExternalPage() {
   });
 
   const report = reportQuery.data;
+
+  useDocumentTitle(report ? `Progress Report — ${report.project.name}` : undefined);
 
   return (
     <div className="min-h-screen bg-base-950 flex flex-col items-center px-4 py-10">
@@ -94,8 +97,8 @@ export default function ProgressReportExternalPage() {
               <div className="mb-6">
                 <h3 className="text-sm font-semibold text-ink-100 uppercase tracking-wide mb-2">Captures</h3>
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                  {report.captures.map((c) => (
-                    <img key={c.id} src={c.thumbnailUrl} alt="" loading="lazy" className="w-full h-20 object-cover rounded border border-base-600" />
+                  {report.captures.map((c, i) => (
+                    <img key={c.id} src={c.thumbnailUrl} alt={`Site capture ${i + 1} of ${report.captures.length}`} loading="lazy" className="w-full h-20 object-cover rounded border border-base-600" />
                   ))}
                 </div>
               </div>

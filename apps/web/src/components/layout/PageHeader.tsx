@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useDocumentTitle } from '../../lib/useDocumentTitle';
 
 export function PageHeader({
   eyebrow,
@@ -9,6 +10,8 @@ export function PageHeader({
   title: string;
   actions?: ReactNode;
 }) {
+  useDocumentTitle(title);
+
   return (
     <div className="h-16 border-b border-base-600 bg-base-900/60 backdrop-blur px-6 flex items-center justify-between gap-3 sticky top-0 z-10">
       <div className="min-w-0 shrink">

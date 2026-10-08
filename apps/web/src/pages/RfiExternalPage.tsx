@@ -7,6 +7,7 @@ import {
 } from '../lib/rfi-external-access.api';
 import { apiErrorMessage } from '../lib/api';
 import { formatDateTime, formatDeadline } from '../lib/issue-constants';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 // Minimal, branded, full-bleed page for a stakeholder with no EngineeringOS
 // account -- no sidebar, no navigation, nothing else on this app reachable
@@ -26,6 +27,8 @@ export default function RfiExternalPage() {
     enabled: Boolean(token),
     retry: false,
   });
+
+  useDocumentTitle(detailQuery.data ? `RFI — ${detailQuery.data.subject}` : undefined);
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ['rfi-external', token] });
