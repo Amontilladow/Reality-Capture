@@ -1,11 +1,15 @@
 import { Link } from 'react-router-dom';
 import type { Project } from '@engineeringos/types';
+import { PROJECT_PHASE_LABELS } from '@engineeringos/types';
+import { StatusBadge } from './ui/Badge';
+import { PROJECT_STATUS_TONE } from '../lib/status-tone';
+import { formatDeadline } from '../lib/issue-constants';
 
-const STATUS_STYLES: Record<string, string> = {
-  active: 'bg-ok/15 text-ok',
-  on_hold: 'bg-warn/15 text-warn',
-  completed: 'bg-blueprint/15 text-blueprint',
-  archived: 'bg-ink-500/15 text-ink-500',
+const STATUS_LABELS: Record<Project['status'], string> = {
+  active: 'Active',
+  on_hold: 'On Hold',
+  completed: 'Completed',
+  archived: 'Archived',
 };
 
 export function ProjectCard({ project }: { project: Project }) {
@@ -23,20 +27,26 @@ export function ProjectCard({ project }: { project: Project }) {
             {project.name}
           </h3>
         </div>
-        <span className={`badge shrink-0 ${STATUS_STYLES[project.status] ?? 'bg-base-700 text-ink-300'}`}>
-          {project.status.replace('_', ' ')}
-        </span>
+        <StatusBadge tone={PROJECT_STATUS_TONE[project.status]} label={STATUS_LABELS[project.status]} />
       </div>
 
-      {(project.city || project.country) && (
-        <div className="text-xs text-ink-500">{[project.city, project.country].filter(Boolean).join(', ')}</div>
-      )}
+      <div className="flex items-center gap-2 flex-wrap text-xs text-ink-500">
+        {(project.city || project.country) && <span>{[project.city, project.country].filter(Boolean).join(', ')}</span>}
+        {project.phase && (
+          <>
+            {(project.city || project.country) && <span aria-hidden="true">·</span>}
+            <span>{PROJECT_PHASE_LABELS[project.phase]}</span>
+          </>
+        )}
+      </div>
 
       <div className="flex items-center gap-4 text-xs font-mono text-ink-300 pt-3 border-t border-base-600">
         <span>{project.captureCount ?? 0} captures</span>
         <span>{project.openIssueCount ?? 0} open issues</span>
         <span>{project.memberCount ?? 0} members</span>
       </div>
+
+      <div className="text-[10px] text-ink-500 -mt-2">Updated {formatDeadline(project.updatedAt)}</div>
     </Link>
   );
 }

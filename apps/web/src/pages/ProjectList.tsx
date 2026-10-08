@@ -4,6 +4,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { ProjectCard } from '../components/ProjectCard';
 import { CreateProjectModal } from '../components/CreateProjectModal';
 import { SubscriptionBanner } from '../components/SubscriptionBanner';
+import { Card } from '../components/ui/Card';
 import { listProjects } from '../lib/projects.api';
 import { getSubscription } from '../lib/subscription.api';
 
@@ -22,6 +23,18 @@ export default function ProjectList() {
 
   const projects = projectsQuery.data?.data ?? [];
 
+  // Every KPI below is a sum over fields listProjects() already returns per
+  // project (openIssueCount/captureCount/memberCount) -- no new endpoint,
+  // no per-project fan-out queries. memberCount double-counts anyone on
+  // multiple projects, so this reads "Project Memberships," not "People,"
+  // to not imply a unique headcount the data doesn't actually give us.
+  const kpis = {
+    total: projects.length,
+    active: projects.filter((p) => p.status === 'active').length,
+    openIssues: projects.reduce((sum, p) => sum + (p.openIssueCount ?? 0), 0),
+    captures: projects.reduce((sum, p) => sum + (p.captureCount ?? 0), 0),
+  };
+
   return (
     <>
       <PageHeader
@@ -36,6 +49,15 @@ export default function ProjectList() {
 
       <div className="p-6 grid grid-cols-1 xl:grid-cols-4 gap-6">
         <div className="xl:col-span-3">
+          {projectsQuery.isSuccess && projects.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+              <KpiTile label="Projects" value={kpis.total} />
+              <KpiTile label="Active" value={kpis.active} />
+              <KpiTile label="Open Issues" value={kpis.openIssues} tone={kpis.openIssues > 0 ? 'danger' : undefined} />
+              <KpiTile label="Captures" value={kpis.captures} />
+            </div>
+          )}
+
           {projectsQuery.isLoading && (
             <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -85,5 +107,16 @@ function PlusIcon() {
     <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 5v14M5 12h14" strokeLinecap="round" />
     </svg>
+  );
+}
+
+function KpiTile({ label, value, tone }: { label: string; value: number; tone?: 'danger' }) {
+  return (
+    <Card>
+      <div className={`text-kpi font-semibold tabular-nums ${tone === 'danger' && value > 0 ? 'text-danger' : 'text-ink-100'}`}>
+        {value}
+      </div>
+      <div className="text-xs text-ink-500 mt-0.5">{label}</div>
+    </Card>
   );
 }
