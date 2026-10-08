@@ -29,6 +29,7 @@ const NAV_GROUPS: NavGroup[] = [
   // provider (spec section 7), not just company admins, so this sits in
   // the base groups rather than gated like DEVELOPER_NAV_ITEM below.
   { heading: 'AI', items: [{ to: 'ai-settings', label: 'AI Provider', icon: IconSpark }] },
+  { heading: 'Help', items: [{ to: 'help', label: 'Help & Training', icon: IconHelp }] },
 ];
 
 // Company-admin-only -- API keys and webhooks are per-tenant (company_id),
@@ -333,6 +334,16 @@ function IconTrending({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M3 17l6-6 4 4 8-8" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M15 7h6v6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+// Open book, not another question mark -- IconQuestion (RFI) already owns
+// that shape; Help & Training needs its own silhouette in the same nav.
+function IconHelp({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M12 6c-1.5-1-4-1.5-6-1.2v12c2 -0.3 4.5 0.2 6 1.2 1.5-1 4-1.5 6-1.2V4.8c-2-0.3-4.5 0.2-6 1.2z" strokeLinejoin="round" />
+      <path d="M12 6v12" />
     </svg>
   );
 }
