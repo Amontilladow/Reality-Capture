@@ -30,6 +30,11 @@ export interface AIProviderModelInfo {
   model: string;
 }
 
+export interface ValidateConnectionResult {
+  ok: boolean;
+  error?: string;
+}
+
 export interface AIProvider {
   generateResponse(input: GenerateResponseInput): Promise<GenerateResponseResult>;
 
@@ -50,4 +55,13 @@ export interface AIProvider {
   classifyRequest(question: string): Promise<ClassifyRequestResult>;
 
   getModelInfo(): AIProviderModelInfo;
+
+  // A cheap, minimal call that only confirms the credentials/endpoint work
+  // -- used by BYO AI's "Test Connection" (modules/ai-connections) and
+  // nowhere in the main request path, so it's fine for this to cost a
+  // trivial amount of the user's own provider quota (never
+  // RealityCapture's). Never throws -- always resolves to a result object,
+  // since a failed validation is an expected, user-facing outcome, not an
+  // exceptional one.
+  validateConnection(): Promise<ValidateConnectionResult>;
 }

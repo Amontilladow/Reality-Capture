@@ -1,4 +1,4 @@
-import type { RfiDiscipline, RfiPriority, IssueType, IssuePriority, IssueDiscipline } from '@engineeringos/types';
+import type { RfiDiscipline, RfiPriority, IssueType, IssuePriority, IssueDiscipline, SnagPriority } from '@engineeringos/types';
 import { apiGet, apiPost } from './api';
 
 export interface AssistantMessage {
@@ -27,10 +27,18 @@ export interface IssueDraftFields {
   deadline: string;
 }
 
+export interface SnagDraftFields {
+  title: string;
+  description: string;
+  trade: string;
+  priority: SnagPriority;
+  dueDate: string;
+}
+
 export interface AskAssistantResponse {
   answer: string;
   blocked?: boolean;
-  draft?: { type: 'rfi'; fields: RfiDraftFields } | { type: 'issue'; fields: IssueDraftFields };
+  draft?: { type: 'rfi'; fields: RfiDraftFields } | { type: 'issue'; fields: IssueDraftFields } | { type: 'snag'; fields: SnagDraftFields };
   toolsUsed: string[];
   remainingQuota: { dailyUsed: number; dailyLimit: number };
 }

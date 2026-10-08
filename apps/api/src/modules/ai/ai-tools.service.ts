@@ -6,6 +6,7 @@ import { RiskService } from '../risk/risk.service';
 import { ProgressReportsService } from '../progress-reports/progress-reports.service';
 import { DocumentsService } from '../documents/documents.service';
 import { ProjectsService } from '../projects/projects.service';
+import { DrawingsService } from '../drawings/drawings.service';
 import { AiClientService } from '../ai-client/ai-client.service';
 
 export interface ToolResult {
@@ -45,6 +46,7 @@ export class AiToolsService {
     private readonly progressReports: ProgressReportsService,
     private readonly documents: DocumentsService,
     private readonly projects: ProjectsService,
+    private readonly drawings: DrawingsService,
     private readonly aiClient: AiClientService,
   ) {}
 
@@ -109,6 +111,33 @@ export class AiToolsService {
   async getOpenSnags(ctx: AssistantContext, limit = 10): Promise<ToolResult> {
     const snags = await this.snagging.getOpenList(ctx.companyId, ctx.projectId, limit);
     return { tool: 'getOpenSnags', category: 'snag', data: snags };
+  }
+
+  async getSnagDetails(ctx: AssistantContext, snagId: string): Promise<ToolResult> {
+    const snag = await this.snagging.findOne(ctx.companyId, ctx.projectId, snagId) as Record<string, unknown>;
+    return {
+      tool: 'getSnagDetails', category: 'snag',
+      data: {
+        title: snag.title, description: snag.description, status: snag.status,
+        priority: snag.priority, trade: snag.trade, location: snag.location,
+        buildingName: snag.buildingName, levelName: snag.levelName,
+        assignedToName: snag.assignedToName, dueDate: snag.dueDate,
+      },
+    };
+  }
+
+  // Floor Plans (spec sections 16-21): a per-level listing, trimmed to what
+  // the assistant needs to answer "which drawings cover level 3?" etc --
+  // never the full capture-pin payload the real floor-plan viewer needs.
+  async getFloorPlanDetails(ctx: AssistantContext, levelId?: string): Promise<ToolResult> {
+    const rows = await this.drawings.findAll(ctx.companyId, ctx.projectId, levelId) as unknown as Record<string, unknown>[];
+    return {
+      tool: 'getFloorPlanDetails', category: 'drawing',
+      data: rows.map((d) => ({
+        title: d.title, levelName: d.levelName, revision: d.revision,
+        isCurrent: d.isCurrent, linkedCaptureCount: d.linkedCaptureCount,
+      })),
+    };
   }
 
   async getRiskSummary(ctx: AssistantContext): Promise<ToolResult> {
@@ -221,6 +250,14 @@ export class AiToolsService {
     return {
       tool: 'createIssueDraft', category: 'issue',
       data: { title, description, discipline, priority, issueType, deadline },
+    };
+  }
+
+  createSnagDraft(title: string, description: string, trade: string, priority: 'critical' | 'high' | 'medium' | 'low' = 'medium'): ToolResult {
+    const dueDate = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+    return {
+      tool: 'createSnagDraft', category: 'snag',
+      data: { title, description, trade, priority, dueDate },
     };
   }
 }

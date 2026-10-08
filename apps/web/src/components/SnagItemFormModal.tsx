@@ -9,7 +9,7 @@ import { apiErrorMessage } from '../lib/api';
 import { BuildingLevelRoomPicker, type HierarchySelection } from './hierarchy/BuildingLevelRoomPicker';
 
 export function SnagItemFormModal({
-  open, onClose, projectId, members, hierarchy, snag,
+  open, onClose, projectId, members, hierarchy, snag, draftValues,
 }: {
   open: boolean;
   onClose: () => void;
@@ -17,6 +17,11 @@ export function SnagItemFormModal({
   members: ProjectMember[];
   hierarchy: ProjectHierarchy[];
   snag?: SnagListItem;
+  // Prefill from the AI assistant's createSnagDraft tool (CTO spec sections
+  // 9, 16-21) -- same Edit/Submit pattern as RfiFormModal/IssueFormModal:
+  // the AI never writes directly, it only pre-fills this form for the user
+  // to review and submit through the normal, already-authorized endpoint.
+  draftValues?: { title?: string; description?: string; trade?: string; priority?: SnagPriority; dueDate?: string };
 }) {
   const isEdit = Boolean(snag);
   const queryClient = useQueryClient();
@@ -32,19 +37,21 @@ export function SnagItemFormModal({
 
   useEffect(() => {
     if (!open) return;
-    setTitle(snag?.title ?? '');
-    setDescription(snag?.description ?? '');
+    const d = !snag ? draftValues : undefined;
+    setTitle(snag?.title ?? d?.title ?? '');
+    setDescription(snag?.description ?? d?.description ?? '');
     setLocation(snag?.location ?? '');
     setPlace({
       buildingId: snag?.buildingId ?? '',
       levelId: snag?.levelId ?? '',
       locationId: snag?.locationId ?? '',
     });
-    setTrade(snag?.trade ?? '');
-    setPriority(snag?.priority ?? 'medium');
+    setTrade(snag?.trade ?? d?.trade ?? '');
+    setPriority(snag?.priority ?? d?.priority ?? 'medium');
     setAssignedTo(snag?.assignedTo ?? '');
-    setDueDate(snag?.dueDate ? snag.dueDate.slice(0, 10) : '');
+    setDueDate((snag?.dueDate ?? d?.dueDate)?.slice(0, 10) ?? '');
     setError('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- draftValues intentionally excluded: only applied on (re)open, not on every identity change
   }, [open, snag]);
 
   function reset() {

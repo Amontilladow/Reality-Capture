@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type {
   AIProvider, GenerateResponseInput, GenerateResponseResult,
-  ClassifyRequestResult, AIProviderModelInfo,
+  ClassifyRequestResult, AIProviderModelInfo, ValidateConnectionResult,
 } from './ai-provider.interface';
 
 @Injectable()
@@ -56,5 +56,15 @@ export class GeminiProvider implements AIProvider {
 
   getModelInfo(): AIProviderModelInfo {
     return { provider: 'gemini', model: this.model };
+  }
+
+  async validateConnection(): Promise<ValidateConnectionResult> {
+    try {
+      const model = this.client.getGenerativeModel({ model: this.model });
+      await model.generateContent('ping');
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
   }
 }

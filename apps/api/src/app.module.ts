@@ -20,6 +20,7 @@ import { QaModule } from './modules/qa/qa.module';
 import { SnaggingModule } from './modules/snagging/snagging.module';
 import { AiClientModule } from './modules/ai-client/ai-client.module';
 import { AiModule } from './modules/ai/ai.module';
+import { AiConnectionsModule } from './modules/ai-connections/ai-connections.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { ProgressReportsModule } from './modules/progress-reports/progress-reports.module';
 import { BimModule } from './modules/bim/bim.module';
@@ -47,6 +48,7 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { PendingApprovalGuard } from './common/guards/pending-approval.guard';
 import { ProjectPermissionGuard } from './common/guards/project-permission.guard';
 import { TenancyGuard } from './common/guards/tenancy.guard';
+import { SiteRoleRestrictionGuard } from './common/guards/site-role-restriction.guard';
 
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
@@ -103,6 +105,7 @@ import aiConfig from './config/ai.config';
     SnaggingModule,
     AiClientModule,
     AiModule,
+    AiConnectionsModule,
     ReportsModule,
     ProgressReportsModule,
     BimModule,
@@ -138,6 +141,12 @@ import aiConfig from './config/ai.config';
     { provide: APP_GUARD, useClass: TenancyGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: ProjectPermissionGuard },
+    // Runs last of all: an additional, cross-cutting restriction for Site
+    // Engineer/Construction Manager/Project Engineer (full working access
+    // to Floor Plans/Issues/Snagging, read-only -- no access at all for
+    // project settings/users/billing -- elsewhere), applied on top of
+    // whatever the guards above already decided, never loosening it.
+    { provide: APP_GUARD, useClass: SiteRoleRestrictionGuard },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],

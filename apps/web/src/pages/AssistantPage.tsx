@@ -7,6 +7,7 @@ import { getProject, getMembers, getHierarchy } from '../lib/projects.api';
 import { apiErrorMessage } from '../lib/api';
 import { RfiFormModal } from '../components/RfiFormModal';
 import { IssueFormModal } from '../components/issues/IssueFormModal';
+import { SnagItemFormModal } from '../components/SnagItemFormModal';
 
 interface ChatMessage extends AssistantMessage {
   blocked?: boolean;
@@ -28,6 +29,7 @@ export default function AssistantPage() {
   const [error, setError] = useState('');
   const [rfiDraftOpen, setRfiDraftOpen] = useState(false);
   const [issueDraftOpen, setIssueDraftOpen] = useState(false);
+  const [snagDraftOpen, setSnagDraftOpen] = useState(false);
   const [activeDraft, setActiveDraft] = useState<AskAssistantResponse['draft']>(undefined);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -88,6 +90,7 @@ export default function AssistantPage() {
     setActiveDraft(draft);
     if (draft?.type === 'rfi') setRfiDraftOpen(true);
     if (draft?.type === 'issue') setIssueDraftOpen(true);
+    if (draft?.type === 'snag') setSnagDraftOpen(true);
   }
 
   if (!projectId) return null;
@@ -125,7 +128,7 @@ export default function AssistantPage() {
                 <p className="whitespace-pre-wrap">{m.content}</p>
                 {m.draft && (
                   <button onClick={() => openDraft(m.draft)} className="btn-secondary !text-xs mt-2">
-                    Review draft {m.draft.type === 'rfi' ? 'RFI' : 'issue'}
+                    Review draft {m.draft.type === 'rfi' ? 'RFI' : m.draft.type === 'issue' ? 'issue' : 'snag item'}
                   </button>
                 )}
               </div>
@@ -171,6 +174,16 @@ export default function AssistantPage() {
         <IssueFormModal
           open={issueDraftOpen}
           onClose={() => setIssueDraftOpen(false)}
+          projectId={projectId}
+          members={membersQuery.data ?? []}
+          hierarchy={hierarchyQuery.data ?? []}
+          draftValues={activeDraft.fields}
+        />
+      )}
+      {activeDraft?.type === 'snag' && (
+        <SnagItemFormModal
+          open={snagDraftOpen}
+          onClose={() => setSnagDraftOpen(false)}
           projectId={projectId}
           members={membersQuery.data ?? []}
           hierarchy={hierarchyQuery.data ?? []}

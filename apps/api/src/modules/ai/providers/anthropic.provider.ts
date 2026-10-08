@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import Anthropic from '@anthropic-ai/sdk';
 import type {
   AIProvider, GenerateResponseInput, GenerateResponseResult,
-  ClassifyRequestResult, AIProviderModelInfo,
+  ClassifyRequestResult, AIProviderModelInfo, ValidateConnectionResult,
 } from './ai-provider.interface';
 
 @Injectable()
@@ -58,5 +58,14 @@ export class AnthropicProvider implements AIProvider {
 
   getModelInfo(): AIProviderModelInfo {
     return { provider: 'anthropic', model: this.model };
+  }
+
+  async validateConnection(): Promise<ValidateConnectionResult> {
+    try {
+      await this.client.messages.create({ model: this.model, max_tokens: 1, messages: [{ role: 'user', content: 'ping' }] });
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
   }
 }
