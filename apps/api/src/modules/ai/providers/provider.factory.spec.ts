@@ -33,6 +33,13 @@ describe('ProviderFactory.resolve (RealityCapture\'s own provider, auto mode)', 
     expect(() => factory.getProvider()).toThrow(/No AI provider configured/);
   });
 
+  it('onModuleInit does not throw when unconfigured -- the rest of the app must still boot', () => {
+    const factory = new ProviderFactory(makeConfig({ 'ai.provider': 'auto' }));
+    expect(() => factory.onModuleInit()).not.toThrow();
+    // Still fails closed, just lazily -- the first real AI request surfaces the error.
+    expect(() => factory.getProvider()).toThrow(/No AI provider configured/);
+  });
+
   it('an explicit AI_PROVIDER is forced even when a higher-priority key is also present', () => {
     const factory = new ProviderFactory(makeConfig({
       'ai.provider': 'anthropic',
