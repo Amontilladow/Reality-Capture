@@ -1,5 +1,6 @@
 import { COMPANY_ROLE_WEIGHT } from '@engineeringos/types';
 import type { IssueStatus, IssuePriority, IssueType, IssueDiscipline, IssueCategory, CompanyRole, ProjectRole, ProjectPermission } from '@engineeringos/types';
+import { TONE_CLASS, ISSUE_STATUS_TONE, ISSUE_PRIORITY_TONE } from './status-tone';
 
 export const PROJECT_PERMISSION_LABELS: Record<ProjectPermission, string> = {
   manage_team: 'Manage team',
@@ -59,17 +60,12 @@ export const STATUS_LABELS: Record<IssueStatus, string> = {
   void: 'Void',
 };
 
-export const STATUS_BADGE_CLASS: Record<IssueStatus, string> = {
-  open: 'bg-blueprint/15 text-blueprint',
-  assigned: 'bg-warn/15 text-warn',
-  in_progress: 'bg-warn/15 text-warn',
-  under_review: 'bg-warn/15 text-warn',
-  waiting_for_information: 'bg-warn/15 text-warn',
-  resolved: 'bg-ok/15 text-ok',
-  closed: 'bg-base-600 text-ink-500',
-  reopened: 'bg-danger/15 text-danger',
-  void: 'bg-base-600 text-ink-500',
-};
+// Derived from the shared tone system (lib/status-tone.ts) rather than its
+// own colors, so an issue's status badge uses the exact same visual
+// language as every other module's (RFI, Snagging, Submittals, ...).
+export const STATUS_BADGE_CLASS: Record<IssueStatus, string> = Object.fromEntries(
+  Object.entries(ISSUE_STATUS_TONE).map(([status, tone]) => [status, TONE_CLASS[tone]]),
+) as Record<IssueStatus, string>;
 
 export const PRIORITY_LABELS: Record<IssuePriority, string> = {
   critical: 'Critical',
@@ -78,12 +74,9 @@ export const PRIORITY_LABELS: Record<IssuePriority, string> = {
   low: 'Low',
 };
 
-export const PRIORITY_BADGE_CLASS: Record<IssuePriority, string> = {
-  critical: 'bg-danger/20 text-danger',
-  high: 'bg-danger/10 text-danger',
-  medium: 'bg-warn/15 text-warn',
-  low: 'bg-base-600 text-ink-500',
-};
+export const PRIORITY_BADGE_CLASS: Record<IssuePriority, string> = Object.fromEntries(
+  Object.entries(ISSUE_PRIORITY_TONE).map(([priority, tone]) => [priority, TONE_CLASS[tone]]),
+) as Record<IssuePriority, string>;
 
 export const ISSUE_TYPE_LABELS: Record<IssueType, string> = {
   defect: 'Defect',
