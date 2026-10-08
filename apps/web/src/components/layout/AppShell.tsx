@@ -11,6 +11,10 @@ const NAV_ITEMS = [
   { to: '', label: 'Projects', icon: IconGrid, end: true },
   { to: 'messages', label: 'Messages', icon: IconMail },
   { to: 'workforce', label: 'Workforce', icon: IconGauge },
+  // Personal, account-level -- every user may connect their own AI
+  // provider (spec section 7), not just company admins, so this sits in
+  // the base NAV_ITEMS rather than gated like DEVELOPER_NAV_ITEM below.
+  { to: 'ai-settings', label: 'AI Provider', icon: IconSpark },
 ];
 
 // Company-admin-only -- API keys and webhooks are per-tenant (company_id),

@@ -12,7 +12,20 @@ export const COMPANY_ROLES = [
   'commercial_manager',
   'consultant',
   'client_representative',
+  'project_engineer',
 ] as const;
+
+// construction_manager and project_engineer are site-facing, deliberately
+// restricted operational roles (CTO spec): full working access to Floor
+// Plans/Issues/Snagging, read-only everywhere else, no access to project
+// settings/user management/billing -- enforced by SiteRoleRestrictionGuard
+// (common/guards/site-role-restriction.guard.ts), not by weight. The
+// restricted "Site Engineer" identity is a third, separate case: it reuses
+// the existing PROJECT-level PROJECT_ROLES 'site_engineer' value below
+// (project_members.role), not a company role, since it's a per-project
+// identity rather than a company-wide one -- the same guard checks both
+// dimensions.
+export const SITE_RESTRICTED_COMPANY_ROLES: readonly CompanyRole[] = ['construction_manager', 'project_engineer'];
 
 export type CompanyRole = typeof COMPANY_ROLES[number];
 
@@ -47,6 +60,13 @@ export const COMPANY_ROLE_WEIGHT: Record<CompanyRole, number> = {
   commercial_manager: 45,
   consultant: 30,
   client_representative: 20,
+  // Weight only matters here for the existing @Roles() minimum-weight
+  // gates elsewhere in the app -- this sits below every one of them (the
+  // lowest existing gate requires weight >= 60), so it never accidentally
+  // passes an elevated-action check. The actual restriction (full working
+  // access to Floor Plans/Issues/Snagging, read-only elsewhere) is
+  // enforced separately by SiteRoleRestrictionGuard, not by this number.
+  project_engineer: 35,
 };
 
 export const PROJECT_ROLE_WEIGHT: Record<ProjectRole, number> = {

@@ -28,6 +28,7 @@ import RiskPage from './pages/RiskPage';
 import MessagesPage from './pages/MessagesPage';
 import WorkforcePage from './pages/WorkforcePage';
 import DeveloperSettingsPage from './pages/DeveloperSettingsPage';
+import AiSettingsPage from './pages/AiSettingsPage';
 import BuildLensPage from './pages/BuildLensPage';
 
 // These four pull in the heaviest dependencies in the app (Three.js +
@@ -100,6 +101,7 @@ export default function App() {
             <Route path="/projects/messages" element={<MessagesPage />} />
             <Route path="/projects/workforce" element={<WorkforcePage />} />
             <Route path="/projects/developer" element={<DeveloperSettingsPage />} />
+            <Route path="/projects/ai-settings" element={<AiSettingsPage />} />
             <Route path="/projects/:projectId" element={<ProjectDetail />} />
             <Route path="/projects/:projectId/captures" element={<CapturesPage />} />
             <Route path="/projects/:projectId/drawings" element={<FloorPlanViewer />} />

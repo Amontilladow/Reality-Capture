@@ -31,6 +31,10 @@ export const COMPANY_ROLE_LABELS: Record<CompanyRole, string> = {
   commercial_manager: 'Commercial Manager',
   consultant: 'Consultant',
   client_representative: 'Client Representative',
+  // CTO spec: restricted, site-facing role -- full working access to Floor
+  // Plans/Issues/Snagging only (SiteRoleRestrictionGuard), everywhere else
+  // read-only.
+  project_engineer: 'Project Engineer',
 };
 
 export const ISSUE_STATUSES: IssueStatus[] = [

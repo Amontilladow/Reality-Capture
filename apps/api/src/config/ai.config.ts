@@ -23,6 +23,10 @@ const DEFAULT_LIMITS: Record<string, AiRoleLimit> = {
   commercial_manager:   { dailyLimit: 30,  perMinuteLimit: 10 },
   consultant:           { dailyLimit: 30,  perMinuteLimit: 10 },
   client_representative:{ dailyLimit: 30,  perMinuteLimit: 10 },
+  // CTO spec section 22: Project Engineer is one of the three restricted
+  // site-facing roles, limited like the spec's "Site Engineer" bucket
+  // (20/day, 5/min) rather than the general 30/day manager bucket.
+  project_engineer:      { dailyLimit: 20,  perMinuteLimit: 5  },
   default:               { dailyLimit: 20,  perMinuteLimit: 5  },
 };
 
@@ -52,6 +56,10 @@ export default registerAs('ai', () => ({
     apiKey: process.env.ANTHROPIC_API_KEY ?? '',
     model: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-6',
   },
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY ?? '',
+    model: process.env.OPENAI_MODEL ?? 'gpt-4o',
+  },
 
   // Per-role daily + per-minute request limits ("INITIAL TESTING LIMITS" in
   // the spec, env-overridable as "daily,perMinute", e.g.
@@ -71,6 +79,7 @@ export default registerAs('ai', () => ({
     commercial_manager:    parseLimitOverride(process.env.AI_LIMIT_COMMERCIAL_MANAGER, DEFAULT_LIMITS.commercial_manager),
     consultant:            parseLimitOverride(process.env.AI_LIMIT_CONSULTANT, DEFAULT_LIMITS.consultant),
     client_representative: parseLimitOverride(process.env.AI_LIMIT_CLIENT_REPRESENTATIVE, DEFAULT_LIMITS.client_representative),
+    project_engineer:      parseLimitOverride(process.env.AI_LIMIT_PROJECT_ENGINEER, DEFAULT_LIMITS.project_engineer),
     default:               parseLimitOverride(process.env.AI_LIMIT_DEFAULT, DEFAULT_LIMITS.default),
   } satisfies Record<CompanyRole | 'default', AiRoleLimit>,
 

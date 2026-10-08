@@ -20,6 +20,7 @@ export interface UsageLogEntry {
   category?: string;
   provider?: string;
   model?: string;
+  aiMode?: 'realitycapture' | 'byo';
   inputTokens?: number;
   outputTokens?: number;
   latencyMs?: number;
@@ -108,11 +109,11 @@ export class AiUsageService implements OnModuleDestroy {
       INSERT INTO ai_usage_log (
         company_id, project_id, user_id, user_role, status, category,
         provider, model, input_tokens, output_tokens, latency_ms,
-        block_reason, error_message
+        block_reason, error_message, ai_mode
       ) VALUES (
         ${entry.companyId}, ${entry.projectId ?? null}, ${entry.userId}, ${entry.userRole}, ${entry.status}, ${entry.category ?? null},
         ${entry.provider ?? null}, ${entry.model ?? null}, ${entry.inputTokens ?? null}, ${entry.outputTokens ?? null}, ${entry.latencyMs ?? null},
-        ${entry.blockReason ?? null}, ${entry.errorMessage ?? null}
+        ${entry.blockReason ?? null}, ${entry.errorMessage ?? null}, ${entry.aiMode ?? null}
       )
     `).catch((err: unknown) => {
       this.logger.warn(`Failed to write ai_usage_log: ${err instanceof Error ? err.message : String(err)}`);
