@@ -260,6 +260,12 @@ export function IssueDetail({
             </div>
           </div>
           <div className="flex flex-col gap-1.5 items-end">
+            <Link
+              to={`/projects/${projectId}/assistant?resourceType=issue&resourceId=${issue.id}`}
+              className="btn-secondary !px-3 !py-1.5 text-xs"
+            >
+              Ask AI about this
+            </Link>
             <button onClick={() => onEdit(issue)} className="btn-secondary !px-3 !py-1.5 text-xs">Edit</button>
             {canForward && (
               <button onClick={() => setForwardOpen((v) => !v)} className="btn-secondary !px-3 !py-1.5 text-xs">

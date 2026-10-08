@@ -85,14 +85,27 @@ export class AiClientService {
     });
   }
 
-  async ask(companyId: string, projectId: string, question: string, conversationHistory?: { role: string; content: string }[]): Promise<{ answer: string; sources: unknown[] }> {
+  /**
+   * Narrow semantic-search call backing the AI Gateway's searchProjectDocuments
+   * tool (modules/ai/ai-tools.service.ts) -- the Python service's own
+   * monolithic /assistant/ RAG endpoint (full retrieval + prompt build + LLM
+   * call in one request) is no longer used by anything in apps/api; the new
+   * Gateway owns prompt building, tool orchestration and the provider call
+   * itself, and only needs this service for its working Qdrant/embeddings
+   * layer, not its old ask() entry point.
+   */
+  async search(companyId: string, projectId: string | undefined, query: string, collections?: string[], limit = 8): Promise<{
+    query: string; total: number;
+    results: { resource_type: string; resource_id: string; score: number; text_preview?: string | null }[];
+  }> {
     const resp = await firstValueFrom(
-      this.http.post(`${this.baseUrl}/assistant/`, {
-        question,
+      this.http.post(`${this.baseUrl}/search/`, {
+        query,
         company_id: companyId,
-        project_id: projectId,
-        conversation_history: conversationHistory ?? null,
-      }, { timeout: 30_000, headers: this.authHeaders }),
+        project_id: projectId ?? null,
+        collections: collections ?? null,
+        limit,
+      }, { timeout: 15_000, headers: this.authHeaders }),
     );
     return resp.data;
   }

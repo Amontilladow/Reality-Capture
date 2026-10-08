@@ -19,6 +19,7 @@ import { TransmittalsModule } from './modules/transmittals/transmittals.module';
 import { QaModule } from './modules/qa/qa.module';
 import { SnaggingModule } from './modules/snagging/snagging.module';
 import { AiClientModule } from './modules/ai-client/ai-client.module';
+import { AiModule } from './modules/ai/ai.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { ProgressReportsModule } from './modules/progress-reports/progress-reports.module';
 import { BimModule } from './modules/bim/bim.module';
@@ -53,12 +54,13 @@ import jwtConfig from './config/jwt.config';
 import storageConfig from './config/storage.config';
 import redisConfig from './config/redis.config';
 import googleCalendarConfig from './config/google-calendar.config';
+import aiConfig from './config/ai.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, jwtConfig, storageConfig, redisConfig, googleCalendarConfig],
+      load: [appConfig, databaseConfig, jwtConfig, storageConfig, redisConfig, googleCalendarConfig, aiConfig],
       envFilePath: ['.env.local', '.env'],
     }),
     ThrottlerModule.forRoot([
@@ -100,6 +102,7 @@ import googleCalendarConfig from './config/google-calendar.config';
     QaModule,
     SnaggingModule,
     AiClientModule,
+    AiModule,
     ReportsModule,
     ProgressReportsModule,
     BimModule,

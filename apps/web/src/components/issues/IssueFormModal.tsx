@@ -21,6 +21,7 @@ export function IssueFormModal({
   members,
   hierarchy,
   issue,
+  draftValues,
   defaultElementId,
   defaultElementName,
   viewState,
@@ -31,6 +32,10 @@ export function IssueFormModal({
   members: ProjectMember[];
   hierarchy: ProjectHierarchy[];
   issue?: IssueDetailItem;
+  // Pre-fills a brand-new (never submitted) issue, e.g. from an AI-generated
+  // draft -- only used when `issue` is absent (create mode); the user still
+  // edits and submits through this exact same form and createIssue() call.
+  draftValues?: { title?: string; description?: string; issueType?: IssueType; priority?: IssuePriority; discipline?: IssueDiscipline; deadline?: string };
   defaultElementId?: string;
   defaultElementName?: string;
   // Captured automatically from the BIM viewer when "Raise issue" is
@@ -58,11 +63,12 @@ export function IssueFormModal({
 
   useEffect(() => {
     if (!open) return;
-    setTitle(issue?.title ?? '');
-    setDescription(issue?.description ?? '');
-    setIssueType(issue?.issueType ?? 'defect');
-    setPriority(issue?.priority ?? 'medium');
-    setDiscipline(issue?.discipline ?? '');
+    const d = !issue ? draftValues : undefined;
+    setTitle(issue?.title ?? d?.title ?? '');
+    setDescription(issue?.description ?? d?.description ?? '');
+    setIssueType(issue?.issueType ?? d?.issueType ?? 'defect');
+    setPriority(issue?.priority ?? d?.priority ?? 'medium');
+    setDiscipline(issue?.discipline ?? d?.discipline ?? '');
     setCategory(issue?.category ?? '');
     setAssignedTo(issue?.assignedTo ?? '');
     setPlace({
@@ -70,8 +76,9 @@ export function IssueFormModal({
       levelId: issue?.levelId ?? '',
       locationId: issue?.locationId ?? '',
     });
-    setDeadline(issue?.deadline ? issue.deadline.slice(0, 10) : '');
+    setDeadline((issue?.deadline ?? d?.deadline)?.slice(0, 10) ?? '');
     setError('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- draftValues intentionally excluded: only applied on (re)open, not on every identity change
   }, [open, issue]);
 
   const mutation = useMutation({
