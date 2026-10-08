@@ -67,6 +67,7 @@ export default function ProjectDetail() {
   return (
     <>
       <PageHeader
+        breadcrumbs={[{ label: 'Projects', to: '/projects' }, { label: projectQuery.data?.name ?? 'Loading…' }]}
         eyebrow={projectQuery.data?.code ?? 'Project'}
         title={projectQuery.data?.name ?? 'Loading…'}
         actions={

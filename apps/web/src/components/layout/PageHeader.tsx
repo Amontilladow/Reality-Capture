@@ -1,11 +1,15 @@
 import type { ReactNode } from 'react';
 import { useDocumentTitle } from '../../lib/useDocumentTitle';
+import { Breadcrumbs } from '../ui/Breadcrumbs';
+import type { Crumb } from '../ui/Breadcrumbs';
 
 export function PageHeader({
+  breadcrumbs,
   eyebrow,
   title,
   actions,
 }: {
+  breadcrumbs?: Crumb[];
   eyebrow?: string;
   title: string;
   actions?: ReactNode;
@@ -13,9 +17,10 @@ export function PageHeader({
   useDocumentTitle(title);
 
   return (
-    <div className="h-16 border-b border-base-600 bg-base-900/60 backdrop-blur px-6 flex items-center justify-between gap-3 sticky top-0 z-10">
+    <div className={`border-b border-base-600 bg-base-900/60 backdrop-blur px-6 flex items-center justify-between gap-3 sticky top-0 z-10 ${breadcrumbs ? 'py-2.5' : 'h-16'}`}>
       <div className="min-w-0 shrink">
-        {eyebrow && <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500 truncate">{eyebrow}</div>}
+        {breadcrumbs && <Breadcrumbs items={breadcrumbs} />}
+        {eyebrow && <div className="text-eyebrow font-mono uppercase text-ink-500 truncate">{eyebrow}</div>}
         <h1 className="text-base font-semibold tracking-tight -mt-0.5 truncate">{title}</h1>
       </div>
       {actions && (

@@ -5,6 +5,7 @@ import { PROJECT_ROLE_LABELS } from '../../lib/issue-constants';
 import { PROJECT_ORGANIZATION_SLOT_LABELS } from '@engineeringos/types';
 import type { ProjectRole } from '@engineeringos/types';
 import { useAuthStore } from '../../store/auth.store';
+import { Badge, StatusBadge } from '../ui/Badge';
 
 // RBAC Phase 5: shows which project you're in, your own role and
 // organization slot on it, and a switcher to jump to another project --
@@ -67,14 +68,10 @@ export function ProjectContextPanel({ projectId }: { projectId: string }) {
       {(myMembership || myOrgSlot) && (
         <div className="flex flex-wrap gap-1">
           {myMembership && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-base-800 text-ink-300 border border-base-600">
-              {PROJECT_ROLE_LABELS[myMembership.role as ProjectRole] ?? myMembership.role}
-            </span>
+            <Badge>{PROJECT_ROLE_LABELS[myMembership.role as ProjectRole] ?? myMembership.role}</Badge>
           )}
           {myOrgSlot && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blueprint/15 text-blueprint border border-blueprint/30">
-              {PROJECT_ORGANIZATION_SLOT_LABELS[myOrgSlot.slot]}
-            </span>
+            <StatusBadge tone="info" label={PROJECT_ORGANIZATION_SLOT_LABELS[myOrgSlot.slot]} />
           )}
         </div>
       )}
