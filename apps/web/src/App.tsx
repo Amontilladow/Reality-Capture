@@ -29,6 +29,7 @@ import MessagesPage from './pages/MessagesPage';
 import WorkforcePage from './pages/WorkforcePage';
 import DeveloperSettingsPage from './pages/DeveloperSettingsPage';
 import AiSettingsPage from './pages/AiSettingsPage';
+import EmailSettingsPage from './pages/EmailSettingsPage';
 import BuildLensPage from './pages/BuildLensPage';
 import HelpPage from './pages/HelpPage';
 
@@ -103,6 +104,7 @@ export default function App() {
             <Route path="/projects/workforce" element={<WorkforcePage />} />
             <Route path="/projects/developer" element={<DeveloperSettingsPage />} />
             <Route path="/projects/ai-settings" element={<AiSettingsPage />} />
+            <Route path="/projects/email-settings" element={<EmailSettingsPage />} />
             <Route path="/projects/help" element={<HelpPage />} />
             <Route path="/projects/:projectId" element={<ProjectDetail />} />
             <Route path="/projects/:projectId/captures" element={<CapturesPage />} />

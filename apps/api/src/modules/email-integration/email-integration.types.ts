@@ -19,15 +19,26 @@ export interface ProviderTokens {
   grantedScopes: string;
 }
 
+// The initial code-exchange additionally confirms which mailbox was
+// actually granted, taken from the OIDC ID token's own email claim
+// (requesting `openid email` alongside the send scope, both providers
+// support this) rather than a second API call against Graph's /me or
+// Google's userinfo endpoint -- one fewer scope to request
+// (no User.Read / userinfo.email needed) and one fewer round trip.
+// refreshToken is narrowed to required here (unlike the base type, which
+// leaves it optional for a *refresh* response) -- every concrete client's
+// exchangeCodeForTokens() throws rather than returning if the provider
+// didn't grant one, so by the time this type is constructed it is always
+// present.
+export interface InitialProviderTokens extends ProviderTokens {
+  refreshToken: string;
+  connectedEmail: string;
+}
+
 export interface EmailProviderClient {
   buildAuthorizeUrl(state: string): string;
-  exchangeCodeForTokens(code: string): Promise<ProviderTokens>;
+  exchangeCodeForTokens(code: string): Promise<InitialProviderTokens>;
   refreshAccessToken(refreshToken: string): Promise<ProviderTokens>;
-  // The provider's own "who am I" call -- confirms the actual mailbox
-  // address the granted token can act as, rather than trusting the app's
-  // own login email (a user's EngineeringOS login and their Microsoft/Google
-  // account email are not guaranteed to match).
-  fetchConnectedEmailAddress(accessToken: string): Promise<string>;
 }
 
 export interface DecryptedConnection {

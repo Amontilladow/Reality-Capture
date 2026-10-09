@@ -29,6 +29,10 @@ const NAV_GROUPS: NavGroup[] = [
   // provider (spec section 7), not just company admins, so this sits in
   // the base groups rather than gated like DEVELOPER_NAV_ITEM below.
   { heading: 'AI', items: [{ to: 'ai-settings', label: 'AI Provider', icon: IconSpark }] },
+  // Personal, account-level -- every user connects their own mailbox
+  // (Phase 3's brief: "a user can connect only their authorized mailbox"),
+  // not a company-wide setting, matching AI Provider's own placement above.
+  { heading: 'Email', items: [{ to: 'email-settings', label: 'Email Integration', icon: IconMail }] },
   { heading: 'Help', items: [{ to: 'help', label: 'Help & Training', icon: IconHelp }] },
 ];
 

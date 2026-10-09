@@ -155,7 +155,124 @@ touch).
 **Verified**: `tsc --noEmit` clean, `eslint` clean, full Jest suite
 passing (518/518 — 502 prior + 16 new), production build succeeds.
 
-## Phase 3C — Microsoft Outlook connection and sending — NOT IMPLEMENTED
+## Phase 3C — Microsoft Outlook connection — IMPLEMENTED BUT NOT VERIFIED (code-complete, no real Entra App Registration exists to test against)
+
+Connect/status/test/disconnect are fully implemented end to end (backend +
+frontend). Sending mail itself is deferred to Phase 3E (the composer) —
+this stage delivers the connection and the one piece sending will need
+(`ensureFreshAccessToken()`), not a send endpoint yet, since there is
+nothing to send from until the composer exists.
+
+**OAuth design decisions, with rationale:**
+- **Delegated permissions only** — the brief's own instruction ("do not
+  request application-wide mailbox access merely to simplify
+  implementation"). `MicrosoftGraphClient` requests
+  `openid email offline_access https://graph.microsoft.com/Mail.Send`,
+  nothing broader.
+- **Why no `User.Read`**: the connected mailbox address comes from the ID
+  token's own `email` claim (requested via the standard OIDC `openid
+  email` scopes), not a separate Graph `/me` call — one fewer scope, one
+  fewer round trip.
+- **Why no `Mail.Read`/`Mail.ReadWrite`**: reading messages/replies is
+  Phase 3H, not yet built. Requesting that scope now, before the feature
+  exists to use it, would be exactly the "request broader permissions
+  only if the relevant feature genuinely requires them" the brief warns
+  against.
+- **Account type default**: `MICROSOFT_OAUTH_TENANT=organizations` —
+  accepts any Microsoft 365 work/school account from any organization,
+  deliberately excludes personal `@outlook.com`/`@hotmail.com` accounts.
+  Settable to a specific Entra tenant ID/domain to restrict to one
+  organization only. **Not yet tested against a real account of any
+  kind** — per the brief's "do not claim support for every Microsoft
+  account type until tested," no account-type claim is made beyond "the
+  code requests this scope"; a single-tenant vs multi-tenant app
+  registration is also not yet tested, see below.
+- **Refresh token rotation**: Microsoft rotates the refresh token on
+  every use (unlike Google, which only issues one on initial grant) —
+  `MicrosoftGraphClient.refreshAccessToken()`'s returned token is always
+  persisted, not just the access token.
+
+**Microsoft Entra administrator-consent requirement — documented, not
+assumed either way:** `Mail.Send` (delegated) is classified by Microsoft
+as not requiring admin consent *by default*. However, many
+organizations — especially newer Microsoft 365 tenants — have tightened
+their tenant-wide user-consent policy to block all user consent
+regardless of a permission's own default classification, requiring an
+admin to grant consent once for the whole org (or per-user) before
+anyone can connect. **This can only be confirmed by checking the actual
+target tenant's "User consent settings" in Entra, or by attempting a
+real connection and observing whether a consent-blocked error appears**
+— neither has been done, since no App Registration exists yet. Do not
+treat "no admin consent needed" as established fact for your tenant
+specifically.
+
+**Exact Entra App Registration setup steps** (for when you're ready to
+test with a real account):
+1. [entra.microsoft.com](https://entra.microsoft.com) (or Azure Portal →
+   Microsoft Entra ID) → **App registrations** → **New registration**.
+2. Name it anything recognizable, e.g. "EngineeringOS Email Integration".
+3. **Supported account types**: choose "Accounts in this organizational
+   directory only (Single tenant)" if this is only for your own company
+   (recommended, matches "respect organization policies" and needs the
+   least admin-consent friction), or "Accounts in any organizational
+   directory (Any Microsoft Entra ID tenant — Multitenant)" to match this
+   code's `organizations` default across any org.
+4. **Redirect URI**: platform "Web", value
+   `https://engineeringos-api.onrender.com/api/v1/email-integration/outlook/callback`
+   (add `http://localhost:3000/api/v1/email-integration/outlook/callback`
+   too if you want local-dev testing).
+5. After creation, copy the **Application (client) ID** — this is
+   `MICROSOFT_OAUTH_CLIENT_ID`. If you chose single-tenant, also copy the
+   **Directory (tenant) ID** — this is `MICROSOFT_OAUTH_TENANT`.
+6. **Certificates & secrets** → **New client secret** → copy the secret
+   **value** immediately (shown exactly once) — this is
+   `MICROSOFT_OAUTH_CLIENT_SECRET`. Paste it directly into Render's
+   environment-variable dashboard for `engineeringos-api`, never into
+   this chat or into the repository.
+7. **API permissions** → **Add a permission** → **Microsoft Graph** →
+   **Delegated permissions** → search `Mail.Send` → **Add permission**.
+   (`openid`/`email`/`offline_access` are standard OIDC scopes requested
+   directly via the authorize URL and don't need a separate entry here.)
+8. If you're a tenant admin (or can ask one): **API permissions** →
+   **Grant admin consent for [org]** — pre-consents for the whole
+   organization so individual users don't hit a consent-blocked error if
+   your tenant restricts user consent (see the paragraph above).
+9. Set `MICROSOFT_OAUTH_CLIENT_ID`, `MICROSOFT_OAUTH_CLIENT_SECRET`,
+   `MICROSOFT_OAUTH_TENANT` (only if single-tenant), and
+   `MICROSOFT_OAUTH_REDIRECT_URI` on `engineeringos-api` in the Render
+   dashboard — not committed to `render.yaml` with a real value, per the
+   brief's "never commit real secrets to Git."
+
+**Files added**: `apps/api/src/config/microsoft-graph.config.ts`,
+`apps/api/src/modules/email-integration/outlook/` (client, service,
+controller, module, DTO, tests), `apps/web/src/lib/email-integration.api.ts`,
+`apps/web/src/pages/EmailSettingsPage.tsx` (new `SETTINGS → EMAIL
+INTEGRATION` route and nav entry, both providers shown per the brief —
+Gmail's card is visually present but not yet functional, see Phase 3D),
+`apps/api/.env.example` (documented, unset by default).
+
+**Tests**: 11 new tests (`outlook-integration.service.spec.ts`) covering
+authorize-URL state signing, cross-provider state-replay rejection
+(reused from 3B's util, re-verified at this service's own call site),
+successful connect/upsert, `testConnection()`'s three outcomes (not
+connected / refresh succeeds / refresh fails and records an error — and
+an explicit assertion that it never calls any send-mail capability, per
+Section 13's "never send test messages... without explicit approval"),
+and `ensureFreshAccessToken()`'s reuse-without-refreshing path.
+`MicrosoftGraphClient` itself is not unit-tested, matching
+`GoogleCalendarClient`'s own precedent (network glue to a live
+third-party API this sandbox has no real credentials for).
+
+**Verified**: `tsc --noEmit` clean (api + web), `eslint` clean (api + web,
+same 2 pre-existing unrelated warnings in apps/web), full Jest suite
+passing (529/529), full Vitest suite passing (20/20), both production
+builds succeed.
+
+**Not verified** (requires the account owner's own Entra App
+Registration, per above): an actual OAuth consent screen reached, a real
+token exchange, a real connected-account email confirmed, a real test
+connection against a live Microsoft account, or anything about which
+Microsoft account types actually work end to end.
 
 ## Phase 3D — Gmail connection and sending — NOT IMPLEMENTED
 
