@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { apiGet, apiPost, apiDelete } from './api';
-import type { EmailIntegrationStatus, EmailProvider } from '@engineeringos/types';
+import { apiGet, apiGetWithMeta, apiPost, apiDelete } from './api';
+import type { EmailIntegrationStatus, EmailProvider, PaginationQuery } from '@engineeringos/types';
 
 export function getOutlookStatus() {
   return apiGet<EmailIntegrationStatus>('/email-integration/outlook/status');
@@ -67,6 +67,8 @@ export interface EmailMessageRecord {
   projectId: string;
   relatedRecordType: EmailRelatedRecordType | null;
   relatedRecordId: string | null;
+  initiatingUserId: string;
+  initiatingUserName: string | null;
   provider: EmailProvider;
   senderEmail: string;
   recipientsTo: string[];
@@ -99,4 +101,14 @@ export async function uploadEmailAttachment(projectId: string, file: File): Prom
   const { uploadUrl, storageKey } = await getEmailAttachmentUploadUrl(projectId, file.name, file.size);
   await axios.put(uploadUrl, file, { headers: { 'Content-Type': file.type || 'application/octet-stream' } });
   return { storageKey, filename: file.name, contentType: file.type || 'application/octet-stream' };
+}
+
+// Phase 3G: the email history / audit-trail view -- metadata only, same as
+// the backend table it reads (no message body is ever returned, because
+// none is ever stored).
+export function listEmailMessages(
+  projectId: string,
+  filters?: PaginationQuery & { relatedRecordType?: EmailRelatedRecordType; relatedRecordId?: string },
+) {
+  return apiGetWithMeta<EmailMessageRecord[]>(`/projects/${projectId}/emails`, { params: filters });
 }

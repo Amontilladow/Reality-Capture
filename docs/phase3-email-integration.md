@@ -501,7 +501,37 @@ frontend-only, no backend changes), production build succeeds.
 clicking "Email" against a live backend -- same no-Postgres-in-this-
 environment limitation as 3E.
 
-## Phase 3G — Email history and audit logging — NOT IMPLEMENTED
+## Phase 3G — Email history and audit logging — IMPLEMENTED BUT NOT VERIFIED (same no-live-backend caveat as 3E/3F)
+
+- **Backend**: `EmailComposerService.listMessages()` -- the same
+  project-membership gate as `send()` (Section 10), paginated, optionally
+  filtered by `relatedRecordType`/`relatedRecordId`. Joins `users` for the
+  initiating user's display name only; never selects or returns a message
+  body (there isn't one -- see migration 066's own header comment).
+  `GET /projects/:projectId/emails` on `EmailComposerController`, same
+  `{ data, meta }` pagination envelope as every other list endpoint in
+  this API (e.g. `RfisController.findAll`). 2 new tests (membership gate,
+  filter pass-through) -- 553/553 total.
+- **Frontend**: `EmailHistoryList` (new,
+  `apps/web/src/components/EmailHistoryList.tsx`) -- a read-only list
+  showing status/provider/timestamp/subject/sender/recipients/initiating
+  user/attachment filenames (never content) for each message, plus the
+  failure reason on a failed send. Embedded inline, filtered to that
+  record, on all four Phase 3F pages (RFI/Issue/Submittal/Snag). A
+  second, unfiltered view -- `EmailHistoryModal` -- is reachable from
+  `ProjectDetail`'s own action bar ("Email History") for the full
+  project-wide communication log. Access control is entirely
+  server-side (the list endpoint's own membership check); the frontend
+  makes no separate visibility decision.
+
+**Verified**: `tsc --noEmit` clean (both apps), `eslint` clean (same 2
+pre-existing warnings), full Jest suite 553/553, both production builds
+succeed.
+
+**Not verified**: opening any of these views against a live backend, or
+that a real cross-project-membership 403 actually renders correctly in
+the browser -- same no-Postgres-in-this-environment limitation as every
+other Phase 3 stage.
 
 ## Phase 3H — Incoming replies / threading — NOT IMPLEMENTED
 

@@ -10,6 +10,7 @@ import {
 import { listCaptures } from '../../lib/captures.api';
 import { CaptureGrid } from '../CaptureGrid';
 import { EmailComposerModal } from '../EmailComposerModal';
+import { EmailHistoryList } from '../EmailHistoryList';
 import { InlineRiskAssessment } from '../RiskIntelligenceSection';
 import { getMembers } from '../../lib/projects.api';
 import { useAuthStore } from '../../store/auth.store';
@@ -500,6 +501,12 @@ export function IssueDetail({
       </div>
 
       <InlineRiskAssessment projectId={projectId} nodeType="issue" entityId={issueId} />
+
+      {/* Email history -- Phase 3G */}
+      <div>
+        <div className="field-label mb-2">Email History</div>
+        <EmailHistoryList projectId={projectId} relatedRecordType="issue" relatedRecordId={issueId} />
+      </div>
 
       {/* View-state screenshot, captured automatically when the issue was raised from the viewer */}
       {issue.screenshotUrl && (

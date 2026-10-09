@@ -7,7 +7,7 @@ import { GmailIntegrationService } from './gmail/gmail-integration.service';
 import type { OutgoingMessage, SendResult } from './email-integration.types';
 import type { SendEmailDto } from './dto/send-email.dto';
 import type { EmailAttachmentUploadUrlDto } from './dto/email-attachment-upload-url.dto';
-import type { CompanyRole } from '@engineeringos/types';
+import type { CompanyRole, PaginationQuery } from '@engineeringos/types';
 
 // A single, project-scoped reference-number lookup -- one entry per table
 // the brief names as an email workflow target (Section 7: RFIs, issues,
@@ -133,6 +133,38 @@ export class EmailComposerService {
 
     if (!result) throw new BadRequestException({ message: 'Failed to send email.', reason: failureReason, record: row });
     return row;
+  }
+
+  // Phase 3G: the email history / audit-trail view. Gated by the exact
+  // same project-membership check as send() -- Section 10's "only
+  // authorized project members" applies to reading the communication
+  // history just as much as sending it. Never returns a message body --
+  // there isn't one stored (see migration 066's own header comment); only
+  // the metadata the brief's Section 8 actually asks for.
+  async listMessages(
+    companyId: string, userId: string, companyRole: CompanyRole, projectId: string,
+    query: PaginationQuery & { relatedRecordType?: string; relatedRecordId?: string },
+  ) {
+    if (!(await this.isProjectMember(companyId, userId, companyRole, projectId))) {
+      throw new ForbiddenException('You are not a member of this project.');
+    }
+
+    const page = query.page ?? 1;
+    const perPage = Math.min(query.perPage ?? 20, 100);
+    const offset = (page - 1) * perPage;
+
+    const rows = await this.db.withTenant(companyId, sql => sql`
+      SELECT m.*, u.first_name || ' ' || u.last_name AS initiating_user_name, COUNT(*) OVER() AS full_count
+      FROM email_messages m
+      LEFT JOIN users u ON u.id = m.initiating_user_id
+      WHERE m.project_id = ${projectId} AND m.company_id = ${companyId}
+        AND (${query.relatedRecordType ?? null}::text IS NULL OR m.related_record_type = ${query.relatedRecordType ?? null})
+        AND (${query.relatedRecordId ?? null}::uuid IS NULL OR m.related_record_id = ${query.relatedRecordId ?? null}::uuid)
+      ORDER BY m.created_at DESC
+      LIMIT ${perPage} OFFSET ${offset}
+    `);
+
+    return this.db.paginate(rows, page, perPage);
   }
 
   // Fetches and re-validates each already-uploaded attachment against the

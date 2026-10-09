@@ -32,7 +32,10 @@ function makeService(opts: {
   gmailOverrides?: Partial<GmailIntegrationService>;
 } = {}) {
   const sqlMock = makeSqlMock(opts.responders ?? []);
-  const db = { withTenant: jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(sqlMock)) };
+  const db = {
+    withTenant: jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(sqlMock)),
+    paginate: jest.fn((rows: unknown[], page: number, perPage: number) => ({ data: rows, total: rows.length, page, perPage, totalPages: 1 })),
+  };
   const storage = {
     getObjectSize: jest.fn().mockResolvedValue(1024),
     download: jest.fn().mockResolvedValue(Buffer.from('file-bytes')),
@@ -164,6 +167,27 @@ describe('EmailComposerService.send -- attachment validation', () => {
     });
     const dto = baseDto({ attachments: [{ storageKey: 'key-1', filename: 'drawing.pdf', contentType: 'application/pdf' }] });
     await expect(svc.send(companyId, userId, 'project_engineer', projectId, dto)).rejects.toThrow(BadRequestException);
+  });
+});
+
+describe('EmailComposerService.listMessages', () => {
+  it('rejects a user who is not a member of the project', async () => {
+    const { svc } = makeService({ responders: [{ match: 'FROM project_members', rows: [] }] });
+    await expect(svc.listMessages(companyId, userId, 'project_engineer', projectId, {})).rejects.toThrow(ForbiddenException);
+  });
+
+  it('scopes the query to this project and passes through the related-record filter', async () => {
+    const { svc, sqlMock } = makeService({
+      responders: [
+        { match: 'FROM project_members', rows: [{ role: 'site_engineer' }] },
+        { match: 'FROM email_messages m', rows: [{ id: 'row-1', status: 'sent' }] },
+      ],
+    });
+    const result = await svc.listMessages(companyId, userId, 'project_engineer', projectId, { relatedRecordType: 'rfi', relatedRecordId: 'rfi-1' });
+    expect(result.data).toEqual([{ id: 'row-1', status: 'sent' }]);
+
+    const listCall = sqlMock.mock.calls.find((c) => Array.isArray(c[0]) && (c[0] as string[]).join('¶').includes('FROM email_messages m'));
+    expect(listCall).toBeDefined();
   });
 });
 

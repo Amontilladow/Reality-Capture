@@ -11,6 +11,7 @@ import {
 } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { EmailComposerModal } from '../components/EmailComposerModal';
+import { EmailHistoryList } from '../components/EmailHistoryList';
 import { RichTextEditor, isRichTextEmpty } from '../components/ui/RichTextEditor';
 import { InlineRiskAssessment } from '../components/RiskIntelligenceSection';
 import {
@@ -540,6 +541,12 @@ export default function RfiDetailPage() {
             admin endpoints + ManageMembersModal's "Project Organizations"
             section). See OrganizationSlotRow below. */}
         <OrganizationSlotRow projectId={projectId} canEdit={canManageOrganizations} />
+
+        {/* Email history -- Phase 3G */}
+        <section className="panel tick-frame p-5">
+          <div className="field-label mb-3">Email History</div>
+          <EmailHistoryList projectId={projectId} relatedRecordType="rfi" relatedRecordId={rfi.id} />
+        </section>
 
         {/* RFI Information */}
         <section className="panel tick-frame p-5">

@@ -7,6 +7,7 @@ import {
 } from '../lib/snagging.api';
 import { getMembers } from '../lib/projects.api';
 import { EmailComposerModal } from './EmailComposerModal';
+import { EmailHistoryList } from './EmailHistoryList';
 import { InlineRiskAssessment } from './RiskIntelligenceSection';
 import { useAuthStore } from '../store/auth.store';
 import {
@@ -262,6 +263,12 @@ export function SnagDetail({
       </div>
 
       <InlineRiskAssessment projectId={projectId} nodeType="snag_item" entityId={snagId} />
+
+      {/* Email history -- Phase 3G */}
+      <div>
+        <div className="field-label mb-2">Email History</div>
+        <EmailHistoryList projectId={projectId} relatedRecordType="snag_item" relatedRecordId={snagId} />
+      </div>
 
       {/* Activity / comments */}
       <div>

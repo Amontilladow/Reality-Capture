@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Modal } from './ui/Modal';
 import { EmailComposerModal } from './EmailComposerModal';
+import { EmailHistoryList } from './EmailHistoryList';
 import { updateSubmittal, deleteSubmittal, type SubmittalListItem } from '../lib/submittals.api';
 import {
   SUBMITTAL_STATUS_LABELS, SUBMITTAL_STATUS_BADGE_CLASS,
@@ -76,6 +77,12 @@ export function SubmittalDetailModal({
         </div>
 
         <InlineRiskAssessment projectId={projectId} nodeType="submittal" entityId={submittal.id} />
+
+        {/* Email history -- Phase 3G */}
+        <div>
+          <div className="field-label mb-2">Email History</div>
+          <EmailHistoryList projectId={projectId} relatedRecordType="submittal" relatedRecordId={submittal.id} />
+        </div>
 
         <div>
           <label className="field-label" htmlFor="comments">Review comments</label>
