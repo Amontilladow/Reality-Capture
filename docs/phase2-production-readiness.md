@@ -441,38 +441,55 @@ Verified directly against current code:
   declaration is safe but a real key has a cost/account implication only
   you can authorize.
 
-## 10. Backup & recovery — BLOCKED, cannot verify via API (confirmed open since before this session)
+## 10. Backup & recovery — CONFIGURATION VERIFIED (via your dashboard screenshot), RESTORE STILL NOT TESTED
 
 The prior audit (`engineering-review/CURRENT_STATUS.md` §5, §7;
-`LAUNCH_READINESS.md`'s readiness table; `NEXT_STEPS.md`) already
-identified this exact gap as of 2026-09-28: "Backups/restore: not
-configured or documented anywhere in this repository... requires Render
-dashboard/account access this environment doesn't have" and named it a
-blocker for private beta and public launch specifically. This session
-independently re-attempted verification rather than just repeating that
-conclusion unchanged:
+`LAUNCH_READINESS.md`'s readiness table; `NEXT_STEPS.md`) had flagged this
+as of 2026-09-28: "Backups/restore: not configured or documented
+anywhere in this repository." This session first tried to verify it
+programmatically — a read-only query against `engineeringos-db` was
+correctly refused (empty `ipAllowList`, no public network access, per
+Section 1) — then the account owner opened Render's dashboard directly
+and shared what it actually shows, under `engineeringos-db` → **Recovery**
+(Render's current name for this; it is not labeled "Backups" in the
+present UI, which is why searching for that exact label didn't find it):
 
-Attempted to confirm this directly rather than assume Render's documented
-default applies: tried a read-only query against `engineeringos-db` via
-the Render Postgres query tool — it was refused because the database's
-`ipAllowList` is empty (no public internet access at all, confirmed in
-Section 1). That refusal is itself good evidence of the correct network
-posture, but it also means **backup configuration and retention cannot be
-confirmed from here** — Render's backup settings (frequency, retention
-window) are configured per-database in the dashboard's "Backups" tab, not
-exposed through any tool available in this session.
+- **Point-in-Time Recovery**: automatic, continuous — "restore from any
+  timestamp in the past 3 days" on the current (non-Pro) workspace tier.
+  A 3-day PITR window means Postgres WAL archiving is active and running
+  today, not merely "a plan that typically includes backups" — this is
+  confirmed, not inferred. A Pro workspace upgrade would extend the
+  window to 7 days (not needed right now; noting it as a paid option, not
+  adopting it).
+  - "Recreate your database from a backup" is PITR's own framing —
+    consistent with Render's documented behavior that a point-in-time
+    restore provisions a **new** database instance from the chosen
+    timestamp rather than overwriting the live one in place. I'm stating
+    this as my understanding of how Render's PITR restore flow works, not
+    as something verified by actually running it — **confirm this
+    explicitly before any real restore test is run**, consistent with the
+    brief's "do not delete or overwrite production data during testing."
+- **Export**: a separate, on-demand logical backup (pg_dump-style, "Create
+  export" button), with exported files retained for at least 7 days.
+  Manual, not scheduled — a second, independent backup mechanism on top
+  of PITR.
 
-**Per the brief, I will not claim backups work until this is verified and
-a safe restoration test has been completed** — neither has happened.
-**This needs your action**: open `engineeringos-db` → Backups in the
-Render dashboard and tell me the configured frequency/retention (no
-credentials needed, just what the settings show), or grant this session's
-IP allowlist access temporarily if you want me to verify programmatically.
-A real restoration test (restore to a *new*, throwaway database instance,
-never overwriting the live one) is something I can help plan once backup
-configuration is confirmed, and would need your explicit go-ahead before
-running since it's the kind of production-data-adjacent operation the
-brief gates.
+**Updated conclusion**: backup *configuration* is real and already
+active — this closes the "not configured or documented" half of the
+prior audit's finding. What the brief separately requires and what
+remains genuinely open: **a restoration has never actually been
+performed.** Per the brief, backups are not described as "working" on
+configuration alone — a safe restore test is the only thing that proves
+a backup is actually restorable, not just scheduled. Proposed test (not
+yet run, needs your go-ahead): trigger "Restore database" for a
+timestamp from the last few hours, confirm it provisions a **new**,
+separate instance (not an overwrite of `engineeringos-db`), confirm the
+restored instance's data matches expectations, then delete the throwaway
+restored instance. This is a concrete, bounded, reversible test — I'd
+still like your explicit approval before running it, both because it's
+the kind of production-data-adjacent action the brief gates and because
+restoring from a live production database (even to a disposable copy)
+touches real customer data under row-level security, however briefly.
 
 ## 11. Logging & monitoring — PARTIAL, one historical incident traced to resolution
 
@@ -741,15 +758,18 @@ concurrency claim is made.
 
 ### 9. Backup and recovery status
 
-**BLOCKED.** Cannot be verified from this session — the database
-correctly has no public network access, which is itself good security
-but also means Render's backup/retention configuration can't be checked
-by any tool available here. This exact gap was already flagged by the
-prior audit (2026-09-28) and remains open today. **REQUIRES MY ACTION**:
-confirm the Backups tab settings in the Render dashboard for
-`engineeringos-db`, after which a restoration test (to a new, throwaway
-instance, never overwriting production) can be planned with your
-approval.
+**IMPLEMENTED, PARTIALLY VERIFIED.** Confirmed directly from the Render
+dashboard (`engineeringos-db` → Recovery, screenshot provided by the
+account owner): automatic, continuous Point-in-Time Recovery with a
+3-day restore window, plus a separate on-demand logical export
+(pg_dump-style, files retained 7+ days). This closes the prior audit's
+"not configured or documented" finding — configuration is real and
+active. **What's still open**: no restore has ever actually been
+performed. Per the brief, backup configuration existing is not the same
+as backups being proven to work — **REQUIRES MY ACTION (your approval)**:
+run a bounded restore test (PITR restore to a new, disposable instance
+from a recent timestamp, verify its data, then delete it) before backups
+can be called verified end-to-end.
 
 ### 10. Monitoring status
 
@@ -780,8 +800,8 @@ since no AI provider key is configured at all.
 2. No staging/dev environment — every merge to `main` goes straight to
    production with no pre-production gate beyond CI's lint/test/build
    and the new post-deploy health check (Sections 3, 12).
-3. Backup/recovery configuration unverified, no restore ever tested
-   (Section 10).
+3. Backup configuration is confirmed real (3-day PITR + on-demand
+   export), but no restore has ever actually been tested (Section 10).
 4. No custom domain (Section 4) — not a functional blocker, both services
    work correctly on their `*.onrender.com` URLs, but named here since the
    brief's own objective #1 is a production domain.
@@ -801,9 +821,11 @@ since no AI provider key is configured at all.
 3. **Staging environment** — approve the recurring cost (roughly doubles
    the current fixed-cost total) before I build it, or tell me to
    document the setup without building it yet.
-4. **Backups** — open `engineeringos-db` → Backups in the Render
-   dashboard and tell me the configured frequency/retention, since no
-   tool in this session can read it directly.
+4. **Backup restore test** — configuration is confirmed (3-day PITR,
+   on-demand export); approve running the bounded restore test described
+   in Section 10 (restore a recent timestamp to a new, disposable
+   instance, verify it, delete it) so backups can be called proven, not
+   just configured.
 5. **Alerting** — tell me if you want Render's built-in deploy-failure/
    metric alerts configured (no cost) and which channel (email/Slack).
 6. **Load testing** — explicit approval needed before even a safe,
@@ -825,7 +847,7 @@ checked off without the evidence cited:
 - [ ] Existing core workflows pass regression tests — the existing Jest suite passes (502/502), but this phase did not re-run the prior audit's live-browser regression pass; no new claim is made about UI-level regression beyond what `LAUNCH_READINESS.md` already verified before this phase started.
 - [x] Environment variables are documented — Section 3 (4 existing `.env.example` files plus root `.env.production.example`, all spot-checked, no real secrets).
 - [ ] No known critical security issue remains unresolved — one real, known issue remains: the AI Assistant has no provider key configured anywhere (non-functional, not insecure, but a known gap pending your decision).
-- [ ] Backup and recovery procedures are documented and tested where configured — BLOCKED, Section 10.
+- [ ] Backup and recovery procedures are documented and tested where configured — configuration documented and confirmed (Section 10: 3-day PITR, on-demand export), but the "tested" half is still open — no restore has been run; your approval is needed to run the bounded test described there.
 - [x] Monitoring and logging are operational where configured — Render's built-in logging/metrics plus the new post-deploy health check (Section 11/12); alerting itself is not configured (your decision pending).
 - [x] Deployment and rollback procedures are documented — deploy: Render auto-deploy-on-push + `preDeployCommand` migrations (Section 1); rollback: re-deploy a prior image (no scripted down-migrations), documented here and consistent with the prior audit's own finding.
 - [ ] Capacity testing results are recorded — NOT IMPLEMENTED, Section 7; only idle-baseline metrics exist, no load test.
