@@ -8,7 +8,7 @@ import { AuthService } from '../auth/auth.service';
 import { PaymentRequiredException } from '../../common/exceptions/payment-required.exception';
 import type { InviteUserDto } from './dto/invite-user.dto';
 import type { UpdateUserDto } from './dto/update-user.dto';
-import type { PaginationQuery } from '@engineeringos/types';
+import { COMPANY_ROLE_WEIGHT, type CompanyRole, type PaginationQuery } from '@engineeringos/types';
 
 @Injectable()
 export class UsersService {
@@ -58,7 +58,24 @@ export class UsersService {
     return user;
   }
 
-  async invite(companyId: string, invitedBy: string, dto: InviteUserDto) {
+  async invite(companyId: string, invitedBy: string, invitedByRole: CompanyRole, dto: InviteUserDto) {
+    // Phase 6 security fix: RolesGuard only checks that the CALLER's weight
+    // clears the @Roles() minimum on this route (project_manager, weight 60)
+    // -- it says nothing about the weight of the companyRole the caller is
+    // handing to the DTO. Without this check, any project_manager/
+    // bim_manager/technical_director/engineering_manager/company_admin could
+    // invite a brand-new user with companyRole: 'super_admin' and the
+    // service would insert it verbatim (confirmed live during the Phase 6
+    // audit: a project_manager-level account successfully minted a
+    // super_admin row this way). Cap the requested role to the inviter's
+    // own weight -- an inviter can never grant a starting role more
+    // senior than themselves.
+    if (dto.companyRole && COMPANY_ROLE_WEIGHT[dto.companyRole] > COMPANY_ROLE_WEIGHT[invitedByRole]) {
+      throw new ForbiddenException(
+        `You cannot invite a user with the role "${dto.companyRole}" -- it outranks your own role. Ask a more senior admin to send this invitation.`,
+      );
+    }
+
     // withTenant is required on every statement here -- users has the same
     // tenant_isolation RLS policy as project_members (see addMember/removeMember
     // in projects.service.ts). A plain this.db.query() never sets

@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import type { Response } from 'express';
 import type { AuthenticatedUser, RiskNodeType } from '@engineeringos/types';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
 import { RiskService, RISK_WORTHY_NODE_TYPES } from './risk.service';
 import { OverrideRiskDto } from './dto/override-risk.dto';
 import { SetRiskStatusDto } from './dto/set-risk-status.dto';
@@ -11,6 +12,17 @@ import { GenerateRiskPdfDto } from './dto/generate-risk-pdf.dto';
 import { SetHumanAssessmentDto } from './dto/set-human-assessment.dto';
 import { SetMatrixOverrideDto } from './dto/set-matrix-override.dto';
 
+// Phase 6 security fix: every mutating route in this controller previously
+// had no @Roles/@RequireProjectPermission, and RiskService scoped only by
+// companyId -- confirmed by the Phase 6 audit (grepped for companyRole/
+// ForbiddenException/project_members/hasProjectPermission across
+// risk.service.ts: zero hits). Any authenticated company user could
+// recalculate, override scores, set risk status/owner, or clear matrix
+// overrides for any project in the company, not just ones they are
+// permitted to edit. Gated to 'manage_project_records' -- the same
+// permission that already governs editing structural project data
+// elsewhere. Reads remain ungated, consistent with this platform's
+// company-wide read-visibility model.
 @ApiTags('risk')
 @ApiBearerAuth()
 @Controller('projects/:projectId/risk')
@@ -20,6 +32,7 @@ export class RiskController {
   ) {}
 
   @Post('recalculate')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Rebuild the Project Risk Graph and recalculate every risk for this project ("Refresh analysis")' })
   async recalculate(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
     await this.risk.recalculateProject(u.companyId, pid);
@@ -161,6 +174,7 @@ export class RiskController {
   }
 
   @Patch('by-entity/human-assessment')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Record a Human Risk Assessment for an issue/RFI/snag directly, bootstrapping a Risk row if the automated engine has not flagged it yet' })
   async setHumanAssessmentByEntity(
     @CurrentUser() u: AuthenticatedUser,
@@ -196,6 +210,7 @@ export class RiskController {
   }
 
   @Patch(':riskId/human-assessment')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Record an engineer\'s manual Probability x Impact Risk Matrix assessment for this risk' })
   async setHumanAssessment(
     @CurrentUser() u: AuthenticatedUser,
@@ -207,6 +222,7 @@ export class RiskController {
   }
 
   @Patch(':riskId/matrix-override')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Resolve a Human-vs-AI Risk Matrix discrepancy: Accept AI Assessment, Keep Human Assessment, or a custom engineer override -- always audited' })
   async setMatrixOverride(
     @CurrentUser() u: AuthenticatedUser,
@@ -218,6 +234,7 @@ export class RiskController {
   }
 
   @Delete(':riskId/matrix-override')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Clear a Risk Matrix override, reverting to the default priority (human assessment, else AI score)' })
   async clearMatrixOverride(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('riskId') riskId: string) {
     return { data: await this.risk.clearMatrixOverride(u.companyId, pid, riskId, u.id), error: null };
@@ -236,23 +253,27 @@ export class RiskController {
   }
 
   @Patch(':riskId/override')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'User override — never silently replaces the automated score, both are preserved' })
   async override(@CurrentUser() u: AuthenticatedUser, @Param('riskId') riskId: string, @Body() dto: OverrideRiskDto) {
     return { data: await this.risk.overrideRisk(u.companyId, riskId, u.id, dto), error: null };
   }
 
   @Delete(':riskId/override')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Clear a user override, reverting to the automated score' })
   async clearOverride(@CurrentUser() u: AuthenticatedUser, @Param('riskId') riskId: string) {
     return { data: await this.risk.clearOverride(u.companyId, riskId), error: null };
   }
 
   @Patch(':riskId/status')
+  @RequireProjectPermission('manage_project_records')
   async setStatus(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('riskId') riskId: string, @Body() dto: SetRiskStatusDto) {
     return { data: await this.risk.setStatus(u.companyId, pid, riskId, u.id, dto.status, dto.reason), error: null };
   }
 
   @Patch(':riskId/owner')
+  @RequireProjectPermission('manage_project_records')
   async assignOwner(@CurrentUser() u: AuthenticatedUser, @Param('riskId') riskId: string, @Body() dto: AssignRiskOwnerDto) {
     return { data: await this.risk.assignOwner(u.companyId, riskId, dto.ownerId ?? null), error: null };
   }

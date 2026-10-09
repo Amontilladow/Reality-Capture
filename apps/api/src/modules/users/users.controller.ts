@@ -33,7 +33,7 @@ export class UsersController {
   @Roles('company_admin', 'engineering_manager', 'project_manager')
   @ApiOperation({ summary: 'Invite a new user to the company' })
   async invite(@CurrentUser() user: AuthenticatedUser, @Body() dto: InviteUserDto) {
-    return { data: await this.users.invite(user.companyId, user.id, dto), error: null };
+    return { data: await this.users.invite(user.companyId, user.id, user.companyRole, dto), error: null };
   }
 
   @Patch(':id')

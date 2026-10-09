@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes, createCipheriv, createDecipheriv, scryptSync } from 'crypto';
 
@@ -25,18 +25,23 @@ export interface EncryptedCredential {
 // row (user_ai_connections), not reused across rows.
 @Injectable()
 export class CredentialEncryptionService {
-  private readonly logger = new Logger(CredentialEncryptionService.name);
   private readonly key: Buffer;
 
   constructor(private readonly config: ConfigService) {
-    const secret = this.config.get<string>('app.credentialEncryptionKey');
-    if (!secret) {
-      this.logger.warn('CREDENTIAL_ENCRYPTION_KEY is not set -- BYO AI credential storage will fail until it is configured.');
-    }
+    // app.config.ts's requireStrongSecret() already guarantees this is a
+    // real, >=32-char value -- the process never reaches here otherwise.
+    // Phase 6 security fix: this previously fell back to a hardcoded
+    // 'dev-only-insecure-placeholder-key' string (visible to anyone with
+    // read access to this source file) whenever the env var was unset, with
+    // only a warning logged -- meaning a deployment could boot and silently
+    // encrypt every OAuth token and BYO AI key under a key published in the
+    // repo. No fallback remains; a missing/weak key now fails at startup
+    // instead, in config/app.config.ts.
+    const secret = this.config.get<string>('app.credentialEncryptionKey')!;
     // scrypt turns an arbitrary-length passphrase into exactly 32 bytes
     // (AES-256's key size), same purpose a KDF always serves -- the raw
     // env var is never used directly as the AES key.
-    this.key = scryptSync(secret ?? 'dev-only-insecure-placeholder-key', 'rc-credential-encryption', 32);
+    this.key = scryptSync(secret, 'rc-credential-encryption', 32);
   }
 
   encrypt(plaintext: string): EncryptedCredential {

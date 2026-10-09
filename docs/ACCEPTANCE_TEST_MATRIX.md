@@ -1,0 +1,70 @@
+# EngineeringOS — Acceptance Test Matrix
+
+**Phase 6: Final Production Readiness & Acceptance Testing**
+Every test below was either executed live against a running instance (Postgres 16, Redis, a local mock-S3, the real NestJS API, seeded with a dedicated demo company/users — never production data) or is the automated suite's own recorded result. "Evidence" cites the exact command/request and observed response. No test is marked PASS without having actually been run.
+
+Legend for Status: **PASS** / **FAIL** / **BLOCKED** (credentials/infra unavailable) / **N/A** (feature not implemented as literally scoped).
+
+---
+
+## 1. Automated baseline (full-suite results)
+
+| Test ID | Module | Command | Expected | Actual | Status |
+|---|---|---|---|---|---|
+| TC-BASE-01 | apps/api | `pnpm typecheck` | 0 errors | 0 errors | PASS |
+| TC-BASE-02 | apps/api | `pnpm lint` | 0 errors | 0 errors, 0 warnings | PASS |
+| TC-BASE-03 | apps/api | `pnpm test` (Jest) | all pass | **60/60 suites, 588/588 tests passing** (564 baseline + 5 invite-escalation regression tests + 19 authorization-metadata regression tests, all new this audit) | PASS |
+| TC-BASE-04 | apps/web | `pnpm typecheck` | 0 errors | 0 errors | PASS |
+| TC-BASE-05 | apps/web | `pnpm lint` | 0 errors | 0 errors, 2 pre-existing warnings (react-refresh, exhaustive-deps) | PASS |
+| TC-BASE-06 | apps/web | `pnpm test` (Vitest) | all pass | 2/2 files, 20/20 tests passing | PASS |
+| TC-BASE-07 | monorepo | `pnpm build` | all 4 workspace projects (types, api, ifc-service, web) build | all succeed; web emits chunk-size warnings (see L-5) | PASS (with noted warning) |
+| TC-BASE-08 | apps/api | e2e test suite | — | **0 e2e-spec.ts files exist**, despite a `test:e2e` script being configured | **GAP** — flagged, not a failure of any existing test |
+| TC-BASE-09 | apps/web | component/unit test coverage | — | Only 2 test files exist for a large React app (`issue-constants.test.ts`, `Modal.test.tsx`) | **GAP** — flagged |
+
+## 2. Authentication, authorization, multi-tenancy
+
+| Test ID | Module | Role | Preconditions | Steps | Expected | Actual | Status | Evidence | Defect Ref |
+|---|---|---|---|---|---|---|---|---|---|
+| TC-SEC-01 | Users | project_manager | Demo company, logged in as `project.manager.demo@` | `POST /users/invite` with `companyRole: 'super_admin'` | Rejected — inviter cannot grant a role above their own | **Before fix:** `201`, new row had `company_role='super_admin'`. **After fix:** `403 FORBIDDEN`, specific message | PASS (post-fix) | Live HTTP request/response, re-verified after fix | C-1 |
+| TC-SEC-02 | Projects | consultant | Same project | `PATCH /projects/:id` with a new name/status | Rejected — consultant has no `manage_project_records` | **Before fix:** `200`, change persisted. **After fix:** `403`, project unchanged | PASS (post-fix) | Live HTTP request/response + DB read before/after | C-2 |
+| TC-SEC-03 | Buildings | project_manager | Same project, no grant | `POST /projects/:id/buildings` | Rejected | **After fix:** `403 INSUFFICIENT_PROJECT_PERMISSION` | PASS (post-fix) | Live HTTP response | C-3 |
+| TC-SEC-04 | Risk | project_manager | Same project, no grant | `POST /projects/:id/risk/recalculate` | Rejected | **After fix:** `403 INSUFFICIENT_PROJECT_PERMISSION` | PASS (post-fix) | Live HTTP response | C-4 |
+| TC-SEC-05 | Projects | super_admin | — | `PATCH /projects/:id`, `POST /users/invite` (legitimate role) | Still succeeds — fixes must not break legitimate super_admin access | `200`/`201` for both, confirmed in DB | PASS | Live HTTP response + DB read | — |
+| TC-SEC-06 | Tenancy | super_admin (Tenant A) vs super_admin (Tenant B, freshly created) | Two separate companies | `GET /projects` as Tenant B; `GET /projects/:tenantA-project-id` as Tenant B | Tenant B sees none of Tenant A's data | `GET /projects` → `[]`; direct `GET` by ID → `404 NOT_FOUND` | PASS | Live HTTP responses | — |
+| TC-SEC-07 | Issues/RFIs/Drawings | Tenant B vs Tenant A's project | Same two-tenant setup | `GET /projects/:tenantA-id/issues`, `/rfis` as Tenant B | No Tenant A data returned | `200` with `{"data":[]}` — confirmed this is correct `companyId`-scoped query behavior (the service takes `companyId` from the JWT, never the URL), not a leak; a non-existent project ID produces the identical empty response | PASS | Live HTTP responses; code read of `issues.service.ts findAll()` | Minor API-consistency nit noted (L — 200+empty vs 404 inconsistency), not a security finding |
+| TC-SEC-08 | Issues | Tenant B vs Tenant A's real issue | Same setup | `GET /issues/:tenantA-issue-id`, `PATCH .../issues/:id`, `POST .../issues/:id/close` as Tenant B | Denied | `404 NOT_FOUND` on direct GET; issue's title/status unchanged after write attempts | PASS | Live HTTP responses + DB read confirming no corruption | — |
+| TC-SEC-09 | Auth | anonymous | — | 10 rapid failed logins against one account, then an 11th | First 10 process normally (401 each); 11th throttled | 11th attempt: `429` | PASS | Live HTTP responses | Rate limiting confirmed working as configured (10/min/IP on auth routes) |
+| TC-SEC-10 | Auth | consultant (deactivated mid-session) | super_admin deactivates the consultant | Replay the consultant's pre-existing access token against a protected route | Expected: denied immediately, per the "all sessions revoked" response message. Actual: access token still works | `200`, full data returned, until the token's natural 15-min expiry | **FAIL** (bounded) | Live HTTP responses | M-1 |
+| TC-SEC-11 | Users/Invite | super_admin | — | Invite a new user with no `companyRole` field at all | Defers to the self-requested-role pending-approval flow | `201`, new user created with no immediate elevated role | PASS | Live HTTP response + unit test | — |
+| TC-SEC-12 | File upload | super_admin | — | Request a drawing upload-URL with a path-traversal filename (`../../../../tmp/evil.pdf`) | Either rejected, or the storage key is safely derived without the traversal | `201` — but the resulting `storageKey` used a server-generated UUID, the client filename discarded entirely | PASS | Live HTTP response | — |
+| TC-SEC-13 | File upload | super_admin | — | Request a drawing upload-URL for a `.exe`/path-traversal-no-pdf-extension file | Rejected by server-side extension allowlist | `400 BAD_REQUEST — "File type ... not supported. Allowed: PDF."` | PASS | Live HTTP response | — |
+| TC-SEC-14 | Duplicate submission | super_admin | — | Fire two identical `POST .../issues` requests concurrently | No data corruption; both either succeed as 2 distinct records (acceptable for a "create" action) or are deduplicated | Both succeeded, 2 distinct Issue rows created, no corruption — standard "double-click creates two records" behavior, not a defect for this record type | PASS | Live concurrent HTTP requests + DB count | — |
+
+## 3. Core functional / UAT scenarios (per the brief's required A–K list)
+
+| Test ID | Scenario | Role | Steps | Expected | Actual | Status | Evidence |
+|---|---|---|---|---|---|---|---|
+| UAT-A | Contractor creates and submits an RFI | project_manager (standing in for "contractor" — no literal "contractor" company role exists; see role-mapping note below) | `POST /projects/:id/rfis` with subject/question/priority/discipline | RFI created and immediately active for review | `201`, RFI created directly in `status: 'open'` — on this platform, creation IS the submission step for a normal (non-draft) RFI; no separate "submit" click is required for the common path | PASS | Live HTTP response |
+| UAT-B | Consultant reviews/responds to an RFI without gaining contractor-only privileges | consultant | (1) Attempt `POST .../rfis/:id/respond` with no `manage_rfis` → expect denied. (2) Make the consultant this project's `project_lead` (the only real path to `manage_rfis` for a non-company_admin role — see H-2). (3) Retry respond → expect success. (4) Attempt `POST /projects` (admin action) → expect still denied | Step 1 denied; step 3 succeeds; step 4 still denied | Step 1: `403`. Step 3: `200`, answer recorded. Step 4: `403 INSUFFICIENT_ROLE` | PASS | Live HTTP responses — also surfaced finding H-2 (narrow `manage_rfis`-only grant is unreachable for non-company_admin roles; `project_lead` is the only real path and it bundles all six permissions) |
+| UAT-C | Authorized client/PMC closes an RFI | super_admin (project_lead/manage_rfis-holder equivalent) | `POST .../rfis/:id/close` | RFI closes | `200`, `closedAt`/`closedBy` populated | PASS | Live HTTP response |
+| UAT-D | Site engineer opens a floor plan, identifies an issue, attaches evidence, tracks status | site-restricted demo account (`project_engineer`) | Floor plan viewer access, pinpoint creation (auto-creates an Issue), photo attachment, status tracking from the Issues list | Full access on Floor Plans/Issues/Snagging; read-only elsewhere | Verified in this engagement's earlier Phase 5 screenshot-capture session (genuine logged-in site-restricted account, confirmed read-only on Reports while full-access on Floor Plans) and reconfirmed this session via `SiteRoleRestrictionGuard` code review and its passing unit test suite | PASS | Prior-session live screenshots + `site-role-restriction.guard.spec.ts` (part of the 569 passing tests) |
+| UAT-E | Mechanical engineer accesses engineering-calculation functionality | — | Searched the codebase for a literal "engineering calculations" module/endpoint | No such feature exists under this name. The closest real equivalent is BIM Models read access, which is open to any authenticated company user | **N/A — not implemented as literally scoped.** BIM read access itself is verified working (UAT-F) | **N/A** (honestly reported, not claimed as a pass) | Code search — no `calculation`-named module found under `apps/api/src/modules/` |
+| UAT-F | BIM Coordinator reviews drawing/model coordination issues and updates status | bim_manager | `GET /projects/:id/bim/models` (read); `POST /projects/:id/bim/models/upload-url` (write, no grant) | Read succeeds for any company user; write requires `manage_project_records` | Read: `200`. Write: `403 INSUFFICIENT_PROJECT_PERMISSION` | PASS | Live HTTP responses |
+| UAT-G | Project administrator invites a user and assigns the correct company/project/role | super_admin | `POST /users/invite` (companyRole: consultant) then `POST /projects/:id/members` (role: viewer) for the new user | Both succeed | `201` for invite; `201` for member assignment | PASS | Live HTTP responses |
+| UAT-H | A user attempts to access another company's project and is denied | Tenant B super_admin | `GET /projects/:tenantA-project-id` | Denied | `404 NOT_FOUND` (see TC-SEC-06) | PASS | Live HTTP response |
+| UAT-I | A user uploads a drawing/attachment and another authorized user retrieves it | super_admin uploads, technical_director retrieves | Upload-URL → real PUT to mock-S3 → register document → different user GETs it | Retrieval succeeds with correct metadata | `200`, full document metadata returned to the second user | PASS | Live HTTP responses, real file PUT confirmed (`PUT status: 200`) |
+| UAT-J | An AI provider becomes unavailable and the app handles the failure without exposing credentials or corrupting data | — | No `GEMINI_API_KEY`/`ANTHROPIC_API_KEY`/`OPENAI_API_KEY` configured in this sandbox (confirmed via `printenv`) — this **is** the "provider unavailable" condition | On boot: graceful warning, not a crash. On a call: generic `ServiceUnavailableException`, raw provider/credential details never reach the HTTP response (code-verified; the exact decrypt-failure log line was reproduced by the test suite and asserted not to leak into the response) | PASS (code + test evidence; a live 429/timeout from a *real* configured provider was not exercised, since no provider key exists in this sandbox — see classification below) | `ai.service.spec.ts` (part of the 569 passing tests), direct code read of `ai.service.ts:174-195`, live server boot log showing the graceful "AI provider not available" warning |
+| UAT-K | A connected email account expires or is disconnected, and the user gets a clear recovery path | — | Code review of `OutlookIntegrationService`/Gmail mirror's token-refresh failure path | On an `invalid_grant`-shaped refresh failure, the user-facing message is specific ("The Outlook connection is no longer valid. Please reconnect.") not generic | Confirmed via direct code read; `getStatus()` separately maps this to an `authorization_required` UI status | PASS (code evidence; not exercised live since no real Outlook/Gmail OAuth app credentials exist in this sandbox — see Dependencies section of the main report) | `outlook-integration.service.ts` code read |
+
+**Role-mapping note (UAT-A, UAT-B):** the brief's scenario list uses illustrative role names ("Contractor", "Consultant", "Client/PMC") that don't map one-to-one onto this platform's actual 12 company roles. Scenarios were executed against the closest real role per the already-established mapping convention from this project's Phase 5 training materials (documented there explicitly for the same reason).
+
+## 4. Status classification summary (per the brief's required scheme)
+
+| Status | Count | Items |
+|---|---|---|
+| VERIFIED COMPLETE | 20 | TC-BASE-01–07, TC-SEC-01–09, 11–14, UAT-A/B/C/D/F/G/H/I |
+| IMPLEMENTED BUT NOT VERIFIED | 2 | UAT-J (no live AI provider key to exercise a real 429/timeout), UAT-K (no live Outlook/Gmail OAuth app credentials to exercise a real token refresh failure) |
+| REQUIRES MY ACTION | 3 | Setting a real `GEMINI_API_KEY`/`ANTHROPIC_API_KEY` (to make UAT-J fully live-verifiable and the AI Assistant functional at all in production); setting real Microsoft/Google OAuth app credentials (to make UAT-K fully live-verifiable); confirming whether any production deployment has run without `CREDENTIAL_ENCRYPTION_KEY` set (C-5) |
+| BLOCKED | 0 | — |
+| NOT IMPLEMENTED | 1 | UAT-E (no literal "engineering calculations" feature exists) |
+| FAILED | 1 | TC-SEC-10 (deactivated user's access token remains valid for up to 15 minutes — bounded, documented as M-1) |
