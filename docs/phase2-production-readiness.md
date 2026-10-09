@@ -131,20 +131,7 @@ variable template with names/descriptions only" requirements; the four
 existing `.env.example` files (`apps/api`, `apps/web`, `apps/ai-service`,
 `apps/ifc-service`) were spot-checked and are accurate and current.
 
-## 4. Capacity / workload review — PARTIAL, NO LOAD TEST RUN
-
-- `engineeringos-db`: Postgres 16, `basic-256mb` plan, 15GB disk, no
-  high-availability, no read replicas. This is Render's lowest real
-  Postgres tier above "free" — a reasonable starting point for 100 users
-  but with a visible ceiling (connection limits and RAM scale with plan).
-- No load test has been run against production or any other environment.
-  **Per the brief, no aggressive load test will be run against production
-  without explicit approval**, and a safe, low-traffic read-only probe
-  against production has also not been run yet — that would need your
-  go-ahead before it's attempted even at low intensity.
-- No concurrency-level claim is made here, consistent with the brief.
-
-## 5. Domain & access — BLOCKED, awaiting your decision
+## 4. Domain & access — BLOCKED, awaiting your decision
 
 No custom domain exists. **Will not purchase one without approval.** If
 you want one, I need: the domain registrar/DNS provider you want to use,
@@ -152,21 +139,114 @@ and confirmation to proceed (there is a cost). Once you approve, this is a
 DNS-only change (CNAME to the Render service) — reversible, no app-code
 impact.
 
-## 6. Authentication / authorization review — NOT RE-STARTED THIS SESSION
+CORS, secure cookies, and security headers were verified in Section 9
+below — all already correct for the current (no-custom-domain) setup, and
+need no change when/if a domain is added beyond updating `ALLOWED_ORIGINS`/
+`API_URL`/`FRONTEND_URL` to the new hostnames.
 
-The RBAC guard chain (ThrottlerGuard → JwtAuthGuard → PendingApprovalGuard
-→ TenancyGuard → RolesGuard → ProjectPermissionGuard →
-SiteRoleRestrictionGuard) and `ProjectAuthorizationService` were built and
-tested across PRs #44–#52 in earlier sessions (404+ passing authorization
-tests at the time). Not yet re-verified against the current `main` tip in
-this Phase 2 pass — pending.
+## 5. Authentication and authorization — VERIFIED (code-level review against current `main`)
 
-## 7. Multi-tenant readiness — NOT STARTED THIS SESSION
+Re-verified directly against the current `main` tip rather than trusting
+the earlier RBAC audit's conclusions to still hold:
 
-RLS via the narrowly-scoped `app_user` role (migration 052) is already in
-place and is the existing isolation mechanism. **No multi-tenancy
-assumptions will be introduced and no schema migration will be proposed
-without a documented plan and your approval**, per the brief.
+- **Guard chain** (`app.module.ts`, `APP_GUARD` providers, in order):
+  `ThrottlerGuard → JwtAuthGuard → PendingApprovalGuard → TenancyGuard →
+  RolesGuard → ProjectPermissionGuard → SiteRoleRestrictionGuard`.
+  Unchanged from the prior audit — confirmed present and in this order on
+  the current tip.
+- **Login/password reset**: `AuthService.login()` and `.refresh()` both
+  check `user.isActive` **and** `company.isActive` before issuing tokens
+  (`auth.service.ts` lines 42, 106) — a disabled user or a deactivated
+  company is rejected, not just hidden in the UI.
+- **Session handling / expired sessions**: access tokens are short-lived
+  (`JWT_ACCESS_EXPIRES_IN=15m`); `JwtStrategy.validate()` is intentionally
+  stateless (signature + payload shape only, no DB round-trip per
+  request — the standard JWT tradeoff for request latency). The real
+  consequence, stated precisely rather than glossed over: **disabling a
+  user does not revoke their already-issued access token instantly** — it
+  keeps working for up to its remaining 15-minute lifetime. It *is* caught
+  within that same window: the client must refresh to keep working, and
+  `refresh()`'s `isActive`/`companyActive` check catches it there. So the
+  real bound is "≤15 minutes," not instant — worth knowing, not a defect
+  given the access-token lifetime is already short, but not something to
+  describe as immediate revocation either.
+- **Unauthorized requests**: `JwtAuthGuard` rejects anything without a
+  valid bearer token before any handler runs; `TenancyGuard` re-checks
+  `company.is_active` **on every single request** (not just at login),
+  via `DatabaseService.withSystemBypass()` (see Section 11 below for a
+  real historical incident involving this exact mechanism, already
+  resolved).
+- **Cross-org/cross-project ID manipulation (IDOR)**: checked directly in
+  `issues.service.ts` as a representative sample. Two independent layers,
+  not one: (1) every query explicitly filters `WHERE ... company_id =
+  ${companyId} AND project_id = ${projectId}` using the *server-derived*
+  JWT company ID, never a client-supplied one; (2) underneath that, every
+  such query additionally runs inside `DatabaseService.withTenant()`,
+  which sets a per-transaction Postgres GUC (`app.current_company_id`)
+  that Row-Level Security policies (migration 052,
+  `FORCE ROW LEVEL SECURITY`) enforce at the database layer regardless of
+  the application-level filter. A request supplying another company's
+  `projectId`/`issueId` in the URL returns zero rows at the database
+  level even if the application-level `WHERE` clause were ever
+  accidentally dropped in a future change — defense in depth, not a
+  single point of failure.
+- **Organization/project membership and role-based permissions**: the
+  `ProjectAuthorizationService.hasProjectPermission()` consolidation (from
+  the earlier RBAC phases) is unchanged on the current tip and still the
+  single place project-scoped access is decided.
+
+## 6. Multi-user and multi-tenant readiness — VERIFIED (isolation), PARTIAL (concurrency)
+
+- **Organization isolation**: see Section 5's IDOR finding above — RLS +
+  explicit `company_id` filters together. No cross-tenant leakage path
+  found in the code reviewed.
+- **Record ownership / audit history**: every mutation already runs
+  through a global `AuditInterceptor` (confirmed registered in
+  `app.module.ts`) that writes to `audit_log`, with semantic action labels
+  for access-control changes specifically (RBAC Phase 6, earlier work).
+- **Concurrent updates**: no optimistic-locking/version-column mechanism
+  was found (e.g. no `updated_at`-based conflict check on `UPDATE`). For
+  this app's actual usage pattern — one person editing one issue/RFI/snag
+  status at a time, not simultaneous collaborative editing of the same
+  field — last-write-wins is a reasonable default, but it is a real gap
+  if two people ever do edit the same record at the same moment (one
+  update silently overwrites the other with no warning). Not fixed here:
+  it would touch update logic across many modules, which is a larger,
+  separately-considered change, not a "smallest safe fix." Flagged for
+  your awareness, not blocking.
+- **File access isolation**: see Section 8 — storage keys are
+  server-derived from the authenticated company/project, not
+  client-suppliable.
+- No multi-tenancy assumptions were introduced and no schema migration is
+  proposed here, per the brief's explicit instruction.
+
+## 7. Capacity and performance — PARTIAL, NO LOAD TEST RUN
+
+- `engineeringos-db`: Postgres 16, `basic-256mb` plan, 15GB disk, no
+  high-availability, no read replicas. This is Render's lowest real
+  Postgres tier above "free" — a reasonable starting point for 100 users
+  but with a visible ceiling (connection limits and RAM scale with plan).
+- **Current baseline metrics** (via Render's own metrics API, ~1 hour
+  sampled): `engineeringos-api` CPU usage ~0.1–0.3% of its 0.5 vCPU limit,
+  memory ~100–109MB of its 512MB limit; `engineeringos-db` CPU ~0.7–1.2%,
+  memory ~70–80MB, active connections steady at 1–3. **This reflects
+  near-zero real traffic right now, not a tested capacity ceiling** — it
+  says the app is idling comfortably, not that it can handle 100
+  concurrent users, which has never been tested.
+- **Pagination**: a shared `PaginationQuery` type is used consistently
+  across 20+ service files (issues, RFIs, snagging, submittals,
+  transmittals, QA, documents, captures, notifications, messaging, etc.).
+  Spot-checked `issues.service.ts.findAll()`: default page size 20,
+  **server-side clamped to a hard max of 100** (`Math.min(query.perPage ??
+  20, 100)`) — a client cannot request an unbounded page size. This
+  already satisfies the brief's "use pagination... avoid loading every
+  record into the browser at once."
+- No load test has been run against production or any other environment.
+  **Per the brief, no aggressive load test will be run against production
+  without explicit approval**, and a safe, low-traffic read-only probe
+  against production has also not been run yet — that would need your
+  go-ahead before it's attempted even at low intensity.
+- No concurrency-level claim is made here, consistent with the brief.
 
 ## 8. File / media upload handling — VERIFIED (code-level review)
 
@@ -300,41 +380,137 @@ Verified directly against current code:
   declaration is safe but a real key has a cost/account implication only
   you can authorize.
 
-## 10. Backup & recovery — NOT STARTED THIS SESSION
+## 10. Backup & recovery — BLOCKED, cannot verify via API
 
-Render's managed Postgres plans include automated daily backups by
-default, but this has not been confirmed in the dashboard for this
-specific instance, and **no restoration test has been run** — per the
-brief, backups will not be described as "working" until a safe restore is
-actually verified.
+Attempted to confirm this directly rather than assume Render's documented
+default applies: tried a read-only query against `engineeringos-db` via
+the Render Postgres query tool — it was refused because the database's
+`ipAllowList` is empty (no public internet access at all, confirmed in
+Section 1). That refusal is itself good evidence of the correct network
+posture, but it also means **backup configuration and retention cannot be
+confirmed from here** — Render's backup settings (frequency, retention
+window) are configured per-database in the dashboard's "Backups" tab, not
+exposed through any tool available in this session.
 
-## 11. Logging & monitoring — PARTIAL
+**Per the brief, I will not claim backups work until this is verified and
+a safe restoration test has been completed** — neither has happened.
+**This needs your action**: open `engineeringos-db` → Backups in the
+Render dashboard and tell me the configured frequency/retention (no
+credentials needed, just what the settings show), or grant this session's
+IP allowlist access temporarily if you want me to verify programmatically.
+A real restoration test (restore to a *new*, throwaway database instance,
+never overwriting the live one) is something I can help plan once backup
+configuration is confirmed, and would need your explicit go-ahead before
+running since it's the kind of production-data-adjacent operation the
+brief gates.
 
-No log aggregation/alerting beyond Render's own built-in log viewer and
-metrics has been confirmed. Not yet reviewed this pass.
+## 11. Logging & monitoring — PARTIAL, one historical incident traced to resolution
 
-## 12. CI/CD & release management — GAP CONFIRMED, no fix implemented yet
+- Render provides built-in log aggregation and the metrics shown in
+  Section 7 for every service by default — already active, no
+  configuration needed. No alerting is configured beyond that (Render
+  supports email/Slack alerts on deploy failures and some metrics
+  thresholds, configurable in the dashboard; not yet set up here, and
+  doing so has no cost but does need dashboard access to configure, which
+  I can walk you through on request).
+- **Investigated live error logs rather than assuming the app has been
+  running cleanly.** Found three distinct historical error clusters,
+  traced each to a specific cause and determined whether it's resolved:
+  1. **`PostgresError: role "app_bypass_rls" does not exist`, recurring
+     every 5 minutes, plus a cluster of `/auth/login → 500` errors, all
+     within an 8:43–8:52 AM window on 2026-10-04.** Root cause: migration
+     052 introduced a bypass mechanism requiring a Postgres role that
+     Render's managed Postgres doesn't permit creating (no `CREATEROLE`
+     grant on the database owner — a platform restriction). This broke
+     every pre-tenant operation (login, password reset, company
+     registration, the two system cron jobs) the moment that migration's
+     deploy actually ran. **Already fixed same-day**: commit `c21a4dd`
+     ("URGENT: fix withSystemBypass() — login/signup broken in
+     production") replaced the role-based bypass with a session-local
+     Postgres GUC flag (migration 057) requiring no elevated privilege —
+     the same mechanism `withTenant()`'s own tenant-scoping already used
+     successfully. Confirmed via `list_logs` with a text filter for
+     `app_bypass_rls` across the full window from immediately after that
+     fix through now (2026-10-04 09:00 through 2026-10-09 03:30): **zero
+     further occurrences.** This is a resolved historical incident, not
+     an open item — documenting it because "verify it happened and is
+     fixed" is stronger evidence than "assume no one told me about it."
+  2. **`AiUsageService`/`AI Assistant` 503 (2026-10-05) and the
+     `No AI provider configured` boot crashes (2026-10-08)** — both
+     already covered in Sections 1 and 9 above (the AI Gateway's missing
+     provider key, and PR #53's non-fatal-boot fix respectively). Not
+     re-documented twice.
+  3. One `POST .../convert-to-snag → 500` on 2026-10-07 — a single
+     occurrence, not a recurring pattern in the log window checked;
+     flagged as worth a closer look if it recurs, not investigated
+     further here since it didn't repeat and the log line alone doesn't
+     show a root cause.
+- No structured alerting exists for a *new* occurrence of either error
+  class above — if the same `app_bypass_rls`-style regression happened
+  again, nothing would notify anyone automatically today beyond someone
+  noticing broken logins. Configuring Render's built-in alerting (no
+  additional cost) is a reasonable next step; I can set this up once you
+  confirm you want it and which channel (email/Slack) to send to.
+
+## 12. CI/CD and release management — ONE SAFE ADDITION IMPLEMENTED
 
 Confirmed via direct read of `.github/workflows/ci.yml`: lint, typecheck,
-test, and build run on every PR/push, but there is no staging deploy and
-no smoke test before production traffic sees a change. A GitHub Actions
-step that curls the deployed `/api/v1/health` endpoint after Render's
-auto-deploy would be a safe, reversible addition (no behavior change, CI
-config only) — proposed as a next step, not yet implemented.
+test, and build run on every PR/push, but there was no deploy/smoke-test
+step at all. Since there is no staging environment (Section 3), the
+brief's full "staging deploy → smoke test → approved production release"
+sequence isn't achievable without first building that environment (cost
+decision, pending your answer). What *is* achievable without a staging
+environment or any cost: added
+`.github/workflows/post-deploy-health-check.yml`, triggered on every push
+to `main` — it waits for Render's deploy to roll out, then polls the
+already-public `/api/v1/health/ready` endpoint (checks database, Redis,
+and object-storage reachability, not just "process is up") up to 5 times
+over ~2.5 minutes, plus a check that `engineeringos-web` is serving.
+Read-only, no application behavior changed, YAML syntax validated. This
+turns "a deploy silently broke production" (exactly what happened on
+2026-10-04 and again on 2026-10-08, per Section 11) into a visibly red
+GitHub Actions run on the commit that caused it, rather than relying on a
+user noticing. It cannot block or roll back a bad deploy — GitHub Actions
+has no hook into Render's own deploy pipeline — so this is a detection
+improvement, not a prevention one; true pre-production gating needs the
+staging environment this section's real gap still is.
 
-## 13. Cost identification — NOT STARTED THIS SESSION
+## 13. Cost identification — PARTIAL (rough estimate, verify against Render's current pricing)
 
-Current known recurring cost surface: 4 `starter`-plan services +
-1 `basic-256mb` Postgres, 1 free Redis — no paid add-ons beyond what's
-already running. No new paid service will be activated without approval.
+Current known recurring services, with Render's publicly listed starting
+prices for these plan tiers **as a rough order of magnitude — please
+verify exact current pricing on Render's own pricing page before treating
+these as firm, since published prices change**:
+
+| Service | Plan | Rough monthly cost |
+|---|---|---|
+| `engineeringos-api` | starter web_service | ~$7 |
+| `engineeringos-web` | static_site | $0 (static sites are free on Render) |
+| `engineeringos-ifc-service` | starter background_worker | ~$7 |
+| `engineeringos-ai-service` | starter private_service | ~$7 |
+| `engineeringos-qdrant` | starter private_service + 5GB disk | ~$7 + small disk fee |
+| `engineeringos-db` | basic-256mb Postgres | ~$19 |
+| `engineeringos-redis` | free key-value | $0 |
+
+**Fixed cost, rough total: ~$45–50/month** at current scale, before any
+domain purchase or paid AI provider usage. **Usage-based/variable costs,
+not yet activated or estimable without real traffic**: AI provider API
+calls (Anthropic/Gemini — zero spend today since no key is configured at
+all, per Section 9), object-storage (Cloudflare R2) bandwidth/storage
+beyond whatever free tier it has, and any future autoscaling beyond one
+instance per service. **Not yet activated, so $0 today, but would add
+cost if approved**: a custom domain (one-time registration + annual
+renewal, varies by registrar/TLD), a second environment for
+staging/dev (would roughly double the fixed-cost table above), and any
+log-alerting add-on beyond Render's free built-in tier. No paid service
+has been activated this session; nothing above has changed.
 
 ## Immediate safe changes made this session
 
 - Added `helmet` to `apps/api` and wired default security headers into
-  `main.ts` (CSP/COEP disabled, see Section 9 above).
+  `main.ts` (CSP/COEP disabled, see Section 9).
 - Set `app.set('trust proxy', 1)` in `apps/api/src/main.ts`, fixing the
-  shared-rate-limit-bucket bug and useless login-IP logging described in
-  Section 9 above.
+  shared-rate-limit-bucket bug and useless login-IP logging (Section 9).
 - Ran `pnpm audit --prod` and read every critical finding's actual
   dependency path rather than reporting the raw count (Section 9).
 - Confirmed no Firebase/Firestore anywhere in the repo and documented the
@@ -342,10 +518,29 @@ already running. No new paid service will be activated without approval.
 - Confirmed no real `.env` file has ever been committed to git history
   (Section 3).
 - Code-reviewed file/media upload handling end-to-end (Section 8).
+- Re-verified the full auth/authz guard chain, session-expiry bound, and
+  cross-tenant ID-manipulation defenses against the current `main` tip,
+  not just trusting the earlier audit's conclusions (Section 5).
+- Reviewed multi-tenant isolation and flagged the no-optimistic-locking
+  gap for awareness, not as a blocker (Section 6).
+- Pulled live CPU/memory/connection metrics and confirmed pagination is
+  enforced server-side with a hard cap (Section 7).
+- Investigated live error logs and traced a historical production
+  incident (`app_bypass_rls` role-creation failure, 2026-10-04) to its
+  root cause and confirmed same-day resolution, with zero recurrence
+  since (Section 11).
+- Added `.github/workflows/post-deploy-health-check.yml` — a read-only
+  post-deploy readiness poll against the existing public health endpoint,
+  since there was previously zero automated signal when a deploy broke
+  production (which has happened twice: 2026-10-04 and 2026-10-08)
+  (Section 12).
+- Wrote a rough, explicitly-caveated monthly cost estimate from current
+  services (Section 13) — no paid service was activated.
 
 None of the above changed any API contract, auth behavior, or database
-schema/data. Verified after each change: `tsc --noEmit` clean, `eslint`
-clean, full Jest suite passing (502/502), production build succeeds.
+schema/data. Verified after each code change: `tsc --noEmit` clean,
+`eslint` clean, full Jest suite passing (502/502), production build
+succeeds; the new workflow's YAML was syntax-validated.
 
 ## Open items requiring your decision before I proceed
 
@@ -357,3 +552,9 @@ clean, full Jest suite passing (502/502), production build succeeds.
 3. Staging/dev environment — duplicating the Render blueprint has a real
    monthly cost; do you want a cost estimate before I document the
    concrete setup options?
+4. Backup/recovery (Section 10) — I cannot verify this via any tool
+   available in this session (the database correctly has no public
+   network access). Please open `engineeringos-db` → Backups in the
+   Render dashboard and tell me the configured frequency/retention, or
+   let me know if you'd like deploy-failure/metric alerting configured
+   (no cost, dashboard-only setup I can walk you through).
