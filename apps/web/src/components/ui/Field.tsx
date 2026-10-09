@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { forwardRef, useId } from 'react';
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 
 type Requirement = 'required' | 'optional' | 'system';
@@ -62,52 +62,69 @@ type SharedProps = {
   error?: string;
 };
 
-export function Input({ label, requirement, labelAddon, hint, error, id, ...rest }: SharedProps & InputHTMLAttributes<HTMLInputElement>) {
-  const autoId = useId();
-  const fieldId = id ?? autoId;
-  return (
-    <FieldShell id={fieldId} label={label} requirement={requirement} labelAddon={labelAddon} hint={hint} error={error}>
-      <input
-        id={fieldId}
-        className="field-input"
-        aria-invalid={!!error || undefined}
-        aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
-        {...rest}
-      />
-    </FieldShell>
-  );
-}
+// forwardRef is required on all three fields below -- react-hook-form's
+// register() returns a ref that must reach the real <input>/<textarea>/
+// <select> DOM node for RHF to register and read the field's value.
+// Without it, React silently drops the ref (dev-mode warning: "Function
+// components cannot be given refs") and RHF never sees the field as
+// registered, so handleSubmit() intermittently treats a visibly-filled,
+// required field as empty -- confirmed by hand against the Login form,
+// which uses this exact component.
+export const Input = forwardRef<HTMLInputElement, SharedProps & InputHTMLAttributes<HTMLInputElement>>(
+  function Input({ label, requirement, labelAddon, hint, error, id, ...rest }, ref) {
+    const autoId = useId();
+    const fieldId = id ?? autoId;
+    return (
+      <FieldShell id={fieldId} label={label} requirement={requirement} labelAddon={labelAddon} hint={hint} error={error}>
+        <input
+          ref={ref}
+          id={fieldId}
+          className="field-input"
+          aria-invalid={!!error || undefined}
+          aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
+          {...rest}
+        />
+      </FieldShell>
+    );
+  },
+);
 
-export function Textarea({ label, requirement, labelAddon, hint, error, id, ...rest }: SharedProps & TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  const autoId = useId();
-  const fieldId = id ?? autoId;
-  return (
-    <FieldShell id={fieldId} label={label} requirement={requirement} labelAddon={labelAddon} hint={hint} error={error}>
-      <textarea
-        id={fieldId}
-        className="field-input"
-        aria-invalid={!!error || undefined}
-        aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
-        {...rest}
-      />
-    </FieldShell>
-  );
-}
+export const Textarea = forwardRef<HTMLTextAreaElement, SharedProps & TextareaHTMLAttributes<HTMLTextAreaElement>>(
+  function Textarea({ label, requirement, labelAddon, hint, error, id, ...rest }, ref) {
+    const autoId = useId();
+    const fieldId = id ?? autoId;
+    return (
+      <FieldShell id={fieldId} label={label} requirement={requirement} labelAddon={labelAddon} hint={hint} error={error}>
+        <textarea
+          ref={ref}
+          id={fieldId}
+          className="field-input"
+          aria-invalid={!!error || undefined}
+          aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
+          {...rest}
+        />
+      </FieldShell>
+    );
+  },
+);
 
-export function Select({ label, requirement, labelAddon, hint, error, id, children, ...rest }: SharedProps & SelectHTMLAttributes<HTMLSelectElement>) {
-  const autoId = useId();
-  const fieldId = id ?? autoId;
-  return (
-    <FieldShell id={fieldId} label={label} requirement={requirement} labelAddon={labelAddon} hint={hint} error={error}>
-      <select
-        id={fieldId}
-        className="field-input"
-        aria-invalid={!!error || undefined}
-        aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
-        {...rest}
-      >
-        {children}
-      </select>
-    </FieldShell>
-  );
-}
+export const Select = forwardRef<HTMLSelectElement, SharedProps & SelectHTMLAttributes<HTMLSelectElement>>(
+  function Select({ label, requirement, labelAddon, hint, error, id, children, ...rest }, ref) {
+    const autoId = useId();
+    const fieldId = id ?? autoId;
+    return (
+      <FieldShell id={fieldId} label={label} requirement={requirement} labelAddon={labelAddon} hint={hint} error={error}>
+        <select
+          ref={ref}
+          id={fieldId}
+          className="field-input"
+          aria-invalid={!!error || undefined}
+          aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
+          {...rest}
+        >
+          {children}
+        </select>
+      </FieldShell>
+    );
+  },
+);
