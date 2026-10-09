@@ -178,6 +178,11 @@ export interface AuthenticatedUser {
   firstName: string;
   lastName: string;
   pendingApproval: boolean;
+  // Phase 4F onboarding -- optional and absent from the JWT payload itself
+  // (not worth the token bloat/staleness): only ever set from a fresh DB
+  // read (login/accept-invitation/self-signup), never derived from the
+  // token on its own.
+  onboardingCompleted?: boolean;
 }
 
 export interface LoginDto {

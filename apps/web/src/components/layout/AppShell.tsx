@@ -6,6 +6,7 @@ import { NotificationBell } from './NotificationBell';
 import { MessagesBell } from './MessagesBell';
 import { ProjectContextPanel } from './ProjectContextPanel';
 import { ChatWidget } from '../chat/ChatWidget';
+import { OnboardingFlow } from '../onboarding/OnboardingFlow';
 
 interface NavItem {
   to: string;
@@ -188,6 +189,7 @@ export function AppShell() {
       </main>
 
       <ChatWidget />
+      <OnboardingFlow />
     </div>
   );
 }

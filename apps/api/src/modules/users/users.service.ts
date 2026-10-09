@@ -128,7 +128,8 @@ export class UsersService {
     }
 
     const hasUpdates = dto.firstName !== undefined || dto.lastName !== undefined
-      || dto.phone !== undefined || dto.companyRole !== undefined || dto.isActive !== undefined;
+      || dto.phone !== undefined || dto.companyRole !== undefined || dto.isActive !== undefined
+      || dto.onboardingCompleted !== undefined;
     if (!hasUpdates) return target;
 
     // An admin explicitly setting companyRole here *is* the approval action
@@ -144,11 +145,18 @@ export class UsersService {
         company_role = COALESCE(${dto.companyRole ?? null}, company_role),
         requested_company_role = CASE WHEN ${dto.companyRole ?? null}::company_role_enum IS NOT NULL THEN NULL ELSE requested_company_role END,
         is_active    = COALESCE(${dto.isActive ?? null}, is_active),
+        -- Reuses the existing preferences JSONB column -- no new migration,
+        -- no new table. Only ever merges the single onboardingCompleted key,
+        -- never the whole dto, so nothing else a caller might add here could
+        -- accidentally be written into it.
+        preferences  = CASE WHEN ${dto.onboardingCompleted ?? null} IS NOT NULL
+                         THEN jsonb_set(preferences, '{onboardingCompleted}', to_jsonb(${dto.onboardingCompleted ?? null}::boolean))
+                         ELSE preferences END,
         updated_at   = NOW()
       WHERE id = ${targetUserId} AND company_id = ${companyId}
-      RETURNING id, email, first_name, last_name, company_role, is_active, requested_company_role
+      RETURNING id, email, first_name, last_name, company_role, is_active, requested_company_role, preferences
     `);
-    return updated;
+    return { ...updated, onboardingCompleted: Boolean((updated.preferences as Record<string, unknown> | null)?.onboardingCompleted) };
   }
 
   async deactivate(companyId: string, userId: string) {

@@ -11,6 +11,7 @@ import {
 import { ROLE_GUIDE_SLUGS } from '../content/help/role-guides';
 import { COMPANY_ROLE_LABELS } from '../lib/issue-constants';
 import { useAuthStore } from '../store/auth.store';
+import { setOnboardingCompleted } from '../lib/users.api';
 
 const DEFAULT_CATEGORY: HelpCategoryKey = 'getting-started';
 
@@ -18,7 +19,17 @@ export default function HelpPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState('');
   const [showRoleGuide, setShowRoleGuide] = useState(false);
-  const companyRole = useAuthStore((s) => s.user?.companyRole);
+  const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
+  const companyRole = user?.companyRole;
+
+  function restartOnboarding() {
+    if (!user) return;
+    setUser({ ...user, onboardingCompleted: false });
+    setOnboardingCompleted(user.id, false).catch(() => {
+      // Best-effort -- the restart already took effect locally for this session.
+    });
+  }
 
   const activeSlug = searchParams.get('article');
   const activeCategory = (searchParams.get('category') as HelpCategoryKey | null) ?? DEFAULT_CATEGORY;
@@ -94,6 +105,14 @@ export default function HelpPage() {
                   {HELP_CATEGORY_LABELS[key]}
                 </button>
               ))}
+              {user && (
+                <button
+                  onClick={restartOnboarding}
+                  className="w-full text-left px-3 py-2 rounded text-xs text-ink-500 hover:text-ink-100 hover:bg-base-800 mt-2"
+                >
+                  Restart onboarding tour
+                </button>
+              )}
             </nav>
 
             <div className="panel tick-frame p-6 min-w-0">

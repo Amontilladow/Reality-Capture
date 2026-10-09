@@ -52,3 +52,72 @@ describe('UsersService.adminResetPassword', () => {
     expect(generatePasswordResetToken).not.toHaveBeenCalled();
   });
 });
+
+// Phase 4F: onboardingCompleted is stored in the existing preferences
+// JSONB column, written through the same self-profile-edit path as
+// firstName/lastName/phone -- these tests cover that it's wired into
+// update()'s hasUpdates gate and authorization the same way those are,
+// and that the service flattens preferences.onboardingCompleted onto the
+// returned object for the caller's convenience.
+describe('UsersService.update -- onboardingCompleted', () => {
+  function makeService(findOneRow: Record<string, unknown>, updateRow: Record<string, unknown>) {
+    const withTenant = jest.fn()
+      .mockResolvedValueOnce([findOneRow])
+      .mockResolvedValueOnce([updateRow]);
+    const db = { withTenant };
+    const svc = new UsersService(
+      db as unknown as DatabaseService,
+      {} as unknown as SubscriptionService,
+      {} as unknown as AuthService,
+    );
+    return { svc, withTenant };
+  }
+
+  it('lets a user mark their own onboarding complete without any admin role', async () => {
+    const { svc, withTenant } = makeService(
+      { id: 'user-2', companyRole: 'project_engineer', isActive: true, preferences: {} },
+      { id: 'user-2', email: 'target@aecom.com', preferences: { onboardingCompleted: true } },
+    );
+
+    const result = await svc.update('company-1', 'user-2', 'project_engineer', 'user-2', { onboardingCompleted: true });
+
+    expect(withTenant).toHaveBeenCalledTimes(2);
+    expect(result).toEqual(expect.objectContaining({ onboardingCompleted: true }));
+  });
+
+  it('lets a user restart (uncomplete) their own onboarding', async () => {
+    const { svc } = makeService(
+      { id: 'user-2', companyRole: 'consultant', isActive: true, preferences: { onboardingCompleted: true } },
+      { id: 'user-2', email: 'target@aecom.com', preferences: { onboardingCompleted: false } },
+    );
+
+    const result = await svc.update('company-1', 'user-2', 'consultant', 'user-2', { onboardingCompleted: false });
+
+    expect(result).toEqual(expect.objectContaining({ onboardingCompleted: false }));
+  });
+
+  it('does not touch the database when onboardingCompleted is the only field and already unset', async () => {
+    const { svc, withTenant } = makeService(
+      { id: 'user-2', companyRole: 'consultant', isActive: true, preferences: {} },
+      {},
+    );
+
+    const result = await svc.update('company-1', 'user-2', 'consultant', 'user-2', {});
+
+    // hasUpdates is false for an empty dto -- findOne() still runs (1 call),
+    // the UPDATE never does.
+    expect(withTenant).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ id: 'user-2', companyRole: 'consultant', isActive: true, preferences: {} });
+  });
+
+  it('still blocks one user from completing onboarding on someone else\'s behalf unless they are an admin', async () => {
+    const { svc } = makeService(
+      { id: 'user-2', companyRole: 'consultant', isActive: true, preferences: {} },
+      {},
+    );
+
+    await expect(
+      svc.update('company-1', 'user-3', 'consultant', 'user-2', { onboardingCompleted: true }),
+    ).rejects.toThrow(ForbiddenException);
+  });
+});

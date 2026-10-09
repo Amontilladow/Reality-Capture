@@ -413,3 +413,65 @@ same method as the `relatedSlugs` integrity check).
 
 **Not yet verified**: a real browser render. Onboarding (4F), contextual
 help links (4G), and expanded FAQ/troubleshooting coverage (4H) remain.
+
+## Phase 4F — Interactive onboarding — VERIFIED COMPLETE
+
+**Persistence decision**, made after dedicated investigation rather than
+guessing: reused the `users.preferences JSONB` column that already
+exists on the `users` table (`apps/api/src/database/migrations/
+001_initial_schema.sql`) -- selected in `findOne()`/`getMe()` already,
+but never written anywhere until now. No new migration, no new table,
+no new admin surface. Completion is a single `onboardingCompleted`
+boolean inside that JSON (`{"onboardingCompleted": true}`), written via
+`jsonb_set` -- deliberately only that one key, never the whole request
+body, so nothing else a caller might add to the DTO could land in
+`preferences` by accident.
+
+**No new authorization surface**: `onboardingCompleted` was added as an
+ordinary optional field on the existing `UpdateUserDto` and the existing
+`PATCH /users/:id` self-profile-edit path in `UsersService.update()` --
+the same "editing your own profile is always allowed" rule that already
+covers `firstName`/`lastName`/`phone` now also covers this, with no new
+`@Roles`, guard, or endpoint. `AuthenticatedUser` gained an optional
+`onboardingCompleted?: boolean` (packages/types/src/user.types.ts),
+populated from a fresh DB read on `login()`, `getMe()`, and set to
+`false` explicitly on `acceptInvitation()`/`selfSignup()` (brand-new
+accounts) -- deliberately left out of the JWT payload itself (per the
+investigating agent's recommendation) to avoid token bloat and staleness
+across the access token's lifetime.
+
+**Frontend** (`apps/web/src/components/onboarding/OnboardingFlow.tsx`,
+mounted once in `AppShell.tsx` alongside `ChatWidget`): a 7-step modal
+(Welcome -> your role and organization, including the site-restriction
+note for Construction Manager/Project Engineer -> the Projects page ->
+finding a project -> key modules -> a safe guided first task (view a
+project's Issues list, open to every project member) -> a Help Centre
+pointer), built on the existing `Modal` component so it matches the
+rest of the app's dialogs rather than introducing a new visual pattern.
+Controls: Skip (left), Back (from step 2 on), Next, and Finish & Open
+Help Centre on the last step; closing the modal (the X) behaves like
+Skip. Shown whenever `user.onboardingCompleted !== true` and the user
+isn't pending approval; Skip/Finish set it to `true` both locally
+(instant) and via a best-effort `PATCH /users/:id` (so a failed write
+never blocks the user, it just risks reshowing the tour next login).
+"Restart onboarding tour" lives in the Help Centre's left nav
+(`HelpPage.tsx`) and does the mirror-image write (`false`), which
+re-triggers the same modal through the same condition -- no separate
+code path for "first run" vs. "restart."
+
+No unnecessary personal information is stored: the only thing written
+is a single boolean, inside a column that already exists and already
+held nothing use-specific until now.
+
+**Verified**: `tsc --noEmit` clean on both `apps/api` and `apps/web`,
+`eslint --max-warnings=0` clean, both production builds succeed, and
+the full API test suite (564 tests, up from 560) passes, including 4 new
+`UsersService.update` tests added for this change (self-completing
+onboarding without any admin role; restarting it; the no-op case when
+the dto has no fields; and confirming it's still blocked from being set
+on someone else's behalf by a non-admin -- the existing self-edit rule
+applies unchanged).
+
+**Not yet verified**: a real browser render/manual click-through (no
+live backend/DB in this environment). Contextual help links (4G) and
+expanded FAQ/troubleshooting coverage (4H) remain.
