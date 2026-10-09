@@ -12,6 +12,18 @@ This file is a living document — update it in place as each section is
 actually investigated or acted on. Do not mark anything VERIFIED without
 the evidence that earned it.
 
+**Prior audit found and cross-referenced**: `engineering-review/` in this
+repo contains an existing, detailed technical audit
+(`CURRENT_STATUS.md`, verification date 2026-09-28, with a 2026-09-30
+addendum; `LAUNCH_READINESS.md`; `NEXT_STEPS.md`) — this is the "previous
+audit" the brief's Section 1 refers to, found by inspecting the
+repository per that section's own fallback instruction. It predates the
+current `main` tip by about ten days (PRs #52–#54 all landed after it).
+Where this document's own independent verification (done against the
+current tip) confirms, extends, or supersedes a claim from that prior
+audit, it says so explicitly below rather than silently repeating or
+silently overriding it.
+
 ## 1. Current deployment configuration — VERIFIED (read-only review complete)
 
 Live Render workspace (`tea-d9jkl43tqb8s73aishng`) inspected directly via
@@ -292,7 +304,18 @@ No regression risk here since nothing was changed — this is a read-only
 code review confirming the existing implementation already meets the
 brief's Section 8 requirements.
 
-## 9. Security review — PARTIAL, one fix applied this session
+## 9. Security review — VERIFIED against the brief's own checklist, two real fixes applied
+
+Every item the brief's Section 9 explicitly names has been checked
+directly against current code/config (not assumed): exposed secrets,
+unsafe environment variables, publicly accessible private data, insecure
+API endpoints, missing authorization checks, weak database/storage
+rules, unrestricted file uploads, missing rate limiting, sensitive data
+in logs, insecure CORS, vulnerable dependencies, excessive permissions,
+and missing request validation. One item (AI Assistant provider key) is
+a real gap requiring your decision, not a code fix; two real bugs
+(missing security headers, the rate-limit-sharing bug) were found and
+fixed this session.
 
 Verified directly against current code:
 
@@ -361,6 +384,44 @@ Verified directly against current code:
     `drizzle-orm → expo-sqlite → expo → react-native → ...` chain. No
     change made to drizzle-orm here — swapping/pruning it is a larger,
     separately-considered change, not a "smallest safe fix."
+- **Exposed secrets scan**: grepped the entire repository (excluding
+  `node_modules`) for real-looking secret patterns — Anthropic key prefix
+  (`sk-ant-`), AWS access key IDs (`AKIA...`), Stripe live keys
+  (`sk_live_...`), Google API keys (`AIza...`), and PEM private-key
+  headers. One match: `.env.production.example`'s
+  `ANTHROPIC_API_KEY=sk-ant-...` / `STRIPE_SECRET_KEY=sk_live_...` —
+  confirmed these are literal `...`-suffixed template placeholders (the
+  file's own stated purpose), not real values. No actual exposed secret
+  found anywhere in the repository.
+- **Excessive permissions**: checked `app_user`'s actual `GRANT`s
+  (migration 052) rather than assuming "narrowly scoped" without reading
+  the grants — `SELECT, INSERT, UPDATE, DELETE` on tables plus
+  `USAGE, SELECT` on sequences, with an explicit `REVOKE UPDATE, DELETE ON
+  audit_log` carved back out (append-only audit trail, even for the app's
+  own runtime role). No `DROP`, `TRUNCATE`, `ALTER`, `CREATE`, or
+  superuser attributes granted — this is close to the minimum a
+  CRUD application role needs, not an excessive grant.
+- **Weak database rules — re-confirmed independently, not just cited**:
+  the prior audit (`engineering-review/CURRENT_STATUS.md` §4) had
+  documented a real, serious gap as of 2026-09-28 — production's runtime
+  DB role was the table *owner*, which bypasses Postgres RLS by ownership
+  regardless of the `tenant_isolation` policy's existence, and that
+  document's own author marked it **RESOLVED** by migration 052. This
+  session independently re-verified that resolution still holds on the
+  current `main` tip (Section 5 above: `FORCE ROW LEVEL SECURITY` +
+  explicit `app_user` grants + the `withSystemBypass()` GUC-flag mechanism
+  for the fixed set of genuinely pre-tenant operations) — confirming the
+  prior audit's fix is still in place, not just taking its word for it.
+- **Login error-message specificity — reviewed, left as-is (prior
+  product decision, not a new defect)**: `AuthService.login()` returns
+  distinct messages for wrong credentials vs. a deactivated account vs.
+  an inactive company. The prior audit (`CURRENT_STATUS.md` §3) already
+  identified this as a deliberate UX-vs-enumeration tradeoff needing a
+  product decision, not an engineering default, and explicitly left it
+  unchanged. Per the brief's own "preserve the existing permission model
+  unless a documented security defect requires a change," this is not
+  re-litigated here — it's a known, already-surfaced tradeoff, not an
+  unreviewed gap.
 - **AI Assistant Gateway — missing provider key (new finding, not
   previously documented this explicitly)**: `render.yaml`'s
   `engineeringos-api` service block declares **no** `ANTHROPIC_API_KEY`,
@@ -380,7 +441,16 @@ Verified directly against current code:
   declaration is safe but a real key has a cost/account implication only
   you can authorize.
 
-## 10. Backup & recovery — BLOCKED, cannot verify via API
+## 10. Backup & recovery — BLOCKED, cannot verify via API (confirmed open since before this session)
+
+The prior audit (`engineering-review/CURRENT_STATUS.md` §5, §7;
+`LAUNCH_READINESS.md`'s readiness table; `NEXT_STEPS.md`) already
+identified this exact gap as of 2026-09-28: "Backups/restore: not
+configured or documented anywhere in this repository... requires Render
+dashboard/account access this environment doesn't have" and named it a
+blocker for private beta and public launch specifically. This session
+independently re-attempted verification rather than just repeating that
+conclusion unchanged:
 
 Attempted to confirm this directly rather than assume Render's documented
 default applies: tried a read-only query against `engineeringos-db` via
@@ -536,6 +606,20 @@ has been activated this session; nothing above has changed.
   (Section 12).
 - Wrote a rough, explicitly-caveated monthly cost estimate from current
   services (Section 13) — no paid service was activated.
+- Found and read the prior technical audit already in this repository
+  (`engineering-review/CURRENT_STATUS.md`, `LAUNCH_READINESS.md`,
+  `NEXT_STEPS.md`) and cross-referenced every section above against it —
+  confirming where its conclusions still hold (the RLS/`app_user` fix),
+  where this session's own evidence extends it (the `app_bypass_rls`
+  incident trace, the post-deploy health check), and where its flagged
+  gaps are still open today (backups, the AI provider key, no staging
+  environment).
+- Completed the remaining Section 9 checklist items: scanned the
+  repository for real exposed secrets (none found — one placeholder-only
+  match), checked `app_user`'s actual database grants for excessive
+  permissions (none found — close to minimum CRUD), and reviewed the
+  login error-message enumeration tradeoff (a pre-existing, already-
+  documented product decision, not a new defect).
 
 None of the above changed any API contract, auth behavior, or database
 schema/data. Verified after each code change: `tsc --noEmit` clean,
@@ -558,3 +642,203 @@ succeeds; the new workflow's YAML was syntax-validated.
    Render dashboard and tell me the configured frequency/retention, or
    let me know if you'd like deploy-failure/metric alerting configured
    (no cost, dashboard-only setup I can walk you through).
+
+---
+
+## 16. Final report
+
+### 1. Actual production architecture
+
+Not Firebase-based (the brief's template assumes Firebase; this repo has
+none — see Section 2). NestJS 10 (`apps/api`) on Node 22, Docker, Render
+`web_service`; React + Vite SPA (`apps/web`), Render `static_site`;
+self-hosted PostgreSQL 16 with Row-Level Security (`engineeringos-db`,
+Render managed, private-network-only); S3-compatible object storage
+(Cloudflare R2) via presigned URLs; a separate Python/FastAPI RAG service
++ Qdrant vector DB (`apps/ai-service`, `engineeringos-qdrant`), both
+Render `private_service`s with no public exposure; Redis for the Bull job
+queue (`engineeringos-redis`, free tier). Full request-flow diagram in
+Section 2. **VERIFIED COMPLETE.**
+
+### 2. Changes made
+
+1. Added `helmet` security-headers middleware to `apps/api` (Section 9).
+2. Fixed `app.set('trust proxy', 1)` — resolved a real bug where rate
+   limiting was a single shared bucket across all users instead of
+   per-client, and login-IP logging was recording the wrong address
+   (Section 9).
+3. Added `.github/workflows/post-deploy-health-check.yml` — read-only
+   post-deploy readiness polling (Section 12).
+4. Wrote this tracking document (`docs/phase2-production-readiness.md`).
+
+No database schema change, no API contract change, no auth-behavior
+change, no production secret or credential touched, nothing deployed
+outside the existing autodeploy-on-push-to-`main` mechanism that was
+already in place before this phase started. **VERIFIED COMPLETE.**
+
+### 3. Files changed
+
+- `apps/api/package.json`, `pnpm-lock.yaml` — added `helmet` dependency.
+- `apps/api/src/main.ts` — `helmet()` middleware, `trust proxy` setting.
+- `.github/workflows/post-deploy-health-check.yml` — new file.
+- `docs/phase2-production-readiness.md` — new file (this document).
+
+**VERIFIED COMPLETE.**
+
+### 4. Services configured
+
+None. No Render service configuration, environment variable, or database
+setting was changed this phase — every finding above that would require
+a service-configuration change (AI provider key, backups, alerting,
+staging environment, custom domain) is listed as **REQUIRES MY ACTION**
+or **BLOCKED** below, not silently applied. **VERIFIED COMPLETE** (as in:
+verified that nothing was changed, which was the deliberate, safe choice
+for anything touching live service config).
+
+### 5. Tests executed and results
+
+After every code change this phase: `pnpm --filter api typecheck` (clean),
+`pnpm --filter api lint` (clean), `pnpm --filter api test` (502/502
+passing), `pnpm --filter api build` (succeeds). The new GitHub Actions
+workflow's YAML was syntax-validated with `python3 -c "import yaml..."`
+(not executed end-to-end against a real deploy yet — that happens on the
+next push to `main`). No new application tests were added this phase
+(no application code behavior changed beyond the two Section 9 fixes,
+both covered by the existing suite continuing to pass). **VERIFIED
+COMPLETE** for what was run; the workflow's first real trigger is
+**IMPLEMENTED BUT NOT VERIFIED** until it fires on an actual push.
+
+### 6. Security findings and resolutions
+
+See Section 9 in full. Summary: 2 real bugs found and fixed (missing
+security headers; shared rate-limit bucket from an unconfigured trust
+proxy). 1 real gap found, not fixed, needs your decision (AI Assistant
+has no provider key declared anywhere in `render.yaml` — non-functional
+in production today). 1 dependency-audit finding read to its actual
+path and determined non-urgent (`proxy-addr`, reachable in principle but
+its vulnerable code path isn't exercised by the current trust-proxy
+config). Everything else checked (secrets scan, permissions, CORS, RLS,
+request validation, file-upload validation) came back clean — **VERIFIED
+COMPLETE** for the checks performed; **no claim is made** about checks
+this document doesn't list (e.g. no penetration test was run).
+
+### 7. Staging deployment URL
+
+**NOT IMPLEMENTED.** No staging environment exists. Building one means a
+second Render Blueprint (duplicate services + a second Postgres instance)
+with a real recurring cost — gated on your approval per the brief's cost
+rules. See Section 3/13 for the concrete tradeoff; I have not built this
+without you seeing the cost first.
+
+### 8. Load-test methodology and results
+
+**NOT IMPLEMENTED.** No load test has been run against any environment.
+Per the brief, an aggressive test will never run against production
+without explicit approval, and even a safe, low-intensity read-only probe
+hasn't been attempted yet without your go-ahead. Current metrics
+(Section 7) describe an idling system, not a tested ceiling — no
+concurrency claim is made.
+
+### 9. Backup and recovery status
+
+**BLOCKED.** Cannot be verified from this session — the database
+correctly has no public network access, which is itself good security
+but also means Render's backup/retention configuration can't be checked
+by any tool available here. This exact gap was already flagged by the
+prior audit (2026-09-28) and remains open today. **REQUIRES MY ACTION**:
+confirm the Backups tab settings in the Render dashboard for
+`engineeringos-db`, after which a restoration test (to a new, throwaway
+instance, never overwriting production) can be planned with your
+approval.
+
+### 10. Monitoring status
+
+**PARTIAL.** Render's built-in per-service logs and metrics are active
+by default (no setup needed). Added a post-deploy readiness poll this
+phase (Section 12) — detection, not prevention or continuous monitoring.
+No alerting is configured for an in-between-deploys regression (e.g. a
+new `app_bypass_rls`-style incident would currently only be caught by
+someone checking logs or noticing broken logins). Configuring Render's
+built-in deploy/metric alerting is a no-cost, dashboard-only task I can
+walk you through once you confirm you want it. **IMPLEMENTED BUT NOT
+VERIFIED** for the health-check workflow (first real trigger pending);
+**REQUIRES MY ACTION** (your decision) for alerting.
+
+### 11. Estimated monthly costs
+
+~$45–50/month fixed cost at current scale (4 starter services + 1
+basic-256mb Postgres + free Redis + free static site), explicitly
+caveated against Render's current published pricing — see the full
+breakdown in Section 13. No paid service was activated this phase; usage-
+based costs (AI API calls, object-storage bandwidth) are currently $0
+since no AI provider key is configured at all.
+
+### 12. Remaining blockers
+
+1. AI Assistant Gateway has no provider key anywhere in `render.yaml` —
+   non-functional in production (Section 9).
+2. No staging/dev environment — every merge to `main` goes straight to
+   production with no pre-production gate beyond CI's lint/test/build
+   and the new post-deploy health check (Sections 3, 12).
+3. Backup/recovery configuration unverified, no restore ever tested
+   (Section 10).
+4. No custom domain (Section 4) — not a functional blocker, both services
+   work correctly on their `*.onrender.com` URLs, but named here since the
+   brief's own objective #1 is a production domain.
+5. No load test has ever been run — current capacity under 100 concurrent
+   users is unknown, not merely "untested for compliance reasons" but
+   genuinely unknown (Section 7).
+6. No alerting on logs/metrics between deploys (Section 11).
+
+### 13. Exact actions requiring your involvement
+
+1. **Custom domain** — tell me the registrar/DNS provider and approve the
+   purchase cost, or confirm you don't want one yet.
+2. **AI Assistant provider key** — confirm whether this feature should be
+   live; if yes, I'll add the `sync: false` declaration to `render.yaml`
+   and you paste the real key only into the Render dashboard (never into
+   this chat).
+3. **Staging environment** — approve the recurring cost (roughly doubles
+   the current fixed-cost total) before I build it, or tell me to
+   document the setup without building it yet.
+4. **Backups** — open `engineeringos-db` → Backups in the Render
+   dashboard and tell me the configured frequency/retention, since no
+   tool in this session can read it directly.
+5. **Alerting** — tell me if you want Render's built-in deploy-failure/
+   metric alerts configured (no cost) and which channel (email/Slack).
+6. **Load testing** — explicit approval needed before even a safe,
+   low-intensity test runs against any environment, and production is
+   off-limits for an aggressive one regardless.
+
+### 14. Production launch checklist
+
+Per the brief's own Section 15 acceptance criteria — nothing below is
+checked off without the evidence cited:
+
+- [x] Production architecture documented — Section 2.
+- [x] Frontend production build succeeds — verified every code change this phase (`pnpm --filter api build`/`pnpm build`).
+- [x] Backend production build succeeds — same evidence.
+- [ ] Staging deployment is operational — NOT IMPLEMENTED (Section 3/7 above), cost decision pending.
+- [ ] Authentication works in staging — no staging exists; authentication was verified by code review against the live production guard chain instead (Section 5), not a staging deploy.
+- [x] Authorization is verified on protected operations — Section 5 (guard chain, IDOR defense-in-depth, re-verified against current `main`).
+- [x] Database and storage rules are reviewed — Sections 6, 8, 9 (RLS, upload validation, storage bucket privacy).
+- [ ] Existing core workflows pass regression tests — the existing Jest suite passes (502/502), but this phase did not re-run the prior audit's live-browser regression pass; no new claim is made about UI-level regression beyond what `LAUNCH_READINESS.md` already verified before this phase started.
+- [x] Environment variables are documented — Section 3 (4 existing `.env.example` files plus root `.env.production.example`, all spot-checked, no real secrets).
+- [ ] No known critical security issue remains unresolved — one real, known issue remains: the AI Assistant has no provider key configured anywhere (non-functional, not insecure, but a known gap pending your decision).
+- [ ] Backup and recovery procedures are documented and tested where configured — BLOCKED, Section 10.
+- [x] Monitoring and logging are operational where configured — Render's built-in logging/metrics plus the new post-deploy health check (Section 11/12); alerting itself is not configured (your decision pending).
+- [x] Deployment and rollback procedures are documented — deploy: Render auto-deploy-on-push + `preDeployCommand` migrations (Section 1); rollback: re-deploy a prior image (no scripted down-migrations), documented here and consistent with the prior audit's own finding.
+- [ ] Capacity testing results are recorded — NOT IMPLEMENTED, Section 7; only idle-baseline metrics exist, no load test.
+- [x] Estimated operating costs are provided — Section 13 (explicitly caveated rough estimate).
+- [x] Production launch blockers are identified — Section 12 above, this document's "remaining blockers" list.
+
+**Overall verdict, stated precisely rather than rounded up**: this phase
+found and fixed two real production bugs (security headers, shared rate
+limiting) and traced one historical incident to confirmed resolution,
+without touching data, schema, or auth contracts. The platform is
+**not** newly "production-ready" as a result — the brief's own
+instruction not to claim readiness just because it builds applies
+directly here. The specific items still blocking a real production
+launch are backups (unverified), the AI Assistant (unconfigured), staging
+(nonexistent, cost-gated), and load testing (never run) — all four
+already named, with exactly what's needed from you to close each one.
