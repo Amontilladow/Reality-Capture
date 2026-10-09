@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { IssueType, IssuePriority, IssueDiscipline, IssueCategory, ProjectRole } from '@engineeringos/types';
 import { Modal } from '../ui/Modal';
+import { HelpLink } from '../help/HelpLink';
 import { createIssue, updateIssue, type IssueDetailItem } from '../../lib/issues.api';
 import type { CameraVector } from '../bim-viewer/BimViewer';
 import type { ProjectMember } from '../../lib/projects.api';
@@ -136,6 +137,9 @@ export function IssueFormModal({
   return (
     <Modal open={open} onClose={onClose} title={isEdit ? 'Edit issue' : 'New issue'} wide>
       <div className="space-y-4">
+        <div className="flex justify-end -mt-1">
+          <HelpLink slug={isEdit ? 'updating-an-issue' : 'creating-an-issue'} label={isEdit ? 'How to update an issue' : 'How to fill out an issue'} />
+        </div>
         {error && <p className="field-error">{error}</p>}
 
         {!isEdit && defaultElementId && (

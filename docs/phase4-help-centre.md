@@ -475,3 +475,35 @@ applies unchanged).
 **Not yet verified**: a real browser render/manual click-through (no
 live backend/DB in this environment). Contextual help links (4G) and
 expanded FAQ/troubleshooting coverage (4H) remain.
+
+## Phase 4G — Contextual help links — VERIFIED COMPLETE
+
+Added `apps/web/src/components/help/HelpLink.tsx`: a small reusable
+link that always deep-links to one specific article slug (never the
+Help Centre homepage) via the `?article=<slug>` pattern `HelpPage.tsx`
+already reads. It always opens in a new tab (`target="_blank"`) --
+every one of its call sites sits inside a form a user may be mid-filling
+(RFI, Issue) or a page they're mid-task on, so navigating away in the
+same tab would discard unsaved input or lose their place.
+
+Wired into exactly the five locations the brief names, used sparingly
+(one link per location, not scattered across every field):
+
+| Location | Article it links to |
+|---|---|
+| `RfiFormModal.tsx` | `creating-an-rfi` |
+| `IssueFormModal.tsx` | `creating-an-issue` (new) / `updating-an-issue` (edit) |
+| `FloorPlanViewer.tsx` | `opening-a-floor-plan` |
+| `ReportsPage.tsx` | `understanding-available-kpis` |
+| `EmailSettingsPage.tsx` | `connecting-outlook` |
+
+Every linked slug was checked against the real, already-written article
+list (not invented) -- same programmatic dead-link method used for
+`relatedSlugs` and `ROLE_GUIDE_SLUGS` in earlier stages.
+
+**Verified**: `tsc --noEmit` clean, `eslint --max-warnings=0` clean,
+production build succeeds.
+
+**Not yet verified**: a real browser render/manual click-through.
+Expanded FAQ/troubleshooting coverage (4H) and the final permissions/
+responsiveness/navigation test pass + report (4I) remain.

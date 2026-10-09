@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
+import { HelpLink } from '../components/help/HelpLink';
 import { Alert } from '../components/ui/Alert';
 import { StatusBadge } from '../components/ui/Badge';
 import type { StatusTone } from '../lib/status-tone';
@@ -159,7 +160,11 @@ export default function EmailSettingsPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Account Settings" title="Email Integration" />
+      <PageHeader
+        eyebrow="Account Settings"
+        title="Email Integration"
+        actions={<HelpLink slug="connecting-outlook" label="How email integration works" />}
+      />
       <div className="p-6 space-y-6 max-w-3xl">
         <p className="text-xs text-ink-500">
           Connect your own Outlook or Gmail mailbox to send project-related email (RFIs, issues, submittals) from

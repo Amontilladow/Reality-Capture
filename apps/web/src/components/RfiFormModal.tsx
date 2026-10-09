@@ -5,6 +5,7 @@ import {
   RFI_DISCIPLINES, RFI_DISCIPLINE_LABELS, RFI_IMPACT_LEVELS, RFI_IMPACT_LEVEL_LABELS, DRAWING_UPDATE_STATUS_LABELS,
 } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
+import { HelpLink } from './help/HelpLink';
 import { RichTextEditor, isRichTextEmpty } from './ui/RichTextEditor';
 import { createRfi } from '../lib/rfis.api';
 import type { ProjectMember } from '../lib/projects.api';
@@ -117,6 +118,9 @@ export function RfiFormModal({
   return (
     <Modal open={open} onClose={handleClose} title="New RFI">
       <div className="space-y-4">
+        <div className="flex justify-end -mt-1">
+          <HelpLink slug="creating-an-rfi" label="How to fill out an RFI" />
+        </div>
         {error && <p className="field-error">{error}</p>}
 
         <div>
