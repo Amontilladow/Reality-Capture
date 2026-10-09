@@ -86,7 +86,7 @@ export class EmailComposerService {
     `);
     if (existing && existing.status === 'sent') return existing;
 
-    const attachments = await this.resolveAttachments(dto.attachments ?? []);
+    const attachments = await this.resolveAttachments(companyId, projectId, dto.attachments ?? []);
     const related = await this.resolveRelatedRecord(companyId, projectId, dto);
 
     const providerService = dto.provider === 'microsoft' ? this.outlook : this.gmail;
@@ -171,8 +171,28 @@ export class EmailComposerService {
   // same size/extension allow-list RFI attachments use (ticket 2b's own
   // constants) -- the client-declared contentType/filename on the DTO is
   // never trusted for the size check, only the real object as stored.
-  private async resolveAttachments(items: { storageKey: string; filename: string; contentType: string }[]) {
+  //
+  // Security-critical: unlike RfisService.addAttachment() (which only ever
+  // *registers* a storageKey as a pointer, gated afterwards by whatever
+  // permission protects viewing that RFI), this method reads the actual
+  // bytes and embeds them in an outgoing email to addresses outside this
+  // system entirely. Trusting an arbitrary client-supplied storageKey here
+  // would turn "I know a storage key string" into "I can exfiltrate that
+  // object to any external email address" -- a strictly more dangerous
+  // primitive. The prefix check below restricts every attachment to a key
+  // this exact project's own getAttachmentUploadUrl() could have issued
+  // (StorageService.generateKey's own `${companyId}/email-attachments/
+  // ${projectId}/...` shape), which was itself already gated on this
+  // user's project membership -- so no key for another company, another
+  // project, or another attachment type (RFI/issue/document/etc.) is ever
+  // accepted here, however it was obtained.
+  private async resolveAttachments(companyId: string, projectId: string, items: { storageKey: string; filename: string; contentType: string }[]) {
+    const allowedPrefix = `${companyId}/email-attachments/${projectId}/`;
     return Promise.all(items.map(async (item) => {
+      if (!item.storageKey.startsWith(allowedPrefix)) {
+        throw new BadRequestException(`Attachment was not uploaded for this project: ${item.filename}`);
+      }
+
       const ext = item.filename.split('.').pop()?.toLowerCase();
       if (!ext || !ATTACHMENT_ALLOWED_EXTENSIONS.has(ext)) {
         throw new BadRequestException(`Attachment type not allowed: ${item.filename}`);

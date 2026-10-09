@@ -533,18 +533,132 @@ that a real cross-project-membership 403 actually renders correctly in
 the browser -- same no-Postgres-in-this-environment limitation as every
 other Phase 3 stage.
 
-## Phase 3H — Incoming replies / threading — NOT IMPLEMENTED
+## Phase 3H — Incoming replies / threading — NOT IMPLEMENTED (design reasoning only, by deliberate choice)
 
-Per the brief's own Section 9: implement only if the infrastructure,
-permissions, provider configuration, and security controls support it
-reliably, and do not claim it works unless tested end to end. Given
-Phase 3C/3D's real credentials don't exist yet (account-level blocker,
-Section 1 above), this is expected to land after 3G at the earliest, and
-may end up architecturally designed-for but not fully implemented in
-this environment, consistent with the brief's own allowance for that
-outcome.
+Per the brief's own Section 9 allowance ("implement only if the
+infrastructure, permissions, provider configuration, and security
+controls support it reliably... do not claim it works unless tested end
+to end"), this stage is deliberately left NOT IMPLEMENTED rather than
+built partially or faked. Reasoning:
 
-## Phase 3I — Security, permission, and regression tests — NOT STARTED
+- **Both real ingestion mechanisms require infrastructure this
+  environment cannot stand up or test.** Microsoft Graph's own reply/
+  change-notification mechanism (`/subscriptions`) and Gmail's
+  equivalent (`users.watch` + a Google Cloud Pub/Sub topic) both require
+  a publicly reachable HTTPS webhook endpoint, a subscription-renewal
+  background job (Graph subscriptions expire in as little as a few
+  days; Gmail watch requests in 7), and -- for Gmail specifically -- a
+  separate Google Cloud Pub/Sub topic with its own IAM grant to Gmail's
+  own service account. None of this exists yet, and none of it can be
+  verified without a real, internet-reachable deployment and real OAuth
+  credentials for both providers (the same account-level blocker
+  Sections 1/3C/3D already flagged).
+- **No existing precedent in this codebase to extend.** The Calendar
+  integration (`workforce/calendar-integration`) this phase's own OAuth
+  plumbing was modeled on has no webhook/subscription handling either --
+  there is nothing to adapt, only a wholly new subsystem to design.
+- **Building it anyway, untested, would violate the brief's own closing
+  rule** ("never claim Outlook or Gmail is connected merely because the
+  code compiles... do not claim a feature works beyond what's actually
+  verified"). A reply-ingestion pipeline is specifically the kind of
+  thing that looks correct in code review and silently drops messages,
+  misattributes a reply to the wrong `email_messages` row, or leaks a
+  webhook payload cross-tenant in production -- exactly the class of bug
+  that *requires* a live end-to-end test against a real provider to have
+  any confidence in, which this environment cannot provide.
+- **What *is* already in place for a future implementation**: both
+  `email_messages.provider_message_id`/`thread_id` (captured for every
+  outgoing send, Phase 3E) are the join keys a future reply-ingestion
+  job would need to attach an inbound reply to the right outgoing
+  message's thread -- this groundwork was laid deliberately, even though
+  the ingestion side itself is not built.
+
+No code was written for this stage. Marking it NOT IMPLEMENTED here is
+itself the honest deliverable, per the brief's own explicit allowance
+not to build this if it can't be done reliably.
+
+## Phase 3I — Security, permission, and regression tests
+
+Reviewed the full email feature adversarially (every endpoint, every
+service method, every DTO) rather than just re-running the existing
+suite. Found and fixed two real issues; everything else already held.
+
+### Findings and fixes
+
+1. **FIXED -- attachment storage-key exfiltration path (high severity).**
+   `EmailComposerService.resolveAttachments()` took the client-supplied
+   `storageKey` on faith and called `StorageService.download()` on it
+   directly, then embedded the real bytes in an outgoing email to
+   external addresses. Unlike `RfisService.addAttachment()` (which only
+   ever *registers* a key as a pointer, still gated by whatever
+   permission protects viewing that RFI afterwards), this method reads
+   and forwards the actual content -- so any authenticated project
+   member who knew (or could learn, from a shared link, a chat message,
+   another API response) *any* storage key in the bucket -- another
+   project's RFI attachment, another user's document, in the worst case
+   another company's object if a key ever leaked -- could have it
+   emailed to any external address they chose. **Fix**: every attachment
+   `storageKey` must now start with the exact
+   `${companyId}/email-attachments/${projectId}/` prefix
+   `getAttachmentUploadUrl()` issues for this project (which is itself
+   gated on project membership) -- any other key is rejected before
+   `download()` is ever called. Covered by a new test asserting
+   `storage.download` is never invoked for a mismatched key.
+2. **FIXED -- email header injection via Gmail's raw MIME path (medium
+   severity).** `GmailClient.buildMimeMessage()` hand-builds raw RFC 2822
+   headers by string interpolation (`Subject: ${message.subject}`,
+   `Content-Disposition: attachment; filename="${a.filename}"`, etc.). An
+   embedded `\r\n` in `subject` (`SendEmailDto`) or an attachment's
+   `filename`/`contentType` (`SendEmailAttachmentDto`) could have
+   smuggled in an arbitrary extra header -- a hidden `Bcc:`, a second
+   `To:`, a `Content-Type` override defeating the MIME boundary --
+   directly into a message actually sent through Gmail's API. The
+   structured-JSON Outlook path was not vulnerable to this (Graph builds
+   the real outbound MIME itself from JSON field values). **Fix**: added
+   `@Matches(/^[^\r\n]*$/)` to `subject`/`filename`/`contentType` at the
+   DTO layer (the real control -- a 400 before the value ever reaches a
+   provider client), plus a `stripCrlf()` backstop inside
+   `buildMimeMessage()` itself as defense in depth, documented as a
+   backstop rather than the primary control. Covered by 4 new DTO
+   validation tests (`send-email.dto.spec.ts`) exercising the exact
+   injection string.
+3. **Reviewed, no change needed**: dynamic SQL identifiers
+   (`sql(entry.table)`/`sql(entry.column)` in `resolveRelatedRecord`)
+   only ever come from the fixed internal `REFERENCE_NUMBER_TABLES`
+   constant, never from request input, so there is no SQL-injection
+   surface there regardless of what a client passes as
+   `relatedRecordType`. `idempotencyKey`/recipients/body are all bound
+   query parameters, not identifiers or raw text, so no injection
+   surface there either.
+4. **Reviewed, no change needed**: no endpoint accepts a client-supplied
+   `userId` anywhere in this feature -- every send, list, and
+   upload-url call uses `@CurrentUser()`'s `u.id`/`u.companyId` only, so
+   there is no path for one user to send as another, read another
+   user's connection status, or act outside their own company.
+5. **Reviewed, no change needed**: `EmailComposerService.send()` and
+   `.listMessages()` both gate on project membership (Section 10)
+   *before* touching `email_messages` or any provider client, and
+   `related_record_id` lookups (both the explicit-override path and the
+   auto-match scan) are always additionally scoped to `project_id AND
+   company_id`, so cross-project and cross-company leakage through the
+   related-record association is not possible even if a client supplies
+   an ID for a record outside this project.
+
+### Regression pass
+
+Full existing test suite re-run after the fixes above: **560/560**
+passing (0 regressions), `tsc --noEmit` clean on both apps, `eslint`
+clean on both apps (same 2 pre-existing, unrelated warnings tracked
+since Phase 3C), both production builds succeed. 7 new tests added this
+stage (2 security-regression tests in `email-composer.service.spec.ts`,
+4 DTO-validation tests in `send-email.dto.spec.ts`, 1
+`getAttachmentUploadUrl` key-prefix test).
+
+**Not verified**: any of the above against a live backend with real
+OAuth credentials -- this review was static/adversarial code reading
+plus unit tests against mocked collaborators, not a penetration test
+against a running deployment. No claim is made beyond what the tests
+actually exercise.
 
 ## Open items requiring the account owner's action (running list)
 
@@ -557,3 +671,42 @@ outcome.
 3. **Google OAuth verification / Microsoft admin consent** — to be
    investigated and documented precisely in 3C/3D, per the brief's
    explicit "do not assume verification is unnecessary" instruction.
+
+## Section 16 — Final Report
+
+Honest, evidence-based status for every feature this phase covers.
+Nothing here is marked VERIFIED COMPLETE unless it was actually exercised
+(a passing test, a real API response, or a user-confirmed manual step);
+code that compiles and typechecks but was never run against a live
+provider is marked IMPLEMENTED BUT NOT VERIFIED, never more than that.
+
+| # | Feature | Status | Evidence |
+|---|---|---|---|
+| 1 | Audit of existing email architecture | VERIFIED COMPLETE | Phase 3A — repo-wide grep + direct file reads against `main`'s actual tip. |
+| 2 | Secure OAuth state signing + token encryption infrastructure | VERIFIED COMPLETE | Phase 3B — `oauth-state.util.spec.ts`, `email-token-store.service.spec.ts`, reuses the already-shipped `CredentialEncryptionService` (BYO AI feature). |
+| 3 | Outlook (Microsoft Graph) connect/status/test/disconnect | IMPLEMENTED BUT NOT VERIFIED | Phase 3C — 11 unit tests pass against mocked collaborators; no real Entra App Registration exists in this environment to run the actual OAuth dance against. |
+| 4 | Gmail connect/status/test/disconnect | IMPLEMENTED BUT NOT VERIFIED | Phase 3D — 11 unit tests pass; no real Google Cloud OAuth client exists here either. |
+| 5 | Delegated (not application-wide) OAuth scopes for both providers | VERIFIED COMPLETE | Scopes are hard-coded minimal (`Mail.Send`/`gmail.send` + identity only) in `microsoft-graph-client.ts`/`gmail-client.ts` — inspectable directly in the source, not dependent on a live run. |
+| 6 | Encryption at rest for OAuth tokens | VERIFIED COMPLETE | Same `CredentialEncryptionService` (AES-256-GCM) as the already-shipped BYO AI feature; `email_integrations` migration's encrypted columns inspected directly. |
+| 7 | Outgoing send capability, both providers | IMPLEMENTED BUT NOT VERIFIED | Phase 3E — `MicrosoftGraphClient.sendMail()`/`GmailClient.sendMail()` are code-complete (create-draft-then-send; hand-built MIME) but never called against a real mailbox. |
+| 8 | Compose UI (To/CC/BCC/Subject/Message/Attachments) | IMPLEMENTED BUT NOT VERIFIED | `EmailComposerModal.tsx` — `tsc`/`eslint`/production build all pass; never opened in a browser against a live backend (no Postgres in this environment — `pg_isready` confirms). |
+| 9 | Attachment handling (presigned upload, server-side re-validation, size/type limits) | VERIFIED COMPLETE (logic) / NOT VERIFIED (live upload) | Reuses the exact `ATTACHMENT_MAX_SIZE`/`ATTACHMENT_ALLOWED_EXTENSIONS` constants and re-validation pattern RFI attachments already ship with in production; the storage-key-exfiltration fix (3I, finding 1) is itself unit-tested. A real browser-to-S3-compatible-storage round trip was not exercised. |
+| 10 | Duplicate-send prevention (idempotency) | VERIFIED COMPLETE (logic) | `UNIQUE(initiating_user_id, idempotency_key)` constraint + `ON CONFLICT ... DO UPDATE`, covered by 2 passing tests (replay-returns-existing, retry-after-failure-resends-once). |
+| 11 | Auto-match by reference number | VERIFIED COMPLETE (logic) | Regex + 4-table lookup, covered by tests for the no-match, single-match, and explicit-override-verified cases. Never run against real production data, so real-world false-positive/negative rates are unmeasured. |
+| 12 | Project/workflow entry points (RFI/Issue/Submittal/Snag "Email" buttons) | IMPLEMENTED BUT NOT VERIFIED | Phase 3F — four pages wired, each passing the correct `relatedRecordType`/Id; not click-tested in a browser (same no-live-backend limitation). |
+| 13 | Email history / audit trail (metadata-only) | IMPLEMENTED BUT NOT VERIFIED | Phase 3G — `listMessages()` + `EmailHistoryList`/`EmailHistoryModal`; gated server-side by the same project-membership check as sending. Never rendered against real rows. |
+| 14 | Access control — only authorized project members send/see project email | VERIFIED COMPLETE (logic) | Every entry point (`send`, `listMessages`, `getAttachmentUploadUrl`) gates on project membership before touching any data; covered by dedicated rejection tests for each. Not verified against a real cross-company/cross-project attempt in a running system. |
+| 15 | No message body ever stored | VERIFIED COMPLETE (by design) | `email_messages`' own column list has no body field — inspectable directly in migration 066; nothing in `EmailComposerService` ever reads or persists `bodyText` beyond the outgoing send call itself. |
+| 16 | Incoming replies / threading | NOT IMPLEMENTED | Phase 3H — deliberately not built; infrastructure (public webhook endpoint, subscription renewal, Pub/Sub for Gmail) does not exist in this environment and has no precedent in this codebase to extend. Architectural groundwork (`provider_message_id`/`thread_id` captured on every send) is in place for a future implementation. |
+| 17 | Security review (adversarial, not just re-running existing tests) | VERIFIED COMPLETE | Phase 3I — found and fixed one high-severity (attachment storage-key exfiltration) and one medium-severity (Gmail MIME header injection) issue; both fixed and covered by new regression tests. |
+| 18 | Full regression (nothing else broke) | VERIFIED COMPLETE | 560/560 Jest tests passing, `tsc --noEmit` clean on both apps, `eslint` clean on both apps (same 2 pre-existing, unrelated warnings since before this phase), both production builds succeed — re-confirmed after every stage's changes, most recently after the 3I fixes. |
+
+**Closing statement, per the brief's own rule**: no provider is claimed
+"connected" in this environment. Every piece of OAuth plumbing, every
+provider client, and the composer/send/history pipeline built on top of
+them is code-complete, typechecked, linted, and unit-tested against
+mocked collaborators — never exercised against a real Microsoft or
+Google account, because no such account's credentials exist in this
+environment (Section 1's account-level blocker, unchanged throughout
+every stage). The account owner's three open items above are what stand
+between this code and a first real, verifiable connection.

@@ -1,5 +1,5 @@
 import {
-  IsArray, IsEmail, IsIn, IsOptional, IsString, IsUUID,
+  IsArray, IsEmail, IsIn, IsOptional, IsString, IsUUID, Matches,
   ArrayMaxSize, ArrayMinSize, MaxLength, MinLength, ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -28,7 +28,14 @@ export class SendEmailDto {
   @IsEmail({}, { each: true })
   bcc?: string[];
 
+  // No CR/LF allowed: GmailClient hand-builds raw RFC 2822 headers from this
+  // value (see its own buildMimeMessage() comment) -- an embedded \r\n
+  // would let a subject smuggle in extra headers (a hidden Bcc, a second
+  // To, a Content-Type override) into that raw message. Rejected here,
+  // once, for every provider, rather than each client having to sanitize
+  // it (or risk forgetting to).
   @IsString() @MinLength(1) @MaxLength(255)
+  @Matches(/^[^\r\n]*$/, { message: 'Subject cannot contain line breaks.' })
   subject: string;
 
   @IsString() @MinLength(1) @MaxLength(50_000)

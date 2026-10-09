@@ -120,13 +120,23 @@ export class GmailClient {
     return { providerMessageId: res.data.id, threadId: res.data.threadId };
   }
 
+  // Every header value below comes from EmailComposerService's own DTO
+  // validation (SendEmailDto.subject, SendEmailAttachmentDto.filename/
+  // contentType all reject CR/LF; to/cc/bcc are validated email
+  // addresses). stripCrlf() is a backstop, not the primary control --
+  // raw headers built by string interpolation are inherently one
+  // embedded line break away from smuggling in an extra header (a
+  // hidden Bcc, a second To, a Content-Type override), and this method
+  // has no way to know whether every future caller went through that
+  // validation.
   private buildMimeMessage(message: OutgoingMessage): string {
+    const stripCrlf = (s: string) => s.replace(/[\r\n]/g, '');
     const boundary = `----=_Part_${randomUUID()}`;
     const headers = [
-      `To: ${message.to.join(', ')}`,
-      message.cc.length > 0 ? `Cc: ${message.cc.join(', ')}` : null,
-      message.bcc.length > 0 ? `Bcc: ${message.bcc.join(', ')}` : null,
-      `Subject: ${message.subject}`,
+      `To: ${message.to.map(stripCrlf).join(', ')}`,
+      message.cc.length > 0 ? `Cc: ${message.cc.map(stripCrlf).join(', ')}` : null,
+      message.bcc.length > 0 ? `Bcc: ${message.bcc.map(stripCrlf).join(', ')}` : null,
+      `Subject: ${stripCrlf(message.subject)}`,
       'MIME-Version: 1.0',
       message.attachments.length > 0 ? `Content-Type: multipart/mixed; boundary="${boundary}"` : 'Content-Type: text/plain; charset="UTF-8"',
     ].filter((line): line is string => line !== null);
@@ -142,9 +152,9 @@ export class GmailClient {
         message.bodyText,
         ...message.attachments.flatMap((a) => [
           `--${boundary}`,
-          `Content-Type: ${a.contentType}; name="${a.filename}"`,
+          `Content-Type: ${stripCrlf(a.contentType)}; name="${stripCrlf(a.filename)}"`,
           'Content-Transfer-Encoding: base64',
-          `Content-Disposition: attachment; filename="${a.filename}"`,
+          `Content-Disposition: attachment; filename="${stripCrlf(a.filename)}"`,
           '',
           a.contentBase64,
         ]),

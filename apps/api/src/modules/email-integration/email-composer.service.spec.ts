@@ -69,6 +69,29 @@ function baseDto(overrides: Partial<SendEmailDto> = {}): SendEmailDto {
   } as SendEmailDto;
 }
 
+describe('EmailComposerService.getAttachmentUploadUrl', () => {
+  it('rejects a non-member and never calls storage', async () => {
+    const { svc, storage } = makeService({ responders: [{ match: 'FROM project_members', rows: [] }] });
+    await expect(svc.getAttachmentUploadUrl(companyId, projectId, userId, 'project_engineer', { filename: 'drawing.pdf', sizeBytes: 1024 }))
+      .rejects.toThrow(ForbiddenException);
+    expect(storage.getObjectSize).not.toHaveBeenCalled();
+  });
+
+  it('generates a key under the exact prefix resolveAttachments() later requires', async () => {
+    const generateKey = jest.fn().mockReturnValue(`${companyId}/email-attachments/${projectId}/generated.pdf`);
+    const getUploadUrl = jest.fn().mockResolvedValue({ uploadUrl: 'https://example.com/put' });
+    const { svc } = makeService({
+      responders: [{ match: 'FROM project_members', rows: [{ role: 'site_engineer' }] }],
+      storageOverrides: { generateKey, getUploadUrl },
+    });
+
+    const result = await svc.getAttachmentUploadUrl(companyId, projectId, userId, 'project_engineer', { filename: 'drawing.pdf', sizeBytes: 1024 });
+
+    expect(generateKey).toHaveBeenCalledWith(companyId, projectId, 'email-attachments', 'drawing.pdf');
+    expect(result.storageKey.startsWith(`${companyId}/email-attachments/${projectId}/`)).toBe(true);
+  });
+});
+
 describe('EmailComposerService.send -- project membership', () => {
   it('rejects a user who is not a member of the project, even before touching any provider', async () => {
     const { svc, outlook } = makeService({ responders: [{ match: 'FROM project_members', rows: [] }] });
@@ -146,7 +169,7 @@ describe('EmailComposerService.send -- provider dispatch and failure handling', 
 describe('EmailComposerService.send -- attachment validation', () => {
   it('rejects a disallowed file extension before ever calling the provider', async () => {
     const { svc, outlook } = makeService({ responders: [{ match: 'FROM project_members', rows: [{ role: 'site_engineer' }] }] });
-    const dto = baseDto({ attachments: [{ storageKey: 'key-1', filename: 'malware.exe', contentType: 'application/octet-stream' }] });
+    const dto = baseDto({ attachments: [{ storageKey: 'company-1/email-attachments/project-1/key-1', filename: 'malware.exe', contentType: 'application/octet-stream' }] });
     await expect(svc.send(companyId, userId, 'project_engineer', projectId, dto)).rejects.toThrow(BadRequestException);
     expect(outlook.sendMail).not.toHaveBeenCalled();
   });
@@ -156,7 +179,7 @@ describe('EmailComposerService.send -- attachment validation', () => {
       responders: [{ match: 'FROM project_members', rows: [{ role: 'site_engineer' }] }],
       storageOverrides: { getObjectSize: jest.fn().mockResolvedValue(null) },
     });
-    const dto = baseDto({ attachments: [{ storageKey: 'key-1', filename: 'drawing.pdf', contentType: 'application/pdf' }] });
+    const dto = baseDto({ attachments: [{ storageKey: 'company-1/email-attachments/project-1/key-1', filename: 'drawing.pdf', contentType: 'application/pdf' }] });
     await expect(svc.send(companyId, userId, 'project_engineer', projectId, dto)).rejects.toThrow(BadRequestException);
   });
 
@@ -165,8 +188,23 @@ describe('EmailComposerService.send -- attachment validation', () => {
       responders: [{ match: 'FROM project_members', rows: [{ role: 'site_engineer' }] }],
       storageOverrides: { getObjectSize: jest.fn().mockResolvedValue(10 * 1024 * 1024) },
     });
-    const dto = baseDto({ attachments: [{ storageKey: 'key-1', filename: 'drawing.pdf', contentType: 'application/pdf' }] });
+    const dto = baseDto({ attachments: [{ storageKey: 'company-1/email-attachments/project-1/key-1', filename: 'drawing.pdf', contentType: 'application/pdf' }] });
     await expect(svc.send(companyId, userId, 'project_engineer', projectId, dto)).rejects.toThrow(BadRequestException);
+  });
+
+  // Security regression (Phase 3I): without this check, a project member
+  // could pass ANY storage key they happen to know -- another project's
+  // RFI attachment, another company's object, anything -- and this
+  // service would download and email its real bytes to an external
+  // address. Verifies the fix rejects a key that was never issued for
+  // this project's own email attachments, before download() is ever called.
+  it('rejects an attachment storage key from a different project or attachment type, even if otherwise valid', async () => {
+    const { svc, storage } = makeService({
+      responders: [{ match: 'FROM project_members', rows: [{ role: 'site_engineer' }] }],
+    });
+    const dto = baseDto({ attachments: [{ storageKey: 'company-1/rfi-attachments/some-other-project/secret.pdf', filename: 'secret.pdf', contentType: 'application/pdf' }] });
+    await expect(svc.send(companyId, userId, 'project_engineer', projectId, dto)).rejects.toThrow(BadRequestException);
+    expect(storage.download).not.toHaveBeenCalled();
   });
 });
 
