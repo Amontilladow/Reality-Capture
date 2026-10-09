@@ -21,3 +21,4 @@ export * from './audit.types';
 export * from './api.types';
 export * from './workforce.types';
 export * from './risk.types';
+export * from './email-integration.types';
