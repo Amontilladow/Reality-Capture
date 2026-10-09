@@ -24,9 +24,9 @@ export const troubleshootingArticles: HelpArticle[] = [
     title: 'Project Not Visible',
     summary: 'A project you expect to access doesn\'t appear in your project list.',
     troubleshootingSteps: [
-      { problem: 'Project missing from the list', likelyCause: 'You have not been added as a member of that project.', fix: 'Ask that project\'s Project Lead or your company admin to add you as a member.' },
+      { problem: 'Project missing from the list', likelyCause: 'Every non-archived company project appears to every company user -- this isn\'t a membership issue. The project has most likely been archived.', fix: 'Ask your company admin to confirm the project\'s status, or check with whoever administers your company account.' },
     ],
-    relatedSlugs: ['selecting-a-project'],
+    relatedSlugs: ['selecting-a-project', 'understanding-project-access'],
     keywords: ['project missing', 'project not visible'],
   },
   {
@@ -35,7 +35,8 @@ export const troubleshootingArticles: HelpArticle[] = [
     title: 'Access Denied',
     summary: 'You get a permission error trying to create, edit, or view something.',
     troubleshootingSteps: [
-      { problem: 'A create/edit action is blocked', likelyCause: 'Most write actions (RFIs, Submittals, Transmittals, QA Inspections, Documents, Captures, Floor Plans, BIM Models, Team management) require the "manage_project_records" or "manage_team" permission, or being that project\'s Project Lead.', fix: 'Ask your project\'s Project Lead or company admin to check your role and permission grants.' },
+      { problem: 'A create action is blocked', likelyCause: 'Creating an Issue, RFI, Snag, Submittal, Transmittal, or QA Inspection is open to any project member -- if this is blocked, it\'s more likely a different field validation error. Uploading a Document, Capture, Floor Plan, or BIM Model does require "manage_project_records" (or Project Lead), though.', fix: 'Check for a validation message first; if creating a Document/Capture/Floor Plan/BIM Model specifically, ask for "manage_project_records".' },
+      { problem: 'An edit, delete, or team-management action is blocked', likelyCause: 'Editing or deleting almost any existing record requires "manage_project_records" (or Project Lead); adding/changing a project member requires "manage_team".', fix: 'Ask your project\'s Project Lead or company admin to check your role and permission grants.' },
       { problem: 'A review/approval or verification action is blocked', likelyCause: 'RFI review decisions need "manage_rfis" or "approve_rfis"; snag verification needs "manage_project_records" or "verify_snag_items".', fix: 'Ask for the specific narrower permission if you only need that one capability.' },
     ],
     relatedSlugs: ['understanding-your-role', 'understanding-user-permissions'],
@@ -123,6 +124,29 @@ export const troubleshootingArticles: HelpArticle[] = [
     ],
     relatedSlugs: ['understanding-ai-limitations'],
     keywords: ['ai not responding', 'ai assistant error', 'assistant blocked'],
+  },
+  {
+    slug: 'trouble-cant-close-issue',
+    category: 'troubleshooting',
+    title: 'Can\'t Close an Issue',
+    summary: 'The "Close" action on an issue is unavailable or rejected.',
+    troubleshootingSteps: [
+      { problem: 'Close is rejected with an evidence error', likelyCause: 'No photo or capture has been attached to the issue yet.', fix: 'Attach at least one photo or capture, then try closing again.' },
+      { problem: 'The close option isn\'t available at all', likelyCause: 'Closing requires a sufficiently senior company role (Engineering Manager or above) or the "manage_issues" project permission -- being the project\'s own Project Lead isn\'t enough on its own.', fix: 'Ask your company admin or project lead for the "manage_issues" permission, or have someone with the right role close it.' },
+    ],
+    relatedSlugs: ['reviewing-and-closing-an-issue'],
+    keywords: ['cannot close issue', 'close issue blocked'],
+  },
+  {
+    slug: 'trouble-rfi-wont-submit',
+    category: 'troubleshooting',
+    title: 'RFI Won\'t Submit',
+    summary: 'A drafted RFI can\'t be moved to submitted status.',
+    troubleshootingSteps: [
+      { problem: 'Submit is rejected', likelyCause: 'Submitting is only available to the RFI\'s own creator, someone with "manage_rfis", the project\'s Project Lead, or a super_admin.', fix: 'Ask the RFI\'s creator to submit it, or ask for the "manage_rfis" permission if you need to submit RFIs regularly.' },
+    ],
+    relatedSlugs: ['submitting-an-rfi'],
+    keywords: ['rfi wont submit', 'rfi stuck in draft'],
   },
   {
     slug: 'trouble-unexpected-error',

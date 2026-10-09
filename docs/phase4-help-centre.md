@@ -507,3 +507,47 @@ production build succeeds.
 **Not yet verified**: a real browser render/manual click-through.
 Expanded FAQ/troubleshooting coverage (4H) and the final permissions/
 responsiveness/navigation test pass + report (4I) remain.
+
+## Phase 4H — Expand FAQ and troubleshooting coverage — VERIFIED COMPLETE
+
+**Caught and fixed two more leftover errors from before the Phase 4D
+correction pass**, both in content written during 4B/4C (before the
+deeper permission audit) and missed when 4D corrected the same mistakes
+elsewhere: `faq-which-projects-can-i-see` and
+`trouble-project-not-visible` both still claimed project visibility was
+membership-gated ("you only see projects you've been added to") --
+corrected to match the verified fact (every non-archived company
+project is visible to every company user). `faq-why-cant-i-create-something`
+and `trouble-access-denied` both still claimed RFIs/Submittals/
+Transmittals/QA Inspections needed `manage_project_records` to *create*
+-- corrected to the verified pattern (create is open to any project
+member; only Documents/Captures/Floor Plans/BIM Models require the
+permission to create; edit/delete needs it for almost everything).
+Running the full-content dead-link/duplicate-slug check (same method as
+4D/4E/4G) after every content change remains how these keep getting
+caught before commit rather than after.
+
+**New FAQ entries** (`faq.ts`, 5 -> 11 entries), covering modules the
+original 5 entries predated: what a Transmittal is, what a QA
+Inspection is and how it differs from Snagging, why Reports numbers
+don't match a prior week (computed live, no snapshot), whether
+Documents syncs with Procore/Aconex/SharePoint/BIM 360 (no), who can
+invite users and approve roles, and who can edit/archive a project
+(any company member -- the same flagged finding from 4D, surfaced here
+too since it's a natural FAQ).
+
+**New troubleshooting entries** (`troubleshooting.ts`, 12 -> 14 symptoms,
+plus the 2 corrections above): "Can't Close an Issue" (evidence vs.
+role/permission) and "RFI Won't Submit" (creator/manage_rfis/Project
+Lead/super_admin only) -- both direct from Phase 4D's RFI/Issue
+authorization findings, which the original 12 generic Section K symptoms
+didn't specifically cover.
+
+**Verified**: `tsc --noEmit` clean, `eslint --max-warnings=0` clean,
+production build succeeds, and the full dead-link/duplicate-slug check
+across all 14 content files is clean (132 slugs, 150 relatedSlugs
+references, zero missing, zero duplicates).
+
+**Not yet verified**: a real browser render/manual click-through. Phase
+4I (permissions/responsiveness/navigation testing + final report)
+remains.
