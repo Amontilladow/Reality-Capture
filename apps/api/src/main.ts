@@ -1,5 +1,6 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe, ClassSerializerInterceptor, Logger } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
@@ -8,7 +9,7 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['error', 'warn', 'log', 'debug'],
   });
 
@@ -18,6 +19,17 @@ async function bootstrap() {
 
   // ── Global prefix ────────────────────────────────────────────────────────
   app.setGlobalPrefix('api/v1');
+
+  // Render terminates TLS and proxies every request through exactly one
+  // internal hop before it reaches this container. Without this, Express's
+  // req.ip is Render's proxy address for every request, not the real
+  // client -- which silently turns the per-client ThrottlerGuard rate
+  // limits (app.module.ts) into one shared bucket across all users, and
+  // makes the IP logged at login/refresh (auth.controller.ts) useless.
+  // Trusting exactly one hop (not `true`, which would trust an
+  // attacker-supplied X-Forwarded-For chain of any length) is the correct,
+  // minimal fix for this single-reverse-proxy topology.
+  app.set('trust proxy', 1);
 
   // Parses the Cookie request header into req.cookies -- needed to read the
   // httpOnly refresh-token cookie the web SPA relies on (see auth.controller.ts).
