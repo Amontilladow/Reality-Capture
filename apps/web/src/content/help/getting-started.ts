@@ -1,0 +1,168 @@
+import type { HelpArticle } from './types';
+
+// Verified against the actual login/auth flow (Login.tsx, ForgotPassword.tsx,
+// ResetPassword.tsx, AcceptInvitation.tsx, SelfSignup.tsx, PendingApproval.tsx,
+// AppShell.tsx's sidebar, ProjectContextPanel.tsx) -- not assumed. "Updating
+// Your Profile" from the brief's suggested list is deliberately omitted:
+// there is no self-service profile-editing feature anywhere in this
+// codebase (confirmed: no endpoint, no page, no form) -- see
+// docs/phase4-help-centre.md's Phase 4A findings.
+export const gettingStartedArticles: HelpArticle[] = [
+  {
+    slug: 'welcome-to-engineeringos',
+    category: 'getting-started',
+    title: 'Welcome to EngineeringOS',
+    summary: 'What EngineeringOS is and how this Help Centre is organized.',
+    whatItDoes: 'EngineeringOS is where your company runs its construction and engineering projects: reality captures, floor plans, issues, snagging, RFIs, submittals, transmittals, QA inspections, documents, progress reports, and risk tracking all live in one place, organized by project.',
+    whenToUse: 'Start here on your first visit, or any time you want a refresher on how the platform fits together.',
+    whoCanUse: 'Every signed-in user.',
+    steps: [
+      'Use the left sidebar to move between company-wide areas (Projects, Messages, Workforce, AI Provider, Email Integration, Help & Training) and, once you open a project, that project\'s own modules.',
+      'Browse this Help Centre by category on the left, or use the search box at the top to jump straight to an article.',
+      'If you are new, read "Logging In", "Understanding Your Account", and "Navigating the Platform" next.',
+    ],
+    relatedSlugs: ['logging-in', 'understanding-your-account', 'navigating-the-platform'],
+    keywords: ['welcome', 'introduction', 'overview', 'start'],
+  },
+  {
+    slug: 'logging-in',
+    category: 'getting-started',
+    title: 'Logging In',
+    summary: 'How to sign in to your EngineeringOS account.',
+    whatItDoes: 'Signs you in with your email and password.',
+    whoCanUse: 'Anyone with an EngineeringOS account at your company.',
+    prerequisites: ['An account created by your company admin (via invitation) or approved after self-signup.'],
+    steps: [
+      'Go to the EngineeringOS login page.',
+      'Enter your email address and password.',
+      'Select "Sign in."',
+    ],
+    afterSubmission: 'You land on the Projects page, showing every project you have access to.',
+    commonMistakes: [
+      'Using the email address your invitation was sent to, not a different one — an account is tied to one specific email.',
+      'If your account was created by self-signup, you may see a "Pending Approval" screen instead of the normal app until a company admin approves your role.',
+    ],
+    troubleshootingSteps: [
+      { problem: 'Login fails with an error', likelyCause: 'Wrong email/password, or your account has been deactivated.', fix: 'Double-check your email and password. If you still cannot sign in, ask your company admin to confirm your account is active, or use "Resetting Your Password" below.' },
+    ],
+    relatedSlugs: ['resetting-your-password', 'understanding-your-account'],
+    keywords: ['login', 'log in', 'sign in', 'password'],
+  },
+  {
+    slug: 'resetting-your-password',
+    category: 'getting-started',
+    title: 'Resetting Your Password',
+    summary: 'How to reset your password if you\'ve forgotten it, or get help from your admin.',
+    whatItDoes: 'Lets you set a new password yourself by email, or have your company admin generate a reset link for you.',
+    whoCanUse: 'Any user, for their own account (self-service). Company admins and super admins can also generate a reset link for someone else from Team & Permissions.',
+    steps: [
+      'Self-service: on the login page, select "Forgot password?"',
+      'Enter your email address and submit.',
+      'Check your email for the reset link and open it.',
+      'Enter a new password and confirm it.',
+    ],
+    afterSubmission: 'Your password is updated immediately; sign in with the new password.',
+    commonMistakes: ['The reset link expires after a limited time — request a new one if it no longer works.'],
+    troubleshootingSteps: [
+      { problem: 'No reset email arrives', likelyCause: 'Delivery issue, or the email isn\'t the one your account uses.', fix: 'Check your spam folder, confirm the email address, and if it still doesn\'t arrive, ask your company admin to generate a reset link for you directly from Team & Permissions.' },
+    ],
+    relatedSlugs: ['logging-in'],
+    keywords: ['password', 'reset', 'forgot password'],
+  },
+  {
+    slug: 'understanding-your-account',
+    category: 'getting-started',
+    title: 'Understanding Your Account',
+    summary: 'Where to see your own name, email, and how to sign out.',
+    whatItDoes: 'The bottom of the left sidebar always shows your name and email, with a "Sign out" button underneath.',
+    whoCanUse: 'Every signed-in user.',
+    steps: [
+      'Look at the bottom of the left sidebar at any time to confirm which account you\'re signed in as.',
+      'Select "Sign out" there to end your session.',
+    ],
+    commonMistakes: ['There is currently no page to edit your own name, email, or avatar — those are set when your account is created or invited, and changed by your company admin if needed.'],
+    relatedSlugs: ['understanding-your-role', 'understanding-your-organization'],
+    keywords: ['account', 'profile', 'sign out', 'logout'],
+  },
+  {
+    slug: 'understanding-your-organization',
+    category: 'getting-started',
+    title: 'Understanding Your Organization',
+    summary: 'What your organization slot (Client, PMC, Lead Design Consultant, Main Contractor, Subcontractor) means on a project.',
+    whatItDoes: 'On a given project, you may be assigned to one of five organization slots that describe which party you represent: Client, PMC, Lead Design Consultant, Main Contractor, or Subcontractor. This is used for RFI routing and project reporting — it is separate from your company role.',
+    whenToUse: 'Relevant whenever you\'re working with RFIs or seeing project participants grouped by organization.',
+    whoCanUse: 'Every project member who has been assigned an organization slot. Not every member necessarily has one.',
+    steps: [
+      'Open a project. If you have an organization slot on it, it appears as a badge in the project panel at the top of the left sidebar, next to your project role.',
+    ],
+    commonMistakes: ['Organization slot is not the same as your company role (e.g. Project Manager, Consultant) — a single company role can appear in different organization slots on different projects.'],
+    relatedSlugs: ['understanding-your-role'],
+    keywords: ['organization', 'org', 'client', 'pmc', 'lead design consultant', 'main contractor', 'subcontractor'],
+  },
+  {
+    slug: 'understanding-your-role',
+    category: 'getting-started',
+    title: 'Understanding Your Role',
+    summary: 'How your company role and project role together decide what you can see and do.',
+    whatItDoes: 'Two separate things decide your permissions: your company role (set once, company-wide — e.g. Project Manager, Site Engineer is actually a project role, Consultant, Client Representative) and your project role on each specific project (Project Lead, Site Engineer, Surveyor, Document Controller, Capture Operator, or Viewer, set per project). A project\'s own Project Lead can do almost anything on that project without needing extra permissions; other actions (managing RFIs, approving reviews, verifying snag items, managing the team) require a specific permission grant from an admin.',
+    whenToUse: 'Whenever a button or action seems to be missing — this is almost always a role/permission question.',
+    whoCanUse: 'Every signed-in user.',
+    steps: [
+      'Open a project. Your project role for that project shows as a badge in the sidebar\'s project panel.',
+      'If you believe you should have access to an action you don\'t see, ask whoever manages your company account or your project\'s Project Lead to check your role and permission grants.',
+    ],
+    commonMistakes: [
+      'Expecting the same access on every project — project roles and permission grants are set per project, not company-wide.',
+      'Construction Manager and Project Engineer company roles have full working access to Floor Plans, Issues, and Snagging, but read-only access everywhere else (no project settings, user management, or billing) — this is by design, not a bug.',
+    ],
+    relatedSlugs: ['understanding-your-organization', 'understanding-user-permissions'],
+    keywords: ['role', 'permissions', 'project lead', 'site engineer', 'access'],
+  },
+  {
+    slug: 'navigating-the-platform',
+    category: 'getting-started',
+    title: 'Navigating the Platform',
+    summary: 'How the left sidebar and top header work, on desktop and mobile.',
+    whatItDoes: 'The left sidebar is the main way to move around: company-wide sections when you\'re not inside a project, and that project\'s own modules (Captures, Floor Plans, Issues, Snagging, RFIs, Submittals, Transmittals, QA Inspections, Documents, Progress Report, Reports, BIM Models, BuildLens, AI Assistant, Risk) once you are.',
+    whoCanUse: 'Every signed-in user — which modules actually appear in a project depends on your access.',
+    steps: [
+      'On desktop, the sidebar is always visible on the left.',
+      'On mobile or a narrow tablet, select the menu icon in the top-left header to open the sidebar as a drawer; it closes automatically once you pick a destination.',
+      'Use "All projects" at the top of a project\'s sidebar to return to your project list.',
+    ],
+    relatedSlugs: ['selecting-a-project', 'understanding-the-dashboard'],
+    keywords: ['navigation', 'sidebar', 'menu', 'mobile'],
+  },
+  {
+    slug: 'selecting-a-project',
+    category: 'getting-started',
+    title: 'Selecting a Project',
+    summary: 'How to open a project, and switch between projects once inside one.',
+    whatItDoes: 'Opens a specific project\'s workspace.',
+    whoCanUse: 'Any user who is a member of at least one project.',
+    steps: [
+      'From "Projects" in the sidebar (or the EngineeringOS logo), select a project card to open it.',
+      'Once inside a project, use the dropdown at the top of the sidebar to switch directly to a different project without going back to the list.',
+    ],
+    troubleshootingSteps: [
+      { problem: 'A project you expect to see is missing from the list', likelyCause: 'You haven\'t been added as a member of that project yet.', fix: 'Ask that project\'s Project Lead or your company admin to add you.' },
+    ],
+    relatedSlugs: ['understanding-project-information'],
+    keywords: ['project', 'select', 'switch project'],
+  },
+  {
+    slug: 'understanding-notifications',
+    category: 'getting-started',
+    title: 'Understanding Notifications',
+    summary: 'What triggers a notification and where to see them.',
+    whatItDoes: 'The bell icon at the top of the sidebar shows notifications for things that happen to records you\'re involved in — for example, being assigned to an issue, a new comment on an issue you\'re assigned to, or an issue being forwarded to you. Selecting a notification opens the relevant record.',
+    whoCanUse: 'Every signed-in user, for notifications about their own activity.',
+    steps: [
+      'Select the bell icon in the sidebar to see your notifications.',
+      'Select a notification to open the record it relates to.',
+    ],
+    commonMistakes: ['There is currently no settings page to change what triggers a notification or to mute specific types — notification behavior is the same for every user.'],
+    relatedSlugs: [],
+    keywords: ['notifications', 'bell', 'alerts'],
+  },
+];
