@@ -130,7 +130,7 @@ export const gettingStartedArticles: HelpArticle[] = [
       'On mobile or a narrow tablet, select the menu icon in the top-left header to open the sidebar as a drawer; it closes automatically once you pick a destination.',
       'Use "All projects" at the top of a project\'s sidebar to return to your project list.',
     ],
-    relatedSlugs: ['selecting-a-project', 'understanding-the-dashboard'],
+    relatedSlugs: ['selecting-a-project', 'understanding-the-projects-page'],
     keywords: ['navigation', 'sidebar', 'menu', 'mobile'],
   },
   {
@@ -138,16 +138,16 @@ export const gettingStartedArticles: HelpArticle[] = [
     category: 'getting-started',
     title: 'Selecting a Project',
     summary: 'How to open a project, and switch between projects once inside one.',
-    whatItDoes: 'Opens a specific project\'s workspace.',
-    whoCanUse: 'Any user who is a member of at least one project.',
+    whatItDoes: 'Opens a specific project\'s workspace. Every non-archived project belonging to your company appears in your list and can be opened -- there is no membership restriction on viewing a project\'s own pages and records. What you can change inside it still depends on your role and any permissions granted on that project (see "Understanding Project Access").',
+    whoCanUse: 'Any signed-in user in your company.',
     steps: [
       'From "Projects" in the sidebar (or the EngineeringOS logo), select a project card to open it.',
       'Once inside a project, use the dropdown at the top of the sidebar to switch directly to a different project without going back to the list.',
     ],
     troubleshootingSteps: [
-      { problem: 'A project you expect to see is missing from the list', likelyCause: 'You haven\'t been added as a member of that project yet.', fix: 'Ask that project\'s Project Lead or your company admin to add you.' },
+      { problem: 'A project you expect to see is missing from the list', likelyCause: 'The project has been archived, or it belongs to a different company.', fix: 'Ask your company admin to confirm the project\'s status.' },
     ],
-    relatedSlugs: ['understanding-project-information'],
+    relatedSlugs: ['understanding-the-project-dashboard'],
     keywords: ['project', 'select', 'switch project'],
   },
   {

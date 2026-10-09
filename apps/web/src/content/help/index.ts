@@ -5,18 +5,33 @@ import { gettingStartedArticles } from './getting-started';
 import { glossaryArticles } from './glossary';
 import { faqArticles } from './faq';
 import { troubleshootingArticles } from './troubleshooting';
+import { floorPlansArticles } from './floor-plans-pinpoints';
+import { issuesSnaggingArticles } from './issues-snagging';
+import { rfiArticles } from './rfi';
+import { drawingsDocumentsArticles } from './drawings-documents';
+import { reportsProgressArticles } from './reports-progress';
+import { notificationsEmailArticles } from './notifications-email';
+import { aiAssistantArticles } from './ai-assistant';
+import { userManagementArticles } from './user-management';
+import { dashboardProjectsArticles } from './dashboard-projects';
 
 export * from './types';
 
-// Single source of truth for every article -- Phase 4D adds the
-// remaining category files (dashboard/projects, floor plans, issues/
-// snagging, rfi, drawings/documents, reports/progress, notifications/
-// email, ai-assistant, user-management) here the same way.
+// Single source of truth for every article.
 export const ALL_HELP_ARTICLES: HelpArticle[] = [
   ...gettingStartedArticles,
   ...glossaryArticles,
   ...faqArticles,
   ...troubleshootingArticles,
+  ...dashboardProjectsArticles,
+  ...floorPlansArticles,
+  ...issuesSnaggingArticles,
+  ...rfiArticles,
+  ...drawingsDocumentsArticles,
+  ...reportsProgressArticles,
+  ...notificationsEmailArticles,
+  ...aiAssistantArticles,
+  ...userManagementArticles,
 ];
 
 const ARTICLES_BY_SLUG = new Map(ALL_HELP_ARTICLES.map((a) => [a.slug, a]));

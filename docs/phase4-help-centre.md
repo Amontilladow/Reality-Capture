@@ -110,22 +110,37 @@ call site, read via direct grep across every controller):
 | Module | Read (list/detail) | Write (create/update) | Narrower grants |
 |---|---|---|---|
 | Captures | open to any project member | `manage_project_records` | — |
-| Floor Plans / Drawings | open | `manage_project_records` | — |
+| Floor Plans / Drawings | open | uploading a drawing / creating a pin: `manage_project_records`; renaming, moving, archiving, or converting an *existing* pin to a Snag: open to any project member (no gate at all — a genuine asymmetry in the real code, not an error in this doc) | — |
 | BIM Models | open | `manage_project_records` | — |
-| Issues | open | create/update: open*; `manage_issues` for the admin-only force-status override | — |
-| RFIs | open | create/respond/close/etc.: `manage_project_records`; submit-for-review/decide-review: `manage_rfis` OR `approve_rfis`; drawing-update reminder: `manage_rfis` | `approve_rfis` (review-only) |
-| Snagging | open | create/update: `manage_project_records`; verify (fixed→verified): `manage_project_records` OR `verify_snag_items` | `verify_snag_items` (verify-only) |
-| Submittals | open | `manage_project_records` | — |
-| Transmittals | open | `manage_project_records` | — |
-| QA Inspections | open | `manage_project_records` | — |
+| Issues | open | create: open to any project member; update (edit)/delete: `manage_issues`; close: no `ProjectPermission`, but requires company role `company_admin` or `engineering_manager` **and** at least one evidence capture attached; force-status: `company_admin`/`engineering_manager` | — |
+| RFIs | open | create: open to any project member; update/delete/attachments/notice-letter: `manage_project_records`; submit: no `ProjectPermission` -- service-level check (creator OR `manage_rfis` OR Project Lead OR super_admin); request-clarification/respond/close/reopen/drawing-reminder: `manage_rfis`; submit-for-review/decide-review: `manage_rfis` OR `approve_rfis` | `approve_rfis` (review-only) |
+| Snagging | open | create: open to any project member; update/delete: `manage_project_records`; verify (fixed→verified): `manage_project_records` OR `verify_snag_items` | `verify_snag_items` (verify-only) |
+| Submittals | open | create: open to any project member; update/delete: `manage_project_records` | — |
+| Transmittals | open | create: open to any project member; update/delete: `manage_project_records` | — |
+| QA Inspections | open | create: open to any project member; update/delete: `manage_project_records` | — |
 | Documents | open | upload/create/link: `manage_project_records` | — |
-| Progress Reports | open | generate/share: `manage_project_records` | — |
+| Progress Reports | open -- the report itself is computed live on read, not a stored record | generating/revoking a public share link: `manage_project_records` | — |
 | Team & Permissions (`ManageMembersModal`) | read open to current members; write | `manage_team` | — |
 | Email send/history (Phase 3) | gated by project membership only (no `ProjectPermission` required — any project member may send/view) | same | — |
 
-\* Issue creation itself has no `@RequireProjectPermission` decorator at
-all — any project member can create one. Only the admin force-status
-override route requires `manage_issues`.
+**Correction note**: an earlier pass over this table (committed in Phase
+4A) got several of these backwards by grepping for
+`@RequireProjectPermission` occurrences without confirming which method
+each one actually decorates. Re-verified every row above directly
+against each controller's source (reading the method bodies, not just
+counting decorator lines) during Phase 4D, while writing the Issues and
+Floor Plans/Pinpoints articles that depend on getting this right. The
+general, now-confirmed pattern across this codebase: **creating** a
+workflow record (Issue, RFI, Snag, Submittal, Transmittal, QA Inspection)
+is open to any project member; **editing or deleting** one requires
+`manage_project_records` (or the record's own narrower permission, e.g.
+`manage_issues` for Issues). File-upload-centric creation (Captures,
+Drawings, BIM Models, Documents, a floor-plan pin) is the exception --
+creating *those* requires `manage_project_records` from the start. Floor
+Plans/Pinpoints breaks the "edit needs permission" half of the pattern
+in the other direction: once a pin exists, renaming/moving/archiving/
+converting it has no permission gate at all. Both asymmetries are
+described exactly as found, not smoothed over.
 
 ### Modules verified operational (will get Help Centre coverage)
 
@@ -253,5 +268,71 @@ against this real content, not placeholder text.
 
 **Not yet verified**: a real browser render (no live backend/DB in this
 environment -- same limitation as every prior phase; confirmed via
-`pg_isready`). Full content coverage for every module is Phase 4D, not
+`pg_isready`).
+
+## Phase 4D — Write + verify highest-priority articles — VERIFIED COMPLETE
+
+Ten category files written, each only after reading the relevant
+controller(s)/service(s)/page(s) directly (full method bodies, not just
+counting decorator occurrences -- this phase's audit method, switched to
+after catching mistakes in the original Phase 4A pass; see the
+correction note above):
+
+| File | Articles | Modules covered |
+|---|---|---|
+| `dashboard-projects.ts` | 8 | Projects page, project dashboard, create/edit/archive a project, switching projects, organization slots |
+| `floor-plans-pinpoints.ts` | 9 | Floor plan viewer, pinpoints (create/view/photo/convert), filtering (not yet available) |
+| `issues-snagging.ts` | 15 | Issues (create/edit/assign/priority/photos/comments/track/close) and Snagging (create/mark-fixed/verify) |
+| `rfi.ts` | 9 | RFI lifecycle: create, describe, attach, submit, respond, track, closure |
+| `drawings-documents.ts` | 9 | Documents, Transmittals, QA Inspections |
+| `reports-progress.ts` | 9 | Reports KPIs/charts/exports, Progress Report and its share link |
+| `notifications-email.ts` | 8 | Notifications, Outlook/Gmail connect, sending/history/disconnect |
+| `ai-assistant.ts` | 7 | AI Assistant scope, capabilities, limitations, privacy |
+| `user-management.ts` | 7 | Inviting users, organization vs. project access, roles, password resets |
+| (Getting Started/Glossary/FAQ/Troubleshooting from 4B/4C) | 41 | — |
+
+123 articles total, wired into `ALL_HELP_ARTICLES` in
+`apps/web/src/content/help/index.ts`.
+
+**A significant permission finding surfaced while verifying
+`dashboard-projects.ts` and `user-management.ts` (not something this
+phase changes -- documented here because it affects what the Help
+Centre can accurately tell a user, and because it's a real,
+security-relevant gap worth your attention):**
+
+- `PATCH /projects/:id` (editing any project's details, including
+  setting its status to `archived` -- there is no separate archive or
+  delete endpoint) carries no `@Roles` or `@RequireProjectPermission`
+  decorator. Any authenticated user in the same company can edit, or
+  effectively archive, any project.
+- More broadly: reading a project's own records (issues, RFIs, drawings,
+  documents, etc.) is **not** gated by project membership anywhere --
+  confirmed by reading `issues.controller.ts`'s read endpoints,
+  `project-permission.guard.ts` (passes through any route without the
+  `@RequireProjectPermission` decorator -- it is opt-in, not default-deny),
+  and `IssuesService`'s query methods (filter by `project_id`/`company_id`
+  only, no `project_members` join). `GET /projects` itself also returns
+  every non-archived company project to every company user, with no
+  "my projects" filter. Only *writing* to most modules, and viewing/
+  editing the formal project-membership/role/organization-slot
+  structure itself, is actually gated.
+- This phase's help content describes this behavior exactly as found
+  (e.g. "Selecting a Project" in Getting Started, "Understanding Project
+  Access" in User Management & Security) rather than instructing users
+  to expect a membership wall that doesn't exist -- per the brief's rule
+  against describing an imagined version of the app. Whether this is
+  the intended access model or a gap worth closing is a product/security
+  decision outside this Help Centre phase's scope; flagging it here so
+  it isn't silently normalized into documentation as if it were by
+  design.
+
+**Verified**: `tsc --noEmit` clean, `eslint --max-warnings=0` clean
+across `apps/web/src/content/help`, production build (`npm run build`)
+succeeds, and every `relatedSlugs` reference across all 13 content
+files resolves to a real slug (checked programmatically -- zero dead
+links, zero duplicate slugs).
+
+**Not yet verified**: a real browser render (no live backend/DB in this
+environment). Role-specific filtering (4E), onboarding (4F), contextual
+help links (4G), and expanded FAQ/troubleshooting coverage (4H) are not
 yet done at the time this section was written.
