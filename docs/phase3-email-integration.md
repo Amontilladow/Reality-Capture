@@ -274,7 +274,113 @@ token exchange, a real connected-account email confirmed, a real test
 connection against a live Microsoft account, or anything about which
 Microsoft account types actually work end to end.
 
-## Phase 3D — Gmail connection and sending — NOT IMPLEMENTED
+## Phase 3D — Gmail connection — IMPLEMENTED BUT NOT VERIFIED (code-complete, no real Google Cloud OAuth client exists to test against)
+
+Mirrors Phase 3C's Outlook implementation exactly — same
+`EmailProviderClient` contract, same `EmailTokenStore` composition, same
+five routes, same frontend card shape. `EmailSettingsPage` now has both
+providers fully wired.
+
+**OAuth design decisions:**
+- **Scope**: `openid email https://www.googleapis.com/auth/gmail.send` —
+  the brief's own "prefer sending-only authorization if a user only
+  needs to send email" and "request minimum scopes necessary," directly.
+  Not `gmail.readonly`, `gmail.modify`, or the full `https://mail.google.com/`
+  scope — reading mail is Phase 3H, not built yet.
+- **Connected email from the ID token**, same reasoning as Outlook's
+  client: no separate People API call needed.
+- **Refresh token behavior differs from Microsoft's**: Google only issues
+  a refresh token on the *initial* grant (`access_type=offline` +
+  `prompt=consent`), never on a refresh response — `GmailClient.refreshAccessToken()`
+  correctly never expects one back, unlike Outlook's rotating-refresh-token
+  handling.
+
+**Google OAuth consent-screen, verification, and publishing status —
+investigated, not assumed either way (per the brief's explicit "do not
+assume verification is unnecessary"):**
+
+Google classifies OAuth scopes into three tiers (non-sensitive, sensitive,
+restricted), and Gmail API scopes — including `gmail.send`, even though
+it's send-only and cannot read mail — are my best understanding of
+Google's own documented policy as falling under the Gmail API's
+restricted-scope requirements, not merely "sensitive." In practice this
+determines what's needed before real users beyond a small test group can
+connect, and depends on which of three paths you're on — **this needs
+your decision, since it depends on facts only you know (whether you have
+a paid Google Workspace, and who the real users are):**
+
+1. **Internal app type** (only available if EngineeringOS's users are on
+   a paid **Google Workspace** organization, not personal `@gmail.com`
+   accounts) — restricted to users within that one Workspace
+   organization. **No Google verification or security assessment is
+   required at all**, regardless of scope. This is very likely the right
+   choice if your actual users are your own company's Workspace accounts,
+   and avoids the entire verification question below.
+2. **External app type, Testing mode** — up to 100 explicitly-added test
+   users, no verification required, but each test user sees an
+   "unverified app" warning screen during consent and must click through
+   it. Fine for an internal pilot/rollout even without Workspace, not
+   fine for a public-facing product.
+3. **External app type, Production (published) status** — required once
+   you exceed 100 users or want to remove the warning screen for
+   non-added users. Since `gmail.send` is a Gmail API scope, this
+   requires Google's full OAuth verification process, which **for a
+   restricted scope specifically includes a CASA (Cloud Application
+   Security Assessment) third-party security audit** — real cost and a
+   multi-week turnaround, on top of Google's own verification review.
+
+**This is a decision only you can make**, since it depends on whether
+your Google accounts are Workspace or personal, and who the real users
+will be. I have not assumed path 1 (even though it's likely the best
+fit) — tell me which applies and I'll note it here, or you can confirm
+it directly in Google Cloud Console's own OAuth consent screen setup,
+which states scope sensitivity live in its UI as you configure it.
+
+**Exact Google Cloud Console setup steps:**
+1. [console.cloud.google.com](https://console.cloud.google.com) → select
+   or create a project → **APIs & Services** → **Enabled APIs** → enable
+   the **Gmail API** (search "Gmail API", click Enable — required before
+   `gmail.send` can be granted at all).
+2. **APIs & Services** → **OAuth consent screen** → choose **Internal**
+   or **External** per the decision above. Fill in the required app
+   name/support email/logo (minimal for Internal or Testing mode).
+3. **APIs & Services** → **Credentials** → **Create Credentials** →
+   **OAuth client ID** → Application type **Web application**.
+4. **Authorized redirect URIs**: add
+   `https://engineeringos-api.onrender.com/api/v1/email-integration/gmail/callback`
+   (and `http://localhost:3000/api/v1/email-integration/gmail/callback`
+   for local dev if wanted).
+5. After creation, copy the **Client ID** (`GMAIL_OAUTH_CLIENT_ID`) and
+   **Client secret** (`GMAIL_OAUTH_CLIENT_SECRET`) directly into Render's
+   environment-variable dashboard for `engineeringos-api` — never into
+   this chat or the repository.
+6. If External + Testing mode: **OAuth consent screen** → **Test users**
+   → add each real person who needs to connect Gmail before verification
+   is pursued (if ever).
+7. Set `GMAIL_OAUTH_CLIENT_ID`, `GMAIL_OAUTH_CLIENT_SECRET`, and
+   `GMAIL_OAUTH_REDIRECT_URI` on `engineeringos-api` in the Render
+   dashboard.
+
+**Files added**: `apps/api/src/config/google-gmail.config.ts`,
+`apps/api/src/modules/email-integration/gmail/` (client, service,
+controller, module, DTO, tests), Gmail functions added to
+`apps/web/src/lib/email-integration.api.ts`, `EmailSettingsPage`'s Gmail
+card now fully wired, `apps/api/.env.example` documented (unset by
+default).
+
+**Tests**: 11 new tests (`gmail-integration.service.spec.ts`), same
+coverage shape as Outlook's — state signing, cross-provider replay
+rejection, connect/upsert, `testConnection()`'s three outcomes, and
+`ensureFreshAccessToken()`'s both branches (reuse and refresh-then-persist).
+
+**Verified**: `tsc --noEmit` clean (full recursive workspace typecheck),
+`eslint` clean (api + web, same 2 pre-existing unrelated warnings), full
+Jest suite passing (540/540), production builds succeed for both apps.
+
+**Not verified**: any real OAuth flow against an actual Google account —
+no Google Cloud OAuth client exists in this environment. No claim is made
+about which account types (Workspace vs. personal Gmail) actually work
+end to end, per the brief's own standard.
 
 ## Phase 3E — Reusable email composer — NOT IMPLEMENTED
 

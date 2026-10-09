@@ -7,17 +7,15 @@ import { StatusBadge } from '../components/ui/Badge';
 import type { StatusTone } from '../lib/status-tone';
 import {
   getOutlookStatus, getOutlookAuthorizeUrl, testOutlookConnection, disconnectOutlook,
+  getGmailStatus, getGmailAuthorizeUrl, testGmailConnection, disconnectGmail,
 } from '../lib/email-integration.api';
 import { apiErrorMessage } from '../lib/api';
 import type { EmailIntegrationStatus, EmailIntegrationStatusValue } from '@engineeringos/types';
 
-// Phase 3C: Outlook is fully wired (connect/status/test/disconnect).
-// Gmail's card is shown per the brief's "show two providers" UI
-// requirement but not yet functional -- its own connect/status/test/
-// disconnect endpoints land in Phase 3D, at which point this page gains
-// the same four actions for it. Showing a visibly disabled card here is
-// more honest than omitting it (the settings section exists now) or
-// wiring a button to a route that doesn't exist yet (a confusing 404).
+// Phase 3C/3D: both providers are now fully wired (connect/status/test/
+// disconnect), same shape for each -- the OAuth callback for either one
+// redirects the full browser back here with ?outlook=... or ?gmail=...
+// (see outlook-integration.controller.ts / gmail-integration.controller.ts).
 
 const STATUS_LABEL: Record<EmailIntegrationStatusValue, string> = {
   not_connected: 'Not Connected',
@@ -41,12 +39,12 @@ function ProviderCard({
   name: string;
   status: EmailIntegrationStatus | undefined;
   isLoading: boolean;
-  onConnect?: () => void;
-  onTest?: () => void;
-  onDisconnect?: () => void;
-  testPending?: boolean;
-  disconnectPending?: boolean;
-  connectPending?: boolean;
+  onConnect: () => void;
+  onTest: () => void;
+  onDisconnect: () => void;
+  testPending: boolean;
+  disconnectPending: boolean;
+  connectPending: boolean;
   testResult?: { ok: boolean; error?: string };
   testError?: unknown;
 }) {
@@ -74,22 +72,17 @@ function ProviderCard({
 
       {!isLoading && (
         <div className="flex gap-2">
-          {!connected && onConnect && (
+          {!connected && (
             <button onClick={onConnect} disabled={connectPending} className="btn-primary text-xs">
               {connectPending ? 'Connecting…' : `Connect ${name}`}
             </button>
           )}
-          {!connected && !onConnect && (
-            <button disabled className="btn-primary text-xs opacity-50 cursor-not-allowed" title="Coming in the next stage of this phase">
-              {`Connect ${name}`}
-            </button>
-          )}
-          {connected && onTest && (
+          {connected && (
             <button onClick={onTest} disabled={testPending} className="btn-secondary text-xs">
               {testPending ? 'Testing…' : 'Test connection'}
             </button>
           )}
-          {connected && onDisconnect && (
+          {connected && (
             <button onClick={onDisconnect} disabled={disconnectPending} className="btn-ghost text-xs text-danger">
               {disconnectPending ? 'Disconnecting…' : 'Disconnect'}
             </button>
@@ -103,32 +96,32 @@ function ProviderCard({
         </p>
       )}
       {testError !== undefined && <p className="field-error">{apiErrorMessage(testError)}</p>}
-
-      {!onConnect && !connected && (
-        <p className="text-xs text-ink-500">Gmail support ships in the next stage of this phase.</p>
-      )}
     </div>
   );
 }
 
+type ProviderKey = 'outlook' | 'gmail';
+const PROVIDER_DISPLAY_NAME: Record<ProviderKey, string> = { outlook: 'Outlook', gmail: 'Gmail' };
+const PROVIDER_CONSENT_OWNER: Record<ProviderKey, string> = { outlook: 'Microsoft', gmail: 'Google' };
+
 export default function EmailSettingsPage() {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [redirectOutcome, setRedirectOutcome] = useState<string | null>(null);
+  const [redirectOutcome, setRedirectOutcome] = useState<{ provider: ProviderKey; outcome: string } | null>(null);
 
   const outlookStatusQuery = useQuery({ queryKey: ['email-integration', 'outlook', 'status'], queryFn: getOutlookStatus });
+  const gmailStatusQuery = useQuery({ queryKey: ['email-integration', 'gmail', 'status'], queryFn: getGmailStatus });
 
-  // The OAuth callback redirects the full browser back here with
-  // ?outlook=connected|declined|failed (see outlook-integration.controller.ts) --
-  // this is a real page load, not an API response, so it's read from the
-  // URL once on mount and then stripped so a refresh doesn't re-show it.
+  // Read once on mount (a real page load from the OAuth callback redirect,
+  // not an API response) and strip the param so a refresh doesn't re-show it.
   useEffect(() => {
-    const outcome = searchParams.get('outlook');
-    if (outcome) {
-      setRedirectOutcome(outcome);
-      queryClient.invalidateQueries({ queryKey: ['email-integration', 'outlook', 'status'] });
+    const providers: ProviderKey[] = ['outlook', 'gmail'];
+    const matched = providers.find((p) => searchParams.get(p));
+    if (matched) {
+      setRedirectOutcome({ provider: matched, outcome: searchParams.get(matched)! });
+      queryClient.invalidateQueries({ queryKey: ['email-integration', matched, 'status'] });
       const next = new URLSearchParams(searchParams);
-      next.delete('outlook');
+      next.delete(matched);
       setSearchParams(next, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -140,15 +133,28 @@ export default function EmailSettingsPage() {
       window.location.href = url; // full browser redirect -- OAuth consent cannot happen inside an XHR
     },
   });
-
   const testOutlookMutation = useMutation({
     mutationFn: testOutlookConnection,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['email-integration', 'outlook', 'status'] }),
   });
-
   const disconnectOutlookMutation = useMutation({
     mutationFn: disconnectOutlook,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['email-integration', 'outlook', 'status'] }),
+  });
+
+  const connectGmailMutation = useMutation({
+    mutationFn: async () => {
+      const { url } = await getGmailAuthorizeUrl();
+      window.location.href = url;
+    },
+  });
+  const testGmailMutation = useMutation({
+    mutationFn: testGmailConnection,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['email-integration', 'gmail', 'status'] }),
+  });
+  const disconnectGmailMutation = useMutation({
+    mutationFn: disconnectGmail,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['email-integration', 'gmail', 'status'] }),
   });
 
   return (
@@ -161,19 +167,19 @@ export default function EmailSettingsPage() {
           email password, and access/refresh tokens are encrypted at rest and never sent to this page.
         </p>
 
-        {redirectOutcome === 'connected' && (
-          <Alert tone="success" title="Outlook connected">
-            Your Outlook mailbox is now connected.
+        {redirectOutcome?.outcome === 'connected' && (
+          <Alert tone="success" title={`${PROVIDER_DISPLAY_NAME[redirectOutcome.provider]} connected`}>
+            Your {PROVIDER_DISPLAY_NAME[redirectOutcome.provider]} account is now connected.
           </Alert>
         )}
-        {redirectOutcome === 'declined' && (
+        {redirectOutcome?.outcome === 'declined' && (
           <Alert tone="warning" title="Connection cancelled">
-            You declined the Microsoft consent request, so Outlook was not connected.
+            You declined the {PROVIDER_CONSENT_OWNER[redirectOutcome.provider]} consent request, so {PROVIDER_DISPLAY_NAME[redirectOutcome.provider]} was not connected.
           </Alert>
         )}
-        {redirectOutcome === 'failed' && (
+        {redirectOutcome?.outcome === 'failed' && (
           <Alert tone="danger" title="Connection failed">
-            Something went wrong connecting Outlook. Please try again.
+            Something went wrong connecting {PROVIDER_DISPLAY_NAME[redirectOutcome.provider]}. Please try again.
           </Alert>
         )}
 
@@ -191,7 +197,19 @@ export default function EmailSettingsPage() {
           testError={testOutlookMutation.isError ? testOutlookMutation.error : undefined}
         />
 
-        <ProviderCard name="Google Gmail" status={undefined} isLoading={false} />
+        <ProviderCard
+          name="Google Gmail"
+          status={gmailStatusQuery.data}
+          isLoading={gmailStatusQuery.isLoading}
+          onConnect={() => connectGmailMutation.mutate()}
+          onTest={() => testGmailMutation.mutate()}
+          onDisconnect={() => disconnectGmailMutation.mutate()}
+          connectPending={connectGmailMutation.isPending}
+          testPending={testGmailMutation.isPending}
+          disconnectPending={disconnectGmailMutation.isPending}
+          testResult={testGmailMutation.data}
+          testError={testGmailMutation.isError ? testGmailMutation.error : undefined}
+        />
       </div>
     </>
   );

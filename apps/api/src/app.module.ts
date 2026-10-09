@@ -41,6 +41,7 @@ import { ApiKeysModule } from './modules/api-keys/api-keys.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { PublicApiModule } from './modules/public-api/public-api.module';
 import { OutlookModule } from './modules/email-integration/outlook/outlook.module';
+import { GmailModule } from './modules/email-integration/gmail/gmail.module';
 
 import { APP_INTERCEPTOR, APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
@@ -61,12 +62,13 @@ import googleCalendarConfig from './config/google-calendar.config';
 import aiConfig from './config/ai.config';
 import emailConfig from './config/email.config';
 import microsoftGraphConfig from './config/microsoft-graph.config';
+import gmailConfig from './config/google-gmail.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, jwtConfig, storageConfig, redisConfig, googleCalendarConfig, aiConfig, emailConfig, microsoftGraphConfig],
+      load: [appConfig, databaseConfig, jwtConfig, storageConfig, redisConfig, googleCalendarConfig, aiConfig, emailConfig, microsoftGraphConfig, gmailConfig],
       envFilePath: ['.env.local', '.env'],
     }),
     ThrottlerModule.forRoot([
@@ -123,6 +125,7 @@ import microsoftGraphConfig from './config/microsoft-graph.config';
     SubscriptionModule,
     WorkforceModule,
     OutlookModule,
+    GmailModule,
     RiskModule,
     ApiKeysModule,
     WebhooksModule,
