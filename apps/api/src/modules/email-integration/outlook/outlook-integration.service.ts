@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { EmailIntegrationStatus } from '@engineeringos/types';
 import { EmailTokenStore } from '../email-token-store.service';
 import { MicrosoftGraphClient } from './microsoft-graph-client';
 import { signEmailOAuthState, verifyEmailOAuthState } from '../oauth-state.util';
+import type { OutgoingMessage, SendResult } from '../email-integration.types';
 
 const PROVIDER = 'microsoft' as const;
 
@@ -84,5 +85,24 @@ export class OutlookIntegrationService {
       await this.tokenStore.recordError(companyId, userId, PROVIDER, 'invalid_grant');
       return null;
     }
+  }
+
+  // Phase 3E: the one real send path. Returns the connected sender address
+  // alongside the provider's result so EmailComposerService doesn't need a
+  // second lookup to record who it was actually sent from. Throws (rather
+  // than returning a failure value) on any problem -- not connected, token
+  // refresh failed, or the provider itself rejected the send -- so the
+  // caller's single try/catch around every provider's sendMail() handles
+  // all of them identically.
+  async sendMail(companyId: string, userId: string, message: OutgoingMessage): Promise<SendResult & { senderEmail: string }> {
+    const connection = await this.tokenStore.getDecrypted(companyId, userId, PROVIDER);
+    if (!connection) throw new BadRequestException('Outlook is not connected for this user.');
+
+    const accessToken = await this.ensureFreshAccessToken(companyId, userId);
+    if (!accessToken) throw new BadRequestException('The Outlook connection is no longer valid. Please reconnect.');
+
+    const result = await this.client.sendMail(accessToken, message);
+    await this.tokenStore.touchLastUsed(companyId, userId, PROVIDER);
+    return { ...result, senderEmail: connection.connectedEmail };
   }
 }

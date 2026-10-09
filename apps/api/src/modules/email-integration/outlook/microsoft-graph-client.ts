@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
-import type { InitialProviderTokens, ProviderTokens } from '../email-integration.types';
+import type { InitialProviderTokens, OutgoingMessage, ProviderTokens, SendResult } from '../email-integration.types';
 
 // Thin wrapper over the Microsoft identity platform v2.0 OAuth endpoints and
 // (once sending lands in a later stage) Microsoft Graph's /sendMail --
@@ -116,6 +116,43 @@ export class MicrosoftGraphClient {
       expiresAt: new Date(Date.now() + res.data.expires_in * 1000).toISOString(),
       grantedScopes: res.data.scope,
     };
+  }
+
+  // Create-draft-then-send, not the simpler single-call /me/sendMail --
+  // sendMail returns no body at all (202 Accepted, nothing else), so there
+  // would be no message/conversation ID to record for Section 8's audit
+  // trail or Phase 3H's future reply-threading. Creating the message as a
+  // draft first returns its id and conversationId; sending that specific
+  // draft by id is then a second call.
+  async sendMail(accessToken: string, message: OutgoingMessage): Promise<SendResult> {
+    const headers = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
+
+    const draft = await firstValueFrom(this.http.post<{ id: string; conversationId: string }>(
+      'https://graph.microsoft.com/v1.0/me/messages',
+      {
+        subject: message.subject,
+        body: { contentType: 'Text', content: message.bodyText },
+        toRecipients: message.to.map((address) => ({ emailAddress: { address } })),
+        ccRecipients: message.cc.map((address) => ({ emailAddress: { address } })),
+        bccRecipients: message.bcc.map((address) => ({ emailAddress: { address } })),
+        attachments: message.attachments.map((a) => ({
+          '@odata.type': '#microsoft.graph.fileAttachment',
+          name: a.filename,
+          contentType: a.contentType,
+          contentBytes: a.contentBase64,
+        })),
+      },
+      { headers },
+    ));
+
+    // If this second call fails after the draft above was created, the
+    // draft is left behind in the user's own Drafts folder rather than
+    // sent -- a minor, self-correcting edge case (visible and deletable by
+    // the user in their own mailbox, not a data-safety issue) rather than
+    // something worth a compensating-transaction cleanup call here.
+    await firstValueFrom(this.http.post(`https://graph.microsoft.com/v1.0/me/messages/${draft.data.id}/send`, {}, { headers }));
+
+    return { providerMessageId: draft.data.id, threadId: draft.data.conversationId };
   }
 
   // The ID token is a JWT issued directly by Microsoft's own token endpoint

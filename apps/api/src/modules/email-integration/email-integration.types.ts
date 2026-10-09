@@ -35,10 +35,29 @@ export interface InitialProviderTokens extends ProviderTokens {
   connectedEmail: string;
 }
 
+// Phase 3E: what the composer hands to a provider client to actually send.
+// `attachments` carries real bytes already fetched from storage and
+// verified against the size/type allow-list by EmailSendingService --
+// the client layer never reaches into StorageService itself.
+export interface OutgoingMessage {
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  subject: string;
+  bodyText: string;
+  attachments: { filename: string; contentType: string; contentBase64: string }[];
+}
+
+export interface SendResult {
+  providerMessageId: string;
+  threadId: string;
+}
+
 export interface EmailProviderClient {
   buildAuthorizeUrl(state: string): string;
   exchangeCodeForTokens(code: string): Promise<InitialProviderTokens>;
   refreshAccessToken(refreshToken: string): Promise<ProviderTokens>;
+  sendMail(accessToken: string, message: OutgoingMessage): Promise<SendResult>;
 }
 
 export interface DecryptedConnection {

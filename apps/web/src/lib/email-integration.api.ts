@@ -1,5 +1,6 @@
+import axios from 'axios';
 import { apiGet, apiPost, apiDelete } from './api';
-import type { EmailIntegrationStatus } from '@engineeringos/types';
+import type { EmailIntegrationStatus, EmailProvider } from '@engineeringos/types';
 
 export function getOutlookStatus() {
   return apiGet<EmailIntegrationStatus>('/email-integration/outlook/status');
@@ -34,4 +35,68 @@ export function testGmailConnection() {
 
 export function disconnectGmail() {
   return apiDelete<{ disconnected: true }>('/email-integration/gmail');
+}
+
+// Phase 3E: the reusable compose/send layer -- provider-agnostic from the
+// caller's point of view (the connected mailbox is resolved server-side
+// from `provider`, never passed as a "from" field).
+
+export type EmailRelatedRecordType = 'rfi' | 'issue' | 'snag_item' | 'submittal';
+
+export interface EmailAttachmentInput {
+  storageKey: string;
+  filename: string;
+  contentType: string;
+}
+
+export interface SendEmailPayload {
+  provider: EmailProvider;
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
+  subject: string;
+  bodyText: string;
+  attachments?: EmailAttachmentInput[];
+  relatedRecordType?: EmailRelatedRecordType;
+  relatedRecordId?: string;
+  idempotencyKey: string;
+}
+
+export interface EmailMessageRecord {
+  id: string;
+  projectId: string;
+  relatedRecordType: EmailRelatedRecordType | null;
+  relatedRecordId: string | null;
+  provider: EmailProvider;
+  senderEmail: string;
+  recipientsTo: string[];
+  recipientsCc: string[];
+  recipientsBcc: string[];
+  subject: string;
+  providerMessageId: string | null;
+  threadId: string | null;
+  status: 'sent' | 'failed';
+  failureReason: string | null;
+  attachmentMetadata: { filename: string; sizeBytes: number; contentType: string }[];
+  createdAt: string;
+}
+
+export function sendEmail(projectId: string, payload: SendEmailPayload) {
+  return apiPost<EmailMessageRecord>(`/projects/${projectId}/emails`, payload);
+}
+
+function getEmailAttachmentUploadUrl(projectId: string, filename: string, sizeBytes: number) {
+  return apiPost<{ uploadUrl: string; storageKey: string }>(
+    `/projects/${projectId}/emails/attachments/upload-url`,
+    { filename, sizeBytes },
+  );
+}
+
+// Full client-side flow: request the presigned URL, PUT the file straight
+// to storage, then hand back just the metadata the send() call needs --
+// same two-step shape as uploadRfiAttachment (rfis.api.ts).
+export async function uploadEmailAttachment(projectId: string, file: File): Promise<EmailAttachmentInput> {
+  const { uploadUrl, storageKey } = await getEmailAttachmentUploadUrl(projectId, file.name, file.size);
+  await axios.put(uploadUrl, file, { headers: { 'Content-Type': file.type || 'application/octet-stream' } });
+  return { storageKey, filename: file.name, contentType: file.type || 'application/octet-stream' };
 }

@@ -42,6 +42,7 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { PublicApiModule } from './modules/public-api/public-api.module';
 import { OutlookModule } from './modules/email-integration/outlook/outlook.module';
 import { GmailModule } from './modules/email-integration/gmail/gmail.module';
+import { EmailComposerModule } from './modules/email-integration/email-composer.module';
 
 import { APP_INTERCEPTOR, APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
@@ -126,6 +127,7 @@ import gmailConfig from './config/google-gmail.config';
     WorkforceModule,
     OutlookModule,
     GmailModule,
+    EmailComposerModule,
     RiskModule,
     ApiKeysModule,
     WebhooksModule,

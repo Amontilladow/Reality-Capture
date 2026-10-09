@@ -382,7 +382,91 @@ no Google Cloud OAuth client exists in this environment. No claim is made
 about which account types (Workspace vs. personal Gmail) actually work
 end to end, per the brief's own standard.
 
-## Phase 3E — Reusable email composer — NOT IMPLEMENTED
+## Phase 3E — Reusable email composer — IMPLEMENTED BUT NOT VERIFIED (code-complete; no live backend/DB in this environment to exercise a real send against)
+
+**Built, bottom-up, in one verified pass:**
+
+- **Audit trail**: migration `066_email_messages.sql` — `email_messages`
+  table, metadata-only by deliberate design (see the migration's own
+  header comment): company/project/related-record IDs, initiating user,
+  provider, sender/recipient addresses, subject, provider message/thread
+  IDs, status, failure reason, attachment metadata (filename/size/type,
+  never bytes), `UNIQUE(initiating_user_id, idempotency_key)`. RLS
+  `tenant_isolation` policy, same as every other tenant table.
+- **Provider send capability**: `EmailProviderClient.sendMail()` added to
+  the Phase 3C/3D interface and implemented by both concrete clients --
+  `MicrosoftGraphClient.sendMail()` (create-draft-then-send, two Graph
+  calls, needed to get a real `messageId`/`conversationId` for the audit
+  trail) and `GmailClient.sendMail()` (hand-built RFC 2822 MIME message,
+  base64url-encoded, since Gmail's API takes a raw message, not structured
+  JSON). `OutlookIntegrationService.sendMail()` /
+  `GmailIntegrationService.sendMail()` compose `EmailTokenStore` +
+  the provider client identically, returning the connected sender address
+  alongside the provider's result.
+- **Orchestration**: `EmailComposerService` (new,
+  `apps/api/src/modules/email-integration/email-composer.service.ts`) --
+  the one place a `send()` actually happens. In order: (1) project
+  membership check (mirrors `ChatService.canAccessChannel`'s own
+  super_admin-bypass + `project_members` lookup -- Section 10's "only
+  authorized project members"), (2) idempotency check (a retried request
+  under an already-*sent* key returns the existing row unchanged without
+  touching the provider again; a previously *failed* attempt is retried,
+  since nothing was actually sent), (3) attachment re-validation against
+  the real stored object (`StorageService.getObjectSize`/`.download()`,
+  same `ATTACHMENT_MAX_SIZE`/`ATTACHMENT_ALLOWED_EXTENSIONS` allow-list
+  RFI attachments use -- ticket 2b's constants, not a second copy), (4)
+  **auto-match by reference number** (the user's own chosen design,
+  confirmed via `AskUserQuestion`): an explicit `relatedRecordType`/Id is
+  verified to actually belong to the project before being trusted; absent
+  that, the subject is scanned for a reference-number-shaped token
+  (`[A-Z0-9]{2,}(-[A-Z0-9]{1,10}){2,}`, matching every numbering scheme
+  this codebase actually uses -- `PRJ-GEN-RFI-STR-0001`, `PRJ-STR-0001`,
+  `PRJ-SUB-0001`, `PRJ-<snag>-0001`) and looked up across
+  rfis/issues/submittals/snag_items; more than one hit or zero is left
+  unmatched rather than guessed, per the brief's own "do not silently
+  associate the wrong record" caution, (5) dispatch to the selected
+  provider's `sendMail()`, (6) persist the outcome to `email_messages`
+  (`INSERT ... ON CONFLICT (initiating_user_id, idempotency_key) DO
+  UPDATE` -- the same row a failed-then-retried attempt eventually lands
+  on). A provider error is never stored or returned raw -- only a
+  truncated `Error.message`, never the full response body, which can echo
+  request content.
+- **API surface**: `EmailComposerController` --
+  `POST /projects/:projectId/emails/attachments/upload-url` (presigned
+  PUT, step 1, same shape as `RfisService.getAttachmentUploadUrl`) and
+  `POST /projects/:projectId/emails` (send). `SendEmailDto` validates
+  provider/to/cc/bcc (email format, size caps)/subject/bodyText/
+  attachments (nested, max 10)/optional related record/idempotency key.
+- **Frontend**: `EmailComposerModal` (new,
+  `apps/web/src/components/EmailComposerModal.tsx`) -- To/CC/BCC (CC/BCC
+  collapsed by default)/Subject/Message/Attachments (immediate presigned
+  upload per file, same two-step flow as RFI attachments)/provider picker
+  (only shown when more than one mailbox is connected; a clear "connect a
+  mailbox first" prompt linking to Email Integration settings when
+  neither is). A client-generated idempotency key is created once per
+  compose session and only replaced after a successful send -- a retried
+  submit (e.g. after a network timeout) reuses it, so a duplicate click
+  can't double-send. Wired into `ProjectDetail`'s own action bar
+  ("Email" button) as the one general-purpose entry point for this
+  stage; Phase 3F adds the RFI/Issue/Submittal-specific entry points with
+  prefilled subject/related record (the modal's `prefill` prop already
+  supports this).
+
+**Verified**: `tsc --noEmit` clean (full recursive workspace typecheck,
+both apps), `eslint` clean (api + web, same 2 pre-existing unrelated
+warnings as every prior stage), full Jest suite passing (551/551, 10 new
+tests for `EmailComposerService` covering membership, idempotency replay
+vs. retry-after-failure, provider dispatch, attachment validation, and
+auto-match), production builds succeed for both apps. Dev server starts
+and serves the app; the composer's own render path was not exercised
+against a live backend.
+
+**Not verified**: an actual end-to-end send, or even opening the compose
+modal against a running API -- this environment has no live Postgres
+(`pg_isready` reports no response) and no OAuth credentials for either
+provider (same account-level blocker as 3C/3D, Section 1). No claim is
+made that a real send, auto-match lookup, or attachment round-trip works
+beyond what the unit tests exercise against mocked collaborators.
 
 ## Phase 3F — Project-workflow integration — NOT IMPLEMENTED
 

@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { EmailIntegrationStatus } from '@engineeringos/types';
 import { EmailTokenStore } from '../email-token-store.service';
 import { GmailClient } from './gmail-client';
 import { signEmailOAuthState, verifyEmailOAuthState } from '../oauth-state.util';
+import type { OutgoingMessage, SendResult } from '../email-integration.types';
 
 const PROVIDER = 'google' as const;
 
@@ -81,5 +82,20 @@ export class GmailIntegrationService {
       await this.tokenStore.recordError(companyId, userId, PROVIDER, 'invalid_grant');
       return null;
     }
+  }
+
+  // Mirrors OutlookIntegrationService.sendMail() exactly -- see its comment
+  // for the shared reasoning (senderEmail returned alongside the provider
+  // result, throws rather than returning a failure value on any problem).
+  async sendMail(companyId: string, userId: string, message: OutgoingMessage): Promise<SendResult & { senderEmail: string }> {
+    const connection = await this.tokenStore.getDecrypted(companyId, userId, PROVIDER);
+    if (!connection) throw new BadRequestException('Gmail is not connected for this user.');
+
+    const accessToken = await this.ensureFreshAccessToken(companyId, userId);
+    if (!accessToken) throw new BadRequestException('The Gmail connection is no longer valid. Please reconnect.');
+
+    const result = await this.client.sendMail(accessToken, message);
+    await this.tokenStore.touchLastUsed(companyId, userId, PROVIDER);
+    return { ...result, senderEmail: connection.connectedEmail };
   }
 }
