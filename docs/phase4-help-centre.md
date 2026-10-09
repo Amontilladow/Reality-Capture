@@ -112,7 +112,7 @@ call site, read via direct grep across every controller):
 | Captures | open to any project member | `manage_project_records` | — |
 | Floor Plans / Drawings | open | uploading a drawing / creating a pin: `manage_project_records`; renaming, moving, archiving, or converting an *existing* pin to a Snag: open to any project member (no gate at all — a genuine asymmetry in the real code, not an error in this doc) | — |
 | BIM Models | open | `manage_project_records` | — |
-| Issues | open | create: open to any project member; update (edit)/delete: `manage_issues`; close: no `ProjectPermission`, but requires company role `company_admin` or `engineering_manager` **and** at least one evidence capture attached; force-status: `company_admin`/`engineering_manager` | — |
+| Issues | open | create: open to any project member; update (edit)/delete: `manage_issues`; close: no `ProjectPermission`, but requires company-role weight ≥ `engineering_manager` (i.e. `super_admin`/`company_admin`/`technical_director`/`engineering_manager`) **or** `manage_issues`, **and** at least one evidence capture attached; force-status: `@Roles('company_admin','engineering_manager')`, which `RolesGuard` resolves by weight to the same ≥`engineering_manager` set (no `manage_issues` fallback for this one) | — |
 | RFIs | open | create: open to any project member; update/delete/attachments/notice-letter: `manage_project_records`; submit: no `ProjectPermission` -- service-level check (creator OR `manage_rfis` OR Project Lead OR super_admin); request-clarification/respond/close/reopen/drawing-reminder: `manage_rfis`; submit-for-review/decide-review: `manage_rfis` OR `approve_rfis` | `approve_rfis` (review-only) |
 | Snagging | open | create: open to any project member; update/delete: `manage_project_records`; verify (fixed→verified): `manage_project_records` OR `verify_snag_items` | `verify_snag_items` (verify-only) |
 | Submittals | open | create: open to any project member; update/delete: `manage_project_records` | — |
@@ -331,6 +331,29 @@ across `apps/web/src/content/help`, production build (`npm run build`)
 succeeds, and every `relatedSlugs` reference across all 13 content
 files resolves to a real slug (checked programmatically -- zero dead
 links, zero duplicate slugs).
+
+**Second correction (made after the first commit, same verification
+discipline):** `RolesGuard` (`apps/api/src/common/guards/roles.guard.ts`)
+does not match `@Roles(...)` against an exact list -- it resolves the
+*minimum weight* among the listed roles and admits any company role
+whose `COMPANY_ROLE_WEIGHT` is at or above that minimum. This means
+`@Roles('company_admin', 'engineering_manager', 'project_manager')` on
+invite actually admits `super_admin`, `technical_director`, and
+`bim_manager` too (anything with weight ≥ 60), not just the three named
+roles -- read the article text as "requires Company Admin" and you'd
+wrongly conclude a Technical Director can't invite someone. Corrected
+`inviting-users`/`understanding-organization-access` in
+`user-management.ts` and `reviewing-and-closing-an-issue`/
+`understanding-the-difference-between-issues-and-snagging` in
+`issues-snagging.ts` (issue close/force-status is `@Roles('company_admin',
+'engineering_manager')`, which resolves to weight ≥ 70 --
+`super_admin`/`company_admin`/`technical_director`/`engineering_manager`,
+matching `IssuesService.isPermittedApprover()`'s explicit weight check
+for `close()`; `forceStatus()` has no `manage_issues` fallback, `close()`
+does). Re-checked every other `@Roles(...)` claim in this phase's
+content against this same weight rule -- `creating-a-project`'s
+`@Roles('super_admin', 'company_admin')` resolves to weight ≥ 90, i.e.
+exactly those two roles, so that article needed no change.
 
 **Not yet verified**: a real browser render (no live backend/DB in this
 environment). Role-specific filtering (4E), onboarding (4F), contextual
