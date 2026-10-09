@@ -10,6 +10,7 @@ import {
   type RfiExternalAccessAction,
 } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
+import { EmailComposerModal } from '../components/EmailComposerModal';
 import { RichTextEditor, isRichTextEmpty } from '../components/ui/RichTextEditor';
 import { InlineRiskAssessment } from '../components/RiskIntelligenceSection';
 import {
@@ -61,6 +62,7 @@ export default function RfiDetailPage() {
   const [drawingImpactLevel, setDrawingImpactLevel] = useState<RfiImpactLevel>('no');
   const [drawingImpactDescription, setDrawingImpactDescription] = useState('');
   const [drawingUpdateOwnerId, setDrawingUpdateOwnerId] = useState('');
+  const [composeEmailOpen, setComposeEmailOpen] = useState(false);
   const [clarifyOpen, setClarifyOpen] = useState(false);
   const [clarifyReason, setClarifyReason] = useState('');
   const [commentBody, setCommentBody] = useState('');
@@ -439,11 +441,25 @@ export default function RfiDetailPage() {
         eyebrow={projectQuery.data?.name ?? 'Project'}
         title={rfi.rfiNumber ?? 'RFI'}
         actions={
-          <Link to={`/projects/${projectId}/rfis`} className="btn-ghost !px-2 !py-1 text-xs">
-            <BackIcon /> Back to RFIs
-          </Link>
+          <>
+            <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary text-xs">
+              Email
+            </button>
+            <Link to={`/projects/${projectId}/rfis`} className="btn-ghost !px-2 !py-1 text-xs">
+              <BackIcon /> Back to RFIs
+            </Link>
+          </>
         }
       />
+
+      {projectId && (
+        <EmailComposerModal
+          open={composeEmailOpen}
+          onClose={() => setComposeEmailOpen(false)}
+          projectId={projectId}
+          prefill={{ subject: `${rfi.rfiNumber ?? ''}: ${rfi.subject}`.trim(), relatedRecordType: 'rfi', relatedRecordId: rfi.id }}
+        />
+      )}
 
       <div className="p-6 max-w-5xl mx-auto space-y-6">
         {/* Title + status strip */}

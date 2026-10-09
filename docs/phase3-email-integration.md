@@ -468,7 +468,38 @@ provider (same account-level blocker as 3C/3D, Section 1). No claim is
 made that a real send, auto-match lookup, or attachment round-trip works
 beyond what the unit tests exercise against mocked collaborators.
 
-## Phase 3F — Project-workflow integration — NOT IMPLEMENTED
+## Phase 3F — Project-workflow integration — IMPLEMENTED BUT NOT VERIFIED (same no-live-backend caveat as 3E)
+
+Added an "Email" entry point, each opening the same `EmailComposerModal`
+with `prefill` set to that record's own type/ID and a subject seeded from
+its number + title/subject, to every module the brief's Section 7 names:
+
+- `RfiDetailPage.tsx` — header actions, next to "Back to RFIs".
+  `prefill={{ subject: '<rfiNumber>: <subject>', relatedRecordType: 'rfi', relatedRecordId: rfi.id }}`.
+- `IssueDetail.tsx` — header card action button group, next to "Edit".
+  `relatedRecordType: 'issue'`.
+- `SubmittalDetailModal.tsx` — badge row (opens as a second, stacked modal
+  on top of the submittal modal). `relatedRecordType: 'submittal'`.
+- `SnagDetail.tsx` — header card action button group, next to "Edit".
+  `relatedRecordType: 'snag_item'`.
+
+None of these auto-send, auto-populate recipients, or touch the record's
+own status/workflow in any way -- clicking "Email" only opens the composer
+pre-filled; sending is still the user's own explicit action, exactly as
+Section 7's example workflow describes ("EngineeringOS prepares a message
+using the RFI's existing data" -- prepares, not sends). The explicit
+`relatedRecordType`/`relatedRecordId` from a contextual entry point always
+wins over `EmailComposerService`'s own subject-text auto-match (see 3E),
+so an email opened from a specific record's page is never
+mis-associated by the fallback scan.
+
+**Verified**: `tsc --noEmit` clean, `eslint` clean (same 2 pre-existing
+unrelated warnings), full Jest suite still 551/551 (this stage is
+frontend-only, no backend changes), production build succeeds.
+
+**Not verified**: actually opening any of these four pages/modals and
+clicking "Email" against a live backend -- same no-Postgres-in-this-
+environment limitation as 3E.
 
 ## Phase 3G — Email history and audit logging — NOT IMPLEMENTED
 

@@ -6,6 +6,7 @@ import {
   type SnagListItem,
 } from '../lib/snagging.api';
 import { getMembers } from '../lib/projects.api';
+import { EmailComposerModal } from './EmailComposerModal';
 import { InlineRiskAssessment } from './RiskIntelligenceSection';
 import { useAuthStore } from '../store/auth.store';
 import {
@@ -38,6 +39,7 @@ export function SnagDetail({
   const [forwardComment, setForwardComment] = useState('');
   const [forceStatusValue, setForceStatusValue] = useState<SnagStatus | ''>('');
   const [attachComment, setAttachComment] = useState('');
+  const [composeEmailOpen, setComposeEmailOpen] = useState(false);
 
   const snagQuery = useQuery({
     queryKey: ['snag', projectId, snagId],
@@ -150,6 +152,7 @@ export function SnagDetail({
           </div>
           <div className="flex flex-col gap-1.5 items-end">
             <button onClick={() => onEdit(snag)} className="btn-secondary !px-3 !py-1.5 text-xs">Edit</button>
+            <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary !px-3 !py-1.5 text-xs">Email</button>
             <button onClick={() => setForwardOpen((v) => !v)} className="btn-secondary !px-3 !py-1.5 text-xs">
               {forwardOpen ? 'Cancel forward' : 'Forward'}
             </button>
@@ -340,6 +343,13 @@ export function SnagDetail({
         </div>
         {attachMutation.isError && <p className="field-error">{apiErrorMessage(attachMutation.error)}</p>}
       </div>
+
+      <EmailComposerModal
+        open={composeEmailOpen}
+        onClose={() => setComposeEmailOpen(false)}
+        projectId={projectId}
+        prefill={{ subject: `${snag.snagNumber ?? ''}: ${snag.title}`.trim(), relatedRecordType: 'snag_item', relatedRecordId: snag.id }}
+      />
     </div>
   );
 }
