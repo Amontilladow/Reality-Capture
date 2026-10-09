@@ -7,6 +7,9 @@ import { acceptInvitation } from '../../lib/auth.api';
 import { apiErrorMessage } from '../../lib/api';
 import { useAuthStore } from '../../store/auth.store';
 import { COMPANY_ROLE_LABELS } from '../../lib/issue-constants';
+import { Input, Select } from '../../components/ui/Field';
+import { Alert } from '../../components/ui/Alert';
+import { Button } from '../../components/ui/Button';
 
 interface FormValues {
   firstName: string;
@@ -61,73 +64,51 @@ export default function AcceptInvitation() {
     <AuthLayout title="Accept your invitation" subtitle="Set up your account to join your company's workspace.">
       <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="field-label" htmlFor="firstName">First name</label>
-            <input
-              id="firstName"
-              className="field-input"
-              {...register('firstName', { required: 'Required', minLength: { value: 2, message: 'Too short' } })}
-            />
-            {errors.firstName && <p className="field-error">{errors.firstName.message}</p>}
-          </div>
-          <div>
-            <label className="field-label" htmlFor="lastName">Last name</label>
-            <input
-              id="lastName"
-              className="field-input"
-              {...register('lastName', { required: 'Required', minLength: { value: 2, message: 'Too short' } })}
-            />
-            {errors.lastName && <p className="field-error">{errors.lastName.message}</p>}
-          </div>
-        </div>
-
-        <div>
-          <label className="field-label" htmlFor="requestedRole">Your position</label>
-          <select id="requestedRole" className="field-input" {...register('requestedRole', { required: true })}>
-            {SELF_REQUESTABLE_COMPANY_ROLES.map((r) => (
-              <option key={r} value={r}>{COMPANY_ROLE_LABELS[r]}</option>
-            ))}
-          </select>
-          <p className="text-xs text-ink-500 mt-1">
-            An administrator will review and approve this before you get access.
-          </p>
-        </div>
-
-        <div>
-          <label className="field-label" htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            className="field-input"
-            placeholder="At least 8 characters"
-            {...register('password', { required: 'Password is required', minLength: { value: 8, message: 'At least 8 characters' } })}
+          <Input
+            label="First name"
+            error={errors.firstName?.message}
+            {...register('firstName', { required: 'Required', minLength: { value: 2, message: 'Too short' } })}
           />
-          {errors.password && <p className="field-error">{errors.password.message}</p>}
-        </div>
-
-        <div>
-          <label className="field-label" htmlFor="confirmPassword">Confirm password</label>
-          <input
-            id="confirmPassword"
-            type="password"
-            className="field-input"
-            {...register('confirmPassword', {
-              required: 'Please confirm your password',
-              validate: (v) => v === watch('password') || 'Passwords do not match',
-            })}
+          <Input
+            label="Last name"
+            error={errors.lastName?.message}
+            {...register('lastName', { required: 'Required', minLength: { value: 2, message: 'Too short' } })}
           />
-          {errors.confirmPassword && <p className="field-error">{errors.confirmPassword.message}</p>}
         </div>
 
-        {mutation.isError && (
-          <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded px-3 py-2">
-            {apiErrorMessage(mutation.error)}
-          </div>
-        )}
+        <Select
+          label="Your position"
+          hint="An administrator will review and approve this before you get access"
+          {...register('requestedRole', { required: true })}
+        >
+          {SELF_REQUESTABLE_COMPANY_ROLES.map((r) => (
+            <option key={r} value={r}>{COMPANY_ROLE_LABELS[r]}</option>
+          ))}
+        </Select>
 
-        <button type="submit" className="btn-primary w-full" disabled={mutation.isPending}>
+        <Input
+          label="Password"
+          type="password"
+          placeholder="At least 8 characters"
+          error={errors.password?.message}
+          {...register('password', { required: 'Password is required', minLength: { value: 8, message: 'At least 8 characters' } })}
+        />
+
+        <Input
+          label="Confirm password"
+          type="password"
+          error={errors.confirmPassword?.message}
+          {...register('confirmPassword', {
+            required: 'Please confirm your password',
+            validate: (v) => v === watch('password') || 'Passwords do not match',
+          })}
+        />
+
+        {mutation.isError && <Alert tone="danger">{apiErrorMessage(mutation.error)}</Alert>}
+
+        <Button type="submit" className="w-full" loading={mutation.isPending}>
           {mutation.isPending ? 'Creating account…' : 'Create account'}
-        </button>
+        </Button>
       </form>
     </AuthLayout>
   );

@@ -1,4 +1,5 @@
 import type { RfiStatus, RfiPriority, RfiWorkflowStatus } from '@engineeringos/types';
+import { TONE_CLASS, RFI_LEGACY_STATUS_TONE, RFI_WORKFLOW_STATUS_TONE, RFI_PRIORITY_TONE } from './status-tone';
 
 export const RFI_STATUSES: RfiStatus[] = ['open', 'answered', 'closed', 'void'];
 export const RFI_PRIORITIES: RfiPriority[] = ['critical', 'high', 'medium', 'low'];
@@ -12,12 +13,9 @@ export const RFI_STATUS_LABELS: Record<RfiStatus, string> = {
   void: 'Void',
 };
 
-export const RFI_STATUS_BADGE_CLASS: Record<RfiStatus, string> = {
-  open: 'bg-blueprint/15 text-blueprint',
-  answered: 'bg-ok/15 text-ok',
-  closed: 'bg-base-600 text-ink-500',
-  void: 'bg-base-600 text-ink-500',
-};
+export const RFI_STATUS_BADGE_CLASS: Record<RfiStatus, string> = Object.fromEntries(
+  Object.entries(RFI_LEGACY_STATUS_TONE).map(([status, tone]) => [status, TONE_CLASS[tone]]),
+) as Record<RfiStatus, string>;
 
 // Full workflow vocabulary (Phase 3, additive) -- superset of the legacy maps
 // above, used by RfiDetailPage, which renders both legacy RFIs (status
@@ -38,19 +36,9 @@ export const RFI_WORKFLOW_STATUS_LABELS: Record<RfiWorkflowStatus, string> = {
   void: 'Void',
 };
 
-export const RFI_WORKFLOW_STATUS_BADGE_CLASS: Record<RfiWorkflowStatus, string> = {
-  draft: 'bg-base-600 text-ink-300',
-  open: 'bg-blueprint/15 text-blueprint',
-  submitted: 'bg-blueprint/15 text-blueprint',
-  under_review: 'bg-warn/15 text-warn',
-  awaiting_clarification: 'bg-warn/15 text-warn',
-  responded: 'bg-ok/15 text-ok',
-  answered: 'bg-ok/15 text-ok',
-  closed: 'bg-base-600 text-ink-500',
-  rejected: 'bg-danger/15 text-danger',
-  cancelled: 'bg-base-600 text-ink-500',
-  void: 'bg-base-600 text-ink-500',
-};
+export const RFI_WORKFLOW_STATUS_BADGE_CLASS: Record<RfiWorkflowStatus, string> = Object.fromEntries(
+  Object.entries(RFI_WORKFLOW_STATUS_TONE).map(([status, tone]) => [status, TONE_CLASS[tone]]),
+) as Record<RfiWorkflowStatus, string>;
 
 export const RFI_PRIORITY_LABELS: Record<RfiPriority, string> = {
   critical: 'Critical',
@@ -59,12 +47,9 @@ export const RFI_PRIORITY_LABELS: Record<RfiPriority, string> = {
   low: 'Low',
 };
 
-export const RFI_PRIORITY_BADGE_CLASS: Record<RfiPriority, string> = {
-  critical: 'bg-danger/20 text-danger',
-  high: 'bg-danger/10 text-danger',
-  medium: 'bg-warn/15 text-warn',
-  low: 'bg-base-600 text-ink-500',
-};
+export const RFI_PRIORITY_BADGE_CLASS: Record<RfiPriority, string> = Object.fromEntries(
+  Object.entries(RFI_PRIORITY_TONE).map(([priority, tone]) => [priority, TONE_CLASS[tone]]),
+) as Record<RfiPriority, string>;
 
 // Warning-colored badge for the Drawing impact column/field -- same 'warn'
 // token RfisPage's own Cost/Time impact badges already use, so all three

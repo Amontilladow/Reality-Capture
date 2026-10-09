@@ -7,6 +7,9 @@ import { selfSignup } from '../../lib/auth.api';
 import { apiErrorMessage } from '../../lib/api';
 import { useAuthStore } from '../../store/auth.store';
 import { COMPANY_ROLE_LABELS } from '../../lib/issue-constants';
+import { Input, Select } from '../../components/ui/Field';
+import { Alert } from '../../components/ui/Alert';
+import { Button } from '../../components/ui/Button';
 
 interface FormValues {
   signupCode: string;
@@ -58,109 +61,80 @@ export default function SelfSignup() {
   return (
     <AuthLayout title="Create your account" subtitle="Join your company's reality capture workspace.">
       <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
-        <div>
-          <label className="field-label" htmlFor="signupCode">Company signup code</label>
-          <input
-            id="signupCode"
-            className="field-input font-mono"
-            placeholder="e.g. 7K2M9XQP"
-            {...register('signupCode', { required: 'Ask your company administrator for this code' })}
-          />
-          {errors.signupCode && <p className="field-error">{errors.signupCode.message}</p>}
-        </div>
+        <Input
+          label="Company signup code"
+          className="font-mono"
+          placeholder="e.g. 7K2M9XQP"
+          error={errors.signupCode?.message}
+          {...register('signupCode', { required: 'Ask your company administrator for this code' })}
+        />
 
-        <div>
-          <label className="field-label" htmlFor="organizationName">Organization name &amp; role</label>
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              id="organizationName"
-              className="field-input"
-              placeholder="e.g. AECOM"
-              {...register('organizationName', { required: 'Required', minLength: { value: 2, message: 'Too short' } })}
-            />
-            <select id="requestedRole" className="field-input" {...register('requestedRole', { required: true })}>
-              {SELF_REQUESTABLE_COMPANY_ROLES.map((r) => (
-                <option key={r} value={r}>{COMPANY_ROLE_LABELS[r]}</option>
-              ))}
-            </select>
-          </div>
-          {errors.organizationName && <p className="field-error">{errors.organizationName.message}</p>}
-          <p className="text-xs text-ink-500 mt-1">
-            An administrator will review and approve your role before you get access.
-          </p>
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label="Organization name"
+            placeholder="e.g. AECOM"
+            hint="Your employer, not EngineeringOS's company"
+            error={errors.organizationName?.message}
+            {...register('organizationName', { required: 'Required', minLength: { value: 2, message: 'Too short' } })}
+          />
+          <Select
+            label="Requested role"
+            hint="An admin reviews this before you get access"
+            {...register('requestedRole', { required: true })}
+          >
+            {SELF_REQUESTABLE_COMPANY_ROLES.map((r) => (
+              <option key={r} value={r}>{COMPANY_ROLE_LABELS[r]}</option>
+            ))}
+          </Select>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="field-label" htmlFor="firstName">First name</label>
-            <input
-              id="firstName"
-              className="field-input"
-              {...register('firstName', { required: 'Required', minLength: { value: 2, message: 'Too short' } })}
-            />
-            {errors.firstName && <p className="field-error">{errors.firstName.message}</p>}
-          </div>
-          <div>
-            <label className="field-label" htmlFor="lastName">Last name</label>
-            <input
-              id="lastName"
-              className="field-input"
-              {...register('lastName', { required: 'Required', minLength: { value: 2, message: 'Too short' } })}
-            />
-            {errors.lastName && <p className="field-error">{errors.lastName.message}</p>}
-          </div>
-        </div>
-
-        <div>
-          <label className="field-label" htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            className="field-input"
-            placeholder="you@yourcompany.com"
-            {...register('email', { required: 'Email is required' })}
+          <Input
+            label="First name"
+            error={errors.firstName?.message}
+            {...register('firstName', { required: 'Required', minLength: { value: 2, message: 'Too short' } })}
           />
-          {errors.email && <p className="field-error">{errors.email.message}</p>}
-        </div>
-
-        <div>
-          <label className="field-label" htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="new-password"
-            className="field-input"
-            placeholder="At least 8 characters"
-            {...register('password', { required: 'Password is required', minLength: { value: 8, message: 'At least 8 characters' } })}
+          <Input
+            label="Last name"
+            error={errors.lastName?.message}
+            {...register('lastName', { required: 'Required', minLength: { value: 2, message: 'Too short' } })}
           />
-          {errors.password && <p className="field-error">{errors.password.message}</p>}
         </div>
 
-        <div>
-          <label className="field-label" htmlFor="confirmPassword">Confirm password</label>
-          <input
-            id="confirmPassword"
-            type="password"
-            autoComplete="new-password"
-            className="field-input"
-            {...register('confirmPassword', {
-              required: 'Please confirm your password',
-              validate: (v) => v === watch('password') || 'Passwords do not match',
-            })}
-          />
-          {errors.confirmPassword && <p className="field-error">{errors.confirmPassword.message}</p>}
-        </div>
+        <Input
+          label="Email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@yourcompany.com"
+          error={errors.email?.message}
+          {...register('email', { required: 'Email is required' })}
+        />
 
-        {mutation.isError && (
-          <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded px-3 py-2">
-            {apiErrorMessage(mutation.error)}
-          </div>
-        )}
+        <Input
+          label="Password"
+          type="password"
+          autoComplete="new-password"
+          placeholder="At least 8 characters"
+          error={errors.password?.message}
+          {...register('password', { required: 'Password is required', minLength: { value: 8, message: 'At least 8 characters' } })}
+        />
 
-        <button type="submit" className="btn-primary w-full" disabled={mutation.isPending}>
+        <Input
+          label="Confirm password"
+          type="password"
+          autoComplete="new-password"
+          error={errors.confirmPassword?.message}
+          {...register('confirmPassword', {
+            required: 'Please confirm your password',
+            validate: (v) => v === watch('password') || 'Passwords do not match',
+          })}
+        />
+
+        {mutation.isError && <Alert tone="danger">{apiErrorMessage(mutation.error)}</Alert>}
+
+        <Button type="submit" className="w-full" loading={mutation.isPending}>
           {mutation.isPending ? 'Creating account…' : 'Create account'}
-        </button>
+        </Button>
       </form>
 
       <p className="text-xs text-ink-500 mt-6 text-center">

@@ -13,10 +13,12 @@ import { InlineRiskAssessment } from '../RiskIntelligenceSection';
 import { getMembers } from '../../lib/projects.api';
 import { useAuthStore } from '../../store/auth.store';
 import {
-  STATUS_LABELS, STATUS_BADGE_CLASS, PRIORITY_LABELS, PRIORITY_BADGE_CLASS,
+  STATUS_LABELS, PRIORITY_LABELS,
   ISSUE_TYPE_LABELS, ISSUE_STATUS_FLOW, ISSUE_STATUSES, DISCIPLINE_LABELS, CATEGORY_LABELS,
   getDeadlineTimer, TIMER_BADGE_CLASS, formatDeadline, formatDateTime, isIssueManager,
 } from '../../lib/issue-constants';
+import { ISSUE_STATUS_TONE, ISSUE_PRIORITY_TONE } from '../../lib/status-tone';
+import { StatusBadge } from '../ui/Badge';
 import { apiErrorMessage } from '../../lib/api';
 import type { IssueStatus } from '@engineeringos/types';
 
@@ -250,8 +252,8 @@ export function IssueDetail({
             <div className="text-[10px] font-mono text-ink-500 mb-1">{issue.issueNumber ?? issue.id}</div>
             <h2 className="text-lg font-semibold mb-2">{issue.title}</h2>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`badge ${STATUS_BADGE_CLASS[issue.status]}`}>{STATUS_LABELS[issue.status]}</span>
-              <span className={`badge ${PRIORITY_BADGE_CLASS[issue.priority]}`}>{PRIORITY_LABELS[issue.priority]}</span>
+              <StatusBadge tone={ISSUE_STATUS_TONE[issue.status]} label={STATUS_LABELS[issue.status]} />
+              <StatusBadge tone={ISSUE_PRIORITY_TONE[issue.priority]} label={PRIORITY_LABELS[issue.priority]} />
               <span className={`badge ${TIMER_BADGE_CLASS[timer.state]}`} title={`Due ${formatDeadline(issue.deadline)}`}>
                 {timer.label}
               </span>

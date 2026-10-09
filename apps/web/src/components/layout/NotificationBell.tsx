@@ -140,6 +140,7 @@ export function NotificationBell() {
                     {!n.readAt && <span className="w-1.5 h-1.5 rounded-full bg-blueprint mt-1.5 shrink-0" />}
                     <div className="min-w-0 flex-1">
                       <div className={`text-xs ${!n.readAt ? 'text-ink-100' : 'text-ink-300'}`}>{n.title}</div>
+                      {n.body && <div className="text-[11px] text-ink-500 mt-0.5">{n.body}</div>}
                       <div className="text-[10px] font-mono text-ink-500 mt-0.5">{timeAgo(n.createdAt)}</div>
                     </div>
                   </div>

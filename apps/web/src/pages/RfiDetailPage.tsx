@@ -27,10 +27,12 @@ import { getProject, getMembers, getPermissionGrants, getOrganizations, uploadOr
 import { getProjectActivity } from '../lib/audit.api';
 import { downloadRfiXls, type RfiWorkbookExtras } from '../lib/rfi-xls';
 import {
-  RFI_WORKFLOW_STATUS_LABELS, RFI_WORKFLOW_STATUS_BADGE_CLASS, RFI_PRIORITY_LABELS, RFI_PRIORITY_BADGE_CLASS,
+  RFI_WORKFLOW_STATUS_LABELS, RFI_PRIORITY_LABELS,
   DRAWING_IMPACT_BADGE_CLASS,
 } from '../lib/rfi-constants';
 import { getDeadlineTimer, TIMER_BADGE_CLASS, formatDeadline, formatDateTime } from '../lib/issue-constants';
+import { RFI_WORKFLOW_STATUS_TONE, RFI_PRIORITY_TONE } from '../lib/status-tone';
+import { StatusBadge } from '../components/ui/Badge';
 import { apiErrorMessage, apiDownload } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
 
@@ -449,8 +451,8 @@ export default function RfiDetailPage() {
           <div>
             <h2 className="text-lg font-semibold mb-2">{rfi.subject}</h2>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`badge ${RFI_WORKFLOW_STATUS_BADGE_CLASS[rfi.status]}`}>{RFI_WORKFLOW_STATUS_LABELS[rfi.status]}</span>
-              <span className={`badge ${RFI_PRIORITY_BADGE_CLASS[rfi.priority]}`}>{RFI_PRIORITY_LABELS[rfi.priority]}</span>
+              <StatusBadge tone={RFI_WORKFLOW_STATUS_TONE[rfi.status]} label={RFI_WORKFLOW_STATUS_LABELS[rfi.status]} />
+              <StatusBadge tone={RFI_PRIORITY_TONE[rfi.priority]} label={RFI_PRIORITY_LABELS[rfi.priority]} />
               {rfi.discipline && (
                 <span className="badge bg-base-700 text-ink-500">
                   {RFI_DISCIPLINE_LABELS[rfi.discipline]}

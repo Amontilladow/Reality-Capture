@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { DRAWING_UPDATE_STATUS_LABELS } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
+import { StatTile } from '../components/ui/StatTile';
 import { getReportKpis } from '../lib/reports.api';
 import { downloadReportsXls } from '../lib/reports-xls';
 import { getProject } from '../lib/projects.api';
@@ -313,7 +314,7 @@ export default function ReportsPage() {
               )}
 
               {kpis.issues.openList.length > 0 && (
-                <div className="panel tick-frame overflow-hidden">
+                <div className="panel tick-frame overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -371,7 +372,7 @@ export default function ReportsPage() {
               )}
 
               {kpis.snagging.openList.length > 0 && (
-                <div className="panel tick-frame overflow-hidden">
+                <div className="panel tick-frame overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -526,7 +527,7 @@ export default function ReportsPage() {
           )}
 
           {(documentsQuery.data?.data.length ?? 0) > 0 && (
-            <div className="panel tick-frame overflow-hidden">
+            <div className="panel tick-frame overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -550,17 +551,6 @@ export default function ReportsPage() {
         </section>
       </div>
     </>
-  );
-}
-
-function StatTile({ label, value, tone }: { label: string; value: number; tone?: 'danger' }) {
-  return (
-    <div className="panel p-3 text-left">
-      <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">{label}</div>
-      <div className={`text-xl font-semibold tabular-nums ${tone === 'danger' && value > 0 ? 'text-danger' : 'text-ink-100'}`}>
-        {value}
-      </div>
-    </div>
   );
 }
 

@@ -6,6 +6,9 @@ import { AuthLayout } from './AuthLayout';
 import { login } from '../../lib/auth.api';
 import { apiErrorMessage } from '../../lib/api';
 import { useAuthStore } from '../../store/auth.store';
+import { Input } from '../../components/ui/Field';
+import { Alert } from '../../components/ui/Alert';
+import { Button } from '../../components/ui/Button';
 
 interface FormValues {
   email: string;
@@ -43,46 +46,34 @@ export default function Login() {
         })}
         className="space-y-4"
       >
-        <div>
-          <label className="field-label" htmlFor="email">Work email</label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            className="field-input"
-            placeholder="you@company.com"
-            {...register('email', { required: 'Email is required' })}
-          />
-          {errors.email && <p className="field-error">{errors.email.message}</p>}
-        </div>
+        <Input
+          label="Work email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@company.com"
+          error={errors.email?.message}
+          {...register('email', { required: 'Email is required' })}
+        />
 
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="field-label mb-0" htmlFor="password">Password</label>
+        <Input
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          placeholder="••••••••"
+          error={errors.password?.message}
+          labelAddon={
             <Link to="/forgot-password" className="text-xs text-blueprint hover:text-blueprint-hover">
               Forgot password?
             </Link>
-          </div>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            className="field-input"
-            placeholder="••••••••"
-            {...register('password', { required: 'Password is required' })}
-          />
-          {errors.password && <p className="field-error">{errors.password.message}</p>}
-        </div>
+          }
+          {...register('password', { required: 'Password is required' })}
+        />
 
-        {serverError && (
-          <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded px-3 py-2">
-            {serverError}
-          </div>
-        )}
+        {serverError && <Alert tone="danger">{serverError}</Alert>}
 
-        <button type="submit" className="btn-primary w-full" disabled={isSubmitting || mutation.isPending}>
+        <Button type="submit" className="w-full" loading={isSubmitting || mutation.isPending}>
           {mutation.isPending ? 'Signing in…' : 'Sign in'}
-        </button>
+        </Button>
       </form>
 
       <p className="text-xs text-ink-500 mt-6 text-center">

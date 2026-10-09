@@ -22,7 +22,7 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
               page's actual topic (Login, Sign up, Reset password, ...) is the
               real h1, rendered once per page below via the `title` prop. */}
           <p className="text-3xl font-semibold tracking-tight leading-tight mb-4">
-            Every site condition,<br />surveyed and searchable.
+            Beyond Engineering.<br />Beyond Boundaries.
           </p>
           <p className="text-ink-300 text-sm leading-relaxed">
             Register 360° captures against building, level, and location — link them to BIM

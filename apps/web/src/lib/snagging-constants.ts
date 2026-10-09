@@ -1,4 +1,5 @@
 import type { SnagStatus, SnagPriority, CompanyRole } from '@engineeringos/types';
+import { TONE_CLASS, SNAG_STATUS_TONE, SNAG_PRIORITY_TONE } from './status-tone';
 
 export const SNAG_STATUSES: SnagStatus[] = ['open', 'fixed', 'verified', 'void'];
 export const SNAG_PRIORITIES: SnagPriority[] = ['critical', 'high', 'medium', 'low'];
@@ -10,12 +11,9 @@ export const SNAG_STATUS_LABELS: Record<SnagStatus, string> = {
   void: 'Void',
 };
 
-export const SNAG_STATUS_BADGE_CLASS: Record<SnagStatus, string> = {
-  open: 'bg-danger/10 text-danger',
-  fixed: 'bg-warn/15 text-warn',
-  verified: 'bg-ok/15 text-ok',
-  void: 'bg-base-600 text-ink-500',
-};
+export const SNAG_STATUS_BADGE_CLASS: Record<SnagStatus, string> = Object.fromEntries(
+  Object.entries(SNAG_STATUS_TONE).map(([status, tone]) => [status, TONE_CLASS[tone]]),
+) as Record<SnagStatus, string>;
 
 export const SNAG_PRIORITY_LABELS: Record<SnagPriority, string> = {
   critical: 'Critical',
@@ -24,12 +22,9 @@ export const SNAG_PRIORITY_LABELS: Record<SnagPriority, string> = {
   low: 'Low',
 };
 
-export const SNAG_PRIORITY_BADGE_CLASS: Record<SnagPriority, string> = {
-  critical: 'bg-danger/20 text-danger',
-  high: 'bg-danger/10 text-danger',
-  medium: 'bg-warn/15 text-warn',
-  low: 'bg-base-600 text-ink-500',
-};
+export const SNAG_PRIORITY_BADGE_CLASS: Record<SnagPriority, string> = Object.fromEntries(
+  Object.entries(SNAG_PRIORITY_TONE).map(([priority, tone]) => [priority, TONE_CLASS[tone]]),
+) as Record<SnagPriority, string>;
 
 export function isSnagOverdue(dueDate: string | undefined, status: SnagStatus): boolean {
   if (!dueDate) return false;

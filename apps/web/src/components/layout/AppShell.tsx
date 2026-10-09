@@ -7,35 +7,64 @@ import { MessagesBell } from './MessagesBell';
 import { ProjectContextPanel } from './ProjectContextPanel';
 import { ChatWidget } from '../chat/ChatWidget';
 
-const NAV_ITEMS = [
-  { to: '', label: 'Projects', icon: IconGrid, end: true },
-  { to: 'messages', label: 'Messages', icon: IconMail },
-  { to: 'workforce', label: 'Workforce', icon: IconGauge },
+interface NavItem {
+  to: string;
+  label: string;
+  icon: (props: { className?: string }) => JSX.Element;
+  end?: boolean;
+}
+interface NavGroup {
+  heading?: string;
+  items: NavItem[];
+}
+
+// Grouped so the list reads as sections (brief: "the navigation must be
+// scalable as more modules are added") instead of one flat column -- every
+// item here is a route that already exists; nothing added for show.
+const NAV_GROUPS: NavGroup[] = [
+  { items: [{ to: '', label: 'Projects', icon: IconGrid, end: true }] },
+  { heading: 'Communication', items: [{ to: 'messages', label: 'Messages', icon: IconMail }] },
+  { heading: 'Workforce', items: [{ to: 'workforce', label: 'Workforce', icon: IconGauge }] },
   // Personal, account-level -- every user may connect their own AI
   // provider (spec section 7), not just company admins, so this sits in
-  // the base NAV_ITEMS rather than gated like DEVELOPER_NAV_ITEM below.
-  { to: 'ai-settings', label: 'AI Provider', icon: IconSpark },
+  // the base groups rather than gated like DEVELOPER_NAV_ITEM below.
+  { heading: 'AI', items: [{ to: 'ai-settings', label: 'AI Provider', icon: IconSpark }] },
+  { heading: 'Help', items: [{ to: 'help', label: 'Help & Training', icon: IconHelp }] },
 ];
 
 // Company-admin-only -- API keys and webhooks are per-tenant (company_id),
 // not per-project, so this lives alongside the other company-level nav
-// items, not under PROJECT_NAV_ITEMS. Same role check WorkforcePage.tsx
+// groups, not under PROJECT_NAV_GROUPS. Same role check WorkforcePage.tsx
 // uses for its own admin-only sections.
-const DEVELOPER_NAV_ITEM = { to: 'developer', label: 'Developer', icon: IconKey, end: false };
+const DEVELOPER_NAV_GROUP: NavGroup = { heading: 'Admin', items: [{ to: 'developer', label: 'Developer', icon: IconKey, end: false }] };
 
-const PROJECT_NAV_ITEMS = [
-  { to: '', label: 'Overview', icon: IconLayers, end: true },
-  { to: 'captures', label: 'Captures', icon: IconCamera },
-  { to: 'issues', label: 'Issues', icon: IconFlag },
-  { to: 'drawings', label: 'Floor Plans', icon: IconMap },
-  { to: 'buildlens', label: 'BuildLens', icon: IconTimeline },
-  { to: 'rfis', label: 'RFIs', icon: IconQuestion },
-  { to: 'snagging', label: 'Snagging', icon: IconTag },
-  { to: 'submittals', label: 'Submittals', icon: IconInbox },
-  { to: 'assistant', label: 'AI Assistant', icon: IconSpark },
-  { to: 'risk', label: 'Risk', icon: IconShield },
-  { to: 'progress-report', label: 'Progress Report', icon: IconTrending },
-  { to: 'reports', label: 'Reports', icon: IconReport },
+const PROJECT_NAV_GROUPS: NavGroup[] = [
+  { items: [{ to: '', label: 'Overview', icon: IconLayers, end: true }] },
+  {
+    heading: 'Project',
+    items: [
+      { to: 'captures', label: 'Captures', icon: IconCamera },
+      { to: 'drawings', label: 'Floor Plans', icon: IconMap },
+      { to: 'issues', label: 'Issues', icon: IconFlag },
+      { to: 'snagging', label: 'Snagging', icon: IconTag },
+      { to: 'rfis', label: 'RFIs', icon: IconQuestion },
+      { to: 'submittals', label: 'Submittals', icon: IconInbox },
+      { to: 'progress-report', label: 'Progress Report', icon: IconTrending },
+      { to: 'reports', label: 'Reports', icon: IconReport },
+    ],
+  },
+  {
+    // BIM Models already existed as a route (linked only from a button on
+    // ProjectDetail's header) with no sidebar entry at all -- surfacing an
+    // existing module here, not adding a new one.
+    heading: 'Engineering',
+    items: [
+      { to: 'bim', label: 'BIM Models', icon: IconBim },
+      { to: 'buildlens', label: 'BuildLens', icon: IconTimeline },
+    ],
+  },
+  { heading: 'AI', items: [{ to: 'assistant', label: 'AI Assistant', icon: IconSpark }] },
+  { heading: 'Risk', items: [{ to: 'risk', label: 'Risk', icon: IconShield }] },
 ];
 
 export function AppShell() {
@@ -64,7 +93,7 @@ export function AppShell() {
 
   const inProject = Boolean(params.projectId);
   const isCompanyAdmin = user?.companyRole === 'company_admin' || user?.companyRole === 'super_admin';
-  const navItems = isCompanyAdmin ? [...NAV_ITEMS, DEVELOPER_NAV_ITEM] : NAV_ITEMS;
+  const navGroups = isCompanyAdmin ? [...NAV_GROUPS, DEVELOPER_NAV_GROUP] : NAV_GROUPS;
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
@@ -110,23 +139,8 @@ export function AppShell() {
           </button>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {!inProject &&
-            navItems.map((item) => (
-              <NavLink
-                key={item.label}
-                to={`/projects/${item.to}`}
-                end={item.end}
-                className={({ isActive }) =>
-                  `flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors ${
-                    isActive ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-800 hover:text-ink-100'
-                  }`
-                }
-              >
-                <item.icon className="w-4 h-4 shrink-0" />
-                {item.label}
-              </NavLink>
-            ))}
+        <nav className="flex-1 px-3 py-4 overflow-y-auto">
+          {!inProject && <NavGroupList groups={navGroups} basePath="/projects" />}
 
           {inProject && params.projectId && (
             <>
@@ -137,21 +151,9 @@ export function AppShell() {
                 <IconArrowLeft className="w-3.5 h-3.5" /> All projects
               </NavLink>
               <ProjectContextPanel projectId={params.projectId} />
-              {PROJECT_NAV_ITEMS.map((item) => (
-                <NavLink
-                  key={item.label}
-                  to={`/projects/${params.projectId}/${item.to}`}
-                  end={item.end}
-                  className={({ isActive }) =>
-                    `flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors ${
-                      isActive ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-800 hover:text-ink-100'
-                    }`
-                  }
-                >
-                  <item.icon className="w-4 h-4 shrink-0" />
-                  {item.label}
-                </NavLink>
-              ))}
+              <div className="mt-3">
+                <NavGroupList groups={PROJECT_NAV_GROUPS} basePath={`/projects/${params.projectId}`} />
+              </div>
             </>
           )}
         </nav>
@@ -179,6 +181,35 @@ export function AppShell() {
       </main>
 
       <ChatWidget />
+    </div>
+  );
+}
+
+function NavGroupList({ groups, basePath }: { groups: NavGroup[]; basePath: string }) {
+  return (
+    <div className="space-y-4">
+      {groups.map((group, i) => (
+        <div key={group.heading ?? i} className="space-y-0.5">
+          {group.heading && (
+            <div className="px-3 mb-1 text-eyebrow font-mono uppercase text-ink-500">{group.heading}</div>
+          )}
+          {group.items.map((item) => (
+            <NavLink
+              key={item.label}
+              to={`${basePath}/${item.to}`}
+              end={item.end}
+              className={({ isActive }) =>
+                `flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors ${
+                  isActive ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-800 hover:text-ink-100'
+                }`
+              }
+            >
+              <item.icon className="w-4 h-4 shrink-0" />
+              {item.label}
+            </NavLink>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
@@ -303,6 +334,24 @@ function IconTrending({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M3 17l6-6 4 4 8-8" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M15 7h6v6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+// Open book, not another question mark -- IconQuestion (RFI) already owns
+// that shape; Help & Training needs its own silhouette in the same nav.
+function IconHelp({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M12 6c-1.5-1-4-1.5-6-1.2v12c2 -0.3 4.5 0.2 6 1.2 1.5-1 4-1.5 6-1.2V4.8c-2-0.3-4.5 0.2-6 1.2z" strokeLinejoin="round" />
+      <path d="M12 6v12" />
+    </svg>
+  );
+}
+function IconBim({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" strokeLinejoin="round" />
+      <path d="M12 3v9m0 9v-9m-8-4.5L12 12l8-4.5" strokeLinejoin="round" />
     </svg>
   );
 }

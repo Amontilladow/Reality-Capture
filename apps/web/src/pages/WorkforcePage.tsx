@@ -229,7 +229,7 @@ export default function WorkforcePage() {
             )}
 
             {summary.byProject.length > 0 && (
-              <div className="panel tick-frame overflow-hidden">
+              <div className="panel tick-frame overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -270,7 +270,7 @@ export default function WorkforcePage() {
               These activities have no confident project attribution yet. Assign one manually — a manual selection is always recorded at 100%
               confidence, since only you can say for certain.
             </p>
-            <div className="panel tick-frame overflow-hidden">
+            <div className="panel tick-frame overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -421,7 +421,7 @@ function MyScheduling() {
     <section className="space-y-4">
       <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">My schedule</h2>
 
-      <div className="panel tick-frame overflow-hidden">
+      <div className="panel tick-frame overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -763,7 +763,7 @@ function ReportingLinesAdmin() {
       {(usersQuery.isLoading || linesQuery.isLoading) && <p className="text-sm text-ink-500">Loading company users…</p>}
       {setManagerMutation.isError && <p className="field-error">{apiErrorMessage(setManagerMutation.error)}</p>}
       {users.length > 0 && (
-        <div className="panel tick-frame overflow-hidden">
+        <div className="panel tick-frame overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -948,7 +948,7 @@ function ShiftSchedulingAdmin() {
       {shifts.length === 0 ? (
         <p className="text-sm text-ink-500">No shifts assigned in this window yet.</p>
       ) : (
-        <div className="panel tick-frame overflow-hidden">
+        <div className="panel tick-frame overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -994,7 +994,7 @@ function AbsenceRequestsAdmin() {
       {absences.length === 0 ? (
         <p className="text-sm text-ink-500">No pending absence requests.</p>
       ) : (
-        <div className="panel tick-frame overflow-hidden">
+        <div className="panel tick-frame overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -1112,7 +1112,7 @@ function ApplicationsAdmin() {
         </div>
       )}
       {apps.length > 0 && (
-        <div className="panel tick-frame overflow-hidden">
+        <div className="panel tick-frame overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">

@@ -30,6 +30,7 @@ import WorkforcePage from './pages/WorkforcePage';
 import DeveloperSettingsPage from './pages/DeveloperSettingsPage';
 import AiSettingsPage from './pages/AiSettingsPage';
 import BuildLensPage from './pages/BuildLensPage';
+import HelpPage from './pages/HelpPage';
 
 // These four pull in the heaviest dependencies in the app (Three.js +
 // @thatopen/components + @thatopen/fragments for the two BIM routes,
@@ -102,6 +103,7 @@ export default function App() {
             <Route path="/projects/workforce" element={<WorkforcePage />} />
             <Route path="/projects/developer" element={<DeveloperSettingsPage />} />
             <Route path="/projects/ai-settings" element={<AiSettingsPage />} />
+            <Route path="/projects/help" element={<HelpPage />} />
             <Route path="/projects/:projectId" element={<ProjectDetail />} />
             <Route path="/projects/:projectId/captures" element={<CapturesPage />} />
             <Route path="/projects/:projectId/drawings" element={<FloorPlanViewer />} />

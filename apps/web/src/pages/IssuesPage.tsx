@@ -13,10 +13,12 @@ import {
 import { getMembers, getHierarchy, type ProjectHierarchy } from '../lib/projects.api';
 import { useAuthStore } from '../store/auth.store';
 import {
-  STATUS_LABELS, STATUS_BADGE_CLASS, PRIORITY_LABELS, PRIORITY_BADGE_CLASS,
+  STATUS_LABELS, PRIORITY_LABELS,
   ISSUE_STATUSES, ISSUE_TYPE_LABELS, DISCIPLINE_LABELS, CATEGORY_LABELS,
   isOverdue, formatDeadline, formatDateTime, getDeadlineTimer, TIMER_BADGE_CLASS, isIssueManager,
 } from '../lib/issue-constants';
+import { ISSUE_STATUS_TONE, ISSUE_PRIORITY_TONE } from '../lib/status-tone';
+import { StatusBadge } from '../components/ui/Badge';
 import { apiErrorMessage } from '../lib/api';
 
 type QuickFilter = 'all' | 'overdue' | 'critical' | 'mine';
@@ -938,8 +940,8 @@ function IssueRow({
             same badge row, easy to miss when following up on who owns
             what. */}
         <div className="flex items-center gap-2 flex-wrap text-xs">
-          <span className={`badge ${STATUS_BADGE_CLASS[issue.status]}`}>{STATUS_LABELS[issue.status]}</span>
-          <span className={`badge ${PRIORITY_BADGE_CLASS[issue.priority]}`}>{PRIORITY_LABELS[issue.priority]}</span>
+          <StatusBadge tone={ISSUE_STATUS_TONE[issue.status]} label={STATUS_LABELS[issue.status]} />
+          <StatusBadge tone={ISSUE_PRIORITY_TONE[issue.priority]} label={PRIORITY_LABELS[issue.priority]} />
           <span className={`badge ${TIMER_BADGE_CLASS[timer.state]}`}>{timer.label}</span>
           <AssigneeTag name={issue.assignedToName} className="ml-auto" />
         </div>
