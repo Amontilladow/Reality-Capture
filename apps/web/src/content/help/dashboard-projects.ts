@@ -61,6 +61,7 @@ export const dashboardProjectsArticles: HelpArticle[] = [
     ],
     relatedSlugs: ['understanding-the-projects-page', 'editing-project-details'],
     keywords: ['create project', 'new project'],
+    roles: { companyRoles: ['super_admin', 'company_admin'] },
   },
   {
     slug: 'switching-between-projects',

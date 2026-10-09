@@ -6,14 +6,19 @@ import { getArticleSectionTitles, slugifySectionTitle } from '../components/help
 import {
   HELP_CATEGORIES, HELP_CATEGORY_LABELS,
   getArticle, getArticlesByCategory, getRelatedArticles, searchHelpArticles,
-  type HelpCategoryKey,
+  type HelpArticle, type HelpCategoryKey,
 } from '../content/help';
+import { ROLE_GUIDE_SLUGS } from '../content/help/role-guides';
+import { COMPANY_ROLE_LABELS } from '../lib/issue-constants';
+import { useAuthStore } from '../store/auth.store';
 
 const DEFAULT_CATEGORY: HelpCategoryKey = 'getting-started';
 
 export default function HelpPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState('');
+  const [showRoleGuide, setShowRoleGuide] = useState(false);
+  const companyRole = useAuthStore((s) => s.user?.companyRole);
 
   const activeSlug = searchParams.get('article');
   const activeCategory = (searchParams.get('category') as HelpCategoryKey | null) ?? DEFAULT_CATEGORY;
@@ -24,8 +29,18 @@ export default function HelpPage() {
     setSearchParams({ article: slug });
   }
   function openCategory(category: HelpCategoryKey) {
+    setShowRoleGuide(false);
     setSearchParams({ category });
   }
+  function openRoleGuide() {
+    setQuery('');
+    setSearchParams({});
+    setShowRoleGuide(true);
+  }
+
+  const roleGuideArticles: HelpArticle[] = companyRole
+    ? ROLE_GUIDE_SLUGS[companyRole].map(getArticle).filter((a): a is HelpArticle => Boolean(a))
+    : [];
 
   const searchResults = query.trim() ? searchHelpArticles(query) : [];
   const categoryArticles = getArticlesByCategory(activeCategory);
@@ -53,13 +68,27 @@ export default function HelpPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_260px] gap-6">
             <nav aria-label="Help categories" className="space-y-0.5">
+              {companyRole && (
+                <button
+                  onClick={openRoleGuide}
+                  aria-current={!activeSlug && showRoleGuide ? 'true' : undefined}
+                  className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors mb-2 border ${
+                    !activeSlug && showRoleGuide
+                      ? 'bg-signal/10 text-signal border-signal/30'
+                      : 'text-ink-200 border-base-700 hover:bg-base-800'
+                  }`}
+                >
+                  For My Role
+                  <span className="block text-[11px] font-normal text-ink-500">{COMPANY_ROLE_LABELS[companyRole]}</span>
+                </button>
+              )}
               {HELP_CATEGORIES.map((key) => (
                 <button
                   key={key}
                   onClick={() => openCategory(key)}
-                  aria-current={!activeSlug && key === activeCategory ? 'true' : undefined}
+                  aria-current={!activeSlug && !showRoleGuide && key === activeCategory ? 'true' : undefined}
                   className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
-                    !activeSlug && key === activeCategory ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-800'
+                    !activeSlug && !showRoleGuide && key === activeCategory ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-800'
                   }`}
                 >
                   {HELP_CATEGORY_LABELS[key]}
@@ -70,6 +99,8 @@ export default function HelpPage() {
             <div className="panel tick-frame p-6 min-w-0">
               {activeArticle ? (
                 <ArticleView article={activeArticle} onOpenArticle={openArticle} />
+              ) : showRoleGuide && companyRole ? (
+                <RoleGuideList roleLabel={COMPANY_ROLE_LABELS[companyRole]} articles={roleGuideArticles} onOpenArticle={openArticle} />
               ) : (
                 <CategoryArticleList category={activeCategory} articles={categoryArticles} onOpenArticle={openArticle} />
               )}
@@ -113,6 +144,38 @@ export default function HelpPage() {
         )}
       </div>
     </>
+  );
+}
+
+function RoleGuideList({
+  roleLabel, articles, onOpenArticle,
+}: {
+  roleLabel: string;
+  articles: HelpArticle[];
+  onOpenArticle: (slug: string) => void;
+}) {
+  return (
+    <div>
+      <h1 className="text-lg font-semibold text-ink-100 mb-1">Guide for {roleLabel}</h1>
+      <p className="text-xs text-ink-500 mb-4">
+        A quick-start subset of the Help Centre for your role -- the rest is still available via the categories on the left.
+      </p>
+      {articles.length === 0 ? (
+        <div className="text-sm text-ink-500">No role-specific guide is available yet for {roleLabel}.</div>
+      ) : (
+        <ul className="space-y-3">
+          {articles.map((a) => (
+            <li key={a.slug}>
+              <button onClick={() => onOpenArticle(a.slug)} className="text-left w-full panel p-4 hover:bg-base-800/60 transition-colors">
+                <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500">{HELP_CATEGORY_LABELS[a.category]}</div>
+                <div className="font-medium text-ink-100 text-sm">{a.title}</div>
+                <div className="text-xs text-ink-500 mt-0.5">{a.summary}</div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

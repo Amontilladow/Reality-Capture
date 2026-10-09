@@ -53,6 +53,7 @@ export const userManagementArticles: HelpArticle[] = [
     afterSubmission: 'They create their account via the invitation link; a self-registered account additionally needs its requested role approved (see "Managing User Roles").',
     relatedSlugs: ['understanding-organization-access', 'managing-user-roles'],
     keywords: ['invite user', 'add user'],
+    roles: { companyRoles: ['super_admin', 'company_admin', 'technical_director', 'engineering_manager', 'bim_manager', 'project_manager'] },
   },
   {
     slug: 'managing-user-roles',
@@ -64,6 +65,19 @@ export const userManagementArticles: HelpArticle[] = [
     steps: ['Open the company\'s user list and select a role for the user.'],
     relatedSlugs: ['understanding-organization-access'],
     keywords: ['user role', 'approve role'],
+    roles: { companyRoles: ['super_admin'] },
+  },
+  {
+    slug: 'understanding-site-role-restrictions',
+    category: 'user-management',
+    title: 'Understanding Site Role Restrictions',
+    summary: 'Construction Manager and Project Engineer have full access only on Floor Plans, Issues, and Snagging.',
+    whatItDoes: 'These two roles are deliberately restricted, site-facing roles: full working access (create, edit) on Floor Plans/Pinpoints, Issues, and Snagging, but read-only everywhere else -- no access to project settings, user management, or billing, regardless of any other permission that might otherwise apply.',
+    whoCanUse: 'Describes Construction Manager and Project Engineer specifically.',
+    commonMistakes: ['Expecting to edit a Document, RFI, or Report after being granted a narrower project permission -- the site restriction applies on top of, not instead of, the normal permission model.'],
+    relatedSlugs: ['understanding-user-permissions'],
+    keywords: ['site restriction', 'construction manager', 'project engineer'],
+    roles: { companyRoles: ['construction_manager', 'project_engineer'] },
   },
   {
     slug: 'reporting-unauthorized-access',

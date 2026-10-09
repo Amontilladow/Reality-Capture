@@ -359,3 +359,57 @@ exactly those two roles, so that article needed no change.
 environment). Role-specific filtering (4E), onboarding (4F), contextual
 help links (4G), and expanded FAQ/troubleshooting coverage (4H) are not
 yet done at the time this section was written.
+
+## Phase 4E — Role-specific guides — VERIFIED COMPLETE
+
+Added a "For My Role" entry point to the Help Centre
+(`apps/web/src/pages/HelpPage.tsx`), reading the signed-in user's real
+`companyRole` from `useAuthStore` (no new auth/profile mechanism). It
+shows a curated quick-start subset of already-written articles for that
+role, defined in a new `apps/web/src/content/help/role-guides.ts`
+(`ROLE_GUIDE_SLUGS: Record<CompanyRole, string[]>`) -- deliberately a
+hand-picked list of 4-6 real article slugs per role, not a filter over
+the whole 124-article library: most articles are open to "any project
+member," so filtering by role tag alone would reproduce nearly the full
+list and defeat the point of a "quick start."
+
+Also tagged the genuinely role-gated procedural articles with
+`roles.companyRoles` (used by the existing `getArticlesForRole()`
+helper, not directly by the new UI) so a future role-scoped view has
+accurate metadata to build on: `inviting-users` (every role whose
+`RolesGuard`-resolved weight qualifies), `managing-user-roles`
+(`super_admin` only), `creating-a-project` (`super_admin`/
+`company_admin`), and a new article,
+`understanding-site-role-restrictions` (user-management.ts), tagged
+`construction_manager`/`project_engineer` specifically -- it documents
+the real, already-shipped `SiteRoleRestrictionGuard` behavior (full
+access on Floor Plans/Issues/Snagging only, read-only everywhere else
+for those two roles), which neither role would otherwise see explained
+anywhere in the Help Centre. `reviewing-and-closing-an-issue` was left
+untagged deliberately: closing is available either by sufficiently
+senior role or by a `manage_issues` permission grant regardless of
+role, so a role tag alone would misrepresent who can actually do it.
+
+All 12 company roles have a guide (`super_admin`, `company_admin`,
+`technical_director`, `engineering_manager`, `bim_manager`,
+`project_manager`, `construction_manager`, `qa_qc_manager`,
+`commercial_manager`, `consultant`, `client_representative`,
+`project_engineer`). Two roles' guides point to the
+site-restriction article as their first entry (`construction_manager`,
+`project_engineer`), reflecting their real, narrower access.
+
+**Known limitation**: there is no written Help Centre coverage of BIM
+Models at all (confirmed while picking `bim_manager`'s guide -- no
+`bim-models.ts` category file exists, and none of the brief's suggested
+categories maps cleanly onto it either). `bim_manager`'s guide links to
+the closest adjacent real content (Documents, Reports, inviting users)
+rather than inventing BIM-specific procedural content. Flagged again in
+Phase 4I's final report as missing content, not silently worked around.
+
+**Verified**: `tsc --noEmit` clean, `eslint --max-warnings=0` clean,
+production build succeeds, and every slug in `ROLE_GUIDE_SLUGS`
+(53 references) resolves to a real article (checked programmatically,
+same method as the `relatedSlugs` integrity check).
+
+**Not yet verified**: a real browser render. Onboarding (4F), contextual
+help links (4G), and expanded FAQ/troubleshooting coverage (4H) remain.
