@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { IssueType, IssuePriority, IssueDiscipline, IssueCategory, ProjectRole } from '@engineeringos/types';
 import { Modal } from '../ui/Modal';
 import { HelpLink } from '../help/HelpLink';
-import { createIssue, updateIssue, type IssueDetailItem } from '../../lib/issues.api';
+import { createIssue, updateIssue, addEvidenceCapture, type IssueDetailItem } from '../../lib/issues.api';
+import { uploadCapture } from '../../lib/captures.api';
 import type { CameraVector } from '../bim-viewer/BimViewer';
 import type { ProjectMember } from '../../lib/projects.api';
 import type { ProjectHierarchy } from '../../lib/projects.api';
@@ -61,6 +62,14 @@ export function IssueFormModal({
   const [place, setPlace] = useState<HierarchySelection>({ buildingId: '', levelId: '', locationId: '' });
   const [deadline, setDeadline] = useState('');
   const [error, setError] = useState('');
+  // Evidence photos picked before the issue exists yet -- uploaded as real
+  // captures (so they show up in the Captures tab like any other capture)
+  // and linked via issue_captures right after the issue itself is created,
+  // same mechanism IssueDetail's "Attach existing capture" already uses,
+  // just for a brand-new photo instead of picking one already on the project.
+  const [photos, setPhotos] = useState<{ file: File; previewUrl: string }[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -79,6 +88,11 @@ export function IssueFormModal({
     });
     setDeadline((issue?.deadline ?? d?.deadline)?.slice(0, 10) ?? '');
     setError('');
+    setPhotos((prev) => {
+      prev.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+      return [];
+    });
+    setUploadProgress(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- draftValues intentionally excluded: only applied on (re)open, not on every identity change
   }, [open, issue]);
 
@@ -102,7 +116,7 @@ export function IssueFormModal({
           deadline: deadlineIso,
         });
       }
-      return createIssue(projectId, {
+      const created = await createIssue(projectId, {
         issueType,
         title: title.trim(),
         description: description || undefined,
@@ -124,11 +138,31 @@ export function IssueFormModal({
         cameraTargetZ: viewState?.cameraTarget.z,
         screenshotStorageKey: viewState?.screenshotStorageKey ?? undefined,
       });
+
+      // Upload each picked photo as a real capture (so it also shows up in
+      // the Captures tab), then link it to the new issue as evidence --
+      // sequential, not parallel, so uploadProgress reflects real completion
+      // and one failed upload doesn't race the others.
+      if (photos.length > 0) {
+        setUploadProgress({ done: 0, total: photos.length });
+        for (const { file } of photos) {
+          const capture = await uploadCapture(projectId, file, {
+            captureType: 'photo_standard',
+            locationId: place.locationId || undefined,
+            title: `Evidence: ${title.trim()}`,
+          });
+          await addEvidenceCapture(projectId, created.id, capture.id);
+          setUploadProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
+        }
+      }
+
+      return created;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['issues', projectId] });
       queryClient.invalidateQueries({ queryKey: ['issue-summary', projectId] });
       if (isEdit && issue) queryClient.invalidateQueries({ queryKey: ['issue', projectId, issue.id] });
+      if (photos.length > 0) queryClient.invalidateQueries({ queryKey: ['captures', projectId] });
       onClose();
     },
     onError: (err) => setError(apiErrorMessage(err)),
@@ -241,10 +275,67 @@ export function IssueFormModal({
           <BuildingLevelRoomPicker projectId={projectId} hierarchy={hierarchy} value={place} onChange={setPlace} />
         </div>
 
+        {!isEdit && (
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="field-label">Photos {photos.length > 0 ? `(${photos.length})` : ''}</label>
+              <button
+                type="button"
+                className="text-xs text-accent-400 hover:text-accent-300"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={mutation.isPending}
+              >
+                + Add photo
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  const picked = Array.from(e.target.files ?? []).map((file) => ({ file, previewUrl: URL.createObjectURL(file) }));
+                  if (picked.length > 0) setPhotos((prev) => [...prev, ...picked]);
+                  e.target.value = '';
+                }}
+              />
+            </div>
+            {photos.length === 0 && (
+              <p className="text-xs text-ink-500 mt-1">Optional -- attach photos as evidence. They'll also appear in the project's Captures tab.</p>
+            )}
+            {photos.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {photos.map(({ file, previewUrl }, i) => (
+                  <div key={`${file.name}-${i}`} className="relative w-16 h-16 rounded overflow-hidden border border-base-600 shrink-0">
+                    <img src={previewUrl} alt={file.name} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setPhotos((prev) => {
+                        URL.revokeObjectURL(prev[i].previewUrl);
+                        return prev.filter((_, idx) => idx !== i);
+                      })}
+                      disabled={mutation.isPending}
+                      className="absolute top-0 right-0 bg-base-900/80 text-ink-100 text-xs leading-none w-5 h-5 flex items-center justify-center rounded-bl"
+                      aria-label={`Remove ${file.name}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-2 pt-2">
           <button type="button" onClick={onClose} className="btn-secondary flex-1" disabled={mutation.isPending}>Cancel</button>
           <button type="button" onClick={() => mutation.mutate()} className="btn-primary flex-1" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Create issue'}
+            {mutation.isPending
+              ? uploadProgress
+                ? `Uploading photo ${Math.min(uploadProgress.done + 1, uploadProgress.total)}/${uploadProgress.total}…`
+                : 'Saving…'
+              : isEdit ? 'Save changes' : 'Create issue'}
           </button>
         </div>
       </div>
