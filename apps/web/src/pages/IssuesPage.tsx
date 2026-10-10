@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as XLSX from 'xlsx';
 import { PageHeader } from '../components/layout/PageHeader';
 import { IssueFormModal } from '../components/issues/IssueFormModal';
 import { IssueDetail } from '../components/issues/IssueDetail';
@@ -530,7 +529,11 @@ export default function IssuesPage() {
 }
 
 // ── Excel export (client-side, SheetJS) ─────────────────────────────────
-function exportIssuesToExcel(issues: IssueListItem[]) {
+// Phase 7: xlsx is a large dependency that every user previously paid for in
+// the main bundle on every page load, even if they never export. Dynamic
+// import moves that cost to the moment a user actually clicks "Export".
+async function exportIssuesToExcel(issues: IssueListItem[]) {
+  const XLSX = await import('xlsx');
   const rows = issues.map((i) => ({
     'Issue #': i.issueNumber ?? i.id,
     Title: i.title,

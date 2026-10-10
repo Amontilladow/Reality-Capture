@@ -162,7 +162,12 @@ export class CapturesService {
       attempts: 3,
       backoff: { type: 'exponential', delay: 5000 },
       removeOnComplete: true,
-      removeOnFail: false,
+      // Phase 7: was `false` (keep forever) -- the only Bull queue in this
+      // codebase without a bound on failed-job retention (ifc-processing and
+      // webhook-delivery both cap at 100). On a free-tier Redis plan,
+      // permanently-failed jobs (corrupted uploads, unsupported formats)
+      // accumulated indefinitely. 100 matches the other two queues' convention.
+      removeOnFail: 100,
     });
 
     this.logger.log(`Capture ${capture.id as string} registered, queued for processing`);
