@@ -17,6 +17,9 @@ const CLOSED_SNAG_STATUSES = ['verified', 'void'];
 // below exists to flag.
 const CLOSED_SUBMITTAL_STATUSES = ['approved', 'approved_as_noted'];
 const REJECTED_SUBMITTAL_STATUSES = ['rejected', 'revise_and_resubmit'];
+// qaqc_records.status CHECK constraint (migration 067): 'open'/'responded'
+// are still-open (awaiting or mid review); 'closed'/'void' are done.
+const CLOSED_QAQC_STATUSES = ['closed', 'void'];
 
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 
@@ -40,6 +43,7 @@ export class SignalsService {
     await this.detectSubmittalSignals(companyId, projectId);
     await this.detectDrawingSignals(companyId, projectId);
     await this.detectQaSignals(companyId, projectId);
+    await this.detectQaqcSignals(companyId, projectId);
   }
 
   private async upsertSignal(
@@ -311,6 +315,49 @@ export class SignalsService {
         await this.upsertSignal(companyId, projectId, s.nodeId, 'SUBMITTAL_REJECTED', s.status === 'rejected' ? 45 : 30, { status: s.status });
       } else {
         await this.clearSignal(companyId, s.nodeId, 'SUBMITTAL_REJECTED');
+      }
+    }
+  }
+
+  // ── QAQC NCR/SOR signals (same overdue/approaching-due/high-priority
+  // shape as submittal signals above -- qaqc_records has the same
+  // due_date/priority columns) ────────────────────────────────────────────
+
+  async detectQaqcSignals(companyId: string, projectId: string): Promise<void> {
+    const rows = await this.db.withTenant(companyId, sql => sql<{
+      nodeId: string; status: string; priority: string; dueDate: string | null;
+    }[]>`
+      SELECT n.id AS node_id, q.status, q.priority, q.due_date
+      FROM qaqc_records q
+      JOIN risk_graph_nodes n ON n.node_type = q.record_type AND n.entity_id = q.id
+      WHERE q.project_id = ${projectId}`);
+
+    const now = Date.now();
+    for (const q of rows) {
+      const isOpen = !CLOSED_QAQC_STATUSES.includes(q.status);
+
+      if (isOpen && q.dueDate && new Date(q.dueDate).getTime() < now) {
+        const overdueDays = (now - new Date(q.dueDate).getTime()) / 86400000;
+        await this.upsertSignal(companyId, projectId, q.nodeId, 'QAQC_OVERDUE', 40 + overdueDays * 3, { overdueDays: Math.round(overdueDays) });
+      } else {
+        await this.clearSignal(companyId, q.nodeId, 'QAQC_OVERDUE');
+      }
+
+      if (isOpen && q.dueDate) {
+        const daysToDue = (new Date(q.dueDate).getTime() - now) / 86400000;
+        if (daysToDue >= 0 && daysToDue <= 5) {
+          await this.upsertSignal(companyId, projectId, q.nodeId, 'QAQC_APPROACHING_DUE', 30 + (5 - daysToDue) * 4, { daysToDue: Math.round(daysToDue) });
+        } else {
+          await this.clearSignal(companyId, q.nodeId, 'QAQC_APPROACHING_DUE');
+        }
+      } else {
+        await this.clearSignal(companyId, q.nodeId, 'QAQC_APPROACHING_DUE');
+      }
+
+      if (isOpen && (q.priority === 'high' || q.priority === 'critical')) {
+        await this.upsertSignal(companyId, projectId, q.nodeId, 'QAQC_HIGH_PRIORITY', q.priority === 'critical' ? 55 : 35, { priority: q.priority });
+      } else {
+        await this.clearSignal(companyId, q.nodeId, 'QAQC_HIGH_PRIORITY');
       }
     }
   }

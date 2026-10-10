@@ -9,7 +9,7 @@ import { ScoringService } from './scoring.service';
 import { AiClientService } from '../ai-client/ai-client.service';
 import { renderRiskPdf, type RiskPdfTopRisk } from './risk-pdf.template';
 
-export const RISK_WORTHY_NODE_TYPES = ['rfi', 'issue', 'snag_item', 'drawing', 'qa_inspection', 'submittal'] as const;
+export const RISK_WORTHY_NODE_TYPES = ['rfi', 'issue', 'snag_item', 'drawing', 'qa_inspection', 'submittal', 'ncr', 'sor'] as const;
 
 const CATEGORY_BY_NODE_TYPE: Record<string, string> = {
   rfi: 'Design / RFI',
@@ -18,6 +18,8 @@ const CATEGORY_BY_NODE_TYPE: Record<string, string> = {
   qa_inspection: 'Quality / Inspection',
   drawing: 'Design / Drawing',
   submittal: 'Procurement / Submittal',
+  ncr: 'Quality / Non-Conformance',
+  sor: 'Quality / Site Observation',
 };
 
 const TITLE_PREFIX_BY_NODE_TYPE: Record<string, string> = {
@@ -27,6 +29,8 @@ const TITLE_PREFIX_BY_NODE_TYPE: Record<string, string> = {
   qa_inspection: 'Failed QA Inspection',
   drawing: 'Repeated Drawing Revisions',
   submittal: 'Submittal Pending Review',
+  ncr: 'Open NCR',
+  sor: 'Open SOR',
 };
 
 // Ordered by how directly actionable/severe the recommendation is — the
@@ -52,6 +56,9 @@ const RECOMMENDED_ACTION_BY_SIGNAL: [string, string][] = [
   ['RFI_HIGH_PRIORITY', 'Confirm ownership and a response timeline given this RFI\'s priority.'],
   ['SUBMITTAL_HIGH_PRIORITY', 'Confirm ownership and a review timeline given this submittal\'s priority.'],
   ['ISSUE_HIGH_SEVERITY', 'Confirm ownership and a resolution timeline given this issue\'s severity.'],
+  ['QAQC_OVERDUE', 'Escalate this NCR/SOR for an immediate response — it is already overdue.'],
+  ['QAQC_APPROACHING_DUE', 'Ensure a response is issued before the due date to avoid this becoming overdue.'],
+  ['QAQC_HIGH_PRIORITY', 'Confirm ownership and a response timeline given this record\'s priority.'],
 ];
 
 export interface RiskRow {
@@ -124,6 +131,8 @@ export class RiskService {
       case 'drawing': await this.extraction.extractDrawings(companyId, projectId, entityId); break;
       case 'qa_inspection': await this.extraction.extractQaInspections(companyId, projectId, entityId); break;
       case 'submittal': await this.extraction.extractSubmittals(companyId, projectId, entityId); break;
+      case 'ncr':
+      case 'sor': await this.extraction.extractQaqcRecords(companyId, projectId, entityId); break;
     }
     // RFI<->Issue inference is symmetric and cheap enough to redo project-wide
     // whenever either side changes, rather than tracking which pairs to revisit.
@@ -903,18 +912,20 @@ export class RiskService {
 
   /** Empty-state / data-availability honesty (brief section 44). */
   async getDataAvailability(companyId: string, projectId: string) {
-    const [[rfiCount], [issueCount], [snagCount], [qaCount], [bimCount]] = await Promise.all([
+    const [[rfiCount], [issueCount], [snagCount], [qaCount], [bimCount], [qaqcCount]] = await Promise.all([
       this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM rfis WHERE project_id = ${projectId}`),
       this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM issues WHERE project_id = ${projectId}`),
       this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM snag_items WHERE project_id = ${projectId}`),
       this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM qa_inspections WHERE project_id = ${projectId}`),
       this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM bim_elements WHERE project_id = ${projectId}`),
+      this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM qaqc_records WHERE project_id = ${projectId}`),
     ]);
     return {
       rfisAvailable: Number(rfiCount.c),
       issuesAvailable: Number(issueCount.c),
       snagItemsAvailable: Number(snagCount.c),
       qaInspectionsAvailable: Number(qaCount.c),
+      qaqcRecordsAvailable: Number(qaqcCount.c),
       bimElementRelationships: Number(bimCount.c) > 0 ? 'Available' : 'Not available',
       programmeData: 'Not connected — no programme/schedule module exists in this system yet.',
       procurementData: 'Not connected — no procurement/material module exists in this system yet.',

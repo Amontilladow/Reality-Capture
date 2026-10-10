@@ -1,6 +1,5 @@
 import { Injectable, Logger, Optional, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import sharp from 'sharp';
-import { PDFDocument, PDFFont, StandardFonts, rgb, PageSizes } from 'pdf-lib';
 import { DatabaseService } from '../../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
@@ -9,6 +8,7 @@ import { RiskService } from '../risk/risk.service';
 import { ProjectAuthorizationService } from '../../common/authorization/project-authorization.service';
 import { renderRfiPdf } from './rfi-pdf.template';
 import { renderNoticeLetterPdf } from './rfi-notice-letter-pdf.template';
+import { mergeAttachmentPdfs, type MergeableAttachment } from '../../common/pdf/attachment-pdf-merge.util';
 import { ATTACHMENT_MAX_SIZE, ATTACHMENT_ALLOWED_EXTENSIONS } from '../../common/constants/attachment-limits';
 import type { CreateRfiDto } from './dto/create-rfi.dto';
 import type { UpdateRfiDto } from './dto/update-rfi.dto';
@@ -413,8 +413,20 @@ export class RfisService {
     // additional pages after the react-pdf summary -- the summary's own
     // attachment list (plain text lines + small in-summary image
     // thumbnails, both rendered above via renderRfiPdf()) is left entirely
-    // untouched; this is a separate appendix, not a replacement.
-    const buffer = await this.mergeAttachmentPdfs(summaryBuffer, attachmentRowsTyped);
+    // untouched; this is a separate appendix, not a replacement. Query rows
+    // first, then response rows, same order the summary's own attachment
+    // lists render in. The merge mechanics themselves (divider pages, per-
+    // attachment failure isolation, the pdf-lib byteOffset workaround) live
+    // in the shared attachment-pdf-merge util -- QAQC's PDF export is the
+    // second caller of the exact same function.
+    const queryRows = attachmentRowsTyped.filter((a) => (a.kind ?? 'query') === 'query');
+    const responseRows = attachmentRowsTyped.filter((a) => a.kind === 'response');
+    const mergeableAttachments: MergeableAttachment[] = [...queryRows, ...responseRows].map((row) => ({
+      filename: row.filename as string,
+      storageKey: row.storageKey as string | undefined,
+      typeLabel: this.attachmentTypeLabel(row),
+    }));
+    const buffer = await mergeAttachmentPdfs(summaryBuffer, mergeableAttachments, this.storage);
 
     return { buffer, filename };
   }
@@ -424,21 +436,6 @@ export class RfisService {
   // docx, dwg, etc.) has no reasonable inline-image treatment and keeps the
   // existing plain "• filename (type)" text line only.
   private static readonly IMAGE_ATTACHMENT_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp']);
-
-  // Extensions that can actually be turned into real appendix PAGES (as
-  // opposed to IMAGE_ATTACHMENT_EXTENSIONS above, which is only about the
-  // small in-summary thumbnail and includes gif/webp -- neither of which
-  // pdf-lib's embedJpg()/embedPng() can decode, and neither of which
-  // ATTACHMENT_ALLOWED_EXTENSIONS even allows as a real upload today
-  // anyway). xls/xlsx/doc/docx/zip have no document-conversion tooling
-  // available in this environment (confirmed: no LibreOffice), so they
-  // deliberately stay appendix-less -- the summary's existing
-  // "• filename (type)" text line is their only representation, unchanged.
-  private static readonly MERGEABLE_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png']);
-
-  private getFileExtension(filename: string): string {
-    return filename.split('.').pop()?.toLowerCase() ?? '';
-  }
 
   // Same label format as rfi-pdf.template.ts's own attachmentLabel() (kept
   // as a separate copy rather than exported/shared -- the template's
@@ -450,116 +447,6 @@ export class RfisService {
     const typeLabel = documentType ? RFI_DOCUMENT_TYPE_LABELS[documentType] : 'Other';
     const otherSuffix = documentType === 'other' && documentTypeOther ? ` — ${documentTypeOther}` : '';
     return `${typeLabel}${otherSuffix}`;
-  }
-
-  // Full-page section-marker page -- plain drawText(), not routed through
-  // react-pdf (per the ticket: "no need to match the summary's exact
-  // branded font, this is a functional section marker"). Bold heading +
-  // regular filename/type line, per the ticket's explicit font split.
-  private addAttachmentDividerPage(mainDoc: PDFDocument, headingFont: PDFFont, bodyFont: PDFFont, filename: string, typeLabel: string): void {
-    const [, pageHeight] = PageSizes.A4;
-    const page = mainDoc.addPage(PageSizes.A4);
-    const margin = 50;
-    page.drawText('ATTACHMENT', {
-      x: margin,
-      y: pageHeight - margin - 24,
-      size: 20,
-      font: headingFont,
-      color: rgb(0.04, 0.08, 0.11),
-    });
-    page.drawText(filename, {
-      x: margin,
-      y: pageHeight - margin - 54,
-      size: 13,
-      font: bodyFont,
-      color: rgb(0.04, 0.08, 0.11),
-    });
-    page.drawText(`(${typeLabel})`, {
-      x: margin,
-      y: pageHeight - margin - 74,
-      size: 10.5,
-      font: bodyFont,
-      color: rgb(0.29, 0.38, 0.47),
-    });
-  }
-
-  // Downloads one attachment and appends its divider page + real content
-  // pages to mainDoc. Deliberately swallows every failure here (bad
-  // storage key, network error, corrupt/encrypted PDF pdf-lib can't
-  // parse, corrupt image) -- a console.warn plus a skipped attachment,
-  // never a thrown error, so one bad attachment can't take the rest of the
-  // merged document (summary + every other attachment) down with it.
-  private async appendAttachmentPages(mainDoc: PDFDocument, row: Record<string, unknown>, headingFont: PDFFont, bodyFont: PDFFont): Promise<void> {
-    const filename = row.filename as string;
-    const storageKey = row.storageKey as string | undefined;
-    const ext = this.getFileExtension(filename);
-    const isPdf = ext === 'pdf';
-    const isMergeableImage = RfisService.MERGEABLE_IMAGE_EXTENSIONS.has(ext);
-    if (!storageKey || (!isPdf && !isMergeableImage)) return; // xls/xlsx/doc/docx/zip/unknown -- text line only, no appendix page
-
-    try {
-      const bytes = await this.storage.download(storageKey);
-      // pdf-lib's JpegEmbedder reads the SOI marker via `new
-      // DataView(bytes.buffer)` with no byteOffset/length -- it assumes
-      // bytes.buffer *is* the image, not a slice of a larger one. But
-      // storage.download()'s Buffer.concat(chunks) returns the lone chunk
-      // completely untouched whenever the S3 stream yields exactly one
-      // chunk (Node's own Buffer.concat short-circuits for length-1
-      // arrays), and that chunk is very often a pooled Buffer sliced out
-      // of a larger internal allocation with a nonzero byteOffset --
-      // confirmed live against this RFI's real site-photo.jpg attachment,
-      // which pdf-lib rejected with "SOI not found in JPEG" even though
-      // the bytes are a perfectly valid JPEG (sharp decodes it fine).
-      // Uint8Array.from() copies into a fresh, byteOffset-0 buffer, which
-      // sidesteps this for every pdf-lib embedder, not just JPEG's.
-      const normalizedBytes = Uint8Array.from(bytes);
-      const typeLabel = this.attachmentTypeLabel(row);
-
-      // Build the real content FIRST and only add the divider page once
-      // that succeeds -- if PDFDocument.load()/copyPages()/embedJpg()/
-      // embedPng() throws (corrupt file, encrypted PDF, truncated image),
-      // nothing has been added to mainDoc yet, so a failed attachment
-      // never leaves a stray, content-less divider page behind.
-      if (isPdf) {
-        const attachmentDoc = await PDFDocument.load(normalizedBytes);
-        const copiedPages = await mainDoc.copyPages(attachmentDoc, attachmentDoc.getPageIndices());
-        this.addAttachmentDividerPage(mainDoc, headingFont, bodyFont, filename, typeLabel);
-        copiedPages.forEach((p) => mainDoc.addPage(p));
-      } else {
-        const image = ext === 'png' ? await mainDoc.embedPng(normalizedBytes) : await mainDoc.embedJpg(normalizedBytes);
-        const [pageWidth, pageHeight] = PageSizes.A4;
-        const margin = 40;
-        const { width, height } = image.scaleToFit(pageWidth - margin * 2, pageHeight - margin * 2);
-        this.addAttachmentDividerPage(mainDoc, headingFont, bodyFont, filename, typeLabel);
-        const page = mainDoc.addPage(PageSizes.A4);
-        page.drawImage(image, { x: (pageWidth - width) / 2, y: (pageHeight - height) / 2, width, height });
-      }
-    } catch (err) {
-      // Per-attachment failure only -- everything else (summary + every
-      // other attachment) still comes through fine.
-      console.warn(`[RfisService.generatePdf] Skipping attachment "${filename}" while merging PDF appendix: ${(err as Error)?.message ?? err}`);
-    }
-  }
-
-  // Loads the react-pdf-rendered summary as a pdf-lib PDFDocument, then
-  // appends divider + content pages for every query attachment (in the
-  // same order as the summary's Query Attachments list), then every
-  // response attachment -- one final PDFDocument, .save()'d once at the
-  // end into the single Buffer the controller streams back.
-  private async mergeAttachmentPdfs(summaryBuffer: Buffer, attachmentRows: Array<Record<string, unknown>>): Promise<Buffer> {
-    const mainDoc = await PDFDocument.load(summaryBuffer);
-    const headingFont = await mainDoc.embedFont(StandardFonts.HelveticaBold);
-    const bodyFont = await mainDoc.embedFont(StandardFonts.Helvetica);
-
-    const queryRows = attachmentRows.filter((a) => (a.kind ?? 'query') === 'query');
-    const responseRows = attachmentRows.filter((a) => a.kind === 'response');
-
-    for (const row of [...queryRows, ...responseRows]) {
-      await this.appendAttachmentPages(mainDoc, row, headingFont, bodyFont);
-    }
-
-    const bytes = await mainDoc.save();
-    return Buffer.from(bytes);
   }
 
   private isImageFilename(filename: string): boolean {

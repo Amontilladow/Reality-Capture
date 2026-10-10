@@ -96,6 +96,7 @@ export class RelationshipExtractionService {
     await this.extractSnagItems(companyId, projectId);
     await this.extractQaInspections(companyId, projectId);
     await this.extractSubmittals(companyId, projectId);
+    await this.extractQaqcRecords(companyId, projectId);
     await this.extractInferredRfiIssueLinks(companyId, projectId);
   }
 
@@ -474,6 +475,55 @@ export class RelationshipExtractionService {
           projectId, fromNodeId: node.id, toNodeId: assignedNodeId,
           relationshipType: 'ASSIGNED_TO', source: 'EXPLICIT', confidence: 1,
         });
+      }
+    }
+  }
+
+  // ── QAQC NCR/SOR (brief section 6 -- registers both node types from the
+  // one shared qaqc_records table; record_type IS the node type) ───────────
+
+  async extractQaqcRecords(companyId: string, projectId: string, onlyId?: string): Promise<void> {
+    const rows = await this.db.withTenant(companyId, sql => sql<{
+      id: string; recordType: 'ncr' | 'sor'; recordNumber: string | null; subject: string;
+      discipline: RfiDiscipline | null; priority: string; status: string; dueDate: string | null;
+      locationId: string | null; assignedTo: string | null; issuedBy: string; createdAt: string;
+    }[]>`
+      SELECT id, record_type, record_number, subject, discipline, priority, status, due_date,
+             location_id, assigned_to, issued_by, created_at
+      FROM qaqc_records
+      WHERE project_id = ${projectId} ${onlyId ? sql`AND id = ${onlyId}` : sql``}`);
+
+    for (const r of rows) {
+      const node = await this.graph.upsertNode(companyId, {
+        projectId, nodeType: r.recordType, entityId: r.id, entityTable: 'qaqc_records',
+        label: r.recordNumber ? `${r.recordNumber} — ${r.subject}` : r.subject,
+        discipline: r.discipline ? RFI_DISCIPLINE_TO_RISK_DISCIPLINE[r.discipline] : null,
+        status: r.status, priority: r.priority, dueDate: r.dueDate,
+        metadata: { createdAt: r.createdAt },
+      });
+
+      const assignedNodeId = await this.ensureUserNode(companyId, projectId, r.assignedTo);
+      if (assignedNodeId) {
+        await this.graph.upsertEdge(companyId, {
+          projectId, fromNodeId: node.id, toNodeId: assignedNodeId,
+          relationshipType: 'ASSIGNED_TO', source: 'EXPLICIT', confidence: 1,
+        });
+      }
+      const issuerNodeId = await this.ensureUserNode(companyId, projectId, r.issuedBy);
+      if (issuerNodeId) {
+        await this.graph.upsertEdge(companyId, {
+          projectId, fromNodeId: node.id, toNodeId: issuerNodeId,
+          relationshipType: 'OWNED_BY', source: 'EXPLICIT', confidence: 1,
+        });
+      }
+      if (r.locationId) {
+        const locNode = await this.graph.getNodeByEntity(companyId, 'location', r.locationId);
+        if (locNode) {
+          await this.graph.upsertEdge(companyId, {
+            projectId, fromNodeId: node.id, toNodeId: locNode.id,
+            relationshipType: 'LOCATED_AT', source: 'EXPLICIT', confidence: 1,
+          });
+        }
       }
     }
   }

@@ -5,6 +5,7 @@ import { StorageService } from '../storage/storage.service';
 import { IssuesService } from '../issues/issues.service';
 import { SnaggingService } from '../snagging/snagging.service';
 import { RfisService } from '../rfis/rfis.service';
+import { QaqcService } from '../qaqc/qaqc.service';
 import { renderReportsPdf, type ReportsPdfSectionData } from './reports-pdf.template';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class ReportsService {
     private readonly issues: IssuesService,
     private readonly snagging: SnaggingService,
     private readonly rfis: RfisService,
+    private readonly qaqc: QaqcService,
   ) {}
 
   // withTenant required -- projects carries the tenant_isolation RLS policy,
@@ -41,6 +43,7 @@ export class ReportsService {
       issuesSummary, issuesBreakdown, issuesOpen,
       snaggingSummary, snaggingBreakdown, snaggingOpen,
       rfisSummary, rfisBreakdown, rfisNotApplied,
+      qaqcSummary, qaqcBreakdown, qaqcOpen,
     ] = await Promise.all([
       this.getProject(companyId, projectId),
       this.issues.getSummary(companyId, projectId),
@@ -52,6 +55,9 @@ export class ReportsService {
       this.rfis.getSummary(companyId, projectId),
       this.rfis.getKpiBreakdown(companyId, projectId),
       this.rfis.getDrawingUpdatesNotApplied(companyId, projectId),
+      this.qaqc.getSummary(companyId, projectId),
+      this.qaqc.getKpiBreakdown(companyId, projectId),
+      this.qaqc.getOpenList(companyId, projectId),
     ]);
 
     return {
@@ -75,6 +81,15 @@ export class ReportsService {
         byDrawingImpact: rfisBreakdown.byDrawingImpact,
         drawingUpdateStatus: rfisBreakdown.drawingUpdateStatus,
         notAppliedList: rfisNotApplied,
+      },
+      // QAQC NCR/SOR -- brief §6. summary/byRecordType split NCR vs SOR
+      // counts separately (not merged), per the brief's explicit ask.
+      qaqc: {
+        summary: qaqcSummary,
+        byRecordType: qaqcBreakdown.byRecordType,
+        byStatus: qaqcBreakdown.byStatus,
+        byPriority: qaqcBreakdown.byPriority,
+        openList: qaqcOpen,
       },
     };
   }

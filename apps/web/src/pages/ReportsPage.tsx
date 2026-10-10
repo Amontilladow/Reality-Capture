@@ -499,6 +499,61 @@ export default function ReportsPage() {
                 </div>
               )}
             </section>
+
+            {/* ── QAQC (NCR/SOR) ───────────────────────────────────────── */}
+            <section className="space-y-4">
+              <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">QAQC — NCR &amp; SOR</h2>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <StatTile label="NCR Open" value={kpis.qaqc.summary.ncrOpen} />
+                <StatTile label="SOR Open" value={kpis.qaqc.summary.sorOpen} />
+                <StatTile label="Critical" value={kpis.qaqc.summary.critical} tone="danger" />
+                <StatTile label="Overdue" value={kpis.qaqc.summary.overdue} tone="danger" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="panel p-3">
+                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">NCR — Total / Closed</div>
+                  <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.ncrTotal} / {kpis.qaqc.summary.ncrClosed}</div>
+                </div>
+                <div className="panel p-3">
+                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">SOR — Total / Closed</div>
+                  <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.sorTotal} / {kpis.qaqc.summary.sorClosed}</div>
+                </div>
+              </div>
+
+              {kpis.qaqc.summary.total === 0 ? (
+                <div className="panel tick-frame p-10 text-center text-sm text-ink-500">
+                  No NCR/SOR records logged on this project yet.
+                </div>
+              ) : kpis.qaqc.openList.length > 0 && (
+                <div className="panel tick-frame overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-ink-500 border-b border-base-600">
+                        <th className="px-4 py-2.5 font-medium">Number</th>
+                        <th className="px-4 py-2.5 font-medium">Type</th>
+                        <th className="px-4 py-2.5 font-medium">Subject</th>
+                        <th className="px-4 py-2.5 font-medium">Status</th>
+                        <th className="px-4 py-2.5 font-medium">Priority</th>
+                        <th className="px-4 py-2.5 font-medium">Assigned to</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {kpis.qaqc.openList.map((item) => (
+                        <tr key={item.id} className="border-b border-base-700/60 last:border-0">
+                          <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{item.recordNumber ?? item.id.slice(0, 8)}</td>
+                          <td className="px-4 py-2.5 uppercase text-ink-300">{item.recordType}</td>
+                          <td className="px-4 py-2.5">{item.subject}</td>
+                          <td className="px-4 py-2.5 text-ink-300 capitalize">{item.status}</td>
+                          <td className="px-4 py-2.5 text-ink-300">{PRIORITY_LABELS[item.priority as keyof typeof PRIORITY_LABELS] ?? item.priority}</td>
+                          <td className="px-4 py-2.5 text-ink-500">{item.assignedToName ?? 'Unassigned'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
           </>
         )}
 
