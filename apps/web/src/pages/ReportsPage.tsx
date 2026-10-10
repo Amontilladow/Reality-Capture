@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { DRAWING_UPDATE_STATUS_LABELS } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
+import { HelpLink } from '../components/help/HelpLink';
 import { StatTile } from '../components/ui/StatTile';
 import { getReportKpis } from '../lib/reports.api';
 import { downloadReportsXls } from '../lib/reports-xls';
@@ -210,7 +211,8 @@ export default function ReportsPage() {
         eyebrow={projectQuery.data?.name ?? 'Project'}
         title="Reports"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <HelpLink slug="understanding-available-kpis" label="Understanding these KPIs" />
             <button onClick={handleDownloadXls} disabled={!kpis || xlsDownloading} className="btn-secondary">
               {xlsDownloading ? 'Preparing…' : 'Export as Excel'}
             </button>

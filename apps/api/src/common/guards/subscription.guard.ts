@@ -26,7 +26,12 @@ export class SubscriptionGuard implements CanActivate {
     const { user } = context.switchToHttp().getRequest();
     if (!user) return false;
 
-    // Join subscription with plan to get feature flags — single query, cached in Redis in production
+    // Join subscription with plan to get feature flags -- single query, indexed
+    // on company_id/status. Phase 7: this previously claimed to be "cached in
+    // Redis in production", which was never true -- no cache exists here.
+    // Not adding one speculatively: there's no measured latency problem to
+    // justify it, and a stale cache risks a downgraded/cancelled company
+    // keeping feature access past its actual expiry.
     const [sub] = await this.db.query`
       SELECT
         sp.feature_flags,

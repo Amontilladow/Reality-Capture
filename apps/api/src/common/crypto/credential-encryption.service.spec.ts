@@ -35,9 +35,15 @@ describe('CredentialEncryptionService', () => {
     expect(() => svc.decrypt(tampered)).toThrow();
   });
 
-  it('still works (with a logged warning) when no encryption key is configured, rather than crashing at construction', () => {
-    const svc = makeService(undefined);
-    const encrypted = svc.encrypt('fallback-path');
-    expect(svc.decrypt(encrypted)).toBe('fallback-path');
+  // Phase 6 security fix: this used to assert the OPPOSITE -- that the
+  // service kept working via a hardcoded 'dev-only-insecure-placeholder-key'
+  // fallback when unconfigured. That silently encrypted every OAuth token
+  // and BYO AI key with a key visible in this source file whenever an
+  // operator forgot to set CREDENTIAL_ENCRYPTION_KEY. app.config.ts's
+  // requireStrongSecret() is now the primary gate (the app fails to boot at
+  // all without a real key), but this asserts the service itself also
+  // never silently accepts a missing key, as defense in depth.
+  it('throws rather than falling back to an insecure default when no encryption key is configured', () => {
+    expect(() => makeService(undefined)).toThrow();
   });
 });

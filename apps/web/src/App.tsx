@@ -21,6 +21,9 @@ import RfisPage from './pages/RfisPage';
 import RfiDetailPage from './pages/RfiDetailPage';
 import SnaggingPage from './pages/SnaggingPage';
 import SubmittalsPage from './pages/SubmittalsPage';
+import DocumentsPage from './pages/DocumentsPage';
+import TransmittalsPage from './pages/TransmittalsPage';
+import QaInspectionsPage from './pages/QaInspectionsPage';
 import ProgressReportPage from './pages/ProgressReportPage';
 import AssistantPage from './pages/AssistantPage';
 import ReportsPage from './pages/ReportsPage';
@@ -29,6 +32,7 @@ import MessagesPage from './pages/MessagesPage';
 import WorkforcePage from './pages/WorkforcePage';
 import DeveloperSettingsPage from './pages/DeveloperSettingsPage';
 import AiSettingsPage from './pages/AiSettingsPage';
+import EmailSettingsPage from './pages/EmailSettingsPage';
 import BuildLensPage from './pages/BuildLensPage';
 import HelpPage from './pages/HelpPage';
 
@@ -103,6 +107,7 @@ export default function App() {
             <Route path="/projects/workforce" element={<WorkforcePage />} />
             <Route path="/projects/developer" element={<DeveloperSettingsPage />} />
             <Route path="/projects/ai-settings" element={<AiSettingsPage />} />
+            <Route path="/projects/email-settings" element={<EmailSettingsPage />} />
             <Route path="/projects/help" element={<HelpPage />} />
             <Route path="/projects/:projectId" element={<ProjectDetail />} />
             <Route path="/projects/:projectId/captures" element={<CapturesPage />} />
@@ -115,6 +120,9 @@ export default function App() {
             <Route path="/projects/:projectId/rfis/:rfiId" element={<RfiDetailPage />} />
             <Route path="/projects/:projectId/snagging" element={<SnaggingPage />} />
             <Route path="/projects/:projectId/submittals" element={<SubmittalsPage />} />
+            <Route path="/projects/:projectId/documents" element={<DocumentsPage />} />
+            <Route path="/projects/:projectId/transmittals" element={<TransmittalsPage />} />
+            <Route path="/projects/:projectId/qa-inspections" element={<QaInspectionsPage />} />
             <Route path="/projects/:projectId/progress-report" element={<ProgressReportPage />} />
             <Route path="/projects/:projectId/assistant" element={<AssistantPage />} />
             <Route path="/projects/:projectId/risk" element={<RiskPage />} />

@@ -10,6 +10,8 @@ import { CaptureGrid } from '../components/CaptureGrid';
 import { CaptureUploadModal } from '../components/CaptureUploadModal';
 import { EditProjectModal } from '../components/EditProjectModal';
 import { ManageMembersModal } from '../components/ManageMembersModal';
+import { EmailComposerModal } from '../components/EmailComposerModal';
+import { EmailHistoryModal } from '../components/EmailHistoryModal';
 import { ProjectDashboard } from '../components/ProjectDashboard';
 import { getProject, getHierarchy, updateBuilding } from '../lib/projects.api';
 import { listCaptures } from '../lib/captures.api';
@@ -24,6 +26,8 @@ export default function ProjectDetail() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [composeEmailOpen, setComposeEmailOpen] = useState(false);
+  const [emailHistoryOpen, setEmailHistoryOpen] = useState(false);
 
   const projectQuery = useQuery({
     queryKey: ['project', projectId],
@@ -77,6 +81,12 @@ export default function ProjectDetail() {
             </button>
             <button onClick={() => setMembersOpen(true)} className="btn-secondary">
               <TeamIcon /> Team
+            </button>
+            <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary">
+              <MailIcon /> Email
+            </button>
+            <button onClick={() => setEmailHistoryOpen(true)} className="btn-secondary">
+              Email History
             </button>
             <Link to={`/projects/${projectId}/drawings`} className="btn-secondary">Floor plans</Link>
             <Link to={`/projects/${projectId}/bim`} className="btn-secondary">BIM models</Link>
@@ -180,7 +190,11 @@ export default function ProjectDetail() {
       <EditProjectModal open={editOpen} onClose={() => setEditOpen(false)} project={projectQuery.data} />
 
       {projectId && (
-        <ManageMembersModal open={membersOpen} onClose={() => setMembersOpen(false)} projectId={projectId} />
+        <>
+          <ManageMembersModal open={membersOpen} onClose={() => setMembersOpen(false)} projectId={projectId} />
+          <EmailComposerModal open={composeEmailOpen} onClose={() => setComposeEmailOpen(false)} projectId={projectId} />
+          <EmailHistoryModal open={emailHistoryOpen} onClose={() => setEmailHistoryOpen(false)} projectId={projectId} />
+        </>
       )}
     </>
   );
@@ -235,6 +249,14 @@ function UploadIcon() {
     <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 16V4M7 9l5-5 5 5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" strokeLinecap="round" />
+    </svg>
+  );
+}
+function MailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="M22 6l-10 7L2 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

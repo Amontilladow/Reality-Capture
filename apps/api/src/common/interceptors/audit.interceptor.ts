@@ -16,6 +16,19 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   [/\/captures\/[^/]+$/,       'capture.updated',       'capture'],
   [/\/projects\/[^/]+\/issues$/,    'issue.created',    'issue'],
   [/\/issues\/[^/]+$/,         'issue.updated',         'issue'],
+  // Phase 7: RFI lifecycle was previously uncovered entirely -- every RFI
+  // create/respond/close fell through to deriveAction()'s generic
+  // last-segment fallback, giving unreadable labels (the same gap this
+  // file's RBAC-phase comment already called out for a different set of
+  // routes). More specific patterns (respond/close) must stay above the
+  // general :id update pattern below them, since this is a first-match scan.
+  [/\/rfis\/[^/]+\/respond$/,  'rfi.responded',         'rfi'],
+  [/\/rfis\/[^/]+\/close$/,    'rfi.closed',            'rfi'],
+  [/\/projects\/[^/]+\/rfis$/, 'rfi.created',           'rfi'],
+  [/\/rfis\/[^/]+$/,           'rfi.updated',           'rfi'],
+  // Snag creation had the same gap -- only snag_item.verified (below) was
+  // ever captured, never the initial create.
+  [/\/projects\/[^/]+\/snag-items$/, 'snag_item.created', 'snag_item'],
   [/\/projects\/[^/]+\/documents$/, 'document.uploaded','document'],
   [/\/users\/[^/]+\/invite$/,  'user.invited',          'user'],
   [/\/projects\/[^/]+\/buildings\/[^/]+\/levels\/[^/]+\/locations$/, 'location.created', 'location'],

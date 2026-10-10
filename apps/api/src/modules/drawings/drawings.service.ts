@@ -88,6 +88,13 @@ export class DrawingsService {
   }
 
   async findAll(companyId: string, projectId: string, levelId?: string) {
+    // Phase 7: this query had no bound at all -- a project with an unusually
+    // large current-drawing set returned every row in one response. A real
+    // paginated contract would mean changing this method's return shape and
+    // every frontend caller, which is more than a safe/low-risk fix; a
+    // generous LIMIT with no response-shape change is the bounded-risk
+    // version -- 500 current drawings in one project/level is already far
+    // beyond any realistic usage seen in this codebase's other list sizes.
     const rows = await this.db.withTenant(companyId, sql => sql`
       SELECT d.*, u.first_name || ' ' || u.last_name AS uploaded_by_name,
         l.name AS level_name,
@@ -101,6 +108,7 @@ export class DrawingsService {
         AND (${levelId ?? null}::uuid IS NULL OR d.level_id = ${levelId ?? null}::uuid)
       GROUP BY d.id, u.first_name, u.last_name, l.name
       ORDER BY l.name NULLS LAST, d.title
+      LIMIT 500
     `);
     return rows;
   }

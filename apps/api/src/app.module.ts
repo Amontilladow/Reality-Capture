@@ -40,6 +40,9 @@ import { HealthModule } from './modules/health/health.module';
 import { ApiKeysModule } from './modules/api-keys/api-keys.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { PublicApiModule } from './modules/public-api/public-api.module';
+import { OutlookModule } from './modules/email-integration/outlook/outlook.module';
+import { GmailModule } from './modules/email-integration/gmail/gmail.module';
+import { EmailComposerModule } from './modules/email-integration/email-composer.module';
 
 import { APP_INTERCEPTOR, APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
@@ -59,12 +62,14 @@ import redisConfig from './config/redis.config';
 import googleCalendarConfig from './config/google-calendar.config';
 import aiConfig from './config/ai.config';
 import emailConfig from './config/email.config';
+import microsoftGraphConfig from './config/microsoft-graph.config';
+import gmailConfig from './config/google-gmail.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, jwtConfig, storageConfig, redisConfig, googleCalendarConfig, aiConfig, emailConfig],
+      load: [appConfig, databaseConfig, jwtConfig, storageConfig, redisConfig, googleCalendarConfig, aiConfig, emailConfig, microsoftGraphConfig, gmailConfig],
       envFilePath: ['.env.local', '.env'],
     }),
     ThrottlerModule.forRoot([
@@ -120,6 +125,9 @@ import emailConfig from './config/email.config';
     ChatModule,
     SubscriptionModule,
     WorkforceModule,
+    OutlookModule,
+    GmailModule,
+    EmailComposerModule,
     RiskModule,
     ApiKeysModule,
     WebhooksModule,

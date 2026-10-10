@@ -8,6 +8,7 @@ import { PinPanel } from '../components/drawing/PinPanel';
 import { listDrawings, getDrawing, createPin, getPins, type Drawing, type Pin } from '../lib/drawings.api';
 import { getHierarchy, updateLocation, getMembers, type ProjectHierarchy } from '../lib/projects.api';
 import { Input, Select } from '../components/ui/Field';
+import { HelpLink } from '../components/help/HelpLink';
 
 export default function FloorPlanViewer() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -230,9 +231,12 @@ export default function FloorPlanViewer() {
         eyebrow="Project"
         title="Floor plans"
         actions={
-          <button onClick={() => setUploadOpen(true)} className="btn-primary">
-            <UploadIcon /> Upload plan
-          </button>
+          <>
+            <HelpLink slug="opening-a-floor-plan" label="Floor plan help" />
+            <button onClick={() => setUploadOpen(true)} className="btn-primary">
+              <UploadIcon /> Upload plan
+            </button>
+          </>
         }
       />
 

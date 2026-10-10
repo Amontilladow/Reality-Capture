@@ -9,6 +9,8 @@ import {
 } from '../../lib/issues.api';
 import { listCaptures } from '../../lib/captures.api';
 import { CaptureGrid } from '../CaptureGrid';
+import { EmailComposerModal } from '../EmailComposerModal';
+import { EmailHistoryList } from '../EmailHistoryList';
 import { InlineRiskAssessment } from '../RiskIntelligenceSection';
 import { getMembers } from '../../lib/projects.api';
 import { useAuthStore } from '../../store/auth.store';
@@ -39,6 +41,7 @@ export function IssueDetail({
 
   const [comment, setComment] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [composeEmailOpen, setComposeEmailOpen] = useState(false);
   const [forwardOpen, setForwardOpen] = useState(false);
   const [forwardTo, setForwardTo] = useState('');
   const [forwardComment, setForwardComment] = useState('');
@@ -269,6 +272,7 @@ export function IssueDetail({
               Ask AI about this
             </Link>
             <button onClick={() => onEdit(issue)} className="btn-secondary !px-3 !py-1.5 text-xs">Edit</button>
+            <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary !px-3 !py-1.5 text-xs">Email</button>
             {canForward && (
               <button onClick={() => setForwardOpen((v) => !v)} className="btn-secondary !px-3 !py-1.5 text-xs">
                 {forwardOpen ? 'Cancel forward' : 'Forward'}
@@ -498,6 +502,12 @@ export function IssueDetail({
 
       <InlineRiskAssessment projectId={projectId} nodeType="issue" entityId={issueId} />
 
+      {/* Email history -- Phase 3G */}
+      <div>
+        <div className="field-label mb-2">Email History</div>
+        <EmailHistoryList projectId={projectId} relatedRecordType="issue" relatedRecordId={issueId} />
+      </div>
+
       {/* View-state screenshot, captured automatically when the issue was raised from the viewer */}
       {issue.screenshotUrl && (
         <div>
@@ -644,6 +654,13 @@ export function IssueDetail({
         </div>
         {attachMutation.isError && <p className="field-error">{apiErrorMessage(attachMutation.error)}</p>}
       </div>
+
+      <EmailComposerModal
+        open={composeEmailOpen}
+        onClose={() => setComposeEmailOpen(false)}
+        projectId={projectId}
+        prefill={{ subject: `${issue.issueNumber ?? ''}: ${issue.title}`.trim(), relatedRecordType: 'issue', relatedRecordId: issue.id }}
+      />
     </div>
   );
 }

@@ -1,0 +1,95 @@
+import type { HelpArticle } from './types';
+
+// FAQ entries use title as the question and summary as the answer --
+// kept short and direct, no steps/permissions sections (those belong in
+// the full feature articles these link to via relatedSlugs).
+export const faqArticles: HelpArticle[] = [
+  {
+    slug: 'faq-which-projects-can-i-see',
+    category: 'faq',
+    title: 'Why can\'t I see a project I expect to see?',
+    summary: 'Every non-archived project in your company appears in your Projects list -- visibility is not limited to projects you\'ve been added to as a member. If one is missing, it has most likely been archived; ask your company admin to confirm.',
+    relatedSlugs: ['selecting-a-project', 'understanding-project-access'],
+    keywords: ['missing project', 'project not visible'],
+  },
+  {
+    slug: 'faq-difference-issue-snag',
+    category: 'faq',
+    title: 'What\'s the difference between an Issue and a Snag?',
+    summary: 'Both track problems found on site, but a Snag closes in two steps (fixed, then verified by someone with sign-off authority) while an Issue closes in one. Use Snagging for defect walk-downs that need independent sign-off; use Issues for everything else.',
+    relatedSlugs: ['glossary-snag'],
+    keywords: ['issue vs snag', 'snagging'],
+  },
+  {
+    slug: 'faq-why-cant-i-create-something',
+    category: 'faq',
+    title: 'Why can\'t I create or edit a record?',
+    summary: 'Creating an Issue, RFI, Snag, Submittal, Transmittal, or QA Inspection is open to any project member -- but uploading a Document, Capture, Floor Plan, or BIM Model, and editing or deleting almost any existing record, requires the "manage_project_records" permission (or being that project\'s Project Lead). If you believe you should have access, ask your project\'s Project Lead or your company admin.',
+    relatedSlugs: ['understanding-your-role', 'understanding-project-access'],
+    keywords: ['permission denied', 'cannot create', 'access denied'],
+  },
+  {
+    slug: 'faq-what-is-ai-assistant',
+    category: 'faq',
+    title: 'What can the AI Assistant actually do?',
+    summary: 'It answers questions about your project\'s RFIs, issues, snagging, risk, progress, and documents, and can draft (not submit) an RFI, issue, or snag item for you to review. It has a daily usage limit shown at the top of the Assistant page.',
+    relatedSlugs: ['understanding-supported-ai-capabilities'],
+    keywords: ['ai assistant', 'chatbot'],
+  },
+  {
+    slug: 'faq-email-integration',
+    category: 'faq',
+    title: 'Can I send email from EngineeringOS?',
+    summary: 'Yes — connect your own Outlook or Gmail account under "Email Integration" in the sidebar, then use the "Email" button on a project, RFI, Issue, Submittal, or Snag page to compose and send from your own address.',
+    relatedSlugs: ['connecting-outlook', 'connecting-gmail'],
+    keywords: ['email', 'outlook', 'gmail'],
+  },
+  {
+    slug: 'faq-what-is-a-transmittal',
+    category: 'faq',
+    title: 'What is a Transmittal?',
+    summary: 'A formal record that a set of items was sent to a named recipient, for a stated purpose (review, approval, record, construction, or as requested). Any project member can create one.',
+    relatedSlugs: ['understanding-transmittals'],
+    keywords: ['transmittal'],
+  },
+  {
+    slug: 'faq-what-is-a-qa-inspection',
+    category: 'faq',
+    title: 'What is a QA Inspection, and how is it different from Snagging?',
+    summary: 'A QA Inspection is its own record type for a quality check (title, inspection type, location, checklist, assignee, inspection date) -- it does not go through the "marked fixed, then verified" two-step closure that Snagging uses.',
+    relatedSlugs: ['understanding-qa-inspections', 'understanding-snagging'],
+    keywords: ['qa inspection', 'qc', 'quality'],
+  },
+  {
+    slug: 'faq-why-dont-reports-match-earlier',
+    category: 'faq',
+    title: 'Why don\'t my Reports numbers match what I saw last week?',
+    summary: 'Reports and the Progress Report are both computed live every time you open them -- there is no saved weekly snapshot to compare against. For a point-in-time view, use the Progress Report\'s own date range.',
+    relatedSlugs: ['understanding-data-freshness'],
+    keywords: ['reports changed', 'data freshness'],
+  },
+  {
+    slug: 'faq-does-documents-sync-with-procore',
+    category: 'faq',
+    title: 'Does Documents sync with Procore, Aconex, SharePoint, or BIM 360?',
+    summary: 'No. A document here is either a file you upload or a manually entered link to somewhere external -- there is no live sync or integration with any of those systems.',
+    relatedSlugs: ['uploading-a-document'],
+    keywords: ['procore', 'aconex', 'sharepoint', 'bim 360', 'integration'],
+  },
+  {
+    slug: 'faq-who-can-invite-users',
+    category: 'faq',
+    title: 'Who can invite new users, and who approves their role?',
+    summary: 'Inviting requires a company role of Project Manager or more senior. Approving or changing a user\'s company role -- including clearing a self-registered user\'s "pending approval" state -- requires Super Admin specifically.',
+    relatedSlugs: ['understanding-organization-access'],
+    keywords: ['invite user', 'approve user', 'pending approval'],
+  },
+  {
+    slug: 'faq-can-anyone-edit-a-project',
+    category: 'faq',
+    title: 'Who can edit or archive a project\'s own details?',
+    summary: 'Any signed-in member of your company can edit a project\'s name, dates, status, or stakeholder fields -- including setting it to "Archived," which is the only way to archive a project. This is not restricted to a specific role or permission.',
+    relatedSlugs: ['editing-project-details', 'archiving-a-project'],
+    keywords: ['edit project', 'archive project', 'project permissions'],
+  },
+];

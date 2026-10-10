@@ -1,0 +1,59 @@
+name: Post-deploy health check
+
+# Render auto-deploys on every push to main (see render.yaml) with no
+# staging environment and no deploy/smoke-test step in ci.yml -- a deploy
+# that crashes on boot (this has happened: PR #52's merge took the API
+# down in production with "No AI provider configured" until PR #53's
+# fix, confirmed via Render's own deploy history) previously had no
+# automated signal at all; the only way to notice was a user report or
+# someone checking the dashboard by hand.
+#
+# This is a read-only poll of the already-public health endpoint, run
+# after Render's own build+deploy would reasonably have finished. It
+# can't block or roll back a bad deploy (GitHub Actions has no hook into
+# Render's own deploy pipeline from outside), but it turns "silently
+# broken in production" into a red CI run on the commit that broke it,
+# which is strictly better than nothing and changes no application
+# behavior.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  health-check:
+    name: Poll production health endpoint
+    runs-on: ubuntu-latest
+    steps:
+      # Render's own deploy history for this repo shows builds completing
+      # in roughly 1-2 minutes; this wait is intentionally generous so a
+      # normal deploy has time to finish before the first check.
+      - name: Wait for deploy to roll out
+        run: sleep 90
+
+      # /health/ready (not the plain liveness /health Render's own deploy
+      # gate uses) checks database, Redis, and object storage reachability
+      # -- and, deliberately, always returns HTTP 200 even when degraded
+      # (see health.controller.ts's own comment on why this isn't wired
+      # into Render's restart gate), so the JSON body's status field is
+      # what actually has to be checked, not just the HTTP status code.
+      - name: Check engineeringos-api readiness (database, Redis, storage)
+        run: |
+          for attempt in 1 2 3 4 5; do
+            code=$(curl -s -o /tmp/health.json -w '%{http_code}' https://engineeringos-api.onrender.com/api/v1/health/ready || echo "000")
+            echo "Attempt $attempt: HTTP $code"
+            cat /tmp/health.json 2>/dev/null || true
+            echo ""
+            if [ "$code" = "200" ] && grep -q '"status":"ok"' /tmp/health.json; then
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "Readiness check failed after 5 attempts -- production API is not reporting status:ok on /api/v1/health/ready."
+          exit 1
+
+      - name: Check engineeringos-web is serving
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' https://engineeringos-web.onrender.com/)
+          echo "HTTP $code"
+          test "$code" = "200"

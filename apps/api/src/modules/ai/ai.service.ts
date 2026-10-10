@@ -19,6 +19,19 @@ export interface AskAssistantResult {
   remainingQuota: { dailyUsed: number; dailyLimit: number };
 }
 
+// Phase 7 cost-tracking fix: generate()/generateDraft()'s internal return
+// shape additionally carries the provider's own reported token counts
+// (GenerateResponseResult.inputTokens/outputTokens), so ask() can pass them
+// to usage.log() -- see ai_usage_log's input_tokens/output_tokens columns
+// (migration 062), which existed from day one but were never actually
+// populated because this data was being discarded here. Deliberately NOT
+// added to the public AskAssistantResult: token counts are an internal
+// cost/usage-tracking signal, not something the client needs back.
+type GenerateOutcome = Omit<AskAssistantResult, 'remainingQuota'> & {
+  inputTokens?: number;
+  outputTokens?: number;
+};
+
 // CTO spec sections 16-21: Site Engineer/Construction Manager/Project
 // Engineer have full working access to Issues and Snagging (so AI drafts
 // for those stay enabled), but RFIs sit outside their three allowed
@@ -174,7 +187,7 @@ export class AiService {
     const { provider, mode } = await this.resolveProvider(user);
     const startedAt = Date.now();
     try {
-      const result = await this.generate(provider, intent, ctx, dto);
+      const { inputTokens, outputTokens, ...result } = await this.generate(provider, intent, ctx, dto);
       this.usage.log({
         companyId: user.companyId, projectId, userId: user.id, userRole: user.companyRole,
         status: 'allowed', category: result.toolsUsed[0],
@@ -182,6 +195,7 @@ export class AiService {
         model: provider.getModelInfo().model,
         aiMode: mode,
         latencyMs: Date.now() - startedAt,
+        inputTokens, outputTokens,
       });
       return { ...result, remainingQuota: { dailyUsed: reservation.dailyUsed, dailyLimit: reservation.dailyLimit } };
     } catch (err) {
@@ -195,7 +209,7 @@ export class AiService {
     }
   }
 
-  private async generate(provider: AIProvider, intent: Intent, ctx: AssistantContext, dto: AskAssistantDto): Promise<Omit<AskAssistantResult, 'remainingQuota'>> {
+  private async generate(provider: AIProvider, intent: Intent, ctx: AssistantContext, dto: AskAssistantDto): Promise<GenerateOutcome> {
     if (intent.kind === 'draft_rfi' || intent.kind === 'draft_issue' || intent.kind === 'draft_snag') {
       return this.generateDraft(provider, intent.kind, ctx, dto.question);
     }
@@ -211,8 +225,8 @@ export class AiService {
     const history: AIMessage[] = (dto.conversationHistory ?? []).slice(-maxTurns);
     const messages: AIMessage[] = [...history, { role: 'user', content: dto.question }];
 
-    const { text } = await provider.generateResponse({ systemPrompt, messages, maxTokens: 1024 });
-    return { answer: text, toolsUsed: toolResults.map((r) => r.tool) };
+    const { text, inputTokens, outputTokens } = await provider.generateResponse({ systemPrompt, messages, maxTokens: 1024 });
+    return { answer: text, toolsUsed: toolResults.map((r) => r.tool), inputTokens, outputTokens };
   }
 
   private async runTool(ctx: AssistantContext, name: string): Promise<ToolResult | null> {
@@ -251,7 +265,7 @@ export class AiService {
     kind: 'draft_rfi' | 'draft_issue' | 'draft_snag',
     ctx: AssistantContext,
     question: string,
-  ): Promise<Omit<AskAssistantResult, 'remainingQuota'>> {
+  ): Promise<GenerateOutcome> {
     const sourceIssue = ctx.currentResourceType === 'issue' && ctx.currentResourceId
       ? await this.tools.getIssueDetails(ctx, ctx.currentResourceId).catch(() => null)
       : null;
@@ -265,22 +279,22 @@ export class AiService {
 
     const systemPrompt = `${AI_SYSTEM_PROMPT}\n\nThe user wants a draft. Respond with ONLY a single valid JSON object matching this exact shape, no other text, no markdown fences: ${schema}\n\nSource context:\n${contextBlock}`;
 
-    const { text } = await provider.generateResponse({ systemPrompt, messages: [{ role: 'user', content: question }], maxTokens: 500 });
+    const { text, inputTokens, outputTokens } = await provider.generateResponse({ systemPrompt, messages: [{ role: 'user', content: question }], maxTokens: 500 });
 
     try {
       const parsed = JSON.parse(text.trim().replace(/^```(json)?/i, '').replace(/```$/, '').trim());
       if (kind === 'draft_rfi') {
         const d = this.tools.createRfiDraft(parsed.subject, parsed.question, parsed.discipline, parsed.priority);
-        return { answer: 'Here is a draft RFI. Review and edit it before submitting.', draft: { type: 'rfi', fields: d.data as Record<string, unknown> }, toolsUsed: ['createRfiDraft'] };
+        return { answer: 'Here is a draft RFI. Review and edit it before submitting.', draft: { type: 'rfi', fields: d.data as Record<string, unknown> }, toolsUsed: ['createRfiDraft'], inputTokens, outputTokens };
       }
       if (kind === 'draft_issue') {
         const d = this.tools.createIssueDraft(parsed.title, parsed.description, parsed.discipline, parsed.priority);
-        return { answer: 'Here is a draft issue. Review and edit it before submitting.', draft: { type: 'issue', fields: d.data as Record<string, unknown> }, toolsUsed: ['createIssueDraft'] };
+        return { answer: 'Here is a draft issue. Review and edit it before submitting.', draft: { type: 'issue', fields: d.data as Record<string, unknown> }, toolsUsed: ['createIssueDraft'], inputTokens, outputTokens };
       }
       const d = this.tools.createSnagDraft(parsed.title, parsed.description, parsed.trade, parsed.priority);
-      return { answer: 'Here is a draft snag item. Review and edit it before submitting.', draft: { type: 'snag', fields: d.data as Record<string, unknown> }, toolsUsed: ['createSnagDraft'] };
+      return { answer: 'Here is a draft snag item. Review and edit it before submitting.', draft: { type: 'snag', fields: d.data as Record<string, unknown> }, toolsUsed: ['createSnagDraft'], inputTokens, outputTokens };
     } catch {
-      return { answer: `I couldn't put together a structured draft from that -- could you give me a bit more detail (what happened, and roughly which discipline it concerns)?`, toolsUsed: [] };
+      return { answer: `I couldn't put together a structured draft from that -- could you give me a bit more detail (what happened, and roughly which discipline it concerns)?`, toolsUsed: [], inputTokens, outputTokens };
     }
   }
 }

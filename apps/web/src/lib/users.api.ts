@@ -56,3 +56,10 @@ export interface AdminResetPasswordResult {
 export function adminResetPassword(userId: string) {
   return apiPost<AdminResetPasswordResult>(`/users/${userId}/admin-reset-password`);
 }
+
+// Phase 4F onboarding: reuses the same self-profile-edit endpoint and
+// authorization path as everything else here -- "editing your own profile
+// is always allowed" already covers this, so no new permission is needed.
+export function setOnboardingCompleted(userId: string, completed: boolean) {
+  return apiPatch<{ onboardingCompleted: boolean }>(`/users/${userId}`, { onboardingCompleted: completed });
+}

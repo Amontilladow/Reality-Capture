@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Modal } from './ui/Modal';
+import { EmailComposerModal } from './EmailComposerModal';
+import { EmailHistoryList } from './EmailHistoryList';
 import { updateSubmittal, deleteSubmittal, type SubmittalListItem } from '../lib/submittals.api';
 import {
   SUBMITTAL_STATUS_LABELS, SUBMITTAL_STATUS_BADGE_CLASS,
@@ -20,6 +22,7 @@ export function SubmittalDetailModal({
 }) {
   const queryClient = useQueryClient();
   const [comments, setComments] = useState('');
+  const [composeEmailOpen, setComposeEmailOpen] = useState(false);
 
   useEffect(() => {
     setComments(submittal?.reviewComments ?? '');
@@ -55,7 +58,8 @@ export function SubmittalDetailModal({
           <span className={`badge ${SUBMITTAL_PRIORITY_BADGE_CLASS[submittal.priority]}`}>{SUBMITTAL_PRIORITY_LABELS[submittal.priority]}</span>
           {submittal.specSection && <span className="badge bg-base-700 text-ink-500">§{submittal.specSection}</span>}
           {submittal.revision && <span className="badge bg-base-700 text-ink-500">{submittal.revision}</span>}
-          <span className="text-xs text-ink-500 ml-auto">Due {formatDate(submittal.dueDate)}</span>
+          <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary !px-3 !py-1.5 text-xs ml-auto">Email</button>
+          <span className="text-xs text-ink-500">Due {formatDate(submittal.dueDate)}</span>
         </div>
 
         <h3 className="text-base font-semibold">{submittal.title}</h3>
@@ -73,6 +77,12 @@ export function SubmittalDetailModal({
         </div>
 
         <InlineRiskAssessment projectId={projectId} nodeType="submittal" entityId={submittal.id} />
+
+        {/* Email history -- Phase 3G */}
+        <div>
+          <div className="field-label mb-2">Email History</div>
+          <EmailHistoryList projectId={projectId} relatedRecordType="submittal" relatedRecordId={submittal.id} />
+        </div>
 
         <div>
           <label className="field-label" htmlFor="comments">Review comments</label>
@@ -110,6 +120,13 @@ export function SubmittalDetailModal({
           </button>
         </div>
       </div>
+
+      <EmailComposerModal
+        open={composeEmailOpen}
+        onClose={() => setComposeEmailOpen(false)}
+        projectId={projectId}
+        prefill={{ subject: `${submittal.submittalNumber ?? ''}: ${submittal.title}`.trim(), relatedRecordType: 'submittal', relatedRecordId: submittal.id }}
+      />
     </Modal>
   );
 }

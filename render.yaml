@@ -114,6 +114,17 @@ services:
         value: 15m
       - key: JWT_REFRESH_EXPIRES_IN
         value: 30d
+      # Phase 6 security fix: this was previously missing from render.yaml
+      # entirely. CredentialEncryptionService (common/crypto/) -- which
+      # encrypts Outlook/Gmail OAuth tokens and BYO AI provider keys at rest
+      # -- fell back to a hardcoded placeholder passphrase whenever this was
+      # unset, so every production deployment before this fix was silently
+      # encrypting that data with a key visible in the source repo. The app
+      # now refuses to boot without a real value here (config/app.config.ts).
+      # API-only; ifc-service never touches this data, so it isn't in the
+      # shared engineeringos-internal-secrets group above.
+      - key: CREDENTIAL_ENCRYPTION_KEY
+        generateValue: true
       - key: REDIS_HOST
         sync: false # filled in manually from engineeringos-redis's internal connection info
       - key: REDIS_PORT

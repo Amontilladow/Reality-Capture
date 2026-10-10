@@ -90,6 +90,17 @@ describe('AiService.ask', () => {
     );
   });
 
+  // Phase 7: input_tokens/output_tokens in ai_usage_log were NULL for every
+  // row -- generate() discarded GenerateResponseResult's token counts before
+  // they reached usage.log(), even though the provider mock above (and every
+  // real adapter) already returns them. Locks in that the counts now flow
+  // through end to end.
+  it('passes the provider-reported token counts through to usage.log()', async () => {
+    const { svc, usage } = makeService();
+    await svc.ask(user, 'project-1', { question: 'Summarize the current project.' });
+    expect(usage.log).toHaveBeenCalledWith(expect.objectContaining({ inputTokens: 10, outputTokens: 5 }));
+  });
+
   it('never lets a different company id reach a tool call, regardless of what context the client sends', async () => {
     const { svc, tools } = makeService();
     const otherCompanyUser = { ...user, companyId: 'company-1' }; // companyId always comes from the authenticated user

@@ -43,6 +43,34 @@ describe('deriveAction', () => {
       .toEqual({ action: 'snag_item.verified', resourceType: 'snag_item' });
   });
 
+  // Phase 7: RFI lifecycle and snag creation were previously uncovered
+  // entirely -- these fell through to the generic fallback, same gap as
+  // the access-control routes above before RBAC Phase 6 fixed those.
+  it('labels creating an RFI', () => {
+    expect(deriveAction('POST', '/api/v1/projects/project-1/rfis'))
+      .toEqual({ action: 'rfi.created', resourceType: 'rfi' });
+  });
+
+  it('labels responding to an RFI, not the generic update fallback', () => {
+    expect(deriveAction('POST', '/api/v1/projects/project-1/rfis/rfi-1/respond'))
+      .toEqual({ action: 'rfi.responded', resourceType: 'rfi' });
+  });
+
+  it('labels closing an RFI, not the generic update fallback', () => {
+    expect(deriveAction('POST', '/api/v1/projects/project-1/rfis/rfi-1/close'))
+      .toEqual({ action: 'rfi.closed', resourceType: 'rfi' });
+  });
+
+  it('labels a plain RFI field edit as a generic update', () => {
+    expect(deriveAction('PATCH', '/api/v1/rfis/rfi-1'))
+      .toEqual({ action: 'rfi.updated', resourceType: 'rfi' });
+  });
+
+  it('labels creating a snag item, distinct from verifying one', () => {
+    expect(deriveAction('POST', '/api/v1/projects/project-1/snag-items'))
+      .toEqual({ action: 'snag_item.created', resourceType: 'snag_item' });
+  });
+
   // Sanity check against a pre-existing, unrelated ROUTE_MAP entry -- confirms
   // the new access-control entries were appended, not inserted somewhere that
   // shadows an earlier match.

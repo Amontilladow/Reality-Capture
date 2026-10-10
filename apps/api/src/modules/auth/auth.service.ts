@@ -65,6 +65,7 @@ export class AuthService {
         firstName: user.firstName as string,
         lastName: user.lastName as string,
         pendingApproval: Boolean(user.requestedCompanyRole),
+        onboardingCompleted: Boolean((user.preferences as Record<string, unknown> | null)?.onboardingCompleted),
       },
     };
   }
@@ -183,6 +184,7 @@ export class AuthService {
           // Always true right after accepting -- every self-registration is
           // pending until a company_admin/super_admin approves it.
           pendingApproval: true,
+          onboardingCompleted: false,
         },
       };
     }
@@ -260,6 +262,7 @@ export class AuthService {
         lastName: dto.lastName,
         // Always true right after self-signup -- same as acceptInvitation().
         pendingApproval: true,
+        onboardingCompleted: false,
       },
     };
   }
@@ -362,7 +365,7 @@ export class AuthService {
   async getMe(userId: string, companyId: string): Promise<AuthenticatedUser & { phone?: string; avatarUrl?: string; lastLoginAt?: string; requestedCompanyRole?: CompanyRole }> {
     const [user] = await this.db.withTenant(companyId, sql => sql`
       SELECT id, email, first_name, last_name, company_id, company_role,
-             phone, avatar_url, last_login_at, requested_company_role
+             phone, avatar_url, last_login_at, requested_company_role, preferences
       FROM users WHERE id = ${userId}
     `);
 
@@ -380,6 +383,7 @@ export class AuthService {
       lastLoginAt: user.lastLoginAt as string | undefined,
       pendingApproval: Boolean(user.requestedCompanyRole),
       requestedCompanyRole: user.requestedCompanyRole as CompanyRole | undefined,
+      onboardingCompleted: Boolean((user.preferences as Record<string, unknown> | null)?.onboardingCompleted),
     };
   }
 

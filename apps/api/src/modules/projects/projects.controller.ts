@@ -42,13 +42,28 @@ export class ProjectsController {
     return { data: await this.projects.findOne(u.companyId, id), error: null };
   }
 
+  // Phase 6 security fix: this route previously had no @Roles/
+  // @RequireProjectPermission at all -- ProjectsService.update() only
+  // scoped by company_id, so any authenticated company user (down to the
+  // lowest-weight role) could rename/re-phase/rewrite any project in the
+  // company. Confirmed live during the Phase 6 audit. Gated on
+  // 'manage_project_records' to match every other structural-data edit
+  // (Documents/Drawings/Captures/BIM models all require this same
+  // permission to create/update) -- super_admin and this project's
+  // project_lead still pass via ProjectAuthorizationService's bypasses.
   @Patch(':id')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Update project details' })
   async update(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: UpdateProjectDto) {
     return { data: await this.projects.update(u.companyId, id, dto), error: null };
   }
 
+  // Same gap and same fix as update() above -- issuing a presigned upload
+  // URL for the project's logo/stamp is itself a low-severity action, but
+  // nothing should write project branding without at least the same
+  // permission required to edit the project's other fields.
   @Post(':id/branding/upload-url')
+  @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: "Get a presigned URL for uploading this project's logo or stamp" })
   async getBrandingUploadUrl(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: BrandingUploadUrlDto) {
     return { data: await this.projects.getBrandingUploadUrl(u.companyId, id, dto.filename, dto.sizeBytes, dto.kind), error: null };
