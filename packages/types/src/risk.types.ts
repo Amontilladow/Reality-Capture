@@ -19,6 +19,7 @@ export const RISK_NODE_TYPES = [
   'drawing', 'document', 'submittal', 'transmittal',
   'bim_model', 'bim_element',
   'capture',
+  'ncr', 'sor', // QAQC non-conformance / site observation records (migration 067)
   'programme_activity', 'material', // schema-ready; nothing extracts these today (no source module exists)
   'user', 'company',
   'risk',
@@ -169,6 +170,18 @@ export const QUALITY_SIGNAL_TYPES = [
   'QA_RECURRING_LOCATION',
 ] as const;
 
+// QAQC NCR/SOR -- same overdue/approaching-due/high-priority shape as
+// SUBMITTAL_SIGNAL_TYPES above (qaqc_records has the same due_date/priority
+// columns an RFI or submittal does), kept as its own array rather than
+// folded into QUALITY_SIGNAL_TYPES since QA_* above is specifically about
+// the pre-existing qa_inspections module (scheduled checklist inspections),
+// a different feature NCR/SOR must not be confused with.
+export const QAQC_SIGNAL_TYPES = [
+  'QAQC_OVERDUE',
+  'QAQC_APPROACHING_DUE',
+  'QAQC_HIGH_PRIORITY',
+] as const;
+
 export const CLUSTER_SIGNAL_TYPES = [
   'LOCATION_EVENT_CONCENTRATION',
 ] as const;
@@ -180,6 +193,7 @@ export const RISK_SIGNAL_TYPES = [
   ...SUBMITTAL_SIGNAL_TYPES,
   ...DESIGN_SIGNAL_TYPES,
   ...QUALITY_SIGNAL_TYPES,
+  ...QAQC_SIGNAL_TYPES,
   ...CLUSTER_SIGNAL_TYPES,
 ] as const;
 export type RiskSignalType = typeof RISK_SIGNAL_TYPES[number];

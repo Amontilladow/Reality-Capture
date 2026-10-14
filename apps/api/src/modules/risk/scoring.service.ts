@@ -29,6 +29,11 @@ const NODE_TYPE_EXPOSURE_WEIGHT: Record<string, number> = {
   snag_item: 1.5,
   qa_inspection: 1.5,
   rfi: 2,
+  // NCR (formal non-conformance) weighted like issue/rfi-adjacent quality
+  // risk; SOR (a lighter-weight observation, not yet a formal
+  // non-conformance) weighted lower, between document and submittal.
+  ncr: 2,
+  sor: 1,
   document: 1,
   submittal: 1,
   transmittal: 0.5,

@@ -291,7 +291,10 @@ export function IssueFormModal({
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                capture="environment"
+                // No `capture` attribute -- that forces mobile browsers
+                // straight into the camera with no option to pick an
+                // existing photo. Leaving it off is what makes the browser
+                // show its native action sheet (Camera / Photo Library / Files).
                 multiple
                 className="hidden"
                 onChange={(e) => {
