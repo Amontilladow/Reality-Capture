@@ -17,9 +17,10 @@ const CLOSED_SNAG_STATUSES = ['verified', 'void'];
 // below exists to flag.
 const CLOSED_SUBMITTAL_STATUSES = ['approved', 'approved_as_noted'];
 const REJECTED_SUBMITTAL_STATUSES = ['rejected', 'revise_and_resubmit'];
-// qaqc_records.status CHECK constraint (migration 067): 'open'/'responded'
-// are still-open (awaiting or mid review); 'closed'/'void' are done.
-const CLOSED_QAQC_STATUSES = ['closed', 'void'];
+// qaqc_records.status CHECK constraint (migration 067): 'open',
+// 'pending_confirmation', and 'reopened' are all still-open (awaiting a
+// response or QAQC's confirmation); only 'closed' (QAQC has confirmed) is done.
+const CLOSED_QAQC_STATUSES = ['closed'];
 
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 

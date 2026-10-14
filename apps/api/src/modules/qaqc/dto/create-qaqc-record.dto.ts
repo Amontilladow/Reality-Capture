@@ -4,15 +4,16 @@ import { RFI_DISCIPLINES, type RfiDiscipline } from '@engineeringos/types';
 // Field set deliberately mirrors CreateRfiDto's "subject/question(->description)/
 // priority/discipline+disciplineOther/assignedTo/dueDate" shape (the brief's
 // own "very similar RFI input criteria") -- RFI's cost/time/drawing-impact
-// fields are RFI-specific and have no NCR/SOR equivalent; the quality-risk
-// equivalent is priority feeding the Risk Engine (see risk.service.ts's
-// RISK_WORTHY_NODE_TYPES), not a second scoring block on this record.
+// fields are RFI-specific and have no NCR/SOR/WIR/MIR equivalent; the
+// quality-risk equivalent is priority feeding the Risk Engine (see
+// risk.service.ts's RISK_WORTHY_NODE_TYPES), not a second scoring block on
+// this record.
 //
 // recordType is required here (not inferred from the route) since one
-// shared qaqc_records table serves both NCR and SOR -- see migration 067's
-// own comment for why this is one table with a discriminator, not two.
+// shared qaqc_records table serves all four record types -- see migration
+// 067's own comment for why this is one table with a discriminator, not four.
 export class CreateQaqcRecordDto {
-  @IsIn(['ncr', 'sor']) recordType: 'ncr' | 'sor';
+  @IsIn(['ncr', 'sor', 'wir', 'mir']) recordType: 'ncr' | 'sor' | 'wir' | 'mir';
 
   @IsString() @MinLength(3) @MaxLength(500)
   subject: string;

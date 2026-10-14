@@ -7,12 +7,15 @@ import { mergeAttachmentPdfs, type MergeableAttachment } from '../../common/pdf/
 import { ATTACHMENT_MAX_SIZE, ATTACHMENT_ALLOWED_EXTENSIONS } from '../../common/constants/attachment-limits';
 import { renderQaqcPdf } from './qaqc-pdf.template';
 import type { CreateQaqcRecordDto } from './dto/create-qaqc-record.dto';
-import type { CloseQaqcRecordDto } from './dto/close-qaqc-record.dto';
+import type { RespondQaqcRecordDto } from './dto/respond-qaqc-record.dto';
+import type { ConfirmQaqcRecordDto } from './dto/confirm-qaqc-record.dto';
 import type { QaqcAttachmentUploadUrlDto } from './dto/qaqc-attachment-upload-url.dto';
 import type { AddQaqcAttachmentDto } from './dto/add-qaqc-attachment.dto';
+import type { AddQaqcCaptureDto } from './dto/add-qaqc-capture.dto';
 import type { PaginationQuery } from '@engineeringos/types';
 
-export type QaqcRecordType = 'ncr' | 'sor';
+export type QaqcRecordType = 'ncr' | 'sor' | 'wir' | 'mir';
+const QAQC_RECORD_TYPES: QaqcRecordType[] = ['ncr', 'sor', 'wir', 'mir'];
 
 @Injectable()
 export class QaqcService {
@@ -32,8 +35,8 @@ export class QaqcService {
 
   // Event-driven incremental risk recalculation (mirrors RfisService's
   // triggerRiskRecalc() one-for-one) -- fired after any write that can
-  // change an NCR/SOR's overdue/priority/open-vs-closed state. Never
-  // allowed to fail or slow down the QAQC write it's attached to.
+  // change a record's overdue/priority/open-vs-closed state. Never allowed
+  // to fail or slow down the QAQC write it's attached to.
   private async triggerRiskRecalc(companyId: string, projectId: string, nodeType: QaqcRecordType, qaqcId: string): Promise<void> {
     if (!this.risk) return;
     try {
@@ -43,12 +46,12 @@ export class QaqcService {
     }
   }
 
-  // Scoped per (project, record_type) -- NCR and SOR each get their own
-  // independent sequence on a project (NCR-001, NCR-002, ... / SOR-001,
-  // SOR-002, ...), never sharing a counter. Deliberately simpler than
-  // RFI's {ProjectCode}-{OrgCode}-RFI-{Discipline}-{seq} scheme -- the
-  // brief asked specifically for "NCR-001, SOR-001"-style numbering, not
-  // the full RFI reference-document format.
+  // Scoped per (project, record_type) -- each of NCR/SOR/WIR/MIR gets its
+  // own independent sequence on a project (NCR-001, SOR-001, WIR-001,
+  // MIR-001, ... never sharing a counter). Deliberately simpler than RFI's
+  // {ProjectCode}-{OrgCode}-RFI-{Discipline}-{seq} scheme -- the brief
+  // asked specifically for "NCR-001"-style numbering, not the full RFI
+  // reference-document format.
   private async generateRecordNumber(companyId: string, projectId: string, recordType: QaqcRecordType): Promise<string> {
     return this.db.withTenant(companyId, async (sql) => {
       const [cnt] = await sql`SELECT COUNT(*) AS n FROM qaqc_records WHERE project_id = ${projectId} AND record_type = ${recordType}`;
@@ -101,13 +104,15 @@ export class QaqcService {
       SELECT q.*,
         u_i.first_name || ' ' || u_i.last_name AS issued_by_name,
         u_a.first_name || ' ' || u_a.last_name AS assigned_to_name,
-        u_cl.first_name || ' ' || u_cl.last_name AS closed_by_name,
+        u_r.first_name || ' ' || u_r.last_name AS responded_by_name,
+        u_c.first_name || ' ' || u_c.last_name AS confirmed_by_name,
         loc.name AS location_name,
         COUNT(*) OVER() AS full_count
       FROM qaqc_records q
       LEFT JOIN users u_i ON u_i.id = q.issued_by
       LEFT JOIN users u_a ON u_a.id = q.assigned_to
-      LEFT JOIN users u_cl ON u_cl.id = q.closed_by
+      LEFT JOIN users u_r ON u_r.id = q.responded_by
+      LEFT JOIN users u_c ON u_c.id = q.confirmed_by
       LEFT JOIN locations loc ON loc.id = q.location_id
       WHERE q.project_id = ${projectId} AND q.company_id = ${companyId}
         AND (${query.recordType ?? null}::text IS NULL OR q.record_type = ${query.recordType ?? null})
@@ -129,12 +134,14 @@ export class QaqcService {
       SELECT q.*,
         u_i.first_name || ' ' || u_i.last_name AS issued_by_name,
         u_a.first_name || ' ' || u_a.last_name AS assigned_to_name,
-        u_cl.first_name || ' ' || u_cl.last_name AS closed_by_name,
+        u_r.first_name || ' ' || u_r.last_name AS responded_by_name,
+        u_c.first_name || ' ' || u_c.last_name AS confirmed_by_name,
         loc.name AS location_name
       FROM qaqc_records q
       LEFT JOIN users u_i ON u_i.id = q.issued_by
       LEFT JOIN users u_a ON u_a.id = q.assigned_to
-      LEFT JOIN users u_cl ON u_cl.id = q.closed_by
+      LEFT JOIN users u_r ON u_r.id = q.responded_by
+      LEFT JOIN users u_c ON u_c.id = q.confirmed_by
       LEFT JOIN locations loc ON loc.id = q.location_id
       WHERE q.id = ${qaqcId} AND q.project_id = ${projectId} AND q.company_id = ${companyId}
     `);
@@ -142,20 +149,25 @@ export class QaqcService {
     return record;
   }
 
-  // Single respond-and-close transition -- see CloseQaqcRecordDto's own
-  // comment for why this is one action, not RFI's multi-step workflow.
-  // Authorization (construction_manager/technical_director/qa_qc_manager/
-  // admin) is enforced at the controller via @RequireExactRoles -- this
-  // method only enforces the record's own state machine.
-  async close(companyId: string, projectId: string, qaqcId: string, userId: string, dto: CloseQaqcRecordDto) {
+  // ── Step 1 of the two-step close: respond ──────────────────────────────
+  // Moves 'open'/'reopened' -> 'pending_confirmation'. Authorization
+  // (construction_manager/project_manager/technical_director/
+  // engineering_manager, or admin) is enforced at the controller via
+  // @RequireExactRoles -- this method only enforces the record's own state
+  // machine. Deliberately does NOT close the record -- see confirm() for
+  // why that's a separate, narrower-gated action (mirrors RfisService's
+  // submitForReview(), the first half of its own two-step review chain).
+  async respond(companyId: string, projectId: string, qaqcId: string, userId: string, dto: RespondQaqcRecordDto) {
     const record = await this.findOne(companyId, projectId, qaqcId);
-    if (record.status === 'closed' || record.status === 'void') {
-      throw new BadRequestException(`This ${(record.recordType as string).toUpperCase()} is already ${record.status as string}.`);
+    if (record.status !== 'open' && record.status !== 'reopened') {
+      throw new BadRequestException(
+        `This ${(record.recordType as string).toUpperCase()} cannot be responded to from status "${record.status as string}".`,
+      );
     }
 
     const [updated] = await this.db.withTenant(companyId, sql => sql`
       UPDATE qaqc_records
-      SET status = 'closed', response = ${dto.response}, closed_by = ${userId}, closed_at = NOW(), updated_at = NOW()
+      SET status = 'pending_confirmation', response = ${dto.response}, responded_by = ${userId}, responded_at = NOW(), updated_at = NOW()
       WHERE id = ${qaqcId} AND project_id = ${projectId} AND company_id = ${companyId}
       RETURNING *
     `);
@@ -163,8 +175,8 @@ export class QaqcService {
     if (updated.issuedBy) {
       await this.notifications.create(companyId, {
         userId: updated.issuedBy as string,
-        type: `${updated.recordType as string}_closed`,
-        title: `${updated.recordNumber as string} was closed: ${updated.subject as string}`,
+        type: `${updated.recordType as string}_responded`,
+        title: `${updated.recordNumber as string} received a response, pending your confirmation: ${updated.subject as string}`,
         resourceType: 'qaqc_record',
         resourceId: qaqcId,
         projectId,
@@ -176,7 +188,54 @@ export class QaqcService {
     return updated;
   }
 
-  // ── Attachments ───────────────────────────────────────────────────────────
+  // ── Step 2 of the two-step close: confirm ───────────────────────────────
+  // QAQC-in-charge (or admin) only -- a deliberately narrower gate than
+  // respond(). 'confirmed' moves 'pending_confirmation' -> 'closed'
+  // (confirmedBy/confirmedAt set, terminal). 'rejected' moves it ->
+  // 'reopened' (mirrors RfisService's decideReview() reject path) --
+  // functionally like 'open' (can be responded to again) but kept
+  // distinct in status/audit history so it's visible this record bounced
+  // once already.
+  async confirm(companyId: string, projectId: string, qaqcId: string, userId: string, dto: ConfirmQaqcRecordDto) {
+    const record = await this.findOne(companyId, projectId, qaqcId);
+    if (record.status !== 'pending_confirmation') {
+      throw new BadRequestException(
+        `This ${(record.recordType as string).toUpperCase()} is not awaiting confirmation (status: "${record.status as string}").`,
+      );
+    }
+
+    const newStatus = dto.decision === 'confirmed' ? 'closed' : 'reopened';
+    const [updated] = await this.db.withTenant(companyId, sql => sql`
+      UPDATE qaqc_records
+      SET status = ${newStatus},
+          confirmation_comment = ${dto.comment ?? null},
+          confirmed_by = ${dto.decision === 'confirmed' ? userId : null},
+          confirmed_at = ${dto.decision === 'confirmed' ? sql`NOW()` : null},
+          updated_at = NOW()
+      WHERE id = ${qaqcId} AND project_id = ${projectId} AND company_id = ${companyId}
+      RETURNING *
+    `);
+
+    const notifyUserId = (updated.respondedBy ?? updated.issuedBy) as string | undefined;
+    if (notifyUserId) {
+      await this.notifications.create(companyId, {
+        userId: notifyUserId,
+        type: `${updated.recordType as string}_${newStatus}`,
+        title: dto.decision === 'confirmed'
+          ? `${updated.recordNumber as string} was confirmed closed: ${updated.subject as string}`
+          : `${updated.recordNumber as string} was reopened by QAQC: ${updated.subject as string}`,
+        resourceType: 'qaqc_record',
+        resourceId: qaqcId,
+        projectId,
+        createdBy: userId,
+      });
+    }
+
+    await this.triggerRiskRecalc(companyId, projectId, updated.recordType as QaqcRecordType, qaqcId);
+    return updated;
+  }
+
+  // ── Generic document attachments ("+Add document") ─────────────────────
   // Same presigned-PUT pattern, allow-list, and size cap as rfis.service.ts's
   // attachment methods (which themselves mirror issues.service.ts's).
   async getAttachmentUploadUrl(companyId: string, projectId: string, dto: QaqcAttachmentUploadUrlDto) {
@@ -213,8 +272,8 @@ export class QaqcService {
     }
 
     const [attachment] = await this.db.withTenant(companyId, sql => sql`
-      INSERT INTO qaqc_attachments (qaqc_id, company_id, storage_key, filename, size_bytes, uploaded_by, kind)
-      VALUES (${qaqcId}, ${companyId}, ${dto.storageKey}, ${dto.filename}, ${actualSizeBytes}, ${userId}, ${dto.kind ?? 'issue'})
+      INSERT INTO qaqc_attachments (qaqc_id, company_id, storage_key, filename, size_bytes, uploaded_by, kind, document_type)
+      VALUES (${qaqcId}, ${companyId}, ${dto.storageKey}, ${dto.filename}, ${actualSizeBytes}, ${userId}, ${dto.kind ?? 'issue'}, ${dto.documentType ?? null})
       RETURNING *
     `);
     return attachment;
@@ -241,6 +300,47 @@ export class QaqcService {
     return { message: 'Attachment deleted.' };
   }
 
+  // ── Quick photo picker ("+Add photo") -- links an already-uploaded
+  // Capture (captureType: 'photo_standard', uploaded client-side via
+  // captures.api.ts's uploadCapture()) to this record, mirroring
+  // issues.service.ts's addCapture()/getEvidence() one-for-one. This is
+  // deliberately a different path from addAttachment() above -- the photo
+  // becomes a real Capture (shows up in the project's Captures grid), not
+  // a bare qaqc_attachments row. ─────────────────────────────────────────
+  async linkCapture(companyId: string, qaqcId: string, userId: string, dto: AddQaqcCaptureDto) {
+    const [link] = await this.db.withTenant(companyId, sql => sql`
+      INSERT INTO qaqc_captures (qaqc_id, capture_id, company_id, kind, caption, added_by)
+      VALUES (${qaqcId}, ${dto.captureId}, ${companyId}, ${dto.kind ?? 'issue'}, ${dto.caption ?? null}, ${userId})
+      ON CONFLICT (qaqc_id, capture_id) DO UPDATE SET caption = ${dto.caption ?? null}
+      RETURNING *
+    `);
+    return link;
+  }
+
+  // Resolves thumbnailKey/originalKey into real, usable URLs server-side --
+  // mirrors issues.service.ts's getEvidence() one-for-one (the raw storage
+  // keys are not themselves fetchable by the browser).
+  async getLinkedCaptures(companyId: string, qaqcId: string) {
+    const rows = await this.db.withTenant(companyId, sql => sql`
+      SELECT qc.id, qc.capture_id, qc.kind, qc.caption, qc.created_at,
+             c.capture_type, c.captured_at, c.title, c.original_key,
+             cr.storage_key AS thumbnail_key,
+             u.first_name || ' ' || u.last_name AS added_by_name
+      FROM qaqc_captures qc
+      JOIN captures c ON c.id = qc.capture_id
+      LEFT JOIN capture_renditions cr ON cr.capture_id = c.id AND cr.rendition_type = 'thumbnail_sm'
+      JOIN users u ON u.id = qc.added_by
+      WHERE qc.qaqc_id = ${qaqcId} AND qc.company_id = ${companyId}
+      ORDER BY qc.created_at ASC
+    `);
+    const keys = rows.flatMap(r => [r.thumbnailKey, r.originalKey].filter(Boolean)) as string[];
+    const urlMap = await this.storage.resolveUrls(keys);
+    return rows.map(r => ({
+      ...r,
+      thumbnailUrl: (r.thumbnailKey ? urlMap.get(r.thumbnailKey as string) : undefined) ?? urlMap.get(r.originalKey as string),
+    }));
+  }
+
   // ── Reports KPI shape (mirrors issues.service.ts's getSummary()/
   // getKpiBreakdown()/getOpenList() -- the same three-method shape already
   // reused for RFIs' own Reports integration) ──────────────────────────────
@@ -248,15 +348,22 @@ export class QaqcService {
   async getSummary(companyId: string, projectId: string) {
     const [summary] = await this.db.withTenant(companyId, sql => sql`
       SELECT
-        COUNT(*)                                                                    AS total,
-        COUNT(*) FILTER (WHERE record_type = 'ncr')                                 AS ncr_total,
-        COUNT(*) FILTER (WHERE record_type = 'sor')                                 AS sor_total,
-        COUNT(*) FILTER (WHERE record_type = 'ncr' AND status NOT IN ('closed','void')) AS ncr_open,
-        COUNT(*) FILTER (WHERE record_type = 'sor' AND status NOT IN ('closed','void')) AS sor_open,
-        COUNT(*) FILTER (WHERE record_type = 'ncr' AND status = 'closed')           AS ncr_closed,
-        COUNT(*) FILTER (WHERE record_type = 'sor' AND status = 'closed')           AS sor_closed,
-        COUNT(*) FILTER (WHERE priority = 'critical' AND status NOT IN ('closed','void')) AS critical,
-        COUNT(*) FILTER (WHERE due_date < NOW() AND status NOT IN ('closed','void')) AS overdue
+        COUNT(*)                                                                         AS total,
+        COUNT(*) FILTER (WHERE record_type = 'ncr')                                      AS ncr_total,
+        COUNT(*) FILTER (WHERE record_type = 'sor')                                      AS sor_total,
+        COUNT(*) FILTER (WHERE record_type = 'wir')                                      AS wir_total,
+        COUNT(*) FILTER (WHERE record_type = 'mir')                                      AS mir_total,
+        COUNT(*) FILTER (WHERE record_type = 'ncr' AND status <> 'closed')               AS ncr_open,
+        COUNT(*) FILTER (WHERE record_type = 'sor' AND status <> 'closed')               AS sor_open,
+        COUNT(*) FILTER (WHERE record_type = 'wir' AND status <> 'closed')               AS wir_open,
+        COUNT(*) FILTER (WHERE record_type = 'mir' AND status <> 'closed')               AS mir_open,
+        COUNT(*) FILTER (WHERE status = 'pending_confirmation')                          AS pending_confirmation,
+        COUNT(*) FILTER (WHERE record_type = 'ncr' AND status = 'closed')                AS ncr_closed,
+        COUNT(*) FILTER (WHERE record_type = 'sor' AND status = 'closed')                AS sor_closed,
+        COUNT(*) FILTER (WHERE record_type = 'wir' AND status = 'closed')                AS wir_closed,
+        COUNT(*) FILTER (WHERE record_type = 'mir' AND status = 'closed')                AS mir_closed,
+        COUNT(*) FILTER (WHERE priority = 'critical' AND status <> 'closed')             AS critical,
+        COUNT(*) FILTER (WHERE due_date < NOW() AND status <> 'closed')                  AS overdue
       FROM qaqc_records
       WHERE project_id = ${projectId} AND company_id = ${companyId}
     `);
@@ -294,7 +401,7 @@ export class QaqcService {
       FROM qaqc_records q
       LEFT JOIN users u_a ON u_a.id = q.assigned_to
       WHERE q.project_id = ${projectId} AND q.company_id = ${companyId}
-        AND q.status NOT IN ('closed', 'void')
+        AND q.status <> 'closed'
       ORDER BY
         CASE q.priority WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
         q.created_at DESC
@@ -304,9 +411,10 @@ export class QaqcService {
 
   // ── PDF export ───────────────────────────────────────────────────────────
   // Same two-method shape as RfisService.getPdfData()/generatePdf(): gather
-  // everything the template needs in one place, render a react-pdf summary,
-  // then append every attachment's real content via the shared merge
-  // utility extracted from RfisService (see attachment-pdf-merge.util.ts).
+  // everything the template needs in one place (including linked Captures,
+  // not just qaqc_attachments), render a react-pdf summary, then append
+  // every attachment's/photo's real content via the shared merge utility
+  // extracted from RfisService (see attachment-pdf-merge.util.ts).
   async getPdfData(companyId: string, projectId: string, qaqcId: string) {
     const record = await this.findOne(companyId, projectId, qaqcId);
     const [project] = await this.db.withTenant(companyId, sql => sql`
@@ -318,11 +426,20 @@ export class QaqcService {
       WHERE qaqc_id = ${qaqcId} AND company_id = ${companyId}
       ORDER BY uploaded_at ASC
     `);
-    return { record, project, attachmentRows };
+    const captureRows = await this.db.withTenant(companyId, sql => sql`
+      SELECT qc.kind, c.title, c.original_key,
+             cr.storage_key AS thumbnail_key
+      FROM qaqc_captures qc
+      JOIN captures c ON c.id = qc.capture_id
+      LEFT JOIN capture_renditions cr ON cr.capture_id = c.id AND cr.rendition_type = 'thumbnail_sm'
+      WHERE qc.qaqc_id = ${qaqcId} AND qc.company_id = ${companyId}
+      ORDER BY qc.created_at ASC
+    `);
+    return { record, project, attachmentRows, captureRows };
   }
 
   async generatePdf(companyId: string, projectId: string, qaqcId: string): Promise<{ buffer: Buffer; filename: string }> {
-    const { record, project, attachmentRows } = await this.getPdfData(companyId, projectId, qaqcId);
+    const { record, project, attachmentRows, captureRows } = await this.getPdfData(companyId, projectId, qaqcId);
     const filename = `${(record.recordNumber as string) ?? qaqcId}.pdf`;
 
     const summaryBuffer = await renderQaqcPdf({
@@ -341,22 +458,42 @@ export class QaqcService {
       createdAt: new Date(record.createdAt as string).toLocaleDateString('en-GB'),
       assignedToName: record.assignedToName as string | undefined,
       dueDate: record.dueDate ? new Date(record.dueDate as string).toLocaleDateString('en-GB') : undefined,
-      closedByName: record.closedByName as string | undefined,
-      closedAt: record.closedAt ? new Date(record.closedAt as string).toLocaleString('en-GB') : undefined,
+      respondedByName: record.respondedByName as string | undefined,
+      respondedAt: record.respondedAt ? new Date(record.respondedAt as string).toLocaleString('en-GB') : undefined,
+      confirmedByName: record.confirmedByName as string | undefined,
+      confirmedAt: record.confirmedAt ? new Date(record.confirmedAt as string).toLocaleString('en-GB') : undefined,
+      confirmationComment: record.confirmationComment as string | undefined,
     });
 
-    // Issue-time attachments first, then response (closing) attachments --
-    // same ordering convention as RFI's query-then-response split.
+    // Issue-time attachments/photos first, then response-time ones -- same
+    // ordering convention as RFI's query-then-response split. Documents
+    // and linked-Capture photos are merged into one ordered list so both
+    // kinds of evidence appear as divided pages, per the brief.
     const attachmentRowsTyped = attachmentRows as Array<Record<string, unknown>>;
-    const issueRows = attachmentRowsTyped.filter((a) => (a.kind ?? 'issue') === 'issue');
-    const responseRows = attachmentRowsTyped.filter((a) => a.kind === 'response');
-    const mergeableAttachments: MergeableAttachment[] = [...issueRows, ...responseRows].map((row) => ({
+    const captureRowsTyped = captureRows as Array<Record<string, unknown>>;
+
+    const documentMergeables: (MergeableAttachment & { kind: string })[] = attachmentRowsTyped.map((row) => ({
       filename: row.filename as string,
       storageKey: row.storageKey as string | undefined,
-      typeLabel: (row.kind as string) === 'response' ? 'Response attachment' : 'Issue attachment',
+      typeLabel: (row.kind as string) === 'response' ? 'Response document' : 'Issue document',
+      kind: row.kind as string,
     }));
+    const captureMergeables: (MergeableAttachment & { kind: string })[] = captureRowsTyped.map((row) => ({
+      filename: (row.title as string | undefined) || 'Photo',
+      storageKey: (row.thumbnailKey as string | undefined) ?? (row.originalKey as string | undefined),
+      typeLabel: (row.kind as string) === 'response' ? 'Response photo' : 'Issue photo',
+      kind: row.kind as string,
+    }));
+
+    const allMergeables = [...documentMergeables, ...captureMergeables];
+    const issueMergeables = allMergeables.filter((a) => a.kind !== 'response');
+    const responseMergeables = allMergeables.filter((a) => a.kind === 'response');
+    const mergeableAttachments: MergeableAttachment[] = [...issueMergeables, ...responseMergeables];
+
     const buffer = await mergeAttachmentPdfs(summaryBuffer, mergeableAttachments, this.storage);
 
     return { buffer, filename };
   }
 }
+
+export { QAQC_RECORD_TYPES };

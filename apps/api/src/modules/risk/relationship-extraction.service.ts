@@ -479,12 +479,13 @@ export class RelationshipExtractionService {
     }
   }
 
-  // ── QAQC NCR/SOR (brief section 6 -- registers both node types from the
-  // one shared qaqc_records table; record_type IS the node type) ───────────
+  // ── QAQC NCR/SOR/WIR/MIR (brief section 6 -- registers all four node
+  // types from the one shared qaqc_records table; record_type IS the node
+  // type) ─────────────────────────────────────────────────────────────────
 
   async extractQaqcRecords(companyId: string, projectId: string, onlyId?: string): Promise<void> {
     const rows = await this.db.withTenant(companyId, sql => sql<{
-      id: string; recordType: 'ncr' | 'sor'; recordNumber: string | null; subject: string;
+      id: string; recordType: 'ncr' | 'sor' | 'wir' | 'mir'; recordNumber: string | null; subject: string;
       discipline: RfiDiscipline | null; priority: string; status: string; dueDate: string | null;
       locationId: string | null; assignedTo: string | null; issuedBy: string; createdAt: string;
     }[]>`

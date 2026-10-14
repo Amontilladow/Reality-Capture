@@ -76,31 +76,23 @@ describe('QaqcService', () => {
       expect((result as Record<string, unknown>).recordNumber).toBe('NCR-005');
     });
 
-    it('NCR and SOR sequences on the same project are independent (never a shared counter)', async () => {
-      const ncrCounts: number[] = [];
-      const { svc: ncrSvc } = makeService((text, values) => {
-        if (text.includes('SELECT COUNT(*) AS n FROM qaqc_records')) {
-          ncrCounts.push(values[1] as unknown as number);
-          return [{ n: '2' }]; // 2 existing NCRs -> next is NCR-003
-        }
-        if (text.includes('INSERT INTO qaqc_records')) return [{ id: 'q1', recordNumber: 'NCR-003', recordType: 'ncr' }];
-        return undefined;
-      });
-      const { svc: sorSvc } = makeService((text) => {
-        if (text.includes('SELECT COUNT(*) AS n FROM qaqc_records')) return [{ n: '0' }]; // 0 existing SORs -> next is SOR-001
-        if (text.includes('INSERT INTO qaqc_records')) return [{ id: 'q2', recordNumber: 'SOR-001', recordType: 'sor' }];
+    it.each([
+      ['ncr', 2, 'NCR-003'],
+      ['sor', 0, 'SOR-001'],
+      ['wir', 5, 'WIR-006'],
+      ['mir', 11, 'MIR-012'],
+    ])('%s gets its own independent sequence (never a shared counter): %i existing -> %s', async (recordType, existing, expectedNumber) => {
+      const { svc } = makeService((text) => {
+        if (text.includes('SELECT COUNT(*) AS n FROM qaqc_records')) return [{ n: String(existing) }];
+        if (text.includes('INSERT INTO qaqc_records')) return [{ id: 'q1', recordNumber: expectedNumber, recordType }];
         return undefined;
       });
 
-      const ncr = await ncrSvc.create(companyId, projectId, 'user-1', {
-        recordType: 'ncr', subject: 'A', description: 'd', discipline: 'structural',
-      } as CreateQaqcRecordDto);
-      const sor = await sorSvc.create(companyId, projectId, 'user-1', {
-        recordType: 'sor', subject: 'B', description: 'd', discipline: 'structural',
+      const result = await svc.create(companyId, projectId, 'user-1', {
+        recordType, subject: 'A', description: 'd', discipline: 'structural',
       } as CreateQaqcRecordDto);
 
-      expect((ncr as Record<string, unknown>).recordNumber).toBe('NCR-003');
-      expect((sor as Record<string, unknown>).recordNumber).toBe('SOR-001');
+      expect((result as Record<string, unknown>).recordNumber).toBe(expectedNumber);
     });
 
     it('notifies the assignee when one is given', async () => {
@@ -135,18 +127,18 @@ describe('QaqcService', () => {
       expect(notifications.create).not.toHaveBeenCalled();
     });
 
-    it("triggers risk recalculation for the new record's own node type (ncr/sor)", async () => {
+    it("triggers risk recalculation for the new record's own node type", async () => {
       const { svc, risk } = makeService((text) => {
         if (text.includes('SELECT COUNT(*) AS n FROM qaqc_records')) return [{ n: '0' }];
-        if (text.includes('INSERT INTO qaqc_records')) return [{ id: 'qaqc-new', recordNumber: 'SOR-001', recordType: 'sor' }];
+        if (text.includes('INSERT INTO qaqc_records')) return [{ id: 'qaqc-new', recordNumber: 'WIR-001', recordType: 'wir' }];
         return undefined;
       });
 
       await svc.create(companyId, projectId, 'user-1', {
-        recordType: 'sor', subject: 'Paint defect', description: 'd', discipline: 'architectural',
+        recordType: 'wir', subject: 'Rebar inspection', description: 'd', discipline: 'structural',
       } as CreateQaqcRecordDto);
 
-      expect(risk.recalculateForEntity).toHaveBeenCalledWith(companyId, projectId, 'sor', 'qaqc-new');
+      expect(risk.recalculateForEntity).toHaveBeenCalledWith(companyId, projectId, 'wir', 'qaqc-new');
     });
 
     it('a risk recalculation failure never fails or blocks the create itself', async () => {
@@ -176,78 +168,169 @@ describe('QaqcService', () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  // findOne / close
+  // Step 1: respond()
   // ══════════════════════════════════════════════════════════════════════
-  describe('close', () => {
+  describe('respond', () => {
     function recordRow(status: string, overrides: Record<string, unknown> = {}) {
       return { id: qaqcId, recordType: 'ncr', recordNumber: 'NCR-001', subject: 'Cracked slab', status, issuedBy: 'user-1', ...overrides };
     }
 
-    it('closes an open record, stamping response/closedBy/closedAt', async () => {
+    it.each(['open', 'reopened'])('moves a %s record to pending_confirmation, stamping response/respondedBy/respondedAt', async (fromStatus) => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) return [recordRow(fromStatus)];
+        if (text.includes('UPDATE qaqc_records')) return [recordRow('pending_confirmation', { response: 'Fixed and re-poured.' })];
+        return undefined;
+      });
+
+      const result = await svc.respond(companyId, projectId, qaqcId, 'user-2', { response: 'Fixed and re-poured.' });
+      expect((result as Record<string, unknown>).status).toBe('pending_confirmation');
+    });
+
+    it('does NOT close the record -- status is pending_confirmation, not closed', async () => {
       const { svc } = makeService((text) => {
         if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) return [recordRow('open')];
-        if (text.includes('UPDATE qaqc_records')) return [recordRow('closed', { response: 'Fixed and re-poured.' })];
+        if (text.includes('UPDATE qaqc_records')) return [recordRow('pending_confirmation')];
         return undefined;
       });
 
-      const result = await svc.close(companyId, projectId, qaqcId, 'user-2', { response: 'Fixed and re-poured.' });
-      expect((result as Record<string, unknown>).status).toBe('closed');
+      const result = await svc.respond(companyId, projectId, qaqcId, 'user-2', { response: 'Fixed.' });
+      expect((result as Record<string, unknown>).status).not.toBe('closed');
     });
 
-    it('rejects closing a record that is already closed', async () => {
+    it.each(['pending_confirmation', 'closed'])('rejects responding to a record in status %s', async (status) => {
       const { svc } = makeService((text) => {
-        if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) return [recordRow('closed')];
+        if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) return [recordRow(status)];
         return undefined;
       });
 
-      await expect(svc.close(companyId, projectId, qaqcId, 'user-2', { response: 'x' }))
-        .rejects.toBeInstanceOf(BadRequestException);
-    });
-
-    it('rejects closing a void record', async () => {
-      const { svc } = makeService((text) => {
-        if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) return [recordRow('void')];
-        return undefined;
-      });
-
-      await expect(svc.close(companyId, projectId, qaqcId, 'user-2', { response: 'x' }))
+      await expect(svc.respond(companyId, projectId, qaqcId, 'user-2', { response: 'x' }))
         .rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('throws NotFoundException for a record that does not exist under this company/project', async () => {
       const { svc } = makeService(() => []);
-      await expect(svc.close(companyId, projectId, qaqcId, 'user-2', { response: 'x' }))
+      await expect(svc.respond(companyId, projectId, qaqcId, 'user-2', { response: 'x' }))
         .rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it('notifies the original issuer when their record is closed by someone else', async () => {
+    it('notifies the original issuer that a response is pending their confirmation', async () => {
       const { svc, notifications } = makeService((text) => {
         if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) return [recordRow('open')];
-        if (text.includes('UPDATE qaqc_records')) return [recordRow('closed')];
+        if (text.includes('UPDATE qaqc_records')) return [recordRow('pending_confirmation')];
         return undefined;
       });
 
-      await svc.close(companyId, projectId, qaqcId, 'user-2', { response: 'Fixed.' });
+      await svc.respond(companyId, projectId, qaqcId, 'user-2', { response: 'Fixed.' });
 
       expect(notifications.create).toHaveBeenCalledWith(companyId, expect.objectContaining({
-        userId: 'user-1', type: 'ncr_closed', resourceType: 'qaqc_record',
+        userId: 'user-1', type: 'ncr_responded', resourceType: 'qaqc_record',
       }));
     });
 
-    it("re-triggers risk recalculation on close (so a now-closed record stops contributing an open-record signal)", async () => {
+    it('re-triggers risk recalculation on respond', async () => {
       const { svc, risk } = makeService((text) => {
         if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) return [recordRow('open')];
-        if (text.includes('UPDATE qaqc_records')) return [recordRow('closed')];
+        if (text.includes('UPDATE qaqc_records')) return [recordRow('pending_confirmation')];
         return undefined;
       });
 
-      await svc.close(companyId, projectId, qaqcId, 'user-2', { response: 'Fixed.' });
+      await svc.respond(companyId, projectId, qaqcId, 'user-2', { response: 'Fixed.' });
       expect(risk.recalculateForEntity).toHaveBeenCalledWith(companyId, projectId, 'ncr', qaqcId);
     });
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  // Attachments
+  // Step 2: confirm()
+  // ══════════════════════════════════════════════════════════════════════
+  describe('confirm', () => {
+    function pendingRow(overrides: Record<string, unknown> = {}) {
+      return { id: qaqcId, recordType: 'ncr', recordNumber: 'NCR-001', subject: 'Cracked slab', status: 'pending_confirmation', issuedBy: 'user-1', respondedBy: 'user-2', ...overrides };
+    }
+
+    it('confirming moves status to closed and stamps confirmedBy/confirmedAt', async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) return [pendingRow()];
+        if (text.includes('UPDATE qaqc_records')) return [pendingRow({ status: 'closed', confirmedBy: 'user-3', confirmedAt: '2025-01-01' })];
+        return undefined;
+      });
+
+      const result = await svc.confirm(companyId, projectId, qaqcId, 'user-3', { decision: 'confirmed' });
+      expect((result as Record<string, unknown>).status).toBe('closed');
+      expect((result as Record<string, unknown>).confirmedBy).toBe('user-3');
+    });
+
+    it('rejecting moves status to reopened, NOT closed, and stores the comment', async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) return [pendingRow()];
+        if (text.includes('UPDATE qaqc_records')) return [pendingRow({ status: 'reopened', confirmationComment: 'Crack still visible.' })];
+        return undefined;
+      });
+
+      const result = await svc.confirm(companyId, projectId, qaqcId, 'user-3', { decision: 'rejected', comment: 'Crack still visible.' });
+      expect((result as Record<string, unknown>).status).toBe('reopened');
+      expect((result as Record<string, unknown>).status).not.toBe('closed');
+    });
+
+    it('rejects confirming a record that is not pending_confirmation', async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) return [pendingRow({ status: 'open' })];
+        return undefined;
+      });
+
+      await expect(svc.confirm(companyId, projectId, qaqcId, 'user-3', { decision: 'confirmed' }))
+        .rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('a record can be responded to again after being reopened', async () => {
+      // Confirms the reopened status isn't a dead end -- respond() accepts
+      // 'open' or 'reopened' as its source statuses (see the respond()
+      // describe block above for the full assertion of that behavior).
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) {
+          return [{ id: qaqcId, recordType: 'ncr', status: 'reopened', issuedBy: 'user-1' }];
+        }
+        if (text.includes('UPDATE qaqc_records')) return [{ id: qaqcId, recordType: 'ncr', status: 'pending_confirmation' }];
+        return undefined;
+      });
+
+      const result = await svc.respond(companyId, projectId, qaqcId, 'user-2', { response: 'Fixed again.' });
+      expect((result as Record<string, unknown>).status).toBe('pending_confirmation');
+    });
+
+    it('throws NotFoundException for a record that does not exist under this company/project', async () => {
+      const { svc } = makeService(() => []);
+      await expect(svc.confirm(companyId, projectId, qaqcId, 'user-3', { decision: 'confirmed' }))
+        .rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('notifies the responder on confirmation', async () => {
+      const { svc, notifications } = makeService((text) => {
+        if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) return [pendingRow()];
+        if (text.includes('UPDATE qaqc_records')) return [pendingRow({ status: 'closed' })];
+        return undefined;
+      });
+
+      await svc.confirm(companyId, projectId, qaqcId, 'user-3', { decision: 'confirmed' });
+
+      expect(notifications.create).toHaveBeenCalledWith(companyId, expect.objectContaining({
+        userId: 'user-2', type: 'ncr_closed', resourceType: 'qaqc_record',
+      }));
+    });
+
+    it("re-triggers risk recalculation on confirm (so a now-closed record stops contributing an open-record signal)", async () => {
+      const { svc, risk } = makeService((text) => {
+        if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) return [pendingRow()];
+        if (text.includes('UPDATE qaqc_records')) return [pendingRow({ status: 'closed' })];
+        return undefined;
+      });
+
+      await svc.confirm(companyId, projectId, qaqcId, 'user-3', { decision: 'confirmed' });
+      expect(risk.recalculateForEntity).toHaveBeenCalledWith(companyId, projectId, 'ncr', qaqcId);
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Generic document attachments
   // ══════════════════════════════════════════════════════════════════════
   describe('attachments', () => {
     it('getAttachmentUploadUrl rejects a disallowed extension', async () => {
@@ -300,16 +383,60 @@ describe('QaqcService', () => {
         .rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('defaults kind to "issue" when omitted', async () => {
+    it('defaults kind to "issue" and documentType to null when omitted', async () => {
       const { svc } = makeService((text, values) => {
         if (text.includes('INSERT INTO qaqc_attachments')) {
-          // kind is the last interpolated value in the INSERT
-          expect(values[values.length - 1]).toBe('issue');
+          // kind and document_type are the last two interpolated values in the INSERT
+          expect(values[values.length - 2]).toBe('issue');
+          expect(values[values.length - 1]).toBeNull();
           return [{ id: 'att-1', kind: 'issue' }];
         }
         return undefined;
       });
       await svc.addAttachment(companyId, qaqcId, 'user-1', { storageKey: 'k1', filename: 'photo.jpg', sizeBytes: 1000 });
+    });
+
+    it('stores an explicit documentType when given', async () => {
+      const { svc } = makeService((text, values) => {
+        if (text.includes('INSERT INTO qaqc_attachments')) {
+          expect(values[values.length - 1]).toBe('method_statement');
+          return [{ id: 'att-1', documentType: 'method_statement' }];
+        }
+        return undefined;
+      });
+      await svc.addAttachment(companyId, qaqcId, 'user-1', {
+        storageKey: 'k1', filename: 'ms.pdf', sizeBytes: 1000, documentType: 'method_statement',
+      });
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════════════
+  // Quick photo picker -- links a Capture (mirrors issue_captures)
+  // ══════════════════════════════════════════════════════════════════════
+  describe('linkCapture', () => {
+    it('links an already-uploaded capture with kind defaulted to "issue"', async () => {
+      const { svc } = makeService((text, values) => {
+        if (text.includes('INSERT INTO qaqc_captures')) {
+          expect(values).toEqual([qaqcId, 'capture-1', companyId, 'issue', null, 'user-1', null]);
+          return [{ id: 'link-1', qaqcId, captureId: 'capture-1', kind: 'issue' }];
+        }
+        return undefined;
+      });
+
+      const result = await svc.linkCapture(companyId, qaqcId, 'user-1', { captureId: 'capture-1' });
+      expect((result as Record<string, unknown>).kind).toBe('issue');
+    });
+
+    it('links a response-time photo with kind "response"', async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('INSERT INTO qaqc_captures')) {
+          return [{ id: 'link-2', qaqcId, captureId: 'capture-2', kind: 'response' }];
+        }
+        return undefined;
+      });
+
+      const result = await svc.linkCapture(companyId, qaqcId, 'user-2', { captureId: 'capture-2', kind: 'response' });
+      expect((result as Record<string, unknown>).kind).toBe('response');
     });
   });
 
@@ -317,21 +444,37 @@ describe('QaqcService', () => {
   // Reports KPI shape
   // ══════════════════════════════════════════════════════════════════════
   describe('getKpiBreakdown', () => {
-    it('splits counts by record_type, status, and priority independently', async () => {
+    it('splits counts by record_type, status, and priority independently across all four types', async () => {
       const { svc } = makeService((text) => {
         if (text.includes('GROUP BY record_type, status, priority')) {
           return [
             { recordType: 'ncr', status: 'open', priority: 'high', count: '3' },
             { recordType: 'sor', status: 'closed', priority: 'low', count: '2' },
+            { recordType: 'wir', status: 'pending_confirmation', priority: 'medium', count: '1' },
+            { recordType: 'mir', status: 'reopened', priority: 'critical', count: '1' },
           ];
         }
         return undefined;
       });
 
       const result = await svc.getKpiBreakdown(companyId, projectId);
-      expect(result.byRecordType).toEqual({ ncr: 3, sor: 2 });
-      expect(result.byStatus).toEqual({ open: 3, closed: 2 });
-      expect(result.byPriority).toEqual({ high: 3, low: 2 });
+      expect(result.byRecordType).toEqual({ ncr: 3, sor: 2, wir: 1, mir: 1 });
+      expect(result.byStatus).toEqual({ open: 3, closed: 2, pending_confirmation: 1, reopened: 1 });
+      expect(result.byPriority).toEqual({ high: 3, low: 2, medium: 1, critical: 1 });
+    });
+  });
+
+  describe('getOpenList', () => {
+    it('excludes only closed records -- pending_confirmation and reopened both still count as open', async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes("q.status <> 'closed'")) {
+          return [{ id: 'q1', status: 'pending_confirmation' }, { id: 'q2', status: 'reopened' }];
+        }
+        return undefined;
+      });
+
+      const result = await svc.getOpenList(companyId, projectId);
+      expect(result).toHaveLength(2);
     });
   });
 });

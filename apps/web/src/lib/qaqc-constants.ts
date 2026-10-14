@@ -1,6 +1,8 @@
 import type { QaqcPriority, QaqcStatus, QaqcRecordType } from './qaqc.api';
 import { TONE_CLASS, PRIORITY_TONE, type StatusTone } from './status-tone';
 
+export const QAQC_RECORD_TYPES: QaqcRecordType[] = ['ncr', 'sor', 'wir', 'mir'];
+
 export const QAQC_PRIORITIES: QaqcPriority[] = ['critical', 'high', 'medium', 'low'];
 
 export const QAQC_PRIORITY_LABELS: Record<QaqcPriority, string> = {
@@ -14,16 +16,16 @@ export const QAQC_PRIORITY_TONE: Record<QaqcPriority, StatusTone> = PRIORITY_TON
 
 export const QAQC_STATUS_LABELS: Record<QaqcStatus, string> = {
   open: 'Open',
-  responded: 'Responded',
+  pending_confirmation: 'Pending Confirmation',
   closed: 'Closed',
-  void: 'Void',
+  reopened: 'Reopened',
 };
 
 export const QAQC_STATUS_TONE: Record<QaqcStatus, StatusTone> = {
   open: 'danger',
-  responded: 'progress',
+  pending_confirmation: 'progress',
   closed: 'neutral',
-  void: 'neutral',
+  reopened: 'warning',
 };
 
 export const QAQC_STATUS_BADGE_CLASS: Record<QaqcStatus, string> = Object.fromEntries(
@@ -33,16 +35,20 @@ export const QAQC_STATUS_BADGE_CLASS: Record<QaqcStatus, string> = Object.fromEn
 export const QAQC_RECORD_TYPE_LABELS: Record<QaqcRecordType, string> = {
   ncr: 'Non-Conformance Report',
   sor: 'Site Observation Report',
+  wir: 'Work Inspection Request',
+  mir: 'Material Inspection Request',
 };
 
 export const QAQC_RECORD_TYPE_SHORT_LABELS: Record<QaqcRecordType, string> = {
   ncr: 'NCR',
   sor: 'SOR',
+  wir: 'WIR',
+  mir: 'MIR',
 };
 
 export function isQaqcOverdue(dueDate: string | undefined, status: QaqcStatus): boolean {
   if (!dueDate) return false;
-  if (status === 'closed' || status === 'void') return false;
+  if (status === 'closed') return false;
   return new Date(dueDate).getTime() < Date.now();
 }
 
@@ -59,8 +65,10 @@ export function formatDateTime(iso?: string): string {
 }
 
 // Role-list (membership, not weight) constants mirroring the backend's own
-// ISSUE_ROLES/CLOSE_ROLES in qaqc.controller.ts -- client-side visual-only
-// gating for the create/close actions. The server's @RequireExactRoles is
-// the real enforcement; this only decides which buttons are worth showing.
+// ISSUE_ROLES/RESPOND_ROLES/CONFIRM_ROLES in qaqc.controller.ts --
+// client-side visual-only gating for the create/respond/confirm actions.
+// The server's @RequireExactRoles is the real enforcement; this only
+// decides which buttons are worth showing.
 export const QAQC_ISSUE_ROLES = ['qa_qc_manager', 'company_admin', 'super_admin'] as const;
-export const QAQC_CLOSE_ROLES = ['construction_manager', 'technical_director', 'qa_qc_manager', 'company_admin', 'super_admin'] as const;
+export const QAQC_RESPOND_ROLES = ['construction_manager', 'project_manager', 'technical_director', 'engineering_manager', 'company_admin', 'super_admin'] as const;
+export const QAQC_CONFIRM_ROLES = ['qa_qc_manager', 'company_admin', 'super_admin'] as const;

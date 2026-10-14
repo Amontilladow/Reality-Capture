@@ -19,7 +19,7 @@ export const RISK_NODE_TYPES = [
   'drawing', 'document', 'submittal', 'transmittal',
   'bim_model', 'bim_element',
   'capture',
-  'ncr', 'sor', // QAQC non-conformance / site observation records (migration 067)
+  'ncr', 'sor', 'wir', 'mir', // QAQC non-conformance / site observation / work inspection / material inspection records (migration 067)
   'programme_activity', 'material', // schema-ready; nothing extracts these today (no source module exists)
   'user', 'company',
   'risk',

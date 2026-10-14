@@ -19,6 +19,8 @@ import {
   STATUS_LABELS, PRIORITY_LABELS, DISCIPLINE_LABELS, formatDateTime,
 } from '../lib/issue-constants';
 import { SNAG_STATUS_LABELS, SNAG_PRIORITY_LABELS } from '../lib/snagging-constants';
+import { QAQC_STATUS_LABELS, QAQC_RECORD_TYPE_SHORT_LABELS } from '../lib/qaqc-constants';
+import type { QaqcStatus, QaqcRecordType } from '../lib/qaqc.api';
 
 // Recharts marks need real hex/rgb colors -- they don't inherit Tailwind
 // classes -- pulled straight from tailwind.config.js's "Blueprint-dark
@@ -500,30 +502,38 @@ export default function ReportsPage() {
               )}
             </section>
 
-            {/* ── QAQC (NCR/SOR) ───────────────────────────────────────── */}
+            {/* ── QAQC (NCR/SOR/WIR/MIR) ──────────────────────────────── */}
             <section className="space-y-4">
-              <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">QAQC — NCR &amp; SOR</h2>
+              <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">QAQC — NCR, SOR, WIR &amp; MIR</h2>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <StatTile label="NCR Open" value={kpis.qaqc.summary.ncrOpen} />
-                <StatTile label="SOR Open" value={kpis.qaqc.summary.sorOpen} />
+                <StatTile label="Pending Confirmation" value={kpis.qaqc.summary.pendingConfirmation} />
                 <StatTile label="Critical" value={kpis.qaqc.summary.critical} tone="danger" />
                 <StatTile label="Overdue" value={kpis.qaqc.summary.overdue} tone="danger" />
+                <StatTile label="Total" value={kpis.qaqc.summary.total} />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <div className="panel p-3">
-                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">NCR — Total / Closed</div>
-                  <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.ncrTotal} / {kpis.qaqc.summary.ncrClosed}</div>
+                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">NCR — Open / Total / Closed</div>
+                  <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.ncrOpen} / {kpis.qaqc.summary.ncrTotal} / {kpis.qaqc.summary.ncrClosed}</div>
                 </div>
                 <div className="panel p-3">
-                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">SOR — Total / Closed</div>
-                  <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.sorTotal} / {kpis.qaqc.summary.sorClosed}</div>
+                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">SOR — Open / Total / Closed</div>
+                  <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.sorOpen} / {kpis.qaqc.summary.sorTotal} / {kpis.qaqc.summary.sorClosed}</div>
+                </div>
+                <div className="panel p-3">
+                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">WIR — Open / Total / Closed</div>
+                  <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.wirOpen} / {kpis.qaqc.summary.wirTotal} / {kpis.qaqc.summary.wirClosed}</div>
+                </div>
+                <div className="panel p-3">
+                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">MIR — Open / Total / Closed</div>
+                  <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.mirOpen} / {kpis.qaqc.summary.mirTotal} / {kpis.qaqc.summary.mirClosed}</div>
                 </div>
               </div>
 
               {kpis.qaqc.summary.total === 0 ? (
                 <div className="panel tick-frame p-10 text-center text-sm text-ink-500">
-                  No NCR/SOR records logged on this project yet.
+                  No NCR/SOR/WIR/MIR records logged on this project yet.
                 </div>
               ) : kpis.qaqc.openList.length > 0 && (
                 <div className="panel tick-frame overflow-x-auto">
@@ -542,9 +552,9 @@ export default function ReportsPage() {
                       {kpis.qaqc.openList.map((item) => (
                         <tr key={item.id} className="border-b border-base-700/60 last:border-0">
                           <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{item.recordNumber ?? item.id.slice(0, 8)}</td>
-                          <td className="px-4 py-2.5 uppercase text-ink-300">{item.recordType}</td>
+                          <td className="px-4 py-2.5 uppercase text-ink-300">{QAQC_RECORD_TYPE_SHORT_LABELS[item.recordType as QaqcRecordType] ?? item.recordType}</td>
                           <td className="px-4 py-2.5">{item.subject}</td>
-                          <td className="px-4 py-2.5 text-ink-300 capitalize">{item.status}</td>
+                          <td className="px-4 py-2.5 text-ink-300">{QAQC_STATUS_LABELS[item.status as QaqcStatus] ?? item.status}</td>
                           <td className="px-4 py-2.5 text-ink-300">{PRIORITY_LABELS[item.priority as keyof typeof PRIORITY_LABELS] ?? item.priority}</td>
                           <td className="px-4 py-2.5 text-ink-500">{item.assignedToName ?? 'Unassigned'}</td>
                         </tr>

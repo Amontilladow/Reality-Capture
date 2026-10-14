@@ -9,7 +9,7 @@ import { ScoringService } from './scoring.service';
 import { AiClientService } from '../ai-client/ai-client.service';
 import { renderRiskPdf, type RiskPdfTopRisk } from './risk-pdf.template';
 
-export const RISK_WORTHY_NODE_TYPES = ['rfi', 'issue', 'snag_item', 'drawing', 'qa_inspection', 'submittal', 'ncr', 'sor'] as const;
+export const RISK_WORTHY_NODE_TYPES = ['rfi', 'issue', 'snag_item', 'drawing', 'qa_inspection', 'submittal', 'ncr', 'sor', 'wir', 'mir'] as const;
 
 const CATEGORY_BY_NODE_TYPE: Record<string, string> = {
   rfi: 'Design / RFI',
@@ -20,6 +20,8 @@ const CATEGORY_BY_NODE_TYPE: Record<string, string> = {
   submittal: 'Procurement / Submittal',
   ncr: 'Quality / Non-Conformance',
   sor: 'Quality / Site Observation',
+  wir: 'Quality / Work Inspection',
+  mir: 'Quality / Material Inspection',
 };
 
 const TITLE_PREFIX_BY_NODE_TYPE: Record<string, string> = {
@@ -31,6 +33,8 @@ const TITLE_PREFIX_BY_NODE_TYPE: Record<string, string> = {
   submittal: 'Submittal Pending Review',
   ncr: 'Open NCR',
   sor: 'Open SOR',
+  wir: 'Open WIR',
+  mir: 'Open MIR',
 };
 
 // Ordered by how directly actionable/severe the recommendation is — the
@@ -56,7 +60,7 @@ const RECOMMENDED_ACTION_BY_SIGNAL: [string, string][] = [
   ['RFI_HIGH_PRIORITY', 'Confirm ownership and a response timeline given this RFI\'s priority.'],
   ['SUBMITTAL_HIGH_PRIORITY', 'Confirm ownership and a review timeline given this submittal\'s priority.'],
   ['ISSUE_HIGH_SEVERITY', 'Confirm ownership and a resolution timeline given this issue\'s severity.'],
-  ['QAQC_OVERDUE', 'Escalate this NCR/SOR for an immediate response — it is already overdue.'],
+  ['QAQC_OVERDUE', 'Escalate this NCR/SOR/WIR/MIR for an immediate response — it is already overdue.'],
   ['QAQC_APPROACHING_DUE', 'Ensure a response is issued before the due date to avoid this becoming overdue.'],
   ['QAQC_HIGH_PRIORITY', 'Confirm ownership and a response timeline given this record\'s priority.'],
 ];
@@ -132,7 +136,9 @@ export class RiskService {
       case 'qa_inspection': await this.extraction.extractQaInspections(companyId, projectId, entityId); break;
       case 'submittal': await this.extraction.extractSubmittals(companyId, projectId, entityId); break;
       case 'ncr':
-      case 'sor': await this.extraction.extractQaqcRecords(companyId, projectId, entityId); break;
+      case 'sor':
+      case 'wir':
+      case 'mir': await this.extraction.extractQaqcRecords(companyId, projectId, entityId); break;
     }
     // RFI<->Issue inference is symmetric and cheap enough to redo project-wide
     // whenever either side changes, rather than tracking which pairs to revisit.

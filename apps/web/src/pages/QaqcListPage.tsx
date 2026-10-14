@@ -13,9 +13,10 @@ import {
 import { StatusBadge } from '../components/ui/Badge';
 import { useAuthStore } from '../store/auth.store';
 
-// One shared list implementation for both NCR and SOR, parameterized by the
-// :recordType path segment (/projects/:projectId/qaqc/ncr or /qaqc/sor) --
-// per the brief's §3/§4, this is one implementation, not two forked pages.
+// One shared list implementation for all four record types, parameterized
+// by the :recordType path segment (/projects/:projectId/qaqc/ncr, /sor,
+// /wir, or /mir) -- per the brief's §3/§4, this is one implementation, not
+// four forked pages.
 export default function QaqcListPage() {
   const { projectId, recordType } = useParams<{ projectId: string; recordType: QaqcRecordType }>();
   const navigate = useNavigate();
@@ -82,7 +83,7 @@ export default function QaqcListPage() {
         <div className="flex items-center gap-3 flex-wrap">
           <select className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
-            {(['open', 'responded', 'closed', 'void'] as const).map((s) => (
+            {(['open', 'pending_confirmation', 'closed', 'reopened'] as const).map((s) => (
               <option key={s} value={s}>{QAQC_STATUS_LABELS[s]}</option>
             ))}
           </select>

@@ -34,21 +34,30 @@ function registerFonts(Font: typeof import('@react-pdf/renderer').Font) {
   Font.registerHyphenationCallback((word) => [word]);
 }
 
-const RECORD_TYPE_TITLE: Record<'ncr' | 'sor', string> = {
+const RECORD_TYPE_TITLE: Record<'ncr' | 'sor' | 'wir' | 'mir', string> = {
   ncr: 'NON-CONFORMANCE REPORT',
   sor: 'SITE OBSERVATION REPORT',
+  wir: 'WORK INSPECTION REQUEST',
+  mir: 'MATERIAL INSPECTION REQUEST',
 };
 
 const STATUS_COLOR: Record<string, string> = {
   open: SIGNAL,
-  responded: BLUEPRINT,
+  pending_confirmation: BLUEPRINT,
   closed: '#3A7D44',
-  void: INK_MUTED,
+  reopened: SIGNAL,
+};
+
+const STATUS_DISPLAY: Record<string, string> = {
+  open: 'OPEN',
+  pending_confirmation: 'PENDING CONFIRMATION',
+  closed: 'CLOSED',
+  reopened: 'REOPENED',
 };
 
 export interface QaqcPdfData {
   recordNumber: string;
-  recordType: 'ncr' | 'sor';
+  recordType: 'ncr' | 'sor' | 'wir' | 'mir';
   status: string;
   priority: string;
   subject: string;
@@ -62,8 +71,11 @@ export interface QaqcPdfData {
   createdAt: string;
   assignedToName?: string;
   dueDate?: string;
-  closedByName?: string;
-  closedAt?: string;
+  respondedByName?: string;
+  respondedAt?: string;
+  confirmedByName?: string;
+  confirmedAt?: string;
+  confirmationComment?: string;
 }
 
 export async function renderQaqcPdf(data: QaqcPdfData): Promise<Buffer> {
@@ -111,7 +123,7 @@ export async function renderQaqcPdf(data: QaqcPdfData): Promise<Buffer> {
             h(Text, { style: styles.title }, RECORD_TYPE_TITLE[data.recordType]),
             h(Text, { style: styles.recordNumber }, data.recordNumber),
           ),
-          h(Text, { style: [styles.badge, { color: STATUS_COLOR[data.status] ?? INK_MUTED }] }, data.status.toUpperCase()),
+          h(Text, { style: [styles.badge, { color: STATUS_COLOR[data.status] ?? INK_MUTED }] }, STATUS_DISPLAY[data.status] ?? data.status.toUpperCase()),
         ),
 
         h(View, { style: styles.section },
@@ -141,15 +153,28 @@ export async function renderQaqcPdf(data: QaqcPdfData): Promise<Buffer> {
             )
           : null,
 
+        data.confirmationComment
+          ? h(View, { style: styles.section },
+              h(Text, { style: styles.sectionTitle }, data.status === 'reopened' ? 'QAQC Rejection Comment' : 'QAQC Confirmation Comment'),
+              h(Text, { style: styles.bodyText }, data.confirmationComment),
+            )
+          : null,
+
         h(View, { style: styles.footerRow },
           h(View, { style: styles.footerCol },
             h(Text, { style: styles.footerLabel }, 'Raised By'),
             h(Text, { style: styles.footerValue }, `${data.issuedByName || '—'}  ·  ${data.createdAt}`),
           ),
-          data.closedByName
+          data.respondedByName
             ? h(View, { style: styles.footerCol },
-                h(Text, { style: styles.footerLabel }, 'Closed By'),
-                h(Text, { style: styles.footerValue }, `${data.closedByName}  ·  ${data.closedAt || '—'}`),
+                h(Text, { style: styles.footerLabel }, 'Responded By'),
+                h(Text, { style: styles.footerValue }, `${data.respondedByName}  ·  ${data.respondedAt || '—'}`),
+              )
+            : null,
+          data.confirmedByName
+            ? h(View, { style: styles.footerCol },
+                h(Text, { style: styles.footerLabel }, 'Confirmed By'),
+                h(Text, { style: styles.footerValue }, `${data.confirmedByName}  ·  ${data.confirmedAt || '—'}`),
               )
             : null,
         ),
