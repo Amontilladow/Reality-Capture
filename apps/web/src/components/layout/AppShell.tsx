@@ -208,8 +208,10 @@ function NavGroupList({ groups, basePath }: { groups: NavGroup[]; basePath: stri
               to={`${basePath}/${item.to}`}
               end={item.end}
               className={({ isActive }) =>
-                `flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors ${
-                  isActive ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-800 hover:text-ink-100'
+                `flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors border-l-2 ${
+                  isActive
+                    ? 'border-signal bg-signal/10 text-signal'
+                    : 'border-transparent text-ink-300 hover:bg-base-800 hover:text-ink-100'
                 }`
               }
             >
