@@ -325,13 +325,23 @@ export class SignalsService {
   // priority columns). Only NCR is risk-worthy (see risk.service.ts's
   // RISK_WORTHY_NODE_TYPES) -- SOR/WIR/MIR are excluded. ───────────────────
 
+  // qaqc_records.record_type is a plain VARCHAR(10) (migration 067), while
+  // risk_graph_nodes.node_type is the risk_node_type enum (migration 050) --
+  // Postgres has no built-in "=" operator between an enum and a varchar
+  // column, so the join below casts explicitly, or it throws "operator does
+  // not exist: risk_node_type = character varying" on every single call.
+  // Confirmed live: this silently broke risk recalculation for EVERY entity
+  // type project-wide, not just QAQC -- detectSignalsForProject() below runs
+  // every detector in one sequence, and this one threw unconditionally,
+  // aborting whatever recalculateForEntity()/recalculateForNode() call was
+  // in progress for ANY entity type in the project.
   async detectQaqcSignals(companyId: string, projectId: string): Promise<void> {
     const rows = await this.db.withTenant(companyId, sql => sql<{
       nodeId: string; status: string; priority: string; dueDate: string | null;
     }[]>`
       SELECT n.id AS node_id, q.status, q.priority, q.due_date
       FROM qaqc_records q
-      JOIN risk_graph_nodes n ON n.node_type = q.record_type AND n.entity_id = q.id
+      JOIN risk_graph_nodes n ON n.node_type = q.record_type::risk_node_type AND n.entity_id = q.id
       WHERE q.project_id = ${projectId} AND q.record_type = 'ncr'`);
 
     const now = Date.now();
