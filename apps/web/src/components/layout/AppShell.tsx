@@ -53,11 +53,10 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
       { to: 'issues', label: 'Issues', icon: IconFlag },
       { to: 'snagging', label: 'Snagging', icon: IconTag },
       { to: 'rfis', label: 'RFIs', icon: IconQuestion },
-      { to: 'submittals', label: 'Submittals', icon: IconInbox },
-      { to: 'transmittals', label: 'Transmittals', icon: IconSend },
-      { to: 'qa-inspections', label: 'QA Inspections', icon: IconChecklist },
+      // Submittals/Transmittals/QA Inspections/Documents: hidden from nav
+      // per request, backend modules/routes left untouched -- still
+      // reachable by direct URL, just not linked from the sidebar.
       { to: 'qaqc', label: 'QAQC', icon: IconQaqc },
-      { to: 'documents', label: 'Documents', icon: IconFolder },
       { to: 'progress-report', label: 'Progress Report', icon: IconTrending },
       { to: 'reports', label: 'Reports', icon: IconReport },
     ],
@@ -296,39 +295,9 @@ function IconTag({ className }: { className?: string }) {
     </svg>
   );
 }
-function IconInbox({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M4 12h4l2 3h4l2-3h4" strokeLinejoin="round" strokeLinecap="round" />
-      <path d="M4 12l1.5-6.5A1 1 0 016.47 4.7h11.06a1 1 0 01.97.8L20 12v6a1.6 1.6 0 01-1.6 1.6H5.6A1.6 1.6 0 014 18v-6z" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function IconFolder({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M4 7a1.6 1.6 0 011.6-1.6h4l2 2h6.8A1.6 1.6 0 0120 9v8.4A1.6 1.6 0 0118.4 19H5.6A1.6 1.6 0 014 17.4V7z" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function IconSend({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M21 3L3 10.5l7 2.5 2.5 7L21 3z" strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
-  );
-}
-function IconChecklist({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M9 6h10M9 12h10M9 18h10" strokeLinecap="round" />
-      <path d="M4 5.5l1 1 1.5-1.5M4 11.5l1 1 1.5-1.5M4 17.5l1 1 1.5-1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-// Document-with-alert-mark -- distinct from IconChecklist (QA Inspections,
-// a checklist pass/fail) and IconShield (Risk) since NCR/SOR is neither:
-// a formal flagged report, not a checklist and not the risk score itself.
+// Document-with-alert-mark -- distinct from a checklist pass/fail icon and
+// IconShield (Risk) since NCR/SOR is neither: a formal flagged report, not
+// a checklist and not the risk score itself.
 function IconQaqc({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
