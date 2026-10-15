@@ -263,14 +263,25 @@ export function DrawingViewer({
                 }}
               >
                 {pin.captureCount > 0 ? (
-                  <>
-                    <circle r="9" className="fill-signal stroke-signal-hover" strokeWidth="2" />
-                    <circle r="3" className="fill-base-950" />
-                  </>
+                  <circle r="9" className="fill-signal stroke-signal-hover" strokeWidth="2" />
                 ) : (
                   // No media yet -- a hollow marker so an empty, just-created
                   // pin reads visually differently from one with a history.
                   <circle r="9" className="fill-base-950/60 stroke-signal" strokeWidth="2" strokeDasharray="2.5 2" />
+                )}
+                {pin.purpose === 'camera_location' ? (
+                  // Camera-location pins (Buildlense Captures) get a camera
+                  // glyph instead of the plain dot, so they read differently
+                  // from an Issues/Snags pin at a glance -- this component is
+                  // shared with FloorPlanViewer, but a pin with this purpose
+                  // never reaches it there (filtered out before it renders).
+                  <g className={pin.captureCount > 0 ? 'fill-base-950' : 'fill-signal'}>
+                    <rect x="-6" y="-4" width="12" height="8" rx="1.5" />
+                    <rect x="-2.5" y="-6.3" width="5" height="2.3" rx="0.5" />
+                    <circle cx="0" cy="0.4" r="2.1" className={pin.captureCount > 0 ? 'fill-signal' : 'fill-base-950'} />
+                  </g>
+                ) : (
+                  pin.captureCount > 0 && <circle r="3" className="fill-base-950" />
                 )}
                 {pin.compassHeadingDeg !== undefined && (
                   <line
