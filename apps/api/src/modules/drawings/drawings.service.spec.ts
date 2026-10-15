@@ -112,6 +112,42 @@ describe('DrawingsService pin page_number', () => {
       );
       expect(result.assignedTo).toBeUndefined();
     });
+
+    it('defaults purpose to "issue" and creates a linked Issue when the caller does not specify one', async () => {
+      const { svc, issues } = makeService({
+        drawingRow: { id: drawingId, levelId: 'level-1' },
+        insertedPin: {
+          id: 'pin-5', name: 'Untitled pin', posXNorm: 0.5, posYNorm: 0.5,
+          pageNumber: 1, createdVia: 'floor_plan_tap', createdAt: '2026-08-03T00:00:00Z',
+        },
+      });
+
+      const result = await svc.createPin(companyId, drawingId, 'user-1', { posXNorm: 0.5, posYNorm: 0.5 });
+
+      expect(issues.create).toHaveBeenCalled();
+      expect(result.linkedRecord).toEqual({ type: 'issue', id: 'issue-1' });
+    });
+
+    it('skips Issue creation entirely for a camera_location pin, returning linkedRecord: undefined', async () => {
+      const { svc, issues, query } = makeService({
+        drawingRow: { id: drawingId, levelId: 'level-1' },
+        insertedPin: {
+          id: 'pin-6', name: 'Camera spot', posXNorm: 0.5, posYNorm: 0.5,
+          pageNumber: 1, createdVia: 'floor_plan_tap', createdAt: '2026-08-03T00:00:00Z',
+        },
+      });
+
+      const result = await svc.createPin(companyId, drawingId, 'user-1', {
+        posXNorm: 0.5, posYNorm: 0.5, purpose: 'camera_location',
+      });
+
+      expect(issues.create).not.toHaveBeenCalled();
+      expect(result.linkedRecord).toBeUndefined();
+      expect(result.assignedTo).toBeUndefined();
+      const insertSql = (query.mock.calls[0][0] as TemplateStringsArray).join('');
+      expect(insertSql).toContain('pin_purpose');
+      expect(query.mock.calls[0]).toContain('camera_location');
+    });
   });
 
   describe('getPins', () => {

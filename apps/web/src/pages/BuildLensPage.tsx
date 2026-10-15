@@ -137,7 +137,18 @@ export default function BuildLensPage() {
 
   return (
     <>
-      <PageHeader eyebrow={projectQuery.data?.name ?? 'Project'} title="BuildLens" />
+      <PageHeader
+        eyebrow={projectQuery.data?.name ?? 'Project'}
+        title="BuildLens"
+        actions={
+          <button
+            onClick={() => navigate(`/projects/${projectId}/drawings?pinPurpose=camera_location`)}
+            className="btn-secondary"
+          >
+            + Pin a camera location
+          </button>
+        }
+      />
 
       <div className="p-6 space-y-4 max-w-3xl">
         <div className="flex items-center justify-between gap-4">

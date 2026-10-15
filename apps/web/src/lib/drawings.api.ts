@@ -30,7 +30,13 @@ export interface Pin {
 export function createPin(
   projectId: string,
   drawingId: string,
-  payload: { posXNorm: number; posYNorm: number; name?: string; pageNumber?: number; assignedTo?: string },
+  payload: {
+    posXNorm: number; posYNorm: number; name?: string; pageNumber?: number; assignedTo?: string;
+    // 'issue' (default) auto-creates a linked Issue, same as before this
+    // field existed. 'camera_location' is a pure BuildLens/Captures marker
+    // -- no Issue, nothing in the Issues list/KPIs.
+    purpose?: 'issue' | 'camera_location';
+  },
 ) {
   return apiPost<Pin>(`/projects/${projectId}/drawings/${drawingId}/pins`, payload);
 }
