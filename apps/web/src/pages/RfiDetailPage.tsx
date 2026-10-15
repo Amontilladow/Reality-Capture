@@ -393,6 +393,11 @@ export default function RfiDetailPage() {
   const isSuperAdmin = currentUser?.companyRole === 'super_admin';
   const myMembership = (membersQuery.data ?? []).find((m) => m.userId === currentUser?.id);
   const isProjectLead = myMembership?.role === 'project_lead';
+  // A 'subcontractor' project member's backend access is RFI-only
+  // (SubcontractorRfiAccessGuard) -- email composing/history lives on
+  // ProjectsController's own /emails route, outside that, so both are
+  // hidden here rather than showing a control that would just 403.
+  const isSubcontractor = myMembership?.role === 'subcontractor';
   const hasManageRfisGrant = (grantsQuery.data ?? []).some(
     (g) => g.userId === currentUser?.id && g.permission === 'manage_rfis',
   );
@@ -443,9 +448,11 @@ export default function RfiDetailPage() {
         title={rfi.rfiNumber ?? 'RFI'}
         actions={
           <>
-            <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary text-xs">
-              Email
-            </button>
+            {!isSubcontractor && (
+              <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary text-xs">
+                Email
+              </button>
+            )}
             <Link
               to={`/projects/${projectId}/rfis/${rfi.raisedByOrganizationSlot === 'subcontractor' ? 'subcontractor' : 'main'}`}
               className="btn-ghost !px-2 !py-1 text-xs"
@@ -545,11 +552,15 @@ export default function RfiDetailPage() {
             section). See OrganizationSlotRow below. */}
         <OrganizationSlotRow projectId={projectId} canEdit={canManageOrganizations} />
 
-        {/* Email history -- Phase 3G */}
-        <section className="panel tick-frame p-5">
-          <div className="field-label mb-3">Email History</div>
-          <EmailHistoryList projectId={projectId} relatedRecordType="rfi" relatedRecordId={rfi.id} />
-        </section>
+        {/* Email history -- Phase 3G. Hidden for a subcontractor (see
+            isSubcontractor's own comment) rather than rendering and letting
+            its query 403. */}
+        {!isSubcontractor && (
+          <section className="panel tick-frame p-5">
+            <div className="field-label mb-3">Email History</div>
+            <EmailHistoryList projectId={projectId} relatedRecordType="rfi" relatedRecordId={rfi.id} />
+          </section>
+        )}
 
         {/* RFI Information */}
         <section className="panel tick-frame p-5">
