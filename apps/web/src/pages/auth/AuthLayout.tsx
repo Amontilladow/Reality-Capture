@@ -16,29 +16,30 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
               <path d="M2 8h20M8 2v20" stroke="#4FB6E8" strokeWidth="1" opacity="0.6" />
               <circle cx="8" cy="8" r="1.4" fill="#FF7A29" />
             </svg>
-            <span className="font-semibold tracking-tight">EngineeringOS</span>
+            <div className="leading-tight">
+              <div className="font-semibold tracking-tight">Reality Capture</div>
+              <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500">by EngineeringOS</div>
+            </div>
           </div>
           {/* Decorative marketing copy, identical on every auth screen -- the
               page's actual topic (Login, Sign up, Reset password, ...) is the
               real h1, rendered once per page below via the `title` prop. */}
           <p className="text-3xl font-semibold tracking-tight leading-tight mb-4">
-            Beyond Engineering.<br />Beyond Boundaries.
+            Reality, understood.
           </p>
           <p className="text-ink-300 text-sm leading-relaxed">
             Register 360° captures against building, level, and location — link them to BIM
             elements, floor plans, and open issues — and hand every stakeholder a verifiable
             record of what was actually built.
           </p>
-          <div className="mt-10 grid grid-cols-3 gap-4 font-mono text-xs text-ink-500">
-            <div className="border-t border-base-600 pt-2">
-              <div className="text-blueprint text-lg">29</div>TABLES
-            </div>
-            <div className="border-t border-base-600 pt-2">
-              <div className="text-blueprint text-lg">58</div>ENDPOINTS
-            </div>
-            <div className="border-t border-base-600 pt-2">
-              <div className="text-blueprint text-lg">11</div>ROLES
-            </div>
+          {/* Real capability pillars, not a vanity metric (table/endpoint/role
+              counts told a visitor nothing about what they could actually do
+              here) -- same three-column rhythm, now naming the workflow
+              instead of implementation internals. */}
+          <div className="mt-10 grid grid-cols-3 gap-4 font-mono text-[11px] uppercase tracking-wide text-ink-500">
+            <div className="border-t border-base-600 pt-2 text-ink-300">Capture</div>
+            <div className="border-t border-base-600 pt-2 text-ink-300">Coordinate</div>
+            <div className="border-t border-base-600 pt-2 text-ink-300">Resolve</div>
           </div>
         </div>
       </div>
@@ -51,7 +52,10 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
               <path d="M2 8h20M8 2v20" stroke="#4FB6E8" strokeWidth="1" opacity="0.6" />
               <circle cx="8" cy="8" r="1.4" fill="#FF7A29" />
             </svg>
-            <span className="font-semibold tracking-tight">EngineeringOS</span>
+            <div className="leading-tight">
+              <div className="font-semibold tracking-tight">Reality Capture</div>
+              <div className="text-[9px] font-mono uppercase tracking-widest text-ink-500">by EngineeringOS</div>
+            </div>
           </div>
           <div className="tick-frame panel p-8">
             <h1 className="text-xl font-semibold mb-1">{title}</h1>

@@ -2,6 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Centralized design tokens, mirroring tailwind.config.js's "Blueprint-dark
+   technical palette" one-for-one (same hex values, same names in spirit).
+   Tailwind utility classes (bg-signal, text-ink-300, ...) remain the single
+   source of truth for every existing component -- nothing here changes
+   those. These --rc-* custom properties exist so bespoke, non-Tailwind-class
+   surfaces (the public marketing page's hand-built sections, any future
+   inline SVG/canvas work) can reference the same palette without
+   re-hardcoding hex values in a second place. Keep this block in sync with
+   tailwind.config.js's `theme.extend.colors` if either ever changes. */
+:root {
+  --rc-base-950: #0A141C;
+  --rc-base-900: #0F1B25;
+  --rc-base-800: #182631;
+  --rc-base-700: #22323F;
+  --rc-base-600: #324656;
+  --rc-base-500: #4A6178;
+
+  --rc-ink-100: #EAF0F4;
+  --rc-ink-300: #B7C4CE;
+  --rc-ink-500: #7E8F9C;
+
+  --rc-signal: #FF7A29;
+  --rc-signal-hover: #FF8F4D;
+  --rc-signal-muted: #7A4022;
+
+  --rc-blueprint: #4FB6E8;
+  --rc-blueprint-hover: #72C6ED;
+  --rc-blueprint-muted: #20475A;
+
+  --rc-ok: #4ADE80;
+  --rc-warn: #FBBF24;
+  --rc-danger: #F87171;
+
+  --rc-radius-sm: 2px;
+  --rc-radius-md: 3px;
+  --rc-radius-lg: 4px;
+}
+
 @layer base {
   * {
     @apply border-base-600;

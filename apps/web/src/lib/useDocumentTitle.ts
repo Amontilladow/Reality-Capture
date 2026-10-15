@@ -9,7 +9,7 @@ export function useDocumentTitle(title: string | undefined | null) {
   useEffect(() => {
     if (!title) return;
     const previous = document.title;
-    document.title = `${title} · EngineeringOS`;
+    document.title = `${title} · Reality Capture`;
     return () => {
       document.title = previous;
     };

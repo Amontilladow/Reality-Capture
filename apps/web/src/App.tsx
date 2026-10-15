@@ -3,7 +3,9 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppShell } from './components/layout/AppShell';
 import { bootstrapSession } from './lib/api';
+import { useAuthStore } from './store/auth.store';
 
+import PublicLandingPage from './pages/PublicLandingPage';
 import Login from './pages/auth/Login';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
@@ -67,6 +69,23 @@ function RouteLoading() {
       Loading…
     </div>
   );
+}
+
+// "/" used to redirect straight to /projects unconditionally, which meant
+// an unauthenticated visitor landed on nothing before being bounced again
+// to /login by ProtectedRoute -- there was no public page to read first.
+// Now: a signed-in visitor still goes straight into the app (unchanged
+// behavior), and a signed-out visitor sees the public marketing page
+// instead. Mirrors ProtectedRoute's own isHydrated wait (see auth.store.ts)
+// so a fresh page load doesn't flash the marketing page for a split second
+// before a valid session is confirmed.
+function RootRoute() {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const isHydrated = useAuthStore((s) => s.isHydrated);
+
+  if (!isHydrated) return null;
+  if (accessToken) return <Navigate to="/projects" replace />;
+  return <PublicLandingPage />;
 }
 
 export default function App() {
@@ -141,7 +160,7 @@ export default function App() {
           </Route>
         </Route>
 
-        <Route path="/" element={<Navigate to="/projects" replace />} />
+        <Route path="/" element={<RootRoute />} />
         <Route path="*" element={<Navigate to="/projects" replace />} />
       </Routes>
     </Suspense>
