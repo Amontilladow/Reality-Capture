@@ -12,7 +12,7 @@ import {
 import { uploadCapture } from '../lib/captures.api';
 import { getProject } from '../lib/projects.api';
 import {
-  QAQC_STATUS_LABELS, QAQC_PRIORITY_LABELS, QAQC_RECORD_TYPE_SHORT_LABELS, QAQC_RESPOND_ROLES, QAQC_CONFIRM_ROLES,
+  QAQC_STATUS_LABELS, QAQC_PRIORITY_LABELS, QAQC_RECORD_TYPE_SHORT_LABELS, QAQC_ISSUE_ROLES, QAQC_RESPOND_ROLES, QAQC_CONFIRM_ROLES,
   QAQC_STATUS_TONE, QAQC_PRIORITY_TONE, formatDate, formatDateTime,
 } from '../lib/qaqc-constants';
 import { StatusBadge } from '../components/ui/Badge';
@@ -130,6 +130,19 @@ export default function QaqcDetailPage() {
     record.status === 'pending_confirmation' &&
     currentUser?.companyRole && (QAQC_CONFIRM_ROLES as readonly string[]).includes(currentUser.companyRole),
   );
+  // Attaching a missed photo/document is a narrower ask than editing the
+  // record's substantive fields, and the backend never gated addAttachment/
+  // linkCapture on status in the first place -- these two stay role-only
+  // (never status-gated) so the issuer/responder can still attach evidence
+  // they forgot, even after the record moved on (including past closed).
+  // The confirm step itself, and the response/description text, stay
+  // exactly as status-gated as before -- only "attach what I forgot" opens up.
+  const canUploadIssueEvidence = Boolean(
+    currentUser?.companyRole && (QAQC_ISSUE_ROLES as readonly string[]).includes(currentUser.companyRole),
+  );
+  const canUploadResponseEvidence = Boolean(
+    currentUser?.companyRole && (QAQC_RESPOND_ROLES as readonly string[]).includes(currentUser.companyRole),
+  );
 
   const issueAttachments = (attachmentsQuery.data ?? []).filter((a) => (a.kind ?? 'issue') === 'issue');
   const responseAttachments = (attachmentsQuery.data ?? []).filter((a) => a.kind === 'response');
@@ -190,19 +203,20 @@ export default function QaqcDetailPage() {
           </div>
         </section>
 
-        {/* Description + issue-time evidence -- read-only here; the two
-            attachment affordances for this side were offered on the create
-            form (§4). */}
+        {/* Description + issue-time evidence. The two attachment affordances
+            are primarily filled in on the create form (§4), but stay open
+            here too (role-gated, not status-gated) so the issuer can still
+            attach something they forgot -- even after the record closed. */}
         <section className="panel tick-frame p-5 space-y-3">
           <div className="field-label">Description</div>
           <p className="text-sm text-ink-100 whitespace-pre-wrap">{record.description}</p>
-          <CaptureSection projectId={projectId} qaqcId={id} kind="issue" captures={issueCaptures} canUpload={false} onChanged={() => queryClient.invalidateQueries({ queryKey: ['qaqc-captures', projectId, id] })} />
+          <CaptureSection projectId={projectId} qaqcId={id} kind="issue" captures={issueCaptures} canUpload={canUploadIssueEvidence} onChanged={() => queryClient.invalidateQueries({ queryKey: ['qaqc-captures', projectId, id] })} />
           <AttachmentSection
             projectId={projectId}
             qaqcId={id}
             kind="issue"
             attachments={issueAttachments}
-            canUpload={false}
+            canUpload={canUploadIssueEvidence}
             onChanged={() => queryClient.invalidateQueries({ queryKey: ['qaqc-attachments', projectId, id] })}
           />
         </section>
@@ -242,7 +256,7 @@ export default function QaqcDetailPage() {
             qaqcId={id}
             kind="response"
             captures={responseCaptures}
-            canUpload={canRespond}
+            canUpload={canUploadResponseEvidence}
             onChanged={() => queryClient.invalidateQueries({ queryKey: ['qaqc-captures', projectId, id] })}
           />
           <AttachmentSection
@@ -250,7 +264,7 @@ export default function QaqcDetailPage() {
             qaqcId={id}
             kind="response"
             attachments={responseAttachments}
-            canUpload={canRespond}
+            canUpload={canUploadResponseEvidence}
             onChanged={() => queryClient.invalidateQueries({ queryKey: ['qaqc-attachments', projectId, id] })}
           />
         </section>
