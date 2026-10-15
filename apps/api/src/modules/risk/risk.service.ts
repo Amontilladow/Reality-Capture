@@ -9,7 +9,12 @@ import { ScoringService } from './scoring.service';
 import { AiClientService } from '../ai-client/ai-client.service';
 import { renderRiskPdf, type RiskPdfTopRisk } from './risk-pdf.template';
 
-export const RISK_WORTHY_NODE_TYPES = ['rfi', 'issue', 'snag_item', 'drawing', 'qa_inspection', 'submittal', 'ncr', 'sor', 'wir', 'mir'] as const;
+// Only NCR is risk-worthy among the four QAQC record types -- SOR/WIR/MIR
+// are deliberately excluded (see qaqc.service.ts's own comment on the
+// NCR/SOR vs WIR/MIR role split: NCR is the non-conformance record this
+// feature is meant to surface risk for; SOR/WIR/MIR don't feed the Risk
+// Engine).
+export const RISK_WORTHY_NODE_TYPES = ['rfi', 'issue', 'snag_item', 'drawing', 'qa_inspection', 'submittal', 'ncr'] as const;
 
 const CATEGORY_BY_NODE_TYPE: Record<string, string> = {
   rfi: 'Design / RFI',
@@ -19,9 +24,6 @@ const CATEGORY_BY_NODE_TYPE: Record<string, string> = {
   drawing: 'Design / Drawing',
   submittal: 'Procurement / Submittal',
   ncr: 'Quality / Non-Conformance',
-  sor: 'Quality / Site Observation',
-  wir: 'Quality / Work Inspection',
-  mir: 'Quality / Material Inspection',
 };
 
 const TITLE_PREFIX_BY_NODE_TYPE: Record<string, string> = {
@@ -32,9 +34,6 @@ const TITLE_PREFIX_BY_NODE_TYPE: Record<string, string> = {
   drawing: 'Repeated Drawing Revisions',
   submittal: 'Submittal Pending Review',
   ncr: 'Open NCR',
-  sor: 'Open SOR',
-  wir: 'Open WIR',
-  mir: 'Open MIR',
 };
 
 // Ordered by how directly actionable/severe the recommendation is — the
@@ -60,9 +59,9 @@ const RECOMMENDED_ACTION_BY_SIGNAL: [string, string][] = [
   ['RFI_HIGH_PRIORITY', 'Confirm ownership and a response timeline given this RFI\'s priority.'],
   ['SUBMITTAL_HIGH_PRIORITY', 'Confirm ownership and a review timeline given this submittal\'s priority.'],
   ['ISSUE_HIGH_SEVERITY', 'Confirm ownership and a resolution timeline given this issue\'s severity.'],
-  ['QAQC_OVERDUE', 'Escalate this NCR/SOR/WIR/MIR for an immediate response — it is already overdue.'],
+  ['QAQC_OVERDUE', 'Escalate this NCR for an immediate response — it is already overdue.'],
   ['QAQC_APPROACHING_DUE', 'Ensure a response is issued before the due date to avoid this becoming overdue.'],
-  ['QAQC_HIGH_PRIORITY', 'Confirm ownership and a response timeline given this record\'s priority.'],
+  ['QAQC_HIGH_PRIORITY', 'Confirm ownership and a response timeline given this NCR\'s priority.'],
 ];
 
 export interface RiskRow {
@@ -135,10 +134,7 @@ export class RiskService {
       case 'drawing': await this.extraction.extractDrawings(companyId, projectId, entityId); break;
       case 'qa_inspection': await this.extraction.extractQaInspections(companyId, projectId, entityId); break;
       case 'submittal': await this.extraction.extractSubmittals(companyId, projectId, entityId); break;
-      case 'ncr':
-      case 'sor':
-      case 'wir':
-      case 'mir': await this.extraction.extractQaqcRecords(companyId, projectId, entityId); break;
+      case 'ncr': await this.extraction.extractQaqcRecords(companyId, projectId, entityId); break;
     }
     // RFI<->Issue inference is symmetric and cheap enough to redo project-wide
     // whenever either side changes, rather than tracking which pairs to revisit.

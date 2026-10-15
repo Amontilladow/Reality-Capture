@@ -479,20 +479,21 @@ export class RelationshipExtractionService {
     }
   }
 
-  // ── QAQC NCR/SOR/WIR/MIR (brief section 6 -- registers all four node
-  // types from the one shared qaqc_records table; record_type IS the node
-  // type) ─────────────────────────────────────────────────────────────────
+  // ── QAQC NCR (brief section 6 registered all four record_type values as
+  // node types; only 'ncr' is risk-worthy -- see risk.service.ts's
+  // RISK_WORTHY_NODE_TYPES -- so SOR/WIR/MIR are excluded here and never
+  // get a graph node at all) ──────────────────────────────────────────────
 
   async extractQaqcRecords(companyId: string, projectId: string, onlyId?: string): Promise<void> {
     const rows = await this.db.withTenant(companyId, sql => sql<{
-      id: string; recordType: 'ncr' | 'sor' | 'wir' | 'mir'; recordNumber: string | null; subject: string;
+      id: string; recordType: 'ncr'; recordNumber: string | null; subject: string;
       discipline: RfiDiscipline | null; priority: string; status: string; dueDate: string | null;
       locationId: string | null; assignedTo: string | null; issuedBy: string; createdAt: string;
     }[]>`
       SELECT id, record_type, record_number, subject, discipline, priority, status, due_date,
              location_id, assigned_to, issued_by, created_at
       FROM qaqc_records
-      WHERE project_id = ${projectId} ${onlyId ? sql`AND id = ${onlyId}` : sql``}`);
+      WHERE project_id = ${projectId} AND record_type = 'ncr' ${onlyId ? sql`AND id = ${onlyId}` : sql``}`);
 
     for (const r of rows) {
       const node = await this.graph.upsertNode(companyId, {

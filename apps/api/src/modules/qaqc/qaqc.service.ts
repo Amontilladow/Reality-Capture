@@ -75,6 +75,10 @@ export class QaqcService {
   // to fail or slow down the QAQC write it's attached to.
   private async triggerRiskRecalc(companyId: string, projectId: string, nodeType: QaqcRecordType, qaqcId: string): Promise<void> {
     if (!this.risk) return;
+    // Only NCR is risk-worthy (see risk.service.ts's RISK_WORTHY_NODE_TYPES)
+    // -- SOR/WIR/MIR never fed the Risk Engine, so there's nothing to
+    // recalculate for them.
+    if (nodeType !== 'ncr') return;
     try {
       await this.risk.recalculateForEntity(companyId, projectId, nodeType, qaqcId);
     } catch (err) {
