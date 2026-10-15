@@ -56,6 +56,7 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
       { to: 'submittals', label: 'Submittals', icon: IconInbox },
       { to: 'transmittals', label: 'Transmittals', icon: IconSend },
       { to: 'qa-inspections', label: 'QA Inspections', icon: IconChecklist },
+      { to: 'qaqc', label: 'QAQC', icon: IconQaqc },
       { to: 'documents', label: 'Documents', icon: IconFolder },
       { to: 'progress-report', label: 'Progress Report', icon: IconTrending },
       { to: 'reports', label: 'Reports', icon: IconReport },
@@ -322,6 +323,18 @@ function IconChecklist({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M9 6h10M9 12h10M9 18h10" strokeLinecap="round" />
       <path d="M4 5.5l1 1 1.5-1.5M4 11.5l1 1 1.5-1.5M4 17.5l1 1 1.5-1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+// Document-with-alert-mark -- distinct from IconChecklist (QA Inspections,
+// a checklist pass/fail) and IconShield (Risk) since NCR/SOR is neither:
+// a formal flagged report, not a checklist and not the risk score itself.
+function IconQaqc({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M6 3h9l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" strokeLinejoin="round" />
+      <path d="M12 9v4" strokeLinecap="round" />
+      <circle cx="12" cy="16" r="0.9" fill="currentColor" stroke="none" />
     </svg>
   );
 }

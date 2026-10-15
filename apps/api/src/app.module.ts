@@ -14,6 +14,7 @@ import { BuildingsModule } from './modules/buildings/buildings.module';
 import { CapturesModule } from './modules/captures/captures.module';
 import { IssuesModule } from './modules/issues/issues.module';
 import { RfisModule } from './modules/rfis/rfis.module';
+import { QaqcModule } from './modules/qaqc/qaqc.module';
 import { SubmittalsModule } from './modules/submittals/submittals.module';
 import { TransmittalsModule } from './modules/transmittals/transmittals.module';
 import { QaModule } from './modules/qa/qa.module';
@@ -49,6 +50,7 @@ import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { ExactRolesGuard } from './common/guards/exact-roles.guard';
 import { PendingApprovalGuard } from './common/guards/pending-approval.guard';
 import { ProjectPermissionGuard } from './common/guards/project-permission.guard';
 import { TenancyGuard } from './common/guards/tenancy.guard';
@@ -107,6 +109,7 @@ import gmailConfig from './config/google-gmail.config';
     CapturesModule,
     IssuesModule,
     RfisModule,
+    QaqcModule,
     SubmittalsModule,
     TransmittalsModule,
     QaModule,
@@ -151,6 +154,10 @@ import gmailConfig from './config/google-gmail.config';
     { provide: APP_GUARD, useClass: PendingApprovalGuard },
     { provide: APP_GUARD, useClass: TenancyGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    // Membership-based sibling to RolesGuard's weight threshold -- see
+    // ExactRolesGuard/@RequireExactRoles() for why QAQC NCR/SOR create/close
+    // needed this instead of @Roles().
+    { provide: APP_GUARD, useClass: ExactRolesGuard },
     { provide: APP_GUARD, useClass: ProjectPermissionGuard },
     // Runs last of all: an additional, cross-cutting restriction for Site
     // Engineer/Construction Manager/Project Engineer (full working access

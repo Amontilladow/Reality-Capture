@@ -26,6 +26,15 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   [/\/rfis\/[^/]+\/close$/,    'rfi.closed',            'rfi'],
   [/\/projects\/[^/]+\/rfis$/, 'rfi.created',           'rfi'],
   [/\/rfis\/[^/]+$/,           'rfi.updated',           'rfi'],
+  // QAQC NCR/SOR/WIR/MIR -- same specific-before-general ordering as RFI
+  // above. One shared route/table for all four record types (record_type
+  // is a body field, not visible in the URL), so the label is generic
+  // "qaqc_record", not type-specific -- resourceLabel (subject) still
+  // distinguishes rows. Two-step close: respond()/confirm() are each their
+  // own audit action, mirroring rfi.responded/rfi.closed above.
+  [/\/qaqc\/[^/]+\/respond$/,  'qaqc_record.responded', 'qaqc_record'],
+  [/\/qaqc\/[^/]+\/confirm$/,  'qaqc_record.confirmed', 'qaqc_record'],
+  [/\/projects\/[^/]+\/qaqc$/, 'qaqc_record.created',   'qaqc_record'],
   // Snag creation had the same gap -- only snag_item.verified (below) was
   // ever captured, never the initial create.
   [/\/projects\/[^/]+\/snag-items$/, 'snag_item.created', 'snag_item'],

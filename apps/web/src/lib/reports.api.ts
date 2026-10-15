@@ -69,6 +69,39 @@ export interface ReportRfiDrawingUpdate {
   drawingUpdateOwnerName?: string;
 }
 
+// QAQC NCR/SOR/WIR/MIR -- mirrors QaqcService.getSummary()'s exact shape
+// (apps/api). Per-type counts are split rather than merged, per the
+// brief's explicit ask.
+export interface ReportQaqcSummary {
+  total: number;
+  ncrTotal: number;
+  sorTotal: number;
+  wirTotal: number;
+  mirTotal: number;
+  ncrOpen: number;
+  sorOpen: number;
+  wirOpen: number;
+  mirOpen: number;
+  pendingConfirmation: number;
+  ncrClosed: number;
+  sorClosed: number;
+  wirClosed: number;
+  mirClosed: number;
+  critical: number;
+  overdue: number;
+}
+
+export interface ReportOpenQaqcRecord {
+  id: string;
+  recordType: 'ncr' | 'sor' | 'wir' | 'mir';
+  recordNumber?: string;
+  subject: string;
+  status: string;
+  priority: string;
+  dueDate?: string;
+  assignedToName?: string;
+}
+
 export interface ReportKpis {
   project: { name?: string; code?: string };
   issues: {
@@ -90,6 +123,13 @@ export interface ReportKpis {
     byDrawingImpact: Record<string, number>;
     drawingUpdateStatus: { totalRequiringDrawingUpdate: number; applied: number; notApplied: number };
     notAppliedList: ReportRfiDrawingUpdate[];
+  };
+  qaqc: {
+    summary: ReportQaqcSummary;
+    byRecordType: Record<string, number>;
+    byStatus: Record<string, number>;
+    byPriority: Record<string, number>;
+    openList: ReportOpenQaqcRecord[];
   };
 }
 
