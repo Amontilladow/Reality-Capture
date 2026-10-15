@@ -906,7 +906,7 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
  * and lets the panel itself handle both the "already has a Risk" case and
  * the "nothing detected yet, bootstrap on save" case.
  */
-export function InlineRiskAssessment({ projectId, nodeType, entityId }: { projectId: string; nodeType: 'issue' | 'rfi' | 'snag_item' | 'submittal'; entityId: string }) {
+export function InlineRiskAssessment({ projectId, nodeType, entityId }: { projectId: string; nodeType: 'issue' | 'rfi' | 'snag_item' | 'submittal' | 'ncr'; entityId: string }) {
   const queryClient = useQueryClient();
   const queryKey = ['risk-by-entity', projectId, nodeType, entityId];
   const riskQuery = useQuery({ queryKey, queryFn: () => getRiskByEntity(projectId, nodeType, entityId) });
@@ -932,6 +932,7 @@ const EVIDENCE_LINK_ROUTE: Record<string, (projectId: string) => string> = {
   drawing: (pid) => `/projects/${pid}/drawings`,
   bim_element: (pid) => `/projects/${pid}/bim`,
   submittal: (pid) => `/projects/${pid}/submittals`,
+  ncr: (pid) => `/projects/${pid}/qaqc/ncr`,
 };
 
 function EvidenceLink({ projectId, node, role }: { projectId: string; node?: { nodeType: string; label: string }; role: string }) {
