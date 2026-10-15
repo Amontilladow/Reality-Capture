@@ -82,7 +82,7 @@ export default function CapturesPage() {
         actions={
           <>
             <button
-              onClick={() => navigate(`/projects/${projectId}/drawings?pinPurpose=camera_location`)}
+              onClick={() => navigate(`/projects/${projectId}/buildlens/plans`)}
               className="btn-secondary"
             >
               + Pin a camera location

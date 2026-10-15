@@ -142,7 +142,7 @@ export default function BuildLensPage() {
         title="BuildLens"
         actions={
           <button
-            onClick={() => navigate(`/projects/${projectId}/drawings?pinPurpose=camera_location`)}
+            onClick={() => navigate(`/projects/${projectId}/buildlens/plans`)}
             className="btn-secondary"
           >
             + Pin a camera location

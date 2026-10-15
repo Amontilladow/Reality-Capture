@@ -55,6 +55,11 @@ const FloorPlanViewer = lazy(() => import('./pages/FloorPlanViewer'));
 // reason as the routes above. The BuildLens landing page has no such
 // dependency and stays a normal eager import.
 const BuildLensTimelinePage = lazy(() => import('./pages/BuildLensTimelinePage'));
+// Buildlense Captures' own plan-upload-and-pin page -- pulls in pdf.js via
+// DrawingViewer just like FloorPlanViewer, so it's lazy-loaded the same way.
+// Deliberately a separate page/route from FloorPlanViewer: Floor Plans is
+// the Issues/Snags pin workflow, this is camera-location pins only.
+const BuildLensPlansPage = lazy(() => import('./pages/BuildLensPlansPage'));
 
 function RouteLoading() {
   return (
@@ -116,6 +121,7 @@ export default function App() {
             <Route path="/projects/:projectId/captures" element={<CapturesPage />} />
             <Route path="/projects/:projectId/drawings" element={<FloorPlanViewer />} />
             <Route path="/projects/:projectId/buildlens" element={<BuildLensPage />} />
+            <Route path="/projects/:projectId/buildlens/plans" element={<BuildLensPlansPage />} />
             <Route path="/projects/:projectId/buildlens/:locationId" element={<BuildLensTimelinePage />} />
             <Route path="/projects/:projectId/bim" element={<BimModelsPage />} />
             <Route path="/projects/:projectId/issues" element={<IssuesPage />} />

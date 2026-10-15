@@ -243,6 +243,7 @@ export class DrawingsService {
       captureCount: 0,
       assignedTo: purpose === 'issue' ? dto.assignedTo : undefined,
       linkedRecord,
+      purpose,
     };
   }
 
@@ -252,7 +253,7 @@ export class DrawingsService {
     const pins = await this.db.withTenant(companyId, sql => sql`
       SELECT
         loc.id AS location_id, loc.name, loc.description, loc.pos_x_norm, loc.pos_y_norm,
-        loc.page_number, loc.created_via, loc.created_at, loc.element_id,
+        loc.page_number, loc.created_via, loc.created_at, loc.element_id, loc.pin_purpose,
         be.ifc_name AS element_name, be.ifc_type AS element_ifc_type,
         be.ifc_guid AS element_guid, be.model_id AS element_model_id,
         COUNT(c.id) AS capture_count,
@@ -279,6 +280,7 @@ export class DrawingsService {
 
     return pins.map(p => ({
       ...p,
+      purpose: p.pinPurpose as 'issue' | 'camera_location',
       thumbnailUrl: p.thumbnailKey ? urlMap.get(p.thumbnailKey as string) : undefined,
       linkedRecord: p.linkedIssueId
         ? { type: 'issue', id: p.linkedIssueId }

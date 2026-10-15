@@ -25,6 +25,11 @@ export interface Pin {
   // The linked issue's (or, once converted, snag's) assignee -- see
   // drawings.service.ts's getPins()/createPin() for how this is resolved.
   assignedTo?: string;
+  // 'issue' (default) is a Floor-Plans/Issues-Snags pin; 'camera_location'
+  // is a Buildlense Captures camera point with no linked Issue. Lets each
+  // page filter the other purpose's pins out of its own view, even though
+  // both can live on the same uploaded drawing.
+  purpose: 'issue' | 'camera_location';
 }
 
 export function createPin(

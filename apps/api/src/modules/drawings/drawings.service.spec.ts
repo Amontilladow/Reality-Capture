@@ -126,6 +126,7 @@ describe('DrawingsService pin page_number', () => {
 
       expect(issues.create).toHaveBeenCalled();
       expect(result.linkedRecord).toEqual({ type: 'issue', id: 'issue-1' });
+      expect(result.purpose).toBe('issue');
     });
 
     it('skips Issue creation entirely for a camera_location pin, returning linkedRecord: undefined', async () => {
@@ -144,6 +145,7 @@ describe('DrawingsService pin page_number', () => {
       expect(issues.create).not.toHaveBeenCalled();
       expect(result.linkedRecord).toBeUndefined();
       expect(result.assignedTo).toBeUndefined();
+      expect(result.purpose).toBe('camera_location');
       const insertSql = (query.mock.calls[0][0] as TemplateStringsArray).join('');
       expect(insertSql).toContain('pin_purpose');
       expect(query.mock.calls[0]).toContain('camera_location');
@@ -175,6 +177,19 @@ describe('DrawingsService pin page_number', () => {
       const pins = await svc.getPins(companyId, drawingId);
 
       expect(pins.map((p: Record<string, unknown>) => p.assignedTo)).toEqual(['user-a', 'user-b']);
+    });
+
+    it('passes pin_purpose straight through as purpose, so Floor Plans and the Buildlense Captures plan page can each filter the other out', async () => {
+      const { svc } = makeService({
+        withTenantResult: [
+          { locationId: 'pin-1', name: 'A', posXNorm: 0.1, posYNorm: 0.1, pageNumber: 1, captureCount: 0, pinPurpose: 'issue' },
+          { locationId: 'pin-2', name: 'B', posXNorm: 0.4, posYNorm: 0.6, pageNumber: 1, captureCount: 0, pinPurpose: 'camera_location' },
+        ],
+      });
+
+      const pins = await svc.getPins(companyId, drawingId);
+
+      expect(pins.map((p: Record<string, unknown>) => p.purpose)).toEqual(['issue', 'camera_location']);
     });
   });
 });
