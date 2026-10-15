@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, Navigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Project, ProjectPhase } from '@engineeringos/types';
 import { PROJECT_PHASE_LABELS } from '@engineeringos/types';
@@ -13,14 +13,16 @@ import { ManageMembersModal } from '../components/ManageMembersModal';
 import { EmailComposerModal } from '../components/EmailComposerModal';
 import { EmailHistoryModal } from '../components/EmailHistoryModal';
 import { ProjectDashboard } from '../components/ProjectDashboard';
-import { getProject, getHierarchy, updateBuilding } from '../lib/projects.api';
+import { getProject, getHierarchy, getMembers, updateBuilding } from '../lib/projects.api';
 import { listCaptures } from '../lib/captures.api';
+import { useAuthStore } from '../store/auth.store';
 
 type NodeModalState = { kind: 'building' } | { kind: 'level'; buildingId: string } | { kind: 'location'; buildingId: string; levelId: string } | null;
 
 export default function ProjectDetail() {
   const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((s) => s.user);
   const [selectedLocation, setSelectedLocation] = useState<{ id: string; name: string } | null>(null);
   const [nodeModal, setNodeModal] = useState<NodeModalState>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -35,6 +37,20 @@ export default function ProjectDetail() {
     enabled: Boolean(projectId),
   });
 
+  // Same ['members', projectId] query AppShell/ProjectContextPanel already
+  // run -- shares their cache entry. This Overview page pulls from several
+  // modules (hierarchy, captures) a 'subcontractor' project member has no
+  // access to (SubcontractorRfiAccessGuard) -- they land here the same way
+  // anyone does (clicking a project card), so this redirects them straight
+  // to the one page they actually have, rather than showing an Overview
+  // that's mostly 403s. AppShell's own nav never links here for them.
+  const membersQuery = useQuery({
+    queryKey: ['members', projectId],
+    queryFn: () => getMembers(projectId!),
+    enabled: Boolean(projectId),
+  });
+  const isSubcontractor = (membersQuery.data ?? []).some((m) => m.userId === currentUser?.id && m.role === 'subcontractor');
+
   const buildingPhaseMutation = useMutation({
     mutationFn: ({ buildingId, phase }: { buildingId: string; phase: ProjectPhase | '' }) =>
       updateBuilding(projectId!, buildingId, { phase: phase || undefined }),
@@ -44,7 +60,7 @@ export default function ProjectDetail() {
   const hierarchyQuery = useQuery({
     queryKey: ['hierarchy', projectId],
     queryFn: () => getHierarchy(projectId!),
-    enabled: Boolean(projectId),
+    enabled: Boolean(projectId) && !isSubcontractor,
   });
 
   const capturesQuery = useQuery({
@@ -53,7 +69,7 @@ export default function ProjectDetail() {
     // Only fetch once something is actually selected -- there is no
     // "browse everything" view here by design; an unfiltered fetch would
     // just be every capture in the project dumped on screen at once.
-    enabled: Boolean(projectId) && Boolean(selectedLocation),
+    enabled: Boolean(projectId) && Boolean(selectedLocation) && !isSubcontractor,
   });
 
   const allLocations = (hierarchyQuery.data ?? []).flatMap((b) =>
@@ -67,6 +83,8 @@ export default function ProjectDetail() {
     : undefined;
 
   if (!projectId) return null;
+  if (membersQuery.isLoading) return null;
+  if (isSubcontractor) return <Navigate to={`/projects/${projectId}/rfis`} replace />;
 
   return (
     <>

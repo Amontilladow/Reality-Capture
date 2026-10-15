@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth.store';
 import { logout as apiLogout } from '../../lib/auth.api';
+import { getMembers } from '../../lib/projects.api';
 import { NotificationBell } from './NotificationBell';
 import { MessagesBell } from './MessagesBell';
 import { ProjectContextPanel } from './ProjectContextPanel';
@@ -75,6 +77,17 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
   { heading: 'Risk', items: [{ to: 'risk', label: 'Risk', icon: IconShield }] },
 ];
 
+// A 'subcontractor' project member (SubcontractorRfiAccessGuard) has
+// backend access to this project's RFI module only -- every other link
+// above would 403 if clicked, so none of them are shown. No "Overview"
+// entry either (ProjectDetail pulls from several of those same blocked
+// modules); RFIs is both the only destination and, functionally, the
+// project's landing page for this role -- see RootRoute-style redirect in
+// ProjectDetail.tsx for what happens if they land on /projects/:id anyway.
+const SUBCONTRACTOR_NAV_GROUPS: NavGroup[] = [
+  { items: [{ to: 'rfis', label: 'RFIs', icon: IconQuestion }] },
+];
+
 export function AppShell() {
   const user = useAuthStore((s) => s.user);
   const clear = useAuthStore((s) => s.clear);
@@ -102,6 +115,18 @@ export function AppShell() {
   const inProject = Boolean(params.projectId);
   const isCompanyAdmin = user?.companyRole === 'company_admin' || user?.companyRole === 'super_admin';
   const navGroups = isCompanyAdmin ? [...NAV_GROUPS, DEVELOPER_NAV_GROUP] : NAV_GROUPS;
+
+  // Same query ProjectContextPanel already makes (shares its cache entry,
+  // no extra request) -- read here too so the nav itself can collapse down
+  // to RFIs-only for a subcontractor project member, rather than showing
+  // every link and letting each one 403 when clicked.
+  const membersQuery = useQuery({
+    queryKey: ['members', params.projectId],
+    queryFn: () => getMembers(params.projectId!),
+    enabled: inProject,
+  });
+  const isSubcontractor = (membersQuery.data ?? []).some((m) => m.userId === user?.id && m.role === 'subcontractor');
+  const effectiveProjectNavGroups = isSubcontractor ? SUBCONTRACTOR_NAV_GROUPS : PROJECT_NAV_GROUPS;
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
@@ -160,7 +185,7 @@ export function AppShell() {
               </NavLink>
               <ProjectContextPanel projectId={params.projectId} />
               <div className="mt-3">
-                <NavGroupList groups={PROJECT_NAV_GROUPS} basePath={`/projects/${params.projectId}`} />
+                <NavGroupList groups={effectiveProjectNavGroups} basePath={`/projects/${params.projectId}`} />
               </div>
             </>
           )}
