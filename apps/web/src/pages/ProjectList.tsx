@@ -50,7 +50,7 @@ export default function ProjectList() {
       <div className="p-6 grid grid-cols-1 xl:grid-cols-4 gap-6">
         <div className="xl:col-span-3">
           {projectsQuery.isSuccess && projects.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            <div className="enter-stagger grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
               <StatTile size="lg" label="Projects" value={kpis.total} />
               <StatTile size="lg" label="Active" value={kpis.active} />
               <StatTile size="lg" label="Open Issues" value={kpis.openIssues} tone={kpis.openIssues > 0 ? 'danger' : undefined} />
@@ -84,7 +84,7 @@ export default function ProjectList() {
           )}
 
           {projects.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4">
+            <div className="enter-stagger grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-4">
               {projects.map((p) => (
                 <ProjectCard key={p.id} project={p} />
               ))}

@@ -16,7 +16,7 @@ export function ProjectCard({ project }: { project: Project }) {
   return (
     <Link
       to={`/projects/${project.id}`}
-      className="tick-frame panel p-5 flex flex-col gap-4 hover:border-blueprint/50 transition-colors group"
+      className="tick-frame panel panel-interactive p-5 flex flex-col gap-4 group"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
