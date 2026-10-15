@@ -9,6 +9,7 @@ export const PROJECT_PERMISSION_LABELS: Record<ProjectPermission, string> = {
   manage_rfis: 'Review & respond to RFIs',
   approve_rfis: 'Approve RFI reviews (PMC/client sign-off only)',
   verify_snag_items: 'Verify fixed snag items (sign-off only)',
+  raise_rfis: 'Raise RFIs and attach files to your own (subcontractors hold this automatically)',
 };
 
 export const PROJECT_ROLE_LABELS: Record<ProjectRole, string> = {
@@ -18,6 +19,9 @@ export const PROJECT_ROLE_LABELS: Record<ProjectRole, string> = {
   document_controller: 'Document Controller',
   capture_operator: 'Capture Operator',
   viewer: 'Viewer',
+  // Outside subcontractor-company login, restricted to this project's RFI
+  // module only -- see SubcontractorRfiAccessGuard.
+  subcontractor: 'Subcontractor',
 };
 
 export const COMPANY_ROLE_LABELS: Record<CompanyRole, string> = {

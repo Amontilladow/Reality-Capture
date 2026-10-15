@@ -3,11 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   RFI_DISCIPLINES, RFI_DISCIPLINE_LABELS, RFI_IMPACT_LEVELS, RFI_IMPACT_LEVEL_LABELS, DRAWING_UPDATE_STATUS_LABELS,
+  RFI_ORIGINS, RFI_ORIGIN_LABELS,
   type RfiImpactLevel,
 } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { RfiFormModal } from '../components/RfiFormModal';
 import { RfiNoticeLetterModal } from '../components/RfiNoticeLetterModal';
+import { UploadRfiModal } from '../components/UploadRfiModal';
 import {
   listRfis, getRfiSummary, updateRfi, markRfiDrawingApplied, markRfiDrawingNotApplied,
   markRfiDrawingSentToSite, markRfiDrawingNotSentToSite, remindRfiDrawingUpdate,
@@ -22,6 +24,7 @@ import { getDeadlineTimer, TIMER_BADGE_CLASS } from '../lib/issue-constants';
 import { RFI_WORKFLOW_STATUS_TONE, RFI_PRIORITY_TONE } from '../lib/status-tone';
 import { StatusBadge } from '../components/ui/Badge';
 import { apiErrorMessage } from '../lib/api';
+import { useAuthStore } from '../store/auth.store';
 
 // Warning-colored badge classes for the Cost/Time impact columns -- uses
 // this codebase's `warn` token, same as RFI_WORKFLOW_STATUS_BADGE_CLASS's
@@ -36,10 +39,11 @@ function effectiveImpactLevel(level: RfiListItem['costImpactLevel'], legacyBool:
   return level ?? (legacyBool ? 'yes' : 'no');
 }
 
-export default function RfisPage() {
+export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((s) => s.user);
   const [status, setStatus] = useState('');
   const [discipline, setDiscipline] = useState('');
   const [costImpactLevel, setCostImpactLevel] = useState('');
@@ -47,7 +51,9 @@ export default function RfisPage() {
   const [assignedTo, setAssignedTo] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [origin, setOrigin] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [letterRfi, setLetterRfi] = useState<RfiListItem | null>(null);
 
   const projectQuery = useQuery({
@@ -62,16 +68,27 @@ export default function RfisPage() {
     enabled: Boolean(projectId),
   });
 
+  // A subcontractor project member gets read-only access to the Main
+  // Contractor window and full raise-your-own access to the Subcontractor
+  // window -- SubcontractorRfiAccessGuard enforces this server-side
+  // regardless; this just keeps the UI from offering actions that would
+  // 403. Everyone else (including on the Subcontractor window, where any
+  // main-contractor staff can still raise one on a subcontractor's behalf)
+  // sees the normal, unrestricted controls.
+  const isSubcontractor = (membersQuery.data ?? []).find((m) => m.userId === currentUser?.id)?.role === 'subcontractor';
+  const readOnly = view === 'main' && isSubcontractor;
+
   const summaryQuery = useQuery({
-    queryKey: ['rfi-summary', projectId],
-    queryFn: () => getRfiSummary(projectId!),
+    queryKey: ['rfi-summary', projectId, view],
+    queryFn: () => getRfiSummary(projectId!, view),
     enabled: Boolean(projectId),
   });
 
   const rfisQuery = useQuery({
-    queryKey: ['rfis', projectId, status, discipline, costImpactLevel, timeImpactLevel, assignedTo, dateFrom, dateTo],
+    queryKey: ['rfis', projectId, view, status, discipline, costImpactLevel, timeImpactLevel, assignedTo, dateFrom, dateTo, origin],
     queryFn: () => listRfis(projectId!, {
       perPage: 100,
+      view,
       status: status || undefined,
       discipline: discipline || undefined,
       costImpactLevel: costImpactLevel || undefined,
@@ -79,6 +96,7 @@ export default function RfisPage() {
       assignedTo: assignedTo || undefined,
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
+      origin: origin || undefined,
     }),
     enabled: Boolean(projectId),
   });
@@ -124,12 +142,24 @@ export default function RfisPage() {
   return (
     <>
       <PageHeader
+        breadcrumbs={[{ label: 'RFIs', to: `/projects/${projectId}/rfis` }, { label: view === 'main' ? "Main Contractor's" : "Subcontractor's" }]}
         eyebrow={projectQuery.data?.name ?? 'Project'}
-        title="RFIs"
+        title={view === 'main' ? "Main Contractor's RFIs" : "Subcontractor's RFIs"}
         actions={
-          <button onClick={() => setCreateOpen(true)} className="btn-primary">
-            + New RFI
-          </button>
+          readOnly ? (
+            <span className="badge bg-base-700 text-ink-500">Read-only</span>
+          ) : (
+            <>
+              {view === 'main' && (
+                <button onClick={() => setUploadOpen(true)} className="btn-secondary">
+                  Upload RFI
+                </button>
+              )}
+              <button onClick={() => setCreateOpen(true)} className="btn-primary">
+                + New RFI
+              </button>
+            </>
+          )
         }
       />
 
@@ -170,6 +200,15 @@ export default function RfisPage() {
             ))}
           </select>
 
+          {view === 'main' && (
+            <select className="field-input w-auto" value={origin} onChange={(e) => setOrigin(e.target.value)}>
+              <option value="">Any origin</option>
+              {RFI_ORIGINS.map((o) => (
+                <option key={o} value={o}>{RFI_ORIGIN_LABELS[o]}</option>
+              ))}
+            </select>
+          )}
+
           <div className="flex items-center gap-1.5 flex-wrap">
             <input
               type="date"
@@ -205,7 +244,7 @@ export default function RfisPage() {
 
         {rfisQuery.data?.data.length === 0 && (
           <div className="tick-frame panel p-12 text-center text-sm text-ink-500">
-            No RFIs yet. Raise one to ask a formal question that needs a documented answer.
+            {readOnly ? 'No RFIs yet.' : 'No RFIs yet. Raise one to ask a formal question that needs a documented answer.'}
           </div>
         )}
 
@@ -274,7 +313,7 @@ export default function RfisPage() {
                           <select
                             value={r.drawingImpactLevel ?? 'no'}
                             onChange={(e) => updateDrawingLevelMutation.mutate({ rfiId: r.id, level: e.target.value as RfiImpactLevel })}
-                            disabled={updateDrawingLevelMutation.isPending}
+                            disabled={updateDrawingLevelMutation.isPending || readOnly}
                             title={DRAWING_UPDATE_STATUS_LABELS[r.drawingImpactLevel ?? 'no']}
                             className={`field-input w-auto !py-1 !text-xs ${(r.drawingImpactLevel ?? 'no') === 'no' ? '!text-ink-300' : '!border-warn/40 !text-warn'}`}
                           >
@@ -287,7 +326,7 @@ export default function RfisPage() {
                               <button
                                 type="button"
                                 onClick={() => toggleDrawingAppliedMutation.mutate({ rfiId: r.id, applied: Boolean(r.drawingUpdateApplied) })}
-                                disabled={toggleDrawingAppliedMutation.isPending}
+                                disabled={toggleDrawingAppliedMutation.isPending || readOnly}
                                 className={r.drawingUpdateApplied ? 'text-ok text-xs underline' : 'text-blueprint hover:text-blueprint-hover text-xs underline'}
                               >
                                 {r.drawingUpdateApplied ? 'Applied' : 'Not applied'}
@@ -296,7 +335,7 @@ export default function RfisPage() {
                                 <button
                                   type="button"
                                   onClick={() => remindDrawingMutation.mutate(r.id)}
-                                  disabled={remindDrawingMutation.isPending}
+                                  disabled={remindDrawingMutation.isPending || readOnly}
                                   className="text-ink-500 hover:text-ink-300 text-xs underline"
                                 >
                                   Remind
@@ -313,7 +352,7 @@ export default function RfisPage() {
                           <select
                             value={r.drawingUpdateSentToSite ? 'yes' : 'no'}
                             onChange={() => toggleDrawingSentToSiteMutation.mutate({ rfiId: r.id, sent: Boolean(r.drawingUpdateSentToSite) })}
-                            disabled={toggleDrawingSentToSiteMutation.isPending}
+                            disabled={toggleDrawingSentToSiteMutation.isPending || readOnly}
                             className={`field-input w-auto !py-1 !text-xs ${r.drawingUpdateSentToSite ? '!border-ok/40 !text-ok' : '!text-ink-300'}`}
                           >
                             <option value="no">Not sent</option>
@@ -331,6 +370,8 @@ export default function RfisPage() {
                           <span className="inline-flex items-center gap-1 text-ok text-xs" title={`Shared ${formatDate(r.noticeLetterSharedAt)}`}>
                             <CheckIcon /> {formatDate(r.noticeLetterSharedAt)}
                           </span>
+                        ) : readOnly ? (
+                          <span className="text-ink-500">—</span>
                         ) : (
                           <button
                             type="button"
@@ -350,7 +391,14 @@ export default function RfisPage() {
         )}
       </div>
 
-      <RfiFormModal open={createOpen} onClose={() => setCreateOpen(false)} projectId={projectId} members={membersQuery.data ?? []} />
+      <RfiFormModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        projectId={projectId}
+        members={membersQuery.data ?? []}
+        raisedByOrganizationSlot={view === 'subcontractor' ? 'subcontractor' : undefined}
+      />
+      <UploadRfiModal open={uploadOpen} onClose={() => setUploadOpen(false)} projectId={projectId} />
       <RfiNoticeLetterModal
         open={Boolean(letterRfi)}
         onClose={() => setLetterRfi(null)}

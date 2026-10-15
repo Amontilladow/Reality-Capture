@@ -113,6 +113,28 @@ export class RfisService {
   async create(companyId: string, projectId: string, userId: string, dto: CreateRfiDto) {
     const rfiNumber = await this.generateRfiNumber(companyId, projectId, dto.discipline);
 
+    // A subcontractor project member can only ever raise a 'subcontractor'
+    // RFI, regardless of what raisedByOrganizationSlot the client sent --
+    // this is the one place that matters, since SubcontractorRfiAccessGuard
+    // only blocks the WRITE endpoints it already knows are main-contractor-
+    // only; it doesn't rewrite this request's body. Everyone else gets
+    // whatever they asked for, defaulting to 'main_contractor' (the
+    // pre-existing, sole value every RFI had before this column existed).
+    const [requesterMembership] = await this.db.withTenant(companyId, sql => sql`
+      SELECT role FROM project_members WHERE project_id = ${projectId} AND user_id = ${userId}
+    `);
+    const raisedByOrganizationSlot = requesterMembership?.role === 'subcontractor'
+      ? 'subcontractor'
+      : (dto.raisedByOrganizationSlot ?? 'main_contractor');
+
+    // Upload-RFI quick-create path: a DC backfilling an RFI already raised
+    // and answered elsewhere can set the initial status straight away
+    // (rather than walking it through later) and attach the answer text at
+    // creation time -- answered_at/answered_by are only meaningful once an
+    // answer actually exists, so both stay null for a plain 'open' create.
+    const initialStatus = dto.initialStatus ?? 'open';
+    const isPreAnswered = initialStatus === 'answered' || initialStatus === 'closed';
+
     // 4-state level fields take precedence when provided; otherwise derive
     // the level from the legacy boolean; otherwise default as before this
     // ticket ('no'/false). Both old and new columns are always written in
@@ -135,7 +157,8 @@ export class RfisService {
         cost_impact_level, cost_impact_amount, cost_impact_currency, cost_impact_description,
         time_impact_level, time_impact_days, time_impact_description,
         drawing_impact_level, drawing_impact_description, drawing_update_owner_id,
-        assigned_to, due_date, status, created_by
+        assigned_to, due_date, status, answer, answered_at, answered_by, created_by,
+        raised_by_organization_slot, origin, origin_reference
       ) VALUES (
         ${companyId}, ${projectId}, ${rfiNumber}, ${dto.subject}, ${dto.question},
         ${dto.priority ?? 'medium'}, ${dto.discipline}, ${dto.disciplineOther ?? null},
@@ -144,7 +167,11 @@ export class RfisService {
         ${timeImpactLevel}, ${dto.timeImpactDays ?? null}, ${dto.timeImpactDescription ?? null},
         ${dto.drawingImpactLevel ?? 'no'}, ${dto.drawingImpactDescription ?? null}, ${dto.drawingUpdateOwnerId ?? null},
         ${dto.assignedTo ?? null},
-        ${dto.dueDate ?? null}, 'open', ${userId}
+        ${dto.dueDate ?? null}, ${initialStatus}, ${dto.answer ?? null},
+        CASE WHEN ${isPreAnswered} THEN NOW() ELSE NULL END,
+        CASE WHEN ${isPreAnswered} THEN ${userId}::uuid ELSE NULL END,
+        ${userId},
+        ${raisedByOrganizationSlot}, ${dto.origin ?? 'platform'}, ${dto.originReference ?? null}
       )
       RETURNING *`);
 
@@ -167,7 +194,7 @@ export class RfisService {
   async findAll(companyId: string, projectId: string, query: PaginationQuery & {
     status?: string; priority?: string; discipline?: string;
     costImpactLevel?: string; timeImpactLevel?: string; assignedTo?: string;
-    dateFrom?: string; dateTo?: string;
+    dateFrom?: string; dateTo?: string; view?: 'main' | 'subcontractor'; origin?: string;
   }) {
     const page    = query.page ?? 1;
     const perPage = Math.min(query.perPage ?? 20, 100);
@@ -195,6 +222,15 @@ export class RfisService {
         AND (${query.assignedTo ?? null}::uuid IS NULL OR r.assigned_to = ${query.assignedTo ?? null}::uuid)
         AND (${query.dateFrom ?? null}::timestamptz IS NULL OR r.created_at >= ${query.dateFrom ?? null}::timestamptz)
         AND (${query.dateTo ?? null}::timestamptz IS NULL OR r.created_at <= ${query.dateTo ?? null}::timestamptz)
+        -- "Main Contractor's RFIs" is everything NOT raised by a
+        -- subcontractor (client/pmc/ldc/main_contractor-raised RFIs all
+        -- stay in the one main register); "Subcontractor's RFIs" is just
+        -- the subcontractor-raised ones. No view param = unfiltered
+        -- (existing callers, and the landing page's own summary counts).
+        AND (${query.view ?? null}::text IS NULL
+          OR (${query.view ?? null} = 'subcontractor' AND r.raised_by_organization_slot = 'subcontractor')
+          OR (${query.view ?? null} = 'main' AND r.raised_by_organization_slot != 'subcontractor'))
+        AND (${query.origin ?? null}::text IS NULL OR r.origin = ${query.origin ?? null})
       ORDER BY
         CASE r.priority WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
         r.created_at DESC
@@ -608,7 +644,9 @@ export class RfisService {
     return { message: 'RFI deleted.' };
   }
 
-  async getSummary(companyId: string, projectId: string) {
+  // view: same 'main'/'subcontractor' split as findAll() -- omitted keeps
+  // today's unfiltered, whole-project summary (every pre-existing caller).
+  async getSummary(companyId: string, projectId: string, view?: 'main' | 'subcontractor') {
     const [summary] = await this.db.withTenant(companyId, sql => sql`
       SELECT
         COUNT(*) AS total,
@@ -617,6 +655,9 @@ export class RfisService {
         COUNT(*) FILTER (WHERE due_date < NOW() AND status NOT IN ('closed','void','answered')) AS overdue
       FROM rfis
       WHERE project_id = ${projectId} AND company_id = ${companyId}
+        AND (${view ?? null}::text IS NULL
+          OR (${view ?? null} = 'subcontractor' AND raised_by_organization_slot = 'subcontractor')
+          OR (${view ?? null} = 'main' AND raised_by_organization_slot != 'subcontractor'))
     `);
     return summary;
   }

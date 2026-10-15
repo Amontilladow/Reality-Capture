@@ -43,6 +43,20 @@ export const PROJECT_ROLES = [
   'document_controller',
   'capture_operator',
   'viewer',
+  // An outside subcontractor-company user invited onto this one project,
+  // not a same-company employee like every role above. Enforced by
+  // SubcontractorRfiAccessGuard (common/guards/subcontractor-rfi-access.guard.ts):
+  // every request outside the RFI module is blocked outright (not just
+  // writes, unlike SiteRoleRestrictionGuard's read-everywhere/write-nowhere
+  // shape -- a subcontractor shouldn't see Issues/Documents/financials/etc.
+  // at all), reviewer-only RFI workflow transitions (respond/close/etc.)
+  // are blocked outright, and writes to any RFI's own record/attachments
+  // are ownership-checked (must be raised_by_organization_slot =
+  // 'subcontractor' AND created by this user). Still a plain `users` row
+  // under the project owner's own company_id (no cross-tenant RLS change --
+  // see that guard's own header comment) invited the same way any other
+  // project member is.
+  'subcontractor',
 ] as const;
 
 export type ProjectRole = typeof PROJECT_ROLES[number];
@@ -76,6 +90,12 @@ export const PROJECT_ROLE_WEIGHT: Record<ProjectRole, number> = {
   document_controller: 60,
   capture_operator: 40,
   viewer: 10,
+  // Below viewer -- this number only matters for @Roles()-style minimum-
+  // weight gates elsewhere; the actual restriction (RFI module only,
+  // ownership-scoped writes) is enforced separately by
+  // SubcontractorRfiAccessGuard, not by this number, same convention as
+  // project_engineer's COMPANY_ROLE_WEIGHT entry above.
+  subcontractor: 5,
 };
 
 // A specific, named capability a super_admin can grant to a company_admin on
@@ -103,6 +123,16 @@ export const PROJECT_PERMISSIONS = [
   // grant *only* the verification step to someone who shouldn't also be
   // able to mark their own fix as fixed in the first place.
   'verify_snag_items',
+  // Much narrower than manage_project_records: lets its holder attach
+  // supporting files to an RFI they raised themselves, without the full
+  // manage_project_records grant (edit/delete any RFI, drawing-update
+  // marks, etc.). The 'subcontractor' project role (see PROJECT_ROLES)
+  // holds this automatically on its own project -- no manual grant needed,
+  // see ProjectAuthorizationService.hasProjectPermission(). Can still be
+  // granted explicitly to anyone else the same way as any other permission.
+  // SubcontractorRfiAccessGuard enforces the "their own RFI only"
+  // ownership check this permission alone doesn't express.
+  'raise_rfis',
 ] as const;
 
 export type ProjectPermission = typeof PROJECT_PERMISSIONS[number];

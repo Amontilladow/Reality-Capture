@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type {
   Rfi, RfiStatus, RfiPriority, RfiDiscipline, RfiImpactLevel, RfiWorkflowStatus,
-  RfiAttachmentKind, RfiDocumentType, ProjectOrganizationSlot,
+  RfiAttachmentKind, RfiDocumentType, ProjectOrganizationSlot, RfiOrigin,
 } from '@engineeringos/types';
 import { apiGet, apiGetWithMeta, apiPost, apiPatch, apiDelete } from './api';
 
@@ -40,14 +40,19 @@ export interface RfiFilters {
   dateTo?: string;
   page?: number;
   perPage?: number;
+  // "Main Contractor's RFIs" (everything except subcontractor-raised) vs
+  // "Subcontractor's RFIs" (only subcontractor-raised) -- RfisPage's two
+  // windows. Omitted = unfiltered, same as before this field existed.
+  view?: 'main' | 'subcontractor';
+  origin?: string;
 }
 
 export function listRfis(projectId: string, filters?: RfiFilters) {
   return apiGetWithMeta<RfiListItem[]>(`/projects/${projectId}/rfis`, { params: filters });
 }
 
-export function getRfiSummary(projectId: string) {
-  return apiGet<RfiSummary>(`/projects/${projectId}/rfis/summary`);
+export function getRfiSummary(projectId: string, view?: 'main' | 'subcontractor') {
+  return apiGet<RfiSummary>(`/projects/${projectId}/rfis/summary`, { params: { view } });
 }
 
 export function getRfi(projectId: string, rfiId: string) {
@@ -78,6 +83,19 @@ export interface CreateRfiPayload {
   drawingUpdateOwnerId?: string;
   assignedTo?: string;
   dueDate?: string;
+  // Which organization is raising this RFI -- the Subcontractor's-RFIs
+  // window's RfiFormModal sends 'subcontractor' explicitly; everything
+  // else omits it (server defaults to 'main_contractor'). The server
+  // re-derives and overrides this from the caller's actual project role
+  // regardless of what's sent -- see RfisService.create().
+  raisedByOrganizationSlot?: ProjectOrganizationSlot;
+  // Upload-RFI quick-create fields -- a DC backfilling an RFI actually
+  // raised and answered on Aconex/Procore/email. Omitted by the normal
+  // "+ New RFI" form.
+  origin?: RfiOrigin;
+  originReference?: string;
+  initialStatus?: 'open' | 'answered' | 'closed';
+  answer?: string;
 }
 
 export function createRfi(projectId: string, payload: CreateRfiPayload) {

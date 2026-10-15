@@ -33,6 +33,14 @@ export class ProjectAuthorizationService {
         SELECT role FROM project_members WHERE project_id = ${projectId} AND user_id = ${userId}
       `;
       if (membership?.role === 'project_lead') return true;
+      // Same bypass shape as project_lead above, narrower in scope: the
+      // 'subcontractor' project role always holds 'raise_rfis' on its own
+      // project, no explicit project_permission_grants row needed -- lets a
+      // DC add a subcontractor member and have them immediately able to
+      // attach supporting files to their own RFIs (SubcontractorRfiAccessGuard
+      // still enforces the "their own RFI only" ownership check this
+      // permission alone can't express). Grants nothing else.
+      if (permission === 'raise_rfis' && membership?.role === 'subcontractor') return true;
 
       const [grant] = await sql`
         SELECT id FROM project_permission_grants

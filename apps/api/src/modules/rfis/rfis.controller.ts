@@ -36,7 +36,7 @@ export class RfisController {
     @Query() query: PaginationQuery & {
       status?: string; priority?: string; discipline?: string;
       costImpactLevel?: string; timeImpactLevel?: string; assignedTo?: string;
-      dateFrom?: string; dateTo?: string;
+      dateFrom?: string; dateTo?: string; view?: 'main' | 'subcontractor'; origin?: string;
     },
   ) {
     const result = await this.svc.findAll(u.companyId, pid, query);
@@ -45,8 +45,12 @@ export class RfisController {
 
   @Get('summary')
   @ApiOperation({ summary: 'Get RFI count summary' })
-  async getSummary(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
-    return { data: await this.svc.getSummary(u.companyId, pid), error: null };
+  async getSummary(
+    @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
+    @Query('view') view?: 'main' | 'subcontractor',
+  ) {
+    return { data: await this.svc.getSummary(u.companyId, pid, view), error: null };
   }
 
   @Get(':id')
@@ -102,8 +106,14 @@ export class RfisController {
   }
 
   // ── Attachments ───────────────────────────────────────────────────────────
+  // manage_project_records OR raise_rfis -- the latter is held automatically
+  // by the 'subcontractor' project role (see ProjectAuthorizationService),
+  // so a subcontractor can attach evidence to their own RFI without the
+  // full manage_project_records grant. SubcontractorRfiAccessGuard enforces
+  // "their own RFI only" (raise_rfis alone doesn't scope by record) for any
+  // restricted project role, before this permission check is even reached.
   @Post(':id/attachments/upload-url')
-  @RequireProjectPermission('manage_project_records')
+  @RequireProjectPermission('manage_project_records', 'raise_rfis')
   @ApiOperation({ summary: 'Get a presigned URL for uploading a supporting file (drawing, photo, calc sheet)' })
   async getAttachmentUploadUrl(
     @CurrentUser() u: AuthenticatedUser,
@@ -114,7 +124,7 @@ export class RfisController {
   }
 
   @Post(':id/attachments')
-  @RequireProjectPermission('manage_project_records')
+  @RequireProjectPermission('manage_project_records', 'raise_rfis')
   @ApiOperation({ summary: 'Register an uploaded file as an RFI attachment' })
   async addAttachment(
     @CurrentUser() u: AuthenticatedUser,
@@ -131,7 +141,7 @@ export class RfisController {
   }
 
   @Delete(':id/attachments/:attachmentId')
-  @RequireProjectPermission('manage_project_records')
+  @RequireProjectPermission('manage_project_records', 'raise_rfis')
   @HttpCode(HttpStatus.OK)
   async deleteAttachment(
     @CurrentUser() u: AuthenticatedUser,

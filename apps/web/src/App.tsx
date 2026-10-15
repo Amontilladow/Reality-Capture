@@ -18,6 +18,7 @@ import ProgressReportExternalPage from './pages/ProgressReportExternalPage';
 import ProjectList from './pages/ProjectList';
 import ProjectDetail from './pages/ProjectDetail';
 import IssuesPage from './pages/IssuesPage';
+import RfisLandingPage from './pages/RfisLandingPage';
 import RfisPage from './pages/RfisPage';
 import RfiDetailPage from './pages/RfiDetailPage';
 import SnaggingPage from './pages/SnaggingPage';
@@ -143,7 +144,13 @@ export default function App() {
             <Route path="/projects/:projectId/buildlens/:locationId" element={<BuildLensTimelinePage />} />
             <Route path="/projects/:projectId/bim" element={<BimModelsPage />} />
             <Route path="/projects/:projectId/issues" element={<IssuesPage />} />
-            <Route path="/projects/:projectId/rfis" element={<RfisPage />} />
+            <Route path="/projects/:projectId/rfis" element={<RfisLandingPage />} />
+            {/* Literal path segments, not a shared :view param -- React
+                Router ranks a static segment above a dynamic one, so these
+                two always win over :rfiId below for the exact strings
+                "main"/"subcontractor" (never a real RFI id, always a UUID). */}
+            <Route path="/projects/:projectId/rfis/main" element={<RfisPage view="main" />} />
+            <Route path="/projects/:projectId/rfis/subcontractor" element={<RfisPage view="subcontractor" />} />
             <Route path="/projects/:projectId/rfis/:rfiId" element={<RfiDetailPage />} />
             <Route path="/projects/:projectId/snagging" element={<SnaggingPage />} />
             <Route path="/projects/:projectId/submittals" element={<SubmittalsPage />} />
