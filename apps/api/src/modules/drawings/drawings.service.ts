@@ -194,31 +194,40 @@ export class DrawingsService {
     `);
     if (!drawing) throw new NotFoundException('Drawing not found.');
 
+    const purpose = dto.purpose ?? 'issue';
+
     // withTenant required -- locations carries the tenant_isolation RLS policy.
     const [pin] = await this.db.withTenant(companyId, sql => sql`
-      INSERT INTO locations (company_id, level_id, name, drawing_id, pos_x_norm, pos_y_norm, page_number, created_via)
+      INSERT INTO locations (company_id, level_id, name, drawing_id, pos_x_norm, pos_y_norm, page_number, created_via, pin_purpose)
       VALUES (
         ${companyId}, ${drawing.levelId ?? null}, ${dto.name ?? 'Untitled pin'},
-        ${drawingId}, ${dto.posXNorm}, ${dto.posYNorm}, ${dto.pageNumber ?? 1}, 'floor_plan_tap'
+        ${drawingId}, ${dto.posXNorm}, ${dto.posYNorm}, ${dto.pageNumber ?? 1}, 'floor_plan_tap', ${purpose}
       )
       RETURNING *
     `);
 
-    // Every pin automatically gets a matching Issue, linked via the existing
-    // issues.location_id relationship -- an Issue with location_id = a
-    // pin's location id is that pin's issue. See createPinForElement()'s
-    // equivalent in bim.service.ts for the BIM-viewer side of this.
-    const issue = await this.issues.create(companyId, drawing.projectId as string, userId, {
-      issueType: 'general',
-      title: dto.name || 'Untitled pin',
-      discipline: 'OTHER',
-      deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-      locationId: pin.id as string,
-      drawingId,
-      posXNorm: dto.posXNorm,
-      posYNorm: dto.posYNorm,
-      assignedTo: dto.assignedTo,
-    });
+    // A 'camera_location' pin is a pure BuildLens/Captures marker -- no
+    // Issue, no 14-day deadline, no entry in the Issues list/KPIs. Every
+    // other pin keeps the original behavior: an auto-created matching
+    // Issue, linked via the existing issues.location_id relationship -- an
+    // Issue with location_id = a pin's location id is that pin's issue.
+    // See createPinForElement()'s equivalent in bim.service.ts for the
+    // BIM-viewer side of this (untouched, out of scope here).
+    let linkedRecord: { type: 'issue'; id: string } | undefined;
+    if (purpose === 'issue') {
+      const issue = await this.issues.create(companyId, drawing.projectId as string, userId, {
+        issueType: 'general',
+        title: dto.name || 'Untitled pin',
+        discipline: 'OTHER',
+        deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+        locationId: pin.id as string,
+        drawingId,
+        posXNorm: dto.posXNorm,
+        posYNorm: dto.posYNorm,
+        assignedTo: dto.assignedTo,
+      });
+      linkedRecord = { type: 'issue', id: issue.id as string };
+    }
 
     // Shaped to match getPins() below (locationId, captureCount, etc.) so the
     // frontend can treat a freshly-created pin identically to one from the list.
@@ -232,8 +241,8 @@ export class DrawingsService {
       createdVia: pin.createdVia as string,
       createdAt: pin.createdAt as string,
       captureCount: 0,
-      assignedTo: dto.assignedTo,
-      linkedRecord: { type: 'issue' as const, id: issue.id as string },
+      assignedTo: purpose === 'issue' ? dto.assignedTo : undefined,
+      linkedRecord,
     };
   }
 

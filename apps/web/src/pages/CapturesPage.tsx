@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { CaptureGrid } from '../components/CaptureGrid';
@@ -19,6 +19,7 @@ const PER_PAGE = 60;
 
 export default function CapturesPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
   const [captureType, setCaptureType] = useState('');
   const [phase, setPhase] = useState('');
   const [buildingId, setBuildingId] = useState('');
@@ -79,9 +80,17 @@ export default function CapturesPage() {
         eyebrow={projectQuery.data?.name ?? 'Project'}
         title="Captures"
         actions={
-          <button onClick={() => setUploadOpen(true)} className="btn-primary">
-            <UploadIcon /> Upload
-          </button>
+          <>
+            <button
+              onClick={() => navigate(`/projects/${projectId}/drawings?pinPurpose=camera_location`)}
+              className="btn-secondary"
+            >
+              + Pin a camera location
+            </button>
+            <button onClick={() => setUploadOpen(true)} className="btn-primary">
+              <UploadIcon /> Upload
+            </button>
+          </>
         }
       />
 

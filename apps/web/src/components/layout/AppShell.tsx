@@ -48,7 +48,7 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
   {
     heading: 'Project',
     items: [
-      { to: 'captures', label: 'Captures', icon: IconCamera },
+      { to: 'captures', label: 'Buildlense Captures', icon: IconCamera },
       { to: 'drawings', label: 'Floor Plans', icon: IconMap },
       { to: 'issues', label: 'Issues', icon: IconFlag },
       { to: 'snagging', label: 'Snagging', icon: IconTag },

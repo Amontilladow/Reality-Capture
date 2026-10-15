@@ -1,4 +1,4 @@
-import { IsInt, IsNumber, IsOptional, IsString, IsUUID, Min, MaxLength } from 'class-validator';
+import { IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min, MaxLength } from 'class-validator';
 
 export class CreatePinDto {
   @IsNumber() posXNorm: number;   // normalized 0.0–1.0 on the drawing canvas
@@ -12,4 +12,8 @@ export class CreatePinDto {
   // drawings.service.ts createPin()) -- lets several pins in a row be
   // dropped pre-assigned to the same person.
   @IsOptional() @IsUUID() assignedTo?: string;
+  // 'issue' (default) auto-creates a linked Issue, same as before this
+  // field existed. 'camera_location' skips that entirely -- a pure
+  // camera-location marker for BuildLens/Captures, no Issue attached.
+  @IsOptional() @IsIn(['issue', 'camera_location']) purpose?: 'issue' | 'camera_location';
 }
