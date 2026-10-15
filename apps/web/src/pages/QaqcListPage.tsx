@@ -8,7 +8,7 @@ import { listQaqcRecords, type QaqcRecordType } from '../lib/qaqc.api';
 import { getProject, getMembers } from '../lib/projects.api';
 import {
   QAQC_PRIORITIES, QAQC_PRIORITY_LABELS, QAQC_STATUS_LABELS, QAQC_RECORD_TYPE_SHORT_LABELS,
-  isQaqcOverdue, formatDate, QAQC_ISSUE_ROLES, QAQC_STATUS_TONE, QAQC_PRIORITY_TONE,
+  isQaqcOverdue, formatDate, QAQC_ISSUE_ROLES_BY_TYPE, QAQC_STATUS_TONE, QAQC_PRIORITY_TONE,
 } from '../lib/qaqc-constants';
 import { StatusBadge } from '../components/ui/Badge';
 import { useAuthStore } from '../store/auth.store';
@@ -54,11 +54,12 @@ export default function QaqcListPage() {
 
   const shortLabel = QAQC_RECORD_TYPE_SHORT_LABELS[recordType];
 
-  // Client-side visual gating only -- @RequireExactRoles on the backend is
-  // the real enforcement (see qaqc.controller.ts's ISSUE_ROLES). Hides
-  // (not just disables) the create action for anyone outside this list, per
-  // the brief's explicit "hidden/disabled, not just left to 403" call-out.
-  const canCreate = Boolean(currentUser?.companyRole && (QAQC_ISSUE_ROLES as readonly string[]).includes(currentUser.companyRole));
+  // Client-side visual gating only -- QaqcService's per-type role check is
+  // the real enforcement (see qaqc.service.ts's ISSUE_ROLES_BY_TYPE). Hides
+  // (not just disables) the create action for anyone outside this specific
+  // record type's issuer role set -- NCR/SOR issued by QAQC-in-charge,
+  // WIR/MIR issued by the construction team (roles swapped per type).
+  const canCreate = Boolean(currentUser?.companyRole && QAQC_ISSUE_ROLES_BY_TYPE[recordType].includes(currentUser.companyRole));
 
   return (
     <>

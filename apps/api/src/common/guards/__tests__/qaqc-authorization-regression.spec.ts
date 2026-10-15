@@ -6,6 +6,16 @@
 // authorization-regression.spec.ts: reads the real NestJS route metadata
 // directly, so this fails if a decorator is ever accidentally swapped or
 // removed, without needing a running HTTP server or database.
+//
+// NCR/SOR and WIR/MIR swap issuer/responder roles (see qaqc.service.ts's
+// own comment), which can't be expressed as a single static role list per
+// route since one route serves all four types -- so create/respond carry
+// the BROADENED union here (a coarse pre-filter against bim_manager,
+// commercial_manager, consultant, client_representative, etc.), and the
+// exact-for-this-type enforcement is asserted separately in
+// qaqc.service.spec.ts's 'create'/'respond' describe blocks, which test the
+// real per-type ForbiddenException. confirm's role set never varies by
+// type, so it stays the sole narrow, unbroadened gate.
 import 'reflect-metadata';
 import { EXACT_ROLES_KEY } from '../../decorators/require-exact-roles.decorator';
 import { QaqcController } from '../../../modules/qaqc/qaqc.controller';
@@ -15,25 +25,23 @@ function exactRolesOn(methodName: string): string[] | undefined {
 }
 
 describe('QAQC authorization: explicit role lists, not weight thresholds', () => {
-  it('create (POST /projects/:id/qaqc) -- only qa_qc_manager + admin override, NOT the respond-step roles', () => {
-    const roles = exactRolesOn('create');
-    expect(roles).toEqual(['qa_qc_manager', 'company_admin', 'super_admin']);
-    // The whole point of this test: a weight-threshold check would also
-    // admit these, since they outrank qa_qc_manager in COMPANY_ROLE_WEIGHT.
-    expect(roles).not.toContain('construction_manager');
-    expect(roles).not.toContain('project_manager');
-    expect(roles).not.toContain('bim_manager');
-    expect(roles).not.toContain('engineering_manager');
-    expect(roles).not.toContain('technical_director');
-  });
+  it.each(['create', 'respond'])(
+    'QaqcController.%s -- broadened to the union of QAQC + construction-team roles (per-type precision lives in QaqcService)',
+    (method) => {
+      const roles = exactRolesOn(method);
+      expect(roles).toEqual([
+        'qa_qc_manager', 'construction_manager', 'project_manager', 'technical_director', 'engineering_manager', 'company_admin', 'super_admin',
+      ]);
+      // Still excludes roles that can never create/respond to ANY QAQC
+      // record type, regardless of weight.
+      expect(roles).not.toContain('bim_manager');
+      expect(roles).not.toContain('commercial_manager');
+      expect(roles).not.toContain('consultant');
+      expect(roles).not.toContain('client_representative');
+    },
+  );
 
-  it('respond (POST /qaqc/:id/respond) -- construction/PM/director/engineering + admin override', () => {
-    expect(exactRolesOn('respond')).toEqual([
-      'construction_manager', 'project_manager', 'technical_director', 'engineering_manager', 'company_admin', 'super_admin',
-    ]);
-  });
-
-  it('confirm (POST /qaqc/:id/confirm) -- QAQC-in-charge + admin override ONLY, narrower than respond', () => {
+  it('confirm (POST /qaqc/:id/confirm) -- QAQC-in-charge + admin override ONLY, for every record type, narrower than respond', () => {
     const roles = exactRolesOn('confirm');
     expect(roles).toEqual(['qa_qc_manager', 'company_admin', 'super_admin']);
     // The whole point of the two-step close: none of the respond-step roles

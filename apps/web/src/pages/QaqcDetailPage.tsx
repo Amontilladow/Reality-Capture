@@ -12,7 +12,7 @@ import {
 import { uploadCapture } from '../lib/captures.api';
 import { getProject } from '../lib/projects.api';
 import {
-  QAQC_STATUS_LABELS, QAQC_PRIORITY_LABELS, QAQC_RECORD_TYPE_SHORT_LABELS, QAQC_ISSUE_ROLES, QAQC_RESPOND_ROLES, QAQC_CONFIRM_ROLES,
+  QAQC_STATUS_LABELS, QAQC_PRIORITY_LABELS, QAQC_RECORD_TYPE_SHORT_LABELS, QAQC_ISSUE_ROLES_BY_TYPE, QAQC_RESPOND_ROLES_BY_TYPE, QAQC_CONFIRM_ROLES,
   QAQC_STATUS_TONE, QAQC_PRIORITY_TONE, formatDate, formatDateTime,
 } from '../lib/qaqc-constants';
 import { StatusBadge } from '../components/ui/Badge';
@@ -116,15 +116,17 @@ export default function QaqcDetailPage() {
     );
   }
 
-  // Client-side visual gating only -- @RequireExactRoles on the backend
-  // (qaqc.controller.ts's RESPOND_ROLES/CONFIRM_ROLES) is the real
-  // enforcement. Two distinct, deliberately different-sized gates: anyone
-  // in RESPOND_ROLES can respond; only CONFIRM_ROLES (QAQC-in-charge +
-  // admin, a narrower set) can finalize it -- the whole point of the
-  // two-step close.
+  // Client-side visual gating only -- QaqcService's per-type role check
+  // (ISSUE_ROLES_BY_TYPE/RESPOND_ROLES_BY_TYPE) is the real enforcement.
+  // NCR/SOR and WIR/MIR swap issuer/responder roles -- construction
+  // responds to NCR/SOR, QAQC responds to WIR/MIR (a WIR/MIR is the
+  // construction team's own inspection request) -- so this keys off the
+  // record's own recordType, not a fixed list. Confirm never swaps:
+  // QAQC-in-charge confirms every type, a deliberately narrower gate than
+  // respond -- the whole point of the two-step close.
   const canRespond = Boolean(
     (record.status === 'open' || record.status === 'reopened') &&
-    currentUser?.companyRole && (QAQC_RESPOND_ROLES as readonly string[]).includes(currentUser.companyRole),
+    currentUser?.companyRole && QAQC_RESPOND_ROLES_BY_TYPE[record.recordType].includes(currentUser.companyRole),
   );
   const canConfirm = Boolean(
     record.status === 'pending_confirmation' &&
@@ -138,10 +140,10 @@ export default function QaqcDetailPage() {
   // The confirm step itself, and the response/description text, stay
   // exactly as status-gated as before -- only "attach what I forgot" opens up.
   const canUploadIssueEvidence = Boolean(
-    currentUser?.companyRole && (QAQC_ISSUE_ROLES as readonly string[]).includes(currentUser.companyRole),
+    currentUser?.companyRole && QAQC_ISSUE_ROLES_BY_TYPE[record.recordType].includes(currentUser.companyRole),
   );
   const canUploadResponseEvidence = Boolean(
-    currentUser?.companyRole && (QAQC_RESPOND_ROLES as readonly string[]).includes(currentUser.companyRole),
+    currentUser?.companyRole && QAQC_RESPOND_ROLES_BY_TYPE[record.recordType].includes(currentUser.companyRole),
   );
 
   const issueAttachments = (attachmentsQuery.data ?? []).filter((a) => (a.kind ?? 'issue') === 'issue');
