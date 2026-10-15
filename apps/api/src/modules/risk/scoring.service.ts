@@ -30,15 +30,10 @@ const NODE_TYPE_EXPOSURE_WEIGHT: Record<string, number> = {
   qa_inspection: 1.5,
   rfi: 2,
   // NCR (formal non-conformance) weighted like issue/rfi-adjacent quality
-  // risk; SOR (a lighter-weight observation, not yet a formal
-  // non-conformance) weighted lower, between document and submittal. WIR/
-  // MIR (inspection requests gating physical work/material acceptance)
-  // weighted like submittal -- a blocked inspection blocks progress the
-  // same way a pending submittal does.
+  // risk. SOR/WIR/MIR are not risk-worthy (see risk.service.ts's
+  // RISK_WORTHY_NODE_TYPES) and never appear as graph nodes, so they carry
+  // no exposure weight here.
   ncr: 2,
-  sor: 1,
-  wir: 1,
-  mir: 1,
   document: 1,
   submittal: 1,
   transmittal: 0.5,

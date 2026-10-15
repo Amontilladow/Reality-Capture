@@ -320,9 +320,10 @@ export class SignalsService {
     }
   }
 
-  // ── QAQC NCR/SOR signals (same overdue/approaching-due/high-priority
-  // shape as submittal signals above -- qaqc_records has the same
-  // due_date/priority columns) ────────────────────────────────────────────
+  // ── QAQC NCR signals (same overdue/approaching-due/high-priority shape
+  // as submittal signals above -- qaqc_records has the same due_date/
+  // priority columns). Only NCR is risk-worthy (see risk.service.ts's
+  // RISK_WORTHY_NODE_TYPES) -- SOR/WIR/MIR are excluded. ───────────────────
 
   async detectQaqcSignals(companyId: string, projectId: string): Promise<void> {
     const rows = await this.db.withTenant(companyId, sql => sql<{
@@ -331,7 +332,7 @@ export class SignalsService {
       SELECT n.id AS node_id, q.status, q.priority, q.due_date
       FROM qaqc_records q
       JOIN risk_graph_nodes n ON n.node_type = q.record_type AND n.entity_id = q.id
-      WHERE q.project_id = ${projectId}`);
+      WHERE q.project_id = ${projectId} AND q.record_type = 'ncr'`);
 
     const now = Date.now();
     for (const q of rows) {

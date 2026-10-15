@@ -127,19 +127,39 @@ describe('QaqcService', () => {
       expect(notifications.create).not.toHaveBeenCalled();
     });
 
-    it("triggers risk recalculation for the new record's own node type", async () => {
+    it('triggers risk recalculation for a new NCR', async () => {
       const { svc, risk } = makeService((text) => {
         if (text.includes('SELECT COUNT(*) AS n FROM qaqc_records')) return [{ n: '0' }];
-        if (text.includes('INSERT INTO qaqc_records')) return [{ id: 'qaqc-new', recordNumber: 'WIR-001', recordType: 'wir' }];
+        if (text.includes('INSERT INTO qaqc_records')) return [{ id: 'qaqc-new', recordNumber: 'NCR-001', recordType: 'ncr' }];
         return undefined;
       });
 
-      await svc.create(companyId, projectId, 'user-1', 'construction_manager', {
-        recordType: 'wir', subject: 'Rebar inspection', description: 'd', discipline: 'structural',
+      await svc.create(companyId, projectId, 'user-1', 'qa_qc_manager', {
+        recordType: 'ncr', subject: 'Cracked slab', description: 'd', discipline: 'structural',
       } as CreateQaqcRecordDto);
 
-      expect(risk.recalculateForEntity).toHaveBeenCalledWith(companyId, projectId, 'wir', 'qaqc-new');
+      expect(risk.recalculateForEntity).toHaveBeenCalledWith(companyId, projectId, 'ncr', 'qaqc-new');
     });
+
+    // Only NCR is risk-worthy (risk.service.ts's RISK_WORTHY_NODE_TYPES) --
+    // SOR/WIR/MIR must never reach the Risk Engine at all.
+    it.each(['sor', 'wir', 'mir'] as const)(
+      'does NOT trigger risk recalculation for a new %s',
+      async (recordType) => {
+        const { svc, risk } = makeService((text) => {
+          if (text.includes('SELECT COUNT(*) AS n FROM qaqc_records')) return [{ n: '0' }];
+          if (text.includes('INSERT INTO qaqc_records')) return [{ id: 'qaqc-new', recordNumber: `${recordType.toUpperCase()}-001`, recordType }];
+          return undefined;
+        });
+        const issuerRole = recordType === 'sor' ? 'qa_qc_manager' : 'construction_manager';
+
+        await svc.create(companyId, projectId, 'user-1', issuerRole, {
+          recordType, subject: 'x', description: 'd', discipline: 'structural',
+        } as CreateQaqcRecordDto);
+
+        expect(risk.recalculateForEntity).not.toHaveBeenCalled();
+      },
+    );
 
     it('a risk recalculation failure never fails or blocks the create itself', async () => {
       const { svc, risk } = makeService((text) => {
