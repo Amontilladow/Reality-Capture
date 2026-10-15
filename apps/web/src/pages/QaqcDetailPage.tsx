@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RFI_DISCIPLINE_LABELS, RFI_DOCUMENT_TYPES, RFI_DOCUMENT_TYPE_LABELS, type RfiDocumentType } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
+import { InlineRiskAssessment } from '../components/RiskIntelligenceSection';
 import {
   getQaqcRecord, respondToQaqcRecord, confirmQaqcRecord,
   getQaqcAttachments, uploadQaqcAttachment, deleteQaqcAttachment,
@@ -325,6 +326,18 @@ export default function QaqcDetailPage() {
             ) : (
               <p className="text-sm text-ink-500">Awaiting confirmation from QAQC.</p>
             )}
+          </section>
+        )}
+
+        {/* Human Risk Assessment -- only NCR feeds the Risk Engine (see
+            risk.service.ts's RISK_WORTHY_NODE_TYPES); SOR/WIR/MIR never get
+            a Risk at all, so this section doesn't apply to them. Lets
+            whoever's looking at this NCR set/override the Probability x
+            Impact assessment directly, same widget already embedded on
+            Issue/RFI/Snag/Submittal detail pages. */}
+        {record.recordType === 'ncr' && (
+          <section className="panel tick-frame p-5">
+            <InlineRiskAssessment projectId={projectId} nodeType="ncr" entityId={id} />
           </section>
         )}
 
