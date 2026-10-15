@@ -446,7 +446,10 @@ export default function RfiDetailPage() {
             <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary text-xs">
               Email
             </button>
-            <Link to={`/projects/${projectId}/rfis`} className="btn-ghost !px-2 !py-1 text-xs">
+            <Link
+              to={`/projects/${projectId}/rfis/${rfi.raisedByOrganizationSlot === 'subcontractor' ? 'subcontractor' : 'main'}`}
+              className="btn-ghost !px-2 !py-1 text-xs"
+            >
               <BackIcon /> Back to RFIs
             </Link>
           </>

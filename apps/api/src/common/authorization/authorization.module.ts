@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { ProjectAuthorizationService } from './project-authorization.service';
 import { SiteRoleService } from './site-role.service';
+import { SubcontractorRfiAccessService } from './subcontractor-rfi-access.service';
 
 // Global, same as DatabaseModule -- ProjectAuthorizationService is consumed
 // by ProjectPermissionGuard (app-wide, via APP_GUARD) and by individual
@@ -11,9 +12,11 @@ import { SiteRoleService } from './site-role.service';
 // SiteRoleService lives here too (not in common/guards) so AiService can
 // inject it for role-aware draft blocking without needing to import
 // anything guard-specific -- it's shared authorization logic, not routing.
+// SubcontractorRfiAccessService is its RFI-module counterpart, consumed by
+// SubcontractorRfiAccessGuard (also app-wide, via APP_GUARD).
 @Global()
 @Module({
-  providers: [ProjectAuthorizationService, SiteRoleService],
-  exports: [ProjectAuthorizationService, SiteRoleService],
+  providers: [ProjectAuthorizationService, SiteRoleService, SubcontractorRfiAccessService],
+  exports: [ProjectAuthorizationService, SiteRoleService, SubcontractorRfiAccessService],
 })
 export class AuthorizationModule {}

@@ -1,5 +1,8 @@
 import { IsString, IsOptional, IsUUID, IsDateString, IsBoolean, IsNumber, MinLength, MaxLength, IsIn, ValidateIf } from 'class-validator';
-import { RFI_DISCIPLINES, RFI_IMPACT_LEVELS, type RfiDiscipline, type RfiImpactLevel } from '@engineeringos/types';
+import {
+  RFI_DISCIPLINES, RFI_IMPACT_LEVELS, PROJECT_ORGANIZATION_SLOTS, RFI_ORIGINS,
+  type RfiDiscipline, type RfiImpactLevel, type ProjectOrganizationSlot, type RfiOrigin,
+} from '@engineeringos/types';
 
 export class CreateRfiDto {
   @IsString() @MinLength(3) @MaxLength(500)
@@ -44,4 +47,20 @@ export class CreateRfiDto {
 
   @IsOptional() @IsUUID() assignedTo?: string;
   @IsOptional() @IsDateString() dueDate?: string;
+
+  // Which organization is raising this RFI -- normal callers leave this
+  // unset (server defaults to 'main_contractor'); the frontend's
+  // Subcontractor's-RFIs window sends 'subcontractor' explicitly, but
+  // RfisService.create() re-derives and overrides it server-side from the
+  // caller's actual project role regardless of what's sent here, so a
+  // subcontractor can never spoof 'main_contractor' and vice versa.
+  @IsOptional() @IsIn(PROJECT_ORGANIZATION_SLOTS) raisedByOrganizationSlot?: ProjectOrganizationSlot;
+
+  // Upload-RFI quick-create fields (a DC backfilling an RFI actually raised
+  // and answered on Aconex/Procore/email) -- all optional, every normal
+  // create() call omits them and gets the pre-existing behavior unchanged.
+  @IsOptional() @IsIn(RFI_ORIGINS) origin?: RfiOrigin;
+  @IsOptional() @IsString() @MaxLength(255) originReference?: string;
+  @IsOptional() @IsIn(['open', 'answered', 'closed']) initialStatus?: 'open' | 'answered' | 'closed';
+  @IsOptional() @IsString() answer?: string;
 }

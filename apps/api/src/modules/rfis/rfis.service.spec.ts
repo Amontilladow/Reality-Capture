@@ -95,7 +95,7 @@ describe('RfisService', () => {
       expect(insertCall!.values[2]).toBe('P162-CSC-RFI-STR-0186');
     });
 
-    it("always defaults status to 'open' regardless of dto contents", async () => {
+    it("defaults status to 'open' when the dto doesn't set initialStatus", async () => {
       const { svc, calls } = makeCreateService(0);
 
       const result = await svc.create(companyId, projectId, 'user-1', {
@@ -105,10 +105,14 @@ describe('RfisService', () => {
       } as CreateRfiDto);
 
       const insertCall = calls.find((c) => c.text.includes('INSERT INTO rfis'));
-      // 'open' is a literal in the INSERT statement (CreateRfiDto has no
-      // status field at all), so it's always present in the query text
-      // itself, not conditionally interpolated.
-      expect(insertCall!.text).toContain("'open'");
+      // status is now a bound parameter (dto.initialStatus ?? 'open'), not a
+      // literal in the query text -- see the Upload-RFI quick-create path
+      // in RfisService.create(). values[22] = status (company_id, project_id,
+      // rfi_number, subject, question, priority, discipline, discipline_other,
+      // cost_impact, time_impact, cost_impact_level/amount/currency/description,
+      // time_impact_level/days/description, drawing_impact_level/description/
+      // owner, assigned_to, due_date, status).
+      expect(insertCall!.values[22]).toBe('open');
       expect(result.status).toBe('open');
     });
 

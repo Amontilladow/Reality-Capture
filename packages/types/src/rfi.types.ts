@@ -92,6 +92,23 @@ export const PROJECT_ORGANIZATION_SLOT_LABELS: Record<ProjectOrganizationSlot, s
 // rfi_attachments.kind -- which side of the record the file belongs to.
 export type RfiAttachmentKind = 'query' | 'response' | 'comment';
 
+// Where an RFI's record came from -- 'platform' (the default: raised and
+// tracked here end to end) vs. one a DC backfills after it was actually
+// raised/answered on another system entirely (Aconex/Procore/email) and
+// just needs logging here for one unified register. originReference holds
+// that other platform's own reference number, if any -- this app still
+// assigns its own rfiNumber regardless, so the two can be cross-referenced
+// rather than one replacing the other.
+export const RFI_ORIGINS = ['platform', 'aconex', 'procore', 'email', 'other'] as const;
+export type RfiOrigin = typeof RFI_ORIGINS[number];
+export const RFI_ORIGIN_LABELS: Record<RfiOrigin, string> = {
+  platform: 'Raised on platform',
+  aconex: 'Aconex',
+  procore: 'Procore',
+  email: 'Email',
+  other: 'Other',
+};
+
 export const RFI_ATTACHMENT_KINDS: readonly RfiAttachmentKind[] = ['query', 'response', 'comment'] as const;
 
 export const RFI_DOCUMENT_TYPES = [
@@ -319,6 +336,17 @@ export interface Rfi {
   // has no real human name -- snapshotted from the external actor's email
   // at the moment of closing, not joined back to rfi_external_access later.
   closedByExternalEmail?: string;
+  // Which organization raised this RFI in the first place -- defaults to
+  // 'main_contractor' for every RFI created before this field existed and
+  // for any new one raised normally. Drives the "Main Contractor's RFIs" /
+  // "Subcontractor's RFIs" split views (RfisLandingPage/RfisPage's `view`
+  // prop): main = everything except 'subcontractor', subcontractor = only
+  // 'subcontractor'. Forced server-side to 'subcontractor' for anyone
+  // raising it while holding the 'subcontractor' project role, regardless
+  // of what a client sends (see RfisService.create()).
+  raisedByOrganizationSlot: ProjectOrganizationSlot;
+  origin: RfiOrigin;
+  originReference?: string;
   createdBy: string;
   createdAt: string;
   updatedAt: string;

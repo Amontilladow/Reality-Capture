@@ -55,6 +55,7 @@ import { PendingApprovalGuard } from './common/guards/pending-approval.guard';
 import { ProjectPermissionGuard } from './common/guards/project-permission.guard';
 import { TenancyGuard } from './common/guards/tenancy.guard';
 import { SiteRoleRestrictionGuard } from './common/guards/site-role-restriction.guard';
+import { SubcontractorRfiAccessGuard } from './common/guards/subcontractor-rfi-access.guard';
 
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
@@ -165,6 +166,11 @@ import gmailConfig from './config/google-gmail.config';
     // project settings/users/billing -- elsewhere), applied on top of
     // whatever the guards above already decided, never loosening it.
     { provide: APP_GUARD, useClass: SiteRoleRestrictionGuard },
+    // Also runs last: a 'subcontractor' project member (an outside party,
+    // unlike every SiteRoleRestrictionGuard case above) gets access to this
+    // project's RFI module only -- reads included, unlike that guard's
+    // read-everywhere shape. See the guard's own header comment.
+    { provide: APP_GUARD, useClass: SubcontractorRfiAccessGuard },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],

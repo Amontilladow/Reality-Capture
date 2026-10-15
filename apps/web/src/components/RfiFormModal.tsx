@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { RfiPriority, RfiDiscipline, RfiImpactLevel } from '@engineeringos/types';
+import type { RfiPriority, RfiDiscipline, RfiImpactLevel, ProjectOrganizationSlot } from '@engineeringos/types';
 import {
   RFI_DISCIPLINES, RFI_DISCIPLINE_LABELS, RFI_IMPACT_LEVELS, RFI_IMPACT_LEVEL_LABELS, DRAWING_UPDATE_STATUS_LABELS,
 } from '@engineeringos/types';
@@ -13,7 +13,7 @@ import { RFI_PRIORITIES, RFI_PRIORITY_LABELS } from '../lib/rfi-constants';
 import { apiErrorMessage } from '../lib/api';
 
 export function RfiFormModal({
-  open, onClose, projectId, members, initialValues,
+  open, onClose, projectId, members, initialValues, raisedByOrganizationSlot,
 }: {
   open: boolean;
   onClose: () => void;
@@ -23,6 +23,13 @@ export function RfiFormModal({
   // draft -- the user still edits and submits through this exact same form
   // and createRfi() call, nothing about the write path changes.
   initialValues?: { subject?: string; question?: string; discipline?: RfiDiscipline; priority?: RfiPriority };
+  // Set by RfisPage's Subcontractor's-RFIs window -- the server re-derives
+  // and overrides this from the caller's actual project role regardless
+  // (see RfisService.create()), so this is purely which window the new RFI
+  // should land in for a non-subcontractor raising it on someone's behalf;
+  // omitted (undefined) on the Main Contractor window, same as before this
+  // field existed.
+  raisedByOrganizationSlot?: ProjectOrganizationSlot;
 }) {
   const queryClient = useQueryClient();
   const [subject, setSubject] = useState('');
@@ -99,6 +106,7 @@ export function RfiFormModal({
         drawingUpdateOwnerId: drawingImpactLevel !== 'no' ? drawingUpdateOwnerId || undefined : undefined,
         assignedTo: assignedTo || undefined,
         dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
+        raisedByOrganizationSlot,
       });
     },
     onSuccess: () => {
@@ -118,7 +126,10 @@ export function RfiFormModal({
   return (
     <Modal open={open} onClose={handleClose} title="New RFI">
       <div className="space-y-4">
-        <div className="flex justify-end -mt-1">
+        <div className="flex items-center justify-between -mt-1">
+          {raisedByOrganizationSlot === 'subcontractor' ? (
+            <span className="badge bg-blueprint/15 text-blueprint">Raising as: Subcontractor</span>
+          ) : <span />}
           <HelpLink slug="creating-an-rfi" label="How to fill out an RFI" />
         </div>
         {error && <p className="field-error">{error}</p>}
