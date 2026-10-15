@@ -114,7 +114,7 @@ export function AppShell() {
           <IconMenu className="w-5 h-5" />
         </button>
         <IconMark className="w-5 h-5" />
-        <div className="text-sm font-semibold tracking-tight">EngineeringOS</div>
+        <div className="text-sm font-semibold tracking-tight">Reality Capture</div>
       </div>
 
       {mobileNavOpen && (
@@ -133,8 +133,8 @@ export function AppShell() {
         <div className="h-16 flex items-center gap-2 px-5 border-b border-base-600">
           <IconMark />
           <div className="leading-tight flex-1 min-w-0">
-            <div className="text-sm font-semibold tracking-tight">EngineeringOS</div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500">Reality Capture</div>
+            <div className="text-sm font-semibold tracking-tight">Reality Capture</div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500">by EngineeringOS</div>
           </div>
           <NotificationBell />
           <MessagesBell />
