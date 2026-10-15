@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { QaqcService } from './qaqc.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { NotificationsService } from '../notifications/notifications.service';
@@ -69,7 +69,7 @@ describe('QaqcService', () => {
         return undefined;
       });
 
-      const result = await svc.create(companyId, projectId, 'user-1', {
+      const result = await svc.create(companyId, projectId, 'user-1', 'qa_qc_manager', {
         recordType: 'ncr', subject: 'Cracked slab', description: 'Found a crack.', discipline: 'structural',
       } as CreateQaqcRecordDto);
 
@@ -77,18 +77,18 @@ describe('QaqcService', () => {
     });
 
     it.each([
-      ['ncr', 2, 'NCR-003'],
-      ['sor', 0, 'SOR-001'],
-      ['wir', 5, 'WIR-006'],
-      ['mir', 11, 'MIR-012'],
-    ])('%s gets its own independent sequence (never a shared counter): %i existing -> %s', async (recordType, existing, expectedNumber) => {
+      ['ncr', 2, 'NCR-003', 'qa_qc_manager'],
+      ['sor', 0, 'SOR-001', 'qa_qc_manager'],
+      ['wir', 5, 'WIR-006', 'construction_manager'],
+      ['mir', 11, 'MIR-012', 'construction_manager'],
+    ])('%s gets its own independent sequence (never a shared counter): %i existing -> %s', async (recordType, existing, expectedNumber, issuerRole) => {
       const { svc } = makeService((text) => {
         if (text.includes('SELECT COUNT(*) AS n FROM qaqc_records')) return [{ n: String(existing) }];
         if (text.includes('INSERT INTO qaqc_records')) return [{ id: 'q1', recordNumber: expectedNumber, recordType }];
         return undefined;
       });
 
-      const result = await svc.create(companyId, projectId, 'user-1', {
+      const result = await svc.create(companyId, projectId, 'user-1', issuerRole, {
         recordType, subject: 'A', description: 'd', discipline: 'structural',
       } as CreateQaqcRecordDto);
 
@@ -104,7 +104,7 @@ describe('QaqcService', () => {
         return undefined;
       });
 
-      await svc.create(companyId, projectId, 'user-1', {
+      await svc.create(companyId, projectId, 'user-1', 'qa_qc_manager', {
         recordType: 'ncr', subject: 'Cracked slab', description: 'd', discipline: 'structural', assignedTo: 'user-2',
       } as CreateQaqcRecordDto);
 
@@ -120,7 +120,7 @@ describe('QaqcService', () => {
         return undefined;
       });
 
-      await svc.create(companyId, projectId, 'user-1', {
+      await svc.create(companyId, projectId, 'user-1', 'qa_qc_manager', {
         recordType: 'ncr', subject: 'Cracked slab', description: 'd', discipline: 'structural',
       } as CreateQaqcRecordDto);
 
@@ -134,7 +134,7 @@ describe('QaqcService', () => {
         return undefined;
       });
 
-      await svc.create(companyId, projectId, 'user-1', {
+      await svc.create(companyId, projectId, 'user-1', 'construction_manager', {
         recordType: 'wir', subject: 'Rebar inspection', description: 'd', discipline: 'structural',
       } as CreateQaqcRecordDto);
 
@@ -149,7 +149,7 @@ describe('QaqcService', () => {
       });
       risk.recalculateForEntity.mockRejectedValue(new Error('graph exploded'));
 
-      await expect(svc.create(companyId, projectId, 'user-1', {
+      await expect(svc.create(companyId, projectId, 'user-1', 'qa_qc_manager', {
         recordType: 'ncr', subject: 'Cracked slab', description: 'd', discipline: 'structural',
       } as CreateQaqcRecordDto)).resolves.toMatchObject({ id: 'qaqc-new' });
     });
@@ -161,8 +161,45 @@ describe('QaqcService', () => {
         return undefined;
       }, false);
 
-      await expect(svc.create(companyId, projectId, 'user-1', {
+      await expect(svc.create(companyId, projectId, 'user-1', 'qa_qc_manager', {
         recordType: 'ncr', subject: 'Cracked slab', description: 'd', discipline: 'structural',
+      } as CreateQaqcRecordDto)).resolves.toMatchObject({ id: 'qaqc-new' });
+    });
+
+    // ── Per-type issuer role (role swap: NCR/SOR issued by QAQC, WIR/MIR
+    // issued by the construction team) ─────────────────────────────────────
+    it.each(['construction_manager', 'project_manager', 'technical_director', 'engineering_manager'])(
+      '%s CANNOT create an NCR -- only QAQC-in-charge (or admin) can',
+      async (role) => {
+        const { svc } = makeService(() => undefined);
+        await expect(svc.create(companyId, projectId, 'user-1', role, {
+          recordType: 'ncr', subject: 'x', description: 'd', discipline: 'structural',
+        } as CreateQaqcRecordDto)).rejects.toBeInstanceOf(ForbiddenException);
+      },
+    );
+
+    it('qa_qc_manager CANNOT create a WIR -- only the construction team (or admin) can', async () => {
+      const { svc } = makeService(() => undefined);
+      await expect(svc.create(companyId, projectId, 'user-1', 'qa_qc_manager', {
+        recordType: 'wir', subject: 'x', description: 'd', discipline: 'structural',
+      } as CreateQaqcRecordDto)).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('qa_qc_manager CANNOT create a MIR -- only the construction team (or admin) can', async () => {
+      const { svc } = makeService(() => undefined);
+      await expect(svc.create(companyId, projectId, 'user-1', 'qa_qc_manager', {
+        recordType: 'mir', subject: 'x', description: 'd', discipline: 'structural',
+      } as CreateQaqcRecordDto)).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it.each(['company_admin', 'super_admin'])('%s can create any record type regardless of the explicit role lists', async (adminRole) => {
+      const { svc } = makeService((text) => {
+        if (text.includes('SELECT COUNT(*) AS n FROM qaqc_records')) return [{ n: '0' }];
+        if (text.includes('INSERT INTO qaqc_records')) return [{ id: 'qaqc-new', recordNumber: 'WIR-001', recordType: 'wir' }];
+        return undefined;
+      });
+      await expect(svc.create(companyId, projectId, 'user-1', adminRole, {
+        recordType: 'wir', subject: 'x', description: 'd', discipline: 'structural',
       } as CreateQaqcRecordDto)).resolves.toMatchObject({ id: 'qaqc-new' });
     });
   });
@@ -182,7 +219,7 @@ describe('QaqcService', () => {
         return undefined;
       });
 
-      const result = await svc.respond(companyId, projectId, qaqcId, 'user-2', { response: 'Fixed and re-poured.' });
+      const result = await svc.respond(companyId, projectId, qaqcId, 'user-2', 'construction_manager', { response: 'Fixed and re-poured.' });
       expect((result as Record<string, unknown>).status).toBe('pending_confirmation');
     });
 
@@ -193,7 +230,7 @@ describe('QaqcService', () => {
         return undefined;
       });
 
-      const result = await svc.respond(companyId, projectId, qaqcId, 'user-2', { response: 'Fixed.' });
+      const result = await svc.respond(companyId, projectId, qaqcId, 'user-2', 'construction_manager', { response: 'Fixed.' });
       expect((result as Record<string, unknown>).status).not.toBe('closed');
     });
 
@@ -203,13 +240,13 @@ describe('QaqcService', () => {
         return undefined;
       });
 
-      await expect(svc.respond(companyId, projectId, qaqcId, 'user-2', { response: 'x' }))
+      await expect(svc.respond(companyId, projectId, qaqcId, 'user-2', 'construction_manager', { response: 'x' }))
         .rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('throws NotFoundException for a record that does not exist under this company/project', async () => {
       const { svc } = makeService(() => []);
-      await expect(svc.respond(companyId, projectId, qaqcId, 'user-2', { response: 'x' }))
+      await expect(svc.respond(companyId, projectId, qaqcId, 'user-2', 'construction_manager', { response: 'x' }))
         .rejects.toBeInstanceOf(NotFoundException);
     });
 
@@ -220,7 +257,7 @@ describe('QaqcService', () => {
         return undefined;
       });
 
-      await svc.respond(companyId, projectId, qaqcId, 'user-2', { response: 'Fixed.' });
+      await svc.respond(companyId, projectId, qaqcId, 'user-2', 'construction_manager', { response: 'Fixed.' });
 
       expect(notifications.create).toHaveBeenCalledWith(companyId, expect.objectContaining({
         userId: 'user-1', type: 'ncr_responded', resourceType: 'qaqc_record',
@@ -234,8 +271,57 @@ describe('QaqcService', () => {
         return undefined;
       });
 
-      await svc.respond(companyId, projectId, qaqcId, 'user-2', { response: 'Fixed.' });
+      await svc.respond(companyId, projectId, qaqcId, 'user-2', 'construction_manager', { response: 'Fixed.' });
       expect(risk.recalculateForEntity).toHaveBeenCalledWith(companyId, projectId, 'ncr', qaqcId);
+    });
+
+    // ── Per-type responder role (role swap: NCR/SOR responded to by the
+    // construction team, WIR/MIR responded to by QAQC-in-charge) ──────────
+    it('qa_qc_manager CANNOT respond to an NCR -- only the construction team (or admin) can', async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) return [recordRow('open')];
+        return undefined;
+      });
+      await expect(svc.respond(companyId, projectId, qaqcId, 'user-2', 'qa_qc_manager', { response: 'x' }))
+        .rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it.each(['construction_manager', 'project_manager', 'technical_director', 'engineering_manager'])(
+      '%s CANNOT respond to a WIR -- only QAQC-in-charge (or admin) can',
+      async (role) => {
+        const { svc } = makeService((text) => {
+          if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) {
+            return [{ id: qaqcId, recordType: 'wir', recordNumber: 'WIR-001', status: 'open', issuedBy: 'user-1' }];
+          }
+          return undefined;
+        });
+        await expect(svc.respond(companyId, projectId, qaqcId, 'user-2', role, { response: 'x' }))
+          .rejects.toBeInstanceOf(ForbiddenException);
+      },
+    );
+
+    it('qa_qc_manager CAN respond to a WIR', async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) {
+          return [{ id: qaqcId, recordType: 'wir', recordNumber: 'WIR-001', status: 'open', issuedBy: 'user-1' }];
+        }
+        if (text.includes('UPDATE qaqc_records')) return [{ id: qaqcId, recordType: 'wir', status: 'pending_confirmation' }];
+        return undefined;
+      });
+      const result = await svc.respond(companyId, projectId, qaqcId, 'user-2', 'qa_qc_manager', { response: 'Inspected, passed.' });
+      expect((result as Record<string, unknown>).status).toBe('pending_confirmation');
+    });
+
+    it.each(['company_admin', 'super_admin'])('%s can respond to any record type regardless of the explicit role lists', async (adminRole) => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) {
+          return [{ id: qaqcId, recordType: 'wir', recordNumber: 'WIR-001', status: 'open', issuedBy: 'user-1' }];
+        }
+        if (text.includes('UPDATE qaqc_records')) return [{ id: qaqcId, recordType: 'wir', status: 'pending_confirmation' }];
+        return undefined;
+      });
+      await expect(svc.respond(companyId, projectId, qaqcId, 'user-2', adminRole, { response: 'x' }))
+        .resolves.toMatchObject({ status: 'pending_confirmation' });
     });
   });
 
@@ -293,7 +379,7 @@ describe('QaqcService', () => {
         return undefined;
       });
 
-      const result = await svc.respond(companyId, projectId, qaqcId, 'user-2', { response: 'Fixed again.' });
+      const result = await svc.respond(companyId, projectId, qaqcId, 'user-2', 'construction_manager', { response: 'Fixed again.' });
       expect((result as Record<string, unknown>).status).toBe('pending_confirmation');
     });
 

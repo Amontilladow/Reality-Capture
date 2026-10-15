@@ -19,23 +19,23 @@ import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 // engineering_manager, technical_director), which is the opposite of
 // "only QAQC in charge can issue it."
 //
-// Three distinct gates, not two -- the whole point of the two-step close
-// is that whoever can respond isn't who can finalize it:
-//   ISSUE_ROLES   -- create any of NCR/SOR/WIR/MIR. QAQC-in-charge only.
-//   RESPOND_ROLES -- POST :id/respond (open/reopened -> pending_confirmation).
-//                    construction/PM/director/engineering.
-//   CONFIRM_ROLES -- POST :id/confirm (pending_confirmation -> closed/reopened).
-//                    QAQC-in-charge only -- narrower than RESPOND_ROLES,
-//                    skips over all four respond-roles sitting between
-//                    qa_qc_manager's weight and the admin override.
-const ISSUE_ROLES = ['qa_qc_manager', 'company_admin', 'super_admin'] as const;
-const RESPOND_ROLES = ['construction_manager', 'project_manager', 'technical_director', 'engineering_manager', 'company_admin', 'super_admin'] as const;
+// NCR/SOR and WIR/MIR run issue/respond with the roles SWAPPED (NCR/SOR:
+// QAQC issues, construction responds; WIR/MIR: construction issues, QAQC
+// responds -- a WIR/MIR *is* the construction team's request for an
+// inspection). That swap can't be expressed as a single static role list
+// per route, since both routes serve all four record types -- so create()
+// and respond() each get this broadened guard (the union of both groups,
+// the same set ATTACHMENT_ROLES already was) as a coarse pre-filter, and
+// QaqcService does the exact-for-this-type check once it knows the
+// record's actual record_type (see ISSUE_ROLES_BY_TYPE/RESPOND_ROLES_BY_TYPE
+// there). CONFIRM_ROLES is the one gate that never varies by type --
+// QAQC-in-charge confirms every record type -- so it stays a precise,
+// unbroadened guard with no service-level check needed.
+const QAQC_OR_CONSTRUCTION_ROLES = ['qa_qc_manager', 'construction_manager', 'project_manager', 'technical_director', 'engineering_manager', 'company_admin', 'super_admin'] as const;
 const CONFIRM_ROLES = ['qa_qc_manager', 'company_admin', 'super_admin'] as const;
-// Attachment/photo management is shared by both sides of the workflow (the
-// QAQC-in-charge attaching evidence when raising it, the responder
-// attaching a closing document/photo) -- the union of ISSUE_ROLES and
-// RESPOND_ROLES. Confirm needs no attachment affordance of its own (§4).
-const ATTACHMENT_ROLES = ['qa_qc_manager', 'construction_manager', 'project_manager', 'technical_director', 'engineering_manager', 'company_admin', 'super_admin'] as const;
+// Attachment/photo management is shared by both sides of the workflow,
+// for every record type -- same union as the broadened create/respond guard.
+const ATTACHMENT_ROLES = QAQC_OR_CONSTRUCTION_ROLES;
 
 @ApiTags('qaqc')
 @ApiBearerAuth()
@@ -44,10 +44,10 @@ export class QaqcController {
   constructor(private readonly svc: QaqcService) {}
 
   @Post()
-  @RequireExactRoles(...ISSUE_ROLES)
-  @ApiOperation({ summary: 'Create a new NCR, SOR, WIR, or MIR (QAQC-in-charge or admin only)' })
+  @RequireExactRoles(...QAQC_OR_CONSTRUCTION_ROLES)
+  @ApiOperation({ summary: 'Create a new NCR/SOR (QAQC-in-charge) or WIR/MIR (construction team), or admin' })
   async create(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: CreateQaqcRecordDto) {
-    return { data: await this.svc.create(u.companyId, pid, u.id, dto), error: null };
+    return { data: await this.svc.create(u.companyId, pid, u.id, u.companyRole, dto), error: null };
   }
 
   @Get()
@@ -92,16 +92,16 @@ export class QaqcController {
 
   // ── Two-step close ───────────────────────────────────────────────────────
   @Post(':id/respond')
-  @RequireExactRoles(...RESPOND_ROLES)
+  @RequireExactRoles(...QAQC_OR_CONSTRUCTION_ROLES)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Step 1: respond to an open record (construction/PM/director/engineering, or admin)' })
+  @ApiOperation({ summary: 'Step 1: respond to an open record -- construction team for NCR/SOR, QAQC-in-charge for WIR/MIR, or admin' })
   async respond(
     @CurrentUser() u: AuthenticatedUser,
     @Param('projectId') pid: string,
     @Param('id') id: string,
     @Body() dto: RespondQaqcRecordDto,
   ) {
-    return { data: await this.svc.respond(u.companyId, pid, id, u.id, dto), error: null };
+    return { data: await this.svc.respond(u.companyId, pid, id, u.id, u.companyRole, dto), error: null };
   }
 
   @Post(':id/confirm')

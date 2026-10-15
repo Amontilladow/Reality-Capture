@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, Optional, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
@@ -16,6 +16,42 @@ import type { PaginationQuery } from '@engineeringos/types';
 
 export type QaqcRecordType = 'ncr' | 'sor' | 'wir' | 'mir';
 const QAQC_RECORD_TYPES: QaqcRecordType[] = ['ncr', 'sor', 'wir', 'mir'];
+
+// NCR/SOR and WIR/MIR run the two-step close with the issuer/responder
+// roles SWAPPED, not the same roles for every type:
+//   NCR/SOR -- issued by QAQC-in-charge, responded to by the construction
+//              team, confirmed by QAQC-in-charge again (QAQC flags a
+//              problem, construction fixes it, QAQC signs off).
+//   WIR/MIR -- issued by the construction team (a WIR/MIR *is* the
+//              construction team's request for QAQC to inspect), responded
+//              to (i.e. the inspection itself is recorded) by QAQC-in-
+//              charge, and ALSO confirmed by QAQC-in-charge -- confirm
+//              never varies by type, unlike issue/respond.
+// The controller's @RequireExactRoles only pre-filters to the union of
+// roles valid for *some* type on create/respond; the actual per-type
+// check happens here, where dto.recordType / record.recordType is known.
+const QAQC_ROLE_SET = ['qa_qc_manager'] as const;
+const CONSTRUCTION_ROLE_SET = ['construction_manager', 'project_manager', 'technical_director', 'engineering_manager'] as const;
+const ADMIN_ROLE_SET = ['company_admin', 'super_admin'] as const;
+
+const ISSUE_ROLES_BY_TYPE: Record<QaqcRecordType, readonly string[]> = {
+  ncr: QAQC_ROLE_SET,
+  sor: QAQC_ROLE_SET,
+  wir: CONSTRUCTION_ROLE_SET,
+  mir: CONSTRUCTION_ROLE_SET,
+};
+const RESPOND_ROLES_BY_TYPE: Record<QaqcRecordType, readonly string[]> = {
+  ncr: CONSTRUCTION_ROLE_SET,
+  sor: CONSTRUCTION_ROLE_SET,
+  wir: QAQC_ROLE_SET,
+  mir: QAQC_ROLE_SET,
+};
+
+function assertRoleAllowed(userRole: string, allowed: readonly string[], action: string, recordTypeLabel: string): void {
+  if ((ADMIN_ROLE_SET as readonly string[]).includes(userRole)) return;
+  if (allowed.includes(userRole)) return;
+  throw new ForbiddenException(`You do not have permission to ${action} a ${recordTypeLabel}.`);
+}
 
 @Injectable()
 export class QaqcService {
@@ -60,7 +96,8 @@ export class QaqcService {
     });
   }
 
-  async create(companyId: string, projectId: string, userId: string, dto: CreateQaqcRecordDto) {
+  async create(companyId: string, projectId: string, userId: string, userRole: string, dto: CreateQaqcRecordDto) {
+    assertRoleAllowed(userRole, ISSUE_ROLES_BY_TYPE[dto.recordType], 'create', dto.recordType.toUpperCase());
     const recordNumber = await this.generateRecordNumber(companyId, projectId, dto.recordType);
 
     // withTenant required -- qaqc_records carries the tenant_isolation RLS
@@ -150,15 +187,18 @@ export class QaqcService {
   }
 
   // ── Step 1 of the two-step close: respond ──────────────────────────────
-  // Moves 'open'/'reopened' -> 'pending_confirmation'. Authorization
-  // (construction_manager/project_manager/technical_director/
-  // engineering_manager, or admin) is enforced at the controller via
-  // @RequireExactRoles -- this method only enforces the record's own state
-  // machine. Deliberately does NOT close the record -- see confirm() for
-  // why that's a separate, narrower-gated action (mirrors RfisService's
-  // submitForReview(), the first half of its own two-step review chain).
-  async respond(companyId: string, projectId: string, qaqcId: string, userId: string, dto: RespondQaqcRecordDto) {
+  // Moves 'open'/'reopened' -> 'pending_confirmation'. Who's allowed
+  // depends on record_type -- construction team for NCR/SOR, QAQC-in-charge
+  // for WIR/MIR (see RESPOND_ROLES_BY_TYPE) -- so the controller's
+  // @RequireExactRoles only pre-filters to the union of both groups; the
+  // exact-for-this-type check happens here, once the record's own type is
+  // known. Deliberately does NOT close the record -- see confirm() for why
+  // that's a separate, narrower-gated action that never varies by type
+  // (mirrors RfisService's submitForReview(), the first half of its own
+  // two-step review chain).
+  async respond(companyId: string, projectId: string, qaqcId: string, userId: string, userRole: string, dto: RespondQaqcRecordDto) {
     const record = await this.findOne(companyId, projectId, qaqcId);
+    assertRoleAllowed(userRole, RESPOND_ROLES_BY_TYPE[record.recordType as QaqcRecordType], 'respond to', (record.recordType as string).toUpperCase());
     if (record.status !== 'open' && record.status !== 'reopened') {
       throw new BadRequestException(
         `This ${(record.recordType as string).toUpperCase()} cannot be responded to from status "${record.status as string}".`,
@@ -189,8 +229,11 @@ export class QaqcService {
   }
 
   // ── Step 2 of the two-step close: confirm ───────────────────────────────
-  // QAQC-in-charge (or admin) only -- a deliberately narrower gate than
-  // respond(). 'confirmed' moves 'pending_confirmation' -> 'closed'
+  // QAQC-in-charge (or admin) only -- for every record type, NCR/SOR and
+  // WIR/MIR alike. Unlike issue/respond, this role set never swaps, so the
+  // controller's static @RequireExactRoles(...CONFIRM_ROLES) is the only
+  // enforcement needed; no per-type check here. 'confirmed' moves
+  // 'pending_confirmation' -> 'closed'
   // (confirmedBy/confirmedAt set, terminal). 'rejected' moves it ->
   // 'reopened' (mirrors RfisService's decideReview() reject path) --
   // functionally like 'open' (can be responded to again) but kept

@@ -65,10 +65,31 @@ export function formatDateTime(iso?: string): string {
 }
 
 // Role-list (membership, not weight) constants mirroring the backend's own
-// ISSUE_ROLES/RESPOND_ROLES/CONFIRM_ROLES in qaqc.controller.ts --
-// client-side visual-only gating for the create/respond/confirm actions.
-// The server's @RequireExactRoles is the real enforcement; this only
+// ISSUE_ROLES_BY_TYPE/RESPOND_ROLES_BY_TYPE/CONFIRM_ROLES in qaqc.service.ts/
+// qaqc.controller.ts -- client-side visual-only gating for the create/
+// respond/confirm actions. The server is the real enforcement; this only
 // decides which buttons are worth showing.
-export const QAQC_ISSUE_ROLES = ['qa_qc_manager', 'company_admin', 'super_admin'] as const;
-export const QAQC_RESPOND_ROLES = ['construction_manager', 'project_manager', 'technical_director', 'engineering_manager', 'company_admin', 'super_admin'] as const;
-export const QAQC_CONFIRM_ROLES = ['qa_qc_manager', 'company_admin', 'super_admin'] as const;
+//
+// NCR/SOR and WIR/MIR swap issuer/responder roles -- a WIR/MIR *is* the
+// construction team's own request for QAQC to inspect, so for those two
+// types QAQC responds (performs the inspection) instead of issuing, and
+// the construction team issues instead of responding. Confirm never
+// swaps: QAQC-in-charge confirms every record type.
+const QAQC_ROLE_SET = ['qa_qc_manager'] as const;
+const CONSTRUCTION_ROLE_SET = ['construction_manager', 'project_manager', 'technical_director', 'engineering_manager'] as const;
+const ADMIN_ROLE_SET = ['company_admin', 'super_admin'] as const;
+
+export const QAQC_ISSUE_ROLES_BY_TYPE: Record<QaqcRecordType, readonly string[]> = {
+  ncr: [...QAQC_ROLE_SET, ...ADMIN_ROLE_SET],
+  sor: [...QAQC_ROLE_SET, ...ADMIN_ROLE_SET],
+  wir: [...CONSTRUCTION_ROLE_SET, ...ADMIN_ROLE_SET],
+  mir: [...CONSTRUCTION_ROLE_SET, ...ADMIN_ROLE_SET],
+};
+export const QAQC_RESPOND_ROLES_BY_TYPE: Record<QaqcRecordType, readonly string[]> = {
+  ncr: [...CONSTRUCTION_ROLE_SET, ...ADMIN_ROLE_SET],
+  sor: [...CONSTRUCTION_ROLE_SET, ...ADMIN_ROLE_SET],
+  wir: [...QAQC_ROLE_SET, ...ADMIN_ROLE_SET],
+  mir: [...QAQC_ROLE_SET, ...ADMIN_ROLE_SET],
+};
+// Never varies by type -- QAQC-in-charge confirms NCR/SOR and WIR/MIR alike.
+export const QAQC_CONFIRM_ROLES = [...QAQC_ROLE_SET, ...ADMIN_ROLE_SET] as const;
