@@ -22,17 +22,7 @@ export default function FloorPlanViewer() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(searchParams.get('drawingId'));
   const [uploadOpen, setUploadOpen] = useState(false);
-  // Deep-link support (e.g. from CapturesPage.tsx's/BuildLensPage.tsx's
-  // "+ Pin a camera location" buttons): /projects/:id/drawings?pinPurpose=
-  // camera_location. Read once on mount as the default for the "Pin type"
-  // toggle below, and auto-enables placing mode so that entry point lands
-  // the user ready to tap the drawing, not on another button press.
-  // Direct navigation to Floor Plans (no query param) still defaults to
-  // 'issue' -- today's unchanged behavior for everyone else.
-  const [pinPurpose, setPinPurpose] = useState<'issue' | 'camera_location'>(
-    searchParams.get('pinPurpose') === 'camera_location' ? 'camera_location' : 'issue',
-  );
-  const [placingMode, setPlacingMode] = useState(searchParams.get('pinPurpose') === 'camera_location');
+  const [placingMode, setPlacingMode] = useState(false);
   const [movingPin, setMovingPin] = useState<Pin | null>(null);
   const [openPin, setOpenPin] = useState<Pin | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -169,10 +159,16 @@ export default function FloorPlanViewer() {
     enabled: Boolean(projectId && activeDrawingId),
   });
 
+  // Floor Plans is the Issues/Snags pin workflow -- a camera-location pin
+  // (placed from the separate Buildlense Captures plan page, same drawing
+  // backend) never shows up here, so the two pin-creation flows never mix
+  // on screen even though they can share the same uploaded plan file.
+  const issuePins = (pinsQuery.data ?? []).filter((p) => p.purpose !== 'camera_location');
+
   // Pins carry which page they were placed on; only show the ones for the
   // page currently rendered so a multi-page drawing doesn't overlay every
   // page's pins onto whichever page happens to be visible.
-  const pinsForCurrentPage = (pinsQuery.data ?? []).filter((p) => p.pageNumber === currentPage);
+  const pinsForCurrentPage = issuePins.filter((p) => p.pageNumber === currentPage);
 
   // Resolves the ?pinId= deep link once this drawing's pins are in, jumps
   // to that pin's page, and opens its panel -- then strips both params so
@@ -198,7 +194,7 @@ export default function FloorPlanViewer() {
     mutationFn: (payload: { xNorm: number; yNorm: number }) =>
       createPin(projectId!, activeDrawingId!, {
         posXNorm: payload.xNorm, posYNorm: payload.yNorm, pageNumber: currentPage,
-        assignedTo: newPinAssignee || undefined, purpose: pinPurpose,
+        assignedTo: newPinAssignee || undefined,
       }),
     onSuccess: (pin) => {
       queryClient.invalidateQueries({ queryKey: ['pins', projectId, activeDrawingId] });
@@ -369,19 +365,6 @@ export default function FloorPlanViewer() {
               )}
               {!movingPin && (
                 <div className="flex items-center gap-1.5 text-xs">
-                  <span className="text-ink-500">Pin type</span>
-                  <select
-                    className="field-input w-auto !py-1 !text-xs"
-                    value={pinPurpose}
-                    onChange={(e) => setPinPurpose(e.target.value as 'issue' | 'camera_location')}
-                  >
-                    <option value="issue">Issue</option>
-                    <option value="camera_location">Camera location</option>
-                  </select>
-                </div>
-              )}
-              {!movingPin && (
-                <div className="flex items-center gap-1.5 text-xs">
                   <span className="text-ink-500">New pins assign to</span>
                   <select
                     className="field-input w-auto !py-1 !text-xs"
@@ -414,10 +397,10 @@ export default function FloorPlanViewer() {
                   </button>
                 </div>
               )}
-              {(pinsQuery.data?.length ?? 0) > 0 && (
+              {issuePins.length > 0 && (
                 <span className="text-[10px] font-mono text-ink-500 ml-auto">
                   {pinsForCurrentPage.length} pin{pinsForCurrentPage.length === 1 ? '' : 's'}
-                  {numPages > 1 ? ` on this page (${pinsQuery.data!.length} total)` : ''}
+                  {numPages > 1 ? ` on this page (${issuePins.length} total)` : ''}
                 </span>
               )}
             </div>
@@ -438,9 +421,7 @@ export default function FloorPlanViewer() {
 
           {!activeDrawingId && !drawingsQuery.isLoading && (
             <div className="tick-frame panel p-12 text-center text-sm text-ink-500">
-              {pinPurpose === 'camera_location'
-                ? 'Upload a floor plan PDF, then tap the drawing to drop a camera-location pin.'
-                : 'Upload a floor plan PDF, then click "Add pin" and tap the drawing to mark a spot.'}
+              Upload a floor plan PDF, then click "Add pin" and tap the drawing to mark a spot.
             </div>
           )}
         </div>
