@@ -64,7 +64,11 @@ export default registerAs('ai', () => ({
 
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? '',
-    model: process.env.GEMINI_MODEL ?? 'gemini-2.0-flash',
+    // gemini-2.0-flash was retired by Google (confirmed via a live 404 from
+    // the real API: "This model ... is no longer available ... use
+    // models/gemini-3.8-flash"). GEMINI_MODEL still overrides this for
+    // whenever Google moves the goalposts again.
+    model: process.env.GEMINI_MODEL ?? 'gemini-3.8-flash',
   },
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY ?? '',
