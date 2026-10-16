@@ -20,7 +20,7 @@ import { IssueAttachmentUploadUrlDto } from './dto/issue-attachment-upload-url.d
 import { AddIssueAttachmentDto } from './dto/add-issue-attachment.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
+import { RequireCategoryAction } from '../../common/decorators/require-category-action.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 
 @ApiTags('issues')
@@ -29,7 +29,13 @@ import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 export class IssuesController {
   constructor(private readonly svc: IssuesService) {}
 
+  // Previously ungated -- the owner's org-category matrix scopes issue
+  // creation to Construction Team/Engineering Team/QAQC Team/Subcontractor
+  // (and Engineering Manager, always); Management/Document Control are now
+  // genuinely restricted here. No fallbackPermissions -- no discretionary
+  // grant for "create an issue" existed to preserve.
   @Post()
+  @RequireCategoryAction('issues_snags', 'create')
   @ApiOperation({ summary: 'Create a new issue' })
   async create(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: CreateIssueDto) {
     return { data: await this.svc.create(u.companyId, pid, u.id, dto), error: null };
@@ -127,7 +133,7 @@ export class IssuesController {
 
   @Get(':id')
   async findOne(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
-    return { data: await this.svc.findOne(u.companyId, pid, id), error: null };
+    return { data: await this.svc.findOne(u.companyId, pid, id, u.id), error: null };
   }
 
   // The one binary-response pair in this controller -- same StreamableFile +
@@ -162,7 +168,7 @@ export class IssuesController {
   }
 
   @Patch(':id')
-  @RequireProjectPermission('manage_issues')
+  @RequireCategoryAction('issues_snags', 'edit', 'manage_issues')
   async update(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: UpdateIssueDto) {
     return { data: await this.svc.update(u.companyId, pid, id, u.id, dto), error: null };
   }

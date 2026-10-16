@@ -35,4 +35,29 @@ export class SubcontractorRfiAccessService {
     if (!rfi) return false;
     return rfi.raisedByOrganizationSlot === 'subcontractor' && rfi.createdBy === user.id;
   }
+
+  // Owner's org-category RBAC sprint: Issues/Snags grants Subcontractor
+  // "C,V -- own company's issues only" (no raised_by_organization_slot
+  // concept exists on `issues` the way it does on `rfis` -- ownership here
+  // is simply "did this exact user create it"). Table name is a fixed,
+  // internal-only literal (never derived from request input), so string-
+  // interpolating it into the query is safe -- same pattern this file
+  // already uses for a trusted, hardcoded table name.
+  async ownsIssue(user: { companyId: string; id: string }, issueId: string): Promise<boolean> {
+    const [issue] = await this.db.withTenant(user.companyId, (sql) => sql`
+      SELECT created_by FROM issues WHERE id = ${issueId} AND company_id = ${user.companyId}
+    `);
+    return issue?.createdBy === user.id;
+  }
+
+  // Owner's org-category RBAC sprint: Document Approvals grants
+  // Subcontractor "C,V -- own submittals only" -- same shape as ownsIssue()
+  // above. Deliberately scoped to submittals only, not transmittals -- the
+  // owner's own grant text names "submittals" specifically.
+  async ownsSubmittal(user: { companyId: string; id: string }, submittalId: string): Promise<boolean> {
+    const [submittal] = await this.db.withTenant(user.companyId, (sql) => sql`
+      SELECT created_by FROM submittals WHERE id = ${submittalId} AND company_id = ${user.companyId}
+    `);
+    return submittal?.createdBy === user.id;
+  }
 }

@@ -20,6 +20,11 @@ function makeGuard(isPublic: boolean | undefined, isRestricted: boolean) {
 }
 
 const restrictedUser = { companyId: 'company-1', companyRole: 'construction_manager', id: 'user-1' };
+// A project-role-restricted user (site_engineer), with a company role NOT
+// in SITE_RESTRICTED_COMPANY_ROLES -- so the guard's own
+// isCompanyRoleRestricted check (real, not mocked) takes the ProjectRole
+// branch, keeping the full pre-sprint issues/snag-items/drawings allowlist.
+const siteEngineerUser = { companyId: 'company-1', companyRole: 'project_manager', id: 'user-3' };
 
 describe('SiteRoleRestrictionGuard', () => {
   it('always passes @Public() routes without checking restriction', async () => {
@@ -39,16 +44,40 @@ describe('SiteRoleRestrictionGuard', () => {
     expect(siteRole.isRestricted).not.toHaveBeenCalled();
   });
 
-  it('allows a restricted user through on Issues/Snagging/Floor Plans write routes', async () => {
+  it('allows a company-role-restricted user (construction_manager) through on Issues/Snagging write routes', async () => {
     const { guard } = makeGuard(false, true);
     const paths = [
       '/api/v1/projects/p1/issues',
       '/api/v1/projects/p1/issues/i1',
       '/api/v1/projects/p1/snag-items/s1',
-      '/api/v1/projects/p1/drawings',
     ];
     for (const path of paths) {
       await expect(guard.canActivate(makeContext({ user: restrictedUser, method: 'POST', path, params: { projectId: 'p1' } }))).resolves.toBe(true);
+    }
+  });
+
+  // Owner's org-category RBAC sprint, Drawings conflict resolution ("new
+  // matrix wins"): Construction Team (construction_manager/project_engineer
+  // company roles) is narrowed to view-only on Drawings, contradicting this
+  // guard's pre-sprint full-write allowlist for them specifically. The
+  // site_engineer PROJECT role (a separate axis the sprint didn't touch)
+  // keeps its full access -- see the two tests below.
+  it('blocks a company-role-restricted user (construction_manager) writing to Drawings now', async () => {
+    const { guard } = makeGuard(false, true);
+    await expect(
+      guard.canActivate(makeContext({ user: restrictedUser, method: 'POST', path: '/api/v1/projects/p1/drawings', params: { projectId: 'p1' } })),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('still allows a project-role-restricted user (site_engineer) through on Issues/Snagging/Drawings write routes, unchanged', async () => {
+    const { guard } = makeGuard(false, true);
+    const paths = [
+      '/api/v1/projects/p1/issues',
+      '/api/v1/projects/p1/snag-items/s1',
+      '/api/v1/projects/p1/drawings',
+    ];
+    for (const path of paths) {
+      await expect(guard.canActivate(makeContext({ user: siteEngineerUser, method: 'POST', path, params: { projectId: 'p1' } }))).resolves.toBe(true);
     }
   });
 

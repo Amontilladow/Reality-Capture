@@ -40,6 +40,15 @@ export const COMPANY_ROLE_LABELS: Record<CompanyRole, string> = {
   // Plans/Issues/Snagging only (SiteRoleRestrictionGuard), everywhere else
   // read-only.
   project_engineer: 'Project Engineer',
+  // Org-category sprint additions -- see ORG_CATEGORIES/getOrgCategory in
+  // @engineeringos/types for what each maps to.
+  chairman: 'Chairman',
+  general_manager: 'General Manager',
+  operations_manager: 'Operations Manager',
+  project_document_controller: 'Project Document Controller',
+  document_control_assistant: 'Document Control Assistant',
+  engineering_team_member: 'Engineering Team Member',
+  qaqc_team_member: 'QAQC Team Member',
 };
 
 export const ISSUE_STATUSES: IssueStatus[] = [

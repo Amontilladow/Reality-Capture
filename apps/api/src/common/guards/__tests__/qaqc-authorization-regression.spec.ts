@@ -16,6 +16,11 @@
 // qaqc.service.spec.ts's 'create'/'respond' describe blocks, which test the
 // real per-type ForbiddenException. confirm's role set never varies by
 // type, so it stays the sole narrow, unbroadened gate.
+//
+// Owner's org-category RBAC sprint: 'qaqc_team_member' (the new, generic
+// QAQC Team individual-contributor placeholder role -- see COMPANY_ROLES in
+// user.types.ts) was added to both lists so this module -- named for its
+// own category in the owner's matrix -- isn't silently inaccessible to it.
 import 'reflect-metadata';
 import { EXACT_ROLES_KEY } from '../../decorators/require-exact-roles.decorator';
 import { QaqcController } from '../../../modules/qaqc/qaqc.controller';
@@ -30,7 +35,7 @@ describe('QAQC authorization: explicit role lists, not weight thresholds', () =>
     (method) => {
       const roles = exactRolesOn(method);
       expect(roles).toEqual([
-        'qa_qc_manager', 'construction_manager', 'project_manager', 'technical_director', 'engineering_manager', 'company_admin', 'super_admin',
+        'qa_qc_manager', 'qaqc_team_member', 'construction_manager', 'project_manager', 'technical_director', 'engineering_manager', 'company_admin', 'super_admin',
       ]);
       // Still excludes roles that can never create/respond to ANY QAQC
       // record type, regardless of weight.
@@ -43,7 +48,7 @@ describe('QAQC authorization: explicit role lists, not weight thresholds', () =>
 
   it('confirm (POST /qaqc/:id/confirm) -- QAQC-in-charge + admin override ONLY, for every record type, narrower than respond', () => {
     const roles = exactRolesOn('confirm');
-    expect(roles).toEqual(['qa_qc_manager', 'company_admin', 'super_admin']);
+    expect(roles).toEqual(['qa_qc_manager', 'qaqc_team_member', 'company_admin', 'super_admin']);
     // The whole point of the two-step close: none of the respond-step roles
     // can also confirm, even though they sit between qa_qc_manager and the
     // admins in COMPANY_ROLE_WEIGHT.
@@ -57,7 +62,7 @@ describe('QAQC authorization: explicit role lists, not weight thresholds', () =>
     'QaqcController.%s -- attachment/photo management shares the union of issue+respond roles',
     (method) => {
       expect(exactRolesOn(method)).toEqual([
-        'qa_qc_manager', 'construction_manager', 'project_manager', 'technical_director', 'engineering_manager', 'company_admin', 'super_admin',
+        'qa_qc_manager', 'qaqc_team_member', 'construction_manager', 'project_manager', 'technical_director', 'engineering_manager', 'company_admin', 'super_admin',
       ]);
     },
   );

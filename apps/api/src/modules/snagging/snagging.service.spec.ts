@@ -1,4 +1,4 @@
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { SnaggingService } from './snagging.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { NotificationsService } from '../notifications/notifications.service';
@@ -123,9 +123,9 @@ describe('SnaggingService attachment enforcement', () => {
   // this method's, so these tests only cover the state-transition guard and
   // that it stamps verified_at/verified_by the same way update() always has.
   describe('verify', () => {
-    function makeService(opts: { existingStatus: string }) {
-      const existingRow = { id: snagId, projectId, companyId, status: opts.existingStatus };
-      const updatedRow = { id: snagId, status: 'verified', verifiedAt: '2026-01-01T00:00:00Z', verifiedBy: 'user-1' };
+    function makeService(opts: { existingStatus: string; fixedBy?: string }) {
+      const existingRow = { id: snagId, projectId, companyId, status: opts.existingStatus, fixedBy: opts.fixedBy };
+      const updatedRow = { id: snagId, status: 'verified', verifiedAt: '2026-01-01T00:00:00Z', verifiedBy: 'user-2' };
       const withTenant = jest.fn()
         .mockResolvedValueOnce([existingRow]) // findOne() inside verify()
         .mockResolvedValueOnce([updatedRow])  // the UPDATE ... RETURNING *
@@ -141,15 +141,24 @@ describe('SnaggingService attachment enforcement', () => {
       return { svc, withTenant };
     }
 
-    it("verifies a 'fixed' snag item", async () => {
-      const { svc } = makeService({ existingStatus: 'fixed' });
-      const result = await svc.verify(companyId, projectId, snagId, 'user-1');
+    it("verifies a 'fixed' snag item when the verifier is someone other than who fixed it", async () => {
+      const { svc } = makeService({ existingStatus: 'fixed', fixedBy: 'user-1' });
+      const result = await svc.verify(companyId, projectId, snagId, 'user-2');
       expect(result).toMatchObject({ status: 'verified' });
     });
 
     it("rejects verifying a snag item that is not currently 'fixed'", async () => {
       const { svc, withTenant } = makeService({ existingStatus: 'open' });
       await expect(svc.verify(companyId, projectId, snagId, 'user-1')).rejects.toThrow(BadRequestException);
+      // Only findOne()'s own withTenant call happened -- no UPDATE was attempted.
+      expect(withTenant).toHaveBeenCalledTimes(1);
+    });
+
+    // Owner's org-category RBAC sprint, segregation-of-duties fix: the same
+    // person who marked a snag 'fixed' can no longer also verify it.
+    it('rejects self-verification -- the same user who marked it fixed cannot also verify it', async () => {
+      const { svc, withTenant } = makeService({ existingStatus: 'fixed', fixedBy: 'user-1' });
+      await expect(svc.verify(companyId, projectId, snagId, 'user-1')).rejects.toThrow(ForbiddenException);
       // Only findOne()'s own withTenant call happened -- no UPDATE was attempted.
       expect(withTenant).toHaveBeenCalledTimes(1);
     });

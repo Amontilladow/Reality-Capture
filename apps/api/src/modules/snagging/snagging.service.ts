@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, Optional, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
@@ -341,6 +341,21 @@ export class SnaggingService {
     const existing = await this.findOne(companyId, projectId, snagId);
     if (existing.status !== 'fixed') {
       throw new BadRequestException(`Only a 'fixed' snag item can be verified (current status: '${existing.status as string}').`);
+    }
+    // Owner's org-category RBAC sprint: segregation of duties for the
+    // fixed -> verified sign-off step -- the same person who marked a snag
+    // 'fixed' (via update(), manage_project_records) must not also be the
+    // one who verifies it (via verify_snag_items/manage_project_records).
+    // The doc comment on PROJECT_PERMISSIONS.verify_snag_items already
+    // described this as the intent when that permission was added, but
+    // nothing actually checked it until now -- a real gap found while
+    // implementing the new matrix's QAQC Team Approve/Close grant for this
+    // module.
+    if (existing.fixedBy === userId) {
+      throw new ForbiddenException({
+        code: 'CANNOT_SELF_VERIFY',
+        message: 'You cannot verify a snag item you marked as fixed yourself -- a different person must sign off.',
+      });
     }
 
     const [updated] = await this.db.withTenant(companyId, sql => sql`

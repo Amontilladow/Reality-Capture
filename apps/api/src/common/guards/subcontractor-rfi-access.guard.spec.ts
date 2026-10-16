@@ -12,11 +12,13 @@ function makeContext(opts: { user?: unknown; method: string; path: string; param
   } as unknown as ExecutionContext;
 }
 
-function makeGuard(isPublic: boolean | undefined, isSubcontractor: boolean, owns = true) {
+function makeGuard(isPublic: boolean | undefined, isSubcontractor: boolean, owns = true, ownsIssue = true, ownsSubmittal = true) {
   const reflector = { getAllAndOverride: jest.fn(() => isPublic) } as unknown as Reflector;
   const access = {
     isSubcontractor: jest.fn().mockResolvedValue(isSubcontractor),
     ownsRfi: jest.fn().mockResolvedValue(owns),
+    ownsIssue: jest.fn().mockResolvedValue(ownsIssue),
+    ownsSubmittal: jest.fn().mockResolvedValue(ownsSubmittal),
   } as unknown as SubcontractorRfiAccessService;
   const guard = new SubcontractorRfiAccessGuard(access, reflector);
   return { guard, access };
@@ -44,13 +46,16 @@ describe('SubcontractorRfiAccessGuard', () => {
     ).resolves.toBe(true);
   });
 
-  it('blocks a subcontractor from any route outside the RFI module, including reads', async () => {
+  it('blocks a subcontractor from any route outside RFIs/Drawings(read)/Issues, including reads', async () => {
     const { guard } = makeGuard(false, true);
     await expect(
-      guard.canActivate(makeContext({ user: subcontractor, method: 'GET', path: '/api/v1/projects/p1/issues', params })),
+      guard.canActivate(makeContext({ user: subcontractor, method: 'GET', path: '/api/v1/projects/p1/documents', params })),
     ).rejects.toBeInstanceOf(ForbiddenException);
     await expect(
-      guard.canActivate(makeContext({ user: subcontractor, method: 'GET', path: '/api/v1/projects/p1/documents', params })),
+      guard.canActivate(makeContext({ user: subcontractor, method: 'GET', path: '/api/v1/projects/p1/bim/models', params })),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      guard.canActivate(makeContext({ user: subcontractor, method: 'GET', path: '/api/v1/projects/p1/qaqc', params })),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -169,5 +174,110 @@ describe('SubcontractorRfiAccessGuard', () => {
     await expect(
       guard.canActivate(makeContext({ user: subcontractor, method: 'PUT', path: '/api/v1/projects/p1/organizations/client', params: { id: 'p1' } })),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  // Owner's org-category RBAC sprint: Drawings grants Subcontractor
+  // "V -- own project scope only" -- a new, narrow read-only carve-out.
+  it("allows GET access to this project's Drawings (new, matrix-granted 'view' access)", async () => {
+    const { guard } = makeGuard(false, true);
+    await expect(
+      guard.canActivate(makeContext({ user: subcontractor, method: 'GET', path: '/api/v1/projects/p1/drawings', params: { projectId: 'p1' } })),
+    ).resolves.toBe(true);
+    await expect(
+      guard.canActivate(makeContext({ user: subcontractor, method: 'GET', path: '/api/v1/projects/p1/drawings/d1', params: { projectId: 'p1' } })),
+    ).resolves.toBe(true);
+  });
+
+  it('does not extend the Drawings carve-out to writes -- the matrix grants no create/edit there', async () => {
+    const { guard } = makeGuard(false, true);
+    await expect(
+      guard.canActivate(makeContext({ user: subcontractor, method: 'POST', path: '/api/v1/projects/p1/drawings', params: { projectId: 'p1' } })),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      guard.canActivate(makeContext({ user: subcontractor, method: 'POST', path: '/api/v1/projects/p1/drawings/d1/pins', params: { projectId: 'p1' } })),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  // Owner's org-category RBAC sprint: Issues grants Subcontractor
+  // "C,V -- own company's issues only".
+  describe('Issues access', () => {
+    it('allows list/read/create (own-company isolation enforced at the service layer, not here)', async () => {
+      const { guard } = makeGuard(false, true);
+      await expect(
+        guard.canActivate(makeContext({ user: subcontractor, method: 'GET', path: '/api/v1/projects/p1/issues', params: { projectId: 'p1' } })),
+      ).resolves.toBe(true);
+      await expect(
+        guard.canActivate(makeContext({ user: subcontractor, method: 'GET', path: '/api/v1/projects/p1/issues/i1', params: { projectId: 'p1' } })),
+      ).resolves.toBe(true);
+      await expect(
+        guard.canActivate(makeContext({ user: subcontractor, method: 'POST', path: '/api/v1/projects/p1/issues', params: { projectId: 'p1' } })),
+      ).resolves.toBe(true);
+    });
+
+    it('allows editing an issue the subcontractor owns, blocks one they do not', async () => {
+      const owning = makeGuard(false, true, true, true);
+      await expect(
+        owning.guard.canActivate(makeContext({ user: subcontractor, method: 'PATCH', path: '/api/v1/projects/p1/issues/i1', params: { projectId: 'p1' } })),
+      ).resolves.toBe(true);
+      expect(owning.access.ownsIssue).toHaveBeenCalledWith(subcontractor, 'i1');
+
+      const notOwning = makeGuard(false, true, true, false);
+      await expect(
+        notOwning.guard.canActivate(makeContext({ user: subcontractor, method: 'PATCH', path: '/api/v1/projects/p1/issues/i1', params: { projectId: 'p1' } })),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('blocks close/force-status/reminders/bulk actions outright, regardless of ownership', async () => {
+      const { guard } = makeGuard(false, true, true, true);
+      const paths = [
+        '/api/v1/projects/p1/issues/i1/close',
+        '/api/v1/projects/p1/issues/i1/force-status',
+        '/api/v1/projects/p1/issues/reminders/broadcast',
+        '/api/v1/projects/p1/issues/bulk-close',
+      ];
+      for (const path of paths) {
+        await expect(
+          guard.canActivate(makeContext({ user: subcontractor, method: 'POST', path, params: { projectId: 'p1' } })),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+      }
+    });
+  });
+
+  // Owner's org-category RBAC sprint: Submittals grants Subcontractor
+  // "C,V -- own submittals only". Transmittals gets nothing (deliberately
+  // scoped out -- see SUBMITTALS_BASE_PATH_PATTERN's own comment).
+  describe('Submittals access', () => {
+    it('allows list/read/create (own-submittals isolation enforced at the service layer, not here)', async () => {
+      const { guard } = makeGuard(false, true);
+      await expect(
+        guard.canActivate(makeContext({ user: subcontractor, method: 'GET', path: '/api/v1/projects/p1/submittals', params: { projectId: 'p1' } })),
+      ).resolves.toBe(true);
+      await expect(
+        guard.canActivate(makeContext({ user: subcontractor, method: 'GET', path: '/api/v1/projects/p1/submittals/s1', params: { projectId: 'p1' } })),
+      ).resolves.toBe(true);
+      await expect(
+        guard.canActivate(makeContext({ user: subcontractor, method: 'POST', path: '/api/v1/projects/p1/submittals', params: { projectId: 'p1' } })),
+      ).resolves.toBe(true);
+    });
+
+    it('allows editing a submittal the subcontractor owns, blocks one they do not', async () => {
+      const owning = makeGuard(false, true, true, true, true);
+      await expect(
+        owning.guard.canActivate(makeContext({ user: subcontractor, method: 'PATCH', path: '/api/v1/projects/p1/submittals/s1', params: { projectId: 'p1' } })),
+      ).resolves.toBe(true);
+      expect(owning.access.ownsSubmittal).toHaveBeenCalledWith(subcontractor, 's1');
+
+      const notOwning = makeGuard(false, true, true, true, false);
+      await expect(
+        notOwning.guard.canActivate(makeContext({ user: subcontractor, method: 'PATCH', path: '/api/v1/projects/p1/submittals/s1', params: { projectId: 'p1' } })),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('does not extend any access to Transmittals -- a different, unaddressed module', async () => {
+      const { guard } = makeGuard(false, true);
+      await expect(
+        guard.canActivate(makeContext({ user: subcontractor, method: 'GET', path: '/api/v1/projects/p1/transmittals', params: { projectId: 'p1' } })),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
   });
 });

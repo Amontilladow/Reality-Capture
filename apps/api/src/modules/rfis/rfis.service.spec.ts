@@ -216,6 +216,96 @@ describe('RfisService', () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
+  // Subcontractor cross-company isolation (owner's RBAC sprint, "critical")
+  // — one subcontractor account must never read another's RFIs, even on the
+  // same project. findAll()/getSummary() narrow to viewer-owned rows when
+  // the viewer is themselves a subcontractor project member; a
+  // non-subcontractor viewer (any company role) is completely unaffected.
+  // ══════════════════════════════════════════════════════════════════════
+  describe('subcontractor isolation', () => {
+    it('findAll: a non-subcontractor viewer is not isolated at all -- no viewerId check query, full results pass through', async () => {
+      const { svc, calls } = makeService((text) => {
+        if (text.includes('SELECT role FROM project_members')) return [{ role: 'document_controller' }];
+        if (text.includes('FROM rfis r')) return [{ id: 'rfi-1', fullCount: '1' }];
+        return undefined;
+      });
+      await svc.findAll(companyId, projectId, {}, 'viewer-1');
+      const listCall = calls.find((c) => c.text.includes('FROM rfis r'));
+      // isolateToViewer resolves false -- the clause is present but inert
+      // (its OR branch never excludes a row with a non-matching created_by).
+      expect(listCall!.values).toContain(false);
+    });
+
+    it('findAll: a subcontractor viewer gets created_by scoped into the query as true + their own id', async () => {
+      const { svc, calls } = makeService((text) => {
+        if (text.includes('SELECT role FROM project_members')) return [{ role: 'subcontractor' }];
+        if (text.includes('FROM rfis r')) return [{ id: 'rfi-1', fullCount: '1' }];
+        return undefined;
+      });
+      await svc.findAll(companyId, projectId, {}, 'sub-user-1');
+      const listCall = calls.find((c) => c.text.includes('FROM rfis r'));
+      expect(listCall!.values).toContain(true);
+      expect(listCall!.values).toContain('sub-user-1');
+    });
+
+    it('getSummary: a subcontractor viewer gets the same created_by isolation applied to the count query', async () => {
+      const { svc, calls } = makeService((text) => {
+        if (text.includes('SELECT role FROM project_members')) return [{ role: 'subcontractor' }];
+        if (text.includes('FROM rfis')) return [{ total: '1', open: '1', answered: '0', overdue: '0' }];
+        return undefined;
+      });
+      await svc.getSummary(companyId, projectId, 'subcontractor', 'sub-user-1');
+      const summaryCall = calls.find((c) => c.text.includes('COUNT(*) AS total'));
+      expect(summaryCall!.values).toContain(true);
+      expect(summaryCall!.values).toContain('sub-user-1');
+    });
+
+    it('findOne: a subcontractor viewer gets 404 (not 403) reading another subcontractor-raised RFI they did not create', async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('SELECT role FROM project_members')) return [{ role: 'subcontractor' }];
+        if (text.includes('FROM rfis r')) {
+          return [{ id: 'rfi-1', raisedByOrganizationSlot: 'subcontractor', createdBy: 'other-sub-user' }];
+        }
+        return undefined;
+      });
+      await expect(svc.findOne(companyId, projectId, 'rfi-1', 'sub-user-1')).rejects.toThrow('RFI rfi-1 not found.');
+    });
+
+    it('findOne: a subcontractor viewer CAN read their own subcontractor-raised RFI', async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('SELECT role FROM project_members')) return [{ role: 'subcontractor' }];
+        if (text.includes('FROM rfis r')) {
+          return [{ id: 'rfi-1', raisedByOrganizationSlot: 'subcontractor', createdBy: 'sub-user-1' }];
+        }
+        return undefined;
+      });
+      await expect(svc.findOne(companyId, projectId, 'rfi-1', 'sub-user-1')).resolves.toMatchObject({ id: 'rfi-1' });
+    });
+
+    it('findOne: a subcontractor viewer CAN still read a main-contractor-raised RFI (window 1, read-only, unaffected)', async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('SELECT role FROM project_members')) return [{ role: 'subcontractor' }];
+        if (text.includes('FROM rfis r')) {
+          return [{ id: 'rfi-2', raisedByOrganizationSlot: 'main_contractor', createdBy: 'main-contractor-user' }];
+        }
+        return undefined;
+      });
+      await expect(svc.findOne(companyId, projectId, 'rfi-2', 'sub-user-1')).resolves.toMatchObject({ id: 'rfi-2' });
+    });
+
+    it('findOne: an internal (non-subcontractor) viewer reads any RFI regardless of who raised it', async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('SELECT role FROM project_members')) return [{ role: 'document_controller' }];
+        if (text.includes('FROM rfis r')) {
+          return [{ id: 'rfi-1', raisedByOrganizationSlot: 'subcontractor', createdBy: 'some-sub-user' }];
+        }
+        return undefined;
+      });
+      await expect(svc.findOne(companyId, projectId, 'rfi-1', 'internal-user-1')).resolves.toMatchObject({ id: 'rfi-1' });
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════════════
   // submit() — draft -> submitted
   // ══════════════════════════════════════════════════════════════════════
   describe('submit', () => {
@@ -390,6 +480,28 @@ describe('RfisService', () => {
       });
 
       await expect(svc.close(companyId, projectId, rfiId, 'user-reviewer')).rejects.toThrow(BadRequestException);
+    });
+
+    // Owner's org-category RBAC sprint: "Engineering Manager may act at any
+    // stage... never that a later stage can be performed before the stages
+    // that must precede it." OrgCategoryPermissionService/CategoryActionGuard
+    // only decide whether the ROUTE may be called at all (and bypass
+    // unconditionally for engineering_manager) -- close()'s own status
+    // precondition below is enforced entirely inside the service method,
+    // which has no role/category parameter whatsoever to special-case. The
+    // same terminal-status rejection above therefore applies identically no
+    // matter who calls it, Engineering Manager included -- there is no code
+    // path by which a role could skip it.
+    it('no caller, including Engineering Manager, can close an already-closed RFI -- the status check has no role to special-case', async () => {
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM rfis r')) {
+          return [{ id: rfiId, createdBy: 'user-owner', status: 'void', rfiNumber: 'P1-ORG-RFI-CIV-0001', subject: 'Subj' }];
+        }
+        return undefined;
+      });
+      // close() takes no companyRole/category argument -- an Engineering
+      // Manager calling it hits the exact same code path as anyone else.
+      await expect(svc.close(companyId, projectId, rfiId, 'engineering-manager-user')).rejects.toThrow(BadRequestException);
     });
 
     it('stamps closed_by/closed_at and the chosen organizationSlot -- the fields that have existed since migration 001 but were never written to before this', async () => {

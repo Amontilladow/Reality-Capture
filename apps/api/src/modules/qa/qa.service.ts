@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import type { CreateQaInspectionDto } from './dto/create-qa-inspection.dto';
 import type { UpdateQaInspectionDto } from './dto/update-qa-inspection.dto';
-import type { PaginationQuery } from '@engineeringos/types';
+import { getOrgCategory, type PaginationQuery, type CompanyRole } from '@engineeringos/types';
 
 const OUTCOMES = new Set(['passed', 'passed_with_exceptions', 'failed']);
 
@@ -75,8 +75,23 @@ export class QaService {
     return inspection;
   }
 
-  async update(companyId: string, projectId: string, inspectionId: string, userId: string, dto: UpdateQaInspectionDto) {
+  // userRole is optional, loosely typed string -- every pre-existing caller
+  // omits it and is unaffected; only the controller's own PATCH route
+  // passes it, to enforce the owner's org-category matrix's one
+  // item-scoped rule for this module ("Construction Team: V,E -- only on
+  // close-out items assigned to them"), which the flat category matrix
+  // table alone can't express (it's an ownership/assignment condition, not
+  // a module-wide grant). Every other category holding 'edit' here
+  // (QAQC Team, Engineering Manager) is unaffected -- this check only
+  // narrows Construction Team specifically.
+  async update(companyId: string, projectId: string, inspectionId: string, userId: string, dto: UpdateQaInspectionDto, userRole?: string) {
     const existing = await this.findOne(companyId, projectId, inspectionId);
+    if (userRole && getOrgCategory(userRole as CompanyRole) === 'construction_team' && existing.assignedTo !== userId) {
+      throw new ForbiddenException({
+        code: 'NOT_ASSIGNED_INSPECTION',
+        message: 'Construction Team can only edit a QA inspection assigned to them.',
+      });
+    }
     const isCompleting = Boolean(dto.status && OUTCOMES.has(dto.status) && existing.status !== dto.status);
 
     const [updated] = await this.db.query`

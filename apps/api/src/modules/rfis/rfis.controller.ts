@@ -14,6 +14,7 @@ import { CloseRfiDto } from './dto/close-rfi.dto';
 import { UpsertRfiNoticeLetterDto } from './dto/upsert-rfi-notice-letter.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
+import { RequireCategoryAction } from '../../common/decorators/require-category-action.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 
 @ApiTags('rfis')
@@ -22,7 +23,15 @@ import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 export class RfisController {
   constructor(private readonly svc: RfisService) {}
 
+  // Previously ungated (any authenticated project member could create an
+  // RFI) -- the owner's org-category matrix explicitly scopes RFI creation
+  // to Construction Team/Document Control/Subcontractor (and Engineering
+  // Manager, always), so Management/Engineering Team/QAQC Team members
+  // without one of those categories are now a genuine, new restriction
+  // here. No fallbackPermissions -- there was never a discretionary grant
+  // specifically for "create an RFI" to preserve.
   @Post()
+  @RequireCategoryAction('rfis', 'create')
   @ApiOperation({ summary: 'Create a new RFI' })
   async create(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: CreateRfiDto) {
     return { data: await this.svc.create(u.companyId, pid, u.id, dto), error: null };
@@ -39,7 +48,7 @@ export class RfisController {
       dateFrom?: string; dateTo?: string; view?: 'main' | 'subcontractor'; origin?: string;
     },
   ) {
-    const result = await this.svc.findAll(u.companyId, pid, query);
+    const result = await this.svc.findAll(u.companyId, pid, query, u.id);
     return { data: result.data, meta: { page: result.page, perPage: result.perPage, total: result.total, totalPages: result.totalPages }, error: null };
   }
 
@@ -50,12 +59,12 @@ export class RfisController {
     @Param('projectId') pid: string,
     @Query('view') view?: 'main' | 'subcontractor',
   ) {
-    return { data: await this.svc.getSummary(u.companyId, pid, view), error: null };
+    return { data: await this.svc.getSummary(u.companyId, pid, view, u.id), error: null };
   }
 
   @Get(':id')
   async findOne(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
-    return { data: await this.svc.findOne(u.companyId, pid, id), error: null };
+    return { data: await this.svc.findOne(u.companyId, pid, id, u.id), error: null };
   }
 
   // The one binary-response endpoint in this API -- every other controller
@@ -93,7 +102,7 @@ export class RfisController {
   }
 
   @Patch(':id')
-  @RequireProjectPermission('manage_project_records')
+  @RequireCategoryAction('rfis', 'edit', 'manage_project_records')
   async update(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: UpdateRfiDto) {
     return { data: await this.svc.update(u.companyId, pid, id, u.id, dto), error: null };
   }
@@ -164,7 +173,7 @@ export class RfisController {
   }
 
   @Post(':id/request-clarification')
-  @RequireProjectPermission('manage_rfis')
+  @RequireCategoryAction('rfis', 'approve', 'manage_rfis')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Send an RFI back to its creator for clarification' })
   async requestClarification(
@@ -177,7 +186,7 @@ export class RfisController {
   }
 
   @Post(':id/respond')
-  @RequireProjectPermission('manage_rfis')
+  @RequireCategoryAction('rfis', 'approve', 'manage_rfis')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Record the formal response to an RFI' })
   async respond(
@@ -195,7 +204,7 @@ export class RfisController {
   // permission is accepted so nothing already holding manage_rfis loses
   // access.
   @Post(':id/submit-for-review')
-  @RequireProjectPermission('manage_rfis', 'approve_rfis')
+  @RequireCategoryAction('rfis', 'approve', 'manage_rfis', 'approve_rfis')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Send a responded RFI to a stakeholder for review (PMC/client sign-off)' })
   async submitForReview(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
@@ -205,7 +214,7 @@ export class RfisController {
   // Same manage_rfis OR approve_rfis gate as submit-for-review above -- this
   // is the actual approve/reject decision of that same PMC/client review.
   @Post(':id/decide-review')
-  @RequireProjectPermission('manage_rfis', 'approve_rfis')
+  @RequireCategoryAction('rfis', 'approve', 'manage_rfis', 'approve_rfis')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Approve (closes the RFI) or reject (sends it back for clarification) a review' })
   async decideReview(
@@ -217,8 +226,13 @@ export class RfisController {
     return { data: await this.svc.decideReview(u.companyId, pid, id, u.id, dto), error: null };
   }
 
+  // 'close' action -- owner's RFI matrix row doesn't list an explicit action
+  // for Document Control, but their own worked lifecycle example in the same
+  // message ("Document Control logs and routes... Document Control closes
+  // (X)") explicitly assigns this to them; see CATEGORY_PERMISSION_MATRIX's
+  // own comment in org-permission.types.ts for the full note.
   @Post(':id/close')
-  @RequireProjectPermission('manage_rfis')
+  @RequireCategoryAction('rfis', 'close', 'manage_rfis')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Close an RFI' })
   async close(
@@ -235,7 +249,7 @@ export class RfisController {
   // RfisService.markDrawingApplied()'s own comment for why this is a
   // records-update action rather than an RFI-workflow transition.
   @Post(':id/drawing-update/mark-applied')
-  @RequireProjectPermission('manage_project_records')
+  @RequireCategoryAction('rfis', 'edit', 'manage_project_records')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mark this RFI\'s drawing update as applied' })
   async markDrawingApplied(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
@@ -243,7 +257,7 @@ export class RfisController {
   }
 
   @Post(':id/drawing-update/mark-not-applied')
-  @RequireProjectPermission('manage_project_records')
+  @RequireCategoryAction('rfis', 'edit', 'manage_project_records')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Correct a mistaken "applied" mark on this RFI\'s drawing update' })
   async markDrawingNotApplied(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
@@ -251,7 +265,7 @@ export class RfisController {
   }
 
   @Post(':id/drawing-update/mark-sent-to-site')
-  @RequireProjectPermission('manage_project_records')
+  @RequireCategoryAction('rfis', 'edit', 'manage_project_records')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Mark this RFI\'s drawing/model update as sent to the site team' })
   async markDrawingSentToSite(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
@@ -259,7 +273,7 @@ export class RfisController {
   }
 
   @Post(':id/drawing-update/mark-not-sent-to-site')
-  @RequireProjectPermission('manage_project_records')
+  @RequireCategoryAction('rfis', 'edit', 'manage_project_records')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Correct a mistaken "sent to site" mark on this RFI\'s drawing/model update' })
   async markDrawingNotSentToSite(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
@@ -277,7 +291,7 @@ export class RfisController {
   }
 
   @Post(':id/reopen')
-  @RequireProjectPermission('manage_rfis')
+  @RequireCategoryAction('rfis', 'close', 'manage_rfis')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reopen a closed RFI' })
   async reopen(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {

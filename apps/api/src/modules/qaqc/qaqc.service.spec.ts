@@ -409,6 +409,23 @@ describe('QaqcService', () => {
         .rejects.toBeInstanceOf(NotFoundException);
     });
 
+    // Owner's org-category RBAC sprint, segregation-of-duties fix: the same
+    // user who responded cannot also confirm their own response -- applies
+    // to every record type, not just WIR/MIR (see this check's own comment
+    // in qaqc.service.ts for why).
+    it('rejects self-confirmation -- the same user who responded cannot also confirm it', async () => {
+      const { svc, db } = makeService((text) => {
+        if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) {
+          return [pendingRow({ respondedBy: 'user-2' })];
+        }
+        return undefined;
+      });
+      await expect(svc.confirm(companyId, projectId, qaqcId, 'user-2', { decision: 'confirmed' }))
+        .rejects.toBeInstanceOf(ForbiddenException);
+      // Only findOne()'s own withTenant call happened -- no UPDATE was attempted.
+      expect(db.withTenant).toHaveBeenCalledTimes(1);
+    });
+
     it('notifies the responder on confirmation', async () => {
       const { svc, notifications } = makeService((text) => {
         if (text.includes('FROM qaqc_records q') && text.includes('WHERE q.id')) return [pendingRow()];
