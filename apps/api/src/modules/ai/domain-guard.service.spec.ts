@@ -18,6 +18,12 @@ describe('DomainGuardService', () => {
       'Draft an RFI based on this issue.',
       'Summarize the latest project report.',
       'Show me open NCRs.',
+      'Are there any open SORs?',
+      'Show me open WIRs.',
+      'List open MIRs for this project.',
+      'Which submittals are still pending?',
+      'What transmittals have gone out recently?',
+      'Are there any pending QA inspections?',
     ];
     it.each(cases)('%s', (question) => {
       expect(guard.evaluate(question).inDomain).toBe(true);

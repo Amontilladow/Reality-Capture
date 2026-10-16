@@ -9,7 +9,7 @@ import { AiConnectionsService } from '../ai-connections/ai-connections.service';
 import { SiteRoleService } from '../../common/authorization/site-role.service';
 import { AI_SYSTEM_PROMPT } from './ai-system-prompt';
 import type { AskAssistantDto } from './dto/ask-assistant.dto';
-import type { AIMessage, AIProvider } from './providers/ai-provider.interface';
+import type { AIMessage, AIProvider, ToolDefinition } from './providers/ai-provider.interface';
 
 export interface AskAssistantResult {
   answer: string;
@@ -66,11 +66,53 @@ function buildContextBlock(results: ToolResult[]): string {
     .join('\n');
 }
 
-// Deterministic, zero-cost intent routing (no LLM call just to decide which
-// tool to use -- spec section 10's minimal-context principle applies to
-// tool selection too, not just the final context payload). Checked in
-// order; draft intents are checked first since "draft an RFI about this
-// issue" would otherwise also match the plain RFI-lookup pattern below.
+// Every read-tool the model can be offered via native function-calling (see
+// resolveToolNames() below) -- the model picks from this exact list, so a
+// name here that doesn't exist in runTool()'s switch would silently no-op;
+// KNOWN_TOOL_NAMES guards against that plus any hallucinated name outright.
+// No arguments are declared (see ai-provider.interface.ts's header comment)
+// -- runTool() itself resolves currentResourceId-dependent arguments from
+// AssistantContext, so a "Details" tool is still safe to expose even when
+// nothing is currently being viewed (it falls back to the matching "Open"
+// list tool, exactly like the regex router it replaces).
+const TOOL_CATALOG: ToolDefinition[] = [
+  { name: 'getProjectSummary', description: 'Overview of the current project: name, code, status, member count, open issue count, start/end dates.' },
+  { name: 'getOpenRfis', description: 'List of open RFIs (Requests for Information) on this project.' },
+  { name: 'getRfiDetails', description: 'Full details of the specific RFI the user is currently viewing in the app.' },
+  { name: 'getOpenNcrs', description: 'List of open NCRs (Non-Conformance Reports, a QAQC record type) on this project.' },
+  { name: 'getOpenSors', description: 'List of open SORs (Site Observation Reports, a QAQC record type) on this project.' },
+  { name: 'getOpenWirs', description: 'List of open WIRs (Work Inspection Requests, a QAQC record type) on this project.' },
+  { name: 'getOpenMirs', description: 'List of open MIRs (Material Inspection Requests, a QAQC record type) on this project.' },
+  { name: 'getOpenIssues', description: 'List of open issues on this project.' },
+  { name: 'getIssueDetails', description: 'Full details of the specific issue the user is currently viewing in the app.' },
+  { name: 'getOpenSubmittals', description: 'Submittals still awaiting a review outcome (submitted or under review) on this project.' },
+  { name: 'getRecentTransmittals', description: 'Most recently sent transmittals on this project.' },
+  { name: 'getOpenInspections', description: 'QA inspections that are scheduled or in progress (not yet completed) on this project.' },
+  { name: 'getOpenSnags', description: 'List of open snag/punch-list items on this project.' },
+  { name: 'getSnagDetails', description: 'Full details of the specific snag item the user is currently viewing in the app.' },
+  { name: 'getFloorPlanDetails', description: 'Drawings/floor plans for this project.' },
+  { name: 'getRiskSummary', description: "Executive summary of this project's risk posture." },
+  { name: 'getHighRiskIssues', description: 'The highest-scoring risk items on this project.' },
+  { name: 'getRiskForCurrentResource', description: 'Risk explanation for the specific issue/RFI/snag item the user is currently viewing -- only useful when the user is viewing one and asks something like "why is this high risk?".' },
+  { name: 'getProgressSummary', description: 'Recent progress summary: new captures, new/closed/overdue issues, blockers, overall completion percent.' },
+  { name: 'getOverdueItems', description: 'Count of overdue RFIs, issues, and snags on this project.' },
+  { name: 'getLatestReports', description: 'Latest inspection/report documents uploaded to this project.' },
+  { name: 'searchProjectDocuments', description: "Semantic search over this project's documents, captures, issues, and timeline." },
+];
+const KNOWN_TOOL_NAMES = new Set(TOOL_CATALOG.map((t) => t.name));
+
+// Deterministic, zero-cost intent routing -- still the first thing checked,
+// for two jobs native tool-calling must NOT take over:
+//   1. Draft-intent detection, which the role-aware block in ask() (step
+//      1.5) needs BEFORE a provider call is ever made, let alone one that
+//      costs quota.
+//   2. A safety-net list of read-tools, used by resolveToolNames() below
+//      only if the model-driven selection call itself fails outright (no
+//      tool-calling support, network error) -- never because the model
+//      legitimately decided no tool applies.
+// Checked in order; draft intents are checked first since "draft an RFI
+// about this issue" would otherwise also match the plain RFI-lookup pattern
+// below.
 type Intent =
   | { kind: 'draft_rfi' } | { kind: 'draft_issue' } | { kind: 'draft_snag' }
   | { kind: 'tools'; tools: string[] };
@@ -93,9 +135,15 @@ function routeIntent(question: string, ctx: AssistantContext): Intent {
   if (ctx.currentResourceType && ctx.currentResourceId && /\brisk(s)?\b|\bwhy\b/.test(q)) tools.push('getRiskForCurrentResource');
   if (/\brfi(s)?\b/.test(q)) tools.push(ctx.currentResourceType === 'rfi' ? 'getRfiDetails' : 'getOpenRfis');
   if (/\bncr(s)?\b/.test(q)) tools.push('getOpenNcrs');
+  if (/\bsor(s)?\b/.test(q)) tools.push('getOpenSors');
+  if (/\bwir(s)?\b/.test(q)) tools.push('getOpenWirs');
+  if (/\bmir(s)?\b/.test(q)) tools.push('getOpenMirs');
   if (/\bsnag/.test(q)) tools.push(ctx.currentResourceType === 'snag_item' && ctx.currentResourceId ? 'getSnagDetails' : 'getOpenSnags');
   if (/\brisk(s)?\b|\bhigh[\s-]risk\b/.test(q)) tools.push('getHighRiskIssues', 'getRiskSummary');
-  if (/\bissue(s)?\b/.test(q) && ctx.currentResourceType === 'issue') tools.push('getIssueDetails');
+  if (/\bissue(s)?\b/.test(q)) tools.push(ctx.currentResourceType === 'issue' && ctx.currentResourceId ? 'getIssueDetails' : 'getOpenIssues');
+  if (/\bsubmittal(s)?\b/.test(q)) tools.push('getOpenSubmittals');
+  if (/\btransmittal(s)?\b/.test(q)) tools.push('getRecentTransmittals');
+  if (/\binspection(s)?\b/.test(q)) tools.push('getOpenInspections');
   if (/\bfloor\s?plan|\bdrawing(s)?\b/.test(q)) tools.push('getFloorPlanDetails');
   if (/\boverdue\b/.test(q)) tools.push('getOverdueItems');
   if (/\bprogress\b/.test(q)) tools.push('getProgressSummary');
@@ -157,6 +205,7 @@ export class AiService {
     const ctx: AssistantContext = {
       companyId: user.companyId,
       projectId,
+      userId: user.id,
       currentResourceType: dto.context?.currentResourceType,
       currentResourceId: dto.context?.currentResourceId,
     };
@@ -269,8 +318,9 @@ export class AiService {
       return this.generateDraft(provider, intent.kind, ctx, dto.question);
     }
 
+    const toolNames = await this.resolveToolNames(provider, dto.question, intent.tools);
     const toolResults = (await Promise.all(
-      intent.tools.map((name) => this.runTool(ctx, name)),
+      toolNames.map((name) => this.runTool(ctx, name)),
     )).filter((r): r is ToolResult => r !== null);
 
     const contextBlock = buildContextBlock(toolResults);
@@ -284,15 +334,49 @@ export class AiService {
     return { answer: text, toolsUsed: toolResults.map((r) => r.tool), inputTokens, outputTokens };
   }
 
+  // Owner request, following the plural-matching bug: "the assistant must
+  // understand the full word, part of it, a wrong spelling, like any AI
+  // model." A fixed keyword regex can never fully solve that -- it only
+  // ever recognizes the exact synonyms someone thought to add. Native
+  // function-calling hands the decision to the model's own NLU instead: it
+  // reads the actual question (typos, partial words, unexpected phrasing
+  // and all) and picks which of TOOL_CATALOG apply, the same way "any AI
+  // model" would. `legacyTools` -- routeIntent()'s old regex-derived list --
+  // is used only if the call to the provider itself fails outright (no
+  // tool-calling support, network error); a provider that works but
+  // legitimately decides nothing applies returns toolCalls: [] and that
+  // empty answer is respected, not overridden.
+  private async resolveToolNames(provider: AIProvider, question: string, legacyTools: string[]): Promise<string[]> {
+    try {
+      const result = await provider.selectTools(question, TOOL_CATALOG);
+      if (result.failed) {
+        this.logger.warn('selectTools failed, falling back to keyword routing');
+        return legacyTools;
+      }
+      const names = Array.from(new Set(result.toolCalls.map((c) => c.name))).filter((name) => KNOWN_TOOL_NAMES.has(name));
+      return names.slice(0, 6);
+    } catch (err) {
+      this.logger.warn(`selectTools threw, falling back to keyword routing: ${err instanceof Error ? err.message : String(err)}`);
+      return legacyTools;
+    }
+  }
+
   private async runTool(ctx: AssistantContext, name: string): Promise<ToolResult | null> {
     try {
       switch (name) {
         case 'getProjectSummary': return await this.tools.getProjectSummary(ctx);
         case 'getOpenRfis': return await this.tools.getOpenRfis(ctx);
         case 'getOpenNcrs': return await this.tools.getOpenNcrs(ctx);
+        case 'getOpenSors': return await this.tools.getOpenSors(ctx);
+        case 'getOpenWirs': return await this.tools.getOpenWirs(ctx);
+        case 'getOpenMirs': return await this.tools.getOpenMirs(ctx);
         case 'getRfiDetails': return ctx.currentResourceId ? await this.tools.getRfiDetails(ctx, ctx.currentResourceId) : await this.tools.getOpenRfis(ctx);
         case 'getHighRiskIssues': return await this.tools.getHighRiskIssues(ctx);
-        case 'getIssueDetails': return ctx.currentResourceId ? await this.tools.getIssueDetails(ctx, ctx.currentResourceId) : null;
+        case 'getIssueDetails': return ctx.currentResourceId ? await this.tools.getIssueDetails(ctx, ctx.currentResourceId) : await this.tools.getOpenIssues(ctx);
+        case 'getOpenIssues': return await this.tools.getOpenIssues(ctx);
+        case 'getOpenSubmittals': return await this.tools.getOpenSubmittals(ctx);
+        case 'getRecentTransmittals': return await this.tools.getRecentTransmittals(ctx);
+        case 'getOpenInspections': return await this.tools.getOpenInspections(ctx);
         case 'getOpenSnags': return await this.tools.getOpenSnags(ctx);
         case 'getSnagDetails': return ctx.currentResourceId ? await this.tools.getSnagDetails(ctx, ctx.currentResourceId) : await this.tools.getOpenSnags(ctx);
         case 'getFloorPlanDetails': return await this.tools.getFloorPlanDetails(ctx);

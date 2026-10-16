@@ -9,6 +9,9 @@ import { ProjectsService } from '../projects/projects.service';
 import { DrawingsService } from '../drawings/drawings.service';
 import { AiClientService } from '../ai-client/ai-client.service';
 import { QaqcService } from '../qaqc/qaqc.service';
+import { SubmittalsService } from '../submittals/submittals.service';
+import { TransmittalsService } from '../transmittals/transmittals.service';
+import { QaService } from '../qa/qa.service';
 
 export interface ToolResult {
   tool: string;
@@ -19,6 +22,14 @@ export interface ToolResult {
 export interface AssistantContext {
   companyId: string;
   projectId: string;
+  // The authenticated user asking the question -- required so RFI/Issue
+  // tools can pass it as viewerId to RfisService/IssuesService's own
+  // subcontractor-isolation check (isViewerSubcontractor). Without it, that
+  // check silently no-ops (viewerId undefined -> isolateToViewer false) and
+  // a subcontractor asking the assistant sees every other subcontractor's
+  // records too -- the exact leak that check exists to prevent on the
+  // regular REST routes. See getOpenRfis/getRfiDetails/getIssueDetails.
+  userId: string;
   // What the user is currently looking at in the app, if anything -- lets
   // "why is this high risk?" resolve without the user re-explaining what
   // "this" is (spec section 18).
@@ -50,6 +61,9 @@ export class AiToolsService {
     private readonly drawings: DrawingsService,
     private readonly aiClient: AiClientService,
     private readonly qaqc: QaqcService,
+    private readonly submittals: SubmittalsService,
+    private readonly transmittals: TransmittalsService,
+    private readonly qa: QaService,
   ) {}
 
   async getProjectSummary(ctx: AssistantContext): Promise<ToolResult> {
@@ -65,7 +79,7 @@ export class AiToolsService {
   }
 
   async getOpenRfis(ctx: AssistantContext, limit = 10): Promise<ToolResult> {
-    const page = await this.rfis.findAll(ctx.companyId, ctx.projectId, { status: 'open', page: 1, perPage: limit });
+    const page = await this.rfis.findAll(ctx.companyId, ctx.projectId, { status: 'open', page: 1, perPage: limit }, ctx.userId);
     return {
       tool: 'getOpenRfis', category: 'rfi',
       data: (page.data as Record<string, unknown>[]).map((r) => ({
@@ -76,7 +90,7 @@ export class AiToolsService {
   }
 
   async getRfiDetails(ctx: AssistantContext, rfiId: string): Promise<ToolResult> {
-    const rfi = await this.rfis.findOne(ctx.companyId, ctx.projectId, rfiId) as Record<string, unknown>;
+    const rfi = await this.rfis.findOne(ctx.companyId, ctx.projectId, rfiId, ctx.userId) as Record<string, unknown>;
     return {
       tool: 'getRfiDetails', category: 'rfi',
       data: {
@@ -102,6 +116,89 @@ export class AiToolsService {
     };
   }
 
+  async getOpenSors(ctx: AssistantContext, limit = 10): Promise<ToolResult> {
+    const page = await this.qaqc.findAll(ctx.companyId, ctx.projectId, { recordType: 'sor', status: 'open', page: 1, perPage: limit });
+    return {
+      tool: 'getOpenSors', category: 'qaqc',
+      data: (page.data as Record<string, unknown>[]).map((r) => ({
+        recordNumber: r.recordNumber, subject: r.subject, priority: r.priority,
+        discipline: r.discipline, dueDate: r.dueDate, assignedToName: r.assignedToName,
+      })),
+    };
+  }
+
+  async getOpenWirs(ctx: AssistantContext, limit = 10): Promise<ToolResult> {
+    const page = await this.qaqc.findAll(ctx.companyId, ctx.projectId, { recordType: 'wir', status: 'open', page: 1, perPage: limit });
+    return {
+      tool: 'getOpenWirs', category: 'qaqc',
+      data: (page.data as Record<string, unknown>[]).map((r) => ({
+        recordNumber: r.recordNumber, subject: r.subject, priority: r.priority,
+        discipline: r.discipline, dueDate: r.dueDate, assignedToName: r.assignedToName,
+      })),
+    };
+  }
+
+  async getOpenMirs(ctx: AssistantContext, limit = 10): Promise<ToolResult> {
+    const page = await this.qaqc.findAll(ctx.companyId, ctx.projectId, { recordType: 'mir', status: 'open', page: 1, perPage: limit });
+    return {
+      tool: 'getOpenMirs', category: 'qaqc',
+      data: (page.data as Record<string, unknown>[]).map((r) => ({
+        recordNumber: r.recordNumber, subject: r.subject, priority: r.priority,
+        discipline: r.discipline, dueDate: r.dueDate, assignedToName: r.assignedToName,
+      })),
+    };
+  }
+
+  // Submittals: same trailing-viewerId isolation convention as RFIs. No
+  // single "open" status exists (submitted/under_review/approved/
+  // approved_as_noted/revise_and_resubmit/rejected), so "open" here means
+  // still awaiting a review outcome.
+  async getOpenSubmittals(ctx: AssistantContext, limit = 10): Promise<ToolResult> {
+    const page = await this.submittals.findAll(ctx.companyId, ctx.projectId, { page: 1, perPage: 100 }, ctx.userId);
+    const pending = (page.data as Record<string, unknown>[])
+      .filter((s) => s.status === 'submitted' || s.status === 'under_review')
+      .slice(0, limit);
+    return {
+      tool: 'getOpenSubmittals', category: 'submittal',
+      data: pending.map((s) => ({
+        submittalNumber: s.submittalNumber, title: s.title, status: s.status, priority: s.priority,
+        discipline: s.discipline, dueDate: s.dueDate, assignedToName: s.assignedToName,
+      })),
+    };
+  }
+
+  // Transmittals: no subcontractor isolation (by design, same as Snagging/
+  // QAQC/QA Inspections). No single "open" status (draft/sent/
+  // acknowledged/void), so this returns the most recent ones rather than
+  // filtering to a status the user didn't actually ask about.
+  async getRecentTransmittals(ctx: AssistantContext, limit = 10): Promise<ToolResult> {
+    const page = await this.transmittals.findAll(ctx.companyId, ctx.projectId, { page: 1, perPage: limit });
+    return {
+      tool: 'getRecentTransmittals', category: 'transmittal',
+      data: (page.data as Record<string, unknown>[]).map((t) => ({
+        transmittalNumber: t.transmittalNumber, subject: t.subject, status: t.status,
+        recipientName: t.recipientName, recipientCompany: t.recipientCompany, dueDate: t.dueDate,
+      })),
+    };
+  }
+
+  // QA Inspections: no subcontractor isolation. Statuses are
+  // scheduled/in_progress (pending) and passed/passed_with_exceptions/failed
+  // (outcomes) -- "open" here means not yet completed.
+  async getOpenInspections(ctx: AssistantContext, limit = 10): Promise<ToolResult> {
+    const page = await this.qa.findAll(ctx.companyId, ctx.projectId, { page: 1, perPage: 100 });
+    const pending = (page.data as Record<string, unknown>[])
+      .filter((i) => i.status === 'scheduled' || i.status === 'in_progress')
+      .slice(0, limit);
+    return {
+      tool: 'getOpenInspections', category: 'inspection',
+      data: pending.map((i) => ({
+        inspectionNumber: i.inspectionNumber, title: i.title, inspectionType: i.inspectionType,
+        location: i.location, status: i.status, assignedToName: i.assignedToName, inspectionDate: i.inspectionDate,
+      })),
+    };
+  }
+
   async getHighRiskIssues(ctx: AssistantContext, limit = 10): Promise<ToolResult> {
     const risks = await this.risk.getTopRisks(ctx.companyId, ctx.projectId, limit);
     return {
@@ -114,7 +211,7 @@ export class AiToolsService {
   }
 
   async getIssueDetails(ctx: AssistantContext, issueId: string): Promise<ToolResult> {
-    const issue = await this.issues.findOne(ctx.companyId, ctx.projectId, issueId) as Record<string, unknown>;
+    const issue = await this.issues.findOne(ctx.companyId, ctx.projectId, issueId, ctx.userId) as Record<string, unknown>;
     return {
       tool: 'getIssueDetails', category: 'issue',
       data: {
@@ -122,6 +219,22 @@ export class AiToolsService {
         status: issue.status, priority: issue.priority, discipline: issue.discipline,
         deadline: issue.deadline, assignedToName: issue.assignedToName,
       },
+    };
+  }
+
+  // Issues list: isolation is driven by query.userId here (not a trailing
+  // param) -- IssuesService.findAll's own isViewerSubcontractor check reads
+  // it off the query object, unlike RfisService/SubmittalsService.
+  async getOpenIssues(ctx: AssistantContext, limit = 10): Promise<ToolResult> {
+    const page = await this.issues.findAll(ctx.companyId, ctx.projectId, {
+      status: 'open', page: 1, perPage: limit, userId: ctx.userId,
+    });
+    return {
+      tool: 'getOpenIssues', category: 'issue',
+      data: (page.data as Record<string, unknown>[]).map((i) => ({
+        issueNumber: i.issueNumber, title: i.title, priority: i.priority,
+        discipline: i.discipline, deadline: i.deadline, assignedToName: i.assignedToName,
+      })),
     };
   }
 

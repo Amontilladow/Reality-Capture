@@ -52,4 +52,34 @@ describe('OpenAICompatibleProvider', () => {
     const provider = new OpenAICompatibleProvider('sk-key', 'gpt-4o', 'openai');
     await expect(provider.classifyRequest('how tall is the Eiffel Tower?')).resolves.toEqual({ inDomain: false, reason: 'classification_unavailable' });
   });
+
+  describe('selectTools', () => {
+    it('returns the tool names the model chose to call', async () => {
+      mockCreate.mockResolvedValue({
+        choices: [{ message: { tool_calls: [
+          { type: 'function', function: { name: 'getOpenRfis', arguments: '{}' } },
+          { type: 'function', function: { name: 'getOpenNcrs', arguments: '{}' } },
+        ] } }],
+      });
+      const provider = new OpenAICompatibleProvider('sk-key', 'gpt-4o', 'openai');
+      await expect(provider.selectTools('Summarize open RFIs and NCRs.', [
+        { name: 'getOpenRfis', description: 'List of open RFIs.' },
+        { name: 'getOpenNcrs', description: 'List of open NCRs.' },
+      ])).resolves.toEqual({ toolCalls: [{ name: 'getOpenRfis' }, { name: 'getOpenNcrs' }] });
+    });
+
+    it('returns an empty, non-failed result when the model decides no tool applies', async () => {
+      mockCreate.mockResolvedValue({ choices: [{ message: { content: "RFI stands for Request for Information." } }] });
+      const provider = new OpenAICompatibleProvider('sk-key', 'gpt-4o', 'openai');
+      await expect(provider.selectTools('What does RFI stand for?', [{ name: 'getOpenRfis', description: 'd' }]))
+        .resolves.toEqual({ toolCalls: [] });
+    });
+
+    it('reports failed: true (never throws) when the call itself errors -- e.g. Ollama running a model with no tool-calling support', async () => {
+      mockCreate.mockRejectedValue(new Error('this model does not support tools'));
+      const provider = new OpenAICompatibleProvider(undefined, 'llama3', 'ollama', 'http://localhost:11434/v1');
+      await expect(provider.selectTools('Summarize open RFIs.', [{ name: 'getOpenRfis', description: 'd' }]))
+        .resolves.toEqual({ toolCalls: [], failed: true });
+    });
+  });
 });

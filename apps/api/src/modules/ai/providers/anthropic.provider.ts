@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type {
   AIProvider, GenerateResponseInput, GenerateResponseResult,
   ClassifyRequestResult, AIProviderModelInfo, ValidateConnectionResult,
+  ToolDefinition, SelectToolsResult,
 } from './ai-provider.interface';
 
 @Injectable()
@@ -53,6 +54,29 @@ export class AnthropicProvider implements AIProvider {
     } catch (err) {
       this.logger.warn(`classifyRequest failed, defaulting to blocked: ${err instanceof Error ? err.message : String(err)}`);
       return { inDomain: false, reason: 'classification_unavailable' };
+    }
+  }
+
+  async selectTools(question: string, tools: ToolDefinition[]): Promise<SelectToolsResult> {
+    try {
+      const response = await this.client.messages.create({
+        model: this.model,
+        max_tokens: 1024,
+        tools: tools.map((t) => ({
+          name: t.name,
+          description: t.description,
+          input_schema: { type: 'object' as const, properties: {} },
+        })),
+        messages: [{
+          role: 'user',
+          content: `Decide which of the available tools are needed to answer this question about THIS construction project. Call every tool that could help, even if you are not fully sure -- it is fine to call one that turns out not to be needed. If none apply, do not call any tool. Question: "${question}"`,
+        }],
+      });
+      const calls = response.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
+      return { toolCalls: calls.map((c) => ({ name: c.name })) };
+    } catch (err) {
+      this.logger.warn(`selectTools failed: ${err instanceof Error ? err.message : String(err)}`);
+      return { toolCalls: [], failed: true };
     }
   }
 

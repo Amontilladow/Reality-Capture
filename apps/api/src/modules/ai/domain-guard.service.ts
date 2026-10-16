@@ -68,6 +68,7 @@ const STRONG_IN_DOMAIN_PATTERNS: RegExp[] = [
   /\brisk(s)?\b/i, /\bprogress\b/i, /\breport(s)?\b/i,
   /\bbim\b/i, /\bsubmittal(s)?\b/i, /\btransmittal(s)?\b/i,
   /\b(qa|quality assurance)\b/i, /\binspection(s)?\b/i, /\bncr(s)?\b/i,
+  /\bsor(s)?\b/i, /\bwir(s)?\b/i, /\bmir(s)?\b/i,
   /\boverdue\b/i, /\bconstruction\b/i, /\bworksite\b/i,
 ];
 
@@ -101,5 +102,5 @@ export class DomainGuardService {
   }
 
   static readonly REJECTION_MESSAGE =
-    "I'm the RealityCapture Engineering Assistant. I can help with project information, RFIs, NCRs, issues, snags, risks, progress, documents and other functions available within RealityCapture.";
+    "I'm the RealityCapture Engineering Assistant. I can help with project information, RFIs, NCRs/SORs/WIRs/MIRs, issues, snags, submittals, transmittals, QA inspections, risks, progress, documents and other functions available within RealityCapture.";
 }

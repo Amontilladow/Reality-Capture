@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import type {
   AIProvider, GenerateResponseInput, GenerateResponseResult,
   ClassifyRequestResult, AIProviderModelInfo, ValidateConnectionResult,
+  ToolDefinition, SelectToolsResult,
 } from './ai-provider.interface';
 
 @Injectable()
@@ -51,6 +52,29 @@ export class GeminiProvider implements AIProvider {
     } catch (err) {
       this.logger.warn(`classifyRequest failed, defaulting to blocked: ${err instanceof Error ? err.message : String(err)}`);
       return { inDomain: false, reason: 'classification_unavailable' };
+    }
+  }
+
+  async selectTools(question: string, tools: ToolDefinition[]): Promise<SelectToolsResult> {
+    try {
+      const model = this.client.getGenerativeModel({
+        model: this.model,
+        tools: [{
+          functionDeclarations: tools.map((t) => ({
+            name: t.name,
+            description: t.description,
+            parameters: { type: SchemaType.OBJECT, properties: {} },
+          })),
+        }],
+      });
+      const result = await model.generateContent(
+        `Decide which of the available functions are needed to answer this question about THIS construction project. Call every function that could help, even if you are not fully sure -- it is fine to call one that turns out not to be needed. If none apply, do not call any function. Question: "${question}"`,
+      );
+      const calls = result.response.functionCalls() ?? [];
+      return { toolCalls: calls.map((c) => ({ name: c.name })) };
+    } catch (err) {
+      this.logger.warn(`selectTools failed: ${err instanceof Error ? err.message : String(err)}`);
+      return { toolCalls: [], failed: true };
     }
   }
 
