@@ -38,6 +38,11 @@ function makeService(opts: {
   const provider = {
     generateResponse: jest.fn().mockResolvedValue({ text: 'Here is the answer.', inputTokens: 10, outputTokens: 5 }),
     getModelInfo: jest.fn().mockReturnValue({ provider: 'anthropic', model: 'claude-sonnet-4-6' }),
+    // Only reached for a "weak" domain-guard match (see domain-guard.service.ts) --
+    // every existing test question here matches a "strong" pattern, so this
+    // default is never exercised by them; defaults to true (not the
+    // fail-closed path) so a test can opt into the "weak" scenario cleanly.
+    classifyRequest: jest.fn().mockResolvedValue({ inDomain: true }),
   };
   const providerFactory = { getProvider: jest.fn().mockReturnValue(provider) };
 
@@ -115,6 +120,47 @@ describe('AiService.ask', () => {
   });
 });
 
+describe('AiService — weak domain-guard matches get a second opinion', () => {
+  it('a "weak" match confirmed in-domain by classifyRequest() proceeds to answer normally', async () => {
+    const { svc, provider } = makeService();
+    provider.classifyRequest.mockResolvedValue({ inDomain: true });
+
+    const result = await svc.ask(user, 'project-1', { question: 'What building is this drawing for?' });
+
+    expect(provider.classifyRequest).toHaveBeenCalledWith('What building is this drawing for?');
+    expect(result.blocked).toBeUndefined();
+    expect(provider.generateResponse).toHaveBeenCalledTimes(1);
+  });
+
+  it('a "weak" match that classifyRequest() rejects is blocked before any answer is generated', async () => {
+    const { svc, provider, usage } = makeService();
+    provider.classifyRequest.mockResolvedValue({ inDomain: false, reason: 'classification_unavailable' });
+
+    const result = await svc.ask(user, 'project-1', { question: 'What building is this drawing for?' });
+
+    expect(result.blocked).toBe(true);
+    expect(provider.generateResponse).not.toHaveBeenCalled();
+    expect(usage.checkAndReserve).not.toHaveBeenCalled(); // never reaches quota -- blocked before it
+    expect(usage.log).toHaveBeenCalledWith(expect.objectContaining({ status: 'blocked', blockReason: 'weak_match_failed_classification' }));
+  });
+
+  it('fails closed (blocks) when classifyRequest() itself errors, rather than letting the question through', async () => {
+    const { svc, provider } = makeService();
+    provider.classifyRequest.mockRejectedValue(new Error('provider timeout'));
+
+    const result = await svc.ask(user, 'project-1', { question: 'What zone is this in?' });
+
+    expect(result.blocked).toBe(true);
+    expect(provider.generateResponse).not.toHaveBeenCalled();
+  });
+
+  it('a "strong" match never calls classifyRequest() at all -- the common case stays free', async () => {
+    const { svc, provider } = makeService();
+    await svc.ask(user, 'project-1', { question: 'Show me my open RFIs.' });
+    expect(provider.classifyRequest).not.toHaveBeenCalled();
+  });
+});
+
 describe('AiService — BYO AI (Mode B)', () => {
   it("uses the user's own BYO provider when connected, instead of RealityCapture's own", async () => {
     const { svc, provider, aiConnections, usage } = makeService();
@@ -159,6 +205,34 @@ describe('AiService — BYO AI (Mode B)', () => {
 
     expect(result.answer).toBe('Here is the answer.');
     expect(provider.generateResponse).toHaveBeenCalledTimes(1);
+  });
+
+  // Owner request: a user who has exceeded RealityCapture's own shared
+  // daily/per-minute quota must still be able to keep using the assistant
+  // by connecting their own paid provider -- their own account pays and
+  // rate-limits the call, not RealityCapture's. Previously this was broken:
+  // usage.checkAndReserve() ran BEFORE the BYO check, so a BYO user was
+  // blocked by RealityCapture's quota exactly like a non-BYO user.
+  it("a BYO user whose RealityCapture daily quota is already exhausted still gets answered via their own provider", async () => {
+    const { svc, aiConnections, usage } = makeService({ usageAllowed: false, usageReason: 'daily_limit' });
+    const byoProvider = {
+      generateResponse: jest.fn().mockResolvedValue({ text: 'BYO answer, unaffected by the platform quota.' }),
+      getModelInfo: jest.fn().mockReturnValue({ provider: 'openai', model: 'gpt-4o' }),
+    };
+    aiConnections.getProviderForUser.mockResolvedValue(byoProvider);
+
+    const result = await svc.ask(user, 'project-1', { question: 'Summarize the current project.' });
+
+    expect(result.blocked).toBeUndefined();
+    expect(result.answer).toBe('BYO answer, unaffected by the platform quota.');
+    expect(byoProvider.generateResponse).toHaveBeenCalledTimes(1);
+    expect(usage.checkAndReserve).not.toHaveBeenCalled(); // BYO never touches RealityCapture's quota gate
+  });
+
+  it('the daily-limit-exceeded message for a non-BYO user mentions connecting their own provider', async () => {
+    const { svc } = makeService({ usageAllowed: false, usageReason: 'daily_limit' });
+    await expect(svc.ask(user, 'project-1', { question: 'Summarize the current project.' }))
+      .rejects.toMatchObject({ message: expect.stringContaining('Connect your own AI provider') });
   });
 });
 

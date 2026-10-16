@@ -131,6 +131,21 @@ export class AiService {
     return this.usage.getRemaining(user.id, user.companyRole);
   }
 
+  // See the 1.6 call site's comment: a cheap LLM classification used only
+  // for "weak" domain-guard matches, always on RealityCapture's own
+  // provider. Fails closed -- any error getting or calling the provider is
+  // treated as "not in domain" rather than risking a false allow.
+  private async classifyBorderline(question: string): Promise<boolean> {
+    try {
+      const provider = this.providerFactory.getProvider();
+      const result = await provider.classifyRequest(question);
+      return result.inDomain;
+    } catch (err) {
+      this.logger.warn(`classifyBorderline failed, defaulting to blocked: ${err instanceof Error ? err.message : String(err)}`);
+      return false;
+    }
+  }
+
   async ask(user: AuthenticatedUser, projectId: string, dto: AskAssistantDto): Promise<AskAssistantResult> {
     const ctx: AssistantContext = {
       companyId: user.companyId,
@@ -170,21 +185,54 @@ export class AiService {
       return { answer: RFI_DRAFT_RESTRICTED_MESSAGE, blocked: true, toolsUsed: [], remainingQuota: remaining };
     }
 
-    // ── 2. Usage limits — only a question the domain guard already allowed
-    // ever reaches here, so a blocked question never costs quota.
-    const reservation = await this.usage.checkAndReserve(user.id, user.companyRole);
-    if (!reservation.allowed) {
+    // ── 1.6 Second opinion for a "weak" domain match — the regex guard
+    // above matched only a word that's real construction vocabulary but
+    // also common in everyday English (see domain-guard.service.ts's
+    // header comment), so before spending quota or answering, confirm with
+    // one cheap classifyRequest() call. Always runs on RealityCapture's own
+    // provider (never a user's BYO one) -- this is the platform enforcing
+    // its own scope commitment, not a billable part of the answer. Fails
+    // closed: if classification itself can't be attempted (no provider
+    // configured) or the call errors, the question is blocked rather than
+    // silently let through -- same "ambiguous defaults to blocked"
+    // philosophy as the regex guard itself.
+    if (guard.strength === 'weak' && !(await this.classifyBorderline(dto.question))) {
       this.usage.log({
         companyId: user.companyId, projectId, userId: user.id, userRole: user.companyRole,
-        status: 'blocked', blockReason: reservation.reason,
+        status: 'blocked', blockReason: 'weak_match_failed_classification',
       });
-      const message = reservation.reason === 'daily_limit'
-        ? "You've reached your AI usage limit for today. Please try again tomorrow."
-        : "You're sending requests too quickly. Please wait a moment and try again.";
-      throw new AssistantQuotaExceededError(message, reservation.reason!);
+      const remaining = await this.usage.getRemaining(user.id, user.companyRole);
+      return { answer: DomainGuardService.REJECTION_MESSAGE, blocked: true, toolsUsed: [], remainingQuota: remaining };
     }
 
+    // ── 2. Resolve provider BEFORE usage limits — a user with their own
+    // connected BYO provider (Mode B) pays and rate-limits on their own
+    // account, not RealityCapture's shared one, so they must never be
+    // blocked by RealityCapture's quota. Only a request actually running on
+    // RealityCapture's own shared provider is gated by AiUsageService below.
     const { provider, mode } = await this.resolveProvider(user);
+
+    let reservation: { dailyUsed: number; dailyLimit: number };
+    if (mode === 'realitycapture') {
+      const check = await this.usage.checkAndReserve(user.id, user.companyRole);
+      if (!check.allowed) {
+        this.usage.log({
+          companyId: user.companyId, projectId, userId: user.id, userRole: user.companyRole,
+          status: 'blocked', blockReason: check.reason,
+        });
+        const message = check.reason === 'daily_limit'
+          ? "You've reached your AI usage limit for today. Connect your own AI provider in Settings to continue without this limit, or try again tomorrow."
+          : "You're sending requests too quickly. Please wait a moment and try again.";
+        throw new AssistantQuotaExceededError(message, check.reason!);
+      }
+      reservation = check;
+    } else {
+      // BYO — never gated, but still report the user's current
+      // RealityCapture-quota standing so the UI's "X / Y requests today"
+      // indicator stays meaningful even though it no longer limits them.
+      reservation = await this.usage.getRemaining(user.id, user.companyRole);
+    }
+
     const startedAt = Date.now();
     try {
       const { inputTokens, outputTokens, ...result } = await this.generate(provider, intent, ctx, dto);
