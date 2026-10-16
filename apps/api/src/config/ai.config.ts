@@ -27,6 +27,20 @@ const DEFAULT_LIMITS: Record<string, AiRoleLimit> = {
   // site-facing roles, limited like the spec's "Site Engineer" bucket
   // (20/day, 5/min) rather than the general 30/day manager bucket.
   project_engineer:      { dailyLimit: 20,  perMinuteLimit: 5  },
+  // Org-category sprint additions (packages/types/src/user.types.ts) --
+  // the AI Assistant isn't part of that sprint's permission matrix (owner's
+  // matrix section 7: "unchanged from existing behavior"), so these just
+  // need a sensible bucket, same manager-tier default as the rest of
+  // Management/Document Control above.
+  chairman:                     { dailyLimit: 30, perMinuteLimit: 10 },
+  general_manager:              { dailyLimit: 30, perMinuteLimit: 10 },
+  operations_manager:           { dailyLimit: 30, perMinuteLimit: 10 },
+  project_document_controller:  { dailyLimit: 30, perMinuteLimit: 10 },
+  // Individual-contributor placeholders -- same lower bucket as
+  // project_engineer/the default, not the manager-tier one above.
+  document_control_assistant:   { dailyLimit: 20, perMinuteLimit: 5  },
+  engineering_team_member:      { dailyLimit: 20, perMinuteLimit: 5  },
+  qaqc_team_member:             { dailyLimit: 20, perMinuteLimit: 5  },
   default:               { dailyLimit: 20,  perMinuteLimit: 5  },
 };
 
@@ -80,6 +94,13 @@ export default registerAs('ai', () => ({
     consultant:            parseLimitOverride(process.env.AI_LIMIT_CONSULTANT, DEFAULT_LIMITS.consultant),
     client_representative: parseLimitOverride(process.env.AI_LIMIT_CLIENT_REPRESENTATIVE, DEFAULT_LIMITS.client_representative),
     project_engineer:      parseLimitOverride(process.env.AI_LIMIT_PROJECT_ENGINEER, DEFAULT_LIMITS.project_engineer),
+    chairman:                    parseLimitOverride(process.env.AI_LIMIT_CHAIRMAN, DEFAULT_LIMITS.chairman),
+    general_manager:             parseLimitOverride(process.env.AI_LIMIT_GENERAL_MANAGER, DEFAULT_LIMITS.general_manager),
+    operations_manager:          parseLimitOverride(process.env.AI_LIMIT_OPERATIONS_MANAGER, DEFAULT_LIMITS.operations_manager),
+    project_document_controller: parseLimitOverride(process.env.AI_LIMIT_PROJECT_DOCUMENT_CONTROLLER, DEFAULT_LIMITS.project_document_controller),
+    document_control_assistant:  parseLimitOverride(process.env.AI_LIMIT_DOCUMENT_CONTROL_ASSISTANT, DEFAULT_LIMITS.document_control_assistant),
+    engineering_team_member:     parseLimitOverride(process.env.AI_LIMIT_ENGINEERING_TEAM_MEMBER, DEFAULT_LIMITS.engineering_team_member),
+    qaqc_team_member:            parseLimitOverride(process.env.AI_LIMIT_QAQC_TEAM_MEMBER, DEFAULT_LIMITS.qaqc_team_member),
     default:               parseLimitOverride(process.env.AI_LIMIT_DEFAULT, DEFAULT_LIMITS.default),
   } satisfies Record<CompanyRole | 'default', AiRoleLimit>,
 

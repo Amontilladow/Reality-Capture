@@ -1,5 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { SITE_RESTRICTED_COMPANY_ROLES } from '@engineeringos/types';
 import { SiteRoleService } from '../authorization/site-role.service';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
@@ -34,7 +35,23 @@ const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 // Matches the project-nested base paths for the three full-working modules
 // -- see issues.controller.ts/snagging.controller.ts/drawings.controller.ts
 // for the exact @Controller() paths these mirror (snag-items, not snagging).
+//
+// Still the full set for the 'site_engineer' PROJECT role below -- the
+// owner's org-category RBAC sprint didn't address that identity at all
+// (it's a separate axis from CompanyRole-derived categories; see
+// OrgCategory's own header comment in user.types.ts), so it keeps its
+// pre-sprint access unchanged.
 const ALLOWED_PATH_PATTERN = /^\/api\/v1\/projects\/[^/]+\/(issues|snag-items|drawings)(\/|$)/;
+
+// Narrower allowlist for the COMPANY-role-based restriction only
+// (construction_manager/project_engineer -- now "Construction Team" org
+// category). Owner's RBAC sprint conflict resolution ("new matrix wins"):
+// the category matrix gives Construction Team view-only on Drawings, which
+// contradicted this guard's pre-sprint full-write Drawings access for
+// these two company roles specifically -- narrowed here to match. Issues/
+// snag-items are unaffected (Construction Team still gets create/view/edit
+// there per the same matrix).
+const COMPANY_ROLE_ALLOWED_PATH_PATTERN = /^\/api\/v1\/projects\/[^/]+\/(issues|snag-items)(\/|$)/;
 
 @Injectable()
 export class SiteRoleRestrictionGuard implements CanActivate {
@@ -59,7 +76,10 @@ export class SiteRoleRestrictionGuard implements CanActivate {
     const restricted = await this.siteRole.isRestricted(user, request.params?.projectId);
     if (!restricted) return true;
 
-    if (ALLOWED_PATH_PATTERN.test(request.path ?? request.url)) return true;
+    const path = request.path ?? request.url;
+    const isCompanyRoleRestricted = SITE_RESTRICTED_COMPANY_ROLES.includes(user.companyRole);
+    const allowedPattern = isCompanyRoleRestricted ? COMPANY_ROLE_ALLOWED_PATH_PATTERN : ALLOWED_PATH_PATTERN;
+    if (allowedPattern.test(path)) return true;
 
     throw new ForbiddenException({
       code: 'SITE_ROLE_RESTRICTED',

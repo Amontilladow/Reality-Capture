@@ -191,14 +191,32 @@ export class RfisService {
     return rfi;
   }
 
+  // viewerId + a project_members lookup for its role: when the caller is
+  // themselves a 'subcontractor' project member, every result is further
+  // narrowed to r.created_by = viewerId -- a real, critical isolation gap
+  // otherwise, since "Subcontractor's RFIs" was previously one shared
+  // window showing EVERY subcontractor-raised RFI to ANY subcontractor on
+  // the project, letting one subcontractor-company account read another's.
+  // A non-subcontractor viewer (any org category, any company role) is
+  // completely unaffected -- they keep seeing everything the view/other
+  // filters already select, same as before this check existed.
+  private async isViewerSubcontractor(companyId: string, projectId: string, viewerId: string | undefined): Promise<boolean> {
+    if (!viewerId) return false;
+    const [membership] = await this.db.withTenant(companyId, sql => sql`
+      SELECT role FROM project_members WHERE project_id = ${projectId} AND user_id = ${viewerId}
+    `);
+    return membership?.role === 'subcontractor';
+  }
+
   async findAll(companyId: string, projectId: string, query: PaginationQuery & {
     status?: string; priority?: string; discipline?: string;
     costImpactLevel?: string; timeImpactLevel?: string; assignedTo?: string;
     dateFrom?: string; dateTo?: string; view?: 'main' | 'subcontractor'; origin?: string;
-  }) {
+  }, viewerId?: string) {
     const page    = query.page ?? 1;
     const perPage = Math.min(query.perPage ?? 20, 100);
     const offset  = (page - 1) * perPage;
+    const isolateToViewer = await this.isViewerSubcontractor(companyId, projectId, viewerId);
 
     const rows = await this.db.withTenant(companyId, sql => sql`
       SELECT r.*,
@@ -231,6 +249,7 @@ export class RfisService {
           OR (${query.view ?? null} = 'subcontractor' AND r.raised_by_organization_slot = 'subcontractor')
           OR (${query.view ?? null} = 'main' AND r.raised_by_organization_slot != 'subcontractor'))
         AND (${query.origin ?? null}::text IS NULL OR r.origin = ${query.origin ?? null})
+        AND (${isolateToViewer} = false OR r.created_by = ${viewerId ?? null}::uuid)
       ORDER BY
         CASE r.priority WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
         r.created_at DESC
@@ -240,7 +259,7 @@ export class RfisService {
     return this.db.paginate(rows, page, perPage);
   }
 
-  async findOne(companyId: string, projectId: string, rfiId: string) {
+  async findOne(companyId: string, projectId: string, rfiId: string, viewerId?: string) {
     const [rfi] = await this.db.withTenant(companyId, sql => sql`
       SELECT r.*,
         u_c.first_name || ' ' || u_c.last_name AS created_by_name,
@@ -257,6 +276,16 @@ export class RfisService {
       WHERE r.id = ${rfiId} AND r.project_id = ${projectId} AND r.company_id = ${companyId}
     `);
     if (!rfi) throw new NotFoundException(`RFI ${rfiId} not found.`);
+    // Direct-by-id reads bypass findAll()'s own isolation filter -- re-check
+    // here so a subcontractor can't reach another subcontractor's RFI by
+    // guessing/pasting its id. Main-contractor-raised RFIs stay visible to
+    // any subcontractor on the project (the existing, unaffected "read
+    // window 1, read-only" design from the RFI split).
+    if (rfi.raisedByOrganizationSlot === 'subcontractor' && rfi.createdBy !== viewerId) {
+      if (await this.isViewerSubcontractor(companyId, projectId, viewerId)) {
+        throw new NotFoundException(`RFI ${rfiId} not found.`);
+      }
+    }
     return rfi;
   }
 
@@ -646,7 +675,8 @@ export class RfisService {
 
   // view: same 'main'/'subcontractor' split as findAll() -- omitted keeps
   // today's unfiltered, whole-project summary (every pre-existing caller).
-  async getSummary(companyId: string, projectId: string, view?: 'main' | 'subcontractor') {
+  async getSummary(companyId: string, projectId: string, view?: 'main' | 'subcontractor', viewerId?: string) {
+    const isolateToViewer = await this.isViewerSubcontractor(companyId, projectId, viewerId);
     const [summary] = await this.db.withTenant(companyId, sql => sql`
       SELECT
         COUNT(*) AS total,
@@ -658,6 +688,7 @@ export class RfisService {
         AND (${view ?? null}::text IS NULL
           OR (${view ?? null} = 'subcontractor' AND raised_by_organization_slot = 'subcontractor')
           OR (${view ?? null} = 'main' AND raised_by_organization_slot != 'subcontractor'))
+        AND (${isolateToViewer} = false OR created_by = ${viewerId ?? null}::uuid)
     `);
     return summary;
   }

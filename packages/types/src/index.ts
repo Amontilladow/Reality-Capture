@@ -5,6 +5,7 @@
 // ══════════════════════════════════════════════════════════════════════════
 
 export * from './user.types';
+export * from './org-permission.types';
 export * from './project.types';
 export * from './capture.types';
 export * from './bim.types';

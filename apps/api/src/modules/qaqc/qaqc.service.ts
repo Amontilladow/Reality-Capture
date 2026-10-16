@@ -250,6 +250,22 @@ export class QaqcService {
         `This ${(record.recordType as string).toUpperCase()} is not awaiting confirmation (status: "${record.status as string}").`,
       );
     }
+    // Owner's org-category RBAC sprint: segregation of duties for the
+    // respond -> confirm sign-off step. For NCR/SOR this was already
+    // structurally true (CONFIRM_ROLES is QAQC-only, RESPOND_ROLES_BY_TYPE's
+    // NCR/SOR entry is construction-only -- different people by
+    // construction), but for WIR/MIR the SAME qa_qc_manager who responded
+    // (performed the inspection) could also confirm/close their own
+    // response -- nothing checked this until now. Applied uniformly to
+    // every record type rather than only WIR/MIR, since the segregation
+    // principle holds regardless of which side structurally tends to
+    // respond.
+    if (record.respondedBy === userId) {
+      throw new ForbiddenException({
+        code: 'CANNOT_SELF_CONFIRM',
+        message: 'You cannot confirm your own response -- a different person must sign off.',
+      });
+    }
 
     const newStatus = dto.decision === 'confirmed' ? 'closed' : 'reopened';
     const [updated] = await this.db.withTenant(companyId, sql => sql`

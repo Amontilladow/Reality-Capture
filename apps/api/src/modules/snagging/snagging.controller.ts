@@ -11,6 +11,7 @@ import { AddSnagAttachmentDto } from './dto/add-snag-attachment.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
+import { RequireCategoryAction } from '../../common/decorators/require-category-action.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 
 @ApiTags('snagging')
@@ -19,7 +20,14 @@ import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 export class SnaggingController {
   constructor(private readonly svc: SnaggingService) {}
 
+  // Previously ungated -- the owner's org-category matrix ("Issues/Snags")
+  // scopes creation to Construction Team/QAQC Team (and Engineering
+  // Manager, always); Management/Engineering Team/Document Control are now
+  // genuinely restricted here, same new restriction as issues.controller.ts's
+  // own create(). No fallbackPermissions -- no discretionary grant for
+  // "create a snag item" existed to preserve.
   @Post()
+  @RequireCategoryAction('issues_snags', 'create')
   async create(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: CreateSnagItemDto) {
     return { data: await this.svc.create(u.companyId, pid, u.id, dto), error: null };
   }
@@ -46,7 +54,7 @@ export class SnaggingController {
   }
 
   @Patch(':id')
-  @RequireProjectPermission('manage_project_records')
+  @RequireCategoryAction('issues_snags', 'edit', 'manage_project_records')
   async update(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: UpdateSnagItemDto) {
     return { data: await this.svc.update(u.companyId, pid, id, u.id, dto), error: null };
   }
@@ -85,7 +93,7 @@ export class SnaggingController {
   // SnaggingService.verify()'s own comment for the segregation-of-duties
   // rationale.
   @Post(':id/verify')
-  @RequireProjectPermission('manage_project_records', 'verify_snag_items')
+  @RequireCategoryAction('issues_snags', 'approve', 'manage_project_records', 'verify_snag_items')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Verify a 'fixed' snag item" })
   async verify(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {

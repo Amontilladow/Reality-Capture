@@ -5,6 +5,7 @@ import { CreateQaInspectionDto } from './dto/create-qa-inspection.dto';
 import { UpdateQaInspectionDto } from './dto/update-qa-inspection.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
+import { RequireCategoryAction } from '../../common/decorators/require-category-action.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 
 @ApiTags('qa')
@@ -13,7 +14,13 @@ import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 export class QaController {
   constructor(private readonly svc: QaService) {}
 
+  // Previously ungated -- the owner's org-category matrix ("QAQC
+  // Checklists/Inspections") scopes creation to QAQC Team (and Engineering
+  // Manager, always); Construction Team only gets view/edit on items
+  // already assigned to them, not creation. No fallbackPermissions -- no
+  // discretionary grant for "create a QA inspection" existed to preserve.
   @Post()
+  @RequireCategoryAction('qaqc_checklists', 'create')
   @ApiOperation({ summary: 'Create a new QA/QC inspection' })
   async create(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: CreateQaInspectionDto) {
     return { data: await this.svc.create(u.companyId, pid, u.id, dto), error: null };
@@ -42,9 +49,9 @@ export class QaController {
   }
 
   @Patch(':id')
-  @RequireProjectPermission('manage_project_records')
+  @RequireCategoryAction('qaqc_checklists', 'edit', 'manage_project_records')
   async update(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: UpdateQaInspectionDto) {
-    return { data: await this.svc.update(u.companyId, pid, id, u.id, dto), error: null };
+    return { data: await this.svc.update(u.companyId, pid, id, u.id, dto, u.companyRole), error: null };
   }
 
   @Delete(':id')

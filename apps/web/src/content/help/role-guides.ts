@@ -52,4 +52,28 @@ export const ROLE_GUIDE_SLUGS: Record<CompanyRole, string[]> = {
     'understanding-site-role-restrictions', 'creating-an-issue', 'creating-a-pinpoint',
     'opening-a-floor-plan',
   ],
+  // Org-category sprint additions (packages/types/src/user.types.ts) --
+  // reusing the closest existing role's set above rather than curating a
+  // fresh one from scratch for each new title.
+  chairman: [
+    'opening-reports', 'understanding-available-kpis', 'sharing-a-progress-report',
+  ],
+  general_manager: [
+    'opening-reports', 'understanding-available-kpis', 'sharing-a-progress-report',
+  ],
+  operations_manager: [
+    'opening-reports', 'understanding-available-kpis', 'sharing-a-progress-report',
+  ],
+  project_document_controller: [
+    'understanding-transmittals', 'creating-a-transmittal', 'understanding-documents', 'uploading-a-document',
+  ],
+  document_control_assistant: [
+    'understanding-transmittals', 'understanding-documents', 'uploading-a-document',
+  ],
+  engineering_team_member: [
+    'understanding-documents', 'uploading-a-document', 'opening-reports',
+  ],
+  qaqc_team_member: [
+    'understanding-qa-inspections', 'creating-a-qa-inspection', 'marking-a-snag-fixed',
+  ],
 };

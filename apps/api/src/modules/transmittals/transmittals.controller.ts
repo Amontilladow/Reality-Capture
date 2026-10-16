@@ -5,6 +5,7 @@ import { CreateTransmittalDto } from './dto/create-transmittal.dto';
 import { UpdateTransmittalDto } from './dto/update-transmittal.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
+import { RequireCategoryAction } from '../../common/decorators/require-category-action.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 
 @ApiTags('transmittals')
@@ -13,7 +14,10 @@ import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 export class TransmittalsController {
   constructor(private readonly svc: TransmittalsService) {}
 
+  // Previously ungated -- same new restriction as submittals.controller.ts's
+  // own create(), part of the same "Document Approvals" matrix row.
   @Post()
+  @RequireCategoryAction('document_approvals', 'create')
   @ApiOperation({ summary: 'Create a new transmittal' })
   async create(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: CreateTransmittalDto) {
     return { data: await this.svc.create(u.companyId, pid, u.id, dto), error: null };
@@ -42,7 +46,7 @@ export class TransmittalsController {
   }
 
   @Patch(':id')
-  @RequireProjectPermission('manage_project_records')
+  @RequireCategoryAction('document_approvals', 'edit', 'manage_project_records')
   async update(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: UpdateTransmittalDto) {
     return { data: await this.svc.update(u.companyId, pid, id, dto), error: null };
   }

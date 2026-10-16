@@ -31,8 +31,23 @@ import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 // there). CONFIRM_ROLES is the one gate that never varies by type --
 // QAQC-in-charge confirms every record type -- so it stays a precise,
 // unbroadened guard with no service-level check needed.
-const QAQC_OR_CONSTRUCTION_ROLES = ['qa_qc_manager', 'construction_manager', 'project_manager', 'technical_director', 'engineering_manager', 'company_admin', 'super_admin'] as const;
-const CONFIRM_ROLES = ['qa_qc_manager', 'company_admin', 'super_admin'] as const;
+// Owner's org-category RBAC sprint ("QAQC Checklists/Inspections" matrix
+// row, confirmed to cover this module too): deliberately NOT gated by the
+// new @RequireCategoryAction()/CategoryActionGuard elsewhere in this
+// sprint -- this module's existing @RequireExactRoles system already
+// implements something more precise than the new matrix's flat category
+// grant (the construction<->QAQC role SWAP per record type described
+// above), and layering the new, coarser guard on top would AND against it
+// rather than extend it, risking blocking a role this system already
+// correctly allows for a given record type. 'qaqc_team_member' (this
+// sprint's new, generic QAQC Team individual-contributor placeholder --
+// see COMPANY_ROLES in user.types.ts) is added to both lists below so it
+// isn't silently excluded from a module its own category is named for;
+// 'engineering_team_member' is deliberately NOT added -- Engineering Team
+// holds only 'view' on this module per the matrix, consistent with not
+// being part of either side of this two-party workflow.
+const QAQC_OR_CONSTRUCTION_ROLES = ['qa_qc_manager', 'qaqc_team_member', 'construction_manager', 'project_manager', 'technical_director', 'engineering_manager', 'company_admin', 'super_admin'] as const;
+const CONFIRM_ROLES = ['qa_qc_manager', 'qaqc_team_member', 'company_admin', 'super_admin'] as const;
 // Attachment/photo management is shared by both sides of the workflow,
 // for every record type -- same union as the broadened create/respond guard.
 const ATTACHMENT_ROLES = QAQC_OR_CONSTRUCTION_ROLES;

@@ -81,10 +81,22 @@ export class SubmittalsService {
     return submittal;
   }
 
-  async findAll(companyId: string, projectId: string, query: PaginationQuery & { status?: string; priority?: string }) {
+  // Owner's org-category RBAC sprint, subcontractor isolation: "C,V -- own
+  // submittals only" -- same pattern as RfisService/IssuesService's own
+  // isViewerSubcontractor().
+  private async isViewerSubcontractor(companyId: string, projectId: string, viewerId: string | undefined): Promise<boolean> {
+    if (!viewerId) return false;
+    const [membership] = await this.db.withTenant(companyId, sql => sql`
+      SELECT role FROM project_members WHERE project_id = ${projectId} AND user_id = ${viewerId}
+    `);
+    return membership?.role === 'subcontractor';
+  }
+
+  async findAll(companyId: string, projectId: string, query: PaginationQuery & { status?: string; priority?: string }, viewerId?: string) {
     const page    = query.page ?? 1;
     const perPage = Math.min(query.perPage ?? 20, 100);
     const offset  = (page - 1) * perPage;
+    const isolateToViewer = await this.isViewerSubcontractor(companyId, projectId, viewerId);
 
     const rows = await this.db.withTenant(companyId, sql => sql`
       SELECT s.*,
@@ -97,6 +109,7 @@ export class SubmittalsService {
       WHERE s.project_id = ${projectId} AND s.company_id = ${companyId}
         AND (${query.status ?? null}::text IS NULL OR s.status = ${query.status ?? null})
         AND (${query.priority ?? null}::text IS NULL OR s.priority = ${query.priority ?? null})
+        AND (${isolateToViewer} = false OR s.created_by = ${viewerId ?? null}::uuid)
       ORDER BY
         CASE s.priority WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
         s.created_at DESC
@@ -106,7 +119,7 @@ export class SubmittalsService {
     return this.db.paginate(rows, page, perPage);
   }
 
-  async findOne(companyId: string, projectId: string, submittalId: string) {
+  async findOne(companyId: string, projectId: string, submittalId: string, viewerId?: string) {
     const [submittal] = await this.db.withTenant(companyId, sql => sql`
       SELECT s.*,
         u_c.first_name || ' ' || u_c.last_name AS created_by_name,
@@ -117,6 +130,9 @@ export class SubmittalsService {
       WHERE s.id = ${submittalId} AND s.project_id = ${projectId} AND s.company_id = ${companyId}
     `);
     if (!submittal) throw new NotFoundException(`Submittal ${submittalId} not found.`);
+    if (submittal.createdBy !== viewerId && await this.isViewerSubcontractor(companyId, projectId, viewerId)) {
+      throw new NotFoundException(`Submittal ${submittalId} not found.`);
+    }
     return submittal;
   }
 
@@ -151,7 +167,8 @@ export class SubmittalsService {
     return { message: 'Submittal deleted.' };
   }
 
-  async getSummary(companyId: string, projectId: string) {
+  async getSummary(companyId: string, projectId: string, viewerId?: string) {
+    const isolateToViewer = await this.isViewerSubcontractor(companyId, projectId, viewerId);
     const [summary] = await this.db.withTenant(companyId, sql => sql`
       SELECT
         COUNT(*) AS total,
@@ -160,6 +177,7 @@ export class SubmittalsService {
         COUNT(*) FILTER (WHERE due_date < NOW() AND status IN ('submitted','under_review')) AS overdue
       FROM submittals
       WHERE project_id = ${projectId} AND company_id = ${companyId}
+        AND (${isolateToViewer} = false OR created_by = ${viewerId ?? null}::uuid)
     `);
     return summary;
   }

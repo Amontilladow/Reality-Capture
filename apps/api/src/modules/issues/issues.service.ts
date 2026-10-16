@@ -23,7 +23,7 @@ import type { ScheduleIssueReminderDto } from './dto/schedule-issue-reminder.dto
 import type { IssueAttachmentUploadUrlDto } from './dto/issue-attachment-upload-url.dto';
 import type { AddIssueAttachmentDto } from './dto/add-issue-attachment.dto';
 import { ATTACHMENT_MAX_SIZE as ISSUE_ATTACHMENT_MAX_SIZE, ATTACHMENT_ALLOWED_EXTENSIONS as ISSUE_ATTACHMENT_ALLOWED_EXTENSIONS } from '../../common/constants/attachment-limits';
-import { COMPANY_ROLE_WEIGHT, type PaginationQuery, type CompanyRole } from '@engineeringos/types';
+import { COMPANY_ROLE_WEIGHT, getOrgCategory, categoryCan, type PaginationQuery, type CompanyRole } from '@engineeringos/types';
 import { ProjectAuthorizationService } from '../../common/authorization/project-authorization.service';
 
 // No shared label maps for these exist in @engineeringos/types (unlike RFI's
@@ -226,6 +226,21 @@ export class IssuesService {
   }
 
   // ── List ──────────────────────────────────────────────────────────────────
+  // Owner's org-category RBAC sprint, "critical" subcontractor isolation:
+  // one subcontractor account must never read another's issues, even on the
+  // same project (the matrix's "Subcontractor: C,V -- own company's issues
+  // only"). Same pattern as RfisService's own isViewerSubcontractor() --
+  // kept as a private duplicate here rather than a shared util, matching
+  // how ownership checks are already scoped per-module in this codebase
+  // (e.g. SubcontractorRfiAccessService is RFI-specific, not generic).
+  private async isViewerSubcontractor(companyId: string, projectId: string, viewerId: string | undefined): Promise<boolean> {
+    if (!viewerId) return false;
+    const [membership] = await this.db.withTenant(companyId, sql => sql`
+      SELECT role FROM project_members WHERE project_id = ${projectId} AND user_id = ${viewerId}
+    `);
+    return membership?.role === 'subcontractor';
+  }
+
   async findAll(companyId: string, projectId: string, query: PaginationQuery & {
     status?: string; priority?: string; issueType?: string;
     assignedTo?: string; locationId?: string; elementId?: string;
@@ -235,6 +250,7 @@ export class IssuesService {
     const page    = query.page ?? 1;
     const perPage = Math.min(query.perPage ?? 20, 100);
     const offset  = (page - 1) * perPage;
+    const isolateToViewer = await this.isViewerSubcontractor(companyId, projectId, query.userId);
 
     // F4: `overdue`/`myIssues` arrive over the wire as the query-string
     // STRING "true"/"false" -- `@Query()` here has no decorated DTO class
@@ -283,6 +299,7 @@ export class IssuesService {
         AND (${query.search ?? null}::text IS NULL OR
           to_tsvector('english', i.title || ' ' || coalesce(i.description,''))
           @@ plainto_tsquery('english', ${query.search ?? null}))
+        AND (${isolateToViewer} = false OR i.created_by = ${query.userId ?? null}::uuid)
       ORDER BY
         CASE i.priority WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
         i.created_at DESC
@@ -293,7 +310,11 @@ export class IssuesService {
   }
 
   // ── Find one ──────────────────────────────────────────────────────────────
-  async findOne(companyId: string, projectId: string, issueId: string) {
+  // viewerId is optional and only matters for subcontractor isolation (see
+  // isViewerSubcontractor() above) -- every internal caller (update/close/
+  // delete/forward/...) omits it and is completely unaffected; only the
+  // controller's own GET :id route passes it.
+  async findOne(companyId: string, projectId: string, issueId: string, viewerId?: string) {
     const [issue] = await this.db.withTenant(companyId, sql => sql`
       SELECT i.*,
         u_c.first_name || ' ' || u_c.last_name AS created_by_name,
@@ -312,6 +333,14 @@ export class IssuesService {
       WHERE i.id = ${issueId} AND i.project_id = ${projectId} AND i.company_id = ${companyId}
     `);
     if (!issue) throw new NotFoundException(`Issue ${issueId} not found.`);
+    // Unlike RFIs (which has an explicit "Main Contractor's RFIs, read-only"
+    // window for subcontractors), the owner's Issues/Snags matrix row grants
+    // Subcontractor nothing beyond "own company's issues only" -- so a
+    // subcontractor viewer is isolated from EVERY issue they didn't create
+    // themselves, not just other subcontractors'.
+    if (issue.createdBy !== viewerId && await this.isViewerSubcontractor(companyId, projectId, viewerId)) {
+      throw new NotFoundException(`Issue ${issueId} not found.`);
+    }
     if (issue.screenshotStorageKey) {
       return { ...issue, screenshotUrl: await this.storage.getReadUrl(issue.screenshotStorageKey as string) };
     }
@@ -543,9 +572,20 @@ export class IssuesService {
   // with no company-wide engineering_manager+ title could not close an
   // issue on their own project, a real gap relative to how every other
   // project-permission-gated route in this app already treats project_lead.
+  // Owner's org-category RBAC sprint: QAQC Team holds Approve/Close (A/X) on
+  // the Issues/Snags matrix row -- added here as one more OR branch,
+  // alongside the two pre-existing ones (weight threshold, manage_issues
+  // grant), never replacing either. engineering_manager is already covered
+  // by the weight check above it (weight 70 == the threshold itself) and
+  // also by OrgCategoryPermissionService's own unconditional bypass for
+  // that category, so checking categoryCan() for it here would be
+  // redundant, not wrong -- included anyway for a single, complete,
+  // self-contained permission check that doesn't depend on reading the
+  // weight branch above it to understand who's covered.
   private async isPermittedApprover(companyId: string, userRole: string, projectId: string, userId: string): Promise<boolean> {
     const weight = COMPANY_ROLE_WEIGHT[userRole as CompanyRole] ?? 0;
     if (weight >= COMPANY_ROLE_WEIGHT.engineering_manager) return true;
+    if (categoryCan(getOrgCategory(userRole as CompanyRole), 'issues_snags', 'close')) return true;
     if (!this.projectAuth) return false;
     return this.projectAuth.hasProjectPermission(companyId, userRole, userId, projectId, 'manage_issues');
   }

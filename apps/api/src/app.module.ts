@@ -53,9 +53,11 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { ExactRolesGuard } from './common/guards/exact-roles.guard';
 import { PendingApprovalGuard } from './common/guards/pending-approval.guard';
 import { ProjectPermissionGuard } from './common/guards/project-permission.guard';
+import { CategoryActionGuard } from './common/guards/category-action.guard';
 import { TenancyGuard } from './common/guards/tenancy.guard';
 import { SiteRoleRestrictionGuard } from './common/guards/site-role-restriction.guard';
 import { SubcontractorRfiAccessGuard } from './common/guards/subcontractor-rfi-access.guard';
+import { SectionSevenViewOnlyGuard } from './common/guards/section-seven-view-only.guard';
 
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
@@ -160,6 +162,15 @@ import gmailConfig from './config/google-gmail.config';
     // needed this instead of @Roles().
     { provide: APP_GUARD, useClass: ExactRolesGuard },
     { provide: APP_GUARD, useClass: ProjectPermissionGuard },
+    // The owner's org-category RBAC sprint: a sibling of ProjectPermissionGuard
+    // above (same metadata-driven, "no decorator = not gated" shape), gated
+    // by @RequireCategoryAction() instead of @RequireProjectPermission().
+    // Composes the new company-wide category matrix with the pre-existing
+    // discretionary grant system via OR -- see CategoryActionGuard's own
+    // header comment. Runs right after ProjectPermissionGuard since it's
+    // conceptually an additional grant path alongside it, before the two
+    // cross-cutting, never-loosening guards below.
+    { provide: APP_GUARD, useClass: CategoryActionGuard },
     // Runs last of all: an additional, cross-cutting restriction for Site
     // Engineer/Construction Manager/Project Engineer (full working access
     // to Floor Plans/Issues/Snagging, read-only -- no access at all for
@@ -171,6 +182,12 @@ import gmailConfig from './config/google-gmail.config';
     // project's RFI module only -- reads included, unlike that guard's
     // read-everywhere shape. See the guard's own header comment.
     { provide: APP_GUARD, useClass: SubcontractorRfiAccessGuard },
+    // Also runs last: the owner's org-category RBAC sprint, matrix section
+    // 7 -- Chairman/General Manager/Operations Manager get view-only access
+    // to Risk/Reports/Snagging/BuildLens Captures. Independent of (and
+    // unaffected by) the two guards above it -- it only ever narrows what
+    // those 3 specific company roles can do, never widens anything.
+    { provide: APP_GUARD, useClass: SectionSevenViewOnlyGuard },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],
