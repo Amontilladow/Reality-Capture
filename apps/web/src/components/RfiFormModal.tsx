@@ -7,7 +7,7 @@ import {
 import { Modal } from './ui/Modal';
 import { HelpLink } from './help/HelpLink';
 import { RichTextEditor, isRichTextEmpty } from './ui/RichTextEditor';
-import { createRfi } from '../lib/rfis.api';
+import { createRfi, uploadRfiAttachment } from '../lib/rfis.api';
 import type { ProjectMember } from '../lib/projects.api';
 import { RFI_PRIORITIES, RFI_PRIORITY_LABELS } from '../lib/rfi-constants';
 import { apiErrorMessage } from '../lib/api';
@@ -64,13 +64,20 @@ export function RfiFormModal({
   const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState('');
 
+  // Staged client-side until the RFI exists -- attachments.upload-url needs
+  // a real rfiId (see rfis.api.ts's uploadRfiAttachment), so these upload
+  // one by one, as 'query' attachments, right after createRfi() succeeds
+  // below, same presigned-PUT flow RfiDetailPage's own attachment section
+  // and UploadRfiModal's single response-file field already use.
+  const [files, setFiles] = useState<File[]>([]);
+
   function reset() {
     setSubject(''); setQuestion(''); setPriority('medium');
     setDiscipline(''); setDisciplineOther('');
     setCostImpactLevel('no'); setCostImpactAmount(''); setCostImpactCurrency(''); setCostImpactDescription('');
     setTimeImpactLevel('no'); setTimeImpactDays(''); setTimeImpactDescription('');
     setDrawingImpactLevel('no'); setDrawingImpactDescription(''); setDrawingUpdateOwnerId('');
-    setAssignedTo(''); setDueDate(''); setError('');
+    setAssignedTo(''); setDueDate(''); setFiles([]); setError('');
   }
 
   useEffect(() => {
@@ -83,12 +90,12 @@ export function RfiFormModal({
   }, [open]);
 
   const mutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (!subject.trim()) throw new Error('Subject is required.');
       if (isRichTextEmpty(question)) throw new Error('Question is required.');
       if (!discipline) throw new Error('Discipline is required.');
       if (discipline === 'other' && !disciplineOther.trim()) throw new Error('Please specify the discipline.');
-      return createRfi(projectId, {
+      const rfi = await createRfi(projectId, {
         subject: subject.trim(),
         question,
         priority,
@@ -108,6 +115,10 @@ export function RfiFormModal({
         dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
         raisedByOrganizationSlot,
       });
+      for (const file of files) {
+        await uploadRfiAttachment(projectId, rfi.id, file, { kind: 'query' });
+      }
+      return rfi;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rfis', projectId] });
@@ -142,6 +153,42 @@ export function RfiFormModal({
         <div>
           <div className="field-label">Question *</div>
           <RichTextEditor value={question} onChange={setQuestion} placeholder="Describe the question that needs a formal answer…" />
+        </div>
+
+        <div>
+          <div className="field-label mb-1.5">Attachments</div>
+          {files.length > 0 && (
+            <ul className="mb-2 space-y-1">
+              {files.map((file, i) => (
+                <li key={`${file.name}-${i}`} className="flex items-center justify-between text-xs text-ink-300">
+                  <span>{file.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                    disabled={mutation.isPending}
+                    className="text-danger hover:text-danger/80"
+                    title="Remove"
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <label className="btn-secondary !px-3 !py-1.5 text-xs cursor-pointer inline-block">
+            + Add attachment
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              disabled={mutation.isPending}
+              onChange={(e) => {
+                const selected = Array.from(e.target.files ?? []);
+                if (selected.length) setFiles((prev) => [...prev, ...selected]);
+                e.target.value = '';
+              }}
+            />
+          </label>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
