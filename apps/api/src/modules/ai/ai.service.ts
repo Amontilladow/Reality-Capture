@@ -93,9 +93,15 @@ function routeIntent(question: string, ctx: AssistantContext): Intent {
   if (ctx.currentResourceType && ctx.currentResourceId && /\brisk(s)?\b|\bwhy\b/.test(q)) tools.push('getRiskForCurrentResource');
   if (/\brfi(s)?\b/.test(q)) tools.push(ctx.currentResourceType === 'rfi' ? 'getRfiDetails' : 'getOpenRfis');
   if (/\bncr(s)?\b/.test(q)) tools.push('getOpenNcrs');
+  if (/\bsor(s)?\b/.test(q)) tools.push('getOpenSors');
+  if (/\bwir(s)?\b/.test(q)) tools.push('getOpenWirs');
+  if (/\bmir(s)?\b/.test(q)) tools.push('getOpenMirs');
   if (/\bsnag/.test(q)) tools.push(ctx.currentResourceType === 'snag_item' && ctx.currentResourceId ? 'getSnagDetails' : 'getOpenSnags');
   if (/\brisk(s)?\b|\bhigh[\s-]risk\b/.test(q)) tools.push('getHighRiskIssues', 'getRiskSummary');
-  if (/\bissue(s)?\b/.test(q) && ctx.currentResourceType === 'issue') tools.push('getIssueDetails');
+  if (/\bissue(s)?\b/.test(q)) tools.push(ctx.currentResourceType === 'issue' && ctx.currentResourceId ? 'getIssueDetails' : 'getOpenIssues');
+  if (/\bsubmittal(s)?\b/.test(q)) tools.push('getOpenSubmittals');
+  if (/\btransmittal(s)?\b/.test(q)) tools.push('getRecentTransmittals');
+  if (/\binspection(s)?\b/.test(q)) tools.push('getOpenInspections');
   if (/\bfloor\s?plan|\bdrawing(s)?\b/.test(q)) tools.push('getFloorPlanDetails');
   if (/\boverdue\b/.test(q)) tools.push('getOverdueItems');
   if (/\bprogress\b/.test(q)) tools.push('getProgressSummary');
@@ -157,6 +163,7 @@ export class AiService {
     const ctx: AssistantContext = {
       companyId: user.companyId,
       projectId,
+      userId: user.id,
       currentResourceType: dto.context?.currentResourceType,
       currentResourceId: dto.context?.currentResourceId,
     };
@@ -290,9 +297,16 @@ export class AiService {
         case 'getProjectSummary': return await this.tools.getProjectSummary(ctx);
         case 'getOpenRfis': return await this.tools.getOpenRfis(ctx);
         case 'getOpenNcrs': return await this.tools.getOpenNcrs(ctx);
+        case 'getOpenSors': return await this.tools.getOpenSors(ctx);
+        case 'getOpenWirs': return await this.tools.getOpenWirs(ctx);
+        case 'getOpenMirs': return await this.tools.getOpenMirs(ctx);
         case 'getRfiDetails': return ctx.currentResourceId ? await this.tools.getRfiDetails(ctx, ctx.currentResourceId) : await this.tools.getOpenRfis(ctx);
         case 'getHighRiskIssues': return await this.tools.getHighRiskIssues(ctx);
-        case 'getIssueDetails': return ctx.currentResourceId ? await this.tools.getIssueDetails(ctx, ctx.currentResourceId) : null;
+        case 'getIssueDetails': return ctx.currentResourceId ? await this.tools.getIssueDetails(ctx, ctx.currentResourceId) : await this.tools.getOpenIssues(ctx);
+        case 'getOpenIssues': return await this.tools.getOpenIssues(ctx);
+        case 'getOpenSubmittals': return await this.tools.getOpenSubmittals(ctx);
+        case 'getRecentTransmittals': return await this.tools.getRecentTransmittals(ctx);
+        case 'getOpenInspections': return await this.tools.getOpenInspections(ctx);
         case 'getOpenSnags': return await this.tools.getOpenSnags(ctx);
         case 'getSnagDetails': return ctx.currentResourceId ? await this.tools.getSnagDetails(ctx, ctx.currentResourceId) : await this.tools.getOpenSnags(ctx);
         case 'getFloorPlanDetails': return await this.tools.getFloorPlanDetails(ctx);

@@ -34,6 +34,14 @@ function makeService(opts: {
     getProjectSummary: jest.fn().mockResolvedValue({ tool: 'getProjectSummary', category: 'project', data: { name: 'Test Project' } }),
     getOpenRfis: jest.fn().mockResolvedValue({ tool: 'getOpenRfis', category: 'rfi', data: [] }),
     getOpenNcrs: jest.fn().mockResolvedValue({ tool: 'getOpenNcrs', category: 'qaqc', data: [] }),
+    getOpenSors: jest.fn().mockResolvedValue({ tool: 'getOpenSors', category: 'qaqc', data: [] }),
+    getOpenWirs: jest.fn().mockResolvedValue({ tool: 'getOpenWirs', category: 'qaqc', data: [] }),
+    getOpenMirs: jest.fn().mockResolvedValue({ tool: 'getOpenMirs', category: 'qaqc', data: [] }),
+    getOpenIssues: jest.fn().mockResolvedValue({ tool: 'getOpenIssues', category: 'issue', data: [] }),
+    getIssueDetails: jest.fn().mockResolvedValue({ tool: 'getIssueDetails', category: 'issue', data: {} }),
+    getOpenSubmittals: jest.fn().mockResolvedValue({ tool: 'getOpenSubmittals', category: 'submittal', data: [] }),
+    getRecentTransmittals: jest.fn().mockResolvedValue({ tool: 'getRecentTransmittals', category: 'transmittal', data: [] }),
+    getOpenInspections: jest.fn().mockResolvedValue({ tool: 'getOpenInspections', category: 'inspection', data: [] }),
     getHighRiskIssues: jest.fn().mockResolvedValue({ tool: 'getHighRiskIssues', category: 'risk', data: [] }),
     getRiskSummary: jest.fn().mockResolvedValue({ tool: 'getRiskSummary', category: 'risk', data: {} }),
   };
@@ -142,6 +150,55 @@ describe('AiService.ask', () => {
     expect(tools.getOpenRfis).toHaveBeenCalledTimes(1);
   });
 
+  // "Wire everything" (owner request): the remaining data modules (full
+  // QAQC record types, Submittals, Transmittals, QA Inspections, and a
+  // plain Issues list) are now routed the same deterministic, zero-cost way
+  // as RFIs/NCRs above, so the user can ask a plain question instead of
+  // navigating to each tab.
+  it('routes SOR/WIR/MIR questions to their respective QAQC tools', async () => {
+    const { svc, tools } = makeService();
+    await svc.ask(user, 'project-1', { question: 'Are there any open SORs?' });
+    await svc.ask(user, 'project-1', { question: 'Show me open WIRs.' });
+    await svc.ask(user, 'project-1', { question: 'List open MIRs for this project.' });
+    expect(tools.getOpenSors).toHaveBeenCalledTimes(1);
+    expect(tools.getOpenWirs).toHaveBeenCalledTimes(1);
+    expect(tools.getOpenMirs).toHaveBeenCalledTimes(1);
+  });
+
+  it('routes a plain plural "issues" question (no current resource) to getOpenIssues, not getIssueDetails', async () => {
+    const { svc, tools } = makeService();
+    await svc.ask(user, 'project-1', { question: 'What open issues do we have?' });
+    expect(tools.getOpenIssues).toHaveBeenCalledTimes(1);
+    expect(tools.getIssueDetails).not.toHaveBeenCalled();
+  });
+
+  it('routes an issue question while viewing a specific issue to getIssueDetails', async () => {
+    const { svc, tools } = makeService();
+    await svc.ask(user, 'project-1', {
+      question: 'Why is this issue overdue?',
+      context: { currentResourceType: 'issue', currentResourceId: '11111111-1111-1111-1111-111111111111' },
+    });
+    expect(tools.getIssueDetails).toHaveBeenCalledTimes(1);
+  });
+
+  it('routes a submittals question to getOpenSubmittals', async () => {
+    const { svc, tools } = makeService();
+    await svc.ask(user, 'project-1', { question: 'Which submittals are still pending?' });
+    expect(tools.getOpenSubmittals).toHaveBeenCalledTimes(1);
+  });
+
+  it('routes a transmittals question to getRecentTransmittals', async () => {
+    const { svc, tools } = makeService();
+    await svc.ask(user, 'project-1', { question: 'What transmittals have gone out recently?' });
+    expect(tools.getRecentTransmittals).toHaveBeenCalledTimes(1);
+  });
+
+  it('routes a QA inspections question to getOpenInspections', async () => {
+    const { svc, tools } = makeService();
+    await svc.ask(user, 'project-1', { question: 'Are there any pending QA inspections?' });
+    expect(tools.getOpenInspections).toHaveBeenCalledTimes(1);
+  });
+
   it('never lets a different company id reach a tool call, regardless of what context the client sends', async () => {
     const { svc, tools } = makeService();
     const otherCompanyUser = { ...user, companyId: 'company-1' }; // companyId always comes from the authenticated user
@@ -153,6 +210,20 @@ describe('AiService.ask', () => {
     });
     const ctxArg = tools.getProjectSummary.mock.calls[0][0];
     expect(ctxArg.companyId).toBe('company-1');
+  });
+
+  // CRITICAL regression: AssistantContext.userId must be populated from the
+  // authenticated user on every call, not left undefined -- it's what lets
+  // getOpenRfis/getRfiDetails/getIssueDetails/getOpenIssues/getOpenSubmittals
+  // (ai-tools.service.ts) pass it through as the viewer for
+  // RfisService/IssuesService/SubmittalsService's own subcontractor-isolation
+  // check. Without it, that check silently no-ops and one subcontractor can
+  // see another's records through the assistant.
+  it("populates ctx.userId from the authenticated user on every tool call", async () => {
+    const { svc, tools } = makeService();
+    await svc.ask(user, 'project-1', { question: 'Summarize the current project.' });
+    const ctxArg = tools.getProjectSummary.mock.calls[0][0];
+    expect(ctxArg.userId).toBe('user-1');
   });
 });
 
