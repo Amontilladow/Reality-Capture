@@ -115,7 +115,7 @@ export default function AssistantPage() {
         <div className="flex-1 overflow-y-auto space-y-4 pb-4">
           {messages.length === 0 && (
             <div className="tick-frame panel p-12 text-center text-sm text-ink-500">
-              Ask about RFIs, issues, snagging, risk, progress, or documents on this project.
+              Ask about RFIs, NCRs, issues, snagging, risk, progress, or documents on this project.
               {currentResourceType && currentResourceId && (
                 <span className="block mt-1 text-xs">Currently looking at this {currentResourceType.replace('_', ' ')} -- follow-up questions can refer to it directly.</span>
               )}

@@ -15,6 +15,7 @@ import { AiUsageService } from './ai-usage.service';
 import { DomainGuardService } from './domain-guard.service';
 import { ProvidersModule } from './providers/providers.module';
 import { AiConnectionsModule } from '../ai-connections/ai-connections.module';
+import { QaqcModule } from '../qaqc/qaqc.module';
 
 // The AI Gateway (spec section 2/28): everything the rebuild brief asks for
 // -- domain guard, project-scoped tools, usage tracking, rate limiting,
@@ -26,7 +27,7 @@ import { AiConnectionsModule } from '../ai-connections/ai-connections.module';
   imports: [
     RfisModule, IssuesModule, SnaggingModule, RiskModule,
     ProgressReportsModule, DocumentsModule, ProjectsModule, DrawingsModule, AiClientModule,
-    ProvidersModule, AiConnectionsModule,
+    ProvidersModule, AiConnectionsModule, QaqcModule,
   ],
   controllers: [AiController],
   providers: [AiService, AiToolsService, AiUsageService, DomainGuardService],
