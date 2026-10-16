@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getProgressReportByToken, type ProgressReportIssueRow } from '../lib/progress-reports.api';
 import { apiErrorMessage } from '../lib/api';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
+import { LogoMark } from '../components/ui/LogoMark';
 
 function IssueList({ title, items, emptyText }: { title: string; items: ProgressReportIssueRow[]; emptyText: string }) {
   return (
@@ -48,11 +49,7 @@ export default function ProgressReportExternalPage() {
     <div className="min-h-screen bg-base-950 flex flex-col items-center px-4 py-10">
       <div className="w-full max-w-3xl">
         <div className="flex items-center gap-2 mb-8 justify-center">
-          <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none">
-            <rect x="2" y="2" width="20" height="20" rx="2" stroke="#FF7A29" strokeWidth="1.5" />
-            <path d="M2 8h20M8 2v20" stroke="#4FB6E8" strokeWidth="1" opacity="0.6" />
-            <circle cx="8" cy="8" r="1.4" fill="#FF7A29" />
-          </svg>
+          <LogoMark className="w-7 h-7" />
           <span className="font-semibold tracking-tight text-ink-100">EngineeringOS</span>
         </div>
 

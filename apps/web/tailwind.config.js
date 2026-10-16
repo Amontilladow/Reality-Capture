@@ -4,38 +4,50 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Blueprint-dark technical palette — surveying/drafting instrument feel
+        // Mobbin-inspired gallery-white palette — same token names/roles as
+        // before (every component already reaches for these names, never a
+        // raw hex), only the values moved from the old dark "blueprint
+        // technical" scheme to a light, near-monochrome one: ink-black text
+        // on white/soft-white surfaces, one electric-blue accent.
         base: {
-          950: '#0A141C', // deepest background
-          900: '#0F1B25',
-          800: '#182631', // panel surface
-          700: '#22323F', // raised surface / hover
-          600: '#324656', // borders
-          500: '#4A6178', // muted borders / dividers
+          950: '#FFFFFF', // page background (canvas)
+          900: '#F3F3F3', // chrome bars / secondary surface (canvas-soft)
+          800: '#F3F3F3', // panel surface (canvas-soft)
+          700: '#F0F0F0', // raised surface / hover (field)
+          600: '#E0E0E0', // borders (hairline)
+          500: '#F0F0F0', // muted borders / dividers (hairline-soft)
         },
         ink: {
-          100: '#EAF0F4', // primary text
-          300: '#B7C4CE', // secondary text
-          500: '#7E8F9C', // muted / placeholder
+          100: '#141414', // primary text
+          300: '#707070', // secondary text
+          500: '#ADADAD', // muted / placeholder
         },
         signal: {
-          // "safety orange" — primary action, matches hi-vis site equipment
-          DEFAULT: '#FF7A29',
-          hover: '#FF8F4D',
-          muted: '#7A4022',
+          // primary action — ink-black fill, matches Mobbin's button-primary
+          DEFAULT: '#141414',
+          hover: '#262626',
+          muted: '#707070',
         },
         blueprint: {
-          // cyan linework — info, links, secondary accents
-          DEFAULT: '#4FB6E8',
-          hover: '#72C6ED',
-          muted: '#20475A',
+          // electric blue — Mobbin's one accent. The spec reserves it for
+          // commercial signals only; this app repurposes it as the general
+          // interactive/info accent (links, active states, status badges)
+          // since a working dashboard needs more color differentiation than
+          // a marketing page. Focus rings use ink instead, per the spec.
+          DEFAULT: '#0066FF',
+          hover: '#3385FF',
+          muted: '#E6F0FF',
         },
-        ok: '#4ADE80',
-        warn: '#FBBF24',
-        danger: '#F87171',
+        ok: '#16A34A',
+        warn: '#D97706',
+        danger: '#DC2626',
       },
       fontFamily: {
-        sans: ['"IBM Plex Sans"', 'system-ui', 'sans-serif'],
+        // "Outfit" stands in for the requested "Grift" (38-lineart, paid,
+        // no free/CDN license) -- a free geometric sans in the same rounded,
+        // circular-dot family. Swap this one token for the real Grift
+        // files via @font-face if/when a license is purchased.
+        sans: ['"Outfit"', 'system-ui', 'sans-serif'],
         mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       // Type scale. Tailwind's own text-xs/sm/base/lg/xl cover the vast
@@ -53,15 +65,15 @@ export default {
         kpi: ['1.75rem', { lineHeight: '2rem', letterSpacing: '-0.01em' }], // 28px -- dashboard/report stat-tile numbers
       },
       backgroundImage: {
-        'grid-fine': `linear-gradient(rgba(79,182,232,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(79,182,232,0.06) 1px, transparent 1px)`,
+        'grid-fine': `linear-gradient(rgba(20,20,20,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(20,20,20,0.04) 1px, transparent 1px)`,
       },
       backgroundSize: {
         'grid-fine': '24px 24px',
       },
       borderRadius: {
-        sm: '2px',
-        DEFAULT: '3px',
-        md: '4px',
+        sm: '16px',
+        DEFAULT: '16px',
+        md: '24px',
       },
     },
   },
