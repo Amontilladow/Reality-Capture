@@ -33,7 +33,7 @@ export function ElementList({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-gray-200 p-2">
+      <div className="border-b border-base-600 p-2">
         <input
           className="field-input w-full text-sm"
           placeholder="Search all elements…"
@@ -45,26 +45,26 @@ export function ElementList({
         />
       </div>
       <div className="flex-1 overflow-y-auto">
-        {query.isLoading && <p className="p-3 text-sm text-gray-400">Loading…</p>}
+        {query.isLoading && <p className="p-3 text-sm text-ink-500">Loading…</p>}
         {!query.isLoading && elements.length === 0 && (
-          <p className="p-3 text-sm text-gray-400">No elements match.</p>
+          <p className="p-3 text-sm text-ink-500">No elements match.</p>
         )}
         {elements.map((el) => (
           <button
             key={el.id}
             type="button"
             onClick={() => onSelect(el)}
-            className={`block w-full truncate px-3 py-2 text-left text-sm hover:bg-gray-100 ${
-              selectedGuid === el.ifcGuid ? 'bg-blue-50 text-blue-700' : 'text-gray-900'
+            className={`block w-full truncate px-3 py-2 text-left text-sm hover:bg-base-800 ${
+              selectedGuid === el.ifcGuid ? 'bg-blueprint-muted text-blueprint' : 'text-ink-100'
             }`}
           >
             <span className="font-medium">{el.ifcName ?? el.ifcType.replace('IFC', '')}</span>
-            <span className="ml-2 text-xs text-gray-400">{el.ifcType.replace('IFC', '')}</span>
+            <span className="ml-2 text-xs text-ink-500">{el.ifcType.replace('IFC', '')}</span>
           </button>
         ))}
       </div>
       {total > perPage && (
-        <div className="flex items-center justify-between border-t border-gray-200 px-2 py-1.5 text-xs text-gray-500">
+        <div className="flex items-center justify-between border-t border-base-600 px-2 py-1.5 text-xs text-ink-500">
           <button
             type="button"
             disabled={page <= 1}

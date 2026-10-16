@@ -4,6 +4,7 @@ import { getProgressReportByToken, type ProgressReportIssueRow } from '../lib/pr
 import { apiErrorMessage } from '../lib/api';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { LogoMark } from '../components/ui/LogoMark';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
 
 function IssueList({ title, items, emptyText }: { title: string; items: ProgressReportIssueRow[]; emptyText: string }) {
   return (
@@ -47,6 +48,9 @@ export default function ProgressReportExternalPage() {
 
   return (
     <div className="min-h-screen bg-base-950 flex flex-col items-center px-4 py-10">
+      <div className="fixed top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-3xl">
         <div className="flex items-center gap-2 mb-8 justify-center">
           <LogoMark className="w-7 h-7" />

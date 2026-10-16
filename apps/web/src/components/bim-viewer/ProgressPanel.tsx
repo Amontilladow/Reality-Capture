@@ -25,32 +25,32 @@ function LevelRow({ projectId, level }: { projectId: string; level: BimLevelProg
   });
 
   return (
-    <div className="border-b border-gray-200 px-3 py-2.5">
+    <div className="border-b border-base-600 px-3 py-2.5">
       <div className="flex items-center justify-between">
         <div className="min-w-0">
-          <div className="text-sm font-medium text-gray-900 truncate">{level.levelName}</div>
-          <div className="text-xs text-gray-500">{level.buildingName}</div>
+          <div className="text-sm font-medium text-ink-100 truncate">{level.levelName}</div>
+          <div className="text-xs text-ink-500">{level.buildingName}</div>
         </div>
-        <button type="button" onClick={() => setEditing((v) => !v)} className="shrink-0 text-xs text-blue-700 hover:text-blue-900">
+        <button type="button" onClick={() => setEditing((v) => !v)} className="shrink-0 text-xs text-blueprint hover:text-blueprint">
           {editing ? 'Close' : 'Set zone status'}
         </button>
       </div>
 
-      <div className="mt-1.5 flex items-center gap-2 text-xs text-gray-600">
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-200">
-          <div className="h-full bg-green-500" style={{ width: `${level.elementCompletionPct ?? 0}%` }} />
+      <div className="mt-1.5 flex items-center gap-2 text-xs text-ink-300">
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-base-700">
+          <div className="h-full bg-ok" style={{ width: `${level.elementCompletionPct ?? 0}%` }} />
         </div>
         <span className="shrink-0 tabular-nums">{level.elementComplete}/{level.elementTotal} ({level.elementCompletionPct ?? 0}%)</span>
       </div>
       {level.zoneStatus && (
-        <div className="mt-1 text-xs text-gray-500">
-          Zone status: <span className="font-medium text-gray-700">{ZONE_STATUS_OPTIONS.find((o) => o.value === level.zoneStatus)?.label ?? level.zoneStatus}</span>
+        <div className="mt-1 text-xs text-ink-500">
+          Zone status: <span className="font-medium text-ink-100">{ZONE_STATUS_OPTIONS.find((o) => o.value === level.zoneStatus)?.label ?? level.zoneStatus}</span>
           {level.zoneCompletionPct !== null && ` (${level.zoneCompletionPct}%)`}
         </div>
       )}
 
       {editing && (
-        <div className="mt-2 space-y-2 rounded border border-gray-200 p-2">
+        <div className="mt-2 space-y-2 rounded border border-base-600 p-2">
           <select
             className="field-input text-xs" value={draft.status}
             onChange={(e) => setDraft({ ...draft, status: e.target.value })}
@@ -61,7 +61,7 @@ function LevelRow({ projectId, level }: { projectId: string; level: BimLevelProg
             type="number" min={0} max={100} placeholder="Completion %" className="field-input text-xs"
             value={draft.completionPct} onChange={(e) => setDraft({ ...draft, completionPct: e.target.value })}
           />
-          {mutation.isError && <p className="text-xs text-red-600">Failed to save. Try again.</p>}
+          {mutation.isError && <p className="text-xs text-danger">Failed to save. Try again.</p>}
           <button type="button" onClick={() => mutation.mutate()} disabled={mutation.isPending} className="btn-primary w-full text-xs">
             {mutation.isPending ? 'Saving…' : 'Save'}
           </button>
@@ -82,8 +82,8 @@ export function ProgressPanel({ projectId }: { projectId: string }) {
     queryFn: () => getLevelProgressSummary(projectId),
   });
 
-  if (query.isLoading) return <p className="p-3 text-sm text-gray-400">Loading progress…</p>;
-  if (!query.data || query.data.length === 0) return <p className="p-3 text-sm text-gray-400">No levels found for this project.</p>;
+  if (query.isLoading) return <p className="p-3 text-sm text-ink-500">Loading progress…</p>;
+  if (!query.data || query.data.length === 0) return <p className="p-3 text-sm text-ink-500">No levels found for this project.</p>;
 
   const byBuilding = new Map<string, { name: string; levels: BimLevelProgress[] }>();
   for (const lvl of query.data) {
@@ -95,7 +95,7 @@ export function ProgressPanel({ projectId }: { projectId: string }) {
     <div className="h-full overflow-y-auto">
       {[...byBuilding.values()].map((b) => (
         <div key={b.name}>
-          <div className="bg-gray-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">{b.name}</div>
+          <div className="bg-base-900 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ink-500">{b.name}</div>
           {b.levels.map((lvl) => <LevelRow key={lvl.levelId} projectId={projectId} level={lvl} />)}
         </div>
       ))}

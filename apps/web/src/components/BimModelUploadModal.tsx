@@ -90,11 +90,11 @@ export function BimModelUploadModal({
         <div
           {...getRootProps()}
           className={`rounded-lg border-2 border-dashed p-8 text-center cursor-pointer ${
-            isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+            isDragActive ? 'border-blueprint bg-blueprint-muted' : 'border-base-600'
           }`}
         >
           <input {...getInputProps()} />
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-300">
             {isDragActive ? 'Drop the IFC file here…' : 'Drag & drop an .ifc file, or click to browse'}
           </p>
         </div>
@@ -102,22 +102,22 @@ export function BimModelUploadModal({
         {files.length > 0 && (
           <ul className="space-y-2">
             {files.map((f) => (
-              <li key={f.id} className="flex items-center gap-3 rounded border border-gray-200 p-2">
+              <li key={f.id} className="flex items-center gap-3 rounded border border-base-600 p-2">
                 <input
                   className="field-input flex-1"
                   value={f.name}
                   disabled={f.status !== 'queued'}
                   onChange={(e) => renameFile(f.id, e.target.value)}
                 />
-                <span className="w-16 text-xs text-gray-500">
+                <span className="w-16 text-xs text-ink-500">
                   {f.status === 'uploading' ? `${f.progress}%` : f.status}
                 </span>
                 {f.status === 'queued' && (
-                  <button type="button" className="text-xs text-red-600" onClick={() => removeFile(f.id)}>
+                  <button type="button" className="text-xs text-danger" onClick={() => removeFile(f.id)}>
                     Remove
                   </button>
                 )}
-                {f.error && <span className="text-xs text-red-600">{f.error}</span>}
+                {f.error && <span className="text-xs text-danger">{f.error}</span>}
               </li>
             ))}
           </ul>

@@ -5,6 +5,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
 import { PageHeader } from '../components/layout/PageHeader';
+import { useThemeColors, type ThemeColors } from '../lib/useThemeColors';
 import {
   getMyActivitySummary, getMyProductivityScore, getWorkforcePrivacySettings, attributeActivity,
   getMyTeam, listReportingLines, setReportingLine, updateWorkforcePrivacySettings, getMyScreenshots,
@@ -24,20 +25,20 @@ import {
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-// Same "Blueprint-dark technical" palette used by ReportsPage's charts —
-// recharts needs real hex values, it doesn't read Tailwind classes.
-const HEX = {
-  blueprint: '#4FB6E8',
-  signal: '#FF7A29',
-  ok: '#4ADE80',
-  warn: '#FBBF24',
-  danger: '#F87171',
-  ink500: '#7E8F9C',
-  base800: '#182631',
-  base700: '#22323F',
-};
-const SERIES_PALETTE = [HEX.blueprint, HEX.signal, HEX.ok, HEX.warn, HEX.danger, HEX.ink500];
-const TOOLTIP_STYLE = { background: HEX.base800, border: `1px solid ${HEX.base700}`, borderRadius: 4, fontSize: 12, color: '#EAF0F4' };
+// Resolved from the same --rc-* custom properties every Tailwind utility
+// class in the app resolves (useThemeColors(), called once per component
+// below) -- recharts needs real hex values, it doesn't read Tailwind
+// classes. A fixed, non-themed orange rounds out the rotating series
+// palette purely for visual variety, same reasoning as
+// RiskIntelligenceSection.tsx's HIGH_HEX constant.
+const SERIES_ACCENT_HEX = '#FF7A29';
+
+function seriesPalette(c: ThemeColors): string[] {
+  return [c.blueprint, SERIES_ACCENT_HEX, c.ok, c.warn, c.danger, c['ink-500']];
+}
+function tooltipStyle(c: ThemeColors) {
+  return { background: c['base-800'], border: `1px solid ${c['base-700']}`, borderRadius: 4, fontSize: 12, color: c['ink-100'] };
+}
 
 // Renders '—' instead of "NaN%"/"NaNh NaNm" whenever a numeric field isn't
 // actually a finite number -- a stale cache, a future backend change, or a
@@ -378,7 +379,7 @@ function ScreenshotsPanel({ userId, from, to, screenshotsEnabled }: { userId: st
 
       {enlarged && (
         <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 cursor-zoom-out"
+          className="fixed inset-0 bg-base-950/80 flex items-center justify-center z-50 cursor-zoom-out"
           onClick={() => setEnlarged(null)}
         >
           <img src={enlarged} alt="Enlarged screenshot" className="max-w-[90vw] max-h-[90vh] rounded" />
@@ -1054,14 +1055,15 @@ function StatTile({ label, value, tone }: { label: string; value: string; tone?:
 // productive share always reads left-to-right as "how much of this bar is
 // green." Segments with 0 seconds render nothing rather than a sliver.
 function ProductivityBar({ factors }: { factors: ProductivityFactors }) {
+  const themeColors = useThemeColors();
   const total =
     (factors.productiveSeconds ?? 0) + (factors.neutralSeconds ?? 0) + (factors.unproductiveSeconds ?? 0) + (factors.unclassifiedSeconds ?? 0);
   if (total <= 0) return null;
   const segments: { seconds: number; color: string }[] = [
-    { seconds: factors.productiveSeconds ?? 0, color: HEX.ok },
-    { seconds: factors.neutralSeconds ?? 0, color: HEX.ink500 },
-    { seconds: factors.unproductiveSeconds ?? 0, color: HEX.danger },
-    { seconds: factors.unclassifiedSeconds ?? 0, color: HEX.warn },
+    { seconds: factors.productiveSeconds ?? 0, color: themeColors.ok },
+    { seconds: factors.neutralSeconds ?? 0, color: themeColors['ink-500'] },
+    { seconds: factors.unproductiveSeconds ?? 0, color: themeColors.danger },
+    { seconds: factors.unclassifiedSeconds ?? 0, color: themeColors.warn },
   ];
   return (
     <div className="h-2.5 w-full rounded-full overflow-hidden flex bg-base-700">
@@ -1158,30 +1160,34 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
 }
 
 function StatusPieChart({ data }: { data: { key: string; name: string; value: number }[] }) {
+  const themeColors = useThemeColors();
+  const SERIES_PALETTE = seriesPalette(themeColors);
   if (data.length === 0) return <EmptyChart />;
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart>
         <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} paddingAngle={2}>
           {data.map((entry, i) => (
-            <Cell key={entry.key} fill={SERIES_PALETTE[i % SERIES_PALETTE.length]} stroke={HEX.base800} strokeWidth={1} />
+            <Cell key={entry.key} fill={SERIES_PALETTE[i % SERIES_PALETTE.length]} stroke={themeColors['base-800']} strokeWidth={1} />
           ))}
         </Pie>
-        <Tooltip contentStyle={TOOLTIP_STYLE} />
+        <Tooltip contentStyle={tooltipStyle(themeColors)} />
       </PieChart>
     </ResponsiveContainer>
   );
 }
 
 function CountBarChart({ data }: { data: { key: string; name: string; value: number }[] }) {
+  const themeColors = useThemeColors();
+  const SERIES_PALETTE = seriesPalette(themeColors);
   if (data.length === 0) return <EmptyChart />;
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data} margin={{ top: 4, right: 8, bottom: 4, left: -16 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke={HEX.base700} vertical={false} />
-        <XAxis dataKey="name" tick={{ fill: HEX.ink500, fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
-        <YAxis tick={{ fill: HEX.ink500, fontSize: 10 }} allowDecimals={false} />
-        <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(79,182,232,0.08)' }} />
+        <CartesianGrid strokeDasharray="3 3" stroke={themeColors['base-700']} vertical={false} />
+        <XAxis dataKey="name" tick={{ fill: themeColors['ink-500'], fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
+        <YAxis tick={{ fill: themeColors['ink-500'], fontSize: 10 }} allowDecimals={false} />
+        <Tooltip contentStyle={tooltipStyle(themeColors)} cursor={{ fill: 'rgba(79,182,232,0.08)' }} />
         <Bar dataKey="value" radius={[3, 3, 0, 0]}>
           {data.map((entry, i) => (
             <Cell key={entry.key} fill={SERIES_PALETTE[i % SERIES_PALETTE.length]} />

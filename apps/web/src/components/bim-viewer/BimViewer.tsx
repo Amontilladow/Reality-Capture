@@ -340,12 +340,12 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
     <div className="relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" />
       {loading && !error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/70 text-sm text-gray-600">
+        <div className="absolute inset-0 flex items-center justify-center bg-base-950/70 text-sm text-ink-300">
           Loading model…
         </div>
       )}
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/90 text-sm text-red-600">
+        <div className="absolute inset-0 flex items-center justify-center bg-base-950/90 text-sm text-danger">
           {error}
         </div>
       )}

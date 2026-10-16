@@ -40,23 +40,23 @@ export function ElementSearch({
         onBlur={() => setTimeout(() => setOpen(false), 150)}
       />
       {open && query.trim().length >= 2 && (
-        <div className="absolute z-10 mt-1 max-h-72 w-full overflow-y-auto rounded border border-gray-200 bg-white text-gray-900 shadow-lg">
-          {searchQuery.isFetching && <p className="p-2 text-xs text-gray-400">Searching…</p>}
+        <div className="absolute z-10 mt-1 max-h-72 w-full overflow-y-auto rounded border border-base-600 bg-base-950 text-ink-100 shadow-lg">
+          {searchQuery.isFetching && <p className="p-2 text-xs text-ink-500">Searching…</p>}
           {!searchQuery.isFetching && results.length === 0 && (
-            <p className="p-2 text-xs text-gray-400">No matches.</p>
+            <p className="p-2 text-xs text-ink-500">No matches.</p>
           )}
           {results.map((el) => (
             <button
               key={el.id}
               type="button"
-              className="block w-full truncate px-3 py-2 text-left text-sm hover:bg-gray-50"
+              className="block w-full truncate px-3 py-2 text-left text-sm hover:bg-base-900"
               onMouseDown={() => {
                 onSelect(el);
                 setOpen(false);
               }}
             >
               <span className="font-medium">{el.ifcName ?? el.ifcType.replace('IFC', '')}</span>
-              <span className="ml-2 text-xs text-gray-400">{el.ifcType.replace('IFC', '')}</span>
+              <span className="ml-2 text-xs text-ink-500">{el.ifcType.replace('IFC', '')}</span>
             </button>
           ))}
         </div>

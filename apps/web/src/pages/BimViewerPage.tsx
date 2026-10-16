@@ -13,6 +13,7 @@ import { getMembers, getHierarchy } from '../lib/projects.api';
 import { uploadIssueScreenshot } from '../lib/issues.api';
 import type { CameraVector } from '../components/bim-viewer/BimViewer';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
 
 export default function BimViewerPage() {
   const { projectId, modelId } = useParams<{ projectId: string; modelId: string }>();
@@ -194,9 +195,9 @@ export default function BimViewerPage() {
 
   return (
     <div className="flex h-screen flex-col">
-      <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-2 text-gray-900">
+      <div className="flex items-center justify-between border-b border-base-600 bg-base-950 px-4 py-2 text-ink-100">
         <div className="flex items-center gap-3">
-          <Link to={`/projects/${projectId}/bim`} className="text-sm text-gray-500 hover:text-gray-800">
+          <Link to={`/projects/${projectId}/bim`} className="text-sm text-ink-500 hover:text-ink-100">
             ← Models
           </Link>
           <h1 className="font-medium text-base">{modelName ?? 'Model'}</h1>
@@ -216,29 +217,30 @@ export default function BimViewerPage() {
             </button>
           </div>
         )}
+        <ThemeToggle />
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="flex w-72 shrink-0 flex-col overflow-hidden border-r border-gray-200 bg-white text-gray-900">
-          <div className="flex shrink-0 border-b border-gray-200 text-xs font-medium">
+        <aside className="flex w-72 shrink-0 flex-col overflow-hidden border-r border-base-600 bg-base-950 text-ink-100">
+          <div className="flex shrink-0 border-b border-base-600 text-xs font-medium">
             <button
               type="button"
               onClick={() => setSidebarTab('tree')}
-              className={`flex-1 px-3 py-2 ${sidebarTab === 'tree' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-500 hover:text-gray-800'}`}
+              className={`flex-1 px-3 py-2 ${sidebarTab === 'tree' ? 'border-b-2 border-blueprint text-blueprint' : 'text-ink-500 hover:text-ink-100'}`}
             >
               Spatial tree
             </button>
             <button
               type="button"
               onClick={() => setSidebarTab('list')}
-              className={`flex-1 px-3 py-2 ${sidebarTab === 'list' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-500 hover:text-gray-800'}`}
+              className={`flex-1 px-3 py-2 ${sidebarTab === 'list' ? 'border-b-2 border-blueprint text-blueprint' : 'text-ink-500 hover:text-ink-100'}`}
             >
               All elements
             </button>
             <button
               type="button"
               onClick={() => setSidebarTab('progress')}
-              className={`flex-1 px-3 py-2 ${sidebarTab === 'progress' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-500 hover:text-gray-800'}`}
+              className={`flex-1 px-3 py-2 ${sidebarTab === 'progress' ? 'border-b-2 border-blueprint text-blueprint' : 'text-ink-500 hover:text-ink-100'}`}
             >
               Progress
             </button>
@@ -246,7 +248,7 @@ export default function BimViewerPage() {
           <div className="flex-1 overflow-hidden">
             {sidebarTab === 'tree' ? (
               <div className="h-full overflow-y-auto">
-                {hierarchyQuery.isLoading && <p className="p-3 text-sm text-gray-400">Loading hierarchy…</p>}
+                {hierarchyQuery.isLoading && <p className="p-3 text-sm text-ink-500">Loading hierarchy…</p>}
                 {hierarchyQuery.data && (
                   <SpatialTree
                     nodes={hierarchyQuery.data}
@@ -268,17 +270,17 @@ export default function BimViewerPage() {
           </div>
         </aside>
 
-        <main className="relative flex-1 bg-gray-50">
+        <main className="relative flex-1 bg-base-900">
           {viewerDataQuery.isLoading && (
-            <div className="flex h-full items-center justify-center text-sm text-gray-500">Loading…</div>
+            <div className="flex h-full items-center justify-center text-sm text-ink-500">Loading…</div>
           )}
           {viewerDataQuery.data && viewerDataQuery.data.status !== 'ready' && (
-            <div className="flex h-full items-center justify-center text-sm text-gray-500">
+            <div className="flex h-full items-center justify-center text-sm text-ink-500">
               Model is still {viewerDataQuery.data.status}. Come back once processing finishes.
             </div>
           )}
           {viewerDataQuery.data?.status === 'ready' && !viewerDataQuery.data.fragmentsUrl && (
-            <div className="flex h-full items-center justify-center text-sm text-red-600">
+            <div className="flex h-full items-center justify-center text-sm text-danger">
               {viewerDataQuery.data.processingError ?? 'No viewer geometry is available for this model.'}
             </div>
           )}
@@ -292,7 +294,7 @@ export default function BimViewerPage() {
           )}
         </main>
 
-        <aside className="w-80 shrink-0 overflow-y-auto border-l border-gray-200 bg-white text-gray-900">
+        <aside className="w-80 shrink-0 overflow-y-auto border-l border-base-600 bg-base-950 text-ink-100">
           <PropertyPanel
             element={elementQuery.data ?? null}
             loading={elementQuery.isFetching}

@@ -10,6 +10,7 @@ import { ProjectContextPanel } from './ProjectContextPanel';
 import { ChatWidget } from '../chat/ChatWidget';
 import { OnboardingFlow } from '../onboarding/OnboardingFlow';
 import { LogoMark } from '../ui/LogoMark';
+import { ThemeToggle } from '../ui/ThemeToggle';
 
 interface NavItem {
   to: string;
@@ -140,12 +141,13 @@ export function AppShell() {
           <IconMenu className="w-5 h-5" />
         </button>
         <LogoMark className="w-5 h-5" />
-        <div className="text-sm font-semibold tracking-tight">Reality Capture</div>
+        <div className="text-sm font-semibold tracking-tight flex-1">Reality Capture</div>
+        <ThemeToggle />
       </div>
 
       {mobileNavOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          className="fixed inset-0 z-40 bg-base-950/60 backdrop-blur-sm md:hidden"
           onClick={() => setMobileNavOpen(false)}
           aria-hidden="true"
         />
@@ -162,6 +164,7 @@ export function AppShell() {
             <div className="text-sm font-semibold tracking-tight">Reality Capture</div>
             <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500">by EngineeringOS</div>
           </div>
+          <ThemeToggle />
           <NotificationBell />
           <MessagesBell />
           <button

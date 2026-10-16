@@ -7,26 +7,32 @@ import { zoom, zoomIdentity, type D3ZoomEvent } from 'd3-zoom';
 import { Modal } from './ui/Modal';
 import { apiErrorMessage } from '../lib/api';
 import { getRiskGraph, getGraphNodeDetail, type RiskGraphNode, type RiskLevel } from '../lib/risk.api';
+import { useThemeColors, type ThemeColors } from '../lib/useThemeColors';
 
-const HEX = {
-  ink500: '#7E8F9C', base700: '#22323F', base800: '#182631', base900: '#0F1922',
-  blueprint: '#4FB6E8', ok: '#4ADE80', warn: '#FBBF24', danger: '#F87171',
-};
+// HIGH has no dedicated semantic token (see RiskIntelligenceSection.tsx's
+// identical reasoning) -- a fixed mid-brightness orange that already reads
+// clearly on both a light and a dark canvas.
+const HIGH_HEX = '#FB923C';
 
-const RISK_LEVEL_COLORS: Record<RiskLevel, string> = {
-  LOW: HEX.ok, MODERATE: HEX.warn, HIGH: '#FB923C', CRITICAL: HEX.danger,
-};
+function riskLevelColors(colors: ThemeColors): Record<RiskLevel, string> {
+  return { LOW: colors.ok, MODERATE: colors.warn, HIGH: HIGH_HEX, CRITICAL: colors.danger };
+}
 
 // Neutral per-node-type colors for nodes with no associated risk (structural
 // context nodes -- building/level/location/user -- and risk-worthy nodes
-// that currently have no active signals).
+// that currently have no active signals). Fixed literals, not theme tokens
+// -- this is a categorical legend (one color per entity type), and all 16
+// entries need to read as one consistent palette in both themes rather
+// than some shifting shade with the accent color while others don't.
+// Already mid-brightness "400"-weight tones, so each already has
+// reasonable contrast on both a light and a dark canvas.
 const NODE_TYPE_COLORS: Record<string, string> = {
   building: '#94A3B8', level: '#94A3B8', location: '#94A3B8',
   user: '#C084FC', company: '#C084FC',
   bim_model: '#22D3EE', bim_element: '#22D3EE',
   drawing: '#60A5FA', document: '#60A5FA', submittal: '#60A5FA', transmittal: '#60A5FA',
   capture: '#34D399',
-  rfi: HEX.blueprint, issue: HEX.blueprint, snag_item: HEX.blueprint, qa_inspection: HEX.blueprint,
+  rfi: '#60A5FA', issue: '#60A5FA', snag_item: '#60A5FA', qa_inspection: '#60A5FA',
 };
 
 const NODE_TYPE_LABELS: Record<string, string> = {
@@ -36,9 +42,12 @@ const NODE_TYPE_LABELS: Record<string, string> = {
   rfi: 'RFI', issue: 'Issue', snag_item: 'Snag Item', qa_inspection: 'QA Inspection',
 };
 
-function nodeColor(node: RiskGraphNode): string {
-  if (node.risk) return RISK_LEVEL_COLORS[node.risk.level];
-  return NODE_TYPE_COLORS[node.nodeType] ?? HEX.ink500;
+function makeNodeColor(colors: ThemeColors): (node: RiskGraphNode) => string {
+  const levels = riskLevelColors(colors);
+  return (node) => {
+    if (node.risk) return levels[node.risk.level];
+    return NODE_TYPE_COLORS[node.nodeType] ?? colors['ink-500'];
+  };
 }
 
 function nodeRadius(node: RiskGraphNode): number {
@@ -55,6 +64,7 @@ interface SimLink {
 }
 
 export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { projectId: string; initialRootNodeId?: string; onClose: () => void }) {
+  const themeColors = useThemeColors();
   const [focusNodeId, setFocusNodeId] = useState<string | undefined>(initialRootNodeId);
   const [nodeTypeFilter, setNodeTypeFilter] = useState<string>('');
   const [disciplineFilter, setDisciplineFilter] = useState<string>('');
@@ -130,7 +140,7 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
       .selectAll('line')
       .data(simLinks)
       .join('line')
-      .attr('stroke', (d) => (d.edgeSource === 'EXPLICIT' ? HEX.ink500 : HEX.blueprint))
+      .attr('stroke', (d) => (d.edgeSource === 'EXPLICIT' ? themeColors['ink-500'] : themeColors.blueprint))
       .attr('stroke-dasharray', (d) => (d.edgeSource === 'EXPLICIT' ? 'none' : '4,3'))
       .attr('stroke-width', (d) => 0.75 + d.confidence * 1.5);
 
@@ -143,8 +153,11 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
 
     nodeGroup.append('circle')
       .attr('r', nodeRadius)
-      .attr('fill', nodeColor)
-      .attr('stroke', HEX.base900)
+      .attr('fill', makeNodeColor(themeColors))
+      // Matches the container's own .panel fill (bg-base-800) rather than a
+      // fixed dark hex -- a "cutout" ring that separates overlapping nodes
+      // cleanly in both themes instead of only the dark one.
+      .attr('stroke', themeColors['base-800'])
       .attr('stroke-width', 1.5);
 
     nodeGroup.append('text')
@@ -152,7 +165,7 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
       .attr('x', 10)
       .attr('y', 4)
       .attr('font-size', 10)
-      .attr('fill', '#EAF0F4')
+      .attr('fill', themeColors['ink-100'])
       .style('pointer-events', 'none');
 
     nodeGroup.append('title').text((d) => `${NODE_TYPE_LABELS[d.nodeType] ?? d.nodeType}: ${d.label}`);
@@ -190,7 +203,12 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
     nodeGroup.call(dragBehavior);
 
     return () => { simulation.stop(); };
-  }, [nodes, edges]);
+    // themeColors included so the whole force-directed graph re-renders
+    // (node fills, edge strokes, label color, stroke-matches-panel ring)
+    // when the theme changes -- D3 draws directly into the SVG DOM, so
+    // nothing here is reachable by a CSS variable flip the way a normal
+    // React-rendered/Tailwind-classed element is.
+  }, [nodes, edges, themeColors]);
 
   return (
     <Modal open onClose={onClose} title="Project Risk Graph" wide>
@@ -217,10 +235,10 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
         </div>
 
         <div className="flex items-center gap-4 text-xs text-ink-500 flex-wrap">
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: HEX.danger }} /> Critical</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: '#FB923C' }} /> High</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: HEX.warn }} /> Moderate</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: HEX.ok }} /> Low</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.danger }} /> Critical</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: HIGH_HEX }} /> High</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.warn }} /> Moderate</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.ok }} /> Low</span>
           <span className="flex items-center gap-1"><span className="inline-block w-4 border-t border-ink-500" /> Explicit relationship</span>
           <span className="flex items-center gap-1"><span className="inline-block w-4 border-t border-dashed border-blueprint" /> Inferred relationship</span>
         </div>
@@ -249,6 +267,7 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
 }
 
 function GraphNodeDetailPanel({ projectId, nodeId, onClose, onFocus }: { projectId: string; nodeId: string; onClose: () => void; onFocus: (nodeId: string) => void }) {
+  const RISK_LEVEL_COLORS = riskLevelColors(useThemeColors());
   const detailQuery = useQuery({ queryKey: ['risk-graph-node', projectId, nodeId], queryFn: () => getGraphNodeDetail(projectId, nodeId) });
   const detail = detailQuery.data;
 

@@ -6,6 +6,7 @@ import { Modal } from './ui/Modal';
 import { RiskGraphView } from './RiskGraphView';
 import { apiErrorMessage } from '../lib/api';
 import { getProject } from '../lib/projects.api';
+import { useThemeColors, type ThemeColors } from '../lib/useThemeColors';
 import {
   recalculateRisk, getRiskSummary, getTopRisks, getEmergingRisks, getRiskByDiscipline,
   getRiskClusters, getRiskDataAvailability, listRisks, getRisk, getRiskChain, getRiskEvidence, getRiskHistory,
@@ -15,14 +16,28 @@ import {
   type Risk, type RiskLevel, type RiskStatus, type RiskMatrixLevel, type RiskDriver, type RiskMatrixDiscrepancy, type RiskHeatmapCell,
 } from '../lib/risk.api';
 
-const HEX = {
-  blueprint: '#4FB6E8', ok: '#4ADE80', warn: '#FBBF24', danger: '#F87171',
-  base600: '#324656', ink500: '#7E8F9C', base800: '#182631', base700: '#22323F',
-};
+// HIGH/VERY_HIGH have no dedicated semantic token (the design system only
+// has a 3-step ok/warn/danger scale) -- these two literal oranges sit
+// between warn and danger in both hue and severity and already read
+// clearly on both a light and a dark surface (mid-brightness, not washed
+// out either direction), so they're left as fixed constants rather than
+// invented tokens for a single consumer.
+const HIGH_HEX = '#FB923C';
+const VERY_HIGH_HEX = '#F97316';
 
-const LEVEL_COLORS: Record<RiskLevel, string> = {
-  LOW: HEX.ok, MODERATE: HEX.warn, HIGH: '#FB923C', CRITICAL: HEX.danger,
-};
+// Every other color below comes from useThemeColors() (resolves the same
+// --rc-* custom properties every Tailwind utility class in the app
+// resolves) -- these status/chart colors previously used fixed hex values
+// that happened to already be dark-theme-appropriate (a pre-existing
+// inconsistency on the light-only app, now a real bug once dark mode
+// exists: a dark-navy chart tooltip would render dark-on-dark in light
+// mode's data and stay correct only by accident in dark mode). Built as
+// functions of the resolved colors, called once per component via
+// useThemeColors(), rather than module-level constants, so every chart and
+// badge here re-renders with the right colors when the theme changes.
+function levelColors(colors: ThemeColors): Record<RiskLevel, string> {
+  return { LOW: colors.ok, MODERATE: colors.warn, HIGH: HIGH_HEX, CRITICAL: colors.danger };
+}
 
 const LEVEL_LABELS: Record<RiskLevel, string> = {
   LOW: 'Low', MODERATE: 'Moderate', HIGH: 'High', CRITICAL: 'Critical',
@@ -35,11 +50,11 @@ const STATUS_LABELS: Record<RiskStatus, string> = {
 };
 
 // Risk Matrix (1-25, 5-level) -- deliberately a different palette/label set
-// from LEVEL_COLORS/LEVEL_LABELS above, which belong to the 0-100/4-level
+// from levelColors()/LEVEL_LABELS above, which belong to the 0-100/4-level
 // deterministic engine score. Never mix the two scales in one place.
-const MATRIX_LEVEL_COLORS: Record<RiskMatrixLevel, string> = {
-  LOW: HEX.ok, MEDIUM: HEX.warn, HIGH: '#FB923C', VERY_HIGH: '#F97316', CRITICAL: HEX.danger,
-};
+function matrixLevelColors(colors: ThemeColors): Record<RiskMatrixLevel, string> {
+  return { LOW: colors.ok, MEDIUM: colors.warn, HIGH: HIGH_HEX, VERY_HIGH: VERY_HIGH_HEX, CRITICAL: colors.danger };
+}
 const MATRIX_LEVEL_LABELS: Record<RiskMatrixLevel, string> = {
   LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High', VERY_HIGH: 'Very High', CRITICAL: 'Critical',
 };
@@ -50,7 +65,9 @@ const IMPACT_LABELS: Record<number, string> = {
   1: '1 - Negligible', 2: '2 - Minor', 3: '3 - Moderate', 4: '4 - Major', 5: '5 - Severe',
 };
 
-const TOOLTIP_STYLE = { background: HEX.base800, border: `1px solid ${HEX.base700}`, borderRadius: 4, fontSize: 12, color: '#EAF0F4' };
+function tooltipStyle(colors: ThemeColors) {
+  return { background: colors['base-800'], border: `1px solid ${colors['base-700']}`, borderRadius: 4, fontSize: 12, color: colors['ink-100'] };
+}
 
 function timeAgo(iso?: string): string {
   if (!iso) return 'never';
@@ -74,10 +91,11 @@ function hasUnreviewedMatrixDiscrepancy(r: Risk): boolean {
 }
 
 function LevelBadge({ level }: { level: RiskLevel }) {
+  const color = levelColors(useThemeColors())[level];
   return (
     <span
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide"
-      style={{ color: LEVEL_COLORS[level], backgroundColor: `${LEVEL_COLORS[level]}22` }}
+      style={{ color, backgroundColor: `${color}22` }}
     >
       {LEVEL_LABELS[level]}
     </span>
@@ -92,6 +110,10 @@ function TrendIndicator({ trend }: { trend: Risk['trend'] }) {
 }
 
 export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
+  const themeColors = useThemeColors();
+  const LEVEL_COLORS = levelColors(themeColors);
+  const MATRIX_LEVEL_COLORS = matrixLevelColors(themeColors);
+  const TOOLTIP_STYLE = tooltipStyle(themeColors);
   const queryClient = useQueryClient();
   const [detailRiskId, setDetailRiskId] = useState<string | null>(null);
   const [levelFilter, setLevelFilter] = useState('');
@@ -344,13 +366,13 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
               <div style={{ width: '100%', height: 200 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={byDisciplineQuery.data} margin={{ top: 4, right: 8, bottom: 4, left: -16 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={HEX.base700} vertical={false} />
-                    <XAxis dataKey="discipline" tick={{ fill: HEX.ink500, fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
-                    <YAxis tick={{ fill: HEX.ink500, fontSize: 10 }} allowDecimals={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={themeColors['base-700']} vertical={false} />
+                    <XAxis dataKey="discipline" tick={{ fill: themeColors['ink-500'], fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
+                    <YAxis tick={{ fill: themeColors['ink-500'], fontSize: 10 }} allowDecimals={false} />
                     <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(79,182,232,0.08)' }} />
                     <Bar dataKey="count" radius={[3, 3, 0, 0]}>
                       {(byDisciplineQuery.data ?? []).map((d) => (
-                        <Cell key={d.discipline} fill={HEX.blueprint} />
+                        <Cell key={d.discipline} fill={themeColors.blueprint} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -423,9 +445,9 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
                           {r.finalScore != null ? (
                             <span className="flex items-center gap-1">
                               {unreviewedDiscrepancy && <span title="Human and AI disagree — needs review" className="text-warn">⚠</span>}
-                              <span style={{ color: r.humanLevel ? MATRIX_LEVEL_COLORS[r.humanLevel] : HEX.ink500 }}>{r.humanScore ?? '—'}</span>
+                              <span style={{ color: r.humanLevel ? MATRIX_LEVEL_COLORS[r.humanLevel] : themeColors['ink-500'] }}>{r.humanScore ?? '—'}</span>
                               <span className="text-ink-500">/</span>
-                              <span style={{ color: r.aiLevel ? MATRIX_LEVEL_COLORS[r.aiLevel] : HEX.ink500 }}>{r.aiScore ?? '—'}</span>
+                              <span style={{ color: r.aiLevel ? MATRIX_LEVEL_COLORS[r.aiLevel] : themeColors['ink-500'] }}>{r.aiScore ?? '—'}</span>
                             </span>
                           ) : '—'}
                         </td>
@@ -502,6 +524,8 @@ function StatTile({ label, value, tone }: { label: string; value: number; tone?:
 // resolve a cell's riskIds into titles for its tooltip/popover, never to
 // recompute anything already decided server-side.
 function RiskHeatmap({ cells, risks, onSelectRisk }: { cells: RiskHeatmapCell[]; risks: Risk[]; onSelectRisk: (riskId: string) => void }) {
+  const themeColors = useThemeColors();
+  const MATRIX_LEVEL_COLORS = matrixLevelColors(themeColors);
   const [openCellKey, setOpenCellKey] = useState<string | null>(null);
   const byId = new Map(risks.map((r) => [r.id, r]));
   const cellByCoords = new Map(cells.map((c) => [`${c.probability}-${c.impact}`, c]));
@@ -530,7 +554,7 @@ function RiskHeatmap({ cells, risks, onSelectRisk }: { cells: RiskHeatmapCell[];
                     className="h-14 w-full rounded flex items-center justify-center text-sm font-semibold tabular-nums transition-opacity hover:opacity-80"
                     style={{
                       backgroundColor: cell ? `${MATRIX_LEVEL_COLORS[cell.level]}${count > 0 ? '55' : '1a'}` : 'transparent',
-                      color: count > 0 ? MATRIX_LEVEL_COLORS[cell!.level] : HEX.base700,
+                      color: count > 0 ? MATRIX_LEVEL_COLORS[cell!.level] : themeColors['base-700'],
                       cursor: count > 0 ? 'pointer' : 'default',
                     }}
                     title={cell ? `Probability ${p} x Impact ${i} = ${cell.score} (${MATRIX_LEVEL_LABELS[cell.level]})` : undefined}
@@ -567,6 +591,9 @@ function RiskHeatmap({ cells, risks, onSelectRisk }: { cells: RiskHeatmapCell[];
 }
 
 function RiskDetailDrawer({ projectId, riskId, onClose, onChanged, onViewGraph }: { projectId: string; riskId: string; onClose: () => void; onChanged: () => void; onViewGraph: (rootNodeId: string) => void }) {
+  const themeColors = useThemeColors();
+  const LEVEL_COLORS = levelColors(themeColors);
+  const TOOLTIP_STYLE = tooltipStyle(themeColors);
   const queryClient = useQueryClient();
   const riskQuery = useQuery({ queryKey: ['risk-detail', projectId, riskId], queryFn: () => getRisk(projectId, riskId) });
   const chainQuery = useQuery({ queryKey: ['risk-chain', riskId], queryFn: () => getRiskChain(projectId, riskId) });
@@ -735,10 +762,10 @@ function RiskDetailDrawer({ projectId, riskId, onClose, onChanged, onViewGraph }
               <div style={{ width: '100%', height: 120 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={historyQuery.data}>
-                    <XAxis dataKey="snapshotAt" tick={{ fill: HEX.ink500, fontSize: 9 }} tickFormatter={(v) => new Date(v).toLocaleDateString()} />
-                    <YAxis tick={{ fill: HEX.ink500, fontSize: 10 }} domain={[0, 100]} />
+                    <XAxis dataKey="snapshotAt" tick={{ fill: themeColors['ink-500'], fontSize: 9 }} tickFormatter={(v) => new Date(v).toLocaleDateString()} />
+                    <YAxis tick={{ fill: themeColors['ink-500'], fontSize: 10 }} domain={[0, 100]} />
                     <Tooltip contentStyle={TOOLTIP_STYLE} />
-                    <Bar dataKey="score" fill={HEX.blueprint} radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="score" fill={themeColors.blueprint} radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -766,6 +793,7 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
   nodeType?: string; entityId?: string;
   onChanged: () => void;
 }) {
+  const MATRIX_LEVEL_COLORS = matrixLevelColors(useThemeColors());
   const [probability, setProbability] = useState(String(risk?.humanProbability ?? ''));
   const [impact, setImpact] = useState(String(risk?.humanImpact ?? ''));
   const [primaryDriver, setPrimaryDriver] = useState<RiskDriver | ''>(risk?.primaryDriver ?? '');
