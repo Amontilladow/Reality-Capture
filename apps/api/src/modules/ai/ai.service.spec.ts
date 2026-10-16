@@ -33,6 +33,9 @@ function makeService(opts: {
   const tools = {
     getProjectSummary: jest.fn().mockResolvedValue({ tool: 'getProjectSummary', category: 'project', data: { name: 'Test Project' } }),
     getOpenRfis: jest.fn().mockResolvedValue({ tool: 'getOpenRfis', category: 'rfi', data: [] }),
+    getOpenNcrs: jest.fn().mockResolvedValue({ tool: 'getOpenNcrs', category: 'qaqc', data: [] }),
+    getHighRiskIssues: jest.fn().mockResolvedValue({ tool: 'getHighRiskIssues', category: 'risk', data: [] }),
+    getRiskSummary: jest.fn().mockResolvedValue({ tool: 'getRiskSummary', category: 'risk', data: {} }),
   };
 
   const provider = {
@@ -81,6 +84,25 @@ describe('AiService.ask', () => {
     expect(provider.generateResponse).not.toHaveBeenCalled();
   });
 
+  // Real bug (owner-reported, reproduced via production screenshots): a
+  // plain \brfi\b regex never matches the plural "RFIs" -- no word boundary
+  // between "rfi" and "s" -- so a natural "summarize open RFIs" silently
+  // skipped getOpenRfis entirely and the model answered from empty context,
+  // indistinguishable from "this project has none." Same bug existed for
+  // risk(s) and issue(s).
+  it('routes a plural "RFIs" question to getOpenRfis (regression: \\brfi\\b never matched the plural)', async () => {
+    const { svc, tools } = makeService();
+    await svc.ask(user, 'project-1', { question: 'Summarize open RFIs.' });
+    expect(tools.getOpenRfis).toHaveBeenCalledTimes(1);
+  });
+
+  it('routes a plural "risks" question to the risk tools (same regression class)', async () => {
+    const { svc, tools } = makeService();
+    await svc.ask(user, 'project-1', { question: 'What are the top risks right now?' });
+    expect(tools.getHighRiskIssues).toHaveBeenCalledTimes(1);
+    expect(tools.getRiskSummary).toHaveBeenCalledTimes(1);
+  });
+
   it('answers an allowed question, scoping tool calls to the authenticated company and route project', async () => {
     const { svc, tools, provider } = makeService();
     const result = await svc.ask(user, 'project-1', { question: 'Summarize the current project.' });
@@ -104,6 +126,20 @@ describe('AiService.ask', () => {
     const { svc, usage } = makeService();
     await svc.ask(user, 'project-1', { question: 'Summarize the current project.' });
     expect(usage.log).toHaveBeenCalledWith(expect.objectContaining({ inputTokens: 10, outputTokens: 5 }));
+  });
+
+  it('routes an NCR question to getOpenNcrs', async () => {
+    const { svc, tools } = makeService();
+    const result = await svc.ask(user, 'project-1', { question: 'Show me open NCRs.' });
+    expect(result.blocked).toBeUndefined();
+    expect(tools.getOpenNcrs).toHaveBeenCalledTimes(1);
+  });
+
+  it('a combined NCR + RFI question calls both tools', async () => {
+    const { svc, tools } = makeService();
+    await svc.ask(user, 'project-1', { question: 'Summarize open NCRs and open RFIs.' });
+    expect(tools.getOpenNcrs).toHaveBeenCalledTimes(1);
+    expect(tools.getOpenRfis).toHaveBeenCalledTimes(1);
   });
 
   it('never lets a different company id reach a tool call, regardless of what context the client sends', async () => {

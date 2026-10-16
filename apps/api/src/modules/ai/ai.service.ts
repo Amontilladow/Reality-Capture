@@ -79,16 +79,23 @@ function routeIntent(question: string, ctx: AssistantContext): Intent {
   const q = question.toLowerCase();
   const wantsDraft = /\b(draft|write|create|raise|log|compose)\b/.test(q);
 
-  if (wantsDraft && /\brfi\b/.test(q)) return { kind: 'draft_rfi' };
+  // (s)? on every noun below -- a plain \bword\b regex does NOT match the
+  // plural ("rfis" has no word boundary between "rfi" and "s"), and a user
+  // asking "summarize open RFIs" almost always uses the plural. This was a
+  // real, confirmed bug (not a hypothetical): it silently dropped the
+  // intended tool call and let the model answer with an empty context
+  // instead, indistinguishable from "this project genuinely has none."
+  if (wantsDraft && /\brfi(s)?\b/.test(q)) return { kind: 'draft_rfi' };
   if (wantsDraft && /\bsnag/.test(q)) return { kind: 'draft_snag' };
-  if (wantsDraft && /\bissue\b/.test(q)) return { kind: 'draft_issue' };
+  if (wantsDraft && /\bissue(s)?\b/.test(q)) return { kind: 'draft_issue' };
 
   const tools: string[] = [];
-  if (ctx.currentResourceType && ctx.currentResourceId && /\brisk\b|\bwhy\b/.test(q)) tools.push('getRiskForCurrentResource');
-  if (/\brfi\b/.test(q)) tools.push(ctx.currentResourceType === 'rfi' ? 'getRfiDetails' : 'getOpenRfis');
+  if (ctx.currentResourceType && ctx.currentResourceId && /\brisk(s)?\b|\bwhy\b/.test(q)) tools.push('getRiskForCurrentResource');
+  if (/\brfi(s)?\b/.test(q)) tools.push(ctx.currentResourceType === 'rfi' ? 'getRfiDetails' : 'getOpenRfis');
+  if (/\bncr(s)?\b/.test(q)) tools.push('getOpenNcrs');
   if (/\bsnag/.test(q)) tools.push(ctx.currentResourceType === 'snag_item' && ctx.currentResourceId ? 'getSnagDetails' : 'getOpenSnags');
-  if (/\brisk\b|\bhigh[\s-]risk\b/.test(q)) tools.push('getHighRiskIssues', 'getRiskSummary');
-  if (/\bissue\b/.test(q) && ctx.currentResourceType === 'issue') tools.push('getIssueDetails');
+  if (/\brisk(s)?\b|\bhigh[\s-]risk\b/.test(q)) tools.push('getHighRiskIssues', 'getRiskSummary');
+  if (/\bissue(s)?\b/.test(q) && ctx.currentResourceType === 'issue') tools.push('getIssueDetails');
   if (/\bfloor\s?plan|\bdrawing(s)?\b/.test(q)) tools.push('getFloorPlanDetails');
   if (/\boverdue\b/.test(q)) tools.push('getOverdueItems');
   if (/\bprogress\b/.test(q)) tools.push('getProgressSummary');
@@ -282,6 +289,7 @@ export class AiService {
       switch (name) {
         case 'getProjectSummary': return await this.tools.getProjectSummary(ctx);
         case 'getOpenRfis': return await this.tools.getOpenRfis(ctx);
+        case 'getOpenNcrs': return await this.tools.getOpenNcrs(ctx);
         case 'getRfiDetails': return ctx.currentResourceId ? await this.tools.getRfiDetails(ctx, ctx.currentResourceId) : await this.tools.getOpenRfis(ctx);
         case 'getHighRiskIssues': return await this.tools.getHighRiskIssues(ctx);
         case 'getIssueDetails': return ctx.currentResourceId ? await this.tools.getIssueDetails(ctx, ctx.currentResourceId) : null;
