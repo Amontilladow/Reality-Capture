@@ -72,6 +72,20 @@ export default registerAs('ai', () => ({
     // production). GEMINI_MODEL still overrides this whenever Google moves
     // the goalposts again.
     model: process.env.GEMINI_MODEL ?? 'gemini-3.5-flash-lite',
+    // Owner request, after gemini-3.5-flash-lite ALSO hit a transient 503
+    // "experiencing high demand" in production (the third model tier to do
+    // so in one day): GeminiProvider now retries a failed request against
+    // each of these, in order, before giving up -- a different model is
+    // very likely a different capacity pool, so a spike on one rarely hits
+    // all of them at once. gemini-3.1-flash-lite is Google's current
+    // budget-tier model per their own docs; 3.8-flash/3.7-flash are kept in
+    // rotation since "experiencing high demand" is explicitly described as
+    // usually-temporary, so a model that 503'd earlier today may well have
+    // recovered by the time a real request hits it. GEMINI_FALLBACK_MODELS
+    // (comma-separated) overrides this list entirely, including to empty
+    // ("") to disable fallback.
+    fallbackModels: (process.env.GEMINI_FALLBACK_MODELS ?? 'gemini-3.1-flash-lite,gemini-3.8-flash,gemini-3.7-flash')
+      .split(',').map((m) => m.trim()).filter(Boolean),
   },
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY ?? '',

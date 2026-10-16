@@ -1,3 +1,12 @@
+const mockSendMessage = jest.fn();
+const mockStartChat = jest.fn().mockReturnValue({ sendMessage: mockSendMessage });
+const mockGetGenerativeModel = jest.fn().mockReturnValue({ startChat: mockStartChat });
+
+jest.mock('@google/generative-ai', () => ({
+  GoogleGenerativeAI: jest.fn().mockImplementation(() => ({ getGenerativeModel: mockGetGenerativeModel })),
+  SchemaType: { OBJECT: 'OBJECT' },
+}));
+
 import type { ConfigService } from '@nestjs/config';
 import { ProviderFactory } from './provider.factory';
 
@@ -87,5 +96,51 @@ describe('ProviderFactory.buildFromCredentials (BYO AI, Mode B)', () => {
     const rcProvider = configuredFactory.getProvider();
     configuredFactory.buildFromCredentials('openai', 'gpt-4o', 'user-key');
     expect(configuredFactory.getProvider()).toBe(rcProvider);
+  });
+});
+
+// Owner-reported outage: gemini-3.5-flash-lite itself returned a 503 "high
+// demand" error in production (the third Gemini model tier to do so in one
+// day). RealityCapture's own Gemini provider now retries against
+// ai.gemini.fallbackModels before failing; a BYO user's own Gemini
+// connection deliberately does not get this -- they configured one
+// specific model and should get exactly that, or a clear failure.
+describe('ProviderFactory.buildGemini -- model fallback wiring', () => {
+  beforeEach(() => {
+    mockSendMessage.mockReset();
+    mockGetGenerativeModel.mockClear();
+  });
+
+  it("passes ai.gemini.fallbackModels through, so a 503 on the primary retries the configured fallback", async () => {
+    mockSendMessage
+      .mockRejectedValueOnce(new Error('[503 Service Unavailable] This model is currently experiencing high demand.'))
+      .mockResolvedValueOnce({ response: { text: () => 'answer from fallback', usageMetadata: {} } });
+    const factory = new ProviderFactory(makeConfig({
+      'ai.provider': 'gemini', 'ai.gemini.apiKey': 'g-key', 'ai.gemini.model': 'gemini-3.5-flash-lite',
+      'ai.gemini.fallbackModels': ['gemini-3.1-flash-lite'],
+    }));
+
+    const result = await factory.getProvider().generateResponse({ systemPrompt: 'sys', messages: [{ role: 'user', content: 'hi' }] });
+
+    expect(result.text).toBe('answer from fallback');
+    expect(mockGetGenerativeModel.mock.calls.map((c) => c[0].model)).toEqual(['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']);
+  });
+
+  it('works with no fallbackModels configured at all (defaults to [])', async () => {
+    mockSendMessage.mockResolvedValue({ response: { text: () => 'answer', usageMetadata: {} } });
+    const factory = new ProviderFactory(makeConfig({
+      'ai.provider': 'gemini', 'ai.gemini.apiKey': 'g-key', 'ai.gemini.model': 'gemini-3.5-flash-lite',
+    }));
+    await expect(factory.getProvider().generateResponse({ systemPrompt: 'sys', messages: [{ role: 'user', content: 'hi' }] }))
+      .resolves.toMatchObject({ text: 'answer' });
+  });
+
+  it("a BYO Gemini connection (buildFromCredentials) gets no fallback models -- stays single-model", async () => {
+    mockSendMessage.mockRejectedValue(new Error('[503 Service Unavailable] high demand'));
+    const factory = new ProviderFactory(makeConfig({}));
+    const provider = factory.buildFromCredentials('gemini', 'gemini-3.5-flash-lite', 'user-key');
+
+    await expect(provider.generateResponse({ systemPrompt: 'sys', messages: [{ role: 'user', content: 'hi' }] })).rejects.toThrow('high demand');
+    expect(mockGetGenerativeModel).toHaveBeenCalledTimes(1);
   });
 });
