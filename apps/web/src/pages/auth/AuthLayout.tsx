@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useDocumentTitle } from '../../lib/useDocumentTitle';
+import { LogoMark } from '../../components/ui/LogoMark';
 
 export function AuthLayout({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   useDocumentTitle(title);
@@ -11,11 +12,7 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
         <div className="absolute inset-0 bg-gradient-to-t from-base-950 via-transparent to-base-950/40" />
         <div className="relative z-10 max-w-md px-10">
           <div className="flex items-center gap-2 mb-8">
-            <svg viewBox="0 0 24 24" className="w-8 h-8" fill="none">
-              <rect x="2" y="2" width="20" height="20" rx="2" stroke="#FF7A29" strokeWidth="1.5" />
-              <path d="M2 8h20M8 2v20" stroke="#4FB6E8" strokeWidth="1" opacity="0.6" />
-              <circle cx="8" cy="8" r="1.4" fill="#FF7A29" />
-            </svg>
+            <LogoMark className="w-8 h-8" />
             <div className="leading-tight">
               <div className="font-semibold tracking-tight">Reality Capture</div>
               <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500">by EngineeringOS</div>
@@ -47,11 +44,7 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
           <div className="lg:hidden flex items-center gap-2 mb-8">
-            <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none">
-              <rect x="2" y="2" width="20" height="20" rx="2" stroke="#FF7A29" strokeWidth="1.5" />
-              <path d="M2 8h20M8 2v20" stroke="#4FB6E8" strokeWidth="1" opacity="0.6" />
-              <circle cx="8" cy="8" r="1.4" fill="#FF7A29" />
-            </svg>
+            <LogoMark className="w-7 h-7" />
             <div className="leading-tight">
               <div className="font-semibold tracking-tight">Reality Capture</div>
               <div className="text-[9px] font-mono uppercase tracking-widest text-ink-500">by EngineeringOS</div>

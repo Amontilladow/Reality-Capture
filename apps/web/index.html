@@ -19,7 +19,8 @@
          token-gated share link (never meant for public discovery). -->
     <link rel="canonical" href="https://engineeringos-web.onrender.com/" />
 
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
     <!-- Generic, site-wide only -- there's no per-route SSR to vary these
          by page (see the canonical comment above), so this is what shows
@@ -48,21 +49,27 @@
          URL) then shows fallback-font text immediately and swaps once this
          loads, rather than the page waiting on it to paint anything at all.
          The <noscript> fallback covers the rare case of JS disabled. -->
+    <!-- Outfit replaces IBM Plex Sans as the body/heading face: a free,
+         Google Fonts-hosted geometric sans in the same family as the
+         requested "Grift" typeface (a paid 38-lineart font with no free/CDN
+         license available) -- same rounded, circular-dot letterforms.
+         IBM Plex Mono stays for the app's technical eyebrow/label accents,
+         unrelated to this swap. -->
     <link
       rel="preload"
       as="style"
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap"
     />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap"
       media="print"
       onload="this.media='all'"
     />
     <noscript>
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap"
       />
     </noscript>
   </head>

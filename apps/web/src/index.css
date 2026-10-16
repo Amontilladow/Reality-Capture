@@ -2,8 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Centralized design tokens, mirroring tailwind.config.js's "Blueprint-dark
-   technical palette" one-for-one (same hex values, same names in spirit).
+/* Centralized design tokens, mirroring tailwind.config.js's Mobbin-inspired
+   gallery-white palette one-for-one (same hex values, same names in spirit).
    Tailwind utility classes (bg-signal, text-ink-300, ...) remain the single
    source of truth for every existing component -- nothing here changes
    those. These --rc-* custom properties exist so bespoke, non-Tailwind-class
@@ -12,32 +12,32 @@
    re-hardcoding hex values in a second place. Keep this block in sync with
    tailwind.config.js's `theme.extend.colors` if either ever changes. */
 :root {
-  --rc-base-950: #0A141C;
-  --rc-base-900: #0F1B25;
-  --rc-base-800: #182631;
-  --rc-base-700: #22323F;
-  --rc-base-600: #324656;
-  --rc-base-500: #4A6178;
+  --rc-base-950: #FFFFFF;
+  --rc-base-900: #F3F3F3;
+  --rc-base-800: #F3F3F3;
+  --rc-base-700: #F0F0F0;
+  --rc-base-600: #E0E0E0;
+  --rc-base-500: #F0F0F0;
 
-  --rc-ink-100: #EAF0F4;
-  --rc-ink-300: #B7C4CE;
-  --rc-ink-500: #7E8F9C;
+  --rc-ink-100: #141414;
+  --rc-ink-300: #707070;
+  --rc-ink-500: #ADADAD;
 
-  --rc-signal: #FF7A29;
-  --rc-signal-hover: #FF8F4D;
-  --rc-signal-muted: #7A4022;
+  --rc-signal: #141414;
+  --rc-signal-hover: #262626;
+  --rc-signal-muted: #707070;
 
-  --rc-blueprint: #4FB6E8;
-  --rc-blueprint-hover: #72C6ED;
-  --rc-blueprint-muted: #20475A;
+  --rc-blueprint: #0066FF;
+  --rc-blueprint-hover: #3385FF;
+  --rc-blueprint-muted: #E6F0FF;
 
-  --rc-ok: #4ADE80;
-  --rc-warn: #FBBF24;
-  --rc-danger: #F87171;
+  --rc-ok: #16A34A;
+  --rc-warn: #D97706;
+  --rc-danger: #DC2626;
 
-  --rc-radius-sm: 2px;
-  --rc-radius-md: 3px;
-  --rc-radius-lg: 4px;
+  --rc-radius-sm: 16px;
+  --rc-radius-md: 16px;
+  --rc-radius-lg: 24px;
 }
 
 @layer base {
@@ -48,17 +48,24 @@
     @apply bg-base-950 text-ink-100 font-sans antialiased;
   }
   ::selection {
-    @apply bg-signal/30 text-ink-100;
+    /* A light blue-tinted highlight reads correctly on the white canvas --
+       bg-signal/30 (ink-black at 30%) would wash out to dark-on-dark here. */
+    background-color: rgba(0, 102, 255, 0.18);
+    @apply text-ink-100;
   }
   :focus-visible {
-    outline: 2px solid #4fb6e8;
+    /* Mobbin signals focus in ink, not the accent blue -- see this file's
+       and tailwind.config.js's header comments on scoping the accent. */
+    outline: 2px solid #141414;
     outline-offset: 2px;
   }
 }
 
 @layer components {
   /* Registration-mark corner ticks — the app's signature framing device,
-     borrowed from technical drawing sheet corners / survey targets. */
+     borrowed from technical drawing sheet corners / survey targets. Kept
+     monochrome (ink, not the accent) so it reads as structure, not a
+     commercial signal, per the Mobbin palette's accent-scarcity rule. */
   .tick-frame {
     position: relative;
   }
@@ -73,20 +80,21 @@
   .tick-frame::before {
     top: -1px;
     left: -1px;
-    border-top: 1.5px solid theme('colors.blueprint.DEFAULT');
-    border-left: 1.5px solid theme('colors.blueprint.DEFAULT');
+    border-top: 1.5px solid theme('colors.ink.300');
+    border-left: 1.5px solid theme('colors.ink.300');
     opacity: 0.6;
   }
   .tick-frame::after {
     bottom: -1px;
     right: -1px;
-    border-bottom: 1.5px solid theme('colors.blueprint.DEFAULT');
-    border-right: 1.5px solid theme('colors.blueprint.DEFAULT');
+    border-bottom: 1.5px solid theme('colors.ink.300');
+    border-right: 1.5px solid theme('colors.ink.300');
     opacity: 0.6;
   }
 
+  /* Stadium-pill buttons, per Mobbin's button-primary/outline/pill-soft. */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded font-medium text-sm px-4 py-2.5 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97];
+    @apply inline-flex items-center justify-center gap-2 rounded-full font-medium text-sm px-4 py-2.5 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97];
   }
   .btn-primary {
     @apply btn bg-signal text-base-950 hover:bg-signal-hover;
@@ -105,31 +113,33 @@
     @apply block text-xs font-medium uppercase tracking-wide text-ink-500 mb-1.5;
   }
   .field-input {
-    @apply w-full bg-base-900 border border-base-600 rounded px-3 py-2.5 text-sm text-ink-100 placeholder:text-ink-500 focus:border-blueprint focus:outline-none transition-colors;
+    @apply w-full bg-base-900 border border-base-600 rounded px-3 py-2.5 text-sm text-ink-100 placeholder:text-ink-500 focus:border-ink-100 focus:outline-none transition-colors;
   }
   .field-error {
     @apply text-xs text-danger mt-1;
   }
 
+  /* Shadow-free elevation, per Mobbin: a card is a fill + a hairline, never
+     a drop shadow -- hierarchy comes from the canvas/canvas-soft tint step,
+     not from simulated depth. */
   .panel {
     @apply bg-base-800 border border-base-600 rounded-md;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.02);
   }
 
   /* Opt-in lift for panels that are also a click target (a card linking
      somewhere, a selectable row) -- plain informational panels (StatTile,
      Card without an onClick/Link) stay flat so hover affordance only shows
-     up where something is actually clickable. */
+     up where something is actually clickable. Still shadow-free: the hover
+     state deepens the tint and border instead of adding a drop shadow. */
   .panel-interactive {
     @apply transition-all duration-200;
   }
   .panel-interactive:hover {
-    @apply border-blueprint/50 -translate-y-0.5;
-    box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    @apply bg-base-700 border-blueprint/40 -translate-y-0.5;
   }
 
   .badge {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-xs font-mono uppercase tracking-wide;
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-mono uppercase tracking-wide;
   }
 
   /* Toast.tsx's entrance -- a 150ms slide+fade, not a decorative flourish:

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
+import { LogoMark } from '../components/ui/LogoMark';
 
 // Public marketing landing page -- the first real public/marketing surface
 // this app has ever had (previously "/" redirected straight to /projects,
@@ -67,11 +68,7 @@ function BrandMark({ size = 'md' }: { size?: 'md' | 'lg' }) {
   const iconSize = size === 'lg' ? 'w-9 h-9' : 'w-7 h-7';
   return (
     <div className="flex items-center gap-2.5">
-      <svg viewBox="0 0 24 24" className={iconSize} fill="none">
-        <rect x="2" y="2" width="20" height="20" rx="2" stroke="#FF7A29" strokeWidth="1.5" />
-        <path d="M2 8h20M8 2v20" stroke="#4FB6E8" strokeWidth="1" opacity="0.6" />
-        <circle cx="8" cy="8" r="1.4" fill="#FF7A29" />
-      </svg>
+      <LogoMark className={iconSize} />
       <div className="leading-tight">
         <div className={`font-semibold tracking-tight ${size === 'lg' ? 'text-lg' : ''}`}>Reality Capture</div>
         <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500">by EngineeringOS</div>

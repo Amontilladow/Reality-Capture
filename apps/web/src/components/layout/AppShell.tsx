@@ -9,6 +9,7 @@ import { MessagesBell } from './MessagesBell';
 import { ProjectContextPanel } from './ProjectContextPanel';
 import { ChatWidget } from '../chat/ChatWidget';
 import { OnboardingFlow } from '../onboarding/OnboardingFlow';
+import { LogoMark } from '../ui/LogoMark';
 
 interface NavItem {
   to: string;
@@ -138,7 +139,7 @@ export function AppShell() {
         >
           <IconMenu className="w-5 h-5" />
         </button>
-        <IconMark className="w-5 h-5" />
+        <LogoMark className="w-5 h-5" />
         <div className="text-sm font-semibold tracking-tight">Reality Capture</div>
       </div>
 
@@ -156,7 +157,7 @@ export function AppShell() {
         }`}
       >
         <div className="h-16 flex items-center gap-2 px-5 border-b border-base-600">
-          <IconMark />
+          <LogoMark />
           <div className="leading-tight flex-1 min-w-0">
             <div className="text-sm font-semibold tracking-tight">Reality Capture</div>
             <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500">by EngineeringOS</div>
@@ -250,15 +251,6 @@ function NavGroupList({ groups, basePath }: { groups: NavGroup[]; basePath: stri
   );
 }
 
-function IconMark({ className = 'w-6 h-6' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none">
-      <rect x="2" y="2" width="20" height="20" rx="2" stroke="#FF7A29" strokeWidth="1.5" />
-      <path d="M2 8h20M8 2v20" stroke="#4FB6E8" strokeWidth="1" opacity="0.6" />
-      <circle cx="8" cy="8" r="1.4" fill="#FF7A29" />
-    </svg>
-  );
-}
 function IconGrid({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
