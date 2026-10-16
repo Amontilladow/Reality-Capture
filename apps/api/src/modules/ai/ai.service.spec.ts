@@ -54,6 +54,11 @@ function makeService(opts: {
     // default is never exercised by them; defaults to true (not the
     // fail-closed path) so a test can opt into the "weak" scenario cleanly.
     classifyRequest: jest.fn().mockResolvedValue({ inDomain: true }),
+    // Defaults to "failed" so every existing test above (written against
+    // the old pure-keyword router) falls back to routeIntent()'s regex list
+    // unchanged -- see the "native tool-calling" describe block below for
+    // tests of the function-calling path itself and its fallback behavior.
+    selectTools: jest.fn().mockResolvedValue({ toolCalls: [], failed: true }),
   };
   const providerFactory = { getProvider: jest.fn().mockReturnValue(provider) };
 
@@ -340,6 +345,76 @@ describe('AiService — BYO AI (Mode B)', () => {
     const { svc } = makeService({ usageAllowed: false, usageReason: 'daily_limit' });
     await expect(svc.ask(user, 'project-1', { question: 'Summarize the current project.' }))
       .rejects.toMatchObject({ message: expect.stringContaining('Connect your own AI provider') });
+  });
+});
+
+// Owner request, following the plural-matching bug fix: "the assistant must
+// understand the full word, part of it, a wrong spelling, like any AI
+// model." A fixed keyword regex can never generalize to that -- so tool
+// selection now goes through the provider's native function-calling
+// (selectTools()) first, with the old regex router (routeIntent()) kept
+// only as a fallback for when that call itself fails outright.
+describe('AiService — native tool-calling (function calling) drives tool selection', () => {
+  it("uses the model's own tool selection instead of the keyword router when it succeeds", async () => {
+    const { svc, tools, provider } = makeService();
+    // A phrasing with no "rfi"/"submittal" substring at all -- the old
+    // regex router would've fallen through to the generic getProjectSummary
+    // default. Only a real model, not a keyword list, could map this to
+    // the right tools; mocking the provider's decision here stands in for
+    // that real NLU. ("project" keeps it past the domain guard.)
+    provider.selectTools.mockResolvedValue({ toolCalls: [{ name: 'getOpenRfis' }, { name: 'getOpenSubmittals' }] });
+
+    await svc.ask(user, 'project-1', { question: "What's still waiting on a response from the design team on this project?" });
+
+    expect(tools.getOpenRfis).toHaveBeenCalledTimes(1);
+    expect(tools.getOpenSubmittals).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes the full tool catalog (name + description) to the provider', async () => {
+    const { svc, provider } = makeService();
+    await svc.ask(user, 'project-1', { question: 'Summarize the current project.' });
+    const [, catalogArg] = provider.selectTools.mock.calls[0];
+    expect(catalogArg).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'getOpenRfis', description: expect.any(String) })]),
+    );
+  });
+
+  it('ignores a tool name the model returns that is not a real tool (defense in depth against a hallucinated or malformed name)', async () => {
+    const { svc, tools, provider } = makeService();
+    provider.selectTools.mockResolvedValue({ toolCalls: [{ name: 'deleteAllProjects' }, { name: 'getOpenNcrs' }] });
+
+    await svc.ask(user, 'project-1', { question: 'Anything urgent on this project?' });
+
+    expect(tools.getOpenNcrs).toHaveBeenCalledTimes(1);
+  });
+
+  it('respects a genuine "no tool applies" decision from the model rather than forcing a fallback', async () => {
+    const { svc, tools, provider } = makeService();
+    provider.selectTools.mockResolvedValue({ toolCalls: [] }); // not failed -- a real decision
+    provider.generateResponse.mockResolvedValue({ text: 'General answer with no project-specific data needed.' });
+
+    const result = await svc.ask(user, 'project-1', { question: 'What does RFI stand for?' });
+
+    expect(result.answer).toBe('General answer with no project-specific data needed.');
+    expect(tools.getProjectSummary).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the keyword router when selectTools reports failure (no tool-calling support, provider error)', async () => {
+    const { svc, tools, provider } = makeService();
+    provider.selectTools.mockResolvedValue({ toolCalls: [], failed: true });
+
+    await svc.ask(user, 'project-1', { question: 'Summarize open RFIs.' });
+
+    expect(tools.getOpenRfis).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to the keyword router when selectTools itself throws', async () => {
+    const { svc, tools, provider } = makeService();
+    provider.selectTools.mockRejectedValue(new Error('tool-calling not supported by this model'));
+
+    await svc.ask(user, 'project-1', { question: 'Summarize open RFIs.' });
+
+    expect(tools.getOpenRfis).toHaveBeenCalledTimes(1);
   });
 });
 
