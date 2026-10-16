@@ -94,7 +94,13 @@ export class ProviderFactory implements OnModuleInit {
 
   private buildGemini(apiKey: string | undefined): AIProvider {
     if (!apiKey) throw new Error('AI_PROVIDER=gemini but GEMINI_API_KEY is not set.');
-    return new GeminiProvider(apiKey, this.config.get<string>('ai.gemini.model')!);
+    // Fallback models are RealityCapture's own operational safety net
+    // (ai.config.ts), not applied to a user's BYO Gemini connection in
+    // buildFromCredentials() below -- a BYO user configured one specific
+    // model and should get exactly that, or a clear failure, not a silent
+    // switch to a model they didn't choose.
+    const fallbackModels = this.config.get<string[]>('ai.gemini.fallbackModels') ?? [];
+    return new GeminiProvider(apiKey, this.config.get<string>('ai.gemini.model')!, fallbackModels);
   }
 
   private buildAnthropic(apiKey: string | undefined): AIProvider {
