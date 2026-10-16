@@ -49,4 +49,41 @@ describe('DomainGuardService', () => {
   it('blocks a question matching neither list (ambiguous defaults to blocked)', () => {
     expect(guard.evaluate('asdkfj qwerty 12345').inDomain).toBe(false);
   });
+
+  // Owner request: "make sure users won't use the AI assistant beyond the
+  // platform." These are real phrasings that used to pass as in-domain
+  // under the old single-keyword-presence list (verified before this fix),
+  // because a bare action word with no construction noun was enough
+  // ("explain"/"status"/"summarize"/"critical"/"open"/"closed") or because
+  // the matched noun is also common outside construction ("who built that
+  // famous building", "what level is this video game on").
+  describe('closes previously-demonstrated bypasses', () => {
+    const cases = [
+      'Explain the theory of relativity',
+      'What is the status of the French Revolution',
+      'Give me a summary of World War 2',
+      'Who built the Eiffel Tower, that famous building',
+      'Give me the priority queue algorithm in Python',
+      'What level is this video game on?',
+    ];
+    it.each(cases)('%s', (question) => {
+      expect(guard.evaluate(question).inDomain).toBe(false);
+    });
+  });
+
+  describe('strength', () => {
+    it('is "strong" for jargon essentially unique to this platform', () => {
+      expect(guard.evaluate('Show me my open RFIs.')).toMatchObject({ inDomain: true, strength: 'strong' });
+      expect(guard.evaluate('Which issues have risk above 7?')).toMatchObject({ inDomain: true, strength: 'strong' });
+    });
+
+    it('is "weak" for a real construction term that is also common in everyday English', () => {
+      expect(guard.evaluate('What building is this drawing for?')).toMatchObject({ inDomain: true, strength: 'weak' });
+      expect(guard.evaluate('What zone is this in?')).toMatchObject({ inDomain: true, strength: 'weak' });
+    });
+
+    it('is "strong" (skips the extra check) when a weak word co-occurs with a strong one', () => {
+      expect(guard.evaluate("The designer's contact is needed for this project.")).toMatchObject({ inDomain: true, strength: 'strong' });
+    });
+  });
 });
