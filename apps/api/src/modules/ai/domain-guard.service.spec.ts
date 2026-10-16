@@ -17,6 +17,7 @@ describe('DomainGuardService', () => {
       'Find recurring issues in Zone B.',
       'Draft an RFI based on this issue.',
       'Summarize the latest project report.',
+      'Show me open NCRs.',
     ];
     it.each(cases)('%s', (question) => {
       expect(guard.evaluate(question).inDomain).toBe(true);

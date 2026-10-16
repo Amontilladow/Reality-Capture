@@ -8,6 +8,7 @@ import { DocumentsService } from '../documents/documents.service';
 import { ProjectsService } from '../projects/projects.service';
 import { DrawingsService } from '../drawings/drawings.service';
 import { AiClientService } from '../ai-client/ai-client.service';
+import { QaqcService } from '../qaqc/qaqc.service';
 
 export interface ToolResult {
   tool: string;
@@ -48,6 +49,7 @@ export class AiToolsService {
     private readonly projects: ProjectsService,
     private readonly drawings: DrawingsService,
     private readonly aiClient: AiClientService,
+    private readonly qaqc: QaqcService,
   ) {}
 
   async getProjectSummary(ctx: AssistantContext): Promise<ToolResult> {
@@ -82,6 +84,21 @@ export class AiToolsService {
         status: rfi.status, priority: rfi.priority, discipline: rfi.discipline, dueDate: rfi.dueDate,
         assignedToName: rfi.assignedToName, createdByName: rfi.createdByName,
       },
+    };
+  }
+
+  // NCR/SOR/WIR/MIR all live in qaqc_records (record_type discriminator) --
+  // getOpenNcrs covers the one users actually ask the assistant about
+  // ("open NCRs"); QaqcService.findAll's recordType filter already supports
+  // sor/wir/mir the same way if those are ever needed here too.
+  async getOpenNcrs(ctx: AssistantContext, limit = 10): Promise<ToolResult> {
+    const page = await this.qaqc.findAll(ctx.companyId, ctx.projectId, { recordType: 'ncr', status: 'open', page: 1, perPage: limit });
+    return {
+      tool: 'getOpenNcrs', category: 'qaqc',
+      data: (page.data as Record<string, unknown>[]).map((r) => ({
+        recordNumber: r.recordNumber, subject: r.subject, priority: r.priority,
+        discipline: r.discipline, dueDate: r.dueDate, assignedToName: r.assignedToName,
+      })),
     };
   }
 
