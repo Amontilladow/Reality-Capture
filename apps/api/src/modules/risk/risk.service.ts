@@ -483,6 +483,16 @@ export class RiskService {
     });
   }
 
+  // due_date already existed on the risks table (migration 051) for the
+  // Executive Summary's overdueCount to read -- this is the first write
+  // path for it, mirroring assignOwner above exactly. No migration needed.
+  async setDueDate(companyId: string, riskId: string, dueDate: string | null): Promise<RiskRow> {
+    return this.db.withTenant(companyId, async (sql) => {
+      const [row] = await sql<RiskRow[]>`UPDATE risks SET due_date = ${dueDate}, updated_at = now() WHERE id = ${riskId} RETURNING *`;
+      return row;
+    });
+  }
+
   // ── Risk Matrix: human Probability x Impact assessment (sections 3-6, 40) ──
   //
   // A second, parallel scoring system to the automated/override/score

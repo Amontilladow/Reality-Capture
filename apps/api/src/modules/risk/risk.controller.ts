@@ -8,6 +8,7 @@ import { RiskService, RISK_WORTHY_NODE_TYPES } from './risk.service';
 import { OverrideRiskDto } from './dto/override-risk.dto';
 import { SetRiskStatusDto } from './dto/set-risk-status.dto';
 import { AssignRiskOwnerDto } from './dto/assign-risk-owner.dto';
+import { SetRiskDueDateDto } from './dto/set-risk-due-date.dto';
 import { GenerateRiskPdfDto } from './dto/generate-risk-pdf.dto';
 import { SetHumanAssessmentDto } from './dto/set-human-assessment.dto';
 import { SetMatrixOverrideDto } from './dto/set-matrix-override.dto';
@@ -276,5 +277,11 @@ export class RiskController {
   @RequireProjectPermission('manage_project_records')
   async assignOwner(@CurrentUser() u: AuthenticatedUser, @Param('riskId') riskId: string, @Body() dto: AssignRiskOwnerDto) {
     return { data: await this.risk.assignOwner(u.companyId, riskId, dto.ownerId ?? null), error: null };
+  }
+
+  @Patch(':riskId/due-date')
+  @RequireProjectPermission('manage_project_records')
+  async setDueDate(@CurrentUser() u: AuthenticatedUser, @Param('riskId') riskId: string, @Body() dto: SetRiskDueDateDto) {
+    return { data: await this.risk.setDueDate(u.companyId, riskId, dto.dueDate ?? null), error: null };
   }
 }

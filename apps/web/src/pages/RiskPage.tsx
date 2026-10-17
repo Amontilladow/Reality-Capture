@@ -17,7 +17,11 @@ export default function RiskPage() {
 
   return (
     <>
-      <PageHeader eyebrow={projectQuery.data?.name ?? 'Project'} title="Risk Intelligence" />
+      <PageHeader
+        breadcrumbs={[{ label: 'Projects', to: '/projects' }, { label: projectQuery.data?.name ?? 'Loading…', to: `/projects/${projectId}` }, { label: 'Risk Intelligence' }]}
+        title="Risk Intelligence"
+        subtitle="Project risk exposure, mitigation progress and management actions."
+      />
       <div className="p-6">
         <RiskIntelligenceSection projectId={projectId} />
       </div>
