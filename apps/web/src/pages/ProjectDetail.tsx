@@ -7,7 +7,6 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { HierarchyTree } from '../components/HierarchyTree';
 import { AddHierarchyNodeModal } from '../components/AddHierarchyNodeModal';
 import { CaptureGrid } from '../components/CaptureGrid';
-import { CaptureUploadModal } from '../components/CaptureUploadModal';
 import { EditProjectModal } from '../components/EditProjectModal';
 import { ManageMembersModal } from '../components/ManageMembersModal';
 import { EmailComposerModal } from '../components/EmailComposerModal';
@@ -25,7 +24,6 @@ export default function ProjectDetail() {
   const currentUser = useAuthStore((s) => s.user);
   const [selectedLocation, setSelectedLocation] = useState<{ id: string; name: string } | null>(null);
   const [nodeModal, setNodeModal] = useState<NodeModalState>(null);
-  const [uploadOpen, setUploadOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [composeEmailOpen, setComposeEmailOpen] = useState(false);
@@ -105,11 +103,6 @@ export default function ProjectDetail() {
             </button>
             <button onClick={() => setEmailHistoryOpen(true)} className="btn-secondary">
               Email History
-            </button>
-            <Link to={`/projects/${projectId}/drawings`} className="btn-secondary">Floor plans</Link>
-            <Link to={`/projects/${projectId}/bim`} className="btn-secondary">BIM models</Link>
-            <button onClick={() => setUploadOpen(true)} className="btn-primary">
-              <UploadIcon /> Upload captures
             </button>
           </>
         }
@@ -197,14 +190,6 @@ export default function ProjectDetail() {
         />
       )}
 
-      <CaptureUploadModal
-        open={uploadOpen}
-        onClose={() => setUploadOpen(false)}
-        projectId={projectId}
-        locations={allLocations}
-        defaultLocationId={selectedLocation?.id}
-      />
-
       <EditProjectModal open={editOpen} onClose={() => setEditOpen(false)} project={projectQuery.data} />
 
       {projectId && (
@@ -259,14 +244,6 @@ function EditIcon() {
   return (
     <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function UploadIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 16V4M7 9l5-5 5 5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" strokeLinecap="round" />
     </svg>
   );
 }
