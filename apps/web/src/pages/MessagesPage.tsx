@@ -8,6 +8,8 @@ import {
   snippetOf, type ThreadSummary,
 } from '../lib/messaging.api';
 import { listUsers, type CompanyUser } from '../lib/users.api';
+import { listProjects } from '../lib/projects.api';
+import { EmailHistoryList } from '../components/EmailHistoryList';
 import { useAuthStore } from '../store/auth.store';
 
 function timeAgo(iso: string): string {
@@ -29,10 +31,17 @@ function userLabel(u: CompanyUser): string {
 export default function MessagesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const threadId = searchParams.get('threadId');
-  const [tab, setTab] = useState<'inbox' | 'sent'>('inbox');
+  const [tab, setTab] = useState<'inbox' | 'sent' | 'email'>('inbox');
   const [composeOpen, setComposeOpen] = useState(false);
   const [replyBody, setReplyBody] = useState('');
+  const [emailHistoryProjectId, setEmailHistoryProjectId] = useState('');
   const queryClient = useQueryClient();
+
+  const projectsQuery = useQuery({
+    queryKey: ['projects-for-email-history'],
+    queryFn: () => listProjects({ perPage: 200 }),
+    enabled: tab === 'email',
+  });
 
   const inboxQuery = useQuery({
     queryKey: ['messages-inbox'],
@@ -140,8 +149,9 @@ export default function MessagesPage() {
     );
   }
 
-  const activeQuery = tab === 'inbox' ? inboxQuery : sentQuery;
-  const rows = activeQuery.data?.data ?? [];
+  const activeQuery = tab === 'inbox' ? inboxQuery : tab === 'sent' ? sentQuery : null;
+  const rows = activeQuery?.data?.data ?? [];
+  const projects = projectsQuery.data?.data ?? [];
 
   return (
     <>
@@ -169,44 +179,81 @@ export default function MessagesPage() {
           >
             Sent
           </button>
+          <button
+            onClick={() => setTab('email')}
+            className={`px-3 py-1.5 rounded text-sm ${tab === 'email' ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-800'}`}
+          >
+            Email History
+          </button>
         </div>
 
-        {activeQuery.isLoading && <div className="text-sm text-ink-500">Loading…</div>}
+        {tab === 'email' ? (
+          <div className="space-y-4">
+            <select
+              className="field-input w-full max-w-sm"
+              value={emailHistoryProjectId}
+              onChange={(e) => setEmailHistoryProjectId(e.target.value)}
+            >
+              <option value="">Select a project…</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
 
-        {!activeQuery.isLoading && rows.length === 0 && (
-          <div className="tick-frame panel p-12 text-center text-sm text-ink-500">
-            {tab === 'inbox' ? 'No messages yet.' : 'No sent messages yet.'}
-          </div>
-        )}
+            {projectsQuery.isLoading && <div className="text-sm text-ink-500">Loading projects…</div>}
 
-        {rows.length > 0 && (
-          <div className="panel tick-frame overflow-hidden">
-            {rows.map((t) => (
-              <button
-                key={t.threadId}
-                onClick={() => openThread(t)}
-                className={`block w-full text-left px-4 py-3 border-b border-base-700/60 last:border-0 hover:bg-base-800/40 transition-colors ${
-                  t.unread ? 'bg-blueprint/5' : ''
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  {t.unread && <span className="w-1.5 h-1.5 rounded-full bg-blueprint mt-1.5 shrink-0" />}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={`text-sm truncate ${t.unread ? 'text-ink-100 font-semibold' : 'text-ink-300'}`}>
-                        {t.fromUserName ?? 'Unknown'}
-                      </span>
-                      <span className="text-[10px] font-mono text-ink-500 shrink-0">{timeAgo(t.createdAt)}</span>
-                    </div>
-                    <div className={`text-sm truncate ${t.unread ? 'text-ink-100 font-medium' : 'text-ink-300'}`}>
-                      {t.subject}
-                    </div>
-                    <div className="text-xs text-ink-500 truncate mt-0.5">{snippetOf(t)}</div>
-                  </div>
+            {emailHistoryProjectId ? (
+              <EmailHistoryList projectId={emailHistoryProjectId} />
+            ) : (
+              !projectsQuery.isLoading && (
+                <div className="tick-frame panel p-12 text-center text-sm text-ink-500">
+                  Pick a project above to see its email history.
                 </div>
-              </button>
-            ))}
+              )
+            )}
           </div>
+        ) : (
+          <>
+            {activeQuery?.isLoading && <div className="text-sm text-ink-500">Loading…</div>}
+
+            {!activeQuery?.isLoading && rows.length === 0 && (
+              <div className="tick-frame panel p-12 text-center text-sm text-ink-500">
+                {tab === 'inbox' ? 'No messages yet.' : 'No sent messages yet.'}
+              </div>
+            )}
+
+            {rows.length > 0 && (
+              <div className="panel tick-frame overflow-hidden">
+                {rows.map((t) => (
+                  <button
+                    key={t.threadId}
+                    onClick={() => openThread(t)}
+                    className={`block w-full text-left px-4 py-3 border-b border-base-700/60 last:border-0 hover:bg-base-800/40 transition-colors ${
+                      t.unread ? 'bg-blueprint/5' : ''
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {t.unread && <span className="w-1.5 h-1.5 rounded-full bg-blueprint mt-1.5 shrink-0" />}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`text-sm truncate ${t.unread ? 'text-ink-100 font-semibold' : 'text-ink-300'}`}>
+                            {t.fromUserName ?? 'Unknown'}
+                          </span>
+                          <span className="text-[10px] font-mono text-ink-500 shrink-0">{timeAgo(t.createdAt)}</span>
+                        </div>
+                        <div className={`text-sm truncate ${t.unread ? 'text-ink-100 font-medium' : 'text-ink-300'}`}>
+                          {t.subject}
+                        </div>
+                        <div className="text-xs text-ink-500 truncate mt-0.5">{snippetOf(t)}</div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 

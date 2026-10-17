@@ -10,7 +10,6 @@ import { CaptureGrid } from '../components/CaptureGrid';
 import { EditProjectModal } from '../components/EditProjectModal';
 import { ManageMembersModal } from '../components/ManageMembersModal';
 import { EmailComposerModal } from '../components/EmailComposerModal';
-import { EmailHistoryModal } from '../components/EmailHistoryModal';
 import { ProjectDashboard } from '../components/ProjectDashboard';
 import { getProject, getHierarchy, getMembers, updateBuilding } from '../lib/projects.api';
 import { listCaptures } from '../lib/captures.api';
@@ -27,7 +26,6 @@ export default function ProjectDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [composeEmailOpen, setComposeEmailOpen] = useState(false);
-  const [emailHistoryOpen, setEmailHistoryOpen] = useState(false);
 
   const projectQuery = useQuery({
     queryKey: ['project', projectId],
@@ -100,9 +98,6 @@ export default function ProjectDetail() {
             </button>
             <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary">
               <MailIcon /> Email
-            </button>
-            <button onClick={() => setEmailHistoryOpen(true)} className="btn-secondary">
-              Email History
             </button>
           </>
         }
@@ -196,7 +191,6 @@ export default function ProjectDetail() {
         <>
           <ManageMembersModal open={membersOpen} onClose={() => setMembersOpen(false)} projectId={projectId} />
           <EmailComposerModal open={composeEmailOpen} onClose={() => setComposeEmailOpen(false)} projectId={projectId} />
-          <EmailHistoryModal open={emailHistoryOpen} onClose={() => setEmailHistoryOpen(false)} projectId={projectId} />
         </>
       )}
     </>
