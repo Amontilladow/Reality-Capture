@@ -1,19 +1,28 @@
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { Modal } from './ui/Modal';
 import { RiskGraphView } from './RiskGraphView';
+import { RiskKpiStrip } from './risk/RiskKpiStrip';
+import { RiskAttentionPanel } from './risk/RiskAttentionPanel';
+import { RiskHeatmap } from './risk/RiskHeatmap';
+import { RiskDisciplineChart } from './risk/RiskDisciplineChart';
+import { RiskRegisterTable } from './risk/RiskRegisterTable';
+import {
+  DEFAULT_REGISTER_FILTERS, dueDateTone, formatDueDate, isOpenRiskStatus, ownerNameMap,
+  type RegisterFilters,
+} from './risk/riskDisplay';
 import { apiErrorMessage } from '../lib/api';
-import { getProject } from '../lib/projects.api';
+import { getProject, getMembers, type ProjectMember } from '../lib/projects.api';
 import { useThemeColors, type ThemeColors } from '../lib/useThemeColors';
 import {
   recalculateRisk, getRiskSummary, getTopRisks, getEmergingRisks, getRiskByDiscipline,
   getRiskClusters, getRiskDataAvailability, listRisks, getRisk, getRiskChain, getRiskEvidence, getRiskHistory,
   overrideRisk, clearRiskOverride, setRiskStatus, getAiBriefing, getAiExplanation, downloadRiskPdf,
-  setHumanAssessment, setHumanAssessmentByEntity, setMatrixOverride, getRiskByEntity,
+  setHumanAssessment, setHumanAssessmentByEntity, setMatrixOverride, getRiskByEntity, assignRiskOwner, setRiskDueDate,
   getMatrixDiscrepancies, getRiskHeatmap, RISK_DRIVERS, RISK_DRIVER_LABELS,
-  type Risk, type RiskLevel, type RiskStatus, type RiskMatrixLevel, type RiskDriver, type RiskMatrixDiscrepancy, type RiskHeatmapCell,
+  type Risk, type RiskLevel, type RiskStatus, type RiskMatrixLevel, type RiskDriver, type RiskMatrixDiscrepancy,
 } from '../lib/risk.api';
 
 // HIGH/VERY_HIGH have no dedicated semantic token (the design system only
@@ -27,14 +36,10 @@ const VERY_HIGH_HEX = '#F97316';
 
 // Every other color below comes from useThemeColors() (resolves the same
 // --rc-* custom properties every Tailwind utility class in the app
-// resolves) -- these status/chart colors previously used fixed hex values
-// that happened to already be dark-theme-appropriate (a pre-existing
-// inconsistency on the light-only app, now a real bug once dark mode
-// exists: a dark-navy chart tooltip would render dark-on-dark in light
-// mode's data and stay correct only by accident in dark mode). Built as
-// functions of the resolved colors, called once per component via
-// useThemeColors(), rather than module-level constants, so every chart and
-// badge here re-renders with the right colors when the theme changes.
+// resolves) -- built as functions of the resolved colors, called once per
+// component via useThemeColors(), rather than module-level constants, so
+// every chart and badge here re-renders with the right colors when the
+// theme changes.
 function levelColors(colors: ThemeColors): Record<RiskLevel, string> {
   return { LOW: colors.ok, MODERATE: colors.warn, HIGH: HIGH_HEX, CRITICAL: colors.danger };
 }
@@ -80,16 +85,6 @@ function timeAgo(iso?: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-// Mirrors RiskService.detectMatrixDiscrepancy() server-side, purely for a
-// display-only register indicator -- never trusted for an action (Accept
-// AI / Keep Human / Update Assessment all go through the server, which
-// recomputes this itself).
-const MATRIX_LEVEL_ORDER: RiskMatrixLevel[] = ['LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH', 'CRITICAL'];
-function hasUnreviewedMatrixDiscrepancy(r: Risk): boolean {
-  if (!r.humanLevel || !r.aiLevel || r.matrixOverrideBy) return false;
-  return MATRIX_LEVEL_ORDER.indexOf(r.humanLevel) !== MATRIX_LEVEL_ORDER.indexOf(r.aiLevel);
-}
-
 function LevelBadge({ level }: { level: RiskLevel }) {
   const color = levelColors(useThemeColors())[level];
   return (
@@ -113,14 +108,12 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
   const themeColors = useThemeColors();
   const LEVEL_COLORS = levelColors(themeColors);
   const MATRIX_LEVEL_COLORS = matrixLevelColors(themeColors);
-  const TOOLTIP_STYLE = tooltipStyle(themeColors);
   const queryClient = useQueryClient();
   const [detailRiskId, setDetailRiskId] = useState<string | null>(null);
-  const [levelFilter, setLevelFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [search, setSearch] = useState('');
   const [graphOpen, setGraphOpen] = useState(false);
   const [graphFocusNodeId, setGraphFocusNodeId] = useState<string | undefined>(undefined);
+  const [filters, setFilters] = useState<RegisterFilters>(DEFAULT_REGISTER_FILTERS);
+  const registerRef = useRef<HTMLDivElement>(null);
 
   const invalidateAll = () => {
     ['risk-summary', 'risk-top', 'risk-emerging', 'risk-by-discipline', 'risk-clusters', 'risk-data-availability', 'risk-register', 'risk-discrepancies', 'risk-heatmap']
@@ -136,6 +129,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
   const registerQuery = useQuery({ queryKey: ['risk-register', projectId], queryFn: () => listRisks(projectId) });
   const discrepanciesQuery = useQuery({ queryKey: ['risk-discrepancies', projectId], queryFn: () => getMatrixDiscrepancies(projectId) });
   const heatmapQuery = useQuery({ queryKey: ['risk-heatmap', projectId], queryFn: () => getRiskHeatmap(projectId) });
+  const membersQuery = useQuery({ queryKey: ['members', projectId], queryFn: () => getMembers(projectId) });
 
   const recalcMutation = useMutation({
     mutationFn: () => recalculateRisk(projectId),
@@ -172,33 +166,54 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
   const availability = dataAvailabilityQuery.data;
   const hasAnyData = availability && (availability.rfisAvailable + availability.issuesAvailable + availability.snagItemsAvailable + availability.qaInspectionsAvailable) > 0;
 
-  const register = (registerQuery.data ?? []).filter((r) => {
-    if (levelFilter && r.level !== levelFilter) return false;
-    if (statusFilter && r.status !== statusFilter) return false;
-    if (search && !r.title.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const members = useMemo(() => membersQuery.data ?? [], [membersQuery.data]);
+  const ownerNames = useMemo(() => ownerNameMap(members), [members]);
 
-  const lastUpdated = (registerQuery.data ?? []).reduce<string | undefined>((latest, r) => (
+  const allRisks = useMemo(() => registerQuery.data ?? [], [registerQuery.data]);
+  const openRisks = useMemo(() => allRisks.filter((r) => isOpenRiskStatus(r.status)), [allRisks]);
+  const unassignedCount = useMemo(() => openRisks.filter((r) => !r.ownerId).length, [openRisks]);
+  const mitigatedCount = useMemo(() => allRisks.filter((r) => r.status === 'RESOLVED' || r.status === 'CLOSED').length, [allRisks]);
+  const mitigationRatePct = allRisks.length > 0 ? Math.round((mitigatedCount / allRisks.length) * 100) : null;
+
+  const lastUpdated = allRisks.reduce<string | undefined>((latest, r) => (
     !latest || new Date(r.lastCalculatedAt) > new Date(latest) ? r.lastCalculatedAt : latest
   ), undefined);
 
+  function openRisk(riskId: string) {
+    setDetailRiskId(riskId);
+  }
+
+  function applyFiltersAndScroll(next: RegisterFilters) {
+    setFilters(next);
+    requestAnimationFrame(() => registerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+
   return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Project Risk Intelligence</h2>
-          <p className="text-xs text-ink-500 mt-0.5">Last updated {timeAgo(lastUpdated)}</p>
+    <section className="space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-3 pb-1 border-b border-base-700/60">
+        <div className="flex items-center gap-3 flex-wrap">
+          {summary && (
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-lg font-semibold tabular-nums" style={{ color: LEVEL_COLORS[summary.overallLevel] }}>{summary.overallScore}</span>
+              <span className="text-xs text-ink-500">/100 overall</span>
+              {summary.overallScoreTrendPct !== null && (
+                <span className={`text-xs ${summary.overallScoreTrendPct > 0 ? 'text-danger' : 'text-ok'}`}>
+                  {summary.overallScoreTrendPct > 0 ? '↑' : '↓'} {Math.abs(summary.overallScoreTrendPct)}%
+                </span>
+              )}
+            </div>
+          )}
+          <span className="text-xs text-ink-500">Last updated {timeAgo(lastUpdated)}</span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setGraphOpen(true)} className="btn-secondary !px-3 !py-1.5 text-xs">
             View Risk Graph
           </button>
           <button onClick={handleDownloadPdf} disabled={pdfDownloading || !hasAnyData} className="btn-secondary !px-3 !py-1.5 text-xs">
-            {pdfDownloading ? 'Preparing…' : 'Download Risk Report'}
+            {pdfDownloading ? 'Preparing…' : 'Export Report'}
           </button>
           <button onClick={() => recalcMutation.mutate()} disabled={recalcMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
-            {recalcMutation.isPending ? 'Analyzing…' : 'Refresh analysis'}
+            {recalcMutation.isPending ? 'Analyzing…' : 'Refresh'}
           </button>
         </div>
       </div>
@@ -229,82 +244,98 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
 
       {summary && hasAnyData && (
         <>
-          {/* Executive Risk Summary */}
-          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
-            <div className="panel p-3">
-              <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">Overall Project Risk</div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-semibold tabular-nums" style={{ color: LEVEL_COLORS[summary.overallLevel] }}>{summary.overallScore}</span>
-                <span className="text-xs text-ink-500">/ 100</span>
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                <LevelBadge level={summary.overallLevel} />
-                {summary.overallScoreTrendPct !== null && (
-                  <span className={`text-xs ${summary.overallScoreTrendPct > 0 ? 'text-danger' : 'text-ok'}`}>
-                    {summary.overallScoreTrendPct > 0 ? '↑' : '↓'} {Math.abs(summary.overallScoreTrendPct)}%
-                  </span>
-                )}
-              </div>
-            </div>
-            <StatTile label="Critical Risks" value={summary.criticalCount} tone="danger" />
-            <StatTile label="High Risks" value={summary.highCount} tone={summary.highCount > 0 ? 'warn' : undefined} />
-            <StatTile label="Increasing" value={summary.increasingCount} tone={summary.increasingCount > 0 ? 'danger' : undefined} />
-            <StatTile label="Overdue Items" value={summary.overdueCount} tone={summary.overdueCount > 0 ? 'danger' : undefined} />
-            <StatTile label="Open Discrepancies" value={summary.openDiscrepancyCount} tone={summary.openDiscrepancyCount > 0 ? 'warn' : undefined} />
-          </div>
+          <RiskKpiStrip
+            summary={summary}
+            totalActive={openRisks.length}
+            unassignedCount={unassignedCount}
+            mitigationRatePct={mitigationRatePct}
+            onFilterTotalActive={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, activeOnly: true })}
+            onFilterCriticalHigh={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, levels: ['CRITICAL', 'HIGH'] })}
+            onFilterOverdue={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, overdueOnly: true })}
+            onFilterUnassigned={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, owner: 'UNASSIGNED' })}
+            onFilterMitigated={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, statuses: ['RESOLVED', 'CLOSED'] })}
+          />
+
+          <RiskAttentionPanel risks={openRisks} ownerNames={ownerNames} onSelectRisk={openRisk} />
 
           {/* Risk Summary — deterministic, grounded in the summary above; never a free-floating claim */}
-          {summary.totalOpenRisks > 0 && (
-            <div className="panel p-4">
-              <div className="field-label !mb-2">Risk Summary</div>
-              <p className="text-sm text-ink-300 leading-relaxed">
-                {buildBriefing(summary, topQuery.data ?? [], clustersQuery.data ?? [])}
-              </p>
+          {(summary.totalOpenRisks > 0 || (discrepanciesQuery.data?.length ?? 0) > 0) && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="space-y-4">
+                {summary.totalOpenRisks > 0 && (
+                  <div className="panel p-4">
+                    <div className="field-label !mb-2">Risk Summary</div>
+                    <p className="text-sm text-ink-300 leading-relaxed">
+                      {buildBriefing(summary, topQuery.data ?? [], clustersQuery.data ?? [])}
+                    </p>
+                  </div>
+                )}
+
+                {(discrepanciesQuery.data?.length ?? 0) > 0 && (
+                  <div className="panel tick-frame p-4 border border-warn/40 bg-warn/5 space-y-2">
+                    <div className="field-label !mb-1">
+                      Alerts — {discrepanciesQuery.data!.length} risk{discrepanciesQuery.data!.length === 1 ? '' : 's'} need{discrepanciesQuery.data!.length === 1 ? 's' : ''} discrepancy review
+                    </div>
+                    <div className="divide-y divide-base-700/60">
+                      {(discrepanciesQuery.data ?? []).map(({ risk: r, discrepancy }) => (
+                        <button key={r.id} onClick={() => openRisk(r.id)} className="w-full flex items-center justify-between gap-4 py-2 text-left hover:bg-base-800/60 transition-colors">
+                          <span className="text-sm text-ink-100">{r.title}</span>
+                          <span className="text-xs text-ink-500 shrink-0">
+                            Human <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[r.humanLevel!] }}>{MATRIX_LEVEL_LABELS[r.humanLevel!]}</span>
+                            {' '}vs AI <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[r.aiLevel!] }}>{MATRIX_LEVEL_LABELS[r.aiLevel!]}</span>
+                            {' '}({discrepancy.levelGap} apart)
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* AI Project Risk Briefing — an LLM-polished narrative generated
+                  on demand from the exact same computed data above, never from
+                  a fresh retrieval. Clearly labeled as AI-generated and never
+                  auto-fetched, since it's a real model call with real latency. */}
+              {summary.totalOpenRisks > 0 && (
+                <div className="panel p-4">
+                  <div className="flex items-center justify-between !mb-2">
+                    <div className="field-label !mb-0">AI Project Risk Briefing</div>
+                    <button onClick={() => aiBriefingMutation.mutate()} disabled={aiBriefingMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
+                      {aiBriefingMutation.isPending ? 'Generating…' : aiBriefingMutation.data ? 'Regenerate' : 'Generate'}
+                    </button>
+                  </div>
+                  {aiBriefingMutation.isError && <p className="field-error">{apiErrorMessage(aiBriefingMutation.error)}</p>}
+                  {aiBriefingMutation.data && 'unavailable' in aiBriefingMutation.data && (
+                    <p className="text-sm text-ink-500 italic">{aiBriefingMutation.data.reason}</p>
+                  )}
+                  {aiBriefingMutation.data && 'narrative' in aiBriefingMutation.data && (
+                    <p className="text-sm text-ink-300 leading-relaxed">{aiBriefingMutation.data.narrative}</p>
+                  )}
+                  {!aiBriefingMutation.data && !aiBriefingMutation.isPending && (
+                    <p className="text-xs text-ink-500">Generate an AI-polished narrative of the risk summary above.</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
-          {/* Alerts — unreviewed Human-vs-AI discrepancies needing a decision (brief section 11) */}
-          {(discrepanciesQuery.data?.length ?? 0) > 0 && (
-            <div className="panel tick-frame p-4 border border-warn/40 bg-warn/5 space-y-2">
-              <div className="field-label !mb-1">
-                Alerts — {discrepanciesQuery.data!.length} risk{discrepanciesQuery.data!.length === 1 ? '' : 's'} need{discrepanciesQuery.data!.length === 1 ? 's' : ''} discrepancy review
-              </div>
-              <div className="divide-y divide-base-700/60">
-                {(discrepanciesQuery.data ?? []).map(({ risk: r, discrepancy }) => (
-                  <button key={r.id} onClick={() => setDetailRiskId(r.id)} className="w-full flex items-center justify-between gap-4 py-2 text-left hover:bg-base-800/60 transition-colors">
-                    <span className="text-sm text-ink-100">{r.title}</span>
-                    <span className="text-xs text-ink-500 shrink-0">
-                      Human <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[r.humanLevel!] }}>{MATRIX_LEVEL_LABELS[r.humanLevel!]}</span>
-                      {' '}vs AI <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[r.aiLevel!] }}>{MATRIX_LEVEL_LABELS[r.aiLevel!]}</span>
-                      {' '}({discrepancy.levelGap} apart)
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* AI Project Risk Briefing — an LLM-polished narrative generated
-              on demand from the exact same computed data above, never from
-              a fresh retrieval. Clearly labeled as AI-generated and never
-              auto-fetched, since it's a real model call with real latency. */}
-          {summary.totalOpenRisks > 0 && (
-            <div className="panel p-4">
-              <div className="flex items-center justify-between !mb-2">
-                <div className="field-label !mb-0">AI Project Risk Briefing</div>
-                <button onClick={() => aiBriefingMutation.mutate()} disabled={aiBriefingMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
-                  {aiBriefingMutation.isPending ? 'Generating…' : aiBriefingMutation.data ? 'Regenerate' : 'Generate'}
-                </button>
-              </div>
-              {aiBriefingMutation.isError && <p className="field-error">{apiErrorMessage(aiBriefingMutation.error)}</p>}
-              {aiBriefingMutation.data && 'unavailable' in aiBriefingMutation.data && (
-                <p className="text-sm text-ink-500 italic">{aiBriefingMutation.data.reason}</p>
+          {/* Risk analytics -- heatmap + discipline chart side by side on
+              desktop, stacked on mobile, consistent card heights. */}
+          {((heatmapQuery.data?.some((c) => c.count > 0)) || (byDisciplineQuery.data?.length ?? 0) > 0) && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+              {heatmapQuery.data?.some((c) => c.count > 0) && (
+                <RiskHeatmap
+                  cells={heatmapQuery.data!}
+                  risks={allRisks}
+                  onSelectRisk={openRisk}
+                  onFilterCell={(riskIds, label) => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, cellRiskIds: riskIds, cellLabel: label })}
+                />
               )}
-              {aiBriefingMutation.data && 'narrative' in aiBriefingMutation.data && (
-                <p className="text-sm text-ink-300 leading-relaxed">{aiBriefingMutation.data.narrative}</p>
-              )}
-              {!aiBriefingMutation.data && !aiBriefingMutation.isPending && (
-                <p className="text-xs text-ink-500">Generate an AI-polished narrative of the risk summary above.</p>
+              {(byDisciplineQuery.data?.length ?? 0) > 0 && (
+                <RiskDisciplineChart
+                  data={byDisciplineQuery.data!}
+                  onSelectDiscipline={(d) => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, discipline: d, activeOnly: true })}
+                />
               )}
             </div>
           )}
@@ -315,7 +346,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
               <div className="field-label">Top Management Risks</div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 {(topQuery.data ?? []).map((r) => (
-                  <button key={r.id} onClick={() => setDetailRiskId(r.id)} className="panel tick-frame p-4 text-left hover:bg-base-800/60 transition-colors space-y-2">
+                  <button key={r.id} onClick={() => openRisk(r.id)} className="panel tick-frame p-4 text-left hover:bg-base-800/60 transition-colors space-y-2">
                     <div className="flex items-center justify-between">
                       <LevelBadge level={r.level} />
                       <span className="text-lg font-semibold tabular-nums text-ink-100">{r.score}</span>
@@ -337,7 +368,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
               <div className="field-label">Emerging Risks</div>
               <div className="panel tick-frame divide-y divide-base-700/60">
                 {(emergingQuery.data ?? []).map((r) => (
-                  <button key={r.id} onClick={() => setDetailRiskId(r.id)} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-base-800/60 transition-colors">
+                  <button key={r.id} onClick={() => openRisk(r.id)} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-base-800/60 transition-colors">
                     <div>
                       <div className="text-sm text-ink-100">{r.title}</div>
                       <div className="text-xs text-ink-500 mt-0.5">{r.explanation}</div>
@@ -348,35 +379,6 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
                     </div>
                   </button>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {/* Risk Matrix Heatmap -- brief sections 4, 20-21: a human-assessed
-              risk sits at its own Probability x Impact cell, else at the
-              AI's own derived bands (see RiskHeatmap's own comment). */}
-          {(heatmapQuery.data?.some((c) => c.count > 0)) && (
-            <RiskHeatmap cells={heatmapQuery.data!} risks={registerQuery.data ?? []} onSelectRisk={(riskId) => setDetailRiskId(riskId)} />
-          )}
-
-          {/* Risk by Discipline */}
-          {(byDisciplineQuery.data?.length ?? 0) > 0 && (
-            <div className="panel p-4">
-              <div className="field-label !mb-2">Risk by Discipline</div>
-              <div style={{ width: '100%', height: 200 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={byDisciplineQuery.data} margin={{ top: 4, right: 8, bottom: 4, left: -16 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={themeColors['base-700']} vertical={false} />
-                    <XAxis dataKey="discipline" tick={{ fill: themeColors['ink-500'], fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
-                    <YAxis tick={{ fill: themeColors['ink-500'], fontSize: 10 }} allowDecimals={false} />
-                    <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(79,182,232,0.08)' }} />
-                    <Bar dataKey="count" radius={[3, 3, 0, 0]}>
-                      {(byDisciplineQuery.data ?? []).map((d) => (
-                        <Cell key={d.discipline} fill={themeColors.blueprint} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
               </div>
             </div>
           )}
@@ -396,74 +398,16 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
             </div>
           )}
 
-          {/* Risk Register */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="field-label">Risk Register</div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text" placeholder="Search risks…" value={search} onChange={(e) => setSearch(e.target.value)}
-                  className="field-input w-auto text-xs !py-1"
-                />
-                <select value={levelFilter} onChange={(e) => setLevelFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
-                  <option value="">All levels</option>
-                  {(['CRITICAL', 'HIGH', 'MODERATE', 'LOW'] as RiskLevel[]).map((l) => <option key={l} value={l}>{LEVEL_LABELS[l]}</option>)}
-                </select>
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
-                  <option value="">All statuses</option>
-                  {(Object.keys(STATUS_LABELS) as RiskStatus[]).map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="panel tick-frame overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                    <th className="px-4 py-2.5 font-medium">Risk</th>
-                    <th className="px-4 py-2.5 font-medium">Category</th>
-                    <th className="px-4 py-2.5 font-medium">Location</th>
-                    <th className="px-4 py-2.5 font-medium">Score</th>
-                    <th className="px-4 py-2.5 font-medium">Level</th>
-                    <th className="px-4 py-2.5 font-medium">Matrix (H / AI)</th>
-                    <th className="px-4 py-2.5 font-medium">Driver</th>
-                    <th className="px-4 py-2.5 font-medium">Trend</th>
-                    <th className="px-4 py-2.5 font-medium">Status</th>
-                    <th className="px-4 py-2.5 font-medium">Updated</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {register.map((r) => {
-                    const unreviewedDiscrepancy = hasUnreviewedMatrixDiscrepancy(r);
-                    return (
-                      <tr key={r.id} onClick={() => setDetailRiskId(r.id)} className="border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-800/60">
-                        <td className="px-4 py-2.5">{r.title}</td>
-                        <td className="px-4 py-2.5 text-ink-300">{r.category}</td>
-                        <td className="px-4 py-2.5 text-ink-500">{r.locationLabel ?? '—'}</td>
-                        <td className="px-4 py-2.5 tabular-nums text-ink-100">{r.score}</td>
-                        <td className="px-4 py-2.5"><LevelBadge level={r.level} /></td>
-                        <td className="px-4 py-2.5 text-xs whitespace-nowrap">
-                          {r.finalScore != null ? (
-                            <span className="flex items-center gap-1">
-                              {unreviewedDiscrepancy && <span title="Human and AI disagree — needs review" className="text-warn">⚠</span>}
-                              <span style={{ color: r.humanLevel ? MATRIX_LEVEL_COLORS[r.humanLevel] : themeColors['ink-500'] }}>{r.humanScore ?? '—'}</span>
-                              <span className="text-ink-500">/</span>
-                              <span style={{ color: r.aiLevel ? MATRIX_LEVEL_COLORS[r.aiLevel] : themeColors['ink-500'] }}>{r.aiScore ?? '—'}</span>
-                            </span>
-                          ) : '—'}
-                        </td>
-                        <td className="px-4 py-2.5 text-ink-500">{r.primaryDriver ? RISK_DRIVER_LABELS[r.primaryDriver] : '—'}</td>
-                        <td className="px-4 py-2.5"><TrendIndicator trend={r.trend} /></td>
-                        <td className="px-4 py-2.5 text-ink-500">{STATUS_LABELS[r.status]}</td>
-                        <td className="px-4 py-2.5 text-ink-500">{timeAgo(r.lastCalculatedAt)}</td>
-                      </tr>
-                    );
-                  })}
-                  {register.length === 0 && (
-                    <tr><td colSpan={10} className="px-4 py-8 text-center text-ink-500">No risks match the current filters.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+          {/* Risk Register -- the primary working area (brief section 4E) */}
+          <div ref={registerRef}>
+            <RiskRegisterTable
+              risks={allRisks}
+              members={members}
+              ownerNames={ownerNames}
+              filters={filters}
+              onFiltersChange={setFilters}
+              onSelectRisk={openRisk}
+            />
           </div>
         </>
       )}
@@ -472,6 +416,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
         <RiskDetailDrawer
           projectId={projectId}
           riskId={detailRiskId}
+          members={members}
           onClose={() => setDetailRiskId(null)}
           onChanged={invalidateAll}
           onViewGraph={(rootNodeId) => { setGraphFocusNodeId(rootNodeId); setGraphOpen(true); setDetailRiskId(null); }}
@@ -506,91 +451,10 @@ function buildBriefing(summary: ReturnType<typeof getRiskSummary> extends Promis
   return parts.join(' ');
 }
 
-function StatTile({ label, value, tone }: { label: string; value: number; tone?: 'danger' | 'warn' }) {
-  const color = tone === 'danger' ? 'text-danger' : tone === 'warn' ? 'text-warn' : 'text-ink-100';
-  return (
-    <div className="panel p-3 text-left">
-      <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">{label}</div>
-      <div className={`text-xl font-semibold tabular-nums ${color}`}>{value}</div>
-    </div>
-  );
-}
-
-// 5x5 Risk Matrix heatmap (brief sections 4, 20-21). Probability increases
-// upward, impact increases rightward -- the standard risk-matrix reading
-// convention. A cell's count/color come straight from the server
-// (RiskService.getRiskHeatmap -- see its own comment on how a cell is
-// chosen for an AI-only-assessed risk); `risks` is only used here to
-// resolve a cell's riskIds into titles for its tooltip/popover, never to
-// recompute anything already decided server-side.
-function RiskHeatmap({ cells, risks, onSelectRisk }: { cells: RiskHeatmapCell[]; risks: Risk[]; onSelectRisk: (riskId: string) => void }) {
-  const themeColors = useThemeColors();
-  const MATRIX_LEVEL_COLORS = matrixLevelColors(themeColors);
-  const [openCellKey, setOpenCellKey] = useState<string | null>(null);
-  const byId = new Map(risks.map((r) => [r.id, r]));
-  const cellByCoords = new Map(cells.map((c) => [`${c.probability}-${c.impact}`, c]));
-
-  return (
-    <div className="panel p-4">
-      <div className="field-label !mb-2">Risk Matrix Heatmap</div>
-      <div className="flex gap-2">
-        <div className="flex flex-col justify-between text-[10px] text-ink-500 py-1">
-          {[5, 4, 3, 2, 1].map((p) => <div key={p} className="h-14 flex items-center">{p}</div>)}
-        </div>
-        <div className="flex-1">
-          <div className="grid grid-cols-5 gap-1">
-            {[5, 4, 3, 2, 1].flatMap((p) => [1, 2, 3, 4, 5].map((i) => {
-              const cell = cellByCoords.get(`${p}-${i}`);
-              const key = `${p}-${i}`;
-              const count = cell?.count ?? 0;
-              return (
-                <div key={key} className="relative">
-                  <button
-                    onClick={() => {
-                      if (!cell || count === 0) return;
-                      if (count === 1) onSelectRisk(cell.riskIds[0]);
-                      else setOpenCellKey(openCellKey === key ? null : key);
-                    }}
-                    className="h-14 w-full rounded flex items-center justify-center text-sm font-semibold tabular-nums transition-opacity hover:opacity-80"
-                    style={{
-                      backgroundColor: cell ? `${MATRIX_LEVEL_COLORS[cell.level]}${count > 0 ? '55' : '1a'}` : 'transparent',
-                      color: count > 0 ? MATRIX_LEVEL_COLORS[cell!.level] : themeColors['base-700'],
-                      cursor: count > 0 ? 'pointer' : 'default',
-                    }}
-                    title={cell ? `Probability ${p} x Impact ${i} = ${cell.score} (${MATRIX_LEVEL_LABELS[cell.level]})` : undefined}
-                  >
-                    {count > 0 ? count : ''}
-                  </button>
-                  {openCellKey === key && cell && cell.riskIds.length > 1 && (
-                    <div className="absolute z-10 top-full left-0 mt-1 w-56 panel tick-frame p-1 shadow-lg">
-                      {cell.riskIds.map((id) => (
-                        <button
-                          key={id} onClick={() => { onSelectRisk(id); setOpenCellKey(null); }}
-                          className="w-full text-left px-2 py-1.5 text-xs text-ink-100 hover:bg-base-800/60 rounded truncate"
-                        >
-                          {byId.get(id)?.title ?? id}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            }))}
-          </div>
-          <div className="flex justify-between text-[10px] text-ink-500 mt-1 px-1">
-            {[1, 2, 3, 4, 5].map((i) => <span key={i}>{i}</span>)}
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center justify-between text-[10px] text-ink-500 mt-1">
-        <span>↑ Probability</span>
-        <span>Impact →</span>
-      </div>
-    </div>
-  );
-}
-
-function RiskDetailDrawer({ projectId, riskId, onClose, onChanged, onViewGraph }: { projectId: string; riskId: string; onClose: () => void; onChanged: () => void; onViewGraph: (rootNodeId: string) => void }) {
+function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onViewGraph }: {
+  projectId: string; riskId: string; members: ProjectMember[];
+  onClose: () => void; onChanged: () => void; onViewGraph: (rootNodeId: string) => void;
+}) {
   const themeColors = useThemeColors();
   const LEVEL_COLORS = levelColors(themeColors);
   const TOOLTIP_STYLE = tooltipStyle(themeColors);
@@ -602,6 +466,7 @@ function RiskDetailDrawer({ projectId, riskId, onClose, onChanged, onViewGraph }
 
   const [overrideScore, setOverrideScore] = useState('');
   const [overrideReason, setOverrideReason] = useState('');
+  const [dueDateInput, setDueDateInput] = useState('');
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['risk-detail', projectId, riskId] });
@@ -615,8 +480,11 @@ function RiskDetailDrawer({ projectId, riskId, onClose, onChanged, onViewGraph }
   const clearOverrideMutation = useMutation({ mutationFn: () => clearRiskOverride(projectId, riskId), onSuccess: invalidate });
   const statusMutation = useMutation({ mutationFn: (status: RiskStatus) => setRiskStatus(projectId, riskId, status), onSuccess: invalidate });
   const aiExplanationMutation = useMutation({ mutationFn: () => getAiExplanation(projectId, riskId) });
+  const ownerMutation = useMutation({ mutationFn: (ownerId: string | null) => assignRiskOwner(projectId, riskId, ownerId), onSuccess: invalidate });
+  const dueDateMutation = useMutation({ mutationFn: (dueDate: string | null) => setRiskDueDate(projectId, riskId, dueDate), onSuccess: invalidate });
 
   const risk = riskQuery.data;
+  const tone = risk ? dueDateTone(risk) : 'none';
 
   return (
     <Modal open onClose={onClose} title={risk?.title ?? 'Risk detail'} wide>
@@ -640,6 +508,53 @@ function RiskDetailDrawer({ projectId, riskId, onClose, onChanged, onViewGraph }
           {risk.confidenceReason && (
             <p className="text-xs text-ink-500">Data-driven project risk assessment. Confidence reason: {risk.confidenceReason}</p>
           )}
+
+          {/* Owner & due date -- the two fields the KPI strip, Attention
+              panel and Register all read; editable right here so assigning
+              an owner or a deadline doesn't require a separate screen. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="panel p-3">
+              <div className="field-label !mb-1.5">Owner</div>
+              <select
+                value={risk.ownerId ?? ''}
+                onChange={(e) => ownerMutation.mutate(e.target.value || null)}
+                disabled={ownerMutation.isPending}
+                className="field-input !py-1.5 text-xs"
+              >
+                <option value="">Unassigned</option>
+                {members.map((m) => (
+                  <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
+                ))}
+              </select>
+            </div>
+            <div className="panel p-3">
+              <div className="flex items-center justify-between !mb-1.5">
+                <div className="field-label !mb-0">Due date</div>
+                {tone === 'overdue' && <span className="text-[10px] font-semibold uppercase text-danger">Overdue</span>}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={dueDateInput || (risk.dueDate ? risk.dueDate.slice(0, 10) : '')}
+                  onChange={(e) => setDueDateInput(e.target.value)}
+                  className="field-input !py-1.5 text-xs flex-1"
+                />
+                <button
+                  onClick={() => dueDateMutation.mutate(dueDateInput ? new Date(dueDateInput).toISOString() : null)}
+                  disabled={dueDateMutation.isPending}
+                  className="btn-secondary !px-2 !py-1.5 text-xs shrink-0"
+                >
+                  Save
+                </button>
+                {risk.dueDate && (
+                  <button onClick={() => { setDueDateInput(''); dueDateMutation.mutate(null); }} disabled={dueDateMutation.isPending} className="btn-ghost !px-2 !py-1.5 text-xs shrink-0">
+                    Clear
+                  </button>
+                )}
+              </div>
+              {risk.dueDate && <p className="text-xs text-ink-500 mt-1.5">Currently {formatDueDate(risk.dueDate)}</p>}
+            </div>
+          </div>
 
           {risk.explanation && (
             <div>

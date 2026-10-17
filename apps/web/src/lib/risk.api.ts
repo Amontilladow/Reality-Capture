@@ -258,6 +258,8 @@ export const setRiskStatus = (projectId: string, riskId: string, status: RiskSta
   apiPatch<Risk>(`${base(projectId)}/${riskId}/status`, { status, reason });
 export const assignRiskOwner = (projectId: string, riskId: string, ownerId: string | null) =>
   apiPatch<Risk>(`${base(projectId)}/${riskId}/owner`, { ownerId });
+export const setRiskDueDate = (projectId: string, riskId: string, dueDate: string | null) =>
+  apiPatch<Risk>(`${base(projectId)}/${riskId}/due-date`, { dueDate });
 
 export type AiNarrativeResult = { narrative: string } | { unavailable: true; reason: string };
 export const getAiBriefing = (projectId: string) => apiGet<AiNarrativeResult>(`${base(projectId)}/briefing`);
