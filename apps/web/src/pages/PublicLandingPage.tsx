@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { LogoMark } from '../components/ui/LogoMark';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
 
 // Public marketing landing page -- the first real public/marketing surface
 // this app has ever had (previously "/" redirected straight to /projects,
@@ -56,9 +57,12 @@ function SiteHeader() {
     <header className="sticky top-0 z-20 border-b border-base-600/60 bg-base-950/90 backdrop-blur">
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <BrandMark />
-        <Link to="/login" className="btn-secondary !py-1.5 !px-4 text-xs">
-          Sign in
-        </Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Link to="/login" className="btn-secondary !py-1.5 !px-4 text-xs">
+            Sign in
+          </Link>
+        </div>
       </div>
     </header>
   );

@@ -21,63 +21,58 @@ import {
 import { SNAG_STATUS_LABELS, SNAG_PRIORITY_LABELS } from '../lib/snagging-constants';
 import { QAQC_STATUS_LABELS, QAQC_RECORD_TYPE_SHORT_LABELS } from '../lib/qaqc-constants';
 import type { QaqcStatus, QaqcRecordType } from '../lib/qaqc.api';
+import { useThemeColors, type ThemeColors } from '../lib/useThemeColors';
 
 // Recharts marks need real hex/rgb colors -- they don't inherit Tailwind
-// classes -- pulled straight from tailwind.config.js's "Blueprint-dark
-// technical" palette rather than invented, so this page's charts read as the
-// same product as the badges on the Issues/Snagging tabs themselves.
-const HEX = {
-  blueprint: '#4FB6E8',
-  signal: '#FF7A29',
-  ok: '#4ADE80',
-  warn: '#FBBF24',
-  danger: '#F87171',
-  base600: '#324656',
-  ink500: '#7E8F9C',
-  base800: '#182631',
-  base700: '#22323F',
-};
+// classes -- resolved from the same --rc-* custom properties every
+// Tailwind utility class in the app resolves (useThemeColors(), called
+// once per component below), so this page's charts read as the same
+// product as the badges on the Issues/Snagging tabs themselves, in
+// whichever theme is active. A fixed, non-themed orange rounds out the
+// rotating series palette purely for visual variety (chart-only, not a
+// semantic UI color), same reasoning as RiskIntelligenceSection.tsx's
+// HIGH_HEX/VERY_HIGH_HEX constants.
+const SERIES_ACCENT_HEX = '#FF7A29';
 
 // Mirrors STATUS_BADGE_CLASS / SNAG_STATUS_BADGE_CLASS's own color choices
 // (issue-constants.ts / snagging-constants.ts) so a given status reads as
 // the same color here as it does on the live tabs.
-const ISSUE_STATUS_COLORS: Record<string, string> = {
-  open: HEX.blueprint,
-  assigned: HEX.warn,
-  in_progress: HEX.warn,
-  under_review: HEX.warn,
-  waiting_for_information: HEX.warn,
-  resolved: HEX.ok,
-  closed: HEX.ink500,
-  reopened: HEX.danger,
-  void: HEX.ink500,
-};
+function issueStatusColors(c: ThemeColors): Record<string, string> {
+  return {
+    open: c.blueprint,
+    assigned: c.warn,
+    in_progress: c.warn,
+    under_review: c.warn,
+    waiting_for_information: c.warn,
+    resolved: c.ok,
+    closed: c['ink-500'],
+    reopened: c.danger,
+    void: c['ink-500'],
+  };
+}
 
-const PRIORITY_COLORS: Record<string, string> = {
-  critical: HEX.danger,
-  high: HEX.danger,
-  medium: HEX.warn,
-  low: HEX.ink500,
-};
+function priorityColors(c: ThemeColors): Record<string, string> {
+  return { critical: c.danger, high: c.danger, medium: c.warn, low: c['ink-500'] };
+}
 
-const SNAG_STATUS_COLORS: Record<string, string> = {
-  open: HEX.danger,
-  fixed: HEX.warn,
-  verified: HEX.ok,
-  void: HEX.ink500,
-};
+function snagStatusColors(c: ThemeColors): Record<string, string> {
+  return { open: c.danger, fixed: c.warn, verified: c.ok, void: c['ink-500'] };
+}
 
-// Mirrors RiskIntelligenceSection.tsx's own LEVEL_COLORS exactly -- the
+// Mirrors RiskIntelligenceSection.tsx's own levelColors() exactly -- the
 // 0-100/4-level deterministic-engine palette, never the separate 1-25
-// Risk Matrix one (this page never shows Risk Matrix numbers).
-const RISK_LEVEL_COLORS: Record<RiskLevel, string> = {
-  LOW: HEX.ok, MODERATE: HEX.warn, HIGH: '#FB923C', CRITICAL: HEX.danger,
-};
+// Risk Matrix one (this page never shows Risk Matrix numbers). HIGH has no
+// dedicated semantic token -- see that file's identical reasoning.
+function riskLevelColors(c: ThemeColors): Record<RiskLevel, string> {
+  return { LOW: c.ok, MODERATE: c.warn, HIGH: '#FB923C', CRITICAL: c.danger };
+}
 
 // Rotating palette for axes with no fixed status/priority meaning
 // (discipline, trade) -- reuses the same accent colors as everything else
 // on this page instead of inventing a new chart palette.
-const SERIES_PALETTE = [HEX.blueprint, HEX.signal, HEX.ok, HEX.warn, HEX.danger, HEX.ink500];
+function seriesPalette(c: ThemeColors): string[] {
+  return [c.blueprint, SERIES_ACCENT_HEX, c.ok, c.warn, c.danger, c['ink-500']];
+}
 
 function countsToChartData(counts: Record<string, number>, labelFor: (key: string) => string) {
   return Object.entries(counts)
@@ -85,15 +80,23 @@ function countsToChartData(counts: Record<string, number>, labelFor: (key: strin
     .map(([key, count]) => ({ key, name: labelFor(key), value: count }));
 }
 
-const TOOLTIP_STYLE = {
-  background: HEX.base800,
-  border: `1px solid ${HEX.base700}`,
-  borderRadius: 4,
-  fontSize: 12,
-  color: '#EAF0F4',
-};
+function tooltipStyle(c: ThemeColors) {
+  return {
+    background: c['base-800'],
+    border: `1px solid ${c['base-700']}`,
+    borderRadius: 4,
+    fontSize: 12,
+    color: c['ink-100'],
+  };
+}
 
 export default function ReportsPage() {
+  const themeColors = useThemeColors();
+  const ISSUE_STATUS_COLORS = issueStatusColors(themeColors);
+  const PRIORITY_COLORS = priorityColors(themeColors);
+  const SNAG_STATUS_COLORS = snagStatusColors(themeColors);
+  const RISK_LEVEL_COLORS = riskLevelColors(themeColors);
+  const SERIES_PALETTE = seriesPalette(themeColors);
   const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -306,10 +309,10 @@ export default function ReportsPage() {
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <ChartCard title="By status">
-                    <StatusPieChart data={countsToChartData(kpis.issues.byStatus, (k) => STATUS_LABELS[k as keyof typeof STATUS_LABELS] ?? k)} colorFor={(k) => ISSUE_STATUS_COLORS[k] ?? HEX.ink500} />
+                    <StatusPieChart data={countsToChartData(kpis.issues.byStatus, (k) => STATUS_LABELS[k as keyof typeof STATUS_LABELS] ?? k)} colorFor={(k) => ISSUE_STATUS_COLORS[k] ?? themeColors['ink-500']} />
                   </ChartCard>
                   <ChartCard title="By priority">
-                    <CountBarChart data={countsToChartData(kpis.issues.byPriority, (k) => PRIORITY_LABELS[k as keyof typeof PRIORITY_LABELS] ?? k)} colorFor={(k) => PRIORITY_COLORS[k] ?? HEX.blueprint} />
+                    <CountBarChart data={countsToChartData(kpis.issues.byPriority, (k) => PRIORITY_LABELS[k as keyof typeof PRIORITY_LABELS] ?? k)} colorFor={(k) => PRIORITY_COLORS[k] ?? themeColors.blueprint} />
                   </ChartCard>
                   <ChartCard title="By discipline">
                     <CountBarChart data={countsToChartData(kpis.issues.byDiscipline, (k) => DISCIPLINE_LABELS[k as keyof typeof DISCIPLINE_LABELS] ?? k)} colorFor={(_k, i) => SERIES_PALETTE[i % SERIES_PALETTE.length]} />
@@ -364,10 +367,10 @@ export default function ReportsPage() {
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <ChartCard title="By status">
-                    <StatusPieChart data={countsToChartData(kpis.snagging.byStatus, (k) => SNAG_STATUS_LABELS[k as keyof typeof SNAG_STATUS_LABELS] ?? k)} colorFor={(k) => SNAG_STATUS_COLORS[k] ?? HEX.ink500} />
+                    <StatusPieChart data={countsToChartData(kpis.snagging.byStatus, (k) => SNAG_STATUS_LABELS[k as keyof typeof SNAG_STATUS_LABELS] ?? k)} colorFor={(k) => SNAG_STATUS_COLORS[k] ?? themeColors['ink-500']} />
                   </ChartCard>
                   <ChartCard title="By priority">
-                    <CountBarChart data={countsToChartData(kpis.snagging.byPriority, (k) => SNAG_PRIORITY_LABELS[k as keyof typeof SNAG_PRIORITY_LABELS] ?? k)} colorFor={(k) => PRIORITY_COLORS[k] ?? HEX.blueprint} />
+                    <CountBarChart data={countsToChartData(kpis.snagging.byPriority, (k) => SNAG_PRIORITY_LABELS[k as keyof typeof SNAG_PRIORITY_LABELS] ?? k)} colorFor={(k) => PRIORITY_COLORS[k] ?? themeColors.blueprint} />
                   </ChartCard>
                   <ChartCard title="By trade">
                     <CountBarChart data={countsToChartData(kpis.snagging.byTrade, (k) => k)} colorFor={(_k, i) => SERIES_PALETTE[i % SERIES_PALETTE.length]} />
@@ -631,30 +634,32 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
 }
 
 function StatusPieChart({ data, colorFor }: { data: { key: string; name: string; value: number }[]; colorFor: (key: string) => string }) {
+  const themeColors = useThemeColors();
   if (data.length === 0) return <EmptyChart />;
   return (
     <ResponsiveContainer width="100%" height="100%">
       <PieChart>
         <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} paddingAngle={2}>
           {data.map((entry) => (
-            <Cell key={entry.key} fill={colorFor(entry.key)} stroke={HEX.base800} strokeWidth={1} />
+            <Cell key={entry.key} fill={colorFor(entry.key)} stroke={themeColors['base-800']} strokeWidth={1} />
           ))}
         </Pie>
-        <Tooltip contentStyle={TOOLTIP_STYLE} />
+        <Tooltip contentStyle={tooltipStyle(themeColors)} />
       </PieChart>
     </ResponsiveContainer>
   );
 }
 
 function CountBarChart({ data, colorFor }: { data: { key: string; name: string; value: number }[]; colorFor: (key: string, index: number) => string }) {
+  const themeColors = useThemeColors();
   if (data.length === 0) return <EmptyChart />;
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data} margin={{ top: 4, right: 8, bottom: 4, left: -16 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke={HEX.base700} vertical={false} />
-        <XAxis dataKey="name" tick={{ fill: HEX.ink500, fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
-        <YAxis tick={{ fill: HEX.ink500, fontSize: 10 }} allowDecimals={false} />
-        <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(79,182,232,0.08)' }} />
+        <CartesianGrid strokeDasharray="3 3" stroke={themeColors['base-700']} vertical={false} />
+        <XAxis dataKey="name" tick={{ fill: themeColors['ink-500'], fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
+        <YAxis tick={{ fill: themeColors['ink-500'], fontSize: 10 }} allowDecimals={false} />
+        <Tooltip contentStyle={tooltipStyle(themeColors)} cursor={{ fill: 'rgba(79,182,232,0.08)' }} />
         <Bar dataKey="value" radius={[3, 3, 0, 0]}>
           {data.map((entry, i) => (
             <Cell key={entry.key} fill={colorFor(entry.key, i)} />

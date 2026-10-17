@@ -1282,7 +1282,7 @@ function OrganizationSlotRow({ projectId, canEdit }: { projectId: string; canEdi
                   src={org.logoUrl}
                   alt={org.name ?? PROJECT_ORGANIZATION_SLOT_LABELS[slot]}
                   loading="lazy"
-                  className="w-14 h-14 object-contain rounded border border-base-600 bg-white"
+                  className="w-14 h-14 object-contain rounded border border-base-600 bg-base-950"
                 />
               ) : (
                 <div className="w-14 h-14 rounded border border-dashed border-base-600 bg-base-900/60 flex items-center justify-center text-ink-500 text-[10px]">

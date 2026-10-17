@@ -27,8 +27,8 @@ function NodeRow({ node, depth, selectedId, onSelect }: {
   return (
     <div>
       <div
-        className={`flex items-center gap-1 rounded px-2 py-1 text-sm cursor-pointer hover:bg-gray-100 ${
-          selectedId === node.id ? 'bg-blue-50 text-blue-700' : ''
+        className={`flex items-center gap-1 rounded px-2 py-1 text-sm cursor-pointer hover:bg-base-800 ${
+          selectedId === node.id ? 'bg-blueprint-muted text-blueprint' : ''
         }`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={() => onSelect(node)}
@@ -36,7 +36,7 @@ function NodeRow({ node, depth, selectedId, onSelect }: {
         {hasChildren ? (
           <button
             type="button"
-            className="w-4 text-gray-400"
+            className="w-4 text-ink-500"
             onClick={(e) => {
               e.stopPropagation();
               setExpanded((v) => !v);
@@ -48,7 +48,7 @@ function NodeRow({ node, depth, selectedId, onSelect }: {
           <span className="w-4" />
         )}
         <span className="flex-1 truncate">{node.name ?? node.ifcType.replace('IFC', '')}</span>
-        <span className="text-xs text-gray-400">{node.elementCount}</span>
+        <span className="text-xs text-ink-500">{node.elementCount}</span>
       </div>
       {expanded && node.children.map((child) => (
         <NodeRow key={child.id} node={child} depth={depth + 1} selectedId={selectedId} onSelect={onSelect} />
@@ -69,7 +69,7 @@ export function SpatialTree({
   const tree = useMemo(() => buildTree(nodes), [nodes]);
 
   if (nodes.length === 0) {
-    return <p className="p-3 text-sm text-gray-400">No spatial hierarchy found in this model.</p>;
+    return <p className="p-3 text-sm text-ink-500">No spatial hierarchy found in this model.</p>;
   }
 
   return (

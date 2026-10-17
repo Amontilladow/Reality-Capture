@@ -229,7 +229,7 @@ function WebhooksSection() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className={`badge ${e.isActive ? 'bg-ok/15 text-ok' : 'bg-base-700 text-ink-500'}`}>{e.isActive ? 'Active' : 'Disabled'}</span>
-                  <button onClick={() => setExpandedId(expandedId === e.id ? null : e.id)} className="text-xs text-blue-400 hover:text-blue-300">
+                  <button onClick={() => setExpandedId(expandedId === e.id ? null : e.id)} className="text-xs text-blueprint hover:text-blueprint-hover">
                     {expandedId === e.id ? 'Hide' : 'Deliveries'}
                   </button>
                   <button

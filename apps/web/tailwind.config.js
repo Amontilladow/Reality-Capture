@@ -4,29 +4,44 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Mobbin-inspired gallery-white palette — same token names/roles as
-        // before (every component already reaches for these names, never a
-        // raw hex), only the values moved from the old dark "blueprint
-        // technical" scheme to a light, near-monochrome one: ink-black text
-        // on white/soft-white surfaces, one electric-blue accent.
+        // Every token below resolves through a CSS custom property
+        // (--rc-*, defined in index.css) instead of a literal hex value --
+        // that's what makes dark mode a data-theme attribute flip rather
+        // than a rebuild. Component code is completely unaffected: every
+        // existing bg-base-950/text-ink-100/bg-signal/etc. class still
+        // compiles to the exact same utility, it just now resolves to
+        // whichever value index.css's :root or :root[data-theme="dark"]
+        // block currently has in scope. See index.css for the light and
+        // dark values themselves and the reasoning behind each.
+        //
+        // Wrapped as rgb(var(--rc-x) / <alpha-value>) rather than a plain
+        // var(--rc-x) -- Tailwind's documented pattern for a CSS-variable
+        // color that still supports its own opacity-modifier syntax
+        // (bg-danger/10, border-blueprint/40, ...), which the existing
+        // design system already relies on throughout (.btn-danger,
+        // .panel-interactive, Modal's backdrop...). This is why index.css
+        // stores each --rc-* color as "R G B" channel numbers, not a hex
+        // string -- <alpha-value> can only substitute into that shape.
         base: {
-          950: '#FFFFFF', // page background (canvas)
-          900: '#F3F3F3', // chrome bars / secondary surface (canvas-soft)
-          800: '#F3F3F3', // panel surface (canvas-soft)
-          700: '#F0F0F0', // raised surface / hover (field)
-          600: '#E0E0E0', // borders (hairline)
-          500: '#F0F0F0', // muted borders / dividers (hairline-soft)
+          950: 'rgb(var(--rc-base-950) / <alpha-value>)', // page background (canvas)
+          900: 'rgb(var(--rc-base-900) / <alpha-value>)', // chrome bars / secondary surface (canvas-soft)
+          800: 'rgb(var(--rc-base-800) / <alpha-value>)', // panel surface (canvas-soft)
+          700: 'rgb(var(--rc-base-700) / <alpha-value>)', // raised surface / hover (field)
+          600: 'rgb(var(--rc-base-600) / <alpha-value>)', // borders (hairline)
+          500: 'rgb(var(--rc-base-500) / <alpha-value>)', // muted borders / dividers (hairline-soft)
         },
         ink: {
-          100: '#141414', // primary text
-          300: '#707070', // secondary text
-          500: '#ADADAD', // muted / placeholder
+          100: 'rgb(var(--rc-ink-100) / <alpha-value>)', // primary text
+          300: 'rgb(var(--rc-ink-300) / <alpha-value>)', // secondary text
+          500: 'rgb(var(--rc-ink-500) / <alpha-value>)', // muted / placeholder
         },
         signal: {
-          // primary action — ink-black fill, matches Mobbin's button-primary
-          DEFAULT: '#141414',
-          hover: '#262626',
-          muted: '#707070',
+          // primary action fill -- mirrors ink-100 exactly, light or dark
+          // (an ink-black button on white in light mode, a near-white
+          // button on charcoal in dark mode), same as it always has.
+          DEFAULT: 'rgb(var(--rc-signal) / <alpha-value>)',
+          hover: 'rgb(var(--rc-signal-hover) / <alpha-value>)',
+          muted: 'rgb(var(--rc-signal-muted) / <alpha-value>)',
         },
         blueprint: {
           // electric blue — Mobbin's one accent. The spec reserves it for
@@ -34,13 +49,13 @@ export default {
           // interactive/info accent (links, active states, status badges)
           // since a working dashboard needs more color differentiation than
           // a marketing page. Focus rings use ink instead, per the spec.
-          DEFAULT: '#0066FF',
-          hover: '#3385FF',
-          muted: '#E6F0FF',
+          DEFAULT: 'rgb(var(--rc-blueprint) / <alpha-value>)',
+          hover: 'rgb(var(--rc-blueprint-hover) / <alpha-value>)',
+          muted: 'rgb(var(--rc-blueprint-muted) / <alpha-value>)',
         },
-        ok: '#16A34A',
-        warn: '#D97706',
-        danger: '#DC2626',
+        ok: 'rgb(var(--rc-ok) / <alpha-value>)',
+        warn: 'rgb(var(--rc-warn) / <alpha-value>)',
+        danger: 'rgb(var(--rc-danger) / <alpha-value>)',
       },
       fontFamily: {
         // "Outfit" stands in for the requested "Grift" (38-lineart, paid,
@@ -65,7 +80,10 @@ export default {
         kpi: ['1.75rem', { lineHeight: '2rem', letterSpacing: '-0.01em' }], // 28px -- dashboard/report stat-tile numbers
       },
       backgroundImage: {
-        'grid-fine': `linear-gradient(rgba(20,20,20,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(20,20,20,0.04) 1px, transparent 1px)`,
+        // --rc-grid-line flips from a faint dark line (light mode) to a
+        // faint light line (dark mode) in index.css -- a literal dark hex
+        // here would be invisible against the dark-mode canvas.
+        'grid-fine': `linear-gradient(var(--rc-grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--rc-grid-line) 1px, transparent 1px)`,
       },
       backgroundSize: {
         'grid-fine': '24px 24px',

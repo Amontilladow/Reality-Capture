@@ -14,10 +14,10 @@ const STATUS_LABEL: Record<BimModel['status'], string> = {
 };
 
 const STATUS_COLOR: Record<BimModel['status'], string> = {
-  pending: 'bg-gray-100 text-gray-700',
-  processing: 'bg-blue-100 text-blue-700',
-  ready: 'bg-green-100 text-green-700',
-  failed: 'bg-red-100 text-red-700',
+  pending: 'bg-base-800 text-ink-100',
+  processing: 'bg-blueprint-muted text-blueprint',
+  ready: 'bg-ok/10 text-ok',
+  failed: 'bg-danger/10 text-danger',
 };
 
 export default function BimModelsPage() {
@@ -64,17 +64,17 @@ export default function BimModelsPage() {
       />
 
       <div className="p-6">
-        {modelsQuery.isLoading && <p className="text-sm text-gray-500">Loading…</p>}
+        {modelsQuery.isLoading && <p className="text-sm text-ink-500">Loading…</p>}
 
         {!modelsQuery.isLoading && (modelsQuery.data ?? []).length === 0 && (
-          <div className="rounded-lg border border-dashed border-gray-300 p-10 text-center text-sm text-gray-500">
+          <div className="rounded-lg border border-dashed border-base-600 p-10 text-center text-sm text-ink-500">
             No BIM models yet. Upload an IFC file to get started.
           </div>
         )}
 
         <ul className="space-y-3">
           {(modelsQuery.data ?? []).map((model) => (
-            <li key={model.id} className="flex items-center justify-between rounded-lg border border-gray-200 p-4">
+            <li key={model.id} className="flex items-center justify-between rounded-lg border border-base-600 p-4">
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{model.name}</span>
@@ -84,22 +84,22 @@ export default function BimModelsPage() {
                 </div>
                 {model.status === 'processing' && (
                   <div className="mt-2 w-64">
-                    <div className="h-1.5 w-full rounded-full bg-gray-200">
+                    <div className="h-1.5 w-full rounded-full bg-base-700">
                       <div
-                        className="h-1.5 rounded-full bg-blue-600 transition-all"
+                        className="h-1.5 rounded-full bg-blueprint transition-all"
                         style={{ width: `${model.processingProgress}%` }}
                       />
                     </div>
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-ink-500">
                       {model.processingStage ?? 'Starting…'} · {model.processingProgress}%
                     </p>
                   </div>
                 )}
                 {model.status === 'failed' && (
-                  <p className="mt-1 text-xs text-red-600">{model.processingError}</p>
+                  <p className="mt-1 text-xs text-danger">{model.processingError}</p>
                 )}
                 {model.status === 'ready' && (
-                  <p className="mt-1 text-xs text-gray-500">{model.elementCount} elements</p>
+                  <p className="mt-1 text-xs text-ink-500">{model.elementCount} elements</p>
                 )}
               </div>
               <div className="flex items-center gap-2">

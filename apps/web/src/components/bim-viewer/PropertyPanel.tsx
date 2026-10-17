@@ -14,17 +14,17 @@ import type { IssueStatus, IssuePriority } from '@engineeringos/types';
 
 function statusBadgeClass(status: string | null): string {
   switch (status) {
-    case 'complete': return 'bg-green-100 text-green-700';
-    case 'in_progress': return 'bg-amber-100 text-amber-700';
-    case 'defective': return 'bg-red-100 text-red-700';
-    default: return 'bg-gray-100 text-gray-600';
+    case 'complete': return 'bg-ok/10 text-ok';
+    case 'in_progress': return 'bg-warn/10 text-warn';
+    case 'defective': return 'bg-danger/10 text-danger';
+    default: return 'bg-base-800 text-ink-300';
   }
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="border-b border-gray-200 py-3">
-      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{title}</h4>
+    <div className="border-b border-base-600 py-3">
+      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">{title}</h4>
       {children}
     </div>
   );
@@ -33,8 +33,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function KeyValueRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex justify-between gap-2 py-0.5 text-sm">
-      <span className="text-gray-500">{label}</span>
-      <span className="text-right text-gray-900">{value}</span>
+      <span className="text-ink-500">{label}</span>
+      <span className="text-right text-ink-100">{value}</span>
     </div>
   );
 }
@@ -138,10 +138,10 @@ export function PropertyPanel({
   });
 
   if (loading) {
-    return <p className="p-3 text-sm text-gray-400">Loading properties…</p>;
+    return <p className="p-3 text-sm text-ink-500">Loading properties…</p>;
   }
   if (!element) {
-    return <p className="p-3 text-sm text-gray-400">Select an element in the viewer or spatial tree to inspect it.</p>;
+    return <p className="p-3 text-sm text-ink-500">Select an element in the viewer or spatial tree to inspect it.</p>;
   }
 
   // element.properties is normally a plain object (the API decodes the
@@ -176,27 +176,27 @@ export function PropertyPanel({
             <button
               type="button"
               onClick={() => setPickingPin(false)}
-              className="w-full text-center text-xs text-gray-500 hover:text-gray-800"
+              className="w-full text-center text-xs text-ink-500 hover:text-ink-100"
             >
               Cancel
             </button>
           </div>
         ) : element.linkedPin ? (
-          <div className="space-y-1.5 rounded border border-gray-200 px-3 py-2">
+          <div className="space-y-1.5 rounded border border-base-600 px-3 py-2">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0 text-sm">
-                <span className="text-gray-500">Linked pin: </span>
-                <span className="font-medium text-gray-900">{element.linkedPin.name || 'Untitled pin'}</span>
+                <span className="text-ink-500">Linked pin: </span>
+                <span className="font-medium text-ink-100">{element.linkedPin.name || 'Untitled pin'}</span>
               </div>
               <div className="flex shrink-0 gap-2 text-xs">
-                <button type="button" onClick={() => setPickingPin(true)} className="text-blue-700 hover:text-blue-900">
+                <button type="button" onClick={() => setPickingPin(true)} className="text-blueprint hover:text-blueprint">
                   Change
                 </button>
                 <button
                   type="button"
                   disabled={pinLinkMutation.isPending}
                   onClick={() => pinLinkMutation.mutate(null)}
-                  className="text-red-600 hover:text-red-800"
+                  className="text-danger hover:text-danger"
                 >
                   Unlink
                 </button>
@@ -204,14 +204,14 @@ export function PropertyPanel({
             </div>
             {element.linkedPin.linkedRecord?.type === 'issue' && (
               <div className="flex items-center gap-3 text-xs">
-                <Link to={`/projects/${projectId}/issues?issueId=${element.linkedPin.linkedRecord.id}`} className="text-blue-700 hover:text-blue-900">
+                <Link to={`/projects/${projectId}/issues?issueId=${element.linkedPin.linkedRecord.id}`} className="text-blueprint hover:text-blueprint">
                   View in Issues →
                 </Link>
                 <button
                   type="button"
                   onClick={() => convertToSnagMutation.mutate()}
                   disabled={convertToSnagMutation.isPending}
-                  className="text-gray-600 hover:text-gray-900"
+                  className="text-ink-300 hover:text-ink-100"
                 >
                   {convertToSnagMutation.isPending ? 'Converting…' : 'Mark as snag'}
                 </button>
@@ -219,7 +219,7 @@ export function PropertyPanel({
             )}
             {element.linkedPin.linkedRecord?.type === 'snag' && (
               <div className="text-xs">
-                <Link to={`/projects/${projectId}/snagging?snagId=${element.linkedPin.linkedRecord.id}`} className="text-blue-700 hover:text-blue-900">
+                <Link to={`/projects/${projectId}/snagging?snagId=${element.linkedPin.linkedRecord.id}`} className="text-blueprint hover:text-blueprint">
                   View in Snagging →
                 </Link>
               </div>
@@ -255,7 +255,7 @@ export function PropertyPanel({
                 Cancel
               </button>
             </div>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-ink-500">
               Creates the pin here, with no floor-plan position yet -- place it on a drawing later from the Floor Plans page.
             </p>
           </div>
@@ -288,7 +288,7 @@ export function PropertyPanel({
                 <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${statusBadgeClass(element.constructionStatus)}`}>
                   {CONSTRUCTION_STATUS_OPTIONS.find((o) => o.value === element.constructionStatus)?.label ?? 'Not started'}
                 </span>
-                {element.completionPct !== null && <span className="text-xs text-gray-500">{element.completionPct}%</span>}
+                {element.completionPct !== null && <span className="text-xs text-ink-500">{element.completionPct}%</span>}
               </div>
               <button
                 type="button"
@@ -297,24 +297,24 @@ export function PropertyPanel({
                   completionPct: element.completionPct !== null ? String(element.completionPct) : '',
                   captureId: '',
                 })}
-                className="text-xs text-blue-700 hover:text-blue-900"
+                className="text-xs text-blueprint hover:text-blueprint"
               >
                 Update
               </button>
             </div>
-            <button type="button" onClick={() => setShowStatusHistory((v) => !v)} className="text-xs text-gray-500 hover:text-gray-800">
+            <button type="button" onClick={() => setShowStatusHistory((v) => !v)} className="text-xs text-ink-500 hover:text-ink-100">
               {showStatusHistory ? 'Hide history' : 'Show history'}
             </button>
             {showStatusHistory && (
               <div className="space-y-1.5 pt-1">
-                {statusHistoryQuery.isLoading && <p className="text-xs text-gray-400">Loading…</p>}
-                {statusHistoryQuery.data?.length === 0 && <p className="text-xs text-gray-400">No status changes recorded yet.</p>}
+                {statusHistoryQuery.isLoading && <p className="text-xs text-ink-500">Loading…</p>}
+                {statusHistoryQuery.data?.length === 0 && <p className="text-xs text-ink-500">No status changes recorded yet.</p>}
                 {statusHistoryQuery.data?.map((h) => (
-                  <div key={h.id} className="text-xs text-gray-600">
-                    <span className="font-medium text-gray-900">{h.toStatus.replace('_', ' ')}</span>
+                  <div key={h.id} className="text-xs text-ink-300">
+                    <span className="font-medium text-ink-100">{h.toStatus.replace('_', ' ')}</span>
                     {h.completionPct !== null && ` (${h.completionPct}%)`}
                     {' — '}{h.performedByName}, {formatDateTime(h.createdAt)}
-                    {h.captureTitle && <span className="text-gray-500"> · evidence: {h.captureTitle}</span>}
+                    {h.captureTitle && <span className="text-ink-500"> · evidence: {h.captureTitle}</span>}
                   </div>
                 ))}
               </div>
@@ -351,7 +351,7 @@ export function PropertyPanel({
                 ))}
               </select>
             </div>
-            {statusMutation.isError && <p className="text-xs text-red-600">Failed to update status. Try again.</p>}
+            {statusMutation.isError && <p className="text-xs text-danger">Failed to update status. Try again.</p>}
             <div className="flex gap-2">
               <button
                 type="button" onClick={() => statusMutation.mutate()} disabled={statusMutation.isPending}
@@ -368,27 +368,27 @@ export function PropertyPanel({
       </Section>
 
       <Section title={`Open issues${issuesQuery.data ? ` (${issuesQuery.data.length})` : ''}`}>
-        {issuesQuery.isLoading && <p className="text-xs text-gray-400">Loading…</p>}
+        {issuesQuery.isLoading && <p className="text-xs text-ink-500">Loading…</p>}
         {issuesQuery.data && issuesQuery.data.length === 0 && (
-          <p className="text-xs text-gray-400">No open issues linked to this element.</p>
+          <p className="text-xs text-ink-500">No open issues linked to this element.</p>
         )}
         {issuesQuery.data && issuesQuery.data.length > 0 && (
           <ul className="space-y-2">
             {issuesQuery.data.map((issue) => (
               <li key={issue.id} className="text-sm">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-xs text-gray-500">{issue.issueNumber}</span>
+                  <span className="font-mono text-xs text-ink-500">{issue.issueNumber}</span>
                   <div className="flex gap-1">
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE_CLASS[issue.status as IssueStatus] ?? 'bg-gray-100 text-gray-600'}`}>
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE_CLASS[issue.status as IssueStatus] ?? 'bg-base-800 text-ink-300'}`}>
                       {STATUS_LABELS[issue.status as IssueStatus] ?? issue.status}
                     </span>
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${PRIORITY_BADGE_CLASS[issue.priority as IssuePriority] ?? 'bg-gray-100 text-gray-600'}`}>
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${PRIORITY_BADGE_CLASS[issue.priority as IssuePriority] ?? 'bg-base-800 text-ink-300'}`}>
                       {PRIORITY_LABELS[issue.priority as IssuePriority] ?? issue.priority}
                     </span>
                   </div>
                 </div>
-                <div className="text-gray-900">{issue.title}</div>
-                {issue.assignedToName && <div className="text-xs text-gray-500">Assigned: {issue.assignedToName}</div>}
+                <div className="text-ink-100">{issue.title}</div>
+                {issue.assignedToName && <div className="text-xs text-ink-500">Assigned: {issue.assignedToName}</div>}
               </li>
             ))}
           </ul>
@@ -396,16 +396,16 @@ export function PropertyPanel({
       </Section>
 
       <Section title={`Photos${capturesQuery.data ? ` (${capturesQuery.data.length})` : ''}`}>
-        {capturesQuery.isLoading && <p className="text-xs text-gray-400">Loading…</p>}
+        {capturesQuery.isLoading && <p className="text-xs text-ink-500">Loading…</p>}
         {capturesQuery.data && capturesQuery.data.length === 0 && (
-          <p className="text-xs text-gray-400">No captures linked to this element.</p>
+          <p className="text-xs text-ink-500">No captures linked to this element.</p>
         )}
         {capturesQuery.data && capturesQuery.data.length > 0 && (
           <ul className="space-y-2">
             {capturesQuery.data.map((c) => (
               <li key={c.id} className="text-sm">
-                <div className="text-gray-900">{c.title || 'Untitled capture'}</div>
-                <div className="text-xs text-gray-500">
+                <div className="text-ink-100">{c.title || 'Untitled capture'}</div>
+                <div className="text-xs text-ink-500">
                   {formatDateTime(c.capturedAt)}
                   {c.capturedByName ? ` · ${c.capturedByName}` : ''}
                 </div>

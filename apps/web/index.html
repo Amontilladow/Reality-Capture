@@ -4,6 +4,27 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Reality Capture by EngineeringOS</title>
+
+    <!-- Sets <html data-theme> before the stylesheet paints anything, so
+         the page never flashes the wrong theme on load. Mirrors
+         src/store/theme.store.ts's readInitialTheme() exactly -- keep the
+         two in sync if the storage key or fallback logic ever changes.
+         Deliberately tiny/inline (not an external script) so there's no
+         extra network round trip between this running and first paint. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('rc-theme');
+          var theme = stored === 'light' || stored === 'dark'
+            ? stored
+            : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {
+          // localStorage/matchMedia unavailable -- the CSS's own
+          // prefers-color-scheme fallback (index.css) still applies.
+        }
+      })();
+    </script>
     <meta name="description" content="Reality Capture by EngineeringOS — site documentation, BIM coordination, and issue tracking for construction projects." />
 
     <!-- The root ("/") is now a real public marketing page (see

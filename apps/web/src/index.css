@@ -2,42 +2,158 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Centralized design tokens, mirroring tailwind.config.js's Mobbin-inspired
-   gallery-white palette one-for-one (same hex values, same names in spirit).
-   Tailwind utility classes (bg-signal, text-ink-300, ...) remain the single
-   source of truth for every existing component -- nothing here changes
-   those. These --rc-* custom properties exist so bespoke, non-Tailwind-class
-   surfaces (the public marketing page's hand-built sections, any future
-   inline SVG/canvas work) can reference the same palette without
-   re-hardcoding hex values in a second place. Keep this block in sync with
-   tailwind.config.js's `theme.extend.colors` if either ever changes. */
+/* Centralized design tokens -- the SINGLE source of truth for both light and
+   dark mode. tailwind.config.js's theme.extend.colors points every
+   bg-base-950/text-ink-100/bg-signal/etc. utility class at the matching
+   --rc-* variable below instead of a literal hex, so switching themes is
+   flipping which block of this file is in scope (via the <html data-theme>
+   attribute set by src/store/theme.store.ts), never a rebuild or a
+   per-component code change. Every existing component already reaches for
+   these tokens by name -- this file is the only place that needed to
+   change for the whole app to become theme-aware.
+
+   Every color is stored as space-separated "R G B" channel numbers, not a
+   hex string -- Tailwind's own documented pattern for CSS-variable colors
+   that still support its opacity-modifier syntax (bg-danger/10,
+   border-blueprint/40, ...), which the existing design system already
+   uses throughout (.btn-danger, .panel-interactive, Modal's backdrop...).
+   tailwind.config.js wraps each one as rgb(var(--rc-x) / <alpha-value>);
+   a plain var(--rc-x) referenced directly in this file (outside an @apply)
+   needs the same rgb(...) wrapper -- see :focus-visible and .tick-frame
+   below. src/lib/useThemeColors.ts converts a resolved triplet back to a
+   #rrggbb string for the few call sites (recharts, inline-style status
+   chips) that need one.
+
+   Light values live in :root (the default/fallback). Dark values live in
+   :root[data-theme="dark"], which wins by specificity whenever that
+   attribute is set. A :root:not([data-theme="light"]) block under
+   prefers-color-scheme additionally covers the one render before
+   JS/localStorage have run (belt-and-suspenders with index.html's inline
+   bootstrap script, which normally beats this by setting the attribute
+   before first paint). */
 :root {
-  --rc-base-950: #FFFFFF;
-  --rc-base-900: #F3F3F3;
-  --rc-base-800: #F3F3F3;
-  --rc-base-700: #F0F0F0;
-  --rc-base-600: #E0E0E0;
-  --rc-base-500: #F0F0F0;
+  --rc-base-950: 255 255 255; /* page background (canvas) */
+  --rc-base-900: 243 243 243; /* chrome bars / secondary surface (canvas-soft) */
+  --rc-base-800: 243 243 243; /* panel surface (canvas-soft) */
+  --rc-base-700: 240 240 240; /* raised surface / hover (field) */
+  --rc-base-600: 224 224 224; /* borders (hairline) */
+  --rc-base-500: 240 240 240; /* muted borders / dividers (hairline-soft) */
 
-  --rc-ink-100: #141414;
-  --rc-ink-300: #707070;
-  --rc-ink-500: #ADADAD;
+  --rc-ink-100: 20 20 20; /* primary text */
+  --rc-ink-300: 112 112 112; /* secondary text */
+  --rc-ink-500: 173 173 173; /* muted / placeholder */
 
-  --rc-signal: #141414;
-  --rc-signal-hover: #262626;
-  --rc-signal-muted: #707070;
+  --rc-signal: 20 20 20; /* primary action fill -- mirrors ink-100 */
+  --rc-signal-hover: 38 38 38;
+  --rc-signal-muted: 112 112 112;
 
-  --rc-blueprint: #0066FF;
-  --rc-blueprint-hover: #3385FF;
-  --rc-blueprint-muted: #E6F0FF;
+  --rc-blueprint: 0 102 255;
+  --rc-blueprint-hover: 51 133 255;
+  --rc-blueprint-muted: 230 240 255;
 
-  --rc-ok: #16A34A;
-  --rc-warn: #D97706;
-  --rc-danger: #DC2626;
+  --rc-ok: 22 163 74;
+  --rc-warn: 217 119 6;
+  --rc-danger: 220 38 38;
+
+  --rc-grid-line: rgba(20, 20, 20, 0.04);
 
   --rc-radius-sm: 16px;
   --rc-radius-md: 16px;
   --rc-radius-lg: 24px;
+}
+
+/* Deep charcoal/navy, not an inverted/pure-black palette -- a flat #000
+   background reads as a basic "dark mode filter" on a dense data-table-and-
+   drawings-heavy engineering tool; a slightly blue-tinted charcoal with a
+   clear 4-step elevation ladder (950 -> 900 -> 800 -> 700, darkest to
+   lightest) gives cards, sidebars and hover states the same "fill + hairline,
+   never a shadow" hierarchy the light theme already uses, per
+   index.css's/.panel's existing comment, just inverted in direction. */
+:root[data-theme='dark'] {
+  --rc-base-950: 11 15 20; /* page background (canvas) */
+  --rc-base-900: 17 24 33; /* chrome bars / secondary surface */
+  --rc-base-800: 22 31 43; /* panel surface (elevated cards) */
+  --rc-base-700: 32 44 58; /* raised surface / hover / selected */
+  --rc-base-600: 42 54 69; /* borders (hairline) */
+  --rc-base-500: 30 40 50; /* muted borders / dividers -- closer to panel fill than base-600, so it reads as softer, same relative relationship as the light theme's 500 vs 600 */
+
+  --rc-ink-100: 241 245 249; /* primary text */
+  --rc-ink-300: 167 179 194; /* secondary text */
+  --rc-ink-500: 127 139 154; /* muted / placeholder */
+
+  --rc-signal: 241 245 249; /* primary action fill -- mirrors ink-100, same as light mode's relationship, just inverted (near-white button on charcoal) */
+  --rc-signal-hover: 216 222 229;
+  --rc-signal-muted: 167 179 194;
+
+  /* Brand accent preserved -- same hue, lifted slightly so it stays vivid
+     (not muddy) against a dark surface instead of the deeper light-mode
+     shade, which would under-contrast here. */
+  --rc-blueprint: 59 130 246;
+  --rc-blueprint-hover: 96 165 250;
+  --rc-blueprint-muted: 21 35 61;
+
+  /* Success/warning/danger lifted the same way as the accent -- the light
+     theme's deeper shades (#16A34A/#D97706/#DC2626) read as muddy/low-
+     contrast on a dark surface; these keep the same hue family at a
+     brightness that stays accessible on --rc-base-800/900 panels. */
+  --rc-ok: 34 197 94;
+  --rc-warn: 245 158 11;
+  --rc-danger: 239 68 68;
+
+  --rc-grid-line: rgba(255, 255, 255, 0.05);
+}
+
+/* Covers the gap between first paint and index.html's inline bootstrap
+   script/theme.store.ts running -- in practice that script runs before
+   anything is visible, so this mainly guards environments where it was
+   stripped (e.g. a view-source-style static render). Never overrides an
+   explicit choice: :root[data-theme="light"] (user picked light while
+   their OS is in dark mode) is deliberately excluded from this selector's
+   match, so it always wins over the OS preference below. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --rc-base-950: 11 15 20;
+    --rc-base-900: 17 24 33;
+    --rc-base-800: 22 31 43;
+    --rc-base-700: 32 44 58;
+    --rc-base-600: 42 54 69;
+    --rc-base-500: 30 40 50;
+    --rc-ink-100: 241 245 249;
+    --rc-ink-300: 167 179 194;
+    --rc-ink-500: 127 139 154;
+    --rc-signal: 241 245 249;
+    --rc-signal-hover: 216 222 229;
+    --rc-signal-muted: 167 179 194;
+    --rc-blueprint: 59 130 246;
+    --rc-blueprint-hover: 96 165 250;
+    --rc-blueprint-muted: 21 35 61;
+    --rc-ok: 34 197 94;
+    --rc-warn: 245 158 11;
+    --rc-danger: 239 68 68;
+    --rc-grid-line: rgba(255, 255, 255, 0.05);
+  }
+}
+
+/* Restrained theme-switch transition (owner request: "a subtle transition
+   between themes," explicitly not layout-affecting or distracting). Scoped
+   to a class toggled for ~200ms by theme.store.ts around the attribute
+   flip, not left on permanently -- an always-on transition on every
+   color/background/border property would also animate completely
+   unrelated state changes (a button's hover color, a validation error
+   appearing) that have nothing to do with switching themes. */
+.theme-transition,
+.theme-transition *,
+.theme-transition *::before,
+.theme-transition *::after {
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, fill 180ms ease, stroke 180ms ease !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .theme-transition,
+  .theme-transition *,
+  .theme-transition *::before,
+  .theme-transition *::after {
+    transition: none !important;
+  }
 }
 
 @layer base {
@@ -56,7 +172,7 @@
   :focus-visible {
     /* Mobbin signals focus in ink, not the accent blue -- see this file's
        and tailwind.config.js's header comments on scoping the accent. */
-    outline: 2px solid #141414;
+    outline: 2px solid rgb(var(--rc-ink-100));
     outline-offset: 2px;
   }
 }
@@ -80,15 +196,15 @@
   .tick-frame::before {
     top: -1px;
     left: -1px;
-    border-top: 1.5px solid theme('colors.ink.300');
-    border-left: 1.5px solid theme('colors.ink.300');
+    border-top: 1.5px solid rgb(var(--rc-ink-300));
+    border-left: 1.5px solid rgb(var(--rc-ink-300));
     opacity: 0.6;
   }
   .tick-frame::after {
     bottom: -1px;
     right: -1px;
-    border-bottom: 1.5px solid theme('colors.ink.300');
-    border-right: 1.5px solid theme('colors.ink.300');
+    border-bottom: 1.5px solid rgb(var(--rc-ink-300));
+    border-right: 1.5px solid rgb(var(--rc-ink-300));
     opacity: 0.6;
   }
 

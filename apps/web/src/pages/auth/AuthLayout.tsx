@@ -1,12 +1,17 @@
 import type { ReactNode } from 'react';
 import { useDocumentTitle } from '../../lib/useDocumentTitle';
 import { LogoMark } from '../../components/ui/LogoMark';
+import { ThemeToggle } from '../../components/ui/ThemeToggle';
 
 export function AuthLayout({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   useDocumentTitle(title);
 
   return (
     <div className="min-h-screen flex">
+      <div className="fixed top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
+
       <div className="hidden lg:flex w-1/2 relative bg-base-900 overflow-hidden items-center justify-center">
         <div className="absolute inset-0 bg-grid-fine bg-grid-fine" />
         <div className="absolute inset-0 bg-gradient-to-t from-base-950 via-transparent to-base-950/40" />

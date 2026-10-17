@@ -237,7 +237,7 @@ export function EditProjectModal({
               <div className="field-label mb-1">Logo</div>
               <div className="flex items-center gap-2">
                 {project.logoUrl && (
-                  <img src={project.logoUrl} alt="Project logo" className="w-10 h-10 object-contain rounded border border-base-600 bg-white" />
+                  <img src={project.logoUrl} alt="Project logo" className="w-10 h-10 object-contain rounded border border-base-600 bg-base-950" />
                 )}
                 <label className="btn-secondary !px-3 !py-1.5 text-xs cursor-pointer">
                   {logoMutation.isPending ? 'Uploading…' : project.logoUrl ? 'Change logo' : 'Upload logo'}
@@ -260,7 +260,7 @@ export function EditProjectModal({
               <div className="field-label mb-1">Stamp</div>
               <div className="flex items-center gap-2">
                 {project.stampUrl && (
-                  <img src={project.stampUrl} alt="Project stamp" className="w-10 h-10 object-contain rounded border border-base-600 bg-white" />
+                  <img src={project.stampUrl} alt="Project stamp" className="w-10 h-10 object-contain rounded border border-base-600 bg-base-950" />
                 )}
                 <label className="btn-secondary !px-3 !py-1.5 text-xs cursor-pointer">
                   {stampMutation.isPending ? 'Uploading…' : project.stampUrl ? 'Change stamp' : 'Upload stamp'}
