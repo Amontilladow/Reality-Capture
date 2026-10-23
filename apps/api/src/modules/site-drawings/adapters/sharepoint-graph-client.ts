@@ -50,6 +50,19 @@ export class SharePointGraphClient {
     private readonly config: ConfigService,
   ) {}
 
+  // Used by SharePointIntegrationService before saving a tenant ID (same
+  // "validate before you save" philosophy AiConnectionsService.connect()
+  // already follows for a BYO AI provider). Confirms the tenant ID is real
+  // and that Microsoft recognizes this app's registration there -- it does
+  // NOT confirm Sites.Selected has actually been granted for any specific
+  // site, since a multi-tenant app can obtain a client-credentials token
+  // for a tenant it has no application-permission consent in at all. That
+  // narrower, per-site check is what getSourceHealth() verifies once a
+  // project is actually mapped to a site.
+  async verifyTenant(tenantId: string): Promise<void> {
+    await this.getAppToken(tenantId);
+  }
+
   private async getAppToken(tenantId: string): Promise<string> {
     const cached = this.tokenCache.get(tenantId);
     // 60s buffer so a token is never handed out right as it expires mid-call.

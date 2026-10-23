@@ -90,6 +90,14 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   [/\/site-drawings\/[^/]+\/revisions\/[^/]+\/workflow-status$/,   'site_drawing.workflow_status_set', 'site_drawing_revision'],
   [/\/site-drawings\/[^/]+\/revisions$/,                           'site_drawing.revision_added',    'site_drawing_revision'],
   [/\/projects\/[^/]+\/site-drawings$/,                            'site_drawing.registered',        'site_drawing'],
+  // Company-admin SharePoint connection config -- PUT and DELETE share the
+  // exact same URL for each of these two routes (unlike project_member
+  // above, there's no collection-vs-item URL shape difference to split
+  // on), so the action verbs are chosen to read correctly through
+  // deriveAction()'s own .updated -> .deleted rewrite for DELETE, rather
+  // than written as separate PUT/DELETE tuples.
+  [/\/site-drawings\/sharepoint-integration\/projects\/[^/]+$/,    'sharepoint_integration.project_site_updated', 'doc_integration'],
+  [/\/site-drawings\/sharepoint-integration$/,                     'sharepoint_integration.connection_updated',   'doc_integration'],
 ];
 
 interface AuditLogEntry {

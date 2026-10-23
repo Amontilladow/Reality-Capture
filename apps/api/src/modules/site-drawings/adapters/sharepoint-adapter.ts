@@ -3,6 +3,7 @@ import { AxiosError } from 'axios';
 import { DatabaseService } from '../../../database/database.service';
 import { SharePointGraphClient } from './sharepoint-graph-client';
 import type { DiscoveredDrawing, DrawingSourceAdapter, SourceHealthCheck } from './drawing-source-adapter.interface';
+import type { SharePointIntegrationConfig, SharePointProjectSiteConfig } from './sharepoint-integration-config.types';
 
 // Per-project mapping of a RealityCapture project onto one SharePoint
 // document library (brief section 6: "evaluate Microsoft Graph
@@ -10,7 +11,10 @@ import type { DiscoveredDrawing, DrawingSourceAdapter, SourceHealthCheck } from 
 // per-PROJECT, not hardcoded for every customer, because two projects on
 // two different SharePoint sites legitimately use different document
 // library schemas (brief section 4/5: "configurable, never one hardcoded
-// taxonomy for every project").
+// taxonomy for every project"). The config shape itself lives in
+// sharepoint-integration-config.types.ts, shared with
+// SharePointIntegrationService (the admin-facing service that writes it --
+// see sharepoint-integration.service.ts).
 //
 // Everything here is non-secret (a tenant ID, a site/drive GUID, column
 // names) -- it lives in doc_integrations.config as plain JSONB, same as
@@ -21,35 +25,6 @@ import type { DiscoveredDrawing, DrawingSourceAdapter, SourceHealthCheck } from 
 // see SharePointGraphClient's own header comment for why, and for the two
 // admin-side Entra steps a customer's tenant admin must complete before
 // any of this can reach their data.
-interface SharePointProjectSiteConfig {
-  siteId: string;
-  driveId: string;
-  // Scopes discovery to a subfolder of the drive's root, when the
-  // drawing register doesn't live at the library root.
-  folderPath?: string;
-  // Optional column-name overrides. Unset ones fall back to a filename-
-  // or version-based default (documented at each call site below) rather
-  // than failing -- a project can start using this adapter with zero
-  // configuration beyond the site/drive mapping itself.
-  drawingNumberField?: string;
-  drawingTitleField?: string;
-  disciplineField?: string;
-  buildingOrZoneField?: string;
-  floorOrLevelField?: string;
-  revisionNumberField?: string;
-  statusField?: string;
-  issueDateField?: string;
-  // Delta-query resume token (brief section 6: "evaluate... delta sync
-  // support for change detection") -- persisted back to doc_integrations
-  // after each checkForChanges() call, so the next poll is incremental
-  // rather than a full re-crawl.
-  deltaLink?: string;
-}
-
-interface SharePointIntegrationConfig {
-  tenantId: string;
-  projectSites: Record<string, SharePointProjectSiteConfig>;
-}
 
 interface DriveItemFields {
   Title?: string;
