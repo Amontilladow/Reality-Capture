@@ -13,10 +13,12 @@ import { SiteDrawingLocalAdapter } from './adapters/local-adapter';
 import { SiteDrawingSharePointAdapter } from './adapters/sharepoint-adapter';
 import { SharePointGraphClient } from './adapters/sharepoint-graph-client';
 import { SiteDrawingAdapterRegistry } from './adapters/site-drawing-adapter-registry';
+import { AiClientModule } from '../ai-client/ai-client.module';
 
 @Module({
   imports: [
     HttpModule,
+    AiClientModule,
     BullModule.registerQueue({
       name: 'site-drawing-import',
       defaultJobOptions: {

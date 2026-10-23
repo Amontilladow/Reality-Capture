@@ -5,6 +5,7 @@ import { Logger } from '@nestjs/common';
 import type { DocSource, ExtractedDrawingFields, SiteDrawingWorkflowStatus } from '@engineeringos/types';
 import { DatabaseService } from '../../database/database.service';
 import { StorageService } from '../storage/storage.service';
+import { AiClientService } from '../ai-client/ai-client.service';
 import type { SiteDrawingImportJob } from './site-drawing-import.service';
 import { extractPdfEntriesFromZip, type ExtractedZipEntry } from './extraction/zip-extraction.util';
 import { extractEmbeddedText, hasUsableEmbeddedText } from './extraction/pdf-text-extractor';
@@ -50,6 +51,7 @@ export class SiteDrawingImportProcessor {
   constructor(
     private readonly db: DatabaseService,
     private readonly storage: StorageService,
+    private readonly aiClient: AiClientService,
   ) {}
 
   @Process('process-import-batch')
@@ -108,15 +110,32 @@ export class SiteDrawingImportProcessor {
     await this.storage.upload(storageKey, entry.buffer, 'application/pdf');
 
     let fields: ExtractedDrawingFields | null = null;
+    let hasUsableText = false;
     try {
       const { text } = await extractEmbeddedText(entry.buffer);
-      if (hasUsableEmbeddedText(text)) fields = extractTitleBlockFields(text, 'embedded_text');
+      hasUsableText = hasUsableEmbeddedText(text);
+      if (hasUsableText) fields = extractTitleBlockFields(text, 'embedded_text');
     } catch (err) {
       this.logger.warn(`Embedded-text extraction failed for "${entry.filename}": ${this.describeError(err)}`);
     }
-    // OCR fallback (Decision 1 step 2, via the existing ai-service
-    // pytesseract installation) is not yet wired into this processor --
-    // a file with no usable embedded text layer is flagged NEEDS_REVIEW
+
+    // OCR fallback (Decision 1 step 2) -- only when the embedded layer had
+    // nothing usable at all, never as a second opinion on top of a real
+    // text layer. An AI-service outage/timeout here degrades to
+    // NEEDS_REVIEW (fields stays null), exactly like a failed embedded-text
+    // extraction above -- never allowed to fail the whole file, let alone
+    // the batch (brief: "if existing infrastructure cannot support
+    // reliable processing, report the limitation" -- this file's own
+    // extraction_status is that report, not a thrown error).
+    if (!hasUsableText) {
+      try {
+        const readUrl = await this.storage.getReadUrl(storageKey, 300);
+        const ocrResult = await this.aiClient.ocrExtractText(companyId, projectId, readUrl, 1);
+        fields = extractTitleBlockFields(ocrResult.text, 'ocr');
+      } catch (err) {
+        this.logger.warn(`OCR fallback failed for "${entry.filename}": ${this.describeError(err)}`);
+      }
+    }
     // today rather than silently guessed at. Tracked as a follow-up, not
     // claimed as done.
 
