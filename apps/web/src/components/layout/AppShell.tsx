@@ -11,6 +11,7 @@ import { ChatWidget } from '../chat/ChatWidget';
 import { OnboardingFlow } from '../onboarding/OnboardingFlow';
 import { LogoMark } from '../ui/LogoMark';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { clearAllOfflinePackages } from '../../lib/site-drawings-offline';
 
 interface NavItem {
   to: string;
@@ -54,6 +55,7 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
     items: [
       { to: 'captures', label: 'Buildlense Captures', icon: IconCamera },
       { to: 'drawings', label: 'Floor Plans', icon: IconMap },
+      { to: 'site-drawings', label: 'Site Drawings', icon: IconDrawingStack },
       { to: 'issues', label: 'Issues', icon: IconFlag },
       { to: 'snagging', label: 'Snagging', icon: IconTag },
       { to: 'rfis', label: 'RFIs', icon: IconQuestion },
@@ -111,6 +113,11 @@ export function AppShell() {
       // best-effort — clear local session regardless
     }
     clear();
+    // Site Drawing Hub offline packages (brief section 9: "Clear locally
+    // cached protected data when the user signs out"). Best-effort and
+    // fire-and-forget, same as apiLogout() above -- a failure here must
+    // never block sign-out itself.
+    clearAllOfflinePackages().catch(() => {});
     navigate('/login', { replace: true });
   }
 
@@ -288,6 +295,14 @@ function IconMap({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M9 3L3 5v16l6-2 6 2 6-2V3l-6 2-6-2z" strokeLinejoin="round" />
       <path d="M9 3v16M15 5v16" />
+    </svg>
+  );
+}
+function IconDrawingStack({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <rect x="6" y="3" width="14" height="14" rx="1.5" />
+      <path d="M4 7v12a1.5 1.5 0 0 0 1.5 1.5H17" />
     </svg>
   );
 }

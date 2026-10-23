@@ -63,6 +63,9 @@ const BuildLensTimelinePage = lazy(() => import('./pages/BuildLensTimelinePage')
 // the same way. Deliberately separate from FloorPlanViewer: Floor Plans is
 // the Issues/Snags pin workflow and stays that way.
 const CapturesPage = lazy(() => import('./pages/CapturesPage'));
+// Site Drawing Hub pulls in pdf.js too (SiteDrawingPdfViewer), same
+// bundle-splitting reason as the routes above.
+const SiteDrawingHubPage = lazy(() => import('./pages/SiteDrawingHubPage'));
 
 function RouteLoading() {
   return (
@@ -163,6 +166,7 @@ export default function App() {
             <Route path="/projects/:projectId/progress-report" element={<ProgressReportPage />} />
             <Route path="/projects/:projectId/assistant" element={<AssistantPage />} />
             <Route path="/projects/:projectId/risk" element={<RiskPage />} />
+            <Route path="/projects/:projectId/site-drawings" element={<SiteDrawingHubPage />} />
             <Route path="/projects/:projectId/reports" element={<ReportsPage />} />
           </Route>
         </Route>

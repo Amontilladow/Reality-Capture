@@ -27,6 +27,7 @@ import { ProgressReportsModule } from './modules/progress-reports/progress-repor
 import { BimModule } from './modules/bim/bim.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { DrawingsModule } from './modules/drawings/drawings.module';
+import { SiteDrawingsModule } from './modules/site-drawings/site-drawings.module';
 import { TimelineModule } from './modules/timeline/timeline.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
@@ -125,6 +126,7 @@ import gmailConfig from './config/google-gmail.config';
     BimModule,
     DocumentsModule,
     DrawingsModule,
+    SiteDrawingsModule,
     TimelineModule,
     NotificationsModule,
     MessagingModule,
