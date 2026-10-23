@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getRiskSummary } from '../lib/risk.api';
-import { getReportKpis, type ReportKpis } from '../lib/reports.api';
+import { getReportKpis } from '../lib/reports.api';
 import { listBimModels } from '../lib/bim.api';
 import { StatusBadge } from './ui/Badge';
-import type { StatusTone } from '../lib/status-tone';
+import {
+  buildSignals, deriveOverallStatus, buildConclusion,
+  SEVERITY_TONE, SEVERITY_LABEL, STATUS_LABEL, STATUS_TONE,
+} from '../lib/executive-signals';
 
 // Executive Command Center (Minto Pyramid Principle): the conclusion first,
 // the two or three reasons behind it second, full evidence only on demand.
@@ -14,136 +17,10 @@ import type { StatusTone } from '../lib/status-tone';
 // own executive summary, Reports' own KPI endpoint, BIM's own model list)
 // -- nothing here is a new calculation invented for this screen, per the
 // brief's own "reuse existing calculations" / "do not introduce unsupported
-// composite health scores" constraints. The only thing genuinely new is
-// the RANKING and the plain-language sentence built from those numbers --
-// both are deterministic, auditable rules, not a black-box score and not
-// an LLM call (an AI-polished version exists for Risk specifically --
-// RiskIntelligenceSection's "AI Project Risk Briefing" -- and could be
-// extended here later; this stays data-grounded and instant).
-
-type Severity = 'critical' | 'high' | 'medium';
-
-interface PrioritySignal {
-  domain: string;
-  label: string;
-  explanation: string;
-  severity: Severity;
-  to: string;
-}
-
-const SEVERITY_RANK: Record<Severity, number> = { critical: 0, high: 1, medium: 2 };
-const SEVERITY_TONE: Record<Severity, StatusTone> = { critical: 'critical', high: 'warning', medium: 'progress' };
-const SEVERITY_LABEL: Record<Severity, string> = { critical: 'Critical', high: 'High', medium: 'Medium' };
-
-type OverallStatus = 'critical' | 'at_risk' | 'stable' | 'no_data';
-const STATUS_LABEL: Record<OverallStatus, string> = {
-  critical: 'Needs immediate attention', at_risk: 'At risk', stable: 'Stable', no_data: 'Not enough data yet',
-};
-const STATUS_TONE: Record<OverallStatus, StatusTone> = {
-  critical: 'critical', at_risk: 'warning', stable: 'success', no_data: 'neutral',
-};
-
-// The transparent, documented rule this screen's "overall status" is
-// derived from -- never a hidden formula. CRITICAL whenever any signal is
-// itself critical-severity; AT_RISK when nothing is critical but something
-// needs attention soon; STABLE only once both of those are empty AND there
-// is enough real project activity recorded to say so with any confidence.
-function deriveOverallStatus(signals: PrioritySignal[], hasAnyActivity: boolean): OverallStatus {
-  if (!hasAnyActivity) return 'no_data';
-  if (signals.some((s) => s.severity === 'critical')) return 'critical';
-  if (signals.some((s) => s.severity === 'high')) return 'at_risk';
-  return 'stable';
-}
-
-function buildConclusion(status: OverallStatus, signals: PrioritySignal[]): string {
-  if (status === 'no_data') {
-    return 'No risks, issues, RFIs, QA records, or snag items have been recorded on this project yet — there is not enough activity to assess overall status.';
-  }
-  if (signals.length === 0) {
-    return 'No critical issues, overdue items, or unresolved risks were found. The project is stable.';
-  }
-  const top = signals[0];
-  if (status === 'critical') return `Engineering delivery is at risk because ${top.explanation}.`;
-  if (status === 'at_risk') return `The project is largely on track, but ${top.explanation} and needs attention.`;
-  return `The project is stable. ${signals.length} routine item${signals.length === 1 ? '' : 's'} may be worth a look.`;
-}
-
-function buildSignals(projectId: string, risk: Awaited<ReturnType<typeof getRiskSummary>> | undefined, kpis: ReportKpis | undefined, bimFailedCount: number): PrioritySignal[] {
-  const signals: PrioritySignal[] = [];
-  const riskPath = `/projects/${projectId}/risk`;
-
-  if (risk) {
-    if (risk.criticalCount > 0) {
-      signals.push({
-        domain: 'Risk', severity: 'critical', to: riskPath,
-        label: `${risk.criticalCount} critical risk${risk.criticalCount === 1 ? '' : 's'} open`,
-        explanation: `${risk.criticalCount} critical risk${risk.criticalCount === 1 ? '' : 's'} remain open`,
-      });
-    }
-    if (risk.overdueCount > 0) {
-      signals.push({
-        domain: 'Risk', severity: 'high', to: riskPath,
-        label: `${risk.overdueCount} overdue risk action${risk.overdueCount === 1 ? '' : 's'}`,
-        explanation: `${risk.overdueCount} risk mitigation action${risk.overdueCount === 1 ? ' is' : 's are'} overdue`,
-      });
-    }
-  }
-
-  if (kpis) {
-    if (kpis.issues.summary.critical > 0) {
-      signals.push({
-        domain: 'Issues', severity: 'critical', to: `/projects/${projectId}/issues`,
-        label: `${kpis.issues.summary.critical} critical issue${kpis.issues.summary.critical === 1 ? '' : 's'}`,
-        explanation: `${kpis.issues.summary.critical} critical issue${kpis.issues.summary.critical === 1 ? ' is' : 's are'} open`,
-      });
-    }
-    if (kpis.issues.summary.overdue > 0) {
-      signals.push({
-        domain: 'Issues', severity: 'high', to: `/projects/${projectId}/issues`,
-        label: `${kpis.issues.summary.overdue} overdue issue${kpis.issues.summary.overdue === 1 ? '' : 's'}`,
-        explanation: `${kpis.issues.summary.overdue} issue${kpis.issues.summary.overdue === 1 ? ' is' : 's are'} overdue`,
-      });
-    }
-    if (kpis.rfis.summary.overdue > 0) {
-      signals.push({
-        domain: 'RFIs', severity: 'high', to: `/projects/${projectId}/rfis`,
-        label: `${kpis.rfis.summary.overdue} overdue RFI${kpis.rfis.summary.overdue === 1 ? '' : 's'}`,
-        explanation: `${kpis.rfis.summary.overdue} RFI${kpis.rfis.summary.overdue === 1 ? ' is' : 's are'} overdue, which can block downstream design information`,
-      });
-    }
-    if (kpis.qaqc.summary.critical > 0) {
-      signals.push({
-        domain: 'QAQC', severity: 'critical', to: `/projects/${projectId}/qaqc`,
-        label: `${kpis.qaqc.summary.critical} critical QA/QC record${kpis.qaqc.summary.critical === 1 ? '' : 's'}`,
-        explanation: `${kpis.qaqc.summary.critical} critical QA/QC record${kpis.qaqc.summary.critical === 1 ? ' is' : 's are'} open`,
-      });
-    }
-    if (kpis.qaqc.summary.overdue > 0) {
-      signals.push({
-        domain: 'QAQC', severity: 'high', to: `/projects/${projectId}/qaqc`,
-        label: `${kpis.qaqc.summary.overdue} overdue QA/QC record${kpis.qaqc.summary.overdue === 1 ? '' : 's'}`,
-        explanation: `${kpis.qaqc.summary.overdue} QA/QC record${kpis.qaqc.summary.overdue === 1 ? ' is' : 's are'} overdue`,
-      });
-    }
-    if (kpis.snagging.summary.overdue > 0) {
-      signals.push({
-        domain: 'Snagging', severity: 'medium', to: `/projects/${projectId}/snagging`,
-        label: `${kpis.snagging.summary.overdue} overdue snag${kpis.snagging.summary.overdue === 1 ? '' : 's'}`,
-        explanation: `${kpis.snagging.summary.overdue} snag item${kpis.snagging.summary.overdue === 1 ? ' is' : 's are'} overdue`,
-      });
-    }
-  }
-
-  if (bimFailedCount > 0) {
-    signals.push({
-      domain: 'BIM', severity: 'medium', to: `/projects/${projectId}/bim`,
-      label: `${bimFailedCount} BIM model${bimFailedCount === 1 ? '' : 's'} failed processing`,
-      explanation: `${bimFailedCount} BIM model${bimFailedCount === 1 ? ' failed' : 's failed'} to process`,
-    });
-  }
-
-  return signals.sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]);
-}
+// composite health scores" constraints. The ranking/conclusion rules
+// themselves live in lib/executive-signals.ts, shared with the
+// cross-project CompanyExecutiveBriefing so "critical" means the same
+// thing at both scopes.
 
 const COLLAPSED_COUNT = 5;
 
@@ -156,17 +33,25 @@ export function ExecutiveBriefing({ projectId }: { projectId: string }) {
 
   const isLoading = riskQuery.isLoading || kpisQuery.isLoading || bimQuery.isLoading;
   const bimFailedCount = (bimQuery.data ?? []).filter((m) => m.status === 'failed').length;
-  const signals = buildSignals(projectId, riskQuery.data, kpisQuery.data, bimFailedCount);
+  const kpis = kpisQuery.data;
+  const signals = buildSignals(`/projects/${projectId}`, {
+    risk: riskQuery.data ? { criticalCount: riskQuery.data.criticalCount, overdueCount: riskQuery.data.overdueCount } : undefined,
+    issues: kpis ? { critical: kpis.issues.summary.critical, overdue: kpis.issues.summary.overdue } : undefined,
+    rfis: kpis ? { overdue: kpis.rfis.summary.overdue } : undefined,
+    qaqc: kpis ? { critical: kpis.qaqc.summary.critical, overdue: kpis.qaqc.summary.overdue } : undefined,
+    snagging: kpis ? { overdue: kpis.snagging.summary.overdue } : undefined,
+    bimFailedCount,
+  });
 
   const hasAnyActivity = Boolean(
     (riskQuery.data?.totalOpenRisks ?? 0) > 0
-    || (kpisQuery.data?.issues.summary.total ?? 0) > 0
-    || (kpisQuery.data?.rfis.summary.total ?? 0) > 0
-    || (kpisQuery.data?.qaqc.summary.total ?? 0) > 0
-    || (kpisQuery.data?.snagging.summary.total ?? 0) > 0,
+    || (kpis?.issues.summary.total ?? 0) > 0
+    || (kpis?.rfis.summary.total ?? 0) > 0
+    || (kpis?.qaqc.summary.total ?? 0) > 0
+    || (kpis?.snagging.summary.total ?? 0) > 0,
   );
   const status = deriveOverallStatus(signals, hasAnyActivity);
-  const conclusion = buildConclusion(status, signals);
+  const conclusion = buildConclusion(status, signals, 'on this project');
 
   // Freshness is the real moment these queries last actually resolved
   // (react-query's own dataUpdatedAt) -- never a claim this screen can't

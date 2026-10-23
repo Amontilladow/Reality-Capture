@@ -4,6 +4,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { ProjectCard } from '../components/ProjectCard';
 import { CreateProjectModal } from '../components/CreateProjectModal';
 import { SubscriptionBanner } from '../components/SubscriptionBanner';
+import { CompanyExecutiveBriefing } from '../components/CompanyExecutiveBriefing';
 import { StatTile } from '../components/ui/StatTile';
 import { listProjects } from '../lib/projects.api';
 import { getSubscription } from '../lib/subscription.api';
@@ -49,6 +50,8 @@ export default function ProjectList() {
 
       <div className="p-6 grid grid-cols-1 xl:grid-cols-4 gap-6">
         <div className="xl:col-span-3">
+          {projectsQuery.isSuccess && projects.length > 0 && <CompanyExecutiveBriefing />}
+
           {projectsQuery.isSuccess && projects.length > 0 && (
             <div className="enter-stagger grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
               <StatTile size="lg" label="Projects" value={kpis.total} />

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Modal } from '../components/ui/Modal';
+import { StatTile } from '../components/ui/StatTile';
 import { getProject, getHierarchy } from '../lib/projects.api';
 import {
   getProgressReport, downloadProgressReportPdf, createProgressReportShare,
@@ -17,13 +18,27 @@ function isoDateDaysAgo(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-function StatTile({ label, value, tone }: { label: string; value: number; tone?: 'danger' }) {
-  return (
-    <div className="panel p-3 text-left">
-      <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">{label}</div>
-      <div className={`text-xl font-semibold tabular-nums ${tone === 'danger' && value > 0 ? 'text-danger' : 'text-ink-100'}`}>{value}</div>
-    </div>
-  );
+// One-line Minto-style lead for the period, so the reader gets the
+// implication before the stat tiles and tables below (Phase 4). Built
+// purely from fields this report already returns -- no new calculation.
+function progressConclusion(report: ProgressReport): string {
+  const { newIssues, closedIssues, overdueIssues, blockers, captureCount } = report;
+  if (blockers.length > 0 || overdueIssues.length > 0) {
+    const parts: string[] = [];
+    if (blockers.length > 0) parts.push(`${blockers.length} blocker${blockers.length === 1 ? '' : 's'}`);
+    if (overdueIssues.length > 0) parts.push(`${overdueIssues.length} overdue issue${overdueIssues.length === 1 ? '' : 's'}`);
+    return `${parts.join(' and ')} need attention this period.`;
+  }
+  if (newIssues.length === 0 && closedIssues.length === 0 && captureCount === 0) {
+    return 'No activity recorded in this reporting period.';
+  }
+  const net = closedIssues.length - newIssues.length;
+  const netText = net > 0
+    ? `closed ${net} more issue${net === 1 ? '' : 's'} than were opened`
+    : net < 0
+      ? `opened ${-net} more issue${-net === 1 ? '' : 's'} than were closed`
+      : 'opened and closed issues at an even rate';
+  return `No blockers or overdue issues this period. The team ${netText} (${closedIssues.length} closed, ${newIssues.length} new).`;
 }
 
 function ElementProgressSection({ elementProgress }: { elementProgress: ProgressReport['elementProgress'] }) {
@@ -198,6 +213,10 @@ export default function ProgressReportPage() {
 
         {report && (
           <>
+            <div className="panel tick-frame p-4">
+              <p className="text-base text-ink-100 leading-relaxed font-medium">{progressConclusion(report)}</p>
+            </div>
+
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <StatTile label="Captures" value={report.captureCount} />
               <StatTile label="New Issues" value={report.newIssues.length} />

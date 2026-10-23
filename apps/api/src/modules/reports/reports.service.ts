@@ -6,6 +6,7 @@ import { IssuesService } from '../issues/issues.service';
 import { SnaggingService } from '../snagging/snagging.service';
 import { RfisService } from '../rfis/rfis.service';
 import { QaqcService } from '../qaqc/qaqc.service';
+import { RiskService } from '../risk/risk.service';
 import { renderReportsPdf, type ReportsPdfSectionData } from './reports-pdf.template';
 
 @Injectable()
@@ -17,6 +18,7 @@ export class ReportsService {
     private readonly snagging: SnaggingService,
     private readonly rfis: RfisService,
     private readonly qaqc: QaqcService,
+    private readonly risk: RiskService,
   ) {}
 
   // withTenant required -- projects carries the tenant_isolation RLS policy,
@@ -92,6 +94,52 @@ export class ReportsService {
         openList: qaqcOpen,
       },
     };
+  }
+
+  // ── Company-wide executive summary (Phase 4 cross-project view) ────────
+  //
+  // Reuses the exact same per-project getSummary()/getExecutiveSummary()
+  // methods the single-project Reports/Risk pages already call -- nothing
+  // here is a new calculation. The only new thing is looping those calls
+  // over every project in the company (in parallel) instead of one, and
+  // returning the lean summary fields each project needs for its
+  // priority-signal ranking, never the full breakdown/openList payload
+  // getKpis() returns (those are heavy and unused at company scale).
+  async getCompanySummary(companyId: string) {
+    const projects = await this.db.withTenant(companyId, sql => sql<{ id: string; name: string; code: string | null }[]>`
+      SELECT id, name, code FROM projects
+      WHERE company_id = ${companyId} AND status != 'archived'
+      ORDER BY created_at DESC
+    `);
+
+    const rows = await Promise.all(projects.map(async (project) => {
+      const [risk, issuesSummary, snaggingSummary, rfisSummary, qaqcSummary] = await Promise.all([
+        this.risk.getExecutiveSummary(companyId, project.id),
+        this.issues.getSummary(companyId, project.id),
+        this.snagging.getSummary(companyId, project.id),
+        this.rfis.getSummary(companyId, project.id),
+        this.qaqc.getSummary(companyId, project.id),
+      ]);
+
+      return {
+        projectId: project.id,
+        projectName: project.name,
+        projectCode: project.code ?? undefined,
+        risk: {
+          criticalCount: risk.criticalCount,
+          overdueCount: risk.overdueCount,
+          totalOpenRisks: risk.totalOpenRisks,
+          overallScore: risk.overallScore,
+          overallLevel: risk.overallLevel,
+        },
+        issues: { critical: issuesSummary.critical, overdue: issuesSummary.overdue, total: issuesSummary.total },
+        snagging: { overdue: snaggingSummary.overdue, total: snaggingSummary.total },
+        rfis: { overdue: rfisSummary.overdue, total: rfisSummary.total },
+        qaqc: { critical: qaqcSummary.critical, overdue: qaqcSummary.overdue, total: qaqcSummary.total },
+      };
+    }));
+
+    return { projects: rows };
   }
 
   async generatePdf(companyId: string, projectId: string): Promise<{ buffer: Buffer; filename: string }> {
