@@ -97,6 +97,25 @@ export interface RiskTrendPoint {
   averageScore: number;
 }
 
+// Risk Movement during a period (brief Phase 3): emerged/worsened/improved/
+// resolved/unresolved, from GET /risk/movement -- see RiskService.
+// getRiskMovement()'s own comment for exactly how each bucket is derived
+// (real risk_snapshots history, not the live per-risk trend field, which
+// reflects "since last recalculation" rather than "during this window").
+export interface RiskMovementItem {
+  risk: Risk;
+  deltaScore: number;
+}
+
+export interface RiskMovement {
+  windowDays: 7 | 14 | 30;
+  emerged: Risk[];
+  worsened: RiskMovementItem[];
+  improved: RiskMovementItem[];
+  resolvedDuringPeriod: Risk[];
+  unresolved: Risk[];
+}
+
 export interface RiskDataAvailability {
   rfisAvailable: number;
   issuesAvailable: number;
@@ -178,6 +197,7 @@ export const getRiskByDiscipline = (projectId: string) => apiGet<RiskByGroup[]>(
 export const getRiskByLocation = (projectId: string) => apiGet<RiskByGroup[]>(`${base(projectId)}/by-location`);
 export const getRiskClusters = (projectId: string) => apiGet<RiskCluster[]>(`${base(projectId)}/clusters`);
 export const getRiskTrend = (projectId: string, days: 7 | 14 | 30 | 90) => apiGet<RiskTrendPoint[]>(`${base(projectId)}/trend`, { params: { days } });
+export const getRiskMovement = (projectId: string, days: 7 | 14 | 30 = 7) => apiGet<RiskMovement>(`${base(projectId)}/movement`, { params: { days } });
 export const getRiskDataAvailability = (projectId: string) => apiGet<RiskDataAvailability>(`${base(projectId)}/data-availability`);
 export const listRisks = (projectId: string) => apiGet<Risk[]>(base(projectId));
 export interface RiskMatrixDiscrepancy {

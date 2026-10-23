@@ -6,6 +6,7 @@ import { Modal } from './ui/Modal';
 import { RiskGraphView } from './RiskGraphView';
 import { RiskKpiStrip } from './risk/RiskKpiStrip';
 import { RiskAttentionPanel } from './risk/RiskAttentionPanel';
+import { RiskMovementSection } from './risk/RiskMovementSection';
 import { RiskHeatmap } from './risk/RiskHeatmap';
 import { RiskDisciplineChart } from './risk/RiskDisciplineChart';
 import { RiskRegisterTable } from './risk/RiskRegisterTable';
@@ -21,7 +22,7 @@ import {
   getRiskClusters, getRiskDataAvailability, listRisks, getRisk, getRiskChain, getRiskEvidence, getRiskHistory,
   overrideRisk, clearRiskOverride, setRiskStatus, getAiBriefing, getAiExplanation, downloadRiskPdf,
   setHumanAssessment, setHumanAssessmentByEntity, setMatrixOverride, getRiskByEntity, assignRiskOwner, setRiskDueDate,
-  getMatrixDiscrepancies, getRiskHeatmap, RISK_DRIVERS, RISK_DRIVER_LABELS,
+  getMatrixDiscrepancies, getRiskHeatmap, getRiskMovement, RISK_DRIVERS, RISK_DRIVER_LABELS,
   type Risk, type RiskLevel, type RiskStatus, type RiskMatrixLevel, type RiskDriver, type RiskMatrixDiscrepancy,
 } from '../lib/risk.api';
 
@@ -113,10 +114,11 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
   const [graphOpen, setGraphOpen] = useState(false);
   const [graphFocusNodeId, setGraphFocusNodeId] = useState<string | undefined>(undefined);
   const [filters, setFilters] = useState<RegisterFilters>(DEFAULT_REGISTER_FILTERS);
+  const [movementDays, setMovementDays] = useState<7 | 14 | 30>(7);
   const registerRef = useRef<HTMLDivElement>(null);
 
   const invalidateAll = () => {
-    ['risk-summary', 'risk-top', 'risk-emerging', 'risk-by-discipline', 'risk-clusters', 'risk-data-availability', 'risk-register', 'risk-discrepancies', 'risk-heatmap']
+    ['risk-summary', 'risk-top', 'risk-emerging', 'risk-by-discipline', 'risk-clusters', 'risk-data-availability', 'risk-register', 'risk-discrepancies', 'risk-heatmap', 'risk-movement']
       .forEach((key) => queryClient.invalidateQueries({ queryKey: [key, projectId] }));
   };
 
@@ -129,6 +131,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
   const registerQuery = useQuery({ queryKey: ['risk-register', projectId], queryFn: () => listRisks(projectId) });
   const discrepanciesQuery = useQuery({ queryKey: ['risk-discrepancies', projectId], queryFn: () => getMatrixDiscrepancies(projectId) });
   const heatmapQuery = useQuery({ queryKey: ['risk-heatmap', projectId], queryFn: () => getRiskHeatmap(projectId) });
+  const movementQuery = useQuery({ queryKey: ['risk-movement', projectId, movementDays], queryFn: () => getRiskMovement(projectId, movementDays) });
   const membersQuery = useQuery({ queryKey: ['members', projectId], queryFn: () => getMembers(projectId) });
 
   const recalcMutation = useMutation({
@@ -322,6 +325,19 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
           />
 
           <RiskAttentionPanel risks={openRisks} ownerNames={ownerNames} onSelectRisk={openRisk} />
+
+          {/* Risk Movement (brief Phase 3): emerged/worsened/improved/
+              unresolved during a selectable window, from real snapshot
+              history -- placed right after the critical-risk views above
+              and before the heatmap/register below, per the brief's own
+              prescribed order. */}
+          <RiskMovementSection
+            movement={movementQuery.data}
+            isLoading={movementQuery.isLoading}
+            days={movementDays}
+            onDaysChange={setMovementDays}
+            onSelectRisk={openRisk}
+          />
 
           {/* Risk analytics -- heatmap + discipline chart side by side on
               desktop, stacked on mobile, consistent card heights. */}
