@@ -39,6 +39,7 @@ function buildProjectAttentionRows(projects: CompanyProjectSummary[]): ProjectAt
       rfis: { overdue: p.rfis.overdue },
       qaqc: { critical: p.qaqc.critical, overdue: p.qaqc.overdue },
       snagging: { overdue: p.snagging.overdue },
+      bimFailedCount: p.bimFailedCount,
     });
     if (signals.length === 0) continue;
     rows.push({

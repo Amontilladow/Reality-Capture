@@ -133,6 +133,20 @@ export class AiClientService {
   }
 
   /**
+   * Cross-domain reporting briefing (Phase 4 extension of the risk
+   * reasoning layer above): same contract exactly -- the caller builds
+   * `context` from already-computed, already-authorized Reports KPIs/Risk
+   * summary, this is awaited and shown directly to the user, and callers
+   * must catch and degrade gracefully. See ReportsService.generateAiBriefing().
+   */
+  async generateReportsBriefing(companyId: string, projectId: string, context: string): Promise<{ narrative: string }> {
+    const resp = await firstValueFrom(
+      this.http.post(`${this.baseUrl}/report/briefing`, { company_id: companyId, project_id: projectId, context }, { timeout: 30_000, headers: this.authHeaders }),
+    );
+    return resp.data;
+  }
+
+  /**
    * OCR fallback for the Site Drawing Hub's extraction pipeline (Drawing
    * Intelligence & Control, Decision 1) -- used only when a page's
    * embedded text layer is missing/insufficient. pdfUrl must be a

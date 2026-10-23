@@ -152,6 +152,7 @@ export interface CompanyProjectSummary {
   snagging: { overdue: number; total: number };
   rfis: { overdue: number; total: number };
   qaqc: { critical: number; overdue: number; total: number };
+  bimFailedCount: number;
 }
 
 export interface CompanySummary {
@@ -160,4 +161,21 @@ export interface CompanySummary {
 
 export function getCompanySummary() {
   return apiGet<CompanySummary>('/reports/company-summary');
+}
+
+// AI-generated cross-domain report briefing (Conclusion/Drivers/Impact/
+// Action/Evidence) -- grounded in the exact same KPIs/risk summary this
+// page already fetches, never a raw model call. Mirrors risk.api.ts's own
+// AI briefing fallback shape (RiskService.generateAiBriefing()): either a
+// usable structured result, or an honest "unavailable" + reason.
+export interface ReportsBriefing {
+  conclusion: string;
+  drivers: string[];
+  impact: string;
+  action: string;
+  evidence: string[];
+}
+
+export function getReportsBriefing(projectId: string) {
+  return apiGet<ReportsBriefing | { unavailable: true; reason: string }>(`/projects/${projectId}/reports/briefing`);
 }
