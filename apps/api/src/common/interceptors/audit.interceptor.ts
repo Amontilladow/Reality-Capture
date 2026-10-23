@@ -78,6 +78,18 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   [/\/projects\/[^/]+\/organizations\/[^/]+\/members$/,            'project_organization.member_added',   'project_organization_member'],
   [/\/projects\/[^/]+\/organizations\/members\/[^/]+$/,            'project_organization.member_removed', 'project_organization_member'],
   [/\/snag-items\/[^/]+\/verify$/,                                 'snag_item.verified',             'snag_item'],
+  // Site Drawing Hub -- the workflow-status change is the one document-
+  // control-sensitive action here (brief section 9: "Add audit events for
+  // document access, download, revision changes ... administrative
+  // actions"), so it gets its own explicit label rather than falling
+  // through to deriveAction()'s generic "workflow-status.updated". The
+  // others below (register/add-revision) also get explicit entries since
+  // the generic fallback would otherwise label them "site-drawings.created"
+  // and "revisions.created" respectively, which reads fine but is worth
+  // pinning down rather than leaving to a URL-shape coincidence.
+  [/\/site-drawings\/[^/]+\/revisions\/[^/]+\/workflow-status$/,   'site_drawing.workflow_status_set', 'site_drawing_revision'],
+  [/\/site-drawings\/[^/]+\/revisions$/,                           'site_drawing.revision_added',    'site_drawing_revision'],
+  [/\/projects\/[^/]+\/site-drawings$/,                            'site_drawing.registered',        'site_drawing'],
 ];
 
 interface AuditLogEntry {

@@ -23,3 +23,4 @@ export * from './api.types';
 export * from './workforce.types';
 export * from './risk.types';
 export * from './email-integration.types';
+export * from './site-drawing.types';
