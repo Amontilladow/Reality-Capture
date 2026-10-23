@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { SiteDrawingsService } from './site-drawings.service';
 import { SiteDrawingsController } from './site-drawings.controller';
+import { SiteDrawingSyncService } from './site-drawing-sync.service';
 import { SharePointIntegrationService } from './sharepoint-integration.service';
 import { SharePointIntegrationController } from './sharepoint-integration.controller';
 import { SiteDrawingLocalAdapter } from './adapters/local-adapter';
@@ -13,7 +14,7 @@ import { SiteDrawingAdapterRegistry } from './adapters/site-drawing-adapter-regi
   imports: [HttpModule],
   controllers: [SiteDrawingsController, SharePointIntegrationController],
   providers: [
-    SiteDrawingsService, SharePointIntegrationService, SiteDrawingLocalAdapter, SiteDrawingSharePointAdapter,
+    SiteDrawingsService, SiteDrawingSyncService, SharePointIntegrationService, SiteDrawingLocalAdapter, SiteDrawingSharePointAdapter,
     SharePointGraphClient, SiteDrawingAdapterRegistry,
   ],
   exports: [SiteDrawingsService],

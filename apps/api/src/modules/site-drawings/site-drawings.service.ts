@@ -406,7 +406,7 @@ interface SiteDrawingRow {
   discipline: string | null; buildingOrZone: string | null; floorOrLevel: string | null;
   sourceProvider: SiteDrawing['sourceProvider']; sourceFileId: string; sourceWebUrl: string | null;
   currentRevisionId: string | null; currentWorkflowStatus: SiteDrawingWorkflowStatus; currentIsSuperseded: boolean;
-  createdBy: string; createdAt: string; updatedAt: string;
+  createdBy: string | null; createdAt: string; updatedAt: string;
 }
 
 interface SiteDrawingRevisionRow {
@@ -441,7 +441,7 @@ function toSiteDrawing(row: SiteDrawingRow): SiteDrawing {
     floorOrLevel: row.floorOrLevel ?? undefined, sourceProvider: row.sourceProvider, sourceFileId: row.sourceFileId,
     sourceWebUrl: row.sourceWebUrl ?? undefined, currentRevisionId: row.currentRevisionId ?? undefined,
     currentWorkflowStatus: row.currentWorkflowStatus, currentIsSuperseded: row.currentIsSuperseded,
-    createdBy: row.createdBy, createdAt: row.createdAt, updatedAt: row.updatedAt,
+    createdBy: row.createdBy ?? undefined, createdAt: row.createdAt, updatedAt: row.updatedAt,
   };
 }
 

@@ -82,7 +82,10 @@ export interface SiteDrawing {
   currentRevisionId?: string;
   currentWorkflowStatus: SiteDrawingWorkflowStatus;
   currentIsSuperseded: boolean;
-  createdBy: string;
+  // Undefined for a drawing discovered by the sync job from an external
+  // source -- there is no RealityCapture user behind it (see migration
+  // 074's own comment). Always set for a locally-registered drawing.
+  createdBy?: string;
   createdAt: string;
   updatedAt: string;
 }

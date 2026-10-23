@@ -89,6 +89,7 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   // pinning down rather than leaving to a URL-shape coincidence.
   [/\/site-drawings\/[^/]+\/revisions\/[^/]+\/workflow-status$/,   'site_drawing.workflow_status_set', 'site_drawing_revision'],
   [/\/site-drawings\/[^/]+\/revisions$/,                           'site_drawing.revision_added',    'site_drawing_revision'],
+  [/\/projects\/[^/]+\/site-drawings\/sync$/,                      'site_drawing.sync_triggered',    'site_drawing_sync_log'],
   [/\/projects\/[^/]+\/site-drawings$/,                            'site_drawing.registered',        'site_drawing'],
   // Company-admin SharePoint connection config -- PUT and DELETE share the
   // exact same URL for each of these two routes (unlike project_member

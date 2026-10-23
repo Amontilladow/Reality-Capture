@@ -4,11 +4,13 @@ import type { AuthenticatedUser, SiteDrawingWorkflowStatus } from '@engineeringo
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireCategoryAction } from '../../common/decorators/require-category-action.decorator';
 import { SiteDrawingsService } from './site-drawings.service';
+import { SiteDrawingSyncService } from './site-drawing-sync.service';
 import { GetSiteDrawingUploadUrlDto } from './dto/get-upload-url.dto';
 import { RegisterSiteDrawingDto } from './dto/register-drawing.dto';
 import { RegisterSiteDrawingRevisionDto } from './dto/register-revision.dto';
 import { SetSiteDrawingWorkflowStatusDto } from './dto/set-workflow-status.dto';
 import { StartOfflinePackageDto, CompleteOfflinePackageDto } from './dto/offline-package.dto';
+import { TriggerSiteDrawingSyncDto } from './dto/trigger-sync.dto';
 
 // Reads are ungated (company-wide read visibility), consistent with every
 // other module in this app (risk, RFIs, issues, ...) -- see
@@ -23,7 +25,17 @@ import { StartOfflinePackageDto, CompleteOfflinePackageDto } from './dto/offline
 @ApiBearerAuth()
 @Controller('projects/:projectId/site-drawings')
 export class SiteDrawingsController {
-  constructor(private readonly svc: SiteDrawingsService) {}
+  constructor(
+    private readonly svc: SiteDrawingsService,
+    private readonly sync: SiteDrawingSyncService,
+  ) {}
+
+  @Post('sync')
+  @RequireCategoryAction('drawings', 'create', 'manage_project_records')
+  @ApiOperation({ summary: 'Trigger an immediate sync against an external source (otherwise runs on its own 15-minute schedule)' })
+  async triggerSync(@Param('projectId') pid: string, @CurrentUser() u: AuthenticatedUser, @Body() dto: TriggerSiteDrawingSyncDto) {
+    return { data: await this.sync.syncProject(u.companyId, pid, dto.provider ?? 'sharepoint'), error: null };
+  }
 
   @Post('upload-url')
   @RequireCategoryAction('drawings', 'create', 'manage_project_records')

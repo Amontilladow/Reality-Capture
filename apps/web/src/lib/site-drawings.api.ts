@@ -69,6 +69,18 @@ export const getSiteDrawingFilterOptions = (projectId: string) =>
 export const getSiteDrawingSourceHealth = (projectId: string) =>
   apiGet<SiteDrawingSourceHealth>(`${base(projectId)}/source-health`);
 
+export interface SiteDrawingSyncOutcome {
+  status: 'SUCCESS' | 'FAILED';
+  drawingsSeen: number;
+  drawingsCreated: number;
+  revisionsCreated: number;
+}
+// Triggers an immediate sync rather than waiting for the sync job's own
+// 15-minute schedule (SiteDrawingSyncService) -- 'sharepoint' is the
+// default since it's the only provider with a real adapter today.
+export const triggerSiteDrawingSync = (projectId: string, provider: 'sharepoint' | 'aconex' | 'procore' = 'sharepoint') =>
+  apiPost<SiteDrawingSyncOutcome>(`${base(projectId)}/sync`, { provider });
+
 export const getSiteDrawing = (projectId: string, drawingId: string) =>
   apiGet<SiteDrawingWithCurrentRevision>(`${base(projectId)}/${drawingId}`);
 
