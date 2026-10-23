@@ -12,10 +12,18 @@ function makeContext(opts: { user?: unknown; method: string; path: string; param
   } as unknown as ExecutionContext;
 }
 
-function makeGuard(isPublic: boolean | undefined, isSubcontractor: boolean, owns = true, ownsIssue = true, ownsSubmittal = true) {
+function makeGuard(
+  isPublic: boolean | undefined,
+  isSubcontractor: boolean,
+  owns = true,
+  ownsIssue = true,
+  ownsSubmittal = true,
+  isSubcontractorOnAnyProject = isSubcontractor,
+) {
   const reflector = { getAllAndOverride: jest.fn(() => isPublic) } as unknown as Reflector;
   const access = {
     isSubcontractor: jest.fn().mockResolvedValue(isSubcontractor),
+    isSubcontractorOnAnyProject: jest.fn().mockResolvedValue(isSubcontractorOnAnyProject),
     ownsRfi: jest.fn().mockResolvedValue(owns),
     ownsIssue: jest.fn().mockResolvedValue(ownsIssue),
     ownsSubmittal: jest.fn().mockResolvedValue(ownsSubmittal),
@@ -278,6 +286,34 @@ describe('SubcontractorRfiAccessGuard', () => {
       await expect(
         guard.canActivate(makeContext({ user: subcontractor, method: 'GET', path: '/api/v1/projects/p1/transmittals', params: { projectId: 'p1' } })),
       ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
+  // Phase 4 cross-project executive view: GET /reports/company-summary has
+  // no :projectId segment, so the per-project isSubcontractor() check above
+  // has nothing to key off and would otherwise let it straight through.
+  describe('company-wide routes with no :projectId', () => {
+    it('blocks a subcontractor (on any project) from the company-summary rollup', async () => {
+      const { guard, access } = makeGuard(false, false, true, true, true, true);
+      await expect(
+        guard.canActivate(makeContext({ user: subcontractor, method: 'GET', path: '/api/v1/reports/company-summary' })),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(access.isSubcontractorOnAnyProject).toHaveBeenCalledWith(subcontractor);
+    });
+
+    it('allows a non-subcontractor through the company-summary rollup', async () => {
+      const { guard } = makeGuard(false, false, true, true, true, false);
+      await expect(
+        guard.canActivate(makeContext({ user: subcontractor, method: 'GET', path: '/api/v1/reports/company-summary' })),
+      ).resolves.toBe(true);
+    });
+
+    it('leaves every other project-id-less company-wide route untouched, even for a subcontractor', async () => {
+      const { guard, access } = makeGuard(false, false, true, true, true, true);
+      await expect(
+        guard.canActivate(makeContext({ user: subcontractor, method: 'GET', path: '/api/v1/projects' })),
+      ).resolves.toBe(true);
+      expect(access.isSubcontractorOnAnyProject).not.toHaveBeenCalled();
     });
   });
 });

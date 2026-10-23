@@ -66,6 +66,21 @@ const RFI_ID_PATTERN = /^\/api\/v1\/projects\/[^/]+\/rfis\/([^/]+)/;
 // choice; it's always the literal segment right after "/projects/".
 const PROJECT_ID_FROM_PATH_PATTERN = /^\/api\/v1\/projects\/([^/]+)/;
 
+// Phase 4 cross-project executive view: GET /reports/company-summary has
+// no :projectId in its path at all, so PROJECT_ID_FROM_PATH_PATTERN can't
+// extract one and the per-project isSubcontractor() check below has
+// nothing to key off (it returns false for an undefined projectId, which
+// would otherwise let this route through completely unguarded). That
+// route rolls up real Risk/Issues/QAQC/Snagging counts across every
+// project in the company -- exactly what this guard blocks a subcontractor
+// from reading project-by-project -- so it's named here explicitly and
+// checked against isSubcontractorOnAnyProject() instead. Deliberately
+// scoped to only this one path: every OTHER company-wide route (GET
+// /projects, GET /subscription, ...) already has this same "no :projectId
+// to key off" blind spot and is left exactly as-is -- changing those is a
+// separate decision, not something to fold in silently here.
+const COMPANY_WIDE_RESTRICTED_PATH_PATTERN = /^\/api\/v1\/reports\/company-summary(\/|$)/;
+
 // Every one of these is gated @RequireProjectPermission('manage_rfis', ...)
 // at the controller already -- a subcontractor never holds that grant, so
 // this list is defense-in-depth (a clearer 403 message, and one that also
@@ -155,6 +170,20 @@ export class SubcontractorRfiAccessGuard implements CanActivate {
 
     const path = request.path ?? request.url;
     const projectId = PROJECT_ID_FROM_PATH_PATTERN.exec(path)?.[1];
+
+    if (!projectId) {
+      if (COMPANY_WIDE_RESTRICTED_PATH_PATTERN.test(path)) {
+        const isSubcontractorAnywhere = await this.subcontractorAccess.isSubcontractorOnAnyProject(user);
+        if (isSubcontractorAnywhere) {
+          throw new ForbiddenException({
+            code: 'SUBCONTRACTOR_RFI_ONLY',
+            message: 'Your account has access to this project\'s RFIs only.',
+          });
+        }
+      }
+      return true;
+    }
+
     const isSubcontractor = await this.subcontractorAccess.isSubcontractor(user, projectId);
     if (!isSubcontractor) return true;
 
