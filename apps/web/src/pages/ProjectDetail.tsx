@@ -11,6 +11,7 @@ import { EditProjectModal } from '../components/EditProjectModal';
 import { ManageMembersModal } from '../components/ManageMembersModal';
 import { EmailComposerModal } from '../components/EmailComposerModal';
 import { ProjectDashboard } from '../components/ProjectDashboard';
+import { ExecutiveBriefing } from '../components/ExecutiveBriefing';
 import { getProject, getHierarchy, getMembers, updateBuilding } from '../lib/projects.api';
 import { listCaptures } from '../lib/captures.api';
 import { useAuthStore } from '../store/auth.store';
@@ -104,6 +105,8 @@ export default function ProjectDetail() {
       />
 
       {projectQuery.data && <ProjectDetailsPanel project={projectQuery.data} />}
+
+      <ExecutiveBriefing projectId={projectId} />
 
       <ProjectDashboard projectId={projectId} />
 

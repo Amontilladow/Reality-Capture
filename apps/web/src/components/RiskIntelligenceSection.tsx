@@ -244,20 +244,10 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
 
       {summary && hasAnyData && (
         <>
-          <RiskKpiStrip
-            summary={summary}
-            totalActive={openRisks.length}
-            unassignedCount={unassignedCount}
-            mitigationRatePct={mitigationRatePct}
-            onFilterTotalActive={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, activeOnly: true })}
-            onFilterCriticalHigh={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, levels: ['CRITICAL', 'HIGH'] })}
-            onFilterOverdue={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, overdueOnly: true })}
-            onFilterUnassigned={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, owner: 'UNASSIGNED' })}
-            onFilterMitigated={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, statuses: ['RESOLVED', 'CLOSED'] })}
-          />
-
-          <RiskAttentionPanel risks={openRisks} ownerNames={ownerNames} onSelectRisk={openRisk} />
-
+          {/* Minto Pyramid: the conclusion comes first -- before the KPI
+              strip and attention panel below, not after. A reader should
+              get the principal message and its reasons before being shown
+              the numbers that support it, not the reverse. */}
           {/* Risk Summary — deterministic, grounded in the summary above; never a free-floating claim */}
           {(summary.totalOpenRisks > 0 || (discrepanciesQuery.data?.length ?? 0) > 0) && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -318,6 +308,20 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
               )}
             </div>
           )}
+
+          <RiskKpiStrip
+            summary={summary}
+            totalActive={openRisks.length}
+            unassignedCount={unassignedCount}
+            mitigationRatePct={mitigationRatePct}
+            onFilterTotalActive={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, activeOnly: true })}
+            onFilterCriticalHigh={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, levels: ['CRITICAL', 'HIGH'] })}
+            onFilterOverdue={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, overdueOnly: true })}
+            onFilterUnassigned={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, owner: 'UNASSIGNED' })}
+            onFilterMitigated={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, statuses: ['RESOLVED', 'CLOSED'] })}
+          />
+
+          <RiskAttentionPanel risks={openRisks} ownerNames={ownerNames} onSelectRisk={openRisk} />
 
           {/* Risk analytics -- heatmap + discipline chart side by side on
               desktop, stacked on mobile, consistent card heights. */}
