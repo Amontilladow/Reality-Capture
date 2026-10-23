@@ -46,6 +46,13 @@ export interface SiteDrawingRevision {
   lastVerifiedAt?: string;
   contentHash?: string;
   storageKey?: string;
+  // For a provider whose own revision history lives on ONE source file
+  // (e.g. a SharePoint driveItem's version history) rather than as separate
+  // standalone files -- the provider's own version identifier (SharePoint's
+  // "3.0"-style label), used to ask the adapter for that SPECIFIC version's
+  // content rather than just the item's current one. Always undefined for
+  // 'internal' revisions, which already have their own distinct storageKey.
+  sourceRevisionId?: string;
   sourceWebUrl?: string;
   fileSizeBytes?: number;
   supersedesRevisionId?: string;

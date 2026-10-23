@@ -20,15 +20,15 @@ import type { DrawingSourceAdapter, DiscoveredDrawing, SourceHealthCheck } from 
 export class SiteDrawingLocalAdapter implements DrawingSourceAdapter {
   readonly provider = 'internal' as const;
 
-  async listDrawings(_projectId: string): Promise<DiscoveredDrawing[]> {
+  async listDrawings(_companyId: string, _projectId: string): Promise<DiscoveredDrawing[]> {
     return [];
   }
 
-  async getDrawingMetadata(_projectId: string, _sourceFileId: string): Promise<DiscoveredDrawing | null> {
+  async getDrawingMetadata(_companyId: string, _projectId: string, _sourceFileId: string): Promise<DiscoveredDrawing | null> {
     return null;
   }
 
-  async getSourceHealth(_projectId: string): Promise<SourceHealthCheck> {
+  async getSourceHealth(_companyId: string, _projectId: string): Promise<SourceHealthCheck> {
     return { reachable: true, detail: 'Local uploads require no external connection.' };
   }
 }

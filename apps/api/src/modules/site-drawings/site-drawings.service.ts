@@ -6,7 +6,7 @@ import type {
 } from '@engineeringos/types';
 import { DatabaseService } from '../../database/database.service';
 import { StorageService } from '../storage/storage.service';
-import { SiteDrawingLocalAdapter } from './adapters/local-adapter';
+import { SiteDrawingAdapterRegistry } from './adapters/site-drawing-adapter-registry';
 import { isConfirmedCurrent } from './site-drawing-workflow';
 import type { RegisterSiteDrawingDto } from './dto/register-drawing.dto';
 import type { RegisterSiteDrawingRevisionDto } from './dto/register-revision.dto';
@@ -30,7 +30,7 @@ export class SiteDrawingsService {
   constructor(
     private readonly db: DatabaseService,
     private readonly storage: StorageService,
-    private readonly localAdapter: SiteDrawingLocalAdapter,
+    private readonly adapters: SiteDrawingAdapterRegistry,
   ) {}
 
   // ── Upload / registration (Local/internal source — brief section 6's
@@ -151,7 +151,7 @@ export class SiteDrawingsService {
       const rows = await sql<(SiteDrawingRow & SiteDrawingRevisionJoinRow)[]>`
         SELECT d.*, r.id AS revision_id, r.revision_number, r.workflow_status AS revision_workflow_status,
                r.source_status_raw, r.issue_date, r.source_modified_at, r.last_verified_at, r.content_hash,
-               r.storage_key, r.source_web_url AS revision_source_web_url, r.file_size_bytes,
+               r.storage_key, r.source_revision_id, r.source_web_url AS revision_source_web_url, r.file_size_bytes,
                r.supersedes_revision_id, r.is_superseded, r.offline_eligibility, r.synchronization_status,
                r.uploaded_by, r.created_at AS revision_created_at, r.updated_at AS revision_updated_at,
                count(*) OVER() AS full_count
@@ -227,12 +227,32 @@ export class SiteDrawingsService {
       SELECT * FROM site_drawing_revisions WHERE id = ${revisionId} AND project_id = ${projectId}
     `);
     if (!revision) throw new NotFoundException(`Revision ${revisionId} not found.`);
-    if (!revision.storageKey) throw new BadRequestException('This revision has no locally stored file — open it at the source instead.');
 
-    const expiresInSeconds = 900; // 15 min -- short-lived per section 9
-    const url = await this.storage.getReadUrl(revision.storageKey, expiresInSeconds);
+    const { url, expiresInSeconds } = revision.storageKey
+      ? { url: await this.storage.getReadUrl(revision.storageKey, 900), expiresInSeconds: 900 }
+      : await this.getAuthorizedFileFromSource(companyId, projectId, revision);
+
     await this.writeAccessAudit(companyId, projectId, userId, 'site_drawing_revision', revision.id, 'site_drawing.downloaded');
     return { url, expiresInSeconds, workflowStatus: revision.workflowStatus, isSuperseded: revision.isSuperseded };
+  }
+
+  // The "not stored locally" branch above -- resolves the revision's own
+  // drawing (for its sourceProvider + sourceFileId) and asks that
+  // provider's adapter for a short-lived URL to the file itself
+  // (revision.sourceRevisionId, when set, asks for that specific
+  // historical version rather than the current one -- see
+  // DrawingSourceAdapter's own comment).
+  private async getAuthorizedFileFromSource(companyId: string, projectId: string, revision: SiteDrawingRevisionRow): Promise<{ url: string; expiresInSeconds: number }> {
+    const [drawing] = await this.db.withTenant(companyId, sql => sql<SiteDrawingRow[]>`
+      SELECT * FROM site_drawings WHERE id = ${revision.drawingId} AND project_id = ${projectId}
+    `);
+    if (!drawing) throw new NotFoundException(`Drawing ${revision.drawingId} not found.`);
+
+    const adapter = this.adapters.resolve(drawing.sourceProvider);
+    if (!adapter?.getAuthorizedFile) {
+      throw new BadRequestException('This revision has no locally stored file and its source does not support a proxied download — open it at the source instead.');
+    }
+    return adapter.getAuthorizedFile(companyId, projectId, drawing.sourceFileId, revision.sourceRevisionId ?? undefined);
   }
 
   // Supplements, does not replace, AuditInterceptor's generic coverage of
@@ -272,7 +292,7 @@ export class SiteDrawingsService {
       WHERE project_id = ${projectId} AND source_provider = 'internal'
       ORDER BY started_at DESC LIMIT 1
     `);
-    const health = await this.localAdapter.getSourceHealth(projectId);
+    const health = await this.adapters.resolve('internal')!.getSourceHealth(companyId, projectId);
     return {
       provider: 'internal',
       reachable: health.reachable,
@@ -393,7 +413,7 @@ interface SiteDrawingRevisionRow {
   id: string; companyId: string; projectId: string; drawingId: string; revisionNumber: string;
   workflowStatus: SiteDrawingWorkflowStatus; sourceStatusRaw: string | null; issueDate: string | null;
   sourceModifiedAt: string | null; lastVerifiedAt: string | null; contentHash: string | null;
-  storageKey: string | null; sourceWebUrl: string | null; fileSizeBytes: string | number | null;
+  storageKey: string | null; sourceRevisionId: string | null; sourceWebUrl: string | null; fileSizeBytes: string | number | null;
   supersedesRevisionId: string | null; isSuperseded: boolean; offlineEligibility: boolean;
   synchronizationStatus: SiteDrawingRevision['synchronizationStatus']; uploadedBy: string | null;
   createdAt: string; updatedAt: string;
@@ -402,7 +422,7 @@ interface SiteDrawingRevisionRow {
 interface SiteDrawingRevisionJoinRow {
   revisionId: string | null; revisionNumber: string; revisionWorkflowStatus: SiteDrawingWorkflowStatus;
   sourceStatusRaw: string | null; issueDate: string | null; sourceModifiedAt: string | null; lastVerifiedAt: string | null;
-  contentHash: string | null; storageKey: string | null; revisionSourceWebUrl: string | null;
+  contentHash: string | null; storageKey: string | null; sourceRevisionId: string | null; revisionSourceWebUrl: string | null;
   fileSizeBytes: string | number | null; supersedesRevisionId: string | null; isSuperseded: boolean;
   offlineEligibility: boolean; synchronizationStatus: SiteDrawingRevision['synchronizationStatus'];
   uploadedBy: string | null; revisionCreatedAt: string; revisionUpdatedAt: string; fullCount: string | number;
@@ -430,7 +450,7 @@ function toSiteDrawingRevision(r: SiteDrawingRevisionRow): SiteDrawingRevision {
     id: r.id, companyId: r.companyId, projectId: r.projectId, drawingId: r.drawingId, revisionNumber: r.revisionNumber,
     workflowStatus: r.workflowStatus, sourceStatusRaw: r.sourceStatusRaw ?? undefined, issueDate: r.issueDate ?? undefined,
     sourceModifiedAt: r.sourceModifiedAt ?? undefined, lastVerifiedAt: r.lastVerifiedAt ?? undefined, contentHash: r.contentHash ?? undefined,
-    storageKey: r.storageKey ?? undefined, sourceWebUrl: r.sourceWebUrl ?? undefined,
+    storageKey: r.storageKey ?? undefined, sourceRevisionId: r.sourceRevisionId ?? undefined, sourceWebUrl: r.sourceWebUrl ?? undefined,
     fileSizeBytes: r.fileSizeBytes != null ? Number(r.fileSizeBytes) : undefined, supersedesRevisionId: r.supersedesRevisionId ?? undefined,
     isSuperseded: r.isSuperseded, offlineEligibility: r.offlineEligibility, synchronizationStatus: r.synchronizationStatus,
     uploadedBy: r.uploadedBy ?? undefined, createdAt: r.createdAt, updatedAt: r.updatedAt,
@@ -445,7 +465,7 @@ function toSiteDrawingRevisionFromJoin(r: SiteDrawingRow & SiteDrawingRevisionJo
     id: r.revisionId!, companyId: r.companyId, projectId: r.projectId, drawingId: r.id,
     revisionNumber: r.revisionNumber, workflowStatus: r.revisionWorkflowStatus, sourceStatusRaw: r.sourceStatusRaw ?? undefined,
     issueDate: r.issueDate ?? undefined, sourceModifiedAt: r.sourceModifiedAt ?? undefined, lastVerifiedAt: r.lastVerifiedAt ?? undefined,
-    contentHash: r.contentHash ?? undefined, storageKey: r.storageKey ?? undefined, sourceWebUrl: r.revisionSourceWebUrl ?? undefined,
+    contentHash: r.contentHash ?? undefined, storageKey: r.storageKey ?? undefined, sourceRevisionId: r.sourceRevisionId ?? undefined, sourceWebUrl: r.revisionSourceWebUrl ?? undefined,
     fileSizeBytes: r.fileSizeBytes != null ? Number(r.fileSizeBytes) : undefined, supersedesRevisionId: r.supersedesRevisionId ?? undefined,
     isSuperseded: r.isSuperseded, offlineEligibility: r.offlineEligibility, synchronizationStatus: r.synchronizationStatus,
     uploadedBy: r.uploadedBy ?? undefined, createdAt: r.revisionCreatedAt, updatedAt: r.revisionUpdatedAt,
