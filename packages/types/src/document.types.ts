@@ -1,5 +1,6 @@
 export type DocType = 'drawing' | 'specification' | 'rfi' | 'submittal' | 'transmittal' | 'inspection_record' | 'method_statement' | 'risk_assessment' | 'handover_certificate' | 'test_report' | 'ncrm' | 'other' | 'report_attachment';
-export type DocSource = 'internal' | 'procore' | 'aconex' | 'sharepoint' | 'bim360' | 'manual_link';
+export const DOC_SOURCES = ['internal', 'procore', 'aconex', 'sharepoint', 'bim360', 'manual_link'] as const;
+export type DocSource = typeof DOC_SOURCES[number];
 
 export interface Document {
   id: string;

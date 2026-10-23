@@ -7,8 +7,13 @@ import type {
 export type {
   SiteDrawing, SiteDrawingRevision, SiteDrawingWithCurrentRevision, SiteDrawingWorkflowStatus,
   SiteDrawingOfflinePackage, SiteDrawingOfflinePackageStatus, SiteDrawingSourceHealth, SiteDrawingSourceProvider,
+  SiteDrawingDocumentClassification, SiteDrawingExtractionStatus, SiteDrawingImportBatch, SiteDrawingImportBatchStatus,
+  ExtractedDrawingFields,
 } from '@engineeringos/types';
-export { SITE_DRAWING_WORKFLOW_STATUSES, VALID_FOR_SITE_USE_STATUSES } from '@engineeringos/types';
+export {
+  SITE_DRAWING_WORKFLOW_STATUSES, VALID_FOR_SITE_USE_STATUSES, SITE_DRAWING_DOCUMENT_CLASSIFICATIONS,
+  SITE_DRAWING_EXTRACTION_STATUSES,
+} from '@engineeringos/types';
 
 const base = (projectId: string) => `/projects/${projectId}/site-drawings`;
 

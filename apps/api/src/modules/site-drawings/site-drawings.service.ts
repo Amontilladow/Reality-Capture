@@ -153,7 +153,9 @@ export class SiteDrawingsService {
                r.source_status_raw, r.issue_date, r.source_modified_at, r.last_verified_at, r.content_hash,
                r.storage_key, r.source_revision_id, r.source_web_url AS revision_source_web_url, r.file_size_bytes,
                r.supersedes_revision_id, r.is_superseded, r.offline_eligibility, r.synchronization_status,
-               r.uploaded_by, r.created_at AS revision_created_at, r.updated_at AS revision_updated_at,
+               r.uploaded_by, r.document_classification, r.suitability_code, r.extraction_status,
+               r.extracted_fields_raw, r.import_batch_id, r.review_notes,
+               r.created_at AS revision_created_at, r.updated_at AS revision_updated_at,
                count(*) OVER() AS full_count
         FROM site_drawings d
         LEFT JOIN site_drawing_revisions r ON r.id = d.current_revision_id
@@ -361,7 +363,7 @@ export class SiteDrawingsService {
       const [revision] = await sql<SiteDrawingRevisionRow[]>`SELECT * FROM site_drawing_revisions WHERE id = ${pkg.revisionId}`;
       if (!revision) throw new NotFoundException(`Revision for offline package ${packageId} no longer exists.`);
 
-      const isStale = revision.isSuperseded || revision.workflowStatus === 'WITHDRAWN' || !isConfirmedCurrent(revision.workflowStatus, revision.isSuperseded);
+      const isStale = revision.isSuperseded || revision.workflowStatus === 'WITHDRAWN' || !isConfirmedCurrent(revision.workflowStatus, revision.isSuperseded, revision.documentClassification);
       const newStatus: SiteDrawingOfflinePackageStatus = isStale ? 'STALE' : pkg.status;
       const [updated] = await sql<SiteDrawingOfflinePackageRow[]>`
         UPDATE site_drawing_offline_packages SET status = ${newStatus}, last_verified_at = now(), updated_at = now()
@@ -416,6 +418,9 @@ interface SiteDrawingRevisionRow {
   storageKey: string | null; sourceRevisionId: string | null; sourceWebUrl: string | null; fileSizeBytes: string | number | null;
   supersedesRevisionId: string | null; isSuperseded: boolean; offlineEligibility: boolean;
   synchronizationStatus: SiteDrawingRevision['synchronizationStatus']; uploadedBy: string | null;
+  documentClassification: SiteDrawingRevision['documentClassification']; suitabilityCode: string | null;
+  extractionStatus: SiteDrawingRevision['extractionStatus']; extractedFieldsRaw: SiteDrawingRevision['extractedFieldsRaw'] | null;
+  importBatchId: string | null; reviewNotes: string | null;
   createdAt: string; updatedAt: string;
 }
 
@@ -425,7 +430,10 @@ interface SiteDrawingRevisionJoinRow {
   contentHash: string | null; storageKey: string | null; sourceRevisionId: string | null; revisionSourceWebUrl: string | null;
   fileSizeBytes: string | number | null; supersedesRevisionId: string | null; isSuperseded: boolean;
   offlineEligibility: boolean; synchronizationStatus: SiteDrawingRevision['synchronizationStatus'];
-  uploadedBy: string | null; revisionCreatedAt: string; revisionUpdatedAt: string; fullCount: string | number;
+  uploadedBy: string | null; documentClassification: SiteDrawingRevision['documentClassification']; suitabilityCode: string | null;
+  extractionStatus: SiteDrawingRevision['extractionStatus']; extractedFieldsRaw: SiteDrawingRevision['extractedFieldsRaw'] | null;
+  importBatchId: string | null; reviewNotes: string | null;
+  revisionCreatedAt: string; revisionUpdatedAt: string; fullCount: string | number;
 }
 
 interface SiteDrawingOfflinePackageRow {
@@ -453,7 +461,9 @@ function toSiteDrawingRevision(r: SiteDrawingRevisionRow): SiteDrawingRevision {
     storageKey: r.storageKey ?? undefined, sourceRevisionId: r.sourceRevisionId ?? undefined, sourceWebUrl: r.sourceWebUrl ?? undefined,
     fileSizeBytes: r.fileSizeBytes != null ? Number(r.fileSizeBytes) : undefined, supersedesRevisionId: r.supersedesRevisionId ?? undefined,
     isSuperseded: r.isSuperseded, offlineEligibility: r.offlineEligibility, synchronizationStatus: r.synchronizationStatus,
-    uploadedBy: r.uploadedBy ?? undefined, createdAt: r.createdAt, updatedAt: r.updatedAt,
+    uploadedBy: r.uploadedBy ?? undefined, documentClassification: r.documentClassification, suitabilityCode: r.suitabilityCode ?? undefined,
+    extractionStatus: r.extractionStatus, extractedFieldsRaw: r.extractedFieldsRaw ?? undefined, importBatchId: r.importBatchId ?? undefined,
+    reviewNotes: r.reviewNotes ?? undefined, createdAt: r.createdAt, updatedAt: r.updatedAt,
   };
 }
 
@@ -468,7 +478,9 @@ function toSiteDrawingRevisionFromJoin(r: SiteDrawingRow & SiteDrawingRevisionJo
     contentHash: r.contentHash ?? undefined, storageKey: r.storageKey ?? undefined, sourceRevisionId: r.sourceRevisionId ?? undefined, sourceWebUrl: r.revisionSourceWebUrl ?? undefined,
     fileSizeBytes: r.fileSizeBytes != null ? Number(r.fileSizeBytes) : undefined, supersedesRevisionId: r.supersedesRevisionId ?? undefined,
     isSuperseded: r.isSuperseded, offlineEligibility: r.offlineEligibility, synchronizationStatus: r.synchronizationStatus,
-    uploadedBy: r.uploadedBy ?? undefined, createdAt: r.revisionCreatedAt, updatedAt: r.revisionUpdatedAt,
+    uploadedBy: r.uploadedBy ?? undefined, documentClassification: r.documentClassification, suitabilityCode: r.suitabilityCode ?? undefined,
+    extractionStatus: r.extractionStatus, extractedFieldsRaw: r.extractedFieldsRaw ?? undefined, importBatchId: r.importBatchId ?? undefined,
+    reviewNotes: r.reviewNotes ?? undefined, createdAt: r.revisionCreatedAt, updatedAt: r.revisionUpdatedAt,
   };
 }
 

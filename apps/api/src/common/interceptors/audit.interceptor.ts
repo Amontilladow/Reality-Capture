@@ -99,6 +99,13 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   // than written as separate PUT/DELETE tuples.
   [/\/site-drawings\/sharepoint-integration\/projects\/[^/]+$/,    'sharepoint_integration.project_site_updated', 'doc_integration'],
   [/\/site-drawings\/sharepoint-integration$/,                     'sharepoint_integration.connection_updated',   'doc_integration'],
+  // Drawing Intelligence & Control (M4 brief) -- bulk ingestion + review
+  // queue corrections. Specific patterns before the general import-
+  // batches collection route, same "specific before general" convention
+  // this file already follows throughout.
+  [/\/site-drawings\/import-batches\/review-queue\/[^/]+$/,        'site_drawing.extraction_reviewed', 'site_drawing_revision'],
+  [/\/site-drawings\/import-batches\/upload-url$/,                 'site_drawing_import_batch.upload_url_issued', 'site_drawing_import_batch'],
+  [/\/site-drawings\/import-batches$/,                             'site_drawing_import_batch.created',       'site_drawing_import_batch'],
 ];
 
 interface AuditLogEntry {

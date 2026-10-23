@@ -13,7 +13,7 @@ import { SiteDrawingPdfViewer } from './SiteDrawingPdfViewer';
 import { AddRevisionModal } from './AddRevisionModal';
 import {
   WORKFLOW_STATUS_LABELS, WORKFLOW_STATUS_TONE, sourceProviderLabel, formatVerifiedAt, formatDate, formatFileSize,
-  needsApprovalWarning, isConfirmedCurrent,
+  needsApprovalWarning, isConfirmedCurrent, DOCUMENT_CLASSIFICATION_LABELS,
 } from './siteDrawingDisplay';
 import { useAuthStore } from '../../store/auth.store';
 
@@ -225,7 +225,8 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
                     <div>
                       <div className="text-sm text-ink-100 flex items-center gap-2">
                         Rev {r.revisionNumber}
-                        {isConfirmedCurrent(r.workflowStatus, r.isSuperseded) && <StatusBadge tone="info" label="Current" />}
+                        {isConfirmedCurrent(r.workflowStatus, r.isSuperseded, r.documentClassification) && <StatusBadge tone="info" label="Current" />}
+                        {r.documentClassification !== 'CONSTRUCTION' && <StatusBadge tone="neutral" label={DOCUMENT_CLASSIFICATION_LABELS[r.documentClassification]} />}
                         {r.isSuperseded && <StatusBadge tone="neutral" label="Superseded" />}
                       </div>
                       <div className="text-xs text-ink-500 mt-0.5">

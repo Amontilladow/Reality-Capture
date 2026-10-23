@@ -33,6 +33,45 @@ export type SiteDrawingSyncLogStatus = typeof SITE_DRAWING_SYNC_LOG_STATUSES[num
 export const SITE_DRAWING_OFFLINE_PACKAGE_STATUSES = ['DOWNLOADING', 'COMPLETE', 'FAILED', 'STALE', 'REMOVED'] as const;
 export type SiteDrawingOfflinePackageStatus = typeof SITE_DRAWING_OFFLINE_PACKAGE_STATUSES[number];
 
+// Deliberately a SEPARATE axis from workflowStatus (migration 075 / the
+// brief's own Decision 2): approval, revision currency (isSuperseded), and
+// document classification answer three different questions. A FINAL or
+// AS_BUILT drawing can be APPROVED and still must never be treated as the
+// current construction drawing -- see isConfirmedCurrent() in
+// site-drawing-workflow.ts, which checks this alongside workflowStatus.
+export const SITE_DRAWING_DOCUMENT_CLASSIFICATIONS = ['CONSTRUCTION', 'FINAL', 'AS_BUILT'] as const;
+export type SiteDrawingDocumentClassification = typeof SITE_DRAWING_DOCUMENT_CLASSIFICATIONS[number];
+
+// CONFIRMED: embedded-text extraction matched a known title-block pattern.
+// NEEDS_REVIEW: OCR fallback was used, no pattern matched, or confidence
+// fell below threshold. CONFLICT: two extraction attempts disagreed, or
+// this drawing number collides with an existing one under a materially
+// different title (a possible drawing-number mismatch). MANUAL: a human
+// typed the values directly (the Local-upload path) -- there was nothing
+// to extract, not a lower-confidence state.
+export const SITE_DRAWING_EXTRACTION_STATUSES = ['CONFIRMED', 'NEEDS_REVIEW', 'CONFLICT', 'MANUAL'] as const;
+export type SiteDrawingExtractionStatus = typeof SITE_DRAWING_EXTRACTION_STATUSES[number];
+
+export const SITE_DRAWING_IMPORT_BATCH_STATUSES = ['PENDING', 'PROCESSING', 'COMPLETED', 'PARTIAL', 'FAILED'] as const;
+export type SiteDrawingImportBatchStatus = typeof SITE_DRAWING_IMPORT_BATCH_STATUSES[number];
+
+// What the extraction pipeline actually read from the title block, before
+// any human correction -- kept verbatim even after an authorized user
+// edits the authoritative drawingNumber/drawingTitle/revisionNumber fields,
+// so what the system read is always auditable (brief section 3: "AI may
+// assist with extraction, but it must not invent missing values").
+export interface ExtractedDrawingFields {
+  drawingNumber?: string;
+  drawingTitle?: string;
+  revisionNumber?: string;
+  issueDate?: string;
+  discipline?: string;
+  source: 'embedded_text' | 'ocr';
+  // A rough 0-1 confidence the extractor itself reports -- never treated as
+  // a guarantee, only a threshold for CONFIRMED vs. NEEDS_REVIEW.
+  confidence: number;
+}
+
 export interface SiteDrawingRevision {
   id: string;
   companyId: string;
@@ -60,6 +99,18 @@ export interface SiteDrawingRevision {
   offlineEligibility: boolean;
   synchronizationStatus: SiteDrawingSyncStatus;
   uploadedBy?: string;
+  // Separate from workflowStatus -- see SITE_DRAWING_DOCUMENT_CLASSIFICATIONS'
+  // own comment. Defaults to 'CONSTRUCTION' for every revision that was
+  // never told otherwise (migration 075).
+  documentClassification: SiteDrawingDocumentClassification;
+  suitabilityCode?: string;
+  // 'MANUAL' for a human-entered revision (nothing was extracted);
+  // otherwise the extraction pipeline's own confidence bucket for THIS
+  // revision's fields.
+  extractionStatus: SiteDrawingExtractionStatus;
+  extractedFieldsRaw?: ExtractedDrawingFields;
+  importBatchId?: string;
+  reviewNotes?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -126,6 +177,31 @@ export interface SiteDrawingOfflinePackage {
   lastVerifiedAt: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// One row per uploaded ZIP/PDF package (brief section 2: "store import
+// batch identifiers, timestamps, source information and the uploading
+// user"). The original archive/file is preserved untouched at storageKey
+// -- never overwritten, even though each extracted PDF also gets its own
+// separate storage key once registered as a revision.
+export interface SiteDrawingImportBatch {
+  id: string;
+  companyId: string;
+  projectId: string;
+  sourceSystem: SiteDrawingSourceProvider;
+  originalFilename: string;
+  storageKey: string;
+  status: SiteDrawingImportBatchStatus;
+  fileCount: number;
+  createdCount: number;
+  revisionCount: number;
+  skippedCount: number;
+  errorCount: number;
+  errorMessage?: string;
+  uploadedBy: string;
+  startedAt?: string;
+  finishedAt?: string;
+  createdAt: string;
 }
 
 // What a DrawingSourceAdapter reports about itself (brief section 3's

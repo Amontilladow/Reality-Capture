@@ -1,4 +1,4 @@
-import { isValidForSiteUse, isConfirmedCurrent, needsApprovalWarning, fallbackMapSourceStatus } from './site-drawing-workflow';
+import { isValidForSiteUse, isConfirmedCurrent, needsApprovalWarning, fallbackMapSourceStatus, documentClassificationLabel } from './site-drawing-workflow';
 import { SITE_DRAWING_WORKFLOW_STATUSES, type SiteDrawingWorkflowStatus } from '@engineeringos/types';
 
 describe('isValidForSiteUse', () => {
@@ -28,6 +28,27 @@ describe('isConfirmedCurrent', () => {
 
   it('acceptance test 5: a superseded drawing is never confirmed current, even if its own status is approved', () => {
     expect(isConfirmedCurrent('APPROVED', true)).toBe(false);
+  });
+
+  it('defaults documentClassification to CONSTRUCTION when omitted, preserving every pre-migration-075 call site\'s behavior', () => {
+    expect(isConfirmedCurrent('APPROVED_FOR_CONSTRUCTION', false)).toBe(true);
+  });
+
+  it('a FINAL or AS_BUILT document is never confirmed current, even when approved and not superseded (Decision 2)', () => {
+    expect(isConfirmedCurrent('APPROVED_FOR_CONSTRUCTION', false, 'FINAL')).toBe(false);
+    expect(isConfirmedCurrent('APPROVED_FOR_CONSTRUCTION', false, 'AS_BUILT')).toBe(false);
+  });
+
+  it('a CONSTRUCTION-classified document with an otherwise-valid status is confirmed current', () => {
+    expect(isConfirmedCurrent('APPROVED_FOR_CONSTRUCTION', false, 'CONSTRUCTION')).toBe(true);
+  });
+});
+
+describe('documentClassificationLabel', () => {
+  it('labels every classification', () => {
+    expect(documentClassificationLabel('CONSTRUCTION')).toBe('Construction');
+    expect(documentClassificationLabel('FINAL')).toBe('Final');
+    expect(documentClassificationLabel('AS_BUILT')).toBe('As-Built');
   });
 });
 
