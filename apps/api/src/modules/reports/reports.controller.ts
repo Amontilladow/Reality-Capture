@@ -17,6 +17,12 @@ export class ReportsController {
     return { data: await this.svc.getKpis(u.companyId, pid), error: null };
   }
 
+  @Get('briefing')
+  @ApiOperation({ summary: 'AI-generated cross-domain report briefing (Conclusion/Drivers/Impact/Action/Evidence), grounded in the same KPIs/risk summary this page already shows -- never a raw model call' })
+  async getAiBriefing(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
+    return { data: await this.svc.generateAiBriefing(u.companyId, pid), error: null };
+  }
+
   // Binary-response endpoint -- same StreamableFile + passthrough Response
   // pattern as rfis.controller.ts's :id/pdf route.
   @Get('pdf')

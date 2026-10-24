@@ -136,3 +136,46 @@ export interface ReportKpis {
 export function getReportKpis(projectId: string) {
   return apiGet<ReportKpis>(`/projects/${projectId}/reports/kpis`);
 }
+
+// ── Company-wide executive summary (Phase 4 cross-project view) ───────────
+// Lean per-project rollup from GET /reports/company-summary -- backed by
+// ReportsService.getCompanySummary(), itself a loop over the exact same
+// per-project getSummary()/getExecutiveSummary() methods the single-project
+// pages call. Never the full ReportKpis shape (no byStatus/openList here --
+// unused at company scale and expensive to carry for every project).
+export interface CompanyProjectSummary {
+  projectId: string;
+  projectName: string;
+  projectCode?: string;
+  risk: { criticalCount: number; overdueCount: number; totalOpenRisks: number; overallScore: number; overallLevel: string };
+  issues: { critical: number; overdue: number; total: number };
+  snagging: { overdue: number; total: number };
+  rfis: { overdue: number; total: number };
+  qaqc: { critical: number; overdue: number; total: number };
+  bimFailedCount: number;
+}
+
+export interface CompanySummary {
+  projects: CompanyProjectSummary[];
+}
+
+export function getCompanySummary() {
+  return apiGet<CompanySummary>('/reports/company-summary');
+}
+
+// AI-generated cross-domain report briefing (Conclusion/Drivers/Impact/
+// Action/Evidence) -- grounded in the exact same KPIs/risk summary this
+// page already fetches, never a raw model call. Mirrors risk.api.ts's own
+// AI briefing fallback shape (RiskService.generateAiBriefing()): either a
+// usable structured result, or an honest "unavailable" + reason.
+export interface ReportsBriefing {
+  conclusion: string;
+  drivers: string[];
+  impact: string;
+  action: string;
+  evidence: string[];
+}
+
+export function getReportsBriefing(projectId: string) {
+  return apiGet<ReportsBriefing | { unavailable: true; reason: string }>(`/projects/${projectId}/reports/briefing`);
+}

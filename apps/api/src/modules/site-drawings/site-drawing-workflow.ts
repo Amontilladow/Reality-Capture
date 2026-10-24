@@ -1,4 +1,4 @@
-import type { SiteDrawingWorkflowStatus } from '@engineeringos/types';
+import type { SiteDrawingWorkflowStatus, SiteDrawingDocumentClassification } from '@engineeringos/types';
 import { VALID_FOR_SITE_USE_STATUSES } from '@engineeringos/types';
 
 // The one place "is this drawing safe to build from" is decided (brief
@@ -11,12 +11,20 @@ export function isValidForSiteUse(status: SiteDrawingWorkflowStatus): boolean {
 }
 
 // A revision is safe to represent as "confirmed current for construction"
-// only when it is both valid-for-site-use AND not itself superseded by a
-// later revision — a revision can be individually APPROVED_FOR_CONSTRUCTION
-// and still be the wrong one to build from if a newer revision has since
-// superseded it.
-export function isConfirmedCurrent(status: SiteDrawingWorkflowStatus, isSuperseded: boolean): boolean {
-  return isValidForSiteUse(status) && !isSuperseded;
+// only when it is valid-for-site-use, not itself superseded by a later
+// revision, AND not a FINAL/AS_BUILT document (the brief's own Decision 2:
+// "a final document can be approved but should not automatically be
+// treated as the current drawing authorized for construction" -- document
+// classification is a separate axis from approval status, see
+// SiteDrawingDocumentClassification's own comment in site-drawing.types.ts).
+// documentClassification defaults to 'CONSTRUCTION' so every existing call
+// site written before migration 075 keeps its exact prior behavior.
+export function isConfirmedCurrent(
+  status: SiteDrawingWorkflowStatus,
+  isSuperseded: boolean,
+  documentClassification: SiteDrawingDocumentClassification = 'CONSTRUCTION',
+): boolean {
+  return isValidForSiteUse(status) && !isSuperseded && documentClassification === 'CONSTRUCTION';
 }
 
 // The explicit warning condition (section 5: "If the approval status is
@@ -40,6 +48,16 @@ const WORKFLOW_STATUS_LABELS: Record<SiteDrawingWorkflowStatus, string> = {
 
 export function workflowStatusLabel(status: SiteDrawingWorkflowStatus): string {
   return WORKFLOW_STATUS_LABELS[status];
+}
+
+const DOCUMENT_CLASSIFICATION_LABELS: Record<SiteDrawingDocumentClassification, string> = {
+  CONSTRUCTION: 'Construction',
+  FINAL: 'Final',
+  AS_BUILT: 'As-Built',
+};
+
+export function documentClassificationLabel(classification: SiteDrawingDocumentClassification): string {
+  return DOCUMENT_CLASSIFICATION_LABELS[classification];
 }
 
 // A conservative best-effort mapping from a free-text source status to the

@@ -82,6 +82,14 @@ export class RiskController {
     return { data: await this.risk.getProjectRiskTrend(u.companyId, pid, validDays.includes(parsed) ? parsed : 30), error: null };
   }
 
+  @Get('movement')
+  @ApiOperation({ summary: 'Risk movement during a period — emerged/worsened/improved/resolved/unresolved, from real snapshot history' })
+  async getMovement(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Query('days') days?: string) {
+    const parsed = Number(days) as 7 | 14 | 30;
+    const validDays: (7 | 14 | 30)[] = [7, 14, 30];
+    return { data: await this.risk.getRiskMovement(u.companyId, pid, validDays.includes(parsed) ? parsed : 7), error: null };
+  }
+
   @Get('data-availability')
   @ApiOperation({ summary: 'Honest data-availability breakdown for empty/partial states' })
   async getDataAvailability(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {

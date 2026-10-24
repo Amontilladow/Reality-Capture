@@ -22,6 +22,22 @@ export class SubcontractorRfiAccessService {
     return member?.role === 'subcontractor';
   }
 
+  // Phase 4 cross-project executive view (GET /reports/company-summary):
+  // that route has no :projectId segment at all, so the per-project check
+  // above can never key off one -- SubcontractorRfiAccessGuard calls this
+  // instead for that one route. A subcontractor is still a plain `users`
+  // row under the project owner's own company_id (see PROJECT_ROLES'
+  // own comment), so this has to check membership explicitly rather than
+  // relying on tenant isolation to narrow anything.
+  async isSubcontractorOnAnyProject(user: { companyId: string; id: string }): Promise<boolean> {
+    const [member] = await this.db.withTenant(user.companyId, (sql) => sql`
+      SELECT 1 FROM project_members
+      WHERE user_id = ${user.id} AND company_id = ${user.companyId} AND role = 'subcontractor'
+      LIMIT 1
+    `);
+    return Boolean(member);
+  }
+
   // Ownership check for a write to one specific RFI (or its attachments) --
   // a subcontractor may only ever mutate an RFI that is itself tagged
   // 'subcontractor' AND that they personally created. Returns false (not a

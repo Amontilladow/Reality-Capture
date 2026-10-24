@@ -1,4 +1,4 @@
-import type { SiteDrawingSourceProvider, SiteDrawingWorkflowStatus } from '../../lib/site-drawings.api';
+import type { SiteDrawingSourceProvider, SiteDrawingWorkflowStatus, SiteDrawingDocumentClassification, SiteDrawingExtractionStatus } from '../../lib/site-drawings.api';
 import { VALID_FOR_SITE_USE_STATUSES } from '../../lib/site-drawings.api';
 import type { StatusTone } from '../../lib/status-tone';
 
@@ -29,9 +29,25 @@ export function isValidForSiteUse(status: SiteDrawingWorkflowStatus): boolean {
   return (VALID_FOR_SITE_USE_STATUSES as readonly SiteDrawingWorkflowStatus[]).includes(status);
 }
 
-export function isConfirmedCurrent(status: SiteDrawingWorkflowStatus, isSuperseded: boolean): boolean {
-  return isValidForSiteUse(status) && !isSuperseded;
+// documentClassification defaults to 'CONSTRUCTION' -- same backward-
+// compatible default the API's own isConfirmedCurrent() uses, so a caller
+// that hasn't been updated to pass it yet keeps its exact prior behavior.
+export function isConfirmedCurrent(status: SiteDrawingWorkflowStatus, isSuperseded: boolean, documentClassification: SiteDrawingDocumentClassification = 'CONSTRUCTION'): boolean {
+  return isValidForSiteUse(status) && !isSuperseded && documentClassification === 'CONSTRUCTION';
 }
+
+export const DOCUMENT_CLASSIFICATION_LABELS: Record<SiteDrawingDocumentClassification, string> = {
+  CONSTRUCTION: 'Construction',
+  FINAL: 'Final',
+  AS_BUILT: 'As-Built',
+};
+
+export const EXTRACTION_STATUS_LABELS: Record<SiteDrawingExtractionStatus, string> = {
+  CONFIRMED: 'Confirmed',
+  NEEDS_REVIEW: 'Needs Review',
+  CONFLICT: 'Conflict',
+  MANUAL: 'Manual Entry',
+};
 
 export function needsApprovalWarning(status: SiteDrawingWorkflowStatus): boolean {
   return status === 'UNKNOWN' || status === 'UNDER_REVIEW';

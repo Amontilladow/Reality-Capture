@@ -831,6 +831,41 @@ export class RiskService {
     return rows.map(r => ({ date: r.day, averageScore: Math.round(Number(r.avgScore)) }));
   }
 
+  /**
+   * Risk movement during a period (brief Phase 3): emerged/worsened/
+   * improved/unresolved, each a plain bucket over data that already
+   * exists -- never a new scoring concept. "Emerged" and "resolved/closed"
+   * come straight from firstDetectedAt/resolvedAt/closedAt; "worsened" and
+   * "improved" compare each open risk's CURRENT score against its real
+   * risk_snapshots score as of the window start (the exact same snapshot
+   * lookup and the exact same ±5 "material change" threshold
+   * recalculateForNode() already uses live), not the live `trend` field --
+   * that field reflects the change since this risk's last recalculation
+   * (event-driven, could be hours or months ago), which isn't the same
+   * question as "what changed during this reporting window". A risk with
+   * no snapshot at or before the window start is left out of worsened/
+   * improved/unresolved entirely (never guessed) unless it's new enough to
+   * already be counted as emerged.
+   */
+  async getRiskMovement(companyId: string, projectId: string, days: 7 | 14 | 30 = 7) {
+    const since = new Date(Date.now() - days * 86400000);
+    const risks = await this.listRisks(companyId, projectId);
+
+    // Only risks old enough to have existed before the window are
+    // candidates for a prior-snapshot comparison -- anything newer is
+    // already classified as "emerged" inside classifyRiskMovement().
+    const candidates = risks.filter(r => this.isOpenStatus(r.status) && new Date(r.firstDetectedAt) < since);
+    const priorScores = candidates.length > 0
+      ? await this.db.withTenant(companyId, sql => sql<{ riskId: string; score: number }[]>`
+          SELECT DISTINCT ON (risk_id) risk_id, score FROM risk_snapshots
+          WHERE risk_id = ANY(${candidates.map(r => r.id)}) AND snapshot_at <= ${since.toISOString()}
+          ORDER BY risk_id, snapshot_at DESC`)
+      : [];
+    const priorScoreById = new Map(priorScores.map(p => [p.riskId, p.score]));
+
+    return { windowDays: days, ...classifyRiskMovement(risks, since, priorScoreById) };
+  }
+
   /** Cluster detection (section 33): locations with concentrated open risk. */
   async getRiskClusters(companyId: string, projectId: string, minCount = 3) {
     const rows = await this.db.withTenant(companyId, sql => sql<{ locationLabel: string; c: string; avgScore: string }[]>`
@@ -1072,6 +1107,58 @@ export function computeProjectRiskIndex(openRisks: { score: number; level: RiskL
   const weightedSum = openRisks.reduce((sum, r) => sum + r.score * PROJECT_RISK_INDEX_LEVEL_WEIGHT[r.level], 0);
   const weightTotal = openRisks.reduce((sum, r) => sum + PROJECT_RISK_INDEX_LEVEL_WEIGHT[r.level], 0);
   return Math.round(weightedSum / weightTotal);
+}
+
+// The same "material change" threshold recalculateForNode() already uses
+// live when setting trend INCREASING/DECREASING vs STABLE -- reused here,
+// not reinvented, so a risk bucketed WORSENED here would also show
+// trend='INCREASING' if recalculated right now.
+const MATERIAL_SCORE_DELTA = 5;
+
+/**
+ * Pure bucketing for the Risk Movement section (brief Phase 3): given every
+ * risk on the project, the window start, and each open-and-old-enough
+ * risk's score as of that window start (from risk_snapshots, looked up by
+ * the caller), sorts them into emerged/worsened/improved/resolved/
+ * unresolved. No DB access and no scoring logic of its own -- it only reads
+ * fields the engine already computed (score, status, firstDetectedAt,
+ * resolvedAt, closedAt) and the caller's own snapshot lookup, so it can be
+ * tested with plain fixtures.
+ */
+export function classifyRiskMovement(
+  risks: Pick<RiskRow, 'id' | 'score' | 'status' | 'firstDetectedAt' | 'resolvedAt' | 'closedAt'>[],
+  since: Date,
+  priorScoreById: Map<string, number>,
+) {
+  const isOpen = (status: RiskRow['status']) => status !== 'RESOLVED' && status !== 'CLOSED';
+  const openRisks = risks.filter(r => isOpen(r.status));
+
+  const emerged = openRisks.filter(r => new Date(r.firstDetectedAt) >= since);
+
+  const resolvedDuringPeriod = risks.filter(r => {
+    if (isOpen(r.status)) return false;
+    const at = r.status === 'RESOLVED' ? r.resolvedAt : r.closedAt;
+    return Boolean(at) && new Date(at!) >= since;
+  });
+
+  const worsened: { risk: typeof risks[number]; deltaScore: number }[] = [];
+  const improved: { risk: typeof risks[number]; deltaScore: number }[] = [];
+  const unresolved: typeof risks = [];
+
+  for (const risk of openRisks) {
+    if (new Date(risk.firstDetectedAt) >= since) continue; // already counted as emerged
+    const priorScore = priorScoreById.get(risk.id);
+    if (priorScore === undefined) continue; // no snapshot this far back -- not enough data to classify, never guessed
+    const deltaScore = risk.score - priorScore;
+    if (deltaScore >= MATERIAL_SCORE_DELTA) worsened.push({ risk, deltaScore });
+    else if (deltaScore <= -MATERIAL_SCORE_DELTA) improved.push({ risk, deltaScore });
+    else unresolved.push(risk);
+  }
+
+  worsened.sort((a, b) => b.deltaScore - a.deltaScore);
+  improved.sort((a, b) => a.deltaScore - b.deltaScore);
+
+  return { emerged, worsened, improved, resolvedDuringPeriod, unresolved };
 }
 
 /** The one number/level actually shown as "the" risk on the Risk Matrix: an explicit override, else human judgment, else the AI score (brief sections 11-12). */

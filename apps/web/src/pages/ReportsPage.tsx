@@ -8,7 +8,7 @@ import { DRAWING_UPDATE_STATUS_LABELS } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { HelpLink } from '../components/help/HelpLink';
 import { StatTile } from '../components/ui/StatTile';
-import { getReportKpis } from '../lib/reports.api';
+import { getReportKpis, getReportsBriefing } from '../lib/reports.api';
 import { downloadReportsXls } from '../lib/reports-xls';
 import { getProject } from '../lib/projects.api';
 import { listDocuments, uploadDocumentFile } from '../lib/documents.api';
@@ -22,6 +22,23 @@ import { SNAG_STATUS_LABELS, SNAG_PRIORITY_LABELS } from '../lib/snagging-consta
 import { QAQC_STATUS_LABELS, QAQC_RECORD_TYPE_SHORT_LABELS } from '../lib/qaqc-constants';
 import type { QaqcStatus, QaqcRecordType } from '../lib/qaqc.api';
 import { useThemeColors, type ThemeColors } from '../lib/useThemeColors';
+import { StatusBadge } from '../components/ui/Badge';
+import {
+  buildSignals, deriveOverallStatus, buildConclusion,
+  SEVERITY_TONE, SEVERITY_LABEL, STATUS_LABEL, STATUS_TONE,
+} from '../lib/executive-signals';
+
+// One-line lead for each report section, so the reader gets the
+// implication before the stat-tile wall and tables below it (Phase 4:
+// "lead with implication, not a status table"). Pure prose over numbers
+// this page already fetched -- no new calculation, no invented thresholds.
+function sectionLead(total: number, flags: { label: string; count: number }[], noun: string): string {
+  if (total === 0) return `No ${noun} logged on this project yet.`;
+  const flagged = flags.filter((f) => f.count > 0);
+  if (flagged.length === 0) return `${total} ${noun} tracked — none critical or overdue.`;
+  const parts = flagged.map((f) => `${f.count} ${f.label}`);
+  return `${parts.join(' and ')} out of ${total} ${noun} need attention.`;
+}
 
 // Recharts marks need real hex/rgb colors -- they don't inherit Tailwind
 // classes -- resolved from the same --rc-* custom properties every
@@ -142,6 +159,10 @@ export default function ReportsPage() {
     enabled: Boolean(projectId),
   });
 
+  // AI Report Briefing -- on-demand only (never auto-fetched), same pattern
+  // as RiskIntelligenceSection's "AI Project Risk Briefing".
+  const aiBriefingMutation = useMutation({ mutationFn: () => getReportsBriefing(projectId!) });
+
   // The "one click" the ticket asked for: clicking the not-applied stat tile
   // expands this list inline, right on the Reports page -- following up
   // never requires leaving it. remindedIds tracks which rows already got a
@@ -236,6 +257,83 @@ export default function ReportsPage() {
           </div>
         )}
 
+        {/* ── Report conclusion (Minto Pyramid: lead with this, the
+            charts/tables below are the evidence layer) — built from the
+            exact same risk summary + KPI data the sections below already
+            fetched, never a second calculation. ───────────────────────── */}
+        {riskSummaryQuery.data && kpis && (() => {
+          const signals = buildSignals(`/projects/${projectId}`, {
+            risk: { criticalCount: riskSummaryQuery.data!.criticalCount, overdueCount: riskSummaryQuery.data!.overdueCount },
+            issues: { critical: kpis.issues.summary.critical, overdue: kpis.issues.summary.overdue },
+            rfis: { overdue: kpis.rfis.summary.overdue },
+            qaqc: { critical: kpis.qaqc.summary.critical, overdue: kpis.qaqc.summary.overdue },
+            snagging: { overdue: kpis.snagging.summary.overdue },
+          });
+          const hasActivity = riskSummaryQuery.data!.totalOpenRisks > 0 || kpis.issues.summary.total > 0
+            || kpis.rfis.summary.total > 0 || kpis.qaqc.summary.total > 0 || kpis.snagging.summary.total > 0;
+          const status = deriveOverallStatus(signals, hasActivity);
+          const conclusion = buildConclusion(status, signals, 'on this project');
+          return (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <section className="panel tick-frame p-5 space-y-2">
+                <div className="flex items-center gap-2.5">
+                  <StatusBadge tone={STATUS_TONE[status]} label={STATUS_LABEL[status]} dot />
+                  {signals.length > 0 && (
+                    <span className="text-xs text-ink-500">
+                      {signals.length} item{signals.length === 1 ? '' : 's'} flagged below
+                    </span>
+                  )}
+                </div>
+                <p className="text-base text-ink-100 leading-relaxed font-medium">{conclusion}</p>
+                {signals.length > 1 && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {signals.slice(0, 4).map((s, i) => (
+                      <StatusBadge key={i} tone={SEVERITY_TONE[s.severity]} label={`${SEVERITY_LABEL[s.severity]} · ${s.domain}`} />
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              {/* AI Report Briefing — an LLM-polished Conclusion/Drivers/
+                  Impact/Action/Evidence structure, generated on demand from
+                  the exact same computed data above, never a fresh
+                  retrieval. Same pattern as RiskIntelligenceSection's own
+                  AI panel: clearly labeled, never auto-fetched, honest
+                  unavailable+reason fallback. */}
+              <div className="panel p-4">
+                <div className="flex items-center justify-between !mb-2">
+                  <div className="field-label !mb-0">AI Report Briefing</div>
+                  <button onClick={() => aiBriefingMutation.mutate()} disabled={aiBriefingMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
+                    {aiBriefingMutation.isPending ? 'Generating…' : aiBriefingMutation.data ? 'Regenerate' : 'Generate'}
+                  </button>
+                </div>
+                {aiBriefingMutation.isError && <p className="field-error">{apiErrorMessage(aiBriefingMutation.error)}</p>}
+                {aiBriefingMutation.data && 'unavailable' in aiBriefingMutation.data && (
+                  <p className="text-sm text-ink-500 italic">{aiBriefingMutation.data.reason}</p>
+                )}
+                {aiBriefingMutation.data && 'conclusion' in aiBriefingMutation.data && (
+                  <div className="space-y-2 text-sm">
+                    <p className="text-ink-100 font-medium">{aiBriefingMutation.data.conclusion}</p>
+                    {aiBriefingMutation.data.drivers.length > 0 && (
+                      <ul className="list-disc list-inside text-ink-300 space-y-0.5">
+                        {aiBriefingMutation.data.drivers.map((d, i) => <li key={i}>{d}</li>)}
+                      </ul>
+                    )}
+                    {aiBriefingMutation.data.impact && <p className="text-ink-300"><span className="text-ink-500">Impact: </span>{aiBriefingMutation.data.impact}</p>}
+                    {aiBriefingMutation.data.action && <p className="text-ink-300"><span className="text-ink-500">Action: </span>{aiBriefingMutation.data.action}</p>}
+                    {aiBriefingMutation.data.evidence.length > 0 && (
+                      <p className="text-xs text-ink-500">Evidence: {aiBriefingMutation.data.evidence.join(' · ')}</p>
+                    )}
+                  </div>
+                )}
+                {!aiBriefingMutation.data && !aiBriefingMutation.isPending && (
+                  <p className="text-xs text-ink-500">Generate an AI-polished Conclusion / Drivers / Impact / Action / Evidence briefing from the data above.</p>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* ── Risk ───────────────────────────────────────────────────── */}
         {riskSummaryQuery.data && (
           <section className="space-y-4">
@@ -291,6 +389,12 @@ export default function ReportsPage() {
             {/* ── Issues ─────────────────────────────────────────────── */}
             <section className="space-y-4">
               <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Issues</h2>
+              <p className="text-sm text-ink-300">
+                {sectionLead(kpis.issues.summary.total, [
+                  { label: 'critical', count: kpis.issues.summary.critical },
+                  { label: 'overdue', count: kpis.issues.summary.overdue },
+                ], 'issues')}
+              </p>
 
               <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
                 <StatTile label="Total" value={kpis.issues.summary.total} />
@@ -351,6 +455,11 @@ export default function ReportsPage() {
             {/* ── Snagging ───────────────────────────────────────────── */}
             <section className="space-y-4">
               <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Snagging</h2>
+              <p className="text-sm text-ink-300">
+                {sectionLead(kpis.snagging.summary.total, [
+                  { label: 'overdue', count: kpis.snagging.summary.overdue },
+                ], 'snag items')}
+              </p>
 
               <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                 <StatTile label="Total" value={kpis.snagging.summary.total} />
@@ -411,6 +520,11 @@ export default function ReportsPage() {
             {/* ── RFIs ───────────────────────────────────────────────── */}
             <section className="space-y-4">
               <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">RFIs</h2>
+              <p className="text-sm text-ink-300">
+                {sectionLead(kpis.rfis.summary.total, [
+                  { label: 'overdue', count: kpis.rfis.summary.overdue },
+                ], 'RFIs')}
+              </p>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <StatTile label="Total" value={kpis.rfis.summary.total} />
@@ -508,6 +622,12 @@ export default function ReportsPage() {
             {/* ── QAQC (NCR/SOR/WIR/MIR) ──────────────────────────────── */}
             <section className="space-y-4">
               <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">QAQC — NCR, SOR, WIR &amp; MIR</h2>
+              <p className="text-sm text-ink-300">
+                {sectionLead(kpis.qaqc.summary.total, [
+                  { label: 'critical', count: kpis.qaqc.summary.critical },
+                  { label: 'overdue', count: kpis.qaqc.summary.overdue },
+                ], 'QA/QC records')}
+              </p>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <StatTile label="Pending Confirmation" value={kpis.qaqc.summary.pendingConfirmation} />

@@ -46,7 +46,13 @@ const NAV_GROUPS: NavGroup[] = [
 // not per-project, so this lives alongside the other company-level nav
 // groups, not under PROJECT_NAV_GROUPS. Same role check WorkforcePage.tsx
 // uses for its own admin-only sections.
-const DEVELOPER_NAV_GROUP: NavGroup = { heading: 'Admin', items: [{ to: 'developer', label: 'Developer', icon: IconKey, end: false }] };
+const DEVELOPER_NAV_GROUP: NavGroup = {
+  heading: 'Admin',
+  items: [
+    { to: 'developer', label: 'Developer', icon: IconKey, end: false },
+    { to: 'sharepoint-integration', label: 'SharePoint Integration', icon: IconDrawingStack, end: false },
+  ],
+};
 
 const PROJECT_NAV_GROUPS: NavGroup[] = [
   { items: [{ to: '', label: 'Overview', icon: IconLayers, end: true }] },

@@ -7,8 +7,13 @@ import type {
 export type {
   SiteDrawing, SiteDrawingRevision, SiteDrawingWithCurrentRevision, SiteDrawingWorkflowStatus,
   SiteDrawingOfflinePackage, SiteDrawingOfflinePackageStatus, SiteDrawingSourceHealth, SiteDrawingSourceProvider,
+  SiteDrawingDocumentClassification, SiteDrawingExtractionStatus, SiteDrawingImportBatch, SiteDrawingImportBatchStatus,
+  ExtractedDrawingFields,
 } from '@engineeringos/types';
-export { SITE_DRAWING_WORKFLOW_STATUSES, VALID_FOR_SITE_USE_STATUSES } from '@engineeringos/types';
+export {
+  SITE_DRAWING_WORKFLOW_STATUSES, VALID_FOR_SITE_USE_STATUSES, SITE_DRAWING_DOCUMENT_CLASSIFICATIONS,
+  SITE_DRAWING_EXTRACTION_STATUSES,
+} from '@engineeringos/types';
 
 const base = (projectId: string) => `/projects/${projectId}/site-drawings`;
 
@@ -68,6 +73,18 @@ export const getSiteDrawingFilterOptions = (projectId: string) =>
 
 export const getSiteDrawingSourceHealth = (projectId: string) =>
   apiGet<SiteDrawingSourceHealth>(`${base(projectId)}/source-health`);
+
+export interface SiteDrawingSyncOutcome {
+  status: 'SUCCESS' | 'FAILED';
+  drawingsSeen: number;
+  drawingsCreated: number;
+  revisionsCreated: number;
+}
+// Triggers an immediate sync rather than waiting for the sync job's own
+// 15-minute schedule (SiteDrawingSyncService) -- 'sharepoint' is the
+// default since it's the only provider with a real adapter today.
+export const triggerSiteDrawingSync = (projectId: string, provider: 'sharepoint' | 'aconex' | 'procore' = 'sharepoint') =>
+  apiPost<SiteDrawingSyncOutcome>(`${base(projectId)}/sync`, { provider });
 
 export const getSiteDrawing = (projectId: string, drawingId: string) =>
   apiGet<SiteDrawingWithCurrentRevision>(`${base(projectId)}/${drawingId}`);

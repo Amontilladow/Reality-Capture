@@ -3,30 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getIssueSummary } from '../lib/issues.api';
 import { getProjectActivity } from '../lib/audit.api';
 import { listBimModels } from '../lib/bim.api';
-
-function StatTile({
-  label,
-  value,
-  tone = 'default',
-}: {
-  label: string;
-  value: number;
-  tone?: 'default' | 'warn' | 'danger' | 'ok';
-}) {
-  const toneClass = {
-    default: 'text-ink-100',
-    ok: 'text-ok',
-    warn: 'text-warn',
-    danger: 'text-danger',
-  }[tone];
-
-  return (
-    <div className="tick-frame panel p-4">
-      <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500 mb-1">{label}</div>
-      <div className={`text-2xl font-mono font-semibold ${toneClass}`}>{value}</div>
-    </div>
-  );
-}
+import { StatTile } from './ui/StatTile';
 
 const PROCESSING_STATUS_LABELS: Record<string, string> = {
   pending: 'Pending',
@@ -35,8 +12,8 @@ const PROCESSING_STATUS_LABELS: Record<string, string> = {
   failed: 'Failed',
 };
 
-const PROCESSING_STATUS_TONE: Record<string, 'default' | 'ok' | 'warn' | 'danger'> = {
-  pending: 'default',
+const PROCESSING_STATUS_TONE: Record<string, 'warn' | 'danger' | 'ok' | undefined> = {
+  pending: undefined,
   processing: 'warn',
   ready: 'ok',
   failed: 'danger',

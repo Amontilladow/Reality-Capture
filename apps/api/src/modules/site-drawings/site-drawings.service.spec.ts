@@ -3,6 +3,8 @@ import { SiteDrawingsService } from './site-drawings.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { StorageService } from '../storage/storage.service';
 import { SiteDrawingLocalAdapter } from './adapters/local-adapter';
+import { SiteDrawingAdapterRegistry } from './adapters/site-drawing-adapter-registry';
+import type { SiteDrawingSharePointAdapter } from './adapters/sharepoint-adapter';
 
 type WithTenantCallback = (sql: unknown) => unknown;
 
@@ -48,7 +50,9 @@ describe('SiteDrawingsService', () => {
       getUploadUrl: jest.fn().mockResolvedValue({ uploadUrl: 'https://upload.example', storageKey: 'key' }),
     } as unknown as StorageService;
     const localAdapter = new SiteDrawingLocalAdapter();
-    return { svc: new SiteDrawingsService(db, storage, localAdapter), withTenant, storage };
+    const sharePointAdapter = { provider: 'sharepoint' } as unknown as SiteDrawingSharePointAdapter; // unused by any test here; satisfies the registry's constructor only
+    const adapters = new SiteDrawingAdapterRegistry(localAdapter, sharePointAdapter);
+    return { svc: new SiteDrawingsService(db, storage, adapters), withTenant, storage };
   }
 
   describe('addRevision', () => {

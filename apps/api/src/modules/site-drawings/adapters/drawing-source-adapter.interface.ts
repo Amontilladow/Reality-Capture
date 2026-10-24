@@ -14,6 +14,13 @@ export interface DiscoveredDrawing {
   buildingOrZone?: string;
   floorOrLevel?: string;
   revisionNumber: string;
+  // Set only when this entry came from listRevisions() for a provider whose
+  // revision history lives on one source file (see SiteDrawingRevision's
+  // own comment) -- the provider's own version id, passed back to
+  // getAuthorizedFile() to fetch that SPECIFIC version's content rather
+  // than the item's current one. Undefined from listDrawings()/
+  // getDrawingMetadata(), which only ever describe the current version.
+  sourceRevisionId?: string;
   sourceStatusRaw?: string;
   issueDate?: string;
   sourceModifiedAt?: string;
@@ -40,35 +47,47 @@ export type StatusMapper = (sourceStatusRaw: string | null | undefined) => SiteD
 export interface DrawingSourceAdapter {
   readonly provider: SiteDrawingSourceProvider;
 
+  // Every method takes companyId explicitly (not just projectId) -- a
+  // real provider's connection config (tenant, site/drive mapping,
+  // credentials) is stored per-company in doc_integrations, and every
+  // other service in this app already resolves tenant-scoped data this
+  // same way (DatabaseService.withTenant(companyId, ...)), never by
+  // looking a company up FROM a project (RLS requires the tenant context
+  // to already be known before any tenant-scoped query, including reading
+  // the project itself).
+
   // Full listing — used by a sync job, not a user-facing search (section 3:
   // listDrawings()).
-  listDrawings(projectId: string): Promise<DiscoveredDrawing[]>;
+  listDrawings(companyId: string, projectId: string): Promise<DiscoveredDrawing[]>;
 
   // A single drawing's current metadata, re-fetched to verify currency
   // (section 3: getDrawingMetadata()).
-  getDrawingMetadata(projectId: string, sourceFileId: string): Promise<DiscoveredDrawing | null>;
+  getDrawingMetadata(companyId: string, projectId: string, sourceFileId: string): Promise<DiscoveredDrawing | null>;
 
   // Reachability + last-sync facts, surfaced in the UI (section 3:
   // getSourceHealth()) -- never silently assumed healthy.
-  getSourceHealth(projectId: string): Promise<SourceHealthCheck>;
+  getSourceHealth(companyId: string, projectId: string): Promise<SourceHealthCheck>;
 
   // Optional: full revision history for a drawing, when the source exposes
   // one (section 3: listRevisions()). Local/manual drawings have their
   // revision history in our own DB already, so this adapter doesn't need
   // it; a real DMS adapter normally would.
-  listRevisions?(projectId: string, sourceFileId: string): Promise<DiscoveredDrawing[]>;
+  listRevisions?(companyId: string, projectId: string, sourceFileId: string): Promise<DiscoveredDrawing[]>;
 
   // Optional: a lightweight poll for "has anything changed since X"
   // (section 3: checkForChanges()) -- e.g. SharePoint's delta query. A
   // provider without one is polled via listDrawings() + content-hash
   // comparison instead (slower, still correct).
-  checkForChanges?(projectId: string, sinceIso: string): Promise<boolean>;
+  checkForChanges?(companyId: string, projectId: string, sinceIso: string): Promise<boolean>;
 
   // Optional: resolve a short-lived, authorized download URL/stream for the
   // source's own file (section 3: getAuthorizedFile()) -- a provider the
   // user must open the file at the source itself (sourceWebUrl only, no
   // proxied download) legitimately has nothing to implement here.
-  getAuthorizedFile?(projectId: string, sourceFileId: string): Promise<{ url: string; expiresInSeconds: number }>;
+  // sourceRevisionId, when given, asks for that SPECIFIC historical
+  // version's content (see DiscoveredDrawing's own comment) rather than
+  // the file's current content.
+  getAuthorizedFile?(companyId: string, projectId: string, sourceFileId: string, sourceRevisionId?: string): Promise<{ url: string; expiresInSeconds: number }>;
 
   mapStatus?: StatusMapper;
 }
