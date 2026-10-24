@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Risk, RiskMovement, RiskMovementItem } from '../../lib/risk.api';
 import { riskRef, disciplineLabel } from './riskDisplay';
+import { SectionHeader } from '../ui/SectionHeader';
 
 const ROW_LIMIT = 5;
 const DAY_OPTIONS: (7 | 14 | 30)[] = [7, 14, 30];
@@ -96,20 +97,23 @@ export function RiskMovementSection({ movement, isLoading, days, onDaysChange, o
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="field-label !mb-0">Risk Movement — last {days} days</div>
-        <div className="flex items-center gap-1.5">
-          {DAY_OPTIONS.map((d) => (
-            <button
-              key={d}
-              onClick={() => onDaysChange(d)}
-              className={`btn-secondary !px-2.5 !py-1 text-xs ${days === d ? '!bg-blueprint/20 !text-blueprint' : ''}`}
-            >
-              {d}d
-            </button>
-          ))}
-        </div>
-      </div>
+      <SectionHeader
+        title={`Risk Movement — last ${days} days`}
+        size="sm"
+        actions={
+          <div className="flex items-center gap-1.5">
+            {DAY_OPTIONS.map((d) => (
+              <button
+                key={d}
+                onClick={() => onDaysChange(d)}
+                className={`btn-secondary !px-2.5 !py-1 text-xs ${days === d ? '!bg-blueprint/20 !text-blueprint' : ''}`}
+              >
+                {d}d
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       {totalMoved === 0 ? (
         <div className="panel tick-frame p-6 text-center text-sm text-ink-500">

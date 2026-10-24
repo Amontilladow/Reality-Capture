@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { Modal } from './ui/Modal';
+import { SectionHeader } from './ui/SectionHeader';
 import { RiskGraphView } from './RiskGraphView';
 import { RiskKpiStrip } from './risk/RiskKpiStrip';
 import { RiskAttentionPanel } from './risk/RiskAttentionPanel';
@@ -257,7 +258,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
               <div className="space-y-4">
                 {summary.totalOpenRisks > 0 && (
                   <div className="panel p-4">
-                    <div className="field-label !mb-2">Risk Summary</div>
+                    <div className="!mb-2"><SectionHeader title="Risk Summary" size="sm" /></div>
                     <p className="text-sm text-ink-300 leading-relaxed">
                       {buildBriefing(summary, topQuery.data ?? [], clustersQuery.data ?? [])}
                     </p>
@@ -291,11 +292,17 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
                   auto-fetched, since it's a real model call with real latency. */}
               {summary.totalOpenRisks > 0 && (
                 <div className="panel p-4">
-                  <div className="flex items-center justify-between !mb-2">
-                    <div className="field-label !mb-0">AI Project Risk Briefing</div>
-                    <button onClick={() => aiBriefingMutation.mutate()} disabled={aiBriefingMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
-                      {aiBriefingMutation.isPending ? 'Generating…' : aiBriefingMutation.data ? 'Regenerate' : 'Generate'}
-                    </button>
+                  <div className="!mb-2">
+                    <SectionHeader
+                      title="AI Project Risk Briefing"
+                      tone="orange"
+                      size="sm"
+                      actions={
+                        <button onClick={() => aiBriefingMutation.mutate()} disabled={aiBriefingMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
+                          {aiBriefingMutation.isPending ? 'Generating…' : aiBriefingMutation.data ? 'Regenerate' : 'Generate'}
+                        </button>
+                      }
+                    />
                   </div>
                   {aiBriefingMutation.isError && <p className="field-error">{apiErrorMessage(aiBriefingMutation.error)}</p>}
                   {aiBriefingMutation.data && 'unavailable' in aiBriefingMutation.data && (
@@ -363,7 +370,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
           {/* Top Management Risks */}
           {(topQuery.data?.length ?? 0) > 0 && (
             <div className="space-y-2">
-              <div className="field-label">Top Management Risks</div>
+              <SectionHeader title="Top Management Risks" size="sm" />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 {(topQuery.data ?? []).map((r) => (
                   <button key={r.id} onClick={() => openRisk(r.id)} className="panel tick-frame p-4 text-left hover:bg-base-800/60 transition-colors space-y-2">
@@ -385,7 +392,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
           {/* Emerging Risks */}
           {(emergingQuery.data?.length ?? 0) > 0 && (
             <div className="space-y-2">
-              <div className="field-label">Emerging Risks</div>
+              <SectionHeader title="Emerging Risks" size="sm" />
               <div className="panel tick-frame divide-y divide-base-700/60">
                 {(emergingQuery.data ?? []).map((r) => (
                   <button key={r.id} onClick={() => openRisk(r.id)} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-base-800/60 transition-colors">
@@ -406,7 +413,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
           {/* Risk Clusters */}
           {(clustersQuery.data?.length ?? 0) > 0 && (
             <div className="space-y-2">
-              <div className="field-label">Risk Concentration by Location</div>
+              <SectionHeader title="Risk Concentration by Location" size="sm" />
               <div className="panel tick-frame divide-y divide-base-700/60">
                 {(clustersQuery.data ?? []).map((c) => (
                   <div key={c.location} className="flex items-center justify-between px-4 py-2.5 text-sm">

@@ -55,6 +55,24 @@
   --rc-warn: 217 119 6;
   --rc-danger: 220 38 38;
 
+  /* Secondary accent pair (platform visual upgrade): teal is the primary
+     data/stat/section accent used throughout dashboards and reports --
+     deliberately distinct from blueprint (the general interactive/info
+     accent: links, active nav, "info" badges) so a stat card or section
+     header reads as data, not as a clickable/informational element. Orange
+     is reserved narrowly for AI-generated content (never a status color --
+     status/priority semantics stay exclusively on ok/warn/danger via
+     status-tone.ts, untouched by this pair) so it carries one consistent
+     meaning everywhere it appears instead of becoming a second "attention"
+     color that competes with warn. */
+  --rc-teal: 13 148 136;
+  --rc-teal-hover: 20 184 166;
+  --rc-teal-muted: 230 250 247;
+
+  --rc-orange: 234 88 12;
+  --rc-orange-hover: 249 115 22;
+  --rc-orange-muted: 255 241 230;
+
   --rc-grid-line: rgba(20, 20, 20, 0.04);
 
   --rc-radius-sm: 16px;
@@ -100,6 +118,18 @@
   --rc-warn: 245 158 11;
   --rc-danger: 239 68 68;
 
+  /* Same lift pattern as blueprint/ok/warn/danger above -- lighter, more
+     saturated shades so they stay vivid (not muddy) against the dark
+     charcoal surface. See the :root block's own comment for what each is
+     for and why they're kept separate from blueprint/warn. */
+  --rc-teal: 45 212 191;
+  --rc-teal-hover: 94 234 212;
+  --rc-teal-muted: 19 46 43;
+
+  --rc-orange: 251 146 60;
+  --rc-orange-hover: 253 186 116;
+  --rc-orange-muted: 56 32 15;
+
   --rc-grid-line: rgba(255, 255, 255, 0.05);
 }
 
@@ -130,6 +160,12 @@
     --rc-ok: 34 197 94;
     --rc-warn: 245 158 11;
     --rc-danger: 239 68 68;
+    --rc-teal: 45 212 191;
+    --rc-teal-hover: 94 234 212;
+    --rc-teal-muted: 19 46 43;
+    --rc-orange: 251 146 60;
+    --rc-orange-hover: 253 186 116;
+    --rc-orange-muted: 56 32 15;
     --rc-grid-line: rgba(255, 255, 255, 0.05);
   }
 }

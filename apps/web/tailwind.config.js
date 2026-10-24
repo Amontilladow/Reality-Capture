@@ -56,6 +56,22 @@ export default {
         ok: 'rgb(var(--rc-ok) / <alpha-value>)',
         warn: 'rgb(var(--rc-warn) / <alpha-value>)',
         danger: 'rgb(var(--rc-danger) / <alpha-value>)',
+        teal: {
+          // Primary data/stat/section accent (platform visual upgrade) --
+          // see index.css's own comment on why this is kept distinct from
+          // blueprint (the general interactive/info accent) and never used
+          // for status/priority semantics (those stay on ok/warn/danger).
+          DEFAULT: 'rgb(var(--rc-teal) / <alpha-value>)',
+          hover: 'rgb(var(--rc-teal-hover) / <alpha-value>)',
+          muted: 'rgb(var(--rc-teal-muted) / <alpha-value>)',
+        },
+        orange: {
+          // Reserved narrowly for AI-generated content -- never a status
+          // color, never mixed with warn's meaning.
+          DEFAULT: 'rgb(var(--rc-orange) / <alpha-value>)',
+          hover: 'rgb(var(--rc-orange-hover) / <alpha-value>)',
+          muted: 'rgb(var(--rc-orange-muted) / <alpha-value>)',
+        },
       },
       fontFamily: {
         // "Outfit" stands in for the requested "Grift" (38-lineart, paid,

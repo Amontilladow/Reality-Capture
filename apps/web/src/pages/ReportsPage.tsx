@@ -8,6 +8,7 @@ import { DRAWING_UPDATE_STATUS_LABELS } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { HelpLink } from '../components/help/HelpLink';
 import { StatTile } from '../components/ui/StatTile';
+import { SectionHeader } from '../components/ui/SectionHeader';
 import { getReportKpis, getReportsBriefing } from '../lib/reports.api';
 import { downloadReportsXls } from '../lib/reports-xls';
 import { getProject } from '../lib/projects.api';
@@ -301,11 +302,17 @@ export default function ReportsPage() {
                   AI panel: clearly labeled, never auto-fetched, honest
                   unavailable+reason fallback. */}
               <div className="panel p-4">
-                <div className="flex items-center justify-between !mb-2">
-                  <div className="field-label !mb-0">AI Report Briefing</div>
-                  <button onClick={() => aiBriefingMutation.mutate()} disabled={aiBriefingMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
-                    {aiBriefingMutation.isPending ? 'Generating…' : aiBriefingMutation.data ? 'Regenerate' : 'Generate'}
-                  </button>
+                <div className="!mb-2">
+                  <SectionHeader
+                    title="AI Report Briefing"
+                    tone="orange"
+                    size="sm"
+                    actions={
+                      <button onClick={() => aiBriefingMutation.mutate()} disabled={aiBriefingMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
+                        {aiBriefingMutation.isPending ? 'Generating…' : aiBriefingMutation.data ? 'Regenerate' : 'Generate'}
+                      </button>
+                    }
+                  />
                 </div>
                 {aiBriefingMutation.isError && <p className="field-error">{apiErrorMessage(aiBriefingMutation.error)}</p>}
                 {aiBriefingMutation.data && 'unavailable' in aiBriefingMutation.data && (
@@ -337,21 +344,23 @@ export default function ReportsPage() {
         {/* ── Risk ───────────────────────────────────────────────────── */}
         {riskSummaryQuery.data && (
           <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Risk</h2>
-              <div className="flex items-center gap-2">
-                <Link to={`/projects/${projectId}/risk`} className="btn-secondary !px-3 !py-1.5 text-xs">
-                  View full Risk Intelligence →
-                </Link>
-                <button
-                  onClick={handleDownloadRiskPdf}
-                  disabled={riskPdfDownloading || riskSummaryQuery.data.totalOpenRisks === 0}
-                  className="btn-secondary !px-3 !py-1.5 text-xs"
-                >
-                  {riskPdfDownloading ? 'Preparing…' : 'Download Risk Report'}
-                </button>
-              </div>
-            </div>
+            <SectionHeader
+              title="Risk"
+              actions={
+                <>
+                  <Link to={`/projects/${projectId}/risk`} className="btn-secondary !px-3 !py-1.5 text-xs">
+                    View full Risk Intelligence →
+                  </Link>
+                  <button
+                    onClick={handleDownloadRiskPdf}
+                    disabled={riskPdfDownloading || riskSummaryQuery.data.totalOpenRisks === 0}
+                    className="btn-secondary !px-3 !py-1.5 text-xs"
+                  >
+                    {riskPdfDownloading ? 'Preparing…' : 'Download Risk Report'}
+                  </button>
+                </>
+              }
+            />
             {riskPdfError && <p className="field-error">{riskPdfError}</p>}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <div className="panel p-3">
@@ -388,7 +397,7 @@ export default function ReportsPage() {
           <>
             {/* ── Issues ─────────────────────────────────────────────── */}
             <section className="space-y-4">
-              <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Issues</h2>
+              <SectionHeader title="Issues" />
               <p className="text-sm text-ink-300">
                 {sectionLead(kpis.issues.summary.total, [
                   { label: 'critical', count: kpis.issues.summary.critical },
@@ -454,7 +463,7 @@ export default function ReportsPage() {
 
             {/* ── Snagging ───────────────────────────────────────────── */}
             <section className="space-y-4">
-              <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Snagging</h2>
+              <SectionHeader title="Snagging" />
               <p className="text-sm text-ink-300">
                 {sectionLead(kpis.snagging.summary.total, [
                   { label: 'overdue', count: kpis.snagging.summary.overdue },
@@ -519,7 +528,7 @@ export default function ReportsPage() {
 
             {/* ── RFIs ───────────────────────────────────────────────── */}
             <section className="space-y-4">
-              <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">RFIs</h2>
+              <SectionHeader title="RFIs" />
               <p className="text-sm text-ink-300">
                 {sectionLead(kpis.rfis.summary.total, [
                   { label: 'overdue', count: kpis.rfis.summary.overdue },
@@ -621,7 +630,7 @@ export default function ReportsPage() {
 
             {/* ── QAQC (NCR/SOR/WIR/MIR) ──────────────────────────────── */}
             <section className="space-y-4">
-              <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">QAQC — NCR, SOR, WIR &amp; MIR</h2>
+              <SectionHeader title="QAQC — NCR, SOR, WIR & MIR" />
               <p className="text-sm text-ink-300">
                 {sectionLead(kpis.qaqc.summary.total, [
                   { label: 'critical', count: kpis.qaqc.summary.critical },
@@ -692,19 +701,21 @@ export default function ReportsPage() {
 
         {/* ── Uploaded documents ───────────────────────────────────────── */}
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Uploaded documents</h2>
-            <div>
-              <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChosen} />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadMutation.isPending}
-                className="btn-secondary !px-3 !py-1.5 text-xs"
-              >
-                {uploadMutation.isPending ? 'Uploading…' : '+ Upload attachment'}
-              </button>
-            </div>
-          </div>
+          <SectionHeader
+            title="Uploaded documents"
+            actions={
+              <>
+                <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChosen} />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadMutation.isPending}
+                  className="btn-secondary !px-3 !py-1.5 text-xs"
+                >
+                  {uploadMutation.isPending ? 'Uploading…' : '+ Upload attachment'}
+                </button>
+              </>
+            }
+          />
 
           {uploadMutation.isError && <p className="field-error">{apiErrorMessage(uploadMutation.error)}</p>}
 

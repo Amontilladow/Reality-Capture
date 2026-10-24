@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getCompanySummary, type CompanyProjectSummary } from '../lib/reports.api';
 import { StatusBadge } from './ui/Badge';
+import { SectionHeader } from './ui/SectionHeader';
 import {
   buildSignals, deriveOverallStatus, buildConclusion,
   SEVERITY_RANK, SEVERITY_TONE, SEVERITY_LABEL, STATUS_LABEL, STATUS_TONE, type PrioritySignal,
@@ -97,13 +98,16 @@ export function CompanyExecutiveBriefing() {
 
       {visibleRows.length > 0 && (
         <div className="panel tick-frame divide-y divide-base-700/60">
-          <div className="px-4 py-2.5 flex items-center justify-between">
-            <span className="field-label !mb-0">Projects needing attention</span>
-            {rows.length > COLLAPSED_COUNT && (
-              <button onClick={() => setExpanded((e) => !e)} className="text-xs text-blueprint hover:text-blueprint-hover">
-                {expanded ? 'Show fewer' : `Show all ${rows.length}`}
-              </button>
-            )}
+          <div className="px-4 py-2.5">
+            <SectionHeader
+              title="Projects needing attention"
+              size="sm"
+              actions={rows.length > COLLAPSED_COUNT && (
+                <button onClick={() => setExpanded((e) => !e)} className="text-xs text-blueprint hover:text-blueprint-hover">
+                  {expanded ? 'Show fewer' : `Show all ${rows.length}`}
+                </button>
+              )}
+            />
           </div>
           {visibleRows.map((row) => (
             <Link
