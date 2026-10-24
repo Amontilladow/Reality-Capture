@@ -81,17 +81,31 @@ function BrandMark({ size = 'md' }: { size?: 'md' | 'lg' }) {
   );
 }
 
+// The approved brand artwork (apps/web/public/branding/reality-capture-hero.webp,
+// 1774x887, untouched master) carries the primary brand statement itself --
+// the wordmark and "Capture / Analyze / Automate / Single Source of Truth"
+// tagline are baked into the image -- so this section no longer duplicates
+// that with a separate text headline (the old "Reality, understood." h1).
+// width/height are the artwork's real intrinsic pixels, reserving layout
+// space before it loads (no CLS); fetchPriority="high" since this is the
+// page's LCP element. hero-reveal (index.css) is a one-shot, reduced-
+// motion-guarded fade -- never a loop, never a glow/gradient layered on
+// top of the approved art itself.
 function Hero() {
   return (
     <section className="relative overflow-hidden border-b border-base-600/60">
       <div className="absolute inset-0 bg-grid-fine bg-grid-fine opacity-60" />
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-base-950" />
-      <div className="relative max-w-4xl mx-auto px-6 pt-20 pb-24 sm:pt-28 sm:pb-32 text-center">
-        <div className="text-eyebrow font-mono uppercase text-blueprint mb-5">Construction &amp; BIM coordination</div>
-        <h1 className="text-[clamp(2.25rem,6vw,4rem)] font-semibold tracking-tight leading-[1.05] mb-6">
-          Reality, understood.
-        </h1>
-        <p className="text-ink-300 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto mb-9">
+      <div className="relative max-w-4xl mx-auto px-6 pt-16 pb-20 sm:pt-20 sm:pb-28 text-center">
+        <img
+          src="/branding/reality-capture-hero.webp"
+          alt="Reality Capture by EngineeringOS — Capture, Analyze, Automate, Single Source of Truth"
+          width={1774}
+          height={887}
+          fetchPriority="high"
+          className="hero-reveal w-full max-w-2xl mx-auto h-auto"
+        />
+        <p className="text-ink-300 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto mt-8 mb-9">
           Site documentation, BIM coordination, and issue tracking in one place — every
           capture, issue, and inspection tied to the exact building, level, and location it
           belongs to.
