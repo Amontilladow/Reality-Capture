@@ -5,6 +5,7 @@ import { getRiskSummary } from '../lib/risk.api';
 import { getReportKpis } from '../lib/reports.api';
 import { listBimModels } from '../lib/bim.api';
 import { StatusBadge } from './ui/Badge';
+import { SectionHeader } from './ui/SectionHeader';
 import {
   buildSignals, deriveOverallStatus, buildConclusion,
   SEVERITY_TONE, SEVERITY_LABEL, STATUS_LABEL, STATUS_TONE,
@@ -90,13 +91,16 @@ export function ExecutiveBriefing({ projectId }: { projectId: string }) {
 
       {visibleSignals.length > 0 && (
         <div className="panel tick-frame divide-y divide-base-700/60">
-          <div className="px-4 py-2.5 flex items-center justify-between">
-            <span className="field-label !mb-0">Priority Actions</span>
-            {signals.length > COLLAPSED_COUNT && (
-              <button onClick={() => setExpanded((e) => !e)} className="text-xs text-blueprint hover:text-blueprint-hover">
-                {expanded ? 'Show fewer' : `Show all ${signals.length}`}
-              </button>
-            )}
+          <div className="px-4 py-2.5">
+            <SectionHeader
+              title="Priority Actions"
+              size="sm"
+              actions={signals.length > COLLAPSED_COUNT && (
+                <button onClick={() => setExpanded((e) => !e)} className="text-xs text-blueprint hover:text-blueprint-hover">
+                  {expanded ? 'Show fewer' : `Show all ${signals.length}`}
+                </button>
+              )}
+            />
           </div>
           {visibleSignals.map((signal, i) => (
             <Link key={`${signal.domain}-${i}`} to={signal.to} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-base-800/60 transition-colors">

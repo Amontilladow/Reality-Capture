@@ -4,6 +4,7 @@ import { getIssueSummary } from '../lib/issues.api';
 import { getProjectActivity } from '../lib/audit.api';
 import { listBimModels } from '../lib/bim.api';
 import { StatTile } from './ui/StatTile';
+import { SectionHeader } from './ui/SectionHeader';
 
 const PROCESSING_STATUS_LABELS: Record<string, string> = {
   pending: 'Pending',
@@ -75,11 +76,16 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
   return (
     <div className="p-6 pb-0 space-y-6">
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-mono uppercase tracking-widest text-ink-500">Issues</h2>
-          <Link to={`/projects/${projectId}/issues`} className="text-xs text-blueprint hover:text-blueprint-hover">
-            View all →
-          </Link>
+        <div className="mb-3">
+          <SectionHeader
+            title="Issues"
+            size="sm"
+            actions={
+              <Link to={`/projects/${projectId}/issues`} className="text-xs text-blueprint hover:text-blueprint-hover">
+                View all →
+              </Link>
+            }
+          />
         </div>
         {issuesQuery.isLoading && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -99,11 +105,16 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-mono uppercase tracking-widest text-ink-500">BIM processing</h2>
-          <Link to={`/projects/${projectId}/bim`} className="text-xs text-blueprint hover:text-blueprint-hover">
-            View models →
-          </Link>
+        <div className="mb-3">
+          <SectionHeader
+            title="BIM processing"
+            size="sm"
+            actions={
+              <Link to={`/projects/${projectId}/bim`} className="text-xs text-blueprint hover:text-blueprint-hover">
+                View models →
+              </Link>
+            }
+          />
         </div>
         {modelsQuery.isLoading && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -130,7 +141,7 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
       </div>
 
       <div>
-        <h2 className="text-xs font-mono uppercase tracking-widest text-ink-500 mb-3">Recent activity</h2>
+        <div className="mb-3"><SectionHeader title="Recent activity" size="sm" /></div>
         <div className="tick-frame panel divide-y divide-base-600">
           {activityQuery.isLoading && <div className="p-4 text-sm text-ink-500">Loading…</div>}
           {activityQuery.data && activityQuery.data.length === 0 && (

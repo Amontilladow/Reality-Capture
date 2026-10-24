@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Modal } from '../components/ui/Modal';
 import { StatTile } from '../components/ui/StatTile';
+import { SectionHeader } from '../components/ui/SectionHeader';
 import { getProject, getHierarchy } from '../lib/projects.api';
 import {
   getProgressReport, downloadProgressReportPdf, createProgressReportShare,
@@ -45,9 +46,7 @@ function ElementProgressSection({ elementProgress }: { elementProgress: Progress
   if (!elementProgress || elementProgress.byLevel.length === 0) return null;
   return (
     <div className="space-y-2">
-      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">
-        Planned vs Actual Progress ({elementProgress.overallCompletionPct ?? 0}% complete)
-      </h2>
+      <SectionHeader title={`Planned vs Actual Progress (${elementProgress.overallCompletionPct ?? 0}% complete)`} />
       <div className="panel tick-frame overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -79,7 +78,7 @@ function ElementProgressSection({ elementProgress }: { elementProgress: Progress
 function IssueSection({ title, items, emptyText }: { title: string; items: ProgressReportIssueRow[]; emptyText: string }) {
   return (
     <div className="space-y-2">
-      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">{title} ({items.length})</h2>
+      <SectionHeader title={`${title} (${items.length})`} />
       {items.length === 0 ? (
         <p className="text-sm text-ink-500">{emptyText}</p>
       ) : (
@@ -226,9 +225,7 @@ export default function ProgressReportPage() {
             </div>
 
             <div className="space-y-2">
-              <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">
-                Captures {report.captureCount > report.captures.length ? `(showing ${report.captures.length} of ${report.captureCount})` : `(${report.captures.length})`}
-              </h2>
+              <SectionHeader title={`Captures ${report.captureCount > report.captures.length ? `(showing ${report.captures.length} of ${report.captureCount})` : `(${report.captures.length})`}`} />
               {report.captures.length === 0 ? (
                 <p className="text-sm text-ink-500">No captures in this date range.</p>
               ) : (
