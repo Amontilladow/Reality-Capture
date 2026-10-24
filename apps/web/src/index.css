@@ -88,12 +88,17 @@
    never a shadow" hierarchy the light theme already uses, per
    index.css's/.panel's existing comment, just inverted in direction. */
 :root[data-theme='dark'] {
-  --rc-base-950: 11 15 20; /* page background (canvas) */
-  --rc-base-900: 17 24 33; /* chrome bars / secondary surface */
-  --rc-base-800: 22 31 43; /* panel surface (elevated cards) */
-  --rc-base-700: 32 44 58; /* raised surface / hover / selected */
-  --rc-base-600: 42 54 69; /* borders (hairline) */
-  --rc-base-500: 30 40 50; /* muted borders / dividers -- closer to panel fill than base-600, so it reads as softer, same relative relationship as the light theme's 500 vs 600 */
+  /* Deepened + re-saturated toward true navy (platform visual overhaul) --
+     the previous values were a gray-leaning charcoal; these push the same
+     4-step elevation ladder further into blue so the canvas itself carries
+     the reference deck's "deep navy" weight instead of reading as generic
+     dark mode. */
+  --rc-base-950: 8 13 24; /* page background (canvas) */
+  --rc-base-900: 13 21 37; /* chrome bars / secondary surface */
+  --rc-base-800: 18 29 48; /* panel surface (elevated cards) */
+  --rc-base-700: 26 40 64; /* raised surface / hover / selected */
+  --rc-base-600: 37 53 82; /* borders (hairline) */
+  --rc-base-500: 26 38 58; /* muted borders / dividers -- closer to panel fill than base-600, so it reads as softer, same relative relationship as the light theme's 500 vs 600 */
 
   --rc-ink-100: 241 245 249; /* primary text */
   --rc-ink-300: 167 179 194; /* secondary text */
@@ -142,12 +147,12 @@
    match, so it always wins over the OS preference below. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --rc-base-950: 11 15 20;
-    --rc-base-900: 17 24 33;
-    --rc-base-800: 22 31 43;
-    --rc-base-700: 32 44 58;
-    --rc-base-600: 42 54 69;
-    --rc-base-500: 30 40 50;
+    --rc-base-950: 8 13 24;
+    --rc-base-900: 13 21 37;
+    --rc-base-800: 18 29 48;
+    --rc-base-700: 26 40 64;
+    --rc-base-600: 37 53 82;
+    --rc-base-500: 26 38 58;
     --rc-ink-100: 241 245 249;
     --rc-ink-300: 167 179 194;
     --rc-ink-500: 127 139 154;

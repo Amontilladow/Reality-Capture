@@ -174,7 +174,7 @@ export function AppShell() {
         <div className="h-16 flex items-center gap-2 px-5 border-b border-base-600">
           <LogoMark />
           <div className="leading-tight flex-1 min-w-0">
-            <div className="text-sm font-semibold tracking-tight">Reality Capture</div>
+            <div className="text-sm font-bold tracking-tight">Reality Capture</div>
             <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500">by EngineeringOS</div>
           </div>
           <ThemeToggle />
@@ -210,7 +210,7 @@ export function AppShell() {
 
         <div className="border-t border-base-600 p-3">
           <div className="flex items-center gap-2.5 px-2 py-2">
-            <div className="w-7 h-7 rounded-full bg-blueprint/20 border border-blueprint/40 flex items-center justify-center text-xs font-mono text-blueprint shrink-0">
+            <div className="w-7 h-7 rounded-full bg-teal/20 border border-teal/40 flex items-center justify-center text-xs font-mono text-teal shrink-0">
               {(user?.firstName?.[0] ?? '') + (user?.lastName?.[0] ?? '')}
             </div>
             <div className="min-w-0 flex-1">
@@ -250,9 +250,9 @@ function NavGroupList({ groups, basePath }: { groups: NavGroup[]; basePath: stri
               to={`${basePath}/${item.to}`}
               end={item.end}
               className={({ isActive }) =>
-                `flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors border-l-2 ${
+                `flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors border-l-[3px] font-medium ${
                   isActive
-                    ? 'border-signal bg-signal/10 text-signal'
+                    ? 'border-teal bg-teal/10 text-teal'
                     : 'border-transparent text-ink-300 hover:bg-base-800 hover:text-ink-100'
                 }`
               }
