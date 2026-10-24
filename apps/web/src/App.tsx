@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppShell } from './components/layout/AppShell';
+import { LogoMark } from './components/ui/LogoMark';
 import { bootstrapSession } from './lib/api';
 import { useAuthStore } from './store/auth.store';
 
@@ -70,8 +71,9 @@ const SiteDrawingHubPage = lazy(() => import('./pages/SiteDrawingHubPage'));
 
 function RouteLoading() {
   return (
-    <div className="flex items-center justify-center h-screen text-sm text-ink-500">
-      Loading…
+    <div className="flex flex-col items-center justify-center gap-3 h-screen">
+      <LogoMark className="w-9 h-9 motion-safe:animate-pulse" />
+      <span className="text-sm text-ink-500">Loading…</span>
     </div>
   );
 }

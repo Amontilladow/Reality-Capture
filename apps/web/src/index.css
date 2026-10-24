@@ -300,6 +300,23 @@
     }
   }
 
+  /* Public landing page hero artwork's one-shot entrance (brand refresh) --
+     a restrained fade + slight rise, not a decorative flourish, so the
+     approved artwork doesn't just pop in. Same shape/guard convention as
+     enter-rise above. */
+  @keyframes hero-reveal {
+    from { opacity: 0; transform: translateY(10px) scale(0.99); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .hero-reveal {
+    animation: hero-reveal 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-reveal {
+      animation: none;
+    }
+  }
+
   /* Tiptap ProseMirror content area (RichTextEditor.tsx) -- matches
      .field-input's typography/colors since it lives inside that same
      bordered shell, just without re-declaring the border/background there. */
