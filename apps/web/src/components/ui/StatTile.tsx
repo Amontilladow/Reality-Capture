@@ -10,9 +10,12 @@
 // decorative accents only (platform visual upgrade) -- available for a
 // call site with a genuinely neutral figure worth a premium accent (e.g. a
 // "Total" tile), never implying good/bad the way the three status tones
-// do. A tile with no tone at all still gets a subtle teal top-border (the
-// new default accent, replacing the old plain blueprint one) so a bare
-// grid of tiles reads as "on brand" without every number being colored.
+// do. A tile with no tone at all still gets a teal top-border + faint teal
+// wash (the default accent, replacing the old plain blueprint hairline) so
+// a bare grid of tiles reads as "on brand" without every number being
+// colored. Numbers are deliberately heavy (font-black, text-5xl at 'lg')
+// -- the reference deck's whole stat-callout language is oversized bold
+// figures with a small caption beneath, not a modest labeled count.
 export function StatTile({
   label,
   value,
@@ -25,20 +28,20 @@ export function StatTile({
   size?: 'sm' | 'lg';
 }) {
   const active = tone !== undefined && value > 0;
-  const toneClasses: Record<'danger' | 'warn' | 'ok' | 'teal' | 'orange', { border: string; text: string }> = {
-    danger: { border: 'border-t-danger', text: 'text-danger' },
-    warn: { border: 'border-t-warn', text: 'text-warn' },
-    ok: { border: 'border-t-ok', text: 'text-ok' },
-    teal: { border: 'border-t-teal', text: 'text-teal' },
-    orange: { border: 'border-t-orange', text: 'text-orange' },
+  const toneClasses: Record<'danger' | 'warn' | 'ok' | 'teal' | 'orange', { border: string; text: string; wash: string }> = {
+    danger: { border: 'border-t-danger', text: 'text-danger', wash: '' },
+    warn: { border: 'border-t-warn', text: 'text-warn', wash: '' },
+    ok: { border: 'border-t-ok', text: 'text-ok', wash: '' },
+    teal: { border: 'border-t-teal', text: 'text-teal', wash: 'bg-teal/5' },
+    orange: { border: 'border-t-orange', text: 'text-orange', wash: 'bg-orange/5' },
   };
-  const resolved = active ? toneClasses[tone] : { border: 'border-t-teal/50', text: 'text-ink-100' };
+  const resolved = active ? toneClasses[tone] : { border: 'border-t-teal', text: 'text-ink-100', wash: 'bg-teal/[0.04]' };
   return (
-    <div className={`panel text-left border-t-2 ${resolved.border} ${size === 'lg' ? 'px-5 py-4' : 'p-3'}`}>
-      <div className={`${size === 'lg' ? 'text-kpi' : 'text-xl'} font-semibold tabular-nums ${resolved.text}`}>
+    <div className={`panel text-left border-t-[3px] ${resolved.border} ${resolved.wash} ${size === 'lg' ? 'px-5 py-5' : 'p-3.5'}`}>
+      <div className={`${size === 'lg' ? 'text-5xl' : 'text-2xl'} font-black tabular-nums tracking-tight ${resolved.text}`}>
         {value}
       </div>
-      <div className="text-[10px] uppercase tracking-wide text-ink-500 mt-0.5">{label}</div>
+      <div className="text-[11px] uppercase tracking-wide text-ink-500 mt-1 font-semibold">{label}</div>
     </div>
   );
 }

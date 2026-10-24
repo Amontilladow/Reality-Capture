@@ -19,12 +19,22 @@ export function PageHeader({
   useDocumentTitle(title);
 
   return (
-    <div className={`border-b border-base-600 bg-base-900/60 backdrop-blur px-6 flex items-center justify-between gap-3 sticky top-0 z-10 ${breadcrumbs || subtitle ? 'py-2.5' : 'h-16'}`}>
-      <div className="min-w-0 shrink">
-        {breadcrumbs && <Breadcrumbs items={breadcrumbs} />}
-        {eyebrow && <div className="text-eyebrow font-mono uppercase text-ink-500 truncate">{eyebrow}</div>}
-        <h1 className="text-base font-semibold tracking-tight -mt-0.5 truncate">{title}</h1>
-        {subtitle && <p className="text-xs text-ink-500 mt-0.5 truncate">{subtitle}</p>}
+    <div className={`border-b border-base-600 bg-base-900/60 backdrop-blur px-6 flex items-center justify-between gap-3 sticky top-0 z-10 ${breadcrumbs || subtitle ? 'py-3' : 'h-[72px]'}`}>
+      {/* Same 6px accent-bar language as SectionHeader (platform visual
+          overhaul) -- every page's own title now carries the same weight
+          as the sections inside it, instead of a plain text-base label. */}
+      <div className="min-w-0 shrink flex items-stretch gap-3">
+        <span className="w-1.5 rounded-full shrink-0 bg-teal" />
+        <div className="min-w-0">
+          {breadcrumbs && <Breadcrumbs items={breadcrumbs} />}
+          {eyebrow && (
+            <span className="inline-block text-eyebrow font-mono uppercase tracking-widest mb-1 px-2 py-0.5 rounded-full bg-teal/10 text-teal truncate">
+              {eyebrow}
+            </span>
+          )}
+          <h1 className="text-xl font-bold tracking-tight -mt-0.5 truncate">{title}</h1>
+          {subtitle && <p className="text-xs text-ink-500 mt-0.5 truncate">{subtitle}</p>}
+        </div>
       </div>
       {actions && (
         // min-w-0 lets this shrink below its content's natural width once
