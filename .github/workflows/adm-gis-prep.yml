@@ -1,0 +1,23 @@
+name: ADM GIS prep (Python)
+
+on:
+  pull_request:
+    paths: ["apps/adm-gis-prep/**", ".github/workflows/adm-gis-prep.yml"]
+  push:
+    branches: [main]
+    paths: ["apps/adm-gis-prep/**", ".github/workflows/adm-gis-prep.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/adm-gis-prep
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt && pip install -e .
+      - run: m4adm matrix --check
+      - run: python -m pytest

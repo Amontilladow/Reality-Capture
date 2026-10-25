@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}M4 GIS Preparation{% endblock %}</title>
+<style>
+  :root { --err:#b42318; --warn:#b54708; --info:#175cd3; --ok:#067647; --ink:#101828; --muted:#475467;
+          --line:#d0d5dd; --panel:#f9fafb; --brand:#0b3b60; }
+  * { box-sizing: border-box; }
+  body { font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: var(--ink);
+         margin: 0; background: #fff; }
+  header { background: var(--brand); color: #fff; padding: 10px 16px; display: flex; gap: 16px; align-items: baseline;
+           flex-wrap: wrap; }
+  header a { color: #fff; text-decoration: none; } header b { font-size: 16px; }
+  .prov { background: #fef3f2; color: var(--err); border-bottom: 2px solid var(--err); padding: 6px 16px; font-weight: 700; }
+  main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 20px; margin: 4px 0 12px; } h2 { font-size: 16px; margin: 22px 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+  fieldset { border: 1px solid var(--line); border-radius: 6px; margin: 0 0 12px; padding: 10px 12px; }
+  legend { font-weight: 700; padding: 0 4px; }
+  label { display: block; margin: 6px 0 2px; font-weight: 600; }
+  label.inline { display: inline-flex; gap: 6px; align-items: center; font-weight: 400; margin-right: 14px; }
+  input[type=text], input[type=number], select { width: 100%; max-width: 420px; padding: 6px; border: 1px solid var(--line); border-radius: 4px; font: inherit; }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 16px; }
+  .hint { color: var(--muted); font-size: 12px; margin: 2px 0 0; }
+  button, .btn { background: var(--brand); color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; font: inherit;
+                 font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; }
+  button.primary { font-size: 16px; padding: 12px 22px; }
+  button.secondary, .btn.secondary { background: #fff; color: var(--brand); border: 1px solid var(--brand); }
+  .error { background: #fef3f2; border: 1px solid var(--err); color: var(--err); padding: 8px 12px; border-radius: 6px; }
+  .msg { background: #ecfdf3; border: 1px solid var(--ok); padding: 8px 12px; border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { border-bottom: 1px solid var(--line); text-align: left; padding: 5px 6px; vertical-align: top; }
+  th { background: var(--panel); }
+  .scroll { overflow-x: auto; }
+  .ERROR { color: var(--err); font-weight: 700; } .WARNING { color: var(--warn); font-weight: 700; } .INFO { color: var(--info); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-weight: 700; color: #fff; }
+  .b-blocked { background: var(--err); } .b-warn { background: var(--warn); } .b-ready { background: var(--ok); } .b-muted { background: #667085; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+  .tile b { display: block; font-size: 22px; }
+  .muted { color: var(--muted); } code { font-size: 12px; }
+  #busy { display: none; } form.busy #busy { display: inline; }
+</style>
+</head>
+<body>
+<header><b><a href="/">M4 GIS Preparation</a></b><span>ADM planning data submission - specification v{{ spec_version }}</span>
+  <a href="/rules">Rules &amp; spec</a><span class="muted" style="color:#c7d7fe">tool v{{ version }}</span></header>
+<div class="prov">{{ label }} &middot; internal preliminary QC only &middot; not ADM approval</div>
+<main>{% block content %}{% endblock %}</main>
+</body>
+</html>

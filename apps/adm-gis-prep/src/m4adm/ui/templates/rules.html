@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Rules - specification v{{ m.version }}</h1>
+<p class="muted">{{ m.spec.title }} ({{ m.spec.issuer }}), PDF SHA-256 <code>{{ m.spec.source_pdf_sha256 }}</code>. Manifest <code>{{ m.path.name }}</code> (SHA-256 <code>{{ m.sha256[:16] }}...</code>).</p>
+<div class="scroll"><table><tr><th>ID</th><th>Requirement</th><th>Evidence</th><th>PDF ref</th><th>Severity</th><th>Implementation</th><th>Limitation</th></tr>
+{% for r in m.rules %}<tr><td><code>{{ r.id }}</code></td><td>{{ r.title }}</td><td>{{ r.evidence.value }}</td><td>{{ r.ref.text() if r.ref else '-' }}</td>
+<td class="{{ r.severity.value }}">{{ r.severity.value }}</td><td>{{ r.implementation }}</td><td class="muted">{{ r.limitation or '' }}</td></tr>{% endfor %}
+</table></div>
+{% for cat, spec in m.categories.items() %}
+<h2>{{ spec.label }} layers - {{ spec.ref.text() }}</h2>
+<div class="scroll"><table><tr><th>Layer</th><th>Topology</th><th>Constraint</th><th>Colour</th><th>Linetype</th><th>Lineweight</th><th>Block</th></tr>
+{% for l in spec.layers %}<tr><td>{{ l.name }}</td><td>{{ l.topology }}</td><td>{{ l.constraint }}</td><td>{{ l.color }}</td><td>{{ l.linetype }}</td><td>{{ l.lineweight }}</td><td>{{ l.block or '-' }}</td></tr>{% endfor %}
+</table></div>
+{% endfor %}
+{% endblock %}

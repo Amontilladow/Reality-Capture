@@ -30,6 +30,7 @@ Monorepo (pnpm workspaces):
 | `apps/browser-extension` | Small browser extension | Implemented |
 | `apps/agent` | Desktop workforce-activity agent (idle/active detection, screenshot capture) | Implemented |
 | `packages/types` | Shared TypeScript types (`@engineeringos/types`) used by `api`/`web`/`mobile`/`ifc-service` | Implemented |
+| `apps/adm-gis-prep` | Python tool (CLI + local web UI) that prepares civil CAD drawings for ADM GIS submission (spec v1.18.2) and produces a provisional, non-official QC report. Standalone: see its README | Implemented (DXF-first MVP) |
 | `tools/bim-debug` | Forensic tooling for BIM geometry-pipeline regressions | Implemented; its regression test needs a real IFC fixture not committed to the repo (self-skips otherwise) |
 
 Product modules implemented in `apps/api`/`apps/web` today (each with real

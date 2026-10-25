@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Job {{ r.job.id }} - M4 GIS Preparation{% endblock %}
+{% block content %}
+{% set s = r.status.label %}
+<h1>Job {{ r.job.id }}</h1>
+{% if msg %}<p class="msg">{{ msg }}</p>{% endif %}
+<p><span class="badge {{ 'b-blocked' if s.startswith('Blocked') else ('b-warn' if 'warnings' in s else 'b-ready') }}">{{ s }}</span>
+   &nbsp;<span class="badge {{ 'b-ready' if official.status == 'PASSED' else ('b-blocked' if official.status == 'FAILED' else 'b-muted') }}">{{ official.label }}</span>
+   {% if r.job.parent_job %}<span class="muted"> re-run of <a href="/jobs/{{ r.job.parent_job }}">{{ r.job.parent_job }}</a></span>{% endif %}</p>
+<p class="muted">Specification v{{ r.spec.version }} &middot; categories {{ r.job.categories | join(', ') }} &middot; source <code>{{ r.source.original_path }}</code>
+  ({{ r.source.format }}, {{ r.source.release or 'unknown release' }}) &middot; source unchanged (SHA-256 verified): <b>{{ 'yes' if r.source.unchanged else 'NO' }}</b></p>
+
+<div class="grid">
+  <div class="tile"><a class="ERROR" href="?sev=ERROR">Errors</a><b>{{ r.status.counts.ERROR }}</b></div>
+  <div class="tile"><a class="WARNING" href="?sev=WARNING">Warnings</a><b>{{ r.status.counts.WARNING }}</b></div>
+  <div class="tile"><a class="INFO" href="?sev=INFO">Info</a><b>{{ r.status.counts.INFO }}</b></div>
+  <div class="tile">Blocking<b>{{ r.status.counts.blocking }}</b></div>
+  <div class="tile">Unresolved layers<b>{{ r.status.counts.unresolved_layers }}</b></div>
+  <div class="tile">Open fix proposals<b>{{ r.status.counts.open_fix_proposals }}</b></div>
+</div>
+
+{% set blocking = r.findings | selectattr('blocking') | list %}
+{% if blocking %}<h2>Blocking items</h2><ul>
+  {% for f in blocking %}<li><b>{{ f.rule_id }}</b>: {{ f.message }}<br><i>Next: {{ f.action }}</i></li>{% endfor %}</ul>{% endif %}
+
+<h2>Review: layer mapping and proposed fixes</h2>
+<form method="post" action="/jobs/{{ r.job.id }}/rerun">
+  <div class="scroll"><table>
+    <tr><th>Source layer</th><th>Entities</th><th>Content</th><th>Status</th><th>ADM layer</th></tr>
+    {% for d in r.mapping %}
+    <tr><td><code>{{ d.source_layer }}</code></td><td>{{ d.entity_count }}</td><td class="muted">{{ d.note }}</td>
+      <td>{{ d.status }}</td>
+      <td>{% if d.status in ['UNRESOLVED', 'OUT_OF_SCOPE'] %}
+        <select name="map::{{ d.source_layer }}"><option value="">- leave unresolved (additional file) -</option>
+          <option value="{{ exclude }}">Exclude from ADM files</option>
+          {% for l in adm_layers %}<option value="{{ l }}">{{ l }}</option>{% endfor %}</select>
+        {% if d.suggestions %}<p class="hint">Unverified name hints: {{ d.suggestions | join(', ') }}</p>{% endif %}
+      {% else %}{{ d.target_layer or 'excluded' }}{% endif %}</td></tr>
+    {% endfor %}
+  </table></div>
+  <p class="hint">Mapping is never inferred from colour, position or geometry. Your choices are recorded in the new job's settings and audit log.</p>
+  {% if r.review_queue.fix_proposals %}
+  <div class="scroll"><table><tr><th>Accept</th><th>Fix</th><th>Layer</th><th>Lossless</th><th>Description</th></tr>
+    {% for p in r.review_queue.fix_proposals %}<tr><td><input type="checkbox" name="fix" value="{{ p.id }}"></td>
+      <td><code>{{ p.id }}</code></td><td>{{ p.layer }}</td><td>{{ 'yes' if p.lossless else 'within tolerance' }}</td><td>{{ p.description }}</td></tr>{% endfor %}
+  </table></div>
+  {% endif %}
+  <p><button type="submit">Re-run with these decisions</button> <span class="hint">Creates a new job from the unchanged original; this job is kept.</span></p>
+</form>
+
+<h2>Pre-export summary</h2>
+<p>Coordinates: {{ r.crs.summary }}.</p>
+<div class="scroll"><table><tr><th>File</th><th>Dataset</th><th>Entities</th><th>Verified</th><th>Changes in file</th></tr>
+{% for o in r.outputs %}<tr><td><a href="/jobs/{{ r.job.id }}/files/output/{{ o.file }}">{{ o.file }}</a></td><td>{{ o.dataset }}</td><td>{{ o.entities }}</td>
+  <td>{{ 'yes' if o.verification.ok else 'NO' }}</td><td class="muted">{% for c in o.changes %}{{ c.action }}{% if c.layer %} {{ c.layer }}{% endif %}{{ '; ' if not loop.last }}{% else %}-{% endfor %}</td></tr>
+{% else %}<tr><td colspan="5" class="ERROR">No output produced.</td></tr>{% endfor %}</table></div>
+<p>Layer reassignments: {{ r.changes.layer_mapping | length }} &middot; accepted fixes applied: {{ r.changes.fixes | length }} &middot; transformations: {{ r.changes.transformation | length }}</p>
+<p><a class="btn secondary" href="/jobs/{{ r.job.id }}/files/qc_report.html" target="_blank">QC report (HTML)</a>
+   <a class="btn secondary" href="/jobs/{{ r.job.id }}/files/qc_report.json">QC report (JSON)</a>
+   <a class="btn secondary" href="/jobs/{{ r.job.id }}/files/processing_manifest.json">Processing manifest</a>
+   <a class="btn secondary" href="/jobs/{{ r.job.id }}/files/geometry_log.json">Geometry log</a></p>
+<form method="post" action="/jobs/{{ r.job.id }}/export">
+  <label for="by">Exported by</label><input id="by" type="text" name="by" required>
+  <label class="inline"><input type="checkbox" name="acknowledge" value="1" required> I have reviewed the errors, warnings, unresolved mappings and changes above, and I understand this package is {{ label }}.</label>
+  <p><button type="submit">Export package</button></p>
+</form>
+{% for e in exports %}<p>Package: <a href="/jobs/{{ r.job.id }}/files/export/{{ e }}">{{ e }}</a></p>{% endfor %}
+
+<h2>Findings{% if sev %} ({{ sev }} only, <a href="?">show all</a>){% endif %}</h2>
+<div class="scroll"><table>
+  <tr><th>Severity</th><th>Rule</th><th>Layer / handle</th><th>Problem</th><th>Next action</th><th>Location</th></tr>
+  {% for f in findings %}<tr><td class="{{ f.severity }}">{{ f.severity }}{% if f.blocking %}<br>BLOCKING{% endif %}</td>
+    <td><code>{{ f.rule_id }}</code><br><span class="muted">{{ f.evidence }}{% if f.ref %}<br>{{ f.ref }}{% endif %}</span></td>
+    <td>{{ f.layer or '' }}{% if f.handle %}<br><code>#{{ f.handle }}</code>{% endif %}</td>
+    <td>{{ f.message }}</td><td>{{ f.action }}</td>
+    <td>{% if f.location %}<code>{{ '%.3f' % f.location[0] }}<br>{{ '%.3f' % f.location[1] }}</code>{% endif %}</td></tr>{% endfor %}
+</table></div>
+
+<h2>Official ADM QC</h2>
+<p>{{ official.label }}{% if official.report_sha256 %} &middot; file <code>{{ official.report_file }}</code> (SHA-256 {{ official.report_sha256[:16] }}...) attested by {{ official.attested_by }} at {{ official.recorded_at }}{% endif %}.</p>
+<p class="hint">The official QC tool (.FAS) runs only inside AutoCAD and is not part of this tool. After running it on the converted DWG, attach its unmodified report here.</p>
+<form method="post" action="/jobs/{{ r.job.id }}/official-qc" enctype="multipart/form-data">
+  <div class="row"><div><label>Official QC report file</label><input type="file" name="report" required></div>
+  <div><label>Outcome reported by the official tool</label><select name="outcome"><option value="PASSED">Passed</option><option value="FAILED">Failed</option></select></div>
+  <div><label>Run by</label><input type="text" name="by" required></div></div>
+  <p><button type="submit" class="secondary">Attach official QC output</button></p>
+</form>
+
+<h2>Audit log</h2>
+<div class="scroll"><table><tr><th>Time (UTC)</th><th>Event</th><th>Details</th></tr>
+{% for e in audit %}<tr><td>{{ e.ts }}</td><td>{{ e.event }}</td><td class="muted"><code>{{ e | tojson | truncate(300) }}</code></td></tr>{% endfor %}
+</table></div>
+{% endblock %}

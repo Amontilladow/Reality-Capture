@@ -1,0 +1,1048 @@
+# M4 ADM GIS Preparation - rule manifest
+#
+# Source: "Standards & Specifications for Planning Data Submission (Plot, Roads &
+# Service Corridors)", ADM Town Planning Sector - Spatial Data Division, v1.18.2
+# (file SDDPlanningDataSubmissionSpecifications_v1182.pdf, 68 pages).
+#
+# Page numbers are the printed page numbers, which equal the PDF page index.
+# Every rule carries exactly one evidence class:
+#   VERIFIED_SPEC                  explicit in the PDF
+#   ENGINEERING_CHECK              useful preliminary check, NOT claimed as an ADM rule
+#   PENDING_OFFICIAL_CONFIRMATION  needs the official template, QC tool, sample or ADM clarification
+#   USER_DECISION_REQUIRED         cannot be determined from geometry alone
+# Where the PDF contradicts itself or the build brief, see docs/DISCREPANCIES.md.
+
+spec:
+  id: ADM-SDD-PDS
+  title: Standards & Specifications for Planning Data Submission (Plot, Roads & Service Corridors)
+  issuer: Abu Dhabi City Municipality - Town Planning Sector - Spatial Data Division
+  version: "1.18.2"
+  revision_date: "02/08/2021"
+  source_pdf: SDDPlanningDataSubmissionSpecifications_v1182.pdf
+  source_pdf_sha256: 125f11229da7bfcdeb47b8757e6622f940bb14e09fd6cbdbcc4f459a03e8b2fd
+  source_pdf_pages: 68
+  manifest_schema: 1
+  manifest_revision: 1
+  extracted_on: "2026-10-25"
+  plot_usage_domain_file: adm_v1.18.2_plot_usage.yaml
+
+output:
+  required_format: DWG
+  max_autocad_release: "2012"
+  ref: {page: 7, section: "4.1"}
+  # What this tool can actually produce today (see docs/DECISIONS.md D-003)
+  produced_format: DXF
+  produced_dxf_version: R2010   # AC1024, the DWG/DXF format family read by AutoCAD 2010-2012
+
+units:
+  insunits: 6              # metres ($INSUNITS)
+  lunits: 2                # decimal ($LUNITS)
+  description: Full scale, architectural metric units, one drawing unit equals one metre
+  ref: {page: "8-9", section: "4.3", figure: "Figure 1"}
+
+crs:
+  target_epsg: 32640
+  name: WGS 84 / UTM zone 40N
+  parameters:
+    projection: Universal Transverse Mercator (UTM)
+    false_easting: 500000.0
+    false_northing: 0.0
+    central_meridian_zone_39: 51.0
+    central_meridian_zone_40: 57.0
+    scale_factor: 0.9996
+    latitude_of_origin: 0.0
+    linear_unit: Meter (1.0)
+    zone: 40 North
+    geographic_crs: GCS_WGS_1984
+    datum: WGS_1984
+    spheroid: WGS_1984
+    semimajor_axis: 6378137.0
+    semiminor_axis: 6356752.3142451793
+    inverse_flattening: 298.257223563
+  ref: {page: "9-10", section: "4.4", table: "Table 3"}
+  # ENGINEERING_CHECK only: geographic window used to warn about coordinates that
+  # cannot be UTM 40N positions in the Abu Dhabi emirate. Never used to move data.
+  plausibility_window_lonlat: {min_lon: 51.0, max_lon: 56.5, min_lat: 22.4, max_lat: 25.5}
+
+filename:
+  pattern: "<ProjectID>_<YYYYMMDD>_<AP/MP>_<Plot/Roads/Services/additional>_<ADM/DOT>.dwg"
+  ref: {page: "7-8", section: "4.2"}
+  drawing_types: [AP, MP]
+  dataset_tokens: [Plot, Roads, Services, additional]
+  spec_types: [ADM, DOT]
+  extension: .dwg
+  examples:
+    - P11_20130707_AP_Plot_ADM.dwg
+    - P21_20131007_AP_Roads_ADM.dwg
+    - P21_20131007_AP_Services_ADM.dwg
+    - P101_20130707_MP_Plot_ADM.dwg
+    - P101_20130707_MP_Roads_ADM.dwg
+    - P101_20130707_MP_Services_ADM.dwg
+    - P101_20130707_MP_additional_ADM.dwg
+
+title_block:
+  layer: Title
+  ref: {page: "10-11", section: "4.6", table: "Table 4"}
+  fields:
+    - {tag: MainConsultantName, mandatory: false}
+    - {tag: ConsultantAddress, mandatory: false}
+    - {tag: ConsultantContactPerson, mandatory: false}
+    - {tag: ConsultantPhone, mandatory: false}
+    - {tag: Consultantemail, mandatory: false}
+    - {tag: MainContractorName, mandatory: false}
+    - {tag: ContractorAddress, mandatory: false}
+    - {tag: ContractorContactPerson, mandatory: false}
+    - {tag: ContractorPhone, mandatory: false}
+    - {tag: Contractoremail, mandatory: false}
+  at_least_one_of: [MainConsultantName, MainContractorName]
+  # The Title block NAME is not stated in the PDF; it is defined only in the official template.
+  block_name: null
+
+# Lineweight: "Default (0.25)" is stored as the AutoCAD "Default" lineweight (-3);
+# explicit values are hundredths of a millimetre. See docs/DECISIONS.md D-010.
+categories:
+  plot:
+    label: Plot
+    file_token: Plot
+    ref: {page: 12, section: "4.7.1", table: "Table 5"}
+    layers:
+      - {name: Plot, topology: polyline, constraint: closed, color: 51, linetype: Continuous, lineweight: default, detail: PlotDetail}
+      - {name: PlotDetail, topology: point, constraint: attribute_block, color: 51, linetype: Continuous, lineweight: default, parent: Plot, block: PlotDetail}
+      - {name: Sector, topology: polyline, constraint: closed, color: 3, linetype: Continuous, lineweight: 30, detail: SectorDetail}
+      - {name: SectorDetail, topology: point, constraint: attribute_block, color: 3, linetype: Continuous, lineweight: default, parent: Sector, block: SectorDetail}
+      - {name: Zone, topology: polyline, constraint: closed, color: 7, linetype: Continuous, lineweight: 40, detail: ZoneDetail}
+      - {name: ZoneDetail, topology: point, constraint: attribute_block, color: 7, linetype: Continuous, lineweight: default, parent: Zone, block: ZoneDetail}
+      - {name: DimensionLine, topology: dimension, constraint: none, color: 7, linetype: Continuous, lineweight: default, shared: true}
+      - {name: Title, topology: title, constraint: closed, color: 7, linetype: Continuous, lineweight: default, shared: true}
+  roads:
+    label: Roads
+    file_token: Roads
+    ref: {page: "12-14", section: "4.7.2", table: "Table 6"}
+    layers:
+      - {name: RoadEdge, topology: polyline, constraint: none, color: 8, linetype: Continuous, lineweight: default, detail: RoadEdgeDetail}
+      - {name: RoadEdgeDetail, topology: point, constraint: attribute_block, color: 8, linetype: Continuous, lineweight: default, parent: RoadEdge, block: RoadEdgeDetail}
+      - {name: RoadCenterLine, topology: polyline, constraint: none, color: 6, linetype: Dashed, lineweight: default, detail: RoadCenterLineDetail, aliases: [RoadCentreLine]}
+      - {name: RoadCenterLineDetail, topology: point, constraint: attribute_block, color: 6, linetype: Continuous, lineweight: default, parent: RoadCenterLine, block: RoadCentreLineDetail, aliases: [RoadCentreLineDetail]}
+      - {name: RoadEntrance, topology: polyline, constraint: closed, color: 30, linetype: Continuous, lineweight: default, detail: RoadEntranceDetail}
+      - {name: RoadEntranceDetail, topology: point, constraint: attribute_block, color: 30, linetype: Continuous, lineweight: default, parent: RoadEntrance, block: RoadEntranceDetail}
+      - {name: ParkingArea, topology: polyline, constraint: closed, color: 2, linetype: Continuous, lineweight: default, detail: ParkingAreaDetail}
+      - {name: ParkingAreaDetail, topology: point, constraint: attribute_block, color: 2, linetype: Continuous, lineweight: default, parent: ParkingArea, block: ParkingAreaDetail}
+      - {name: RoadLayBy, topology: polyline, constraint: closed, color: 43, linetype: Continuous, lineweight: default, detail: RoadlayByDetail, aliases: [RoadLayby]}
+      - {name: RoadlayByDetail, topology: point, constraint: attribute_block, color: 43, linetype: Continuous, lineweight: default, parent: RoadLayBy, block: RoadlaybyDetail, aliases: [RoadLaybyDetail, RoadlaybyDetail]}
+      - {name: RoadHump, topology: polyline, constraint: closed, color: 3, linetype: Continuous, lineweight: default, detail: RoadHumpDetail}
+      - {name: RoadHumpDetail, topology: point, constraint: attribute_block, color: 3, linetype: Continuous, lineweight: default, parent: RoadHump, block: RoadHumpDetail}
+      - {name: FootBridge, topology: polyline, constraint: closed, color: 140, linetype: Continuous, lineweight: default, detail: FootBridgeDetail}
+      - {name: FootBridgeDetail, topology: point, constraint: attribute_block, color: 140, linetype: Continuous, lineweight: default, parent: FootBridge, block: FootBridgeDetail}
+      - {name: RoadTunnel, topology: polyline, constraint: closed, color: 51, linetype: Continuous, lineweight: default, detail: RoadTunnelDetail}
+      - {name: RoadTunnelDetail, topology: point, constraint: attribute_block, color: 51, linetype: Continuous, lineweight: default, parent: RoadTunnel, block: RoadTunnelDetail}
+      - {name: Bridge, topology: polyline, constraint: closed, color: 5, linetype: Continuous, lineweight: default, detail: BridgeDetail}
+      - {name: BridgeDetail, topology: point, constraint: attribute_block, color: 5, linetype: Continuous, lineweight: default, parent: Bridge, block: BridgeDetail}
+      - {name: UnderPass, topology: polyline, constraint: closed, color: 9, linetype: Continuous, lineweight: default, detail: UnderPassDetail, aliases: [Underpass]}
+      - {name: UnderPassDetail, topology: point, constraint: attribute_block, color: 9, linetype: Continuous, lineweight: default, parent: UnderPass, block: UnderpassDetail, aliases: [UnderpassDetail]}
+      - {name: Pavement, topology: polyline, constraint: closed, color: 42, linetype: Continuous, lineweight: default, detail: PavementDetail}
+      - {name: PavementDetail, topology: point, constraint: attribute_block, color: 42, linetype: Continuous, lineweight: default, parent: Pavement, block: PavementDetail}
+      - {name: ParkingSpace, topology: polyline, constraint: closed, color: 7, linetype: Continuous, lineweight: default, detail: ParkingSpaceDetail}
+      - {name: ParkingSpaceDetail, topology: point, constraint: attribute_block, color: 7, linetype: Continuous, lineweight: default, parent: ParkingSpace, block: ParkingSpaceDetail}
+      - {name: LandscapeArea, topology: polyline, constraint: closed, color: 73, linetype: Continuous, lineweight: default, detail: LandscapeAreaDetail}
+      - {name: LandscapeAreaDetail, topology: point, constraint: attribute_block, color: 73, linetype: Continuous, lineweight: default, parent: LandscapeArea, block: LandscapeAreaDetail}
+      - {name: Basement, topology: polyline, constraint: closed, color: 200, linetype: Continuous, lineweight: default, detail: BasementDetail}
+      - {name: BasementDetail, topology: point, constraint: attribute_block, color: 200, linetype: Continuous, lineweight: default, parent: Basement, block: BasementDetail}
+      - {name: CyclingJoggingTrack, topology: polyline, constraint: closed, color: 234, linetype: Continuous, lineweight: default, detail: CyclingJoggingTrackDetail}
+      - {name: CyclingJoggingTrackDetail, topology: point, constraint: attribute_block, color: 234, linetype: Continuous, lineweight: default, parent: CyclingJoggingTrack, block: CyclingJoggingTrackDetail}
+      - {name: RoadBarrier, topology: polyline, constraint: closed, color: 1, linetype: Continuous, lineweight: default, detail: RoadBarrierDetail}
+      - {name: RoadBarrierDetail, topology: point, constraint: attribute_block, color: 1, linetype: Continuous, lineweight: default, parent: RoadBarrier, block: RoadBarrierDetail}
+      - {name: RoadAlley, topology: polyline, constraint: closed, color: 4, linetype: Continuous, lineweight: default, detail: RoadAlleyDetail}
+      - {name: RoadAlleyDetail, topology: point, constraint: attribute_block, color: 4, linetype: Continuous, lineweight: default, parent: RoadAlley, block: RoadAlleyDetail}
+      - {name: RoadStructure, topology: polyline, constraint: closed, color: 51, linetype: Continuous, lineweight: default, detail: RoadStructureDetail}
+      - {name: RoadStructureDetail, topology: point, constraint: attribute_block, color: 51, linetype: Continuous, lineweight: default, parent: RoadStructure, block: RoadStructureDetail}
+      - {name: CycleRack, topology: polyline, constraint: closed, color: 21, linetype: Continuous, lineweight: default, detail: CycleRackDetail}
+      - {name: CycleRackDetail, topology: point, constraint: attribute_block, color: 21, linetype: Continuous, lineweight: default, parent: CycleRack, block: CycleRackDetail}
+      - {name: RailRoadEdge, topology: polyline, constraint: none, color: 133, linetype: Continuous, lineweight: default, detail: RailRoadEdgeDetail}
+      - {name: RailRoadEdgeDetail, topology: point, constraint: attribute_block, color: 133, linetype: Continuous, lineweight: default, parent: RailRoadEdge, block: RailRoadEdgeDetail}
+      - {name: RailRoadSurface, topology: polyline, constraint: closed, color: 153, linetype: Continuous, lineweight: default, detail: RailRoadSurfaceDetail}
+      - {name: RailRoadSurfaceDetail, topology: point, constraint: attribute_block, color: 153, linetype: Continuous, lineweight: default, parent: RailRoadSurface, block: RailRoadSurfaceDetail}
+      - {name: RailRoadCenterline, topology: polyline, constraint: none, color: 161, linetype: Track, lineweight: default, detail: RailRoadCenterlineDetail}
+      - {name: RailRoadCenterlineDetail, topology: point, constraint: attribute_block, color: 161, linetype: Continuous, lineweight: default, parent: RailRoadCenterline, block: RailRoadCenterlineDetail}
+      - {name: Title, topology: title, constraint: closed, color: 7, linetype: Continuous, lineweight: default, shared: true}
+      - {name: DimensionLine, topology: dimension, constraint: none, color: 7, linetype: Continuous, lineweight: default, shared: true}
+  services:
+    label: Services / Service Corridors
+    file_token: Services
+    ref: {page: "14-15", section: "4.7.3", table: "Table 7"}
+    layers:
+      - {name: ServiceCorridor, topology: polyline, constraint: closed, color: 2, linetype: Continuous, lineweight: 30, detail: ServiceCorridorDetail}
+      - {name: ServiceCorridorDetail, topology: point, constraint: attribute_block, color: 2, linetype: Continuous, lineweight: default, parent: ServiceCorridor, block: ServiceCorridorDetail}
+      - {name: ReservedStrip, topology: polyline, constraint: closed, color: 5, linetype: Continuous, lineweight: default, detail: ReservedStripDetail}
+      - {name: ReservedStripDetail, topology: point, constraint: attribute_block, color: 5, linetype: Continuous, lineweight: default, parent: ReservedStrip, block: ReservedStripDetail}
+      - {name: ServiceWorkArea, topology: polyline, constraint: closed, color: 3, linetype: Continuous, lineweight: default, detail: ServiceWorkAreaDetail}
+      - {name: ServiceWorkAreaDetail, topology: point, constraint: attribute_block, color: 3, linetype: Continuous, lineweight: default, parent: ServiceWorkArea, block: ServiceWorkAreaDetail}
+      - {name: ServiceConsArea, topology: polyline, constraint: closed, color: 1, linetype: Continuous, lineweight: default, detail: ServiceConsAreaDetail}
+      - {name: ServiceConsAreaDetail, topology: point, constraint: attribute_block, color: 1, linetype: Continuous, lineweight: default, parent: ServiceConsArea, block: ServiceConsAreaDetail}
+      - {name: ServiceActivityArea, topology: polyline, constraint: closed, color: 6, linetype: Continuous, lineweight: default, detail: ServiceActivityAreaDetail}
+      - {name: ServiceActivityAreaDetail, topology: point, constraint: attribute_block, color: 6, linetype: Continuous, lineweight: default, parent: ServiceActivityArea, block: ServiceActivityAreaDetail}
+      # BoreHole has no geometry layer: it is a point attribute block that must sit inside a ServiceActivityArea.
+      - {name: BoreHole, topology: point, constraint: attribute_block, color: 30, linetype: Continuous, lineweight: default, parent: ServiceActivityArea, block: Borehole, aliases: [Borehole], standalone_point: true}
+      - {name: BufferZone, topology: polyline, constraint: closed, color: 4, linetype: Continuous, lineweight: default, detail: BufferZoneDetail}
+      - {name: BufferZoneDetail, topology: point, constraint: attribute_block, color: 4, linetype: Continuous, lineweight: default, parent: BufferZone, block: BufferZoneDetail}
+      - {name: DimensionLine, topology: dimension, constraint: none, color: 7, linetype: Continuous, lineweight: default, shared: true}
+      - {name: Title, topology: title, constraint: closed, color: 7, linetype: Continuous, lineweight: default, shared: true}
+
+# Domain value lists (case-sensitive per Section 6, rule 4, page 34).
+domains:
+  medium: [surface, air, underground, semiBuried, undefined]
+  road_surface: [tarmac, concrete, tiled, undefined]
+  road_type: [highway, majorArterial, boulevard, avenue, interchange, street, trackRoute, accessLane, sikka, specialConditionStreet, mushtarak, undefined]
+  road_entrance_type: [public, private]
+  parking_for: [Car, bus, truck, bike, undefined]
+  parking_bay_type: [perpendicular, parallel, angular]
+  road_layby_on: [kerbSide, layby, undefined]
+  road_layby_type: [bus, taxi, busAndTaxi, undefined]
+  road_hump_type: [pelican, speedTable, hump, undefined]
+  footbridge_type: [concrete, metal, wood, undefined]
+  footbridge_classification: [general, metro, tram, undefined]
+  road_tunnel_type: [roadTunnel, railwayTunnel, undefined]
+  bridge_type: [cantileverBridge, griderBridge, undefined]
+  underpass_type: [pedestrian, cars, pedestrianAndCars, undefined]
+  yes_no_flag: [Y, N]
+  parking_type: [public, handicapped, imam, reserved, emergency, police, hotelApartment, bank, private, valet, undefined]
+  pavement_type: [tiled, concreted, asphalt, unpaved, undefined]
+  access_type: [public, private, undefined]
+  yes_no: ["Yes", "No"]
+  landscape_area_type: [sand, treePlantation, grass, tile, gravel, other]
+  basement_type: [ramp, carLift, undefined]
+  basement_parking_type: [public, private, publicAndPrivate, undefined]
+  cycle_jog_track_type: [cycle, jogging, cycleAndJogging]
+  cycle_jog_surface_type: [concrete, tarmac, tiled, undefined, rubber, asphalt]
+  barrier_status: [temporary, permanent]
+  barrier_type: [barrier, bollard]
+  barrier_material: [concrete, metal, plastic, undefined]
+  alley_type: [roadAlley, Musharaka]
+  structure_type: [ventilationShaft, undefined]
+  rail_type: [metro, tram, undefined, train]
+  corridor_type: [roadServiceReservation, buildingServiceReservation, specialServiceReservation, undefined]
+  reserved_strip_type: [WD, WT, ET, ED, ETISALAT, DU, MCC, CCTV, GHQ, ITS, SL, S, SW, SWM, I, TR, DC, G, SPARE, SHARE, HC, MISC]
+  work_area_for: [Temporary, Permanent, Water Distribution, Water Transmission, Irrigation, Treated Water, Chilled Water, Storm Water, Sewerage, Electric Distribution, Electric Transmission, Telecom, Road Infrastructure, Etihad Rail, Metro, Miscellaneous, DOLPHIN, LRT, STEP, Tram, Gas]
+  buffer_zone_for: [Permanent, Water Distribution, Water Transmission, Irrigation, Treated Water, Chilled Water, Storm Water, Sewerage, Electric Distribution, Electric Transmission Cable, Electric Transmission OHL, Telecom, Road Infrastructure, Etihad Rail, Metro, Miscellaneous, DOLPHIN, LRT, STEP, Tram, Gas]
+  # Page 32: the list wraps across lines in the PDF ("Subsurface Drain Sewerage", "Solid Waste refined
+  # Petroleum") without commas; the split below is our reading and is PENDING confirmation (DISCREPANCIES X-12).
+  infrastructure_type: [Temporary, Permanent, Water Distribution, Water Transmission, Irrigation, Treated Water, Chilled Water, Storm Water, Subsurface Drain, Sewerage, Electric Distribution, electric Transmission, Oil, Gas, Solid Waste, refined Petroleum, CO2 Pipeline, Telecom/Fiber Optic, Roads, Service Corridor, Etihad Rail, Metro, Public Realm, undefined]
+  activity_area_type: [NDRC, asphalt, tiled, green, concrete, undefined]
+  plot_usage_category: {from_file: adm_v1.18.2_plot_usage.yaml}
+
+# Attribute block structures (Section 6). Types: character, integer, float, double, number, boolean, string, date.
+# "date" is Character in the PDF with the mandated DD-MON-YYYY format.
+blocks:
+  PlotDetail:
+    ref: {page: 17, section: "6.1.1"}
+    attributes:
+      - {tag: PlotNumber, type: character, mandatory: true}
+      - {tag: SectorNumber, type: character, mandatory: true}
+      - {tag: UsageCategoryType, type: character, mandatory: true, domain: plot_usage_category}
+      - {tag: UsageType, type: character, mandatory: true, depends_on: UsageCategoryType}
+  SectorDetail:
+    ref: {page: 17, section: "6.1.2"}
+    attributes:
+      - {tag: SectorNumber, type: character, mandatory: true}
+      - {tag: SectorNameEnglish, type: character, mandatory: true}
+      - {tag: SectorNameArabic, type: character, mandatory: true}
+  ZoneDetail:
+    ref: {page: 18, section: "6.1.3"}
+    attributes:
+      - {tag: ZoneNameEnglish, type: character, mandatory: true}
+      - {tag: ZoneNameArabic, type: character, mandatory: true}
+  RoadCentreLineDetail:
+    ref: {page: 18, section: "6.2.1"}
+    attributes:
+      - {tag: Medium, type: character, mandatory: true, domain: medium}
+      - {tag: RoadSurfaceType, type: character, mandatory: true, domain: road_surface}
+      - {tag: RoadType, type: character, mandatory: true, domain: road_type}
+      - {tag: RoadNameEnglish, type: character, mandatory: false}
+      - {tag: RoadNameArabic, type: character, mandatory: false, required_if_present: RoadNameEnglish}
+      - {tag: StreetID, type: character, mandatory: false}
+  RoadEdgeDetail:
+    ref: {page: "18-19", section: "6.2.2"}
+    attributes:
+      - {tag: Medium, type: character, mandatory: true, domain: medium}
+      - {tag: RoadSurfaceType, type: character, mandatory: true, domain: road_surface}
+  RoadEntranceDetail:
+    ref: {page: 19, section: "6.2.3"}
+    attributes:
+      - {tag: Medium, type: character, mandatory: true, domain: medium}
+      - {tag: RoadSurfaceType, type: character, mandatory: true, domain: road_surface}
+      - {tag: RoadEntranceType, type: character, mandatory: true, domain: road_entrance_type}
+  ParkingAreaDetail:
+    ref: {page: "19-20", section: "6.2.4"}
+    attributes:
+      - {tag: Medium, type: character, mandatory: true, domain: medium}
+      - {tag: RoadSurfaceType, type: character, mandatory: true, domain: road_surface}
+      - {tag: NumOfParkings, type: integer, mandatory: true}
+      - {tag: ParkingFor, type: character, mandatory: true, domain: parking_for}
+      - {tag: ParkingBayType, type: character, mandatory: true, domain: parking_bay_type}
+  RoadlaybyDetail:
+    ref: {page: 20, section: "6.2.5"}
+    attributes:
+      - {tag: Medium, type: character, mandatory: true, domain: medium}
+      - {tag: RoadSurfaceType, type: character, mandatory: true, domain: road_surface}
+      - {tag: RoadLaybyOn, type: character, mandatory: true, domain: road_layby_on}
+      - {tag: RoadLaybyType, type: character, mandatory: true, domain: road_layby_type}
+  RoadHumpDetail:
+    ref: {page: 21, section: "6.2.6"}
+    attributes:
+      - {tag: GroundLevelHeight, type: float, mandatory: true}
+      - {tag: RoadHumpType, type: character, mandatory: true, domain: road_hump_type}
+  FootBridgeDetail:
+    ref: {page: 21, section: "6.2.7"}
+    attributes:
+      - {tag: FootBridgeType, type: character, mandatory: true, domain: footbridge_type}
+      - {tag: FootBridgeClassification, type: character, mandatory: true, domain: footbridge_classification}
+  RoadTunnelDetail:
+    ref: {page: 21, section: "6.2.8"}
+    attributes:
+      - {tag: Medium, type: character, mandatory: true, domain: medium}
+      - {tag: RoadSurfaceType, type: character, mandatory: true, domain: road_surface}
+      - {tag: RoadTunnelType, type: character, mandatory: true, domain: road_tunnel_type}
+  BridgeDetail:
+    ref: {page: 22, section: "6.2.9"}
+    attributes:
+      - {tag: NameEnglish, type: character, mandatory: true}
+      - {tag: NameArabic, type: character, mandatory: true}
+      - {tag: BridgeType, type: character, mandatory: true, domain: bridge_type}
+      - {tag: GroundLevelHeight, type: float, mandatory: true}
+  UnderpassDetail:
+    ref: {page: 22, section: "6.2.10"}
+    attributes:
+      - {tag: UnderPassType, type: character, mandatory: true, domain: underpass_type}
+  ParkingSpaceDetail:
+    ref: {page: "22-23", section: "6.2.11"}
+    attributes:
+      - {tag: IsSheltered, type: boolean, mandatory: false, domain: yes_no_flag}
+      - {tag: ParkingType, type: character, mandatory: true, domain: parking_type}
+  PavementDetail:
+    ref: {page: 23, section: "6.2.12"}
+    attributes:
+      - {tag: Medium, type: character, mandatory: true, domain: medium}
+      - {tag: PavementType, type: character, mandatory: true, domain: pavement_type}
+      - {tag: AccessType, type: character, mandatory: true, domain: access_type}
+      - {tag: ToBeClipped, type: character, mandatory: true, domain: yes_no}
+  LandscapeAreaDetail:
+    ref: {page: "23-24", section: "6.2.13"}
+    attributes:
+      - {tag: AreaType, type: character, mandatory: true, domain: landscape_area_type}
+      - {tag: ToBeClipped, type: character, mandatory: true, domain: yes_no}
+  BasementDetail:
+    ref: {page: 24, section: "6.2.14"}
+    attributes:
+      - {tag: PlotNumber, type: character, mandatory: true}
+      - {tag: SectorNumber, type: character, mandatory: true}
+      - {tag: BasementType, type: character, mandatory: true, domain: basement_type}
+      - {tag: NumOfLevels, type: integer, mandatory: true}
+      - {tag: NumOfVentilationShafts, type: integer, mandatory: true}
+      - {tag: ProposedPublicCarParkings, type: integer, mandatory: true}
+      - {tag: ProposedPrivateCarParkings, type: integer, mandatory: true}
+      - {tag: RequiredCarParkings, type: integer, mandatory: true}
+      - {tag: ParkingType, type: character, mandatory: true, domain: basement_parking_type}
+  CyclingJoggingTrackDetail:
+    ref: {page: "24-25", section: "6.2.15"}
+    attributes:
+      - {tag: Medium, type: character, mandatory: true, domain: medium}
+      - {tag: CycleJogTrackType, type: character, mandatory: true, domain: cycle_jog_track_type}
+      - {tag: SurfaceType, type: character, mandatory: true, domain: cycle_jog_surface_type}
+  RoadBarrierDetail:
+    ref: {page: 25, section: "6.2.16"}
+    attributes:
+      - {tag: BarrierStatus, type: character, mandatory: true, domain: barrier_status}
+      - {tag: BarrierType, type: character, mandatory: true, domain: barrier_type}
+      - {tag: Controlled, type: character, mandatory: true, domain: yes_no}
+      - {tag: Material, type: character, mandatory: false, domain: barrier_material}
+  RoadAlleyDetail:
+    ref: {page: "25-26", section: "6.2.17"}
+    attributes:
+      - {tag: AlleyType, type: character, mandatory: true, domain: alley_type}
+      - {tag: Medium, type: character, mandatory: true, domain: medium}
+      - {tag: RoadSurfaceType, type: character, mandatory: true, domain: road_surface}
+  CycleRackDetail:
+    ref: {page: 26, section: "6.2.18"}
+    attributes:
+      - {tag: Medium, type: character, mandatory: true, domain: medium}
+      - {tag: RoadSurfaceType, type: character, mandatory: true, domain: road_surface}
+      - {tag: numofparkings, type: number, mandatory: true}
+  RoadStructureDetail:
+    ref: {page: 26, section: "6.2.19"}
+    attributes:
+      - {tag: StructureType, type: character, mandatory: true, domain: structure_type}
+  RailRoadEdgeDetail:
+    ref: {page: "26-27", section: "6.2.20"}
+    attributes:
+      - {tag: Type, type: character, mandatory: true, domain: rail_type}
+      - {tag: Medium, type: character, mandatory: true, domain: medium}
+  RailRoadSurfaceDetail:
+    ref: {page: 27, section: "6.2.21"}
+    attributes:
+      - {tag: Type, type: character, mandatory: true, domain: rail_type}
+      - {tag: Medium, type: character, mandatory: true, domain: medium}
+  RailRoadCenterlineDetail:
+    ref: {page: "27-28", section: "6.2.22"}
+    attributes:
+      - {tag: Type, type: character, mandatory: true, domain: rail_type}
+      - {tag: NameEnglish, type: character, mandatory: false}
+      - {tag: NameArabic, type: character, mandatory: false}
+      - {tag: TrackNumber, type: character, mandatory: false, max_length: 10}
+      - {tag: Medium, type: character, mandatory: true, domain: medium}
+  ServiceCorridorDetail:
+    ref: {page: 28, section: "6.3.1"}
+    attributes:
+      - {tag: CorridorType, type: character, mandatory: true, domain: corridor_type}
+      - {tag: CorridorWidth, type: float, mandatory: true}
+  ReservedStripDetail:
+    ref: {page: 28, section: "6.3.2"}
+    attributes:
+      - {tag: ReservedStripType, type: character, mandatory: true, domain: reserved_strip_type}
+      - {tag: ReservedStripWidth, type: float, mandatory: true}
+  ServiceWorkAreaDetail:
+    ref: {page: 30, section: "6.3.3"}
+    attributes:
+      - {tag: Remarks, type: character, mandatory: false}
+      - {tag: ExpectedStartDate, type: date, mandatory: true}
+      - {tag: ExpectedEndDate, type: date, mandatory: true}
+      - {tag: WorkAreaFor, type: character, mandatory: true, domain: work_area_for}
+  BufferZoneDetail:
+    ref: {page: 31, section: "6.3.4"}
+    attributes:
+      - {tag: Remarks, type: character, mandatory: false}
+      - {tag: BufferZoneFor, type: character, mandatory: true, domain: buffer_zone_for}
+      - {tag: BufferZoneWidth, type: float, mandatory: true}
+  ServiceConsAreaDetail:
+    ref: {page: "31-32", section: "6.3.5"}
+    attributes:
+      - {tag: Remarks, type: character, mandatory: false}
+      - {tag: PhaseStartDate, type: date, mandatory: false}
+      - {tag: PhaseEndDate, type: date, mandatory: false}
+      - {tag: ConsStartDate, type: date, mandatory: false}
+      - {tag: ConsEndDate, type: date, mandatory: false}
+      - {tag: ContractorName, type: character, mandatory: true}
+      - {tag: ContPrjMgrName, type: character, mandatory: true}
+      - {tag: ContPrjMgrMobileNum, type: character, mandatory: true}
+      - {tag: ContSiteSupervisorName, type: character, mandatory: true}
+      - {tag: ContSiteSupervisorMobNum, type: character, mandatory: true}
+      - {tag: InfrastructureType, type: character, mandatory: true, domain: infrastructure_type}
+  ServiceActivityAreaDetail:
+    ref: {page: "32-33", section: "6.3.6"}
+    attributes:
+      - {tag: UtilityDuctSize, type: double, mandatory: true}
+      - {tag: UtilityDuctDepth, type: double, mandatory: true}
+      - {tag: ExcavationWidth, type: double, mandatory: true}
+      - {tag: ExcavationLength, type: double, mandatory: true}
+      - {tag: DrillingMethod, type: string, mandatory: false}
+      - {tag: ActivityAreaType, type: string, mandatory: true, domain: activity_area_type}
+      - {tag: SoilRockType, type: string, mandatory: true}
+      - {tag: NOIProjectID, type: string, mandatory: true}
+  Borehole:
+    ref: {page: 33, section: "6.3.7"}
+    attributes:
+      - {tag: WaterTableDepth, type: double, mandatory: true}
+      - {tag: WaterTableLevel, type: double, mandatory: true}
+      - {tag: GroundLevel, type: double, mandatory: true}
+      - {tag: AsphaltLevel, type: double, mandatory: true}
+      - {tag: Interface, type: string, mandatory: false}
+
+# Default tolerances (metres / square metres). ENGINEERING choices, configurable per job.
+tolerances:
+  coincidence: 0.001       # two vertices closer than this are the same point
+  snap_search: 0.05        # near-miss search radius for undershoot / overshoot / snapping findings
+  zero_length: 0.001       # polyline shorter than this is zero-length
+  overlap_area: 0.0001     # overlap area below this is ignored as numerical noise
+  arc_sagitta: 0.01        # max chord-to-arc deviation when densifying arcs (accepted fix only)
+  attribute_vertex: 0.001  # max distance between a linear-feature attribute block and its vertex
+
+rules:
+  # ---------------------------------------------------------------- file format / submission set
+  - id: ADM-FMT-001
+    title: Submission file is AutoCAD DWG, release 2012 or earlier
+    evidence: VERIFIED_SPEC
+    ref: {page: 7, section: "4.1"}
+    severity: WARNING
+    check: export.format
+    implementation: PARTIAL
+    limitation: Tool writes DXF R2010 (AC1024). DWG requires an external converter (ODA File Converter or AutoCAD) - not available in this build.
+  - id: ADM-FMT-002
+    title: One drawing file per dataset (Plot, Roads, Services) plus an optional additional file
+    evidence: VERIFIED_SPEC
+    ref: {page: 7, section: "4.1", table: "Table 2"}
+    severity: INFO
+    check: export.split
+    implementation: IMPLEMENTED
+  - id: ADM-FMT-003
+    title: The additional data file need not comply with the specification and is reference only
+    evidence: VERIFIED_SPEC
+    ref: {page: 7, section: "4.1"}
+    severity: INFO
+    check: export.additional
+    implementation: IMPLEMENTED
+  # ---------------------------------------------------------------- file naming
+  - id: ADM-NAME-001
+    title: File name follows <ProjectID>_<YYYYMMDD>_<AP/MP>_<Plot/Roads/Services/additional>_<ADM/DOT>.dwg
+    evidence: VERIFIED_SPEC
+    ref: {page: "7-8", section: "4.2"}
+    severity: ERROR
+    check: filename.structure
+    implementation: IMPLEMENTED
+  - id: ADM-NAME-002
+    title: ProjectID is the unique CDP project code (no separator or syntax characters)
+    evidence: PENDING_OFFICIAL_CONFIRMATION
+    ref: {page: 8, section: "4.2"}
+    severity: ERROR
+    check: filename.project_id
+    implementation: PARTIAL
+    limitation: The CDP code format is not defined in the PDF (examples P11, P21, P101). Only emptiness and characters that break the pattern are rejected.
+  - id: ADM-NAME-003
+    title: Date component is YYYYMMDD and a real calendar date
+    evidence: VERIFIED_SPEC
+    ref: {page: 8, section: "4.2"}
+    severity: ERROR
+    check: filename.date
+    implementation: IMPLEMENTED
+    limitation: PDF text says "Year, Day and Month" while the pattern and examples are YYYYMMDD (DISCREPANCIES X-07).
+  - id: ADM-NAME-004
+    title: Drawing type is AP (As Planned) or MP (Master Plan)
+    evidence: VERIFIED_SPEC
+    ref: {page: 8, section: "4.2"}
+    severity: ERROR
+    check: filename.drawing_type
+    implementation: IMPLEMENTED
+  - id: ADM-NAME-005
+    title: Dataset token is Plot, Roads, Services or additional
+    evidence: VERIFIED_SPEC
+    ref: {page: 8, section: "4.2"}
+    severity: ERROR
+    check: filename.dataset
+    implementation: IMPLEMENTED
+    limitation: Case-sensitivity of the token is not stated; tokens are matched exactly as in the examples (DISCREPANCIES X-08).
+  - id: ADM-NAME-006
+    title: Specification type is ADM or DOT
+    evidence: VERIFIED_SPEC
+    ref: {page: 8, section: "4.2"}
+    severity: ERROR
+    check: filename.spec_type
+    implementation: IMPLEMENTED
+  - id: ADM-NAME-007
+    title: File name must not contain the < > syntax characters
+    evidence: VERIFIED_SPEC
+    ref: {page: 8, section: "4.2"}
+    severity: ERROR
+    check: filename.syntax_chars
+    implementation: IMPLEMENTED
+  - id: ADM-NAME-008
+    title: A Master Plan (MP) submission must include all three themes (Plot, Roads, Services)
+    evidence: VERIFIED_SPEC
+    ref: {page: 8, section: "4.2"}
+    severity: ERROR
+    check: metadata.mp_completeness
+    implementation: IMPLEMENTED
+  - id: ADM-NAME-009
+    title: File extension is .dwg
+    evidence: VERIFIED_SPEC
+    ref: {page: 7, section: "4.2"}
+    severity: WARNING
+    check: filename.extension
+    implementation: PARTIAL
+    limitation: The stem is validated; the produced file carries .dxf because DWG is not produced yet. Flagged on every run.
+  # ---------------------------------------------------------------- units
+  - id: ADM-UNIT-001
+    title: Full scale, one drawing unit equals one metre (insertion units Meters)
+    evidence: VERIFIED_SPEC
+    ref: {page: "8-9", section: "4.3", figure: "Figure 1"}
+    severity: ERROR
+    check: drawing.units
+    implementation: IMPLEMENTED
+    limitation: The header value is checked and the engineer must confirm the geometry is really drawn in metres; scale cannot be proven from geometry.
+  - id: ADM-UNIT-002
+    title: Length unit type Decimal (as shown in Figure 1)
+    evidence: VERIFIED_SPEC
+    ref: {page: 9, section: "4.3", figure: "Figure 1"}
+    severity: WARNING
+    check: drawing.lunits
+    implementation: IMPLEMENTED
+  # ---------------------------------------------------------------- coordinates
+  - id: ADM-CRS-001
+    title: Drawing is in the ADM coordinate system (WGS 1984 / UTM Zone 40N)
+    evidence: VERIFIED_SPEC
+    ref: {page: "9-10", section: "4.4", table: "Table 3"}
+    severity: ERROR
+    check: crs.declared
+    implementation: IMPLEMENTED
+    limitation: The coordinate system of a DXF cannot be read from the file; it must be declared and confirmed by the engineer.
+  - id: ADM-CRS-002
+    title: Features in an arbitrary coordinate system are not accepted
+    evidence: VERIFIED_SPEC
+    ref: {page: 9, section: "4.4"}
+    severity: ERROR
+    check: crs.arbitrary
+    implementation: PARTIAL
+    limitation: Detected only indirectly through ENG-CRS-003 (extent plausibility).
+  - id: ENG-CRS-003
+    title: Drawing extents fall inside the plausible UTM 40N window for the Abu Dhabi emirate
+    evidence: ENGINEERING_CHECK
+    ref: {page: 9, section: "4.4"}
+    severity: WARNING
+    check: crs.plausibility
+    implementation: IMPLEMENTED
+    limitation: A plausibility window only; never used to move, shift or reproject geometry.
+  - id: M4-SAFE-CRS
+    title: No coordinate transformation without explicit, confirmed, user-supplied source and target CRS
+    evidence: ENGINEERING_CHECK
+    ref: {page: 9, section: "4.4"}
+    severity: ERROR
+    check: crs.transformation_gate
+    implementation: IMPLEMENTED
+  - id: USR-CRS-001
+    title: Source coordinate system confirmed by the engineer
+    evidence: USER_DECISION_REQUIRED
+    ref: {page: 9, section: "4.4"}
+    severity: ERROR
+    check: crs.confirmation
+    implementation: IMPLEMENTED
+  # ---------------------------------------------------------------- title block
+  - id: ADM-TTL-001
+    title: Each file has one Title attribute block on layer Title
+    evidence: VERIFIED_SPEC
+    ref: {page: 10, section: "4.6"}
+    severity: ERROR
+    check: title.present
+    implementation: PARTIAL
+    limitation: The Title block name/definition is only in the official template; detection relies on attribute tags from Table 4.
+  - id: ADM-TTL-002
+    title: Title block contains at least the consultant name or the contractor name
+    evidence: VERIFIED_SPEC
+    ref: {page: 11, section: "4.6"}
+    severity: ERROR
+    check: title.names
+    implementation: IMPLEMENTED
+  - id: ADM-TTL-003
+    title: Title details are entered in English
+    evidence: VERIFIED_SPEC
+    ref: {page: 11, section: "4.6"}
+    severity: WARNING
+    check: title.english
+    implementation: IMPLEMENTED
+    limitation: Heuristic - flags Arabic-script characters only.
+  - id: ADM-TTL-004
+    title: Title block lower-left corner inserted at a location according to the drawing plot coordinates
+    evidence: PENDING_OFFICIAL_CONFIRMATION
+    ref: {page: 10, section: "4.6"}
+    severity: INFO
+    check: title.position
+    implementation: NOT_IMPLEMENTED
+    limitation: Wording is ambiguous; needs the official template or ADM clarification.
+  # ---------------------------------------------------------------- layers
+  - id: ADM-LYR-001
+    title: Only the layers specified for the dataset are used
+    evidence: VERIFIED_SPEC
+    ref: {page: 11, section: "4.7", table: "Tables 5-7"}
+    severity: WARNING
+    check: mapping.unknown_layers
+    implementation: IMPLEMENTED
+    limitation: Entities on other layers are never auto-classified; they go to the review queue and, until mapped, to the additional file.
+  - id: ADM-LYR-002
+    title: Layer colour, linetype and lineweight as specified
+    evidence: VERIFIED_SPEC
+    ref: {page: "12-15", section: "4.7", table: "Tables 5-7"}
+    severity: WARNING
+    check: layers.properties
+    implementation: IMPLEMENTED
+    limitation: Layer table records are normalised in the output (logged). Linetype "Track" is defined only in the official template and is not fabricated.
+  - id: ADM-LYR-003
+    title: Layer DimensionLine contains AutoCAD dimensions using the template dimension style
+    evidence: VERIFIED_SPEC
+    ref: {page: 11, section: "4.7"}
+    severity: ERROR
+    check: layers.dimension_line
+    implementation: PARTIAL
+    limitation: Entity type is checked; the dimension style requires the official template.
+  - id: ADM-LYR-004
+    title: Layer Title holds the drawing title, border, textual details and the title attribute block
+    evidence: VERIFIED_SPEC
+    ref: {page: 12, section: "4.7"}
+    severity: INFO
+    check: layers.title
+    implementation: PARTIAL
+    limitation: Text, border polylines and the title block are allowed on Title; title/border content itself is not checked without the official template.
+  - id: ADM-LYR-005
+    title: Geometry layers hold polylines; detail layers hold point attribute blocks
+    evidence: VERIFIED_SPEC
+    ref: {page: "12-15", section: "4.7", table: "Tables 5-7"}
+    severity: ERROR
+    check: layers.topology
+    implementation: IMPLEMENTED
+  - id: ADM-LYR-006
+    title: Layers with the Closed constraint contain closed polylines only
+    evidence: VERIFIED_SPEC
+    ref: {page: "12-15", section: "4.7", table: "Tables 5-7"}
+    severity: ERROR
+    check: geometry.closed
+    implementation: IMPLEMENTED
+  - id: ADM-LYR-007
+    title: Layer name spelling follows Tables 5-7 (PDF-internal spelling variants recognised)
+    evidence: PENDING_OFFICIAL_CONFIRMATION
+    ref: {page: "12-33", section: "4.7 / 6"}
+    severity: WARNING
+    check: mapping.alias
+    implementation: IMPLEMENTED
+    limitation: Tables and Section 6 spell some names differently (DISCREPANCIES X-02..X-05); the official template decides.
+  # ---------------------------------------------------------------- data capturing rules (Section 5)
+  - id: ADM-CAP-001A
+    title: No undershoots or overshoots
+    evidence: VERIFIED_SPEC
+    ref: {page: 15, section: "5", rule: 1}
+    severity: WARNING
+    check: geometry.dangles
+    implementation: IMPLEMENTED
+    limitation: Detection uses the configurable snap_search tolerance; findings are possible issues for engineer review.
+  - id: ADM-CAP-001B
+    title: No zero-length polylines
+    evidence: VERIFIED_SPEC
+    ref: {page: 15, section: "5", rule: 1}
+    severity: ERROR
+    check: geometry.zero_length
+    implementation: IMPLEMENTED
+  - id: ADM-CAP-001C
+    title: No overlapping objects
+    evidence: VERIFIED_SPEC
+    ref: {page: 15, section: "5", rule: 1}
+    severity: ERROR
+    check: geometry.overlap
+    implementation: IMPLEMENTED
+    limitation: Checked between polygons of the same layer; cross-layer overlap rules are not specified except Services note 3.
+  - id: ADM-CAP-001D
+    title: No snapping errors (near-coincident vertices)
+    evidence: VERIFIED_SPEC
+    ref: {page: 15, section: "5", rule: 1}
+    severity: WARNING
+    check: geometry.snapping
+    implementation: IMPLEMENTED
+  - id: ADM-CAP-001E
+    title: No intersection errors (lines crossing without a shared vertex)
+    evidence: VERIFIED_SPEC
+    ref: {page: 15, section: "5", rule: 1}
+    severity: WARNING
+    check: geometry.intersections
+    implementation: IMPLEMENTED
+  - id: ADM-CAP-001F
+    title: No self-intersections
+    evidence: VERIFIED_SPEC
+    ref: {page: 15, section: "5", rule: 1}
+    severity: ERROR
+    check: geometry.self_intersection
+    implementation: IMPLEMENTED
+  - id: ADM-CAP-001G
+    title: No duplicate objects
+    evidence: VERIFIED_SPEC
+    ref: {page: 15, section: "5", rule: 1}
+    severity: ERROR
+    check: geometry.duplicates
+    implementation: IMPLEMENTED
+  - id: ADM-CAP-002
+    title: Snapping only on vertices, never on edges
+    evidence: VERIFIED_SPEC
+    ref: {page: 15, section: "5", rule: 2}
+    severity: ERROR
+    check: geometry.edge_snap
+    implementation: IMPLEMENTED
+  - id: ADM-CAP-003
+    title: '"Polyline" means AutoCAD LWPOLYLINE'
+    evidence: VERIFIED_SPEC
+    ref: {page: 15, section: "5", rule: 3}
+    severity: ERROR
+    check: geometry.lwpolyline
+    implementation: IMPLEMENTED
+  - id: ADM-CAP-004
+    title: No inner polygons (islands/donuts) within a polygon of the same layer; each closed polyline is a single polygon
+    evidence: VERIFIED_SPEC
+    ref: {page: 15, section: "5", rule: 4}
+    severity: ERROR
+    check: geometry.islands
+    implementation: IMPLEMENTED
+    limitation: Pavement and LandscapeArea define ToBeClipped=Yes for inner areas (pages 23-24); such nested polygons are reported as WARNING for review instead.
+  - id: ADM-CAP-005
+    title: Ellipses, splines and arcs are not used; curves are digitised as polyline vertices
+    evidence: VERIFIED_SPEC
+    ref: {page: "15-16", section: "5", rule: 5, figure: "Figure 2"}
+    severity: ERROR
+    check: entities.curves
+    implementation: IMPLEMENTED
+  - id: ADM-CAP-005B
+    title: LWPOLYLINE arc segments (bulges) - treated as arcs that should be digitised as vertices
+    evidence: PENDING_OFFICIAL_CONFIRMATION
+    ref: {page: "15-16", section: "5", rule: 5}
+    severity: WARNING
+    check: geometry.bulges
+    implementation: IMPLEMENTED
+    limitation: Whether the official QC rejects bulge segments is unknown. An opt-in, logged densification fix is offered; never applied automatically.
+  - id: ADM-CAP-006
+    title: Attribute block insertion point lies inside its polygon
+    evidence: VERIFIED_SPEC
+    ref: {page: 16, section: "5", rule: 6, figure: "Figure 3"}
+    severity: ERROR
+    check: attributes.inside_polygon
+    implementation: IMPLEMENTED
+  - id: ADM-CAP-006B
+    title: For linear features the attribute block is snapped to a vertex, not at an intersection or shared vertex
+    evidence: VERIFIED_SPEC
+    ref: {page: 16, section: "5", rule: 6, figure: "Figure 4"}
+    severity: ERROR
+    check: attributes.on_vertex
+    implementation: IMPLEMENTED
+  - id: ADM-CAP-007
+    title: No hatch, solid, xref, xline, line or group objects
+    evidence: VERIFIED_SPEC
+    ref: {page: 17, section: "5", rule: 7}
+    severity: ERROR
+    check: entities.prohibited
+    implementation: IMPLEMENTED
+  - id: ADM-CAP-007B
+    title: No unused blocks, unused linetypes or unused hatch styles
+    evidence: VERIFIED_SPEC
+    ref: {page: 17, section: "5", rule: 7}
+    severity: WARNING
+    check: drawing.unused
+    implementation: PARTIAL
+    limitation: Unused block definitions are purged from the prepared output (logged); unused linetypes are reported only. "Hatch styles" has no direct DXF table and is not checked.
+  - id: ADM-CAP-008
+    title: Drawing objects have no elevation and no width
+    evidence: VERIFIED_SPEC
+    ref: {page: 17, section: "5", rule: 8}
+    severity: ERROR
+    check: geometry.elevation_width
+    implementation: IMPLEMENTED
+  - id: ADM-CAP-009
+    title: No 3D objects (3D polylines, heights/thickness, 3D faces, solids, meshes)
+    evidence: VERIFIED_SPEC
+    ref: {page: 17, section: "5", rule: 9}
+    severity: ERROR
+    check: entities.three_d
+    implementation: IMPLEMENTED
+  - id: ADM-CAP-010
+    title: No proxy objects or unreferenced insertion points
+    evidence: VERIFIED_SPEC
+    ref: {page: 17, section: "5", rule: 10}
+    severity: ERROR
+    check: entities.proxy
+    implementation: IMPLEMENTED
+  # ---------------------------------------------------------------- attribute blocks (Section 4.5 / 6)
+  - id: ADM-ATT-001
+    title: Exactly one attribute block per feature
+    evidence: VERIFIED_SPEC
+    ref: {page: 10, section: "4.5"}
+    severity: ERROR
+    check: attributes.one_per_feature
+    implementation: IMPLEMENTED
+  - id: ADM-ATT-002
+    title: Predefined attribute block structure is used unchanged
+    evidence: PENDING_OFFICIAL_CONFIRMATION
+    ref: {page: "10, 17", section: "4.5 / 6"}
+    severity: WARNING
+    check: attributes.structure
+    implementation: PARTIAL
+    limitation: Tags are compared with the Section 6 tables. Full structural comparison (prompts, order, flags) needs the official template.
+  - id: ADM-ATT-003
+    title: Mandatory attributes are present and filled
+    evidence: VERIFIED_SPEC
+    ref: {page: "17-33", section: "6"}
+    severity: ERROR
+    check: attributes.mandatory
+    implementation: IMPLEMENTED
+  - id: ADM-ATT-004
+    title: Domain-valued attributes use only the listed values, case-sensitive
+    evidence: VERIFIED_SPEC
+    ref: {page: 34, section: "6", rule: 4}
+    severity: ERROR
+    check: attributes.domain
+    implementation: IMPLEMENTED
+  - id: ADM-ATT-005
+    title: Attribute values match the declared data type (Integer, Float, Double, Number, Boolean)
+    evidence: VERIFIED_SPEC
+    ref: {page: "17-33", section: "6"}
+    severity: ERROR
+    check: attributes.datatype
+    implementation: IMPLEMENTED
+  - id: ADM-ATT-006
+    title: Dates are written DD-MON-YYYY (e.g. 05-DEC-2013)
+    evidence: VERIFIED_SPEC
+    ref: {page: "30-32", section: "6.3.3 / 6.3.5"}
+    severity: ERROR
+    check: attributes.date
+    implementation: IMPLEMENTED
+  - id: ADM-ATT-007
+    title: RoadNameArabic becomes mandatory when RoadNameEnglish is entered
+    evidence: VERIFIED_SPEC
+    ref: {page: 18, section: "6.2.1"}
+    severity: ERROR
+    check: attributes.conditional
+    implementation: IMPLEMENTED
+  - id: ADM-ATT-008
+    title: TrackNumber does not exceed 10 characters
+    evidence: VERIFIED_SPEC
+    ref: {page: 27, section: "6.2.22"}
+    severity: ERROR
+    check: attributes.max_length
+    implementation: IMPLEMENTED
+  - id: ADM-ATT-009
+    title: UsageType is valid for the UsageCategoryType (Appendix 2)
+    evidence: VERIFIED_SPEC
+    ref: {page: "17, 36-68", section: "6.1.1 / Appendix 2"}
+    severity: ERROR
+    check: attributes.usage_dependency
+    implementation: IMPLEMENTED
+    limitation: Appendix 2 is dated 10/Nov/2019; the PDF says to coordinate with ADM SDD when a needed value is missing.
+  - id: ADM-ATT-010
+    title: Text entities are not used (outside the Title layer)
+    evidence: VERIFIED_SPEC
+    ref: {page: 34, section: "6", rule: 3}
+    severity: ERROR
+    check: entities.text
+    implementation: IMPLEMENTED
+  - id: ADM-ATT-011
+    title: Special characters, repeated characters and letter/number confusion are flagged as data-entry errors
+    evidence: VERIFIED_SPEC
+    ref: {page: 34, section: "6", rule: 5}
+    severity: WARNING
+    check: attributes.data_entry
+    implementation: PARTIAL
+    limitation: Detection is an M4 heuristic (the PDF gives no exact definition); results are warnings for review.
+  - id: ADM-ATT-012
+    title: Borehole insertion point lies inside a ServiceActivityArea, which must be submitted with it
+    evidence: VERIFIED_SPEC
+    ref: {page: 33, section: "6.3.7"}
+    severity: ERROR
+    check: attributes.borehole
+    implementation: IMPLEMENTED
+  - id: ADM-ATT-013
+    title: Attribute block name matches the block specified for the layer
+    evidence: VERIFIED_SPEC
+    ref: {page: "11, 17-33", section: "4.7 / 6"}
+    severity: ERROR
+    check: attributes.block_name
+    implementation: IMPLEMENTED
+  # ---------------------------------------------------------------- services specifics
+  - id: ADM-SRV-001
+    title: Plot geometry is provided together with proposed service corridors and reservation strips
+    evidence: VERIFIED_SPEC
+    ref: {page: 29, section: "6.3.2", note: 2}
+    severity: WARNING
+    check: services.plot_provided
+    implementation: IMPLEMENTED
+    limitation: Whether plots belong inside the Services file or alongside it is not stated (DISCREPANCIES X-13).
+  - id: ADM-SRV-002
+    title: Service corridors (except house connections) do not intersect or overlap plot boundaries; snapping at external boundaries is allowed
+    evidence: VERIFIED_SPEC
+    ref: {page: "29-30", section: "6.3.2", note: 3}
+    severity: ERROR
+    check: services.corridor_vs_plot
+    implementation: IMPLEMENTED
+    limitation: House-connection exemption applies to reserved strips typed HC; corridors carry no HC type, so all corridor overlaps are reported.
+  - id: ENG-SRV-003
+    title: Reserved strips lie within a service corridor (Figure 5)
+    evidence: ENGINEERING_CHECK
+    ref: {page: 29, section: "6.3.2", figure: "Figure 5"}
+    severity: WARNING
+    check: services.strip_in_corridor
+    implementation: IMPLEMENTED
+  # ---------------------------------------------------------------- engineering checks
+  - id: ENG-GEO-001
+    title: CIRCLE entities (full arcs) are not digitised as polylines
+    evidence: ENGINEERING_CHECK
+    ref: {page: 15, section: "5", rule: 5}
+    severity: WARNING
+    check: entities.circle
+    implementation: IMPLEMENTED
+  - id: ENG-GEO-002
+    title: Entity uses a non-standard extrusion direction (mirrored/OCS)
+    evidence: ENGINEERING_CHECK
+    severity: WARNING
+    check: geometry.extrusion
+    implementation: IMPLEMENTED
+  - id: ENG-GEO-003
+    title: Entity colour/linetype/lineweight overrides the layer (not BYLAYER)
+    evidence: ENGINEERING_CHECK
+    severity: WARNING
+    check: entities.bylayer
+    implementation: IMPLEMENTED
+  - id: ENG-GEO-004
+    title: Repeated consecutive vertices (zero-length segments)
+    evidence: ENGINEERING_CHECK
+    severity: WARNING
+    check: geometry.repeated_vertices
+    implementation: IMPLEMENTED
+  - id: ENG-GEO-005
+    title: Entity type not described by the specification (POINT, IMAGE, OLE, WIPEOUT, ...)
+    evidence: ENGINEERING_CHECK
+    severity: WARNING
+    check: entities.unsupported
+    implementation: IMPLEMENTED
+  - id: ENG-GEO-006
+    title: Paper-space content is not checked
+    evidence: ENGINEERING_CHECK
+    severity: INFO
+    check: drawing.paperspace
+    implementation: IMPLEMENTED
+  - id: ENG-GEO-007
+    title: Degenerate polygon (fewer than three distinct vertices or zero area)
+    evidence: ENGINEERING_CHECK
+    severity: ERROR
+    check: geometry.degenerate
+    implementation: IMPLEMENTED
+  - id: ENG-GEO-008
+    title: Attribute insertion point lies exactly on the polygon boundary
+    evidence: ENGINEERING_CHECK
+    severity: WARNING
+    check: attributes.on_boundary
+    implementation: IMPLEMENTED
+  - id: ENG-FILE-001
+    title: DXF structure problems reported by the reader (recover/audit)
+    evidence: ENGINEERING_CHECK
+    severity: WARNING
+    check: io.audit
+    implementation: IMPLEMENTED
+  - id: M4-IN-001
+    title: Input drawing is a readable CAD file (DXF; DWG only through a configured converter)
+    evidence: ENGINEERING_CHECK
+    severity: ERROR
+    check: io.input_format
+    implementation: IMPLEMENTED
+    limitation: DWG input needs ODA File Converter or a DXF saved from AutoCAD; neither is bundled.
+  - id: ENG-SHARED-001
+    title: Title/DimensionLine content copied into more than one dataset file
+    evidence: USER_DECISION_REQUIRED
+    severity: WARNING
+    check: export.shared_layers
+    implementation: IMPLEMENTED
+  # ---------------------------------------------------------------- decisions and pending integrations
+  - id: USR-MAP-001
+    title: Entities on unrecognised layers need an engineer-assigned ADM layer
+    evidence: USER_DECISION_REQUIRED
+    ref: {page: 11, section: "4.7"}
+    severity: WARNING
+    check: mapping.review_queue
+    implementation: IMPLEMENTED
+  - id: USR-UNIT-001
+    title: Engineer confirms the drawing is at full scale in metres
+    evidence: USER_DECISION_REQUIRED
+    ref: {page: 8, section: "4.3"}
+    severity: ERROR
+    check: drawing.units_confirmed
+    implementation: IMPLEMENTED
+  - id: PND-TPL-001
+    title: Official ADM DWG template (layers, attribute blocks, title block, dimension style, Track linetype)
+    evidence: PENDING_OFFICIAL_CONFIRMATION
+    ref: {page: 6, section: "3", table: "Table 1"}
+    severity: INFO
+    check: adapters.template
+    implementation: INTERFACE_ONLY
+    limitation: Not available. Adapter loads and compares a template once supplied; nothing is fabricated in its absence.
+  - id: PND-QC-001
+    title: Official ADM QC tool (.FAS) and its user manual
+    evidence: PENDING_OFFICIAL_CONFIRMATION
+    ref: {page: 6, section: "3", table: "Table 1"}
+    severity: INFO
+    check: adapters.official_qc
+    implementation: INTERFACE_ONLY
+    limitation: Not available. The internal report is never official ADM QC; an official result can only be attached from a real run.

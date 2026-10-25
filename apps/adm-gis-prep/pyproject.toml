@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "m4adm"
+version = "0.1.0"
+description = "M4 Contracting - ADM GIS submission preparation and preliminary QC (internal tool, not an ADM product)"
+requires-python = ">=3.11"
+dependencies = [
+  "ezdxf==1.4.5",
+  "shapely==2.2.0",
+  "pyproj==3.8.0",
+  "pydantic==2.13.5",
+  "PyYAML==6.0.3",
+  "Jinja2==3.1.6",
+  "fastapi==0.162.0",
+  "uvicorn==0.54.0",
+  "python-multipart==0.0.32",
+]
+
+[project.optional-dependencies]
+test = ["pytest==9.1.1", "httpx==0.28.1"]
+
+[project.scripts]
+m4adm = "m4adm.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+m4adm = ["ui/templates/*.html", "report/*.html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

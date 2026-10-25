@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Prepare a drawing for ADM GIS submission</h1>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<form method="post" action="/prepare" enctype="multipart/form-data" onsubmit="this.classList.add('busy')">
+  <fieldset><legend>1. Drawing</legend>
+    <label for="drawing">Upload original drawing (DXF; DWG needs conversion first)</label>
+    <input id="drawing" type="file" name="drawing" accept=".dxf,.dwg">
+    <p class="hint">The original is stored read-only and never modified. Processing happens in a separate job folder.</p>
+    {% if uploads %}
+    <label for="existing">...or select a previously uploaded drawing</label>
+    <select id="existing" name="existing"><option value="">-</option>
+      {% for u in uploads %}<option value="{{ u.id }}">{{ u.name }} ({{ (u.size / 1024) | round(1) }} kB, {{ u.id.split('/')[0] }})</option>{% endfor %}
+    </select>
+    {% endif %}
+  </fieldset>
+
+  <fieldset><legend>2. Category</legend>
+    <label class="inline"><input type="checkbox" name="category" value="plot"> Plot</label>
+    <label class="inline"><input type="checkbox" name="category" value="roads"> Roads</label>
+    <label class="inline"><input type="checkbox" name="category" value="services"> Services / Service Corridors</label>
+    <p class="hint">Each category becomes its own drawing file. A Master Plan (MP) needs all three.</p>
+  </fieldset>
+
+  <fieldset><legend>3. Project and submission</legend>
+    <div class="row">
+      <div><label for="project_id">Project ID (from ADM CDP)</label><input id="project_id" type="text" name="project_id" placeholder="e.g. P101"></div>
+      <div><label for="submission_date">Submission date (YYYYMMDD)</label><input id="submission_date" type="text" name="submission_date" placeholder="20261025" pattern="\d{8}"></div>
+      <div><label for="drawing_type">Drawing type</label><select id="drawing_type" name="drawing_type">
+        <option value="AP">AP - As Planned (one or two themes)</option><option value="MP">MP - Master Plan (all three themes)</option></select></div>
+      <div><label for="spec_type">Specification</label><select id="spec_type" name="spec_type"><option>ADM</option><option>DOT</option></select></div>
+      <div><label for="consultant_name">Main consultant name (English)</label><input id="consultant_name" type="text" name="consultant_name"></div>
+      <div><label for="contractor_name">Main contractor name (English)</label><input id="contractor_name" type="text" name="contractor_name" value="M4 Contracting"></div>
+      <div><label for="prepared_by">Prepared by</label><input id="prepared_by" type="text" name="prepared_by"></div>
+    </div>
+  </fieldset>
+
+  <fieldset><legend>4. Coordinates and units</legend>
+    <div class="row">
+      <div><label for="source_crs">Source coordinate system of the drawing</label>
+        <select id="source_crs" name="source_crs">{% for v, t in crs_choices %}<option value="{{ v }}">{{ t }}</option>{% endfor %}</select>
+        <label for="source_crs_other">...or other (EPSG code / WKT)</label><input id="source_crs_other" type="text" name="source_crs_other" placeholder="EPSG:xxxx">
+      </div>
+      <div><label>Target coordinate system</label><p><b>WGS 84 / UTM zone 40N (EPSG:32640)</b><br><span class="hint">ADM spec §4.4, Table 3. Selecting a CRS only declares it; the tool never moves geometry by appearance or extents.</span></p></div>
+    </div>
+    <label class="inline"><input type="checkbox" name="source_confirmed" value="1"> I confirm the drawing is in the source coordinate system selected above</label><br>
+    <label class="inline"><input type="checkbox" name="units_confirmed" value="1"> I confirm the drawing is at full scale, one unit = one metre</label>
+  </fieldset>
+
+  <details><summary>Advanced: tolerances (metres)</summary>
+    <div class="row">
+      <div><label>Vertex coincidence</label><input type="number" step="any" name="tol_coincidence" placeholder="{{ tolerances.coincidence }}"></div>
+      <div><label>Snap / undershoot search</label><input type="number" step="any" name="tol_snap_search" placeholder="{{ tolerances.snap_search }}"></div>
+      <div><label>Arc densification sagitta</label><input type="number" step="any" name="tol_arc_sagitta" placeholder="{{ tolerances.arc_sagitta }}"></div>
+    </div>
+  </details>
+  <p><button class="primary" type="submit">Prepare for ADM GIS</button> <span id="busy" class="muted">Processing - analysing, mapping, validating and exporting...</span></p>
+</form>
+
+<h2>Run history</h2>
+{% if jobs %}
+<div class="scroll"><table><tr><th>Job</th><th>Status</th><th>Source</th><th>Categories</th><th>Errors / warnings</th></tr>
+{% for j in jobs %}<tr>
+  <td>{% if j.finished %}<a href="/jobs/{{ j.job_id }}">{{ j.job_id }}</a>{% else %}{{ j.job_id }}{% endif %}{% if j.parent_job %}<br><span class="muted">re-run of {{ j.parent_job }}</span>{% endif %}</td>
+  <td>{{ j.status }}</td><td>{{ j.source or '-' }}</td><td>{{ (j.categories or []) | join(', ') }}</td>
+  <td>{% if j.counts %}{{ j.counts.ERROR }} / {{ j.counts.WARNING }}{% endif %}</td></tr>{% endfor %}
+</table></div>
+{% else %}<p class="muted">No jobs yet.</p>{% endif %}
+{% endblock %}
