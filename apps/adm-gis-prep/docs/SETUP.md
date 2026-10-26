@@ -58,14 +58,18 @@ The AI service has 512 MB of memory. These limits keep a GIS job from crashing i
 | Setting (AI service env) | Default | Effect |
 |---|---|---|
 | `GIS_PREP_MAX_UPLOAD_MB` | 25 | Larger drawings are refused before processing |
-| `GIS_PREP_MEMORY_LIMIT_MB` | 320 | Memory cap of the engine process; over it, the job fails with "use the desktop tool" |
+| `GIS_PREP_MEMORY_LIMIT_MB` | 300 | Real memory (RSS) of the engine process, checked every 0.2 s; over it, the job is stopped and fails with "use the desktop tool" |
 | `GIS_PREP_TIMEOUT_S` | 840 | Longer runs are stopped |
 
 Only one GIS job runs at a time.
 
-Measured peak memory:
-- Drawings already in DRM GIS format (e.g. the accepted Khalifa City floors): about 90 MB. These work in the cloud.
-- Raw architectural originals: 280–670 MB. These are refused in the cloud. Use the desktop tool for them.
+Measured peak memory (RSS):
+
+| Drawing | Peak | Cloud result |
+|---|---|---|
+| DRM GIS format (accepted Khalifa City floors) | about 90 MB | Runs |
+| M19B L1 and L2 architectural originals (12 MB) | about 280 MB | Runs; result is "Blocked by errors" until the BDMS layers are drawn |
+| M19B RF, UR and GF originals (17–36 MB) | over 300 MB, up to 670 MB | Refused with "use the desktop tool" |
 
 Each job stores its package at `<company>/gis-prep/<project>/<job>/`. That covers the prepared DXFs, `qc_report.*`, `processing_manifest.json`, `geometry_log.json`, `audit.jsonl` and `package.zip`. The uploaded original is never changed. A re-run with layer-mapping decisions creates a new job on the same original. The image bundles no DWG converter, so DWG uploads come back blocked with the reason.
 
