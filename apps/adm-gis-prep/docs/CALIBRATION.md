@@ -9,6 +9,7 @@ The material is stored locally in `reference/DRM_samples/` and is git-ignored, s
 | Specification | BDMS 4.1 Standards for DRM_270121.pdf (31 p.) | 63502036084d79a0 |
 | Official QC tool | DRM_CPDQC_V2.3.fas (AutoCAD compiled LISP) | e250d5c28934734e |
 | QC tool user manual | DRM_CPDQC_V2.3_UserManual.pdf (39 p.) | 1717cad958ee9520 |
+| Official QC tool, second build | CPDQC_V2.3.fas (received 2026-10-26 with Yas Island-YS1-P10-1-G.dwg; differs from DRM_CPDQC_V2.3.fas, likely the ADM rather than the DRM build) | aa9cb6e28979e778 |
 | Templates | MADINAT ZAYED-MZW16-63A-1-G.dwg / -F1.dwg (AC1032) | DWG only, see below |
 | Code lists | UPC_Land Use Classification.xls, ADM_Buildings Usage Type.jpg | df060231aa261add (xls) |
 | Accepted drawings | KHALIFA CITY-SE45_01-C8-1-{G,F1,F2,F3}.dwg + .dxf | passed official QC |
@@ -19,6 +20,8 @@ The material is stored locally in `reference/DRM_samples/` and is git-ignored, s
 ### Second batch (2026-10-26): Yas Island YS1 plot P10, DWG only
 
 There are 5 more approved floor drawings, **as DWG only** (AutoCAD 2018 / AC1032): `Yas Island-YS1-P10-1-{G,F1,F2}`, `-2-G` and `-3-G`. That is three buildings on one plot, which is useful for multi-building checks. They are stored locally in `reference/DRM_samples/GIS Drawings/dwg_only/` (git-ignored).
+
+The separately sent `Yas_Island-YS1-P10-1-G.dwg` is byte-identical to the one in this batch. No QC report (`.err`) came with it.
 
 **They have not been checked yet.** This session has no DWG reader: compiling LibreDWG was refused by the session's permission rules. The tool now reads DWG through ODA File Converter or LibreDWG `dwg2dxf` when one is installed. On such a PC, `python -m pytest tests/test_reference_drm.py` runs automatically:
 - the 0-error calibration on all 9 approved DWGs (4 Khalifa City + 5 Yas Island);
