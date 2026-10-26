@@ -1,23 +1,15 @@
-envVarGroups:
-  # Shared secret engineeringos-api presents to engineeringos-ai-service on every
-  # request (X-Internal-Service-Secret header) -- the AI service has no auth of
-  # its own otherwise and trusts whatever company_id/project_id it's given.
-  # generateValue produces one random value for the group, shared by every
-  # service that references it below, rather than a separate value per service.
-  - name: engineeringos-internal-secrets
-    envVars:
-      - key: INTERNAL_SERVICE_SECRET
-        generateValue: true
-      # app_user's own login password, shared by every service that connects
-      # to Postgres at runtime (engineeringos-api, engineeringos-ifc-service).
-      # Deliberately NOT the database's own owner credential (DB_MIGRATOR_*
-      # below) -- app_user is a narrowly-privileged, genuinely RLS-subject
-      # role (migration 052); the owner/superuser credential bypasses RLS
-      # by ownership and must only be used to run migrations, never to run
-      # the application. See DatabaseService.withTenant()'s doc comment and
-      # migration 052 for the full history of why this split exists.
-      - key: DB_PASSWORD
-        generateValue: true
+# Shared secrets are set per service in the Render dashboard (sync: false),
+# not through an environment group: the engineeringos-internal-secrets group
+# this file used to declare was never created, and the service-level
+# "envVarGroups:" key that referenced it is not valid Blueprint syntax, which
+# made every Blueprint sync fail.
+#   INTERNAL_SERVICE_SECRET -- the same random value on engineeringos-api and
+#     engineeringos-ai-service; the API presents it as X-Internal-Service-Secret
+#     on every call and the AI service rejects any request without it.
+#   DB_PASSWORD -- app_user's login password (migration 052), the same value on
+#     engineeringos-api and engineeringos-ifc-service. Deliberately NOT the
+#     database owner's credential (DB_MIGRATOR_* below), which bypasses RLS and
+#     is only used to run migrations.
 
 databases:
   - name: engineeringos-db
@@ -52,9 +44,11 @@ services:
     # a new migration; a forgotten run left new code querying tables that
     # didn't exist yet (e.g. Workforce Intelligence's first deploy).
     preDeployCommand: node apps/api/dist/database/run-migrations.js
-    envVarGroups:
-      - engineeringos-internal-secrets
     envVars:
+      - key: INTERNAL_SERVICE_SECRET
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
       - key: NODE_ENV
         value: production
       - key: PORT
@@ -74,8 +68,8 @@ services:
           name: engineeringos-db
           property: database
       # Runtime identity -- a narrowly-privileged, RLS-subject role (migration
-      # 052), NOT the database's owner. DB_PASSWORD comes from the
-      # engineeringos-internal-secrets group above, shared with
+      # 052), NOT the database's owner. DB_PASSWORD (set in the
+      # dashboard, see the top of this file) is shared with
       # engineeringos-ifc-service so both connect as the same app_user.
       - key: DB_USER
         value: app_user
@@ -121,8 +115,7 @@ services:
       # unset, so every production deployment before this fix was silently
       # encrypting that data with a key visible in the source repo. The app
       # now refuses to boot without a real value here (config/app.config.ts).
-      # API-only; ifc-service never touches this data, so it isn't in the
-      # shared engineeringos-internal-secrets group above.
+      # API-only; ifc-service never touches this data, so it isn't shared.
       - key: CREDENTIAL_ENCRYPTION_KEY
         generateValue: true
       - key: REDIS_HOST
@@ -204,9 +197,9 @@ services:
     dockerContext: .
     plan: starter
     region: oregon
-    envVarGroups:
-      - engineeringos-internal-secrets
     envVars:
+      - key: INTERNAL_SERVICE_SECRET
+        sync: false
       - key: PORT
         value: 8001
       - key: DATABASE_URL
@@ -244,9 +237,9 @@ services:
     dockerContext: .
     plan: starter
     region: oregon
-    envVarGroups:
-      - engineeringos-internal-secrets
     envVars:
+      - key: DB_PASSWORD
+        sync: false
       - key: NODE_ENV
         value: production
       - key: PORT
@@ -260,8 +253,8 @@ services:
           name: engineeringos-db
           property: database
       # Narrowly-privileged, RLS-subject role (migration 052) -- not the
-      # database owner. DB_PASSWORD comes from the engineeringos-internal-secrets
-      # group, the same shared value engineeringos-api uses, since this worker
+      # database owner. DB_PASSWORD (set in the dashboard) is the
+      # same shared value engineeringos-api uses, since this worker
       # never runs migrations itself and doesn't need owner-level access.
       - key: DB_USER
         value: app_user
