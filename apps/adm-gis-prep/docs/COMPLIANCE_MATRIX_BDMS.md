@@ -76,7 +76,7 @@ Evidence classes: `VERIFIED_SPEC` explicit in the PDF; `ENGINEERING_CHECK` M4 pr
 | ENG-FILE-001 | DXF structure problems reported by the reader (recover/audit) | - | ENGINEERING_CHECK | - | WARNING | IMPLEMENTED | test_drawing_rules.py |  |
 | ENG-SHARED-001 | Shared-layer content copied into more than one dataset file | - | USER_DECISION_REQUIRED | - | WARNING | IMPLEMENTED | test_drawing_rules.py |  |
 | ENG-GEOREF-001 | Control-point georeferencing fit quality (residuals) within the accepted limit | - | ENGINEERING_CHECK | - | ERROR | IMPLEMENTED | test_bdms.py |  |
-| M4-IN-001 | Input drawing is a readable CAD file (DXF; DWG only through a configured converter) | - | ENGINEERING_CHECK | - | ERROR | IMPLEMENTED | test_integrity.py |  |
+| M4-IN-001 | Input drawing is a readable CAD file (DXF; DWG only through a configured converter) | - | ENGINEERING_CHECK | - | ERROR | IMPLEMENTED | test_dwg_input.py, test_integrity.py |  |
 | M4-SAFE-CRS | No coordinate transformation without explicit, confirmed, user-supplied parameters | - | ENGINEERING_CHECK | - | ERROR | IMPLEMENTED | test_bdms.py, test_crs.py |  |
 | USR-CRS-001 | Source coordinate system confirmed by the engineer | - | USER_DECISION_REQUIRED | - | ERROR | IMPLEMENTED | test_crs.py, test_reference_drm.py |  |
 | USR-MAP-001 | Entities on unrecognised layers need an engineer-assigned layer | - | USER_DECISION_REQUIRED | - | WARNING | IMPLEMENTED | test_bdms.py, test_mapping.py, test_reference_drm.py |  |

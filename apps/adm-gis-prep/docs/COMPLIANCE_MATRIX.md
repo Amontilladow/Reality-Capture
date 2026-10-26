@@ -93,7 +93,7 @@ Evidence classes: `VERIFIED_SPEC` explicit in the PDF; `ENGINEERING_CHECK` M4 pr
 | ENG-GEO-007 | Degenerate polygon (fewer than three distinct vertices or zero area) | - | ENGINEERING_CHECK | - | ERROR | IMPLEMENTED | test_drawing_rules.py |  |
 | ENG-GEO-008 | Attribute insertion point lies exactly on the polygon boundary | - | ENGINEERING_CHECK | - | WARNING | IMPLEMENTED | test_attributes.py |  |
 | ENG-FILE-001 | DXF structure problems reported by the reader (recover/audit) | - | ENGINEERING_CHECK | - | WARNING | IMPLEMENTED | test_drawing_rules.py |  |
-| M4-IN-001 | Input drawing is a readable CAD file (DXF; DWG only through a configured converter) | - | ENGINEERING_CHECK | - | ERROR | IMPLEMENTED | test_integrity.py | DWG input needs ODA File Converter or a DXF saved from AutoCAD; neither is bundled. |
+| M4-IN-001 | Input drawing is a readable CAD file (DXF; DWG only through a configured converter) | - | ENGINEERING_CHECK | - | ERROR | IMPLEMENTED | test_dwg_input.py, test_integrity.py | DWG input needs ODA File Converter or a DXF saved from AutoCAD; neither is bundled. |
 | ENG-SHARED-001 | Title/DimensionLine content copied into more than one dataset file | - | USER_DECISION_REQUIRED | - | WARNING | IMPLEMENTED | test_drawing_rules.py |  |
 | USR-MAP-001 | Entities on unrecognised layers need an engineer-assigned ADM layer | - | USER_DECISION_REQUIRED | p.11, §4.7 | WARNING | IMPLEMENTED | test_bdms.py, test_mapping.py, test_reference_drm.py |  |
 | USR-UNIT-001 | Engineer confirms the drawing is at full scale in metres | - | USER_DECISION_REQUIRED | p.8, §4.3 | ERROR | IMPLEMENTED | test_drawing_rules.py, test_reference_drm.py |  |
