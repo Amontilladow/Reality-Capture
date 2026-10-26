@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     # unauthenticated.
     internal_service_secret: str = ""
 
+    # GIS Preparation (routers/gis_prep.py): the engine's own interpreter and
+    # the limits that keep one drawing from exhausting this container.
+    gis_prep_python: str = "/opt/m4adm/bin/python"
+    gis_prep_memory_limit_mb: int = 320
+    gis_prep_max_upload_mb: int = 25
+    gis_prep_timeout_s: int = 840
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

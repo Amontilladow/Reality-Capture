@@ -11,25 +11,19 @@ Run: uvicorn m4adm.service:app --host 0.0.0.0 --port 8002
 from __future__ import annotations
 
 import hmac
-import io
-import json
 import os
 import shutil
 import tempfile
-import zipfile
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import Response
-from pydantic import ValidationError
 
-from m4adm import PROVISIONAL_LABEL, __version__
-from m4adm.models import JobSettings
-from m4adm.pipeline import prepare
+from m4adm import __version__
+from m4adm.package import InputRejected, build_package, parse_settings
 from m4adm.rules import PROFILES, load_profile
 
 MAX_UPLOAD = 500 * 1024 * 1024
-PACKAGE_EXCLUDE = {"input", "work"}          # the platform already holds the original drawing
 SAFE_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._- ")
 
 app = FastAPI(title="M4 GIS Preparation service", docs_url=None, redoc_url=None, openapi_url=None)
@@ -66,36 +60,22 @@ async def run_prepare(
 ):
     _check_secret(x_internal_service_secret)
     try:
-        job_settings = JobSettings(**json.loads(settings))
-    except (ValueError, ValidationError) as exc:
-        raise HTTPException(422, f"invalid settings: {exc}") from exc
-    if job_settings.template_path:
-        # A server-side path would let a caller make the service read arbitrary files.
-        raise HTTPException(422, "template_path is not accepted by the service")
-    if job_settings.profile not in _MANIFESTS:
-        raise HTTPException(422, f"unknown profile {job_settings.profile!r}")
+        job_settings = parse_settings(settings)
+    except InputRejected as exc:
+        raise HTTPException(422, str(exc)) from exc
     name = "".join(c if c in SAFE_CHARS else "_" for c in Path(drawing.filename or "drawing.dxf").name) or "drawing"
     data = await drawing.read()
     if len(data) > MAX_UPLOAD:
         raise HTTPException(413, "drawing larger than 500 MB")
     tmp = Path(tempfile.mkdtemp(prefix="m4adm-"))
     try:
-        src_dir = tmp / "src"
-        src_dir.mkdir()
-        source = src_dir / name
+        source = tmp / name
         source.write_bytes(data)
         try:
-            result = prepare(source, job_settings, tmp / "jobs", _MANIFESTS[job_settings.profile])
-        except (ValueError, FileNotFoundError) as exc:
+            meta = build_package(source, job_settings, tmp / "package.zip", _MANIFESTS[job_settings.profile])
+        except InputRejected as exc:
             raise HTTPException(422, str(exc)) from exc
-        buf = io.BytesIO()
-        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-            for f in sorted(result.job_dir.rglob("*")):
-                rel = f.relative_to(result.job_dir)
-                if f.is_file() and rel.parts[0] not in PACKAGE_EXCLUDE:
-                    z.write(f, rel.as_posix())
-        headers = {"X-M4ADM-Job": result.job_id, "X-M4ADM-Status": result.status,
-                   "X-M4ADM-Label": PROVISIONAL_LABEL}
-        return Response(buf.getvalue(), media_type="application/zip", headers=headers)
+        headers = {"X-M4ADM-Job": meta["job_id"], "X-M4ADM-Status": meta["status"], "X-M4ADM-Label": meta["label"]}
+        return Response((tmp / "package.zip").read_bytes(), media_type="application/zip", headers=headers)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

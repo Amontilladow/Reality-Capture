@@ -108,7 +108,9 @@ services:
       retries: 5
 
   ai-service:
-    build: ./apps/ai-service
+    build:
+      context: .
+      dockerfile: apps/ai-service/Dockerfile
     container_name: engineeringos-ai
     restart: unless-stopped
     ports:

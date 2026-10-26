@@ -75,3 +75,19 @@ def test_prepare_refuses_server_side_template_paths(client, tmp_path):
         r = client.post("/prepare", headers={"X-Internal-Service-Secret": SECRET}, files={"drawing": (path.name, fh)},
                         data={"settings": json.dumps({**SETTINGS, "template_path": "/etc/passwd"})})
     assert r.status_code == 422
+
+
+def test_package_command_writes_the_zip_and_rejects_bad_input(tmp_path, capsys):
+    from m4adm.package import main
+    path = _drawing(tmp_path)
+    settings = tmp_path / "settings.json"
+    settings.write_text(json.dumps(SETTINGS))
+    out = tmp_path / "package.zip"
+    assert main([str(path), str(settings), str(out)]) == 0
+    meta = json.loads(capsys.readouterr().out)
+    assert meta["status"] == "Ready for review" and meta["label"].startswith("PROVISIONAL")
+    assert "qc_report.json" in zipfile.ZipFile(out).namelist()
+
+    settings.write_text(json.dumps({**SETTINGS, "template_path": "/etc/passwd"}))
+    assert main([str(path), str(settings), str(tmp_path / "x.zip")]) == 2
+    assert "template_path" in capsys.readouterr().err
