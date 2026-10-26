@@ -41,3 +41,24 @@ m4adm fixtures /tmp/fx && m4adm inspect /tmp/fx/SYNTHETIC_mixed.dxf
 | DWG input: LibreDWG | Install LibreDWG (open source, GPL; used only as a separate program), set `M4ADM_DWG2DXF=<path to dwg2dxf>` or put it on PATH | Same as above; ODA is preferred when both are installed |
 | Official ADM template | Save as DXF 2010; pass `--template` | Comparison only (see INTEGRATION_PLAN) |
 | ADM PDF | Place it in `reference/` (git-ignored). Needed only to regenerate Appendix 2: `python scripts/extract_plot_usage.py reference/<pdf> rules/adm_v1.18.2_plot_usage.yaml` (needs `pdftotext`) | - |
+
+## Reality Capture module (cloud)
+
+The same engine also runs inside the Reality Capture platform as **GIS Preparation**: it is in the project sidebar under Engineering, at `/projects/:id/gis-prep`.
+
+| Part | Where |
+|---|---|
+| Private service | `src/m4adm/service.py` + `Dockerfile` (uvicorn on port 8002). Render pserv `engineeringos-gis-prep` |
+| API | `apps/api/src/modules/gis-prep` (Bull queue `gis-prep`), table `gis_prep_jobs` (migration 076) |
+| Web | `apps/web/src/pages/GisPrepPage.tsx` |
+
+The API calls the service with `GIS_PREP_SERVICE_URL` and the shared `INTERNAL_SERVICE_SECRET`. Without the secret, the service refuses every request except `/health`. For local development only, `M4ADM_ALLOW_NO_SECRET=1` lifts this.
+
+```bash
+INTERNAL_SERVICE_SECRET=dev-secret uvicorn m4adm.service:app --port 8002   # in apps/adm-gis-prep
+GIS_PREP_SERVICE_URL=http://localhost:8002 INTERNAL_SERVICE_SECRET=dev-secret pnpm --filter api dev
+```
+
+Each job stores its package at `<company>/gis-prep/<project>/<job>/`. That covers the prepared DXFs, `qc_report.*`, `processing_manifest.json`, `geometry_log.json`, `audit.jsonl` and `package.zip`. The uploaded original is never changed. A re-run with layer-mapping decisions creates a new job on the same original.
+
+The image bundles no DWG converter, so DWG uploads come back blocked with the reason. Upload DXF, or add ODA File Converter / LibreDWG to the image (see the table above).

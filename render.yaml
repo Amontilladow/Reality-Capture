@@ -170,6 +170,8 @@ services:
         sync: false
       - key: AI_SERVICE_URL
         value: http://engineeringos-ai-service:8001
+      - key: GIS_PREP_SERVICE_URL
+        value: http://engineeringos-gis-prep:8002
 
   # ── Vector DB for the AI assistant/search (RAG) ─────────────────────────
   # Private service ONLY -- never expose this publicly. It has no auth of
@@ -230,6 +232,24 @@ services:
         sync: false
       - key: S3_BUCKET
         sync: false
+
+  # ── GIS Preparation service (apps/adm-gis-prep) ────────────────────────
+  # Private service ONLY -- no user auth of its own; engineeringos-api checks
+  # company/project access and the drawings permission, then calls it with
+  # the shared X-Internal-Service-Secret. Stateless: no database, no storage
+  # credentials; each request's drawing lives only in a temp dir for the run.
+  - type: pserv
+    name: engineeringos-gis-prep
+    runtime: docker
+    dockerfilePath: apps/adm-gis-prep/Dockerfile
+    dockerContext: apps/adm-gis-prep
+    plan: starter
+    region: oregon
+    envVarGroups:
+      - engineeringos-internal-secrets
+    envVars:
+      - key: PORT
+        value: 8002
 
   # ── IFC processing worker ───────────────────────────────────────────────
   - type: worker
