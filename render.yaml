@@ -245,9 +245,8 @@ services:
     dockerContext: apps/adm-gis-prep
     plan: starter
     region: oregon
-    envVarGroups:
-      - engineeringos-internal-secrets
     envVars:
+      - fromGroup: engineeringos-internal-secrets
       - key: PORT
         value: 8002
 

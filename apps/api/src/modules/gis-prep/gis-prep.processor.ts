@@ -108,12 +108,21 @@ export class GisPrepProcessor {
     const form = new FormData();
     form.append('settings', JSON.stringify(row.settings));
     form.append('drawing', new Blob([drawing]), row.sourceFilename);
-    const res = await fetch(`${this.baseUrl}/prepare`, {
-      method: 'POST',
-      headers: { 'X-Internal-Service-Secret': this.secret },
-      body: form,
-      signal: AbortSignal.timeout(SERVICE_TIMEOUT_MS),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}/prepare`, {
+        method: 'POST',
+        headers: { 'X-Internal-Service-Secret': this.secret },
+        body: form,
+        signal: AbortSignal.timeout(SERVICE_TIMEOUT_MS),
+      });
+    } catch (err) {
+      // Network-level failure (service not deployed, restarting, timed out):
+      // still retried by Bull, but recorded in words an engineer can act on
+      // instead of undici's bare "fetch failed".
+      const cause = err instanceof Error ? ((err.cause as Error | undefined)?.message ?? err.message) : String(err);
+      throw new Error(`The GIS preparation service could not be reached (${cause}). Check that engineeringos-gis-prep is deployed and running, then re-run the job.`);
+    }
     if (!res.ok) {
       const detail = await res.text().catch(() => '');
       const message = `GIS preparation service returned ${res.status}: ${readableDetail(detail)}`;
