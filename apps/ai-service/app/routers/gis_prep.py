@@ -116,7 +116,8 @@ async def prepare(drawing: UploadFile = File(...), settings_json: str = Form(...
             raise HTTPException(500, f"GIS preparation failed: {message or f'exit code {proc.returncode}'}")
 
         meta = json.loads(stdout.decode("utf-8"))
-        headers = {"X-M4ADM-Job": meta["job_id"], "X-M4ADM-Status": meta["status"], "X-M4ADM-Label": meta["label"]}
+        headers = {"X-M4ADM-Job": meta["job_id"], "X-M4ADM-Status": meta["status"], "X-M4ADM-Label": meta["label"],
+                   "X-M4ADM-Kind": meta.get("kind", "preparation")}
         return Response(package.read_bytes(), media_type="application/zip", headers=headers)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

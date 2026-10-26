@@ -339,3 +339,53 @@ def bdms_floor(manifest: Manifest, *, door_vertices_on_spaces: bool = True, extr
            {"DRAWINGTITLE": "SYNTH ZONE-SE01_01-C1-1-F1", "DRAWINGTYPE": "As Built", "DATEOFDRAWING": "14-Jan-2026",
             "DRAWINGSCALE": "100"})
     return doc
+
+
+# --------------------------------------------------------------------------- architectural source (conversion)
+def arch_floor(*, units: int = 4, door_gap: float = 900.0, exterior_gap: float = 0.0, small_gap: float = 0.0,
+               duplicate_walls: bool = False, labels: dict | None = None, shaft: bool = False, column: bool = False,
+               second_wall_gap: bool = False) -> Drawing:
+    """SYNTHETIC architectural floor plan in millimetres (local coordinates), the kind of drawing the converter reads.
+
+    12 x 8 m building, 200 mm walls drawn as closed rectangles on A-200-M_WALL. An interior wall at x = 6 m splits
+    it into OFFICE (west) and STORE (east) with a door opening of `door_gap` mm. Room names on A-FLOR-IDEN with
+    room numbers below them, like the M19B drawings.
+    """
+    doc = ezdxf.new("R2010")
+    doc.header["$INSUNITS"] = units
+    doc.header.custom_vars.append("SYNTHETIC", SYNTHETIC_LABEL)
+    msp = doc.modelspace()
+
+    def wall(x0, y0, x1, y1, layer="A-200-M_WALL"):
+        msp.add_lwpolyline([(x0, y0), (x1, y0), (x1, y1), (x0, y1)], close=True, dxfattribs={"layer": layer})
+
+    if exterior_gap:
+        wall(0, 0, 1000, 200)                                # south, with a gap wider than any doorway
+        wall(1000 + exterior_gap, 0, 12000, 200)
+    else:
+        wall(0, 0, 12000, 200)                               # south
+    wall(0, 7800, 12000, 8000)                               # north
+    wall(0, 0, 200, 8000)                                    # west
+    if small_gap:
+        wall(11800, 0, 12000, 4000)                          # east, split by a small drafting gap
+        wall(11800, 4000 + small_gap, 12000, 8000)
+    else:
+        wall(11800, 0, 12000, 8000)                          # east
+    wall(5900, 200, 6100, 3000)                              # interior wall, door opening above y = 3000
+    wall(5900, 3000 + door_gap, 6100, 7800)
+    if second_wall_gap:
+        wall(5900, 3000 + door_gap, 6100, 7800)
+    if duplicate_walls:
+        msp.add_line((0, 0), (12000, 0), dxfattribs={"layer": "A-200-M_WALL"})
+        msp.add_line((0, 0), (12000, 0), dxfattribs={"layer": "A-200-M_WALL"})
+        msp.add_line((5900, 200), (5900, 3000), dxfattribs={"layer": "A-200-M_WALL"})
+    if shaft:
+        wall(10000, 6000, 10100, 7800)                       # 1.7 x 1.6 m shaft in the store's NE corner
+        wall(10100, 6000, 11800, 6100)
+    if column:
+        wall(2900, 3900, 3300, 4300)                         # free-standing 0.4 m column in the office
+    for text, at in (labels if labels is not None else
+                     {"OFFICE": (2000, 5000), "01-01": (2000, 4600), "STORE": (8500, 3000), "01-02": (8500, 2600)}
+                     ).items():
+        msp.add_text(text, dxfattribs={"layer": "A-FLOR-IDEN", "height": 150, "insert": at})
+    return doc

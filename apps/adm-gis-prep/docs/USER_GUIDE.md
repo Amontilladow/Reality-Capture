@@ -11,6 +11,28 @@
 
 **Strict mode** is on by default: the job reaches *Ready for review* only when there are **no errors and no warnings** and no open decisions. Untick it only for exploratory runs.
 
+## Converting an architectural floor plan (new)
+
+For an original architectural drawing (walls as lines, room names as text, millimetres, local coordinates), use **conversion**, not preparation:
+
+```bash
+m4adm convert "M19B-...-FIRST FLOOR....dxf" --zone "KHALIFA CITY" --sector SE45_01 --plot C8 --building 1 --floor F1 \
+  --unit-number 1                      # only if the whole floor is one unit
+# georeference when you have 3-4 control points (drawing units -> UTM E N), e.g. building corners from the affection plan:
+#   --control-points points.txt --confirm-transformation
+```
+
+In Reality Capture: GIS Preparation → **Convert architectural floor plan → DRM BDMS draft**.
+
+The job writes `output/<Zone>-<Sector>-<Plot>-<Building>-<Floor>_DRAFT.dxf` plus `conversion_report.html`, which contains:
+- what was generated, with high-confidence and review items;
+- a preview with every room and doorway closure;
+- the attributes still missing;
+- georeferencing status;
+- the preliminary QC of the draft.
+
+Review the orange items, accept or reject them (in the app, or with `feature_decisions` in a settings file), fill in the values the drawing cannot provide (`floor_height`, `title_values`, unit/owner data), and re-run. The draft is never "approved": finish it in AutoCAD, save as DWG and run the official QC. Details: [CONVERSION.md](CONVERSION.md).
+
 ## BDMS building floors: what the drawing must contain
 
 One floor of one building per file, in UTM metres (zone 40N, or 39N in western Al Dhafra), with these closed LWPOLYLINE layers and one Detail block inside each polygon:

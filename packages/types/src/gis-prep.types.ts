@@ -32,6 +32,27 @@ export interface GisPrepSettings {
   accepted_fixes?: string[];
 }
 
+// CAD-to-GIS conversion of an architectural floor plan into a DRM BDMS draft (m4adm.convert.ConversionSettings).
+export interface GisConvertSettings {
+  mode: 'convert';
+  profile: 'bdms_building';
+  metadata: Record<string, string>;
+  source_units?: 'auto' | 'mm' | 'cm' | 'm';
+  single_unit_number?: string;
+  floor_height?: string;
+  building_number_of_floors?: string;
+  building_usage_category?: string;
+  building_usage_type?: string;
+  title_values?: Record<string, string>;
+  crs?: {
+    target_crs?: string;
+    control_points?: [[number, number], [number, number]][];
+    confirm_transformation?: boolean;
+    max_georef_rms?: number;
+  };
+  feature_decisions?: Record<string, { action: 'accept' | 'reject'; attributes?: Record<string, string> }>;
+}
+
 export interface GisPrepCounts {
   errors: number;
   warnings: number;
@@ -58,7 +79,7 @@ export interface GisPrepJob {
   statusLabel?: string;
   toolJobId?: string;
   counts?: GisPrepCounts;
-  settings: GisPrepSettings;
+  settings: GisPrepSettings | GisConvertSettings;
   outputs: GisPrepOutputFile[];
   packageStorageKey?: string;
   packageUrl?: string;

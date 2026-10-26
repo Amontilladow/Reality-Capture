@@ -75,7 +75,8 @@ async def run_prepare(
             meta = build_package(source, job_settings, tmp / "package.zip", _MANIFESTS[job_settings.profile])
         except InputRejected as exc:
             raise HTTPException(422, str(exc)) from exc
-        headers = {"X-M4ADM-Job": meta["job_id"], "X-M4ADM-Status": meta["status"], "X-M4ADM-Label": meta["label"]}
+        headers = {"X-M4ADM-Job": meta["job_id"], "X-M4ADM-Status": meta["status"], "X-M4ADM-Label": meta["label"],
+                   "X-M4ADM-Kind": meta["kind"]}
         return Response((tmp / "package.zip").read_bytes(), media_type="application/zip", headers=headers)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
