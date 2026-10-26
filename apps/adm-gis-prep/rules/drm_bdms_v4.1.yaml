@@ -1,0 +1,772 @@
+# M4 GIS Preparation - rule manifest, profile "bdms_building"
+#
+# Sources (official attachments supplied by M4 on 2026-10-26, kept locally in reference/, not committed):
+#   SPEC  "Building Data Delivery Specification (BDMS 4.1)" - Al Dhafra Municipality (DRM) / ADM SDD,
+#         "Modified to support DRM V4.1 2021/01/26", file BDMS 4.1 Standards for DRM_270121.pdf (31 pages)
+#   QCM   "BDMS 4.1 QC Manual" for DRM_CPDQC_V2.3.fas, file DRM_CPDQC_V2.3_UserManual.pdf (39 pages)
+#   UPC   UPC_Land Use Classification.xls (Appendix C)
+#   SAMPLES  four ADM-approved (official-QC-passed) drawings KHALIFA CITY-SE45_01-C8-1-{G,F1,F2,F3}.dxf
+# Page numbers: SPEC printed footer page; QCM "Page n of 39".
+# Where the SAMPLES contradict the SPEC text, the behaviour of the official QC (as evidenced by the
+# accepted samples) is followed and the conflict is recorded in docs/DISCREPANCIES_BDMS.md.
+
+profile: bdms_building
+
+spec:
+  id: DRM-BDMS
+  title: Building Data Delivery Specification (BDMS 4.1) - Building Construction CAD Data Delivery Standards
+  issuer: Al Dhafra Municipality (DRM) / Abu Dhabi Municipality Spatial Data Division
+  version: "4.1"
+  revision_date: "2021/01/26"
+  source_pdf: BDMS 4.1 Standards for DRM_270121.pdf
+  source_pdf_sha256: 63502036084d79a063c5d9369e4f2d1dee58b08b4b33dce6d0aa464b88122814
+  source_pdf_pages: 31
+  qc_manual: DRM_CPDQC_V2.3_UserManual.pdf
+  qc_manual_sha256: 1717cad958ee95208ca65e6493086609ad4964d9aa7ac76138ec45ee96683aed
+  qc_tool: DRM_CPDQC_V2.3.fas
+  qc_tool_sha256: e250d5c28934734e5c066fbb667eec13bc020dc31ba08912a211ec1e3e6418c8
+  manifest_schema: 1
+  manifest_revision: 1
+  extracted_on: "2026-10-26"
+  codelists_file: drm_bdms_v4.1_codelists.yaml
+
+output:
+  required_format: DWG
+  min_autocad_release: "2006"
+  min_version_code: AC1018
+  max_version_code: null
+  ref: {page: 14, section: "1.4.1"}
+  produced_format: DXF
+  produced_dxf_version: R2010
+  create_empty_layers: false        # SAMPLES: layers without content are absent (QC "Mandatory Polygon is missing")
+  layer_table_extra_allowed: ["0", "Defpoints"]   # present in every accepted sample
+  purge_foreign_layers: true        # QC 4.1 #6 "Non specified layer/s found"
+  one_file_per: floor
+
+units:
+  insunits: null                    # not enforced: SAMPLES carry $INSUNITS=4 (mm) with metre coordinates
+  lunits: null
+  description: >-
+    SPEC §1.4.2 says one drawing unit equals one centimetre, but the official-QC-passed SAMPLES are drawn
+    in metres (UTM 40N coordinates, 63.6 m building). Geometry must be in metres to be in UTM; the engineer
+    confirms it. See DISCREPANCIES_BDMS B-01.
+  ref: {page: 14, section: "1.4.2"}
+
+crs:
+  target_epsg: 32640
+  allowed_epsg: [32639, 32640]
+  name: WGS 84 / UTM zone 39N or 40N (by building location)
+  ref: {page: 8, section: "1.2"}
+  plausibility_window_lonlat: {min_lon: 51.0, max_lon: 56.5, min_lat: 22.4, max_lat: 25.5}
+
+filename:
+  kind: bdms
+  pattern: "<ZoneName>-<SectorNumber>-<PlotNumber>-<BuildingNumber>-<FloorID>.dwg"
+  separator: "-"
+  floor_id_regex: "^(G|[FMB][1-9][0-9]*)$"
+  building_id_regex: "^[1-9][0-9]*$"
+  extension: .dwg
+  ref: {page: "8-12", section: "1.3"}
+  examples: [AbuDhabi-E_1-C_1-1-F1.dwg, AbuDhabi-E_1-C_1-1-G.dwg, AbuDhabi-E_1-C_1-1-B1.dwg, AbuDhabi-E_1-C_1-1-M1.dwg]
+
+title_block: null                    # BDMS uses ProjectDetail + DrawingDetail, checked by validate.bdms
+title_blocks:
+  layer: Title
+  required: [ProjectDetail, DrawingDetail]
+  ref: {page: "15-16", section: "1.4.5"}
+
+prohibited_entities: [HATCH, SOLID, XLINE, LINE, MPOLYGON, DIMENSION, ARC_DIMENSION, LEADER, MLEADER, MULTILEADER, POINT, RAY, TRACE, MLINE]
+cross_layer_snapping: [BuildingOutline, Floor, Space, Unit, Window, Door]   # QCM 4.5
+
+categories:
+  building:
+    label: Building floor
+    file_token: floor
+    ref: {page: "17-18", section: "1.4.6", table: "Table 1"}
+    layers:
+      - {name: BuildingOutline, topology: polyline, constraint: closed, color: 6, linetype: Continuous, lineweight: default, lineweight_accept: [25], detail: BuildingDetail}
+      - {name: BuildingDetail, topology: point, constraint: attribute_block, color: 6, linetype: Continuous, lineweight: default, lineweight_accept: [25], parent: BuildingOutline, block: BuildingDetail}
+      - {name: BuildingRoof, topology: polyline, constraint: closed, color: 32, linetype: Continuous, lineweight: default, lineweight_accept: [25], detail: BuildingRoofDetail}
+      - {name: BuildingRoofDetail, topology: point, constraint: attribute_block, color: 32, linetype: Continuous, lineweight: default, lineweight_accept: [25], parent: BuildingRoof, block: BuildingRoofDetail}
+      - {name: Plot, topology: polyline, constraint: closed, color: 51, linetype: Continuous, lineweight: default, lineweight_accept: [25], detail: PlotDetail}
+      - {name: PlotDetail, topology: point, constraint: attribute_block, color: 51, linetype: Continuous, lineweight: default, lineweight_accept: [25], parent: Plot, block: PlotDetail}
+      - {name: Floor, topology: polyline, constraint: closed, color: 4, linetype: Continuous, lineweight: default, lineweight_accept: [25], detail: FloorDetail}
+      - {name: FloorDetail, topology: point, constraint: attribute_block, color: 4, linetype: Continuous, lineweight: default, lineweight_accept: [25], parent: Floor, block: FloorDetail}
+      - {name: Space, topology: polyline, constraint: closed, color: 3, linetype: Continuous, lineweight: default, lineweight_accept: [25], detail: SpaceDetail, nesting_levels: 1}
+      - {name: SpaceDetail, topology: point, constraint: attribute_block, color: 3, linetype: Continuous, lineweight: default, lineweight_accept: [25], parent: Space, block: SpaceDetail}
+      - {name: Unit, topology: polyline, constraint: closed, color: 5, linetype: Continuous, lineweight: default, lineweight_accept: [25], detail: UnitDetail}
+      - {name: UnitDetail, topology: point, constraint: attribute_block, color: 5, linetype: Continuous, lineweight: default, lineweight_accept: [25], parent: Unit, block: UnitDetail}
+      - {name: Door, topology: polyline, constraint: closed, color: 181, linetype: Continuous, lineweight: default, lineweight_accept: [25], detail: DoorDetail}
+      - {name: DoorDetail, topology: point, constraint: attribute_block, color: 181, linetype: Continuous, lineweight: default, lineweight_accept: [25], parent: Door, block: DoorDetail}
+      - {name: Window, topology: polyline, constraint: closed, color: 57, linetype: Continuous, lineweight: default, lineweight_accept: [25], detail: WindowDetail}
+      - {name: WindowDetail, topology: point, constraint: attribute_block, color: 57, linetype: Continuous, lineweight: default, lineweight_accept: [25], parent: Window, block: WindowDetail}
+      - {name: SharedSpace, topology: polyline, constraint: closed, color: 2, linetype: Continuous, lineweight: default, lineweight_accept: [25], detail: SharedSpaceDetail}
+      - {name: SharedSpaceDetail, topology: point, constraint: attribute_block, color: 2, linetype: Continuous, lineweight: default, lineweight_accept: [25], parent: SharedSpace, block: SharedSpaceDetail}
+      - {name: Miscellaneous, topology: mixed, constraint: none, color: 7, linetype: Continuous, lineweight: default, lineweight_accept: [25]}
+      - {name: Title, topology: mixed, constraint: none, color: 7, linetype: Continuous, lineweight: default, lineweight_accept: [25]}
+
+domains:
+  usage_category_type: [Agricultural, Cultural, Commercial, CommercialResidential, Diplomatic, Educational, Governmental, Health, Industrial, Recreational, Religious, Residential, Utility, PublicFacility, Undefined]
+  # QCM Appendix 1 lists 2 (UsageType) and 3 (UnitType); spelling kept exactly as printed (e.g. "Inrastructure", "Employee Hosing").
+  usage_type: [Residential, Commercial, Industrial, Community Services, Open Space and Recreation, Inrastructure, Agricultural, Household Living, Institutional Living, Employee Hosing, Labor Housing, Palace Residential, Mixed-use Residential, Single-use Commercial, Mixed-use Commercial, City Serving Industrial, Research & Development, General Industrial, Heavy Industrial, Public & Institutional, Educational, Healthcare, Religious, General Community Services, Developed Open Space, Natural Open Space, Archeological, Transportation, Utilities, Farm, Poultry/Broiler Operation, Dairy Livestock Facility, Abbatoir, Ranch, Other]
+  unit_type: [Residential, Commercial, Industrial, Community Services, Open Space and Recreation, Inrastructure, Agricultural, Household Living, Institutional Living, Employee Hosing, Labor Housing, Palace Residential, Mixed-use Residential, Single-use Commercial, Mixed-use Commercial, City Serving Industrial, Research & Development, General Industrial, Heavy Industrial, Public & Institutional, Educational, Healthcare, Religious, General Community Services, Developed Open Space, Natural Open Space, Archeological, Transportation, Utilities, Farm, Poultry/Broiler Operation, Dairy Livestock Facility, Abbatoir, Ranch, Other]
+  drawing_type: [As Planned, As Built, Modification]
+  unit_classification_suggested: [Studio Flat, Bungalow, Duplex, Penthouse, Apartment, Guest House, Shop, Office, Building, Business Centre, Hall, Hotel, Restaurant, Cinema, Showroom, Warehouse]
+
+blocks:
+  BuildingDetail:
+    ref: {page: "19-20", section: "1.4.6.1.1"}
+    attributes:
+      - {tag: BuildingNumber, type: integer, mandatory: true, max_length: 10}
+      - {tag: BuildingNameEnglish, type: character, mandatory: false, max_length: 200}
+      - {tag: BuildingNameArabic, type: character, mandatory: false, max_length: 200}
+      - {tag: BuildingPopNameEng, type: character, mandatory: false, max_length: 200}
+      - {tag: BuildingPopNameAra, type: character, mandatory: false, max_length: 200}
+      - {tag: BuildingNumOfFloors, type: integer, mandatory: true}
+      - {tag: UsageCategoryType, type: character, mandatory: true, max_length: 30, domain: usage_category_type}
+      - {tag: UsageType, type: character, mandatory: true, max_length: 30, domain: usage_type}
+      - {tag: PlotNumber, type: character, mandatory: true, max_length: 25}
+      - {tag: SectorNumber, type: character, mandatory: true, max_length: 50}
+  PlotDetail:
+    ref: {page: "20-21", section: "1.4.6.1.2"}
+    attributes:
+      - {tag: PlotNumber, type: character, mandatory: true, max_length: 25}
+      - {tag: SectorNumber, type: character, mandatory: true, max_length: 100}
+      - {tag: ZoneName, type: character, mandatory: true, max_length: 200}
+  FloorDetail:
+    ref: {page: 21, section: "1.4.6.1.3"}
+    attributes:
+      - {tag: FloorNumber, type: character, mandatory: true, max_length: 10}
+      - {tag: BuildingNumber, type: integer, mandatory: true, max_length: 10}
+      - {tag: FloorHeight, type: float, mandatory: true}
+  # Not described in SPEC; structure from the official template blocks as found in every SAMPLE.
+  BuildingRoofDetail:
+    ref: {page: 17, section: "1.4.6 (template)"}
+    attributes:
+      - {tag: BuildingNumber, type: integer, mandatory: true, max_length: 10}
+      - {tag: BuildingHeight, type: float, mandatory: false}
+  UnitDetail:
+    ref: {page: "21-22", section: "1.4.6.1.4"}
+    attributes:
+      - {tag: UnitNumber, type: integer, mandatory: true, max_length: 10}
+      - {tag: FloorNumber, type: character, mandatory: true, max_length: 10}
+      - {tag: UnitType, type: character, mandatory: true, max_length: 50, domain: unit_type}
+      - {tag: UnitClassification, type: character, mandatory: true, max_length: 50}
+      - {tag: UnitCategory, type: character, mandatory: false, max_length: 25}
+      - {tag: UnitArea, type: number, mandatory: true, max_length: 10}
+      - {tag: UnitNumBedroom, type: integer, mandatory: true, max_length: 10}
+      - {tag: UnitNumBathroom, type: integer, mandatory: true, max_length: 10}
+      - {tag: UnitBalconiesArea, type: number, mandatory: false, max_length: 10}
+      - {tag: UnitUsageType, type: character, mandatory: true, max_length: 50}
+      - {tag: UnitOwnerName, type: character, mandatory: true, max_length: 50}
+      - {tag: UnitOwnerNatioanlity, type: character, mandatory: true, max_length: 50}
+      - {tag: UnitOwnerPassport, type: character, mandatory: true, max_length: 25}
+  SpaceDetail:
+    ref: {page: "22-23", section: "1.4.6.1.5"}
+    attributes:
+      - {tag: SpaceNumber, type: integer, mandatory: true, max_length: 10}
+      - {tag: UnitNumber, type: integer, mandatory: false, max_length: 10}
+      - {tag: FloorNumber, type: character, mandatory: true, max_length: 10}
+      - {tag: Spaceusage, type: character, mandatory: true, max_length: 50}
+  DoorDetail:
+    ref: {page: 23, section: "1.4.6.1.6"}
+    attributes:
+      - {tag: SpaceNumber, type: integer, mandatory: true, max_length: 10}
+      - {tag: UnitNumber, type: integer, mandatory: false, max_length: 10}
+      - {tag: FloorNumber, type: character, mandatory: true, max_length: 10}
+      - {tag: Type, type: character, mandatory: false, max_length: 50}
+  WindowDetail:
+    ref: {page: 23, section: "1.4.6.1.7"}
+    attributes:
+      - {tag: SpaceNumber, type: integer, mandatory: true, max_length: 10}
+      - {tag: UnitNumber, type: integer, mandatory: false, max_length: 10}
+      - {tag: FloorNumber, type: character, mandatory: true, max_length: 10}
+      - {tag: Type, type: character, mandatory: false, max_length: 50}
+  SharedSpaceDetail:
+    ref: {page: "27-29", section: "Appendix F"}
+    attributes:
+      - {tag: SpaceNumber, type: integer, mandatory: true, max_length: 10}
+      - {tag: Spaceusage, type: character, mandatory: true, max_length: 50}
+      - {tag: BelongToBuildingNumber, type: character, mandatory: false, max_length: 10}
+      - {tag: BelongToFloorNumber, type: character, mandatory: false, max_length: 10}
+      - {tag: BelongToUnitNumber, type: character, mandatory: false, max_length: 10}
+      - {tag: LinkToBuildingNumber, type: character, mandatory: true}
+      - {tag: LinkToFloorNumber, type: character, mandatory: false}
+      - {tag: LinkToUnitNumber, type: character, mandatory: false}
+      - {tag: LinkToSpaceNumber, type: character, mandatory: false}
+  ProjectDetail:
+    ref: {page: 15, section: "1.4.5"}
+    attributes:
+      - {tag: DeveloperName, type: character, mandatory: true}
+      - {tag: PropertyName, type: character, mandatory: false}
+      - {tag: UniqueBuildingNumber, type: integer, mandatory: true}
+      - {tag: BuildingName, type: character, mandatory: false}
+  DrawingDetail:
+    ref: {page: "15-16", section: "1.4.5"}
+    attributes:
+      - {tag: DrawingTitle, type: character, mandatory: true}
+      - {tag: DrawingType, type: character, mandatory: true, domain: drawing_type}
+      - {tag: DateOfDrawing, type: date, mandatory: true}
+      - {tag: DrawingScale, type: number, mandatory: false}
+
+# QC snapping tolerance is "0.0000" (QCM p20): coordinates are compared to four decimals.
+tolerances:
+  coincidence: 0.0001
+  snap_search: 0.01
+  zero_length: 0.0001
+  overlap_area: 0.0001
+  arc_sagitta: 0.01
+  attribute_vertex: 0.0001
+
+# Generic checks are written once and emit generic rule ids; this profile maps them onto its own rules.
+# null = not applicable in this profile (listed in every report as "checks not applicable").
+rule_aliases:
+  ADM-FMT-001: DRM-SPEC-FMT
+  ADM-FMT-002: null
+  ADM-FMT-003: null
+  ADM-NAME-001: DRM-GEN-01
+  ADM-NAME-002: DRM-GEN-01
+  ADM-NAME-003: DRM-GEN-01
+  ADM-NAME-004: DRM-GEN-01
+  ADM-NAME-005: DRM-GEN-01
+  ADM-NAME-006: DRM-GEN-01
+  ADM-NAME-007: DRM-GEN-01
+  ADM-NAME-008: null
+  ADM-NAME-009: DRM-SPEC-FMT
+  ADM-UNIT-001: DRM-SPEC-UNIT
+  ADM-UNIT-002: null
+  ADM-CRS-001: DRM-GEN-03
+  ADM-CRS-002: DRM-GEN-03
+  ADM-TTL-001: DRM-SPEC-TITLE
+  ADM-TTL-002: DRM-SPEC-TITLE
+  ADM-TTL-003: DRM-SPEC-TITLE
+  ADM-TTL-004: null
+  ADM-LYR-001: DRM-GEN-06
+  ADM-LYR-002: DRM-SPEC-LYR
+  ADM-LYR-003: DRM-GEO-09
+  ADM-LYR-004: null
+  ADM-LYR-005: DRM-GEO-09
+  ADM-LYR-006: DRM-GEO-07
+  ADM-LYR-007: DRM-SPEC-LYR
+  ADM-CAP-001A: DRM-SPEC-TOPO
+  ADM-CAP-001B: DRM-GEO-02
+  ADM-CAP-001C: DRM-SPEC-TOPO
+  ADM-CAP-001D: DRM-SPEC-TOPO
+  ADM-CAP-001E: DRM-SPEC-TOPO
+  ADM-CAP-001F: DRM-GEO-11
+  ADM-CAP-001G: DRM-GEO-08
+  ADM-CAP-002: DRM-SNAP-01
+  ADM-CAP-003: DRM-GEO-09
+  ADM-CAP-004: DRM-GEO-05
+  ADM-CAP-005: DRM-GEO-09
+  ADM-CAP-005B: DRM-GEO-10
+  ADM-CAP-006: DRM-ATT-02
+  ADM-CAP-006B: null
+  ADM-CAP-007: DRM-GEO-09
+  ADM-CAP-007B: DRM-SPEC-HYG
+  ADM-CAP-008: DRM-GEO-04
+  ADM-CAP-009: DRM-GEO-03
+  ADM-CAP-010: DRM-GEO-09
+  ADM-ATT-001: DRM-ATT-01
+  ADM-ATT-002: DRM-ATT-32
+  ADM-ATT-003: DRM-ATT-03
+  ADM-ATT-004: DRM-ATT-45
+  ADM-ATT-005: DRM-ATT-26
+  ADM-ATT-006: DRM-ATT-26
+  ADM-ATT-007: null
+  ADM-ATT-008: DRM-ATT-26
+  ADM-ATT-009: null
+  ADM-ATT-010: DRM-GEO-09
+  ADM-ATT-011: DRM-SPEC-ENTRY
+  ADM-ATT-012: null
+  ADM-ATT-013: DRM-ATT-32
+  ADM-SRV-001: null
+  ADM-SRV-002: null
+  ENG-SRV-003: null
+  ENG-GEO-001: DRM-GEO-09
+  ENG-GEO-005: DRM-GEO-09
+  ENG-GEO-007: DRM-GEO-01
+  ENG-NEST-001: DRM-GEO-06
+  PND-TPL-001: null
+  PND-QC-001: null
+
+rules:
+  # ------------------------------------------------------------ QC manual 4.1 General errors
+  - id: DRM-GEN-01
+    title: Drawing file name follows Zone-Sector-Plot-Building-Floor, hyphen separated
+    qc_error: Incorrect Drawing File Name
+    evidence: VERIFIED_SPEC
+    ref: {page: "8-12", section: "SPEC 1.3; QCM 4.1 #1"}
+    severity: ERROR
+    check: bdms.filename
+    implementation: IMPLEMENTED
+  - id: DRM-GEN-02
+    title: Floor ID in the file name is G, Fn, Mn or Bn (n positive integer)
+    qc_error: Incorrect Floor ID in the file Name
+    evidence: VERIFIED_SPEC
+    ref: {page: "11-12", section: "SPEC Table 2; QCM 4.1 #2, 4.4 #12"}
+    severity: ERROR
+    check: bdms.filename
+    implementation: IMPLEMENTED
+  - id: DRM-GEN-03
+    title: Drawing is in the DRM coordinate system (WGS 84 / UTM 39N or 40N, metres)
+    qc_error: The drawing is not in the correct (coordinate) system
+    evidence: VERIFIED_SPEC
+    ref: {page: 8, section: "SPEC 1.2; QCM 4.1 #3"}
+    severity: ERROR
+    check: crs.declared
+    implementation: PARTIAL
+    limitation: The exact test the QC tool applies is not documented; the tool checks the confirmed declaration and the extent plausibility.
+  - id: DRM-GEN-04
+    title: ZoneName / SectorNumber belong to the official lists embedded in the QC tool
+    qc_error: Incorrect ZoneName / SectorNumber found in the file name
+    evidence: PENDING_OFFICIAL_CONFIRMATION
+    ref: {page: 11, section: "QCM 4.1 #4-5"}
+    severity: INFO
+    check: bdms.official_lists
+    implementation: NOT_IMPLEMENTED
+    limitation: The official zone and sector lists are compiled into the .FAS and are not published; only consistency between file name and PlotDetail is checked (DRM-ATT-06).
+  - id: DRM-GEN-06
+    title: Only specified layers exist in the drawing
+    qc_error: Non specified layer/s found
+    evidence: VERIFIED_SPEC
+    ref: {page: 17, section: "SPEC 1.4.6; QCM 4.1 #6"}
+    severity: WARNING
+    check: mapping.unknown_layers
+    implementation: IMPLEMENTED
+    limitation: Unknown layers are queued for mapping and left out of the prepared file; foreign layer-table records are removed from the output (logged) and the output is re-checked.
+  - id: DRM-GEN-07
+    title: A layer with polygons has its attribute blocks
+    qc_error: Attribute Block is missing
+    evidence: VERIFIED_SPEC
+    ref: {page: 11, section: "QCM 4.1 #7"}
+    severity: ERROR
+    check: bdms.layer_pairs
+    implementation: IMPLEMENTED
+  - id: DRM-GEN-08
+    title: A layer present in the drawing contains its polygons
+    qc_error: Mandatory Polygon is missing
+    evidence: VERIFIED_SPEC
+    ref: {page: 11, section: "QCM 4.1 #8"}
+    severity: ERROR
+    check: bdms.layer_pairs
+    implementation: IMPLEMENTED
+    limitation: Empty specified layers are removed from the prepared file (SAMPLES contain only populated layers).
+  # ------------------------------------------------------------ QC manual 4.2 Attribute errors
+  - id: DRM-ATT-01
+    title: Exactly one attribute block per polygon
+    qc_error: Multiple Attribute Blocks found in a single polygon / Polygon with missing Attribute Block found
+    evidence: VERIFIED_SPEC
+    ref: {page: 12, section: "QCM 4.2 #1-2; 4.4 #1"}
+    severity: ERROR
+    check: attributes.one_per_feature
+    implementation: IMPLEMENTED
+  - id: DRM-ATT-02
+    title: Attribute block insertion point inside its polygon and not at 0,0
+    qc_error: Polygon with missing Attribute Block found
+    evidence: VERIFIED_SPEC
+    ref: {page: 18, section: "SPEC 1.4.6 rule 6"}
+    severity: ERROR
+    check: attributes.inside_polygon
+    implementation: IMPLEMENTED
+  - id: DRM-ATT-03
+    title: Mandatory attribute fields have values
+    qc_error: Missing Value in the Attribute Block Mandatory Fields
+    evidence: VERIFIED_SPEC
+    ref: {page: 12, section: "QCM 4.2 #3; SPEC 1.4.6.1"}
+    severity: ERROR
+    check: attributes.mandatory
+    implementation: IMPLEMENTED
+  - id: DRM-ATT-04
+    title: UnitNumber unique in the floor
+    qc_error: Duplicate UnitNumber found in UnitDetail attribute block
+    evidence: VERIFIED_SPEC
+    ref: {page: 12, section: "QCM 4.2 #4; SPEC 1.4.6.1.8 #2,#4"}
+    severity: ERROR
+    check: bdms.unique_ids
+    implementation: IMPLEMENTED
+    limitation: Uniqueness across the whole building (all floor files) needs all floors in one run; checked per file.
+  - id: DRM-ATT-05
+    title: SpaceNumber unique in the floor
+    qc_error: Duplicate Floor SpaceNumber found in SpaceDetail
+    evidence: VERIFIED_SPEC
+    ref: {page: 12, section: "QCM 4.2 #5, #33"}
+    severity: ERROR
+    check: bdms.unique_ids
+    implementation: IMPLEMENTED
+  - id: DRM-ATT-06
+    title: ZoneName and SectorNumber in PlotDetail match the file name
+    qc_error: Inconsistent ZoneName / SectorNumber found between File Name and PlotDetail attribute block
+    evidence: VERIFIED_SPEC
+    ref: {page: "12-13", section: "QCM 4.2 #6-7, #17-18"}
+    severity: ERROR
+    check: bdms.consistency
+    implementation: IMPLEMENTED
+  - id: DRM-ATT-08
+    title: UnitNumber in Space/Door/Window details refers to an existing unit
+    qc_error: Space/Door/Window with incorrect UnitNumber found
+    evidence: VERIFIED_SPEC
+    ref: {page: 12, section: "QCM 4.2 #8-10"}
+    severity: ERROR
+    check: bdms.references
+    implementation: IMPLEMENTED
+  - id: DRM-ATT-11
+    title: FloorNumber in Space/Unit/Door/Window details equals the FloorDetail floor number
+    qc_error: Incorrect FloorNumber found in Space/Unit/Door/WindowDetail attribute block
+    evidence: VERIFIED_SPEC
+    ref: {page: "12-13", section: "QCM 4.2 #11-14; 4.4 #9"}
+    severity: ERROR
+    check: bdms.consistency
+    implementation: IMPLEMENTED
+  - id: DRM-ATT-15
+    title: SpaceNumber in Door/Window details refers to an existing space
+    qc_error: Door/Window with incorrect SpaceNumber found
+    evidence: VERIFIED_SPEC
+    ref: {page: "13-14", section: "QCM 4.2 #15-16, #24-25"}
+    severity: ERROR
+    check: bdms.references
+    implementation: IMPLEMENTED
+  - id: DRM-ATT-19
+    title: BuildingNumber consistent between file name, ProjectDetail, BuildingDetail, FloorDetail and BuildingRoofDetail
+    qc_error: Inconsistent BuildingNumber found between drawing File Name and ProjectDetail / BuildingDetail
+    evidence: VERIFIED_SPEC
+    ref: {page: 13, section: "QCM 4.2 #19-22; 4.4 #8, #10"}
+    severity: ERROR
+    check: bdms.consistency
+    implementation: IMPLEMENTED
+  - id: DRM-ATT-26
+    title: Attribute values have the specified type and length (numbers, dates, Char(n))
+    qc_error: Incorrect data entry found in Unit/Building/Floor/BuildingRoofDetail attribute block
+    evidence: VERIFIED_SPEC
+    ref: {page: "14-15", section: "QCM 4.2 #26-30; SPEC 1.4.6.1"}
+    severity: ERROR
+    check: attributes.datatype
+    implementation: IMPLEMENTED
+  - id: DRM-ATT-31
+    title: FloorNumber in FloorDetail equals the floor ID in the file name
+    qc_error: Inconsistent FloorNumber found between FileName & FloorDetail attribute block
+    evidence: VERIFIED_SPEC
+    ref: {page: 15, section: "QCM 4.2 #31"}
+    severity: ERROR
+    check: bdms.consistency
+    implementation: IMPLEMENTED
+  - id: DRM-ATT-32
+    title: Attribute block names and tags exactly as in the template
+    qc_error: Incorrect Attribute Block Tags found
+    evidence: VERIFIED_SPEC
+    ref: {page: 15, section: "QCM 4.2 #32; SPEC 1.4.4"}
+    severity: ERROR
+    check: attributes.structure
+    implementation: IMPLEMENTED
+    limitation: Tags are compared with the SPEC tables and the template blocks found in the SAMPLES; tag order/font are not compared.
+  - id: DRM-ATT-44
+    title: UnitUsageType is a UPC land-use term (QC manual Appendix 1 list 4)
+    qc_error: Incorrect UnitUsageType data entry found in UniteDetail attribute block
+    evidence: PENDING_OFFICIAL_CONFIRMATION
+    ref: {page: "26-38", section: "QCM 4.2 #44, Appendix 1 (4)"}
+    severity: WARNING
+    check: bdms.unit_usage
+    implementation: PARTIAL
+    limitation: Several manual pages of this list are images; the reference list is the union of all UPC LandUse terms and the extractable manual text (376 terms).
+  - id: DRM-ATT-45
+    title: Code values exactly as listed (UnitType, UsageType, UsageCategoryType, DrawingType)
+    qc_error: Incorrect UnitType / UsageCategoryType / UsageType / DrawingType data entry found
+    evidence: VERIFIED_SPEC
+    ref: {page: "15-16, 24-26, 39", section: "QCM 4.2 #45, #47-49, Appendix 1"}
+    severity: ERROR
+    check: attributes.domain
+    implementation: IMPLEMENTED
+  - id: DRM-ATT-46
+    title: UnitClassification uses a listed term (notification only)
+    qc_error: Incorrect UnitClassfication data entry found in UniteDetail attribute block (notification)
+    evidence: VERIFIED_SPEC
+    ref: {page: 16, section: "QCM 4.2 #46; SPEC 1.4.6.1.4 note"}
+    severity: INFO
+    check: bdms.unit_classification
+    implementation: IMPLEMENTED
+  # ------------------------------------------------------------ QC manual 4.3 Geometry errors
+  - id: DRM-GEO-01
+    title: No zero-area polygons
+    qc_error: Zero area Polygon found
+    evidence: VERIFIED_SPEC
+    ref: {page: 16, section: "QCM 4.3 #1"}
+    severity: ERROR
+    check: geometry.degenerate
+    implementation: IMPLEMENTED
+  - id: DRM-GEO-02
+    title: No zero-length polylines
+    qc_error: Zero length Polylines found
+    evidence: VERIFIED_SPEC
+    ref: {page: 16, section: "QCM 4.3 #2"}
+    severity: ERROR
+    check: geometry.zero_length
+    implementation: IMPLEMENTED
+  - id: DRM-GEO-03
+    title: No thickness and no 3D objects
+    qc_error: Geometry with thickness found
+    evidence: VERIFIED_SPEC
+    ref: {page: "16, 19", section: "QCM 4.3 #3; SPEC rules 8-9"}
+    severity: ERROR
+    check: entities.three_d
+    implementation: IMPLEMENTED
+  - id: DRM-GEO-04
+    title: No elevation and no width
+    qc_error: Geometry with elevation found
+    evidence: VERIFIED_SPEC
+    ref: {page: "16, 19", section: "QCM 4.3 #4; SPEC rule 8"}
+    severity: ERROR
+    check: geometry.elevation_width
+    implementation: IMPLEMENTED
+  - id: DRM-GEO-05
+    title: No polygon completely inside another polygon of the same layer (islands)
+    qc_error: Polygons completely inside other polygon found (islands)
+    evidence: VERIFIED_SPEC
+    ref: {page: 16, section: "QCM 4.3 #5; SPEC rule 4"}
+    severity: ERROR
+    check: geometry.islands
+    implementation: IMPLEMENTED
+  - id: DRM-GEO-06
+    title: Spaces may nest one level only
+    qc_error: Nested spaces found inside space polygons
+    evidence: VERIFIED_SPEC
+    ref: {page: "16-18", section: "QCM 4.3 #6"}
+    severity: ERROR
+    check: geometry.islands
+    implementation: IMPLEMENTED
+  - id: DRM-GEO-07
+    title: Polygons are closed
+    qc_error: Unclosed Polygon Found
+    evidence: VERIFIED_SPEC
+    ref: {page: 16, section: "QCM 4.3 #7"}
+    severity: ERROR
+    check: geometry.closed
+    implementation: IMPLEMENTED
+  - id: DRM-GEO-08
+    title: No duplicate polygons
+    qc_error: Duplicate Polygons Found
+    evidence: VERIFIED_SPEC
+    ref: {page: 16, section: "QCM 4.3 #8"}
+    severity: ERROR
+    check: geometry.duplicates
+    implementation: IMPLEMENTED
+  - id: DRM-GEO-09
+    title: Only allowed geometry (LWPOLYLINE polygons, attribute blocks; text/border only on Title or Miscellaneous)
+    qc_error: Invalid Geometry Found
+    evidence: VERIFIED_SPEC
+    ref: {page: "16, 19", section: "QCM 4.3 #9; SPEC rules 3, 7, 10, 11"}
+    severity: ERROR
+    check: entities.prohibited
+    implementation: IMPLEMENTED
+  - id: DRM-GEO-10
+    title: No arcs inside polygons (bulge segments)
+    qc_error: Arc found with Polygon
+    evidence: VERIFIED_SPEC
+    ref: {page: 16, section: "QCM 4.3 #10; SPEC rule 5"}
+    severity: ERROR
+    check: geometry.bulges
+    implementation: IMPLEMENTED
+  - id: DRM-GEO-11
+    title: No self-intersecting polygons
+    qc_error: Invalid Geometry Found
+    evidence: VERIFIED_SPEC
+    ref: {page: 18, section: "SPEC rule 1"}
+    severity: ERROR
+    check: geometry.self_intersection
+    implementation: IMPLEMENTED
+  # ------------------------------------------------------------ QC manual 4.4 Logical errors
+  - id: DRM-LOG-03
+    title: Required polygons exist (Plot, BuildingOutline, BuildingRoof, Floor, Space) with their details
+    qc_error: No BuildingOutline polygon exist / No Plot/PlotDetail found / Floor exits without corresponding ...
+    evidence: VERIFIED_SPEC
+    ref: {page: "19-20", section: "QCM 4.4 #3, #16-17, #19-20, #23, #26-27"}
+    severity: ERROR
+    check: bdms.hierarchy
+    implementation: IMPLEMENTED
+  - id: DRM-LOG-04
+    title: PlotNumber and SectorNumber identical in PlotDetail and BuildingDetail
+    qc_error: Inconsistent SectorNumber / PlotNumber found in PlotDetail & BuildingDetail attributes blocks
+    evidence: VERIFIED_SPEC
+    ref: {page: 19, section: "QCM 4.4 #4-5"}
+    severity: ERROR
+    check: bdms.consistency
+    implementation: IMPLEMENTED
+  - id: DRM-LOG-15
+    title: A space outside every unit carries no UnitNumber; a space inside a unit carries that unit's number
+    qc_error: Space not exist in a Unit found with a UnitNumber in SpaceDetail attribute block
+    evidence: VERIFIED_SPEC
+    ref: {page: 19, section: "QCM 4.4 #15"}
+    severity: ERROR
+    check: bdms.space_unit
+    implementation: IMPLEMENTED
+  - id: DRM-LOG-21
+    title: Features lie within their parent (Floor in BuildingOutline, Space/Unit in Floor, BuildingOutline in Plot)
+    qc_error: Space exits without corresponding Floor polygon / BuildingOutline exits without corresponding Plot polygon
+    evidence: PENDING_OFFICIAL_CONFIRMATION
+    ref: {page: "19-20", section: "QCM 4.4 #16, #19-26"}
+    severity: WARNING
+    check: bdms.containment
+    implementation: IMPLEMENTED
+    limitation: The manual does not state whether "corresponding" means spatial containment; reported as WARNING. Doors and windows that touch no space are accepted in the SAMPLES.
+  - id: DRM-SNAP-01
+    title: Where geometries of BuildingOutline, Floor, Space, Unit, Window and Door meet, a vertex lying on another geometry's edge has a matching vertex there
+    qc_error: Snapping errors found between layers BuildingOutLine, Floor, Space, Unit, Window, and Door
+    evidence: VERIFIED_SPEC
+    ref: {page: 20, section: "QCM 4.5; SPEC rule 2"}
+    severity: ERROR
+    check: geometry.cross_layer_snapping
+    implementation: IMPLEMENTED
+    limitation: Calibrated on the SAMPLES - edge crossings and sub-centimetre near misses occur in accepted drawings and are reported under DRM-SPEC-TOPO instead.
+  # ------------------------------------------------------------ SPEC-only requirements
+  - id: DRM-SPEC-FMT
+    title: Submission format DWG, AutoCAD 2006 or later
+    evidence: VERIFIED_SPEC
+    ref: {page: 14, section: "1.4.1"}
+    severity: INFO
+    check: export.format
+    implementation: PARTIAL
+    limitation: Prepared file is DXF R2010; convert to DWG (AutoCAD or ODA File Converter).
+  - id: DRM-SPEC-UNIT
+    title: Geometry at full scale in metres (SAMPLES) - SPEC text says centimetres
+    evidence: PENDING_OFFICIAL_CONFIRMATION
+    ref: {page: 14, section: "1.4.2"}
+    severity: WARNING
+    check: drawing.units
+    implementation: PARTIAL
+    limitation: The engineer confirms metres; the $INSUNITS header is not enforced because the accepted SAMPLES carry 4 (mm).
+  - id: DRM-SPEC-LYR
+    title: Layer colour, linetype and lineweight as Table 1
+    evidence: VERIFIED_SPEC
+    ref: {page: "17-18", section: "1.4.6 Table 1"}
+    severity: WARNING
+    check: layers.properties
+    implementation: IMPLEMENTED
+    limitation: Lineweight "Default (0.25)" and an explicit 0.25 mm (as in the SAMPLES) are both accepted.
+  - id: DRM-SPEC-TITLE
+    title: Two title blocks (ProjectDetail, DrawingDetail) on layer Title, filled in
+    evidence: VERIFIED_SPEC
+    ref: {page: "15-16", section: "1.4.5"}
+    severity: ERROR
+    check: bdms.title
+    implementation: IMPLEMENTED
+  - id: DRM-SPEC-ONEFLOOR
+    title: Each file contains a single floor of a single building
+    evidence: VERIFIED_SPEC
+    ref: {page: 24, section: "1.4.6.1.8 #8"}
+    severity: ERROR
+    check: bdms.one_floor
+    implementation: IMPLEMENTED
+  - id: DRM-SPEC-IDS
+    title: Building, Unit and Space numbers are positive integers; floor IDs follow Table 2
+    evidence: VERIFIED_SPEC
+    ref: {page: "9-13", section: "1.3"}
+    severity: ERROR
+    check: bdms.ids
+    implementation: IMPLEMENTED
+  - id: DRM-SPEC-TOPO
+    title: Topologically clean geometry (no undershoots, overshoots, overlaps, edge crossings, near-miss snaps)
+    evidence: VERIFIED_SPEC
+    ref: {page: 18, section: "1.4.6 rule 1; QCM p23 note"}
+    severity: WARNING
+    check: geometry.topology
+    implementation: IMPLEMENTED
+    limitation: Not checked by the official QC tool (QC manual p23); edge crossings occur in accepted SAMPLES. Reported for the draftsman, never blocking.
+  - id: DRM-SPEC-ENTRY
+    title: Special or repeated characters flagged as possible data-entry errors
+    evidence: VERIFIED_SPEC
+    ref: {page: 24, section: "1.4.6.1.8 #6"}
+    severity: WARNING
+    check: attributes.data_entry
+    implementation: PARTIAL
+    limitation: M4 heuristic; the QC tool's exact rule is not documented.
+  - id: DRM-SPEC-HYG
+    title: No unused blocks or unused linetypes
+    evidence: VERIFIED_SPEC
+    ref: {page: 19, section: "1.4.6 rule 7"}
+    severity: WARNING
+    check: drawing.unused
+    implementation: IMPLEMENTED
+  # ------------------------------------------------------------ shared engineering / safety / decision rules
+  - id: ENG-CRS-003
+    title: Drawing extents fall inside the plausible UTM window for the declared zone
+    evidence: ENGINEERING_CHECK
+    severity: WARNING
+    check: crs.plausibility
+    implementation: IMPLEMENTED
+  - id: ENG-GEO-002
+    title: Entity uses a non-standard extrusion direction (mirrored/OCS)
+    evidence: ENGINEERING_CHECK
+    severity: WARNING
+    check: geometry.extrusion
+    implementation: IMPLEMENTED
+  - id: ENG-GEO-003
+    title: Entity colour/linetype/lineweight overrides the layer (not BYLAYER)
+    evidence: ENGINEERING_CHECK
+    severity: WARNING
+    check: entities.bylayer
+    implementation: IMPLEMENTED
+  - id: ENG-GEO-004
+    title: Repeated consecutive vertices
+    evidence: ENGINEERING_CHECK
+    severity: WARNING
+    check: geometry.repeated_vertices
+    implementation: IMPLEMENTED
+  - id: ENG-GEO-006
+    title: Paper-space content is not checked
+    evidence: ENGINEERING_CHECK
+    severity: INFO
+    check: drawing.paperspace
+    implementation: IMPLEMENTED
+  - id: ENG-GEO-008
+    title: Attribute insertion point lies exactly on the polygon boundary
+    evidence: ENGINEERING_CHECK
+    severity: WARNING
+    check: attributes.on_boundary
+    implementation: IMPLEMENTED
+  - id: ENG-FILE-001
+    title: DXF structure problems reported by the reader (recover/audit)
+    evidence: ENGINEERING_CHECK
+    severity: WARNING
+    check: io.audit
+    implementation: IMPLEMENTED
+  - id: ENG-SHARED-001
+    title: Shared-layer content copied into more than one dataset file
+    evidence: USER_DECISION_REQUIRED
+    severity: WARNING
+    check: export.shared_layers
+    implementation: IMPLEMENTED
+  - id: ENG-GEOREF-001
+    title: Control-point georeferencing fit quality (residuals) within the accepted limit
+    evidence: ENGINEERING_CHECK
+    severity: ERROR
+    check: crs.georeference
+    implementation: IMPLEMENTED
+  - id: M4-IN-001
+    title: Input drawing is a readable CAD file (DXF; DWG only through a configured converter)
+    evidence: ENGINEERING_CHECK
+    severity: ERROR
+    check: io.input_format
+    implementation: IMPLEMENTED
+  - id: M4-SAFE-CRS
+    title: No coordinate transformation without explicit, confirmed, user-supplied parameters
+    evidence: ENGINEERING_CHECK
+    severity: ERROR
+    check: crs.transformation_gate
+    implementation: IMPLEMENTED
+  - id: USR-CRS-001
+    title: Source coordinate system confirmed by the engineer
+    evidence: USER_DECISION_REQUIRED
+    severity: ERROR
+    check: crs.confirmation
+    implementation: IMPLEMENTED
+  - id: USR-MAP-001
+    title: Entities on unrecognised layers need an engineer-assigned layer
+    evidence: USER_DECISION_REQUIRED
+    severity: WARNING
+    check: mapping.review_queue
+    implementation: IMPLEMENTED
+  - id: USR-UNIT-001
+    title: Engineer confirms the drawing is at full scale in metres
+    evidence: USER_DECISION_REQUIRED
+    severity: ERROR
+    check: drawing.units_confirmed
+    implementation: IMPLEMENTED

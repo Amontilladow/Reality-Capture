@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QC report {{ r.job.id }} - {{ r.label }}</title>
+<style>
+  :root { --err:#b42318; --warn:#b54708; --info:#175cd3; --ok:#067647; --ink:#101828; --muted:#475467;
+          --line:#d0d5dd; --bg:#ffffff; --panel:#f9fafb; }
+  body { font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: var(--ink);
+         background: var(--bg); margin: 0; }
+  main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+  .banner { background: #fef3f2; border: 2px solid var(--err); color: var(--err); padding: 10px 14px;
+            font-weight: 700; border-radius: 6px; }
+  .banner small { display: block; font-weight: 400; color: var(--ink); margin-top: 4px; }
+  h1 { font-size: 20px; margin: 16px 0 4px; } h2 { font-size: 16px; margin: 24px 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+  .tile b { display: block; font-size: 22px; }
+  .status { display: inline-block; padding: 3px 10px; border-radius: 999px; font-weight: 700; color: #fff; }
+  .s-blocked { background: var(--err); } .s-warn { background: var(--warn); } .s-ready { background: var(--ok); }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { border-bottom: 1px solid var(--line); text-align: left; padding: 5px 6px; vertical-align: top; }
+  th { background: var(--panel); position: sticky; top: 0; }
+  .sev { font-weight: 700; } .ERROR { color: var(--err); } .WARNING { color: var(--warn); } .INFO { color: var(--info); }
+  .muted { color: var(--muted); } code { font-size: 12px; }
+  .scroll { overflow-x: auto; }
+  ul { margin: 4px 0 4px 18px; padding: 0; }
+  @media print { th { position: static; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="banner">{{ r.label }}<small>{{ r.disclaimer }}</small></div>
+  <h1>M4 ADM GIS preparation - preliminary QC report</h1>
+  <p class="muted">Job <code>{{ r.job.id }}</code> &middot; {{ r.job.finished }} &middot; specification
+    v{{ r.spec.version }} ({{ r.spec.title }}) &middot; tool v{{ r.tool.version }} &middot; manifest
+    <code>{{ r.spec.manifest_sha256[:12] }}</code>{% if r.job.parent_job %} &middot; re-run of <code>{{ r.job.parent_job }}</code>{% endif %}</p>
+
+  {% set s = r.status.label %}
+  <p><span class="status {{ 's-blocked' if s.startswith('Blocked') else ('s-warn' if 'warnings' in s else 's-ready') }}">{{ s }}</span>
+     &nbsp; <b>{{ r.status.official_qc }}</b> <span class="muted">(official ADM QC tool: {{ r.status.official_qc_tool }})</span></p>
+
+  <div class="grid">
+    <div class="tile"><span class="ERROR">Errors</span><b>{{ r.status.counts.ERROR }}</b></div>
+    <div class="tile"><span class="WARNING">Warnings</span><b>{{ r.status.counts.WARNING }}</b></div>
+    <div class="tile"><span class="INFO">Info</span><b>{{ r.status.counts.INFO }}</b></div>
+    <div class="tile">Blocking items<b>{{ r.status.counts.blocking }}</b></div>
+    <div class="tile">Unresolved layers<b>{{ r.status.counts.unresolved_layers }}</b></div>
+    <div class="tile">Open fix proposals<b>{{ r.status.counts.open_fix_proposals }}</b></div>
+  </div>
+
+  <h2>Pre-export summary</h2>
+  <p>Categories: <b>{{ r.job.categories | join(', ') }}</b> &middot; Source: <code>{{ r.source.path }}</code>
+     ({{ r.source.format }}, {{ r.source.release or 'unknown release' }}) &middot; source SHA-256
+     <code>{{ r.source.sha256_before[:16] }}...</code> &middot;
+     source unchanged after run: <b class="{{ 'ok' if r.source.unchanged else 'ERROR' }}">{{ 'yes' if r.source.unchanged else 'NO' }}</b></p>
+  <p>Coordinates: {{ r.crs.summary }} (target {{ r.crs.target }}).</p>
+  {% if r.outputs %}
+  <div class="scroll"><table>
+    <tr><th>Output file</th><th>Dataset</th><th>Entities</th><th>Verified on re-read</th><th>SHA-256</th></tr>
+    {% for o in r.outputs %}
+    <tr><td><code>{{ o.file }}</code>{% if o.note %}<br><span class="muted">{{ o.note }}</span>{% endif %}</td><td>{{ o.dataset }}</td>
+        <td>{{ o.entities }}</td><td>{{ 'yes' if o.verification.ok else 'NO' }}</td><td><code>{{ o.sha256[:16] }}...</code></td></tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="ERROR">No prepared output was produced (see blocking items).</p>{% endif %}
+
+  <p class="muted">Profile {{ r.spec.profile }} &middot; {{ 'STRICT mode: any error or warning blocks' if r.strict_mode else 'standard mode' }}</p>
+  {% if r.qc_style_summary %}
+  <h2>Summary in official QC terms</h2>
+  <div class="scroll"><table><tr><th>Official QC error</th><th>Rule</th><th>Count</th><th>Layers</th></tr>
+  {% for g in r.qc_style_summary %}<tr><td>{{ g.qc_error }}</td><td><code>{{ g.rule_id }}</code></td><td>{{ g.count }}</td><td>{{ g.layers | join(', ') }}</td></tr>{% endfor %}
+  </table></div>
+  {% endif %}
+  {% if r.checks_not_applicable %}<p class="muted">Generic checks not applicable in this profile (fired, not counted): {% for k, v in r.checks_not_applicable.items() %}{{ k }} ×{{ v }}{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+  {% set blocking = r.findings | selectattr('blocking') | list %}
+  {% if blocking %}
+  <h2>Blocking items</h2>
+  <ul>{% for f in blocking %}<li><b>{{ f.rule_id }}</b>: {{ f.message }} <i>Next: {{ f.action }}</i></li>{% endfor %}</ul>
+  {% endif %}
+
+  <h2>Review queue</h2>
+  {% if r.review_queue.unresolved_layers %}
+  <p>Layers not mapped to an ADM layer (never classified automatically):</p>
+  <div class="scroll"><table><tr><th>Source layer</th><th>Entities</th><th>Content</th><th>Unverified name hints</th></tr>
+  {% for d in r.review_queue.unresolved_layers %}<tr><td><code>{{ d.source_layer }}</code></td><td>{{ d.entity_count }}</td><td>{{ d.note }}</td><td>{{ d.suggestions | join(', ') or '-' }}</td></tr>{% endfor %}
+  </table></div>
+  {% else %}<p class="muted">No unresolved layers.</p>{% endif %}
+  {% if r.review_queue.fix_proposals %}
+  <p>Proposed fixes (applied only when accepted):</p>
+  <div class="scroll"><table><tr><th>Fix id</th><th>Layer</th><th>Lossless</th><th>Description</th></tr>
+  {% for p in r.review_queue.fix_proposals %}<tr><td><code>{{ p.id }}</code></td><td>{{ p.layer }}</td><td>{{ 'yes' if p.lossless else 'no (within tolerance)' }}</td><td>{{ p.description }}</td></tr>{% endfor %}
+  </table></div>
+  {% endif %}
+
+  <h2>Findings ({{ r.findings | length }})</h2>
+  <div class="scroll"><table>
+    <tr><th>Severity</th><th>Rule</th><th>Evidence</th><th>Layer / handle</th><th>Problem</th><th>Next action</th><th>Location</th></tr>
+    {% for f in r.findings %}
+    <tr><td class="sev {{ f.severity }}">{{ f.severity }}{% if f.blocking %}<br>BLOCKING{% endif %}</td>
+        <td><code>{{ f.rule_id }}</code><br><span class="muted">{{ f.ref or '' }}</span></td>
+        <td class="muted">{{ f.evidence }}</td>
+        <td>{{ f.layer or '' }}{% if f.handle %}<br><code>#{{ f.handle }}</code>{% endif %}{% if f.entity_type %}<br><span class="muted">{{ f.entity_type }}</span>{% endif %}</td>
+        <td>{{ f.message }}</td><td>{{ f.action }}</td>
+        <td>{% if f.location %}<code>{{ '%.3f' % f.location[0] }}, {{ '%.3f' % f.location[1] }}</code>{% endif %}</td></tr>
+    {% endfor %}
+  </table></div>
+
+  <h2>Changes made in the prepared files</h2>
+  <ul>
+    <li>Layer reassignments (verified names, PDF aliases or accepted mappings): {{ r.changes.layer_mapping | length }}</li>
+    <li>Accepted fixes applied: {{ r.changes.fixes | length }}{% for a in r.changes.fixes %}<br><code>{{ a.fix }}</code> (max shape change {{ a.max_shape_change_m }} m){% endfor %}</li>
+    <li>Coordinate transformations: {{ r.changes.transformation | length }}{% for t in r.changes.transformation %}<br>{{ t.pipeline }}: {{ t.before }} &rarr; {{ t.after }}{% endfor %}</li>
+    {% for o in r.changes.outputs %}<li><code>{{ o.file }}</code>: {% for c in o.changes %}{{ c.action }}{% if c.layer %} {{ c.layer }}{% endif %}{% if c.linetype %} {{ c.linetype }}{% endif %}{% if c.var %} {{ c.var }}{% endif %}{{ '; ' if not loop.last }}{% else %}no table/header changes{% endfor %}</li>{% endfor %}
+  </ul>
+  <p class="muted">Full per-entity log: geometry_log.json and audit.jsonl in the job folder.</p>
+
+  <h2>Tolerances used</h2>
+  <p>{% for k, v in r.tolerances.items() %}{{ k }} = {{ v }}{{ ', ' if not loop.last }}{% endfor %} (metres / m²)</p>
+
+  <h2>Official integrations</h2>
+  <ul>
+    <li>DWG converter: {{ r.integrations.dwg_converter }}</li>
+    <li>Official ADM template: {% for c, t in r.integrations.official_template.items() %}{{ c }} = {{ t.status }}{{ '; ' if not loop.last }}{% endfor %}</li>
+    <li>Official ADM QC tool (.FAS): {{ r.integrations.official_qc }}</li>
+  </ul>
+
+  <h2>Known limitations</h2>
+  <ul>{% for l in r.limitations %}<li>{{ l }}</li>{% endfor %}</ul>
+  <p class="banner">{{ r.label }} &mdash; this report carries no ADM acceptance status of any kind.</p>
+</main>
+</body>
+</html>

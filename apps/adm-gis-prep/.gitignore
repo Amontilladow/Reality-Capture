@@ -1,0 +1,8 @@
+# Job outputs, uploads and local workspace never go to git (drawings stay local).
+workspace/
+jobs/
+*.egg-info/
+.pytest_cache/
+# Controlled external documents and client drawings: keep locally in reference/, never commit.
+reference/*
+!reference/README.md

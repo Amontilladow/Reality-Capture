@@ -29,6 +29,9 @@ export default registerAs('app', () => ({
   apiUrl: process.env.API_URL ?? 'http://localhost:3000',
   frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:5173',
   aiServiceUrl: process.env.AI_SERVICE_URL ?? 'http://localhost:8001',
+  // Private apps/adm-gis-prep service (GIS Preparation module); same shared
+  // internal secret as the AI service.
+  gisPrepServiceUrl: process.env.GIS_PREP_SERVICE_URL ?? 'http://localhost:8002',
   internalServiceSecret: process.env.INTERNAL_SERVICE_SECRET ?? '',
   // Used by CredentialEncryptionService (common/crypto/) to derive the
   // AES-256-GCM key for OAuth email-integration tokens and BYO AI provider

@@ -81,6 +81,7 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
     items: [
       { to: 'bim', label: 'BIM Models', icon: IconBim },
       { to: 'buildlens', label: 'BuildLens', icon: IconTimeline },
+      { to: 'gis-prep', label: 'GIS Preparation', icon: IconMap },
     ],
   },
   { heading: 'AI', items: [{ to: 'assistant', label: 'AI Assistant', icon: IconSpark }] },

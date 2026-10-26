@@ -1,0 +1,5 @@
+reference/
+workspace/
+jobs/
+**/__pycache__/
+.venv/
