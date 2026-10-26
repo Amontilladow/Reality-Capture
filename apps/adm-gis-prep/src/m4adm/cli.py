@@ -110,6 +110,48 @@ def cmd_prepare(a: argparse.Namespace) -> int:
                                                 and not r["status"]["counts"]["blocking"]) else 3
 
 
+def cmd_convert(a: argparse.Namespace) -> int:
+    from m4adm.convert import STATUS_BLOCKED, convert
+    from m4adm.convert.settings import ConversionSettings
+
+    data = {}
+    if a.settings:
+        text = Path(a.settings).read_text(encoding="utf-8")
+        data = (json.loads(text) if a.settings.endswith(".json") else yaml.safe_load(text)) or {}
+    md = data.setdefault("metadata", {})
+    for key, val in (("zone_name", a.zone), ("sector_number", a.sector), ("plot_number", a.plot),
+                     ("building_number", a.building), ("floor_id", a.floor)):
+        if val:
+            md[key] = val
+    crs = data.setdefault("crs", {})
+    if a.control_points:
+        crs["control_points"] = _load_control_points(a.control_points)
+    if a.confirm_transformation:
+        crs["confirm_transformation"] = True
+    if a.units:
+        data["source_units"] = a.units
+    if a.unit_number:
+        data["single_unit_number"] = a.unit_number
+    if a.template:
+        data["template_path"] = a.template
+    settings = ConversionSettings(**data)
+    print(f"{PROVISIONAL_LABEL}\nM4 CAD-to-GIS conversion v{__version__} - target DRM BDMS 4.1 building floor (DRAFT)")
+    try:
+        res = convert(Path(a.source), settings, Path(a.jobs))
+    except Exception as exc:  # job folder was renamed *.failed with error.json
+        print(f"JOB FAILED: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
+    r = res.report
+    print(f"Job {res.job_id}: {res.status}")
+    for b in r["blockers"]:
+        print(f"  BLOCKED: {b}")
+    for k, v in r["result"].items():
+        print(f"  {k}: {v}")
+    print(f"  source unchanged (SHA-256 verified): {r['source']['unchanged']}")
+    print(f"  report: {res.job_dir / 'conversion_report.html'}")
+    return 3 if res.status == STATUS_BLOCKED else 0
+
+
 def cmd_inspect(a: argparse.Namespace) -> int:
     from m4adm.classify import classify_layout
     from m4adm.io import identify, load_dxf
@@ -271,6 +313,22 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--parent-job")
     s.add_argument("--jobs", default=str(DEFAULT_JOBS))
     s.set_defaults(fn=cmd_prepare)
+
+    s = sub.add_parser("convert", help="Convert an architectural floor plan into a DRM BDMS GIS draft")
+    s.add_argument("source")
+    s.add_argument("--settings", help="YAML/JSON conversion settings (layer roles, tolerances, decisions ...)")
+    s.add_argument("--zone")
+    s.add_argument("--sector")
+    s.add_argument("--plot")
+    s.add_argument("--building")
+    s.add_argument("--floor")
+    s.add_argument("--units", choices=["mm", "cm", "m"], help="declare source units when $INSUNITS is missing")
+    s.add_argument("--unit-number", help="declare the whole floor as one unit with this number")
+    s.add_argument("--control-points", help="'source_x source_y target_E target_N' per line, source in drawing units")
+    s.add_argument("--confirm-transformation", action="store_true")
+    s.add_argument("--template", help="DXF whose Detail/title block definitions are copied (e.g. DRM template)")
+    s.add_argument("--jobs", default=str(DEFAULT_JOBS))
+    s.set_defaults(fn=cmd_convert)
 
     s = sub.add_parser("inspect", help="Identify format, list layers and mapping preview")
     s.add_argument("source")

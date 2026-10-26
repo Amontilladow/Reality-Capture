@@ -5,7 +5,11 @@ An internal M4 Contracting tool. It prepares CAD drawings for GIS submission and
 - **`sdd_planning`**: ADM SDD *Standards & Specifications for Planning Data Submission* v1.18.2 (Plot, Roads, Services / Service Corridors).
 - **`bdms_building`**: DRM *Building Data Delivery Specification (BDMS 4.1)*, one building floor per file. It is checked against the rules of the official QC tool DRM_CPDQC_V2.3 and **calibrated on four drawings that passed official QC (0 errors on each)**. See [docs/CALIBRATION.md](docs/CALIBRATION.md).
 
-**Strict mode** is on by default: any error *or* warning blocks a job.
+Two workflows:
+- **Convert** (`m4adm convert`, new): builds a DRM BDMS building-floor **draft** from an *architectural* floor plan. It detects rooms from wall linework, names them from room text, generates Space/Door/Window/Floor features with their Detail blocks, and georeferences only with confirmed control points. It then runs the preliminary QC on the generated draft. Every feature and attribute records how it was obtained, and nothing mandatory is invented. On the real M19B first floor it reproduces the accepted GIS drawing's 12 spaces and 34 windows, with a mean room IoU of 0.94. See [docs/CONVERSION.md](docs/CONVERSION.md).
+- **Prepare** (`m4adm prepare`): checks and packages a drawing that already follows the target schema.
+
+**Strict mode** is on by default for preparation: any error *or* warning blocks a job.
 
 > **PROVISIONAL: NOT ADM-VALIDATED.** The internal QC report is not ADM approval. Acceptance comes only from ADM's official QC tool and review.
 

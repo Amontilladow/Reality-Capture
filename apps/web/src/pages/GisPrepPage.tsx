@@ -8,7 +8,7 @@ import { apiErrorMessage } from '../lib/api';
 import { getProject } from '../lib/projects.api';
 import {
   getGisPrepJob, listGisPrepJobs, rerunGisPrepJob, uploadAndCreateGisPrepJob,
-  type GisPrepJob, type GisPrepJobStatus, type GisPrepProfile, type GisPrepSettings,
+  type GisConvertSettings, type GisPrepJob, type GisPrepJobStatus, type GisPrepProfile, type GisPrepSettings,
 } from '../lib/gis-prep.api';
 
 // GIS Preparation (apps/adm-gis-prep as a built-in module). Every result is a
@@ -33,6 +33,10 @@ const CRS_OPTIONS = [
 ];
 
 interface FormState {
+  // convert = build a DRM BDMS draft from an architectural floor plan; prepare = check an existing GIS drawing.
+  mode: 'convert' | 'prepare';
+  unitNumber: string;
+  units: 'auto' | 'mm' | 'cm' | 'm';
   profile: GisPrepProfile;
   strict: boolean;
   sourceCrs: string;
@@ -44,6 +48,7 @@ interface FormState {
 }
 
 const INITIAL: FormState = {
+  mode: 'convert', unitNumber: '', units: 'auto',
   profile: 'bdms_building', strict: true, sourceCrs: '', crsConfirmed: false, unitsConfirmed: false,
   categories: ['plot'], meta: {}, controlPoints: '',
 };
@@ -66,8 +71,15 @@ function parseControlPoints(text: string): [[number, number], [number, number]][
   });
 }
 
-function buildSettings(f: FormState): GisPrepSettings {
+function buildSettings(f: FormState): GisPrepSettings | GisConvertSettings {
   const controlPoints = parseControlPoints(f.controlPoints);
+  if (f.mode === 'convert') {
+    return {
+      mode: 'convert', profile: 'bdms_building', metadata: f.meta, source_units: f.units,
+      single_unit_number: f.unitNumber,
+      crs: { control_points: controlPoints, confirm_transformation: f.crsConfirmed },
+    };
+  }
   return {
     profile: f.profile,
     strict: f.strict,
@@ -111,7 +123,7 @@ export default function GisPrepPage() {
   });
 
   if (!projectId) return null;
-  const fields = form.profile === 'bdms_building' ? BDMS_FIELDS : SDD_FIELDS;
+  const fields = form.mode === 'convert' || form.profile === 'bdms_building' ? BDMS_FIELDS : SDD_FIELDS;
   const jobs = jobsQuery.data ?? [];
 
   return (
@@ -130,15 +142,30 @@ export default function GisPrepPage() {
         <div className="panel tick-frame p-4 space-y-3">
           <div className="text-sm font-medium text-ink-100">New job</div>
           <div className="flex flex-wrap gap-4 text-xs text-ink-300">
+            {([['convert', 'Convert architectural floor plan → DRM BDMS draft'], ['prepare', 'Check an existing GIS drawing']] as const).map(([m, label]) => (
+              <label key={m} className="flex items-center gap-1.5 font-medium">
+                <input type="radio" checked={form.mode === m} onChange={() => setForm(f => ({ ...f, mode: m, profile: m === 'convert' ? 'bdms_building' : f.profile }))} />
+                {label}
+              </label>
+            ))}
+          </div>
+          {form.mode === 'convert' && (
+            <p className="text-xs text-ink-500">
+              Detects rooms from wall linework, names them from room text, writes Space/Door/Window/Floor features with
+              their Detail blocks, and validates the generated draft. Anything the drawing cannot show (units, owners,
+              plot, roof, heights) stays empty and is listed; nothing is guessed.
+            </p>
+          )}
+          {form.mode === 'prepare' && <div className="flex flex-wrap gap-4 text-xs text-ink-300">
             {(['bdms_building', 'sdd_planning'] as const).map(p => (
               <label key={p} className="flex items-center gap-1.5">
                 <input type="radio" checked={form.profile === p} onChange={() => setForm(f => ({ ...f, profile: p, meta: {} }))} />
                 {p === 'bdms_building' ? 'DRM BDMS 4.1 building floor' : 'ADM SDD planning v1.18.2'}
               </label>
             ))}
-          </div>
+          </div>}
           <input type="file" accept=".dxf,.dwg" onChange={e => setFile(e.target.files?.[0] ?? null)} className="text-xs text-ink-300" />
-          {form.profile === 'sdd_planning' && (
+          {form.mode === 'prepare' && form.profile === 'sdd_planning' && (
             <div className="flex flex-wrap gap-4 text-xs text-ink-300">
               {['plot', 'roads', 'services'].map(c => (
                 <label key={c} className="flex items-center gap-1.5">
@@ -163,14 +190,29 @@ export default function GisPrepPage() {
             ))}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <label className="text-xs text-ink-500 space-y-1">
+            {form.mode === 'prepare' && <label className="text-xs text-ink-500 space-y-1">
               <span>Source coordinate system</span>
               <select className="field-input text-xs !py-1.5" value={form.sourceCrs} onChange={e => setForm(f => ({ ...f, sourceCrs: e.target.value }))}>
                 {CRS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
-            </label>
+            </label>}
+            {form.mode === 'convert' && (
+              <label className="text-xs text-ink-500 space-y-1">
+                <span>Drawing units</span>
+                <select className="field-input text-xs !py-1.5" value={form.units} onChange={e => setForm(f => ({ ...f, units: e.target.value as FormState['units'] }))}>
+                  <option value="auto">From the drawing ($INSUNITS)</option>
+                  <option value="mm">Millimetres</option><option value="cm">Centimetres</option><option value="m">Metres</option>
+                </select>
+              </label>
+            )}
+            {form.mode === 'convert' && (
+              <label className="text-xs text-ink-500 space-y-1">
+                <span>Whole floor is one unit — unit number (optional)</span>
+                <input className="field-input text-xs !py-1.5" value={form.unitNumber} onChange={e => setForm(f => ({ ...f, unitNumber: e.target.value }))} />
+              </label>
+            )}
             <label className="text-xs text-ink-500 space-y-1">
-              <span>Control points (optional, one per line: x y E N)</span>
+              <span>Control points (optional, one per line: x y E N; x y in drawing units)</span>
               <textarea
                 className="field-input text-xs !py-1.5 font-mono" rows={2} value={form.controlPoints}
                 onChange={e => setForm(f => ({ ...f, controlPoints: e.target.value }))}
@@ -180,20 +222,22 @@ export default function GisPrepPage() {
           <div className="flex flex-wrap gap-4 text-xs text-ink-300">
             <label className="flex items-center gap-1.5">
               <input type="checkbox" checked={form.crsConfirmed} onChange={e => setForm(f => ({ ...f, crsConfirmed: e.target.checked }))} />
-              I confirm the coordinate system{form.controlPoints.trim() ? ' and the control-point transformation' : ''}
+              {form.mode === 'convert' ? 'I confirm the control-point transformation' : <>I confirm the coordinate system{form.controlPoints.trim() ? ' and the control-point transformation' : ''}</>}
             </label>
-            <label className="flex items-center gap-1.5">
-              <input type="checkbox" checked={form.unitsConfirmed} onChange={e => setForm(f => ({ ...f, unitsConfirmed: e.target.checked }))} />
-              Units confirmed (metres)
-            </label>
-            <label className="flex items-center gap-1.5">
-              <input type="checkbox" checked={form.strict} onChange={e => setForm(f => ({ ...f, strict: e.target.checked }))} />
-              Strict mode (any warning or open decision blocks)
-            </label>
+            {form.mode === 'prepare' && <>
+              <label className="flex items-center gap-1.5">
+                <input type="checkbox" checked={form.unitsConfirmed} onChange={e => setForm(f => ({ ...f, unitsConfirmed: e.target.checked }))} />
+                Units confirmed (metres)
+              </label>
+              <label className="flex items-center gap-1.5">
+                <input type="checkbox" checked={form.strict} onChange={e => setForm(f => ({ ...f, strict: e.target.checked }))} />
+                Strict mode (any warning or open decision blocks)
+              </label>
+            </>}
           </div>
           {formError && <p className="text-xs text-danger">{formError}</p>}
           <button className="btn-primary" disabled={createMutation.isPending} onClick={() => createMutation.mutate()}>
-            {createMutation.isPending ? 'Uploading…' : 'Prepare for GIS'}
+            {createMutation.isPending ? 'Uploading…' : form.mode === 'convert' ? 'Convert to GIS draft' : 'Prepare for GIS'}
           </button>
         </div>
 
@@ -248,7 +292,8 @@ function JobDetail({ projectId, jobId, onRerun }: { projectId: string; jobId: st
   const rerun = useMutation({
     mutationFn: (job: GisPrepJob) => {
       const chosen = Object.fromEntries(Object.entries(mapping).filter(([, v]) => v.trim()));
-      return rerunGisPrepJob(projectId, job.id, { ...job.settings, layer_mapping: { ...(job.settings.layer_mapping ?? {}), ...chosen } });
+      const settings = job.settings as GisPrepSettings;
+      return rerunGisPrepJob(projectId, job.id, { ...settings, layer_mapping: { ...(settings.layer_mapping ?? {}), ...chosen } });
     },
     onSuccess: (job) => {
       setMapping({});
@@ -257,6 +302,9 @@ function JobDetail({ projectId, jobId, onRerun }: { projectId: string; jobId: st
     },
   });
 
+  if (jobQuery.data?.report && (jobQuery.data.report as { kind?: string }).kind === 'conversion') {
+    return <ConversionDetail projectId={projectId} job={jobQuery.data} onRerun={onRerun} />;
+  }
   if (jobQuery.isLoading) return <div className="panel p-6 text-sm text-ink-500">Loading job…</div>;
   if (jobQuery.isError || !jobQuery.data) return <div className="panel p-6 text-sm text-danger">{apiErrorMessage(jobQuery.error)}</div>;
   const job = jobQuery.data;
@@ -342,6 +390,99 @@ function JobDetail({ projectId, jobId, onRerun }: { projectId: string; jobId: st
             ))}
           </ul>
           {findings.length > 300 && <p className="text-xs text-ink-500 mt-1">Showing 300 of {findings.length}; the full list is in qc_report.html.</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface ConvFeature {
+  id: string; layer: string; status: string; reasons: string[];
+  attributes: Record<string, { value: string; provenance: string; note: string }>;
+}
+interface ConversionReport {
+  kind: 'conversion'; status: string; blockers: string[]; result: Record<string, string | number>;
+  features: ConvFeature[]; missing_mandatory: { feature: string; tag: string; note: string }[];
+  georeferencing: { status: string; messages: string[] };
+}
+
+const FEATURE_TONE: Record<string, StatusTone> = {
+  AUTO_GENERATED_HIGH_CONFIDENCE: 'success', GENERATED_REQUIRES_REVIEW: 'warning', UNRESOLVED: 'danger',
+  NOT_GENERATED: 'neutral', USER_ACCEPTED: 'info', USER_REJECTED: 'neutral',
+};
+
+// Conversion result: what was generated, what needs review, what is missing. Review decisions (accept / reject)
+// are sent back as feature_decisions on a re-run of the same untouched original.
+function ConversionDetail({ projectId, job, onRerun }: { projectId: string; job: GisPrepJob; onRerun: (id: string) => void }) {
+  const queryClient = useQueryClient();
+  const report = job.report as unknown as ConversionReport;
+  const [decisions, setDecisions] = useState<Record<string, 'accept' | 'reject'>>({});
+  const rerun = useMutation({
+    mutationFn: () => {
+      const settings = job.settings as GisConvertSettings;
+      const merged = { ...(settings.feature_decisions ?? {}) };
+      for (const [id, action] of Object.entries(decisions)) merged[id] = { action };
+      return rerunGisPrepJob(projectId, job.id, { ...settings, feature_decisions: merged });
+    },
+    onSuccess: (j) => { setDecisions({}); queryClient.invalidateQueries({ queryKey: ['gis-prep-jobs', projectId] }); onRerun(j.id); },
+  });
+  const review = report.features.filter(f => f.status === 'GENERATED_REQUIRES_REVIEW' || f.status === 'UNRESOLVED');
+  const preview = job.outputs.find(o => o.path === 'preview.svg');
+  const downloads = job.outputs.filter(o => o.path.startsWith('output/') || o.path === 'conversion_report.html');
+  return (
+    <div className="panel tick-frame p-4 space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-medium text-ink-100">{job.sourceFilename}</span>
+        <StatusBadge tone={STATUS_TONE[job.status]} label={STATUS_LABEL[job.status]} dot />
+        <span className="text-xs text-ink-500">{PROVISIONAL} · DRAFT for engineer review · Official QC: not yet performed</span>
+      </div>
+      <p className="text-xs text-ink-300">{report.status}</p>
+      {report.blockers.map(b => <p key={b} className="text-xs text-danger">{b}</p>)}
+      <div className="flex flex-wrap gap-2">
+        {job.packageUrl && <a className="btn-secondary !px-3 !py-1.5 text-xs" href={job.packageUrl}>Download full package (.zip)</a>}
+        {downloads.map(o => <a key={o.path} className="btn-ghost !px-3 !py-1.5 text-xs" href={o.url} target="_blank" rel="noreferrer">{o.path.replace(/^output\//, '')}</a>)}
+      </div>
+      <table className="text-xs">
+        <tbody>
+          {Object.entries(report.result).map(([k, v]) => (
+            <tr key={k} className="border-b border-base-700/60 last:border-0"><td className="py-1 pr-4 text-ink-500 whitespace-pre">{k}</td><td className="py-1 text-ink-100">{String(v)}</td></tr>
+          ))}
+        </tbody>
+      </table>
+      {preview?.url && <img src={preview.url} alt="Generated features preview" className="w-full bg-white rounded" />}
+      <div className="text-xs text-ink-300">Georeferencing: {report.georeferencing.status} — {report.georeferencing.messages.join(' ')}</div>
+      {review.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-ink-300">Items requiring review ({review.length})</div>
+          {review.map(f => (
+            <div key={f.id} className="flex flex-wrap items-start gap-2 text-xs border-b border-base-700/60 pb-1">
+              <StatusBadge tone={FEATURE_TONE[f.status] ?? 'neutral'} label={f.status === 'UNRESOLVED' ? 'Unresolved' : 'Review'} />
+              <span className="font-mono text-ink-100">{f.id}</span>
+              <span className="text-ink-500">{f.layer}{f.attributes.SPACEUSAGE?.value ? ` · ${f.attributes.SPACEUSAGE.value}` : ''}</span>
+              <span className="text-ink-300 flex-1 min-w-[16rem]">{f.reasons.join(' · ')}</span>
+              {f.status === 'GENERATED_REQUIRES_REVIEW' && (
+                <span className="flex gap-2">
+                  {(['accept', 'reject'] as const).map(a => (
+                    <label key={a} className="flex items-center gap-1">
+                      <input type="radio" name={`dec-${f.id}`} checked={decisions[f.id] === a} onChange={() => setDecisions(d => ({ ...d, [f.id]: a }))} />{a}
+                    </label>
+                  ))}
+                </span>
+              )}
+            </div>
+          ))}
+          <button className="btn-secondary !px-3 !py-1.5 text-xs" disabled={rerun.isPending || Object.keys(decisions).length === 0} onClick={() => rerun.mutate()}>
+            {rerun.isPending ? 'Queuing…' : 'Re-run with these decisions'}
+          </button>
+          {rerun.isError && <p className="text-xs text-danger">{apiErrorMessage(rerun.error)}</p>}
+        </div>
+      )}
+      {report.missing_mandatory.length > 0 && (
+        <div className="text-xs">
+          <div className="font-medium text-ink-300 mb-1">Mandatory values the drawing cannot provide ({report.missing_mandatory.length})</div>
+          <ul className="list-disc pl-5 text-ink-500 max-h-48 overflow-y-auto">
+            {report.missing_mandatory.map((m, i) => <li key={i}>{m.feature}: {m.tag}{m.note ? ` — ${m.note}` : ''}</li>)}
+          </ul>
         </div>
       )}
     </div>

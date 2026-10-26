@@ -90,12 +90,41 @@ describe('GisPrepProcessor', () => {
   });
 });
 
+describe('GisPrepProcessor conversion jobs', () => {
+  const realFetch = global.fetch;
+  afterEach(() => { global.fetch = realFetch; jest.clearAllMocks(); });
+
+  it('stores conversion_report.json as the report and maps a draft to PREPARED_WITH_WARNINGS', async () => {
+    const zip = new JSZip();
+    zip.file('conversion_report.json', JSON.stringify({
+      kind: 'conversion', source: { sha256: 'abc' }, validation: { counts: { ERROR: 3, WARNING: 1, INFO: 0 } },
+      features: [{ status: 'GENERATED_REQUIRES_REVIEW' }, { status: 'AUTO_GENERATED_HIGH_CONFIDENCE' }, { status: 'UNRESOLVED' }],
+    }));
+    zip.file('output/A-F1_DRAFT.dxf', '0\nEOF\n');
+    const body = await zip.generateAsync({ type: 'nodebuffer' });
+    global.fetch = jest.fn().mockResolvedValue(new Response(body, {
+      status: 200, headers: { 'X-M4ADM-Status': 'Draft generated - NOT georeferenced - not for submission', 'X-M4ADM-Job': 'c-1', 'X-M4ADM-Kind': 'conversion' },
+    })) as never;
+    const { processor, statements } = makeProcessor();
+
+    await processor.handle({ data: { jobId, companyId, projectId } } as never);
+
+    const final = statements[statements.length - 1];
+    expect(final.values).toContain('PREPARED_WITH_WARNINGS');
+    expect(final.values).toContain('company-1/gis-prep/project-1/job-1/conversion_report.json');
+    expect(final.values).toContainEqual({ errors: 3, warnings: 1, info: 0, openDecisions: 2 });
+    expect(final.values).toContain('abc');
+  });
+});
+
 describe('gis-prep helpers', () => {
   it('never maps an unknown or blocked label to a ready status', () => {
     expect(statusFromLabel('Ready for review')).toBe('READY_FOR_REVIEW');
     expect(statusFromLabel('Prepared with warnings')).toBe('PREPARED_WITH_WARNINGS');
     expect(statusFromLabel('Blocked by errors')).toBe('BLOCKED');
     expect(statusFromLabel('')).toBe('BLOCKED');
+    expect(statusFromLabel('Blocked: no draft could be generated')).toBe('BLOCKED');
+    expect(statusFromLabel('Draft generated - requires engineer review')).toBe('PREPARED_WITH_WARNINGS');
   });
 
   it('counts open decisions from unresolved layers and fix proposals', () => {
