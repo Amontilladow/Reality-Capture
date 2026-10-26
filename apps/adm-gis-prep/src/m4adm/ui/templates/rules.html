@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Rules - specification v{{ m.version }}</h1>
+<h1>Rules - {{ m.profile }} - specification v{{ m.version }}</h1>
+<p>{% for p in profiles %}<a href="/rules?profile={{ p }}">{{ p }}</a>{{ ' · ' if not loop.last }}{% endfor %}</p>
 <p class="muted">{{ m.spec.title }} ({{ m.spec.issuer }}), PDF SHA-256 <code>{{ m.spec.source_pdf_sha256 }}</code>. Manifest <code>{{ m.path.name }}</code> (SHA-256 <code>{{ m.sha256[:16] }}...</code>).</p>
-<div class="scroll"><table><tr><th>ID</th><th>Requirement</th><th>Evidence</th><th>PDF ref</th><th>Severity</th><th>Implementation</th><th>Limitation</th></tr>
-{% for r in m.rules %}<tr><td><code>{{ r.id }}</code></td><td>{{ r.title }}</td><td>{{ r.evidence.value }}</td><td>{{ r.ref.text() if r.ref else '-' }}</td>
+<div class="scroll"><table><tr><th>ID</th><th>Requirement</th><th>Official QC error</th><th>Evidence</th><th>PDF ref</th><th>Severity</th><th>Implementation</th><th>Limitation</th></tr>
+{% for r in m.rules %}<tr><td><code>{{ r.id }}</code></td><td>{{ r.title }}</td><td class="muted">{{ r.qc_error or '-' }}</td><td>{{ r.evidence.value }}</td><td>{{ r.ref.text() if r.ref else '-' }}</td>
 <td class="{{ r.severity.value }}">{{ r.severity.value }}</td><td>{{ r.implementation }}</td><td class="muted">{{ r.limitation or '' }}</td></tr>{% endfor %}
 </table></div>
 {% for cat, spec in m.categories.items() %}

@@ -3,5 +3,6 @@ workspace/
 jobs/
 *.egg-info/
 .pytest_cache/
-# The ADM PDF is a controlled external document; keep a local copy here, do not commit.
-reference/*.pdf
+# Controlled external documents and client drawings: keep locally in reference/, never commit.
+reference/*
+!reference/README.md

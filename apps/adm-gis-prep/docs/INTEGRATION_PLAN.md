@@ -1,5 +1,17 @@
 # Missing official files: what M4 must obtain and how each plugs in
 
+## Status 2026-10-26 (DRM BDMS 4.1 material received)
+
+| Item | Status | Next step |
+|---|---|---|
+| BDMS 4.1 spec, QC manual, UPC code list | **Received**, encoded in `rules/drm_bdms_v4.1.yaml` + generated code lists | Ask DRM about DISCREPANCIES_BDMS B-01..B-15 |
+| QC tool `DRM_CPDQC_V2.3.fas` | **Received** (archived, hash-recorded, not executed, not decompiled) | Run it in AutoCAD on the tool's outputs for the 4 accepted floors and 1 newly prepared floor; attach each `.err` with `m4adm attach-qc`; compare with the report's "Summary in official QC terms" |
+| Templates (`MADINAT ZAYED-MZW16-63A-1-G/F1.dwg`) | **Received as DWG (AC1032)**; not readable without a converter | Save both as DXF 2010 in AutoCAD and pass them with `--template` |
+| Accepted drawings + originals | **Received** (Khalifa City SE45_01 C8, 4 floors; M4 originals of 5 levels) | Used for calibration (CALIBRATION.md). More pairs, especially with multiple units, nested spaces and basements, would tighten the calibration |
+| Official zone / sector lists | **Missing** (compiled into the .FAS) | Ask DRM for the lists used by QC errors 4.1 #4-5 |
+
+The table below is the original plan for the ADM SDD (planning) profile and still applies to it.
+
 Request from ADM SDD (gis.support@adm.abudhabi.ae), quoting spec v1.18.2 Table 1 (p.6):
 
 | # | File | Why it is needed | Integration point | Steps when received |

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,7 +24,7 @@ from m4adm import PROVISIONAL_LABEL, __version__
 from m4adm.adapters import DWGConverter, OfficialQC, OfficialTemplate, STATUS_UNAVAILABLE
 from m4adm.audit import AuditLog, utc_now
 from m4adm.classify import classify_layout
-from m4adm.crs import check_crs, extents_of, transform_entities
+from m4adm.crs import check_crs, extents_of, fit_similarity, georeference_entities, transform_entities
 from m4adm.export import JobWorkspace, OutputSpec, atomic_save_doc, atomic_write_json, atomic_write_text, build_output
 from shapely.geometry import Polygon
 
@@ -31,22 +32,24 @@ from m4adm.geometry import to_shape
 from m4adm.geometry.fixes import apply_fixes, propose
 from m4adm.io import identify, load_dxf, sha256_file
 from m4adm.mapping import build_mapping, categories_of
-from m4adm.models import Finding, JobSettings, Severity
+from m4adm.models import CRSSettings, Finding, JobSettings, Severity
 from m4adm.report import render_html
-from m4adm.rules import Manifest, load_manifest
+from m4adm.rules import Manifest, load_profile
+from m4adm.validate import bdms
 from m4adm.validate import Collector
 from m4adm.validate.drawing import (
     check_entity_roles, check_hygiene, check_layer_properties, check_shared_layers, check_title, check_units,
 )
 from m4adm.validate.features import (
-    associate_and_check_details, build_features, check_feature_geometry, check_layer_topology, check_services,
-    tobeclipped_handles,
+    associate_and_check_details, build_features, check_cross_layer_snapping, check_feature_geometry,
+    check_layer_topology, check_services, tobeclipped_handles,
 )
 from m4adm.validate.filename import build_stem, validate_metadata, validate_stem
 
 STATUS_READY = "Ready for review"
 STATUS_WARNINGS = "Prepared with warnings"
 STATUS_BLOCKED = "Blocked by errors"
+STATUS_BLOCKED_STRICT = "Blocked: warnings and open decisions must be resolved (strict mode)"
 
 DISCLAIMER = (
     "Internal preliminary QC by the M4 ADM GIS preparation tool. This is NOT official ADM QC, approval or "
@@ -63,7 +66,11 @@ class JobResult:
 
 
 def prepare(source: Path, settings: JobSettings, jobs_root: Path, manifest: Manifest | None = None) -> JobResult:
-    manifest = manifest or load_manifest()
+    manifest = manifest or load_profile(settings.profile)
+    if manifest.profile != settings.profile:
+        raise ValueError(f"manifest profile {manifest.profile!r} does not match job profile {settings.profile!r}")
+    if settings.profile == "bdms_building" and [c.value for c in settings.categories] != ["building"]:
+        raise ValueError("the bdms_building profile takes exactly one category: building (one floor per file)")
     tol = settings.tolerances or manifest.tolerances
     categories = [c.value for c in settings.categories]
     source = Path(source).resolve()
@@ -113,10 +120,16 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
             col.add("M4-IN-001", "Input is not a recognised DXF or DWG file.",
                     "Upload an AutoCAD DXF export of the drawing.", blocking=True)
             readable = None
-    if ident.release_ok is False:
-        col.add("ADM-FMT-001", f"Source is saved as {ident.release} ({ident.version_code}); ADM requires AutoCAD "
-                "2012 or earlier. The prepared file is written in the R2010 (AC1024) format.",
+    max_code = manifest.output.get("max_version_code")
+    min_code = manifest.output.get("min_version_code")
+    if ident.version_code and max_code and ident.version_code > max_code:
+        col.add("ADM-FMT-001", f"Source is saved as {ident.release} ({ident.version_code}); the specification allows "
+                f"releases up to {max_code}. The prepared file is written in the R2010 (AC1024) format.",
                 "Keep the R2010 output; when converting to DWG, choose AutoCAD 2010/2012 format.")
+    if ident.version_code and min_code and ident.version_code < min_code:
+        col.add("ADM-FMT-001", f"Source is saved as {ident.release} ({ident.version_code}); the specification "
+                f"requires {min_code} or later. The prepared file is written in R2010 (AC1024).",
+                "Keep the R2010 output.")
 
     report: dict[str, Any] = {}
     if readable is not None:
@@ -124,6 +137,8 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
         doc = loaded.doc
         for msg in loaded.audit_errors:
             col.add("ENG-FILE-001", f"DXF structure error: {msg}", "Run AUDIT in AutoCAD and re-export the DXF.")
+        repairs: Counter = Counter()
+        examples: dict[str, list[str]] = {}
         for msg in loaded.audit_fixes:
             if msg.startswith("Deleted entity"):
                 # e.g. an INSERT whose block definition is missing: it cannot be carried into the output
@@ -133,8 +148,13 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
                 changes["reader_removed"].append(msg)
                 audit.record("reader_removed_entity", message=msg)
             else:
-                col.add("ENG-FILE-001", f"Reader repaired (in memory only): {msg}",
-                        "Run AUDIT/RECOVER in AutoCAD so the source itself is clean.")
+                kind = re.sub(r"invalid key .+? in ", "invalid key … in ", re.sub(r"#[0-9A-Fa-f]+", "#…", msg))
+                repairs[kind] += 1
+                examples.setdefault(kind, []).append(msg)
+        for kind, n in repairs.items():
+            col.add("ENG-FILE-001", f"Reader repaired (in memory only), {n}×: {kind}",
+                    "Run AUDIT/RECOVER in AutoCAD so the source itself is clean.", count=n,
+                    examples=examples[kind][:10])
         records = classify_layout(doc)
         audit.record("entities_classified", count=len(records),
                      by_type=dict(Counter(r.structure for r in records)))
@@ -176,10 +196,18 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
 
         # ---------------------------------------------------------------- CRS
         in_scope = [r for r in records if mres.entity_target.get(r.handle)]
+        crs_settings = settings.crs
+        georeferenced = False
+        if settings.crs.control_points:
+            georeferenced, crs_settings = _georeference(settings, in_scope, col, changes, audit)
+            if georeferenced:
+                in_scope = [r for r in classify_layout(doc) if mres.entity_target.get(r.handle)]
         pts = [p for r in in_scope for p in (r.points or ([r.location] if r.location else []))]
-        crs_status = check_crs(settings.crs, extents_of(pts), col)
-        crs_summary = crs_status.summary
-        if crs_status.transformation_allowed:
+        crs_status = check_crs(crs_settings, extents_of(pts), col)
+        crs_summary = crs_status.summary if not georeferenced else (
+            f"georeferenced from control points into {settings.crs.target_crs} (confirmed by engineer); "
+            + crs_status.summary)
+        if crs_status.transformation_allowed and not georeferenced:
             try:
                 tlog = transform_entities([r.entity for r in in_scope], settings.crs)
                 changes["transformation"].append(tlog.__dict__)
@@ -212,20 +240,27 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
         records2 = classify_layout(doc)
         origin = fres.origin
         target2 = {r.handle: mres.entity_target.get(origin.get(r.handle, r.handle)) for r in records2}
-        for cat in categories:
-            stem = build_stem(settings.metadata, manifest.categories[cat].file_token)
-            validate_stem(stem, col, context=f"{cat} file")
-        validate_metadata(settings.metadata, categories, col)
+        is_bdms = manifest.profile == "bdms_building"
+        if not is_bdms:
+            for cat in categories:
+                stem = build_stem(settings.metadata, manifest.categories[cat].file_token)
+                validate_stem(stem, col, context=f"{cat} file")
+            validate_metadata(settings.metadata, categories, col)
         check_units(doc, settings.units_confirmed_metres, col)
         check_hygiene(doc, col, set(specs))
         check_layer_properties(doc, col, specs)
         check_entity_roles(records2, target2, manifest, categories, col)
-        check_title(records2, target2, col)
+        if manifest.title_block:
+            check_title(records2, target2, col)
         check_shared_layers(records2, target2, categories, col)
         ctx = build_features(records2, target2, manifest, categories, tol)
         check_feature_geometry(ctx, tol, col)
         associate_and_check_details(records2, target2, manifest, categories, ctx, tol, col)
         check_layer_topology(ctx, tol, col, tobeclipped_handles(ctx))
+        if manifest.cross_layer_snapping:
+            check_cross_layer_snapping(ctx, manifest.cross_layer_snapping, tol, col)
+        if is_bdms:
+            bdms.run_bdms_checks(records2, target2, manifest, settings.metadata, ctx, tol, col)
         if "services" in categories:
             plot_polys = [(f.handle, f.polygon) for f in ctx.features.get("Plot", []) if f.polygon is not None]
             if not plot_polys:  # plot layer present but Plot category not selected
@@ -249,10 +284,7 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
         out_dir = ws.dir / "output"
         for cat in categories:
             token = manifest.categories[cat].file_token
-            stem = build_stem(settings.metadata, token)
-            stem_col = Collector(manifest)
-            if not validate_stem(stem, stem_col):
-                stem = f"INVALID-NAME_{token}"
+            stem = _output_stem(manifest, settings, token)
             keep = {h for h, t in target2.items() if t and cat in categories_of(manifest, t, categories)}
             spec = OutputSpec(cat, token, out_dir / f"{stem}.dxf", keep, manifest.layers_for(cat))
             info = build_output(prepared, spec, manifest, ws.job_id, src_hash_before, settings.purge_unused_blocks,
@@ -260,14 +292,16 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
             outputs.append(info)
             audit.record("output_written", **{k: v for k, v in info.items() if k != "changes"},
                          changes=info["changes"])
+            for name in info.get("foreign_layers_remaining", []):
+                col.add("ADM-LYR-001", f"Layer '{name}' is still in the prepared file {info['file']} (referenced "
+                        "inside a block definition).", "Move the block's content to layer 0 or a specified layer.",
+                        severity=Severity.ERROR, layer=name)
         extra = {h for h, t in target2.items() if not t}
         if extra and settings.write_additional_file:
-            stem = build_stem(settings.metadata, "additional")
-            if not validate_stem(stem, Collector(manifest)):
-                stem = "INVALID-NAME_additional"
+            stem = _output_stem(manifest, settings, "additional")
             spec = OutputSpec("additional", "additional", out_dir / f"{stem}.dxf", extra, [])
             info = build_output(prepared, spec, manifest, ws.job_id, src_hash_before, False, False)
-            info["note"] = ("Reference-only additional file (spec §4.1): entities not mapped to an ADM layer, "
+            info["note"] = ("Reference-only file, not a submission file: entities not mapped to a specified layer, "
                             "kept with their original layers so no information is lost.")
             outputs.append(info)
             audit.record("output_written", **{k: v for k, v in info.items() if k != "changes"})
@@ -275,9 +309,11 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
             if not o["verification"]["ok"]:
                 col.add("ENG-FILE-001", f"Output {o['file']} failed re-read verification: {o['verification']}",
                         "Do not use this output; report the problem.", severity=Severity.ERROR, blocking=True)
-        col.add("ADM-FMT-001", "Prepared files are DXF (R2010/AC1024). ADM requires DWG (AutoCAD 2012 or earlier); "
+        release = (f"AutoCAD {manifest.output['max_autocad_release']} or earlier" if manifest.output.get(
+            "max_autocad_release") else f"AutoCAD {manifest.output.get('min_autocad_release', '')} or later")
+        col.add("ADM-FMT-001", f"Prepared files are DXF (R2010/AC1024). The specification requires DWG ({release}); "
                 f"DWG converter status: {DWGConverter.from_env().status()}.",
-                "Convert each prepared DXF to DWG in AutoCAD 2010-2012 format (or with ODA File Converter) before "
+                "Convert each prepared DXF to DWG (AutoCAD 2010 format) in AutoCAD or ODA File Converter before "
                 "running the official QC tool, then rename .dxf to .dwg with the same stem.", severity=Severity.INFO)
         col.add("ADM-NAME-009", "Output file names use the validated ADM stem with the .dxf extension of the format "
                 "actually produced.", "After conversion to DWG the extension must be .dwg.", severity=Severity.INFO)
@@ -302,7 +338,7 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
     if counts.get("ERROR") or blocking:
         status = STATUS_BLOCKED
     elif counts.get("WARNING") or report_unresolved or proposals_out:
-        status = STATUS_WARNINGS
+        status = STATUS_BLOCKED_STRICT if settings.strict else STATUS_WARNINGS
     else:
         status = STATUS_READY
     template_cmp = {c: OfficialTemplate(Path(settings.template_path) if settings.template_path else None)
@@ -311,7 +347,7 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
         "label": PROVISIONAL_LABEL,
         "disclaimer": DISCLAIMER,
         "tool": {"name": "M4 ADM GIS Preparation", "version": __version__},
-        "spec": {"title": manifest.spec["title"], "version": manifest.version,
+        "spec": {"profile": manifest.profile, "title": manifest.spec["title"], "version": manifest.version,
                  "source_pdf_sha256": manifest.spec["source_pdf_sha256"],
                  "manifest_file": manifest.path.name if manifest.path else None,
                  "manifest_sha256": manifest.sha256},
@@ -337,6 +373,9 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
             "fix_proposals": [json.loads(p.model_dump_json()) for p in proposals_out],
         },
         "findings": [json.loads(f.model_dump_json()) for f in _sorted(findings)],
+        "qc_style_summary": _qc_summary(findings),
+        "strict_mode": settings.strict,
+        "checks_not_applicable": dict(col.not_applicable),
         "changes": changes,
         "outputs": outputs,
         "integrations": {
@@ -344,7 +383,7 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
             "official_template": template_cmp,
             "official_qc": STATUS_UNAVAILABLE,
         },
-        "limitations": _limitations(),
+        "limitations": _limitations(manifest),
     }
     geometry_log = {
         "modified": changes["layer_mapping"] + changes["fixes"] + changes["transformation"],
@@ -386,6 +425,66 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
     return JobResult(ws.job_id, final, status, report)
 
 
+def _output_stem(manifest: Manifest, settings: JobSettings, token: str) -> str:
+    if manifest.profile == "bdms_building":
+        stem = bdms.build_stem(settings.metadata)
+        if not bdms.validate_stem(stem, Collector(manifest)):
+            stem = "INVALID-NAME_floor"
+        return stem if token != "additional" else f"{stem}_UNMAPPED-REFERENCE"
+    stem = build_stem(settings.metadata, token)
+    return stem if validate_stem(stem, Collector(manifest)) else f"INVALID-NAME_{token}"
+
+
+def _georeference(settings: JobSettings, in_scope, col: Collector, changes: dict, audit: AuditLog
+                  ) -> tuple[bool, CRSSettings]:
+    """Fit and (only when confirmed and within tolerance) apply control-point georeferencing."""
+    c = settings.crs
+    try:
+        sim = fit_similarity([tuple(map(tuple, pair)) for pair in c.control_points])
+    except ValueError as exc:
+        col.add("ENG-GEOREF-001", f"Control points rejected: {exc}", "Supply at least two distinct control point "
+                "pairs (source x,y -> target E,N).", blocking=True)
+        return False, c
+    audit.record("georeference_fitted", **sim.as_dict(), points=len(c.control_points))
+    if sim.rms > c.max_georef_rms:
+        col.add("ENG-GEOREF-001", f"Control-point fit RMS {sim.rms:.4f} m exceeds the limit {c.max_georef_rms} m "
+                f"(residuals {', '.join(f'{r:.4f}' for r in sim.residuals)} m). Nothing was transformed.",
+                "Check the control point pairs (order, units, typing) or use better-defined points.", blocking=True,
+                fit=sim.as_dict())
+        return False, c
+    if not (c.confirm_transformation and c.source_confirmed):
+        col.add("M4-SAFE-CRS", f"Georeferencing fitted (scale {sim.scale:.6f}, rotation {sim.rotation_deg:.4f}°, "
+                f"RMS {sim.rms:.4f} m) but not confirmed; nothing was transformed.",
+                "Review the fit and tick 'confirm transformation' and 'source confirmed' to apply it.", blocking=True,
+                fit=sim.as_dict())
+        return False, c
+    try:
+        tlog = georeference_entities([r.entity for r in in_scope], sim)
+    except ValueError as exc:
+        col.add("M4-SAFE-CRS", f"Georeferencing not performed: {exc}",
+                "Fix or exclude the listed entities, then re-run.", blocking=True)
+        audit.record("transformation_blocked", reason=str(exc))
+        return False, c
+    entry = {**tlog.__dict__, "fit": sim.as_dict(), "control_points": c.control_points}
+    changes["transformation"].append(entry)
+    audit.record("coordinates_georeferenced", **entry)
+    return True, CRSSettings(source_crs=c.target_crs, source_confirmed=True, target_crs=c.target_crs)
+
+
+def _qc_summary(findings: list[Finding]) -> list[dict]:
+    """Findings grouped like the official QC report: error description, count, layers."""
+    groups: dict[str, dict] = {}
+    for f in findings:
+        name = f.details.get("official_qc_error")
+        if not name or f.severity == Severity.INFO:
+            continue
+        g = groups.setdefault(name, {"qc_error": name, "rule_id": f.rule_id, "count": 0, "layers": set()})
+        g["count"] += 1
+        if f.layer:
+            g["layers"].add(f.layer)
+    return [{**g, "layers": sorted(g["layers"])} for g in groups.values()]
+
+
 def _sorted(findings: list[Finding]) -> list[Finding]:
     order = {"ERROR": 0, "WARNING": 1, "INFO": 2}
     return sorted(findings, key=lambda f: (order[f.severity.value], not f.blocking, f.rule_id, f.handle or ""))
@@ -398,7 +497,18 @@ def _append_index(root: Path, entry: dict) -> None:
         os.fsync(fh.fileno())
 
 
-def _limitations() -> list[str]:
+def _limitations(manifest: Manifest) -> list[str]:
+    if manifest.profile == "bdms_building":
+        return [
+            "Output is DXF R2010 (AC1024). DWG output needs AutoCAD or ODA File Converter (not bundled/tested).",
+            "The official QC tool (DRM_CPDQC_V2.3.fas) runs only inside AutoCAD and is not emulated; its rules were "
+            "reproduced from the QC manual and calibrated on 4 accepted sample drawings. This report is not DRM QC.",
+            "The official zone and sector name lists are compiled into the QC tool and are not published "
+            "(DRM-GEN-04 not checked).",
+            "SPEC says 1 unit = 1 cm, accepted samples are in metres; metres are required here (DISCREPANCIES_BDMS).",
+            "Space polygons are not generated from architectural wall lines; they must be drawn (or mapped) in CAD.",
+            "Unit-number uniqueness across all floors of a building needs all floor files in one run (checked per file).",
+        ]
     return [
         "Output is DXF R2010 (AC1024). DWG output needs AutoCAD or ODA File Converter (not bundled/tested).",
         "The official ADM DWG template is not available: title block, attribute block definitions, dimension style "

@@ -21,6 +21,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest==9.1.1", "httpx==0.28.1"]
+tools = ["xlrd==2.0.1"]   # only for scripts/extract_drm_codelists.py
 
 [project.scripts]
 m4adm = "m4adm.cli:main"

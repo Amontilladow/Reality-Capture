@@ -32,8 +32,8 @@ def layer_spec_for(manifest: Manifest, categories: list[str], name: str) -> Laye
 
 def check_units(doc: Drawing, units_confirmed: bool, col: Collector) -> None:
     ins = doc.header.get("$INSUNITS", 0)
-    want = col.manifest.units["insunits"]
-    if ins != want:
+    want = col.manifest.units.get("insunits")
+    if want is not None and ins != want:
         col.add(
             "ADM-UNIT-001",
             f"Drawing insertion units are {INSUNITS_NAMES.get(ins, ins)} ($INSUNITS={ins}); metres are required.",
@@ -49,7 +49,8 @@ def check_units(doc: Drawing, units_confirmed: bool, col: Collector) -> None:
             blocking=True,
         )
     lunits = doc.header.get("$LUNITS", 2)
-    if lunits != col.manifest.units["lunits"]:
+    want_l = col.manifest.units.get("lunits")
+    if want_l is not None and lunits != want_l:
         col.add("ADM-UNIT-002", f"Length unit type $LUNITS={lunits}; Decimal (2) is shown in Figure 1.",
                 "The prepared file sets $LUNITS=2 (display setting only, logged).")
 
@@ -95,7 +96,7 @@ def check_layer_properties(doc: Drawing, col: Collector, specs: dict[str, LayerS
         if lt.lower() != spec.linetype.lower():
             diffs.append(f"linetype {lt} (expected {spec.linetype})")
         lw = layer.dxf.get("lineweight", -3)
-        if lw != spec.lineweight_dxf:
+        if lw not in spec.accepted_lineweights:
             diffs.append(f"lineweight {lw} (expected {spec.lineweight_dxf})")
         if diffs:
             known_lt = {lt.dxf.name.lower() for lt in doc.linetypes} | {"dashed"}
@@ -118,7 +119,8 @@ def check_entity_roles(records: list[EntityRecord], target: dict[str, str | None
             continue
         kw = dict(handle=r.handle, layer=tl, entity_type=r.structure, location=r.location)
         t = r.dxftype
-        if t in PROHIBITED_TYPES:
+        prohibited = set(manifest.prohibited_entities or PROHIBITED_TYPES)
+        if t in prohibited:
             col.add("ADM-CAP-007", f"{t} entity is not allowed in the submission.",
                     "Redraw as an LWPOLYLINE on the correct layer (e.g. PEDIT/JOIN lines into a polyline)."
                     if t == "LINE" else f"Remove the {t} or convert it to compliant objects.", **kw)
@@ -138,7 +140,7 @@ def check_entity_roles(records: list[EntityRecord], target: dict[str, str | None
             col.add("ADM-CAP-009", f"3D object ({r.structure}) is not allowed.",
                     "Replace with a 2D LWPOLYLINE at elevation 0.", **kw)
             continue
-        if t in TEXT_TYPES and spec.topology != "title":
+        if t in TEXT_TYPES and spec.topology not in ("title", "mixed"):
             col.add("ADM-ATT-010", f"{t} entity is not allowed outside the Title layer.",
                     "Move the information into the feature's attribute block, or delete the text.", **kw)
             continue
@@ -180,6 +182,10 @@ def check_entity_roles(records: list[EntityRecord], target: dict[str, str | None
             if t != "DIMENSION":
                 col.add("ADM-LYR-003", f"{r.structure} on DimensionLine; this layer must contain AutoCAD dimensions.",
                         "Move the object to its proper layer or replace it with a dimension.", **kw)
+        elif spec.topology == "mixed":
+            if t not in ("LWPOLYLINE", "INSERT", "TEXT", "MTEXT", "ATTDEF"):
+                col.add("ADM-LYR-005", f"{r.structure} on layer {tl}; only polylines, blocks and text belong here.",
+                        "Remove it or convert it to an LWPOLYLINE.", **kw)
         elif spec.topology == "title":
             if r.is_polyline_like and not r.closed:
                 col.add("ADM-LYR-006", "Open polyline on the Title layer (Title is specified as closed polylines).",

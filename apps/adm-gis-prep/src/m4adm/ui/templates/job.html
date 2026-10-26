@@ -7,7 +7,7 @@
 <p><span class="badge {{ 'b-blocked' if s.startswith('Blocked') else ('b-warn' if 'warnings' in s else 'b-ready') }}">{{ s }}</span>
    &nbsp;<span class="badge {{ 'b-ready' if official.status == 'PASSED' else ('b-blocked' if official.status == 'FAILED' else 'b-muted') }}">{{ official.label }}</span>
    {% if r.job.parent_job %}<span class="muted"> re-run of <a href="/jobs/{{ r.job.parent_job }}">{{ r.job.parent_job }}</a></span>{% endif %}</p>
-<p class="muted">Specification v{{ r.spec.version }} &middot; categories {{ r.job.categories | join(', ') }} &middot; source <code>{{ r.source.original_path }}</code>
+<p class="muted">{{ r.spec.profile }} &middot; {{ 'STRICT mode (any warning blocks)' if r.strict_mode else 'standard mode' }} &middot; specification v{{ r.spec.version }} &middot; categories {{ r.job.categories | join(', ') }} &middot; source <code>{{ r.source.original_path }}</code>
   ({{ r.source.format }}, {{ r.source.release or 'unknown release' }}) &middot; source unchanged (SHA-256 verified): <b>{{ 'yes' if r.source.unchanged else 'NO' }}</b></p>
 
 <div class="grid">
@@ -19,6 +19,9 @@
   <div class="tile">Open fix proposals<b>{{ r.status.counts.open_fix_proposals }}</b></div>
 </div>
 
+{% if r.qc_style_summary %}<h2>Summary in official QC terms</h2>
+<div class="scroll"><table><tr><th>Official QC error</th><th>Rule</th><th>Count</th><th>Layers</th></tr>
+{% for g in r.qc_style_summary %}<tr><td>{{ g.qc_error }}</td><td><code>{{ g.rule_id }}</code></td><td>{{ g.count }}</td><td>{{ g.layers | join(', ') }}</td></tr>{% endfor %}</table></div>{% endif %}
 {% set blocking = r.findings | selectattr('blocking') | list %}
 {% if blocking %}<h2>Blocking items</h2><ul>
   {% for f in blocking %}<li><b>{{ f.rule_id }}</b>: {{ f.message }}<br><i>Next: {{ f.action }}</i></li>{% endfor %}</ul>{% endif %}

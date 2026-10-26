@@ -66,6 +66,14 @@
   </table></div>
   {% else %}<p class="ERROR">No prepared output was produced (see blocking items).</p>{% endif %}
 
+  <p class="muted">Profile {{ r.spec.profile }} &middot; {{ 'STRICT mode: any error or warning blocks' if r.strict_mode else 'standard mode' }}</p>
+  {% if r.qc_style_summary %}
+  <h2>Summary in official QC terms</h2>
+  <div class="scroll"><table><tr><th>Official QC error</th><th>Rule</th><th>Count</th><th>Layers</th></tr>
+  {% for g in r.qc_style_summary %}<tr><td>{{ g.qc_error }}</td><td><code>{{ g.rule_id }}</code></td><td>{{ g.count }}</td><td>{{ g.layers | join(', ') }}</td></tr>{% endfor %}
+  </table></div>
+  {% endif %}
+  {% if r.checks_not_applicable %}<p class="muted">Generic checks not applicable in this profile (fired, not counted): {% for k, v in r.checks_not_applicable.items() %}{{ k }} ×{{ v }}{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
   {% set blocking = r.findings | selectattr('blocking') | list %}
   {% if blocking %}
   <h2>Blocking items</h2>

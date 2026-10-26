@@ -12,6 +12,8 @@
 #   USER_DECISION_REQUIRED         cannot be determined from geometry alone
 # Where the PDF contradicts itself or the build brief, see docs/DISCREPANCIES.md.
 
+profile: sdd_planning
+
 spec:
   id: ADM-SDD-PDS
   title: Standards & Specifications for Planning Data Submission (Plot, Roads & Service Corridors)
@@ -33,6 +35,8 @@ output:
   # What this tool can actually produce today (see docs/DECISIONS.md D-003)
   produced_format: DXF
   produced_dxf_version: R2010   # AC1024, the DWG/DXF format family read by AutoCAD 2010-2012
+  max_version_code: AC1024
+  max_autocad_release: "2012"
 
 units:
   insunits: 6              # metres ($INSUNITS)
@@ -402,8 +406,8 @@ blocks:
     ref: {page: 30, section: "6.3.3"}
     attributes:
       - {tag: Remarks, type: character, mandatory: false}
-      - {tag: ExpectedStartDate, type: date, mandatory: true}
-      - {tag: ExpectedEndDate, type: date, mandatory: true}
+      - {tag: ExpectedStartDate, type: date, mandatory: true, month_case: upper}
+      - {tag: ExpectedEndDate, type: date, mandatory: true, month_case: upper}
       - {tag: WorkAreaFor, type: character, mandatory: true, domain: work_area_for}
   BufferZoneDetail:
     ref: {page: 31, section: "6.3.4"}
@@ -415,10 +419,10 @@ blocks:
     ref: {page: "31-32", section: "6.3.5"}
     attributes:
       - {tag: Remarks, type: character, mandatory: false}
-      - {tag: PhaseStartDate, type: date, mandatory: false}
-      - {tag: PhaseEndDate, type: date, mandatory: false}
-      - {tag: ConsStartDate, type: date, mandatory: false}
-      - {tag: ConsEndDate, type: date, mandatory: false}
+      - {tag: PhaseStartDate, type: date, mandatory: false, month_case: upper}
+      - {tag: PhaseEndDate, type: date, mandatory: false, month_case: upper}
+      - {tag: ConsStartDate, type: date, mandatory: false, month_case: upper}
+      - {tag: ConsEndDate, type: date, mandatory: false, month_case: upper}
       - {tag: ContractorName, type: character, mandatory: true}
       - {tag: ContPrjMgrName, type: character, mandatory: true}
       - {tag: ContPrjMgrMobileNum, type: character, mandatory: true}
@@ -444,6 +448,13 @@ blocks:
       - {tag: GroundLevel, type: double, mandatory: true}
       - {tag: AsphaltLevel, type: double, mandatory: true}
       - {tag: Interface, type: string, mandatory: false}
+
+prohibited_entities: [HATCH, SOLID, XLINE, LINE, MPOLYGON]
+
+# Generic checks that exist only for other profiles (null = not applicable here).
+rule_aliases:
+  ENG-NEST-001: null       # same-layer nesting is never allowed in SDD (spec §5 rule 4)
+  ENG-GEOREF-001: M4-SAFE-CRS
 
 # Default tolerances (metres / square metres). ENGINEERING choices, configurable per job.
 tolerances:

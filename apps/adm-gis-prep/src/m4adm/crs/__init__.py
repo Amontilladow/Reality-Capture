@@ -10,6 +10,7 @@ Principles (spec §4.4 and M4 safety rules):
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from pyproj import CRS, Transformer
@@ -65,13 +66,14 @@ class CRSStatus:
 def check_crs(settings: CRSSettings, extents: Extents | None, col: Collector) -> CRSStatus:
     m = col.manifest
     target = parse_crs(settings.target_crs)
-    manifest_target = CRS.from_epsg(int(m.crs["target_epsg"]))
-    if not target.equals(manifest_target):
+    allowed = [int(e) for e in m.crs.get("allowed_epsg", [m.crs["target_epsg"]])]
+    if not any(target.equals(CRS.from_epsg(e)) for e in allowed):
         col.add(
             "ADM-CRS-001",
-            f"Configured target CRS {settings.target_crs} differs from the ADM CRS "
-            f"(EPSG:{m.crs['target_epsg']}, {m.crs['name']}).",
-            f"Set the target CRS to EPSG:{m.crs['target_epsg']}.",
+            f"Configured target CRS {settings.target_crs} is not an allowed CRS for this specification "
+            f"({', '.join(f'EPSG:{e}' for e in allowed)}; {m.crs['name']}).",
+            f"Set the target CRS to EPSG:{allowed[0]}" + (" (or the zone of the building)" if len(allowed) > 1 else "")
+            + ".",
             blocking=True,
         )
     source: CRS | None = None
@@ -233,3 +235,103 @@ def transform_entities(entities, settings: CRSSettings) -> TransformLog:
                     a.dxf.align_point = (px + dx, py + dy, pz)
         count += 1
     return TransformLog(settings.transform_pipeline, extents_of(before_pts), extents_of(after_pts), count)
+
+
+# --------------------------------------------------------------------------- control-point georeferencing
+@dataclass
+class Similarity:
+    """x' = s*(cos t*x - sin t*y) + tx ;  y' = s*(sin t*x + cos t*y) + ty"""
+
+    scale: float
+    rotation_deg: float
+    tx: float
+    ty: float
+    residuals: list[float]
+    rms: float
+
+    def apply(self, x: float, y: float) -> tuple[float, float]:
+        t = math.radians(self.rotation_deg)
+        c, s = math.cos(t) * self.scale, math.sin(t) * self.scale
+        return (c * x - s * y + self.tx, s * x + c * y + self.ty)
+
+    def as_dict(self) -> dict:
+        return {"scale": self.scale, "rotation_deg": self.rotation_deg, "tx": self.tx, "ty": self.ty,
+                "residuals_m": self.residuals, "rms_m": self.rms}
+
+
+def fit_similarity(pairs: list[tuple[tuple[float, float], tuple[float, float]]]) -> Similarity:
+    """Least-squares 2D similarity (Helmert) from >= 2 control point pairs."""
+    if len(pairs) < 2:
+        raise ValueError("at least two control point pairs are required")
+    n = len(pairs)
+    sx = sum(p[0][0] for p in pairs) / n
+    sy = sum(p[0][1] for p in pairs) / n
+    dx = sum(p[1][0] for p in pairs) / n
+    dy = sum(p[1][1] for p in pairs) / n
+    a_num = b_num = den = 0.0
+    for (x, y), (X, Y) in pairs:
+        x, y, X, Y = x - sx, y - sy, X - dx, Y - dy
+        a_num += x * X + y * Y
+        b_num += x * Y - y * X
+        den += x * x + y * y
+    if den == 0:
+        raise ValueError("control points coincide; cannot fit a transformation")
+    a, b = a_num / den, b_num / den
+    scale = math.hypot(a, b)
+    rot = math.degrees(math.atan2(b, a))
+    tx = dx - (a * sx - b * sy)
+    ty = dy - (b * sx + a * sy)
+    sim = Similarity(scale, rot, tx, ty, [], 0.0)
+    res = [math.dist(sim.apply(*src), dst) for src, dst in pairs]
+    sim.residuals = res
+    sim.rms = math.sqrt(sum(r * r for r in res) / n)
+    return sim
+
+
+GEOREF_TYPES = {"LWPOLYLINE", "INSERT", "POINT"}
+
+
+def georeference_entities(entities, sim: Similarity) -> TransformLog:
+    """Apply a fitted similarity exactly. Refuses (ValueError) anything it cannot transform exactly."""
+    refused = []
+    for e in entities:
+        t = e.dxftype()
+        ext = tuple(e.dxf.get("extrusion", (0, 0, 1))) if e.dxf.is_supported("extrusion") else (0, 0, 1)
+        if t not in GEOREF_TYPES or ext != (0, 0, 1):
+            refused.append(f"{t}#{e.dxf.handle}")
+    if refused:
+        raise ValueError("georeferencing blocked; unsupported entities in scope: " + ", ".join(refused[:20]))
+    before, after = [], []
+
+    def tx(x: float, y: float) -> tuple[float, float]:
+        nx, ny = sim.apply(x, y)
+        before.append((x, y))
+        after.append((nx, ny))
+        return nx, ny
+
+    for e in entities:
+        t = e.dxftype()
+        if t == "LWPOLYLINE":
+            pts = list(e.get_points("xyseb"))
+            # A similarity keeps arcs circular, so bulge values are unchanged; widths scale.
+            e.set_points([(*tx(x, y), s0 * sim.scale, s1 * sim.scale, b) for x, y, s0, s1, b in pts], format="xyseb")
+            if e.dxf.hasattr("const_width"):
+                e.dxf.const_width = e.dxf.const_width * sim.scale
+        elif t == "POINT":
+            x, y, z = e.dxf.location
+            e.dxf.location = (*tx(x, y), z)
+        elif t == "INSERT":
+            x, y, z = e.dxf.insert
+            e.dxf.insert = (*tx(x, y), z)
+            e.dxf.rotation = (e.dxf.get("rotation", 0.0) + sim.rotation_deg) % 360
+            for key in ("xscale", "yscale", "zscale"):
+                e.dxf.set(key, e.dxf.get(key, 1.0) * sim.scale)
+            for a in e.attribs:
+                ax, ay, az = a.dxf.insert
+                a.dxf.insert = (*sim.apply(ax, ay), az)
+                if a.dxf.hasattr("align_point"):
+                    px, py, pz = a.dxf.align_point
+                    a.dxf.align_point = (*sim.apply(px, py), pz)
+                a.dxf.height = a.dxf.get("height", 1.0) * sim.scale
+                a.dxf.rotation = (a.dxf.get("rotation", 0.0) + sim.rotation_deg) % 360
+    return TransformLog(f"similarity {sim.as_dict()}", extents_of(before), extents_of(after), len(entities))

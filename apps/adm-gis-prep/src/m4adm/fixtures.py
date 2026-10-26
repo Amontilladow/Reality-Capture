@@ -276,3 +276,66 @@ def write_all(out_dir: Path, manifest: Manifest | None = None) -> list[Path]:
         encoding="utf-8",
     )
     return paths
+
+
+# --------------------------------------------------------------------------- DRM BDMS 4.1 (building floor)
+BDMS_META = {"zone_name": "SYNTH ZONE", "sector_number": "SE01_01", "plot_number": "C1", "building_number": "1",
+             "floor_id": "F1", "contractor_name": "M4 Contracting"}
+
+
+def bdms_floor(manifest: Manifest, *, door_vertices_on_spaces: bool = True, extra_layers: tuple[str, ...] = ()
+               ) -> Drawing:
+    """A clean synthetic building floor (SYNTHETIC, NOT AN OFFICIAL SAMPLE) in UTM 40N metres.
+
+    Plot 40x30 contains a 20x10 building; Floor = Unit = BuildingRoof = outline; two spaces split the floor
+    at y=5 with a door straddling the shared wall (vertices added where the door crosses it).
+    """
+    doc = ezdxf.new("R2010")
+    doc.header.custom_vars.append("SYNTHETIC", SYNTHETIC_LABEL)
+    for spec in manifest.layers_for("building"):
+        doc.layers.add(spec.name, color=spec.color, lineweight=25)
+    for name in extra_layers:
+        doc.layers.add(name)
+    for name, block in manifest.blocks.items():
+        b = doc.blocks.new(name)
+        for i, a in enumerate(block.attributes):
+            b.add_attdef(a.tag.upper(), (0, -0.3 * (i + 1)), dxfattribs={"height": 0.2})
+    x0, y0 = E0, N0
+    poly(doc, [(x0 - 10, y0 - 10), (x0 + 30, y0 - 10), (x0 + 30, y0 + 20), (x0 - 10, y0 + 20)], "Plot")
+    detail(doc, "PlotDetail", "PlotDetail", (x0 - 8, y0 - 8),
+           {"PLOTNUMBER": "C1", "SECTORNUMBER": "SE01_01", "ZONENAME": "SYNTH ZONE"})
+    outline_v = [(x0, y0), (x0 + 20, y0), (x0 + 20, y0 + 5), (x0 + 20, y0 + 10), (x0, y0 + 10), (x0, y0 + 5)]
+    poly(doc, outline_v, "BuildingOutline")
+    detail(doc, "BuildingDetail", "BuildingDetail", (x0 + 1, y0 + 1),
+           {"BUILDINGNUMBER": "1", "BUILDINGNUMOFFLOORS": "2", "USAGECATEGORYTYPE": "Residential",
+            "USAGETYPE": "Household Living", "PLOTNUMBER": "C1", "SECTORNUMBER": "SE01_01"})
+    poly(doc, outline_v, "BuildingRoof")
+    detail(doc, "BuildingRoofDetail", "BuildingRoofDetail", (x0 + 1.5, y0 + 1.5),
+           {"BUILDINGNUMBER": "1", "BUILDINGHEIGHT": "7.2"})
+    poly(doc, outline_v, "Floor")
+    detail(doc, "FloorDetail", "FloorDetail", (x0 + 2, y0 + 2),
+           {"FLOORNUMBER": "F1", "BUILDINGNUMBER": "1", "FLOORHEIGHT": "3.6"})
+    poly(doc, outline_v, "Unit")
+    detail(doc, "UnitDetail", "UnitDetail", (x0 + 2.5, y0 + 2.5),
+           {"UNITNUMBER": "1", "FLOORNUMBER": "F1", "UNITTYPE": "Residential", "UNITCLASSIFICATION": "Apartment",
+            "UNITAREA": "200", "UNITNUMBEDROOM": "2", "UNITNUMBATHROOM": "2", "UNITUSAGETYPE": "Household Living",
+            "UNITOWNERNAME": "Owner Name", "UNITOWNERNATIOANLITY": "UAE", "UNITOWNERPASSPORT": "P1234567"})
+    wall = [(x0 + 10, y0 + 5), (x0 + 9, y0 + 5)] if door_vertices_on_spaces else []
+    poly(doc, [(x0, y0), (x0 + 20, y0), (x0 + 20, y0 + 5), *wall, (x0, y0 + 5)], "Space")
+    detail(doc, "SpaceDetail", "SpaceDetail", (x0 + 5, y0 + 2),
+           {"SPACENUMBER": "1", "UNITNUMBER": "1", "FLOORNUMBER": "F1", "SPACEUSAGE": "LIVING"})
+    poly(doc, [(x0, y0 + 5), *reversed(wall), (x0 + 20, y0 + 5), (x0 + 20, y0 + 10), (x0, y0 + 10)], "Space")
+    detail(doc, "SpaceDetail", "SpaceDetail", (x0 + 5, y0 + 8),
+           {"SPACENUMBER": "2", "UNITNUMBER": "1", "FLOORNUMBER": "F1", "SPACEUSAGE": "BEDROOM"})
+    poly(doc, [(x0 + 9, y0 + 4.9), (x0 + 10, y0 + 4.9), (x0 + 10, y0 + 5), (x0 + 10, y0 + 5.1), (x0 + 9, y0 + 5.1),
+               (x0 + 9, y0 + 5)], "Door")
+    detail(doc, "DoorDetail", "DoorDetail", (x0 + 9.5, y0 + 5.02),
+           {"SPACENUMBER": "2", "UNITNUMBER": "1", "FLOORNUMBER": "F1", "TYPE": "wood"})
+    poly(doc, [(x0 - 10, y0 + 25), (x0 + 30, y0 + 25), (x0 + 30, y0 + 35), (x0 - 10, y0 + 35)], "Title")
+    detail(doc, "ProjectDetail", "Title", (x0 - 9, y0 + 34),
+           {"DEVELOPERNAME": "SYNTHETIC DEVELOPER", "PROPERTYNAME": "", "UNIQUEBUILDINGNUMBER": "1",
+            "BUILDINGNAME": ""})
+    detail(doc, "DrawingDetail", "Title", (x0 + 10, y0 + 34),
+           {"DRAWINGTITLE": "SYNTH ZONE-SE01_01-C1-1-F1", "DRAWINGTYPE": "As Built", "DATEOFDRAWING": "14-Jan-2026",
+            "DRAWINGSCALE": "100"})
+    return doc

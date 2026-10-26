@@ -25,7 +25,7 @@ from ezdxf import recover
 from ezdxf.document import Drawing
 
 from m4adm import PROVISIONAL_LABEL
-from m4adm.classify import unused_block_names
+from m4adm.classify import referenced_block_names, unused_block_names
 from m4adm.io import sha256_file
 from m4adm.rules import LayerSpec, Manifest
 
@@ -129,7 +129,7 @@ def normalise_layers(doc: Drawing, specs: list[LayerSpec], log: list[dict]) -> N
             layer.color = spec.color
         if lt_name and before["linetype"].lower() != lt_name.lower():
             layer.dxf.linetype = lt_name
-        if before["lineweight"] != spec.lineweight_dxf:
+        if before["lineweight"] not in spec.accepted_lineweights:
             layer.dxf.lineweight = spec.lineweight_dxf
         after = {"color": layer.color, "linetype": layer.dxf.get("linetype", "Continuous"),
                  "lineweight": layer.dxf.get("lineweight", -3)}
@@ -151,6 +151,37 @@ def _ensure_linetype(doc: Drawing, name: str, log: list[dict]) -> str | None:
     return None
 
 
+def _purge_layers(doc: Drawing, specified: set[str], extra_allowed: set[str], log: list[dict]) -> list[str]:
+    """Remove layer-table records that are not specified (or that are specified but empty).
+
+    Layers still referenced by entities (model space or used block definitions) are kept and returned so
+    the caller can report them; nothing that carries geometry is removed.
+    """
+    referenced = {e.dxf.get("layer", "0") for e in doc.modelspace()}
+    for block in doc.blocks:
+        if block.block_record.is_any_layout and block.name.lower() != "*model_space":
+            continue
+        for e in block:
+            referenced.add(e.dxf.get("layer", "0"))
+    removed, remaining = [], []
+    for layer in list(doc.layers):
+        name = layer.dxf.name
+        if name in extra_allowed or name.lower() in {"0", "defpoints"}:
+            continue
+        if name in specified and name in {e.dxf.get("layer") for e in doc.modelspace()}:
+            continue
+        if name in referenced:
+            if name not in specified:
+                remaining.append(name)
+            continue
+        doc.layers.remove(name)
+        removed.append(name)
+    if removed:
+        log.append({"action": "layers_removed_from_table", "layers": removed,
+                    "reason": "not specified, or specified but empty (QC: non specified layers / missing polygon)"})
+    return remaining
+
+
 @dataclass
 class OutputSpec:
     kind: str                 # category name or "additional"
@@ -170,23 +201,51 @@ def build_output(prepared: Path, out: OutputSpec, manifest: Manifest, job_id: st
             msp.delete_entity(e)
             removed += 1
     log: list[dict] = []
+    if out.kind != "additional":
+        # Submission files hold model space only (accepted samples carry no paper-space content);
+        # layouts stay in the source and in the reference file.
+        dropped = 0
+        for layout in doc.layouts:
+            if layout.is_modelspace:
+                continue
+            for e in list(layout):
+                if e.dxftype() != "VIEWPORT" or e.dxf.get("id", 2) != 1:
+                    layout.delete_entity(e)
+                    dropped += 1
+        if dropped:
+            log.append({"action": "paper_space_content_omitted", "entities": dropped,
+                        "note": "kept in the source and the reference file"})
+    create_empty = manifest.output.get("create_empty_layers", True)
+    used_layers = {e.dxf.get("layer", "0") for e in doc.modelspace()}
     if out.layers:
-        normalise_layers(doc, out.layers, log)
+        specs = out.layers if create_empty else [l for l in out.layers if l.name in used_layers]
+        normalise_layers(doc, specs, log)
     purged: list[str] = []
     if purge_unused:
-        for name in unused_block_names(doc):
+        referenced = {n.upper() for n in referenced_block_names(doc)}
+        candidates = set(unused_block_names(doc))
+        # Anonymous blocks (*U dynamic-block instances, *D dimension graphics) whose owner was not carried
+        # into this file are unreferenced too; they would otherwise keep foreign layers alive.
+        candidates |= {b.name for b in doc.blocks if b.name.startswith("*") and not b.block_record.is_any_layout
+                       and b.name.upper() not in referenced}
+        for name in sorted(candidates):
             block = doc.blocks.get(name)
             if block is not None and not block.block_record.is_xref:
                 doc.blocks.delete_block(name, safe=False)
                 purged.append(name)
         if purged:
             log.append({"action": "unused_blocks_omitted", "blocks": purged})
-    if set_units and out.kind != "additional":
+    foreign_remaining: list[str] = []
+    if out.kind != "additional" and manifest.output.get("purge_foreign_layers"):
+        foreign_remaining = _purge_layers(doc, {l.name for l in out.layers},
+                                          set(manifest.output.get("layer_table_extra_allowed", [])), log)
+    if set_units and out.kind != "additional" and manifest.units.get("insunits") is not None:
         if doc.header.get("$INSUNITS", 0) != manifest.units["insunits"]:
             log.append({"action": "header_set", "var": "$INSUNITS", "before": doc.header.get("$INSUNITS", 0),
                         "after": manifest.units["insunits"], "basis": "engineer confirmed metres"})
             doc.header["$INSUNITS"] = manifest.units["insunits"]
-    if out.kind != "additional" and doc.header.get("$LUNITS", 2) != manifest.units["lunits"]:
+    if out.kind != "additional" and manifest.units.get("lunits") is not None \
+            and doc.header.get("$LUNITS", 2) != manifest.units["lunits"]:
         log.append({"action": "header_set", "var": "$LUNITS", "before": doc.header.get("$LUNITS"),
                     "after": manifest.units["lunits"]})
         doc.header["$LUNITS"] = manifest.units["lunits"]
@@ -202,6 +261,7 @@ def build_output(prepared: Path, out: OutputSpec, manifest: Manifest, job_id: st
     atomic_save_doc(doc, out.path)
     verify = verify_output(out.path, out.keep_handles)
     return {"dataset": out.kind, "file": out.path.name, "entities": len(out.keep_handles),
+            "foreign_layers_remaining": foreign_remaining,
             "removed_other_datasets": removed, "changes": log, "verification": verify,
             "sha256": sha256_file(out.path), "dxf_version": "AC1024 (R2010)"}
 

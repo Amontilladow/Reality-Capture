@@ -20,7 +20,7 @@ from m4adm.jobs import attach_official_qc, export_package, job_dir, list_jobs, l
 from m4adm.mapping import EXCLUDE
 from m4adm.models import JobSettings
 from m4adm.pipeline import prepare
-from m4adm.rules import load_manifest
+from m4adm.rules import PROFILES, load_profile
 
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 SAFE_NAME = re.compile(r"[^A-Za-z0-9._ -]")
@@ -38,7 +38,8 @@ def create_app(workspace: Path) -> FastAPI:
     jobs_root = workspace / "jobs"
     uploads.mkdir(parents=True, exist_ok=True)
     jobs_root.mkdir(parents=True, exist_ok=True)
-    manifest = load_manifest()
+    manifests = {name: load_profile(name) for name in PROFILES}
+    manifest = manifests["sdd_planning"]
     app = FastAPI(title="M4 ADM GIS Preparation", docs_url=None, redoc_url=None)
 
     def ctx(request: Request, **kw):
@@ -90,7 +91,21 @@ def create_app(workspace: Path) -> FastAPI:
         tol_coincidence: str = Form(""),
         tol_snap_search: str = Form(""),
         tol_arc_sagitta: str = Form(""),
+        profile: str = Form("sdd_planning"),
+        strict: str = Form(""),
+        zone_name: str = Form(""),
+        sector_number: str = Form(""),
+        plot_number: str = Form(""),
+        building_number: str = Form(""),
+        floor_id: str = Form(""),
+        target_crs: str = Form("EPSG:32640"),
+        control_points: str = Form(""),
+        confirm_transformation: str = Form(""),
     ):
+        if profile not in manifests:
+            return _back(f"Unknown profile {profile!r}.")
+        if profile == "bdms_building":
+            category = ["building"]
         if drawing is not None and drawing.filename:
             data = await drawing.read()
             if len(data) > MAX_UPLOAD:
@@ -110,24 +125,41 @@ def create_app(workspace: Path) -> FastAPI:
             return _back("Select a drawing: upload a DXF or choose a previously uploaded file.")
         if not category:
             return _back("Select at least one category (Plot, Roads, Services).")
+        pairs = []
+        for n, line in enumerate(control_points.splitlines(), 1):
+            line = line.split("#", 1)[0].strip()
+            if not line:
+                continue
+            try:
+                vals = [float(v) for v in line.replace(",", " ").split()]
+            except ValueError:
+                vals = []
+            if len(vals) != 4:
+                return _back(f"Control point line {n} needs 4 numbers: source_x source_y target_E target_N.")
+            pairs.append(((vals[0], vals[1]), (vals[2], vals[3])))
         tol = None
         overrides = {k: v.strip() for k, v in (("coincidence", tol_coincidence), ("snap_search", tol_snap_search),
                                                ("arc_sagitta", tol_arc_sagitta)) if v and v.strip()}
         if overrides:
-            tol = manifest.tolerances.model_dump()
+            tol = manifests[profile].tolerances.model_dump()
             try:
                 tol.update({k: float(v) for k, v in overrides.items()})
             except ValueError:
                 return _back("Tolerances must be numbers in metres.")
         try:
             settings = JobSettings(
+                profile=profile,
+                strict=bool(strict),
                 categories=category,
                 metadata={"project_id": project_id.strip(), "submission_date": submission_date.strip(),
                           "drawing_type": drawing_type, "spec_type": spec_type,
                           "consultant_name": consultant_name, "contractor_name": contractor_name,
-                          "prepared_by": prepared_by},
+                          "prepared_by": prepared_by, "zone_name": zone_name.strip(),
+                          "sector_number": sector_number.strip(), "plot_number": plot_number.strip(),
+                          "building_number": building_number.strip(), "floor_id": floor_id.strip()},
                 crs={"source_crs": (source_crs_other.strip() or source_crs) or None,
-                     "source_confirmed": bool(source_confirmed)},
+                     "source_confirmed": bool(source_confirmed), "target_crs": target_crs,
+                     "control_points": pairs, "confirm_transformation": bool(confirm_transformation)},
                 units_confirmed_metres=bool(units_confirmed),
                 tolerances=tol,
             )
@@ -137,7 +169,7 @@ def create_app(workspace: Path) -> FastAPI:
 
     def _run(settings: JobSettings, source: Path):
         try:
-            res = prepare(source, settings, jobs_root, manifest)
+            res = prepare(source, settings, jobs_root, manifests[settings.profile])
         except Exception as exc:
             return _back(f"Processing failed ({type(exc).__name__}: {exc}). No output was produced; "
                          "the failed job folder is kept for diagnosis.")
@@ -148,7 +180,8 @@ def create_app(workspace: Path) -> FastAPI:
         d = get_job(job_id)
         r = load_report(d)
         findings = [f for f in r["findings"] if not sev or f["severity"] == sev]
-        adm_layers = sorted({l.name for c in r["job"]["categories"] for l in manifest.layers_for(c)})
+        m = manifests[r["spec"].get("profile", "sdd_planning")]
+        adm_layers = sorted({l.name for c in r["job"]["categories"] for l in m.layers_for(c)})
         exports = sorted(p.name for p in (d / "export").glob("*.zip")) if (d / "export").exists() else []
         return TEMPLATES.TemplateResponse(request, "job.html", ctx(
             request, r=r, findings=findings, sev=sev, adm_layers=adm_layers, exclude=EXCLUDE,
@@ -205,8 +238,11 @@ def create_app(workspace: Path) -> FastAPI:
         return FileResponse(p, media_type=media, filename=None if media else p.name)
 
     @app.get("/rules", response_class=HTMLResponse)
-    def rules(request: Request):
-        return TEMPLATES.TemplateResponse(request, "rules.html", ctx(request, m=manifest))
+    def rules(request: Request, profile: str = "sdd_planning"):
+        if profile not in manifests:
+            raise HTTPException(404, "unknown profile")
+        return TEMPLATES.TemplateResponse(request, "rules.html", ctx(request, m=manifests[profile],
+                                                                     profiles=list(manifests)))
 
     @app.get("/api/jobs")
     def api_jobs():

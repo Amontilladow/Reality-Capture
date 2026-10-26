@@ -15,14 +15,30 @@
     {% endif %}
   </fieldset>
 
-  <fieldset><legend>2. Category</legend>
+  <fieldset><legend>0. Submission standard</legend>
+    <label class="inline"><input type="radio" name="profile" value="sdd_planning" checked onchange="pick(this.value)"> ADM SDD planning data v1.18.2 (Plot / Roads / Services)</label><br>
+    <label class="inline"><input type="radio" name="profile" value="bdms_building" onchange="pick(this.value)"> DRM BDMS 4.1 building floor (one file per floor, official QC DRM_CPDQC_V2.3)</label><br>
+    <label class="inline"><input type="checkbox" name="strict" value="1" checked> Strict mode: any error <b>or warning</b> blocks the job (recommended for automation)</label>
+  </fieldset>
+
+  <fieldset id="bdms" style="display:none"><legend>BDMS file name: Zone-Sector-Plot-Building-Floor</legend>
+    <div class="row">
+      <div><label for="zone_name">Zone name</label><input id="zone_name" type="text" name="zone_name" placeholder="KHALIFA CITY"></div>
+      <div><label for="sector_number">Sector number</label><input id="sector_number" type="text" name="sector_number" placeholder="SE45_01"></div>
+      <div><label for="plot_number">Plot number</label><input id="plot_number" type="text" name="plot_number" placeholder="C8"></div>
+      <div><label for="building_number">Building number</label><input id="building_number" type="text" name="building_number" placeholder="1"></div>
+      <div><label for="floor_id">Floor ID</label><input id="floor_id" type="text" name="floor_id" placeholder="G, F1, M1, B1"></div>
+    </div>
+  </fieldset>
+
+  <fieldset id="sdd-cat"><legend>2. Category</legend>
     <label class="inline"><input type="checkbox" name="category" value="plot"> Plot</label>
     <label class="inline"><input type="checkbox" name="category" value="roads"> Roads</label>
     <label class="inline"><input type="checkbox" name="category" value="services"> Services / Service Corridors</label>
     <p class="hint">Each category becomes its own drawing file. A Master Plan (MP) needs all three.</p>
   </fieldset>
 
-  <fieldset><legend>3. Project and submission</legend>
+  <fieldset id="sdd-meta"><legend>3. Project and submission</legend>
     <div class="row">
       <div><label for="project_id">Project ID (from ADM CDP)</label><input id="project_id" type="text" name="project_id" placeholder="e.g. P101"></div>
       <div><label for="submission_date">Submission date (YYYYMMDD)</label><input id="submission_date" type="text" name="submission_date" placeholder="20261025" pattern="\d{8}"></div>
@@ -41,10 +57,17 @@
         <select id="source_crs" name="source_crs">{% for v, t in crs_choices %}<option value="{{ v }}">{{ t }}</option>{% endfor %}</select>
         <label for="source_crs_other">...or other (EPSG code / WKT)</label><input id="source_crs_other" type="text" name="source_crs_other" placeholder="EPSG:xxxx">
       </div>
-      <div><label>Target coordinate system</label><p><b>WGS 84 / UTM zone 40N (EPSG:32640)</b><br><span class="hint">ADM spec §4.4, Table 3. Selecting a CRS only declares it; the tool never moves geometry by appearance or extents.</span></p></div>
+      <div><label for="target_crs">Target coordinate system</label>
+        <select id="target_crs" name="target_crs"><option value="EPSG:32640">WGS 84 / UTM zone 40N (EPSG:32640)</option><option value="EPSG:32639">WGS 84 / UTM zone 39N (EPSG:32639) - BDMS, western Al Dhafra</option></select>
+        <p class="hint">Selecting a CRS only declares it; the tool never moves geometry by appearance or extents.</p></div>
     </div>
     <label class="inline"><input type="checkbox" name="source_confirmed" value="1"> I confirm the drawing is in the source coordinate system selected above</label><br>
     <label class="inline"><input type="checkbox" name="units_confirmed" value="1"> I confirm the drawing is at full scale, one unit = one metre</label>
+    <details><summary>Georeference a local/mm drawing with control points</summary>
+      <p class="hint">One pair per line: <code>source_x source_y target_E target_N</code> (at least 2, better 3-4 well-spread points, e.g. building corners from the affection plan). A scale + rotation + shift is fitted; it is applied only when the fit RMS is within 0.05 m and you confirm below.</p>
+      <textarea name="control_points" rows="4" style="width:100%;max-width:640px" placeholder="-87153.5 139276.7 257740.909 2704590.502"></textarea><br>
+      <label class="inline"><input type="checkbox" name="confirm_transformation" value="1"> I confirm the control points and want the drawing georeferenced</label>
+    </details>
   </fieldset>
 
   <details><summary>Advanced: tolerances (metres)</summary>
@@ -57,6 +80,10 @@
   <p><button class="primary" type="submit">Prepare for ADM GIS</button> <span id="busy" class="muted">Processing - analysing, mapping, validating and exporting...</span></p>
 </form>
 
+<script>
+function pick(v){var b=v==='bdms_building';document.getElementById('bdms').style.display=b?'':'none';
+ document.getElementById('sdd-cat').style.display=b?'none':'';document.getElementById('sdd-meta').querySelectorAll('input,select').forEach(function(e){if(['consultant_name','contractor_name','prepared_by'].indexOf(e.name)<0)e.disabled=b;});}
+</script>
 <h2>Run history</h2>
 {% if jobs %}
 <div class="scroll"><table><tr><th>Job</th><th>Status</th><th>Source</th><th>Categories</th><th>Errors / warnings</th></tr>

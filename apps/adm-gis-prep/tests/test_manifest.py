@@ -9,7 +9,7 @@ import yaml
 
 from m4adm.matrix import ROOT, render_matrix
 from m4adm.models import Evidence
-from m4adm.rules import Manifest, load_manifest, rules_dir
+from m4adm.rules import Manifest, load_manifest, load_profile, rules_dir
 
 SRC = Path(__file__).resolve().parents[1] / "src" / "m4adm"
 
@@ -27,13 +27,24 @@ def test_every_rule_has_exactly_one_valid_evidence_class(manifest):
             assert r.ref is not None and r.ref.page is not None, f"{r.id} is VERIFIED_SPEC without a PDF page"
 
 
-def test_every_rule_id_used_in_code_exists_in_manifest(manifest):
-    used = set()
-    pat = re.compile(r'"((?:ADM|ENG|USR|PND|M4)-[A-Z0-9]+-[A-Z0-9]+)"')
+@pytest.mark.parametrize("profile", ["sdd_planning", "bdms_building"])
+def test_every_rule_id_used_in_code_resolves_in_every_profile(profile):
+    """Generic rule ids must be defined or explicitly aliased (null = not applicable) in each profile;
+    profile-specific DRM ids must be defined in the BDMS manifest."""
+    m = load_profile(profile)
+    generic = re.compile(r'"((?:ADM|ENG|USR|PND|M4)-[A-Z0-9]+-[A-Z0-9]+)"')
+    drm = re.compile(r'"(DRM-[A-Z]+-[A-Z0-9]+)"')
+    unresolved = set()
     for f in SRC.rglob("*.py"):
-        used |= set(pat.findall(f.read_text(encoding="utf-8")))
-    missing = used - set(manifest.rule_index)
-    assert not missing, f"rule ids used in code but not in manifest: {missing}"
+        text = f.read_text(encoding="utf-8")
+        for rid in generic.findall(text):
+            try:
+                m.resolve(rid)
+            except KeyError:
+                unresolved.add(rid)
+        if profile == "bdms_building":
+            unresolved |= {rid for rid in drm.findall(text) if rid not in m.rule_index}
+    assert not unresolved, f"{profile}: rule ids used in code but not resolvable: {sorted(unresolved)}"
 
 
 @pytest.mark.parametrize("category,count", [("plot", 8), ("roads", 46), ("services", 15)])

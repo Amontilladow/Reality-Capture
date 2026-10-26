@@ -206,6 +206,18 @@ def _polygon_pairs(layer: str, polys: list[Feature], tol: Tolerances, col: Colle
                     duplicate_of=a.handle)
             continue
         inner, outer = (b, a) if gb.within(ga) else (a, b) if ga.within(gb) else (None, None)
+        if inner is not None and inner.spec.nesting_levels > 0:
+            depth = sum(1 for f, g in zip(polys, geoms) if f is not inner and inner.polygon.within(g))
+            if depth > inner.spec.nesting_levels:
+                key = ("nest", inner.handle)
+                if key not in seen:
+                    seen.add(key)
+                    col.add("ENG-NEST-001", f"Polygon is nested {depth} levels deep; {inner.spec.nesting_levels} "
+                            "level is allowed on this layer.",
+                            "Restructure the nested polygons so no polygon is inside more than one other.",
+                            handle=inner.handle, layer=layer, entity_type=inner.rec.structure,
+                            location=_loc(inner.polygon), depth=depth)
+            continue
         if inner is not None:
             if inner.handle in clipped:
                 col.add("ADM-CAP-004", f"Inner polygon inside {outer.handle} marked ToBeClipped=Yes.",
@@ -533,7 +545,7 @@ def _check_type(a, val: str, col: Collector, kw: dict) -> None:
         if not ok:
             col.add("ADM-ATT-006", f"{a.tag} = '{val}' is not a valid DD-MON-YYYY date.",
                     "Write the date like 05-DEC-2013.", **kw, tag=a.tag, value=val)
-        elif mt.group(2) != mt.group(2).upper():
+        elif a.month_case == "upper" and mt.group(2) != mt.group(2).upper():
             col.add("ADM-ATT-006", f"{a.tag} = '{val}': month is not upper-case as in the example 05-DEC-2013.",
                     "Write the month in capitals.", severity=Severity.WARNING, **kw, tag=a.tag, value=val)
 
@@ -576,3 +588,65 @@ def check_services(ctx: FeatureContext, plot_polys: list[tuple[str, Polygon]], t
                         "Check that the reserved strip lies within its service corridor (spec Figure 5).",
                         handle=s.handle, layer="ReservedStrip", entity_type=s.rec.structure,
                         location=_loc(s.polygon))
+
+
+# --------------------------------------------------------------------------- cross-layer topology
+def check_cross_layer_snapping(ctx: FeatureContext, layers: list[str], tol: Tolerances, col: Collector) -> None:
+    """Where geometries of different layers meet, vertices must exist in both (snapping only on vertices).
+
+    * a vertex of one feature lying on another feature's edge without a vertex there -> ADM-CAP-002 (ERROR)
+    * edges crossing without a vertex in either feature                              -> ADM-CAP-001E
+    * vertices of different features closer than snap_search but not coincident      -> ADM-CAP-001D
+    """
+    feats = [f for layer in layers for f in ctx.features.get(layer, []) if f.line is not None]
+    if len(feats) < 2:
+        return
+    lines = [f.line for f in feats]
+    tree = STRtree(lines)
+    left, right = tree.query(lines, predicate="dwithin", distance=tol.snap_search)
+    reported: set = set()
+    for i, j in zip(left.tolist(), right.tolist()):
+        if i >= j or feats[i].layer == feats[j].layer:
+            continue
+        a, b = feats[i], feats[j]
+        for f, other in ((a, b), (b, a)):
+            for v in f.vertices:
+                p = Point(v)
+                d = other.line.distance(p)
+                near_vertex = min(math.dist(v, w) for w in other.vertices)
+                if d <= tol.coincidence and near_vertex > tol.coincidence:
+                    key = ("T", f.handle, other.handle, round(v[0], 4), round(v[1], 4))
+                    if key not in reported:
+                        reported.add(key)
+                        col.add("ADM-CAP-002", f"{f.layer} vertex lies on an edge of {other.layer} {other.handle} "
+                                f"without a matching vertex there.",
+                                f"Add a vertex to the {other.layer} polygon at this point (snap on vertices only).",
+                                handle=f.handle, layer=f.layer, entity_type=f.rec.structure, location=v,
+                                other=other.handle, other_layer=other.layer)
+                elif tol.coincidence < near_vertex <= tol.snap_search:
+                    w = min(other.vertices, key=lambda q: math.dist(v, q))
+                    key = ("near", min(f.handle, other.handle), max(f.handle, other.handle),
+                           round((v[0] + w[0]) / 2, 2), round((v[1] + w[1]) / 2, 2))
+                    if key not in reported:
+                        reported.add(key)
+                        col.add("ADM-CAP-001D", f"{f.layer} vertex is {near_vertex:.4f} m from a vertex of "
+                                f"{other.layer} {other.handle}: not snapped.",
+                                "Snap the two vertices together, or separate them deliberately.",
+                                handle=f.handle, layer=f.layer, entity_type=f.rec.structure, location=v,
+                                other=other.handle, other_layer=other.layer, distance=near_vertex)
+        if not a.line.intersects(b.line):
+            continue
+        inter = a.line.intersection(b.line)
+        for g in getattr(inter, "geoms", [inter]):
+            if not isinstance(g, Point):
+                continue
+            q = (g.x, g.y)
+            if min(math.dist(q, w) for w in a.vertices) > tol.coincidence and \
+                    min(math.dist(q, w) for w in b.vertices) > tol.coincidence:
+                key = ("X", a.handle, b.handle, round(q[0], 4), round(q[1], 4))
+                if key not in reported:
+                    reported.add(key)
+                    col.add("ADM-CAP-001E", f"{a.layer} {a.handle} crosses {b.layer} {b.handle} without a vertex "
+                            "in either.", "Add a vertex at the crossing on both polygons, or correct the edges so "
+                            "they do not cross.", handle=b.handle, layer=b.layer, entity_type=b.rec.structure,
+                            location=q, other=a.handle, other_layer=a.layer)

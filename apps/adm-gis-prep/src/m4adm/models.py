@@ -42,6 +42,7 @@ class Category(str, Enum):
     plot = "plot"
     roads = "roads"
     services = "services"
+    building = "building"     # BDMS: one building floor per file
 
 
 class Tolerances(BaseModel):
@@ -71,6 +72,12 @@ class Metadata(BaseModel):
     contractor_name: str = ""
     prepared_by: str = ""
     notes: str = ""
+    # BDMS (building) file-name parts: <ZoneName>-<SectorNumber>-<PlotNumber>-<BuildingNumber>-<FloorID>
+    zone_name: str = ""
+    sector_number: str = ""
+    plot_number: str = ""
+    building_number: str = ""
+    floor_id: str = ""
 
 
 class CRSSettings(BaseModel):
@@ -80,9 +87,16 @@ class CRSSettings(BaseModel):
     # Explicit transformation request. Only honoured with confirm_transformation.
     transform_pipeline: str | None = None
     confirm_transformation: bool = False
+    # Control-point georeferencing: pairs of (source x, y) -> (target x, y), e.g. building corners read
+    # from the affection/site plan. A 2D similarity (scale, rotation, translation) is fitted by least squares.
+    control_points: list[tuple[tuple[float, float], tuple[float, float]]] = Field(default_factory=list)
+    max_georef_rms: float = 0.05     # metres; a worse fit blocks the transformation
 
 
 class JobSettings(BaseModel):
+    profile: str = "sdd_planning"
+    # Zero-tolerance automation: any ERROR *or* WARNING (and any unresolved decision) blocks the job.
+    strict: bool = True
     categories: list[Category]
     metadata: Metadata = Field(default_factory=Metadata)
     crs: CRSSettings = Field(default_factory=CRSSettings)

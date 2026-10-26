@@ -1,4 +1,17 @@
-# Technical report (milestone 1: DXF-first MVP)
+# Technical report
+
+## Milestone 2 (2026-10-26): DRM BDMS 4.1 calibration and strict mode
+
+- The material M4 supplied (BDMS 4.1 spec, QC tool DRM_CPDQC_V2.3 + manual, templates, UPC code list, 4 accepted floor drawings, 5 original M4 drawings) is for **building-floor (BDMS) submissions**. A second profile, `bdms_building`, was added (62 rules). Every rule is mapped to its official QC error wording; generic checks are shared through profile aliases.
+- **Calibration:** all 4 drawings that passed official QC give **0 errors**, and their prepared files are identical in content to the originals. The remaining warnings are genuine spec-rule-1 deviations that the official QC does not check: edge crossings, 0.9–4 mm near-miss snaps, repeated vertices, one overhanging space, one trailing space. See CALIBRATION.md and DISCREPANCIES_BDMS.md.
+- **Strict mode (default):** any error or warning blocks *Ready for review*, as requested ("let's not pass any check, big or small").
+- **Control-point georeferencing:** least-squares similarity transform with residuals and a 0.05 m RMS gate. It is only applied with explicit confirmation, is exact for polylines and blocks, and is tested end to end with a synthetic floor moved to local mm and back.
+- **Submission files:** model space only. Specified-but-empty and unspecified layers are removed, unreferenced anonymous blocks are omitted, and reader repairs are grouped.
+- **Tests:** `python -m pytest`: **200 passed**, 0 failed, 0 skipped (including 5 reference tests on the real samples, which self-skip in CI where the samples are absent).
+- **Still not automated:** turning architectural wall lines and room labels into Space, Door and Window polygons. The original L1 drawing correctly comes out *Blocked*, with an exact list of what to draw.
+- **Still needed:** templates saved as DXF; `.err` reports from running the official QC on the tool's outputs; DRM's zone/sector lists; answers on DISCREPANCIES_BDMS.
+
+## Milestone 1: DXF-first MVP
 
 ## Works and is tested
 

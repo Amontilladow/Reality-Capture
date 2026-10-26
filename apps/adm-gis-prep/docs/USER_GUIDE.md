@@ -2,6 +2,46 @@
 
 > Everything this tool produces is **PROVISIONAL: NOT ADM-VALIDATED**. It prepares the drawing and runs preliminary checks. Only ADM decides acceptance, after its official QC tool and review. Never describe the output as "ADM compliant", "approved" or "passed ADM QC".
 
+## Which standard?
+
+| Drawing | Profile | Files |
+|---|---|---|
+| Master plan / plots, roads, service corridors for ADM SDD | **ADM SDD planning v1.18.2** (`sdd_planning`) | one per dataset: `<ProjectID>_<YYYYMMDD>_<AP/MP>_<Plot/Roads/Services>_ADM` |
+| Building floors for the DRM construction permit / completion certificate (BDMS) | **DRM BDMS 4.1 building floor** (`bdms_building`) | one per floor: `<Zone>-<Sector>-<Plot>-<Building>-<Floor>`, e.g. `KHALIFA CITY-SE45_01-C8-1-F1` |
+
+**Strict mode** is on by default: the job reaches *Ready for review* only when there are **no errors and no warnings** and no open decisions. Untick it only for exploratory runs.
+
+## BDMS building floors: what the drawing must contain
+
+One floor of one building per file, in UTM metres (zone 40N, or 39N in western Al Dhafra), with these closed LWPOLYLINE layers and one Detail block inside each polygon:
+
+- `Plot` + `PlotDetail`
+- `BuildingOutline` + `BuildingDetail`
+- `BuildingRoof` + `BuildingRoofDetail`
+- `Floor` + `FloorDetail`
+- `Unit` + `UnitDetail`
+- `Space` + `SpaceDetail` (spaces may be nested one level)
+- `Door` + `DoorDetail`, `Window` + `WindowDetail`
+- `ProjectDetail` and `DrawingDetail` blocks on `Title`
+
+Where polygons of these layers meet, every vertex lying on another polygon's edge needs a matching vertex there. The official QC reports this as a "Snapping error". Copy the Detail blocks from the DRM template; never edit their tags.
+
+**Original architectural drawings** (walls as lines, mm, local coordinates) cannot be submitted as they are:
+1. Draw the BDMS polygons on the BDMS layers (or map existing closed polylines to them in the review page).
+2. Georeference: enter at least 2, better 3–4, control points (local x,y → UTM E,N, e.g. plot corners from the affection plan) and confirm. The tool fits scale + rotation + shift, shows the residuals, and refuses a fit worse than 0.05 m.
+3. Run, fix what the report lists, and re-run until *Ready for review*.
+
+CLI example:
+
+```bash
+m4adm prepare "KHALIFA CITY-SE45_01-C8-1-F1.dxf" --profile bdms_building \
+  --zone "KHALIFA CITY" --sector SE45_01 --plot C8 --building 1 --floor F1 --contractor "M4 Contracting" \
+  --source-crs EPSG:32640 --crs-confirmed --units-confirmed
+# local mm drawing: --control-points points.txt --confirm-transformation --crs-confirmed
+```
+
+The report has a **"Summary in official QC terms"** table that uses the QC tool's own error names (e.g. "Snapping errors found between layers …"), so it can be compared line by line with the official `.err` report.
+
 ## Before you start
 
 1. Export the drawing from AutoCAD as **DXF** (SAVEAS → *AutoCAD 2010/LT2010 DXF*). The tool cannot read DWG files directly yet.
