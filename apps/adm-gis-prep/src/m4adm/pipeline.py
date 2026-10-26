@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -108,13 +109,33 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
     mapping_decisions: list = []
     crs_summary = "not evaluated"
     readable = copy
+    conversion: dict | None = None
     if ident.format == "DWG":
         conv = DWGConverter.from_env()
-        col.add("M4-IN-001", f"Input is DWG ({ident.release}); DWG cannot be read without a converter "
-                f"(converter status: {conv.status()}).",
-                "Save the drawing as DXF from AutoCAD (SAVEAS > AutoCAD 2010 DXF) and upload the DXF, or install "
-                "ODA File Converter and set M4ADM_ODA_CONVERTER.", blocking=True)
-        readable = None
+        if conv.status() == STATUS_UNAVAILABLE:
+            col.add("M4-IN-001", f"Input is DWG ({ident.release}); no DWG converter is installed.",
+                    "Save the drawing as DXF from AutoCAD (SAVEAS > AutoCAD 2010 DXF), or install ODA File Converter "
+                    "(set M4ADM_ODA_CONVERTER) or LibreDWG dwg2dxf (set M4ADM_DWG2DXF), then re-run.", blocking=True)
+            readable = None
+        else:
+            try:
+                readable = conv.to_dxf(copy, ws.dir / "work")
+                conv_ident = identify(readable)
+                if not conv_ident.format.startswith("DXF"):
+                    raise RuntimeError(f"converter output is {conv_ident.format}, not DXF")
+                conversion = {"converter": conv.describe(), "kind": conv.kind, "dxf": str(readable.relative_to(ws.dir)),
+                              "dxf_sha256": conv_ident.sha256, "dxf_version": conv_ident.version_code}
+                audit.record("dwg_converted", **conversion)
+                col.add("M4-IN-001", f"DWG input ({ident.release}) was converted to DXF with {conv.describe()} before "
+                        "checking.", "Conversion fidelity on this installation is validated by the reference test "
+                        "(DWG vs AutoCAD DXF of the same drawing); keep the original DWG as the master.",
+                        severity=Severity.INFO, converter=conversion)
+            except (RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
+                col.add("M4-IN-001", f"DWG conversion failed: {exc}",
+                        "Save the drawing as DXF from AutoCAD (SAVEAS > AutoCAD 2010 DXF) and upload the DXF.",
+                        blocking=True)
+                audit.record("dwg_conversion_failed", error=str(exc))
+                readable = None
     elif ident.format == "DXF-BINARY" or ident.format == "UNKNOWN":
         if ident.format == "UNKNOWN":
             col.add("M4-IN-001", "Input is not a recognised DXF or DWG file.",
@@ -353,7 +374,7 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
                  "manifest_sha256": manifest.sha256},
         "job": {"id": ws.job_id, "started": started, "finished": utc_now(), "parent_job": settings.parent_job,
                 "categories": categories, "settings": json.loads(settings.model_dump_json())},
-        "source": {**ident.as_dict(), "original_path": str(source), "sha256_before": src_hash_before,
+        "source": {**ident.as_dict(), "conversion": conversion, "original_path": str(source), "sha256_before": src_hash_before,
                    "sha256_after": src_hash_after, "unchanged": src_unchanged,
                    "path": str(Path("input") / copy.name)},
         "status": {

@@ -16,6 +16,16 @@ The material is stored locally in `reference/DRM_samples/` and is git-ignored, s
 
 **Key finding:** this material is for the **DRM BDMS 4.1 building-floor submission**, not the ADM SDD Plot/Roads/Services planning submission the tool was first built for. A second rule profile, `bdms_building` (`rules/drm_bdms_v4.1.yaml`), was added. The SDD profile is unchanged.
 
+### Second batch (2026-10-26): Yas Island YS1 plot P10, DWG only
+
+There are 5 more approved floor drawings, **as DWG only** (AutoCAD 2018 / AC1032): `Yas Island-YS1-P10-1-{G,F1,F2}`, `-2-G` and `-3-G`. That is three buildings on one plot, which is useful for multi-building checks. They are stored locally in `reference/DRM_samples/GIS Drawings/dwg_only/` (git-ignored).
+
+**They have not been checked yet.** This session has no DWG reader: compiling LibreDWG was refused by the session's permission rules. The tool now reads DWG through ODA File Converter or LibreDWG `dwg2dxf` when one is installed. On such a PC, `python -m pytest tests/test_reference_drm.py` runs automatically:
+- the 0-error calibration on all 9 approved DWGs (4 Khalifa City + 5 Yas Island);
+- a converter fidelity test that compares the converter's DXF of `KHALIFA CITY-…-F1.dwg` with AutoCAD's own DXF of the same drawing (entities per layer, attribute values, vertices to 1 mm).
+
+The alternative needs no converter: save the 5 drawings as DXF in AutoCAD and send them.
+
 ## What the drawings show
 
 | | Original M4 drawing (L1) | Accepted GIS drawing (F1) |

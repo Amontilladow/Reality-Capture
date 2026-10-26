@@ -3,9 +3,9 @@
 Every adapter here is an interface plus configuration. None of them fabricates the
 official artefact it stands in for:
 
-* ``DWGConverter``      - DXF <-> DWG through ODA File Converter (free, separately licensed
-                          download) when the engineer installs it and points M4ADM_ODA_CONVERTER
-                          at it. Not installed in this build -> status UNAVAILABLE.
+* ``DWGConverter``      - DWG <-> DXF through ODA File Converter or LibreDWG dwg2dxf when the
+                          engineer installs one (env M4ADM_ODA_CONVERTER / M4ADM_DWG2DXF or PATH).
+                          Not installed in this build -> status UNAVAILABLE.
 * ``OfficialTemplate``  - loads the official ADM template (as DXF) and compares its layers and
                           attribute block definitions with the manifest. PENDING: no template yet.
 * ``OfficialQC``        - the official ADM QC tool is an AutoCAD .FAS (compiled LISP) that runs
@@ -34,24 +34,37 @@ STATUS_LOADED = "LOADED"
 # --------------------------------------------------------------------------- DWG conversion
 @dataclass
 class DWGConverter:
-    """ODA File Converter command-line wrapper.
+    """DWG <-> DXF conversion through an external, separately installed converter.
 
-    CLI form (per ODA documentation):
-        ODAFileConverter <in_dir> <out_dir> <out_version> <out_type> <recurse> <audit> [filter]
-    e.g. ODAFileConverter in out ACAD2010 DWG 0 1 "*.DXF"
+    Supported converters (used as separate programs, never linked into this tool):
+      * ODA File Converter (free download from opendesign.com) - env M4ADM_ODA_CONVERTER or on PATH.
+        CLI: ODAFileConverter <in_dir> <out_dir> <out_version> <out_type> <recurse> <audit> [filter]
+      * LibreDWG ``dwg2dxf`` (GPL, open source) - env M4ADM_DWG2DXF or on PATH. DWG -> DXF only.
+    ODA is preferred when both are present. Neither is bundled; status AVAILABLE_UNTESTED means a
+    converter was found but its output has not been validated on this installation (see
+    tests/test_reference_drm.py::test_dwg_conversion_matches_autocad_dxf).
     """
 
     executable: str | None = None
+    kind: str = "oda"            # oda | libredwg
 
     @classmethod
     def from_env(cls) -> "DWGConverter":
-        exe = os.environ.get("M4ADM_ODA_CONVERTER") or shutil.which("ODAFileConverter")
-        return cls(exe)
+        oda = os.environ.get("M4ADM_ODA_CONVERTER") or shutil.which("ODAFileConverter")
+        if oda:
+            return cls(oda, "oda")
+        lib = os.environ.get("M4ADM_DWG2DXF") or shutil.which("dwg2dxf")
+        if lib:
+            return cls(lib, "libredwg")
+        return cls(None, "oda")
 
     def status(self) -> str:
         if self.executable and Path(self.executable).exists():
             return STATUS_AVAILABLE_UNTESTED
         return STATUS_UNAVAILABLE
+
+    def describe(self) -> str:
+        return f"{'ODA File Converter' if self.kind == 'oda' else 'LibreDWG dwg2dxf'} ({self.executable})"
 
     def command(self, in_dir: Path, out_dir: Path, out_type: str, version: str = "ACAD2010",
                 pattern: str = "*.DXF") -> list[str]:
@@ -67,6 +80,28 @@ class DWGConverter:
             )
         return subprocess.run(self.command(in_dir, out_dir, out_type, pattern=pattern), capture_output=True,
                               text=True, timeout=600, check=False)
+
+    def to_dxf(self, dwg: Path, work_dir: Path) -> Path:
+        """Convert one DWG into a DXF inside work_dir. Raises RuntimeError with the converter's output."""
+        if self.status() == STATUS_UNAVAILABLE:
+            raise RuntimeError("no DWG converter installed (ODA File Converter or LibreDWG dwg2dxf)")
+        work_dir = Path(work_dir)
+        if self.kind == "libredwg":
+            out = work_dir / f"{Path(dwg).stem}.dxf"
+            res = subprocess.run([str(self.executable), "-y", "-o", str(out), str(dwg)], capture_output=True,
+                                 text=True, timeout=600, check=False)
+        else:
+            in_dir, out_dir = work_dir / "dwg_in", work_dir / "dxf_out"
+            in_dir.mkdir(exist_ok=True)
+            out_dir.mkdir(exist_ok=True)
+            shutil.copyfile(dwg, in_dir / Path(dwg).name)
+            res = subprocess.run(self.command(in_dir, out_dir, "DXF", pattern="*.DWG"), capture_output=True,
+                                 text=True, timeout=600, check=False)
+            out = out_dir / f"{Path(dwg).stem}.dxf"
+        if not out.exists() or out.stat().st_size == 0:
+            raise RuntimeError(f"{self.describe()} produced no DXF (exit {res.returncode}): "
+                               f"{(res.stderr or res.stdout or '').strip()[:500]}")
+        return out
 
 
 # --------------------------------------------------------------------------- template

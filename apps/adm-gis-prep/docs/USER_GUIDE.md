@@ -44,7 +44,7 @@ The report has a **"Summary in official QC terms"** table that uses the QC tool'
 
 ## Before you start
 
-1. Export the drawing from AutoCAD as **DXF** (SAVEAS → *AutoCAD 2010/LT2010 DXF*). The tool cannot read DWG files directly yet.
+1. Use the drawing as **DXF** (AutoCAD: SAVEAS → *AutoCAD 2010/LT2010 DXF*), or upload the **DWG** directly if ODA File Converter or LibreDWG is installed on this PC (see SETUP). The original DWG stays the master; the report records which converter was used.
 2. Know the drawing's **coordinate system**. ADM requires WGS 84 / UTM zone 40N (EPSG:32640). If you are not sure, check it against the SDD reference data. Do not guess.
 3. Check that the drawing is at **full scale in metres** by measuring a known plot frontage.
 4. Have the **CDP Project ID** and the submission date ready.

@@ -37,6 +37,7 @@ m4adm fixtures /tmp/fx && m4adm inspect /tmp/fx/SYNTHETIC_mixed.dxf
 
 | Item | How | Status |
 |---|---|---|
-| ODA File Converter | Install from opendesign.com (check licence terms), set `M4ADM_ODA_CONVERTER=C:\Program Files\ODA\ODAFileConverter\ODAFileConverter.exe` | Adapter untested; DWG export is not wired into the pipeline yet |
+| DWG input: ODA File Converter | Install from opendesign.com (free; check licence terms), set `M4ADM_ODA_CONVERTER=C:\Program Files\ODA\ODAFileConverter <ver>\ODAFileConverter.exe` | DWG input is converted to DXF automatically before checking. Validate once with `python -m pytest tests/test_reference_drm.py` (fidelity test against AutoCAD's own DXF) |
+| DWG input: LibreDWG | Install LibreDWG (open source, GPL; used only as a separate program), set `M4ADM_DWG2DXF=<path to dwg2dxf>` or put it on PATH | Same as above; ODA is preferred when both are installed |
 | Official ADM template | Save as DXF 2010; pass `--template` | Comparison only (see INTEGRATION_PLAN) |
 | ADM PDF | Place it in `reference/` (git-ignored). Needed only to regenerate Appendix 2: `python scripts/extract_plot_usage.py reference/<pdf> rules/adm_v1.18.2_plot_usage.yaml` (needs `pdftotext`) | - |
