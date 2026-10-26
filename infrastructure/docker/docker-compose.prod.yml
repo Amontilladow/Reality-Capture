@@ -112,7 +112,9 @@ services:
       - '3000:3000'
 
   ai-service:
-    build: ./apps/ai-service
+    build:
+      context: .
+      dockerfile: apps/ai-service/Dockerfile
     restart: always
     depends_on:
       - postgres

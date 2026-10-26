@@ -121,7 +121,7 @@ export class GisPrepProcessor {
       // still retried by Bull, but recorded in words an engineer can act on
       // instead of undici's bare "fetch failed".
       const cause = err instanceof Error ? ((err.cause as Error | undefined)?.message ?? err.message) : String(err);
-      throw new Error(`The GIS preparation service could not be reached (${cause}). Check that engineeringos-gis-prep is deployed and running, then re-run the job.`);
+      throw new Error(`The GIS preparation service could not be reached (${cause}). Check that the service at GIS_PREP_SERVICE_URL (engineeringos-ai-service) is running, then re-run the job.`);
     }
     if (!res.ok) {
       const detail = await res.text().catch(() => '');

@@ -44,21 +44,29 @@ m4adm fixtures /tmp/fx && m4adm inspect /tmp/fx/SYNTHETIC_mixed.dxf
 
 ## Reality Capture module (cloud)
 
-The same engine also runs inside the Reality Capture platform as **GIS Preparation**: it is in the project sidebar under Engineering, at `/projects/:id/gis-prep`.
+The same engine also runs inside the Reality Capture platform as **GIS Preparation**: it is in the project sidebar under Engineering, at `/projects/:id/gis-prep`. To avoid a paid instance for a job that runs a few times a year, it is hosted **inside the existing AI service** (D-034), not as its own service.
 
 | Part | Where |
 |---|---|
-| Private service | `src/m4adm/service.py` + `Dockerfile` (uvicorn on port 8002). Render pserv `engineeringos-gis-prep` |
-| API | `apps/api/src/modules/gis-prep` (Bull queue `gis-prep`), table `gis_prep_jobs` (migration 076) |
+| Engine | Installed in its own virtualenv `/opt/m4adm` in the `engineeringos-ai-service` image (`apps/ai-service/Dockerfile`, built from the repo root) |
+| Endpoint | `POST /gis-prep/prepare` in `apps/ai-service/app/routers/gis_prep.py`. It runs `python -m m4adm.package` as a separate process |
+| API | `apps/api/src/modules/gis-prep` (Bull queue `gis-prep`), table `gis_prep_jobs` (migration 076); `GIS_PREP_SERVICE_URL=http://engineeringos-ai-service:8001/gis-prep` |
 | Web | `apps/web/src/pages/GisPrepPage.tsx` |
 
-The API calls the service with `GIS_PREP_SERVICE_URL` and the shared `INTERNAL_SERVICE_SECRET`. Without the secret, the service refuses every request except `/health`. For local development only, `M4ADM_ALLOW_NO_SECRET=1` lifts this.
+The AI service has 512 MB of memory. These limits keep a GIS job from crashing it, and with it the AI assistant:
 
-```bash
-INTERNAL_SERVICE_SECRET=dev-secret uvicorn m4adm.service:app --port 8002   # in apps/adm-gis-prep
-GIS_PREP_SERVICE_URL=http://localhost:8002 INTERNAL_SERVICE_SECRET=dev-secret pnpm --filter api dev
-```
+| Setting (AI service env) | Default | Effect |
+|---|---|---|
+| `GIS_PREP_MAX_UPLOAD_MB` | 25 | Larger drawings are refused before processing |
+| `GIS_PREP_MEMORY_LIMIT_MB` | 320 | Memory cap of the engine process; over it, the job fails with "use the desktop tool" |
+| `GIS_PREP_TIMEOUT_S` | 840 | Longer runs are stopped |
 
-Each job stores its package at `<company>/gis-prep/<project>/<job>/`. That covers the prepared DXFs, `qc_report.*`, `processing_manifest.json`, `geometry_log.json`, `audit.jsonl` and `package.zip`. The uploaded original is never changed. A re-run with layer-mapping decisions creates a new job on the same original.
+Only one GIS job runs at a time.
 
-The image bundles no DWG converter, so DWG uploads come back blocked with the reason. Upload DXF, or add ODA File Converter / LibreDWG to the image (see the table above).
+Measured peak memory:
+- Drawings already in DRM GIS format (e.g. the accepted Khalifa City floors): about 90 MB. These work in the cloud.
+- Raw architectural originals: 280–670 MB. These are refused in the cloud. Use the desktop tool for them.
+
+Each job stores its package at `<company>/gis-prep/<project>/<job>/`. That covers the prepared DXFs, `qc_report.*`, `processing_manifest.json`, `geometry_log.json`, `audit.jsonl` and `package.zip`. The uploaded original is never changed. A re-run with layer-mapping decisions creates a new job on the same original. The image bundles no DWG converter, so DWG uploads come back blocked with the reason.
+
+`src/m4adm/service.py` and `Dockerfile` remain as a standalone service (port 8002) in case GIS work ever moves to its own instance.

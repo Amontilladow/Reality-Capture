@@ -86,7 +86,7 @@ describe('GisPrepProcessor', () => {
     await expect(processor.handle({ data: { jobId, companyId, projectId } } as never)).rejects.toThrow('could not be reached (connect ECONNREFUSED)');
     const final = statements[statements.length - 1];
     expect(final.text).toContain("'FAILED'");
-    expect(final.values[0]).toContain('engineeringos-gis-prep is deployed');
+    expect(final.values[0]).toContain('engineeringos-ai-service) is running');
   });
 });
 
