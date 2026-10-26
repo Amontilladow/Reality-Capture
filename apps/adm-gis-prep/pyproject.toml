@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "m4adm"
 version = "0.1.0"
 description = "M4 Contracting - ADM GIS submission preparation and preliminary QC (internal tool, not an ADM product)"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
   "ezdxf==1.4.5",
   "shapely==2.2.0",

@@ -4,7 +4,7 @@ The tool runs on one engineering PC (Windows, macOS or Linux). It needs no AutoC
 
 ## Requirements
 
-- Python 3.11 or newer (tested with 3.13).
+- Python 3.12 or newer (tested with 3.13; pyproj 3.8.0 does not install on 3.11).
 - Disk space for job folders: roughly 3-5 times the size of each drawing per run.
 
 ## Install
