@@ -502,8 +502,9 @@ def _qc_summary(findings: list[Finding]) -> list[dict]:
         name = f.details.get("official_qc_error")
         if not name or f.severity != Severity.ERROR:      # the official report lists errors only
             continue
-        g = groups.setdefault((name, f.layer or ""), {"qc_error": name, "rule_id": f.rule_id, "units": set(),
-                                                       "layers": [f.layer] if f.layer else []})
+        layer = f.details.get("qc_layer", f.layer)      # the official report leaves file-level rows without layer
+        g = groups.setdefault((name, layer or ""), {"qc_error": name, "rule_id": f.rule_id, "units": set(),
+                                                    "layers": [layer] if layer else []})
         g["units"].add(f.details.get("qc_unit") or f"#{i}")
     return [{"qc_error": g["qc_error"], "rule_id": g["rule_id"], "count": len(g["units"]), "layers": g["layers"]}
             for g in groups.values()]

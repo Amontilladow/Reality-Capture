@@ -147,7 +147,7 @@ def _hierarchy(records, target, ctx: FeatureContext, col: Collector) -> None:
             # The official QC did not report the missing BuildingRoof in trial 01 (DISCREPANCIES_BDMS B-19).
             extra = {"severity": Severity.WARNING} if layer == "BuildingRoof" else {}
             if layer == "Plot":
-                extra["official_qc_error"] = "No Plot or PlotDetail found"
+                extra.update(official_qc_error="No Plot or PlotDetail found", qc_layer="")
             col.add("DRM-LOG-03", f"No {layer} polygon in the drawing.",
                     f"Draw the {layer} polygon and insert its {detail} block (required for every floor file).",
                     layer=layer, **extra)
