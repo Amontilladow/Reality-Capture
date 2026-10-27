@@ -117,6 +117,17 @@ Configuration (`ConversionSettings`, YAML/JSON via `m4adm convert --settings`):
 - `feature_decisions`: `{feature_id: {action: accept|reject, attributes: {TAG: value}}}`. Applied in batch on a re-run of the unchanged original; rejected features are not written.
 - `template_path`: a DXF whose block definitions are copied, e.g. the DRM template saved as DXF. Refused by the cloud service, which cannot read server paths.
 
+### Identifiers required by the official QC (ADM QC trial 01)
+
+These rules were added after the official QC rejected the first platform draft. Evidence: [ADM_TRIAL_01.md](ADM_TRIAL_01.md), DISCREPANCIES_BDMS B-16…B-20.
+
+- **Space numbering.** SpaceNumber is numbered 1, 2, 3 … with no gaps or blanks, after review decisions are applied. Rooms with a source room number come first, in that number's order; the source number ("01-04") is kept in the note. Then come the other rooms by decreasing area. A room with no usable name still gets a number and stays a review item. Numbers an engineer enters are kept.
+- **Opening links.** Door and window SpaceNumber is a proposal, but it always points at an existing SpaceDetail number. That is the number of the room the opening serves or touches.
+- **UnitNumber and FloorNumber.** These are written on every Space, Door and Window block from `single_unit_number` and the floor ID. If either is not provided it stays MISSING and the status becomes *Draft generated - BLOCKED: mandatory identifiers missing*. The draft is still written for review, and the identifiers are never guessed.
+- **Building and Floor details.** BuildingDetail and FloorDetail are filled from the settings: number of floors, floor height, usage category and type (code lists), plot, sector and building number. Anything not supplied stays MISSING and is listed before export.
+- **Block placement.** Detail blocks are placed at the polygon's pole of inaccessibility, so they sit well inside it (official key note 5). Floor, BuildingOutline and Unit share one outline, so their blocks are spaced apart on it.
+- **File name.** The draft is named exactly `<Zone>-<Sector>-<Plot>-<Building>-<Floor>.dxf`, because the official QC checks the drawing's own file name. The draft status lives in the header, the job folder and the report.
+
 ## 6. Coordinates
 
 1. **Units** (stage B): scale only, from `$INSUNITS` or declared. Unknown units block the job.

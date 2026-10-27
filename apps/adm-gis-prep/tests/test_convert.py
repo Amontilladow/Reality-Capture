@@ -8,7 +8,7 @@ import stat
 import ezdxf
 import pytest
 
-from m4adm.convert import STATUS_BLOCKED, STATUS_DRAFT_LOCAL, STATUS_DRAFT_REVIEW, convert
+from m4adm.convert import STATUS_BLOCKED, STATUS_DRAFT_BLOCKED, STATUS_DRAFT_LOCAL, STATUS_DRAFT_REVIEW, convert
 from m4adm.convert.georef import APPLIED, AWAITING_CONFIRMATION, BLOCKED, NOT_REQUESTED
 from m4adm.convert.rooms import HIGH, NOT_GENERATED, REVIEW, UNRESOLVED
 from m4adm.convert.settings import ConversionSettings
@@ -22,6 +22,7 @@ def run(tmp_path, doc=None, name="floor.dxf", **settings):
     src = tmp_path / "src" / name
     src.parent.mkdir(exist_ok=True)
     (doc or arch_floor()).saveas(str(src))
+    settings.setdefault("single_unit_number", "1")
     s = ConversionSettings(metadata=settings.pop("metadata", META), validate_output=settings.pop("validate", False),
                            **settings)
     return convert(src, s, tmp_path / "jobs"), src
@@ -52,7 +53,8 @@ def test_room_name_and_number_attributes_have_provenance(tmp_path):
     res, _ = run(tmp_path)
     office = by_usage(res)["OFFICE"]["attributes"]
     assert office["SPACEUSAGE"] == {"value": "OFFICE", "provenance": "SOURCE", "note": "room name text inside the region"}
-    assert office["SPACENUMBER"]["value"] == "1" and office["SPACENUMBER"]["provenance"] == "PROPOSED"
+    assert office["SPACENUMBER"]["value"] == "1" and office["SPACENUMBER"]["provenance"] == "DERIVED"
+    assert "source room number 01-01" in office["SPACENUMBER"]["note"]
     assert office["FLOORNUMBER"]["provenance"] == "USER"
 
 
@@ -94,7 +96,8 @@ def test_labels_outside_rooms_and_unlabelled_regions(tmp_path):
     shaft = [f for f in spaces(res, REVIEW) if "without a room label" in f["reasons"][0]]
     assert len(shaft) == 1 and shaft[0]["area_m2"] == pytest.approx(1.7 * 1.7, rel=0.1)
     store = by_usage(res)["STORE"]["attributes"]
-    assert store["SPACENUMBER"]["provenance"] == "MISSING", "no room number text -> never invented"
+    # no room-number text: the space still gets the next progressive number (a numbering rule, not a fact)
+    assert store["SPACENUMBER"]["provenance"] == "DERIVED" and "source room number" not in store["SPACENUMBER"]["note"]
 
 
 def test_text_alone_never_creates_geometry(tmp_path):
@@ -129,7 +132,7 @@ def test_no_control_points_gives_a_local_draft_marked_not_georeferenced(tmp_path
     res, _ = run(tmp_path)
     assert res.status == STATUS_DRAFT_LOCAL
     assert res.report["georeferencing"]["status"] == NOT_REQUESTED
-    doc = ezdxf.readfile(str(res.job_dir / "output" / f"{'-'.join(META.values())}_DRAFT.dxf"))
+    doc = ezdxf.readfile(str(res.job_dir / "output" / f"{'-'.join(META.values())}.dxf"))
     assert doc.header.custom_vars.get("M4_GEOREFERENCED").startswith("NO")
 
 
@@ -174,7 +177,7 @@ def test_invalid_control_points_block_georeferencing(tmp_path, cps, needle):
 
 # ---------------------------------------------------------------------------------------------- mapping / attributes / output
 def test_target_layers_blocks_and_missing_mandatory_attributes(tmp_path):
-    res, _ = run(tmp_path, single_unit_number="1")
+    res, _ = run(tmp_path)
     out = next((res.job_dir / "output").glob("*.dxf"))
     doc = ezdxf.readfile(str(out))
     layers = {e.dxf.layer for e in doc.modelspace()}
@@ -221,7 +224,7 @@ def test_source_is_preserved_and_job_is_audited(tmp_path):
 
 
 def test_generated_draft_is_validated_not_the_source(tmp_path):
-    res, _ = run(tmp_path, validate=True, single_unit_number="1")
+    res, _ = run(tmp_path, validate=True)
     v = res.report["validation"]
     assert v["status"].startswith("Blocked")                    # CRS unknown, plot/roof missing: honest
     assert not any("Snapping errors" in g["qc_error"] for g in v["qc_style_summary"])
@@ -235,3 +238,51 @@ def test_template_blocks_are_copied_when_given(tmp_path):
     bdms_floor(load_profile("bdms_building")).saveas(str(tpl))
     res, _ = run(tmp_path, template_path=str(tpl))
     assert res.report["output"]["block_source"].startswith("template template.dxf")
+
+
+# ---------------------------------------------------------------------------------------------- ADM QC trial 01 fixes
+def test_spaces_are_numbered_progressively_and_openings_link_to_them(tmp_path):
+    labels = {"OFFICE": (2000, 5000), "01-07": (2000, 4600), "STORE": (8500, 3000)}   # STORE has no number
+    res, _ = run(tmp_path, arch_floor(labels=labels, shaft=True))
+    exported = [f for f in spaces(res) if f["status"] in (HIGH, REVIEW)]
+    nums = sorted(int(f["attributes"]["SPACENUMBER"]["value"]) for f in exported)
+    assert nums == list(range(1, len(exported) + 1)), "1..n, no gaps or blanks"
+    office = by_usage(res)["OFFICE"]["attributes"]["SPACENUMBER"]
+    assert office["value"] == "1" and "01-07" in office["note"], "source-numbered rooms first; source number kept"
+    shaft = next(f for f in exported if not f["attributes"]["SPACEUSAGE"]["value"])
+    assert shaft["status"] == REVIEW and shaft["attributes"]["SPACENUMBER"]["value"], "unnamed room still numbered"
+    numbers = {f["attributes"]["SPACENUMBER"]["value"] for f in exported}
+    doors = [f for f in res.report["features"] if f["layer"] == "Door" and f["status"] == REVIEW]
+    assert doors and all(d["attributes"]["SPACENUMBER"]["value"] in numbers for d in doors)
+    for f in exported + doors:
+        assert f["attributes"]["UNITNUMBER"]["value"] == "1" and f["attributes"]["FLOORNUMBER"]["value"] == "F1"
+
+
+def test_missing_unit_or_floor_blocks_the_draft_without_inventing(tmp_path):
+    res, _ = run(tmp_path, single_unit_number="")
+    assert res.status == STATUS_DRAFT_BLOCKED
+    assert any("unit number" in m for m in res.report["identifiers_missing"])
+    door = next(f for f in res.report["features"] if f["layer"] == "Door")
+    assert door["attributes"]["UNITNUMBER"] == {"value": "", "provenance": "MISSING", "note": ""}
+    res, _ = run(tmp_path, metadata={**META, "floor_id": ""})
+    assert res.status == STATUS_DRAFT_BLOCKED and any("floor ID" in m for m in res.report["identifiers_missing"])
+    assert next((res.job_dir / "output").glob("*.dxf")).name == "CONVERSION_DRAFT.dxf"
+
+
+def test_output_is_named_by_the_bdms_file_name_and_blocks_sit_well_inside(tmp_path):
+    from shapely.geometry import Point, Polygon
+    res, _ = run(tmp_path, building_number_of_floors="2", floor_height="3.6", building_usage_category="Commercial",
+                 building_usage_type="Single-use Commercial")
+    out = next((res.job_dir / "output").glob("*.dxf"))
+    assert out.name == "SYNTH ZONE-SE01_01-C1-1-F1.dxf"
+    msp = ezdxf.readfile(str(out)).modelspace()
+    outline = Polygon([p[:2] for p in next(iter(msp.query("LWPOLYLINE[layer=='Floor']"))).get_points()])
+    points = []
+    for layer in ("FloorDetail", "BuildingDetail", "UnitDetail"):
+        ins = next(iter(msp.query(f"INSERT[layer=='{layer}']")))
+        pt = Point(ins.dxf.insert.x, ins.dxf.insert.y)
+        assert outline.contains(pt) and outline.exterior.distance(pt) >= 0.5, layer
+        points.append((pt.x, pt.y))
+    assert len(set(points)) == 3, "blocks sharing one outline are not stacked on one point"
+    b = next(iter(msp.query("INSERT[layer=='BuildingDetail']")))
+    assert b.get_attrib_text("USAGETYPE") == "Single-use Commercial" and b.get_attrib_text("BUILDINGNUMOFFLOORS") == "2"
