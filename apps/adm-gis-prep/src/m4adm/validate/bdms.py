@@ -43,9 +43,14 @@ def validate_stem(stem: str, col: Collector, *, context: str = "") -> bool:
                 f"{where}.", "Use <ZoneName>-<SectorNumber>-<PlotNumber>-<BuildingNumber>-<FloorID>, e.g. "
                 "AbuDhabi-E_1-C_1-1-F1. Only the hyphen separates parts; zone/sector/plot may contain '_'.")
         return False
+    empty = [k for k, v in parts.items() if not v.strip()]
+    if empty:
+        col.add("DRM-GEN-01", f"File name '{stem}' has empty part(s): {', '.join(empty)}{where}.",
+                "Enter zone, sector, plot, building number and floor ID (e.g. KHALIFA CITY-SE45_01-C8-1-F1).")
+        return False
     for key in ("zone", "sector", "plot"):
-        if not parts[key].strip() or parts[key] != parts[key].strip():
-            col.add("DRM-GEN-01", f"{key.title()} part '{parts[key]}' is empty or has leading/trailing spaces{where}.",
+        if parts[key] != parts[key].strip():
+            col.add("DRM-GEN-01", f"{key.title()} part '{parts[key]}' has leading/trailing spaces{where}.",
                     f"Enter the DRM-approved {key} name exactly.")
     if not re.fullmatch(fn["building_id_regex"], parts["building"]):
         col.add("DRM-GEN-01", f"Building ID '{parts['building']}' is not a positive integer{where}.",
@@ -86,6 +91,9 @@ def run_bdms_checks(records: list[EntityRecord], target: dict[str, str | None], 
     _zero_insertion(records, target, specs, col)
     _code_lists(records, target, manifest, col)
     _one_floor(records, target, ctx, col)
+    _blocks_in_polygons(records, target, specs, ctx, col)
+    _space_number_entry(records, target, col)
+    _official_qc_counting(col)
 
 
 def _title_blocks(records, target, manifest: Manifest, stem: str, col: Collector) -> None:
@@ -136,9 +144,13 @@ def _hierarchy(records, target, ctx: FeatureContext, col: Collector) -> None:
     """QC 4.4 #3, #16-17, #19-20, #23, #26-27: the required polygons of a building floor exist."""
     for layer, detail in REQUIRED:
         if not ctx.features.get(layer):
+            # The official QC did not report the missing BuildingRoof in trial 01 (DISCREPANCIES_BDMS B-19).
+            extra = {"severity": Severity.WARNING} if layer == "BuildingRoof" else {}
+            if layer == "Plot":
+                extra["official_qc_error"] = "No Plot or PlotDetail found"
             col.add("DRM-LOG-03", f"No {layer} polygon in the drawing.",
                     f"Draw the {layer} polygon and insert its {detail} block (required for every floor file).",
-                    layer=layer)
+                    layer=layer, **extra)
     if ctx.features.get("Unit") and not ctx.features.get("Space"):
         col.add("DRM-LOG-03", "Unit polygons exist without any Space polygon.", "Draw the spaces of each unit.",
                 layer="Space")
@@ -200,6 +212,16 @@ def _ids_and_references(records, target, floor_no: str | None, col: Collector) -
     spaces = _details(records, target, "SpaceDetail")
     unit_nos = Counter(_val(u, "UnitNumber") for u in units if _val(u, "UnitNumber"))
     space_nos = Counter(_val(s, "SpaceNumber") for s in spaces if _val(s, "SpaceNumber"))
+    # Door/Window -> Space link key. Blank parts never match: in ADM QC trial 01 every window referenced an
+    # existing SpaceNumber (11) with UnitNumber/FloorNumber empty on both sides and all 34 were rejected.
+    space_keys = {(_val(s, "SpaceNumber"), _val(s, "UnitNumber"), _val(s, "FloorNumber")) for s in spaces}
+    if spaces:
+        nums = sorted(int(v) for v in space_nos if POS_INT.match(v))
+        gaps = sorted(set(range(1, (nums[-1] if nums else 0) + 1)) - set(nums))
+        if gaps:
+            col.add("DRM-ATT-51", f"SpaceNumbers are not progressive: {', '.join(map(str, gaps[:20]))} not used.",
+                    "Number spaces 1, 2, 3 ... (QC key note 8). Notification only: gaps were accepted in DRM-passed "
+                    "drawings.", layer="SpaceDetail")
     for no, n in unit_nos.items():
         if n > 1:
             col.add("DRM-ATT-04", f"UnitNumber {no} is used by {n} units.", "Give every unit a unique number.",
@@ -228,10 +250,22 @@ def _ids_and_references(records, target, floor_no: str | None, col: Collector) -
                             "Use the number of the unit that contains this feature, or leave it empty.",
                             **_kw(r, layer))
             if layer in ("DoorDetail", "WindowDetail"):
-                sv = _val(r, "SpaceNumber")
-                if sv and sv not in space_nos:
-                    col.add("DRM-ATT-15", f"SpaceNumber '{sv}' does not exist in any SpaceDetail of this floor.",
-                            "Use the number of the space this door/window belongs to.", **_kw(r, layer))
+                key = (_val(r, "SpaceNumber"), _val(r, "UnitNumber"), _val(r, "FloorNumber"))
+                if all(key) and key in space_keys:
+                    continue
+                if not key[0]:
+                    why = "SpaceNumber is empty"
+                elif key[0] not in space_nos:
+                    why = f"SpaceNumber '{key[0]}' does not exist in any SpaceDetail of this floor"
+                elif not all(key[1:]):
+                    why = (f"UnitNumber/FloorNumber is empty, so SpaceNumber '{key[0]}' cannot be matched to a "
+                           "SpaceDetail (the official QC matches the space within its unit and floor)")
+                else:
+                    why = (f"no SpaceDetail has SpaceNumber '{key[0]}' with UnitNumber '{key[1]}' and FloorNumber "
+                           f"'{key[2]}'")
+                col.add("DRM-ATT-15", why + ".", "Use the number, unit and floor of the space this "
+                        f"{layer.removesuffix('Detail').lower()} belongs to.",
+                        official_qc_error=f"Incorrect SpaceNumber found in {layer} attribute block", **_kw(r, layer))
 
 
 def _space_unit(records, target, ctx: FeatureContext, tol: Tolerances, col: Collector) -> None:
@@ -298,6 +332,15 @@ def _zero_insertion(records, target, specs: dict[str, LayerSpec], col: Collector
 
 
 def _code_lists(records, target, manifest: Manifest, col: Collector) -> None:
+    # The official QC reports an EMPTY coded value as "Incorrect ... data entry" (trial 01 rows 14-15), in addition
+    # to the empty mandatory field. Non-empty values outside the list are reported by the generic domain check.
+    for r in _details(records, target, "BuildingDetail"):
+        for tag in ("UsageType", "UsageCategoryType"):
+            if not _val(r, tag):
+                col.add("DRM-ATT-45", f"{tag} is empty; it must be a value from the BDMS code list.",
+                        f"Choose {tag} from the code list (QC manual Appendix 1).",
+                        official_qc_error=f"Incorrect {tag} data entry found in BuildingDetail attribute block",
+                        tag=tag, **_kw(r, "BuildingDetail"))
     usage = set(manifest.codelists.get("unit_usage_type", []))
     classes = set(manifest.domains.get("unit_classification_suggested", []))
     for r in _details(records, target, "UnitDetail"):
@@ -313,6 +356,86 @@ def _code_lists(records, target, manifest: Manifest, col: Collector) -> None:
             col.add("DRM-ATT-46", f"UnitClassification '{c}' is not one of the listed terms (notification only).",
                     "Confirm the term is meaningful for property classification and has no special characters.",
                     **_kw(r, "UnitDetail"))
+
+
+# --------------------------------------------------------------------------- official QC parity (trial 01)
+KEY_FIELDS = {"PlotDetail": "PlotNumber", "BuildingDetail": "BuildingNumber", "BuildingRoofDetail": "BuildingNumber",
+              "FloorDetail": "FloorNumber", "UnitDetail": "UnitNumber", "SpaceDetail": "SpaceNumber"}
+SINGLE_INSTANCE = ("Plot", "BuildingOutline", "BuildingRoof", "Floor")
+ENTRY_CHECKED = ("SpaceDetail", "WindowDetail")
+
+
+def _blocks_in_polygons(records, target, specs: dict[str, LayerSpec], ctx: FeatureContext, col: Collector) -> None:
+    """QC 4.2 #2 and 4.4 #1. A Detail block whose key field is empty does not count as the polygon's block
+    (trial 01: BuildingOutline, Floor and the two spaces with empty SpaceNumber were all reported)."""
+    for name, spec in specs.items():
+        key = KEY_FIELDS.get(spec.detail or "")
+        if not spec.is_geometry or not key:
+            continue
+        polys = ctx.features.get(name, [])
+        valid = 0
+        for p in polys:
+            own = [d for d in p.details if target.get(d.handle) == spec.detail]
+            if not own:
+                continue                      # reported by DRM-ATT-01 (no block inside the polygon)
+            if any(_val(d, key) for d in own):
+                valid += 1
+                continue
+            col.add("DRM-ATT-48", f"{name} polygon's {spec.detail} block has an empty {key}, so the polygon has no "
+                    "valid attribute block.", f"Enter {key} in the {spec.detail} block.", handle=p.handle,
+                    layer=name, entity_type="LWPOLYLINE", location=own[0].location, block=own[0].handle)
+        if name in SINGLE_INSTANCE and polys and valid != len(polys):
+            col.add("DRM-LOG-01", f"{len(polys)} {name} polygon(s) but {valid} valid {spec.detail} block(s).",
+                    f"Insert one {spec.detail} block with its {key} inside each {name} polygon.", layer=spec.detail)
+
+
+def _space_number_entry(records, target, col: Collector) -> None:
+    """Trial 01 rows 10-11: SpaceNumber entered but the entry is incomplete or not a positive integer."""
+    for layer in ENTRY_CHECKED:
+        for r in _details(records, target, layer):
+            sv, fv = _val(r, "SpaceNumber"), _val(r, "FloorNumber")
+            if not sv:
+                continue                      # empty SpaceNumber: DRM-ATT-48 (spaces) / DRM-ATT-15 (windows)
+            if not POS_INT.match(sv):
+                if layer == "SpaceDetail":
+                    continue                  # DRM-SPEC-IDS, counted under the same official row
+                why = f"SpaceNumber '{sv}' is not a positive integer"
+            elif not fv:
+                why = f"SpaceNumber '{sv}' is entered without its FloorNumber"
+            else:
+                continue
+            col.add("DRM-ATT-49", why + ".", "Enter SpaceNumber as 1, 2, 3 ... together with FloorNumber "
+                    "(and UnitNumber when the space is in a unit).",
+                    official_qc_error=f"Incorrect SpaceNumber data entry found in {layer} attribute block",
+                    **_kw(r, layer))
+
+
+def _official_qc_counting(col: Collector) -> None:
+    """Count like the official report: one per file / block / polygon per (error, layer), not one per field."""
+    for f in col.findings:
+        d = f.details
+        if f.rule_id in ("DRM-GEN-01", "DRM-GEN-02"):
+            d["qc_unit"] = "file name"
+        elif f.rule_id == "DRM-ATT-03" and f.layer:
+            if f.layer in ("SpaceDetail", "DoorDetail", "WindowDetail"):
+                # Trial 01: the official QC raised no "Missing Value" row for these blocks (empty FloorNumber on
+                # all 63, empty Spaceusage on 3); it reports them as SpaceNumber data-entry / link errors instead.
+                d["official_qc_error"] = None
+            elif f.layer in ("ProjectDetail", "DrawingDetail", "Title"):
+                d["official_qc_error"] = f"Missing Value in the Attribute Block Mandatory Filed in {f.layer} " \
+                                         "attribute block (not reported by the official QC in trial 01)"
+                d["qc_unit"] = f.handle
+            else:
+                d["official_qc_error"] = f"Missing Value in the Attribute Block Mandatory Filed in {f.layer} " \
+                                         "attribute block"
+                d["qc_unit"] = f.handle
+        elif f.rule_id == "DRM-SPEC-IDS" and f.layer == "SpaceDetail":
+            d["official_qc_error"] = "Incorrect SpaceNumber data entry found in SpaceDetail attribute block"
+        elif f.rule_id == "DRM-ATT-01" and "has no" in f.message:
+            d["official_qc_error"] = "Polygon with missing Attribute Block found"
+        elif f.rule_id == "DRM-ATT-45" and d.get("tag") and f.layer and "official_qc_error" in d \
+                and "/" in str(d["official_qc_error"]):
+            d["official_qc_error"] = f"Incorrect {d['tag']} data entry found in {f.layer} attribute block"
 
 
 def _one_floor(records, target, ctx: FeatureContext, col: Collector) -> None:
