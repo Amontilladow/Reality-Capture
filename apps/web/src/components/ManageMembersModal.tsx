@@ -5,6 +5,7 @@ import {
   type ProjectRole, type CompanyRole, type ProjectPermission, type ProjectOrganizationSlot,
 } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
+import { EmailLink } from './ui/EmailLink';
 import {
   getMembers, addMember, removeMember, getPermissionGrants, grantPermission, revokePermission,
   getOrganizations, upsertOrganization, uploadOrganizationLogo, type ProjectOrganization,
@@ -398,7 +399,7 @@ export function ManageMembersModal({
                       {u.organizationName && <span className="text-ink-500 font-normal"> ({u.organizationName})</span>}
                     </div>
                     <div className="text-ink-500 text-xs">
-                      {u.email}
+                      <EmailLink email={u.email} className="text-ink-500 hover:text-blueprint-hover" />
                       {!u.firstName && !u.lastName && ' — invited, hasn’t accepted yet'}
                     </div>
                   </div>
