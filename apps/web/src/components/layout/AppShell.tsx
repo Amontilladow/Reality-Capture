@@ -159,7 +159,7 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
-      <div className="h-14 flex md:hidden items-center gap-2 px-4 border-b border-base-600 bg-base-900 shrink-0">
+      <div className="h-14 flex md:hidden items-center gap-2 px-4 border-b border-base-600/70 bg-base-950/70 backdrop-blur shrink-0">
         <button
           onClick={() => setMobileNavOpen(true)}
           aria-label="Open navigation menu"
@@ -181,7 +181,7 @@ export function AppShell() {
       )}
 
       <aside
-        className={`w-64 shrink-0 border-r border-base-600 bg-base-900 flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-200 md:static md:translate-x-0 ${
+        className={`w-64 shrink-0 border-r border-base-600/70 bg-base-900 md:bg-transparent flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-200 md:static md:translate-x-0 ${
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -245,7 +245,7 @@ export function AppShell() {
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0 bg-base-950">
+      <main className="flex-1 min-w-0">
         <Outlet />
       </main>
 
@@ -269,10 +269,10 @@ function NavGroupList({ groups, basePath }: { groups: NavGroup[]; basePath: stri
               to={`${basePath}/${item.to}`}
               end={item.end}
               className={({ isActive }) =>
-                `flex items-center gap-2.5 px-3 h-8 rounded text-sm transition-colors ${
+                `flex items-center gap-2.5 px-3.5 h-9 rounded-full text-sm transition-colors ${
                   isActive
-                    ? 'bg-base-800 text-ink-100 font-medium shadow-[0_0_0_1px_rgb(var(--rc-base-600))]'
-                    : 'text-ink-300 hover:bg-base-700 hover:text-ink-100'
+                    ? 'bg-signal text-base-800 font-medium'
+                    : 'text-ink-300 hover:bg-base-800/70 hover:text-ink-100'
                 }`
               }
             >

@@ -19,7 +19,9 @@ export type StatusTone = 'neutral' | 'info' | 'progress' | 'success' | 'warning'
 
 export const TONE_CLASS: Record<StatusTone, string> = {
   neutral: 'bg-base-700 text-ink-300',
-  info: 'bg-blueprint/15 text-blueprint',
+  // Neutral ink, not the accent: under the dashboard theme the accent is
+  // amber, which would read as the warning/progress tone beside it.
+  info: 'bg-ink-100/10 text-ink-100',
   progress: 'bg-warn/15 text-warn',
   success: 'bg-ok/15 text-ok',
   warning: 'bg-warn/15 text-warn',
@@ -33,7 +35,7 @@ export const TONE_CLASS: Record<StatusTone, string> = {
 // a glance in a dense table row.
 export const TONE_DOT_CLASS: Record<StatusTone, string> = {
   neutral: 'bg-ink-500',
-  info: 'bg-blueprint',
+  info: 'bg-ink-100',
   progress: 'bg-warn',
   success: 'bg-ok',
   warning: 'bg-warn',

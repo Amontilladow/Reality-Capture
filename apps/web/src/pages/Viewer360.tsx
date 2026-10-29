@@ -82,7 +82,7 @@ export default function Viewer360() {
 
         <div className="flex items-center gap-2 shrink-0">
           {captures.length > 1 && (
-            <Listbox
+            <Listbox aria-label="Capture"
               className="field-input w-auto text-xs"
               value={active?.id ?? ''}
               onChange={(e) => setActiveCaptureId(e.target.value)}

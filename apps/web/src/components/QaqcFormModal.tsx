@@ -243,7 +243,7 @@ export function QaqcFormModal({
             <label className="field-label !mb-0">Documents {documents.length > 0 ? `(${documents.length})` : ''}</label>
           </div>
           <div className="flex items-center gap-2 mt-1">
-            <Listbox
+            <Listbox aria-label="Document type"
               className="field-input w-auto !py-1.5 text-xs"
               value={pendingDocumentType}
               onChange={(e) => setPendingDocumentType(e.target.value as RfiDocumentType)}

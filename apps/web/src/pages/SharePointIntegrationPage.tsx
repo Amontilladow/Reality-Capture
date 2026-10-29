@@ -138,7 +138,7 @@ export default function SharePointIntegrationPage() {
             </p>
           </div>
 
-          <Listbox className="field-input" value={selectedProjectId} onChange={(e) => selectProject(e.target.value)}>
+          <Listbox aria-label="Project" className="field-input" value={selectedProjectId} onChange={(e) => selectProject(e.target.value)}>
             <option value="">Select a project…</option>
             {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </Listbox>

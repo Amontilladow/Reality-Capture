@@ -600,7 +600,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="panel p-3">
               <div className="field-label !mb-1.5">Owner</div>
-              <Listbox
+              <Listbox aria-label="Risk owner"
                 value={risk.ownerId ?? ''}
                 onChange={(e) => ownerMutation.mutate(e.target.value || null)}
                 disabled={ownerMutation.isPending}
@@ -883,19 +883,19 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
       ) : (
         <div className="panel p-3 space-y-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <Listbox value={probability} onChange={(e) => setProbability(e.target.value)} className="field-input !py-1 text-xs">
+            <Listbox aria-label="Probability" value={probability} onChange={(e) => setProbability(e.target.value)} className="field-input !py-1 text-xs">
               <option value="">Probability…</option>
               {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{PROBABILITY_LABELS[n]}</option>)}
             </Listbox>
-            <Listbox value={impact} onChange={(e) => setImpact(e.target.value)} className="field-input !py-1 text-xs">
+            <Listbox aria-label="Impact" value={impact} onChange={(e) => setImpact(e.target.value)} className="field-input !py-1 text-xs">
               <option value="">Impact…</option>
               {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{IMPACT_LABELS[n]}</option>)}
             </Listbox>
-            <Listbox value={primaryDriver} onChange={(e) => setPrimaryDriver(e.target.value as RiskDriver)} className="field-input !py-1 text-xs">
+            <Listbox aria-label="Primary driver" value={primaryDriver} onChange={(e) => setPrimaryDriver(e.target.value as RiskDriver)} className="field-input !py-1 text-xs">
               <option value="">Primary driver…</option>
               {RISK_DRIVERS.map((d) => <option key={d} value={d}>{RISK_DRIVER_LABELS[d]}</option>)}
             </Listbox>
-            <Listbox value={secondaryDriver} onChange={(e) => setSecondaryDriver(e.target.value as RiskDriver)} className="field-input !py-1 text-xs">
+            <Listbox aria-label="Secondary driver" value={secondaryDriver} onChange={(e) => setSecondaryDriver(e.target.value as RiskDriver)} className="field-input !py-1 text-xs">
               <option value="">Secondary driver (optional)…</option>
               {RISK_DRIVERS.map((d) => <option key={d} value={d}>{RISK_DRIVER_LABELS[d]}</option>)}
             </Listbox>

@@ -12,9 +12,8 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
         <ThemeToggle />
       </div>
 
-      <div className="hidden lg:flex w-1/2 relative bg-base-900 overflow-hidden items-center justify-center">
-        <div className="absolute inset-0 bg-grid-fine bg-grid-fine" />
-        <div className="absolute inset-0 bg-gradient-to-t from-base-950 via-transparent to-base-950/40" />
+      {/* Brand half sits directly on the platform gradient (dashboard theme). */}
+      <div className="hidden lg:flex w-1/2 relative overflow-hidden items-center justify-center">
         <div className="relative z-10 max-w-md px-10">
           <div className="flex items-center gap-2 mb-8">
             <LogoMark className="w-8 h-8" />
@@ -26,7 +25,7 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
           {/* Decorative marketing copy, identical on every auth screen -- the
               page's actual topic (Login, Sign up, Reset password, ...) is the
               real h1, rendered once per page below via the `title` prop. */}
-          <p className="text-3xl font-semibold tracking-tight leading-tight mb-4">
+          <p className="text-5xl font-light tracking-tight leading-tight mb-5">
             Reality, understood.
           </p>
           <p className="text-ink-300 text-sm leading-relaxed">
@@ -56,7 +55,7 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
             </div>
           </div>
           <div className="tick-frame panel p-8">
-            <h1 className="text-xl font-semibold mb-1">{title}</h1>
+            <h1 className="text-2xl font-normal tracking-tight mb-1">{title}</h1>
             <p className="text-sm text-ink-500 mb-6">{subtitle}</p>
             {children}
           </div>

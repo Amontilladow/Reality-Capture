@@ -15,7 +15,9 @@ import { Link } from 'react-router-dom';
 /* ── Layout ─────────────────────────────────────────────────────────── */
 
 export function DashCanvas({ children }: { children: ReactNode }) {
-  return <div className="dash-canvas px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</div>;
+  // The gradient itself is on <body> now (the theme is platform-wide); this
+  // only sets the roomier padding the dashboard pages use.
+  return <div className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</div>;
 }
 
 export function DashHero({ eyebrow, title, aside, children }: {

@@ -44,11 +44,9 @@ export default {
           muted: 'rgb(var(--rc-signal-muted) / <alpha-value>)',
         },
         blueprint: {
-          // electric blue — Mobbin's one accent. The spec reserves it for
-          // commercial signals only; this app repurposes it as the general
-          // interactive/info accent (links, active states, status badges)
-          // since a working dashboard needs more color differentiation than
-          // a marketing page. Focus rings use ink instead, per the spec.
+          // the interactive/info accent (links, active states, info badges):
+          // deep amber in light mode, the sun yellow in dark mode -- see
+          // index.css. Focus rings use --rc-focus, not this.
           DEFAULT: 'rgb(var(--rc-blueprint) / <alpha-value>)',
           hover: 'rgb(var(--rc-blueprint-hover) / <alpha-value>)',
           muted: 'rgb(var(--rc-blueprint-muted) / <alpha-value>)',
@@ -64,10 +62,9 @@ export default {
         warn: 'rgb(var(--rc-warn) / <alpha-value>)',
         danger: 'rgb(var(--rc-danger) / <alpha-value>)',
         teal: {
-          // Primary data/stat/section accent (platform visual upgrade) --
-          // see index.css's own comment on why this is kept distinct from
-          // blueprint (the general interactive/info accent) and never used
-          // for status/priority semantics (those stay on ok/warn/danger).
+          // Data/stat/section accent. Shares blueprint's warm amber under the
+          // dashboard theme (one accent platform-wide); never used for
+          // status/priority semantics (those stay on ok/warn/danger).
           DEFAULT: 'rgb(var(--rc-teal) / <alpha-value>)',
           hover: 'rgb(var(--rc-teal-hover) / <alpha-value>)',
           muted: 'rgb(var(--rc-teal-muted) / <alpha-value>)',

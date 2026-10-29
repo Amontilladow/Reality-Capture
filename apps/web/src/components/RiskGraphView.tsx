@@ -220,15 +220,15 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
               ← Show full graph
             </button>
           )}
-          <Listbox value={nodeTypeFilter} onChange={(e) => setNodeTypeFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
+          <Listbox aria-label="Node type" value={nodeTypeFilter} onChange={(e) => setNodeTypeFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
             <option value="">All node types</option>
             {nodeTypes.map((t) => <option key={t} value={t}>{NODE_TYPE_LABELS[t] ?? t}</option>)}
           </Listbox>
-          <Listbox value={disciplineFilter} onChange={(e) => setDisciplineFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
+          <Listbox aria-label="Discipline" value={disciplineFilter} onChange={(e) => setDisciplineFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
             <option value="">All disciplines</option>
             {disciplines.map((d) => <option key={d} value={d}>{d}</option>)}
           </Listbox>
-          <Listbox value={riskLevelFilter} onChange={(e) => setRiskLevelFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
+          <Listbox aria-label="Risk level" value={riskLevelFilter} onChange={(e) => setRiskLevelFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
             <option value="">All risk levels</option>
             {(['CRITICAL', 'HIGH', 'MODERATE', 'LOW'] as RiskLevel[]).map((l) => <option key={l} value={l}>{l}</option>)}
           </Listbox>

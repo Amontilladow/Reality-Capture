@@ -437,7 +437,7 @@ function AttachmentSection({
       {uploadMutation.isError && <p className="field-error">{apiErrorMessage(uploadMutation.error)}</p>}
       {canUpload && (
         <div className="flex items-center gap-2">
-          <Listbox className="field-input w-auto !py-1.5 text-xs" value={documentType} onChange={(e) => setDocumentType(e.target.value as RfiDocumentType)}>
+          <Listbox aria-label="Document type" className="field-input w-auto !py-1.5 text-xs" value={documentType} onChange={(e) => setDocumentType(e.target.value as RfiDocumentType)}>
             {RFI_DOCUMENT_TYPES.map((t) => (
               <option key={t} value={t}>{RFI_DOCUMENT_TYPE_LABELS[t]}</option>
             ))}

@@ -238,7 +238,7 @@ export default function GisPrepPage() {
                 <label key={key} className="text-xs text-ink-500 space-y-1">
                   <span>{label}</span>
                   {CHOICES[key] ? (
-                    <Listbox
+                    <Listbox aria-label={label}
                       className="field-input text-xs !py-1.5" value={form.facts[key] ?? ''}
                       onChange={e => setForm(f => ({ ...f, facts: { ...f.facts, [key]: e.target.value } }))}
                     >
@@ -258,14 +258,14 @@ export default function GisPrepPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {form.mode === 'prepare' && <label className="text-xs text-ink-500 space-y-1">
               <span>Source coordinate system</span>
-              <Listbox className="field-input text-xs !py-1.5" value={form.sourceCrs} onChange={e => setForm(f => ({ ...f, sourceCrs: e.target.value }))}>
+              <Listbox aria-label="Source CRS" className="field-input text-xs !py-1.5" value={form.sourceCrs} onChange={e => setForm(f => ({ ...f, sourceCrs: e.target.value }))}>
                 {CRS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </Listbox>
             </label>}
             {form.mode === 'convert' && (
               <label className="text-xs text-ink-500 space-y-1">
                 <span>Drawing units</span>
-                <Listbox className="field-input text-xs !py-1.5" value={form.units} onChange={e => setForm(f => ({ ...f, units: e.target.value as FormState['units'] }))}>
+                <Listbox aria-label="Units" className="field-input text-xs !py-1.5" value={form.units} onChange={e => setForm(f => ({ ...f, units: e.target.value as FormState['units'] }))}>
                   <option value="auto">From the drawing ($INSUNITS)</option>
                   <option value="mm">Millimetres</option><option value="cm">Centimetres</option><option value="m">Metres</option>
                 </Listbox>

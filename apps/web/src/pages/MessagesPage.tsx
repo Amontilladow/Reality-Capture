@@ -190,7 +190,7 @@ export default function MessagesPage() {
 
         {tab === 'email' ? (
           <div className="space-y-4">
-            <Listbox
+            <Listbox aria-label="Project"
               className="field-input w-full max-w-sm"
               value={emailHistoryProjectId}
               onChange={(e) => setEmailHistoryProjectId(e.target.value)}

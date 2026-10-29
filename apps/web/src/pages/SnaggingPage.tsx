@@ -163,7 +163,7 @@ export default function SnaggingPage() {
 
       <div className="p-6 space-y-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <Listbox
+          <Listbox aria-label="Building"
             className="field-input w-auto"
             value={buildingFilter}
             onChange={(e) => { setBuildingFilter(e.target.value); setLevelFilter(''); }}
@@ -173,7 +173,7 @@ export default function SnaggingPage() {
               <option key={b.id} value={b.id}>{b.name}</option>
             ))}
           </Listbox>
-          <Listbox
+          <Listbox aria-label="Level"
             className="field-input w-auto"
             value={levelFilter}
             onChange={(e) => setLevelFilter(e.target.value)}
@@ -184,7 +184,7 @@ export default function SnaggingPage() {
               <option key={l.id} value={l.id}>{l.name}</option>
             ))}
           </Listbox>
-          <Listbox className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <Listbox aria-label="Status" className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
             {SNAG_STATUSES.map((s) => (
               <option key={s} value={s}>{SNAG_STATUS_LABELS[s]}</option>

@@ -145,7 +145,7 @@ function PickOrCreate({
         </div>
       ) : (
         <div className="flex gap-1.5">
-          <Listbox
+          <Listbox aria-label="Room"
             className="field-input"
             disabled={disabled}
             value={value}

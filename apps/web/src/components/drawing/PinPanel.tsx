@@ -232,7 +232,7 @@ export function PinPanel({
             {linkedRecord && (
               <div className="flex items-center gap-1.5 mt-1">
                 <span className="text-[11px] text-ink-500 font-medium">Assignee</span>
-                <Listbox
+                <Listbox aria-label="Assigned to"
                   className="field-input w-auto !py-1 !text-xs"
                   value={assignedTo}
                   onChange={(e) => assignMutation.mutate(e.target.value)}
