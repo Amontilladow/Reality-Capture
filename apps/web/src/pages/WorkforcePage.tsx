@@ -294,7 +294,7 @@ export default function WorkforcePage() {
                       </td>
                       <td className="px-4 py-2.5 text-ink-500 tabular-nums">{formatHm(activity.durationSeconds)}</td>
                       <td className="px-4 py-2.5">
-                        <Listbox
+                        <Listbox aria-label="Role"
                           className="field-input !py-1 !text-xs"
                           value=""
                           disabled={attributingId === activity.id && attributeMutation.isPending}
@@ -442,6 +442,7 @@ function MyScheduling() {
                   <td className="px-4 py-2.5">
                     <input
                       type="checkbox"
+                      aria-label={`${name}: preferred working day`}
                       checked={pref?.preferred ?? false}
                       disabled={preferenceMutation.isPending}
                       onChange={(e) => preferenceMutation.mutate({
@@ -452,6 +453,7 @@ function MyScheduling() {
                   <td className="px-4 py-2.5">
                     <input
                       type="time"
+                      aria-label={`${name}: start time`}
                       className="field-input !py-1 !text-xs"
                       defaultValue={pref?.startTime ?? ''}
                       disabled={preferenceMutation.isPending}
@@ -465,6 +467,7 @@ function MyScheduling() {
                   <td className="px-4 py-2.5">
                     <input
                       type="time"
+                      aria-label={`${name}: end time`}
                       className="field-input !py-1 !text-xs"
                       defaultValue={pref?.endTime ?? ''}
                       disabled={preferenceMutation.isPending}
@@ -502,7 +505,7 @@ function MyScheduling() {
         <div className="flex flex-wrap gap-2 items-end">
           <label className="text-xs text-ink-500">
             Type
-            <Listbox
+            <Listbox aria-label="Absence type"
               className="field-input !py-1 !text-xs block"
               value={absenceForm.absenceType}
               onChange={(e) => setAbsenceForm({ ...absenceForm, absenceType: e.target.value as AbsenceType })}
@@ -671,8 +674,8 @@ function PrivacySettingsAdmin() {
         <div className="panel tick-frame p-4 space-y-4 max-w-xl">
           <label className="block space-y-1">
             <div className="text-xs text-ink-500 font-medium">Monitoring level</div>
-            <Listbox
-              className="input"
+            <Listbox aria-label="Monitoring level"
+              className="field-input"
               value={settings.monitoringLevel}
               disabled={updateMutation.isPending}
               onChange={(e) => updateMutation.mutate({ monitoringLevel: e.target.value as MonitoringLevel })}
@@ -720,7 +723,7 @@ function PrivacySettingsAdmin() {
             <div className="text-xs text-ink-500 font-medium">Retention (days)</div>
             <input
               type="number"
-              className="input"
+              className="field-input"
               min={1}
               max={3650}
               defaultValue={settings.retentionDays}
@@ -780,7 +783,7 @@ function ReportingLinesAdmin() {
                   <td className="px-4 py-2.5">{user.firstName} {user.lastName}</td>
                   <td className="px-4 py-2.5 text-ink-500">{user.companyRole}</td>
                   <td className="px-4 py-2.5">
-                    <Listbox
+                    <Listbox aria-label="Manager"
                       className="field-input !py-1 !text-xs"
                       value={managerByUserId.get(user.id) ?? ''}
                       disabled={setManagerMutation.isPending}
@@ -920,7 +923,7 @@ function ShiftSchedulingAdmin() {
       <div className="flex flex-wrap gap-2 items-end">
         <label className="text-xs text-ink-500">
           Employee
-          <Listbox className="field-input !py-1 !text-xs block" value={form.userId} onChange={(e) => setForm({ ...form, userId: e.target.value })}>
+          <Listbox aria-label="User" className="field-input !py-1 !text-xs block" value={form.userId} onChange={(e) => setForm({ ...form, userId: e.target.value })}>
             <option value="">Select…</option>
             {users.map((u) => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
           </Listbox>
@@ -1130,7 +1133,7 @@ function ApplicationsAdmin() {
                   <td className="px-4 py-2.5">{app.name}</td>
                   <td className="px-4 py-2.5 text-ink-500 font-mono text-xs">{app.matchPattern}</td>
                   <td className="px-4 py-2.5">
-                    <Listbox
+                    <Listbox aria-label="Productivity classification"
                       className="field-input !py-1 !text-xs"
                       value={app.productivityClassification}
                       disabled={classifyMutation.isPending}

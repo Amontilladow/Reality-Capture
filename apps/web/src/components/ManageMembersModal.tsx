@@ -193,7 +193,7 @@ export function ManageMembersModal({
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {canManageOrganizations && (
-                  <Listbox
+                  <Listbox aria-label="Organization slot"
                     className="field-input !py-0.5 !w-auto text-xs"
                     value={orgSlotByUserId.get(m.userId) ?? ''}
                     onChange={(e) =>
@@ -227,7 +227,7 @@ export function ManageMembersModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <div className="flex items-center gap-1.5">
-                <Listbox
+                <Listbox aria-label="User"
                   className="field-input flex-1"
                   value={selectedUserId}
                   onChange={(e) => setSelectedUserId(e.target.value)}
@@ -260,7 +260,7 @@ export function ManageMembersModal({
                 </p>
               )}
             </div>
-            <Listbox
+            <Listbox aria-label="Role"
               className="field-input"
               value={selectedRole}
               onChange={(e) => setSelectedRole(e.target.value as ProjectRole)}
@@ -354,7 +354,7 @@ export function ManageMembersModal({
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <Listbox
+                  <Listbox aria-label="Role"
                     className="field-input !w-auto text-xs"
                     value={role}
                     onChange={(e) => setOverrideRole((prev) => ({ ...prev, [u.id]: e.target.value as CompanyRole }))}
@@ -404,7 +404,7 @@ export function ManageMembersModal({
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Listbox
+                    <Listbox aria-label="Role"
                       className="field-input !w-auto text-xs"
                       value={role}
                       onChange={(e) => setOverrideRole((prev) => ({ ...prev, [u.id]: e.target.value as CompanyRole }))}

@@ -345,7 +345,7 @@ export default function BuildLensTimelinePage() {
                         key={s}
                         onClick={() => setSpeed(s)}
                         className={`px-2 py-1 rounded text-xs font-mono transition-colors ${
-                          speed === s ? 'bg-signal/15 text-signal' : 'text-ink-500 hover:text-ink-100 hover:bg-base-700'
+                          speed === s ? 'bg-signal text-base-800' : 'text-ink-500 hover:text-ink-100 hover:bg-base-700'
                         }`}
                       >
                         {s}×

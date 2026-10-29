@@ -81,10 +81,10 @@ export function RiskHeatmap({ cells, risks, onSelectRisk, onFilterCell }: {
   }
 
   return (
-    <figure className="panel p-4 h-full flex flex-col" aria-labelledby="risk-matrix-title">
+    <figure className="panel p-6 h-full flex flex-col" aria-labelledby="risk-matrix-title">
       <div className="mb-4">
-        <div id="risk-matrix-title" className="text-sm font-semibold text-ink-100">Risk Matrix</div>
-        <p className="text-xs text-ink-500 mt-0.5">Where open risks sit by probability and impact</p>
+        <div id="risk-matrix-title" className="text-xl font-normal tracking-tight text-ink-100">Risk matrix</div>
+        <p className="text-xs text-ink-500 mt-1">Where open risks sit by probability and impact</p>
       </div>
 
       <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2">

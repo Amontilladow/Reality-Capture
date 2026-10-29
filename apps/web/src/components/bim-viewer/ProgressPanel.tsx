@@ -52,7 +52,7 @@ function LevelRow({ projectId, level }: { projectId: string; level: BimLevelProg
 
       {editing && (
         <div className="mt-2 space-y-2 rounded border border-base-600 p-2">
-          <Listbox
+          <Listbox aria-label="Status"
             className="field-input text-xs" value={draft.status}
             onChange={(e) => setDraft({ ...draft, status: e.target.value })}
           >

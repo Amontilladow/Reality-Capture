@@ -56,7 +56,7 @@ function foldTail(rows: BarDatum[]): { rows: BarDatum[]; folded: BarDatum[] } {
   const other: BarDatum = {
     key: '__other',
     label: `Other (${folded.length})`,
-    value: folded.reduce((sum, r) => sum + r.value, 0),
+    value: folded.reduce((sum, r) => sum + Number(r.value), 0),
   };
   return { rows: [...rows.filter((r) => keep.has(r.key)), other], folded };
 }

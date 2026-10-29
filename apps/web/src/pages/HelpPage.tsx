@@ -85,7 +85,7 @@ export default function HelpPage() {
                   aria-current={!activeSlug && showRoleGuide ? 'true' : undefined}
                   className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors mb-2 border ${
                     !activeSlug && showRoleGuide
-                      ? 'bg-signal/10 text-signal border-signal/30'
+                      ? 'bg-signal text-base-800 border-signal'
                       : 'text-ink-200 border-base-700 hover:bg-base-700'
                   }`}
                 >
@@ -99,7 +99,7 @@ export default function HelpPage() {
                   onClick={() => openCategory(key)}
                   aria-current={!activeSlug && !showRoleGuide && key === activeCategory ? 'true' : undefined}
                   className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
-                    !activeSlug && !showRoleGuide && key === activeCategory ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-700'
+                    !activeSlug && !showRoleGuide && key === activeCategory ? 'bg-signal text-base-800' : 'text-ink-300 hover:bg-base-700'
                   }`}
                 >
                   {HELP_CATEGORY_LABELS[key]}

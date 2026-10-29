@@ -18,7 +18,7 @@ export function PhaseEditor({
   if (editing) {
     return (
       <div className="flex items-center gap-1.5">
-        <Listbox
+        <Listbox aria-label="Project phase"
           autoFocus
           className="field-input !py-1 !text-xs w-auto"
           value={value}

@@ -166,35 +166,35 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
 
       <div className="p-6 space-y-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <Listbox className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <Listbox aria-label="Status" className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
             {(['open', 'answered', 'closed', 'void'] as const).map((s) => (
               <option key={s} value={s}>{RFI_STATUS_LABELS[s]}</option>
             ))}
           </Listbox>
 
-          <Listbox className="field-input w-auto" value={discipline} onChange={(e) => setDiscipline(e.target.value)}>
+          <Listbox aria-label="Discipline" className="field-input w-auto" value={discipline} onChange={(e) => setDiscipline(e.target.value)}>
             <option value="">All disciplines</option>
             {RFI_DISCIPLINES.map((d) => (
               <option key={d} value={d}>{RFI_DISCIPLINE_LABELS[d]}</option>
             ))}
           </Listbox>
 
-          <Listbox className="field-input w-auto" value={costImpactLevel} onChange={(e) => setCostImpactLevel(e.target.value)}>
+          <Listbox aria-label="Cost impact level" className="field-input w-auto" value={costImpactLevel} onChange={(e) => setCostImpactLevel(e.target.value)}>
             <option value="">Any cost impact</option>
             {RFI_IMPACT_LEVELS.map((l) => (
               <option key={l} value={l}>{RFI_IMPACT_LEVEL_LABELS[l]}</option>
             ))}
           </Listbox>
 
-          <Listbox className="field-input w-auto" value={timeImpactLevel} onChange={(e) => setTimeImpactLevel(e.target.value)}>
+          <Listbox aria-label="Time impact level" className="field-input w-auto" value={timeImpactLevel} onChange={(e) => setTimeImpactLevel(e.target.value)}>
             <option value="">Any time impact</option>
             {RFI_IMPACT_LEVELS.map((l) => (
               <option key={l} value={l}>{RFI_IMPACT_LEVEL_LABELS[l]}</option>
             ))}
           </Listbox>
 
-          <Listbox className="field-input w-auto" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+          <Listbox aria-label="Assigned to" className="field-input w-auto" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
             <option value="">Anyone assigned</option>
             {(membersQuery.data ?? []).map((m) => (
               <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
@@ -202,7 +202,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
           </Listbox>
 
           {view === 'main' && (
-            <Listbox className="field-input w-auto" value={origin} onChange={(e) => setOrigin(e.target.value)}>
+            <Listbox aria-label="Origin" className="field-input w-auto" value={origin} onChange={(e) => setOrigin(e.target.value)}>
               <option value="">Any origin</option>
               {RFI_ORIGINS.map((o) => (
                 <option key={o} value={o}>{RFI_ORIGIN_LABELS[o]}</option>
@@ -311,7 +311,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                           {/* Editable right from the list, not just the RFI
                               form -- same PATCH the detail page's own edit
                               view already sends for this field. */}
-                          <Listbox
+                          <Listbox aria-label="Drawing impact"
                             value={r.drawingImpactLevel ?? 'no'}
                             onChange={(e) => updateDrawingLevelMutation.mutate({ rfiId: r.id, level: e.target.value as RfiImpactLevel })}
                             disabled={updateDrawingLevelMutation.isPending || readOnly}
@@ -350,7 +350,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                         {(r.drawingImpactLevel ?? 'no') === 'no' ? (
                           <span className="text-ink-500">—</span>
                         ) : (
-                          <Listbox
+                          <Listbox aria-label="Drawing update sent to site"
                             value={r.drawingUpdateSentToSite ? 'yes' : 'no'}
                             onChange={() => toggleDrawingSentToSiteMutation.mutate({ rfiId: r.id, sent: Boolean(r.drawingUpdateSentToSite) })}
                             disabled={toggleDrawingSentToSiteMutation.isPending || readOnly}

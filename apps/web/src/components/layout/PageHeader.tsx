@@ -19,7 +19,7 @@ export function PageHeader({
   useDocumentTitle(title);
 
   return (
-    <div className={`border-b border-base-600 bg-base-950/85 backdrop-blur px-4 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-10 ${breadcrumbs || subtitle ? 'py-3' : 'min-h-16 py-3'}`}>
+    <div className={`border-b border-base-600/60 bg-base-950/60 backdrop-blur px-4 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-10 ${breadcrumbs || subtitle ? 'py-3' : 'min-h-16 py-3'}`}>
       {/* Title block: breadcrumbs or a quiet eyebrow above one strong title.
           No accent bar or chip -- the title's size and weight are the
           hierarchy, and the page's own content gets the color. */}
@@ -28,7 +28,7 @@ export function PageHeader({
         {eyebrow && (
           <div className="text-xs font-medium text-ink-500 mb-0.5 truncate">{eyebrow}</div>
         )}
-        <h1 className="text-xl font-semibold tracking-tight truncate">{title}</h1>
+        <h1 className="text-2xl font-normal tracking-tight truncate">{title}</h1>
         {subtitle && <p className="text-xs text-ink-500 mt-0.5 truncate">{subtitle}</p>}
       </div>
       {actions && (

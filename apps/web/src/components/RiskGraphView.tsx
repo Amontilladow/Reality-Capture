@@ -10,13 +10,8 @@ import { getRiskGraph, getGraphNodeDetail, type RiskGraphNode, type RiskLevel } 
 import { useThemeColors, type ThemeColors } from '../lib/useThemeColors';
 import { Listbox } from './ui/Listbox';
 
-// HIGH has no dedicated semantic token (see RiskIntelligenceSection.tsx's
-// identical reasoning) -- a fixed mid-brightness orange that already reads
-// clearly on both a light and a dark canvas.
-const HIGH_HEX = '#FB923C';
-
 function riskLevelColors(colors: ThemeColors): Record<RiskLevel, string> {
-  return { LOW: colors.ok, MODERATE: colors.warn, HIGH: HIGH_HEX, CRITICAL: colors.danger };
+  return { LOW: colors.ok, MODERATE: colors.warn, HIGH: colors.high, CRITICAL: colors.danger };
 }
 
 // Neutral per-node-type colors for nodes with no associated risk (structural
@@ -220,15 +215,15 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
               ← Show full graph
             </button>
           )}
-          <Listbox value={nodeTypeFilter} onChange={(e) => setNodeTypeFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
+          <Listbox aria-label="Node type" value={nodeTypeFilter} onChange={(e) => setNodeTypeFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
             <option value="">All node types</option>
             {nodeTypes.map((t) => <option key={t} value={t}>{NODE_TYPE_LABELS[t] ?? t}</option>)}
           </Listbox>
-          <Listbox value={disciplineFilter} onChange={(e) => setDisciplineFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
+          <Listbox aria-label="Discipline" value={disciplineFilter} onChange={(e) => setDisciplineFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
             <option value="">All disciplines</option>
             {disciplines.map((d) => <option key={d} value={d}>{d}</option>)}
           </Listbox>
-          <Listbox value={riskLevelFilter} onChange={(e) => setRiskLevelFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
+          <Listbox aria-label="Risk level" value={riskLevelFilter} onChange={(e) => setRiskLevelFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
             <option value="">All risk levels</option>
             {(['CRITICAL', 'HIGH', 'MODERATE', 'LOW'] as RiskLevel[]).map((l) => <option key={l} value={l}>{l}</option>)}
           </Listbox>
@@ -237,7 +232,7 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
 
         <div className="flex items-center gap-4 text-xs text-ink-500 flex-wrap">
           <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.danger }} /> Critical</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: HIGH_HEX }} /> High</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.high }} /> High</span>
           <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.warn }} /> Moderate</span>
           <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.ok }} /> Low</span>
           <span className="flex items-center gap-1"><span className="inline-block w-4 border-t border-ink-500" /> Explicit relationship</span>

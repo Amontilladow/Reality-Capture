@@ -105,19 +105,19 @@ export default function SiteDrawingHubPage() {
             onChange={(e) => setSearchInput(e.target.value)}
             className="field-input w-56 text-xs !py-1.5"
           />
-          <Listbox value={filters.discipline} onChange={(e) => setFilters((f) => ({ ...f, discipline: e.target.value }))} className="field-input w-auto text-xs !py-1.5">
+          <Listbox aria-label="Discipline" value={filters.discipline} onChange={(e) => setFilters((f) => ({ ...f, discipline: e.target.value }))} className="field-input w-auto text-xs !py-1.5">
             <option value="">All disciplines</option>
             {(filterOptionsQuery.data?.disciplines ?? []).map((d) => <option key={d} value={d}>{d}</option>)}
           </Listbox>
-          <Listbox value={filters.buildingOrZone} onChange={(e) => setFilters((f) => ({ ...f, buildingOrZone: e.target.value }))} className="field-input w-auto text-xs !py-1.5">
+          <Listbox aria-label="Building or zone" value={filters.buildingOrZone} onChange={(e) => setFilters((f) => ({ ...f, buildingOrZone: e.target.value }))} className="field-input w-auto text-xs !py-1.5">
             <option value="">All buildings / zones</option>
             {(filterOptionsQuery.data?.buildingsOrZones ?? []).map((b) => <option key={b} value={b}>{b}</option>)}
           </Listbox>
-          <Listbox value={filters.floorOrLevel} onChange={(e) => setFilters((f) => ({ ...f, floorOrLevel: e.target.value }))} className="field-input w-auto text-xs !py-1.5">
+          <Listbox aria-label="Floor or level" value={filters.floorOrLevel} onChange={(e) => setFilters((f) => ({ ...f, floorOrLevel: e.target.value }))} className="field-input w-auto text-xs !py-1.5">
             <option value="">All floors / levels</option>
             {(filterOptionsQuery.data?.floorsOrLevels ?? []).map((l) => <option key={l} value={l}>{l}</option>)}
           </Listbox>
-          <Listbox
+          <Listbox aria-label="Workflow status"
             value={filters.workflowStatus ?? ''}
             onChange={(e) => setFilters((f) => ({ ...f, workflowStatus: (e.target.value || undefined) as SiteDrawingWorkflowStatus | undefined }))}
             className="field-input w-auto text-xs !py-1.5"
