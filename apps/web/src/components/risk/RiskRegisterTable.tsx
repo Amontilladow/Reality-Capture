@@ -84,6 +84,7 @@ export function RiskRegisterTable({ risks, members, ownerNames, filters, onFilte
           className="field-input w-56 text-xs !py-1.5"
         />
         <Listbox
+          aria-label="Filter by severity"
           value={filters.levels[0] ?? ''}
           onChange={(e) => set('levels', e.target.value ? [e.target.value as RiskLevel] : [])}
           className="field-input w-auto text-xs !py-1.5"
@@ -92,6 +93,7 @@ export function RiskRegisterTable({ risks, members, ownerNames, filters, onFilte
           {(['CRITICAL', 'HIGH', 'MODERATE', 'LOW'] as RiskLevel[]).map((l) => <option key={l} value={l}>{LEVEL_LABELS[l]}</option>)}
         </Listbox>
         <Listbox
+          aria-label="Filter by discipline"
           value={filters.discipline}
           onChange={(e) => set('discipline', e.target.value)}
           className="field-input w-auto text-xs !py-1.5"
@@ -100,6 +102,7 @@ export function RiskRegisterTable({ risks, members, ownerNames, filters, onFilte
           {disciplinesPresent.map((d) => <option key={d} value={d}>{disciplineLabel(d)}</option>)}
         </Listbox>
         <Listbox
+          aria-label="Filter by status"
           value={filters.statuses[0] ?? ''}
           onChange={(e) => set('statuses', e.target.value ? [e.target.value as RiskStatus] : [])}
           className="field-input w-auto text-xs !py-1.5"
@@ -108,6 +111,7 @@ export function RiskRegisterTable({ risks, members, ownerNames, filters, onFilte
           {(Object.keys(STATUS_LABELS) as RiskStatus[]).map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
         </Listbox>
         <Listbox
+          aria-label="Filter by owner"
           value={filters.owner}
           onChange={(e) => set('owner', e.target.value)}
           className="field-input w-auto text-xs !py-1.5"
