@@ -82,9 +82,10 @@
   /* Dashboard theme: the tan fill accent ("sun"), the espresso card
      ("noir"), and the two ends of the cream-to-sand page gradient. */
   --rc-focus: 58 36 24; /* dark-brown ring: tan would be too faint on cream */
-  /* Liquid-metal logo tones (LiquidLogo shader): bronze, sand over walnut. */
-  --rc-metal-hi: 213 196 174;
-  --rc-metal-lo: 107 74 46; /* walnut: bronze metal, still visible on the black brand panel */
+  /* Liquid-metal logo tones (LiquidLogo shader): rose gold -- a blush
+     highlight over a deep rose shadow (around classic rose gold #B76E79). */
+  --rc-metal-hi: 247 217 207;
+  --rc-metal-lo: 140 79 85; /* deep rose: dark enough for depth, still visible on the black panel */
   --rc-sun: 168 132 98;
   --rc-noir: 26 18 14;
   --rc-noir-hover: 58 36 24;
