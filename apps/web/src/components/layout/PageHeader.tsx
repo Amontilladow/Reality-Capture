@@ -19,22 +19,17 @@ export function PageHeader({
   useDocumentTitle(title);
 
   return (
-    <div className={`border-b border-base-600 bg-base-900/60 backdrop-blur px-6 flex items-center justify-between gap-3 sticky top-0 z-10 ${breadcrumbs || subtitle ? 'py-3' : 'h-[72px]'}`}>
-      {/* Same 6px accent-bar language as SectionHeader (platform visual
-          overhaul) -- every page's own title now carries the same weight
-          as the sections inside it, instead of a plain text-base label. */}
-      <div className="min-w-0 shrink flex items-stretch gap-3">
-        <span className="w-1.5 rounded-full shrink-0 bg-teal" />
-        <div className="min-w-0">
-          {breadcrumbs && <Breadcrumbs items={breadcrumbs} />}
-          {eyebrow && (
-            <span className="inline-block text-eyebrow font-mono uppercase tracking-widest mb-1 px-2 py-0.5 rounded-full bg-teal/10 text-teal truncate">
-              {eyebrow}
-            </span>
-          )}
-          <h1 className="text-xl font-bold tracking-tight -mt-0.5 truncate">{title}</h1>
-          {subtitle && <p className="text-xs text-ink-500 mt-0.5 truncate">{subtitle}</p>}
-        </div>
+    <div className={`border-b border-base-600 bg-base-950/85 backdrop-blur px-4 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-10 ${breadcrumbs || subtitle ? 'py-3' : 'min-h-16 py-3'}`}>
+      {/* Title block: breadcrumbs or a quiet eyebrow above one strong title.
+          No accent bar or chip -- the title's size and weight are the
+          hierarchy, and the page's own content gets the color. */}
+      <div className="min-w-0 shrink">
+        {breadcrumbs && <Breadcrumbs items={breadcrumbs} />}
+        {eyebrow && (
+          <div className="text-xs font-medium text-ink-500 mb-0.5 truncate">{eyebrow}</div>
+        )}
+        <h1 className="text-xl font-semibold tracking-tight truncate">{title}</h1>
+        {subtitle && <p className="text-xs text-ink-500 mt-0.5 truncate">{subtitle}</p>}
       </div>
       {actions && (
         // min-w-0 lets this shrink below its content's natural width once

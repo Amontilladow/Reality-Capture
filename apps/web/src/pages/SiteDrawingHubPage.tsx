@@ -160,7 +160,7 @@ export default function SiteDrawingHubPage() {
                   </thead>
                   <tbody>
                     {drawings.map((d) => (
-                      <tr key={d.id} onClick={() => setSelectedDrawingId(d.id)} className="border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-800/60">
+                      <tr key={d.id} onClick={() => setSelectedDrawingId(d.id)} className="border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-700">
                         <td className="px-3 py-2.5 font-mono text-xs text-ink-500 whitespace-nowrap">{d.drawingNumber}</td>
                         <td className="px-3 py-2.5 max-w-xs">
                           <div className="text-ink-100 truncate">{d.drawingTitle}</div>

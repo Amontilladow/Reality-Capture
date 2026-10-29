@@ -24,7 +24,7 @@ function statusBadgeClass(status: string | null): string {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="border-b border-base-600 py-3">
-      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">{title}</h4>
+      <h4 className="mb-2 text-xs font-semibold text-ink-500">{title}</h4>
       {children}
     </div>
   );

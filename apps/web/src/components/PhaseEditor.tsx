@@ -43,7 +43,7 @@ export function PhaseEditor({
   }
 
   return (
-    <button onClick={() => setEditing(true)} className="flex items-center gap-1 text-xs text-ink-500 hover:text-blueprint">
+    <button onClick={() => setEditing(true)} className="flex items-center gap-1 min-h-6 text-xs text-ink-500 hover:text-blueprint">
       <span>{phase ? PROJECT_PHASE_LABELS[phase] : 'Set phase'}</span>
       <EditIcon className="w-3 h-3" />
     </button>

@@ -1223,7 +1223,7 @@ function StampPanel({
 }) {
   return (
     <div className="tick-frame bg-base-900/60 border border-base-600 rounded px-3 py-2.5">
-      <div className="text-[10px] font-mono uppercase tracking-widest text-blueprint mb-1.5">{title}</div>
+      <div className="text-[11px] text-blueprint mb-1.5 font-medium">{title}</div>
       <div className="grid grid-cols-3 gap-3 text-xs">
         <div>
           <div className="text-ink-500">Uploaded by</div>
@@ -1289,7 +1289,7 @@ function OrganizationSlotRow({ projectId, canEdit }: { projectId: string; canEdi
                   No logo
                 </div>
               )}
-              <div className="text-[10px] uppercase tracking-wide text-ink-500 font-mono">{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</div>
+              <div className="text-[11px] text-ink-500 font-medium">{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</div>
               {org?.name && <div className="text-xs text-ink-100 truncate max-w-full">{org.name}</div>}
               {canEdit && (
                 <label className="text-[10px] text-blueprint hover:text-blueprint-hover cursor-pointer">

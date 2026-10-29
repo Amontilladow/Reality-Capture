@@ -155,13 +155,13 @@ export default function BuildLensPage() {
           <p className="text-sm text-ink-500">See the project evolve.</p>
           {!isEmpty && !isLoading && (
             <div className="flex items-center gap-1 shrink-0">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-ink-500 mr-1">Sort</span>
+              <span className="text-[11px] text-ink-500 mr-1 font-medium">Sort</span>
               {(['recent', 'alpha'] as const).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => setSortMode(mode)}
                   className={`px-2 py-1 rounded text-xs transition-colors ${
-                    sortMode === mode ? 'bg-signal/15 text-signal' : 'text-ink-500 hover:text-ink-100 hover:bg-base-800'
+                    sortMode === mode ? 'bg-signal/15 text-signal' : 'text-ink-500 hover:text-ink-100 hover:bg-base-700'
                   }`}
                 >
                   {mode === 'recent' ? 'Most recent' : 'A–Z'}
@@ -191,7 +191,7 @@ export default function BuildLensPage() {
               <div key={building.id}>
                 <button
                   onClick={() => toggleBuilding(building.id)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-base-800 text-left"
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-base-700 text-left"
                 >
                   <Chevron open={openBuildings.has(building.id)} />
                   <BuildingIcon className="w-4 h-4 text-blueprint shrink-0" />
@@ -204,7 +204,7 @@ export default function BuildLensPage() {
                       <div key={level.id}>
                         <button
                           onClick={() => toggleLevel(level.id)}
-                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-base-800 text-left"
+                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-base-700 text-left"
                         >
                           <Chevron open={openLevels.has(level.id)} />
                           <LevelIcon className="w-3.5 h-3.5 text-ink-500 shrink-0" />
@@ -233,7 +233,7 @@ export default function BuildLensPage() {
         {unassigned.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 px-1">
-              <span className="text-xs font-mono uppercase tracking-widest text-ink-500">Unassigned</span>
+              <span className="text-xs text-ink-500 font-medium">Unassigned</span>
               <span className="text-[10px] text-ink-500" title="Locations reached from a floor-plan pin rather than the building/level hierarchy">
                 (not in a building/level)
               </span>
@@ -254,7 +254,7 @@ function LocationRow({ loc, onClick, wide }: { loc: LocationSummary; onClick: ()
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 text-left transition-colors hover:bg-base-800 rounded ${
+      className={`w-full flex items-center gap-3 text-left transition-colors hover:bg-base-700 rounded ${
         wide ? 'px-4 py-3' : 'px-2 py-1.5'
       }`}
     >

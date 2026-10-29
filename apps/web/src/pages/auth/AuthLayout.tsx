@@ -20,7 +20,7 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
             <LogoMark className="w-8 h-8" />
             <div className="leading-tight">
               <div className="font-semibold tracking-tight">Reality Capture</div>
-              <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500">by EngineeringOS</div>
+              <div className="text-[11px] text-ink-500 font-medium">by EngineeringOS</div>
             </div>
           </div>
           {/* Decorative marketing copy, identical on every auth screen -- the
@@ -38,7 +38,7 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
               counts told a visitor nothing about what they could actually do
               here) -- same three-column rhythm, now naming the workflow
               instead of implementation internals. */}
-          <div className="mt-10 grid grid-cols-3 gap-4 font-mono text-[11px] uppercase tracking-wide text-ink-500">
+          <div className="mt-10 grid grid-cols-3 gap-4 text-[11px] text-ink-500 font-medium">
             <div className="border-t border-base-600 pt-2 text-ink-300">Capture</div>
             <div className="border-t border-base-600 pt-2 text-ink-300">Coordinate</div>
             <div className="border-t border-base-600 pt-2 text-ink-300">Resolve</div>
@@ -52,7 +52,7 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
             <LogoMark className="w-7 h-7" />
             <div className="leading-tight">
               <div className="font-semibold tracking-tight">Reality Capture</div>
-              <div className="text-[9px] font-mono uppercase tracking-widest text-ink-500">by EngineeringOS</div>
+              <div className="text-[11px] text-ink-500 font-medium">by EngineeringOS</div>
             </div>
           </div>
           <div className="tick-frame panel p-8">

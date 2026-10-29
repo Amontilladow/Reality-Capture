@@ -364,7 +364,7 @@ export default function ReportsPage() {
             {riskPdfError && <p className="field-error">{riskPdfError}</p>}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <div className="panel p-3">
-                <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">Project Risk Index</div>
+                <div className="text-[11px] text-ink-500 mb-0.5 font-medium">Project Risk Index</div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-xl font-semibold tabular-nums" style={{ color: RISK_LEVEL_COLORS[riskSummaryQuery.data.overallLevel] }}>
                     {riskSummaryQuery.data.overallScore}
@@ -544,9 +544,9 @@ export default function ReportsPage() {
                 <button
                   type="button"
                   onClick={() => setDrawingListOpen((v) => !v)}
-                  className="panel p-3 text-left hover:bg-base-800/60 transition-colors"
+                  className="panel p-3 text-left hover:bg-base-700 transition-colors"
                 >
-                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">Drawing/Model Updated — Applied</div>
+                  <div className="text-[11px] text-ink-500 mb-0.5 font-medium">Drawing/Model Updated — Applied</div>
                   <div className={`text-xl font-semibold tabular-nums ${kpis.rfis.drawingUpdateStatus.notApplied > 0 ? 'text-warn' : 'text-ink-100'}`}>
                     {kpis.rfis.drawingUpdateStatus.applied} of {kpis.rfis.drawingUpdateStatus.totalRequiringDrawingUpdate}
                   </div>
@@ -646,19 +646,19 @@ export default function ReportsPage() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <div className="panel p-3">
-                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">NCR — Open / Total / Closed</div>
+                  <div className="text-[11px] text-ink-500 mb-0.5 font-medium">NCR — Open / Total / Closed</div>
                   <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.ncrOpen} / {kpis.qaqc.summary.ncrTotal} / {kpis.qaqc.summary.ncrClosed}</div>
                 </div>
                 <div className="panel p-3">
-                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">SOR — Open / Total / Closed</div>
+                  <div className="text-[11px] text-ink-500 mb-0.5 font-medium">SOR — Open / Total / Closed</div>
                   <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.sorOpen} / {kpis.qaqc.summary.sorTotal} / {kpis.qaqc.summary.sorClosed}</div>
                 </div>
                 <div className="panel p-3">
-                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">WIR — Open / Total / Closed</div>
+                  <div className="text-[11px] text-ink-500 mb-0.5 font-medium">WIR — Open / Total / Closed</div>
                   <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.wirOpen} / {kpis.qaqc.summary.wirTotal} / {kpis.qaqc.summary.wirClosed}</div>
                 </div>
                 <div className="panel p-3">
-                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">MIR — Open / Total / Closed</div>
+                  <div className="text-[11px] text-ink-500 mb-0.5 font-medium">MIR — Open / Total / Closed</div>
                   <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.mirOpen} / {kpis.qaqc.summary.mirTotal} / {kpis.qaqc.summary.mirClosed}</div>
                 </div>
               </div>
@@ -684,7 +684,7 @@ export default function ReportsPage() {
                       {kpis.qaqc.openList.map((item) => (
                         <tr key={item.id} className="border-b border-base-700/60 last:border-0">
                           <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{item.recordNumber ?? item.id.slice(0, 8)}</td>
-                          <td className="px-4 py-2.5 uppercase text-ink-300">{QAQC_RECORD_TYPE_SHORT_LABELS[item.recordType as QaqcRecordType] ?? item.recordType}</td>
+                          <td className="px-4 py-2.5 text-ink-300 font-medium">{QAQC_RECORD_TYPE_SHORT_LABELS[item.recordType as QaqcRecordType] ?? item.recordType}</td>
                           <td className="px-4 py-2.5">{item.subject}</td>
                           <td className="px-4 py-2.5 text-ink-300">{QAQC_STATUS_LABELS[item.status as QaqcStatus] ?? item.status}</td>
                           <td className="px-4 py-2.5 text-ink-300">{PRIORITY_LABELS[item.priority as keyof typeof PRIORITY_LABELS] ?? item.priority}</td>

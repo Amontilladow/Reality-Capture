@@ -104,10 +104,14 @@ export default {
       backgroundSize: {
         'grid-fine': '24px 24px',
       },
+      // Resolve through index.css's --rc-radius-* so the radius scale has one
+      // source, like the colors above. Tight radii (6/8/12) suit a dense
+      // engineering tool; the old 16/24 made every surface read as a bubble.
       borderRadius: {
-        sm: '16px',
-        DEFAULT: '16px',
-        md: '24px',
+        sm: 'var(--rc-radius-sm)',
+        DEFAULT: 'var(--rc-radius-md)',
+        md: 'var(--rc-radius-md)',
+        lg: 'var(--rc-radius-lg)',
       },
     },
   },

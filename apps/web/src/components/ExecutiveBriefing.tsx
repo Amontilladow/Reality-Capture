@@ -103,10 +103,10 @@ export function ExecutiveBriefing({ projectId }: { projectId: string }) {
             />
           </div>
           {visibleSignals.map((signal, i) => (
-            <Link key={`${signal.domain}-${i}`} to={signal.to} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-base-800/60 transition-colors">
+            <Link key={`${signal.domain}-${i}`} to={signal.to} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-base-700 transition-colors">
               <div className="flex items-center gap-3 min-w-0">
                 <StatusBadge tone={SEVERITY_TONE[signal.severity]} label={SEVERITY_LABEL[signal.severity]} />
-                <span className="text-xs text-ink-500 font-mono uppercase tracking-wide shrink-0">{signal.domain}</span>
+                <span className="text-xs text-ink-500 shrink-0 font-medium">{signal.domain}</span>
                 <span className="text-sm text-ink-100 truncate">{signal.label}</span>
               </div>
               <span className="text-xs text-blueprint shrink-0">View →</span>

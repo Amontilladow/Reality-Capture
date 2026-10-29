@@ -285,7 +285,7 @@ function GraphNodeDetailPanel({ projectId, nodeId, onClose, onFocus }: { project
 
           {detail.risk && (
             <div className="panel p-3">
-              <div className="text-xs text-ink-500 uppercase tracking-wide mb-1">Associated Risk</div>
+              <div className="text-xs text-ink-500 mb-1 font-medium">Associated Risk</div>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-semibold tabular-nums" style={{ color: RISK_LEVEL_COLORS[detail.risk.level] }}>{detail.risk.score}</span>
                 <span className="text-sm text-ink-300">{detail.risk.title}</span>
@@ -295,7 +295,7 @@ function GraphNodeDetailPanel({ projectId, nodeId, onClose, onFocus }: { project
 
           {detail.related.length > 0 && (
             <div>
-              <div className="text-xs text-ink-500 uppercase tracking-wide mb-2">Connected ({detail.related.length})</div>
+              <div className="text-xs text-ink-500 mb-2 font-medium">Connected ({detail.related.length})</div>
               <ul className="space-y-1 max-h-64 overflow-y-auto">
                 {detail.related.map((r, i) => (
                   <li key={i} className="text-sm flex items-center justify-between">

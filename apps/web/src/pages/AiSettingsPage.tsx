@@ -71,7 +71,7 @@ export default function AiSettingsPage() {
       <div className="p-6 space-y-6 max-w-3xl">
         <div className="panel tick-frame p-5 space-y-4">
           <div>
-            <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">AI Mode</h2>
+            <h2 className="text-sm font-semibold text-ink-100">AI Mode</h2>
             <p className="text-xs text-ink-500 mt-1">
               By default, the AI Assistant runs on RealityCapture's own AI provider -- nothing to set up.
               Connect your own provider below to run the assistant on your account instead. Either way, the
@@ -140,7 +140,7 @@ export default function AiSettingsPage() {
 
         <div className="panel tick-frame p-5 space-y-4">
           <div>
-            <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">
+            <h2 className="text-sm font-semibold text-ink-100">
               {connected ? 'Replace Connection' : 'Connect My AI Provider'}
             </h2>
             <p className="text-xs text-ink-500 mt-1">

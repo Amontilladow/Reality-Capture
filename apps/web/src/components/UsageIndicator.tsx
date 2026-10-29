@@ -10,7 +10,7 @@ function Bar({ label, used, max, format }: { label: string; used: number; max?: 
   return (
     <div>
       <div className="flex items-baseline justify-between text-xs mb-1">
-        <span className="text-ink-500 uppercase tracking-wide font-mono">{label}</span>
+        <span className="text-ink-500 font-medium">{label}</span>
         <span className="font-mono text-ink-300">
           {format ? format(used) : used}
           {max ? ` / ${format ? format(max) : max}` : ' / unlimited'}

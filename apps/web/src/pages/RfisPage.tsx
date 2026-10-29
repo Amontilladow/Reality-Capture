@@ -284,7 +284,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                     <tr
                       key={r.id}
                       onClick={() => navigate(`/projects/${projectId}/rfis/${r.id}`)}
-                      className={`border-b border-base-700/60 last:border-0 hover:bg-base-800/40 cursor-pointer ${hasImpact ? 'border-l-2 border-l-warn bg-warn/5' : ''}`}
+                      className={`border-b border-base-700/60 last:border-0 hover:bg-base-700 cursor-pointer ${hasImpact ? 'border-l-2 border-l-warn bg-warn/5' : ''}`}
                     >
                       <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{r.rfiNumber ?? '—'}</td>
                       <td className="px-4 py-2.5">{r.subject}</td>

@@ -20,7 +20,7 @@ export function ProjectCard({ project }: { project: Project }) {
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="font-mono text-[10px] text-ink-500 uppercase tracking-wide mb-1">
+          <div className="text-[11px] text-ink-500 mb-1 font-medium">
             {project.code ?? '—'}
           </div>
           <h3 className="font-semibold text-sm leading-snug group-hover:text-blueprint transition-colors truncate">

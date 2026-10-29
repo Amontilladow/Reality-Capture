@@ -108,7 +108,7 @@ export default function QaInspectionsPage() {
                   <tr
                     key={i.id}
                     onClick={() => setSelectedId(i.id)}
-                    className="border-b border-base-700/60 last:border-0 hover:bg-base-800/40 cursor-pointer"
+                    className="border-b border-base-700/60 last:border-0 hover:bg-base-700 cursor-pointer"
                   >
                     <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{i.inspectionNumber ?? '—'}</td>
                     <td className="px-4 py-2.5">{i.title}</td>

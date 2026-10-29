@@ -76,7 +76,7 @@ export default function SharePointIntegrationPage() {
       <div className="p-6 space-y-6 max-w-3xl">
         <div className="panel tick-frame p-5 space-y-4">
           <div>
-            <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Connection</h2>
+            <h2 className="text-sm font-semibold text-ink-100">Connection</h2>
             <p className="text-xs text-ink-500 mt-1">
               The tenant ID is verified with Microsoft before it's saved. There's no separate credential to enter here --
               every customer reuses this app's own Microsoft Entra registration; a tenant admin grants it access to
@@ -129,7 +129,7 @@ export default function SharePointIntegrationPage() {
 
         <div className="panel tick-frame p-5 space-y-4">
           <div>
-            <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Project Site Mapping</h2>
+            <h2 className="text-sm font-semibold text-ink-100">Project Site Mapping</h2>
             <p className="text-xs text-ink-500 mt-1">
               Map a project onto one SharePoint site + document library. The drive is checked for reachability before
               the mapping is saved. Column overrides are optional -- without them, the drawing number/title fall back

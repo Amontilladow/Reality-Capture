@@ -623,7 +623,7 @@ function OrganizationRow({
         </div>
 
         <div className="flex-1 space-y-1.5">
-          <div className="text-xs font-mono uppercase tracking-wide text-ink-500">{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</div>
+          <div className="text-xs text-ink-500 font-medium">{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</div>
           <div className="grid grid-cols-2 gap-2">
             <input
               className="field-input !py-1 text-xs"

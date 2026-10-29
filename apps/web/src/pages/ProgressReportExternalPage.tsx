@@ -9,7 +9,7 @@ import { ThemeToggle } from '../components/ui/ThemeToggle';
 function IssueList({ title, items, emptyText }: { title: string; items: ProgressReportIssueRow[]; emptyText: string }) {
   return (
     <div className="mb-6">
-      <h3 className="text-sm font-semibold text-ink-100 uppercase tracking-wide mb-2">{title} ({items.length})</h3>
+      <h3 className="text-sm font-semibold text-ink-100 mb-2">{title} ({items.length})</h3>
       {items.length === 0 ? (
         <p className="text-sm text-ink-500">{emptyText}</p>
       ) : (
@@ -68,7 +68,7 @@ export default function ProgressReportExternalPage() {
         {report && (
           <div className="panel tick-frame p-6">
             <div className="mb-6">
-              <div className="text-xs text-ink-500 uppercase tracking-wide">
+              <div className="text-xs text-ink-500 font-medium">
                 {report.project.code ? `${report.project.name} · ${report.project.code}` : report.project.name}
                 {report.building ? ` · ${report.building.name}` : ''}
                 {report.level ? ` · ${report.level.name}` : ''}
@@ -89,14 +89,14 @@ export default function ProgressReportExternalPage() {
               ].map((t) => (
                 <div key={t.label} className="panel p-3 text-center">
                   <div className="text-lg font-semibold text-ink-100 tabular-nums">{t.value}</div>
-                  <div className="text-[10px] uppercase text-ink-500">{t.label}</div>
+                  <div className="text-[11px] text-ink-500 font-medium">{t.label}</div>
                 </div>
               ))}
             </div>
 
             {report.captures.length > 0 && (
               <div className="mb-6">
-                <h3 className="text-sm font-semibold text-ink-100 uppercase tracking-wide mb-2">Captures</h3>
+                <h3 className="text-sm font-semibold text-ink-100 mb-2">Captures</h3>
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                   {report.captures.map((c, i) => (
                     <img key={c.id} src={c.thumbnailUrl} alt={`Site capture ${i + 1} of ${report.captures.length}`} loading="lazy" className="w-full h-20 object-cover rounded border border-base-600" />
@@ -107,7 +107,7 @@ export default function ProgressReportExternalPage() {
 
             {report.elementProgress && report.elementProgress.byLevel.length > 0 && (
               <div className="mb-6">
-                <h3 className="text-sm font-semibold text-ink-100 uppercase tracking-wide mb-2">
+                <h3 className="text-sm font-semibold text-ink-100 mb-2">
                   Planned vs Actual Progress ({report.elementProgress.overallCompletionPct ?? 0}% complete)
                 </h3>
                 <div className="space-y-1">

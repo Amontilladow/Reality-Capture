@@ -18,13 +18,13 @@ import type {
 export type StatusTone = 'neutral' | 'info' | 'progress' | 'success' | 'warning' | 'danger' | 'critical';
 
 export const TONE_CLASS: Record<StatusTone, string> = {
-  neutral: 'bg-base-600 text-ink-500',
+  neutral: 'bg-base-700 text-ink-300',
   info: 'bg-blueprint/15 text-blueprint',
   progress: 'bg-warn/15 text-warn',
   success: 'bg-ok/15 text-ok',
   warning: 'bg-warn/15 text-warn',
   danger: 'bg-danger/15 text-danger',
-  critical: 'bg-danger/20 text-danger border border-danger/30',
+  critical: 'bg-danger/15 text-danger ring-1 ring-inset ring-danger/35',
 };
 
 // The small dot rendered inside <StatusBadge dot /> -- a plain background
