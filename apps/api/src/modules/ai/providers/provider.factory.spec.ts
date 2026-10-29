@@ -68,6 +68,46 @@ describe('ProviderFactory.resolve (RealityCapture\'s own provider, auto mode)', 
     expect(() => factory.getProvider()).toThrow(/Unknown AI_PROVIDER/);
   });
 
+  // A third-party OpenAI-compatible gateway, forced explicitly (never part
+  // of auto-detection, same as the BYO-only providers) since it needs both
+  // a key and a base URL, not just a key.
+  describe('AI_PROVIDER=custom_openai_compatible', () => {
+    it('builds a provider pointed at the configured gateway, not api.openai.com', () => {
+      const factory = new ProviderFactory(makeConfig({
+        'ai.provider': 'custom_openai_compatible',
+        'ai.customOpenAICompatible.apiKey': 'gateway-key',
+        'ai.customOpenAICompatible.baseUrl': 'https://api.example-gateway.com/v1',
+        'ai.customOpenAICompatible.model': 'gpt-6-luna',
+      }));
+      expect(factory.getProvider().getModelInfo()).toEqual({ provider: 'custom_openai_compatible', model: 'gpt-6-luna' });
+    });
+
+    it('fails closed when the API key is missing', () => {
+      const factory = new ProviderFactory(makeConfig({
+        'ai.provider': 'custom_openai_compatible',
+        'ai.customOpenAICompatible.baseUrl': 'https://api.example-gateway.com/v1',
+      }));
+      expect(() => factory.getProvider()).toThrow(/CUSTOM_OPENAI_API_KEY is not set/);
+    });
+
+    it('fails closed when the base URL is missing -- a key alone would silently hit api.openai.com instead', () => {
+      const factory = new ProviderFactory(makeConfig({
+        'ai.provider': 'custom_openai_compatible',
+        'ai.customOpenAICompatible.apiKey': 'gateway-key',
+      }));
+      expect(() => factory.getProvider()).toThrow(/CUSTOM_OPENAI_BASE_URL is not set/);
+    });
+
+    it('is never selected by auto-detection, only by an explicit AI_PROVIDER', () => {
+      const factory = new ProviderFactory(makeConfig({
+        'ai.provider': 'auto',
+        'ai.customOpenAICompatible.apiKey': 'gateway-key',
+        'ai.customOpenAICompatible.baseUrl': 'https://api.example-gateway.com/v1',
+      }));
+      expect(() => factory.getProvider()).toThrow(/No AI provider configured/);
+    });
+  });
+
   it('caches the resolved provider -- resolve only runs once', () => {
     const config = makeConfig({ 'ai.provider': 'auto', 'ai.gemini.apiKey': 'g-key', 'ai.gemini.model': 'gemini-2.0-flash' });
     const factory = new ProviderFactory(config);
