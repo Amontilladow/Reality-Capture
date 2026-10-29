@@ -103,6 +103,9 @@ describe('IssuesService view-state / screenshot behavior', () => {
         if (text.includes('SELECT COUNT(*) AS n FROM issues')) {
           return Promise.resolve([{ n: String(existingCountForDiscipline) }]);
         }
+        if (text.includes('SELECT 1 FROM issues')) {
+          return Promise.resolve([{ '?column?': 1 }]); // assertIssueInProject's ownership check, run from create()'s own addActivity call
+        }
         if (text.includes('INSERT INTO issues')) {
           return Promise.resolve([{
             id: 'issue-1', title: 'Cracked beam', discipline: 'MEP', category: null,
@@ -184,7 +187,15 @@ describe('IssuesService view-state / screenshot behavior', () => {
     const query = jest.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
       const text = strings.join('?');
       calls.push({ text, values });
-      return Promise.resolve(responder(text, values) ?? []);
+      // assertIssueInProject's ownership check (H-1 fix) runs ahead of
+      // addActivity/addCapture/etc. in several flows this shared helper
+      // backs (create/forward/close/forceStatus/attachments) -- default it
+      // to "found" here so every existing test's own responder doesn't
+      // need to know about a query it isn't testing; a test that DOES want
+      // to exercise this specific check can still override it by handling
+      // 'SELECT 1 FROM issues' in its own responder.
+      const defaulted = text.includes('SELECT 1 FROM issues') ? [{ '?column?': 1 }] : [];
+      return Promise.resolve(responder(text, values) ?? defaulted);
     });
     return { query: query as unknown as DatabaseService['query'], calls };
   }
@@ -870,7 +881,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
 
     it('addAttachment stores the storage key (not a raw URL) on a new issue_activities row, using the verified size', async () => {
       const { query, calls } = makeQuery((text) => {
-        if (text.includes('SELECT id FROM issues')) {
+        if (text.includes('SELECT 1 FROM issues')) {
           return [{ id: 'issue-1' }];
         }
         if (text.includes('INSERT INTO issue_activities')) {
@@ -893,7 +904,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
         { getObjectSize } as unknown as StorageService,
       );
 
-      await svc.addAttachment('company-1', 'issue-1', 'user-1', {
+      await svc.addAttachment('company-1', 'project-1', 'issue-1', 'user-1', {
         storageKey: 'company-1/issues/project-1/uuid.pdf', filename: 'report.pdf', sizeBytes: 1024,
       });
 
@@ -907,7 +918,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
 
     it('addAttachment persists the actual storage size, not a client-declared one that understates it', async () => {
       const { query, calls } = makeQuery((text) => {
-        if (text.includes('SELECT id FROM issues')) return [{ id: 'issue-1' }];
+        if (text.includes('SELECT 1 FROM issues')) return [{ id: 'issue-1' }];
         if (text.includes('INSERT INTO issue_activities')) return [{ id: 'activity-1' }];
         return undefined;
       });
@@ -921,7 +932,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
         { getObjectSize } as unknown as StorageService,
       );
 
-      await svc.addAttachment('company-1', 'issue-1', 'user-1', {
+      await svc.addAttachment('company-1', 'project-1', 'issue-1', 'user-1', {
         storageKey: 'company-1/issues/project-1/uuid.pdf', filename: 'report.pdf', sizeBytes: 1024,
       });
 
@@ -941,7 +952,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
         { getObjectSize, deleteIfExists } as unknown as StorageService,
       );
 
-      await expect(svc.addAttachment('company-1', 'issue-1', 'user-1', {
+      await expect(svc.addAttachment('company-1', 'project-1', 'issue-1', 'user-1', {
         storageKey: 'company-1/issues/project-1/uuid.pdf', filename: 'report.pdf', sizeBytes: 1024,
       })).rejects.toThrow(BadRequestException);
 
@@ -958,7 +969,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
         { getObjectSize } as unknown as StorageService,
       );
 
-      await expect(svc.addAttachment('company-1', 'someone-elses-issue', 'user-1', {
+      await expect(svc.addAttachment('company-1', 'project-1', 'someone-elses-issue', 'user-1', {
         storageKey: 'company-1/issues/project-1/uuid.pdf', filename: 'report.pdf', sizeBytes: 1024,
       })).rejects.toThrow(NotFoundException);
 
@@ -983,7 +994,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
           { getReadUrl } as unknown as StorageService,
         );
 
-        const result = await svc.getActivities('company-1', 'issue-1');
+        const result = await svc.getActivities('company-1', 'project-1', 'issue-1');
 
         expect(getReadUrl).toHaveBeenCalledWith('company-1/issues/project-1/uuid.pdf');
         expect(result[0]).toMatchObject({
@@ -1004,12 +1015,127 @@ describe('IssuesService view-state / screenshot behavior', () => {
           { getReadUrl } as unknown as StorageService,
         );
 
-        const result = await svc.getActivities('company-1', 'issue-1');
+        const result = await svc.getActivities('company-1', 'project-1', 'issue-1');
 
         expect(getReadUrl).not.toHaveBeenCalled();
         expect(result[0]).toEqual({ id: 'activity-2', activityType: 'comment', attachmentUrl: null });
         expect((result[0] as Record<string, unknown>).attachmentReadUrl).toBeUndefined();
       });
+    });
+  });
+
+  // H-1 regression (KNOWN_ISSUES_AND_REMEDIATION.md): these five routes
+  // used to scope their issue lookup only by company_id, so a user
+  // authorized for Project A could read/write Project B's issue
+  // sub-resources by supplying Project B's own issueId while calling the
+  // route under /projects/:projectA-id/issues/... . assertIssueInProject
+  // (added above findOne) closes this -- each test below proves both
+  // halves: the cross-project call is rejected, and the same call under
+  // the resource's real project still succeeds.
+  describe('H-1: same-company cross-project access is rejected on sub-resource routes', () => {
+    const REAL_PROJECT = 'project-A';
+    const OTHER_PROJECT = 'project-B';
+    const ISSUE_ID = 'issue-1';
+
+    // Mirrors assertIssueInProject's own query shape: only returns a row
+    // when the project id matches the one the issue actually belongs to.
+    function makeProjectScopedDb(extra: (text: string) => unknown[] | undefined = () => undefined) {
+      const query = jest.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
+        const text = strings.join('?');
+        if (text.includes('SELECT 1 FROM issues')) {
+          return Promise.resolve(values.includes(REAL_PROJECT) ? [{ '?column?': 1 }] : []);
+        }
+        // assertLinkedResourcesInProject's own capture check (addCapture) --
+        // same REAL_PROJECT-gated shape as the issues branch above.
+        if (text.includes('FROM captures')) {
+          return Promise.resolve(values.includes(REAL_PROJECT) ? [{ '?column?': 1 }] : []);
+        }
+        const extraResult = extra(text);
+        if (extraResult) return Promise.resolve(extraResult);
+        return Promise.resolve([]);
+      });
+      const db = { withTenant: jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query)) } as unknown as DatabaseService;
+      return { db, query };
+    }
+
+    function makeSvc(db: DatabaseService, storage: Partial<StorageService> = {}) {
+      return new IssuesService(
+        db,
+        {} as unknown as AiClientService,
+        { create: jest.fn() } as unknown as NotificationsService,
+        storage as unknown as StorageService,
+      );
+    }
+
+    // Positive case first in each test: ISSUE_ID genuinely belongs to
+    // REAL_PROJECT (the mock DB only returns a row when the call's
+    // projectId argument is REAL_PROJECT), so that call must succeed.
+    // Negative case: the identical issueId, requested under OTHER_PROJECT
+    // (as if the caller is a member of a different project and is probing
+    // or has guessed this issueId), must be rejected.
+    it('getActivities: succeeds under the issue\'s real project, rejects the same issueId under another project', async () => {
+      const { db } = makeProjectScopedDb();
+      const svc = makeSvc(db, { getReadUrl: jest.fn() });
+
+      await expect(svc.getActivities('company-1', REAL_PROJECT, ISSUE_ID)).resolves.toEqual([]);
+      await expect(svc.getActivities('company-1', OTHER_PROJECT, ISSUE_ID)).rejects.toThrow(NotFoundException);
+    });
+
+    it('addActivity: succeeds under the issue\'s real project, rejects the same issueId under another project', async () => {
+      const { db } = makeProjectScopedDb();
+      const svc = makeSvc(db);
+
+      // sql mock has no INSERT branch -> resolves to undefined, proving it
+      // got past the auth check rather than that anything meaningful came back.
+      await expect(svc.addActivity('company-1', REAL_PROJECT, ISSUE_ID, 'user-1', { activityType: 'status_change', fromValue: 'open', toValue: 'in_progress' }))
+        .resolves.toBeUndefined();
+      await expect(svc.addActivity('company-1', OTHER_PROJECT, ISSUE_ID, 'user-1', { activityType: 'comment', content: 'hi' }))
+        .rejects.toThrow(NotFoundException);
+    });
+
+    it('getEvidence: succeeds under the issue\'s real project, rejects the same issueId under another project', async () => {
+      const { db } = makeProjectScopedDb();
+      const svc = makeSvc(db, { resolveUrls: jest.fn().mockResolvedValue(new Map()) });
+
+      await expect(svc.getEvidence('company-1', REAL_PROJECT, ISSUE_ID)).resolves.toEqual([]);
+      await expect(svc.getEvidence('company-1', OTHER_PROJECT, ISSUE_ID)).rejects.toThrow(NotFoundException);
+    });
+
+    it('addCapture: succeeds under the issue\'s real project, rejects the same issueId under another project', async () => {
+      const { db } = makeProjectScopedDb();
+      const svc = makeSvc(db);
+
+      await expect(svc.addCapture('company-1', REAL_PROJECT, ISSUE_ID, 'user-1', 'capture-1')).resolves.toBeUndefined();
+      await expect(svc.addCapture('company-1', OTHER_PROJECT, ISSUE_ID, 'user-1', 'capture-1')).rejects.toThrow(NotFoundException);
+    });
+
+    // H-1 follow-up: the issue itself can be in the right project while the
+    // *capture* being attached as evidence belongs to a different one in
+    // the same company -- a parent-only check (the test above) doesn't
+    // cover this case.
+    it('addCapture: rejects a same-company capture that belongs to a different project, and writes no link', async () => {
+      const insertSpy = jest.fn();
+      const query = jest.fn((strings: TemplateStringsArray) => {
+        const text = strings.join('?');
+        if (text.includes('SELECT 1 FROM issues')) return Promise.resolve([{ '?column?': 1 }]);
+        if (text.includes('FROM captures')) return Promise.resolve([]); // capture exists, but not in this project
+        if (text.includes('INSERT INTO issue_captures')) { insertSpy(); return Promise.resolve([{ id: 'link-1' }]); }
+        return Promise.resolve([]);
+      });
+      const db = { withTenant: jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query)) } as unknown as DatabaseService;
+      const svc = makeSvc(db);
+
+      await expect(svc.addCapture('company-1', REAL_PROJECT, ISSUE_ID, 'user-1', 'capture-from-other-project')).rejects.toThrow(NotFoundException);
+      expect(insertSpy).not.toHaveBeenCalled();
+    });
+
+    it('addAttachment: succeeds under the issue\'s real project, rejects the same issueId under another project', async () => {
+      const { db } = makeProjectScopedDb((text) => (text.includes('INSERT INTO issue_activities') ? [{ id: 'activity-1' }] : undefined));
+      const svc = makeSvc(db, { getObjectSize: jest.fn().mockResolvedValue(1024) });
+      const dto = { storageKey: 'company-1/issues/project-A/uuid.pdf', filename: 'report.pdf', sizeBytes: 1024 };
+
+      await expect(svc.addAttachment('company-1', REAL_PROJECT, ISSUE_ID, 'user-1', dto)).resolves.toBeDefined();
+      await expect(svc.addAttachment('company-1', OTHER_PROJECT, ISSUE_ID, 'user-1', dto)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -1019,6 +1145,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
       const sql = jest.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
         const text = strings.join('?');
         calls.push({ text, values });
+        if (text.includes('SELECT 1 FROM issues')) return Promise.resolve([{ '?column?': 1 }]); // assertIssueInProject's ownership check
         if (text.includes('INSERT INTO issue_activities')) return Promise.resolve([{ id: 'activity-1', content: 'Following up' }]);
         if (text.includes('UPDATE issues SET updated_at')) return Promise.resolve([]);
         if (text.includes('SELECT project_id, assigned_to, issue_number, title FROM issues')) return Promise.resolve([existingIssue]);
@@ -1040,7 +1167,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
         projectId: 'project-1', assignedTo: 'user-assignee', issueNumber: 'A-1', title: 'Leak',
       });
 
-      await svc.addActivity('company-1', 'issue-1', 'user-commenter', { activityType: 'comment', content: 'Following up' });
+      await svc.addActivity('company-1', 'project-1', 'issue-1', 'user-commenter', { activityType: 'comment', content: 'Following up' });
 
       expect(notifications.create).toHaveBeenCalledWith('company-1', expect.objectContaining({
         userId: 'user-assignee', type: 'issue_comment', resourceType: 'issue', resourceId: 'issue-1',
@@ -1052,7 +1179,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
         projectId: 'project-1', assignedTo: 'user-assignee', issueNumber: 'A-1', title: 'Leak',
       });
 
-      await svc.addActivity('company-1', 'issue-1', 'user-assignee', { activityType: 'comment', content: 'On it' });
+      await svc.addActivity('company-1', 'project-1', 'issue-1', 'user-assignee', { activityType: 'comment', content: 'On it' });
 
       expect(notifications.create).not.toHaveBeenCalled();
     });
@@ -1062,7 +1189,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
         projectId: 'project-1', assignedTo: null, issueNumber: 'A-1', title: 'Leak',
       });
 
-      await svc.addActivity('company-1', 'issue-1', 'user-commenter', { activityType: 'comment', content: 'Anyone?' });
+      await svc.addActivity('company-1', 'project-1', 'issue-1', 'user-commenter', { activityType: 'comment', content: 'Anyone?' });
 
       expect(notifications.create).not.toHaveBeenCalled();
     });
@@ -1070,7 +1197,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
     it('does not look up the issue or notify for non-comment activity types', async () => {
       const { svc, calls, notifications } = makeService({ projectId: 'project-1', assignedTo: 'user-assignee' });
 
-      await svc.addActivity('company-1', 'issue-1', 'user-1', { activityType: 'status_change', fromValue: 'open', toValue: 'closed' });
+      await svc.addActivity('company-1', 'project-1', 'issue-1', 'user-1', { activityType: 'status_change', fromValue: 'open', toValue: 'closed' });
 
       expect(notifications.create).not.toHaveBeenCalled();
       expect(calls.some((c) => c.text.includes('SELECT project_id, assigned_to, issue_number, title FROM issues'))).toBe(false);
@@ -1160,5 +1287,87 @@ describe('IssuesService view-state / screenshot behavior', () => {
 
       await expect(svc.cancelScheduledReminder('company-1', 'project-1', 'issue-1', 'reminder-1')).resolves.toEqual({ message: 'Scheduled reminder cancelled.' });
     });
+  });
+});
+
+// H-1 follow-up: create()/update() accept several optional cross-resource
+// references (building/level/location/element/capture/drawing) that were
+// never checked against this project -- a user authorized for Project A
+// could attach Project B's building/level/location/element/capture/drawing
+// to an issue in Project A by supplying its id, and findOne() would then
+// display that other project's names/IFC metadata on an issue the
+// Project-A user can see.
+describe('IssuesService create/update cross-resource project-scoping (H-1)', () => {
+  const companyId = 'company-1';
+  const projectId = 'project-1';
+  const issueId = 'issue-1';
+
+  function makeSvc(query: jest.Mock) {
+    const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+    const db = { withTenant };
+    return new IssuesService(
+      db as unknown as DatabaseService,
+      { ingestIssue: jest.fn() } as unknown as AiClientService,
+      { create: jest.fn() } as unknown as NotificationsService,
+      {} as unknown as StorageService,
+    );
+  }
+
+  it('create: rejects a same-company elementId that belongs to a different project, and writes no issue', async () => {
+    const insertSpy = jest.fn();
+    const query = jest.fn((strings: TemplateStringsArray) => {
+      const text = strings.join('?');
+      if (text.includes('FROM projects')) return Promise.resolve([{ id: projectId }]); // assertProjectBelongsToCompany
+      if (text.includes('FROM bim_elements')) return Promise.resolve([]); // element exists, but not in this project
+      if (text.includes('INSERT INTO issues')) { insertSpy(); return Promise.resolve([{ id: 'issue-new' }]); }
+      return Promise.resolve([]);
+    });
+    const svc = makeSvc(query);
+
+    await expect(svc.create(companyId, projectId, 'user-1', {
+      issueType: 'defect', title: 'Title', discipline: 'MEP', deadline: '2026-12-01',
+      elementId: 'element-from-other-project',
+    } as CreateIssueDto)).rejects.toThrow(NotFoundException);
+    expect(insertSpy).not.toHaveBeenCalled();
+  });
+
+  it('create: accepts an elementId that really is in this project', async () => {
+    const query = jest.fn((strings: TemplateStringsArray) => {
+      const text = strings.join('?');
+      if (text.includes('FROM projects')) return Promise.resolve([{ id: projectId }]);
+      if (text.includes('FROM bim_elements')) return Promise.resolve([{ '?column?': 1 }]);
+      if (text.includes('SELECT code FROM projects')) return Promise.resolve([{ code: 'PRJ' }]);
+      if (text.includes('SELECT COUNT')) return Promise.resolve([{ n: '0' }]);
+      if (text.includes('INSERT INTO issues')) return Promise.resolve([{ id: 'issue-new', issueNumber: 'PRJ-MEP-0001' }]);
+      if (text.includes('SELECT 1 FROM issues')) return Promise.resolve([{ '?column?': 1 }]); // assertIssueInProject, inside addActivity()
+      if (text.includes('INSERT INTO issue_activities')) return Promise.resolve([{ id: 'activity-1' }]);
+      return Promise.resolve([]);
+    });
+    const svc = makeSvc(query);
+
+    const result = await svc.create(companyId, projectId, 'user-1', {
+      issueType: 'defect', title: 'Title', discipline: 'MEP', deadline: '2026-12-01',
+      elementId: 'element-1',
+    } as CreateIssueDto);
+    expect(result).toEqual(expect.objectContaining({ id: 'issue-new' }));
+  });
+
+  it('update: rejects a same-company locationId that belongs to a different project, and writes no update', async () => {
+    const updateSpy = jest.fn();
+    const query = jest.fn((strings: TemplateStringsArray) => {
+      const text = strings.join('?');
+      if (text.includes('SELECT i.*') || text.includes('FROM issues i')) {
+        return Promise.resolve([{ id: issueId, projectId, companyId, status: 'open' }]); // findOne()
+      }
+      if (text.includes('FROM locations')) return Promise.resolve([]); // location exists, but not in this project
+      if (text.includes('UPDATE issues')) { updateSpy(); return Promise.resolve([{ id: issueId }]); }
+      return Promise.resolve([]);
+    });
+    const svc = makeSvc(query);
+
+    await expect(svc.update(companyId, projectId, issueId, 'user-1', {
+      locationId: 'location-from-other-project',
+    })).rejects.toThrow(NotFoundException);
+    expect(updateSpy).not.toHaveBeenCalled();
   });
 });

@@ -3,6 +3,7 @@ import { UsersService } from './users.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { SubscriptionService } from '../subscription/subscription.service';
 import type { AuthService } from '../auth/auth.service';
+import type { SessionRevocationService } from '../auth/session-revocation.service';
 
 describe('UsersService.adminResetPassword', () => {
   function makeService(opts: { targetRow?: Record<string, unknown> | null } = {}) {
@@ -19,10 +20,12 @@ describe('UsersService.adminResetPassword', () => {
     const buildPasswordResetLink = jest.fn((token: string) => `https://app.example.com/reset-password?token=${token}`);
     const auth = { generatePasswordResetToken, buildPasswordResetLink };
 
+    const sessionRevocation = { denyFutureAccess: jest.fn() };
     const svc = new UsersService(
       db as unknown as DatabaseService,
       subscription,
       auth as unknown as AuthService,
+      sessionRevocation as unknown as SessionRevocationService,
     );
     return { svc, generatePasswordResetToken, buildPasswordResetLink };
   }
@@ -69,6 +72,7 @@ describe('UsersService.update -- onboardingCompleted', () => {
       db as unknown as DatabaseService,
       {} as unknown as SubscriptionService,
       {} as unknown as AuthService,
+      {} as unknown as SessionRevocationService,
     );
     return { svc, withTenant };
   }
@@ -144,6 +148,7 @@ describe('UsersService.invite -- role escalation cap', () => {
       db as unknown as DatabaseService,
       subscription as unknown as SubscriptionService,
       {} as unknown as AuthService,
+      {} as unknown as SessionRevocationService,
     );
     return { svc, withTenant };
   }
@@ -197,5 +202,45 @@ describe('UsersService.invite -- role escalation cap', () => {
     const result = await svc.invite('company-1', 'inviter-1', 'project_manager', { email: 'new.consultant@aecom.com' });
 
     expect(result).toEqual(expect.objectContaining({ id: 'new-user-3' }));
+  });
+});
+
+// M-1 fix (KNOWN_ISSUES_AND_REMEDIATION.md): deactivate() previously only
+// revoked refresh tokens, leaving a pre-existing access token usable for
+// its full remaining lifetime despite the response claiming otherwise.
+// denyFutureAccess() (SessionRevocationService, checked by JwtStrategy on
+// every request) closes that gap -- these tests prove it's actually
+// called, with the deactivated user's id, only when the user row was
+// really found and updated.
+describe('UsersService.deactivate', () => {
+  function makeService(updateCount: number) {
+    const withTenant = jest.fn()
+      .mockResolvedValueOnce({ count: updateCount }) // UPDATE users SET is_active = false
+      .mockResolvedValueOnce([]); // UPDATE refresh_tokens ... revoked_at
+    const db = { withTenant };
+    const sessionRevocation = { denyFutureAccess: jest.fn() };
+    const svc = new UsersService(
+      db as unknown as DatabaseService,
+      {} as unknown as SubscriptionService,
+      {} as unknown as AuthService,
+      sessionRevocation as unknown as SessionRevocationService,
+    );
+    return { svc, sessionRevocation };
+  }
+
+  it('calls denyFutureAccess with the deactivated user\'s id after a successful deactivation', async () => {
+    const { svc, sessionRevocation } = makeService(1);
+
+    const result = await svc.deactivate('company-1', 'user-2');
+
+    expect(sessionRevocation.denyFutureAccess).toHaveBeenCalledWith('user-2');
+    expect(result).toEqual({ message: 'User deactivated and all sessions revoked.' });
+  });
+
+  it('throws NotFoundException and never calls denyFutureAccess for a user that does not exist in this company', async () => {
+    const { svc, sessionRevocation } = makeService(0);
+
+    await expect(svc.deactivate('company-1', 'missing')).rejects.toThrow(NotFoundException);
+    expect(sessionRevocation.denyFutureAccess).not.toHaveBeenCalled();
   });
 });

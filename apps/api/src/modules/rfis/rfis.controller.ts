@@ -137,16 +137,17 @@ export class RfisController {
   @ApiOperation({ summary: 'Register an uploaded file as an RFI attachment' })
   async addAttachment(
     @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
     @Param('id') id: string,
     @Body() dto: AddRfiAttachmentDto,
   ) {
-    return { data: await this.svc.addAttachment(u.companyId, id, u.id, dto), error: null };
+    return { data: await this.svc.addAttachment(u.companyId, pid, id, u.id, dto), error: null };
   }
 
   @Get(':id/attachments')
   @ApiOperation({ summary: 'List this RFI\'s attachments' })
-  async getAttachments(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
-    return { data: await this.svc.getAttachments(u.companyId, id), error: null };
+  async getAttachments(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.getAttachments(u.companyId, pid, id), error: null };
   }
 
   @Delete(':id/attachments/:attachmentId')
@@ -154,10 +155,11 @@ export class RfisController {
   @HttpCode(HttpStatus.OK)
   async deleteAttachment(
     @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
     @Param('id') id: string,
     @Param('attachmentId') attachmentId: string,
   ) {
-    return { data: await this.svc.deleteAttachment(u.companyId, id, attachmentId), error: null };
+    return { data: await this.svc.deleteAttachment(u.companyId, pid, id, attachmentId), error: null };
   }
 
   // ── Workflow ─────────────────────────────────────────────────────────────
@@ -312,8 +314,8 @@ export class RfisController {
 
   @Get(':id/comments')
   @ApiOperation({ summary: "List this RFI's clarification comments" })
-  async getComments(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
-    return { data: await this.svc.getComments(u.companyId, id), error: null };
+  async getComments(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.getComments(u.companyId, pid, id), error: null };
   }
 
   // ── Notice Letters ───────────────────────────────────────────────────────

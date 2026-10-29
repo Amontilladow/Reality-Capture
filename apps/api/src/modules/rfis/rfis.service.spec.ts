@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { RfisService } from './rfis.service';
 import { ProjectAuthorizationService } from '../../common/authorization/project-authorization.service';
 import type { DatabaseService } from '../../database/database.service';
@@ -1007,13 +1007,26 @@ describe('RfisService', () => {
   // size limit -- dto.sizeBytes there is only ever a declared value. Real
   // enforcement is this HEAD-based check against the object actually
   // sitting in storage, run here in addAttachment() before it's persisted.
-  // (Project authorization for this route is already enforced by
-  // @RequireProjectPermission('manage_project_records') at the controller,
-  // so no project-ownership check is duplicated here -- see rfis.controller.ts.)
+  //
+  // H-1 fix (KNOWN_ISSUES_AND_REMEDIATION.md): addAttachment(), getAttachments(),
+  // deleteAttachment(), and getComments() previously scoped only by
+  // company_id -- @RequireProjectPermission at the controller confirms the
+  // caller has the permission on the URL's :projectId, but never that rfiId
+  // actually belongs to that project, so a user authorized for a different
+  // project in the same company could reach any RFI's attachments/comments
+  // by guessing its UUID. All four now call findOne() first (project_id =
+  // projectId AND company_id = companyId), the same boundary addComment()
+  // already used correctly.
   describe('addAttachment', () => {
-    function makeAttachmentService(opts: { actualSizeBytes: number | null }) {
+    // findOne()'s SELECT is query call #0 (truthy row = project check
+    // passes); the real INSERT is query call #1 -- the size-enforcement
+    // tests below index into calls[1], not calls[0], for that reason.
+    function makeAttachmentService(opts: { actualSizeBytes: number | null; wrongProject?: boolean }) {
+      const findOneRow = { id: rfiId, projectId, companyId, raisedByOrganizationSlot: null, createdBy: null };
       const insertedRow = { id: 'attachment-1' };
-      const query = jest.fn().mockResolvedValue([insertedRow]);
+      const query = jest.fn()
+        .mockResolvedValueOnce(opts.wrongProject ? [] : [findOneRow]) // findOne()
+        .mockResolvedValue([insertedRow]); // every subsequent call (the INSERT)
       const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
       const getObjectSize = jest.fn().mockResolvedValue(opts.actualSizeBytes);
       const deleteIfExists = jest.fn().mockResolvedValue(undefined);
@@ -1024,7 +1037,7 @@ describe('RfisService', () => {
         {} as unknown as NotificationsService,
         storage as unknown as StorageService,
         {} as unknown as MessagingService,
-        {} as unknown as ProjectAuthorizationService, // unused -- addAttachment() has no project-ownership check of its own
+        {} as unknown as ProjectAuthorizationService,
       );
       return { svc, query, getObjectSize, deleteIfExists };
     }
@@ -1032,19 +1045,19 @@ describe('RfisService', () => {
     it('registers an attachment whose real uploaded size is within the 5MB limit', async () => {
       const { svc, query } = makeAttachmentService({ actualSizeBytes: 1024 });
 
-      await svc.addAttachment(companyId, rfiId, 'user-1', {
+      await svc.addAttachment(companyId, projectId, rfiId, 'user-1', {
         storageKey: 'key-1', filename: 'spec.pdf', sizeBytes: 1,
       });
 
       // values = [rfiId, companyId, storageKey, filename, sizeBytes, userId, kind, documentType, ...]
-      expect(query.mock.calls[0]).toContain(1024); // the verified size, not the declared 1
-      expect(query.mock.calls[0]).not.toContain(1);
+      expect(query.mock.calls[1]).toContain(1024); // the verified size, not the declared 1
+      expect(query.mock.calls[1]).not.toContain(1);
     });
 
     it('rejects and cleans up an attachment whose real size exceeds the 5MB limit, regardless of the declared size', async () => {
       const { svc, deleteIfExists } = makeAttachmentService({ actualSizeBytes: 6 * 1024 * 1024 });
 
-      await expect(svc.addAttachment(companyId, rfiId, 'user-1', {
+      await expect(svc.addAttachment(companyId, projectId, rfiId, 'user-1', {
         storageKey: 'key-1', filename: 'spec.pdf', sizeBytes: 1,
       })).rejects.toThrow(BadRequestException);
 
@@ -1054,11 +1067,76 @@ describe('RfisService', () => {
     it('rejects registration when the declared storage key was never actually uploaded', async () => {
       const { svc, deleteIfExists } = makeAttachmentService({ actualSizeBytes: null });
 
-      await expect(svc.addAttachment(companyId, rfiId, 'user-1', {
+      await expect(svc.addAttachment(companyId, projectId, rfiId, 'user-1', {
         storageKey: 'key-1', filename: 'spec.pdf', sizeBytes: 1024,
       })).rejects.toThrow(BadRequestException);
 
       expect(deleteIfExists).not.toHaveBeenCalled();
+    });
+
+    it("rejects an attachment for an RFI that belongs to a different project in the caller's company (H-1)", async () => {
+      const { svc, getObjectSize } = makeAttachmentService({ actualSizeBytes: 1024, wrongProject: true });
+
+      await expect(svc.addAttachment(companyId, projectId, 'other-projects-rfi', 'user-1', {
+        storageKey: 'key-1', filename: 'spec.pdf', sizeBytes: 1,
+      })).rejects.toThrow(NotFoundException);
+
+      expect(getObjectSize).not.toHaveBeenCalled(); // never reached past the project check
+    });
+  });
+
+  describe('getAttachments / deleteAttachment / getComments project-scoping (H-1)', () => {
+    function makeService(opts: { wrongProject?: boolean }) {
+      const findOneRow = { id: rfiId, projectId, companyId, raisedByOrganizationSlot: null, createdBy: null };
+      const query = jest.fn().mockResolvedValueOnce(opts.wrongProject ? [] : [findOneRow]); // findOne()
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const db = { withTenant };
+      const resolveUrls = jest.fn().mockResolvedValue(new Map());
+      const storage = { resolveUrls };
+      const svc = new RfisService(
+        db as unknown as DatabaseService,
+        {} as unknown as NotificationsService,
+        storage as unknown as StorageService,
+        {} as unknown as MessagingService,
+        {} as unknown as ProjectAuthorizationService,
+      );
+      return { svc, query };
+    }
+
+    it('rejects listing attachments for an RFI in a different project', async () => {
+      const { svc } = makeService({ wrongProject: true });
+      await expect(svc.getAttachments(companyId, projectId, 'other-projects-rfi')).rejects.toThrow(NotFoundException);
+    });
+
+    it('lists attachments for an RFI that really is in this project', async () => {
+      const { svc, query } = makeService({});
+      query.mockResolvedValueOnce([]); // the attachments SELECT, after findOne()
+      const result = await svc.getAttachments(companyId, projectId, rfiId);
+      expect(result).toEqual([]);
+    });
+
+    it('rejects deleting an attachment for an RFI in a different project', async () => {
+      const { svc } = makeService({ wrongProject: true });
+      await expect(svc.deleteAttachment(companyId, projectId, 'other-projects-rfi', 'attachment-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('deletes an attachment for an RFI that really is in this project', async () => {
+      const { svc, query } = makeService({});
+      query.mockResolvedValueOnce({ count: 1 }); // the DELETE, after findOne()
+      const result = await svc.deleteAttachment(companyId, projectId, rfiId, 'attachment-1');
+      expect(result).toEqual({ message: 'Attachment deleted.' });
+    });
+
+    it('rejects listing comments for an RFI in a different project', async () => {
+      const { svc } = makeService({ wrongProject: true });
+      await expect(svc.getComments(companyId, projectId, 'other-projects-rfi')).rejects.toThrow(NotFoundException);
+    });
+
+    it('lists comments for an RFI that really is in this project', async () => {
+      const { svc, query } = makeService({});
+      query.mockResolvedValueOnce([{ id: 'comment-1' }]); // the comments SELECT, after findOne()
+      const result = await svc.getComments(companyId, projectId, rfiId);
+      expect(result).toEqual([{ id: 'comment-1' }]);
     });
   });
 });

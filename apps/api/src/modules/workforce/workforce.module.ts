@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
+import { CryptoModule } from '../../common/crypto/crypto.module';
 import { DevicesController } from './devices/devices.controller';
 import { DevicesService } from './devices/devices.service';
 import { ApplicationsController } from './applications/applications.controller';
@@ -25,7 +26,7 @@ import { CalendarIntegrationService } from './calendar-integration/calendar-inte
 import { GoogleCalendarClient } from './calendar-integration/google-calendar-client';
 
 @Module({
-  imports: [HttpModule],
+  imports: [HttpModule, CryptoModule],
   controllers: [
     DevicesController,
     ApplicationsController,

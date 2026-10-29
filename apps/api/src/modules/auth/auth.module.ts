@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
+import { SessionRevocationService } from './session-revocation.service';
 import { EmailModule } from '../email/email.module';
 
 @Module({
@@ -20,7 +21,7 @@ import { EmailModule } from '../email/email.module';
     EmailModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService, JwtModule],
+  providers: [AuthService, JwtStrategy, SessionRevocationService],
+  exports: [AuthService, JwtModule, SessionRevocationService],
 })
 export class AuthModule {}
