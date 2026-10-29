@@ -25,6 +25,7 @@ import { RFI_WORKFLOW_STATUS_TONE, RFI_PRIORITY_TONE } from '../lib/status-tone'
 import { StatusBadge } from '../components/ui/Badge';
 import { apiErrorMessage } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
+import { Listbox } from '../components/ui/Listbox';
 
 // Warning-colored badge classes for the Cost/Time impact columns -- uses
 // this codebase's `warn` token, same as RFI_WORKFLOW_STATUS_BADGE_CLASS's
@@ -165,48 +166,48 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
 
       <div className="p-6 space-y-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <select className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <Listbox className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
             {(['open', 'answered', 'closed', 'void'] as const).map((s) => (
               <option key={s} value={s}>{RFI_STATUS_LABELS[s]}</option>
             ))}
-          </select>
+          </Listbox>
 
-          <select className="field-input w-auto" value={discipline} onChange={(e) => setDiscipline(e.target.value)}>
+          <Listbox className="field-input w-auto" value={discipline} onChange={(e) => setDiscipline(e.target.value)}>
             <option value="">All disciplines</option>
             {RFI_DISCIPLINES.map((d) => (
               <option key={d} value={d}>{RFI_DISCIPLINE_LABELS[d]}</option>
             ))}
-          </select>
+          </Listbox>
 
-          <select className="field-input w-auto" value={costImpactLevel} onChange={(e) => setCostImpactLevel(e.target.value)}>
+          <Listbox className="field-input w-auto" value={costImpactLevel} onChange={(e) => setCostImpactLevel(e.target.value)}>
             <option value="">Any cost impact</option>
             {RFI_IMPACT_LEVELS.map((l) => (
               <option key={l} value={l}>{RFI_IMPACT_LEVEL_LABELS[l]}</option>
             ))}
-          </select>
+          </Listbox>
 
-          <select className="field-input w-auto" value={timeImpactLevel} onChange={(e) => setTimeImpactLevel(e.target.value)}>
+          <Listbox className="field-input w-auto" value={timeImpactLevel} onChange={(e) => setTimeImpactLevel(e.target.value)}>
             <option value="">Any time impact</option>
             {RFI_IMPACT_LEVELS.map((l) => (
               <option key={l} value={l}>{RFI_IMPACT_LEVEL_LABELS[l]}</option>
             ))}
-          </select>
+          </Listbox>
 
-          <select className="field-input w-auto" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+          <Listbox className="field-input w-auto" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
             <option value="">Anyone assigned</option>
             {(membersQuery.data ?? []).map((m) => (
               <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
             ))}
-          </select>
+          </Listbox>
 
           {view === 'main' && (
-            <select className="field-input w-auto" value={origin} onChange={(e) => setOrigin(e.target.value)}>
+            <Listbox className="field-input w-auto" value={origin} onChange={(e) => setOrigin(e.target.value)}>
               <option value="">Any origin</option>
               {RFI_ORIGINS.map((o) => (
                 <option key={o} value={o}>{RFI_ORIGIN_LABELS[o]}</option>
               ))}
-            </select>
+            </Listbox>
           )}
 
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -310,7 +311,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                           {/* Editable right from the list, not just the RFI
                               form -- same PATCH the detail page's own edit
                               view already sends for this field. */}
-                          <select
+                          <Listbox
                             value={r.drawingImpactLevel ?? 'no'}
                             onChange={(e) => updateDrawingLevelMutation.mutate({ rfiId: r.id, level: e.target.value as RfiImpactLevel })}
                             disabled={updateDrawingLevelMutation.isPending || readOnly}
@@ -320,7 +321,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                             {RFI_IMPACT_LEVELS.map((l) => (
                               <option key={l} value={l}>{DRAWING_UPDATE_STATUS_LABELS[l]}</option>
                             ))}
-                          </select>
+                          </Listbox>
                           {(r.drawingImpactLevel ?? 'no') !== 'no' && (
                             <>
                               <button
@@ -349,7 +350,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                         {(r.drawingImpactLevel ?? 'no') === 'no' ? (
                           <span className="text-ink-500">—</span>
                         ) : (
-                          <select
+                          <Listbox
                             value={r.drawingUpdateSentToSite ? 'yes' : 'no'}
                             onChange={() => toggleDrawingSentToSiteMutation.mutate({ rfiId: r.id, sent: Boolean(r.drawingUpdateSentToSite) })}
                             disabled={toggleDrawingSentToSiteMutation.isPending || readOnly}
@@ -357,7 +358,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                           >
                             <option value="no">Not sent</option>
                             <option value="yes">Sent</option>
-                          </select>
+                          </Listbox>
                         )}
                       </td>
                       <td className="px-4 py-2.5 text-ink-300">{r.assignedToName ?? 'Unassigned'}</td>

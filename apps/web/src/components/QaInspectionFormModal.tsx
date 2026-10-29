@@ -4,6 +4,7 @@ import { Modal } from './ui/Modal';
 import { createInspection } from '../lib/qa.api';
 import type { ProjectMember } from '../lib/projects.api';
 import { apiErrorMessage } from '../lib/api';
+import { Listbox } from './ui/Listbox';
 
 export function QaInspectionFormModal({
   open, onClose, projectId, members,
@@ -83,12 +84,12 @@ export function QaInspectionFormModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="field-label" htmlFor="assignedTo">Inspector</label>
-            <select id="assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+            <Listbox id="assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
               <option value="">Unassigned</option>
               {members.map((m) => (
                 <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="inspectionDate">Inspection date</label>

@@ -94,6 +94,8 @@ export default {
       fontSize: {
         eyebrow: ['0.625rem', { lineHeight: '1rem', letterSpacing: '0.08em' }], // 10px -- uppercase mono section/page labels
         kpi: ['1.75rem', { lineHeight: '2rem', letterSpacing: '-0.01em' }], // 28px -- dashboard/report stat-tile numbers
+        caption: ['0.6875rem', { lineHeight: '1rem' }], // 11px -- chart value labels, dense metadata
+        axis: ['0.625rem', { lineHeight: '0.875rem' }], // 10px -- chart tick labels (no tracking, unlike eyebrow)
       },
       backgroundImage: {
         // --rc-grid-line flips from a faint dark line (light mode) to a

@@ -10,6 +10,7 @@ import {
 import { formatDateTime } from '../lib/issue-constants';
 import { apiErrorMessage, apiDownload } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
+import { Listbox } from './ui/Listbox';
 
 const RECIPIENT_TITLE_PRESETS = ['Cost Controller', 'QS Engineer', 'Project Manager', 'Other'] as const;
 type RecipientTitlePreset = typeof RECIPIENT_TITLE_PRESETS[number];
@@ -137,7 +138,7 @@ export function RfiNoticeLetterModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="field-label" htmlFor="letterRecipient">Recipient *</label>
-            <select
+            <Listbox
               id="letterRecipient"
               className="field-input"
               value={recipientUserId}
@@ -147,11 +148,11 @@ export function RfiNoticeLetterModal({
               {members.map((m) => (
                 <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="letterTitle">Title *</label>
-            <select
+            <Listbox
               id="letterTitle"
               className="field-input"
               value={titleOption}
@@ -160,7 +161,7 @@ export function RfiNoticeLetterModal({
               {RECIPIENT_TITLE_PRESETS.map((t) => (
                 <option key={t} value={t}>{t}</option>
               ))}
-            </select>
+            </Listbox>
             {titleOption === 'Other' && (
               <input
                 className="field-input mt-2"

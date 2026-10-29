@@ -6,6 +6,7 @@ import { Modal } from './ui/Modal';
 import { RichTextEditor, isRichTextEmpty } from './ui/RichTextEditor';
 import { createRfi, uploadRfiAttachment } from '../lib/rfis.api';
 import { apiErrorMessage } from '../lib/api';
+import { Listbox } from './ui/Listbox';
 
 // For a DC backfilling an RFI that was actually raised and answered on
 // another platform (Aconex, Procore, email) and just needs recording here
@@ -87,7 +88,7 @@ export function UploadRfiModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="field-label" htmlFor="upload-origin">Received via *</label>
-            <select
+            <Listbox
               id="upload-origin"
               className="field-input"
               value={origin}
@@ -96,7 +97,7 @@ export function UploadRfiModal({
               {RFI_ORIGINS.filter((o) => o !== 'platform').map((o) => (
                 <option key={o} value={o}>{RFI_ORIGIN_LABELS[o]}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="upload-reference">Their reference number</label>
@@ -122,12 +123,12 @@ export function UploadRfiModal({
 
         <div>
           <label className="field-label" htmlFor="upload-discipline">Discipline *</label>
-          <select id="upload-discipline" className="field-input" value={discipline} onChange={(e) => setDiscipline(e.target.value as RfiDiscipline)}>
+          <Listbox id="upload-discipline" className="field-input" value={discipline} onChange={(e) => setDiscipline(e.target.value as RfiDiscipline)}>
             <option value="">Select…</option>
             {RFI_DISCIPLINES.map((d) => (
               <option key={d} value={d}>{RFI_DISCIPLINE_LABELS[d]}</option>
             ))}
-          </select>
+          </Listbox>
         </div>
 
         {discipline === 'other' && (
@@ -140,11 +141,11 @@ export function UploadRfiModal({
         <div className="pt-2 border-t border-base-600 space-y-3">
           <div>
             <label className="field-label" htmlFor="upload-status">Status</label>
-            <select id="upload-status" className="field-input" value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
+            <Listbox id="upload-status" className="field-input" value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
               <option value="open">Still awaiting a response</option>
               <option value="answered">Answered</option>
               <option value="closed">Closed</option>
-            </select>
+            </Listbox>
           </div>
 
           {status !== 'open' && (

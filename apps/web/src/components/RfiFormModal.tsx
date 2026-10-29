@@ -11,6 +11,7 @@ import { createRfi, uploadRfiAttachment } from '../lib/rfis.api';
 import type { ProjectMember } from '../lib/projects.api';
 import { RFI_PRIORITIES, RFI_PRIORITY_LABELS } from '../lib/rfi-constants';
 import { apiErrorMessage } from '../lib/api';
+import { Listbox } from './ui/Listbox';
 
 export function RfiFormModal({
   open, onClose, projectId, members, initialValues, raisedByOrganizationSlot,
@@ -194,11 +195,11 @@ export function RfiFormModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="field-label" htmlFor="priority">Priority</label>
-            <select id="priority" className="field-input" value={priority} onChange={(e) => setPriority(e.target.value as RfiPriority)}>
+            <Listbox id="priority" className="field-input" value={priority} onChange={(e) => setPriority(e.target.value as RfiPriority)}>
               {RFI_PRIORITIES.map((p) => (
                 <option key={p} value={p}>{RFI_PRIORITY_LABELS[p]}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="dueDate">Due date</label>
@@ -209,21 +210,21 @@ export function RfiFormModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="field-label" htmlFor="assignedTo">Assignee</label>
-            <select id="assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+            <Listbox id="assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
               <option value="">Unassigned</option>
               {members.map((m) => (
                 <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="discipline">Discipline *</label>
-            <select id="discipline" className="field-input" value={discipline} onChange={(e) => setDiscipline(e.target.value as RfiDiscipline)}>
+            <Listbox id="discipline" className="field-input" value={discipline} onChange={(e) => setDiscipline(e.target.value as RfiDiscipline)}>
               <option value="">Select…</option>
               {RFI_DISCIPLINES.map((d) => (
                 <option key={d} value={d}>{RFI_DISCIPLINE_LABELS[d]}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
         </div>
 
@@ -239,7 +240,7 @@ export function RfiFormModal({
             the original spec's field rules). */}
         <div className="pt-2 border-t border-base-600 space-y-2">
           <label className="field-label" htmlFor="costImpactLevel">Cost impact</label>
-          <select
+          <Listbox
             id="costImpactLevel"
             className="field-input"
             value={costImpactLevel}
@@ -248,7 +249,7 @@ export function RfiFormModal({
             {RFI_IMPACT_LEVELS.map((l) => (
               <option key={l} value={l}>{RFI_IMPACT_LEVEL_LABELS[l]}</option>
             ))}
-          </select>
+          </Listbox>
           {costImpactLevel !== 'no' && (
             <div className="grid grid-cols-2 gap-3">
               <input
@@ -278,7 +279,7 @@ export function RfiFormModal({
             amount/currency. */}
         <div className="space-y-2">
           <label className="field-label" htmlFor="timeImpactLevel">Time impact</label>
-          <select
+          <Listbox
             id="timeImpactLevel"
             className="field-input"
             value={timeImpactLevel}
@@ -287,7 +288,7 @@ export function RfiFormModal({
             {RFI_IMPACT_LEVELS.map((l) => (
               <option key={l} value={l}>{RFI_IMPACT_LEVEL_LABELS[l]}</option>
             ))}
-          </select>
+          </Listbox>
           {timeImpactLevel !== 'no' && (
             <div className="grid grid-cols-2 gap-3">
               <input
@@ -316,7 +317,7 @@ export function RfiFormModal({
             once status isn't 'no'). */}
         <div className="space-y-2">
           <label className="field-label" htmlFor="drawingImpactLevel">Drawing/Model Updated</label>
-          <select
+          <Listbox
             id="drawingImpactLevel"
             className="field-input"
             value={drawingImpactLevel}
@@ -331,7 +332,7 @@ export function RfiFormModal({
             {RFI_IMPACT_LEVELS.map((l) => (
               <option key={l} value={l}>{DRAWING_UPDATE_STATUS_LABELS[l]}</option>
             ))}
-          </select>
+          </Listbox>
           {drawingImpactLevel !== 'no' && (
             <div className="space-y-2">
               <textarea
@@ -342,7 +343,7 @@ export function RfiFormModal({
               />
               <div>
                 <label className="field-label" htmlFor="drawingUpdateOwnerId">Drawing update owner</label>
-                <select
+                <Listbox
                   id="drawingUpdateOwnerId"
                   className="field-input"
                   value={drawingUpdateOwnerId}
@@ -352,7 +353,7 @@ export function RfiFormModal({
                   {members.map((m) => (
                     <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
                   ))}
-                </select>
+                </Listbox>
               </div>
             </div>
           )}

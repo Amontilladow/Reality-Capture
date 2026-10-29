@@ -12,6 +12,7 @@ import {
 } from '../lib/qaqc-constants';
 import { StatusBadge } from '../components/ui/Badge';
 import { useAuthStore } from '../store/auth.store';
+import { Listbox } from '../components/ui/Listbox';
 
 // One shared list implementation for all four record types, parameterized
 // by the :recordType path segment (/projects/:projectId/qaqc/ncr, /sor,
@@ -82,26 +83,26 @@ export default function QaqcListPage() {
 
       <div className="p-6 space-y-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <select className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <Listbox className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
             {(['open', 'pending_confirmation', 'closed', 'reopened'] as const).map((s) => (
               <option key={s} value={s}>{QAQC_STATUS_LABELS[s]}</option>
             ))}
-          </select>
+          </Listbox>
 
-          <select className="field-input w-auto" value={priority} onChange={(e) => setPriority(e.target.value)}>
+          <Listbox className="field-input w-auto" value={priority} onChange={(e) => setPriority(e.target.value)}>
             <option value="">Any priority</option>
             {QAQC_PRIORITIES.map((p) => (
               <option key={p} value={p}>{QAQC_PRIORITY_LABELS[p]}</option>
             ))}
-          </select>
+          </Listbox>
 
-          <select className="field-input w-auto" value={discipline} onChange={(e) => setDiscipline(e.target.value)}>
+          <Listbox className="field-input w-auto" value={discipline} onChange={(e) => setDiscipline(e.target.value)}>
             <option value="">All disciplines</option>
             {RFI_DISCIPLINES.map((d) => (
               <option key={d} value={d}>{RFI_DISCIPLINE_LABELS[d]}</option>
             ))}
-          </select>
+          </Listbox>
         </div>
 
         {recordsQuery.isLoading && <div className="text-sm text-ink-500">Loading…</div>}

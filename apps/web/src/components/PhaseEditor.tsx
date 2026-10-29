@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ProjectPhase } from '@engineeringos/types';
 import { PROJECT_PHASES, PROJECT_PHASE_LABELS } from '@engineeringos/types';
+import { Listbox } from './ui/Listbox';
 
 export function PhaseEditor({
   phase,
@@ -17,7 +18,7 @@ export function PhaseEditor({
   if (editing) {
     return (
       <div className="flex items-center gap-1.5">
-        <select
+        <Listbox
           autoFocus
           className="field-input !py-1 !text-xs w-auto"
           value={value}
@@ -27,7 +28,7 @@ export function PhaseEditor({
           {PROJECT_PHASES.map((p) => (
             <option key={p} value={p}>{PROJECT_PHASE_LABELS[p]}</option>
           ))}
-        </select>
+        </Listbox>
         <button
           onClick={() => { onSave(value); setEditing(false); }}
           disabled={saving}

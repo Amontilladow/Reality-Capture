@@ -18,6 +18,7 @@ import { SNAG_STATUS_TONE, SNAG_PRIORITY_TONE } from '../lib/status-tone';
 import { StatusBadge } from './ui/Badge';
 import { apiErrorMessage } from '../lib/api';
 import type { SnagStatus } from '@engineeringos/types';
+import { Listbox } from './ui/Listbox';
 
 export function SnagDetail({
   projectId,
@@ -170,12 +171,12 @@ export function SnagDetail({
         {forwardOpen && (
           <div className="pt-3 border-t border-base-600 space-y-2">
             <div className="grid grid-cols-2 gap-2">
-              <select className="field-input" value={forwardTo} onChange={(e) => setForwardTo(e.target.value)}>
+              <Listbox className="field-input" value={forwardTo} onChange={(e) => setForwardTo(e.target.value)}>
                 <option value="">Forward to…</option>
                 {members.map((m) => (
                   <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
                 ))}
-              </select>
+              </Listbox>
               <input
                 className="field-input"
                 placeholder="Optional note…"
@@ -222,7 +223,7 @@ export function SnagDetail({
         {isManager && (
           <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-base-600">
             <span className="text-[11px] text-ink-500 font-medium">Admin override</span>
-            <select
+            <Listbox
               className="field-input w-auto"
               value={forceStatusValue}
               onChange={(e) => setForceStatusValue(e.target.value as SnagStatus)}
@@ -231,7 +232,7 @@ export function SnagDetail({
               {SNAG_STATUSES.map((s) => (
                 <option key={s} value={s}>{SNAG_STATUS_LABELS[s]}</option>
               ))}
-            </select>
+            </Listbox>
             <button
               onClick={() => forceStatusMutation.mutate()}
               disabled={!forceStatusValue || forceStatusMutation.isPending}

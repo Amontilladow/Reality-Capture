@@ -6,6 +6,7 @@ import {
   BYO_AI_PROVIDERS, BYO_AI_PROVIDER_LABELS, type ByoAiProvider,
 } from '../lib/ai-connections.api';
 import { apiErrorMessage } from '../lib/api';
+import { Listbox } from '../components/ui/Listbox';
 
 // Spec sections 5-8: Mode A "RealityCapture AI" (platform-provided, the
 // default -- nothing to configure) vs Mode B "Bring Your Own AI" (this
@@ -152,7 +153,7 @@ export default function AiSettingsPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="field-label" htmlFor="ai-provider">Provider</label>
-              <select
+              <Listbox
                 id="ai-provider"
                 className="field-input"
                 value={provider}
@@ -161,7 +162,7 @@ export default function AiSettingsPage() {
                 {BYO_AI_PROVIDERS.map((p) => (
                   <option key={p} value={p}>{BYO_AI_PROVIDER_LABELS[p]}</option>
                 ))}
-              </select>
+              </Listbox>
             </div>
             <div>
               <label className="field-label" htmlFor="ai-model">Model</label>

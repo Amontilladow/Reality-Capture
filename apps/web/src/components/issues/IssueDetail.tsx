@@ -23,6 +23,7 @@ import { ISSUE_STATUS_TONE, ISSUE_PRIORITY_TONE } from '../../lib/status-tone';
 import { StatusBadge } from '../ui/Badge';
 import { apiErrorMessage } from '../../lib/api';
 import type { IssueStatus } from '@engineeringos/types';
+import { Listbox } from '../ui/Listbox';
 
 export function IssueDetail({
   projectId,
@@ -302,12 +303,12 @@ export function IssueDetail({
         {canForward && forwardOpen && (
           <div className="pt-3 border-t border-base-600 space-y-2">
             <div className="grid grid-cols-2 gap-2">
-              <select className="field-input" value={forwardTo} onChange={(e) => setForwardTo(e.target.value)}>
+              <Listbox className="field-input" value={forwardTo} onChange={(e) => setForwardTo(e.target.value)}>
                 <option value="">Forward to…</option>
                 {members.map((m) => (
                   <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
                 ))}
-              </select>
+              </Listbox>
               <input
                 className="field-input"
                 placeholder="Optional note…"
@@ -423,7 +424,7 @@ export function IssueDetail({
         {isManager && (
           <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-base-600">
             <span className="text-[11px] text-ink-500 font-medium">Admin override</span>
-            <select
+            <Listbox
               className="field-input w-auto"
               value={forceStatusValue}
               onChange={(e) => setForceStatusValue(e.target.value as IssueStatus)}
@@ -432,7 +433,7 @@ export function IssueDetail({
               {ISSUE_STATUSES.map((s) => (
                 <option key={s} value={s}>{STATUS_LABELS[s]}</option>
               ))}
-            </select>
+            </Listbox>
             <button
               onClick={() => forceStatusMutation.mutate()}
               disabled={!forceStatusValue || forceStatusMutation.isPending}

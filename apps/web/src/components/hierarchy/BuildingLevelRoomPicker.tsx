@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ProjectHierarchy } from '../../lib/projects.api';
 import { createBuilding, createLevel, createLocation } from '../../lib/projects.api';
 import { apiErrorMessage } from '../../lib/api';
+import { Listbox } from '../ui/Listbox';
 
 export interface HierarchySelection {
   buildingId: string;
@@ -144,7 +145,7 @@ function PickOrCreate({
         </div>
       ) : (
         <div className="flex gap-1.5">
-          <select
+          <Listbox
             className="field-input"
             disabled={disabled}
             value={value}
@@ -154,7 +155,7 @@ function PickOrCreate({
             {options.map((o) => (
               <option key={o.id} value={o.id}>{o.name}</option>
             ))}
-          </select>
+          </Listbox>
           <button
             type="button"
             onClick={() => setAdding(true)}
