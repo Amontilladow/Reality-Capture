@@ -6,7 +6,7 @@ import JSZip from 'jszip';
 import type { GisPrepCounts, GisPrepJobStatus, GisPrepOutputFile } from '@engineeringos/types';
 import { DatabaseService } from '../../database/database.service';
 import { StorageService } from '../storage/storage.service';
-import type { GisPrepQueueJob } from './gis-prep.service';
+import { storedSettings, type GisPrepQueueJob } from './gis-prep.service';
 
 // A full drawing run (reading, checks, writing one DXF per dataset/floor)
 // can take minutes on large drawings.
@@ -22,6 +22,7 @@ interface JobDbRow {
   sourceFilename: string;
   sourceStorageKey: string;
   settings: Record<string, unknown>;
+  settingsText?: string;
 }
 
 // The service rejected the request itself (bad settings, unreadable file):
@@ -52,7 +53,7 @@ export class GisPrepProcessor {
     try {
       const [row] = await this.db.withTenant(companyId, sql => sql<JobDbRow[]>`
         UPDATE gis_prep_jobs SET status = 'RUNNING', started_at = now(), error_message = NULL
-        WHERE id = ${jobId} RETURNING id, source_filename, source_storage_key, settings
+        WHERE id = ${jobId} RETURNING id, source_filename, source_storage_key, settings, settings::text AS settings_text
       `);
       if (!row) throw new NonRetryableError(`GIS preparation job ${jobId} no longer exists.`);
 
@@ -109,7 +110,7 @@ export class GisPrepProcessor {
 
   private async callService(row: JobDbRow, drawing: Buffer) {
     const form = new FormData();
-    form.append('settings', JSON.stringify(row.settings));
+    form.append('settings', JSON.stringify(storedSettings(row)));
     form.append('drawing', new Blob([drawing]), row.sourceFilename);
     let res: Response;
     try {

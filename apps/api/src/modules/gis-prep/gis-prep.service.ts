@@ -66,7 +66,7 @@ export class GisPrepService {
 
   async listJobs(companyId: string, projectId: string): Promise<GisPrepJob[]> {
     const rows = await this.db.withTenant(companyId, sql => sql<GisPrepJobRow[]>`
-      SELECT * FROM gis_prep_jobs WHERE project_id = ${projectId} ORDER BY created_at DESC LIMIT 50
+      SELECT *, settings::text AS settings_text FROM gis_prep_jobs WHERE project_id = ${projectId} ORDER BY created_at DESC LIMIT 50
     `);
     return rows.map(toJob);
   }
@@ -89,7 +89,7 @@ export class GisPrepService {
     const [row] = await this.db.withTenant(companyId, sql => sql<GisPrepJobRow[]>`
       INSERT INTO gis_prep_jobs (company_id, project_id, profile, source_filename, source_storage_key, settings, parent_job_id, created_by)
       VALUES (${companyId}, ${projectId}, ${profile}, ${filename}, ${storageKey}, ${sql.json(settings as never)}, ${parentJobId}, ${userId})
-      RETURNING *
+      RETURNING *, settings::text AS settings_text
     `);
     await this.queue.add('run-gis-prep', { jobId: row.id, companyId, projectId }, {
       attempts: 3,
@@ -106,7 +106,7 @@ export class GisPrepService {
 
   private async getRow(companyId: string, projectId: string, jobId: string): Promise<GisPrepJobRow> {
     const [row] = await this.db.withTenant(companyId, sql => sql<GisPrepJobRow[]>`
-      SELECT * FROM gis_prep_jobs WHERE id = ${jobId} AND project_id = ${projectId}
+      SELECT *, settings::text AS settings_text FROM gis_prep_jobs WHERE id = ${jobId} AND project_id = ${projectId}
     `);
     if (!row) throw new NotFoundException(`GIS preparation job ${jobId} not found.`);
     return row;
@@ -123,9 +123,16 @@ export class GisPrepService {
 export interface GisPrepJobRow {
   id: string; companyId: string; projectId: string; profile: GisPrepProfile; sourceFilename: string; sourceStorageKey: string;
   sourceSha256: string | null; status: GisPrepJobStatus; statusLabel: string | null; toolJobId: string | null;
-  counts: GisPrepCounts | null; settings: GisPrepSettings; outputs: GisPrepOutputFile[] | null; reportStorageKey: string | null;
+  counts: GisPrepCounts | null; settings: GisPrepSettings; settingsText?: string; outputs: GisPrepOutputFile[] | null; reportStorageKey: string | null;
   packageStorageKey: string | null; errorMessage: string | null; parentJobId: string | null; createdBy: string;
   startedAt: string | null; finishedAt: string | null; createdAt: string;
+}
+
+// The client's postgres.camel transform also camelCases keys INSIDE json/jsonb values, so `settings` read back as
+// a parsed column loses the engine's snake_case keys (zone_name -> zoneName) and the engine silently ignores them.
+// Settings are therefore always read as text (settings::text AS settings_text) and parsed here, exactly as stored.
+export function storedSettings<T>(r: { settings: T; settingsText?: string }): T {
+  return r.settingsText !== undefined ? JSON.parse(r.settingsText) as T : r.settings;
 }
 
 export function toJob(r: GisPrepJobRow): GisPrepJob {
@@ -133,7 +140,7 @@ export function toJob(r: GisPrepJobRow): GisPrepJob {
     id: r.id, companyId: r.companyId, projectId: r.projectId, profile: r.profile, sourceFilename: r.sourceFilename,
     sourceStorageKey: r.sourceStorageKey, sourceSha256: r.sourceSha256 ?? undefined, status: r.status,
     statusLabel: r.statusLabel ?? undefined, toolJobId: r.toolJobId ?? undefined, counts: r.counts ?? undefined,
-    settings: r.settings, outputs: r.outputs ?? [], packageStorageKey: r.packageStorageKey ?? undefined,
+    settings: storedSettings(r), outputs: r.outputs ?? [], packageStorageKey: r.packageStorageKey ?? undefined,
     errorMessage: r.errorMessage ?? undefined, parentJobId: r.parentJobId ?? undefined, createdBy: r.createdBy,
     startedAt: r.startedAt ?? undefined, finishedAt: r.finishedAt ?? undefined, createdAt: r.createdAt,
   };
