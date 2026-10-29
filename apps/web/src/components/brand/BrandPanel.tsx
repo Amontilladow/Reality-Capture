@@ -36,7 +36,7 @@ export function BrandPanel({ className = '', showThemeToggle = true }: { classNa
             <span className="text-sm font-medium">360° site captures</span>
             <span className="w-2 h-2 rounded-full bg-noir mt-1.5" />
           </div>
-          <span className="block text-xs mt-1 opacity-80">Pinned to building, level and room</span>
+          <span className="block text-xs mt-1">Pinned to building, level and room</span>
         </div>
         <div className="ml-8 -mt-2 w-60 rounded-b-2xl bg-noir text-on-noir px-4 pt-4 pb-3 flex items-center justify-between">
           <span className="text-xs text-on-noir/80">Linked to BIM elements</span>
