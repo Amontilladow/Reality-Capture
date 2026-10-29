@@ -8,6 +8,9 @@ import { apiErrorMessage } from '../lib/api';
 import { getProject } from '../lib/projects.api';
 import { loadSavedForm, saveForm } from '../lib/saved-form';
 import {
+  DRAWING_TYPES, UPPERCASE_FACTS, UPPERCASE_META, USAGE_CATEGORY_TYPES, USAGE_TYPES, convertInputProblems,
+} from '../lib/bdms-inputs';
+import {
   getGisPrepJob, listGisPrepJobs, rerunGisPrepJob, uploadAndCreateGisPrepJob,
   type GisConvertSettings, type GisPrepJob, type GisPrepJobStatus, type GisPrepProfile, type GisPrepSettings,
 } from '../lib/gis-prep.api';
@@ -63,7 +66,7 @@ const formKey = (projectId: string) => `gis-prep-form:${projectId}`;
 const NEVER_RESTORE: Partial<FormState> = { crsConfirmed: false, unitsConfirmed: false };
 
 // Values the drawing cannot provide; sent as conversion settings. Code-listed values (usage, drawing type) are
-// checked against the BDMS code lists by the validator, so a typo shows up in the report rather than here.
+// picked from the BDMS code lists; formats are checked before the job is sent (lib/bdms-inputs).
 const FACT_FIELDS = [
   ['floor_height', 'Floor height (m)', '3.6'], ['building_number_of_floors', 'Number of floors', '2'],
   ['building_height', 'Building height (m)', '15'],
@@ -74,6 +77,11 @@ const TITLE_FIELDS = [
   ['DeveloperName', 'Developer name', 'MASDAR CITY'], ['BuildingName', 'Building name', ''],
   ['DrawingType', 'Drawing type', 'As Built'], ['DateOfDrawing', 'Date of drawing', '14-JAN-2026'],
 ] as const;
+
+const CHOICES: Record<string, readonly string[]> = {
+  building_usage_category: USAGE_CATEGORY_TYPES, building_usage_type: USAGE_TYPES, DrawingType: DRAWING_TYPES,
+};
+const upper = (on: boolean, value: string) => (on ? value.toUpperCase() : value);
 
 const BDMS_FIELDS = [
   ['zone_name', 'Zone name', 'KHALIFA CITY'], ['sector_number', 'Sector', 'SE45_01'], ['plot_number', 'Plot', 'C8'],
@@ -96,15 +104,19 @@ function parseControlPoints(text: string): [[number, number], [number, number]][
 function buildSettings(f: FormState): GisPrepSettings | GisConvertSettings {
   const controlPoints = parseControlPoints(f.controlPoints);
   if (f.mode === 'convert') {
+    const problems = convertInputProblems(f.meta, f.facts, f.unitNumber);
+    if (problems.length) throw new Error(problems.join(' '));
+    const metadata = Object.fromEntries(Object.entries(f.meta).map(([k, v]) => [k, upper(UPPERCASE_META.has(k), v.trim())]));
     return {
-      mode: 'convert', profile: 'bdms_building', metadata: f.meta, source_units: f.units,
+      mode: 'convert', profile: 'bdms_building', metadata, source_units: f.units,
       single_unit_number: f.unitNumber,
       floor_height: f.facts.floor_height ?? '',
       building_number_of_floors: f.facts.building_number_of_floors ?? '',
       building_height: f.facts.building_height ?? '',
       building_usage_category: f.facts.building_usage_category ?? '',
       building_usage_type: f.facts.building_usage_type ?? '',
-      title_values: Object.fromEntries(TITLE_FIELDS.map(([k]) => [k, f.facts[k] ?? '']).filter(([, v]) => v)),
+      title_values: Object.fromEntries(TITLE_FIELDS.map(([k]) => [k, upper(UPPERCASE_FACTS.has(k), (f.facts[k] ?? '').trim())])
+        .filter(([, v]) => v)),
       crs: { control_points: controlPoints, confirm_transformation: f.crsConfirmed },
     };
   }
@@ -213,7 +225,9 @@ export default function GisPrepPage() {
                 <span>{label}</span>
                 <input
                   className="field-input text-xs !py-1.5" placeholder={placeholder} value={form.meta[key] ?? ''}
-                  onChange={e => setForm(f => ({ ...f, meta: { ...f.meta, [key]: e.target.value } }))}
+                  onChange={e => setForm(f => ({
+                    ...f, meta: { ...f.meta, [key]: upper(f.mode === 'convert' && UPPERCASE_META.has(key), e.target.value) },
+                  }))}
                 />
               </label>
             ))}
@@ -223,10 +237,20 @@ export default function GisPrepPage() {
               {[...FACT_FIELDS, ...TITLE_FIELDS].map(([key, label, placeholder]) => (
                 <label key={key} className="text-xs text-ink-500 space-y-1">
                   <span>{label}</span>
-                  <input
-                    className="field-input text-xs !py-1.5" placeholder={placeholder} value={form.facts[key] ?? ''}
-                    onChange={e => setForm(f => ({ ...f, facts: { ...f.facts, [key]: e.target.value } }))}
-                  />
+                  {CHOICES[key] ? (
+                    <Listbox
+                      className="field-input text-xs !py-1.5" value={form.facts[key] ?? ''}
+                      onChange={e => setForm(f => ({ ...f, facts: { ...f.facts, [key]: e.target.value } }))}
+                    >
+                      <option value="">Choose…</option>
+                      {CHOICES[key].map(o => <option key={o} value={o}>{o}</option>)}
+                    </Listbox>
+                  ) : (
+                    <input
+                      className="field-input text-xs !py-1.5" placeholder={placeholder} value={form.facts[key] ?? ''}
+                      onChange={e => setForm(f => ({ ...f, facts: { ...f.facts, [key]: upper(UPPERCASE_FACTS.has(key), e.target.value) } }))}
+                    />
+                  )}
                 </label>
               ))}
             </div>
