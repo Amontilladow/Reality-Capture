@@ -11,6 +11,7 @@ import { ChatWidget } from '../chat/ChatWidget';
 import { OnboardingFlow } from '../onboarding/OnboardingFlow';
 import { LogoMark } from '../ui/LogoMark';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { LiveClock } from '../ui/LiveClock';
 import { clearAllOfflinePackages } from '../../lib/site-drawings-offline';
 
 interface NavItem {
@@ -225,7 +226,13 @@ export function AppShell() {
         </nav>
 
         <div className="border-t border-base-600 p-3">
-          <div className="flex items-center gap-2.5 px-2 py-2">
+          {/* M4 Contracting operates out of Abu Dhabi -- a site-local clock
+              here is visible on every authenticated screen without
+              competing with the account row below it for attention. */}
+          <div className="px-2 pb-2">
+            <LiveClock />
+          </div>
+          <div className="flex items-center gap-2.5 px-2 py-2 border-t border-base-600/60">
             <div className="w-7 h-7 rounded-full bg-base-700 border border-base-600 flex items-center justify-center text-[11px] font-semibold text-ink-300 shrink-0">
               {(user?.firstName?.[0] ?? '') + (user?.lastName?.[0] ?? '')}
             </div>
