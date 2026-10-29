@@ -189,6 +189,14 @@ def node(feats: list[Feature], tol: float = 1e-4) -> int:
     return added
 
 
+def copy_outline_to_roof(feats: list[Feature]) -> None:
+    """The BuildingRoof repeats the BuildingOutline exactly, including vertices inserted by noding."""
+    outline = next((f for f in feats if f.layer == "BuildingOutline" and f.exported), None)
+    for f in feats:
+        if f.layer == "BuildingRoof" and f.exported and outline is not None:
+            f.poly = outline.poly
+
+
 def clip_openings(feats: list[Feature]) -> int:
     """Doors and windows must not overlap rooms: the part inside a room is cut away (the room keeps its outline)."""
     from shapely.ops import unary_union

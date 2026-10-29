@@ -10,7 +10,7 @@ Evidence classes: `VERIFIED_SPEC` explicit in the PDF; `ENGINEERING_CHECK` M4 pr
 
 | Evidence class | Rules |
 |---|---|
-| ENGINEERING_CHECK | 10 |
+| ENGINEERING_CHECK | 11 |
 | PENDING_OFFICIAL_CONFIRMATION | 6 |
 | USER_DECISION_REQUIRED | 4 |
 | VERIFIED_SPEC | 46 |
@@ -45,6 +45,7 @@ Evidence classes: `VERIFIED_SPEC` explicit in the PDF; `ENGINEERING_CHECK` M4 pr
 | DRM-ATT-48 | A Detail block whose key field (PlotNumber, BuildingNumber, FloorNumber, UnitNumber, SpaceNumber) is empty does not count as the polygon's attribute block | Polygon with missing Attribute Block found | VERIFIED_SPEC | p.12, §QCM 4.2 #2; ADM QC trial 01 (BuildingOutline 1, Floor 1, Space 2) | ERROR | IMPLEMENTED | **none** | Door/Window blocks have no key field of their own in this rule; an empty SpaceNumber there is reported by DRM-ATT-15. |
 | DRM-ATT-49 | SpaceNumber data entry in SpaceDetail / WindowDetail is complete (positive integer SpaceNumber with its FloorNumber) | Incorrect SpaceNumber data entry found in SpaceDetail attribute block | PENDING_OFFICIAL_CONFIRMATION | p.-, §ADM QC trial 01 rows 10-11 (SpaceDetail 9, WindowDetail 34); key note 7 | ERROR | IMPLEMENTED | **none** | Trigger inferred from one official report: on the trial draft we flag 10 SpaceDetail blocks where ADM flagged 9 (DISCREPANCIES_BDMS B-17). The official v2.3 report has no such row for DoorDetail, so none is raised there. |
 | DRM-ATT-51 | SpaceNumbers are progressive (1, 2, 3 ...) in the floor (notification) | - | PENDING_OFFICIAL_CONFIRMATION | p.-, §QC report key note 8; SPEC 1.3 Spaces ID Code | INFO | IMPLEMENTED | **none** | Key note 8 asks for progressive numbers, but the DRM-accepted KHALIFA CITY-...-G skips 5, 20 and 22 and passed with 0 errors, and the spec only requires unique positive integers. Reported as a notification, never an error (DISCREPANCIES_BDMS B-16). |
+| DRM-ATT-52 | Detail block attributes are stored in the official template order | - | ENGINEERING_CHECK | p.-, §DRM-accepted KHALIFA CITY drawings; ADM QC trial 02 | ERROR | IMPLEMENTED | test_adm_trial_01.py | The official QC has no row of its own for this: a block in another order shows up as other rows (Inconsistent Building Number, Incorrect FloorHeight / SpaceNumber data entry ...), because the tool reads attributes by position. The order is taken from the accepted drawings (block template_order in this manifest); SharedSpaceDetail has no accepted sample and is not checked. |
 | DRM-GEO-01 | No zero-area polygons | Zero area Polygon found | VERIFIED_SPEC | p.16, §QCM 4.3 #1 | ERROR | IMPLEMENTED | test_drawing_rules.py |  |
 | DRM-GEO-02 | No zero-length polylines | Zero length Polylines found | VERIFIED_SPEC | p.16, §QCM 4.3 #2 | ERROR | IMPLEMENTED | test_geometry_checks.py |  |
 | DRM-GEO-03 | No thickness and no 3D objects | Geometry with thickness found | VERIFIED_SPEC | p.16, 19, §QCM 4.3 #3; SPEC rules 8-9 | ERROR | IMPLEMENTED | test_geometry_checks.py |  |

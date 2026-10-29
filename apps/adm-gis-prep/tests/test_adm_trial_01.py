@@ -97,11 +97,13 @@ def test_counts_match_except_documented_deltas(trial):
 
 
 def test_no_official_category_row_is_overcounted_by_unrelated_rules(trial):
-    """Rows we report in the official wording but ADM did not are limited to the labelled Title row."""
+    """Rows we report in the official wording but ADM did not are limited to the labelled Title row and the
+    missing BuildingRoof, which ADM reports only once the file name is valid (trial 02, DISCREPANCIES_BDMS B-19)."""
     official = {t for t, _ in official_rows()}
     extra = {t for t, _ in our_rows(trial) if t not in official}
     assert extra <= {norm("Missing Value in the Attribute Block Mandatory Filed in Title attribute block "
-                          "(not reported by the official QC in trial 01)")}
+                          "(not reported by the official QC in trial 01)"),
+                     "Floor exits without corresponding BuildingRoof Polygon"}
 
 
 # ------------------------------------------------------------------ corrected conversion: no C-F errors
@@ -141,3 +143,10 @@ def test_corrected_m19b_conversion_has_no_c_to_f_errors(tmp_path):
     res = convert(M19B, ConversionSettings(metadata=meta, **FULL), tmp_path)
     assert _c_to_f(res.report) == [], _c_to_f(res.report)
     assert res.report["output"]["path"] == "KHALIFA CITY-SE45_01-C8-1-F1.dxf"
+
+
+def test_draft_in_spec_attribute_order_is_flagged(trial):
+    """Trial 02 showed the official QC reads attributes by position; the trial-01 draft used spec order."""
+    flagged = {f["details"].get("count") and f["message"].split(" block")[0].split(" ", 1)[1]
+               for f in trial["findings"] if f["rule_id"] == "DRM-ATT-52"}
+    assert {"SpaceDetail", "DoorDetail", "WindowDetail", "FloorDetail", "BuildingDetail"} <= flagged

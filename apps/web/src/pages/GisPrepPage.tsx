@@ -66,6 +66,7 @@ const NEVER_RESTORE: Partial<FormState> = { crsConfirmed: false, unitsConfirmed:
 // checked against the BDMS code lists by the validator, so a typo shows up in the report rather than here.
 const FACT_FIELDS = [
   ['floor_height', 'Floor height (m)', '3.6'], ['building_number_of_floors', 'Number of floors', '2'],
+  ['building_height', 'Building height (m)', '15'],
   ['building_usage_category', 'Usage category (code list)', 'Commercial'],
   ['building_usage_type', 'Usage type (code list)', 'Single-use Commercial'],
 ] as const;
@@ -100,6 +101,7 @@ function buildSettings(f: FormState): GisPrepSettings | GisConvertSettings {
       single_unit_number: f.unitNumber,
       floor_height: f.facts.floor_height ?? '',
       building_number_of_floors: f.facts.building_number_of_floors ?? '',
+      building_height: f.facts.building_height ?? '',
       building_usage_category: f.facts.building_usage_category ?? '',
       building_usage_type: f.facts.building_usage_type ?? '',
       title_values: Object.fromEntries(TITLE_FIELDS.map(([k]) => [k, f.facts[k] ?? '']).filter(([, v]) => v)),

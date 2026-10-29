@@ -93,6 +93,7 @@ def run_bdms_checks(records: list[EntityRecord], target: dict[str, str | None], 
     _one_floor(records, target, ctx, col)
     _blocks_in_polygons(records, target, specs, ctx, col)
     _space_number_entry(records, target, col)
+    _attribute_order(records, target, manifest, col)
     _official_qc_counting(col)
 
 
@@ -144,8 +145,9 @@ def _hierarchy(records, target, ctx: FeatureContext, col: Collector) -> None:
     """QC 4.4 #3, #16-17, #19-20, #23, #26-27: the required polygons of a building floor exist."""
     for layer, detail in REQUIRED:
         if not ctx.features.get(layer):
-            # The official QC did not report the missing BuildingRoof in trial 01 (DISCREPANCIES_BDMS B-19).
-            extra = {"severity": Severity.WARNING} if layer == "BuildingRoof" else {}
+            extra = {}
+            if layer == "BuildingRoof":    # reported once the file name is valid (trial 02, DISCREPANCIES B-19)
+                extra.update(official_qc_error="Floor exits without corresponding BuildingRoof Polygon", qc_layer="")
             if layer == "Plot":
                 extra.update(official_qc_error="No Plot or PlotDetail found", qc_layer="")
             col.add("DRM-LOG-03", f"No {layer} polygon in the drawing.",
@@ -154,6 +156,23 @@ def _hierarchy(records, target, ctx: FeatureContext, col: Collector) -> None:
     if ctx.features.get("Unit") and not ctx.features.get("Space"):
         col.add("DRM-LOG-03", "Unit polygons exist without any Space polygon.", "Draw the spaces of each unit.",
                 layer="Space")
+
+
+def _attribute_order(records, target, manifest: Manifest, col: Collector) -> None:
+    """The official QC reads Detail-block attributes by position: they must be stored in the template order."""
+    wrong: dict[str, list[EntityRecord]] = {}
+    for r in records:
+        spec = manifest.blocks.get(r.block_name or "") if r.dxftype == "INSERT" else None
+        if spec is None or spec.template_order is None or not r.attribs:
+            continue
+        if [t.upper() for t in r.attribs] != [t.upper() for t in spec.template_order]:
+            wrong.setdefault(r.block_name, []).append(r)
+    for name, recs in wrong.items():
+        col.add("DRM-ATT-52", f"{len(recs)} {name} block(s) store their attributes in another order than the official "
+                f"template ({', '.join(manifest.blocks[name].template_order)}); the official QC reads them by "
+                "position, so values land in the wrong fields.",
+                f"Redefine {name} from the official DRM template (or re-insert it) so the attributes are in template "
+                "order.", handle=recs[0].handle, layer=target.get(recs[0].handle), count=len(recs))
 
 
 def _first(records, target, layer) -> EntityRecord | None:
