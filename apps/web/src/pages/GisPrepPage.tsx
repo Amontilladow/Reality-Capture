@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -6,6 +6,7 @@ import { StatusBadge } from '../components/ui/Badge';
 import type { StatusTone } from '../lib/status-tone';
 import { apiErrorMessage } from '../lib/api';
 import { getProject } from '../lib/projects.api';
+import { loadSavedForm, saveForm } from '../lib/saved-form';
 import {
   getGisPrepJob, listGisPrepJobs, rerunGisPrepJob, uploadAndCreateGisPrepJob,
   type GisConvertSettings, type GisPrepJob, type GisPrepJobStatus, type GisPrepProfile, type GisPrepSettings,
@@ -54,6 +55,11 @@ const INITIAL: FormState = {
   profile: 'bdms_building', strict: true, sourceCrs: '', crsConfirmed: false, unitsConfirmed: false,
   categories: ['plot'], meta: {}, controlPoints: '',
 };
+
+// What was typed is kept per project in this browser. Confirmations (coordinate system / transformation, units)
+// are never restored: they must be given each time.
+const formKey = (projectId: string) => `gis-prep-form:${projectId}`;
+const NEVER_RESTORE: Partial<FormState> = { crsConfirmed: false, unitsConfirmed: false };
 
 // Values the drawing cannot provide; sent as conversion settings. Code-listed values (usage, drawing type) are
 // checked against the BDMS code lists by the validator, so a typo shows up in the report rather than here.
@@ -115,10 +121,11 @@ function buildSettings(f: FormState): GisPrepSettings | GisConvertSettings {
 export default function GisPrepPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<FormState>(INITIAL);
+  const [form, setForm] = useState<FormState>(() => (projectId ? loadSavedForm(formKey(projectId), INITIAL, NEVER_RESTORE) : INITIAL));
   const [file, setFile] = useState<File | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useEffect(() => { if (projectId) saveForm(formKey(projectId), form); }, [projectId, form]);
 
   const projectQuery = useQuery({ queryKey: ['project', projectId], queryFn: () => getProject(projectId!), enabled: Boolean(projectId) });
   const jobsQuery = useQuery({
