@@ -94,6 +94,8 @@ export default {
       fontSize: {
         eyebrow: ['0.625rem', { lineHeight: '1rem', letterSpacing: '0.08em' }], // 10px -- uppercase mono section/page labels
         kpi: ['1.75rem', { lineHeight: '2rem', letterSpacing: '-0.01em' }], // 28px -- dashboard/report stat-tile numbers
+        caption: ['0.6875rem', { lineHeight: '1rem' }], // 11px -- chart value labels, dense metadata
+        axis: ['0.625rem', { lineHeight: '0.875rem' }], // 10px -- chart tick labels (no tracking, unlike eyebrow)
       },
       backgroundImage: {
         // --rc-grid-line flips from a faint dark line (light mode) to a
@@ -104,10 +106,14 @@ export default {
       backgroundSize: {
         'grid-fine': '24px 24px',
       },
+      // Resolve through index.css's --rc-radius-* so the radius scale has one
+      // source, like the colors above. Tight radii (6/8/12) suit a dense
+      // engineering tool; the old 16/24 made every surface read as a bubble.
       borderRadius: {
-        sm: '16px',
-        DEFAULT: '16px',
-        md: '24px',
+        sm: 'var(--rc-radius-sm)',
+        DEFAULT: 'var(--rc-radius-md)',
+        md: 'var(--rc-radius-md)',
+        lg: 'var(--rc-radius-lg)',
       },
     },
   },

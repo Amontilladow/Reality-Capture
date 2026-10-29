@@ -8,6 +8,7 @@ import { Modal } from './ui/Modal';
 import { apiErrorMessage } from '../lib/api';
 import { getRiskGraph, getGraphNodeDetail, type RiskGraphNode, type RiskLevel } from '../lib/risk.api';
 import { useThemeColors, type ThemeColors } from '../lib/useThemeColors';
+import { Listbox } from './ui/Listbox';
 
 // HIGH has no dedicated semantic token (see RiskIntelligenceSection.tsx's
 // identical reasoning) -- a fixed mid-brightness orange that already reads
@@ -219,18 +220,18 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
               ← Show full graph
             </button>
           )}
-          <select value={nodeTypeFilter} onChange={(e) => setNodeTypeFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
+          <Listbox value={nodeTypeFilter} onChange={(e) => setNodeTypeFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
             <option value="">All node types</option>
             {nodeTypes.map((t) => <option key={t} value={t}>{NODE_TYPE_LABELS[t] ?? t}</option>)}
-          </select>
-          <select value={disciplineFilter} onChange={(e) => setDisciplineFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
+          </Listbox>
+          <Listbox value={disciplineFilter} onChange={(e) => setDisciplineFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
             <option value="">All disciplines</option>
             {disciplines.map((d) => <option key={d} value={d}>{d}</option>)}
-          </select>
-          <select value={riskLevelFilter} onChange={(e) => setRiskLevelFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
+          </Listbox>
+          <Listbox value={riskLevelFilter} onChange={(e) => setRiskLevelFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
             <option value="">All risk levels</option>
             {(['CRITICAL', 'HIGH', 'MODERATE', 'LOW'] as RiskLevel[]).map((l) => <option key={l} value={l}>{l}</option>)}
-          </select>
+          </Listbox>
           <span className="text-xs text-ink-500 ml-auto">{nodes.length} nodes · {edges.length} relationships</span>
         </div>
 
@@ -285,7 +286,7 @@ function GraphNodeDetailPanel({ projectId, nodeId, onClose, onFocus }: { project
 
           {detail.risk && (
             <div className="panel p-3">
-              <div className="text-xs text-ink-500 uppercase tracking-wide mb-1">Associated Risk</div>
+              <div className="text-xs text-ink-500 mb-1 font-medium">Associated Risk</div>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-semibold tabular-nums" style={{ color: RISK_LEVEL_COLORS[detail.risk.level] }}>{detail.risk.score}</span>
                 <span className="text-sm text-ink-300">{detail.risk.title}</span>
@@ -295,7 +296,7 @@ function GraphNodeDetailPanel({ projectId, nodeId, onClose, onFocus }: { project
 
           {detail.related.length > 0 && (
             <div>
-              <div className="text-xs text-ink-500 uppercase tracking-wide mb-2">Connected ({detail.related.length})</div>
+              <div className="text-xs text-ink-500 mb-2 font-medium">Connected ({detail.related.length})</div>
               <ul className="space-y-1 max-h-64 overflow-y-auto">
                 {detail.related.map((r, i) => (
                   <li key={i} className="text-sm flex items-center justify-between">

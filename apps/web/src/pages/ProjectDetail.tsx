@@ -114,7 +114,7 @@ export default function ProjectDetail() {
         <div className="lg:col-span-1">
           <div className="tick-frame panel p-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xs font-mono uppercase tracking-widest text-ink-500">Hierarchy</h2>
+              <h2 className="text-xs text-ink-500 font-medium">Hierarchy</h2>
               <button
                 onClick={() => setNodeModal({ kind: 'building' })}
                 className="text-ink-500 hover:text-blueprint"
@@ -155,7 +155,7 @@ export default function ProjectDetail() {
 
               {selectedLocationDetail?.description && (
                 <div className="panel p-3 text-sm text-ink-100">
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500 mb-1">Note</div>
+                  <div className="text-[11px] text-ink-500 mb-1 font-medium">Note</div>
                   {selectedLocationDetail.description}
                 </div>
               )}
@@ -224,7 +224,7 @@ function ProjectDetailsPanel({ project }: { project: Project }) {
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           {fields.map((f) => (
             <div key={f.label} className="text-xs">
-              <div className="font-mono uppercase tracking-widest text-ink-500 mb-0.5">{f.label}</div>
+              <div className="text-ink-500 mb-0.5 font-medium">{f.label}</div>
               <div className="text-ink-100">{f.value}</div>
             </div>
           ))}

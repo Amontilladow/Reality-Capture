@@ -7,7 +7,7 @@ import { DrawingUploadModal } from '../components/drawing/DrawingUploadModal';
 import { PinPanel } from '../components/drawing/PinPanel';
 import { listDrawings, getDrawing, createPin, getPins, type Drawing, type Pin } from '../lib/drawings.api';
 import { getHierarchy, updateLocation, getProject, type ProjectHierarchy } from '../lib/projects.api';
-import { Input, Select } from '../components/ui/Field';
+import { Input, SelectField } from '../components/ui/Field';
 
 // "Buildlense Captures" (nav label; this route/component keeps its original
 // internal name, same convention as RFI/Issues/QAQC) is the camera-location
@@ -230,7 +230,7 @@ export default function CapturesPage() {
                 value={titleSearch}
                 onChange={(e) => setTitleSearch(e.target.value)}
               />
-              <Select
+              <SelectField
                 label="Building"
                 value={buildingFilter}
                 onChange={(e) => { setBuildingFilter(e.target.value); setLevelFilter(''); }}
@@ -239,8 +239,8 @@ export default function CapturesPage() {
                 {hierarchy.map((b) => (
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
-              </Select>
-              <Select
+              </SelectField>
+              <SelectField
                 label="Level"
                 value={levelFilter}
                 onChange={(e) => setLevelFilter(e.target.value)}
@@ -250,7 +250,7 @@ export default function CapturesPage() {
                 {levelOptionsForFilter.map((l) => (
                   <option key={l.id} value={l.id}>{l.name}</option>
                 ))}
-              </Select>
+              </SelectField>
             </div>
           )}
 
@@ -261,7 +261,7 @@ export default function CapturesPage() {
           <div className="space-y-2">
             {groupedDrawings.buildingGroups.map(({ building, levelGroups }) => (
               <details key={building.id} open>
-                <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-500 px-1 py-1 hover:text-ink-300">
+                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-1 py-1 hover:text-ink-300">
                   {building.name}
                 </summary>
                 <div className="pl-1 space-y-2 mt-1">
@@ -283,7 +283,7 @@ export default function CapturesPage() {
 
             {groupedDrawings.unassigned.length > 0 && (
               <details open>
-                <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-500 px-1 py-1 hover:text-ink-300">
+                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-1 py-1 hover:text-ink-300">
                   Unassigned
                 </summary>
                 <div className="pl-1 space-y-1 mt-1">
@@ -385,7 +385,7 @@ function DrawingRow({ drawing, active, onSelect }: { drawing: Drawing; active: b
     <button
       onClick={() => onSelect(drawing.id)}
       className={`w-full text-left px-3 py-2.5 rounded text-sm transition-colors ${
-        active ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-800'
+        active ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-700'
       }`}
     >
       <div className="font-medium truncate">{drawing.title}</div>

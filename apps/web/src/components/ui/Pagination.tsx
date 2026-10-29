@@ -37,7 +37,7 @@ export function Pagination({
               onClick={() => onPageChange(p)}
               aria-current={p === page ? 'page' : undefined}
               className={`w-8 h-8 rounded text-sm transition-colors ${
-                p === page ? 'bg-signal text-base-950 font-medium' : 'text-ink-300 hover:bg-base-800'
+                p === page ? 'bg-signal text-base-950 font-medium' : 'text-ink-300 hover:bg-base-700'
               }`}
             >
               {p}
@@ -52,7 +52,7 @@ export function Pagination({
 
 function PageButton({ label, disabled, onClick }: { label: 'Previous' | 'Next'; disabled: boolean; onClick: () => void }) {
   return (
-    <button onClick={onClick} disabled={disabled} aria-label={label} className="w-8 h-8 rounded text-ink-300 hover:bg-base-800 disabled:opacity-30 disabled:hover:bg-transparent flex items-center justify-center">
+    <button onClick={onClick} disabled={disabled} aria-label={label} className="w-8 h-8 rounded text-ink-300 hover:bg-base-700 disabled:opacity-30 disabled:hover:bg-transparent flex items-center justify-center">
       <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         {label === 'Previous' ? <path d="M15 18l-6-6 6-6" /> : <path d="M9 18l6-6-6-6" />}
       </svg>

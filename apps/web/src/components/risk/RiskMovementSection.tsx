@@ -11,7 +11,7 @@ function MovementRow({ risk, detail, detailClass, onSelect }: {
 }) {
   return (
     <li>
-      <button onClick={() => onSelect(risk.id)} className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-base-800/60 transition-colors">
+      <button onClick={() => onSelect(risk.id)} className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-base-700 transition-colors">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono text-ink-500 shrink-0">{riskRef(risk)}</span>
@@ -106,7 +106,8 @@ export function RiskMovementSection({ movement, isLoading, days, onDaysChange, o
               <button
                 key={d}
                 onClick={() => onDaysChange(d)}
-                className={`btn-secondary !px-2.5 !py-1 text-xs ${days === d ? '!bg-blueprint/20 !text-blueprint' : ''}`}
+                aria-pressed={days === d}
+                className={`btn-secondary !px-2.5 !py-1 text-xs ${days === d ? '!bg-blueprint-muted !text-blueprint !border-blueprint/40' : ''}`}
               >
                 {d}d
               </button>

@@ -50,7 +50,7 @@ function SignupCodeSection() {
   return (
     <div className="panel tick-frame p-5 space-y-4">
       <div>
-        <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Self-Signup Code</h2>
+        <h2 className="text-sm font-semibold text-ink-100">Self-Signup Code</h2>
         <p className="text-xs text-ink-500 mt-1">
           Share this code (or the link below) with anyone who needs their own account -- clients, PMC,
           consultants, contractors. They pick their own organization and position at signup; every new
@@ -100,7 +100,7 @@ function ApiKeysSection() {
   return (
     <div className="panel tick-frame p-5 space-y-4">
       <div>
-        <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Public API Keys</h2>
+        <h2 className="text-sm font-semibold text-ink-100">Public API Keys</h2>
         <p className="text-xs text-ink-500 mt-1">
           Authenticate read-only requests to projects, captures, issues and progress via the X-API-Key header.
         </p>
@@ -186,7 +186,7 @@ function WebhooksSection() {
   return (
     <div className="panel tick-frame p-5 space-y-4">
       <div>
-        <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Webhooks</h2>
+        <h2 className="text-sm font-semibold text-ink-100">Webhooks</h2>
         <p className="text-xs text-ink-500 mt-1">
           Receive an HMAC-signed POST (X-Webhook-Signature) on issue created, issue status changed, and capture uploaded.
         </p>

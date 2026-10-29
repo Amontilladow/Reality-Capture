@@ -5,6 +5,7 @@ import { Modal } from './ui/Modal';
 import { createTransmittal } from '../lib/transmittals.api';
 import { TRANSMITTAL_PURPOSES, TRANSMITTAL_PURPOSE_LABELS } from '../lib/transmittal-constants';
 import { apiErrorMessage } from '../lib/api';
+import { Listbox } from './ui/Listbox';
 
 export function TransmittalFormModal({
   open, onClose, projectId,
@@ -91,11 +92,11 @@ export function TransmittalFormModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="field-label" htmlFor="purpose">Purpose</label>
-            <select id="purpose" className="field-input" value={purpose} onChange={(e) => setPurpose(e.target.value as TransmittalPurpose)}>
+            <Listbox id="purpose" className="field-input" value={purpose} onChange={(e) => setPurpose(e.target.value as TransmittalPurpose)}>
               {TRANSMITTAL_PURPOSES.map((p) => (
                 <option key={p} value={p}>{TRANSMITTAL_PURPOSE_LABELS[p]}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="dueDate">Response due</label>

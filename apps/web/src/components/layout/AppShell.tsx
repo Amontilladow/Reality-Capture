@@ -11,6 +11,7 @@ import { ChatWidget } from '../chat/ChatWidget';
 import { OnboardingFlow } from '../onboarding/OnboardingFlow';
 import { LogoMark } from '../ui/LogoMark';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { EmailLauncherButton } from '../ui/EmailLauncherButton';
 import { clearAllOfflinePackages } from '../../lib/site-drawings-offline';
 
 interface NavItem {
@@ -28,18 +29,26 @@ interface NavGroup {
 // scalable as more modules are added") instead of one flat column -- every
 // item here is a route that already exists; nothing added for show.
 const NAV_GROUPS: NavGroup[] = [
-  { items: [{ to: '', label: 'Projects', icon: IconGrid, end: true }] },
-  { heading: 'Communication', items: [{ to: 'messages', label: 'Messages', icon: IconMail }] },
-  { heading: 'Workforce', items: [{ to: 'workforce', label: 'Workforce', icon: IconGauge }] },
-  // Personal, account-level -- every user may connect their own AI
-  // provider (spec section 7), not just company admins, so this sits in
-  // the base groups rather than gated like DEVELOPER_NAV_ITEM below.
-  { heading: 'AI', items: [{ to: 'ai-settings', label: 'AI Provider', icon: IconSpark }] },
-  // Personal, account-level -- every user connects their own mailbox
-  // (Phase 3's brief: "a user can connect only their authorized mailbox"),
-  // not a company-wide setting, matching AI Provider's own placement above.
-  { heading: 'Email', items: [{ to: 'email-settings', label: 'Email Integration', icon: IconMail }] },
-  { heading: 'Help', items: [{ to: 'help', label: 'Help & Training', icon: IconHelp }] },
+  {
+    items: [
+      { to: '', label: 'Projects', icon: IconGrid, end: true },
+      { to: 'messages', label: 'Messages', icon: IconMail },
+      { to: 'workforce', label: 'Workforce', icon: IconGauge },
+    ],
+  },
+  // Personal, account-level settings -- every user connects their own AI
+  // provider (spec section 7) and their own mailbox (Phase 3: "a user can
+  // connect only their authorized mailbox"), so neither is gated like
+  // DEVELOPER_NAV_GROUP below. Merged from four one-item groups whose
+  // headings only repeated the item's own name.
+  {
+    heading: 'Account',
+    items: [
+      { to: 'ai-settings', label: 'AI Provider', icon: IconSpark },
+      { to: 'email-settings', label: 'Email Integration', icon: IconMail },
+      { to: 'help', label: 'Help & Training', icon: IconHelp },
+    ],
+  },
 ];
 
 // Company-admin-only -- API keys and webhooks are per-tenant (company_id),
@@ -84,8 +93,13 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
       { to: 'gis-prep', label: 'GIS Preparation', icon: IconMap },
     ],
   },
-  { heading: 'AI', items: [{ to: 'assistant', label: 'AI Assistant', icon: IconSpark }] },
-  { heading: 'Risk', items: [{ to: 'risk', label: 'Risk', icon: IconShield }] },
+  {
+    heading: 'Insights',
+    items: [
+      { to: 'assistant', label: 'AI Assistant', icon: IconSpark },
+      { to: 'risk', label: 'Risk', icon: IconShield },
+    ],
+  },
 ];
 
 // A 'subcontractor' project member (SubcontractorRfiAccessGuard) has
@@ -156,6 +170,7 @@ export function AppShell() {
         </button>
         <LogoMark className="w-5 h-5" />
         <div className="text-sm font-semibold tracking-tight flex-1">Reality Capture</div>
+        <EmailLauncherButton />
         <ThemeToggle />
       </div>
 
@@ -168,19 +183,23 @@ export function AppShell() {
       )}
 
       <aside
-        className={`w-60 shrink-0 border-r border-base-600 bg-base-900 flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-200 md:static md:translate-x-0 ${
+        className={`w-64 shrink-0 border-r border-base-600 bg-base-900 flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-200 md:static md:translate-x-0 ${
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="h-16 flex items-center gap-2 px-5 border-b border-base-600">
-          <LogoMark />
+        {/* Brand on one line with the two inbox bells and the email
+            launcher; the theme toggle moved to the account footer, where
+            it no longer squeezes the product name into a three-line
+            wrap. */}
+        <div className="h-14 flex items-center gap-2.5 pl-4 pr-2 border-b border-base-600">
+          <LogoMark className="w-6 h-6 shrink-0" />
           <div className="leading-tight flex-1 min-w-0">
-            <div className="text-sm font-bold tracking-tight">Reality Capture</div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500">by EngineeringOS</div>
+            <div className="text-sm font-semibold tracking-tight truncate">Reality Capture</div>
+            <div className="text-[11px] text-ink-500 truncate">EngineeringOS</div>
           </div>
-          <ThemeToggle />
           <NotificationBell />
           <MessagesBell />
+          <EmailLauncherButton />
           <button
             onClick={() => setMobileNavOpen(false)}
             aria-label="Close navigation menu"
@@ -211,23 +230,26 @@ export function AppShell() {
 
         <div className="border-t border-base-600 p-3">
           <div className="flex items-center gap-2.5 px-2 py-2">
-            <div className="w-7 h-7 rounded-full bg-teal/20 border border-teal/40 flex items-center justify-center text-xs font-mono text-teal shrink-0">
+            <div className="w-7 h-7 rounded-full bg-base-700 border border-base-600 flex items-center justify-center text-[11px] font-semibold text-ink-300 shrink-0">
               {(user?.firstName?.[0] ?? '') + (user?.lastName?.[0] ?? '')}
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-medium truncate">
                 {user?.firstName} {user?.lastName}
               </div>
-              <div className="text-[10px] text-ink-500 truncate">{user?.email}</div>
+              <div className="text-[11px] text-ink-500 truncate">{user?.email}</div>
             </div>
           </div>
-          <button onClick={handleLogout} className="btn-ghost w-full mt-1 justify-start text-xs px-2">
-            <IconLogout className="w-3.5 h-3.5" /> Sign out
-          </button>
+          <div className="flex items-center gap-1 mt-1">
+            <button onClick={handleLogout} className="btn-ghost flex-1 justify-start text-xs px-2 h-8">
+              <IconLogout className="w-3.5 h-3.5" /> Sign out
+            </button>
+            <ThemeToggle />
+          </div>
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0 bg-grid-fine bg-grid-fine">
+      <main className="flex-1 min-w-0 bg-base-950">
         <Outlet />
       </main>
 
@@ -239,11 +261,11 @@ export function AppShell() {
 
 function NavGroupList({ groups, basePath }: { groups: NavGroup[]; basePath: string }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {groups.map((group, i) => (
         <div key={group.heading ?? i} className="space-y-0.5">
           {group.heading && (
-            <div className="px-3 mb-1 text-eyebrow font-mono uppercase text-ink-500">{group.heading}</div>
+            <div className="px-3 mb-1 text-[11px] font-medium text-ink-500">{group.heading}</div>
           )}
           {group.items.map((item) => (
             <NavLink
@@ -251,10 +273,10 @@ function NavGroupList({ groups, basePath }: { groups: NavGroup[]; basePath: stri
               to={`${basePath}/${item.to}`}
               end={item.end}
               className={({ isActive }) =>
-                `flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors border-l-[3px] font-medium ${
+                `flex items-center gap-2.5 px-3 h-8 rounded text-sm transition-colors ${
                   isActive
-                    ? 'border-teal bg-teal/10 text-teal'
-                    : 'border-transparent text-ink-300 hover:bg-base-800 hover:text-ink-100'
+                    ? 'bg-base-800 text-ink-100 font-medium shadow-[0_0_0_1px_rgb(var(--rc-base-600))]'
+                    : 'text-ink-300 hover:bg-base-700 hover:text-ink-100'
                 }`
               }
             >

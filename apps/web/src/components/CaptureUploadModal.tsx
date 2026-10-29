@@ -6,6 +6,7 @@ import { PROJECT_PHASES, PROJECT_PHASE_LABELS } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
 import { uploadCapture } from '../lib/captures.api';
 import { apiErrorMessage } from '../lib/api';
+import { Listbox } from './ui/Listbox';
 
 interface QueuedFile {
   id: string;
@@ -100,7 +101,7 @@ export function CaptureUploadModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="field-label" htmlFor="captureType">Capture type</label>
-            <select
+            <Listbox
               id="captureType"
               className="field-input"
               value={captureType}
@@ -109,11 +110,11 @@ export function CaptureUploadModal({
               <option value="photo_360">360° photo</option>
               <option value="photo_standard">Standard photo</option>
               <option value="video">Video</option>
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="locationId">Location</label>
-            <select
+            <Listbox
               id="locationId"
               className="field-input"
               value={locationId}
@@ -123,13 +124,13 @@ export function CaptureUploadModal({
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>{l.name}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
         </div>
 
         <div>
           <label className="field-label" htmlFor="phase">Phase</label>
-          <select
+          <Listbox
             id="phase"
             className="field-input"
             value={phase}
@@ -139,7 +140,7 @@ export function CaptureUploadModal({
             {PROJECT_PHASES.map((p) => (
               <option key={p} value={p}>{PROJECT_PHASE_LABELS[p]}</option>
             ))}
-          </select>
+          </Listbox>
         </div>
 
         <div

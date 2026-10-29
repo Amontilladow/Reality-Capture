@@ -39,8 +39,8 @@ def new_doc(manifest: Manifest, categories: tuple[str, ...] = ("plot", "roads", 
     for name, block in manifest.blocks.items():
         b = doc.blocks.new(name)
         b.add_circle((0, 0), 0.25)
-        for i, a in enumerate(block.attributes):
-            b.add_attdef(a.tag, (0, -0.5 * (i + 1)), dxfattribs={"height": 0.3})
+        for i, tag in enumerate(block.insert_order):      # official template order
+            b.add_attdef(tag, (0, -0.5 * (i + 1)), dxfattribs={"height": 0.3})
     tb = doc.blocks.new(TITLE_BLOCK)
     for i, f in enumerate(manifest.title_block["fields"]):
         tb.add_attdef(f["tag"], (0, -0.5 * (i + 1)), dxfattribs={"height": 0.3})
@@ -298,8 +298,8 @@ def bdms_floor(manifest: Manifest, *, door_vertices_on_spaces: bool = True, extr
         doc.layers.add(name)
     for name, block in manifest.blocks.items():
         b = doc.blocks.new(name)
-        for i, a in enumerate(block.attributes):
-            b.add_attdef(a.tag.upper(), (0, -0.3 * (i + 1)), dxfattribs={"height": 0.2})
+        for i, tag in enumerate(block.insert_order):      # official template order
+            b.add_attdef(tag.upper(), (0, -0.3 * (i + 1)), dxfattribs={"height": 0.2})
     x0, y0 = E0, N0
     poly(doc, [(x0 - 10, y0 - 10), (x0 + 30, y0 - 10), (x0 + 30, y0 + 20), (x0 - 10, y0 + 20)], "Plot")
     detail(doc, "PlotDetail", "PlotDetail", (x0 - 8, y0 - 8),

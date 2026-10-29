@@ -227,7 +227,7 @@ export function ChatWidget() {
                   <IconArrowLeft className="w-3.5 h-3.5" />
                 </button>
               )}
-              <span className="text-xs font-mono uppercase tracking-widest text-ink-500 truncate">
+              <span className="text-xs text-ink-500 truncate font-medium">
                 {view === 'list' ? 'Chat' : activeChannel?.label}
               </span>
             </div>
@@ -247,7 +247,7 @@ export function ChatWidget() {
               {projectId && (
                 <button
                   onClick={openTeamChat}
-                  className="block w-full text-left px-3 py-2.5 border-b border-base-600 hover:bg-base-800 transition-colors"
+                  className="block w-full text-left px-3 py-2.5 border-b border-base-600 hover:bg-base-700 transition-colors"
                 >
                   <div className="text-xs text-ink-100">
                     {projectQuery.data?.name ? `${projectQuery.data.name} team chat` : 'Project team chat'}
@@ -257,7 +257,7 @@ export function ChatWidget() {
               )}
 
               <div className="flex items-center justify-between px-3 pt-3 pb-1.5">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-ink-500">Direct messages</span>
+                <span className="text-[11px] text-ink-500 font-medium">Direct messages</span>
                 <button
                   onClick={() => setDirectoryOpen((v) => !v)}
                   className="text-[11px] text-blueprint hover:text-blueprint-hover"
@@ -277,7 +277,7 @@ export function ChatWidget() {
                           <button
                             key={u.id}
                             onClick={() => openDm(u.id, displayName(u))}
-                            className="block w-full text-left px-2 py-1.5 rounded text-xs text-ink-300 hover:bg-base-800 hover:text-ink-100"
+                            className="block w-full text-left px-2 py-1.5 rounded text-xs text-ink-300 hover:bg-base-700 hover:text-ink-100"
                           >
                             {displayName(u)}
                           </button>
@@ -298,7 +298,7 @@ export function ChatWidget() {
                 <button
                   key={t.channelId}
                   onClick={() => openDm(t.otherUserId, t.otherUserName)}
-                  className="block w-full text-left px-3 py-2.5 border-b border-base-600 last:border-b-0 hover:bg-base-800 transition-colors"
+                  className="block w-full text-left px-3 py-2.5 border-b border-base-600 last:border-b-0 hover:bg-base-700 transition-colors"
                 >
                   <div className="flex items-start gap-2">
                     {t.unread && <span className="w-1.5 h-1.5 rounded-full bg-blueprint mt-1.5 shrink-0" />}
@@ -383,7 +383,7 @@ export function ChatWidget() {
       >
         <IconChat className="w-5 h-5" />
         {!open && unreadCount > 0 && (
-          <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-blueprint text-ink-100 text-[9px] font-mono font-bold flex items-center justify-center">
+          <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-blueprint text-base-800 text-[10px] font-bold flex items-center justify-center">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}

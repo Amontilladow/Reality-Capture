@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -6,10 +6,15 @@ import { StatusBadge } from '../components/ui/Badge';
 import type { StatusTone } from '../lib/status-tone';
 import { apiErrorMessage } from '../lib/api';
 import { getProject } from '../lib/projects.api';
+import { loadSavedForm, saveForm } from '../lib/saved-form';
+import {
+  DRAWING_TYPES, UPPERCASE_FACTS, UPPERCASE_META, USAGE_CATEGORY_TYPES, USAGE_TYPES, convertInputProblems,
+} from '../lib/bdms-inputs';
 import {
   getGisPrepJob, listGisPrepJobs, rerunGisPrepJob, uploadAndCreateGisPrepJob,
   type GisConvertSettings, type GisPrepJob, type GisPrepJobStatus, type GisPrepProfile, type GisPrepSettings,
 } from '../lib/gis-prep.api';
+import { Listbox } from '../components/ui/Listbox';
 
 // GIS Preparation (apps/adm-gis-prep as a built-in module). Every result is a
 // PRELIMINARY check: nothing on this page may say a drawing is ADM/DRM
@@ -36,6 +41,8 @@ interface FormState {
   // convert = build a DRM BDMS draft from an architectural floor plan; prepare = check an existing GIS drawing.
   mode: 'convert' | 'prepare';
   unitNumber: string;
+  // Building / floor / title facts a floor plan cannot show (conversion). Empty stays empty and is reported.
+  facts: Record<string, string>;
   units: 'auto' | 'mm' | 'cm' | 'm';
   profile: GisPrepProfile;
   strict: boolean;
@@ -48,10 +55,33 @@ interface FormState {
 }
 
 const INITIAL: FormState = {
-  mode: 'convert', unitNumber: '', units: 'auto',
+  mode: 'convert', unitNumber: '', units: 'auto', facts: {},
   profile: 'bdms_building', strict: true, sourceCrs: '', crsConfirmed: false, unitsConfirmed: false,
   categories: ['plot'], meta: {}, controlPoints: '',
 };
+
+// What was typed is kept per project in this browser. Confirmations (coordinate system / transformation, units)
+// are never restored: they must be given each time.
+const formKey = (projectId: string) => `gis-prep-form:${projectId}`;
+const NEVER_RESTORE: Partial<FormState> = { crsConfirmed: false, unitsConfirmed: false };
+
+// Values the drawing cannot provide; sent as conversion settings. Code-listed values (usage, drawing type) are
+// picked from the BDMS code lists; formats are checked before the job is sent (lib/bdms-inputs).
+const FACT_FIELDS = [
+  ['floor_height', 'Floor height (m)', '3.6'], ['building_number_of_floors', 'Number of floors', '2'],
+  ['building_height', 'Building height (m)', '15'],
+  ['building_usage_category', 'Usage category (code list)', 'Commercial'],
+  ['building_usage_type', 'Usage type (code list)', 'Single-use Commercial'],
+] as const;
+const TITLE_FIELDS = [
+  ['DeveloperName', 'Developer name', 'MASDAR CITY'], ['BuildingName', 'Building name', ''],
+  ['DrawingType', 'Drawing type', 'As Built'], ['DateOfDrawing', 'Date of drawing', '14-JAN-2026'],
+] as const;
+
+const CHOICES: Record<string, readonly string[]> = {
+  building_usage_category: USAGE_CATEGORY_TYPES, building_usage_type: USAGE_TYPES, DrawingType: DRAWING_TYPES,
+};
+const upper = (on: boolean, value: string) => (on ? value.toUpperCase() : value);
 
 const BDMS_FIELDS = [
   ['zone_name', 'Zone name', 'KHALIFA CITY'], ['sector_number', 'Sector', 'SE45_01'], ['plot_number', 'Plot', 'C8'],
@@ -74,9 +104,19 @@ function parseControlPoints(text: string): [[number, number], [number, number]][
 function buildSettings(f: FormState): GisPrepSettings | GisConvertSettings {
   const controlPoints = parseControlPoints(f.controlPoints);
   if (f.mode === 'convert') {
+    const problems = convertInputProblems(f.meta, f.facts, f.unitNumber);
+    if (problems.length) throw new Error(problems.join(' '));
+    const metadata = Object.fromEntries(Object.entries(f.meta).map(([k, v]) => [k, upper(UPPERCASE_META.has(k), v.trim())]));
     return {
-      mode: 'convert', profile: 'bdms_building', metadata: f.meta, source_units: f.units,
+      mode: 'convert', profile: 'bdms_building', metadata, source_units: f.units,
       single_unit_number: f.unitNumber,
+      floor_height: f.facts.floor_height ?? '',
+      building_number_of_floors: f.facts.building_number_of_floors ?? '',
+      building_height: f.facts.building_height ?? '',
+      building_usage_category: f.facts.building_usage_category ?? '',
+      building_usage_type: f.facts.building_usage_type ?? '',
+      title_values: Object.fromEntries(TITLE_FIELDS.map(([k]) => [k, upper(UPPERCASE_FACTS.has(k), (f.facts[k] ?? '').trim())])
+        .filter(([, v]) => v)),
       crs: { control_points: controlPoints, confirm_transformation: f.crsConfirmed },
     };
   }
@@ -96,10 +136,11 @@ function buildSettings(f: FormState): GisPrepSettings | GisConvertSettings {
 export default function GisPrepPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<FormState>(INITIAL);
+  const [form, setForm] = useState<FormState>(() => (projectId ? loadSavedForm(formKey(projectId), INITIAL, NEVER_RESTORE) : INITIAL));
   const [file, setFile] = useState<File | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useEffect(() => { if (projectId) saveForm(formKey(projectId), form); }, [projectId, form]);
 
   const projectQuery = useQuery({ queryKey: ['project', projectId], queryFn: () => getProject(projectId!), enabled: Boolean(projectId) });
   const jobsQuery = useQuery({
@@ -184,30 +225,55 @@ export default function GisPrepPage() {
                 <span>{label}</span>
                 <input
                   className="field-input text-xs !py-1.5" placeholder={placeholder} value={form.meta[key] ?? ''}
-                  onChange={e => setForm(f => ({ ...f, meta: { ...f.meta, [key]: e.target.value } }))}
+                  onChange={e => setForm(f => ({
+                    ...f, meta: { ...f.meta, [key]: upper(f.mode === 'convert' && UPPERCASE_META.has(key), e.target.value) },
+                  }))}
                 />
               </label>
             ))}
           </div>
+          {form.mode === 'convert' && (
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+              {[...FACT_FIELDS, ...TITLE_FIELDS].map(([key, label, placeholder]) => (
+                <label key={key} className="text-xs text-ink-500 space-y-1">
+                  <span>{label}</span>
+                  {CHOICES[key] ? (
+                    <Listbox
+                      className="field-input text-xs !py-1.5" value={form.facts[key] ?? ''}
+                      onChange={e => setForm(f => ({ ...f, facts: { ...f.facts, [key]: e.target.value } }))}
+                    >
+                      <option value="">Choose…</option>
+                      {CHOICES[key].map(o => <option key={o} value={o}>{o}</option>)}
+                    </Listbox>
+                  ) : (
+                    <input
+                      className="field-input text-xs !py-1.5" placeholder={placeholder} value={form.facts[key] ?? ''}
+                      onChange={e => setForm(f => ({ ...f, facts: { ...f.facts, [key]: upper(UPPERCASE_FACTS.has(key), e.target.value) } }))}
+                    />
+                  )}
+                </label>
+              ))}
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {form.mode === 'prepare' && <label className="text-xs text-ink-500 space-y-1">
               <span>Source coordinate system</span>
-              <select className="field-input text-xs !py-1.5" value={form.sourceCrs} onChange={e => setForm(f => ({ ...f, sourceCrs: e.target.value }))}>
+              <Listbox className="field-input text-xs !py-1.5" value={form.sourceCrs} onChange={e => setForm(f => ({ ...f, sourceCrs: e.target.value }))}>
                 {CRS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              </Listbox>
             </label>}
             {form.mode === 'convert' && (
               <label className="text-xs text-ink-500 space-y-1">
                 <span>Drawing units</span>
-                <select className="field-input text-xs !py-1.5" value={form.units} onChange={e => setForm(f => ({ ...f, units: e.target.value as FormState['units'] }))}>
+                <Listbox className="field-input text-xs !py-1.5" value={form.units} onChange={e => setForm(f => ({ ...f, units: e.target.value as FormState['units'] }))}>
                   <option value="auto">From the drawing ($INSUNITS)</option>
                   <option value="mm">Millimetres</option><option value="cm">Centimetres</option><option value="m">Metres</option>
-                </select>
+                </Listbox>
               </label>
             )}
             {form.mode === 'convert' && (
               <label className="text-xs text-ink-500 space-y-1">
-                <span>Whole floor is one unit — unit number (optional)</span>
+                <span>Unit number (whole floor is one unit) — required for the QC links</span>
                 <input className="field-input text-xs !py-1.5" value={form.unitNumber} onChange={e => setForm(f => ({ ...f, unitNumber: e.target.value }))} />
               </label>
             )}
@@ -256,7 +322,7 @@ export default function GisPrepPage() {
             </thead>
             <tbody>
               {jobs.map(j => (
-                <tr key={j.id} onClick={() => setSelectedId(j.id)} className={`border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-800/60 ${selectedId === j.id ? 'bg-base-800/60' : ''}`}>
+                <tr key={j.id} onClick={() => setSelectedId(j.id)} className={`border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-700 ${selectedId === j.id ? 'bg-base-800/60' : ''}`}>
                   <td className="px-3 py-2.5 text-ink-100">{j.sourceFilename}{j.parentJobId && <span className="text-xs text-ink-500"> · re-run</span>}</td>
                   <td className="px-3 py-2.5 text-ink-300 whitespace-nowrap">{j.profile}</td>
                   <td className="px-3 py-2.5"><StatusBadge tone={STATUS_TONE[j.status]} label={STATUS_LABEL[j.status]} dot /></td>
@@ -401,7 +467,8 @@ interface ConvFeature {
   attributes: Record<string, { value: string; provenance: string; note: string }>;
 }
 interface ConversionReport {
-  kind: 'conversion'; status: string; blockers: string[]; result: Record<string, string | number>;
+  kind: 'conversion'; status: string; blockers: string[]; identifiers_missing?: string[];
+  result: Record<string, string | number>;
   features: ConvFeature[]; missing_mandatory: { feature: string; tag: string; note: string }[];
   georeferencing: { status: string; messages: string[] };
 }
@@ -438,6 +505,9 @@ function ConversionDetail({ projectId, job, onRerun }: { projectId: string; job:
       </div>
       <p className="text-xs text-ink-300">{report.status}</p>
       {report.blockers.map(b => <p key={b} className="text-xs text-danger">{b}</p>)}
+      {(report.identifiers_missing ?? []).length > 0 && (
+        <p className="text-xs text-danger">Blocked until provided (never guessed): {report.identifiers_missing!.join(', ')}</p>
+      )}
       <div className="flex flex-wrap gap-2">
         {job.packageUrl && <a className="btn-secondary !px-3 !py-1.5 text-xs" href={job.packageUrl}>Download full package (.zip)</a>}
         {downloads.map(o => <a key={o.path} className="btn-ghost !px-3 !py-1.5 text-xs" href={o.url} target="_blank" rel="noreferrer">{o.path.replace(/^output\//, '')}</a>)}

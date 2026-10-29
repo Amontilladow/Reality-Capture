@@ -55,7 +55,7 @@ function ProviderCard({
   return (
     <div className="panel tick-frame p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">{name}</h2>
+        <h2 className="text-sm font-semibold text-ink-100">{name}</h2>
         {!isLoading && <StatusBadge tone={STATUS_TONE[value]} label={STATUS_LABEL[value]} />}
       </div>
 

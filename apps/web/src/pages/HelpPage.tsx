@@ -86,7 +86,7 @@ export default function HelpPage() {
                   className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors mb-2 border ${
                     !activeSlug && showRoleGuide
                       ? 'bg-signal/10 text-signal border-signal/30'
-                      : 'text-ink-200 border-base-700 hover:bg-base-800'
+                      : 'text-ink-200 border-base-700 hover:bg-base-700'
                   }`}
                 >
                   For My Role
@@ -99,7 +99,7 @@ export default function HelpPage() {
                   onClick={() => openCategory(key)}
                   aria-current={!activeSlug && !showRoleGuide && key === activeCategory ? 'true' : undefined}
                   className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
-                    !activeSlug && !showRoleGuide && key === activeCategory ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-800'
+                    !activeSlug && !showRoleGuide && key === activeCategory ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-700'
                   }`}
                 >
                   {HELP_CATEGORY_LABELS[key]}
@@ -108,7 +108,7 @@ export default function HelpPage() {
               {user && (
                 <button
                   onClick={restartOnboarding}
-                  className="w-full text-left px-3 py-2 rounded text-xs text-ink-500 hover:text-ink-100 hover:bg-base-800 mt-2"
+                  className="w-full text-left px-3 py-2 rounded text-xs text-ink-500 hover:text-ink-100 hover:bg-base-700 mt-2"
                 >
                   Restart onboarding tour
                 </button>
@@ -185,8 +185,8 @@ function RoleGuideList({
         <ul className="space-y-3">
           {articles.map((a) => (
             <li key={a.slug}>
-              <button onClick={() => onOpenArticle(a.slug)} className="text-left w-full panel p-4 hover:bg-base-800/60 transition-colors">
-                <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500">{HELP_CATEGORY_LABELS[a.category]}</div>
+              <button onClick={() => onOpenArticle(a.slug)} className="text-left w-full panel p-4 hover:bg-base-700 transition-colors">
+                <div className="text-[11px] text-ink-500 font-medium">{HELP_CATEGORY_LABELS[a.category]}</div>
                 <div className="font-medium text-ink-100 text-sm">{a.title}</div>
                 <div className="text-xs text-ink-500 mt-0.5">{a.summary}</div>
               </button>
@@ -219,7 +219,7 @@ function CategoryArticleList({
       <ul className="space-y-3">
         {articles.map((a) => (
           <li key={a.slug}>
-            <button onClick={() => onOpenArticle(a.slug)} className="text-left w-full panel p-4 hover:bg-base-800/60 transition-colors">
+            <button onClick={() => onOpenArticle(a.slug)} className="text-left w-full panel p-4 hover:bg-base-700 transition-colors">
               <div className="font-medium text-ink-100 text-sm">{a.title}</div>
               <div className="text-xs text-ink-500 mt-0.5">{a.summary}</div>
             </button>
@@ -254,8 +254,8 @@ function SearchResultsPanel({
       <ul className="space-y-2">
         {results.map(({ article }) => (
           <li key={article.slug}>
-            <button onClick={() => onOpenArticle(article.slug)} className="text-left w-full panel p-4 hover:bg-base-800/60 transition-colors">
-              <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500">{HELP_CATEGORY_LABELS[article.category]}</div>
+            <button onClick={() => onOpenArticle(article.slug)} className="text-left w-full panel p-4 hover:bg-base-700 transition-colors">
+              <div className="text-[11px] text-ink-500 font-medium">{HELP_CATEGORY_LABELS[article.category]}</div>
               <div className="font-medium text-ink-100 text-sm">{article.title}</div>
               <div className="text-xs text-ink-500 mt-0.5">{article.summary}</div>
             </button>

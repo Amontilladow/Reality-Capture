@@ -7,6 +7,7 @@ import { getViewerData, getCapture } from '../lib/captures.api';
 import { getHierarchy } from '../lib/projects.api';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
+import { Listbox } from '../components/ui/Listbox';
 
 export default function Viewer360() {
   const { projectId, locationId } = useParams<{ projectId: string; locationId: string }>();
@@ -81,7 +82,7 @@ export default function Viewer360() {
 
         <div className="flex items-center gap-2 shrink-0">
           {captures.length > 1 && (
-            <select
+            <Listbox
               className="field-input w-auto text-xs"
               value={active?.id ?? ''}
               onChange={(e) => setActiveCaptureId(e.target.value)}
@@ -91,7 +92,7 @@ export default function Viewer360() {
                   {c.title ?? new Date(c.capturedAt).toLocaleDateString()}
                 </option>
               ))}
-            </select>
+            </Listbox>
           )}
           <ThemeToggle />
         </div>

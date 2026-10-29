@@ -23,6 +23,7 @@ import { ISSUE_STATUS_TONE, ISSUE_PRIORITY_TONE } from '../../lib/status-tone';
 import { StatusBadge } from '../ui/Badge';
 import { apiErrorMessage } from '../../lib/api';
 import type { IssueStatus } from '@engineeringos/types';
+import { Listbox } from '../ui/Listbox';
 
 export function IssueDetail({
   projectId,
@@ -302,12 +303,12 @@ export function IssueDetail({
         {canForward && forwardOpen && (
           <div className="pt-3 border-t border-base-600 space-y-2">
             <div className="grid grid-cols-2 gap-2">
-              <select className="field-input" value={forwardTo} onChange={(e) => setForwardTo(e.target.value)}>
+              <Listbox className="field-input" value={forwardTo} onChange={(e) => setForwardTo(e.target.value)}>
                 <option value="">Forward to…</option>
                 {members.map((m) => (
                   <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
                 ))}
-              </select>
+              </Listbox>
               <input
                 className="field-input"
                 placeholder="Optional note…"
@@ -365,7 +366,7 @@ export function IssueDetail({
         {/* Pending scheduled reminders on this issue */}
         {(pendingRemindersQuery.data?.length ?? 0) > 0 && (
           <div className="pt-3 border-t border-base-600 space-y-1.5">
-            <div className="text-[10px] uppercase tracking-wide text-ink-500 font-mono">Scheduled reminders</div>
+            <div className="text-[11px] text-ink-500 font-medium">Scheduled reminders</div>
             {pendingRemindersQuery.data!.map((r) => (
               <div key={r.id} className="flex items-center gap-2 text-xs">
                 <span className="text-ink-500">{formatDateTime(r.scheduledFor)}</span>
@@ -422,8 +423,8 @@ export function IssueDetail({
         {/* Admin force-status override */}
         {isManager && (
           <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-base-600">
-            <span className="text-[10px] uppercase tracking-wide text-ink-500 font-mono">Admin override</span>
-            <select
+            <span className="text-[11px] text-ink-500 font-medium">Admin override</span>
+            <Listbox
               className="field-input w-auto"
               value={forceStatusValue}
               onChange={(e) => setForceStatusValue(e.target.value as IssueStatus)}
@@ -432,7 +433,7 @@ export function IssueDetail({
               {ISSUE_STATUSES.map((s) => (
                 <option key={s} value={s}>{STATUS_LABELS[s]}</option>
               ))}
-            </select>
+            </Listbox>
             <button
               onClick={() => forceStatusMutation.mutate()}
               disabled={!forceStatusValue || forceStatusMutation.isPending}

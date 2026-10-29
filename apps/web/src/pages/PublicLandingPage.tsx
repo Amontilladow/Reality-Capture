@@ -75,7 +75,7 @@ function BrandMark({ size = 'md' }: { size?: 'md' | 'lg' }) {
       <LogoMark className={iconSize} />
       <div className="leading-tight">
         <div className={`font-semibold tracking-tight ${size === 'lg' ? 'text-lg' : ''}`}>Reality Capture</div>
-        <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500">by EngineeringOS</div>
+        <div className="text-[11px] text-ink-500 font-medium">by EngineeringOS</div>
       </div>
     </div>
   );
@@ -136,7 +136,7 @@ function CapabilityStory({
     <section className="border-b border-base-600/60 bg-base-950 even:bg-base-900/40">
       <div className="max-w-6xl mx-auto px-6 py-16 sm:py-20 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
         <div className={reverse ? 'lg:order-2' : 'lg:order-1'}>
-          <div className="text-eyebrow font-mono uppercase text-blueprint mb-4">{eyebrow}</div>
+          <div className="text-[11px] text-blueprint mb-4 font-medium">{eyebrow}</div>
           <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight leading-tight mb-4">{title}</h2>
           <p className="text-ink-300 text-sm sm:text-base leading-relaxed max-w-md">{body}</p>
         </div>
@@ -226,7 +226,7 @@ function ProductPreview() {
     <section className="border-b border-base-600/60 bg-base-900/40">
       <div className="max-w-5xl mx-auto px-6 py-16 sm:py-20">
         <div className="text-center mb-10">
-          <div className="text-eyebrow font-mono uppercase text-blueprint mb-4">Inside the workspace</div>
+          <div className="text-[11px] text-blueprint mb-4 font-medium">Inside the workspace</div>
           <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">
             Built for the people running the job, not a dashboard for show.
           </h2>
@@ -286,7 +286,7 @@ function WorkflowSequence() {
   return (
     <section className="border-b border-base-600/60">
       <div className="max-w-6xl mx-auto px-6 py-16 sm:py-20">
-        <div className="text-eyebrow font-mono uppercase text-blueprint mb-4">How it fits together</div>
+        <div className="text-[11px] text-blueprint mb-4 font-medium">How it fits together</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-4">
           {WORKFLOW_STEPS.map((step, i) => (
             <div key={step.n} className={`relative pt-4 ${i > 0 ? 'lg:border-l lg:border-base-600 lg:pl-6' : ''}`}>

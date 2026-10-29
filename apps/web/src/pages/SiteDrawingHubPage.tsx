@@ -14,6 +14,7 @@ import {
 } from '../components/site-drawings/siteDrawingDisplay';
 import { RegisterSiteDrawingModal } from '../components/site-drawings/RegisterSiteDrawingModal';
 import { SiteDrawingDetailDrawer } from '../components/site-drawings/SiteDrawingDetailDrawer';
+import { Listbox } from '../components/ui/Listbox';
 
 const PER_PAGE = 25;
 const EMPTY_FILTERS: Omit<SiteDrawingFilters, 'page' | 'perPage'> = {
@@ -104,26 +105,26 @@ export default function SiteDrawingHubPage() {
             onChange={(e) => setSearchInput(e.target.value)}
             className="field-input w-56 text-xs !py-1.5"
           />
-          <select value={filters.discipline} onChange={(e) => setFilters((f) => ({ ...f, discipline: e.target.value }))} className="field-input w-auto text-xs !py-1.5">
+          <Listbox value={filters.discipline} onChange={(e) => setFilters((f) => ({ ...f, discipline: e.target.value }))} className="field-input w-auto text-xs !py-1.5">
             <option value="">All disciplines</option>
             {(filterOptionsQuery.data?.disciplines ?? []).map((d) => <option key={d} value={d}>{d}</option>)}
-          </select>
-          <select value={filters.buildingOrZone} onChange={(e) => setFilters((f) => ({ ...f, buildingOrZone: e.target.value }))} className="field-input w-auto text-xs !py-1.5">
+          </Listbox>
+          <Listbox value={filters.buildingOrZone} onChange={(e) => setFilters((f) => ({ ...f, buildingOrZone: e.target.value }))} className="field-input w-auto text-xs !py-1.5">
             <option value="">All buildings / zones</option>
             {(filterOptionsQuery.data?.buildingsOrZones ?? []).map((b) => <option key={b} value={b}>{b}</option>)}
-          </select>
-          <select value={filters.floorOrLevel} onChange={(e) => setFilters((f) => ({ ...f, floorOrLevel: e.target.value }))} className="field-input w-auto text-xs !py-1.5">
+          </Listbox>
+          <Listbox value={filters.floorOrLevel} onChange={(e) => setFilters((f) => ({ ...f, floorOrLevel: e.target.value }))} className="field-input w-auto text-xs !py-1.5">
             <option value="">All floors / levels</option>
             {(filterOptionsQuery.data?.floorsOrLevels ?? []).map((l) => <option key={l} value={l}>{l}</option>)}
-          </select>
-          <select
+          </Listbox>
+          <Listbox
             value={filters.workflowStatus ?? ''}
             onChange={(e) => setFilters((f) => ({ ...f, workflowStatus: (e.target.value || undefined) as SiteDrawingWorkflowStatus | undefined }))}
             className="field-input w-auto text-xs !py-1.5"
           >
             <option value="">All statuses</option>
             {Object.entries(WORKFLOW_STATUS_LABELS).map(([s, label]) => <option key={s} value={s}>{label}</option>)}
-          </select>
+          </Listbox>
           {hasActiveFilters && (
             <button onClick={() => { setSearchInput(''); setFilters(EMPTY_FILTERS); }} className="btn-ghost !px-2 !py-1 text-xs ml-auto">
               Reset filters
@@ -160,7 +161,7 @@ export default function SiteDrawingHubPage() {
                   </thead>
                   <tbody>
                     {drawings.map((d) => (
-                      <tr key={d.id} onClick={() => setSelectedDrawingId(d.id)} className="border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-800/60">
+                      <tr key={d.id} onClick={() => setSelectedDrawingId(d.id)} className="border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-700">
                         <td className="px-3 py-2.5 font-mono text-xs text-ink-500 whitespace-nowrap">{d.drawingNumber}</td>
                         <td className="px-3 py-2.5 max-w-xs">
                           <div className="text-ink-100 truncate">{d.drawingTitle}</div>

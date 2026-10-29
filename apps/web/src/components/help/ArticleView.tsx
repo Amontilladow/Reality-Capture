@@ -103,7 +103,7 @@ export function ArticleView({ article, onOpenArticle }: { article: HelpArticle; 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section id={slugifySectionTitle(title)}>
-      <h2 className="text-xs font-mono uppercase tracking-widest text-ink-500 mb-1.5">{title}</h2>
+      <h2 className="text-xs text-ink-500 mb-1.5 font-medium">{title}</h2>
       <div className="text-sm text-ink-300 leading-relaxed">{children}</div>
     </section>
   );

@@ -345,7 +345,7 @@ export default function BuildLensTimelinePage() {
                         key={s}
                         onClick={() => setSpeed(s)}
                         className={`px-2 py-1 rounded text-xs font-mono transition-colors ${
-                          speed === s ? 'bg-signal/15 text-signal' : 'text-ink-500 hover:text-ink-100 hover:bg-base-800'
+                          speed === s ? 'bg-signal/15 text-signal' : 'text-ink-500 hover:text-ink-100 hover:bg-base-700'
                         }`}
                       >
                         {s}×
@@ -468,7 +468,7 @@ function CompareView({
       ].map((col, i) => (
         <div key={i} className="space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-mono uppercase tracking-widest text-ink-500">{col.label}</span>
+            <span className="text-xs text-ink-500 font-medium">{col.label}</span>
             <span className="text-sm font-medium flex items-center gap-1.5">
               {col.capture && (
                 <CaptureTypeIcon captureType={col.capture.captureType} className="w-3.5 h-3.5 text-ink-500" />

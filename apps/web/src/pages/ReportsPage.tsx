@@ -1,11 +1,9 @@
 import { useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-} from 'recharts';
 import { DRAWING_UPDATE_STATUS_LABELS } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
+import { BarChart } from '../components/charts/BarChart';
 import { HelpLink } from '../components/help/HelpLink';
 import { StatTile } from '../components/ui/StatTile';
 import { SectionHeader } from '../components/ui/SectionHeader';
@@ -41,42 +39,6 @@ function sectionLead(total: number, flags: { label: string; count: number }[], n
   return `${parts.join(' and ')} out of ${total} ${noun} need attention.`;
 }
 
-// Recharts marks need real hex/rgb colors -- they don't inherit Tailwind
-// classes -- resolved from the same --rc-* custom properties every
-// Tailwind utility class in the app resolves (useThemeColors(), called
-// once per component below), so this page's charts read as the same
-// product as the badges on the Issues/Snagging tabs themselves, in
-// whichever theme is active. A fixed, non-themed orange rounds out the
-// rotating series palette purely for visual variety (chart-only, not a
-// semantic UI color), same reasoning as RiskIntelligenceSection.tsx's
-// HIGH_HEX/VERY_HIGH_HEX constants.
-const SERIES_ACCENT_HEX = '#FF7A29';
-
-// Mirrors STATUS_BADGE_CLASS / SNAG_STATUS_BADGE_CLASS's own color choices
-// (issue-constants.ts / snagging-constants.ts) so a given status reads as
-// the same color here as it does on the live tabs.
-function issueStatusColors(c: ThemeColors): Record<string, string> {
-  return {
-    open: c.blueprint,
-    assigned: c.warn,
-    in_progress: c.warn,
-    under_review: c.warn,
-    waiting_for_information: c.warn,
-    resolved: c.ok,
-    closed: c['ink-500'],
-    reopened: c.danger,
-    void: c['ink-500'],
-  };
-}
-
-function priorityColors(c: ThemeColors): Record<string, string> {
-  return { critical: c.danger, high: c.danger, medium: c.warn, low: c['ink-500'] };
-}
-
-function snagStatusColors(c: ThemeColors): Record<string, string> {
-  return { open: c.danger, fixed: c.warn, verified: c.ok, void: c['ink-500'] };
-}
-
 // Mirrors RiskIntelligenceSection.tsx's own levelColors() exactly -- the
 // 0-100/4-level deterministic-engine palette, never the separate 1-25
 // Risk Matrix one (this page never shows Risk Matrix numbers). HIGH has no
@@ -85,36 +47,21 @@ function riskLevelColors(c: ThemeColors): Record<RiskLevel, string> {
   return { LOW: c.ok, MODERATE: c.warn, HIGH: '#FB923C', CRITICAL: c.danger };
 }
 
-// Rotating palette for axes with no fixed status/priority meaning
-// (discipline, trade) -- reuses the same accent colors as everything else
-// on this page instead of inventing a new chart palette.
-function seriesPalette(c: ThemeColors): string[] {
-  return [c.blueprint, SERIES_ACCENT_HEX, c.ok, c.warn, c.danger, c['ink-500']];
-}
-
-function countsToChartData(counts: Record<string, number>, labelFor: (key: string) => string) {
-  return Object.entries(counts)
+// Chart rows for one breakdown. Ordinal breakdowns (status, priority) keep
+// their natural order so "Critical" is always first; nominal ones
+// (discipline, trade) sort by count, since there's no order to preserve.
+function chartRows(counts: Record<string, number>, labels: Record<string, string> | null, order: 'natural' | 'count') {
+  const rows = Object.entries(counts)
     .filter(([, count]) => count > 0)
-    .map(([key, count]) => ({ key, name: labelFor(key), value: count }));
-}
-
-function tooltipStyle(c: ThemeColors) {
-  return {
-    background: c['base-800'],
-    border: `1px solid ${c['base-700']}`,
-    borderRadius: 4,
-    fontSize: 12,
-    color: c['ink-100'],
-  };
+    .map(([key, count]) => ({ key, label: labels?.[key] ?? key, value: count }));
+  if (order === 'count') return rows.sort((a, b) => b.value - a.value);
+  const rank = Object.keys(labels ?? {});
+  return rows.sort((a, b) => rank.indexOf(a.key) - rank.indexOf(b.key));
 }
 
 export default function ReportsPage() {
   const themeColors = useThemeColors();
-  const ISSUE_STATUS_COLORS = issueStatusColors(themeColors);
-  const PRIORITY_COLORS = priorityColors(themeColors);
-  const SNAG_STATUS_COLORS = snagStatusColors(themeColors);
   const RISK_LEVEL_COLORS = riskLevelColors(themeColors);
-  const SERIES_PALETTE = seriesPalette(themeColors);
   const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -364,7 +311,7 @@ export default function ReportsPage() {
             {riskPdfError && <p className="field-error">{riskPdfError}</p>}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <div className="panel p-3">
-                <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">Project Risk Index</div>
+                <div className="text-[11px] text-ink-500 mb-0.5 font-medium">Project Risk Index</div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-xl font-semibold tabular-nums" style={{ color: RISK_LEVEL_COLORS[riskSummaryQuery.data.overallLevel] }}>
                     {riskSummaryQuery.data.overallScore}
@@ -422,13 +369,13 @@ export default function ReportsPage() {
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <ChartCard title="By status">
-                    <StatusPieChart data={countsToChartData(kpis.issues.byStatus, (k) => STATUS_LABELS[k as keyof typeof STATUS_LABELS] ?? k)} colorFor={(k) => ISSUE_STATUS_COLORS[k] ?? themeColors['ink-500']} />
+                    <BarChart title="Issues by status" unit="issues" data={chartRows(kpis.issues.byStatus, STATUS_LABELS, 'natural')} />
                   </ChartCard>
                   <ChartCard title="By priority">
-                    <CountBarChart data={countsToChartData(kpis.issues.byPriority, (k) => PRIORITY_LABELS[k as keyof typeof PRIORITY_LABELS] ?? k)} colorFor={(k) => PRIORITY_COLORS[k] ?? themeColors.blueprint} />
+                    <BarChart title="Issues by priority" unit="issues" data={chartRows(kpis.issues.byPriority, PRIORITY_LABELS, 'natural')} focalKey="critical" focalTone="danger" />
                   </ChartCard>
                   <ChartCard title="By discipline">
-                    <CountBarChart data={countsToChartData(kpis.issues.byDiscipline, (k) => DISCIPLINE_LABELS[k as keyof typeof DISCIPLINE_LABELS] ?? k)} colorFor={(_k, i) => SERIES_PALETTE[i % SERIES_PALETTE.length]} />
+                    <BarChart title="Issues by discipline" unit="issues" data={chartRows(kpis.issues.byDiscipline, DISCIPLINE_LABELS, 'count')} />
                   </ChartCard>
                 </div>
               )}
@@ -485,13 +432,13 @@ export default function ReportsPage() {
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <ChartCard title="By status">
-                    <StatusPieChart data={countsToChartData(kpis.snagging.byStatus, (k) => SNAG_STATUS_LABELS[k as keyof typeof SNAG_STATUS_LABELS] ?? k)} colorFor={(k) => SNAG_STATUS_COLORS[k] ?? themeColors['ink-500']} />
+                    <BarChart title="Snag items by status" unit="snag items" data={chartRows(kpis.snagging.byStatus, SNAG_STATUS_LABELS, 'natural')} />
                   </ChartCard>
                   <ChartCard title="By priority">
-                    <CountBarChart data={countsToChartData(kpis.snagging.byPriority, (k) => SNAG_PRIORITY_LABELS[k as keyof typeof SNAG_PRIORITY_LABELS] ?? k)} colorFor={(k) => PRIORITY_COLORS[k] ?? themeColors.blueprint} />
+                    <BarChart title="Snag items by priority" unit="snag items" data={chartRows(kpis.snagging.byPriority, SNAG_PRIORITY_LABELS, 'natural')} focalKey="critical" focalTone="danger" />
                   </ChartCard>
                   <ChartCard title="By trade">
-                    <CountBarChart data={countsToChartData(kpis.snagging.byTrade, (k) => k)} colorFor={(_k, i) => SERIES_PALETTE[i % SERIES_PALETTE.length]} />
+                    <BarChart title="Snag items by trade" unit="snag items" data={chartRows(kpis.snagging.byTrade, null, 'count')} />
                   </ChartCard>
                 </div>
               )}
@@ -544,9 +491,9 @@ export default function ReportsPage() {
                 <button
                   type="button"
                   onClick={() => setDrawingListOpen((v) => !v)}
-                  className="panel p-3 text-left hover:bg-base-800/60 transition-colors"
+                  className="panel p-3 text-left hover:bg-base-700 transition-colors"
                 >
-                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">Drawing/Model Updated — Applied</div>
+                  <div className="text-[11px] text-ink-500 mb-0.5 font-medium">Drawing/Model Updated — Applied</div>
                   <div className={`text-xl font-semibold tabular-nums ${kpis.rfis.drawingUpdateStatus.notApplied > 0 ? 'text-warn' : 'text-ink-100'}`}>
                     {kpis.rfis.drawingUpdateStatus.applied} of {kpis.rfis.drawingUpdateStatus.totalRequiringDrawingUpdate}
                   </div>
@@ -560,9 +507,10 @@ export default function ReportsPage() {
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <ChartCard title="By Drawing/Model Updated status">
-                    <CountBarChart
-                      data={countsToChartData(kpis.rfis.byDrawingImpact, (k) => DRAWING_UPDATE_STATUS_LABELS[k as keyof typeof DRAWING_UPDATE_STATUS_LABELS] ?? k)}
-                      colorFor={(_k, i) => SERIES_PALETTE[i % SERIES_PALETTE.length]}
+                    <BarChart
+                      title="RFIs by drawing/model updated status"
+                      unit="RFIs"
+                      data={chartRows(kpis.rfis.byDrawingImpact, DRAWING_UPDATE_STATUS_LABELS, 'natural')}
                     />
                   </ChartCard>
                   <div className="panel p-4">
@@ -646,19 +594,19 @@ export default function ReportsPage() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <div className="panel p-3">
-                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">NCR — Open / Total / Closed</div>
+                  <div className="text-[11px] text-ink-500 mb-0.5 font-medium">NCR — Open / Total / Closed</div>
                   <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.ncrOpen} / {kpis.qaqc.summary.ncrTotal} / {kpis.qaqc.summary.ncrClosed}</div>
                 </div>
                 <div className="panel p-3">
-                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">SOR — Open / Total / Closed</div>
+                  <div className="text-[11px] text-ink-500 mb-0.5 font-medium">SOR — Open / Total / Closed</div>
                   <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.sorOpen} / {kpis.qaqc.summary.sorTotal} / {kpis.qaqc.summary.sorClosed}</div>
                 </div>
                 <div className="panel p-3">
-                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">WIR — Open / Total / Closed</div>
+                  <div className="text-[11px] text-ink-500 mb-0.5 font-medium">WIR — Open / Total / Closed</div>
                   <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.wirOpen} / {kpis.qaqc.summary.wirTotal} / {kpis.qaqc.summary.wirClosed}</div>
                 </div>
                 <div className="panel p-3">
-                  <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">MIR — Open / Total / Closed</div>
+                  <div className="text-[11px] text-ink-500 mb-0.5 font-medium">MIR — Open / Total / Closed</div>
                   <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.mirOpen} / {kpis.qaqc.summary.mirTotal} / {kpis.qaqc.summary.mirClosed}</div>
                 </div>
               </div>
@@ -684,7 +632,7 @@ export default function ReportsPage() {
                       {kpis.qaqc.openList.map((item) => (
                         <tr key={item.id} className="border-b border-base-700/60 last:border-0">
                           <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{item.recordNumber ?? item.id.slice(0, 8)}</td>
-                          <td className="px-4 py-2.5 uppercase text-ink-300">{QAQC_RECORD_TYPE_SHORT_LABELS[item.recordType as QaqcRecordType] ?? item.recordType}</td>
+                          <td className="px-4 py-2.5 text-ink-300 font-medium">{QAQC_RECORD_TYPE_SHORT_LABELS[item.recordType as QaqcRecordType] ?? item.recordType}</td>
                           <td className="px-4 py-2.5">{item.subject}</td>
                           <td className="px-4 py-2.5 text-ink-300">{QAQC_STATUS_LABELS[item.status as QaqcStatus] ?? item.status}</td>
                           <td className="px-4 py-2.5 text-ink-300">{PRIORITY_LABELS[item.priority as keyof typeof PRIORITY_LABELS] ?? item.priority}</td>
@@ -758,49 +706,8 @@ export default function ReportsPage() {
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="panel p-4">
-      <div className="field-label !mb-2">{title}</div>
-      <div style={{ width: '100%', height: 220 }}>{children}</div>
+      <div className="text-sm font-semibold text-ink-100 mb-3">{title}</div>
+      {children}
     </div>
   );
-}
-
-function StatusPieChart({ data, colorFor }: { data: { key: string; name: string; value: number }[]; colorFor: (key: string) => string }) {
-  const themeColors = useThemeColors();
-  if (data.length === 0) return <EmptyChart />;
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <PieChart>
-        <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} paddingAngle={2}>
-          {data.map((entry) => (
-            <Cell key={entry.key} fill={colorFor(entry.key)} stroke={themeColors['base-800']} strokeWidth={1} />
-          ))}
-        </Pie>
-        <Tooltip contentStyle={tooltipStyle(themeColors)} />
-      </PieChart>
-    </ResponsiveContainer>
-  );
-}
-
-function CountBarChart({ data, colorFor }: { data: { key: string; name: string; value: number }[]; colorFor: (key: string, index: number) => string }) {
-  const themeColors = useThemeColors();
-  if (data.length === 0) return <EmptyChart />;
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} margin={{ top: 4, right: 8, bottom: 4, left: -16 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke={themeColors['base-700']} vertical={false} />
-        <XAxis dataKey="name" tick={{ fill: themeColors['ink-500'], fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
-        <YAxis tick={{ fill: themeColors['ink-500'], fontSize: 10 }} allowDecimals={false} />
-        <Tooltip contentStyle={tooltipStyle(themeColors)} cursor={{ fill: 'rgba(79,182,232,0.08)' }} />
-        <Bar dataKey="value" radius={[3, 3, 0, 0]}>
-          {data.map((entry, i) => (
-            <Cell key={entry.key} fill={colorFor(entry.key, i)} />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
-function EmptyChart() {
-  return <div className="h-full flex items-center justify-center text-xs text-ink-500">No data</div>;
 }

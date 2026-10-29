@@ -12,6 +12,7 @@ import {
 } from '../lib/snagging-constants';
 import { SNAG_STATUS_TONE, SNAG_PRIORITY_TONE } from '../lib/status-tone';
 import { StatusBadge } from '../components/ui/Badge';
+import { Listbox } from '../components/ui/Listbox';
 
 export default function SnaggingPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -162,7 +163,7 @@ export default function SnaggingPage() {
 
       <div className="p-6 space-y-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <select
+          <Listbox
             className="field-input w-auto"
             value={buildingFilter}
             onChange={(e) => { setBuildingFilter(e.target.value); setLevelFilter(''); }}
@@ -171,8 +172,8 @@ export default function SnaggingPage() {
             {hierarchy.map((b) => (
               <option key={b.id} value={b.id}>{b.name}</option>
             ))}
-          </select>
-          <select
+          </Listbox>
+          <Listbox
             className="field-input w-auto"
             value={levelFilter}
             onChange={(e) => setLevelFilter(e.target.value)}
@@ -182,13 +183,13 @@ export default function SnaggingPage() {
             {levelOptionsForFilter.map((l) => (
               <option key={l.id} value={l.id}>{l.name}</option>
             ))}
-          </select>
-          <select className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
+          </Listbox>
+          <Listbox className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
             {SNAG_STATUSES.map((s) => (
               <option key={s} value={s}>{SNAG_STATUS_LABELS[s]}</option>
             ))}
-          </select>
+          </Listbox>
 
           {summaryQuery.data && (
             <div className="flex gap-2 text-[10px] font-mono text-ink-500 ml-auto">
@@ -226,7 +227,7 @@ export default function SnaggingPage() {
         <div className="space-y-3">
           {groupedSnags.buildingGroups.map(({ building, levelGroups }) => (
             <details key={building.id} open>
-              <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-500 px-1 py-1.5 hover:text-ink-300">
+              <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-1 py-1.5 hover:text-ink-300">
                 {building.name}
               </summary>
               <div className="panel tick-frame overflow-x-auto mt-1">
@@ -237,7 +238,7 @@ export default function SnaggingPage() {
 
           {groupedSnags.unassigned.length > 0 && (
             <details open>
-              <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-500 px-1 py-1.5 hover:text-ink-300">
+              <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-1 py-1.5 hover:text-ink-300">
                 Unassigned
               </summary>
               <div className="panel tick-frame overflow-x-auto mt-1">
@@ -302,7 +303,7 @@ function SnagTable({
 function SnagRow({ snag: s, onClick }: { snag: SnagListItem; onClick: () => void }) {
   const overdue = isSnagOverdue(s.dueDate, s.status);
   return (
-    <tr onClick={onClick} className="border-b border-base-700/60 last:border-0 hover:bg-base-800/40 cursor-pointer">
+    <tr onClick={onClick} className="border-b border-base-700/60 last:border-0 hover:bg-base-700 cursor-pointer">
       <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{s.snagNumber ?? '—'}</td>
       <td className="px-4 py-2.5">{s.title}</td>
       <td className="px-4 py-2.5 text-ink-300">{s.location ?? '—'}</td>

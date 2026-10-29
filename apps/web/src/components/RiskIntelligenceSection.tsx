@@ -26,6 +26,7 @@ import {
   getMatrixDiscrepancies, getRiskHeatmap, getRiskMovement, RISK_DRIVERS, RISK_DRIVER_LABELS,
   type Risk, type RiskLevel, type RiskStatus, type RiskMatrixLevel, type RiskDriver, type RiskMatrixDiscrepancy,
 } from '../lib/risk.api';
+import { Listbox } from './ui/Listbox';
 
 // HIGH/VERY_HIGH have no dedicated semantic token (the design system only
 // has a 3-step ok/warn/danger scale) -- these two literal oranges sit
@@ -272,7 +273,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
                     </div>
                     <div className="divide-y divide-base-700/60">
                       {(discrepanciesQuery.data ?? []).map(({ risk: r, discrepancy }) => (
-                        <button key={r.id} onClick={() => openRisk(r.id)} className="w-full flex items-center justify-between gap-4 py-2 text-left hover:bg-base-800/60 transition-colors">
+                        <button key={r.id} onClick={() => openRisk(r.id)} className="w-full flex items-center justify-between gap-4 py-2 text-left hover:bg-base-700 transition-colors">
                           <span className="text-sm text-ink-100">{r.title}</span>
                           <span className="text-xs text-ink-500 shrink-0">
                             Human <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[r.humanLevel!] }}>{MATRIX_LEVEL_LABELS[r.humanLevel!]}</span>
@@ -373,7 +374,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
               <SectionHeader title="Top Management Risks" size="sm" />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 {(topQuery.data ?? []).map((r) => (
-                  <button key={r.id} onClick={() => openRisk(r.id)} className="panel tick-frame p-4 text-left hover:bg-base-800/60 transition-colors space-y-2">
+                  <button key={r.id} onClick={() => openRisk(r.id)} className="panel tick-frame p-4 text-left hover:bg-base-700 transition-colors space-y-2">
                     <div className="flex items-center justify-between">
                       <LevelBadge level={r.level} />
                       <span className="text-lg font-semibold tabular-nums text-ink-100">{r.score}</span>
@@ -395,7 +396,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
               <SectionHeader title="Emerging Risks" size="sm" />
               <div className="panel tick-frame divide-y divide-base-700/60">
                 {(emergingQuery.data ?? []).map((r) => (
-                  <button key={r.id} onClick={() => openRisk(r.id)} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-base-800/60 transition-colors">
+                  <button key={r.id} onClick={() => openRisk(r.id)} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-base-700 transition-colors">
                     <div>
                       <div className="text-sm text-ink-100">{r.title}</div>
                       <div className="text-xs text-ink-500 mt-0.5">{r.explanation}</div>
@@ -542,7 +543,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="panel p-3">
               <div className="field-label !mb-1.5">Owner</div>
-              <select
+              <Listbox
                 value={risk.ownerId ?? ''}
                 onChange={(e) => ownerMutation.mutate(e.target.value || null)}
                 disabled={ownerMutation.isPending}
@@ -552,7 +553,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
                 {members.map((m) => (
                   <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
                 ))}
-              </select>
+              </Listbox>
             </div>
             <div className="panel p-3">
               <div className="flex items-center justify-between !mb-1.5">
@@ -614,7 +615,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {(['probability', 'impact', 'exposure', 'dependency', 'urgency', 'recurrence'] as const).map((factor) => (
                 <div key={factor} className="panel p-2 text-center">
-                  <div className="text-[10px] uppercase text-ink-500">{factor}</div>
+                  <div className="text-[11px] text-ink-500 font-medium">{factor}</div>
                   <div className="text-sm font-semibold text-ink-100 tabular-nums">{risk[factor]}</div>
                 </div>
               ))}
@@ -825,22 +826,22 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
       ) : (
         <div className="panel p-3 space-y-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <select value={probability} onChange={(e) => setProbability(e.target.value)} className="field-input !py-1 text-xs">
+            <Listbox value={probability} onChange={(e) => setProbability(e.target.value)} className="field-input !py-1 text-xs">
               <option value="">Probability…</option>
               {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{PROBABILITY_LABELS[n]}</option>)}
-            </select>
-            <select value={impact} onChange={(e) => setImpact(e.target.value)} className="field-input !py-1 text-xs">
+            </Listbox>
+            <Listbox value={impact} onChange={(e) => setImpact(e.target.value)} className="field-input !py-1 text-xs">
               <option value="">Impact…</option>
               {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{IMPACT_LABELS[n]}</option>)}
-            </select>
-            <select value={primaryDriver} onChange={(e) => setPrimaryDriver(e.target.value as RiskDriver)} className="field-input !py-1 text-xs">
+            </Listbox>
+            <Listbox value={primaryDriver} onChange={(e) => setPrimaryDriver(e.target.value as RiskDriver)} className="field-input !py-1 text-xs">
               <option value="">Primary driver…</option>
               {RISK_DRIVERS.map((d) => <option key={d} value={d}>{RISK_DRIVER_LABELS[d]}</option>)}
-            </select>
-            <select value={secondaryDriver} onChange={(e) => setSecondaryDriver(e.target.value as RiskDriver)} className="field-input !py-1 text-xs">
+            </Listbox>
+            <Listbox value={secondaryDriver} onChange={(e) => setSecondaryDriver(e.target.value as RiskDriver)} className="field-input !py-1 text-xs">
               <option value="">Secondary driver (optional)…</option>
               {RISK_DRIVERS.map((d) => <option key={d} value={d}>{RISK_DRIVER_LABELS[d]}</option>)}
-            </select>
+            </Listbox>
           </div>
           <div className="flex items-center gap-3">
             {previewScore !== null ? (

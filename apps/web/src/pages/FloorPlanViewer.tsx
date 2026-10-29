@@ -7,8 +7,9 @@ import { DrawingUploadModal } from '../components/drawing/DrawingUploadModal';
 import { PinPanel } from '../components/drawing/PinPanel';
 import { listDrawings, getDrawing, createPin, getPins, type Drawing, type Pin } from '../lib/drawings.api';
 import { getHierarchy, updateLocation, getMembers, type ProjectHierarchy } from '../lib/projects.api';
-import { Input, Select } from '../components/ui/Field';
+import { Input, SelectField } from '../components/ui/Field';
 import { HelpLink } from '../components/help/HelpLink';
+import { Listbox } from '../components/ui/Listbox';
 
 export default function FloorPlanViewer() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -263,7 +264,7 @@ export default function FloorPlanViewer() {
                 value={titleSearch}
                 onChange={(e) => setTitleSearch(e.target.value)}
               />
-              <Select
+              <SelectField
                 label="Building"
                 value={buildingFilter}
                 onChange={(e) => { setBuildingFilter(e.target.value); setLevelFilter(''); }}
@@ -272,8 +273,8 @@ export default function FloorPlanViewer() {
                 {hierarchy.map((b) => (
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
-              </Select>
-              <Select
+              </SelectField>
+              <SelectField
                 label="Level"
                 value={levelFilter}
                 onChange={(e) => setLevelFilter(e.target.value)}
@@ -283,9 +284,9 @@ export default function FloorPlanViewer() {
                 {levelOptionsForFilter.map((l) => (
                   <option key={l.id} value={l.id}>{l.name}</option>
                 ))}
-              </Select>
+              </SelectField>
               {drawingTypeOptions.length > 0 && (
-                <Select
+                <SelectField
                   label="Drawing type"
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
@@ -294,7 +295,7 @@ export default function FloorPlanViewer() {
                   {drawingTypeOptions.map((t) => (
                     <option key={t} value={t}>{t}</option>
                   ))}
-                </Select>
+                </SelectField>
               )}
             </div>
           )}
@@ -306,7 +307,7 @@ export default function FloorPlanViewer() {
           <div className="space-y-2">
             {groupedDrawings.buildingGroups.map(({ building, levelGroups }) => (
               <details key={building.id} open>
-                <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-500 px-1 py-1 hover:text-ink-300">
+                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-1 py-1 hover:text-ink-300">
                   {building.name}
                 </summary>
                 <div className="pl-1 space-y-2 mt-1">
@@ -328,7 +329,7 @@ export default function FloorPlanViewer() {
 
             {groupedDrawings.unassigned.length > 0 && (
               <details open>
-                <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-500 px-1 py-1 hover:text-ink-300">
+                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-1 py-1 hover:text-ink-300">
                   Unassigned
                 </summary>
                 <div className="pl-1 space-y-1 mt-1">
@@ -366,7 +367,7 @@ export default function FloorPlanViewer() {
               {!movingPin && (
                 <div className="flex items-center gap-1.5 text-xs">
                   <span className="text-ink-500">New pins assign to</span>
-                  <select
+                  <Listbox
                     className="field-input w-auto !py-1 !text-xs"
                     value={newPinAssignee}
                     onChange={(e) => setNewPinAssignee(e.target.value)}
@@ -375,7 +376,7 @@ export default function FloorPlanViewer() {
                     {(membersQuery.data ?? []).map((m) => (
                       <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
                     ))}
-                  </select>
+                  </Listbox>
                 </div>
               )}
               {numPages > 1 && (
@@ -448,7 +449,7 @@ function DrawingRow({ drawing, active, onSelect }: { drawing: Drawing; active: b
     <button
       onClick={() => onSelect(drawing.id)}
       className={`w-full text-left px-3 py-2.5 rounded text-sm transition-colors ${
-        active ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-800'
+        active ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-700'
       }`}
     >
       <div className="font-medium truncate">{drawing.title}</div>

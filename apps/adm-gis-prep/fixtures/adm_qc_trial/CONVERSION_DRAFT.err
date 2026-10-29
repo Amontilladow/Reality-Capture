@@ -1,0 +1,103 @@
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                             Abu Dhabi Municipality            					
+Program: QC
+Version: 2.3
+Description: The QC  tool is developed by ADM to preliminary check drawing files against Building data delivery specifications.
+Supporting AutoCAD DWG version: 2009 onwards
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+- The checks are done in reference to Building Data Delivery Specifications version v4.1
+- For any queries please contact gis.support@adm.abudhabi.ae
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Result of the Quality Check for drawing file:CONVERSION_DRAFT               
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+| Sno |                                  Error Description                                                                                    |Errors Count|            LayerName              |
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+|1    |General error:    Incorrect Drawing File Name                                                                                          |1           |                                   |
+|2    |Logical error:    No Plot or PlotDetail  found                                                                                         |1           |                                   |
+|3    |Logical error:    Mismatch Error Missing Attribute Blocks in Polygons                                                                  |1           |BuildingDetail                     |
+|4    |Logical error:    Mismatch Error Missing Attribute Blocks in Polygons                                                                  |1           |FloorDetail                        |
+|5    |Attribute error:  Polygon with missing Attribute Block found                                                                           |1           |BuildingOutline                    |
+|6    |Attribute error:  Polygon with missing Attribute Block found                                                                           |1           |Floor                              |
+|7    |Attribute error:  Polygon with missing Attribute Block found                                                                           |2           |Space                              |
+|8    |Attribute error:  Missing Value in the Attribute Block Mandatory Filed in BuildingDetail attribute block                               |1           |BuildingDetail                     |
+|9    |Attribute error:  Missing Value in the Attribute Block Mandatory Filed in FloorDetail attribute block                                  |1           |FloorDetail                        |
+|10   |Attribute error:  Incorrect SpaceNumber data entry found in SpaceDetail attribute block                                                |9           |SpaceDetail                        |
+|11   |Attribute error:  Incorrect SpaceNumber data entry found in WindowDetail attribute block                                               |34          |WindowDetail                       |
+|12   |Attribute error:  Incorrect SpaceNumber found in WindowDetail attribute block                                                          |34          |WindowDetail                       |
+|13   |Attribute error:  Incorrect SpaceNumber found in DoorDetail attribute block                                                            |15          |DoorDetail                         |
+|14   |Attribute error:  Incorrect UsageType data entry found in BuildingDetail attribute block                                               |1           |BuildingDetail                     |
+|15   |Attribute error:  Incorrect UsageCategoryType data entry found in BuildingDetail attribute block                                       |1           |BuildingDetail                     |
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+|     |                        Total Errors found                                                                                             |104         |                                   |
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+
+
+
+
+
+
+
+
+
+Status of report : Rejected
+
+
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Key Notes:
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+1.Please make sure that the drawing strictly follow the ADM Building Data Delivery Specifications
+2.Please make sure you have reviewed the DWG templates supplied with the specifications
+3.Please make sure you have reviewed all the attached documents supplied with the specifications
+4.Please do not add any layer or attribute which is not listed in the specifications document
+5.Please ensure attribute blocks are well inside corresponding polygons area
+6.Please ensure the drawing files does not include complex geometries like hatch, arcs, splines, circles etc
+7.Please ensure all mandatory attributes are filled-in correctly
+8.Please make sure that the UnitNumber, SpaceNumber, BuildingNumber and BuildingOthNumber are progressive numbers starting from number 1, 2, 3 and so on.
+9.Please make sure that the valid date format is DD-MON-YYYY ex: 01-jan-2011
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+			Error Description											Marker Color  				      
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+1.Invalid geometries 													  	  Yellow			      
+2.Missing Value in the Attribute Block Mandatory Fields 									  Red					      
+3.Duplicate IDs														  	  Blue				      
+4.Incorrect  IDs														  Green					      
+5.Inconsistent Numbers  between two attribute blocks									  	  Magenta			      
+6.Incorrect data entry													  	  Cyan				      
+7.Snapping Errors													  	  White				      
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

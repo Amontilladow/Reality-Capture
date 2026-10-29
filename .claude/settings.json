@@ -20,5 +20,16 @@
         ]
       }
     ]
+  },
+  "extraKnownMarketplaces": {
+    "ux-ui-agent-skills": {
+      "source": {
+        "source": "github",
+        "repo": "plugin87/ux-ui-agent-skills"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "ux-ui-agent-skills@ux-ui-agent-skills": true
   }
 }

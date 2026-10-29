@@ -54,7 +54,7 @@ export function ElementList({
             key={el.id}
             type="button"
             onClick={() => onSelect(el)}
-            className={`block w-full truncate px-3 py-2 text-left text-sm hover:bg-base-800 ${
+            className={`block w-full truncate px-3 py-2 text-left text-sm hover:bg-base-700 ${
               selectedGuid === el.ifcGuid ? 'bg-blueprint-muted text-blueprint' : 'text-ink-100'
             }`}
           >

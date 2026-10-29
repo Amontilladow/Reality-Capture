@@ -27,7 +27,7 @@ function NodeRow({ node, depth, selectedId, onSelect }: {
   return (
     <div>
       <div
-        className={`flex items-center gap-1 rounded px-2 py-1 text-sm cursor-pointer hover:bg-base-800 ${
+        className={`flex items-center gap-1 rounded px-2 py-1 text-sm cursor-pointer hover:bg-base-700 ${
           selectedId === node.id ? 'bg-blueprint-muted text-blueprint' : ''
         }`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}

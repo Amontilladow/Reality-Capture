@@ -7,6 +7,7 @@ import {
   hasActiveFilters, riskRef, sortRegister, RISK_DISCIPLINE_LABELS,
   type RegisterFilters, type RegisterSortField,
 } from './riskDisplay';
+import { Listbox } from '../ui/Listbox';
 
 const HIGH_HEX = '#FB923C';
 const LEVEL_LABELS: Record<RiskLevel, string> = { LOW: 'Low', MODERATE: 'Moderate', HIGH: 'High', CRITICAL: 'Critical' };
@@ -82,31 +83,35 @@ export function RiskRegisterTable({ risks, members, ownerNames, filters, onFilte
           onChange={(e) => set('search', e.target.value)}
           className="field-input w-56 text-xs !py-1.5"
         />
-        <select
+        <Listbox
+          aria-label="Filter by severity"
           value={filters.levels[0] ?? ''}
           onChange={(e) => set('levels', e.target.value ? [e.target.value as RiskLevel] : [])}
           className="field-input w-auto text-xs !py-1.5"
         >
           <option value="">All severities</option>
           {(['CRITICAL', 'HIGH', 'MODERATE', 'LOW'] as RiskLevel[]).map((l) => <option key={l} value={l}>{LEVEL_LABELS[l]}</option>)}
-        </select>
-        <select
+        </Listbox>
+        <Listbox
+          aria-label="Filter by discipline"
           value={filters.discipline}
           onChange={(e) => set('discipline', e.target.value)}
           className="field-input w-auto text-xs !py-1.5"
         >
           <option value="">All disciplines</option>
           {disciplinesPresent.map((d) => <option key={d} value={d}>{disciplineLabel(d)}</option>)}
-        </select>
-        <select
+        </Listbox>
+        <Listbox
+          aria-label="Filter by status"
           value={filters.statuses[0] ?? ''}
           onChange={(e) => set('statuses', e.target.value ? [e.target.value as RiskStatus] : [])}
           className="field-input w-auto text-xs !py-1.5"
         >
           <option value="">All statuses</option>
           {(Object.keys(STATUS_LABELS) as RiskStatus[]).map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-        </select>
-        <select
+        </Listbox>
+        <Listbox
+          aria-label="Filter by owner"
           value={filters.owner}
           onChange={(e) => set('owner', e.target.value)}
           className="field-input w-auto text-xs !py-1.5"
@@ -114,7 +119,7 @@ export function RiskRegisterTable({ risks, members, ownerNames, filters, onFilte
           <option value="">All owners</option>
           <option value="UNASSIGNED">Unassigned</option>
           {members.map((m) => <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>)}
-        </select>
+        </Listbox>
         <label className="flex items-center gap-1.5 text-xs text-ink-300 cursor-pointer select-none">
           <input type="checkbox" checked={filters.overdueOnly} onChange={(e) => set('overdueOnly', e.target.checked)} />
           Overdue only
@@ -149,7 +154,7 @@ export function RiskRegisterTable({ risks, members, ownerNames, filters, onFilte
               {pageRows.map((r) => {
                 const tone = dueDateTone(r);
                 return (
-                  <tr key={r.id} onClick={() => onSelectRisk(r.id)} className="border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-800/60">
+                  <tr key={r.id} onClick={() => onSelectRisk(r.id)} className="border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-700">
                     <td className="px-3 py-2.5 text-xs font-mono text-ink-500 whitespace-nowrap">{riskRef(r)}</td>
                     <td className="px-3 py-2.5 max-w-xs">
                       <div className="text-ink-100 truncate">{r.title}</div>

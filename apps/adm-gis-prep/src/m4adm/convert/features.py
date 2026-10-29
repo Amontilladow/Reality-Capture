@@ -51,6 +51,8 @@ class Feature:
     attributes: dict[str, AttrValue] = field(default_factory=dict)
     block: str | None = None       # Detail block name
     room: str | None = None        # region id, for spaces
+    link: str | None = None        # region id of the space a door/window belongs to
+    source_number: str | None = None   # room number printed in the source (e.g. "01-04"), for spaces
 
     @property
     def exported(self) -> bool:
@@ -77,16 +79,49 @@ def _user(attrs: dict[str, AttrValue], tag: str, value: str, note: str = "job se
         attrs[tag] = AttrValue(str(value), USER, note)
 
 
-def _space_number(numbers: list[str]) -> AttrValue:
-    """'01-04' -> '4' (the part after the floor prefix); confirmed by the engineer, never assumed."""
-    if len(numbers) != 1:
-        return AttrValue("", MISSING, "no single room number in the region" if numbers == [] else
-                         "several room numbers in one region: " + ", ".join(numbers))
-    m = re.search(r"(\d+)[A-Z]?\s*$", numbers[0])
-    if not m:
-        return AttrValue("", MISSING, f"room number '{numbers[0]}' has no numeric part")
-    return AttrValue(str(int(m.group(1))), PROPOSED, f"from source room number '{numbers[0]}' (part after the "
-                     "floor prefix); confirm against the project's space numbering")
+def _source_order(number: str | None) -> tuple:
+    """Sort key: spaces with a source room number first, in that number's order ('01-02' < '01-10')."""
+    if not number:
+        return (1, ())
+    return (0, tuple(int(x) for x in re.findall(r"\d+", number)))
+
+
+def number_spaces(feats: list[Feature]) -> list[str]:
+    """Give every exported space a SpaceNumber 1, 2, 3 ... with no gaps or blanks (official QC key note 8), then
+    point each door/window at its room's number. Numbers an engineer entered (USER) are kept and skipped.
+
+    Order: rooms with a source room number by that number, then the others by decreasing area. Returns notes for
+    the report (e.g. links to rooms that are not exported)."""
+    spaces = [f for f in feats if f.layer == "Space" and f.exported]
+    taken = {f.attributes["SPACENUMBER"].value for f in spaces
+             if f.attributes.get("SPACENUMBER") and f.attributes["SPACENUMBER"].provenance == USER}
+    counter = 0
+    for f in sorted(spaces, key=lambda f: (_source_order(f.source_number), -f.poly.area, f.id)):
+        if f.attributes["SPACENUMBER"].provenance == USER:
+            continue
+        counter += 1
+        while str(counter) in taken:
+            counter += 1
+        note = "progressive numbering 1, 2, 3 ... (official QC key note 8)"
+        if f.source_number:
+            note += f"; source room number {f.source_number}"
+        f.attributes["SPACENUMBER"] = AttrValue(str(counter), DERIVED, note)
+    by_room = {f.room: f for f in spaces}
+    notes = []
+    for f in feats:
+        if f.layer not in ("Door", "Window") or not f.exported or f.attributes.get("SPACENUMBER", AttrValue("", "")) \
+                .provenance == USER:
+            continue
+        room = by_room.get(f.link)
+        if room is None:
+            f.attributes["SPACENUMBER"] = AttrValue("", MISSING, "the space this opening belongs to was not "
+                                                    "generated or was rejected")
+            notes.append(f"{f.id}: no exported space to link to")
+            continue
+        f.attributes["SPACENUMBER"] = AttrValue(room.attributes["SPACENUMBER"].value, PROPOSED,
+                                                f"{'the smaller room the opening serves' if f.layer == 'Door' else 'nearest room'}"
+                                                f" ({room.id}) - confirm")
+    return notes
 
 
 def build_features(model: SourceModel, det: Detection, manifest: Manifest, settings: ConversionSettings
@@ -133,8 +168,14 @@ def build_features(model: SourceModel, det: Detection, manifest: Manifest, setti
         feats.append(Feature("UNIT", "Unit", NOT_GENERATED,
                              ["units cannot be derived from walls; declare a single-unit floor (unit number) or "
                               "draw units in CAD"], None, [], {}, "UnitDetail"))
-    feats.append(Feature("BUILDING_ROOF", "BuildingRoof", NOT_GENERATED,
-                         ["the roof outline comes from the roof plan, not from a floor plan"], None, [], {},
+    roof_attrs = _blank(manifest, "BuildingRoofDetail")
+    common(roof_attrs)
+    _user(roof_attrs, "BUILDINGHEIGHT", settings.building_height)
+    # Every DRM-accepted floor file repeats the BuildingOutline as its BuildingRoof polygon (KHALIFA CITY G/F1/F2/F3;
+    # the official QC rejects a floor without one, trial 02). Kept identical to the outline after topology.
+    feats.append(Feature("BUILDING_ROOF", "BuildingRoof", REVIEW if env is not None else UNRESOLVED,
+                         ["drawn on the building outline, as in the DRM-accepted drawings - confirm against the roof "
+                          "plan"] if env is not None else [det.envelope_reason], env, [], roof_attrs,
                          "BuildingRoofDetail"))
     feats.append(Feature("PLOT", "Plot", NOT_GENERATED,
                          ["the plot boundary comes from the affection / site plan, not from a floor plan"], None, [],
@@ -150,9 +191,9 @@ def build_features(model: SourceModel, det: Detection, manifest: Manifest, setti
                 attrs["SPACEUSAGE"] = AttrValue(r.names[0], SOURCE, "room name text inside the region")
             elif r.names:
                 attrs["SPACEUSAGE"] = AttrValue("", MISSING, "several names: " + ", ".join(r.names))
-            attrs["SPACENUMBER"] = _space_number(r.numbers)
         feats.append(Feature(f"SPACE_{r.id}", "Space", r.status, list(r.reasons), r.poly, list(r.label_handles),
-                             attrs, "SpaceDetail", room=r.id))
+                             attrs, "SpaceDetail", room=r.id,
+                             source_number=r.numbers[0] if len(r.numbers) == 1 else None))
     for lab in det.unplaced_labels:
         feats.append(Feature(f"LABEL_{lab.handles[0]}", "Space", UNRESOLVED,
                              [f"room label '{lab.name}' is not inside any enclosed region inside the floor outline "
@@ -169,11 +210,7 @@ def build_features(model: SourceModel, det: Detection, manifest: Manifest, setti
         attrs = _blank(manifest, "DoorDetail")
         common(attrs)
         adj = [r for r in rooms if r.poly.distance(quad) < 0.05]
-        if adj:
-            serve = min(adj, key=lambda r: r.poly.area)
-            num = _space_number(serve.numbers)
-            attrs["SPACENUMBER"] = AttrValue(num.value, PROPOSED if num.value else MISSING,
-                                             f"the smaller room the opening serves ({serve.id})")
+        link = min(adj, key=lambda r: r.poly.area).id if adj else None
         door_blocks = [ins for ins in model.inserts if match(ins.layer, settings.roles["door"])
                        and any(g.distance(quad) < 0.3 for g in ins.geom)]
         width = max(c.width for c in group) + settings.tolerances.gap_close   # closures run between buffered walls
@@ -182,7 +219,7 @@ def build_features(model: SourceModel, det: Detection, manifest: Manifest, setti
         if door_blocks:
             reasons.append("door block(s) at the opening: " + ", ".join(sorted({d.block for d in door_blocks}))[:200])
         feats.append(Feature(f"DOOR_{n_door:03d}", "Door", REVIEW, reasons, quad,
-                             [d.source_handle for d in door_blocks], attrs, "DoorDetail"))
+                             [d.source_handle for d in door_blocks], attrs, "DoorDetail", link=link))
 
     # ---- Windows: window-role block references inside the floor outline.
     n_win = 0
@@ -199,16 +236,12 @@ def build_features(model: SourceModel, det: Detection, manifest: Manifest, setti
         attrs = _blank(manifest, "WindowDetail")
         common(attrs)
         adj = [r for r in rooms if r.poly.distance(rect) < 0.6]
-        if adj:
-            near = min(adj, key=lambda r: r.poly.distance(rect))
-            num = _space_number(near.numbers)
-            attrs["SPACENUMBER"] = AttrValue(num.value, PROPOSED if num.value else MISSING,
-                                             f"nearest room {near.id}")
+        link = min(adj, key=lambda r: r.poly.distance(rect)).id if adj else None
         if "GLASS" in (ins.block or "").upper() or "GLAZ" in (ins.block or "").upper():
             attrs["TYPE"] = AttrValue("glass", DERIVED, f"source block name '{ins.block[:60]}'")
         feats.append(Feature(f"WINDOW_{n_win:03d}", "Window", HIGH,
                              [f"window block on layer {ins.layer} ({ins.block[:60]}); outline = its bounding rectangle"],
-                             rect, [ins.source_handle], attrs, "WindowDetail"))
+                             rect, [ins.source_handle], attrs, "WindowDetail", link=link))
     return feats
 
 
@@ -337,4 +370,5 @@ def title_values(manifest: Manifest, settings: ConversionSettings, stem: str | N
 
 
 __all__ = ["Feature", "AttrValue", "build_features", "apply_decisions", "missing_mandatory", "title_values",
+           "number_spaces",
            "SOURCE", "DERIVED", "PROPOSED", "USER", "MISSING", "ACCEPTED", "REJECTED"]

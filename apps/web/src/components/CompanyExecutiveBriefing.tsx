@@ -113,9 +113,9 @@ export function CompanyExecutiveBriefing() {
             <Link
               key={row.projectId}
               to={`/projects/${row.projectId}`}
-              className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-base-800/60 transition-colors"
+              className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-base-900 transition-colors"
             >
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
                 <StatusBadge tone={SEVERITY_TONE[row.topSignal.severity]} label={SEVERITY_LABEL[row.topSignal.severity]} />
                 <span className="text-sm text-ink-100 font-medium shrink-0">{row.projectName}</span>
                 <span className="text-sm text-ink-300 truncate">{row.topSignal.label}</span>

@@ -9,6 +9,7 @@ import { getProject, getMembers } from '../lib/projects.api';
 import {
   QA_STATUSES, QA_STATUS_LABELS, QA_STATUS_BADGE_CLASS, formatDate,
 } from '../lib/qa-constants';
+import { Listbox } from '../components/ui/Listbox';
 
 export default function QaInspectionsPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -61,12 +62,12 @@ export default function QaInspectionsPage() {
 
       <div className="p-6 space-y-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <select className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <Listbox className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
             {QA_STATUSES.map((s) => (
               <option key={s} value={s}>{QA_STATUS_LABELS[s]}</option>
             ))}
-          </select>
+          </Listbox>
 
           {summaryQuery.data && (
             <div className="flex gap-2 text-[10px] font-mono text-ink-500 ml-auto">
@@ -108,7 +109,7 @@ export default function QaInspectionsPage() {
                   <tr
                     key={i.id}
                     onClick={() => setSelectedId(i.id)}
-                    className="border-b border-base-700/60 last:border-0 hover:bg-base-800/40 cursor-pointer"
+                    className="border-b border-base-700/60 last:border-0 hover:bg-base-700 cursor-pointer"
                   >
                     <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{i.inspectionNumber ?? '—'}</td>
                     <td className="px-4 py-2.5">{i.title}</td>

@@ -11,6 +11,7 @@ import { listUsers, type CompanyUser } from '../lib/users.api';
 import { listProjects } from '../lib/projects.api';
 import { EmailHistoryList } from '../components/EmailHistoryList';
 import { useAuthStore } from '../store/auth.store';
+import { Listbox } from '../components/ui/Listbox';
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -169,19 +170,19 @@ export default function MessagesPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setTab('inbox')}
-            className={`px-3 py-1.5 rounded text-sm ${tab === 'inbox' ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-800'}`}
+            className={`px-3 py-1.5 rounded text-sm ${tab === 'inbox' ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-700'}`}
           >
             Inbox
           </button>
           <button
             onClick={() => setTab('sent')}
-            className={`px-3 py-1.5 rounded text-sm ${tab === 'sent' ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-800'}`}
+            className={`px-3 py-1.5 rounded text-sm ${tab === 'sent' ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-700'}`}
           >
             Sent
           </button>
           <button
             onClick={() => setTab('email')}
-            className={`px-3 py-1.5 rounded text-sm ${tab === 'email' ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-800'}`}
+            className={`px-3 py-1.5 rounded text-sm ${tab === 'email' ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-700'}`}
           >
             Email History
           </button>
@@ -189,7 +190,7 @@ export default function MessagesPage() {
 
         {tab === 'email' ? (
           <div className="space-y-4">
-            <select
+            <Listbox
               className="field-input w-full max-w-sm"
               value={emailHistoryProjectId}
               onChange={(e) => setEmailHistoryProjectId(e.target.value)}
@@ -200,7 +201,7 @@ export default function MessagesPage() {
                   {p.name}
                 </option>
               ))}
-            </select>
+            </Listbox>
 
             {projectsQuery.isLoading && <div className="text-sm text-ink-500">Loading projects…</div>}
 
@@ -230,7 +231,7 @@ export default function MessagesPage() {
                   <button
                     key={t.threadId}
                     onClick={() => openThread(t)}
-                    className={`block w-full text-left px-4 py-3 border-b border-base-700/60 last:border-0 hover:bg-base-800/40 transition-colors ${
+                    className={`block w-full text-left px-4 py-3 border-b border-base-700/60 last:border-0 hover:bg-base-700 transition-colors ${
                       t.unread ? 'bg-blueprint/5' : ''
                     }`}
                   >
@@ -310,7 +311,7 @@ function ComposeModal({ open, onClose }: { open: boolean; onClose: () => void })
             {candidates.map((u) => (
               <label
                 key={u.id}
-                className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-base-800 cursor-pointer text-sm"
+                className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-base-700 cursor-pointer text-sm"
               >
                 <input
                   type="checkbox"
