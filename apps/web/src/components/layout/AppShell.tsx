@@ -11,6 +11,7 @@ import { ChatWidget } from '../chat/ChatWidget';
 import { OnboardingFlow } from '../onboarding/OnboardingFlow';
 import { LogoMark } from '../ui/LogoMark';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { EmailLauncherButton } from '../ui/EmailLauncherButton';
 import { clearAllOfflinePackages } from '../../lib/site-drawings-offline';
 
 interface NavItem {
@@ -169,6 +170,7 @@ export function AppShell() {
         </button>
         <LogoMark className="w-5 h-5" />
         <div className="text-sm font-semibold tracking-tight flex-1">Reality Capture</div>
+        <EmailLauncherButton />
         <ThemeToggle />
       </div>
 
@@ -185,9 +187,10 @@ export function AppShell() {
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Brand on one line with the two inbox bells; the theme toggle
-            moved to the account footer, where it no longer squeezes the
-            product name into a three-line wrap. */}
+        {/* Brand on one line with the two inbox bells and the email
+            launcher; the theme toggle moved to the account footer, where
+            it no longer squeezes the product name into a three-line
+            wrap. */}
         <div className="h-14 flex items-center gap-2.5 pl-4 pr-2 border-b border-base-600">
           <LogoMark className="w-6 h-6 shrink-0" />
           <div className="leading-tight flex-1 min-w-0">
@@ -196,6 +199,7 @@ export function AppShell() {
           </div>
           <NotificationBell />
           <MessagesBell />
+          <EmailLauncherButton />
           <button
             onClick={() => setMobileNavOpen(false)}
             aria-label="Close navigation menu"
