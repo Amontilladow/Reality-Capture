@@ -41,6 +41,7 @@ export interface GisConvertSettings {
   single_unit_number?: string;
   floor_height?: string;
   building_number_of_floors?: string;
+  building_height?: string;
   building_usage_category?: string;
   building_usage_type?: string;
   title_values?: Record<string, string>;

@@ -168,8 +168,14 @@ def build_features(model: SourceModel, det: Detection, manifest: Manifest, setti
         feats.append(Feature("UNIT", "Unit", NOT_GENERATED,
                              ["units cannot be derived from walls; declare a single-unit floor (unit number) or "
                               "draw units in CAD"], None, [], {}, "UnitDetail"))
-    feats.append(Feature("BUILDING_ROOF", "BuildingRoof", NOT_GENERATED,
-                         ["the roof outline comes from the roof plan, not from a floor plan"], None, [], {},
+    roof_attrs = _blank(manifest, "BuildingRoofDetail")
+    common(roof_attrs)
+    _user(roof_attrs, "BUILDINGHEIGHT", settings.building_height)
+    # Every DRM-accepted floor file repeats the BuildingOutline as its BuildingRoof polygon (KHALIFA CITY G/F1/F2/F3;
+    # the official QC rejects a floor without one, trial 02). Kept identical to the outline after topology.
+    feats.append(Feature("BUILDING_ROOF", "BuildingRoof", REVIEW if env is not None else UNRESOLVED,
+                         ["drawn on the building outline, as in the DRM-accepted drawings - confirm against the roof "
+                          "plan"] if env is not None else [det.envelope_reason], env, [], roof_attrs,
                          "BuildingRoofDetail"))
     feats.append(Feature("PLOT", "Plot", NOT_GENERATED,
                          ["the plot boundary comes from the affection / site plan, not from a floor plan"], None, [],

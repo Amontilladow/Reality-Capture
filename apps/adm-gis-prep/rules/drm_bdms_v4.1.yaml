@@ -113,9 +113,14 @@ domains:
   drawing_type: [As Planned, As Built, Modification]
   unit_classification_suggested: [Studio Flat, Bungalow, Duplex, Penthouse, Apartment, Guest House, Shop, Office, Building, Business Centre, Hall, Hotel, Restaurant, Cinema, Showroom, Warehouse]
 
+# template_order: the attribute order of each official template block, read from the DRM-accepted
+# KHALIFA CITY-SE45_01-C8-1-{G,F1,F2,F3} drawings (identical in all four). The official QC reads attributes by
+# position: trial 02 (docs/ADM_TRIAL_02.md) shows a draft in spec-table order read wrongly. Converted drafts are
+# written in this order and DRM-ATT-52 checks it.
 blocks:
   BuildingDetail:
     ref: {page: "19-20", section: "1.4.6.1.1"}
+    template_order: [SECTORNUMBER, PLOTNUMBER, USAGETYPE, USAGECATEGORYTYPE, BUILDINGNUMOFFLOORS, BUILDINGPOPNAMEARA, BUILDINGPOPNAMEENG, BUILDINGNAMEARABIC, BUILDINGNAMEENGLISH, BUILDINGNUMBER]   # as stored in the DRM-accepted KHALIFA CITY drawings
     attributes:
       - {tag: BuildingNumber, type: integer, mandatory: true, max_length: 10}
       - {tag: BuildingNameEnglish, type: character, mandatory: false, max_length: 200}
@@ -129,12 +134,14 @@ blocks:
       - {tag: SectorNumber, type: character, mandatory: true, max_length: 50}
   PlotDetail:
     ref: {page: "20-21", section: "1.4.6.1.2"}
+    template_order: [ZONENAME, SECTORNUMBER, PLOTNUMBER]   # as stored in the DRM-accepted KHALIFA CITY drawings
     attributes:
       - {tag: PlotNumber, type: character, mandatory: true, max_length: 25}
       - {tag: SectorNumber, type: character, mandatory: true, max_length: 100}
       - {tag: ZoneName, type: character, mandatory: true, max_length: 200}
   FloorDetail:
     ref: {page: 21, section: "1.4.6.1.3"}
+    template_order: [FLOORHEIGHT, BUILDINGNUMBER, FLOORNUMBER]   # as stored in the DRM-accepted KHALIFA CITY drawings
     attributes:
       - {tag: FloorNumber, type: character, mandatory: true, max_length: 10}
       - {tag: BuildingNumber, type: integer, mandatory: true, max_length: 10}
@@ -142,11 +149,13 @@ blocks:
   # Not described in SPEC; structure from the official template blocks as found in every SAMPLE.
   BuildingRoofDetail:
     ref: {page: 17, section: "1.4.6 (template)"}
+    template_order: [BUILDINGHEIGHT, BUILDINGNUMBER]   # as stored in the DRM-accepted KHALIFA CITY drawings
     attributes:
       - {tag: BuildingNumber, type: integer, mandatory: true, max_length: 10}
       - {tag: BuildingHeight, type: float, mandatory: false}
   UnitDetail:
     ref: {page: "21-22", section: "1.4.6.1.4"}
+    template_order: [UNITOWNERPASSPORT, UNITOWNERNATIOANLITY, UNITOWNERNAME, UNITUSAGETYPE, UNITBALCONIESAREA, UNITNUMBATHROOM, UNITNUMBEDROOM, UNITAREA, UNITCATEGORY, UNITCLASSIFICATION, UNITTYPE, FLOORNUMBER, UNITNUMBER]   # as stored in the DRM-accepted KHALIFA CITY drawings
     attributes:
       - {tag: UnitNumber, type: integer, mandatory: true, max_length: 10}
       - {tag: FloorNumber, type: character, mandatory: true, max_length: 10}
@@ -163,6 +172,7 @@ blocks:
       - {tag: UnitOwnerPassport, type: character, mandatory: true, max_length: 25}
   SpaceDetail:
     ref: {page: "22-23", section: "1.4.6.1.5"}
+    template_order: [SPACEUSAGE, FLOORNUMBER, UNITNUMBER, SPACENUMBER]   # as stored in the DRM-accepted KHALIFA CITY drawings
     attributes:
       - {tag: SpaceNumber, type: integer, mandatory: true, max_length: 10}
       - {tag: UnitNumber, type: integer, mandatory: false, max_length: 10}
@@ -170,6 +180,7 @@ blocks:
       - {tag: Spaceusage, type: character, mandatory: true, max_length: 50}
   DoorDetail:
     ref: {page: 23, section: "1.4.6.1.6"}
+    template_order: [TYPE, FLOORNUMBER, UNITNUMBER, SPACENUMBER]   # as stored in the DRM-accepted KHALIFA CITY drawings
     attributes:
       - {tag: SpaceNumber, type: integer, mandatory: true, max_length: 10}
       - {tag: UnitNumber, type: integer, mandatory: false, max_length: 10}
@@ -177,6 +188,7 @@ blocks:
       - {tag: Type, type: character, mandatory: false, max_length: 50}
   WindowDetail:
     ref: {page: 23, section: "1.4.6.1.7"}
+    template_order: [TYPE, FLOORNUMBER, UNITNUMBER, SPACENUMBER]   # as stored in the DRM-accepted KHALIFA CITY drawings
     attributes:
       - {tag: SpaceNumber, type: integer, mandatory: true, max_length: 10}
       - {tag: UnitNumber, type: integer, mandatory: false, max_length: 10}
@@ -196,6 +208,7 @@ blocks:
       - {tag: LinkToSpaceNumber, type: character, mandatory: false}
   ProjectDetail:
     ref: {page: 15, section: "1.4.5"}
+    template_order: [DEVELOPERNAME, PROPERTYNAME, UNIQUEBUILDINGNUMBER, BUILDINGNAME]   # as stored in the DRM-accepted KHALIFA CITY drawings
     attributes:
       - {tag: DeveloperName, type: character, mandatory: true}
       - {tag: PropertyName, type: character, mandatory: false}
@@ -203,6 +216,7 @@ blocks:
       - {tag: BuildingName, type: character, mandatory: false}
   DrawingDetail:
     ref: {page: "15-16", section: "1.4.5"}
+    template_order: [DRAWINGSCALE, DATEOFDRAWING, DRAWINGTYPE, DRAWINGTITLE]   # as stored in the DRM-accepted KHALIFA CITY drawings
     attributes:
       - {tag: DrawingTitle, type: character, mandatory: true}
       - {tag: DrawingType, type: character, mandatory: true, domain: drawing_type}
@@ -512,6 +526,15 @@ rules:
     check: bdms.progressive_spaces
     implementation: IMPLEMENTED
     limitation: "Key note 8 asks for progressive numbers, but the DRM-accepted KHALIFA CITY-...-G skips 5, 20 and 22 and passed with 0 errors, and the spec only requires unique positive integers. Reported as a notification, never an error (DISCREPANCIES_BDMS B-16)."
+  - id: DRM-ATT-52
+    title: Detail block attributes are stored in the official template order
+    qc_error: null
+    evidence: ENGINEERING_CHECK
+    ref: {page: "-", section: "DRM-accepted KHALIFA CITY drawings; ADM QC trial 02"}
+    severity: ERROR
+    check: bdms.attribute_order
+    implementation: IMPLEMENTED
+    limitation: "The official QC has no row of its own for this: a block in another order shows up as other rows (Inconsistent Building Number, Incorrect FloorHeight / SpaceNumber data entry ...), because the tool reads attributes by position. The order is taken from the accepted drawings (block template_order in this manifest); SharedSpaceDetail has no accepted sample and is not checked."
   - id: DRM-GEO-01
     title: No zero-area polygons
     qc_error: Zero area Polygon found

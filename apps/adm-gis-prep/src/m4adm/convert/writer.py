@@ -43,8 +43,8 @@ def _blocks_from_manifest(doc: Drawing, manifest: Manifest, names: set[str]) -> 
     for name in sorted(names):
         spec = manifest.blocks[name]
         b = doc.blocks.new(name)
-        for i, a in enumerate(spec.attributes):
-            b.add_attdef(a.tag.upper(), (0, -0.3 * (i + 1)), dxfattribs={"height": 0.2})
+        for i, tag in enumerate(spec.insert_order):     # the official QC reads attributes by position
+            b.add_attdef(tag.upper(), (0, -0.3 * (i + 1)), dxfattribs={"height": 0.2})
 
 
 def _blocks_from_template(doc: Drawing, template: Path, names: set[str]) -> list[str]:
