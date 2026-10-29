@@ -79,9 +79,10 @@ export class ProviderFactory implements OnModuleInit {
     if (requested === 'gemini') return this.buildGemini(geminiKey);
     if (requested === 'anthropic') return this.buildAnthropic(anthropicKey);
     if (requested === 'openai') return this.buildOpenAI(openaiKey);
+    if (requested === 'custom_openai_compatible') return this.buildCustomOpenAICompatible();
 
     if (requested !== 'auto') {
-      throw new Error(`Unknown AI_PROVIDER "${requested}" -- expected "gemini", "anthropic", "openai", or "auto".`);
+      throw new Error(`Unknown AI_PROVIDER "${requested}" -- expected "gemini", "anthropic", "openai", "custom_openai_compatible", or "auto".`);
     }
 
     if (geminiKey) return this.buildGemini(geminiKey);
@@ -111,5 +112,15 @@ export class ProviderFactory implements OnModuleInit {
   private buildOpenAI(apiKey: string | undefined): AIProvider {
     if (!apiKey) throw new Error('AI_PROVIDER=openai but OPENAI_API_KEY is not set.');
     return new OpenAICompatibleProvider(apiKey, this.config.get<string>('ai.openai.model')!, 'openai');
+  }
+
+  private buildCustomOpenAICompatible(): AIProvider {
+    const apiKey = this.config.get<string>('ai.customOpenAICompatible.apiKey');
+    const baseUrl = this.config.get<string>('ai.customOpenAICompatible.baseUrl');
+    if (!apiKey) throw new Error('AI_PROVIDER=custom_openai_compatible but CUSTOM_OPENAI_API_KEY is not set.');
+    if (!baseUrl) throw new Error('AI_PROVIDER=custom_openai_compatible but CUSTOM_OPENAI_BASE_URL is not set.');
+    return new OpenAICompatibleProvider(
+      apiKey, this.config.get<string>('ai.customOpenAICompatible.model')!, 'custom_openai_compatible', baseUrl,
+    );
   }
 }
