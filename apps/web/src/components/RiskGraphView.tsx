@@ -10,13 +10,8 @@ import { getRiskGraph, getGraphNodeDetail, type RiskGraphNode, type RiskLevel } 
 import { useThemeColors, type ThemeColors } from '../lib/useThemeColors';
 import { Listbox } from './ui/Listbox';
 
-// HIGH has no dedicated semantic token (see RiskIntelligenceSection.tsx's
-// identical reasoning) -- a fixed mid-brightness orange that already reads
-// clearly on both a light and a dark canvas.
-const HIGH_HEX = '#FB923C';
-
 function riskLevelColors(colors: ThemeColors): Record<RiskLevel, string> {
-  return { LOW: colors.ok, MODERATE: colors.warn, HIGH: HIGH_HEX, CRITICAL: colors.danger };
+  return { LOW: colors.ok, MODERATE: colors.warn, HIGH: colors.high, CRITICAL: colors.danger };
 }
 
 // Neutral per-node-type colors for nodes with no associated risk (structural
@@ -237,7 +232,7 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
 
         <div className="flex items-center gap-4 text-xs text-ink-500 flex-wrap">
           <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.danger }} /> Critical</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: HIGH_HEX }} /> High</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.high }} /> High</span>
           <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.warn }} /> Moderate</span>
           <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.ok }} /> Low</span>
           <span className="flex items-center gap-1"><span className="inline-block w-4 border-t border-ink-500" /> Explicit relationship</span>

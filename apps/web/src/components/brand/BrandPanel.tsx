@@ -1,4 +1,5 @@
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { LiquidLogo } from './liquid/LiquidLogo';
 
 // The brand visual shared by the auth screens and the public landing page:
 // the official artwork (public/branding/reality-capture-hero.webp) on its
@@ -10,11 +11,16 @@ import { ThemeToggle } from '../ui/ThemeToggle';
 export function BrandPanel({ className = '', showThemeToggle = true }: { className?: string; showThemeToggle?: boolean }) {
   return (
     <div className={`relative rounded-[2.5rem] overflow-hidden bg-black ${className}`}>
-      <img
-        src="/branding/reality-capture-hero.webp"
-        alt="Reality Capture by EngineeringOS: capture, analyze, automate, single source of truth"
-        className="absolute inset-x-0 top-1/2 -translate-y-1/2 w-full h-auto [mask-image:linear-gradient(to_bottom,transparent,black_18%,black_82%,transparent)]"
-      />
+      {/* The ribbon R as liquid metal (paper-design/liquid-logo shader), with
+          the wordmark and tagline set as real text beneath it. */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center">
+        <LiquidLogo highlight="--rc-metal-hi" shadow="--rc-metal-lo" className="w-56 h-56 sm:w-64 sm:h-64" label="Reality Capture logo" />
+        <p className="mt-2 text-2xl sm:text-3xl tracking-[0.35em] text-white">
+          <span className="font-light">REALITY</span> <span className="font-semibold">CAPTURE</span>
+        </p>
+        <p className="mt-2 text-sm tracking-[0.2em] text-white/70">by EngineeringOS</p>
+        <p className="mt-6 text-axis tracking-[0.3em] uppercase text-white/50">Capture / Analyze / Automate / Single source of truth</p>
+      </div>
 
       {/* Theme toggle in the panel's top-right corner, on a light disc. */}
       {showThemeToggle && (

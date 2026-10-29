@@ -42,12 +42,11 @@ function sectionLead(total: number, flags: { label: string; count: number }[], n
 
 // Mirrors RiskIntelligenceSection.tsx's own levelColors() exactly -- the
 // 0-100/4-level deterministic-engine palette, never the separate 1-25
-// Risk Matrix one (this page never shows Risk Matrix numbers). HIGH has no
-// dedicated semantic token -- see that file's identical reasoning.
+// Risk Matrix one (this page never shows Risk Matrix numbers).
 const RISK_LEVEL_LABELS: Record<RiskLevel, string> = { LOW: 'Low', MODERATE: 'Moderate', HIGH: 'High', CRITICAL: 'Critical' };
 
 function riskLevelColors(c: ThemeColors): Record<RiskLevel, string> {
-  return { LOW: c.ok, MODERATE: c.warn, HIGH: '#FB923C', CRITICAL: c.danger };
+  return { LOW: c.ok, MODERATE: c.warn, HIGH: c.high, CRITICAL: c.danger };
 }
 
 // Chart rows for one breakdown. Ordinal breakdowns (status, priority) keep

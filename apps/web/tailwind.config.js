@@ -61,6 +61,7 @@ export default {
         ok: 'rgb(var(--rc-ok) / <alpha-value>)',
         warn: 'rgb(var(--rc-warn) / <alpha-value>)',
         danger: 'rgb(var(--rc-danger) / <alpha-value>)',
+        high: 'rgb(var(--rc-high) / <alpha-value>)',
         teal: {
           // Data/stat/section accent. Shares blueprint's warm amber under the
           // dashboard theme (one accent platform-wide); never used for

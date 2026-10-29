@@ -26,15 +26,9 @@ import {
 } from '../lib/risk.api';
 import { Listbox } from './ui/Listbox';
 
-// HIGH/VERY_HIGH have no dedicated semantic token (the design system only
-// has a 3-step ok/warn/danger scale) -- these two literal oranges sit
-// between warn and danger in both hue and severity and already read
-// clearly on both a light and a dark surface (mid-brightness, not washed
-// out either direction), so they're left as fixed constants rather than
-// invented tokens for a single consumer.
-const HIGH_HEX = '#FB923C';
-const VERY_HIGH_HEX = '#F97316';
-
+// Risk levels map onto the theme's status ladder: ok (low), warn
+// (moderate/medium), high (rust, for High and Very High) and danger
+// (critical) -- all tokens, so they follow the brown palette and dark mode.
 // Every other color below comes from useThemeColors() (resolves the same
 // --rc-* custom properties every Tailwind utility class in the app
 // resolves) -- built as functions of the resolved colors, called once per
@@ -42,7 +36,7 @@ const VERY_HIGH_HEX = '#F97316';
 // every chart and badge here re-renders with the right colors when the
 // theme changes.
 function levelColors(colors: ThemeColors): Record<RiskLevel, string> {
-  return { LOW: colors.ok, MODERATE: colors.warn, HIGH: HIGH_HEX, CRITICAL: colors.danger };
+  return { LOW: colors.ok, MODERATE: colors.warn, HIGH: colors.high, CRITICAL: colors.danger };
 }
 
 const LEVEL_LABELS: Record<RiskLevel, string> = {
@@ -59,7 +53,7 @@ const STATUS_LABELS: Record<RiskStatus, string> = {
 // from levelColors()/LEVEL_LABELS above, which belong to the 0-100/4-level
 // deterministic engine score. Never mix the two scales in one place.
 function matrixLevelColors(colors: ThemeColors): Record<RiskMatrixLevel, string> {
-  return { LOW: colors.ok, MEDIUM: colors.warn, HIGH: HIGH_HEX, VERY_HIGH: VERY_HIGH_HEX, CRITICAL: colors.danger };
+  return { LOW: colors.ok, MEDIUM: colors.warn, HIGH: colors.high, VERY_HIGH: colors.high, CRITICAL: colors.danger };
 }
 const MATRIX_LEVEL_LABELS: Record<RiskMatrixLevel, string> = {
   LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High', VERY_HIGH: 'Very High', CRITICAL: 'Critical',

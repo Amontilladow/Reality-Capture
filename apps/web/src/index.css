@@ -32,62 +32,65 @@
    bootstrap script, which normally beats this by setting the attribute
    before first paint). */
 :root {
-  /* Precision redesign: warm off-white canvas with pure-white panels on top,
-     so a card separates from the page by surface step + hairline instead of
-     the old grey-panel-on-white (which read muddy and needed a grid texture
-     to hold together). Neutrals carry the weight; every text tone below is
-     chosen to clear WCAG AA on both the canvas and the panel surface. */
-  --rc-base-950: 246 246 244; /* page background (canvas) */
-  --rc-base-900: 244 244 242; /* chrome bars / secondary surface / input fill */
-  --rc-base-800: 255 255 255; /* panel surface */
-  --rc-base-700: 238 238 235; /* raised surface / hover (field) */
-  --rc-base-600: 226 226 222; /* borders (hairline) */
-  --rc-base-500: 236 236 232; /* muted borders / dividers (hairline-soft) */
+  /* Brown palette (light): #1A120E espresso, #3A2418 dark brown, #6B4A2E
+     walnut, #A88462 tan, #D5C4AE sand, #4A4A46 graphite. A cream canvas
+     with near-white panels; espresso text, graphite secondary text, and
+     every text tone chosen to clear WCAG AA on both canvas and panel. No
+     yellow anywhere -- the palette has none. */
+  --rc-base-950: 244 239 232; /* page background (canvas) */
+  --rc-base-900: 236 228 218; /* chrome bars / secondary surface / input fill */
+  --rc-base-800: 251 248 244; /* panel surface */
+  --rc-base-700: 232 223 211; /* raised surface / hover (field) */
+  --rc-base-600: 213 196 174; /* borders (hairline) */
+  --rc-base-500: 226 214 199; /* muted borders / dividers (hairline-soft) */
 
-  --rc-ink-100: 23 23 26; /* primary text (off-black, never #000) */
-  --rc-ink-300: 82 82 91; /* secondary text */
-  --rc-ink-500: 104 104 113; /* muted / captions -- was #adadad (2.2:1), now AA on every surface */
+  --rc-ink-100: 26 18 14; /* primary text (off-black, never #000) */
+  --rc-ink-300: 74 74 70; /* secondary text */
+  --rc-ink-500: 107 90 76; /* muted / captions -- was #adadad (2.2:1), now AA on every surface */
 
-  --rc-signal: 23 23 26; /* primary action fill -- mirrors ink-100 */
-  --rc-signal-hover: 52 52 58;
-  --rc-signal-muted: 104 104 113;
+  --rc-signal: 58 36 24; /* primary action fill -- mirrors ink-100 */
+  --rc-signal-hover: 26 18 14;
+  --rc-signal-muted: 107 74 46;
 
-  /* One warm accent across the platform (dashboard theme). Light mode
-     uses a deep amber because the sun yellow is ~1.4:1 as text on white;
-     "blueprint" (links, active, info) and "teal" (data accent) share it,
-     and the sun itself is kept for fills. */
-  --rc-blueprint: 138 90 0;
-  --rc-blueprint-hover: 112 72 0;
-  --rc-blueprint-muted: 252 240 200;
+  /* One accent across the platform: walnut. "blueprint" (links, active,
+     info) and "teal" (data accent) share it; tan ("sun", below) is kept for
+     fills, since tan as text on cream is only ~3:1. */
+  --rc-blueprint: 107 74 46;
+  --rc-blueprint-hover: 58 36 24;
+  --rc-blueprint-muted: 237 225 210;
 
-  /* Status hues deepened to the -800 step (red -700): the old values
-     (#16A34A/#D97706) fell to ~3:1 as badge text on their own 15% tint,
-     and the -700 step still measured 4.1:1 there. */
+  /* Status: green and red keep their meaning (success, critical); the
+     warning tone takes walnut from the palette instead of amber. All clear
+     4.5:1 as badge text on their own 15% tint. */
   --rc-ok: 22 101 52;
-  --rc-warn: 146 64 14;
+  --rc-warn: 107 74 46;
   --rc-danger: 185 28 28;
+  --rc-high: 150 50 30; /* "High" risk: rust, between warning walnut and critical red */
 
-  /* Teal keeps its role (data accent) but now carries the shared amber;
-     orange stays reserved for AI-generated content. */
-  --rc-teal: 138 90 0;
-  --rc-teal-hover: 112 72 0;
-  --rc-teal-muted: 252 240 200;
+  /* Teal keeps its role (data accent) with the shared walnut; "orange"
+     keeps its role (AI-generated content) as dark brown. */
+  --rc-teal: 107 74 46;
+  --rc-teal-hover: 58 36 24;
+  --rc-teal-muted: 237 225 210;
 
-  --rc-orange: 194 65 12;
-  --rc-orange-hover: 234 88 12;
-  --rc-orange-muted: 255 241 230;
+  --rc-orange: 58 36 24;
+  --rc-orange-hover: 26 18 14;
+  --rc-orange-muted: 237 225 210;
 
   --rc-grid-line: rgba(20, 20, 20, 0.04);
 
-  /* Dashboard theme: the warm yellow accent ("sun"), the off-black card
-     ("noir"), and the two ends of the page gradient every screen sits on. */
-  --rc-focus: 23 23 26; /* charcoal ring: a yellow ring vanishes on the cream canvas */
-  --rc-sun: 250 212 82;
-  --rc-noir: 38 38 41;
-  --rc-noir-hover: 58 58 62;
-  --rc-on-noir: 244 244 242;
-  --rc-dash-from: 229 231 236;
-  --rc-dash-to: 251 236 186;
+  /* Dashboard theme: the tan fill accent ("sun"), the espresso card
+     ("noir"), and the two ends of the cream-to-sand page gradient. */
+  --rc-focus: 58 36 24; /* dark-brown ring: tan would be too faint on cream */
+  /* Liquid-metal logo tones (LiquidLogo shader): bronze, sand over walnut. */
+  --rc-metal-hi: 213 196 174;
+  --rc-metal-lo: 107 74 46; /* walnut: bronze metal, still visible on the black brand panel */
+  --rc-sun: 168 132 98;
+  --rc-noir: 26 18 14;
+  --rc-noir-hover: 58 36 24;
+  --rc-on-noir: 213 196 174;
+  --rc-dash-from: 238 232 224;
+  --rc-dash-to: 213 196 174;
 
   --rc-radius-sm: 6px;
   --rc-radius-md: 8px;
@@ -97,62 +100,56 @@
   --rc-stripe-gap: 8px; /* hatch repeat */
 }
 
-/* Neutral charcoal, not pure black and no longer navy: the warm sun accent
-   reads cleanly against a hue-free charcoal, the way the dashboard
-   reference pairs yellow with off-black. A clear 4-step elevation ladder
+/* Brown palette (dark): espresso canvas, dark-brown raised surfaces, sand
+   text and tan accents. A clear 4-step elevation ladder
    (950 -> 900 -> 800 -> 700, darkest to lightest) keeps cards, sidebars and
    hover states the same "fill + hairline" hierarchy the light theme uses. */
 :root[data-theme='dark'] {
-  --rc-focus: 250 212 82; /* sun ring on charcoal */
-  --rc-base-950: 18 18 20; /* page background (canvas) */
-  --rc-base-900: 24 24 27; /* chrome bars / secondary surface */
-  --rc-base-800: 32 32 36; /* panel surface (elevated cards) */
-  --rc-base-700: 44 44 49; /* raised surface / hover / selected */
-  --rc-base-600: 62 62 68; /* borders (hairline) */
-  --rc-base-500: 46 46 52; /* muted borders / dividers -- closer to panel fill than base-600, so it reads as softer, same relative relationship as the light theme's 500 vs 600 */
+  --rc-focus: 213 196 174; /* sand ring on espresso */
+  --rc-base-950: 26 18 14; /* page background (canvas) */
+  --rc-base-900: 34 24 18; /* chrome bars / secondary surface */
+  --rc-base-800: 44 31 23; /* panel surface (elevated cards) */
+  --rc-base-700: 58 36 24; /* raised surface / hover / selected */
+  --rc-base-600: 82 58 40; /* borders (hairline) */
+  --rc-base-500: 52 37 27; /* muted borders / dividers -- closer to panel fill than base-600, so it reads as softer, same relative relationship as the light theme's 500 vs 600 */
 
-  --rc-ink-100: 241 241 239; /* primary text */
-  --rc-ink-300: 184 184 190; /* secondary text */
-  --rc-ink-500: 152 152 160; /* muted / placeholder */
+  --rc-ink-100: 240 232 221; /* primary text */
+  --rc-ink-300: 213 196 174; /* secondary text */
+  --rc-ink-500: 168 150 130; /* muted / placeholder */
 
-  --rc-signal: 241 241 239; /* primary action fill -- mirrors ink-100, same as light mode's relationship, just inverted (near-white button on charcoal) */
-  --rc-signal-hover: 214 214 210;
-  --rc-signal-muted: 184 184 190;
+  --rc-signal: 213 196 174; /* primary action fill -- mirrors ink-100, same as light mode's relationship, just inverted (sand button on espresso) */
+  --rc-signal-hover: 230 218 202;
+  --rc-signal-muted: 168 132 98;
 
-  /* The interactive accent becomes the sun yellow itself here: on
-     charcoal it clears AA as text, which it can't do on the light canvas. */
-  --rc-blueprint: 250 212 82;
-  --rc-blueprint-hover: 253 226 140;
-  --rc-blueprint-muted: 62 54 26;
+  /* The accent lifts to a light tan here so it reads as text on espresso. */
+  --rc-blueprint: 200 160 120;
+  --rc-blueprint-hover: 222 190 156;
+  --rc-blueprint-muted: 70 48 32;
 
-  /* Success/warning/danger lifted the same way as the accent -- the light
-     theme's deeper shades (#16A34A/#D97706/#DC2626) read as muddy/low-
-     contrast on a dark surface; these keep the same hue family at a
-     brightness that stays accessible on --rc-base-800/900 panels. */
+  /* Success and danger lifted so they stay legible on espresso; warning
+     uses the palette's tan. */
   --rc-ok: 34 197 94;
-  --rc-warn: 245 158 11;
+  --rc-warn: 168 132 98;
   --rc-danger: 248 113 113;
+  --rc-high: 214 120 90;
 
-  /* Same lift pattern as blueprint/ok/warn/danger above -- lighter, more
-     saturated shades so they stay vivid (not muddy) against the dark
-     charcoal surface. See the :root block's own comment for what each is
-     for and why they're kept separate from blueprint/warn. */
-  --rc-teal: 250 212 82;
-  --rc-teal-hover: 253 226 140;
-  --rc-teal-muted: 62 54 26;
+  /* Data accent and AI tone, lifted for the dark surface. */
+  --rc-teal: 200 160 120;
+  --rc-teal-hover: 222 190 156;
+  --rc-teal-muted: 70 48 32;
 
-  --rc-orange: 251 146 60;
-  --rc-orange-hover: 253 186 116;
-  --rc-orange-muted: 56 32 15;
+  --rc-orange: 213 196 174;
+  --rc-orange-hover: 230 218 202;
+  --rc-orange-muted: 70 48 32;
 
   --rc-grid-line: rgba(255, 255, 255, 0.05);
 
-  --rc-sun: 250 212 82;
-  --rc-noir: 10 10 12;
-  --rc-noir-hover: 40 40 45;
-  --rc-on-noir: 241 241 239;
-  --rc-dash-from: 22 22 25;
-  --rc-dash-to: 46 40 22;
+  --rc-sun: 168 132 98;
+  --rc-noir: 16 11 8;
+  --rc-noir-hover: 52 36 26;
+  --rc-on-noir: 213 196 174;
+  --rc-dash-from: 26 18 14;
+  --rc-dash-to: 58 36 24;
 }
 
 /* Covers the gap between first paint and index.html's inline bootstrap
@@ -164,38 +161,39 @@
    match, so it always wins over the OS preference below. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --rc-focus: 250 212 82;
-    --rc-base-950: 18 18 20;
-    --rc-base-900: 24 24 27;
-    --rc-base-800: 32 32 36;
-    --rc-base-700: 44 44 49;
-    --rc-base-600: 62 62 68;
-    --rc-base-500: 46 46 52;
-    --rc-ink-100: 241 241 239;
-    --rc-ink-300: 184 184 190;
-    --rc-ink-500: 152 152 160;
-    --rc-signal: 241 241 239;
-    --rc-signal-hover: 214 214 210;
-    --rc-signal-muted: 184 184 190;
-    --rc-blueprint: 250 212 82;
-    --rc-blueprint-hover: 253 226 140;
-    --rc-blueprint-muted: 62 54 26;
+    --rc-focus: 213 196 174;
+    --rc-base-950: 26 18 14;
+    --rc-base-900: 34 24 18;
+    --rc-base-800: 44 31 23;
+    --rc-base-700: 58 36 24;
+    --rc-base-600: 82 58 40;
+    --rc-base-500: 52 37 27;
+    --rc-ink-100: 240 232 221;
+    --rc-ink-300: 213 196 174;
+    --rc-ink-500: 168 150 130;
+    --rc-signal: 213 196 174;
+    --rc-signal-hover: 230 218 202;
+    --rc-signal-muted: 168 132 98;
+    --rc-blueprint: 200 160 120;
+    --rc-blueprint-hover: 222 190 156;
+    --rc-blueprint-muted: 70 48 32;
     --rc-ok: 34 197 94;
-    --rc-warn: 245 158 11;
+    --rc-warn: 168 132 98;
     --rc-danger: 248 113 113;
-    --rc-teal: 250 212 82;
-    --rc-teal-hover: 253 226 140;
-    --rc-teal-muted: 62 54 26;
-    --rc-orange: 251 146 60;
-    --rc-orange-hover: 253 186 116;
-    --rc-orange-muted: 56 32 15;
+    --rc-high: 214 120 90;
+    --rc-teal: 200 160 120;
+    --rc-teal-hover: 222 190 156;
+    --rc-teal-muted: 70 48 32;
+    --rc-orange: 213 196 174;
+    --rc-orange-hover: 230 218 202;
+    --rc-orange-muted: 70 48 32;
     --rc-grid-line: rgba(255, 255, 255, 0.05);
-    --rc-sun: 250 212 82;
-    --rc-noir: 10 10 12;
-    --rc-noir-hover: 40 40 45;
-    --rc-on-noir: 241 241 239;
-    --rc-dash-from: 22 22 25;
-    --rc-dash-to: 46 40 22;
+    --rc-sun: 168 132 98;
+    --rc-noir: 16 11 8;
+    --rc-noir-hover: 52 36 26;
+    --rc-on-noir: 213 196 174;
+    --rc-dash-from: 26 18 14;
+    --rc-dash-to: 58 36 24;
   }
 }
 
@@ -225,7 +223,7 @@
   * {
     @apply border-base-600;
   }
-  /* Every screen sits on the soft grey-to-cream gradient of the dashboard
+  /* Every screen sits on the soft cream-to-sand gradient of the dashboard
      theme; fixed so long pages don't stretch it into a flat band. */
   body {
     @apply bg-base-950 text-ink-100 font-sans antialiased;
@@ -330,7 +328,7 @@
   }
 
   /* Auth screens (AuthLayout): soft pill inputs with indented labels and a
-     sun submit button, after the dashboard theme's sign-up reference. */
+     tan submit button, after the dashboard theme's sign-up reference. */
   .auth-form .field-label {
     @apply pl-5 font-normal text-ink-500;
   }
