@@ -226,7 +226,7 @@ export default function SnaggingPage() {
         <div className="space-y-3">
           {groupedSnags.buildingGroups.map(({ building, levelGroups }) => (
             <details key={building.id} open>
-              <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-500 px-1 py-1.5 hover:text-ink-300">
+              <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-1 py-1.5 hover:text-ink-300">
                 {building.name}
               </summary>
               <div className="panel tick-frame overflow-x-auto mt-1">
@@ -237,7 +237,7 @@ export default function SnaggingPage() {
 
           {groupedSnags.unassigned.length > 0 && (
             <details open>
-              <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-500 px-1 py-1.5 hover:text-ink-300">
+              <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-1 py-1.5 hover:text-ink-300">
                 Unassigned
               </summary>
               <div className="panel tick-frame overflow-x-auto mt-1">
@@ -302,7 +302,7 @@ function SnagTable({
 function SnagRow({ snag: s, onClick }: { snag: SnagListItem; onClick: () => void }) {
   const overdue = isSnagOverdue(s.dueDate, s.status);
   return (
-    <tr onClick={onClick} className="border-b border-base-700/60 last:border-0 hover:bg-base-800/40 cursor-pointer">
+    <tr onClick={onClick} className="border-b border-base-700/60 last:border-0 hover:bg-base-700 cursor-pointer">
       <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{s.snagNumber ?? '—'}</td>
       <td className="px-4 py-2.5">{s.title}</td>
       <td className="px-4 py-2.5 text-ink-300">{s.location ?? '—'}</td>

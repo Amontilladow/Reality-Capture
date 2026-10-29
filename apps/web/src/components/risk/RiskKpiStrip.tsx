@@ -72,7 +72,7 @@ function KpiCard({ icon, label, value, tone, onClick, unavailable }: {
     <button
       onClick={onClick}
       disabled={unavailable}
-      className="panel panel-interactive p-3.5 text-left flex flex-col gap-2 h-[92px] disabled:cursor-default disabled:hover:bg-base-800 disabled:hover:border-base-600 disabled:hover:translate-y-0"
+      className="panel panel-interactive p-3.5 text-left flex flex-col gap-2 h-[92px] disabled:cursor-default disabled:hover:bg-base-700 disabled:hover:border-base-600 disabled:hover:translate-y-0"
     >
       <div className="flex items-center justify-between">
         <span className="text-ink-500">{icon}</span>

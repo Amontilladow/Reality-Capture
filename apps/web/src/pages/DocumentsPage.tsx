@@ -76,7 +76,7 @@ export default function DocumentsPage() {
               </thead>
               <tbody>
                 {(documentsQuery.data?.data ?? []).map((d) => (
-                  <tr key={d.id} className="border-b border-base-700/60 last:border-0 hover:bg-base-800/40">
+                  <tr key={d.id} className="border-b border-base-700/60 last:border-0 hover:bg-base-700">
                     <td className="px-4 py-2.5">
                       {d.source === 'manual_link' || d.externalUrl ? (
                         <a href={d.externalUrl} target="_blank" rel="noreferrer" className="text-blueprint hover:text-blueprint-hover">

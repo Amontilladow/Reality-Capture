@@ -288,7 +288,7 @@ export default function GisPrepPage() {
             </thead>
             <tbody>
               {jobs.map(j => (
-                <tr key={j.id} onClick={() => setSelectedId(j.id)} className={`border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-800/60 ${selectedId === j.id ? 'bg-base-800/60' : ''}`}>
+                <tr key={j.id} onClick={() => setSelectedId(j.id)} className={`border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-700 ${selectedId === j.id ? 'bg-base-800/60' : ''}`}>
                   <td className="px-3 py-2.5 text-ink-100">{j.sourceFilename}{j.parentJobId && <span className="text-xs text-ink-500"> · re-run</span>}</td>
                   <td className="px-3 py-2.5 text-ink-300 whitespace-nowrap">{j.profile}</td>
                   <td className="px-3 py-2.5"><StatusBadge tone={STATUS_TONE[j.status]} label={STATUS_LABEL[j.status]} dot /></td>

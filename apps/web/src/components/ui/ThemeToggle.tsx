@@ -18,7 +18,7 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
         type="button"
         onClick={toggleTheme}
         aria-label={label}
-        className={`relative w-9 h-9 shrink-0 inline-flex items-center justify-center rounded text-ink-300 hover:bg-base-800 hover:text-ink-100 transition-colors ${className}`}
+        className={`relative w-9 h-9 shrink-0 inline-flex items-center justify-center rounded text-ink-300 hover:bg-base-700 hover:text-ink-100 transition-colors ${className}`}
       >
         {/* Both icons are always mounted and crossfade -- swapping which
             one renders would lose the transition and could show neither

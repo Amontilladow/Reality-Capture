@@ -132,7 +132,7 @@ export function OnboardingFlow() {
   return (
     <Modal open={active} onClose={() => finish(false)} title={steps[step].title}>
       <div className="space-y-5">
-        <div className="text-[11px] font-mono uppercase tracking-widest text-ink-500">
+        <div className="text-[11px] text-ink-500 font-medium">
           Step {step + 1} of {steps.length}
         </div>
         <div className="text-sm text-ink-300 leading-relaxed">{steps[step].body}</div>

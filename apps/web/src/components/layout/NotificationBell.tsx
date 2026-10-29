@@ -96,10 +96,10 @@ export function NotificationBell() {
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="relative flex items-center justify-center w-9 h-9 rounded text-ink-300 hover:bg-base-800 hover:text-ink-100 transition-colors"
+        className="relative flex items-center justify-center w-8 h-8 rounded text-ink-300 hover:bg-base-700 hover:text-ink-100 transition-colors"
         aria-label="Notifications"
       >
-        <BellIcon className="w-4.5 h-4.5" />
+        <BellIcon className="w-[18px] h-[18px]" />
         {unreadCount > 0 && (
           <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-signal text-base-950 text-[9px] font-mono font-bold flex items-center justify-center">
             {unreadCount > 99 ? '99+' : unreadCount}
@@ -112,7 +112,7 @@ export function NotificationBell() {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute top-full mt-2 left-0 z-50 w-80 max-h-96 tick-frame panel overflow-hidden flex flex-col shadow-xl">
             <div className="flex items-center justify-between px-3 py-2.5 border-b border-base-600 shrink-0">
-              <span className="text-xs font-mono uppercase tracking-widest text-ink-500">Notifications</span>
+              <span className="text-xs text-ink-500 font-medium">Notifications</span>
               {unreadCount > 0 && (
                 <button
                   onClick={() => markAllReadMutation.mutate()}
@@ -132,7 +132,7 @@ export function NotificationBell() {
                 <button
                   key={n.id}
                   onClick={() => handleClick(n)}
-                  className={`block w-full text-left px-3 py-2.5 border-b border-base-600 last:border-b-0 hover:bg-base-800 transition-colors ${
+                  className={`block w-full text-left px-3 py-2.5 border-b border-base-600 last:border-b-0 hover:bg-base-700 transition-colors ${
                     !n.readAt ? 'bg-blueprint/5' : ''
                   }`}
                 >

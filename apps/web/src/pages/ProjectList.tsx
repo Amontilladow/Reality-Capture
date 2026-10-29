@@ -32,8 +32,10 @@ export default function ProjectList() {
   const kpis = {
     total: projects.length,
     active: projects.filter((p) => p.status === 'active').length,
-    openIssues: projects.reduce((sum, p) => sum + (p.openIssueCount ?? 0), 0),
-    captures: projects.reduce((sum, p) => sum + (p.captureCount ?? 0), 0),
+    // Number(): the API serializes these counts from Postgres bigint as
+    // strings, so a bare `+` concatenated them ("0" + "8" -> "08").
+    openIssues: projects.reduce((sum, p) => sum + Number(p.openIssueCount ?? 0), 0),
+    captures: projects.reduce((sum, p) => sum + Number(p.captureCount ?? 0), 0),
   };
 
   return (

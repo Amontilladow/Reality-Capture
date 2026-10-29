@@ -62,7 +62,7 @@ export default function Login() {
           placeholder="••••••••"
           error={errors.password?.message}
           labelAddon={
-            <Link to="/forgot-password" className="text-xs text-blueprint hover:text-blueprint-hover">
+            <Link to="/forgot-password" className="inline-flex items-center min-h-6 text-xs text-blueprint hover:text-blueprint-hover">
               Forgot password?
             </Link>
           }
@@ -80,7 +80,7 @@ export default function Login() {
         Have an invitation? Follow the link in your invitation email to accept it.
       </p>
       <p className="text-xs text-ink-500 mt-2 text-center">
-        Don't have an account? <Link to="/signup" className="text-blueprint hover:text-blueprint-hover">Sign up</Link> with your company's signup code.
+        Don't have an account? <Link to="/signup" className="text-blueprint underline underline-offset-2 hover:text-blueprint-hover">Sign up</Link> with your company's signup code.
       </p>
     </AuthLayout>
   );

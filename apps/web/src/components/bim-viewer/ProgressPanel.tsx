@@ -95,7 +95,7 @@ export function ProgressPanel({ projectId }: { projectId: string }) {
     <div className="h-full overflow-y-auto">
       {[...byBuilding.values()].map((b) => (
         <div key={b.name}>
-          <div className="bg-base-900 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-ink-500">{b.name}</div>
+          <div className="bg-base-900 px-3 py-1.5 text-xs font-semibold text-ink-500">{b.name}</div>
           {b.levels.map((lvl) => <LevelRow key={lvl.levelId} projectId={projectId} level={lvl} />)}
         </div>
       ))}

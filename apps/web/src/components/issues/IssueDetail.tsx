@@ -365,7 +365,7 @@ export function IssueDetail({
         {/* Pending scheduled reminders on this issue */}
         {(pendingRemindersQuery.data?.length ?? 0) > 0 && (
           <div className="pt-3 border-t border-base-600 space-y-1.5">
-            <div className="text-[10px] uppercase tracking-wide text-ink-500 font-mono">Scheduled reminders</div>
+            <div className="text-[11px] text-ink-500 font-medium">Scheduled reminders</div>
             {pendingRemindersQuery.data!.map((r) => (
               <div key={r.id} className="flex items-center gap-2 text-xs">
                 <span className="text-ink-500">{formatDateTime(r.scheduledFor)}</span>
@@ -422,7 +422,7 @@ export function IssueDetail({
         {/* Admin force-status override */}
         {isManager && (
           <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-base-600">
-            <span className="text-[10px] uppercase tracking-wide text-ink-500 font-mono">Admin override</span>
+            <span className="text-[11px] text-ink-500 font-medium">Admin override</span>
             <select
               className="field-input w-auto"
               value={forceStatusValue}

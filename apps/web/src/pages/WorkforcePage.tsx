@@ -130,11 +130,11 @@ export default function WorkforcePage() {
       <div className="p-6 space-y-8">
         {teamQuery.data && teamQuery.data.length > 0 && (
           <section className="space-y-2">
-            <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Team</h2>
+            <h2 className="text-sm font-semibold text-ink-100">Team</h2>
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setSelectedUserId(null)}
-                className={`px-3 py-1.5 rounded text-xs border ${isSelf ? 'border-signal text-signal bg-signal/10' : 'border-base-600 text-ink-300 hover:bg-base-800'}`}
+                className={`px-3 py-1.5 rounded text-xs border ${isSelf ? 'border-signal text-signal bg-signal/10' : 'border-base-600 text-ink-300 hover:bg-base-700'}`}
               >
                 Me
               </button>
@@ -142,7 +142,7 @@ export default function WorkforcePage() {
                 <button
                   key={member.userId}
                   onClick={() => setSelectedUserId(member.userId)}
-                  className={`px-3 py-1.5 rounded text-xs border ${selectedUserId === member.userId ? 'border-signal text-signal bg-signal/10' : 'border-base-600 text-ink-300 hover:bg-base-800'}`}
+                  className={`px-3 py-1.5 rounded text-xs border ${selectedUserId === member.userId ? 'border-signal text-signal bg-signal/10' : 'border-base-600 text-ink-300 hover:bg-base-700'}`}
                 >
                   {member.name} <span className="text-ink-500">· {member.companyRole}</span>
                 </button>
@@ -168,7 +168,7 @@ export default function WorkforcePage() {
 
         {summary && (
           <section className="space-y-4">
-            <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Last 7 days</h2>
+            <h2 className="text-sm font-semibold text-ink-100">Last 7 days</h2>
 
             {summary.totalSeconds === 0 ? (
               <div className="panel tick-frame p-10 text-center text-sm text-ink-500">
@@ -266,7 +266,7 @@ export default function WorkforcePage() {
 
         {unattributed.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Unattributed activity</h2>
+            <h2 className="text-sm font-semibold text-ink-100">Unattributed activity</h2>
             <p className="text-xs text-ink-500">
               These activities have no confident project attribution yet. Assign one manually — a manual selection is always recorded at 100%
               confidence, since only you can say for certain.
@@ -349,7 +349,7 @@ function ScreenshotsPanel({ userId, from, to, screenshotsEnabled }: { userId: st
 
   return (
     <section className="space-y-2">
-      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Screenshots</h2>
+      <h2 className="text-sm font-semibold text-ink-100">Screenshots</h2>
 
       {!screenshotsEnabled && (
         <div className="panel tick-frame p-6 text-center text-sm text-ink-500">Screenshots are not enabled for this company.</div>
@@ -420,7 +420,7 @@ function MyScheduling() {
 
   return (
     <section className="space-y-4">
-      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">My schedule</h2>
+      <h2 className="text-sm font-semibold text-ink-100">My schedule</h2>
 
       <div className="panel tick-frame overflow-x-auto">
         <table className="w-full text-sm">
@@ -483,7 +483,7 @@ function MyScheduling() {
       {preferenceMutation.isError && <p className="field-error">{apiErrorMessage(preferenceMutation.error)}</p>}
 
       <div>
-        <h3 className="text-xs font-semibold text-ink-300 uppercase tracking-wide mb-2">My upcoming shifts</h3>
+        <h3 className="text-xs font-semibold text-ink-300 mb-2">My upcoming shifts</h3>
         {shiftsQuery.data && shiftsQuery.data.length === 0 && <p className="text-sm text-ink-500">No shifts assigned yet.</p>}
         {shiftsQuery.data && shiftsQuery.data.length > 0 && (
           <ul className="text-sm space-y-1">
@@ -497,7 +497,7 @@ function MyScheduling() {
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-xs font-semibold text-ink-300 uppercase tracking-wide">Request time off</h3>
+        <h3 className="text-xs font-semibold text-ink-300">Request time off</h3>
         <div className="flex flex-wrap gap-2 items-end">
           <label className="text-xs text-ink-500">
             Type
@@ -542,7 +542,7 @@ function MyScheduling() {
 
       {absencesQuery.data && absencesQuery.data.length > 0 && (
         <div>
-          <h3 className="text-xs font-semibold text-ink-300 uppercase tracking-wide mb-2">My absence requests</h3>
+          <h3 className="text-xs font-semibold text-ink-300 mb-2">My absence requests</h3>
           <ul className="text-sm space-y-1">
             {absencesQuery.data.map((a) => (
               <li key={a.id} className="text-ink-300">
@@ -592,7 +592,7 @@ function CalendarIntegrationPanel() {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Calendar integration</h2>
+      <h2 className="text-sm font-semibold text-ink-100">Calendar integration</h2>
 
       {outcome && (
         <div className={`panel tick-frame p-3 text-sm flex items-center justify-between ${outcome === 'connected' ? 'text-ok' : 'text-danger'}`}>
@@ -625,7 +625,7 @@ function CalendarIntegrationPanel() {
               Disconnect
             </button>
           </div>
-          <h3 className="text-xs font-semibold text-ink-300 uppercase tracking-wide">Today's meetings</h3>
+          <h3 className="text-xs font-semibold text-ink-300">Today's meetings</h3>
           {eventsQuery.isLoading && <p className="text-sm text-ink-500">Loading…</p>}
           {eventsQuery.isError && <p className="field-error">{apiErrorMessage(eventsQuery.error)}</p>}
           {eventsQuery.data && eventsQuery.data.length === 0 && <p className="text-sm text-ink-500">No events today.</p>}
@@ -663,13 +663,13 @@ function PrivacySettingsAdmin() {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Privacy & monitoring settings (admin)</h2>
+      <h2 className="text-sm font-semibold text-ink-100">Privacy & monitoring settings (admin)</h2>
       {privacyQuery.isLoading && <p className="text-sm text-ink-500">Loading…</p>}
       {updateMutation.isError && <p className="field-error">{apiErrorMessage(updateMutation.error)}</p>}
       {settings && (
         <div className="panel tick-frame p-4 space-y-4 max-w-xl">
           <label className="block space-y-1">
-            <div className="text-xs uppercase tracking-wide text-ink-500">Monitoring level</div>
+            <div className="text-xs text-ink-500 font-medium">Monitoring level</div>
             <select
               className="input"
               value={settings.monitoringLevel}
@@ -716,7 +716,7 @@ function PrivacySettingsAdmin() {
           </label>
 
           <label className="block space-y-1">
-            <div className="text-xs uppercase tracking-wide text-ink-500">Retention (days)</div>
+            <div className="text-xs text-ink-500 font-medium">Retention (days)</div>
             <input
               type="number"
               className="input"
@@ -757,7 +757,7 @@ function ReportingLinesAdmin() {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Reporting lines (admin)</h2>
+      <h2 className="text-sm font-semibold text-ink-100">Reporting lines (admin)</h2>
       <p className="text-xs text-ink-500">
         Sets who a manager sees in their Workforce team view -- direct reports and, transitively, the people who report to them.
       </p>
@@ -849,7 +849,7 @@ function CompanyReportAdmin({ from, to }: { from: string; to: string }) {
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Company report (admin)</h2>
+        <h2 className="text-sm font-semibold text-ink-100">Company report (admin)</h2>
         {rows.length > 0 && (
           <button className="btn-secondary !py-1 !px-3 !text-xs" onClick={() => downloadCompanyReportCsv(rows, from, to)}>
             Export CSV
@@ -913,7 +913,7 @@ function ShiftSchedulingAdmin() {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Shift schedule (admin)</h2>
+      <h2 className="text-sm font-semibold text-ink-100">Shift schedule (admin)</h2>
       <p className="text-xs text-ink-500">Assign a shift, and see everyone's assigned shifts for the next two weeks.</p>
 
       <div className="flex flex-wrap gap-2 items-end">
@@ -990,7 +990,7 @@ function AbsenceRequestsAdmin() {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Absence requests (admin)</h2>
+      <h2 className="text-sm font-semibold text-ink-100">Absence requests (admin)</h2>
       {decideMutation.isError && <p className="field-error">{apiErrorMessage(decideMutation.error)}</p>}
       {absences.length === 0 ? (
         <p className="text-sm text-ink-500">No pending absence requests.</p>
@@ -1044,7 +1044,7 @@ function AbsenceRequestsAdmin() {
 function StatTile({ label, value, tone }: { label: string; value: string; tone?: 'signal' | 'ok' | 'danger' | 'warn' }) {
   return (
     <div className="panel p-3 text-left">
-      <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">{label}</div>
+      <div className="text-[11px] text-ink-500 mb-0.5 font-medium">{label}</div>
       <div className={`text-xl font-semibold tabular-nums ${tone ? STAT_TILE_TONE_CLASS[tone] : 'text-ink-100'}`}>{value}</div>
     </div>
   );
@@ -1101,7 +1101,7 @@ function ApplicationsAdmin() {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">Application productivity (admin)</h2>
+      <h2 className="text-sm font-semibold text-ink-100">Application productivity (admin)</h2>
       <p className="text-xs text-ink-500">
         Classify each app or executable the agent has reported as productive, neutral, or unproductive for your team's work — this
         drives the productivity breakdown above. {unclassifiedCount > 0 && `${unclassifiedCount} app(s) still need review.`}

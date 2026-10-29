@@ -312,6 +312,7 @@ export default function IssuesPage() {
 
             <select
               className="field-input w-auto ml-auto"
+              aria-label="Filter by building"
               value={buildingFilter}
               onChange={(e) => { setBuildingFilter(e.target.value); setLevelFilter(''); }}
             >
@@ -322,6 +323,7 @@ export default function IssuesPage() {
             </select>
             <select
               className="field-input w-auto"
+              aria-label="Filter by level"
               value={levelFilter}
               onChange={(e) => setLevelFilter(e.target.value)}
               disabled={!buildingFilter}
@@ -333,6 +335,7 @@ export default function IssuesPage() {
             </select>
             <select
               className="field-input w-auto"
+              aria-label="Filter by status"
               value={status}
               onChange={(e) => { setStatus(e.target.value); setQuickFilter('all'); }}
             >
@@ -455,7 +458,7 @@ export default function IssuesPage() {
           <div className="space-y-3">
             {groupedIssues.buildingGroups.map(({ building, levelGroups }) => (
               <details key={building.id} open>
-                <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-500 px-1 py-1.5 hover:text-ink-300">
+                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-1 py-1.5 hover:text-ink-300">
                   {building.name}
                 </summary>
                 <div className="pl-1 space-y-3 mt-1">
@@ -483,7 +486,7 @@ export default function IssuesPage() {
 
             {groupedIssues.unassigned.length > 0 && (
               <details open>
-                <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-500 px-1 py-1.5 hover:text-ink-300">
+                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-1 py-1.5 hover:text-ink-300">
                   Unassigned
                 </summary>
                 <div className="pl-1 space-y-2 mt-1">
@@ -819,7 +822,7 @@ function RemindersPanel({
           <div className="panel p-4 space-y-2">
             <div className="field-label !mb-0">Per-user reminder</div>
             <p className="text-xs text-ink-500">Sends to one user's open issues only.</p>
-            <select className="field-input" value={userReminderTarget} onChange={(e) => setUserReminderTarget(e.target.value)}>
+            <select className="field-input" aria-label="Reminder recipient" value={userReminderTarget} onChange={(e) => setUserReminderTarget(e.target.value)}>
               <option value="">Select user…</option>
               {members.map((m) => (
                 <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
@@ -883,7 +886,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 function StatTile({ label, value, onClick, tone, suffix }: { label: string; value: number; onClick: () => void; tone?: 'danger'; suffix?: string }) {
   return (
     <button onClick={onClick} className="panel p-3 text-left hover:border-blueprint transition-colors">
-      <div className="text-[10px] uppercase tracking-wide text-ink-500 mb-0.5">{label}</div>
+      <div className="text-[11px] text-ink-500 mb-0.5 font-medium">{label}</div>
       <div className={`text-xl font-semibold tabular-nums ${tone === 'danger' && value > 0 ? 'text-danger' : 'text-ink-100'}`}>
         {value}{suffix}
       </div>
@@ -914,10 +917,11 @@ function IssueRow({
 }) {
   const timer = getDeadlineTimer(issue.deadline, issue.status);
   return (
-    <div className="panel w-full p-4 hover:border-blueprint transition-colors flex items-start gap-3">
+    <div className="panel panel-interactive w-full p-4 flex items-start gap-3">
       <input
         type="checkbox"
         className="mt-1 shrink-0"
+        aria-label={`Select issue ${issue.issueNumber ?? issue.title}`}
         checked={selected}
         onClick={(e) => e.stopPropagation()}
         onChange={onToggleSelect}

@@ -133,7 +133,7 @@ export default function QaqcListPage() {
                     <tr
                       key={r.id}
                       onClick={() => navigate(`/projects/${projectId}/qaqc/${recordType}/${r.id}`)}
-                      className="border-b border-base-700/60 last:border-0 hover:bg-base-800/40 cursor-pointer"
+                      className="border-b border-base-700/60 last:border-0 hover:bg-base-700 cursor-pointer"
                     >
                       <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{r.recordNumber ?? '—'}</td>
                       <td className="px-4 py-2.5">{r.subject}</td>

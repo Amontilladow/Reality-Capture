@@ -32,52 +32,52 @@
    bootstrap script, which normally beats this by setting the attribute
    before first paint). */
 :root {
-  --rc-base-950: 255 255 255; /* page background (canvas) */
-  --rc-base-900: 243 243 243; /* chrome bars / secondary surface (canvas-soft) */
-  --rc-base-800: 243 243 243; /* panel surface (canvas-soft) */
-  --rc-base-700: 240 240 240; /* raised surface / hover (field) */
-  --rc-base-600: 224 224 224; /* borders (hairline) */
-  --rc-base-500: 240 240 240; /* muted borders / dividers (hairline-soft) */
+  /* Precision redesign: warm off-white canvas with pure-white panels on top,
+     so a card separates from the page by surface step + hairline instead of
+     the old grey-panel-on-white (which read muddy and needed a grid texture
+     to hold together). Neutrals carry the weight; every text tone below is
+     chosen to clear WCAG AA on both the canvas and the panel surface. */
+  --rc-base-950: 250 250 249; /* page background (canvas) */
+  --rc-base-900: 244 244 242; /* chrome bars / secondary surface / input fill */
+  --rc-base-800: 255 255 255; /* panel surface */
+  --rc-base-700: 238 238 235; /* raised surface / hover (field) */
+  --rc-base-600: 226 226 222; /* borders (hairline) */
+  --rc-base-500: 236 236 232; /* muted borders / dividers (hairline-soft) */
 
-  --rc-ink-100: 20 20 20; /* primary text */
-  --rc-ink-300: 112 112 112; /* secondary text */
-  --rc-ink-500: 173 173 173; /* muted / placeholder */
+  --rc-ink-100: 23 23 26; /* primary text (off-black, never #000) */
+  --rc-ink-300: 82 82 91; /* secondary text */
+  --rc-ink-500: 104 104 113; /* muted / captions -- was #adadad (2.2:1), now AA on every surface */
 
-  --rc-signal: 20 20 20; /* primary action fill -- mirrors ink-100 */
-  --rc-signal-hover: 38 38 38;
-  --rc-signal-muted: 112 112 112;
+  --rc-signal: 23 23 26; /* primary action fill -- mirrors ink-100 */
+  --rc-signal-hover: 52 52 58;
+  --rc-signal-muted: 104 104 113;
 
-  --rc-blueprint: 0 102 255;
-  --rc-blueprint-hover: 51 133 255;
-  --rc-blueprint-muted: 230 240 255;
+  --rc-blueprint: 0 88 220;
+  --rc-blueprint-hover: 0 72 186;
+  --rc-blueprint-muted: 232 240 254;
 
-  --rc-ok: 22 163 74;
-  --rc-warn: 217 119 6;
-  --rc-danger: 220 38 38;
+  /* Status hues deepened to the -800 step (red -700): the old values
+     (#16A34A/#D97706) fell to ~3:1 as badge text on their own 15% tint,
+     and the -700 step still measured 4.1:1 there. */
+  --rc-ok: 22 101 52;
+  --rc-warn: 146 64 14;
+  --rc-danger: 185 28 28;
 
-  /* Secondary accent pair (platform visual upgrade): teal is the primary
-     data/stat/section accent used throughout dashboards and reports --
-     deliberately distinct from blueprint (the general interactive/info
-     accent: links, active nav, "info" badges) so a stat card or section
-     header reads as data, not as a clickable/informational element. Orange
-     is reserved narrowly for AI-generated content (never a status color --
-     status/priority semantics stay exclusively on ok/warn/danger via
-     status-tone.ts, untouched by this pair) so it carries one consistent
-     meaning everywhere it appears instead of becoming a second "attention"
-     color that competes with warn. */
-  --rc-teal: 13 148 136;
-  --rc-teal-hover: 20 184 166;
-  --rc-teal-muted: 230 250 247;
+  /* Teal (data accent) and orange (AI-only) keep their meanings, darkened
+     the same way so they read as text on a white panel. */
+  --rc-teal: 15 118 110;
+  --rc-teal-hover: 13 148 136;
+  --rc-teal-muted: 230 246 244;
 
-  --rc-orange: 234 88 12;
-  --rc-orange-hover: 249 115 22;
+  --rc-orange: 194 65 12;
+  --rc-orange-hover: 234 88 12;
   --rc-orange-muted: 255 241 230;
 
   --rc-grid-line: rgba(20, 20, 20, 0.04);
 
-  --rc-radius-sm: 16px;
-  --rc-radius-md: 16px;
-  --rc-radius-lg: 24px;
+  --rc-radius-sm: 6px;
+  --rc-radius-md: 8px;
+  --rc-radius-lg: 12px;
 }
 
 /* Deep charcoal/navy, not an inverted/pure-black palette -- a flat #000
@@ -102,7 +102,7 @@
 
   --rc-ink-100: 241 245 249; /* primary text */
   --rc-ink-300: 167 179 194; /* secondary text */
-  --rc-ink-500: 127 139 154; /* muted / placeholder */
+  --rc-ink-500: 143 155 171; /* muted / placeholder */
 
   --rc-signal: 241 245 249; /* primary action fill -- mirrors ink-100, same as light mode's relationship, just inverted (near-white button on charcoal) */
   --rc-signal-hover: 216 222 229;
@@ -111,8 +111,8 @@
   /* Brand accent preserved -- same hue, lifted slightly so it stays vivid
      (not muddy) against a dark surface instead of the deeper light-mode
      shade, which would under-contrast here. */
-  --rc-blueprint: 59 130 246;
-  --rc-blueprint-hover: 96 165 250;
+  --rc-blueprint: 96 165 250;
+  --rc-blueprint-hover: 147 197 253;
   --rc-blueprint-muted: 21 35 61;
 
   /* Success/warning/danger lifted the same way as the accent -- the light
@@ -121,7 +121,7 @@
      brightness that stays accessible on --rc-base-800/900 panels. */
   --rc-ok: 34 197 94;
   --rc-warn: 245 158 11;
-  --rc-danger: 239 68 68;
+  --rc-danger: 248 113 113;
 
   /* Same lift pattern as blueprint/ok/warn/danger above -- lighter, more
      saturated shades so they stay vivid (not muddy) against the dark
@@ -155,16 +155,16 @@
     --rc-base-500: 26 38 58;
     --rc-ink-100: 241 245 249;
     --rc-ink-300: 167 179 194;
-    --rc-ink-500: 127 139 154;
+    --rc-ink-500: 143 155 171;
     --rc-signal: 241 245 249;
     --rc-signal-hover: 216 222 229;
     --rc-signal-muted: 167 179 194;
-    --rc-blueprint: 59 130 246;
-    --rc-blueprint-hover: 96 165 250;
+    --rc-blueprint: 96 165 250;
+    --rc-blueprint-hover: 147 197 253;
     --rc-blueprint-muted: 21 35 61;
     --rc-ok: 34 197 94;
     --rc-warn: 245 158 11;
-    --rc-danger: 239 68 68;
+    --rc-danger: 248 113 113;
     --rc-teal: 45 212 191;
     --rc-teal-hover: 94 234 212;
     --rc-teal-muted: 19 46 43;
@@ -207,96 +207,80 @@
   ::selection {
     /* A light blue-tinted highlight reads correctly on the white canvas --
        bg-signal/30 (ink-black at 30%) would wash out to dark-on-dark here. */
-    background-color: rgba(0, 102, 255, 0.18);
+    background-color: rgb(var(--rc-blueprint) / 0.18);
     @apply text-ink-100;
   }
   :focus-visible {
-    /* Mobbin signals focus in ink, not the accent blue -- see this file's
-       and tailwind.config.js's header comments on scoping the accent. */
-    outline: 2px solid rgb(var(--rc-ink-100));
+    /* One focus ring for every interactive element: the interactive accent,
+       offset so it never merges with a hairline border. */
+    outline: 2px solid rgb(var(--rc-blueprint));
     outline-offset: 2px;
   }
 }
 
 @layer components {
-  /* Registration-mark corner ticks — the app's signature framing device,
-     borrowed from technical drawing sheet corners / survey targets. Kept
-     monochrome (ink, not the accent) so it reads as structure, not a
-     commercial signal, per the Mobbin palette's accent-scarcity rule. */
+  /* Registration-mark corner ticks -- retired in the precision redesign.
+     Square ticks hung off rounded corners never lined up, and on 50+
+     surfaces at once they read as decoration rather than structure. The
+     class stays as a harmless hook (157 call sites) so the framing device
+     can return deliberately on one surface later without a sweep. */
   .tick-frame {
     position: relative;
   }
-  .tick-frame::before,
-  .tick-frame::after {
-    content: '';
-    position: absolute;
-    width: 10px;
-    height: 10px;
-    pointer-events: none;
-  }
-  .tick-frame::before {
-    top: -1px;
-    left: -1px;
-    border-top: 1.5px solid rgb(var(--rc-ink-300));
-    border-left: 1.5px solid rgb(var(--rc-ink-300));
-    opacity: 0.6;
-  }
-  .tick-frame::after {
-    bottom: -1px;
-    right: -1px;
-    border-bottom: 1.5px solid rgb(var(--rc-ink-300));
-    border-right: 1.5px solid rgb(var(--rc-ink-300));
-    opacity: 0.6;
-  }
 
-  /* Stadium-pill buttons, per Mobbin's button-primary/outline/pill-soft. */
+  /* Buttons: 36px tall, 8px radius, one weight. Primary is the off-black
+     ink fill; secondary is a white surface with a hairline; ghost is text
+     until hovered. Every variant shares the same focus ring (base layer)
+     and the same disabled + pressed treatment. */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-full font-medium text-sm px-4 py-2.5 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97];
+    @apply inline-flex items-center justify-center gap-2 rounded font-medium text-sm h-9 px-3.5 whitespace-nowrap transition-colors duration-150 disabled:opacity-45 disabled:cursor-not-allowed active:translate-y-px;
   }
   .btn-primary {
-    @apply btn bg-signal text-base-950 hover:bg-signal-hover;
+    @apply btn bg-signal text-base-800 hover:bg-signal-hover;
   }
   .btn-secondary {
-    @apply btn bg-base-700 text-ink-100 border border-base-500 hover:bg-base-600;
+    @apply btn bg-base-800 text-ink-100 border border-base-600 hover:bg-base-700 hover:border-ink-500/40;
   }
   .btn-ghost {
-    @apply btn text-ink-300 hover:text-ink-100 hover:bg-base-800;
+    @apply btn text-ink-300 hover:text-ink-100 hover:bg-base-700;
   }
   .btn-danger {
-    @apply btn bg-danger/10 text-danger border border-danger/30 hover:bg-danger/20;
+    @apply btn bg-base-800 text-danger border border-danger/35 hover:bg-danger/10 hover:border-danger/60;
   }
 
   .field-label {
-    @apply block text-xs font-medium uppercase tracking-wide text-ink-500 mb-1.5;
+    @apply block text-xs font-medium text-ink-300 mb-1.5;
   }
   .field-input {
-    @apply w-full bg-base-900 border border-base-600 rounded px-3 py-2.5 text-sm text-ink-100 placeholder:text-ink-500 focus:border-ink-100 focus:outline-none transition-colors;
+    @apply w-full bg-base-800 border border-base-600 rounded px-3 py-[7px] text-sm text-ink-100 placeholder:text-ink-500 hover:border-ink-500/50 focus:border-blueprint focus:ring-2 focus:ring-blueprint/20 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed aria-[invalid=true]:border-danger;
   }
   .field-error {
     @apply text-xs text-danger mt-1;
   }
 
-  /* Shadow-free elevation, per Mobbin: a card is a fill + a hairline, never
-     a drop shadow -- hierarchy comes from the canvas/canvas-soft tint step,
-     not from simulated depth. */
+  /* A card is a white surface + hairline on the off-white canvas. One
+     faint resting shadow gives panels a floor; overlays (Modal) get the
+     deeper one, so elevation reads in three steps: canvas, panel, overlay. */
   .panel {
-    @apply bg-base-800 border border-base-600 rounded-md;
+    @apply bg-base-800 border border-base-600 rounded-lg;
+    box-shadow: 0 1px 2px rgb(var(--rc-ink-100) / 0.04);
   }
 
-  /* Opt-in lift for panels that are also a click target (a card linking
-     somewhere, a selectable row) -- plain informational panels (StatTile,
-     Card without an onClick/Link) stay flat so hover affordance only shows
-     up where something is actually clickable. Still shadow-free: the hover
-     state deepens the tint and border instead of adding a drop shadow. */
+  /* Opt-in hover for panels that are also a click target (a card linking
+     somewhere, a selectable row) -- plain informational panels stay still,
+     so hover affordance only shows up where something is clickable. */
   .panel-interactive {
-    @apply transition-all duration-200;
+    @apply transition-colors duration-150;
   }
   .panel-interactive:hover {
-    @apply bg-base-700 border-blueprint/40 -translate-y-0.5;
+    @apply border-ink-500/45;
+    box-shadow: 0 2px 8px rgb(var(--rc-ink-100) / 0.06);
   }
 
+  /* Status/tag chips: sentence case, sans, 4px radius. The old mono +
+     uppercase + wide tracking pill shouted on every row of every list. */
   .badge {
-    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-mono uppercase tracking-wide;
+    @apply inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-sm text-[11px] leading-4 font-medium whitespace-nowrap;
   }
 
   /* Toast.tsx's entrance -- a 150ms slide+fade, not a decorative flourish:

@@ -149,7 +149,7 @@ export function RiskRegisterTable({ risks, members, ownerNames, filters, onFilte
               {pageRows.map((r) => {
                 const tone = dueDateTone(r);
                 return (
-                  <tr key={r.id} onClick={() => onSelectRisk(r.id)} className="border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-800/60">
+                  <tr key={r.id} onClick={() => onSelectRisk(r.id)} className="border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-700">
                     <td className="px-3 py-2.5 text-xs font-mono text-ink-500 whitespace-nowrap">{riskRef(r)}</td>
                     <td className="px-3 py-2.5 max-w-xs">
                       <div className="text-ink-100 truncate">{r.title}</div>

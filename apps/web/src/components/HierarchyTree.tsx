@@ -49,7 +49,7 @@ export function HierarchyTree({
           <div className="flex items-center group">
             <button
               onClick={() => toggleBuilding(building.id)}
-              className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-base-800 text-left min-w-0"
+              className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-base-700 text-left min-w-0"
             >
               <Chevron open={openBuildings.has(building.id)} />
               <BuildingIcon className="w-4 h-4 text-blueprint shrink-0" />
@@ -86,7 +86,7 @@ export function HierarchyTree({
                   <div className="flex items-center group">
                     <button
                       onClick={() => toggleLevel(level.id)}
-                      className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-base-800 text-left min-w-0"
+                      className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-base-700 text-left min-w-0"
                     >
                       <Chevron open={openLevels.has(level.id)} />
                       <LevelIcon className="w-3.5 h-3.5 text-ink-500 shrink-0" />
@@ -115,7 +115,7 @@ export function HierarchyTree({
                           className={`w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded text-sm text-left transition-colors ${
                             selectedLocationId === location.id
                               ? 'bg-signal/10 text-signal'
-                              : 'text-ink-300 hover:bg-base-800 hover:text-ink-100'
+                              : 'text-ink-300 hover:bg-base-700 hover:text-ink-100'
                           }`}
                         >
                           <span className="truncate">{location.name}</span>

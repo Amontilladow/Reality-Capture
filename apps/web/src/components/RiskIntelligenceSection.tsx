@@ -272,7 +272,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
                     </div>
                     <div className="divide-y divide-base-700/60">
                       {(discrepanciesQuery.data ?? []).map(({ risk: r, discrepancy }) => (
-                        <button key={r.id} onClick={() => openRisk(r.id)} className="w-full flex items-center justify-between gap-4 py-2 text-left hover:bg-base-800/60 transition-colors">
+                        <button key={r.id} onClick={() => openRisk(r.id)} className="w-full flex items-center justify-between gap-4 py-2 text-left hover:bg-base-700 transition-colors">
                           <span className="text-sm text-ink-100">{r.title}</span>
                           <span className="text-xs text-ink-500 shrink-0">
                             Human <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[r.humanLevel!] }}>{MATRIX_LEVEL_LABELS[r.humanLevel!]}</span>
@@ -373,7 +373,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
               <SectionHeader title="Top Management Risks" size="sm" />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 {(topQuery.data ?? []).map((r) => (
-                  <button key={r.id} onClick={() => openRisk(r.id)} className="panel tick-frame p-4 text-left hover:bg-base-800/60 transition-colors space-y-2">
+                  <button key={r.id} onClick={() => openRisk(r.id)} className="panel tick-frame p-4 text-left hover:bg-base-700 transition-colors space-y-2">
                     <div className="flex items-center justify-between">
                       <LevelBadge level={r.level} />
                       <span className="text-lg font-semibold tabular-nums text-ink-100">{r.score}</span>
@@ -395,7 +395,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
               <SectionHeader title="Emerging Risks" size="sm" />
               <div className="panel tick-frame divide-y divide-base-700/60">
                 {(emergingQuery.data ?? []).map((r) => (
-                  <button key={r.id} onClick={() => openRisk(r.id)} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-base-800/60 transition-colors">
+                  <button key={r.id} onClick={() => openRisk(r.id)} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-base-700 transition-colors">
                     <div>
                       <div className="text-sm text-ink-100">{r.title}</div>
                       <div className="text-xs text-ink-500 mt-0.5">{r.explanation}</div>
@@ -614,7 +614,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {(['probability', 'impact', 'exposure', 'dependency', 'urgency', 'recurrence'] as const).map((factor) => (
                 <div key={factor} className="panel p-2 text-center">
-                  <div className="text-[10px] uppercase text-ink-500">{factor}</div>
+                  <div className="text-[11px] text-ink-500 font-medium">{factor}</div>
                   <div className="text-sm font-semibold text-ink-100 tabular-nums">{risk[factor]}</div>
                 </div>
               ))}

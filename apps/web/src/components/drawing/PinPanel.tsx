@@ -207,7 +207,7 @@ export function PinPanel({
       <div className="relative w-full max-w-2xl max-h-[85vh] tick-frame panel overflow-hidden flex flex-col">
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-base-600 shrink-0">
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-mono uppercase tracking-widest text-ink-500 mb-0.5">Pin</div>
+            <div className="text-[11px] text-ink-500 mb-0.5 font-medium">Pin</div>
             {editingTitle ? (
               <div className="flex items-center gap-2">
                 <input
@@ -230,7 +230,7 @@ export function PinPanel({
             )}
             {linkedRecord && (
               <div className="flex items-center gap-1.5 mt-1">
-                <span className="text-[10px] uppercase tracking-wide text-ink-500">Assignee</span>
+                <span className="text-[11px] text-ink-500 font-medium">Assignee</span>
                 <select
                   className="field-input w-auto !py-1 !text-xs"
                   value={assignedTo}

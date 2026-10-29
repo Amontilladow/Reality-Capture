@@ -306,7 +306,7 @@ export default function FloorPlanViewer() {
           <div className="space-y-2">
             {groupedDrawings.buildingGroups.map(({ building, levelGroups }) => (
               <details key={building.id} open>
-                <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-500 px-1 py-1 hover:text-ink-300">
+                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-1 py-1 hover:text-ink-300">
                   {building.name}
                 </summary>
                 <div className="pl-1 space-y-2 mt-1">
@@ -328,7 +328,7 @@ export default function FloorPlanViewer() {
 
             {groupedDrawings.unassigned.length > 0 && (
               <details open>
-                <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-500 px-1 py-1 hover:text-ink-300">
+                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-1 py-1 hover:text-ink-300">
                   Unassigned
                 </summary>
                 <div className="pl-1 space-y-1 mt-1">
@@ -448,7 +448,7 @@ function DrawingRow({ drawing, active, onSelect }: { drawing: Drawing; active: b
     <button
       onClick={() => onSelect(drawing.id)}
       className={`w-full text-left px-3 py-2.5 rounded text-sm transition-colors ${
-        active ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-800'
+        active ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-700'
       }`}
     >
       <div className="font-medium truncate">{drawing.title}</div>
