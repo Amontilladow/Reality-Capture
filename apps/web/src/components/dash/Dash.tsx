@@ -299,11 +299,11 @@ export function NoirList({ items, empty }: { items: NoirItem[]; empty: string })
               <span className="block text-xs text-on-noir/70 truncate mt-0.5">{it.meta}</span>
             </span>
             {it.state === 'done' ? (
-              <span aria-label="Done" className="w-5 h-5 shrink-0 rounded-full bg-sun text-noir flex items-center justify-center">
+              <span role="img" aria-label="Done" className="w-5 h-5 shrink-0 rounded-full bg-sun text-noir flex items-center justify-center">
                 <svg viewBox="0 0 16 16" aria-hidden="true" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3.5 8.5l3 3 6-7" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </span>
             ) : (
-              <span aria-label={it.state === 'flag' ? 'Needs action' : 'Open'} className={`w-3.5 h-3.5 shrink-0 rounded-full ${it.state === 'flag' ? 'bg-sun' : 'bg-on-noir/25'}`} />
+              <span role="img" aria-label={it.state === 'flag' ? 'Needs action' : 'Open'} className={`w-3.5 h-3.5 shrink-0 rounded-full ${it.state === 'flag' ? 'bg-sun' : 'bg-on-noir/25'}`} />
             )}
           </>
         );
