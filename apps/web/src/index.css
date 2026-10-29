@@ -321,6 +321,22 @@
     background-image: repeating-linear-gradient(-45deg, rgb(var(--rc-ink-100) / 0.14) 0 var(--rc-stripe), transparent var(--rc-stripe) var(--rc-stripe-gap));
   }
 
+  /* Auth screens (AuthLayout): soft pill inputs with indented labels and a
+     sun submit button, after the dashboard theme's sign-up reference. */
+  .auth-form .field-label {
+    @apply pl-5 font-normal text-ink-500;
+  }
+  .auth-form .field-input {
+    @apply rounded-full h-12 px-5 border-transparent bg-base-800/85 hover:border-base-600;
+  }
+  .auth-form .btn-primary {
+    @apply h-12 bg-sun text-noir text-base font-normal hover:bg-sun hover:brightness-95;
+  }
+  /* The same hatch as .dash-stripes, in light lines for a dark field. */
+  .dash-stripes-light {
+    background-image: repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.22) 0 var(--rc-stripe), transparent var(--rc-stripe) var(--rc-stripe-gap));
+  }
+
   /* Toast.tsx's entrance -- a 150ms slide+fade, not a decorative flourish:
      it's the one visual cue that a new toast just appeared vs. already
      being there when the stack re-renders. */

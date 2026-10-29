@@ -73,7 +73,7 @@ type SharedProps = {
 // required field as empty -- confirmed by hand against the Login form,
 // which uses this exact component.
 export const Input = forwardRef<HTMLInputElement, SharedProps & InputHTMLAttributes<HTMLInputElement>>(
-  function Input({ label, requirement, labelAddon, hint, error, id, ...rest }, ref) {
+  function Input({ label, requirement, labelAddon, hint, error, id, className, ...rest }, ref) {
     const autoId = useId();
     const fieldId = id ?? autoId;
     return (
@@ -81,7 +81,9 @@ export const Input = forwardRef<HTMLInputElement, SharedProps & InputHTMLAttribu
         <input
           ref={ref}
           id={fieldId}
-          className="field-input"
+          // Merged, not overridden: a caller class (e.g. font-mono) used to
+          // replace field-input entirely and leave the field unstyled.
+          className={`field-input ${className ?? ''}`}
           aria-invalid={!!error || undefined}
           aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
           {...rest}
@@ -92,7 +94,7 @@ export const Input = forwardRef<HTMLInputElement, SharedProps & InputHTMLAttribu
 );
 
 export const Textarea = forwardRef<HTMLTextAreaElement, SharedProps & TextareaHTMLAttributes<HTMLTextAreaElement>>(
-  function Textarea({ label, requirement, labelAddon, hint, error, id, ...rest }, ref) {
+  function Textarea({ label, requirement, labelAddon, hint, error, id, className, ...rest }, ref) {
     const autoId = useId();
     const fieldId = id ?? autoId;
     return (
@@ -100,7 +102,9 @@ export const Textarea = forwardRef<HTMLTextAreaElement, SharedProps & TextareaHT
         <textarea
           ref={ref}
           id={fieldId}
-          className="field-input"
+          // Merged, not overridden: a caller class (e.g. font-mono) used to
+          // replace field-input entirely and leave the field unstyled.
+          className={`field-input ${className ?? ''}`}
           aria-invalid={!!error || undefined}
           aria-describedby={error ? `${fieldId}-error` : hint ? `${fieldId}-hint` : undefined}
           {...rest}
