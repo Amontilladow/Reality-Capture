@@ -232,6 +232,14 @@
     background-image: linear-gradient(120deg, rgb(var(--rc-dash-from)) 0%, rgb(var(--rc-dash-from)) 18%, rgb(var(--rc-dash-to)) 85%);
     background-attachment: fixed;
   }
+  /* Native file pickers get the theme's secondary pill instead of the
+     browser's grey button. */
+  input[type='file']::file-selector-button {
+    @apply mr-3 rounded-full border border-base-600 bg-base-800 px-4 h-9 text-sm font-medium text-ink-100 cursor-pointer transition-colors;
+  }
+  input[type='file']::file-selector-button:hover {
+    @apply bg-base-700;
+  }
   ::selection {
     /* A light blue-tinted highlight reads correctly on the white canvas --
        bg-signal/30 (ink-black at 30%) would wash out to dark-on-dark here. */
