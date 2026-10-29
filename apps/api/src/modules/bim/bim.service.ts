@@ -396,6 +396,7 @@ export class BimService {
       SELECT construction_status FROM bim_elements WHERE id = ${elementId} AND project_id = ${projectId} AND company_id = ${companyId}
     `);
     if (!existing) throw new NotFoundException('BIM element not found.');
+    if (dto.captureId) await this.assertCaptureInProject(companyId, projectId, dto.captureId);
 
     const [el] = await this.db.withTenant(companyId, sql => sql`
       UPDATE bim_elements
@@ -439,9 +440,25 @@ export class BimService {
     if (!row) throw new NotFoundException('BIM element not found.');
   }
 
+  // H-1 follow-up: linkCaptureToElement()/updateElementStatus()/
+  // upsertZoneProgress() all took an optional/required captureId that was
+  // never checked -- a user authorized for Project A could reference
+  // Project B's capture by id. For the two status methods this isn't just
+  // a dangling id: getElementStatusHistory()/getZoneProgressHistory() both
+  // LEFT JOIN captures and return capture_type/capture_title, so an
+  // unchecked cross-project captureId was a real metadata leak into
+  // Project A's own history view, not merely an orphaned reference.
+  private async assertCaptureInProject(companyId: string, projectId: string, captureId: string): Promise<void> {
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      SELECT 1 FROM captures WHERE id = ${captureId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!row) throw new NotFoundException('Capture not found.');
+  }
+
   // ── Capture ↔ Element linking ─────────────────────────────────────────────
   async linkCaptureToElement(companyId: string, projectId: string, captureId: string, elementId: string, userId: string, linkType = 'documents') {
     await this.assertElementInProject(companyId, projectId, elementId);
+    await this.assertCaptureInProject(companyId, projectId, captureId);
     // withTenant required -- capture_element_links carries the tenant_isolation RLS policy.
     const [link] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO capture_element_links (capture_id, element_id, company_id, link_type, linked_by)
@@ -534,6 +551,7 @@ export class BimService {
       WHERE lvl.id = ${levelId} AND b.project_id = ${projectId} AND b.company_id = ${companyId}
     `);
     if (!level) throw new NotFoundException('Level not found in this project.');
+    if (dto.captureId) await this.assertCaptureInProject(companyId, projectId, dto.captureId);
 
     const [existing] = await this.db.withTenant(companyId, sql => sql`
       SELECT status FROM zone_progress WHERE level_id = ${levelId} AND company_id = ${companyId}

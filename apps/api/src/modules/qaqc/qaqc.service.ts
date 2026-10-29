@@ -102,6 +102,7 @@ export class QaqcService {
 
   async create(companyId: string, projectId: string, userId: string, userRole: string, dto: CreateQaqcRecordDto) {
     assertRoleAllowed(userRole, ISSUE_ROLES_BY_TYPE[dto.recordType], 'create', dto.recordType.toUpperCase());
+    if (dto.locationId) await this.assertLocationInProject(companyId, projectId, dto.locationId);
     const recordNumber = await this.generateRecordNumber(companyId, projectId, dto.recordType);
 
     // withTenant required -- qaqc_records carries the tenant_isolation RLS
@@ -310,6 +311,35 @@ export class QaqcService {
     if (!row) throw new NotFoundException(`QAQC record ${qaqcId} not found.`);
   }
 
+  // H-1 follow-up: linkCapture() checked the record's own project via
+  // assertQaqcInProject but never the supplied captureId -- a user
+  // authorized for Project A could attach Project B's capture to a Project
+  // A QAQC record by supplying its id. captures carries its own project_id
+  // directly.
+  private async assertCaptureInProject(companyId: string, projectId: string, captureId: string): Promise<void> {
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      SELECT 1 FROM captures WHERE id = ${captureId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!row) throw new NotFoundException('Capture not found.');
+  }
+
+  // H-1 follow-up: create() never checked that an optional locationId
+  // belongs to this project before persisting it -- a location resolves to
+  // a project either via the building hierarchy (level_id) or, for a
+  // floor-plan pin, via drawing_id. Mirrors captures.service.ts's own
+  // create()-time location check.
+  private async assertLocationInProject(companyId: string, projectId: string, locationId: string): Promise<void> {
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      SELECT loc.id FROM locations loc
+      LEFT JOIN levels lvl ON lvl.id = loc.level_id
+      LEFT JOIN buildings b ON b.id = lvl.building_id
+      LEFT JOIN drawings d ON d.id = loc.drawing_id
+      WHERE loc.id = ${locationId} AND loc.company_id = ${companyId}
+        AND COALESCE(b.project_id, d.project_id) = ${projectId}
+    `);
+    if (!row) throw new NotFoundException('Location not found.');
+  }
+
   // ── Generic document attachments ("+Add document") ─────────────────────
   // Same presigned-PUT pattern, allow-list, and size cap as rfis.service.ts's
   // attachment methods (which themselves mirror issues.service.ts's).
@@ -387,6 +417,7 @@ export class QaqcService {
   // a bare qaqc_attachments row. ─────────────────────────────────────────
   async linkCapture(companyId: string, projectId: string, qaqcId: string, userId: string, dto: AddQaqcCaptureDto) {
     await this.assertQaqcInProject(companyId, projectId, qaqcId);
+    await this.assertCaptureInProject(companyId, projectId, dto.captureId);
     const [link] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO qaqc_captures (qaqc_id, capture_id, company_id, kind, caption, added_by)
       VALUES (${qaqcId}, ${dto.captureId}, ${companyId}, ${dto.kind ?? 'issue'}, ${dto.caption ?? null}, ${userId})

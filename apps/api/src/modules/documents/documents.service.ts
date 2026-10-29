@@ -142,6 +142,42 @@ export class DocumentsService {
     const targets = [dto.captureId, dto.elementId, dto.locationId, dto.issueId].filter(Boolean);
     if (targets.length !== 1) throw new BadRequestException('Exactly one link target must be provided (captureId, elementId, locationId, or issueId).');
 
+    // H-1 follow-up: the document's own project was checked above, but the
+    // single supplied target never was -- a user authorized for Project A
+    // could link Project B's capture/element/location/issue to a Project A
+    // document by supplying its id. Each target carries its own
+    // project-resolution path; this.link()'s own findOne()-style NotFound
+    // response hides which case it was.
+    if (dto.captureId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT 1 FROM captures WHERE id = ${dto.captureId ?? null} AND project_id = ${projectId} AND company_id = ${companyId}
+      `);
+      if (!row) throw new NotFoundException('Capture not found.');
+    }
+    if (dto.elementId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT 1 FROM bim_elements WHERE id = ${dto.elementId ?? null} AND project_id = ${projectId} AND company_id = ${companyId}
+      `);
+      if (!row) throw new NotFoundException('BIM element not found.');
+    }
+    if (dto.locationId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT loc.id FROM locations loc
+        LEFT JOIN levels lvl ON lvl.id = loc.level_id
+        LEFT JOIN buildings b ON b.id = lvl.building_id
+        LEFT JOIN drawings d ON d.id = loc.drawing_id
+        WHERE loc.id = ${dto.locationId ?? null} AND loc.company_id = ${companyId}
+          AND COALESCE(b.project_id, d.project_id) = ${projectId}
+      `);
+      if (!row) throw new NotFoundException('Location not found.');
+    }
+    if (dto.issueId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT 1 FROM issues WHERE id = ${dto.issueId ?? null} AND project_id = ${projectId} AND company_id = ${companyId}
+      `);
+      if (!row) throw new NotFoundException('Issue not found.');
+    }
+
     // withTenant required -- document_links carries the tenant_isolation RLS policy.
     const [link] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO document_links (

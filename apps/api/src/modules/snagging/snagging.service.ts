@@ -57,7 +57,47 @@ export class SnaggingService {
     });
   }
 
+  // H-1 follow-up: create()/update() accept optional building/level/location
+  // references that were never checked against this project -- a user
+  // authorized for Project A could attach Project B's building/level/
+  // location to a snag item by supplying its id. findAll()/findOne() both
+  // JOIN buildings/levels for display (building_name/level_name), so an
+  // unchecked cross-project id was a real metadata leak there, not merely
+  // a dangling reference. Mirrors buildings.service.ts's own asserts for
+  // this same building/level/location chain.
+  private async assertLinkedResourcesInProject(companyId: string, projectId: string, refs: {
+    buildingId?: string | null; levelId?: string | null; locationId?: string | null;
+  }): Promise<void> {
+    if (refs.buildingId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT 1 FROM buildings WHERE id = ${refs.buildingId ?? null} AND project_id = ${projectId} AND company_id = ${companyId}
+      `);
+      if (!row) throw new NotFoundException(`Building ${refs.buildingId} not found.`);
+    }
+    if (refs.levelId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT lvl.id FROM levels lvl JOIN buildings b ON b.id = lvl.building_id
+        WHERE lvl.id = ${refs.levelId ?? null} AND b.project_id = ${projectId} AND b.company_id = ${companyId}
+      `);
+      if (!row) throw new NotFoundException(`Level ${refs.levelId} not found.`);
+    }
+    if (refs.locationId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT loc.id FROM locations loc
+        LEFT JOIN levels lvl ON lvl.id = loc.level_id
+        LEFT JOIN buildings b ON b.id = lvl.building_id
+        LEFT JOIN drawings d ON d.id = loc.drawing_id
+        WHERE loc.id = ${refs.locationId ?? null} AND loc.company_id = ${companyId}
+          AND COALESCE(b.project_id, d.project_id) = ${projectId}
+      `);
+      if (!row) throw new NotFoundException(`Location ${refs.locationId} not found.`);
+    }
+  }
+
   async create(companyId: string, projectId: string, userId: string, dto: CreateSnagItemDto) {
+    await this.assertLinkedResourcesInProject(companyId, projectId, {
+      buildingId: dto.buildingId, levelId: dto.levelId, locationId: dto.locationId,
+    });
     const snagNumber = await this.generateSnagNumber(companyId, projectId);
     const [snag] = await this.db.query`
       INSERT INTO snag_items (
@@ -136,6 +176,9 @@ export class SnaggingService {
 
   async update(companyId: string, projectId: string, snagId: string, userId: string, dto: UpdateSnagItemDto) {
     const existing = await this.findOne(companyId, projectId, snagId);
+    await this.assertLinkedResourcesInProject(companyId, projectId, {
+      buildingId: dto.buildingId, levelId: dto.levelId, locationId: dto.locationId,
+    });
     // The two-step closure this feature is built around: a trade marks an
     // item 'fixed', then a supervisor 'verifies' it separately -- each
     // transition stamps its own timestamp/actor, and only fires once (a

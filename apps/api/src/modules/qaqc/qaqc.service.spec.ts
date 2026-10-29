@@ -20,7 +20,14 @@ function makeQuery(responder: (text: string, values: unknown[]) => unknown[] | u
     // attachment/capture method below -- default it to "found" so each
     // test's own responder doesn't need to know about a query it isn't
     // testing; a test can still override by handling this text itself.
-    const defaulted = text.includes('SELECT 1 FROM qaqc_records') ? [{ '?column?': 1 }] : [];
+    // assertCaptureInProject (H-1 follow-up, linkCapture) and
+    // assertLocationInProject (H-1 follow-up, create) get the same
+    // "found" default for the same reason.
+    const defaulted =
+      text.includes('SELECT 1 FROM qaqc_records') ? [{ '?column?': 1 }] :
+      text.includes('FROM captures') ? [{ '?column?': 1 }] :
+      text.includes('FROM locations') ? [{ id: 'location-1' }] :
+      [];
     return Promise.resolve(responder(text, values) ?? defaulted);
   });
   return { query: query as unknown as DatabaseService['query'], calls };
@@ -673,6 +680,41 @@ describe('QaqcService', () => {
 
       await expect(svc.getLinkedCaptures(companyId, REAL_PROJECT, qaqcId)).resolves.toEqual([]);
       await expect(svc.getLinkedCaptures(companyId, OTHER_PROJECT, qaqcId)).rejects.toThrow(NotFoundException);
+    });
+
+    // H-1 follow-up: the QAQC record itself can be in the right project
+    // while the *capture* being linked belongs to a different one in the
+    // same company -- a parent-only check (the test above) doesn't cover
+    // this case.
+    it('linkCapture: rejects a same-company capture that belongs to a different project, and writes no link', async () => {
+      const insertSpy = jest.fn();
+      const { svc } = makeService((text, values) => {
+        if (text.includes('SELECT 1 FROM qaqc_records')) return values.includes(REAL_PROJECT) ? [{ '?column?': 1 }] : [];
+        if (text.includes('FROM captures')) return []; // capture exists, but not in this project
+        if (text.includes('INSERT INTO qaqc_captures')) { insertSpy(); return [{ id: 'link-1' }]; }
+        return undefined;
+      });
+
+      await expect(svc.linkCapture(companyId, REAL_PROJECT, qaqcId, 'user-1', { captureId: 'capture-from-other-project' })).rejects.toThrow(NotFoundException);
+      expect(insertSpy).not.toHaveBeenCalled();
+    });
+
+    // H-1 follow-up: create() never checked that an optional locationId
+    // belongs to this project before persisting it.
+    it('create: rejects a same-company location that belongs to a different project, and writes no record', async () => {
+      const insertSpy = jest.fn();
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM locations')) return []; // location exists, but not in this project
+        if (text.includes('INSERT INTO qaqc_records')) { insertSpy(); return [{ id: 'qaqc-new' }]; }
+        return undefined;
+      });
+      const dto = {
+        recordType: 'ncr', subject: 'Subject', description: 'Desc',
+        discipline: 'structural', locationId: 'location-from-other-project',
+      } as CreateQaqcRecordDto;
+
+      await expect(svc.create(companyId, projectId, 'user-1', 'qa_qc_manager', dto)).rejects.toThrow(NotFoundException);
+      expect(insertSpy).not.toHaveBeenCalled();
     });
   });
 });

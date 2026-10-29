@@ -154,6 +154,11 @@ export class IssuesService {
 
     if (dto.assignedTo) await this.assertAssigneeIsProjectMember(companyId, projectId, dto.assignedTo);
 
+    await this.assertLinkedResourcesInProject(companyId, projectId, {
+      buildingId: dto.buildingId, levelId: dto.levelId, locationId: dto.locationId,
+      elementId: dto.elementId, captureId: dto.captureId, drawingId: dto.drawingId,
+    });
+
     const issueNumber = await this.generateIssueNumber(companyId, projectId, dto.discipline);
 
     // withTenant required -- issues carries the tenant_isolation RLS policy. A plain
@@ -363,6 +368,68 @@ export class IssuesService {
     if (!row) throw new NotFoundException(`Issue ${issueId} not found.`);
   }
 
+  // H-1 follow-up: create()/update() accept several optional cross-resource
+  // references (building/level/location/element/capture/drawing), each with
+  // its own project_id (directly or via a join). None of these were
+  // checked -- a user authorized for Project A could attach Project B's
+  // building/level/location/element/capture/drawing to an issue in Project
+  // A merely by supplying its id, and findOne() then joins through
+  // location_id/building_id/level_id/element_id and would display that
+  // other project's names/IFC metadata on an issue the Project-A user can
+  // see. Each branch mirrors the project-resolution path already
+  // established for that table elsewhere (buildings.service.ts's own
+  // asserts for the building/level/location chain; bim/drawings/captures'
+  // own direct project_id columns for the rest). Only provided (truthy)
+  // refs are checked, so update()'s elementId: null unlink path is
+  // unaffected.
+  private async assertLinkedResourcesInProject(companyId: string, projectId: string, refs: {
+    buildingId?: string | null; levelId?: string | null; locationId?: string | null;
+    elementId?: string | null; captureId?: string | null; drawingId?: string | null;
+  }): Promise<void> {
+    if (refs.buildingId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT 1 FROM buildings WHERE id = ${refs.buildingId ?? null} AND project_id = ${projectId} AND company_id = ${companyId}
+      `);
+      if (!row) throw new NotFoundException(`Building ${refs.buildingId} not found.`);
+    }
+    if (refs.levelId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT lvl.id FROM levels lvl JOIN buildings b ON b.id = lvl.building_id
+        WHERE lvl.id = ${refs.levelId ?? null} AND b.project_id = ${projectId} AND b.company_id = ${companyId}
+      `);
+      if (!row) throw new NotFoundException(`Level ${refs.levelId} not found.`);
+    }
+    if (refs.locationId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT loc.id FROM locations loc
+        LEFT JOIN levels lvl ON lvl.id = loc.level_id
+        LEFT JOIN buildings b ON b.id = lvl.building_id
+        LEFT JOIN drawings d ON d.id = loc.drawing_id
+        WHERE loc.id = ${refs.locationId ?? null} AND loc.company_id = ${companyId}
+          AND COALESCE(b.project_id, d.project_id) = ${projectId}
+      `);
+      if (!row) throw new NotFoundException(`Location ${refs.locationId} not found.`);
+    }
+    if (refs.elementId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT 1 FROM bim_elements WHERE id = ${refs.elementId ?? null} AND project_id = ${projectId} AND company_id = ${companyId}
+      `);
+      if (!row) throw new NotFoundException(`BIM element ${refs.elementId} not found.`);
+    }
+    if (refs.captureId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT 1 FROM captures WHERE id = ${refs.captureId ?? null} AND project_id = ${projectId} AND company_id = ${companyId}
+      `);
+      if (!row) throw new NotFoundException(`Capture ${refs.captureId} not found.`);
+    }
+    if (refs.drawingId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT 1 FROM drawings WHERE id = ${refs.drawingId ?? null} AND project_id = ${projectId} AND company_id = ${companyId}
+      `);
+      if (!row) throw new NotFoundException(`Drawing ${refs.drawingId} not found.`);
+    }
+  }
+
   // ── View-state screenshot upload ────────────────────────────────────────
   // Mirrors bim.service.ts's getModelUploadUrl -- a lightweight presigned
   // PUT URL, no DB row of its own. The resulting storageKey is passed
@@ -382,6 +449,10 @@ export class IssuesService {
     const existing = await this.findOne(companyId, projectId, issueId);
 
     if (dto.assignedTo) await this.assertAssigneeIsProjectMember(companyId, projectId, dto.assignedTo);
+
+    await this.assertLinkedResourcesInProject(companyId, projectId, {
+      buildingId: dto.buildingId, levelId: dto.levelId, locationId: dto.locationId, elementId: dto.elementId,
+    });
 
     // withTenant required -- see generateIssueNumber() above.
     const [updated] = await this.db.withTenant(companyId, sql => sql`
@@ -653,6 +724,11 @@ export class IssuesService {
   // ── Add evidence capture ──────────────────────────────────────────────────
   async addCapture(companyId: string, projectId: string, issueId: string, userId: string, captureId: string, isPrimary = false, caption?: string) {
     await this.assertIssueInProject(companyId, projectId, issueId);
+    // H-1 follow-up: captureId was never checked -- a user authorized for
+    // Project A could link Project B's capture (by id) as evidence on a
+    // Project A issue. Mirrors assertLinkedResourcesInProject's own capture
+    // check.
+    await this.assertLinkedResourcesInProject(companyId, projectId, { captureId });
     // withTenant required -- issue_captures carries the tenant_isolation RLS policy.
     const [link] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO issue_captures (issue_id, capture_id, company_id, is_primary, caption, added_by)

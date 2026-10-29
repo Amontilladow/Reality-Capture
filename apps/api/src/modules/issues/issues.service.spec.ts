@@ -1045,6 +1045,11 @@ describe('IssuesService view-state / screenshot behavior', () => {
         if (text.includes('SELECT 1 FROM issues')) {
           return Promise.resolve(values.includes(REAL_PROJECT) ? [{ '?column?': 1 }] : []);
         }
+        // assertLinkedResourcesInProject's own capture check (addCapture) --
+        // same REAL_PROJECT-gated shape as the issues branch above.
+        if (text.includes('FROM captures')) {
+          return Promise.resolve(values.includes(REAL_PROJECT) ? [{ '?column?': 1 }] : []);
+        }
         const extraResult = extra(text);
         if (extraResult) return Promise.resolve(extraResult);
         return Promise.resolve([]);
@@ -1102,6 +1107,26 @@ describe('IssuesService view-state / screenshot behavior', () => {
 
       await expect(svc.addCapture('company-1', REAL_PROJECT, ISSUE_ID, 'user-1', 'capture-1')).resolves.toBeUndefined();
       await expect(svc.addCapture('company-1', OTHER_PROJECT, ISSUE_ID, 'user-1', 'capture-1')).rejects.toThrow(NotFoundException);
+    });
+
+    // H-1 follow-up: the issue itself can be in the right project while the
+    // *capture* being attached as evidence belongs to a different one in
+    // the same company -- a parent-only check (the test above) doesn't
+    // cover this case.
+    it('addCapture: rejects a same-company capture that belongs to a different project, and writes no link', async () => {
+      const insertSpy = jest.fn();
+      const query = jest.fn((strings: TemplateStringsArray) => {
+        const text = strings.join('?');
+        if (text.includes('SELECT 1 FROM issues')) return Promise.resolve([{ '?column?': 1 }]);
+        if (text.includes('FROM captures')) return Promise.resolve([]); // capture exists, but not in this project
+        if (text.includes('INSERT INTO issue_captures')) { insertSpy(); return Promise.resolve([{ id: 'link-1' }]); }
+        return Promise.resolve([]);
+      });
+      const db = { withTenant: jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query)) } as unknown as DatabaseService;
+      const svc = makeSvc(db);
+
+      await expect(svc.addCapture('company-1', REAL_PROJECT, ISSUE_ID, 'user-1', 'capture-from-other-project')).rejects.toThrow(NotFoundException);
+      expect(insertSpy).not.toHaveBeenCalled();
     });
 
     it('addAttachment: succeeds under the issue\'s real project, rejects the same issueId under another project', async () => {
@@ -1262,5 +1287,87 @@ describe('IssuesService view-state / screenshot behavior', () => {
 
       await expect(svc.cancelScheduledReminder('company-1', 'project-1', 'issue-1', 'reminder-1')).resolves.toEqual({ message: 'Scheduled reminder cancelled.' });
     });
+  });
+});
+
+// H-1 follow-up: create()/update() accept several optional cross-resource
+// references (building/level/location/element/capture/drawing) that were
+// never checked against this project -- a user authorized for Project A
+// could attach Project B's building/level/location/element/capture/drawing
+// to an issue in Project A by supplying its id, and findOne() would then
+// display that other project's names/IFC metadata on an issue the
+// Project-A user can see.
+describe('IssuesService create/update cross-resource project-scoping (H-1)', () => {
+  const companyId = 'company-1';
+  const projectId = 'project-1';
+  const issueId = 'issue-1';
+
+  function makeSvc(query: jest.Mock) {
+    const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+    const db = { withTenant };
+    return new IssuesService(
+      db as unknown as DatabaseService,
+      { ingestIssue: jest.fn() } as unknown as AiClientService,
+      { create: jest.fn() } as unknown as NotificationsService,
+      {} as unknown as StorageService,
+    );
+  }
+
+  it('create: rejects a same-company elementId that belongs to a different project, and writes no issue', async () => {
+    const insertSpy = jest.fn();
+    const query = jest.fn((strings: TemplateStringsArray) => {
+      const text = strings.join('?');
+      if (text.includes('FROM projects')) return Promise.resolve([{ id: projectId }]); // assertProjectBelongsToCompany
+      if (text.includes('FROM bim_elements')) return Promise.resolve([]); // element exists, but not in this project
+      if (text.includes('INSERT INTO issues')) { insertSpy(); return Promise.resolve([{ id: 'issue-new' }]); }
+      return Promise.resolve([]);
+    });
+    const svc = makeSvc(query);
+
+    await expect(svc.create(companyId, projectId, 'user-1', {
+      issueType: 'defect', title: 'Title', discipline: 'MEP', deadline: '2026-12-01',
+      elementId: 'element-from-other-project',
+    } as CreateIssueDto)).rejects.toThrow(NotFoundException);
+    expect(insertSpy).not.toHaveBeenCalled();
+  });
+
+  it('create: accepts an elementId that really is in this project', async () => {
+    const query = jest.fn((strings: TemplateStringsArray) => {
+      const text = strings.join('?');
+      if (text.includes('FROM projects')) return Promise.resolve([{ id: projectId }]);
+      if (text.includes('FROM bim_elements')) return Promise.resolve([{ '?column?': 1 }]);
+      if (text.includes('SELECT code FROM projects')) return Promise.resolve([{ code: 'PRJ' }]);
+      if (text.includes('SELECT COUNT')) return Promise.resolve([{ n: '0' }]);
+      if (text.includes('INSERT INTO issues')) return Promise.resolve([{ id: 'issue-new', issueNumber: 'PRJ-MEP-0001' }]);
+      if (text.includes('SELECT 1 FROM issues')) return Promise.resolve([{ '?column?': 1 }]); // assertIssueInProject, inside addActivity()
+      if (text.includes('INSERT INTO issue_activities')) return Promise.resolve([{ id: 'activity-1' }]);
+      return Promise.resolve([]);
+    });
+    const svc = makeSvc(query);
+
+    const result = await svc.create(companyId, projectId, 'user-1', {
+      issueType: 'defect', title: 'Title', discipline: 'MEP', deadline: '2026-12-01',
+      elementId: 'element-1',
+    } as CreateIssueDto);
+    expect(result).toEqual(expect.objectContaining({ id: 'issue-new' }));
+  });
+
+  it('update: rejects a same-company locationId that belongs to a different project, and writes no update', async () => {
+    const updateSpy = jest.fn();
+    const query = jest.fn((strings: TemplateStringsArray) => {
+      const text = strings.join('?');
+      if (text.includes('SELECT i.*') || text.includes('FROM issues i')) {
+        return Promise.resolve([{ id: issueId, projectId, companyId, status: 'open' }]); // findOne()
+      }
+      if (text.includes('FROM locations')) return Promise.resolve([]); // location exists, but not in this project
+      if (text.includes('UPDATE issues')) { updateSpy(); return Promise.resolve([{ id: issueId }]); }
+      return Promise.resolve([]);
+    });
+    const svc = makeSvc(query);
+
+    await expect(svc.update(companyId, projectId, issueId, 'user-1', {
+      locationId: 'location-from-other-project',
+    })).rejects.toThrow(NotFoundException);
+    expect(updateSpy).not.toHaveBeenCalled();
   });
 });

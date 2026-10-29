@@ -288,4 +288,88 @@ describe('CapturesService hotspots project-scoping (H-1)', () => {
     const result = await svc.deleteHotspot(companyId, projectId, captureId, 'hotspot-1');
     expect(result).toEqual({ message: 'Hotspot deleted.' });
   });
+
+  // H-1 follow-up: the source capture can be in the right project while the
+  // optional targetCaptureId (the capture a 360 hotspot navigates to)
+  // belongs to a different one in the same company -- the tests above
+  // (which omit targetCaptureId entirely) don't cover this case.
+  describe('optional targetCaptureId', () => {
+    it('createHotspot: omitting targetCaptureId skips the ownership check entirely', async () => {
+      const { svc, withTenant } = makeService({});
+      withTenant.mockResolvedValueOnce([{ id: 'hotspot-1' }]); // the INSERT, after findOne() only
+      const hotspot = await svc.createHotspot(companyId, projectId, captureId, 'user-1', hotspotDto);
+      expect(hotspot).toEqual({ id: 'hotspot-1' });
+      expect(withTenant).toHaveBeenCalledTimes(2);
+    });
+
+    it('createHotspot: accepts a targetCaptureId that really is in this project', async () => {
+      const { svc, withTenant } = makeService({});
+      withTenant
+        .mockResolvedValueOnce([{ '?column?': 1 }]) // assertCaptureInProject(targetCaptureId)
+        .mockResolvedValueOnce([{ id: 'hotspot-1' }]); // the INSERT
+      const hotspot = await svc.createHotspot(companyId, projectId, captureId, 'user-1', {
+        ...hotspotDto, targetCaptureId: 'capture-2',
+      });
+      expect(hotspot).toEqual({ id: 'hotspot-1' });
+    });
+
+    it('createHotspot: rejects a targetCaptureId that belongs to a different project, and writes no hotspot', async () => {
+      const { svc, withTenant } = makeService({});
+      withTenant.mockResolvedValueOnce([]); // target capture exists, but not in this project
+      await expect(svc.createHotspot(companyId, projectId, captureId, 'user-1', {
+        ...hotspotDto, targetCaptureId: 'capture-from-other-project',
+      })).rejects.toThrow(/not found/i);
+      expect(withTenant).toHaveBeenCalledTimes(2); // findOne() + the failed capture check -- never reached the INSERT
+    });
+
+    it('updateHotspot: rejects a targetCaptureId that belongs to a different project, and writes no update', async () => {
+      const { svc, withTenant } = makeService({});
+      withTenant.mockResolvedValueOnce([]); // target capture exists, but not in this project
+      await expect(svc.updateHotspot(companyId, projectId, captureId, 'hotspot-1', {
+        ...hotspotDto, targetCaptureId: 'capture-from-other-project',
+      })).rejects.toThrow(/not found/i);
+      expect(withTenant).toHaveBeenCalledTimes(2); // findOne() + the failed capture check -- never reached the UPDATE
+    });
+  });
+});
+
+// H-1 follow-up: update() validates locationId against this project the
+// same way register() already does -- a user authorized for Project A
+// could otherwise re-point a Project A capture's location_id at Project
+// B's location by supplying its id.
+describe('CapturesService.update location project-scoping (H-1)', () => {
+  const companyId = 'company-1';
+  const projectId = 'project-1';
+  const captureId = 'capture-1';
+
+  function makeService(opts: { locationBelongsToProject?: boolean }) {
+    const findOneRow = { id: captureId, projectId, companyId, renditions: [], originalKey: 'key-1' };
+    const withTenant = jest.fn()
+      .mockResolvedValueOnce([findOneRow]) // findOne()
+      .mockResolvedValueOnce(opts.locationBelongsToProject === false ? [] : [{ id: 'location-1' }]) // location check
+      .mockResolvedValueOnce([{ id: captureId, locationId: 'location-1' }]); // UPDATE
+    const db = { withTenant };
+    const resolveUrls = jest.fn().mockResolvedValue(new Map());
+    const svc = new CapturesService(
+      db as unknown as DatabaseService,
+      { resolveUrls } as unknown as StorageService,
+      {} as unknown as TenancyService,
+      {} as unknown as AiClientService,
+      {} as unknown as Queue,
+    );
+    return { svc, withTenant };
+  }
+
+  it('accepts a locationId that really is in this project', async () => {
+    const { svc } = makeService({ locationBelongsToProject: true });
+    const result = await svc.update(companyId, projectId, captureId, { locationId: 'location-1' });
+    expect(result).toEqual({ id: captureId, locationId: 'location-1' });
+  });
+
+  it('rejects a locationId that belongs to a different project in the same company, and writes no update', async () => {
+    const { svc, withTenant } = makeService({ locationBelongsToProject: false });
+    await expect(svc.update(companyId, projectId, captureId, { locationId: 'location-from-other-project' }))
+      .rejects.toThrow(/does not belong to this project/);
+    expect(withTenant).toHaveBeenCalledTimes(2); // findOne() + the failed location check -- never reached the UPDATE
+  });
 });

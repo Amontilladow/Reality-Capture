@@ -149,6 +149,17 @@ export class BuildingsService {
     // explicitly unlinked from its BIM element (elementId: null), not just
     // linked -- the other fields here can only ever be set, never cleared.
     const elementIdProvided = Object.prototype.hasOwnProperty.call(dto, 'elementId');
+    // H-1 follow-up: a non-null elementId was never checked against this
+    // project -- a user authorized for Project A could link Project B's
+    // BIM element to a Project A location pin by supplying its id. The
+    // null case (explicit unlink) is left alone -- there's nothing to
+    // validate when clearing the link.
+    if (elementIdProvided && dto.elementId != null) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT 1 FROM bim_elements WHERE id = ${dto.elementId ?? null} AND project_id = ${projectId} AND company_id = ${companyId}
+      `);
+      if (!row) throw new NotFoundException('BIM element not found.');
+    }
     // withTenant required -- locations carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id.
     const [loc] = await this.db.withTenant(companyId, sql => sql`

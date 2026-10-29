@@ -243,3 +243,78 @@ describe('SnaggingService attachment enforcement', () => {
     });
   });
 });
+
+// H-1 follow-up: create()/update() accept optional building/level/location
+// references that were never checked against this project -- a user
+// authorized for Project A could attach Project B's building/level/
+// location to a snag item by supplying its id. findAll()/findOne() both
+// JOIN buildings/levels for display, so an unchecked cross-project id was a
+// real metadata leak there, not merely a dangling reference.
+describe('SnaggingService create/update location project-scoping (H-1)', () => {
+  const companyId = 'company-1';
+  const projectId = 'project-1';
+  const snagId = 'snag-1';
+
+  it('create: rejects a same-company building that belongs to a different project, and writes no record', async () => {
+    const querySpy = jest.fn();
+    const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => {
+      const sql = jest.fn((strings: TemplateStringsArray) => {
+        const text = strings.join('?');
+        if (text.includes('FROM buildings')) return Promise.resolve([]); // building exists, but not in this project
+        return Promise.resolve([]);
+      });
+      return fn(sql);
+    });
+    const query = jest.fn((strings: TemplateStringsArray) => {
+      querySpy();
+      const text = strings.join('?');
+      if (text.includes('INSERT INTO snag_items')) return Promise.resolve([{ id: 'snag-new' }]);
+      return Promise.resolve([]);
+    });
+    const db = { withTenant, query };
+    const svc = new SnaggingService(
+      db as unknown as DatabaseService,
+      {} as unknown as NotificationsService,
+      {} as unknown as StorageService,
+      {} as unknown as ProjectAuthorizationService,
+    );
+
+    await expect(svc.create(companyId, projectId, 'user-1', {
+      title: 'Snag', buildingId: 'building-from-other-project',
+    } as Parameters<typeof svc.create>[3])).rejects.toThrow(NotFoundException);
+    expect(querySpy).not.toHaveBeenCalled();
+  });
+
+  it('update: rejects a same-company location that belongs to a different project, and writes no update', async () => {
+    const existingRow = { id: snagId, projectId, companyId, status: 'open' };
+    const withTenant = jest.fn()
+      .mockResolvedValueOnce([existingRow]) // findOne()
+      .mockImplementationOnce((_companyId: string, fn: (sql: unknown) => unknown) => {
+        const sql = jest.fn((strings: TemplateStringsArray) => {
+          const text = strings.join('?');
+          if (text.includes('FROM locations')) return Promise.resolve([]); // location exists, but not in this project
+          return Promise.resolve([]);
+        });
+        return fn(sql);
+      });
+    const querySpy = jest.fn();
+    const query = jest.fn((strings: TemplateStringsArray) => {
+      querySpy();
+      const text = strings.join('?');
+      if (text.includes('UPDATE snag_items')) return Promise.resolve([{ id: snagId }]);
+      return Promise.resolve([]);
+    });
+    const db = { withTenant, query };
+    const svc = new SnaggingService(
+      db as unknown as DatabaseService,
+      {} as unknown as NotificationsService,
+      {} as unknown as StorageService,
+      {} as unknown as ProjectAuthorizationService,
+    );
+
+    await expect(svc.update(companyId, projectId, snagId, 'user-1', {
+      locationId: 'location-from-other-project',
+    } as Parameters<typeof svc.update>[4])).rejects.toThrow(NotFoundException);
+    expect(querySpy).not.toHaveBeenCalled();
+  });
+});

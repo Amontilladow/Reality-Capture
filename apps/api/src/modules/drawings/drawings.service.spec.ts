@@ -294,6 +294,11 @@ describe('DrawingsService H-1: same-company cross-project access is rejected', (
       if (text.includes('FROM drawings')) {
         return Promise.resolve(values.includes(REAL_PROJECT) ? [{ id: drawingId, projectId: REAL_PROJECT, storageKey: 'key.pdf', captureLinks: [] }] : []);
       }
+      // assertCaptureInProject's own ownership check (linkCapture) -- same
+      // REAL_PROJECT-gated shape as the drawings branch above.
+      if (text.includes('FROM captures')) {
+        return Promise.resolve(values.includes(REAL_PROJECT) ? [{ '?column?': 1 }] : []);
+      }
       const extraResult = extra(text);
       if (extraResult) return Promise.resolve(extraResult);
       return Promise.resolve([]);
@@ -321,6 +326,29 @@ describe('DrawingsService H-1: same-company cross-project access is rejected', (
 
     await expect(svc.linkCapture(companyId, REAL_PROJECT, drawingId, 'user-1', dto)).resolves.toBeDefined();
     await expect(svc.linkCapture(companyId, OTHER_PROJECT, drawingId, 'user-1', dto)).rejects.toThrow(NotFoundException);
+  });
+
+  // H-1 follow-up: the drawing itself can be in the right project while the
+  // *capture* being linked belongs to a different one in the same company
+  // -- a parent-only check (the test above) doesn't cover this case. This
+  // mock, unlike makeProjectScopedDb, keys off the table queried rather
+  // than which project id was bound, so it can tell "the drawing is fine"
+  // apart from "this particular capture is not."
+  it('linkCapture: rejects a same-company capture that belongs to a different project, and writes no link', async () => {
+    const insertSpy = jest.fn();
+    const query = jest.fn((strings: TemplateStringsArray) => {
+      const text = strings.join('?');
+      if (text.includes('FROM drawings')) return Promise.resolve([{ id: drawingId }]);
+      if (text.includes('FROM captures')) return Promise.resolve([]); // capture exists, but not in this project
+      if (text.includes('INSERT INTO capture_drawing_links')) { insertSpy(); return Promise.resolve([{ id: 'link-1' }]); }
+      return Promise.resolve([]);
+    });
+    const db = { withTenant: jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query)) } as unknown as DatabaseService;
+    const svc = makeSvc(db);
+    const dto = { captureId: 'capture-from-other-project', posXNorm: 0.5, posYNorm: 0.5 };
+
+    await expect(svc.linkCapture(companyId, REAL_PROJECT, drawingId, 'user-1', dto)).rejects.toThrow(NotFoundException);
+    expect(insertSpy).not.toHaveBeenCalled();
   });
 
   it('unlinkCapture: succeeds under the real project, rejects the same drawingId under another project', async () => {

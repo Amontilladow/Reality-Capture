@@ -141,6 +141,7 @@ export class DrawingsService {
 
   async linkCapture(companyId: string, projectId: string, drawingId: string, userId: string, dto: LinkCaptureToDrawingDto) {
     await this.assertDrawingInProject(companyId, projectId, drawingId);
+    await this.assertCaptureInProject(companyId, projectId, dto.captureId);
     // withTenant required -- capture_drawing_links carries the tenant_isolation RLS policy.
     const [link] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO capture_drawing_links (capture_id, drawing_id, company_id, pos_x_norm, pos_y_norm, linked_by)
@@ -310,6 +311,19 @@ export class DrawingsService {
       SELECT 1 FROM drawings WHERE id = ${drawingId} AND project_id = ${projectId} AND company_id = ${companyId}
     `);
     if (!row) throw new NotFoundException('Drawing not found.');
+  }
+
+  // H-1 follow-up: linkCapture() checked the drawing's own project via
+  // assertDrawingInProject but never the supplied captureId -- a user
+  // authorized for Project A could pin Project B's capture onto a Project A
+  // drawing by supplying its id. captures carries its own project_id
+  // directly (same table/column captures.service.ts's own findOne()
+  // checks).
+  private async assertCaptureInProject(companyId: string, projectId: string, captureId: string): Promise<void> {
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      SELECT 1 FROM captures WHERE id = ${captureId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!row) throw new NotFoundException('Capture not found.');
   }
 
   // Same rationale as captures.service.ts's assertProjectBelongsToCompany --

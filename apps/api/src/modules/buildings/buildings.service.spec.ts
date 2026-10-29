@@ -138,6 +138,39 @@ describe('BuildingsService project-scoping (H-1)', () => {
       const result = await svc.updateLocation(companyId, projectId, locationId, { name: 'Renamed' });
       expect(result).toEqual({ id: locationId, name: 'Renamed' });
     });
+
+    // H-1 follow-up: the location itself can be in the right project while
+    // the BIM element being linked to it belongs to a different one in the
+    // same company -- the test above doesn't cover this case.
+    it('rejects linking a BIM element that belongs to a different project, and writes no update', async () => {
+      const { svc, withTenant } = makeService();
+      withTenant
+        .mockResolvedValueOnce([{ id: locationId, name: 'Loc', description: null }]) // getLocationInProject
+        .mockResolvedValueOnce([]); // element exists, but not in this project
+      await expect(svc.updateLocation(companyId, projectId, locationId, { elementId: 'element-from-other-project' }))
+        .rejects.toThrow(NotFoundException);
+      expect(withTenant).toHaveBeenCalledTimes(2); // never reached the UPDATE
+    });
+
+    it('links a BIM element that really is in this project', async () => {
+      const { svc, withTenant } = makeService();
+      withTenant
+        .mockResolvedValueOnce([{ id: locationId, name: 'Loc', description: null }]) // getLocationInProject
+        .mockResolvedValueOnce([{ id: 'element-1' }]) // assertElementInProject-equivalent check
+        .mockResolvedValueOnce([{ id: locationId, elementId: 'element-1' }]); // UPDATE
+      const result = await svc.updateLocation(companyId, projectId, locationId, { elementId: 'element-1' });
+      expect(result).toEqual({ id: locationId, elementId: 'element-1' });
+    });
+
+    it('explicitly unlinking a BIM element (elementId: null) skips the ownership check entirely', async () => {
+      const { svc, withTenant } = makeService();
+      withTenant
+        .mockResolvedValueOnce([{ id: locationId, name: 'Loc', description: null }]) // getLocationInProject
+        .mockResolvedValueOnce([{ id: locationId, elementId: null }]); // UPDATE -- no element check in between
+      const result = await svc.updateLocation(companyId, projectId, locationId, { elementId: null });
+      expect(result).toEqual({ id: locationId, elementId: null });
+      expect(withTenant).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('archiveLocation', () => {

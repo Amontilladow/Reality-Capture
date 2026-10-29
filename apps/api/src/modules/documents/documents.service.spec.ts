@@ -116,15 +116,25 @@ describe('DocumentsService H-1: same-company cross-project access is rejected on
   const REAL_PROJECT = 'project-A';
   const OTHER_PROJECT = 'project-B';
 
-  function makeLinkService() {
+  function makeLinkService(extra: (text: string) => unknown[] | undefined = () => undefined) {
     const query = jest.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
       const text = strings.join('?');
       if (text.includes('FROM documents')) {
         return Promise.resolve(values.includes(REAL_PROJECT) ? [{ id: documentId }] : []);
       }
+      // H-1 follow-up: each target table gets the same REAL_PROJECT-gated
+      // "found" default as the document check above, so a test that isn't
+      // specifically exercising target validation doesn't need to know
+      // about these queries.
+      if (text.includes('FROM captures') || text.includes('FROM bim_elements')
+        || text.includes('FROM locations') || text.includes('FROM issues')) {
+        return Promise.resolve(values.includes(REAL_PROJECT) ? [{ '?column?': 1 }] : []);
+      }
       if (text.includes('INSERT INTO document_links')) {
         return Promise.resolve([{ id: 'link-1', documentId, issueId: 'issue-1' }]);
       }
+      const extraResult = extra(text);
+      if (extraResult) return Promise.resolve(extraResult);
       return Promise.resolve([]);
     });
     const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
@@ -138,5 +148,39 @@ describe('DocumentsService H-1: same-company cross-project access is rejected on
 
     await expect(svc.link(companyId, REAL_PROJECT, documentId, 'user-1', dto)).resolves.toBeDefined();
     await expect(svc.link(companyId, OTHER_PROJECT, documentId, 'user-1', dto)).rejects.toThrow(NotFoundException);
+  });
+
+  // H-1 follow-up: the document itself can be in the right project while
+  // the single supplied target (capture/element/location/issue) belongs to
+  // a different one in the same company -- a parent-only check (the test
+  // above) doesn't cover this case. One test per supported target type.
+  it.each([
+    ['captureId', 'capture-from-other-project'],
+    ['elementId', 'element-from-other-project'],
+    ['locationId', 'location-from-other-project'],
+    ['issueId', 'issue-from-other-project'],
+  ])('rejects a same-company %s target that belongs to a different project, and writes no link', async (field, targetId) => {
+    const insertSpy = jest.fn();
+    // Unlike makeLinkService's REAL_PROJECT-gated default (which can't
+    // distinguish "this specific target is not in REAL_PROJECT" from "no
+    // project matches at all"), this mock keys off the table queried, so it
+    // can tell "the document is fine" apart from "this particular target is
+    // not."
+    const query = jest.fn((strings: TemplateStringsArray) => {
+      const text = strings.join('?');
+      if (text.includes('FROM documents')) return Promise.resolve([{ id: documentId }]);
+      if (text.includes('FROM captures') || text.includes('FROM bim_elements')
+        || text.includes('FROM locations') || text.includes('FROM issues')) {
+        return Promise.resolve([]); // target exists, but not in this project
+      }
+      if (text.includes('INSERT INTO document_links')) { insertSpy(); return Promise.resolve([{ id: 'link-1' }]); }
+      return Promise.resolve([]);
+    });
+    const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+    const db = { withTenant };
+    const svc = new DocumentsService(db as unknown as DatabaseService, {} as unknown as StorageService);
+
+    await expect(svc.link(companyId, REAL_PROJECT, documentId, 'user-1', { [field]: targetId })).rejects.toThrow(NotFoundException);
+    expect(insertSpy).not.toHaveBeenCalled();
   });
 });

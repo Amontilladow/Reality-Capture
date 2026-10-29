@@ -326,6 +326,21 @@ export class CapturesService {
   // ── Update capture metadata ───────────────────────────────────────────────
   async update(companyId: string, projectId: string, captureId: string, dto: UpdateCaptureDto) {
     await this.findOne(companyId, projectId, captureId);
+    // H-1 follow-up: create() validates locationId against this project
+    // (see its own comment above) but update() never did -- a user
+    // authorized for Project A could re-point a Project A capture's
+    // location_id at Project B's location by supplying its id.
+    if (dto.locationId) {
+      const [loc] = await this.db.withTenant(companyId, sql => sql`
+        SELECT l.id FROM locations l
+        LEFT JOIN levels lv ON lv.id = l.level_id
+        LEFT JOIN buildings b ON b.id = lv.building_id
+        LEFT JOIN drawings d ON d.id = l.drawing_id
+        WHERE l.id = ${dto.locationId ?? null}
+          AND (b.project_id = ${projectId} OR d.project_id = ${projectId})
+      `);
+      if (!loc) throw new BadRequestException('Location does not belong to this project.');
+    }
     // withTenant required -- captures carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id, so this UPDATE
     // would silently match 0 rows under any DB role that isn't the table owner/a superuser.
@@ -388,6 +403,16 @@ export class CapturesService {
     return { message: 'Capture deleted.' };
   }
 
+  // Lightweight existence+ownership check for a referenced capture id that
+  // isn't the route's own :id (e.g. a hotspot's targetCaptureId) -- mirrors
+  // findOne()'s own project_id/company_id scoping without its full join.
+  private async assertCaptureInProject(companyId: string, projectId: string, captureId: string): Promise<void> {
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      SELECT 1 FROM captures WHERE id = ${captureId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!row) throw new NotFoundException(`Capture ${captureId} not found.`);
+  }
+
   // ── Hotspots ──────────────────────────────────────────────────────────────
   async createHotspot(companyId: string, projectId: string, captureId: string, userId: string, dto: CreateHotspotDto) {
     // H-1 fix: this previously had no existence/ownership check at all for
@@ -396,6 +421,10 @@ export class CapturesService {
     // company_id = companyId), the same boundary used throughout the rest
     // of this codebase for sub-resource routes.
     await this.findOne(companyId, projectId, captureId);
+    // H-1 follow-up: the optional targetCaptureId (the capture a 360 hotspot
+    // navigates to) was never checked -- a user authorized for Project A
+    // could point a hotspot at Project B's capture by supplying its id.
+    if (dto.targetCaptureId) await this.assertCaptureInProject(companyId, projectId, dto.targetCaptureId);
     // withTenant required -- hotspots carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id, so this INSERT
     // would be rejected outright under any DB role that isn't the table owner/a superuser.
@@ -418,6 +447,8 @@ export class CapturesService {
   async updateHotspot(companyId: string, projectId: string, captureId: string, hotspotId: string, dto: Partial<CreateHotspotDto>) {
     // H-1 fix: see createHotspot()'s identical comment above.
     await this.findOne(companyId, projectId, captureId);
+    // H-1 follow-up: see createHotspot()'s identical targetCaptureId comment above.
+    if (dto.targetCaptureId) await this.assertCaptureInProject(companyId, projectId, dto.targetCaptureId);
     // withTenant required -- hotspots carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id, so this UPDATE
     // would silently match 0 rows under any DB role that isn't the table owner/a superuser.
