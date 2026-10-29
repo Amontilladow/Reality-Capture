@@ -10,6 +10,7 @@ import { uploadCapture } from '../lib/captures.api';
 import { QAQC_PRIORITIES, QAQC_PRIORITY_LABELS, QAQC_RECORD_TYPE_LABELS, QAQC_RECORD_TYPE_SHORT_LABELS } from '../lib/qaqc-constants';
 import type { ProjectMember } from '../lib/projects.api';
 import { apiErrorMessage } from '../lib/api';
+import { Listbox } from './ui/Listbox';
 
 // Field set deliberately mirrors RfiFormModal's "subject/question(->description)/
 // priority/discipline+disciplineOther/assignedTo/dueDate" shape -- see
@@ -140,11 +141,11 @@ export function QaqcFormModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="field-label" htmlFor="qaqc-priority">Priority</label>
-            <select id="qaqc-priority" className="field-input" value={priority} onChange={(e) => setPriority(e.target.value as QaqcPriority)}>
+            <Listbox id="qaqc-priority" className="field-input" value={priority} onChange={(e) => setPriority(e.target.value as QaqcPriority)}>
               {QAQC_PRIORITIES.map((p) => (
                 <option key={p} value={p}>{QAQC_PRIORITY_LABELS[p]}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="qaqc-dueDate">Due date</label>
@@ -155,21 +156,21 @@ export function QaqcFormModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="field-label" htmlFor="qaqc-assignedTo">Assignee</label>
-            <select id="qaqc-assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+            <Listbox id="qaqc-assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
               <option value="">Unassigned</option>
               {members.map((m) => (
                 <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="qaqc-discipline">Discipline *</label>
-            <select id="qaqc-discipline" className="field-input" value={discipline} onChange={(e) => setDiscipline(e.target.value as RfiDiscipline)}>
+            <Listbox id="qaqc-discipline" className="field-input" value={discipline} onChange={(e) => setDiscipline(e.target.value as RfiDiscipline)}>
               <option value="">Select…</option>
               {RFI_DISCIPLINES.map((d) => (
                 <option key={d} value={d}>{RFI_DISCIPLINE_LABELS[d]}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
         </div>
 
@@ -242,7 +243,7 @@ export function QaqcFormModal({
             <label className="field-label !mb-0">Documents {documents.length > 0 ? `(${documents.length})` : ''}</label>
           </div>
           <div className="flex items-center gap-2 mt-1">
-            <select
+            <Listbox
               className="field-input w-auto !py-1.5 text-xs"
               value={pendingDocumentType}
               onChange={(e) => setPendingDocumentType(e.target.value as RfiDocumentType)}
@@ -250,7 +251,7 @@ export function QaqcFormModal({
               {RFI_DOCUMENT_TYPES.map((t) => (
                 <option key={t} value={t}>{RFI_DOCUMENT_TYPE_LABELS[t]}</option>
               ))}
-            </select>
+            </Listbox>
             <button
               type="button"
               className="btn-secondary !px-3 !py-1.5 text-xs"

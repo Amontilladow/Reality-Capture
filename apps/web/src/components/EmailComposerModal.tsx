@@ -13,6 +13,7 @@ import {
   sendEmail, uploadEmailAttachment,
   type EmailAttachmentInput, type EmailRelatedRecordType,
 } from '../lib/email-integration.api';
+import { Listbox } from './ui/Listbox';
 
 const PROVIDER_LABEL: Record<EmailProvider, string> = { microsoft: 'Outlook', google: 'Gmail' };
 
@@ -141,9 +142,9 @@ export function EmailComposerModal({
         {connectedProviders.length > 1 && (
           <div>
             <label className="field-label">Send from</label>
-            <select className="field-input" value={provider} onChange={(e) => setProvider(e.target.value as EmailProvider)}>
+            <Listbox className="field-input" value={provider} onChange={(e) => setProvider(e.target.value as EmailProvider)}>
               {connectedProviders.map((p) => <option key={p} value={p}>{PROVIDER_LABEL[p]}</option>)}
-            </select>
+            </Listbox>
           </div>
         )}
         {connectedProviders.length === 1 && (

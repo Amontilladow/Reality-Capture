@@ -5,6 +5,7 @@ import { Modal } from '../ui/Modal';
 import { apiErrorMessage } from '../../lib/api';
 import { uploadAndRegisterSiteDrawing, SITE_DRAWING_WORKFLOW_STATUSES, type SiteDrawingWorkflowStatus } from '../../lib/site-drawings.api';
 import { WORKFLOW_STATUS_LABELS } from './siteDrawingDisplay';
+import { Listbox } from '../ui/Listbox';
 
 // Registers a brand-new drawing from the Local source (brief section 6 --
 // the only source this phase has real, credential-free access to). The
@@ -104,9 +105,9 @@ export function RegisterSiteDrawingModal({ open, onClose, projectId }: { open: b
           </div>
           <div className="sm:col-span-2">
             <label className="field-label" htmlFor="sd-status">Workflow status</label>
-            <select id="sd-status" className="field-input" value={workflowStatus} onChange={(e) => setWorkflowStatus(e.target.value as SiteDrawingWorkflowStatus)}>
+            <Listbox id="sd-status" className="field-input" value={workflowStatus} onChange={(e) => setWorkflowStatus(e.target.value as SiteDrawingWorkflowStatus)}>
               {SITE_DRAWING_WORKFLOW_STATUSES.map((s) => <option key={s} value={s}>{WORKFLOW_STATUS_LABELS[s]}</option>)}
-            </select>
+            </Listbox>
             <p className="text-xs text-ink-500 mt-1">Set this deliberately — never inferred from the filename or upload date.</p>
           </div>
         </div>

@@ -26,6 +26,7 @@ import {
   getMatrixDiscrepancies, getRiskHeatmap, getRiskMovement, RISK_DRIVERS, RISK_DRIVER_LABELS,
   type Risk, type RiskLevel, type RiskStatus, type RiskMatrixLevel, type RiskDriver, type RiskMatrixDiscrepancy,
 } from '../lib/risk.api';
+import { Listbox } from './ui/Listbox';
 
 // HIGH/VERY_HIGH have no dedicated semantic token (the design system only
 // has a 3-step ok/warn/danger scale) -- these two literal oranges sit
@@ -542,7 +543,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="panel p-3">
               <div className="field-label !mb-1.5">Owner</div>
-              <select
+              <Listbox
                 value={risk.ownerId ?? ''}
                 onChange={(e) => ownerMutation.mutate(e.target.value || null)}
                 disabled={ownerMutation.isPending}
@@ -552,7 +553,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
                 {members.map((m) => (
                   <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
                 ))}
-              </select>
+              </Listbox>
             </div>
             <div className="panel p-3">
               <div className="flex items-center justify-between !mb-1.5">
@@ -825,22 +826,22 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
       ) : (
         <div className="panel p-3 space-y-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <select value={probability} onChange={(e) => setProbability(e.target.value)} className="field-input !py-1 text-xs">
+            <Listbox value={probability} onChange={(e) => setProbability(e.target.value)} className="field-input !py-1 text-xs">
               <option value="">Probability…</option>
               {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{PROBABILITY_LABELS[n]}</option>)}
-            </select>
-            <select value={impact} onChange={(e) => setImpact(e.target.value)} className="field-input !py-1 text-xs">
+            </Listbox>
+            <Listbox value={impact} onChange={(e) => setImpact(e.target.value)} className="field-input !py-1 text-xs">
               <option value="">Impact…</option>
               {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{IMPACT_LABELS[n]}</option>)}
-            </select>
-            <select value={primaryDriver} onChange={(e) => setPrimaryDriver(e.target.value as RiskDriver)} className="field-input !py-1 text-xs">
+            </Listbox>
+            <Listbox value={primaryDriver} onChange={(e) => setPrimaryDriver(e.target.value as RiskDriver)} className="field-input !py-1 text-xs">
               <option value="">Primary driver…</option>
               {RISK_DRIVERS.map((d) => <option key={d} value={d}>{RISK_DRIVER_LABELS[d]}</option>)}
-            </select>
-            <select value={secondaryDriver} onChange={(e) => setSecondaryDriver(e.target.value as RiskDriver)} className="field-input !py-1 text-xs">
+            </Listbox>
+            <Listbox value={secondaryDriver} onChange={(e) => setSecondaryDriver(e.target.value as RiskDriver)} className="field-input !py-1 text-xs">
               <option value="">Secondary driver (optional)…</option>
               {RISK_DRIVERS.map((d) => <option key={d} value={d}>{RISK_DRIVER_LABELS[d]}</option>)}
-            </select>
+            </Listbox>
           </div>
           <div className="flex items-center gap-3">
             {previewScore !== null ? (

@@ -22,6 +22,7 @@ import {
   MONITORING_LEVELS, PRODUCTIVITY_CLASSIFICATIONS, ABSENCE_TYPES,
   type MonitoringLevel, type ProductivityClassification, type ProductivityFactors, type AbsenceType,
 } from '@engineeringos/types';
+import { Listbox } from '../components/ui/Listbox';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -293,8 +294,8 @@ export default function WorkforcePage() {
                       </td>
                       <td className="px-4 py-2.5 text-ink-500 tabular-nums">{formatHm(activity.durationSeconds)}</td>
                       <td className="px-4 py-2.5">
-                        <select
-                          className="input !py-1 !text-xs"
+                        <Listbox
+                          className="field-input !py-1 !text-xs"
                           value=""
                           disabled={attributingId === activity.id && attributeMutation.isPending}
                           onChange={(e) => {
@@ -307,7 +308,7 @@ export default function WorkforcePage() {
                           {(projectsQuery.data?.data ?? []).map((project) => (
                             <option key={project.id} value={project.id}>{project.name}</option>
                           ))}
-                        </select>
+                        </Listbox>
                       </td>
                     </tr>
                   ))}
@@ -451,7 +452,7 @@ function MyScheduling() {
                   <td className="px-4 py-2.5">
                     <input
                       type="time"
-                      className="input !py-1 !text-xs"
+                      className="field-input !py-1 !text-xs"
                       defaultValue={pref?.startTime ?? ''}
                       disabled={preferenceMutation.isPending}
                       onBlur={(e) => {
@@ -464,7 +465,7 @@ function MyScheduling() {
                   <td className="px-4 py-2.5">
                     <input
                       type="time"
-                      className="input !py-1 !text-xs"
+                      className="field-input !py-1 !text-xs"
                       defaultValue={pref?.endTime ?? ''}
                       disabled={preferenceMutation.isPending}
                       onBlur={(e) => {
@@ -501,27 +502,27 @@ function MyScheduling() {
         <div className="flex flex-wrap gap-2 items-end">
           <label className="text-xs text-ink-500">
             Type
-            <select
-              className="input !py-1 !text-xs block"
+            <Listbox
+              className="field-input !py-1 !text-xs block"
               value={absenceForm.absenceType}
               onChange={(e) => setAbsenceForm({ ...absenceForm, absenceType: e.target.value as AbsenceType })}
             >
               {ABSENCE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
+            </Listbox>
           </label>
           <label className="text-xs text-ink-500">
             Start
-            <input type="date" className="input !py-1 !text-xs block" value={absenceForm.startDate}
+            <input type="date" className="field-input !py-1 !text-xs block" value={absenceForm.startDate}
               onChange={(e) => setAbsenceForm({ ...absenceForm, startDate: e.target.value })} />
           </label>
           <label className="text-xs text-ink-500">
             End
-            <input type="date" className="input !py-1 !text-xs block" value={absenceForm.endDate}
+            <input type="date" className="field-input !py-1 !text-xs block" value={absenceForm.endDate}
               onChange={(e) => setAbsenceForm({ ...absenceForm, endDate: e.target.value })} />
           </label>
           <label className="text-xs text-ink-500 flex-1 min-w-[140px]">
             Reason (optional)
-            <input type="text" className="input !py-1 !text-xs block w-full" value={absenceForm.reason}
+            <input type="text" className="field-input !py-1 !text-xs block w-full" value={absenceForm.reason}
               onChange={(e) => setAbsenceForm({ ...absenceForm, reason: e.target.value })} />
           </label>
           <button
@@ -670,7 +671,7 @@ function PrivacySettingsAdmin() {
         <div className="panel tick-frame p-4 space-y-4 max-w-xl">
           <label className="block space-y-1">
             <div className="text-xs text-ink-500 font-medium">Monitoring level</div>
-            <select
+            <Listbox
               className="input"
               value={settings.monitoringLevel}
               disabled={updateMutation.isPending}
@@ -679,7 +680,7 @@ function PrivacySettingsAdmin() {
               {MONITORING_LEVELS.map((level) => (
                 <option key={level} value={level}>{level}</option>
               ))}
-            </select>
+            </Listbox>
           </label>
 
           <label className="flex items-start gap-2">
@@ -779,8 +780,8 @@ function ReportingLinesAdmin() {
                   <td className="px-4 py-2.5">{user.firstName} {user.lastName}</td>
                   <td className="px-4 py-2.5 text-ink-500">{user.companyRole}</td>
                   <td className="px-4 py-2.5">
-                    <select
-                      className="input !py-1 !text-xs"
+                    <Listbox
+                      className="field-input !py-1 !text-xs"
                       value={managerByUserId.get(user.id) ?? ''}
                       disabled={setManagerMutation.isPending}
                       onChange={(e) => {
@@ -792,7 +793,7 @@ function ReportingLinesAdmin() {
                       {users.filter((candidate) => candidate.id !== user.id).map((candidate) => (
                         <option key={candidate.id} value={candidate.id}>{candidate.firstName} {candidate.lastName}</option>
                       ))}
-                    </select>
+                    </Listbox>
                   </td>
                 </tr>
               ))}
@@ -919,22 +920,22 @@ function ShiftSchedulingAdmin() {
       <div className="flex flex-wrap gap-2 items-end">
         <label className="text-xs text-ink-500">
           Employee
-          <select className="input !py-1 !text-xs block" value={form.userId} onChange={(e) => setForm({ ...form, userId: e.target.value })}>
+          <Listbox className="field-input !py-1 !text-xs block" value={form.userId} onChange={(e) => setForm({ ...form, userId: e.target.value })}>
             <option value="">Select…</option>
             {users.map((u) => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
-          </select>
+          </Listbox>
         </label>
         <label className="text-xs text-ink-500">
           Date
-          <input type="date" className="input !py-1 !text-xs block" value={form.shiftDate} onChange={(e) => setForm({ ...form, shiftDate: e.target.value })} />
+          <input type="date" className="field-input !py-1 !text-xs block" value={form.shiftDate} onChange={(e) => setForm({ ...form, shiftDate: e.target.value })} />
         </label>
         <label className="text-xs text-ink-500">
           Start
-          <input type="time" className="input !py-1 !text-xs block" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
+          <input type="time" className="field-input !py-1 !text-xs block" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
         </label>
         <label className="text-xs text-ink-500">
           End
-          <input type="time" className="input !py-1 !text-xs block" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
+          <input type="time" className="field-input !py-1 !text-xs block" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
         </label>
         <button
           className="btn-secondary !py-1 !px-3 !text-xs"
@@ -1129,8 +1130,8 @@ function ApplicationsAdmin() {
                   <td className="px-4 py-2.5">{app.name}</td>
                   <td className="px-4 py-2.5 text-ink-500 font-mono text-xs">{app.matchPattern}</td>
                   <td className="px-4 py-2.5">
-                    <select
-                      className="input !py-1 !text-xs"
+                    <Listbox
+                      className="field-input !py-1 !text-xs"
                       value={app.productivityClassification}
                       disabled={classifyMutation.isPending}
                       onChange={(e) => classifyMutation.mutate({ id: app.id, classification: e.target.value as ProductivityClassification })}
@@ -1138,7 +1139,7 @@ function ApplicationsAdmin() {
                       {PRODUCTIVITY_CLASSIFICATIONS.map((c) => (
                         <option key={c} value={c}>{c}</option>
                       ))}
-                    </select>
+                    </Listbox>
                   </td>
                 </tr>
               ))}

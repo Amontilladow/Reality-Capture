@@ -8,6 +8,7 @@ import { Modal } from './ui/Modal';
 import { apiErrorMessage } from '../lib/api';
 import { getRiskGraph, getGraphNodeDetail, type RiskGraphNode, type RiskLevel } from '../lib/risk.api';
 import { useThemeColors, type ThemeColors } from '../lib/useThemeColors';
+import { Listbox } from './ui/Listbox';
 
 // HIGH has no dedicated semantic token (see RiskIntelligenceSection.tsx's
 // identical reasoning) -- a fixed mid-brightness orange that already reads
@@ -219,18 +220,18 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
               ← Show full graph
             </button>
           )}
-          <select value={nodeTypeFilter} onChange={(e) => setNodeTypeFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
+          <Listbox value={nodeTypeFilter} onChange={(e) => setNodeTypeFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
             <option value="">All node types</option>
             {nodeTypes.map((t) => <option key={t} value={t}>{NODE_TYPE_LABELS[t] ?? t}</option>)}
-          </select>
-          <select value={disciplineFilter} onChange={(e) => setDisciplineFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
+          </Listbox>
+          <Listbox value={disciplineFilter} onChange={(e) => setDisciplineFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
             <option value="">All disciplines</option>
             {disciplines.map((d) => <option key={d} value={d}>{d}</option>)}
-          </select>
-          <select value={riskLevelFilter} onChange={(e) => setRiskLevelFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
+          </Listbox>
+          <Listbox value={riskLevelFilter} onChange={(e) => setRiskLevelFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
             <option value="">All risk levels</option>
             {(['CRITICAL', 'HIGH', 'MODERATE', 'LOW'] as RiskLevel[]).map((l) => <option key={l} value={l}>{l}</option>)}
-          </select>
+          </Listbox>
           <span className="text-xs text-ink-500 ml-auto">{nodes.length} nodes · {edges.length} relationships</span>
         </div>
 

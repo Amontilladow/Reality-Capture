@@ -7,8 +7,9 @@ import { DrawingUploadModal } from '../components/drawing/DrawingUploadModal';
 import { PinPanel } from '../components/drawing/PinPanel';
 import { listDrawings, getDrawing, createPin, getPins, type Drawing, type Pin } from '../lib/drawings.api';
 import { getHierarchy, updateLocation, getMembers, type ProjectHierarchy } from '../lib/projects.api';
-import { Input, Select } from '../components/ui/Field';
+import { Input, SelectField } from '../components/ui/Field';
 import { HelpLink } from '../components/help/HelpLink';
+import { Listbox } from '../components/ui/Listbox';
 
 export default function FloorPlanViewer() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -263,7 +264,7 @@ export default function FloorPlanViewer() {
                 value={titleSearch}
                 onChange={(e) => setTitleSearch(e.target.value)}
               />
-              <Select
+              <SelectField
                 label="Building"
                 value={buildingFilter}
                 onChange={(e) => { setBuildingFilter(e.target.value); setLevelFilter(''); }}
@@ -272,8 +273,8 @@ export default function FloorPlanViewer() {
                 {hierarchy.map((b) => (
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
-              </Select>
-              <Select
+              </SelectField>
+              <SelectField
                 label="Level"
                 value={levelFilter}
                 onChange={(e) => setLevelFilter(e.target.value)}
@@ -283,9 +284,9 @@ export default function FloorPlanViewer() {
                 {levelOptionsForFilter.map((l) => (
                   <option key={l.id} value={l.id}>{l.name}</option>
                 ))}
-              </Select>
+              </SelectField>
               {drawingTypeOptions.length > 0 && (
-                <Select
+                <SelectField
                   label="Drawing type"
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
@@ -294,7 +295,7 @@ export default function FloorPlanViewer() {
                   {drawingTypeOptions.map((t) => (
                     <option key={t} value={t}>{t}</option>
                   ))}
-                </Select>
+                </SelectField>
               )}
             </div>
           )}
@@ -366,7 +367,7 @@ export default function FloorPlanViewer() {
               {!movingPin && (
                 <div className="flex items-center gap-1.5 text-xs">
                   <span className="text-ink-500">New pins assign to</span>
-                  <select
+                  <Listbox
                     className="field-input w-auto !py-1 !text-xs"
                     value={newPinAssignee}
                     onChange={(e) => setNewPinAssignee(e.target.value)}
@@ -375,7 +376,7 @@ export default function FloorPlanViewer() {
                     {(membersQuery.data ?? []).map((m) => (
                       <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
                     ))}
-                  </select>
+                  </Listbox>
                 </div>
               )}
               {numPages > 1 && (

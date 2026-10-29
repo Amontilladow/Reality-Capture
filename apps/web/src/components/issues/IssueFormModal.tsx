@@ -15,6 +15,7 @@ import {
   PROJECT_ROLE_LABELS,
 } from '../../lib/issue-constants';
 import { apiErrorMessage } from '../../lib/api';
+import { Listbox } from '../ui/Listbox';
 
 export function IssueFormModal({
   open,
@@ -202,27 +203,27 @@ export function IssueFormModal({
           {!isEdit && (
             <div>
               <label className="field-label" htmlFor="issueType">Type</label>
-              <select id="issueType" className="field-input" value={issueType} onChange={(e) => setIssueType(e.target.value as IssueType)}>
+              <Listbox id="issueType" className="field-input" value={issueType} onChange={(e) => setIssueType(e.target.value as IssueType)}>
                 {ISSUE_TYPES.map((t) => (
                   <option key={t} value={t}>{ISSUE_TYPE_LABELS[t]}</option>
                 ))}
-              </select>
+              </Listbox>
             </div>
           )}
           <div>
             <label className="field-label" htmlFor="priority">Priority</label>
-            <select id="priority" className="field-input" value={priority} onChange={(e) => setPriority(e.target.value as IssuePriority)}>
+            <Listbox id="priority" className="field-input" value={priority} onChange={(e) => setPriority(e.target.value as IssuePriority)}>
               {ISSUE_PRIORITIES.map((p) => (
                 <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="field-label" htmlFor="assignedTo">Assignee</label>
-            <select id="assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+            <Listbox id="assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
               <option value="">Unassigned</option>
               {members.map((m) => {
                 const name = [m.firstName, m.lastName].filter(Boolean).join(' ') || m.email;
@@ -231,7 +232,7 @@ export function IssueFormModal({
                   <option key={m.userId} value={m.userId}>{name} ({roleLabel})</option>
                 );
               })}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="deadline">Deadline *</label>
@@ -242,7 +243,7 @@ export function IssueFormModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="field-label" htmlFor="discipline">Discipline *</label>
-            <select
+            <Listbox
               id="discipline"
               className="field-input"
               value={discipline}
@@ -252,11 +253,11 @@ export function IssueFormModal({
               {ISSUE_DISCIPLINES.map((d) => (
                 <option key={d} value={d}>{DISCIPLINE_LABELS[d]}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="category">Category</label>
-            <select
+            <Listbox
               id="category"
               className="field-input"
               value={category}
@@ -266,7 +267,7 @@ export function IssueFormModal({
               {ISSUE_CATEGORIES.map((c) => (
                 <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
         </div>
 

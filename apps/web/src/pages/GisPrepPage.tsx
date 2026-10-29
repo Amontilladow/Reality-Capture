@@ -10,6 +10,7 @@ import {
   getGisPrepJob, listGisPrepJobs, rerunGisPrepJob, uploadAndCreateGisPrepJob,
   type GisConvertSettings, type GisPrepJob, type GisPrepJobStatus, type GisPrepProfile, type GisPrepSettings,
 } from '../lib/gis-prep.api';
+import { Listbox } from '../components/ui/Listbox';
 
 // GIS Preparation (apps/adm-gis-prep as a built-in module). Every result is a
 // PRELIMINARY check: nothing on this page may say a drawing is ADM/DRM
@@ -224,17 +225,17 @@ export default function GisPrepPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {form.mode === 'prepare' && <label className="text-xs text-ink-500 space-y-1">
               <span>Source coordinate system</span>
-              <select className="field-input text-xs !py-1.5" value={form.sourceCrs} onChange={e => setForm(f => ({ ...f, sourceCrs: e.target.value }))}>
+              <Listbox className="field-input text-xs !py-1.5" value={form.sourceCrs} onChange={e => setForm(f => ({ ...f, sourceCrs: e.target.value }))}>
                 {CRS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              </Listbox>
             </label>}
             {form.mode === 'convert' && (
               <label className="text-xs text-ink-500 space-y-1">
                 <span>Drawing units</span>
-                <select className="field-input text-xs !py-1.5" value={form.units} onChange={e => setForm(f => ({ ...f, units: e.target.value as FormState['units'] }))}>
+                <Listbox className="field-input text-xs !py-1.5" value={form.units} onChange={e => setForm(f => ({ ...f, units: e.target.value as FormState['units'] }))}>
                   <option value="auto">From the drawing ($INSUNITS)</option>
                   <option value="mm">Millimetres</option><option value="cm">Centimetres</option><option value="m">Metres</option>
-                </select>
+                </Listbox>
               </label>
             )}
             {form.mode === 'convert' && (

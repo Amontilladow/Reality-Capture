@@ -37,6 +37,7 @@ import { RFI_WORKFLOW_STATUS_TONE, RFI_PRIORITY_TONE } from '../lib/status-tone'
 import { StatusBadge } from '../components/ui/Badge';
 import { apiErrorMessage, apiDownload } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
+import { Listbox } from '../components/ui/Listbox';
 
 // Source-status sets mirroring rfis.service.ts's own (server-authoritative --
 // this only decides which action BUTTONS are worth showing; the backend
@@ -625,7 +626,7 @@ export default function RfiDetailPage() {
                   {drawingImpactLevel !== 'no' && (
                     <div className="mt-2">
                       <div className="text-xs text-ink-500 mb-1">Drawing update owner</div>
-                      <select
+                      <Listbox
                         className="field-input !py-1.5 text-xs w-full"
                         value={drawingUpdateOwnerId}
                         onChange={(e) => setDrawingUpdateOwnerId(e.target.value)}
@@ -634,7 +635,7 @@ export default function RfiDetailPage() {
                         {(membersQuery.data ?? []).map((m) => (
                           <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
                         ))}
-                      </select>
+                      </Listbox>
                     </div>
                   )}
                 </div>
@@ -747,7 +748,7 @@ export default function RfiDetailPage() {
           </div>
 
           <div className="flex gap-2 items-start pt-1">
-            <select
+            <Listbox
               className="field-input w-auto shrink-0"
               value={commentOrgSlot}
               onChange={(e) => setCommentOrgSlot(e.target.value as ProjectOrganizationSlot | '')}
@@ -757,7 +758,7 @@ export default function RfiDetailPage() {
               {PROJECT_ORGANIZATION_SLOTS.map((slot) => (
                 <option key={slot} value={slot}>{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</option>
               ))}
-            </select>
+            </Listbox>
             <input
               className="field-input"
               placeholder="Add a comment…"
@@ -824,7 +825,7 @@ export default function RfiDetailPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
               <div>
                 <div className="text-xs text-ink-500 mb-1">Action</div>
-                <select
+                <Listbox
                   className="field-input !py-1.5 text-xs"
                   value={extAction}
                   onChange={(e) => {
@@ -836,11 +837,11 @@ export default function RfiDetailPage() {
                   {RFI_EXTERNAL_ACCESS_ACTIONS.map((a) => (
                     <option key={a} value={a}>{RFI_EXTERNAL_ACCESS_ACTION_LABELS[a]}</option>
                   ))}
-                </select>
+                </Listbox>
               </div>
               <div>
                 <div className="text-xs text-ink-500 mb-1">Organization</div>
-                <select
+                <Listbox
                   className="field-input !py-1.5 text-xs"
                   value={extSlot}
                   onChange={(e) => {
@@ -854,7 +855,7 @@ export default function RfiDetailPage() {
                   {PROJECT_ORGANIZATION_SLOTS.map((slot) => (
                     <option key={slot} value={slot}>{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</option>
                   ))}
-                </select>
+                </Listbox>
               </div>
               <div>
                 <div className="text-xs text-ink-500 mb-1">Recipient email</div>
@@ -1011,7 +1012,7 @@ export default function RfiDetailPage() {
           {submitForReviewMutation.isError && <p className="field-error">{apiErrorMessage(submitForReviewMutation.error)}</p>}
 
           {(canDecideReview || canClose) && (
-            <select
+            <Listbox
               value={closingOrgSlot}
               onChange={(e) => setClosingOrgSlot(e.target.value as ProjectOrganizationSlot | '')}
               className="field-input w-auto !py-1.5 text-xs"
@@ -1021,7 +1022,7 @@ export default function RfiDetailPage() {
               {PROJECT_ORGANIZATION_SLOTS.map((slot) => (
                 <option key={slot} value={slot}>{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</option>
               ))}
-            </select>
+            </Listbox>
           )}
 
           {canDecideReview && !reviewRejectOpen && (
@@ -1164,7 +1165,7 @@ function ImpactEditor({
   return (
     <div>
       <div className="text-xs text-ink-500 mb-1">{title}</div>
-      <select
+      <Listbox
         className="field-input !py-1.5 text-xs w-auto"
         value={level}
         onChange={(e) => onLevelChange(e.target.value as RfiImpactLevel)}
@@ -1172,7 +1173,7 @@ function ImpactEditor({
         {RFI_IMPACT_LEVELS.map((l) => (
           <option key={l} value={l}>{labels[l]}</option>
         ))}
-      </select>
+      </Listbox>
       {showDetails && (
         <div className="mt-2 space-y-1.5">
           {onAmountChange && (
@@ -1391,11 +1392,11 @@ function AttachmentSection({
       {uploadMutation.isError && <p className="field-error">{apiErrorMessage(uploadMutation.error)}</p>}
       {canUpload && (
         <div className="flex items-center gap-2">
-          <select className="field-input w-auto !py-1.5 text-xs" value={documentType} onChange={(e) => setDocumentType(e.target.value as RfiDocumentType)}>
+          <Listbox className="field-input w-auto !py-1.5 text-xs" value={documentType} onChange={(e) => setDocumentType(e.target.value as RfiDocumentType)}>
             {RFI_DOCUMENT_TYPES.map((t) => (
               <option key={t} value={t}>{RFI_DOCUMENT_TYPE_LABELS[t]}</option>
             ))}
-          </select>
+          </Listbox>
           <label className="btn-secondary !px-3 !py-1.5 text-xs cursor-pointer">
             {uploadMutation.isPending ? 'Uploading…' : '+ Upload document'}
             <input

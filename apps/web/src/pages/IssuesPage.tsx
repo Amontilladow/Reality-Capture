@@ -19,6 +19,7 @@ import {
 import { ISSUE_STATUS_TONE, ISSUE_PRIORITY_TONE } from '../lib/status-tone';
 import { StatusBadge } from '../components/ui/Badge';
 import { apiErrorMessage } from '../lib/api';
+import { Listbox } from '../components/ui/Listbox';
 
 type QuickFilter = 'all' | 'overdue' | 'critical' | 'mine';
 type Tab = 'issues' | 'dashboard' | 'reminders';
@@ -310,7 +311,7 @@ export default function IssuesPage() {
             <FilterChip active={quickFilter === 'overdue'} onClick={() => { setQuickFilter('overdue'); setStatus(''); }}>Overdue</FilterChip>
             <FilterChip active={quickFilter === 'critical'} onClick={() => { setQuickFilter('critical'); setStatus(''); }}>Critical</FilterChip>
 
-            <select
+            <Listbox
               className="field-input w-auto ml-auto"
               aria-label="Filter by building"
               value={buildingFilter}
@@ -320,8 +321,8 @@ export default function IssuesPage() {
               {hierarchy.map((b) => (
                 <option key={b.id} value={b.id}>{b.name}</option>
               ))}
-            </select>
-            <select
+            </Listbox>
+            <Listbox
               className="field-input w-auto"
               aria-label="Filter by level"
               value={levelFilter}
@@ -332,8 +333,8 @@ export default function IssuesPage() {
               {levelOptionsForFilter.map((l) => (
                 <option key={l.id} value={l.id}>{l.name}</option>
               ))}
-            </select>
-            <select
+            </Listbox>
+            <Listbox
               className="field-input w-auto"
               aria-label="Filter by status"
               value={status}
@@ -343,7 +344,7 @@ export default function IssuesPage() {
               {ISSUE_STATUSES.map((st) => (
                 <option key={st} value={st}>{STATUS_LABELS[st]}</option>
               ))}
-            </select>
+            </Listbox>
             <input
               className="field-input w-48"
               placeholder="Search issues…"
@@ -362,21 +363,21 @@ export default function IssuesPage() {
             <div className="panel p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
               <div>
                 <label className="field-label" htmlFor="fAssignee">Assignee</label>
-                <select id="fAssignee" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+                <Listbox id="fAssignee" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
                   <option value="">Anyone</option>
                   {(membersQuery.data ?? []).map((m) => (
                     <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
                   ))}
-                </select>
+                </Listbox>
               </div>
               <div>
                 <label className="field-label" htmlFor="fDiscipline">Discipline</label>
-                <select id="fDiscipline" className="field-input" value={discipline} onChange={(e) => setDiscipline(e.target.value)}>
+                <Listbox id="fDiscipline" className="field-input" value={discipline} onChange={(e) => setDiscipline(e.target.value)}>
                   <option value="">Any</option>
                   {Object.entries(DISCIPLINE_LABELS).map(([code, label]) => (
                     <option key={code} value={code}>{label}</option>
                   ))}
-                </select>
+                </Listbox>
               </div>
               <div>
                 <label className="field-label" htmlFor="fDateFrom">Created from</label>
@@ -822,12 +823,12 @@ function RemindersPanel({
           <div className="panel p-4 space-y-2">
             <div className="field-label !mb-0">Per-user reminder</div>
             <p className="text-xs text-ink-500">Sends to one user's open issues only.</p>
-            <select className="field-input" aria-label="Reminder recipient" value={userReminderTarget} onChange={(e) => setUserReminderTarget(e.target.value)}>
+            <Listbox className="field-input" aria-label="Reminder recipient" value={userReminderTarget} onChange={(e) => setUserReminderTarget(e.target.value)}>
               <option value="">Select user…</option>
               {members.map((m) => (
                 <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
               ))}
-            </select>
+            </Listbox>
             <textarea
               className="field-input min-h-[64px]"
               placeholder="Reminder message…"

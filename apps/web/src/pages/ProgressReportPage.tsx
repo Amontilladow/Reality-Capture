@@ -12,6 +12,7 @@ import {
   type ProgressReportFilters, type ProgressReportIssueRow, type ProgressReport,
 } from '../lib/progress-reports.api';
 import { apiErrorMessage } from '../lib/api';
+import { Listbox } from '../components/ui/Listbox';
 
 function isoDateDaysAgo(days: number): string {
   const d = new Date();
@@ -190,20 +191,20 @@ export default function ProgressReportPage() {
           </div>
           <div>
             <label className="field-label" htmlFor="pr-building">Building</label>
-            <select
+            <Listbox
               id="pr-building" className="field-input" value={buildingId}
               onChange={(e) => { setBuildingId(e.target.value); setLevelId(''); }}
             >
               <option value="">All buildings</option>
               {(hierarchyQuery.data ?? []).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="pr-level">Level</label>
-            <select id="pr-level" className="field-input" value={levelId} disabled={!buildingId} onChange={(e) => setLevelId(e.target.value)}>
+            <Listbox id="pr-level" className="field-input" value={levelId} disabled={!buildingId} onChange={(e) => setLevelId(e.target.value)}>
               <option value="">{buildingId ? 'All levels' : 'Any level'}</option>
               {levelOptions.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
+            </Listbox>
           </div>
         </div>
 

@@ -7,6 +7,7 @@ import type { ProjectMember, ProjectHierarchy } from '../lib/projects.api';
 import { SNAG_PRIORITIES, SNAG_PRIORITY_LABELS } from '../lib/snagging-constants';
 import { apiErrorMessage } from '../lib/api';
 import { BuildingLevelRoomPicker, type HierarchySelection } from './hierarchy/BuildingLevelRoomPicker';
+import { Listbox } from './ui/Listbox';
 
 export function SnagItemFormModal({
   open, onClose, projectId, members, hierarchy, snag, draftValues,
@@ -137,11 +138,11 @@ export function SnagItemFormModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="field-label" htmlFor="priority">Priority</label>
-            <select id="priority" className="field-input" value={priority} onChange={(e) => setPriority(e.target.value as SnagPriority)}>
+            <Listbox id="priority" className="field-input" value={priority} onChange={(e) => setPriority(e.target.value as SnagPriority)}>
               {SNAG_PRIORITIES.map((p) => (
                 <option key={p} value={p}>{SNAG_PRIORITY_LABELS[p]}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="dueDate">Due date</label>
@@ -151,12 +152,12 @@ export function SnagItemFormModal({
 
         <div>
           <label className="field-label" htmlFor="assignedTo">Assigned to</label>
-          <select id="assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+          <Listbox id="assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
             <option value="">Unassigned</option>
             {members.map((m) => (
               <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
             ))}
-          </select>
+          </Listbox>
         </div>
 
         <div className="flex gap-2 pt-2">
