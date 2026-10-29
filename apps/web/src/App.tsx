@@ -15,6 +15,7 @@ import SelfSignup from './pages/auth/SelfSignup';
 import PendingApproval from './pages/PendingApproval';
 import RfiExternalPage from './pages/RfiExternalPage';
 import ProgressReportExternalPage from './pages/ProgressReportExternalPage';
+import DocumentExternalPage from './pages/DocumentExternalPage';
 
 import ProjectList from './pages/ProjectList';
 import ProjectDetail from './pages/ProjectDetail';
@@ -121,6 +122,7 @@ export default function App() {
             RfiExternalPage's own comment). */}
         <Route path="/rfi/external/:token" element={<RfiExternalPage />} />
         <Route path="/progress-report/:token" element={<ProgressReportExternalPage />} />
+        <Route path="/documents/external/:token" element={<DocumentExternalPage />} />
 
         {/* The 360 viewer and BIM viewer are full-bleed immersive views — no sidebar chrome */}
         <Route element={<ProtectedRoute />}>
