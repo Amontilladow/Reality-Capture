@@ -286,3 +286,18 @@ def test_output_is_named_by_the_bdms_file_name_and_blocks_sit_well_inside(tmp_pa
     assert len(set(points)) == 3, "blocks sharing one outline are not stacked on one point"
     b = next(iter(msp.query("INSERT[layer=='BuildingDetail']")))
     assert b.get_attrib_text("USAGETYPE") == "Single-use Commercial" and b.get_attrib_text("BUILDINGNUMOFFLOORS") == "2"
+
+
+def test_opening_inside_a_room_is_not_written_as_a_sliver():
+    """M19B ground floor: two door openings lay inside a room; clipping left ~0 m2 slivers that crashed noding."""
+    from shapely.geometry import box
+    from m4adm.convert.features import Feature
+    from m4adm.convert.topology import clip_openings, node
+    room = Feature("SPACE_1", "Space", HIGH, [], poly=box(0, 0, 5, 5))
+    inside = Feature("DOOR_1", "Door", REVIEW, [], poly=box(1, 1, 2, 1.2))
+    edge = Feature("DOOR_2", "Door", REVIEW, [], poly=box(4.8, 2, 5.2, 3))
+    feats = [room, inside, edge]
+    assert clip_openings(feats) == 2
+    assert inside.status == NOT_GENERATED and "leaves no opening" in inside.reasons[-1]
+    assert edge.exported and abs(edge.poly.area - 0.2) < 1e-6
+    node(feats)        # must not raise on what is left
