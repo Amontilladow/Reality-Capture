@@ -5,6 +5,7 @@ import { Modal } from '../ui/Modal';
 import { apiErrorMessage } from '../../lib/api';
 import { uploadAndAddSiteDrawingRevision, SITE_DRAWING_WORKFLOW_STATUSES, type SiteDrawingWorkflowStatus } from '../../lib/site-drawings.api';
 import { WORKFLOW_STATUS_LABELS } from './siteDrawingDisplay';
+import { Listbox } from '../ui/Listbox';
 
 // The previous current revision is automatically marked superseded server-
 // side the moment this one is registered (SiteDrawingsService.addRevision)
@@ -58,9 +59,9 @@ export function AddRevisionModal({ open, onClose, projectId, drawingId, drawingT
           </div>
           <div className="sm:col-span-2">
             <label className="field-label" htmlFor="rev-status">Workflow status</label>
-            <select id="rev-status" className="field-input" value={workflowStatus} onChange={(e) => setWorkflowStatus(e.target.value as SiteDrawingWorkflowStatus)}>
+            <Listbox id="rev-status" className="field-input" value={workflowStatus} onChange={(e) => setWorkflowStatus(e.target.value as SiteDrawingWorkflowStatus)}>
               {SITE_DRAWING_WORKFLOW_STATUSES.map((s) => <option key={s} value={s}>{WORKFLOW_STATUS_LABELS[s]}</option>)}
-            </select>
+            </Listbox>
           </div>
         </div>
         {mutation.isError && <p className="field-error">{apiErrorMessage(mutation.error)}</p>}

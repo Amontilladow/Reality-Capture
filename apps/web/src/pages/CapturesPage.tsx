@@ -7,7 +7,7 @@ import { DrawingUploadModal } from '../components/drawing/DrawingUploadModal';
 import { PinPanel } from '../components/drawing/PinPanel';
 import { listDrawings, getDrawing, createPin, getPins, type Drawing, type Pin } from '../lib/drawings.api';
 import { getHierarchy, updateLocation, getProject, type ProjectHierarchy } from '../lib/projects.api';
-import { Input, Select } from '../components/ui/Field';
+import { Input, SelectField } from '../components/ui/Field';
 
 // "Buildlense Captures" (nav label; this route/component keeps its original
 // internal name, same convention as RFI/Issues/QAQC) is the camera-location
@@ -230,7 +230,7 @@ export default function CapturesPage() {
                 value={titleSearch}
                 onChange={(e) => setTitleSearch(e.target.value)}
               />
-              <Select
+              <SelectField
                 label="Building"
                 value={buildingFilter}
                 onChange={(e) => { setBuildingFilter(e.target.value); setLevelFilter(''); }}
@@ -239,8 +239,8 @@ export default function CapturesPage() {
                 {hierarchy.map((b) => (
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
-              </Select>
-              <Select
+              </SelectField>
+              <SelectField
                 label="Level"
                 value={levelFilter}
                 onChange={(e) => setLevelFilter(e.target.value)}
@@ -250,7 +250,7 @@ export default function CapturesPage() {
                 {levelOptionsForFilter.map((l) => (
                   <option key={l.id} value={l.id}>{l.name}</option>
                 ))}
-              </Select>
+              </SelectField>
             </div>
           )}
 

@@ -19,6 +19,7 @@ import {
 import { StatusBadge } from '../components/ui/Badge';
 import { apiErrorMessage, apiDownload } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
+import { Listbox } from '../components/ui/Listbox';
 
 export default function QaqcDetailPage() {
   const { projectId, recordType, id } = useParams<{ projectId: string; recordType: QaqcRecordType; id: string }>();
@@ -436,11 +437,11 @@ function AttachmentSection({
       {uploadMutation.isError && <p className="field-error">{apiErrorMessage(uploadMutation.error)}</p>}
       {canUpload && (
         <div className="flex items-center gap-2">
-          <select className="field-input w-auto !py-1.5 text-xs" value={documentType} onChange={(e) => setDocumentType(e.target.value as RfiDocumentType)}>
+          <Listbox className="field-input w-auto !py-1.5 text-xs" value={documentType} onChange={(e) => setDocumentType(e.target.value as RfiDocumentType)}>
             {RFI_DOCUMENT_TYPES.map((t) => (
               <option key={t} value={t}>{RFI_DOCUMENT_TYPE_LABELS[t]}</option>
             ))}
-          </select>
+          </Listbox>
           <label className="btn-secondary !px-3 !py-1.5 text-xs cursor-pointer inline-block">
             + Add document
             <input

@@ -14,6 +14,7 @@ import { listUsers, inviteUser, approveUserRole, deactivateUser, adminResetPassw
 import { apiErrorMessage } from '../lib/api';
 import { PROJECT_ROLE_LABELS, COMPANY_ROLE_LABELS, PROJECT_PERMISSION_LABELS } from '../lib/issue-constants';
 import { useAuthStore } from '../store/auth.store';
+import { Listbox } from './ui/Listbox';
 
 export function ManageMembersModal({
   open,
@@ -191,7 +192,7 @@ export function ManageMembersModal({
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {canManageOrganizations && (
-                  <select
+                  <Listbox
                     className="field-input !py-0.5 !w-auto text-xs"
                     value={orgSlotByUserId.get(m.userId) ?? ''}
                     onChange={(e) =>
@@ -204,7 +205,7 @@ export function ManageMembersModal({
                     {PROJECT_ORGANIZATION_SLOTS.map((slot) => (
                       <option key={slot} value={slot}>{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</option>
                     ))}
-                  </select>
+                  </Listbox>
                 )}
                 <button
                   onClick={() => removeMutation.mutate(m.userId)}
@@ -225,7 +226,7 @@ export function ManageMembersModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <div className="flex items-center gap-1.5">
-                <select
+                <Listbox
                   className="field-input flex-1"
                   value={selectedUserId}
                   onChange={(e) => setSelectedUserId(e.target.value)}
@@ -234,7 +235,7 @@ export function ManageMembersModal({
                   {addableUsers.map((u) => (
                     <option key={u.id} value={u.id}>{[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}</option>
                   ))}
-                </select>
+                </Listbox>
                 <button
                   type="button"
                   onClick={() => selectedUserId && deactivateMutation.mutate(selectedUserId)}
@@ -258,7 +259,7 @@ export function ManageMembersModal({
                 </p>
               )}
             </div>
-            <select
+            <Listbox
               className="field-input"
               value={selectedRole}
               onChange={(e) => setSelectedRole(e.target.value as ProjectRole)}
@@ -266,7 +267,7 @@ export function ManageMembersModal({
               {PROJECT_ROLES.map((r) => (
                 <option key={r} value={r}>{PROJECT_ROLE_LABELS[r]}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
 
           {addMutation.isError && <p className="field-error">{apiErrorMessage(addMutation.error)}</p>}
@@ -352,7 +353,7 @@ export function ManageMembersModal({
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <select
+                  <Listbox
                     className="field-input !w-auto text-xs"
                     value={role}
                     onChange={(e) => setOverrideRole((prev) => ({ ...prev, [u.id]: e.target.value as CompanyRole }))}
@@ -360,7 +361,7 @@ export function ManageMembersModal({
                     {COMPANY_ROLES.filter((r) => r !== 'super_admin').map((r) => (
                       <option key={r} value={r}>{COMPANY_ROLE_LABELS[r]}</option>
                     ))}
-                  </select>
+                  </Listbox>
                   <button
                     onClick={() => approveMutation.mutate({ userId: u.id, companyRole: role })}
                     className="btn-primary !py-1 !px-2 text-xs shrink-0"
@@ -402,7 +403,7 @@ export function ManageMembersModal({
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <select
+                    <Listbox
                       className="field-input !w-auto text-xs"
                       value={role}
                       onChange={(e) => setOverrideRole((prev) => ({ ...prev, [u.id]: e.target.value as CompanyRole }))}
@@ -415,7 +416,7 @@ export function ManageMembersModal({
                       {COMPANY_ROLES.map((r) => (
                         <option key={r} value={r}>{COMPANY_ROLE_LABELS[r]}</option>
                       ))}
-                    </select>
+                    </Listbox>
                     {roleChanged && (
                       <button
                         onClick={() => changeRoleMutation.mutate({ userId: u.id, companyRole: role })}

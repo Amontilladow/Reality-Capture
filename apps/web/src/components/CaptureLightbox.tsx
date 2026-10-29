@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Capture, ProjectPhase } from '@engineeringos/types';
 import { PROJECT_PHASES, PROJECT_PHASE_LABELS } from '@engineeringos/types';
 import { updateCapture } from '../lib/captures.api';
+import { Listbox } from './ui/Listbox';
 
 export function CaptureLightbox({
   projectId,
@@ -116,7 +117,7 @@ export function CaptureLightbox({
 
           {editingPhase ? (
             <div className="flex items-center gap-1.5">
-              <select
+              <Listbox
                 autoFocus
                 className="field-input !py-1 !text-xs w-auto"
                 value={phase}
@@ -126,7 +127,7 @@ export function CaptureLightbox({
                 {PROJECT_PHASES.map((p) => (
                   <option key={p} value={p}>{PROJECT_PHASE_LABELS[p]}</option>
                 ))}
-              </select>
+              </Listbox>
               <button onClick={() => phaseMutation.mutate()} disabled={phaseMutation.isPending} className="btn-primary !px-2 !py-1 text-xs shrink-0">
                 Save
               </button>

@@ -6,6 +6,7 @@ import { PROJECT_ORGANIZATION_SLOT_LABELS } from '@engineeringos/types';
 import type { ProjectRole } from '@engineeringos/types';
 import { useAuthStore } from '../../store/auth.store';
 import { Badge, StatusBadge } from '../ui/Badge';
+import { Listbox } from '../ui/Listbox';
 
 // RBAC Phase 5: shows which project you're in, your own role and
 // organization slot on it, and a switcher to jump to another project --
@@ -47,7 +48,7 @@ export function ProjectContextPanel({ projectId }: { projectId: string }) {
 
   return (
     <div className="px-3 py-2.5 border-b border-base-600 space-y-1.5">
-      <select
+      <Listbox
         className="field-input !py-1 text-xs w-full"
         value={projectId}
         onChange={(e) => {
@@ -64,7 +65,7 @@ export function ProjectContextPanel({ projectId }: { projectId: string }) {
         {projects.map((p) => (
           <option key={p.id} value={p.id}>{p.name}</option>
         ))}
-      </select>
+      </Listbox>
       {(myMembership || myOrgSlot) && (
         <div className="flex flex-wrap gap-1">
           {myMembership && (

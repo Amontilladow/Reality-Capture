@@ -1,5 +1,7 @@
 import { forwardRef, useId } from 'react';
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
+import type { InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
+import { Listbox } from './Listbox';
+import type { ListboxProps } from './Listbox';
 
 type Requirement = 'required' | 'optional' | 'system';
 
@@ -62,9 +64,9 @@ type SharedProps = {
   error?: string;
 };
 
-// forwardRef is required on all three fields below -- react-hook-form's
-// register() returns a ref that must reach the real <input>/<textarea>/
-// <select> DOM node for RHF to register and read the field's value.
+// forwardRef is required on Input and Textarea below -- react-hook-form's
+// register() returns a ref that must reach the real <input>/<textarea>
+// DOM node for RHF to register and read the field's value.
 // Without it, React silently drops the ref (dev-mode warning: "Function
 // components cannot be given refs") and RHF never sees the field as
 // registered, so handleSubmit() intermittently treats a visibly-filled,
@@ -108,13 +110,17 @@ export const Textarea = forwardRef<HTMLTextAreaElement, SharedProps & TextareaHT
   },
 );
 
-export const Select = forwardRef<HTMLSelectElement, SharedProps & SelectHTMLAttributes<HTMLSelectElement>>(
-  function Select({ label, requirement, labelAddon, hint, error, id, children, ...rest }, ref) {
+// Renders the custom Listbox, not a native <select>, so the ref lands on its
+// combobox button. That's enough for react-hook-form to focus the field on
+// a validation error, but RHF can't read a value from a button: wire this
+// one through <Controller> instead of register().
+export const SelectField = forwardRef<HTMLButtonElement, SharedProps & ListboxProps>(
+  function SelectField({ label, requirement, labelAddon, hint, error, id, children, ...rest }, ref) {
     const autoId = useId();
     const fieldId = id ?? autoId;
     return (
       <FieldShell id={fieldId} label={label} requirement={requirement} labelAddon={labelAddon} hint={hint} error={error}>
-        <select
+        <Listbox
           ref={ref}
           id={fieldId}
           className="field-input"
@@ -123,7 +129,7 @@ export const Select = forwardRef<HTMLSelectElement, SharedProps & SelectHTMLAttr
           {...rest}
         >
           {children}
-        </select>
+        </Listbox>
       </FieldShell>
     );
   },

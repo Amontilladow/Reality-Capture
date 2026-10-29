@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Project, ProjectPhase, ProjectStatus } from '@engineeringos/types';
 import { PROJECT_PHASES, PROJECT_PHASE_LABELS } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
 import { updateProject, uploadProjectBranding } from '../lib/projects.api';
 import { apiErrorMessage } from '../lib/api';
+import { Listbox } from './ui/Listbox';
 
 interface EditProjectForm {
   name: string;
@@ -47,6 +48,7 @@ export function EditProjectModal({
   const queryClient = useQueryClient();
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -138,20 +140,44 @@ export function EditProjectModal({
           </div>
           <div>
             <label className="field-label" htmlFor="epStatus">Status</label>
-            <select id="epStatus" className="field-input" {...register('status')}>
-              {STATUSES.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
+            <Controller
+              control={control}
+              name="status"
+              render={({ field }) => (
+                <Listbox
+                  id="epStatus"
+                  ref={field.ref}
+                  value={field.value ?? ''}
+                  onChange={(e) => field.onChange(e.target.value)}
+                  onBlur={field.onBlur}
+                >
+                  {STATUSES.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </Listbox>
+              )}
+            />
           </div>
           <div>
             <label className="field-label" htmlFor="epPhase">Phase</label>
-            <select id="epPhase" className="field-input" {...register('phase')}>
-              <option value="">Unspecified</option>
-              {PROJECT_PHASES.map((p) => (
-                <option key={p} value={p}>{PROJECT_PHASE_LABELS[p]}</option>
-              ))}
-            </select>
+            <Controller
+              control={control}
+              name="phase"
+              render={({ field }) => (
+                <Listbox
+                  id="epPhase"
+                  ref={field.ref}
+                  value={field.value ?? ''}
+                  onChange={(e) => field.onChange(e.target.value)}
+                  onBlur={field.onBlur}
+                >
+                  <option value="">Unspecified</option>
+                  {PROJECT_PHASES.map((p) => (
+                    <option key={p} value={p}>{PROJECT_PHASE_LABELS[p]}</option>
+                  ))}
+                </Listbox>
+              )}
+            />
           </div>
         </div>
 

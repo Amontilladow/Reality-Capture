@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getLevelProgressSummary, upsertZoneProgress, type BimLevelProgress } from '../../lib/bim.api';
+import { Listbox } from '../ui/Listbox';
 
 const ZONE_STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'not_started', label: 'Not started' },
@@ -51,12 +52,12 @@ function LevelRow({ projectId, level }: { projectId: string; level: BimLevelProg
 
       {editing && (
         <div className="mt-2 space-y-2 rounded border border-base-600 p-2">
-          <select
+          <Listbox
             className="field-input text-xs" value={draft.status}
             onChange={(e) => setDraft({ ...draft, status: e.target.value })}
           >
             {ZONE_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+          </Listbox>
           <input
             type="number" min={0} max={100} placeholder="Completion %" className="field-input text-xs"
             value={draft.completionPct} onChange={(e) => setDraft({ ...draft, completionPct: e.target.value })}

@@ -11,6 +11,7 @@ import type { ProjectPinResult } from '../../lib/drawings.api';
 import { PinSearch } from './PinSearch';
 import { STATUS_LABELS, STATUS_BADGE_CLASS, PRIORITY_LABELS, PRIORITY_BADGE_CLASS, formatDateTime } from '../../lib/issue-constants';
 import type { IssueStatus, IssuePriority } from '@engineeringos/types';
+import { Listbox } from '../ui/Listbox';
 
 function statusBadgeClass(status: string | null): string {
   switch (status) {
@@ -324,12 +325,12 @@ export function PropertyPanel({
           <div className="space-y-2">
             <div>
               <label className="field-label text-xs" htmlFor="pp-status">Status</label>
-              <select
+              <Listbox
                 id="pp-status" className="field-input text-sm" value={statusDraft.status}
                 onChange={(e) => setStatusDraft({ ...statusDraft, status: e.target.value })}
               >
                 {CONSTRUCTION_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              </Listbox>
             </div>
             <div>
               <label className="field-label text-xs" htmlFor="pp-pct">Completion %</label>
@@ -341,7 +342,7 @@ export function PropertyPanel({
             </div>
             <div>
               <label className="field-label text-xs" htmlFor="pp-evidence">Evidence photo (optional)</label>
-              <select
+              <Listbox
                 id="pp-evidence" className="field-input text-sm" value={statusDraft.captureId}
                 onChange={(e) => setStatusDraft({ ...statusDraft, captureId: e.target.value })}
               >
@@ -349,7 +350,7 @@ export function PropertyPanel({
                 {(capturesQuery.data ?? []).map((c) => (
                   <option key={c.id} value={c.id}>{c.title || formatDateTime(c.capturedAt)}</option>
                 ))}
-              </select>
+              </Listbox>
             </div>
             {statusMutation.isError && <p className="text-xs text-danger">Failed to update status. Try again.</p>}
             <div className="flex gap-2">

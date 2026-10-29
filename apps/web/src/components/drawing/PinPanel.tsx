@@ -10,6 +10,7 @@ import { CaptureGrid } from '../CaptureGrid';
 import { ElementSearch } from '../bim-viewer/ElementSearch';
 import type { BimElementDetail } from '../../lib/bim.api';
 import { apiErrorMessage } from '../../lib/api';
+import { Listbox } from '../ui/Listbox';
 
 type LinkedElement = { id: string; name: string; ifcType: string };
 
@@ -231,7 +232,7 @@ export function PinPanel({
             {linkedRecord && (
               <div className="flex items-center gap-1.5 mt-1">
                 <span className="text-[11px] text-ink-500 font-medium">Assignee</span>
-                <select
+                <Listbox
                   className="field-input w-auto !py-1 !text-xs"
                   value={assignedTo}
                   onChange={(e) => assignMutation.mutate(e.target.value)}
@@ -241,7 +242,7 @@ export function PinPanel({
                   {members.map((m) => (
                     <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
                   ))}
-                </select>
+                </Listbox>
               </div>
             )}
             {assignMutation.isError && <p className="field-error mt-1">{apiErrorMessage(assignMutation.error)}</p>}

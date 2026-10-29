@@ -6,6 +6,7 @@ import { DocumentUploadModal } from '../components/DocumentUploadModal';
 import { listDocuments } from '../lib/documents.api';
 import { getProject } from '../lib/projects.api';
 import { DOC_TYPES, DOC_TYPE_LABELS, DOC_SOURCE_LABELS } from '../lib/document-constants';
+import { Listbox } from '../components/ui/Listbox';
 
 export default function DocumentsPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -40,12 +41,12 @@ export default function DocumentsPage() {
 
       <div className="p-6 space-y-4">
         <div className="flex items-center gap-3">
-          <select className="field-input w-auto" value={docType} onChange={(e) => setDocType(e.target.value)}>
+          <Listbox className="field-input w-auto" value={docType} onChange={(e) => setDocType(e.target.value)}>
             <option value="">All types</option>
             {DOC_TYPES.map((t) => (
               <option key={t} value={t}>{DOC_TYPE_LABELS[t]}</option>
             ))}
-          </select>
+          </Listbox>
           {documentsQuery.data?.meta && (
             <span className="text-xs font-mono text-ink-500 ml-auto">
               {documentsQuery.data.meta.total} document{documentsQuery.data.meta.total === 1 ? '' : 's'}

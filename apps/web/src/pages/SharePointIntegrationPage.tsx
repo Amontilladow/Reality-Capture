@@ -8,6 +8,7 @@ import {
   type SharePointProjectSiteConfig,
 } from '../lib/sharepoint-integration.api';
 import { triggerSiteDrawingSync } from '../lib/site-drawings.api';
+import { Listbox } from '../components/ui/Listbox';
 
 const STATUS_QUERY_KEY = ['sharepoint-integration-status'];
 
@@ -137,10 +138,10 @@ export default function SharePointIntegrationPage() {
             </p>
           </div>
 
-          <select className="field-input" value={selectedProjectId} onChange={(e) => selectProject(e.target.value)}>
+          <Listbox className="field-input" value={selectedProjectId} onChange={(e) => selectProject(e.target.value)}>
             <option value="">Select a project…</option>
             {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          </Listbox>
 
           {selectedProjectId && (
             <div className="space-y-3 pt-2 border-t border-base-700/60">

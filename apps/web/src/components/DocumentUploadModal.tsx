@@ -5,6 +5,7 @@ import { Modal } from './ui/Modal';
 import { uploadDocumentFile, createDocument } from '../lib/documents.api';
 import { DOC_TYPES, DOC_TYPE_LABELS } from '../lib/document-constants';
 import { apiErrorMessage } from '../lib/api';
+import { Listbox } from './ui/Listbox';
 
 export function DocumentUploadModal({
   open, onClose, projectId,
@@ -114,11 +115,11 @@ export function DocumentUploadModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="field-label" htmlFor="docType">Type</label>
-            <select id="docType" className="field-input" value={docType} onChange={(e) => setDocType(e.target.value as DocType)}>
+            <Listbox id="docType" className="field-input" value={docType} onChange={(e) => setDocType(e.target.value as DocType)}>
               {DOC_TYPES.map((t) => (
                 <option key={t} value={t}>{DOC_TYPE_LABELS[t]}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="revision">Revision</label>

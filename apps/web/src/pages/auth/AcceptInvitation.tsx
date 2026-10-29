@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { SELF_REQUESTABLE_COMPANY_ROLES, type CompanyRole } from '@engineeringos/types';
@@ -7,7 +7,7 @@ import { acceptInvitation } from '../../lib/auth.api';
 import { apiErrorMessage } from '../../lib/api';
 import { useAuthStore } from '../../store/auth.store';
 import { COMPANY_ROLE_LABELS } from '../../lib/issue-constants';
-import { Input, Select } from '../../components/ui/Field';
+import { Input, SelectField } from '../../components/ui/Field';
 import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
 
@@ -27,6 +27,7 @@ export default function AcceptInvitation() {
 
   const {
     register,
+    control,
     handleSubmit,
     watch,
     formState: { errors },
@@ -76,15 +77,25 @@ export default function AcceptInvitation() {
           />
         </div>
 
-        <Select
-          label="Your position"
-          hint="An administrator will review and approve this before you get access"
-          {...register('requestedRole', { required: true })}
-        >
-          {SELF_REQUESTABLE_COMPANY_ROLES.map((r) => (
-            <option key={r} value={r}>{COMPANY_ROLE_LABELS[r]}</option>
-          ))}
-        </Select>
+        <Controller
+          control={control}
+          name="requestedRole"
+          rules={{ required: true }}
+          render={({ field }) => (
+            <SelectField
+              label="Your position"
+              hint="An administrator will review and approve this before you get access"
+              ref={field.ref}
+              value={field.value}
+              onChange={(e) => field.onChange(e.target.value)}
+              onBlur={field.onBlur}
+            >
+              {SELF_REQUESTABLE_COMPANY_ROLES.map((r) => (
+                <option key={r} value={r}>{COMPANY_ROLE_LABELS[r]}</option>
+              ))}
+            </SelectField>
+          )}
+        />
 
         <Input
           label="Password"

@@ -11,6 +11,7 @@ import { listUsers, type CompanyUser } from '../lib/users.api';
 import { listProjects } from '../lib/projects.api';
 import { EmailHistoryList } from '../components/EmailHistoryList';
 import { useAuthStore } from '../store/auth.store';
+import { Listbox } from '../components/ui/Listbox';
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -189,7 +190,7 @@ export default function MessagesPage() {
 
         {tab === 'email' ? (
           <div className="space-y-4">
-            <select
+            <Listbox
               className="field-input w-full max-w-sm"
               value={emailHistoryProjectId}
               onChange={(e) => setEmailHistoryProjectId(e.target.value)}
@@ -200,7 +201,7 @@ export default function MessagesPage() {
                   {p.name}
                 </option>
               ))}
-            </select>
+            </Listbox>
 
             {projectsQuery.isLoading && <div className="text-sm text-ink-500">Loading projects…</div>}
 
