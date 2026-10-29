@@ -128,7 +128,16 @@ export class DocumentsService {
     return doc;
   }
 
-  async link(companyId: string, documentId: string, userId: string, dto: LinkDocumentDto) {
+  // H-1 fix (KNOWN_ISSUES_AND_REMEDIATION.md): previously scoped only by
+  // company_id -- a user authorized for Project A could link an arbitrary
+  // capture/element/location/issue to Project B's document by supplying
+  // Project B's own documentId. Mirrors findOne()'s own project_id check.
+  async link(companyId: string, projectId: string, documentId: string, userId: string, dto: LinkDocumentDto) {
+    const [doc] = await this.db.withTenant(companyId, sql => sql`
+      SELECT id FROM documents WHERE id = ${documentId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!doc) throw new NotFoundException('Document not found.');
+
     // Exactly one target must be set
     const targets = [dto.captureId, dto.elementId, dto.locationId, dto.issueId].filter(Boolean);
     if (targets.length !== 1) throw new BadRequestException('Exactly one link target must be provided (captureId, elementId, locationId, or issueId).');

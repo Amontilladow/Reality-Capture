@@ -65,11 +65,23 @@ describe('SnaggingService attachment enforcement', () => {
   });
 
   describe('addAttachment', () => {
-    function makeService(opts: { snagExists?: boolean; actualSizeBytes: number | null }) {
+    // H-1 fix: addAttachment() now takes projectId and resolves the snag
+    // item through findOne() (project_id = projectId AND company_id =
+    // companyId), not a bare company-only existence check -- so the first
+    // withTenant call here mocks findOne()'s own SELECT, which must return
+    // a full-enough row for findOne() to pass it through unmodified
+    // (no screenshotStorageKey field on snag_items, so no second query).
+    function makeService(opts: { snagExists?: boolean; wrongProject?: boolean; actualSizeBytes: number | null }) {
       const snagExists = opts.snagExists ?? true;
+      const wrongProject = opts.wrongProject ?? false;
       const insertedRow = { id: 'activity-1' };
+      const findOneRow = { id: snagId, projectId, companyId, status: 'open' };
       const withTenant = jest.fn()
-        .mockResolvedValueOnce(snagExists ? [{ id: snagId }] : [])
+        // findOne()'s SELECT: a WHERE clause already filters by
+        // project_id -- simulating "wrong project" by returning no row is
+        // how the fix is actually exercised (the real query does the
+        // filtering; the mock only needs to reflect its outcome).
+        .mockResolvedValueOnce(snagExists && !wrongProject ? [findOneRow] : [])
         // addAttachment()'s second withTenant call passes a callback that does
         // its own `const [activity] = await sql...` destructuring internally
         // and returns the plain object -- so withTenant itself resolves to
@@ -93,27 +105,93 @@ describe('SnaggingService attachment enforcement', () => {
 
     it('registers an attachment whose real uploaded size is within the 5MB limit', async () => {
       const { svc, deleteIfExists } = makeService({ actualSizeBytes: 1024 });
-      const activity = await svc.addAttachment(companyId, snagId, 'user-1', baseDto);
+      const activity = await svc.addAttachment(companyId, projectId, snagId, 'user-1', baseDto);
       expect(activity).toEqual({ id: 'activity-1' });
       expect(deleteIfExists).not.toHaveBeenCalled();
     });
 
     it('rejects and cleans up an attachment whose real size exceeds the 5MB limit', async () => {
       const { svc, deleteIfExists } = makeService({ actualSizeBytes: 6 * 1024 * 1024 });
-      await expect(svc.addAttachment(companyId, snagId, 'user-1', baseDto)).rejects.toThrow(BadRequestException);
+      await expect(svc.addAttachment(companyId, projectId, snagId, 'user-1', baseDto)).rejects.toThrow(BadRequestException);
       expect(deleteIfExists).toHaveBeenCalledWith(baseDto.storageKey);
     });
 
     it('rejects registration when the declared storage key was never actually uploaded', async () => {
       const { svc, deleteIfExists } = makeService({ actualSizeBytes: null });
-      await expect(svc.addAttachment(companyId, snagId, 'user-1', baseDto)).rejects.toThrow(BadRequestException);
+      await expect(svc.addAttachment(companyId, projectId, snagId, 'user-1', baseDto)).rejects.toThrow(BadRequestException);
       expect(deleteIfExists).not.toHaveBeenCalled();
     });
 
     it('rejects an attachment for a snag item that does not exist under this company', async () => {
       const { svc, getObjectSize } = makeService({ snagExists: false, actualSizeBytes: 1024 });
-      await expect(svc.addAttachment(companyId, 'someone-elses-snag', 'user-1', baseDto)).rejects.toThrow(NotFoundException);
+      await expect(svc.addAttachment(companyId, projectId, 'someone-elses-snag', 'user-1', baseDto)).rejects.toThrow(NotFoundException);
       expect(getObjectSize).not.toHaveBeenCalled();
+    });
+
+    // H-1 regression: the snag item is real and in the same company, but
+    // under a DIFFERENT project than the one named in the URL -- a user
+    // authorized only for `projectId` must not be able to attach a file to
+    // it just by knowing/guessing its UUID.
+    it("rejects an attachment for a snag item that belongs to a different project in the caller's company", async () => {
+      const { svc, getObjectSize } = makeService({ wrongProject: true, actualSizeBytes: 1024 });
+      await expect(svc.addAttachment(companyId, projectId, 'other-projects-snag', 'user-1', baseDto)).rejects.toThrow(NotFoundException);
+      expect(getObjectSize).not.toHaveBeenCalled();
+    });
+  });
+
+  // H-1 fix: getActivities()/addActivity() previously scoped only by
+  // company_id, not project_id -- a user authorized for a different
+  // project in the same company could read or post to any snag item's
+  // activity feed by guessing its UUID. Both now resolve the snag item via
+  // findOne() first, same boundary as addAttachment() above.
+  describe('getActivities / addActivity project-scoping (H-1)', () => {
+    function makeService(opts: { wrongProject?: boolean }) {
+      const wrongProject = opts.wrongProject ?? false;
+      const findOneRow = { id: snagId, projectId, companyId, status: 'open' };
+      const withTenant = jest.fn();
+      const db = { withTenant };
+      const svc = new SnaggingService(
+        db as unknown as DatabaseService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+        {} as unknown as ProjectAuthorizationService,
+      );
+      return { svc, withTenant, findOneRow: wrongProject ? undefined : findOneRow };
+    }
+
+    it('rejects reading activities for a snag item in a different project', async () => {
+      const { svc, withTenant } = makeService({ wrongProject: true });
+      withTenant.mockResolvedValueOnce([]); // findOne() finds nothing for this project
+      await expect(svc.getActivities(companyId, projectId, 'other-projects-snag')).rejects.toThrow(NotFoundException);
+      expect(withTenant).toHaveBeenCalledTimes(1); // never reached the activities SELECT
+    });
+
+    it('returns activities for a snag item that really is in this project', async () => {
+      const { svc, withTenant, findOneRow } = makeService({});
+      withTenant
+        .mockResolvedValueOnce([findOneRow]) // findOne()
+        .mockResolvedValueOnce([{ id: 'activity-1', attachmentUrl: null }]); // activities SELECT
+      const activities = await svc.getActivities(companyId, projectId, snagId);
+      expect(activities).toEqual([{ id: 'activity-1', attachmentUrl: null }]);
+    });
+
+    it('rejects posting an activity to a snag item in a different project', async () => {
+      const { svc, withTenant } = makeService({ wrongProject: true });
+      withTenant.mockResolvedValueOnce([]); // findOne() finds nothing for this project
+      await expect(svc.addActivity(companyId, projectId, 'other-projects-snag', 'user-1', { activityType: 'comment', content: 'hi' }))
+        .rejects.toThrow(NotFoundException);
+      expect(withTenant).toHaveBeenCalledTimes(1); // never reached the INSERT
+    });
+
+    it('posts an activity to a snag item that really is in this project', async () => {
+      const { svc, withTenant, findOneRow } = makeService({});
+      withTenant
+        .mockResolvedValueOnce([findOneRow]) // findOne()
+        .mockImplementationOnce(async (_companyId: string, fn: (sql: unknown) => unknown) => fn(
+          jest.fn().mockResolvedValue([{ id: 'activity-1' }]),
+        )); // addActivity()'s own withTenant(companyId, async (sql) => {...}) callback form
+      const activity = await svc.addActivity(companyId, projectId, snagId, 'user-1', { activityType: 'comment', content: 'hi' });
+      expect(activity).toEqual({ id: 'activity-1' });
     });
   });
 
@@ -129,6 +207,7 @@ describe('SnaggingService attachment enforcement', () => {
       const withTenant = jest.fn()
         .mockResolvedValueOnce([existingRow]) // findOne() inside verify()
         .mockResolvedValueOnce([updatedRow])  // the UPDATE ... RETURNING *
+        .mockResolvedValueOnce([existingRow]) // findOne() inside addActivity() (H-1 fix)
         .mockResolvedValueOnce(undefined)     // addActivity()'s INSERT
         .mockResolvedValueOnce(undefined);    // addActivity()'s UPDATE snag_items.updated_at
       const db = { withTenant };

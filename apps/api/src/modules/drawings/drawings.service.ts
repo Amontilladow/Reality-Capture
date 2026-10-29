@@ -113,7 +113,12 @@ export class DrawingsService {
     return rows;
   }
 
-  async findOne(companyId: string, drawingId: string) {
+  // H-1 fix (KNOWN_ISSUES_AND_REMEDIATION.md): previously scoped only by
+  // company_id, so a user authorized for Project A could fetch Project B's
+  // drawing -- including the live presigned download URL this method
+  // hands back below -- by guessing/enumerating a drawingId. Now matches
+  // findAll()'s own project_id scoping.
+  async findOne(companyId: string, projectId: string, drawingId: string) {
     const [drawing] = await this.db.withTenant(companyId, sql => sql`
       SELECT d.*,
         COALESCE(json_agg(DISTINCT jsonb_build_object(
@@ -125,7 +130,7 @@ export class DrawingsService {
       FROM drawings d
       LEFT JOIN capture_drawing_links cdl ON cdl.drawing_id = d.id
       LEFT JOIN captures c ON c.id = cdl.capture_id AND c.status = 'ready'
-      WHERE d.id = ${drawingId} AND d.company_id = ${companyId}
+      WHERE d.id = ${drawingId} AND d.project_id = ${projectId} AND d.company_id = ${companyId}
       GROUP BY d.id
     `);
     if (!drawing) throw new NotFoundException('Drawing not found.');
@@ -134,7 +139,8 @@ export class DrawingsService {
     return { ...drawing, downloadUrl: url };
   }
 
-  async linkCapture(companyId: string, drawingId: string, userId: string, dto: LinkCaptureToDrawingDto) {
+  async linkCapture(companyId: string, projectId: string, drawingId: string, userId: string, dto: LinkCaptureToDrawingDto) {
+    await this.assertDrawingInProject(companyId, projectId, drawingId);
     // withTenant required -- capture_drawing_links carries the tenant_isolation RLS policy.
     const [link] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO capture_drawing_links (capture_id, drawing_id, company_id, pos_x_norm, pos_y_norm, linked_by)
@@ -145,7 +151,8 @@ export class DrawingsService {
     return link;
   }
 
-  async unlinkCapture(companyId: string, drawingId: string, captureId: string) {
+  async unlinkCapture(companyId: string, projectId: string, drawingId: string, captureId: string) {
+    await this.assertDrawingInProject(companyId, projectId, drawingId);
     // withTenant required -- capture_drawing_links carries the tenant_isolation RLS policy;
     // without it this DELETE silently matches zero rows instead of failing.
     const result = await this.db.withTenant(companyId, sql => sql`
@@ -159,8 +166,8 @@ export class DrawingsService {
   }
 
   // Return all capture pins for a floor plan — used by the web viewer
-  async getFloorPlanData(companyId: string, drawingId: string) {
-    const drawing = await this.findOne(companyId, drawingId);
+  async getFloorPlanData(companyId: string, projectId: string, drawingId: string) {
+    const drawing = await this.findOne(companyId, projectId, drawingId);
     const pins = await this.db.withTenant(companyId, sql => sql`
       SELECT cdl.pos_x_norm, cdl.pos_y_norm,
              c.id AS capture_id, c.location_id, c.capture_type, c.captured_at, c.phase,
@@ -188,9 +195,9 @@ export class DrawingsService {
   // ── Pins (place-first model — a pin is a Location that can exist before ──
   // any capture does; captures attach to it afterward via captures.location_id)
 
-  async createPin(companyId: string, drawingId: string, userId: string, dto: CreatePinDto) {
+  async createPin(companyId: string, projectId: string, drawingId: string, userId: string, dto: CreatePinDto) {
     const [drawing] = await this.db.withTenant(companyId, sql => sql`
-      SELECT id, level_id, project_id FROM drawings WHERE id = ${drawingId} AND company_id = ${companyId}
+      SELECT id, level_id, project_id FROM drawings WHERE id = ${drawingId} AND project_id = ${projectId} AND company_id = ${companyId}
     `);
     if (!drawing) throw new NotFoundException('Drawing not found.');
 
@@ -249,7 +256,8 @@ export class DrawingsService {
 
   // Pins for a drawing — one marker per place, not per photo. A place with
   // several photos attached still shows as a single pin with a capture count.
-  async getPins(companyId: string, drawingId: string) {
+  async getPins(companyId: string, projectId: string, drawingId: string) {
+    await this.assertDrawingInProject(companyId, projectId, drawingId);
     const pins = await this.db.withTenant(companyId, sql => sql`
       SELECT
         loc.id AS location_id, loc.name, loc.description, loc.pos_x_norm, loc.pos_y_norm,
@@ -292,6 +300,16 @@ export class DrawingsService {
       // prefer instead.
       assignedTo: p.linkedIssueId ? p.linkedIssueAssignedTo : p.linkedSnagAssignedTo,
     }));
+  }
+
+  // H-1 fix: lightweight ownership check for mutation routes
+  // (linkCapture/unlinkCapture/getPins) that don't otherwise read the
+  // drawing row -- mirrors issues.service.ts's assertIssueInProject.
+  private async assertDrawingInProject(companyId: string, projectId: string, drawingId: string): Promise<void> {
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      SELECT 1 FROM drawings WHERE id = ${drawingId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!row) throw new NotFoundException('Drawing not found.');
   }
 
   // Same rationale as captures.service.ts's assertProjectBelongsToCompany --

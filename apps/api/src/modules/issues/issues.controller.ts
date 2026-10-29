@@ -193,30 +193,31 @@ export class IssuesController {
   }
 
   @Get(':id/activities')
-  async getActivities(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
-    return { data: await this.svc.getActivities(u.companyId, id), error: null };
+  async getActivities(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.getActivities(u.companyId, pid, id), error: null };
   }
 
   @Post(':id/activities')
   @ApiOperation({ summary: 'Add a comment or activity to an issue' })
-  async addActivity(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: AddActivityDto) {
-    return { data: await this.svc.addActivity(u.companyId, id, u.id, dto), error: null };
+  async addActivity(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: AddActivityDto) {
+    return { data: await this.svc.addActivity(u.companyId, pid, id, u.id, dto), error: null };
   }
 
   @Post(':id/captures')
   @ApiOperation({ summary: 'Link an existing capture as evidence for this issue' })
   async addCapture(
     @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
     @Param('id') id: string,
     @Body() body: AddCaptureToIssueDto,
   ) {
-    return { data: await this.svc.addCapture(u.companyId, id, u.id, body.captureId, body.isPrimary, body.caption), error: null };
+    return { data: await this.svc.addCapture(u.companyId, pid, id, u.id, body.captureId, body.isPrimary, body.caption), error: null };
   }
 
   @Get(':id/evidence')
   @ApiOperation({ summary: 'List the evidence captures attached to this issue (F5 close-out requires at least one)' })
-  async getEvidence(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
-    return { data: await this.svc.getEvidence(u.companyId, id), error: null };
+  async getEvidence(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.getEvidence(u.companyId, pid, id), error: null };
   }
 
   // ── Forward (ticket 2b) ──────────────────────────────────────────────────
@@ -294,10 +295,11 @@ export class IssuesController {
   @ApiOperation({ summary: 'Register an uploaded file as an issue activity attachment' })
   async addAttachment(
     @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
     @Param('id') id: string,
     @Body() dto: AddIssueAttachmentDto,
   ) {
-    return { data: await this.svc.addAttachment(u.companyId, id, u.id, dto), error: null };
+    return { data: await this.svc.addAttachment(u.companyId, pid, id, u.id, dto), error: null };
   }
 }
 

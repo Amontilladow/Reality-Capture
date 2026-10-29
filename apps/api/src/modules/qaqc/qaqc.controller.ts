@@ -149,16 +149,17 @@ export class QaqcController {
   @ApiOperation({ summary: 'Register an uploaded file as a document attachment' })
   async addAttachment(
     @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
     @Param('id') id: string,
     @Body() dto: AddQaqcAttachmentDto,
   ) {
-    return { data: await this.svc.addAttachment(u.companyId, id, u.id, dto), error: null };
+    return { data: await this.svc.addAttachment(u.companyId, pid, id, u.id, dto), error: null };
   }
 
   @Get(':id/attachments')
   @ApiOperation({ summary: "List this record's document attachments" })
-  async getAttachments(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
-    return { data: await this.svc.getAttachments(u.companyId, id), error: null };
+  async getAttachments(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.getAttachments(u.companyId, pid, id), error: null };
   }
 
   @Delete(':id/attachments/:attachmentId')
@@ -166,10 +167,11 @@ export class QaqcController {
   @HttpCode(HttpStatus.OK)
   async deleteAttachment(
     @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
     @Param('id') id: string,
     @Param('attachmentId') attachmentId: string,
   ) {
-    return { data: await this.svc.deleteAttachment(u.companyId, id, attachmentId), error: null };
+    return { data: await this.svc.deleteAttachment(u.companyId, pid, id, attachmentId), error: null };
   }
 
   // ── Quick photo picker ("+Add photo") -- links an already-uploaded
@@ -179,15 +181,16 @@ export class QaqcController {
   @ApiOperation({ summary: 'Link an already-uploaded Capture (a quick photo) to this record' })
   async addCapture(
     @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
     @Param('id') id: string,
     @Body() dto: AddQaqcCaptureDto,
   ) {
-    return { data: await this.svc.linkCapture(u.companyId, id, u.id, dto), error: null };
+    return { data: await this.svc.linkCapture(u.companyId, pid, id, u.id, dto), error: null };
   }
 
   @Get(':id/captures')
   @ApiOperation({ summary: "List the Capture photos linked to this record" })
-  async getCaptures(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
-    return { data: await this.svc.getLinkedCaptures(u.companyId, id), error: null };
+  async getCaptures(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.getLinkedCaptures(u.companyId, pid, id), error: null };
   }
 }

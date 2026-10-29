@@ -104,3 +104,39 @@ describe('DocumentsService upload enforcement', () => {
     });
   });
 });
+
+// H-1 regression (KNOWN_ISSUES_AND_REMEDIATION.md): link() used to scope
+// its document lookup only by company_id -- a user authorized for Project
+// A could link an arbitrary capture/element/location/issue to Project B's
+// document by supplying Project B's own documentId. Each test proves both
+// halves: the real project succeeds, the wrong one is rejected.
+describe('DocumentsService H-1: same-company cross-project access is rejected on link()', () => {
+  const companyId = 'company-1';
+  const documentId = 'document-1';
+  const REAL_PROJECT = 'project-A';
+  const OTHER_PROJECT = 'project-B';
+
+  function makeLinkService() {
+    const query = jest.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
+      const text = strings.join('?');
+      if (text.includes('FROM documents')) {
+        return Promise.resolve(values.includes(REAL_PROJECT) ? [{ id: documentId }] : []);
+      }
+      if (text.includes('INSERT INTO document_links')) {
+        return Promise.resolve([{ id: 'link-1', documentId, issueId: 'issue-1' }]);
+      }
+      return Promise.resolve([]);
+    });
+    const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+    const db = { withTenant };
+    return new DocumentsService(db as unknown as DatabaseService, {} as unknown as StorageService);
+  }
+
+  it('succeeds under the real project, rejects the same documentId under another project', async () => {
+    const svc = makeLinkService();
+    const dto = { issueId: 'issue-1' };
+
+    await expect(svc.link(companyId, REAL_PROJECT, documentId, 'user-1', dto)).resolves.toBeDefined();
+    await expect(svc.link(companyId, OTHER_PROJECT, documentId, 'user-1', dto)).rejects.toThrow(NotFoundException);
+  });
+});

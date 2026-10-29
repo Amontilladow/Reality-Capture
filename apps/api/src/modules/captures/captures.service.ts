@@ -389,7 +389,13 @@ export class CapturesService {
   }
 
   // ── Hotspots ──────────────────────────────────────────────────────────────
-  async createHotspot(companyId: string, captureId: string, userId: string, dto: CreateHotspotDto) {
+  async createHotspot(companyId: string, projectId: string, captureId: string, userId: string, dto: CreateHotspotDto) {
+    // H-1 fix: this previously had no existence/ownership check at all for
+    // captureId -- findOne() both confirms the capture exists and that it
+    // belongs to the project named in the URL (project_id = projectId AND
+    // company_id = companyId), the same boundary used throughout the rest
+    // of this codebase for sub-resource routes.
+    await this.findOne(companyId, projectId, captureId);
     // withTenant required -- hotspots carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id, so this INSERT
     // would be rejected outright under any DB role that isn't the table owner/a superuser.
@@ -409,7 +415,9 @@ export class CapturesService {
     return hotspot;
   }
 
-  async updateHotspot(companyId: string, captureId: string, hotspotId: string, dto: Partial<CreateHotspotDto>) {
+  async updateHotspot(companyId: string, projectId: string, captureId: string, hotspotId: string, dto: Partial<CreateHotspotDto>) {
+    // H-1 fix: see createHotspot()'s identical comment above.
+    await this.findOne(companyId, projectId, captureId);
     // withTenant required -- hotspots carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id, so this UPDATE
     // would silently match 0 rows under any DB role that isn't the table owner/a superuser.
@@ -427,7 +435,9 @@ export class CapturesService {
     return updated;
   }
 
-  async deleteHotspot(companyId: string, captureId: string, hotspotId: string) {
+  async deleteHotspot(companyId: string, projectId: string, captureId: string, hotspotId: string) {
+    // H-1 fix: see createHotspot()'s identical comment above.
+    await this.findOne(companyId, projectId, captureId);
     // withTenant required -- hotspots carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id, so this DELETE
     // would silently match 0 rows under any DB role that isn't the table owner/a superuser.

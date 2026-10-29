@@ -216,3 +216,76 @@ describe('CapturesService.register', () => {
     expect(deleteIfExists).toHaveBeenCalledWith(BASE_DTO.storageKey);
   });
 });
+
+// H-1 fix (KNOWN_ISSUES_AND_REMEDIATION.md): createHotspot() previously had
+// no existence/ownership check on captureId at all; updateHotspot()/
+// deleteHotspot() scoped only by company_id. A user authorized for a
+// different project in the same company could create/edit/delete hotspots
+// on any capture by guessing its UUID. All three now call findOne() first
+// (project_id = projectId AND company_id = companyId).
+describe('CapturesService hotspots project-scoping (H-1)', () => {
+  const companyId = 'company-1';
+  const projectId = 'project-1';
+  const captureId = 'capture-1';
+
+  function makeService(opts: { wrongProject?: boolean }) {
+    // findOne() also resolves rendition/original storage keys to read URLs
+    // after its own SELECT -- a resolveUrls() mock is needed even though
+    // these tests don't care about its output, same as the "project exists"
+    // row only needing to be truthy enough to satisfy findOne()'s own shape.
+    const findOneRow = { id: captureId, projectId, companyId, renditions: [], originalKey: 'key-1' };
+    const withTenant = jest.fn()
+      .mockResolvedValueOnce(opts.wrongProject ? [] : [findOneRow]); // findOne()
+    const db = { withTenant };
+    const resolveUrls = jest.fn().mockResolvedValue(new Map());
+    const svc = new CapturesService(
+      db as unknown as DatabaseService,
+      { resolveUrls } as unknown as StorageService,
+      {} as unknown as TenancyService,
+      {} as unknown as AiClientService,
+      {} as unknown as Queue,
+    );
+    return { svc, withTenant };
+  }
+
+  const hotspotDto = { hotspotType: 'navigation' as const, yawDeg: 10, pitchDeg: 0 };
+
+  it('rejects creating a hotspot on a capture in a different project', async () => {
+    const { svc } = makeService({ wrongProject: true });
+    await expect(svc.createHotspot(companyId, projectId, 'other-projects-capture', 'user-1', hotspotDto))
+      .rejects.toThrow(/not found/);
+  });
+
+  it('creates a hotspot on a capture that really is in this project', async () => {
+    const { svc, withTenant } = makeService({});
+    withTenant.mockResolvedValueOnce([{ id: 'hotspot-1' }]); // the INSERT, after findOne()
+    const hotspot = await svc.createHotspot(companyId, projectId, captureId, 'user-1', hotspotDto);
+    expect(hotspot).toEqual({ id: 'hotspot-1' });
+  });
+
+  it('rejects updating a hotspot on a capture in a different project', async () => {
+    const { svc } = makeService({ wrongProject: true });
+    await expect(svc.updateHotspot(companyId, projectId, 'other-projects-capture', 'hotspot-1', hotspotDto))
+      .rejects.toThrow(/not found/);
+  });
+
+  it('updates a hotspot on a capture that really is in this project', async () => {
+    const { svc, withTenant } = makeService({});
+    withTenant.mockResolvedValueOnce([{ id: 'hotspot-1' }]); // the UPDATE, after findOne()
+    const hotspot = await svc.updateHotspot(companyId, projectId, captureId, 'hotspot-1', hotspotDto);
+    expect(hotspot).toEqual({ id: 'hotspot-1' });
+  });
+
+  it('rejects deleting a hotspot on a capture in a different project', async () => {
+    const { svc } = makeService({ wrongProject: true });
+    await expect(svc.deleteHotspot(companyId, projectId, 'other-projects-capture', 'hotspot-1'))
+      .rejects.toThrow(/not found/);
+  });
+
+  it('deletes a hotspot on a capture that really is in this project', async () => {
+    const { svc, withTenant } = makeService({});
+    withTenant.mockResolvedValueOnce({ count: 1 }); // the DELETE, after findOne()
+    const result = await svc.deleteHotspot(companyId, projectId, captureId, 'hotspot-1');
+    expect(result).toEqual({ message: 'Hotspot deleted.' });
+  });
+});

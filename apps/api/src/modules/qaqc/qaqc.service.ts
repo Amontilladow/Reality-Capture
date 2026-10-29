@@ -298,6 +298,18 @@ export class QaqcService {
     return updated;
   }
 
+  // H-1 fix (KNOWN_ISSUES_AND_REMEDIATION.md): every sub-resource route
+  // below (attachments, captures) used to scope its record lookup only by
+  // company_id, so a user authorized for Project A could read/write
+  // Project B's QAQC record sub-resources by guessing/enumerating a
+  // qaqcId. Lightweight equivalent of findOne()'s own project_id check.
+  private async assertQaqcInProject(companyId: string, projectId: string, qaqcId: string): Promise<void> {
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      SELECT 1 FROM qaqc_records WHERE id = ${qaqcId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!row) throw new NotFoundException(`QAQC record ${qaqcId} not found.`);
+  }
+
   // ── Generic document attachments ("+Add document") ─────────────────────
   // Same presigned-PUT pattern, allow-list, and size cap as rfis.service.ts's
   // attachment methods (which themselves mirror issues.service.ts's).
@@ -319,7 +331,8 @@ export class QaqcService {
     return { uploadUrl, storageKey: key };
   }
 
-  async addAttachment(companyId: string, qaqcId: string, userId: string, dto: AddQaqcAttachmentDto) {
+  async addAttachment(companyId: string, projectId: string, qaqcId: string, userId: string, dto: AddQaqcAttachmentDto) {
+    await this.assertQaqcInProject(companyId, projectId, qaqcId);
     // Real post-upload size enforcement -- dto.sizeBytes was only checked
     // against the limit at upload-url time, never trusted for persistence.
     const actualSizeBytes = await this.storage.getObjectSize(dto.storageKey);
@@ -342,7 +355,8 @@ export class QaqcService {
     return attachment;
   }
 
-  async getAttachments(companyId: string, qaqcId: string) {
+  async getAttachments(companyId: string, projectId: string, qaqcId: string) {
+    await this.assertQaqcInProject(companyId, projectId, qaqcId);
     const rows = await this.db.withTenant(companyId, sql => sql`
       SELECT qa.*, u.first_name || ' ' || u.last_name AS uploaded_by_name
       FROM qaqc_attachments qa
@@ -354,7 +368,8 @@ export class QaqcService {
     return rows.map(r => ({ ...r, attachmentReadUrl: urls.get(r.storageKey as string) }));
   }
 
-  async deleteAttachment(companyId: string, qaqcId: string, attachmentId: string) {
+  async deleteAttachment(companyId: string, projectId: string, qaqcId: string, attachmentId: string) {
+    await this.assertQaqcInProject(companyId, projectId, qaqcId);
     const result = await this.db.withTenant(companyId, sql => sql`
       DELETE FROM qaqc_attachments
       WHERE id = ${attachmentId} AND qaqc_id = ${qaqcId} AND company_id = ${companyId}
@@ -370,7 +385,8 @@ export class QaqcService {
   // deliberately a different path from addAttachment() above -- the photo
   // becomes a real Capture (shows up in the project's Captures grid), not
   // a bare qaqc_attachments row. ─────────────────────────────────────────
-  async linkCapture(companyId: string, qaqcId: string, userId: string, dto: AddQaqcCaptureDto) {
+  async linkCapture(companyId: string, projectId: string, qaqcId: string, userId: string, dto: AddQaqcCaptureDto) {
+    await this.assertQaqcInProject(companyId, projectId, qaqcId);
     const [link] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO qaqc_captures (qaqc_id, capture_id, company_id, kind, caption, added_by)
       VALUES (${qaqcId}, ${dto.captureId}, ${companyId}, ${dto.kind ?? 'issue'}, ${dto.caption ?? null}, ${userId})
@@ -383,7 +399,8 @@ export class QaqcService {
   // Resolves thumbnailKey/originalKey into real, usable URLs server-side --
   // mirrors issues.service.ts's getEvidence() one-for-one (the raw storage
   // keys are not themselves fetchable by the browser).
-  async getLinkedCaptures(companyId: string, qaqcId: string) {
+  async getLinkedCaptures(companyId: string, projectId: string, qaqcId: string) {
+    await this.assertQaqcInProject(companyId, projectId, qaqcId);
     const rows = await this.db.withTenant(companyId, sql => sql`
       SELECT qc.id, qc.capture_id, qc.kind, qc.caption, qc.created_at,
              c.capture_type, c.captured_at, c.title, c.original_key,

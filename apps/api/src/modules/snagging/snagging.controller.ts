@@ -67,14 +67,14 @@ export class SnaggingController {
   }
 
   @Get(':id/activities')
-  async getActivities(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
-    return { data: await this.svc.getActivities(u.companyId, id), error: null };
+  async getActivities(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.getActivities(u.companyId, pid, id), error: null };
   }
 
   @Post(':id/activities')
   @ApiOperation({ summary: 'Add a comment or activity to a snag item' })
-  async addActivity(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: AddSnagActivityDto) {
-    return { data: await this.svc.addActivity(u.companyId, id, u.id, dto), error: null };
+  async addActivity(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: AddSnagActivityDto) {
+    return { data: await this.svc.addActivity(u.companyId, pid, id, u.id, dto), error: null };
   }
 
   @Post(':id/forward')
@@ -126,9 +126,10 @@ export class SnaggingController {
   @ApiOperation({ summary: 'Register an uploaded file as a snag item activity attachment' })
   async addAttachment(
     @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
     @Param('id') id: string,
     @Body() dto: AddSnagAttachmentDto,
   ) {
-    return { data: await this.svc.addAttachment(u.companyId, id, u.id, dto), error: null };
+    return { data: await this.svc.addAttachment(u.companyId, pid, id, u.id, dto), error: null };
   }
 }

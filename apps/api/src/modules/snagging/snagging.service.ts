@@ -169,7 +169,7 @@ export class SnaggingService {
     // Log status change activity automatically -- mirrors IssuesService.update()'s
     // existing behavior for issues, added here now for snag items too.
     if (dto.status && dto.status !== existing.status) {
-      await this.addActivity(companyId, snagId, userId, {
+      await this.addActivity(companyId, projectId, snagId, userId, {
         activityType: 'status_change',
         fromValue: existing.status as string,
         toValue: dto.status,
@@ -253,7 +253,12 @@ export class SnaggingService {
   // ══════════════════════════════════════════════════════════════════════
 
   // ── Activities ────────────────────────────────────────────────────────────
-  async getActivities(companyId: string, snagId: string) {
+  async getActivities(companyId: string, projectId: string, snagId: string) {
+    // findOne's own query already enforces snag_item.project_id = projectId
+    // (H-1 fix: this previously scoped only by company_id, letting a user
+    // authorized for a different project in the same company read any
+    // snag item's activity feed by guessing/enumerating its UUID).
+    await this.findOne(companyId, projectId, snagId);
     const activities = await this.db.withTenant(companyId, sql => sql`
       SELECT a.*, u.first_name || ' ' || u.last_name AS performed_by_name, u.avatar_url
       FROM snag_activities a
@@ -272,7 +277,9 @@ export class SnaggingService {
     }));
   }
 
-  async addActivity(companyId: string, snagId: string, userId: string, dto: AddSnagActivityDto) {
+  async addActivity(companyId: string, projectId: string, snagId: string, userId: string, dto: AddSnagActivityDto) {
+    // H-1 fix: see getActivities()'s identical comment above.
+    await this.findOne(companyId, projectId, snagId);
     return this.db.withTenant(companyId, async (sql) => {
       const [activity] = await sql`
         INSERT INTO snag_activities (
@@ -301,7 +308,7 @@ export class SnaggingService {
       RETURNING *
     `);
 
-    await this.addActivity(companyId, snagId, userId, {
+    await this.addActivity(companyId, projectId, snagId, userId, {
       activityType: 'forward',
       fromValue: (existing.assignedTo as string | null) ?? undefined,
       toValue: dto.toUserId,
@@ -368,7 +375,7 @@ export class SnaggingService {
       RETURNING *
     `);
 
-    await this.addActivity(companyId, snagId, userId, {
+    await this.addActivity(companyId, projectId, snagId, userId, {
       activityType: 'status_change',
       fromValue: 'fixed',
       toValue: 'verified',
@@ -405,7 +412,7 @@ export class SnaggingService {
       RETURNING *
     `);
 
-    await this.addActivity(companyId, snagId, userId, {
+    await this.addActivity(companyId, projectId, snagId, userId, {
       activityType: 'status_force',
       fromValue: existing.status as string,
       toValue: dto.status,
@@ -443,14 +450,13 @@ export class SnaggingService {
   // this registers it as a new snag_activities row. attachment_url stores
   // the storage key (not a raw presigned URL, which would expire), resolved
   // to a live presigned URL by getActivities() when needed.
-  async addAttachment(companyId: string, snagId: string, userId: string, dto: AddSnagAttachmentDto) {
-    // No projectId is threaded through this route today (see
-    // snagging.controller.ts) -- confirming the snag item itself exists
-    // under this company is the authorization boundary available here.
-    const [snag] = await this.db.withTenant(companyId, sql => sql`
-      SELECT id FROM snag_items WHERE id = ${snagId} AND company_id = ${companyId}
-    `);
-    if (!snag) throw new NotFoundException(`Snag item ${snagId} not found.`);
+  async addAttachment(companyId: string, projectId: string, snagId: string, userId: string, dto: AddSnagAttachmentDto) {
+    // H-1 fix: projectId is now threaded through from the route and
+    // checked via findOne (snag_item.project_id = projectId), not just
+    // company_id -- previously a user authorized for a different project
+    // in the same company could attach a file to any snag item by guessing
+    // its UUID.
+    await this.findOne(companyId, projectId, snagId);
 
     // Real post-upload size enforcement -- dto.sizeBytes was only ever
     // checked at upload-url time; it is not trusted for persistence.

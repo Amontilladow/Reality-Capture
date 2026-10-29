@@ -186,7 +186,7 @@ export class IssuesService {
       RETURNING *`);
 
     // Log creation activity
-    await this.addActivity(companyId, issue.id as string, userId, {
+    await this.addActivity(companyId, projectId, issue.id as string, userId, {
       activityType: 'comment',
       content: `Issue created: ${issueNumber}`,
     });
@@ -347,6 +347,22 @@ export class IssuesService {
     return issue;
   }
 
+  // H-1 fix (KNOWN_ISSUES_AND_REMEDIATION.md): every sub-resource route
+  // below (activities, evidence, capture-attach, attachments) used to scope
+  // its issue lookup only by company_id, so a user authorized for Project A
+  // could read/write Project B's issue sub-resources by guessing/enumerating
+  // an issueId -- not a cross-company leak (company_id was always checked),
+  // but a same-company cross-project gap. This is the lightweight
+  // equivalent of findOne()'s own project_id check, without findOne()'s
+  // full join, for callers that only need to confirm ownership before
+  // touching a sub-resource, not render the issue itself.
+  private async assertIssueInProject(companyId: string, projectId: string, issueId: string): Promise<void> {
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      SELECT 1 FROM issues WHERE id = ${issueId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!row) throw new NotFoundException(`Issue ${issueId} not found.`);
+  }
+
   // ── View-state screenshot upload ────────────────────────────────────────
   // Mirrors bim.service.ts's getModelUploadUrl -- a lightweight presigned
   // PUT URL, no DB row of its own. The resulting storageKey is passed
@@ -392,7 +408,7 @@ export class IssuesService {
 
     // Log status change activity automatically
     if (dto.status && dto.status !== existing.status) {
-      await this.addActivity(companyId, issueId, userId, {
+      await this.addActivity(companyId, projectId, issueId, userId, {
         activityType: 'status_change',
         fromValue: existing.status as string,
         toValue: dto.status,
@@ -465,7 +481,7 @@ export class IssuesService {
 
     // capture_id links this closure's audit row to the specific evidence
     // that justified it, not just "status changed to closed."
-    await this.addActivity(companyId, issueId, userId, {
+    await this.addActivity(companyId, projectId, issueId, userId, {
       activityType: 'status_change',
       fromValue: existing.status as string,
       toValue: 'closed',
@@ -491,7 +507,8 @@ export class IssuesService {
   }
 
   // ── Activities ────────────────────────────────────────────────────────────
-  async getActivities(companyId: string, issueId: string) {
+  async getActivities(companyId: string, projectId: string, issueId: string) {
+    await this.assertIssueInProject(companyId, projectId, issueId);
     const activities = await this.db.withTenant(companyId, sql => sql`
       SELECT a.*, u.first_name || ' ' || u.last_name AS performed_by_name, u.avatar_url
       FROM issue_activities a
@@ -520,7 +537,8 @@ export class IssuesService {
   // reassignment-notification pattern. Only 'comment' triggers this: the
   // other activity types (status_change, forward, etc.) already notify
   // through their own dedicated code paths where relevant.
-  async addActivity(companyId: string, issueId: string, userId: string, dto: AddActivityDto) {
+  async addActivity(companyId: string, projectId: string, issueId: string, userId: string, dto: AddActivityDto) {
+    await this.assertIssueInProject(companyId, projectId, issueId);
     const { activity, issue } = await this.db.withTenant(companyId, async (sql) => {
       const [activity] = await sql`
         INSERT INTO issue_activities (
@@ -610,7 +628,8 @@ export class IssuesService {
   // enforces the real requirement in close()/forceStatus()/bulkClose();
   // this is purely for the UI to show the right thing, not a second source
   // of truth).
-  async getEvidence(companyId: string, issueId: string) {
+  async getEvidence(companyId: string, projectId: string, issueId: string) {
+    await this.assertIssueInProject(companyId, projectId, issueId);
     const rows = await this.db.withTenant(companyId, sql => sql`
       SELECT ic.id, ic.capture_id, ic.is_primary, ic.caption, ic.created_at,
              c.capture_type, c.captured_at, c.title, c.original_key,
@@ -632,7 +651,8 @@ export class IssuesService {
   }
 
   // ── Add evidence capture ──────────────────────────────────────────────────
-  async addCapture(companyId: string, issueId: string, userId: string, captureId: string, isPrimary = false, caption?: string) {
+  async addCapture(companyId: string, projectId: string, issueId: string, userId: string, captureId: string, isPrimary = false, caption?: string) {
+    await this.assertIssueInProject(companyId, projectId, issueId);
     // withTenant required -- issue_captures carries the tenant_isolation RLS policy.
     const [link] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO issue_captures (issue_id, capture_id, company_id, is_primary, caption, added_by)
@@ -640,7 +660,7 @@ export class IssuesService {
       ON CONFLICT (issue_id, capture_id) DO UPDATE SET caption = ${caption ?? null}
       RETURNING *
     `);
-    await this.addActivity(companyId, issueId, userId, {
+    await this.addActivity(companyId, projectId, issueId, userId, {
       activityType: 'capture_added',
       captureId,
       content: caption,
@@ -770,7 +790,7 @@ export class IssuesService {
       RETURNING *
     `);
 
-    await this.addActivity(companyId, issueId, userId, {
+    await this.addActivity(companyId, projectId, issueId, userId, {
       activityType: 'forward',
       fromValue: (existing.assignedTo as string | null) ?? undefined,
       toValue: dto.toUserId,
@@ -828,7 +848,7 @@ export class IssuesService {
       RETURNING *
     `);
 
-    await this.addActivity(companyId, issueId, userId, {
+    await this.addActivity(companyId, projectId, issueId, userId, {
       activityType: 'status_force',
       fromValue: existing.status as string,
       toValue: dto.status,
@@ -1047,16 +1067,11 @@ export class IssuesService {
   // stores the storage key (not a raw presigned URL, which would expire) --
   // same pattern as documents.storageKey / issues.screenshotStorageKey,
   // resolved to a live presigned URL by the caller/read path when needed.
-  async addAttachment(companyId: string, issueId: string, userId: string, dto: AddIssueAttachmentDto) {
-    // No projectId is threaded through this route today (see
-    // issues.controller.ts) -- confirming the issue itself exists under this
-    // company is the authorization boundary available here, and also
-    // catches a bogus/foreign issueId before an orphan activity row gets
-    // written for it.
-    const [issue] = await this.db.withTenant(companyId, sql => sql`
-      SELECT id FROM issues WHERE id = ${issueId} AND company_id = ${companyId}
-    `);
-    if (!issue) throw new NotFoundException(`Issue ${issueId} not found.`);
+  async addAttachment(companyId: string, projectId: string, issueId: string, userId: string, dto: AddIssueAttachmentDto) {
+    // H-1 fix: projectId is now threaded through from issues.controller.ts
+    // and checked here, closing the same-company cross-project gap this
+    // comment used to document as an accepted limitation.
+    await this.assertIssueInProject(companyId, projectId, issueId);
 
     // Real post-upload size enforcement -- the client-declared dto.sizeBytes
     // was only ever checked against the limit at upload-url time; it is not
