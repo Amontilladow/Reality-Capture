@@ -36,6 +36,8 @@ interface FormState {
   // convert = build a DRM BDMS draft from an architectural floor plan; prepare = check an existing GIS drawing.
   mode: 'convert' | 'prepare';
   unitNumber: string;
+  // Building / floor / title facts a floor plan cannot show (conversion). Empty stays empty and is reported.
+  facts: Record<string, string>;
   units: 'auto' | 'mm' | 'cm' | 'm';
   profile: GisPrepProfile;
   strict: boolean;
@@ -48,10 +50,22 @@ interface FormState {
 }
 
 const INITIAL: FormState = {
-  mode: 'convert', unitNumber: '', units: 'auto',
+  mode: 'convert', unitNumber: '', units: 'auto', facts: {},
   profile: 'bdms_building', strict: true, sourceCrs: '', crsConfirmed: false, unitsConfirmed: false,
   categories: ['plot'], meta: {}, controlPoints: '',
 };
+
+// Values the drawing cannot provide; sent as conversion settings. Code-listed values (usage, drawing type) are
+// checked against the BDMS code lists by the validator, so a typo shows up in the report rather than here.
+const FACT_FIELDS = [
+  ['floor_height', 'Floor height (m)', '3.6'], ['building_number_of_floors', 'Number of floors', '2'],
+  ['building_usage_category', 'Usage category (code list)', 'Commercial'],
+  ['building_usage_type', 'Usage type (code list)', 'Single-use Commercial'],
+] as const;
+const TITLE_FIELDS = [
+  ['DeveloperName', 'Developer name', 'MASDAR CITY'], ['BuildingName', 'Building name', ''],
+  ['DrawingType', 'Drawing type', 'As Built'], ['DateOfDrawing', 'Date of drawing', '14-JAN-2026'],
+] as const;
 
 const BDMS_FIELDS = [
   ['zone_name', 'Zone name', 'KHALIFA CITY'], ['sector_number', 'Sector', 'SE45_01'], ['plot_number', 'Plot', 'C8'],
@@ -77,6 +91,11 @@ function buildSettings(f: FormState): GisPrepSettings | GisConvertSettings {
     return {
       mode: 'convert', profile: 'bdms_building', metadata: f.meta, source_units: f.units,
       single_unit_number: f.unitNumber,
+      floor_height: f.facts.floor_height ?? '',
+      building_number_of_floors: f.facts.building_number_of_floors ?? '',
+      building_usage_category: f.facts.building_usage_category ?? '',
+      building_usage_type: f.facts.building_usage_type ?? '',
+      title_values: Object.fromEntries(TITLE_FIELDS.map(([k]) => [k, f.facts[k] ?? '']).filter(([, v]) => v)),
       crs: { control_points: controlPoints, confirm_transformation: f.crsConfirmed },
     };
   }
@@ -189,6 +208,19 @@ export default function GisPrepPage() {
               </label>
             ))}
           </div>
+          {form.mode === 'convert' && (
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+              {[...FACT_FIELDS, ...TITLE_FIELDS].map(([key, label, placeholder]) => (
+                <label key={key} className="text-xs text-ink-500 space-y-1">
+                  <span>{label}</span>
+                  <input
+                    className="field-input text-xs !py-1.5" placeholder={placeholder} value={form.facts[key] ?? ''}
+                    onChange={e => setForm(f => ({ ...f, facts: { ...f.facts, [key]: e.target.value } }))}
+                  />
+                </label>
+              ))}
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {form.mode === 'prepare' && <label className="text-xs text-ink-500 space-y-1">
               <span>Source coordinate system</span>
@@ -207,7 +239,7 @@ export default function GisPrepPage() {
             )}
             {form.mode === 'convert' && (
               <label className="text-xs text-ink-500 space-y-1">
-                <span>Whole floor is one unit — unit number (optional)</span>
+                <span>Unit number (whole floor is one unit) — required for the QC links</span>
                 <input className="field-input text-xs !py-1.5" value={form.unitNumber} onChange={e => setForm(f => ({ ...f, unitNumber: e.target.value }))} />
               </label>
             )}
@@ -401,7 +433,8 @@ interface ConvFeature {
   attributes: Record<string, { value: string; provenance: string; note: string }>;
 }
 interface ConversionReport {
-  kind: 'conversion'; status: string; blockers: string[]; result: Record<string, string | number>;
+  kind: 'conversion'; status: string; blockers: string[]; identifiers_missing?: string[];
+  result: Record<string, string | number>;
   features: ConvFeature[]; missing_mandatory: { feature: string; tag: string; note: string }[];
   georeferencing: { status: string; messages: string[] };
 }
@@ -438,6 +471,9 @@ function ConversionDetail({ projectId, job, onRerun }: { projectId: string; job:
       </div>
       <p className="text-xs text-ink-300">{report.status}</p>
       {report.blockers.map(b => <p key={b} className="text-xs text-danger">{b}</p>)}
+      {(report.identifiers_missing ?? []).length > 0 && (
+        <p className="text-xs text-danger">Blocked until provided (never guessed): {report.identifiers_missing!.join(', ')}</p>
+      )}
       <div className="flex flex-wrap gap-2">
         {job.packageUrl && <a className="btn-secondary !px-3 !py-1.5 text-xs" href={job.packageUrl}>Download full package (.zip)</a>}
         {downloads.map(o => <a key={o.path} className="btn-ghost !px-3 !py-1.5 text-xs" href={o.url} target="_blank" rel="noreferrer">{o.path.replace(/^output\//, '')}</a>)}

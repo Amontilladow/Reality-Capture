@@ -501,6 +501,29 @@ Progress Report, F2 Planned vs Actual Progress by Element/Zone, F3
 Public API and Webhooks, F4 Subcontractor Issue Assignment, F5
 Evidence-Based Issue Close-Out, F6 Scheduled Capture Comparison.
 
+## ADM GIS Preparation (`apps/adm-gis-prep`): ADM QC trial 01, done
+
+A conversion draft was rejected by the official QC (DRM_CPDQC v2.3) with 104 errors. That draft and its `.err` report are now the fixture in `apps/adm-gis-prep/fixtures/adm_qc_trial/`.
+- **Validator:** the "Summary in official QC terms" now reproduces all 15 official rows, 13 of them with the exact count.
+  - New rules: DRM-ATT-48, DRM-ATT-49, DRM-ATT-51 (INFO) and DRM-LOG-01.
+  - Tightened: DRM-ATT-15 (link uses SpaceNumber + UnitNumber + FloorNumber) and DRM-ATT-45 (a blank usage code is an error).
+  - Missing BuildingRoof is now a WARNING.
+- **Converter:**
+  - spaces are numbered progressively;
+  - Unit/FloorNumber come from settings, and the draft is marked BLOCKED when they are missing;
+  - building, floor and unit facts come from settings;
+  - door/window links point at exported spaces;
+  - the output gets the BDMS file name;
+  - blocks are placed at the polygon's pole of inaccessibility.
+- **Tests:** `tests/test_adm_trial_01.py` parses the `.err` file. A corrected M19B conversion has zero errors in categories C to F.
+- **Write-up:** `apps/adm-gis-prep/docs/ADM_TRIAL_01.md`.
+- **Still open** (`docs/DISCREPANCIES_BDMS.md`):
+  - B-17: SpaceDetail data entry, ours 10 vs ADM 9;
+  - B-18: DoorDetail link, ours 17 vs ADM 15;
+  - B-16: progressive numbering is INFO only, because accepted drawing G has gaps;
+  - the converter does not produce Plot, so row B remains.
+- **Next:** resubmit a corrected draft to the official QC. The output stays PROVISIONAL / NOT ADM-VALIDATED until it passes.
+
 ## Exact continuation point
 IFC Processing Engine, Reality Capture image processing, BIM viewer <->
 Issue Management integration (camera/screenshot capture), and artifact

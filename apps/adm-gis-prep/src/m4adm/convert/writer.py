@@ -8,17 +8,35 @@ those are NOT the official template blocks.
 """
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 import ezdxf
 from ezdxf.addons import importer
 from ezdxf.document import Drawing
-from shapely.geometry import Polygon
+from shapely.geometry import Point, Polygon
+from shapely.ops import polylabel
 
 from m4adm.convert.features import AttrValue, Feature
 from m4adm.rules import Manifest
 
 DRAFT_MARK = "M4 CONVERSION DRAFT - NOT REVIEWED - NOT ADM/DRM VALIDATED"
+
+
+def anchor(poly: Polygon, taken: list[tuple[float, float]], spacing: float = 1.5) -> tuple[float, float]:
+    """Insertion point well inside the polygon (official QC key note 5): its pole of inaccessibility. Floor,
+    BuildingOutline and Unit share one outline, so a point already used by another block moves along a ring
+    around the pole, staying at least 0.5 m (or half the available depth) inside the polygon."""
+    pole = polylabel(poly, tolerance=0.01)
+    depth = poly.exterior.distance(pole)
+    margin = min(0.5, depth / 2)
+    inner = poly.buffer(-margin)
+    candidates = [(pole.x, pole.y)] + [(pole.x + spacing * k * math.cos(a), pole.y + spacing * k * math.sin(a))
+                                       for k in (1, 2, 3) for a in (0, math.pi / 2, math.pi, 3 * math.pi / 2)]
+    for c in candidates:
+        if all(math.dist(c, t) > spacing / 2 for t in taken) and inner.contains(Point(c)):
+            return c
+    return (pole.x, pole.y)
 
 
 def _blocks_from_manifest(doc: Drawing, manifest: Manifest, names: set[str]) -> None:
@@ -65,13 +83,15 @@ def write_target(path: Path, feats: list[Feature], titles: dict[str, dict[str, A
         _blocks_from_manifest(doc, manifest, blocks)
     msp = doc.modelspace()
     written = 0
+    placed: list[tuple[float, float]] = []
     for f in exported:
         coords = list(f.poly.exterior.coords)[:-1]
         msp.add_lwpolyline(coords, close=True, dxfattribs={"layer": f.layer})
         detail_layer = specs[f.layer].detail
         if f.block and detail_layer:
-            at = f.poly.representative_point()
-            ref = msp.add_blockref(f.block, (at.x, at.y), dxfattribs={"layer": detail_layer})
+            at = anchor(f.poly, placed)
+            placed.append(at)
+            ref = msp.add_blockref(f.block, at, dxfattribs={"layer": detail_layer})
             ref.add_auto_attribs({k: v.value for k, v in f.attributes.items()})
         written += 1
     # Title frame outside the floor, to the right of everything written.

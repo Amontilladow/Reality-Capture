@@ -125,6 +125,7 @@ describe('gis-prep helpers', () => {
     expect(statusFromLabel('')).toBe('BLOCKED');
     expect(statusFromLabel('Blocked: no draft could be generated')).toBe('BLOCKED');
     expect(statusFromLabel('Draft generated - requires engineer review')).toBe('PREPARED_WITH_WARNINGS');
+    expect(statusFromLabel('Draft generated - BLOCKED: mandatory identifiers missing')).toBe('BLOCKED');
   });
 
   it('counts open decisions from unresolved layers and fix proposals', () => {

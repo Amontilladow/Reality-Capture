@@ -31,6 +31,7 @@ from m4adm.audit import AuditLog, utc_now
 from m4adm.convert import georef as georef_mod
 from m4adm.convert import topology
 from m4adm.convert.features import (ACCEPTED, REJECTED, Feature, apply_decisions, build_features, missing_mandatory,
+                                    number_spaces,
                                     title_values)
 from m4adm.convert.report import preview_svg, render_html, summary
 from m4adm.convert.rooms import HIGH, NOT_GENERATED, REVIEW, UNRESOLVED, detect_rooms
@@ -45,6 +46,7 @@ STATUS_BLOCKED = "Blocked: no draft could be generated"
 STATUS_DRAFT_LOCAL = "Draft generated - NOT georeferenced - not for submission"
 STATUS_DRAFT_REVIEW = "Draft generated - requires engineer review"
 STATUS_DRAFT_CHECKED = "Draft generated - no open review items; official QC not yet performed"
+STATUS_DRAFT_BLOCKED = "Draft generated - BLOCKED: mandatory identifiers missing"
 
 LIMITATIONS = [
     "Output is DXF R2010 only. DWG output needs AutoCAD or a licensed DWG SDK; convert the DXF in AutoCAD "
@@ -143,6 +145,8 @@ def _run(source: Path, settings: ConversionSettings, manifest: Manifest, ws: Job
                 feats = build_features(model, det, manifest, settings)
                 orphans = topology.drop_orphan_doors(feats)
                 unknown = apply_decisions(feats, settings)
+                for note in number_spaces(feats):
+                    audit.record("link_unresolved", note=note)
                 topo = {"orphan_openings_dropped": orphans, "windows_extended": topology.extend_windows(feats),
                         "features_snapped": topology.snap_vertices(feats),
                         "openings_clipped": topology.clip_openings(feats),
@@ -162,7 +166,10 @@ def _run(source: Path, settings: ConversionSettings, manifest: Manifest, ws: Job
                 audit.record("georeferencing", **geo.as_dict())
 
     stem = _stem(settings)
-    out_name = f"{stem or 'CONVERSION'}_DRAFT.dxf"
+    # The official QC checks the drawing's own file name, so the draft is named exactly <Zone>-<Sector>-<Plot>-
+    # <Building>-<Floor>.dxf; "draft" is recorded in the header, the job folder and the report, not the name.
+    out_name = f"{stem}.dxf" if stem else "CONVERSION_DRAFT.dxf"
+    identifiers_missing = _identifiers_missing(settings)
     written = None
     if feats and not blockers:
         local = {f.id: f.poly for f in feats}
@@ -192,6 +199,8 @@ def _run(source: Path, settings: ConversionSettings, manifest: Manifest, ws: Job
     missing = missing_mandatory(feats, manifest) if feats else []
     if blockers or not written:
         status = STATUS_BLOCKED
+    elif identifiers_missing:
+        status = STATUS_DRAFT_BLOCKED
     elif geo.status != georef_mod.APPLIED:
         status = STATUS_DRAFT_LOCAL
     elif review or missing or (validation and validation["counts"].get("ERROR")):
@@ -209,6 +218,7 @@ def _run(source: Path, settings: ConversionSettings, manifest: Manifest, ws: Job
         "Not generated": statuses.get(NOT_GENERATED, 0) + statuses.get(REJECTED, 0),
         "Attributes populated": sum(1 for f in exported for v in f.attributes.values() if v.value),
         "Mandatory attributes missing": len(missing),
+        "Identifiers missing (blocks the draft)": ", ".join(identifiers_missing) or "none",
         "Coordinate transformation": geo.status,
         "Target validation": validation["status"] if validation else "not run",
         "Export": f"output/{out_name}" if written else "no draft",
@@ -216,7 +226,7 @@ def _run(source: Path, settings: ConversionSettings, manifest: Manifest, ws: Job
     })
     report = {
         "kind": "conversion", "job_id": ws.job_id, "label": PROVISIONAL_LABEL, "status": status,
-        "blockers": blockers, "started": started, "finished": utc_now(), "tool_version": __version__,
+        "blockers": blockers, "identifiers_missing": identifiers_missing, "started": started, "finished": utc_now(), "tool_version": __version__,
         "target_schema": f"{manifest.spec['title']} v{manifest.version} (profile {manifest.profile})",
         "source": {"name": source.name, "format": ident.format, "sha256": sha_before, "sha256_after": sha_after,
                    "unchanged": sha_before == sha_after,
@@ -244,6 +254,20 @@ def _run(source: Path, settings: ConversionSettings, manifest: Manifest, ws: Job
                       "automatic CAD-to-GIS conversion. Review conversion_report.html before using the draft.\n")
     audit.record("conversion_finished", status=status, source_unchanged=sha_before == sha_after)
     return ConversionResult(ws.job_id, ws.dir, status, report)
+
+
+def _identifiers_missing(settings: ConversionSettings) -> list[str]:
+    """Identifiers every Space/Door/Window block needs for the official QC to link them (trial 01). They are never
+    invented: without them the draft is still written for review, but its status is BLOCKED."""
+    md = settings.metadata
+    out = []
+    for label, value in (("zone name", md.zone_name), ("sector number", md.sector_number),
+                         ("plot number", md.plot_number), ("building number", md.building_number),
+                         ("floor ID (FloorNumber on every block)", md.floor_id),
+                         ("unit number (UnitNumber on every space, door and window)", settings.single_unit_number)):
+        if not value:
+            out.append(label)
+    return out
 
 
 def _stem(settings: ConversionSettings) -> str | None:

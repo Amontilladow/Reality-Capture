@@ -493,17 +493,21 @@ def _georeference(settings: JobSettings, in_scope, col: Collector, changes: dict
 
 
 def _qc_summary(findings: list[Finding]) -> list[dict]:
-    """Findings grouped like the official QC report: error description, count, layers."""
-    groups: dict[str, dict] = {}
-    for f in findings:
+    """Findings grouped like the official QC report: one row per error description and layer.
+
+    The count follows the official tool: a finding may name its counting unit (`qc_unit`: the file, a block, a
+    polygon), so e.g. three empty fields of one block count once. Detailed findings stay in the report."""
+    groups: dict[tuple[str, str], dict] = {}
+    for i, f in enumerate(findings):
         name = f.details.get("official_qc_error")
-        if not name or f.severity == Severity.INFO:
+        if not name or f.severity != Severity.ERROR:      # the official report lists errors only
             continue
-        g = groups.setdefault(name, {"qc_error": name, "rule_id": f.rule_id, "count": 0, "layers": set()})
-        g["count"] += 1
-        if f.layer:
-            g["layers"].add(f.layer)
-    return [{**g, "layers": sorted(g["layers"])} for g in groups.values()]
+        layer = f.details.get("qc_layer", f.layer)      # the official report leaves file-level rows without layer
+        g = groups.setdefault((name, layer or ""), {"qc_error": name, "rule_id": f.rule_id, "units": set(),
+                                                    "layers": [layer] if layer else []})
+        g["units"].add(f.details.get("qc_unit") or f"#{i}")
+    return [{"qc_error": g["qc_error"], "rule_id": g["rule_id"], "count": len(g["units"]), "layers": g["layers"]}
+            for g in groups.values()]
 
 
 def _sorted(findings: list[Finding]) -> list[Finding]:

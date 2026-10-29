@@ -147,6 +147,7 @@ export function statusFromLabel(label: string): GisPrepJobStatus {
   // Conversion drafts (m4adm.convert): a draft with no open review items is ready for the engineer's review;
   // every other draft still needs review or georeferencing. Never "approved".
   if (label === 'Draft generated - no open review items; official QC not yet performed') return 'READY_FOR_REVIEW';
+  if (label.startsWith('Draft generated - BLOCKED')) return 'BLOCKED';    // identifiers missing: never guessed
   if (label.startsWith('Draft generated')) return 'PREPARED_WITH_WARNINGS';
   // Anything else ("Blocked by errors", the strict-mode block, or a label
   // this version does not know) is treated as blocked, never as ready.

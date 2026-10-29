@@ -106,6 +106,8 @@ def snap_vertices(feats: list[Feature], snap: float = 0.03) -> int:
     return moved
 
 
+MIN_OPENING_AREA = 0.01   # m2; anything smaller left after clipping is a sliver, not a door or window
+
 PRIORITY = {"Space": 0, "Floor": 1, "Unit": 1, "BuildingOutline": 1, "Door": 2, "Window": 3}
 
 
@@ -181,8 +183,8 @@ def node(feats: list[Feature], tol: float = 1e-4) -> int:
             for _, v in sorted(set(on)):
                 out.append(v)
                 added += 1
-        poly = Polygon(_dedupe(out))
-        if poly.is_valid:
+        out = _dedupe(out)
+        if len(out) >= 3 and (poly := Polygon(out)).is_valid:
             f.poly = poly
     return added
 
@@ -201,10 +203,15 @@ def clip_openings(feats: list[Feature]) -> int:
             continue
         rest = f.poly.difference(rooms)
         parts = [g for g in getattr(rest, "geoms", [rest]) if isinstance(g, Polygon) and g.area > 0]
-        if parts:
-            f.poly = max(parts, key=lambda g: g.area).simplify(1e-5)
+        kept = max(parts, key=lambda g: g.area).simplify(1e-5) if parts else None
+        if kept is None or not kept.is_valid or kept.area < MIN_OPENING_AREA:
+            f.status = NOT_GENERATED       # the opening lay inside a room: only a sliver would be left
+            f.reasons.append(f"lies inside a room: clipping the {inter:.3f} m2 overlap leaves no opening, "
+                             "so it is not written")
+        else:
+            f.poly = kept
             f.reasons.append(f"clipped {inter:.3f} m2 that overlapped a room")
-            clipped += 1
+        clipped += 1
     return clipped
 
 
