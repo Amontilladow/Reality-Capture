@@ -449,7 +449,7 @@ function DrawingRow({ drawing, active, onSelect }: { drawing: Drawing; active: b
     <button
       onClick={() => onSelect(drawing.id)}
       className={`w-full text-left px-3 py-2.5 rounded text-sm transition-colors ${
-        active ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-700'
+        active ? 'bg-signal text-base-800' : 'text-ink-300 hover:bg-base-700'
       }`}
     >
       <div className="font-medium truncate">{drawing.title}</div>

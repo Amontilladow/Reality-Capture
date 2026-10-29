@@ -71,7 +71,7 @@ export default function Viewer360() {
     <div className="h-screen flex flex-col">
       <div className="h-14 border-b border-base-600 bg-base-900/80 backdrop-blur px-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3 min-w-0">
-          <button onClick={() => navigate(`/projects/${projectId}`)} className="text-ink-500 hover:text-ink-100 shrink-0">
+          <button onClick={() => navigate(`/projects/${projectId}`)} aria-label="Back to project" className="text-ink-500 hover:text-ink-100 shrink-0">
             <BackIcon />
           </button>
           <div className="min-w-0">

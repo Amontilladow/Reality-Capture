@@ -170,19 +170,19 @@ export default function MessagesPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setTab('inbox')}
-            className={`px-3 py-1.5 rounded text-sm ${tab === 'inbox' ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-700'}`}
+            className={`px-3 py-1.5 rounded text-sm ${tab === 'inbox' ? 'bg-signal text-base-800' : 'text-ink-300 hover:bg-base-700'}`}
           >
             Inbox
           </button>
           <button
             onClick={() => setTab('sent')}
-            className={`px-3 py-1.5 rounded text-sm ${tab === 'sent' ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-700'}`}
+            className={`px-3 py-1.5 rounded text-sm ${tab === 'sent' ? 'bg-signal text-base-800' : 'text-ink-300 hover:bg-base-700'}`}
           >
             Sent
           </button>
           <button
             onClick={() => setTab('email')}
-            className={`px-3 py-1.5 rounded text-sm ${tab === 'email' ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-700'}`}
+            className={`px-3 py-1.5 rounded text-sm ${tab === 'email' ? 'bg-signal text-base-800' : 'text-ink-300 hover:bg-base-700'}`}
           >
             Email History
           </button>

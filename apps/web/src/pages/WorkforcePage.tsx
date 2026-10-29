@@ -442,6 +442,7 @@ function MyScheduling() {
                   <td className="px-4 py-2.5">
                     <input
                       type="checkbox"
+                      aria-label={`${name}: preferred working day`}
                       checked={pref?.preferred ?? false}
                       disabled={preferenceMutation.isPending}
                       onChange={(e) => preferenceMutation.mutate({
@@ -452,6 +453,7 @@ function MyScheduling() {
                   <td className="px-4 py-2.5">
                     <input
                       type="time"
+                      aria-label={`${name}: start time`}
                       className="field-input !py-1 !text-xs"
                       defaultValue={pref?.startTime ?? ''}
                       disabled={preferenceMutation.isPending}
@@ -465,6 +467,7 @@ function MyScheduling() {
                   <td className="px-4 py-2.5">
                     <input
                       type="time"
+                      aria-label={`${name}: end time`}
                       className="field-input !py-1 !text-xs"
                       defaultValue={pref?.endTime ?? ''}
                       disabled={preferenceMutation.isPending}
@@ -672,7 +675,7 @@ function PrivacySettingsAdmin() {
           <label className="block space-y-1">
             <div className="text-xs text-ink-500 font-medium">Monitoring level</div>
             <Listbox aria-label="Monitoring level"
-              className="input"
+              className="field-input"
               value={settings.monitoringLevel}
               disabled={updateMutation.isPending}
               onChange={(e) => updateMutation.mutate({ monitoringLevel: e.target.value as MonitoringLevel })}
@@ -720,7 +723,7 @@ function PrivacySettingsAdmin() {
             <div className="text-xs text-ink-500 font-medium">Retention (days)</div>
             <input
               type="number"
-              className="input"
+              className="field-input"
               min={1}
               max={3650}
               defaultValue={settings.retentionDays}

@@ -114,7 +114,7 @@ export function HierarchyTree({
                           onClick={() => onSelectLocation(location.id, location.name)}
                           className={`w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded text-sm text-left transition-colors ${
                             selectedLocationId === location.id
-                              ? 'bg-signal/10 text-signal'
+                              ? 'bg-signal text-base-800'
                               : 'text-ink-300 hover:bg-base-700 hover:text-ink-100'
                           }`}
                         >

@@ -205,7 +205,7 @@ export default function GisPrepPage() {
               </label>
             ))}
           </div>}
-          <input type="file" accept=".dxf,.dwg" onChange={e => setFile(e.target.files?.[0] ?? null)} className="text-xs text-ink-300" />
+          <input type="file" accept=".dxf,.dwg" aria-label="Drawing file (DXF or DWG)" onChange={e => setFile(e.target.files?.[0] ?? null)} className="text-xs text-ink-300" />
           {form.mode === 'prepare' && form.profile === 'sdd_planning' && (
             <div className="flex flex-wrap gap-4 text-xs text-ink-300">
               {['plot', 'roads', 'services'].map(c => (
