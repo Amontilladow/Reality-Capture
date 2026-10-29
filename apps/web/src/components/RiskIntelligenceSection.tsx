@@ -5,14 +5,12 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recha
 import { Modal } from './ui/Modal';
 import { SectionHeader } from './ui/SectionHeader';
 import { RiskGraphView } from './RiskGraphView';
-import { RiskKpiStrip } from './risk/RiskKpiStrip';
-import { RiskAttentionPanel } from './risk/RiskAttentionPanel';
 import { RiskMovementSection } from './risk/RiskMovementSection';
 import { RiskHeatmap } from './risk/RiskHeatmap';
-import { RiskDisciplineChart } from './risk/RiskDisciplineChart';
+import { BigStat, ColumnBars, DashCard, DashHero, Glyph, NoirList, RadialGauge, SegmentBar } from './dash/Dash';
 import { RiskRegisterTable } from './risk/RiskRegisterTable';
 import {
-  DEFAULT_REGISTER_FILTERS, dueDateTone, formatDueDate, isOpenRiskStatus, ownerNameMap,
+  DEFAULT_REGISTER_FILTERS, attentionRank, disciplineLabel, dueDateTone, formatDueDate, isOpenRiskStatus, isOverdue, ownerNameMap, riskRef,
   type RegisterFilters,
 } from './risk/riskDisplay';
 import { apiErrorMessage } from '../lib/api';
@@ -109,7 +107,6 @@ function TrendIndicator({ trend }: { trend: Risk['trend'] }) {
 
 export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
   const themeColors = useThemeColors();
-  const LEVEL_COLORS = levelColors(themeColors);
   const MATRIX_LEVEL_COLORS = matrixLevelColors(themeColors);
   const queryClient = useQueryClient();
   const [detailRiskId, setDetailRiskId] = useState<string | null>(null);
@@ -194,40 +191,24 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
   }
 
   return (
-    <section className="space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-3 pb-1 border-b border-base-700/60">
-        <div className="flex items-center gap-3 flex-wrap">
-          {summary && (
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-lg font-semibold tabular-nums" style={{ color: LEVEL_COLORS[summary.overallLevel] }}>{summary.overallScore}</span>
-              <span className="text-xs text-ink-500">/100 overall</span>
-              {summary.overallScoreTrendPct !== null && (
-                <span className={`text-xs ${summary.overallScoreTrendPct > 0 ? 'text-danger' : 'text-ok'}`}>
-                  {summary.overallScoreTrendPct > 0 ? '↑' : '↓'} {Math.abs(summary.overallScoreTrendPct)}%
-                </span>
-              )}
-            </div>
-          )}
-          <span className="text-xs text-ink-500">Last updated {timeAgo(lastUpdated)}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setGraphOpen(true)} className="btn-secondary !px-3 !py-1.5 text-xs">
-            View Risk Graph
-          </button>
-          <button onClick={handleDownloadPdf} disabled={pdfDownloading || !hasAnyData} className="btn-secondary !px-3 !py-1.5 text-xs">
-            {pdfDownloading ? 'Preparing…' : 'Export Report'}
-          </button>
-          <button onClick={() => recalcMutation.mutate()} disabled={recalcMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
-            {recalcMutation.isPending ? 'Analyzing…' : 'Refresh'}
-          </button>
-        </div>
+    <section className="space-y-6">
+      {/* Page actions as quiet pills above the hero, the way the reference
+          dashboard parks its controls in the top bar. */}
+      <div className="flex items-center justify-end flex-wrap gap-2">
+        <button onClick={() => setGraphOpen(true)} className="btn-secondary !rounded-full">View risk graph</button>
+        <button onClick={handleDownloadPdf} disabled={pdfDownloading || !hasAnyData} className="btn-secondary !rounded-full">
+          {pdfDownloading ? 'Preparing…' : 'Export report'}
+        </button>
+        <button onClick={() => recalcMutation.mutate()} disabled={recalcMutation.isPending} className="btn-primary !rounded-full">
+          {recalcMutation.isPending ? 'Analyzing…' : 'Refresh'}
+        </button>
       </div>
 
       {recalcMutation.isError && <p className="field-error">{apiErrorMessage(recalcMutation.error)}</p>}
       {pdfError && <p className="field-error">{pdfError}</p>}
 
       {!hasAnyData && !dataAvailabilityQuery.isLoading && (
-        <div className="panel tick-frame p-8 text-center space-y-2">
+        <div className="panel p-8 text-center space-y-2">
           <p className="text-sm text-ink-300">Risk intelligence is building.</p>
           <p className="text-xs text-ink-500">
             No RFIs, Issues, Snag items, or QA inspections were found yet on this project — connect project data to begin generating risk intelligence.
@@ -235,47 +216,174 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      {availability && hasAnyData && (
-        <div className="panel p-3 text-xs text-ink-500 flex flex-wrap gap-x-6 gap-y-1">
-          <span>RFIs available: <span className="text-ink-300">{availability.rfisAvailable}</span></span>
-          <span>Issues available: <span className="text-ink-300">{availability.issuesAvailable}</span></span>
-          <span>Snag items available: <span className="text-ink-300">{availability.snagItemsAvailable}</span></span>
-          <span>QA inspections available: <span className="text-ink-300">{availability.qaInspectionsAvailable}</span></span>
-          <span>BIM relationships: <span className="text-ink-300">{availability.bimElementRelationships}</span></span>
-          <span>Programme data: <span className="text-ink-300">{availability.programmeData}</span></span>
-          <span>Procurement data: <span className="text-ink-300">{availability.procurementData}</span></span>
-        </div>
-      )}
+      {summary && hasAnyData && (() => {
+        const bySeverity = (level: RiskLevel) => openRisks.filter((r) => r.level === level).length;
+        const statusGroup = (statuses: RiskStatus[]) => allRisks.filter((r) => statuses.includes(r.status)).length;
+        const disciplineRows = [...(byDisciplineQuery.data ?? [])]
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 8)
+          .map((d) => {
+            const label = disciplineLabel(d.discipline);
+            return { key: d.discipline ?? 'UNSPECIFIED', label, short: label.length > 5 ? label.slice(0, 3) : label, value: d.count };
+          });
+        const attention = openRisks
+          .filter((r) => r.status !== 'ACCEPTED')
+          .map((r) => ({ r, rank: attentionRank(r) }))
+          .filter((x) => x.rank <= 4)
+          .sort((a, b) => a.rank - b.rank || b.r.score - a.r.score)
+          .map((x) => x.r);
+        const glyphFor = (level: RiskLevel) => (level === 'CRITICAL' ? 'alert' : level === 'HIGH' ? 'flag' : 'shield') as 'alert' | 'flag' | 'shield';
 
-      {summary && hasAnyData && (
-        <>
-          {/* Minto Pyramid: the conclusion comes first -- before the KPI
-              strip and attention panel below, not after. A reader should
-              get the principal message and its reasons before being shown
-              the numbers that support it, not the reverse. */}
-          {/* Risk Summary — deterministic, grounded in the summary above; never a free-floating claim */}
-          {(summary.totalOpenRisks > 0 || (discrepanciesQuery.data?.length ?? 0) > 0) && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        return (
+          <>
+            <DashHero
+              eyebrow={<>Risk intelligence · updated {timeAgo(lastUpdated)}</>}
+              title={projectQuery.data?.name ?? 'Project risk'}
+              aside={
+                <>
+                  <BigStat
+                    value={openRisks.length} label="Open risks" icon={<Glyph name="stack" />}
+                    onClick={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, activeOnly: true })} actionLabel="Show in the register"
+                  />
+                  <BigStat
+                    value={Number(summary.criticalCount) + Number(summary.highCount)} label="Critical or high" icon={<Glyph name="alert" />}
+                    onClick={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, levels: ['CRITICAL', 'HIGH'] })} actionLabel="Show in the register"
+                  />
+                  <BigStat
+                    value={summary.overdueCount} label="Overdue" icon={<Glyph name="clock" />}
+                    onClick={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, overdueOnly: true })} actionLabel="Show in the register"
+                  />
+                  <BigStat
+                    value={unassignedCount} label="Without owner" icon={<Glyph name="user" />}
+                    onClick={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, owner: 'UNASSIGNED' })} actionLabel="Show in the register"
+                  />
+                </>
+              }
+            >
+              <SegmentBar
+                label="Open risks by severity"
+                segments={[
+                  { key: 'CRITICAL', label: 'Critical', value: bySeverity('CRITICAL'), style: 'noir' },
+                  { key: 'HIGH', label: 'High', value: bySeverity('HIGH'), style: 'sun' },
+                  { key: 'MODERATE', label: 'Moderate', value: bySeverity('MODERATE'), style: 'stripes' },
+                  { key: 'LOW', label: 'Low', value: bySeverity('LOW'), style: 'outline' },
+                ]}
+              />
+            </DashHero>
+
+            {availability && (
+              <p className="text-xs text-ink-500 flex flex-wrap gap-x-5 gap-y-1">
+                <span>RFIs {availability.rfisAvailable}</span>
+                <span>Issues {availability.issuesAvailable}</span>
+                <span>Snag items {availability.snagItemsAvailable}</span>
+                <span>QA inspections {availability.qaInspectionsAvailable}</span>
+                <span>BIM relationships: {availability.bimElementRelationships}</span>
+                <span>Programme data: {availability.programmeData}</span>
+                <span>Procurement data: {availability.procurementData}</span>
+              </p>
+            )}
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <DashCard title="Risk index" onOpen={() => setGraphOpen(true)} openLabel="Open the risk graph">
+                <RadialGauge value={summary.overallScore} label="Project risk index" caption={LEVEL_LABELS[summary.overallLevel]} />
+                <p className="text-xs text-ink-500 text-center mt-3">
+                  {summary.overallScoreTrendPct === null
+                    ? 'No trend yet'
+                    : `${summary.overallScoreTrendPct > 0 ? 'Up' : 'Down'} ${Math.abs(summary.overallScoreTrendPct)}% over 7 days`}
+                </p>
+              </DashCard>
+
+              <DashCard title="By discipline">
+                <ColumnBars
+                  title="Open risks by discipline"
+                  unit="open risks"
+                  data={disciplineRows}
+                  focalKey={disciplineRows[0]?.key}
+                  onSelect={(d) => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, discipline: d, activeOnly: true })}
+                  selectLabel="Filter the register to"
+                />
+              </DashCard>
+
+              <DashCard
+                title="Mitigation"
+                aside={<span className="text-4xl font-light tabular-nums text-ink-100">{mitigationRatePct ?? 0}%</span>}
+              >
+                <p className="text-xs text-ink-500 -mt-2">of all risks resolved or closed</p>
+                <div className="mt-auto pt-6 space-y-5">
+                  <SegmentBar
+                    label="All risks by status"
+                    segments={[
+                      { key: 'open', label: 'Open', value: statusGroup(['DETECTED', 'ACTIVE', 'ESCALATED']), style: 'sun' },
+                      { key: 'mitigating', label: 'Mitigating', value: statusGroup(['MITIGATION_IN_PROGRESS', 'MONITORING', 'ACCEPTED']), style: 'noir' },
+                      { key: 'resolved', label: 'Resolved', value: statusGroup(['RESOLVED', 'CLOSED']), style: 'outline' },
+                    ]}
+                  />
+                  <button
+                    onClick={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, statuses: ['RESOLVED', 'CLOSED'] })}
+                    className="text-xs text-ink-300 hover:text-ink-100 underline underline-offset-2"
+                  >
+                    Show resolved risks
+                  </button>
+                </div>
+              </DashCard>
+
+              <DashCard
+                tone="noir"
+                title="Requires attention"
+                aside={<span className="text-4xl font-light tabular-nums text-on-noir">{attention.length}/{openRisks.length}</span>}
+                className="xl:row-span-2"
+              >
+                <NoirList
+                  empty="Nothing needs attention right now."
+                  items={attention.slice(0, 7).map((r) => ({
+                    key: r.id,
+                    title: r.title,
+                    meta: `${riskRef(r)} · ${isOverdue(r) ? `overdue, ${formatDueDate(r.dueDate)}` : r.ownerId ? (ownerNames.get(r.ownerId) ?? 'Owned') : 'No owner'}`,
+                    icon: <Glyph name={glyphFor(r.level)} />,
+                    state: isOverdue(r) || r.level === 'CRITICAL' ? 'flag' : 'idle',
+                    onClick: () => openRisk(r.id),
+                  }))}
+                />
+              </DashCard>
+
               <div className="space-y-4">
                 {summary.totalOpenRisks > 0 && (
-                  <div className="panel p-4">
-                    <div className="!mb-2"><SectionHeader title="Risk Summary" size="sm" /></div>
+                  <DashCard title="Summary">
                     <p className="text-sm text-ink-300 leading-relaxed">
                       {buildBriefing(summary, topQuery.data ?? [], clustersQuery.data ?? [])}
                     </p>
-                  </div>
+                  </DashCard>
+                )}
+
+                {summary.totalOpenRisks > 0 && (
+                  <DashCard
+                    title="AI briefing"
+                    aside={
+                      <button onClick={() => aiBriefingMutation.mutate()} disabled={aiBriefingMutation.isPending} className="btn-secondary !rounded-full !h-8 text-xs">
+                        {aiBriefingMutation.isPending ? 'Generating…' : aiBriefingMutation.data ? 'Regenerate' : 'Generate'}
+                      </button>
+                    }
+                  >
+                    {aiBriefingMutation.isError && <p className="field-error">{apiErrorMessage(aiBriefingMutation.error)}</p>}
+                    {aiBriefingMutation.data && 'unavailable' in aiBriefingMutation.data && (
+                      <p className="text-sm text-ink-500 italic">{aiBriefingMutation.data.reason}</p>
+                    )}
+                    {aiBriefingMutation.data && 'narrative' in aiBriefingMutation.data && (
+                      <p className="text-sm text-ink-300 leading-relaxed">{aiBriefingMutation.data.narrative}</p>
+                    )}
+                    {!aiBriefingMutation.data && !aiBriefingMutation.isPending && (
+                      <p className="text-xs text-ink-500">An AI-written narrative of the summary, generated on request.</p>
+                    )}
+                  </DashCard>
                 )}
 
                 {(discrepanciesQuery.data?.length ?? 0) > 0 && (
-                  <div className="panel tick-frame p-4 border border-warn/40 bg-warn/5 space-y-2">
-                    <div className="field-label !mb-1">
-                      Alerts — {discrepanciesQuery.data!.length} risk{discrepanciesQuery.data!.length === 1 ? '' : 's'} need{discrepanciesQuery.data!.length === 1 ? 's' : ''} discrepancy review
-                    </div>
-                    <div className="divide-y divide-base-700/60">
+                  <DashCard title={`Discrepancies (${discrepanciesQuery.data!.length})`}>
+                    <div className="divide-y divide-base-700/60 -mx-2">
                       {(discrepanciesQuery.data ?? []).map(({ risk: r, discrepancy }) => (
-                        <button key={r.id} onClick={() => openRisk(r.id)} className="w-full flex items-center justify-between gap-4 py-2 text-left hover:bg-base-700 transition-colors">
-                          <span className="text-sm text-ink-100">{r.title}</span>
-                          <span className="text-xs text-ink-500 shrink-0">
+                        <button key={r.id} onClick={() => openRisk(r.id)} className="w-full text-left px-2 py-2 rounded-xl hover:bg-base-700/60 transition-colors">
+                          <span className="block text-sm text-ink-100">{r.title}</span>
+                          <span className="block text-xs text-ink-500">
                             Human <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[r.humanLevel!] }}>{MATRIX_LEVEL_LABELS[r.humanLevel!]}</span>
                             {' '}vs AI <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[r.aiLevel!] }}>{MATRIX_LEVEL_LABELS[r.aiLevel!]}</span>
                             {' '}({discrepancy.levelGap} apart)
@@ -283,91 +391,40 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
                         </button>
                       ))}
                     </div>
-                  </div>
+                  </DashCard>
                 )}
               </div>
 
-              {/* AI Project Risk Briefing — an LLM-polished narrative generated
-                  on demand from the exact same computed data above, never from
-                  a fresh retrieval. Clearly labeled as AI-generated and never
-                  auto-fetched, since it's a real model call with real latency. */}
-              {summary.totalOpenRisks > 0 && (
-                <div className="panel p-4">
-                  <div className="!mb-2">
-                    <SectionHeader
-                      title="AI Project Risk Briefing"
-                      tone="orange"
-                      size="sm"
-                      actions={
-                        <button onClick={() => aiBriefingMutation.mutate()} disabled={aiBriefingMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
-                          {aiBriefingMutation.isPending ? 'Generating…' : aiBriefingMutation.data ? 'Regenerate' : 'Generate'}
-                        </button>
-                      }
-                    />
-                  </div>
-                  {aiBriefingMutation.isError && <p className="field-error">{apiErrorMessage(aiBriefingMutation.error)}</p>}
-                  {aiBriefingMutation.data && 'unavailable' in aiBriefingMutation.data && (
-                    <p className="text-sm text-ink-500 italic">{aiBriefingMutation.data.reason}</p>
-                  )}
-                  {aiBriefingMutation.data && 'narrative' in aiBriefingMutation.data && (
-                    <p className="text-sm text-ink-300 leading-relaxed">{aiBriefingMutation.data.narrative}</p>
-                  )}
-                  {!aiBriefingMutation.data && !aiBriefingMutation.isPending && (
-                    <p className="text-xs text-ink-500">Generate an AI-polished narrative of the risk summary above.</p>
-                  )}
-                </div>
-              )}
+              <div className="md:col-span-2 xl:col-span-2">
+                {heatmapQuery.data?.some((c) => c.count > 0) ? (
+                  <RiskHeatmap
+                    cells={heatmapQuery.data!}
+                    risks={allRisks}
+                    onSelectRisk={openRisk}
+                    onFilterCell={(riskIds, label) => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, cellRiskIds: riskIds, cellLabel: label })}
+                  />
+                ) : (
+                  <div className="panel p-6 h-full text-sm text-ink-500">No open risks have a probability and impact assessment yet.</div>
+                )}
+              </div>
             </div>
-          )}
 
-          <RiskKpiStrip
-            summary={summary}
-            totalActive={openRisks.length}
-            unassignedCount={unassignedCount}
-            mitigationRatePct={mitigationRatePct}
-            onFilterTotalActive={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, activeOnly: true })}
-            onFilterCriticalHigh={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, levels: ['CRITICAL', 'HIGH'] })}
-            onFilterOverdue={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, overdueOnly: true })}
-            onFilterUnassigned={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, owner: 'UNASSIGNED' })}
-            onFilterMitigated={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, statuses: ['RESOLVED', 'CLOSED'] })}
-          />
+            {/* Risk Movement (brief Phase 3): emerged/worsened/improved/
+                unresolved during a selectable window, from real snapshot
+                history. */}
+            <RiskMovementSection
+              movement={movementQuery.data}
+              isLoading={movementQuery.isLoading}
+              days={movementDays}
+              onDaysChange={setMovementDays}
+              onSelectRisk={openRisk}
+            />
+          </>
+        );
+      })()}
 
-          <RiskAttentionPanel risks={openRisks} ownerNames={ownerNames} onSelectRisk={openRisk} />
-
-          {/* Risk Movement (brief Phase 3): emerged/worsened/improved/
-              unresolved during a selectable window, from real snapshot
-              history -- placed right after the critical-risk views above
-              and before the heatmap/register below, per the brief's own
-              prescribed order. */}
-          <RiskMovementSection
-            movement={movementQuery.data}
-            isLoading={movementQuery.isLoading}
-            days={movementDays}
-            onDaysChange={setMovementDays}
-            onSelectRisk={openRisk}
-          />
-
-          {/* Risk analytics -- heatmap + discipline chart side by side on
-              desktop, stacked on mobile, consistent card heights. */}
-          {((heatmapQuery.data?.some((c) => c.count > 0)) || (byDisciplineQuery.data?.length ?? 0) > 0) && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-              {heatmapQuery.data?.some((c) => c.count > 0) && (
-                <RiskHeatmap
-                  cells={heatmapQuery.data!}
-                  risks={allRisks}
-                  onSelectRisk={openRisk}
-                  onFilterCell={(riskIds, label) => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, cellRiskIds: riskIds, cellLabel: label })}
-                />
-              )}
-              {(byDisciplineQuery.data?.length ?? 0) > 0 && (
-                <RiskDisciplineChart
-                  data={byDisciplineQuery.data!}
-                  onSelectDiscipline={(d) => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, discipline: d, activeOnly: true })}
-                />
-              )}
-            </div>
-          )}
-
+      {summary && hasAnyData && (
+        <>
           {/* Top Management Risks */}
           {(topQuery.data?.length ?? 0) > 0 && (
             <div className="space-y-2">

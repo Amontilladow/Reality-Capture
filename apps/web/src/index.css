@@ -75,9 +75,22 @@
 
   --rc-grid-line: rgba(20, 20, 20, 0.04);
 
+  /* Dashboard canvas (Risk + Reports pages only, .dash-canvas): a warm
+     yellow accent ("sun") and an off-black card ("noir") for the
+     editorial dashboard look, plus the two ends of the canvas gradient. */
+  --rc-sun: 250 212 82;
+  --rc-noir: 38 38 41;
+  --rc-noir-hover: 58 58 62;
+  --rc-on-noir: 244 244 242;
+  --rc-dash-from: 229 231 236;
+  --rc-dash-to: 251 236 186;
+
   --rc-radius-sm: 6px;
   --rc-radius-md: 8px;
   --rc-radius-lg: 12px;
+  --rc-radius-card: 28px; /* dashboard canvas cards */
+  --rc-stripe: 2px;     /* hatch line width */
+  --rc-stripe-gap: 8px; /* hatch repeat */
 }
 
 /* Deep charcoal/navy, not an inverted/pure-black palette -- a flat #000
@@ -136,6 +149,13 @@
   --rc-orange-muted: 56 32 15;
 
   --rc-grid-line: rgba(255, 255, 255, 0.05);
+
+  --rc-sun: 250 212 82;
+  --rc-noir: 4 8 16;
+  --rc-noir-hover: 24 31 46;
+  --rc-on-noir: 241 245 249;
+  --rc-dash-from: 8 13 24;
+  --rc-dash-to: 38 33 18;
 }
 
 /* Covers the gap between first paint and index.html's inline bootstrap
@@ -172,6 +192,12 @@
     --rc-orange-hover: 253 186 116;
     --rc-orange-muted: 56 32 15;
     --rc-grid-line: rgba(255, 255, 255, 0.05);
+    --rc-sun: 250 212 82;
+    --rc-noir: 4 8 16;
+    --rc-noir-hover: 24 31 46;
+    --rc-on-noir: 241 245 249;
+    --rc-dash-from: 8 13 24;
+    --rc-dash-to: 38 33 18;
   }
 }
 
@@ -281,6 +307,29 @@
      uppercase + wide tracking pill shouted on every row of every list. */
   .badge {
     @apply inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-sm text-[11px] leading-4 font-medium whitespace-nowrap;
+  }
+
+
+  /* ── Dashboard canvas (Risk + Reports) ──────────────────────────────
+     A scoped variant of the system for the two analytics pages: a soft
+     grey-to-cream gradient canvas, oversized radius cards, and the sun /
+     noir accent pair. Everything inside reuses the normal tokens; only
+     panel shape and surface change here, so components need no edits. */
+  .dash-canvas {
+    background-image: linear-gradient(120deg, rgb(var(--rc-dash-from)) 0%, rgb(var(--rc-dash-from)) 18%, rgb(var(--rc-dash-to)) 85%);
+    min-height: 100%;
+  }
+  .dash-canvas .panel {
+    @apply rounded-card border-base-800/60;
+    background-color: rgb(var(--rc-base-800) / 0.78);
+    box-shadow: none;
+  }
+  .dash-card-noir {
+    @apply rounded-card bg-noir text-on-noir;
+  }
+  /* Diagonal hatch for the "in progress" segment of a pill bar. */
+  .dash-stripes {
+    background-image: repeating-linear-gradient(-45deg, rgb(var(--rc-ink-100) / 0.14) 0 var(--rc-stripe), transparent var(--rc-stripe) var(--rc-stripe-gap));
   }
 
   /* Toast.tsx's entrance -- a 150ms slide+fade, not a decorative flourish:

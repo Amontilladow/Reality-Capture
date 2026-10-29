@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DRAWING_UPDATE_STATUS_LABELS } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { BarChart } from '../components/charts/BarChart';
+import { BigStat, ColumnBars, DashCanvas, DashCard, DashHero, Glyph, NoirList, RadialGauge, SegmentBar } from '../components/dash/Dash';
 import { HelpLink } from '../components/help/HelpLink';
 import { StatTile } from '../components/ui/StatTile';
 import { SectionHeader } from '../components/ui/SectionHeader';
@@ -43,6 +44,8 @@ function sectionLead(total: number, flags: { label: string; count: number }[], n
 // 0-100/4-level deterministic-engine palette, never the separate 1-25
 // Risk Matrix one (this page never shows Risk Matrix numbers). HIGH has no
 // dedicated semantic token -- see that file's identical reasoning.
+const RISK_LEVEL_LABELS: Record<RiskLevel, string> = { LOW: 'Low', MODERATE: 'Moderate', HIGH: 'High', CRITICAL: 'Critical' };
+
 function riskLevelColors(c: ThemeColors): Record<RiskLevel, string> {
   return { LOW: c.ok, MODERATE: c.warn, HIGH: '#FB923C', CRITICAL: c.danger };
 }
@@ -53,7 +56,7 @@ function riskLevelColors(c: ThemeColors): Record<RiskLevel, string> {
 function chartRows(counts: Record<string, number>, labels: Record<string, string> | null, order: 'natural' | 'count') {
   const rows = Object.entries(counts)
     .filter(([, count]) => count > 0)
-    .map(([key, count]) => ({ key, label: labels?.[key] ?? key, value: count }));
+    .map(([key, count]) => ({ key, label: labels?.[key] ?? key, value: Number(count) }));
   if (order === 'count') return rows.sort((a, b) => b.value - a.value);
   const rank = Object.keys(labels ?? {});
   return rows.sort((a, b) => rank.indexOf(a.key) - rank.indexOf(b.key));
@@ -63,6 +66,7 @@ export default function ReportsPage() {
   const themeColors = useThemeColors();
   const RISK_LEVEL_COLORS = riskLevelColors(themeColors);
   const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -197,7 +201,8 @@ export default function ReportsPage() {
         }
       />
 
-      <div className="p-6 space-y-8">
+      <DashCanvas>
+      <div className="space-y-8">
         {(xlsError || pdfError) && (
           <div className="space-y-1">
             {xlsError && <p className="field-error">{xlsError}</p>}
@@ -221,9 +226,107 @@ export default function ReportsPage() {
             || kpis.rfis.summary.total > 0 || kpis.qaqc.summary.total > 0 || kpis.snagging.summary.total > 0;
           const status = deriveOverallStatus(signals, hasActivity);
           const conclusion = buildConclusion(status, signals, 'on this project');
+          const issueRank: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+          const now = Date.now();
+          const isLate = (deadline?: string) => Boolean(deadline && new Date(deadline).getTime() < now);
+          const openIssues = [...kpis.issues.openList].sort((a, b) =>
+            (issueRank[a.priority] ?? 9) - (issueRank[b.priority] ?? 9)
+            || Number(isLate(b.deadline)) - Number(isLate(a.deadline)));
+          // Number(): these counts arrive from the API as strings (Postgres bigint).
+          const n = (v: number | string | undefined) => Number(v ?? 0) || 0;
+          const snagDone = n(kpis.snagging.summary.fixed) + n(kpis.snagging.summary.verified);
+          const snagPct = n(kpis.snagging.summary.total) > 0 ? Math.round((snagDone / n(kpis.snagging.summary.total)) * 100) : 0;
+          const risk = riskSummaryQuery.data!;
           return (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <section className="panel tick-frame p-5 space-y-2">
+            <>
+            <DashHero
+              eyebrow="Project report"
+              title={projectQuery.data?.name ?? 'Project'}
+              aside={
+                <>
+                  <BigStat
+                    value={n(kpis.issues.summary.open) + n(kpis.issues.summary.inProgress)} label="Open issues" icon={<Glyph name="flag" />}
+                    onClick={() => navigate(`/projects/${projectId}/issues`)} actionLabel="Go to Issues"
+                  />
+                  <BigStat
+                    value={kpis.rfis.summary.open} label="Open RFIs" icon={<Glyph name="doc" />}
+                    onClick={() => navigate(`/projects/${projectId}/rfis`)} actionLabel="Go to RFIs"
+                  />
+                  <BigStat
+                    value={kpis.snagging.summary.open} label="Open snags" icon={<Glyph name="check" />}
+                    onClick={() => navigate(`/projects/${projectId}/snagging`)} actionLabel="Go to Snagging"
+                  />
+                </>
+              }
+            >
+              <SegmentBar
+                label="Issues by status"
+                segments={[
+                  { key: 'open', label: 'Open', value: kpis.issues.summary.open, style: 'noir' },
+                  { key: 'in_progress', label: 'In progress', value: kpis.issues.summary.inProgress, style: 'sun' },
+                  { key: 'resolved', label: 'Resolved', value: kpis.issues.summary.resolved, style: 'stripes' },
+                  { key: 'closed', label: 'Closed', value: kpis.issues.summary.closed, style: 'outline' },
+                ]}
+              />
+            </DashHero>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <DashCard title="Risk index" to={`/projects/${projectId}/risk`} openLabel="Open Risk Intelligence">
+                <RadialGauge value={risk.overallScore} label="Project risk index" caption={RISK_LEVEL_LABELS[risk.overallLevel]} />
+                <p className="text-xs text-ink-500 text-center mt-3">{risk.totalOpenRisks} open risk{risk.totalOpenRisks === 1 ? '' : 's'}, {risk.criticalCount} critical</p>
+              </DashCard>
+
+              <DashCard title="Issues by priority" to={`/projects/${projectId}/issues`} openLabel="Go to Issues">
+                <ColumnBars
+                  title="Issues by priority"
+                  unit="issues"
+                  data={(['critical', 'high', 'medium', 'low'] as const).map((k) => ({ key: k, label: PRIORITY_LABELS[k], short: PRIORITY_LABELS[k].slice(0, 4), value: kpis.issues.byPriority[k] ?? 0 }))}
+                  focalKey="critical"
+                />
+              </DashCard>
+
+              <DashCard
+                title="Snag close-out"
+                aside={<span className="text-4xl font-light tabular-nums text-ink-100">{snagPct}%</span>}
+              >
+                <p className="text-xs text-ink-500 -mt-2">of snag items fixed or verified</p>
+                <div className="mt-auto pt-6">
+                  <SegmentBar
+                    label="Snag items by status"
+                    segments={[
+                      { key: 'open', label: 'Open', value: kpis.snagging.summary.open, style: 'sun' },
+                      { key: 'fixed', label: 'Fixed', value: kpis.snagging.summary.fixed, style: 'noir' },
+                      { key: 'verified', label: 'Verified', value: kpis.snagging.summary.verified, style: 'outline' },
+                    ]}
+                  />
+                </div>
+              </DashCard>
+
+              <DashCard
+                tone="noir"
+                title="Awaiting close-out"
+                aside={<span className="text-4xl font-light tabular-nums text-on-noir">{openIssues.length}</span>}
+                className="xl:row-span-2"
+                to={`/projects/${projectId}/issues`}
+                openLabel="Go to Issues"
+              >
+                {/* openList is every issue not yet closed or voided (resolved
+                    and under-review included), so it isn't the hero's "open"
+                    count and is titled for what it actually holds. */}
+                <NoirList
+                  empty="Every issue is closed."
+                  items={openIssues.slice(0, 7).map((it) => ({
+                    key: it.id,
+                    title: it.title,
+                    meta: `${it.issueNumber ?? ''}${it.issueNumber ? ' · ' : ''}${PRIORITY_LABELS[it.priority as keyof typeof PRIORITY_LABELS] ?? it.priority}${isLate(it.deadline) ? ' · overdue' : ''}`,
+                    icon: <Glyph name={it.priority === 'critical' ? 'alert' : 'flag'} />,
+                    state: it.priority === 'critical' || isLate(it.deadline) ? 'flag' : 'idle',
+                    onClick: () => navigate(`/projects/${projectId}/issues`),
+                  }))}
+                />
+              </DashCard>
+
+              <section className="panel p-6 space-y-3">
                 <div className="flex items-center gap-2.5">
                   <StatusBadge tone={STATUS_TONE[status]} label={STATUS_LABEL[status]} dot />
                   {signals.length > 0 && (
@@ -248,7 +351,7 @@ export default function ReportsPage() {
                   retrieval. Same pattern as RiskIntelligenceSection's own
                   AI panel: clearly labeled, never auto-fetched, honest
                   unavailable+reason fallback. */}
-              <div className="panel p-4">
+              <div className="panel p-6 md:col-span-1 xl:col-span-2">
                 <div className="!mb-2">
                   <SectionHeader
                     title="AI Report Briefing"
@@ -285,6 +388,7 @@ export default function ReportsPage() {
                 )}
               </div>
             </div>
+            </>
           );
         })()}
 
@@ -699,6 +803,7 @@ export default function ReportsPage() {
           )}
         </section>
       </div>
+      </DashCanvas>
     </>
   );
 }

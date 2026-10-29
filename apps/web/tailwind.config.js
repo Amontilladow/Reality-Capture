@@ -53,6 +53,13 @@ export default {
           hover: 'rgb(var(--rc-blueprint-hover) / <alpha-value>)',
           muted: 'rgb(var(--rc-blueprint-muted) / <alpha-value>)',
         },
+        // Dashboard-canvas accents (Risk + Reports); see index.css.
+        sun: 'rgb(var(--rc-sun) / <alpha-value>)',
+        noir: {
+          DEFAULT: 'rgb(var(--rc-noir) / <alpha-value>)',
+          hover: 'rgb(var(--rc-noir-hover) / <alpha-value>)',
+        },
+        'on-noir': 'rgb(var(--rc-on-noir) / <alpha-value>)',
         ok: 'rgb(var(--rc-ok) / <alpha-value>)',
         warn: 'rgb(var(--rc-warn) / <alpha-value>)',
         danger: 'rgb(var(--rc-danger) / <alpha-value>)',
@@ -114,6 +121,7 @@ export default {
         DEFAULT: 'var(--rc-radius-md)',
         md: 'var(--rc-radius-md)',
         lg: 'var(--rc-radius-lg)',
+        card: 'var(--rc-radius-card)',
       },
     },
   },
