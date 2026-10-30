@@ -1,3 +1,5 @@
+import { RecordList, RecordRow } from '../ui/RecordRow';
+import { splitRiskTitle } from '../../lib/risk-title';
 import { useEffect, useMemo, useState } from 'react';
 import { useThemeColors } from '../../lib/useThemeColors';
 import type { ProjectMember } from '../../lib/projects.api';
@@ -188,35 +190,40 @@ export function RiskRegisterTable({ risks, members, ownerNames, filters, onFilte
         </div>
       </div>
 
-      {/* Mobile: compact record cards, no horizontal squeeze */}
-      <div className="md:hidden space-y-2">
-        {pageRows.length === 0 && (
+      {/* Phones: the register as one grouped list of two-line rows (see
+          RecordRow). The score sits in a box edged in its level colour; the
+          level is also named in the row text. */}
+      <div className="md:hidden">
+        {pageRows.length === 0 ? (
           <div className="panel tick-frame p-8 text-center text-sm text-ink-500">No risks match the current filters.</div>
+        ) : (
+          <RecordList label="Risk register">
+            {pageRows.map((r) => {
+              const tone = dueDateTone(r);
+              const { subject, source } = splitRiskTitle(r.title);
+              return (
+                <RecordRow
+                  key={r.id}
+                  lead={(
+                    <span
+                      aria-hidden="true"
+                      className="w-10 h-10 rounded-lg border-2 bg-base-800 flex items-center justify-center text-sm font-semibold tabular-nums text-ink-100 shrink-0"
+                      style={{ borderColor: levelColor[r.level] }}
+                    >
+                      {r.score}
+                    </span>
+                  )}
+                  title={subject}
+                  meta={[LEVEL_LABELS[r.level], source, disciplineLabel(r.discipline), r.locationLabel].filter(Boolean).join(' · ')}
+                  due={r.dueDate ? formatDueDate(r.dueDate) : undefined}
+                  dueTone={tone === 'overdue' ? 'danger' : tone === 'soon' ? 'warn' : 'muted'}
+                  owner={r.ownerId ? ownerNames.get(r.ownerId) ?? 'Unknown' : undefined}
+                  onClick={() => onSelectRisk(r.id)}
+                />
+              );
+            })}
+          </RecordList>
         )}
-        {pageRows.map((r) => {
-          const tone = dueDateTone(r);
-          return (
-            <button key={r.id} onClick={() => onSelectRisk(r.id)} className="panel tick-frame w-full text-left p-4 space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <span
-                  className="inline-flex items-center gap-2 px-2 py-0 rounded text-xs font-semibold uppercase tracking-wide shrink-0"
-                  style={{ color: levelColor[r.level], backgroundColor: `${levelColor[r.level]}22` }}
-                >
-                  {LEVEL_LABELS[r.level]}
-                </span>
-                <span className="text-sm font-semibold tabular-nums text-ink-100 shrink-0">{r.score}</span>
-              </div>
-              <div className="text-sm text-ink-100 font-medium max-w-measure">{r.title}</div>
-              <div className="text-xs text-ink-500">{disciplineLabel(r.discipline)}{r.locationLabel ? ` · ${r.locationLabel}` : ''}</div>
-              <div className="flex items-center justify-between text-xs pt-2">
-                <span className="text-ink-300 truncate">{r.ownerId ? ownerNames.get(r.ownerId) ?? 'Unknown' : 'Unassigned'}</span>
-                <span className={tone === 'overdue' ? 'text-danger font-medium shrink-0' : tone === 'soon' ? 'text-warn shrink-0' : 'text-ink-500 shrink-0'}>
-                  {formatDueDate(r.dueDate)}
-                </span>
-              </div>
-            </button>
-          );
-        })}
       </div>
 
       {totalPages > 1 && (

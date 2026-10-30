@@ -5,6 +5,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recha
 import { Modal } from './ui/Modal';
 import { SectionHeader } from './ui/SectionHeader';
 import { MobileFold } from './ui/MobileFold';
+import { splitRiskTitle } from '../lib/risk-title';
 import { RiskGraphView } from './RiskGraphView';
 import { RiskMovementSection } from './risk/RiskMovementSection';
 import { RiskHeatmap } from './risk/RiskHeatmap';
@@ -336,14 +337,17 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
               >
                 <NoirList
                   empty="Nothing needs attention right now."
-                  items={attention.slice(0, 7).map((r) => ({
+                  items={attention.slice(0, 7).map((r) => {
+                    const { subject, source } = splitRiskTitle(r.title);
+                    return {
                     key: r.id,
-                    title: r.title,
-                    meta: `${riskRef(r)} · ${isOverdue(r) ? `overdue, ${formatDueDate(r.dueDate)}` : r.ownerId ? (ownerNames.get(r.ownerId) ?? 'Owned') : 'No owner'}`,
+                    title: subject,
+                    meta: `${source ?? riskRef(r)} · ${isOverdue(r) ? `overdue, ${formatDueDate(r.dueDate)}` : r.ownerId ? (ownerNames.get(r.ownerId) ?? 'Owned') : 'No owner'}`,
                     icon: <Glyph name={glyphFor(r.level)} />,
                     state: isOverdue(r) || r.level === 'CRITICAL' ? 'flag' : 'idle',
                     onClick: () => openRisk(r.id),
-                  }))}
+                    };
+                  })}
                 />
               </DashCard>
 
