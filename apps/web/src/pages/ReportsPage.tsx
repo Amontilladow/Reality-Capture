@@ -8,6 +8,7 @@ import { BigStat, ColumnBars, DashCanvas, DashCard, DashHero, Glyph, NoirList, R
 import { HelpLink } from '../components/help/HelpLink';
 import { StatTile } from '../components/ui/StatTile';
 import { SectionHeader } from '../components/ui/SectionHeader';
+import { MobileFold } from '../components/ui/MobileFold';
 import { getReportKpis, getReportsBriefing } from '../lib/reports.api';
 import { downloadReportsXls } from '../lib/reports-xls';
 import { getProject } from '../lib/projects.api';
@@ -393,6 +394,7 @@ export default function ReportsPage() {
 
         {/* ── Risk ───────────────────────────────────────────────────── */}
         {riskSummaryQuery.data && (
+          <MobileFold title="Risk" summary={`${riskSummaryQuery.data.overallScore}/100 · ${riskSummaryQuery.data.totalOpenRisks} open risks`}>
           <section className="space-y-4">
             <SectionHeader
               title="Risk"
@@ -438,6 +440,7 @@ export default function ReportsPage() {
               </div>
             )}
           </section>
+          </MobileFold>
         )}
 
         {kpisQuery.isLoading && <p className="text-sm text-ink-500">Loading report data…</p>}
@@ -446,6 +449,7 @@ export default function ReportsPage() {
         {kpis && (
           <>
             {/* ── Issues ─────────────────────────────────────────────── */}
+            <MobileFold title="Issues" summary={sectionLead(kpis.issues.summary.total, [{ label: 'critical', count: kpis.issues.summary.critical }, { label: 'overdue', count: kpis.issues.summary.overdue }], 'issues')}>
             <section className="space-y-4">
               <SectionHeader title="Issues" />
               <p className="text-sm text-ink-300">
@@ -484,7 +488,7 @@ export default function ReportsPage() {
               )}
 
               {kpis.issues.openList.length > 0 && (
-                <div className="panel tick-frame overflow-x-auto">
+                <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -510,8 +514,10 @@ export default function ReportsPage() {
                 </div>
               )}
             </section>
+            </MobileFold>
 
             {/* ── Snagging ───────────────────────────────────────────── */}
+            <MobileFold title="Snagging" summary={sectionLead(kpis.snagging.summary.total, [{ label: 'overdue', count: kpis.snagging.summary.overdue }], 'snag items')}>
             <section className="space-y-4">
               <SectionHeader title="Snagging" />
               <p className="text-sm text-ink-300">
@@ -547,7 +553,7 @@ export default function ReportsPage() {
               )}
 
               {kpis.snagging.openList.length > 0 && (
-                <div className="panel tick-frame overflow-x-auto">
+                <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -575,8 +581,10 @@ export default function ReportsPage() {
                 </div>
               )}
             </section>
+            </MobileFold>
 
             {/* ── RFIs ───────────────────────────────────────────────── */}
+            <MobileFold title="RFIs" summary={sectionLead(kpis.rfis.summary.total, [{ label: 'overdue', count: kpis.rfis.summary.overdue }], 'RFIs')}>
             <section className="space-y-4">
               <SectionHeader title="RFIs" />
               <p className="text-sm text-ink-300">
@@ -678,8 +686,10 @@ export default function ReportsPage() {
                 </div>
               )}
             </section>
+            </MobileFold>
 
             {/* ── QAQC (NCR/SOR/WIR/MIR) ──────────────────────────────── */}
+            <MobileFold title="QAQC" summary={sectionLead(kpis.qaqc.summary.total, [{ label: 'critical', count: kpis.qaqc.summary.critical }, { label: 'overdue', count: kpis.qaqc.summary.overdue }], 'QA/QC records')}>
             <section className="space-y-4">
               <SectionHeader title="QAQC — NCR, SOR, WIR & MIR" />
               <p className="text-sm text-ink-300">
@@ -719,7 +729,7 @@ export default function ReportsPage() {
                   No NCR/SOR/WIR/MIR records logged on this project yet.
                 </div>
               ) : kpis.qaqc.openList.length > 0 && (
-                <div className="panel tick-frame overflow-x-auto">
+                <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -747,10 +757,12 @@ export default function ReportsPage() {
                 </div>
               )}
             </section>
+            </MobileFold>
           </>
         )}
 
         {/* ── Uploaded documents ───────────────────────────────────────── */}
+        <MobileFold title="Uploaded documents" summary={`${documentsQuery.data?.data.length ?? 0} attachments`}>
         <section className="space-y-4">
           <SectionHeader
             title="Uploaded documents"
@@ -779,7 +791,7 @@ export default function ReportsPage() {
           )}
 
           {(documentsQuery.data?.data.length ?? 0) > 0 && (
-            <div className="panel tick-frame overflow-x-auto">
+            <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -801,6 +813,7 @@ export default function ReportsPage() {
             </div>
           )}
         </section>
+        </MobileFold>
       </div>
       </DashCanvas>
     </>

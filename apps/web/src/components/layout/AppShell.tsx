@@ -11,7 +11,6 @@ import { ChatWidget } from '../chat/ChatWidget';
 import { OnboardingFlow } from '../onboarding/OnboardingFlow';
 import { LogoMark } from '../ui/LogoMark';
 import { ThemeToggle } from '../ui/ThemeToggle';
-import { EmailLauncherButton } from '../ui/EmailLauncherButton';
 import { clearAllOfflinePackages } from '../../lib/site-drawings-offline';
 
 interface NavItem {
@@ -160,7 +159,9 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
-      <div className="h-14 flex md:hidden items-center gap-2 px-4 border-b border-base-600/70 bg-base-950/70 backdrop-blur shrink-0">
+      {/* Solid and layered above the page (no backdrop-blur: a filter would
+          trap the bells' fixed-position menus inside this 56px bar). */}
+      <div className="relative z-30 h-14 flex md:hidden items-center gap-2 px-4 border-b border-base-600/70 bg-base-950 shrink-0">
         <button
           onClick={() => setMobileNavOpen(true)}
           aria-label="Open navigation menu"
@@ -168,9 +169,10 @@ export function AppShell() {
         >
           <IconMenu className="w-5 h-5" />
         </button>
-        <LogoMark className="w-5 h-5" />
-        <div className="text-sm font-semibold tracking-tight flex-1">Reality Capture</div>
-        <EmailLauncherButton />
+        <LogoMark className="w-6 h-6" />
+        <div className="text-sm font-semibold tracking-tight flex-1 truncate">Reality Capture</div>
+        <NotificationBell />
+        <MessagesBell />
         <ThemeToggle />
       </div>
 
@@ -187,19 +189,21 @@ export function AppShell() {
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Brand on one line with the two inbox bells and the email
-            launcher; the theme toggle moved to the account footer, where
-            it no longer squeezes the product name into a three-line
-            wrap. */}
+        {/* Brand on one line with the notifications bell and the single
+            Messages menu (inbox, team chat, email app); the theme toggle
+            moved to the account footer, where it no longer squeezes the
+            product name into a three-line wrap. */}
         <div className="h-14 flex items-center gap-2 pl-4 pr-2 border-b border-base-600">
           <LogoMark className="w-6 h-6 shrink-0" />
           <div className="leading-tight flex-1 min-w-0">
             <div className="text-sm font-semibold tracking-tight truncate">Reality Capture</div>
             <div className="text-xs text-ink-500 truncate">EngineeringOS</div>
           </div>
-          <NotificationBell />
-          <MessagesBell />
-          <EmailLauncherButton />
+          {/* Phones get the bells in the top bar instead. */}
+          <div className="hidden md:flex items-center">
+            <NotificationBell />
+            <MessagesBell />
+          </div>
           <button
             onClick={() => setMobileNavOpen(false)}
             aria-label="Close navigation menu"

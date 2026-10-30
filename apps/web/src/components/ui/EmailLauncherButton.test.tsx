@@ -168,3 +168,23 @@ describe('EmailLauncherButton', () => {
     expect(localStorage.getItem('rc.emailProvider')).toBe('outlook');
   });
 });
+
+describe('EmailLauncherButton row variant', () => {
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it('lays out as a labelled menu row whose provider list opens inline', async () => {
+    const user = userEvent.setup();
+    render(<EmailLauncherButton variant="row" />);
+    const main = screen.getByRole('button', { name: 'Open email' });
+    expect(main).toHaveTextContent('Open my email');
+
+    await user.click(screen.getByRole('button', { name: 'Change email app' }));
+    const menu = screen.getByRole('menu', { name: 'Choose email app' });
+    expect(menu.className).not.toMatch(/absolute/);
+    expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(3);
+  });
+});

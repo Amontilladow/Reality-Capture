@@ -1,3 +1,4 @@
+import { setChatPanelOpen, useChatPanelOpen } from '../../lib/chatPanel';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -5,7 +6,7 @@ import { useAuthStore } from '../../store/auth.store';
 import { getProject } from '../../lib/projects.api';
 import { listUsers, type CompanyUser } from '../../lib/users.api';
 import {
-  listProjectChatMessages, listDmThreads, listDmMessages, markChatRead, getChatUnreadCount,
+  listProjectChatMessages, listDmThreads, listDmMessages, markChatRead,
   type ChatMessage, type ChatDmThread,
 } from '../../lib/chat.api';
 import { subscribeToChatSocket, getChatSocketSnapshot } from '../../lib/chat-socket';
@@ -41,7 +42,8 @@ export function ChatWidget() {
   const socket = useSyncExternalStore(subscribeToChatSocket, getChatSocketSnapshot);
   const [connected, setConnected] = useState(false);
 
-  const [open, setOpen] = useState(false);
+  const open = useChatPanelOpen();
+  const setOpen = setChatPanelOpen;
   const [view, setView] = useState<'list' | 'conversation'>('list');
   const [directoryOpen, setDirectoryOpen] = useState(false);
   const [activeChannel, setActiveChannel] = useState<ActiveChannel | null>(null);
@@ -104,14 +106,6 @@ export function ChatWidget() {
     };
   }, [socket, queryClient]);
 
-  // ── Unread badge (mirrors NotificationBell's polling convention) ────────
-  const unreadQuery = useQuery({
-    queryKey: ['chat-unread-count'],
-    queryFn: getChatUnreadCount,
-    refetchInterval: 30_000,
-    enabled: Boolean(accessToken),
-  });
-  const unreadCount = unreadQuery.data?.count ?? 0;
 
   // ── DM thread list ───────────────────────────────────────────────────────
   const dmThreadsQuery = useQuery({
@@ -217,9 +211,9 @@ export function ChatWidget() {
   if (!accessToken) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end">
+    <div className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col items-end">
       {open && (
-        <div className="mb-4 w-80 h-[28rem] tick-frame panel overflow-hidden flex flex-col shadow-xl">
+        <div className="w-full sm:w-80 h-[28rem] tick-frame panel overflow-hidden flex flex-col shadow-xl">
           <div className="flex items-center justify-between px-4 py-2 border-b border-base-600 shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               {view === 'conversation' && (
@@ -376,18 +370,6 @@ export function ChatWidget() {
         </div>
       )}
 
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="relative w-12 h-12 rounded-full bg-signal text-base-950 flex items-center justify-center shadow-xl hover:brightness-95 transition"
-        aria-label="Open chat"
-      >
-        <IconChat className="w-5 h-5" />
-        {!open && unreadCount > 0 && (
-          <span className="absolute top-1 right-1 min-w-[16px] h-4 px-2 rounded-full bg-blueprint text-base-800 text-xs font-bold flex items-center justify-center">
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </span>
-        )}
-      </button>
     </div>
   );
 }
@@ -397,13 +379,6 @@ function displayName(u: CompanyUser): string {
   return name || u.email;
 }
 
-function IconChat({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M4 5h16v11H8l-4 4V5z" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 function IconClose({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">

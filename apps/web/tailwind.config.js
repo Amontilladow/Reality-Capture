@@ -109,11 +109,14 @@ export default {
         lg: ['1.09375rem', { lineHeight: '1.5rem' }],
         xl: ['1.3671875rem', { lineHeight: '1.75rem' }],
         '2xl': ['1.708984375rem', { lineHeight: '2rem' }],
-        '3xl': ['2.13623046875rem', { lineHeight: '2.5rem' }],
-        '4xl': ['2.6702880859375rem', { lineHeight: '3rem' }],
-        '5xl': ['3.337860107421875rem', { lineHeight: '1' }],
-        '6xl': ['4.172325134277344rem', { lineHeight: '1' }],
-        '7xl': ['5.21540641784668rem', { lineHeight: '1' }],
+        // Display sizes resolve through --rc-fs-* (index.css): on a phone
+        // each one steps down the same scale (5xl/6xl/7xl by two steps),
+        // so a KPI number or hero line never dwarfs the text around it.
+        '3xl': ['var(--rc-fs-3xl)', { lineHeight: '1.2' }],
+        '4xl': ['var(--rc-fs-4xl)', { lineHeight: '1.15' }],
+        '5xl': ['var(--rc-fs-5xl)', { lineHeight: '1' }],
+        '6xl': ['var(--rc-fs-6xl)', { lineHeight: '1' }],
+        '7xl': ['var(--rc-fs-7xl)', { lineHeight: '1' }],
         eyebrow: ['0.7rem', { lineHeight: '1rem', letterSpacing: '0.08em' }], // uppercase mono section/page labels
         kpi: ['1.708984375rem', { lineHeight: '2rem', letterSpacing: '-0.01em' }], // dashboard/report stat-tile numbers (2xl step)
         caption: ['0.7rem', { lineHeight: '1rem' }], // chart value labels, dense metadata (xs step)

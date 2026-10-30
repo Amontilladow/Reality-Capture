@@ -95,6 +95,13 @@ export function RiskMovementSection({ movement, isLoading, days, onDaysChange, o
     ...movement.resolvedDuringPeriod.map((risk): ImprovedRow => ({ kind: 'resolved', risk })),
   ];
 
+  const emptyBuckets = [
+    movement.emerged.length === 0 && 'emerged',
+    movement.worsened.length === 0 && 'worsened',
+    allImproved.length === 0 && 'improved',
+    movement.unresolved.length === 0 && 'stayed unresolved',
+  ].filter((b): b is string => Boolean(b));
+
   return (
     <div className="space-y-4">
       <SectionHeader
@@ -122,51 +129,64 @@ export function RiskMovementSection({ movement, isLoading, days, onDaysChange, o
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <MovementGroup
-            title="Emerged" tone="danger" count={movement.emerged.length}
-            description="New risks detected during this period."
-            rows={<>
-              {visible('emerged', movement.emerged).map((r) => (
-                <MovementRow key={r.id} risk={r} detail={`${r.score}/100`} onSelect={onSelectRisk} />
-              ))}
-              {showAllLink('emerged', movement.emerged)}
-            </>}
-          />
+          {emptyBuckets.length > 0 && (
+            <p className="lg:col-span-2 text-xs text-ink-500 order-last">
+              No risks {emptyBuckets.join(', ').replace(/, ([^,]*)$/, ' or $1')} in this period.
+            </p>
+          )}
+          {movement.emerged.length > 0 && (
+            <MovementGroup
+              title="Emerged" tone="danger" count={movement.emerged.length}
+              description="New risks detected during this period."
+              rows={<>
+                {visible('emerged', movement.emerged).map((r) => (
+                  <MovementRow key={r.id} risk={r} detail={`${r.score}/100`} onSelect={onSelectRisk} />
+                ))}
+                {showAllLink('emerged', movement.emerged)}
+              </>}
+            />
+          )}
 
-          <MovementGroup
-            title="Worsened" tone="danger" count={movement.worsened.length}
-            description={`Score rose materially since ${days} days ago.`}
-            rows={<>
-              {visible('worsened', movement.worsened).map(({ risk, deltaScore }) => (
-                <MovementRow key={risk.id} risk={risk} detail={`+${deltaScore} → ${risk.score}`} detailClass="text-danger" onSelect={onSelectRisk} />
-              ))}
-              {showAllLink('worsened', movement.worsened)}
-            </>}
-          />
+          {movement.worsened.length > 0 && (
+            <MovementGroup
+              title="Worsened" tone="danger" count={movement.worsened.length}
+              description={`Score rose materially since ${days} days ago.`}
+              rows={<>
+                {visible('worsened', movement.worsened).map(({ risk, deltaScore }) => (
+                  <MovementRow key={risk.id} risk={risk} detail={`+${deltaScore} → ${risk.score}`} detailClass="text-danger" onSelect={onSelectRisk} />
+                ))}
+                {showAllLink('worsened', movement.worsened)}
+              </>}
+            />
+          )}
 
-          <MovementGroup
-            title="Improved" tone="ok" count={allImproved.length}
-            description="Score fell materially, or the risk was resolved/closed, during this period."
-            rows={<>
-              {visible('improved', allImproved).map((row) => row.kind === 'scored' ? (
-                <MovementRow key={row.item.risk.id} risk={row.item.risk} detail={`${row.item.deltaScore} → ${row.item.risk.score}`} detailClass="text-ok" onSelect={onSelectRisk} />
-              ) : (
-                <MovementRow key={row.risk.id} risk={row.risk} detail="Resolved" detailClass="text-ok" onSelect={onSelectRisk} />
-              ))}
-              {showAllLink('improved', allImproved)}
-            </>}
-          />
+          {allImproved.length > 0 && (
+            <MovementGroup
+              title="Improved" tone="ok" count={allImproved.length}
+              description="Score fell materially, or the risk was resolved/closed, during this period."
+              rows={<>
+                {visible('improved', allImproved).map((row) => row.kind === 'scored' ? (
+                  <MovementRow key={row.item.risk.id} risk={row.item.risk} detail={`${row.item.deltaScore} → ${row.item.risk.score}`} detailClass="text-ok" onSelect={onSelectRisk} />
+                ) : (
+                  <MovementRow key={row.risk.id} risk={row.risk} detail="Resolved" detailClass="text-ok" onSelect={onSelectRisk} />
+                ))}
+                {showAllLink('improved', allImproved)}
+              </>}
+            />
+          )}
 
-          <MovementGroup
-            title="Unresolved" tone="neutral" count={movement.unresolved.length}
-            description="Still open with no material change this period."
-            rows={<>
-              {visible('unresolved', movement.unresolved).map((r) => (
-                <MovementRow key={r.id} risk={r} detail={`${r.score}/100`} onSelect={onSelectRisk} />
-              ))}
-              {showAllLink('unresolved', movement.unresolved)}
-            </>}
-          />
+          {movement.unresolved.length > 0 && (
+            <MovementGroup
+              title="Unresolved" tone="neutral" count={movement.unresolved.length}
+              description="Still open with no material change this period."
+              rows={<>
+                {visible('unresolved', movement.unresolved).map((r) => (
+                  <MovementRow key={r.id} risk={r} detail={`${r.score}/100`} onSelect={onSelectRisk} />
+                ))}
+                {showAllLink('unresolved', movement.unresolved)}
+              </>}
+            />
+          )}
         </div>
       )}
     </div>

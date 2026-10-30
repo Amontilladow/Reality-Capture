@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useInsideMobileFold } from './MobileFold';
 
 // Primary section heading for dashboards/reports. Hierarchy comes from the
 // title's weight and size, not decoration: no accent bar, no chip. tone
@@ -19,9 +20,12 @@ export function SectionHeader({ eyebrow, title, tone = 'teal', actions, size = '
   actions?: ReactNode;
   size?: 'sm' | 'md';
 }) {
+  // Inside an open MobileFold the fold's button already shows the title.
+  const folded = useInsideMobileFold();
+  if (folded && !actions) return null;
   return (
     <div className="flex items-end justify-between gap-4 flex-wrap">
-      <div className="min-w-0">
+      <div className={folded ? 'hidden' : 'min-w-0'}>
         {eyebrow && (
           <div className={`flex items-center gap-2 text-xs font-medium mb-0 ${TONE_EYEBROW[tone]}`}>
             {tone === 'orange' && <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-orange" />}

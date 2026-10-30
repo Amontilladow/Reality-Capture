@@ -152,12 +152,7 @@ export default function AssistantPage() {
 
         {error && <div className="mb-2"><Alert tone="danger">{error}</Alert></div>}
 
-        {/* mb-20 reserves the bottom-right corner for ChatWidget's floating
-            launcher (fixed bottom-4 right-4, a 48px circle -- rendered once
-            globally in AppShell, on top of every page). Without this, Send
-            lands in the same corner on a full-width mobile layout and the
-            launcher (z-50) covers it. */}
-        <div className="flex gap-2 pt-4 border-t border-base-600 mb-20 sm:mb-0">
+        <div className="flex gap-2 pt-4 border-t border-base-600">
           <input
             className="field-input flex-1"
             placeholder="Ask a question about this project…"
