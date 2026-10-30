@@ -127,8 +127,9 @@ export default function ProjectDetail() {
               <h2 className="text-xs text-ink-500 font-medium">Hierarchy</h2>
               <button
                 onClick={() => setNodeModal({ kind: 'building' })}
-                className="text-ink-500 hover:text-blueprint"
+                className="w-8 h-8 -mr-2 flex items-center justify-center rounded text-ink-500 hover:text-blueprint hover:bg-base-700"
                 title="Add building"
+                aria-label="Add building"
               >
                 <PlusIcon />
               </button>
