@@ -85,7 +85,7 @@ export function UploadRfiModal({
         </p>
         {error && <p className="field-error">{error}</p>}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="upload-origin">Received via *</label>
             <Listbox
@@ -138,7 +138,7 @@ export function UploadRfiModal({
           </div>
         )}
 
-        <div className="pt-2 border-t border-base-600 space-y-3">
+        <div className="pt-2 border-t border-base-600 space-y-4">
           <div>
             <label className="field-label" htmlFor="upload-status">Status</label>
             <Listbox id="upload-status" className="field-input" value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>

@@ -363,10 +363,10 @@ export const Listbox = forwardRef<HTMLButtonElement, ListboxProps>(function List
             maxWidth: `min(28rem, calc(100vw - ${VIEWPORT_GUTTER * 2}px))`,
             visibility: position ? 'visible' : 'hidden',
           }}
-          className="z-[70] overflow-auto rounded-lg border border-base-600 bg-base-800 py-1 shadow-[0_8px_24px_rgb(var(--rc-ink-100)/0.12)]"
+          className="z-[70] overflow-auto rounded-lg border border-base-600 bg-base-800 py-2 shadow-lg"
         >
           {options.length === 0 && (
-            <li role="option" aria-selected={false} aria-disabled="true" className="px-3 py-2 text-sm text-ink-500">
+            <li role="option" aria-selected={false} aria-disabled="true" className="px-4 py-2 text-sm text-ink-500">
               No options
             </li>
           )}
@@ -379,7 +379,7 @@ export const Listbox = forwardRef<HTMLButtonElement, ListboxProps>(function List
               aria-disabled={option.disabled || undefined}
               onMouseMove={() => { if (!option.disabled && active !== i) setActive(i); }}
               onClick={() => { if (!option.disabled) commit(i); }}
-              className={`flex items-center gap-2 min-h-8 px-3 py-1.5 text-sm cursor-pointer select-none ${
+              className={`flex items-center gap-2 min-h-8 px-4 py-2 text-sm cursor-pointer select-none ${
                 option.disabled ? 'text-ink-500 cursor-not-allowed' : 'text-ink-100'
               } ${i === active && !option.disabled ? 'bg-base-700' : ''} ${i === selectedIndex ? 'font-medium' : ''}`}
             >

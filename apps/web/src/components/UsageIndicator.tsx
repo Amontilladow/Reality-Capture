@@ -9,7 +9,7 @@ function Bar({ label, used, max, format }: { label: string; used: number; max?: 
   const nearLimit = pct >= 85;
   return (
     <div>
-      <div className="flex items-baseline justify-between text-xs mb-1">
+      <div className="flex items-baseline justify-between text-xs mb-2">
         <span className="text-ink-500 font-medium">{label}</span>
         <span className="font-mono text-ink-300">
           {format ? format(used) : used}
@@ -34,7 +34,7 @@ export function UsageIndicator({
   limits: { maxProjects?: number; maxUsers?: number; maxStorageBytes?: number };
 }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <Bar label="Projects" used={usage.activeProjects} max={limits.maxProjects} />
       <Bar label="Users" used={usage.activeUsers} max={limits.maxUsers} />
       <Bar label="Storage" used={usage.storageBytes} max={limits.maxStorageBytes} format={formatBytes} />

@@ -77,8 +77,8 @@ export default function ProjectList() {
 
           {projectsQuery.isSuccess && projects.length === 0 && (
             <div className="tick-frame panel p-12 text-center">
-              <div className="text-sm font-medium mb-1">No projects yet</div>
-              <p className="text-sm text-ink-500 mb-5">
+              <div className="text-sm font-medium mb-2">No projects yet</div>
+              <p className="text-sm text-ink-500 mb-6">
                 Create your first project to start registering reality captures against a building
                 hierarchy.
               </p>

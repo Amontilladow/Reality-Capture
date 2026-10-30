@@ -162,7 +162,7 @@ export default function SnaggingPage() {
       />
 
       <div className="p-6 space-y-4">
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-4 flex-wrap">
           <Listbox aria-label="Building"
             className="field-input w-auto"
             value={buildingFilter}
@@ -192,7 +192,7 @@ export default function SnaggingPage() {
           </Listbox>
 
           {summaryQuery.data && (
-            <div className="flex gap-2 text-[10px] font-mono text-ink-500 ml-auto">
+            <div className="flex gap-2 text-xs font-mono text-ink-500 ml-auto">
               <span>{summaryQuery.data.total} total</span>
               <span>·</span>
               <span>{summaryQuery.data.open} open</span>
@@ -224,13 +224,13 @@ export default function SnaggingPage() {
             Issues) -- one table per building, a level sub-header row inside,
             "Unassigned" table last for items with no building or a deleted
             one. */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           {groupedSnags.buildingGroups.map(({ building, levelGroups }) => (
             <details key={building.id} open>
-              <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-1 py-1.5 hover:text-ink-300">
+              <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-2 py-2 hover:text-ink-300">
                 {building.name}
               </summary>
-              <div className="panel tick-frame overflow-x-auto mt-1">
+              <div className="panel tick-frame overflow-x-auto mt-2">
                 <SnagTable levelGroups={levelGroups} onRowClick={setViewSnagId} />
               </div>
             </details>
@@ -238,10 +238,10 @@ export default function SnaggingPage() {
 
           {groupedSnags.unassigned.length > 0 && (
             <details open>
-              <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-1 py-1.5 hover:text-ink-300">
+              <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-2 py-2 hover:text-ink-300">
                 Unassigned
               </summary>
-              <div className="panel tick-frame overflow-x-auto mt-1">
+              <div className="panel tick-frame overflow-x-auto mt-2">
                 <SnagTable levelGroups={[{ level: undefined, snags: groupedSnags.unassigned }]} onRowClick={setViewSnagId} hideLevelHeader />
               </div>
             </details>
@@ -271,13 +271,13 @@ function SnagTable({
     <table className="w-full text-sm">
       <thead>
         <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-          <th className="px-4 py-2.5 font-medium">Number</th>
-          <th className="px-4 py-2.5 font-medium">Title</th>
-          <th className="px-4 py-2.5 font-medium">Location</th>
-          <th className="px-4 py-2.5 font-medium">Trade</th>
-          <th className="px-4 py-2.5 font-medium">Status</th>
-          <th className="px-4 py-2.5 font-medium">Priority</th>
-          <th className="px-4 py-2.5 font-medium">Due</th>
+          <th className="px-4 py-2 font-medium">Number</th>
+          <th className="px-4 py-2 font-medium">Title</th>
+          <th className="px-4 py-2 font-medium">Location</th>
+          <th className="px-4 py-2 font-medium">Trade</th>
+          <th className="px-4 py-2 font-medium">Status</th>
+          <th className="px-4 py-2 font-medium">Priority</th>
+          <th className="px-4 py-2 font-medium">Due</th>
         </tr>
       </thead>
       <tbody>
@@ -285,7 +285,7 @@ function SnagTable({
           <Fragment key={group.level?.id ?? '__no-level__'}>
             {!hideLevelHeader && (
               <tr>
-                <td colSpan={7} className="px-4 py-1 text-[11px] font-medium text-ink-500 bg-base-800/40">
+                <td colSpan={7} className="px-4 py-2 text-xs font-medium text-ink-500 bg-base-800/40">
                   {group.level?.name ?? 'No level'}
                 </td>
               </tr>
@@ -304,13 +304,13 @@ function SnagRow({ snag: s, onClick }: { snag: SnagListItem; onClick: () => void
   const overdue = isSnagOverdue(s.dueDate, s.status);
   return (
     <tr onClick={onClick} className="border-b border-base-700/60 last:border-0 hover:bg-base-700 cursor-pointer">
-      <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{s.snagNumber ?? '—'}</td>
-      <td className="px-4 py-2.5">{s.title}</td>
-      <td className="px-4 py-2.5 text-ink-300">{s.location ?? '—'}</td>
-      <td className="px-4 py-2.5 text-ink-300">{s.trade ?? '—'}</td>
-      <td className="px-4 py-2.5"><StatusBadge tone={SNAG_STATUS_TONE[s.status]} label={SNAG_STATUS_LABELS[s.status]} /></td>
-      <td className="px-4 py-2.5"><StatusBadge tone={SNAG_PRIORITY_TONE[s.priority]} label={SNAG_PRIORITY_LABELS[s.priority]} /></td>
-      <td className={`px-4 py-2.5 ${overdue ? 'text-danger' : 'text-ink-300'}`}>{formatDate(s.dueDate)}</td>
+      <td className="px-4 py-2 font-mono text-xs text-ink-500">{s.snagNumber ?? '—'}</td>
+      <td className="px-4 py-2">{s.title}</td>
+      <td className="px-4 py-2 text-ink-300">{s.location ?? '—'}</td>
+      <td className="px-4 py-2 text-ink-300">{s.trade ?? '—'}</td>
+      <td className="px-4 py-2"><StatusBadge tone={SNAG_STATUS_TONE[s.status]} label={SNAG_STATUS_LABELS[s.status]} /></td>
+      <td className="px-4 py-2"><StatusBadge tone={SNAG_PRIORITY_TONE[s.priority]} label={SNAG_PRIORITY_LABELS[s.priority]} /></td>
+      <td className={`px-4 py-2 ${overdue ? 'text-danger' : 'text-ink-300'}`}>{formatDate(s.dueDate)}</td>
     </tr>
   );
 }

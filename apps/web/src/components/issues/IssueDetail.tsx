@@ -221,7 +221,7 @@ export function IssueDetail({
 
   return (
     <div className="p-6 max-w-3xl space-y-6">
-      <button onClick={onBack} className="btn-ghost !px-2 !py-1 text-xs">
+      <button onClick={onBack} className="btn-ghost !px-2 !py-2 text-xs">
         <BackIcon /> Back to issues
       </button>
 
@@ -229,11 +229,11 @@ export function IssueDetail({
           as its own badge below rather than inserted into this linear flow. */}
       <div className="space-y-2">
         {ISSUE_STATUS_FLOW.includes(issue.status) && (
-          <div className="flex items-center gap-1.5 flex-wrap text-xs">
+          <div className="flex items-center gap-2 flex-wrap text-xs">
             {ISSUE_STATUS_FLOW.map((s, i) => (
-              <span key={s} className="flex items-center gap-1.5">
+              <span key={s} className="flex items-center gap-2">
                 <span
-                  className={`px-2 py-1 rounded-sm font-mono uppercase tracking-wide ${
+                  className={`px-2 py-2 rounded-sm font-mono uppercase tracking-wide ${
                     i === currentStepIdx ? 'bg-signal text-base-950 font-semibold' : i < currentStepIdx ? 'bg-ok/15 text-ok' : 'bg-base-700 text-ink-500'
                   }`}
                 >
@@ -250,10 +250,10 @@ export function IssueDetail({
       </div>
 
       {/* Header card */}
-      <div className="panel tick-frame p-5 space-y-4">
+      <div className="panel tick-frame p-6 space-y-4">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <div className="text-[10px] font-mono text-ink-500 mb-1">{issue.issueNumber ?? issue.id}</div>
+            <div className="text-xs font-mono text-ink-500 mb-2">{issue.issueNumber ?? issue.id}</div>
             <h2 className="text-lg font-semibold mb-2">{issue.title}</h2>
             <div className="flex items-center gap-2 flex-wrap">
               <StatusBadge tone={ISSUE_STATUS_TONE[issue.status]} label={STATUS_LABELS[issue.status]} />
@@ -265,32 +265,32 @@ export function IssueDetail({
               {issue.category && <span className="badge bg-base-700 text-ink-500">{CATEGORY_LABELS[issue.category]}</span>}
             </div>
           </div>
-          <div className="flex flex-col gap-1.5 items-end">
+          <div className="flex flex-col gap-2 items-end">
             <Link
               to={`/projects/${projectId}/assistant?resourceType=issue&resourceId=${issue.id}`}
-              className="btn-secondary !px-3 !py-1.5 text-xs"
+              className="btn-secondary !px-4 !py-2 text-xs"
             >
               Ask AI about this
             </Link>
-            <button onClick={() => onEdit(issue)} className="btn-secondary !px-3 !py-1.5 text-xs">Edit</button>
-            <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary !px-3 !py-1.5 text-xs">Email</button>
+            <button onClick={() => onEdit(issue)} className="btn-secondary !px-4 !py-2 text-xs">Edit</button>
+            <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary !px-4 !py-2 text-xs">Email</button>
             {canForward && (
-              <button onClick={() => setForwardOpen((v) => !v)} className="btn-secondary !px-3 !py-1.5 text-xs">
+              <button onClick={() => setForwardOpen((v) => !v)} className="btn-secondary !px-4 !py-2 text-xs">
                 {forwardOpen ? 'Cancel forward' : 'Forward'}
               </button>
             )}
-            <button onClick={() => setReminderOpen((v) => !v)} className="btn-secondary !px-3 !py-1.5 text-xs">
+            <button onClick={() => setReminderOpen((v) => !v)} className="btn-secondary !px-4 !py-2 text-xs">
               {reminderOpen ? 'Cancel reminder' : 'Remind…'}
             </button>
-            <button onClick={handleDownloadPdf} disabled={downloading === 'pdf'} className="btn-secondary !px-3 !py-1.5 text-xs">
+            <button onClick={handleDownloadPdf} disabled={downloading === 'pdf'} className="btn-secondary !px-4 !py-2 text-xs">
               {downloading === 'pdf' ? 'Preparing…' : 'Download PDF'}
             </button>
-            <button onClick={handleDownloadXls} disabled={downloading === 'xls'} className="btn-secondary !px-3 !py-1.5 text-xs">
+            <button onClick={handleDownloadXls} disabled={downloading === 'xls'} className="btn-secondary !px-4 !py-2 text-xs">
               {downloading === 'xls' ? 'Preparing…' : 'Download XLS'}
             </button>
             <button
               onClick={() => { if (confirm('Delete this issue? This cannot be undone.')) deleteMutation.mutate(); }}
-              className="btn-danger !px-3 !py-1.5 text-xs"
+              className="btn-danger !px-4 !py-2 text-xs"
             >
               Delete
             </button>
@@ -301,7 +301,7 @@ export function IssueDetail({
         {/* Forward form -- only the current assignee (or, if unassigned, the
             creator) or an admin may forward; mirrors IssuesService.forward(). */}
         {canForward && forwardOpen && (
-          <div className="pt-3 border-t border-base-600 space-y-2">
+          <div className="pt-4 border-t border-base-600 space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <Listbox aria-label="Forward to" className="field-input" value={forwardTo} onChange={(e) => setForwardTo(e.target.value)}>
                 <option value="">Forward to…</option>
@@ -319,7 +319,7 @@ export function IssueDetail({
             <button
               onClick={() => forwardMutation.mutate()}
               disabled={!forwardTo || forwardMutation.isPending}
-              className="btn-primary !px-3 !py-1.5 text-xs"
+              className="btn-primary !px-4 !py-2 text-xs"
             >
               {forwardMutation.isPending ? 'Forwarding…' : 'Send forward'}
             </button>
@@ -331,7 +331,7 @@ export function IssueDetail({
             (unlike the admin-only, immediate Reminders tab on the list
             page); always targets the current assignee, so it needs one. */}
         {reminderOpen && (
-          <div className="pt-3 border-t border-base-600 space-y-2">
+          <div className="pt-4 border-t border-base-600 space-y-2">
             {!issue.assignedTo ? (
               <p className="text-xs text-ink-500">This issue has no assignee yet -- assign it to someone before scheduling a reminder.</p>
             ) : (
@@ -353,7 +353,7 @@ export function IssueDetail({
                 <button
                   onClick={() => scheduleReminderMutation.mutate()}
                   disabled={!reminderWhen || !reminderMessage.trim() || scheduleReminderMutation.isPending}
-                  className="btn-primary !px-3 !py-1.5 text-xs"
+                  className="btn-primary !px-4 !py-2 text-xs"
                 >
                   {scheduleReminderMutation.isPending ? 'Scheduling…' : 'Schedule reminder'}
                 </button>
@@ -365,8 +365,8 @@ export function IssueDetail({
 
         {/* Pending scheduled reminders on this issue */}
         {(pendingRemindersQuery.data?.length ?? 0) > 0 && (
-          <div className="pt-3 border-t border-base-600 space-y-1.5">
-            <div className="text-[11px] text-ink-500 font-medium">Scheduled reminders</div>
+          <div className="pt-4 border-t border-base-600 space-y-2">
+            <div className="text-xs text-ink-500 font-medium">Scheduled reminders</div>
             {pendingRemindersQuery.data!.map((r) => (
               <div key={r.id} className="flex items-center gap-2 text-xs">
                 <span className="text-ink-500">{formatDateTime(r.scheduledFor)}</span>
@@ -374,7 +374,7 @@ export function IssueDetail({
                 <button
                   onClick={() => cancelReminderMutation.mutate(r.id)}
                   disabled={cancelReminderMutation.isPending}
-                  className="btn-ghost !px-2 !py-0.5 text-xs ml-auto"
+                  className="btn-ghost !px-2 !py-0 text-xs ml-auto"
                 >
                   Cancel
                 </button>
@@ -393,7 +393,7 @@ export function IssueDetail({
               key={s}
               onClick={() => statusMutation.mutate(s)}
               disabled={statusMutation.isPending}
-              className="btn-secondary !px-3 !py-1.5 text-xs"
+              className="btn-secondary !px-4 !py-2 text-xs"
             >
               Move to {STATUS_LABELS[s]}
             </button>
@@ -407,13 +407,13 @@ export function IssueDetail({
                 : !isManager ? 'Closing requires sign-off from a permitted role (an engineering manager or company admin).'
                 : 'Attach at least one evidence photo before closing.'
               }
-              className="btn-secondary !px-3 !py-1.5 text-xs"
+              className="btn-secondary !px-4 !py-2 text-xs"
             >
               {closeMutation.isPending ? 'Closing…' : `Move to ${STATUS_LABELS.closed}`}
             </button>
           )}
           {(issue.status === 'closed' || issue.status === 'resolved') && (
-            <button onClick={() => statusMutation.mutate('reopened')} disabled={statusMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
+            <button onClick={() => statusMutation.mutate('reopened')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 text-xs">
               ↩ Reopen
             </button>
           )}
@@ -423,7 +423,7 @@ export function IssueDetail({
         {/* Admin force-status override */}
         {isManager && (
           <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-base-600">
-            <span className="text-[11px] text-ink-500 font-medium">Admin override</span>
+            <span className="text-xs text-ink-500 font-medium">Admin override</span>
             <Listbox aria-label="Force status"
               className="field-input w-auto"
               value={forceStatusValue}
@@ -437,7 +437,7 @@ export function IssueDetail({
             <button
               onClick={() => forceStatusMutation.mutate()}
               disabled={!forceStatusValue || forceStatusMutation.isPending}
-              className="btn-danger !px-3 !py-1.5 text-xs"
+              className="btn-danger !px-4 !py-2 text-xs"
             >
               {forceStatusMutation.isPending ? 'Forcing…' : 'Force'}
             </button>
@@ -452,7 +452,7 @@ export function IssueDetail({
           <div className="field-label">Description</div>
           <p className="text-sm text-ink-300">{issue.description || '—'}</p>
         </div>
-        <div className="space-y-1.5 text-sm">
+        <div className="space-y-2 text-sm">
           <div className="field-label">Details</div>
           <DetailRow label="Type" value={ISSUE_TYPE_LABELS[issue.issueType]} />
           {issue.category && <DetailRow label="Category" value={CATEGORY_LABELS[issue.category]} />}
@@ -539,7 +539,7 @@ export function IssueDetail({
           <div className="field-label !mb-0">
             Evidence photos {evidenceQuery.data ? `(${evidenceQuery.data.length})` : ''}
           </div>
-          <button onClick={() => setPickerOpen((v) => !v)} className="btn-ghost !px-2 !py-1 text-xs">
+          <button onClick={() => setPickerOpen((v) => !v)} className="btn-ghost !px-2 !py-2 text-xs">
             {pickerOpen ? 'Cancel' : '+ Attach existing capture'}
           </button>
         </div>
@@ -551,11 +551,11 @@ export function IssueDetail({
         {(evidenceQuery.data?.length ?? 0) > 0 && (
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-2">
             {evidenceQuery.data!.map((e) => (
-              <div key={e.id} className="space-y-1">
+              <div key={e.id} className="space-y-2">
                 {e.thumbnailUrl
                   ? <img src={e.thumbnailUrl} alt="" loading="lazy" className="w-full h-20 object-cover rounded border border-base-600" />
                   : <div className="w-full h-20 rounded bg-base-800 border border-base-600" />}
-                <div className="text-[10px] text-ink-500 truncate">{e.title ?? e.addedByName}</div>
+                <div className="text-xs text-ink-500 truncate">{e.title ?? e.addedByName}</div>
               </div>
             ))}
           </div>
@@ -572,10 +572,10 @@ export function IssueDetail({
       {/* Activity / comments */}
       <div>
         <div className="field-label">Activity ({activitiesQuery.data?.length ?? 0})</div>
-        <div className="space-y-2 mb-3">
+        <div className="space-y-2 mb-4">
           {(activitiesQuery.data ?? []).map((a) => (
-            <div key={a.id} className="panel p-3 text-sm">
-              <div className="flex items-center gap-2 text-xs text-ink-500 mb-1">
+            <div key={a.id} className="panel p-4 text-sm">
+              <div className="flex items-center gap-2 text-xs text-ink-500 mb-2">
                 <span className="font-medium text-ink-300">{a.performedByName ?? 'Someone'}</span>
                 <span>·</span>
                 <span>{activityLabel(a.activityType, a.fromValue, a.toValue)}</span>
@@ -588,7 +588,7 @@ export function IssueDetail({
                     href={a.attachmentReadUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-1.5 flex items-center gap-1.5 text-xs text-blueprint hover:text-blueprint-hover bg-base-700/40 rounded px-2 py-1 w-fit"
+                    className="mt-2 flex items-center gap-2 text-xs text-blueprint hover:text-blueprint-hover bg-base-700/40 rounded px-2 py-2 w-fit"
                   >
                     <PaperclipIcon />
                     <span className="underline">{a.attachmentName}</span>
@@ -603,7 +603,7 @@ export function IssueDetail({
                   // Defensive fallback: attachmentReadUrl absent (shouldn't happen after the
                   // backend fix, but attachmentUrl alone is a raw storage key, not a usable
                   // link) -- render name+size as plain, non-clickable text instead of a dead link.
-                  <div className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-300 bg-base-700/40 rounded px-2 py-1 w-fit">
+                  <div className="mt-2 flex items-center gap-2 text-xs text-ink-300 bg-base-700/40 rounded px-2 py-2 w-fit">
                     <PaperclipIcon />
                     <span>{a.attachmentName}</span>
                     {a.attachmentSizeBytes != null && (
@@ -639,7 +639,7 @@ export function IssueDetail({
             value={attachComment}
             onChange={(e) => setAttachComment(e.target.value)}
           />
-          <label className="btn-secondary !px-3 !py-1.5 text-xs cursor-pointer shrink-0">
+          <label className="btn-secondary !px-4 !py-2 text-xs cursor-pointer shrink-0">
             {attachMutation.isPending ? 'Uploading…' : 'Attach file'}
             <input
               type="file"
@@ -737,16 +737,16 @@ function EvidencePicker({ projectId, issueId, onDone }: { projectId: string; iss
   });
 
   return (
-    <div className="panel p-3 mb-3 max-h-56 overflow-y-auto">
+    <div className="panel p-4 mb-4 max-h-56 overflow-y-auto">
       {capturesQuery.isLoading && <p className="text-xs text-ink-500">Loading captures…</p>}
       {capturesQuery.data?.data.length === 0 && <p className="text-xs text-ink-500">No captures uploaded on this project yet.</p>}
-      <div className="space-y-1">
+      <div className="space-y-2">
         {(capturesQuery.data?.data ?? []).map((c) => (
           <button
             key={c.id}
             onClick={() => attachMutation.mutate(c.id)}
             disabled={attachMutation.isPending}
-            className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-base-700 flex items-center justify-between"
+            className="w-full text-left text-xs px-2 py-2 rounded hover:bg-base-700 flex items-center justify-between"
           >
             <span className="truncate">{c.title || c.captureType}</span>
             <span className="text-ink-500 shrink-0 ml-2">{new Date(c.capturedAt).toLocaleDateString()}</span>

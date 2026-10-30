@@ -36,7 +36,7 @@ export function Tabs({
   }
 
   return (
-    <div role="tablist" className="flex items-center gap-1 border-b border-base-600">
+    <div role="tablist" className="flex items-center gap-2 border-b border-base-600">
       {items.map((item, i) => {
         const selected = item.key === active;
         return (
@@ -50,7 +50,7 @@ export function Tabs({
             tabIndex={selected ? 0 : -1}
             onKeyDown={(e) => onKeyDown(e, i)}
             onClick={() => onChange(item.key)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
               selected
                 ? 'border-signal text-ink-100'
                 : 'border-transparent text-ink-500 hover:text-ink-300'

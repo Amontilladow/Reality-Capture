@@ -63,16 +63,16 @@ export default function RfisLandingPage() {
             onClick={() => navigate(`/projects/${projectId}/rfis/main`)}
             className="panel tick-frame panel-interactive p-6 text-left"
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-semibold">Main Contractor's RFIs</h3>
               {(mainSummaryQuery.data?.open ?? 0) > 0 && (
                 <span className="badge bg-danger/15 text-danger">{mainSummaryQuery.data?.open} open</span>
               )}
             </div>
-            <p className="text-sm text-ink-500 mb-3">
+            <p className="text-sm text-ink-500 mb-4">
               {isSubcontractor ? 'Read-only.' : 'Raise, respond to, and track your own RFIs -- unchanged from before.'}
             </p>
-            <div className="flex gap-3 text-xs text-ink-500 font-mono">
+            <div className="flex gap-4 text-xs text-ink-500 font-mono">
               <span>{mainSummaryQuery.data?.total ?? 0} total</span>
               <span>·</span>
               <span>{mainSummaryQuery.data?.overdue ?? 0} overdue</span>
@@ -84,16 +84,16 @@ export default function RfisLandingPage() {
             onClick={() => navigate(`/projects/${projectId}/rfis/subcontractor`)}
             className="panel tick-frame panel-interactive p-6 text-left"
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-semibold">Subcontractor's RFIs</h3>
               {(subSummaryQuery.data?.open ?? 0) > 0 && (
                 <span className="badge bg-danger/15 text-danger">{subSummaryQuery.data?.open} open</span>
               )}
             </div>
-            <p className="text-sm text-ink-500 mb-3">
+            <p className="text-sm text-ink-500 mb-4">
               RFIs raised by subcontractors with platform access. You respond -- they can't close or review their own.
             </p>
-            <div className="flex gap-3 text-xs text-ink-500 font-mono">
+            <div className="flex gap-4 text-xs text-ink-500 font-mono">
               <span>{subSummaryQuery.data?.total ?? 0} total</span>
               <span>·</span>
               <span>{subSummaryQuery.data?.overdue ?? 0} overdue</span>

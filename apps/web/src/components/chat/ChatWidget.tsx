@@ -219,8 +219,8 @@ export function ChatWidget() {
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end">
       {open && (
-        <div className="mb-3 w-80 h-[28rem] tick-frame panel overflow-hidden flex flex-col shadow-xl">
-          <div className="flex items-center justify-between px-3 py-2.5 border-b border-base-600 shrink-0">
+        <div className="mb-4 w-80 h-[28rem] tick-frame panel overflow-hidden flex flex-col shadow-xl">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-base-600 shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               {view === 'conversation' && (
                 <button onClick={backToList} className="text-ink-500 hover:text-ink-100 shrink-0" aria-label="Back">
@@ -247,43 +247,43 @@ export function ChatWidget() {
               {projectId && (
                 <button
                   onClick={openTeamChat}
-                  className="block w-full text-left px-3 py-2.5 border-b border-base-600 hover:bg-base-700 transition-colors"
+                  className="block w-full text-left px-4 py-2 border-b border-base-600 hover:bg-base-700 transition-colors"
                 >
                   <div className="text-xs text-ink-100">
                     {projectQuery.data?.name ? `${projectQuery.data.name} team chat` : 'Project team chat'}
                   </div>
-                  <div className="text-[10px] font-mono text-ink-500 mt-0.5">This project · everyone</div>
+                  <div className="text-xs font-mono text-ink-500 mt-0">This project · everyone</div>
                 </button>
               )}
 
-              <div className="flex items-center justify-between px-3 pt-3 pb-1.5">
-                <span className="text-[11px] text-ink-500 font-medium">Direct messages</span>
+              <div className="flex items-center justify-between px-4 pt-4 pb-2">
+                <span className="text-xs text-ink-500 font-medium">Direct messages</span>
                 <button
                   onClick={() => setDirectoryOpen((v) => !v)}
-                  className="text-[11px] text-blueprint hover:text-blueprint-hover"
+                  className="text-xs text-blueprint hover:text-blueprint-hover"
                 >
                   {directoryOpen ? 'Cancel' : '+ New'}
                 </button>
               </div>
 
               {directoryOpen && (
-                <div className="px-3 pb-2 border-b border-base-600">
-                  {directoryQuery.isLoading && <p className="text-xs text-ink-500 py-1">Loading people…</p>}
+                <div className="px-4 pb-2 border-b border-base-600">
+                  {directoryQuery.isLoading && <p className="text-xs text-ink-500 py-2">Loading people…</p>}
                   {directoryQuery.data && (
-                    <div className="max-h-40 overflow-y-auto space-y-0.5">
+                    <div className="max-h-40 overflow-y-auto space-y-0">
                       {directoryQuery.data.data
                         .filter((u) => u.id !== currentUser?.id)
                         .map((u) => (
                           <button
                             key={u.id}
                             onClick={() => openDm(u.id, displayName(u))}
-                            className="block w-full text-left px-2 py-1.5 rounded text-xs text-ink-300 hover:bg-base-700 hover:text-ink-100"
+                            className="block w-full text-left px-2 py-2 rounded text-xs text-ink-300 hover:bg-base-700 hover:text-ink-100"
                           >
                             {displayName(u)}
                           </button>
                         ))}
                       {directoryQuery.data.data.filter((u) => u.id !== currentUser?.id).length === 0 && (
-                        <p className="text-xs text-ink-500 py-1">No other company members yet.</p>
+                        <p className="text-xs text-ink-500 py-2">No other company members yet.</p>
                       )}
                     </div>
                   )}
@@ -298,16 +298,16 @@ export function ChatWidget() {
                 <button
                   key={t.channelId}
                   onClick={() => openDm(t.otherUserId, t.otherUserName)}
-                  className="block w-full text-left px-3 py-2.5 border-b border-base-600 last:border-b-0 hover:bg-base-700 transition-colors"
+                  className="block w-full text-left px-4 py-2 border-b border-base-600 last:border-b-0 hover:bg-base-700 transition-colors"
                 >
                   <div className="flex items-start gap-2">
-                    {t.unread && <span className="w-1.5 h-1.5 rounded-full bg-blueprint mt-1.5 shrink-0" />}
+                    {t.unread && <span className="w-1.5 h-1.5 rounded-full bg-blueprint mt-2 shrink-0" />}
                     <div className="min-w-0 flex-1">
                       <div className={`text-xs ${t.unread ? 'text-ink-100' : 'text-ink-300'}`}>
                         {t.otherUserName ?? 'Unknown user'}
                       </div>
                       {t.lastMessageBody && (
-                        <div className="text-[10px] text-ink-500 mt-0.5 truncate">{t.lastMessageBody}</div>
+                        <div className="text-xs text-ink-500 mt-0 truncate">{t.lastMessageBody}</div>
                       )}
                     </div>
                   </div>
@@ -318,7 +318,7 @@ export function ChatWidget() {
 
           {view === 'conversation' && (
             <>
-              <div className="overflow-y-auto flex-1 px-3 py-2 space-y-2">
+              <div className="overflow-y-auto flex-1 px-4 py-2 space-y-2">
                 {messagesLoading && <p className="text-sm text-ink-500 py-4 text-center">Loading messages…</p>}
                 {!messagesLoading && messages.length === 0 && (
                   <p className="text-sm text-ink-500 py-4 text-center">No messages yet. Say hello.</p>
@@ -328,27 +328,27 @@ export function ChatWidget() {
                   return (
                     <div key={m.id} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
                       {!mine && (
-                        <span className="text-[10px] font-mono text-ink-500 mb-0.5">
+                        <span className="text-xs font-mono text-ink-500 mb-0">
                           {m.fromUserName ?? 'Unknown'}
                         </span>
                       )}
                       <div
-                        className={`max-w-[85%] rounded px-2.5 py-1.5 text-xs break-words ${
+                        className={`max-w-[85%] rounded px-2 py-2 text-xs break-words ${
                           mine ? 'bg-blueprint/20 border border-blueprint/40 text-ink-100' : 'bg-base-800 text-ink-100'
                         }`}
                       >
                         {m.body}
                       </div>
-                      <span className="text-[9px] font-mono text-ink-500 mt-0.5">{timeShort(m.createdAt)}</span>
+                      <span className="text-xs font-mono text-ink-500 mt-0">{timeShort(m.createdAt)}</span>
                     </div>
                   );
                 })}
               </div>
               <div className="border-t border-base-600 p-2 shrink-0">
                 {!connected && (
-                  <p className="text-[10px] text-ink-500 mb-1">Not connected — reconnecting…</p>
+                  <p className="text-xs text-ink-500 mb-2">Not connected — reconnecting…</p>
                 )}
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <input
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
@@ -360,12 +360,12 @@ export function ChatWidget() {
                     }}
                     disabled={messagesLoading}
                     placeholder="Message…"
-                    className="flex-1 min-w-0 bg-base-900 border border-base-600 rounded px-2 py-1.5 text-xs text-ink-100 placeholder:text-ink-500 focus:outline-none focus:border-blueprint disabled:opacity-50"
+                    className="flex-1 min-w-0 bg-base-900 border border-base-600 rounded px-2 py-2 text-xs text-ink-100 placeholder:text-ink-500 focus:outline-none focus:border-blueprint disabled:opacity-50"
                   />
                   <button
                     onClick={handleSend}
                     disabled={!draft.trim() || !connected || messagesLoading}
-                    className="shrink-0 px-2.5 py-1.5 rounded bg-signal text-base-950 text-xs font-semibold disabled:opacity-40"
+                    className="shrink-0 px-2 py-2 rounded bg-signal text-base-950 text-xs font-semibold disabled:opacity-40"
                   >
                     Send
                   </button>
@@ -383,7 +383,7 @@ export function ChatWidget() {
       >
         <IconChat className="w-5 h-5" />
         {!open && unreadCount > 0 && (
-          <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-blueprint text-base-800 text-[10px] font-bold flex items-center justify-center">
+          <span className="absolute top-1 right-1 min-w-[16px] h-4 px-2 rounded-full bg-blueprint text-base-800 text-xs font-bold flex items-center justify-center">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}

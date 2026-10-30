@@ -72,13 +72,13 @@ export default function BimModelsPage() {
           </div>
         )}
 
-        <ul className="space-y-3">
+        <ul className="space-y-4">
           {(modelsQuery.data ?? []).map((model) => (
             <li key={model.id} className="flex items-center justify-between rounded-lg border border-base-600 p-4">
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{model.name}</span>
-                  <span className={`rounded px-2 py-0.5 text-xs ${STATUS_COLOR[model.status]}`}>
+                  <span className={`rounded px-2 py-0 text-xs ${STATUS_COLOR[model.status]}`}>
                     {STATUS_LABEL[model.status]}
                   </span>
                 </div>
@@ -90,16 +90,16 @@ export default function BimModelsPage() {
                         style={{ width: `${model.processingProgress}%` }}
                       />
                     </div>
-                    <p className="mt-1 text-xs text-ink-500">
+                    <p className="mt-2 text-xs text-ink-500">
                       {model.processingStage ?? 'Starting…'} · {model.processingProgress}%
                     </p>
                   </div>
                 )}
                 {model.status === 'failed' && (
-                  <p className="mt-1 text-xs text-danger">{model.processingError}</p>
+                  <p className="mt-2 text-xs text-danger">{model.processingError}</p>
                 )}
                 {model.status === 'ready' && (
-                  <p className="mt-1 text-xs text-ink-500">{model.elementCount} elements</p>
+                  <p className="mt-2 text-xs text-ink-500">{model.elementCount} elements</p>
                 )}
               </div>
               <div className="flex items-center gap-2">

@@ -58,7 +58,7 @@ export default function SubmittalsPage() {
       />
 
       <div className="p-6 space-y-4">
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-4 flex-wrap">
           <Listbox aria-label="Status" className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
             {SUBMITTAL_STATUSES.map((s) => (
@@ -67,7 +67,7 @@ export default function SubmittalsPage() {
           </Listbox>
 
           {summaryQuery.data && (
-            <div className="flex gap-2 text-[10px] font-mono text-ink-500 ml-auto">
+            <div className="flex gap-2 text-xs font-mono text-ink-500 ml-auto">
               <span>{summaryQuery.data.total} total</span>
               <span>·</span>
               <span>{summaryQuery.data.pending} pending</span>
@@ -90,13 +90,13 @@ export default function SubmittalsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                  <th className="px-4 py-2.5 font-medium">Number</th>
-                  <th className="px-4 py-2.5 font-medium">Title</th>
-                  <th className="px-4 py-2.5 font-medium">Spec</th>
-                  <th className="px-4 py-2.5 font-medium">Status</th>
-                  <th className="px-4 py-2.5 font-medium">Priority</th>
-                  <th className="px-4 py-2.5 font-medium">Reviewer</th>
-                  <th className="px-4 py-2.5 font-medium">Due</th>
+                  <th className="px-4 py-2 font-medium">Number</th>
+                  <th className="px-4 py-2 font-medium">Title</th>
+                  <th className="px-4 py-2 font-medium">Spec</th>
+                  <th className="px-4 py-2 font-medium">Status</th>
+                  <th className="px-4 py-2 font-medium">Priority</th>
+                  <th className="px-4 py-2 font-medium">Reviewer</th>
+                  <th className="px-4 py-2 font-medium">Due</th>
                 </tr>
               </thead>
               <tbody>
@@ -108,13 +108,13 @@ export default function SubmittalsPage() {
                       onClick={() => setSelected(s)}
                       className="border-b border-base-700/60 last:border-0 hover:bg-base-700 cursor-pointer"
                     >
-                      <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{s.submittalNumber ?? '—'}</td>
-                      <td className="px-4 py-2.5">{s.title}</td>
-                      <td className="px-4 py-2.5 text-ink-300">{s.specSection ?? '—'}</td>
-                      <td className="px-4 py-2.5"><span className={`badge ${SUBMITTAL_STATUS_BADGE_CLASS[s.status]}`}>{SUBMITTAL_STATUS_LABELS[s.status]}</span></td>
-                      <td className="px-4 py-2.5"><span className={`badge ${SUBMITTAL_PRIORITY_BADGE_CLASS[s.priority]}`}>{SUBMITTAL_PRIORITY_LABELS[s.priority]}</span></td>
-                      <td className="px-4 py-2.5 text-ink-300">{s.assignedToName ?? 'Unassigned'}</td>
-                      <td className={`px-4 py-2.5 ${overdue ? 'text-danger' : 'text-ink-300'}`}>{formatDate(s.dueDate)}</td>
+                      <td className="px-4 py-2 font-mono text-xs text-ink-500">{s.submittalNumber ?? '—'}</td>
+                      <td className="px-4 py-2">{s.title}</td>
+                      <td className="px-4 py-2 text-ink-300">{s.specSection ?? '—'}</td>
+                      <td className="px-4 py-2"><span className={`badge ${SUBMITTAL_STATUS_BADGE_CLASS[s.status]}`}>{SUBMITTAL_STATUS_LABELS[s.status]}</span></td>
+                      <td className="px-4 py-2"><span className={`badge ${SUBMITTAL_PRIORITY_BADGE_CLASS[s.priority]}`}>{SUBMITTAL_PRIORITY_LABELS[s.priority]}</span></td>
+                      <td className="px-4 py-2 text-ink-300">{s.assignedToName ?? 'Unassigned'}</td>
+                      <td className={`px-4 py-2 ${overdue ? 'text-danger' : 'text-ink-300'}`}>{formatDate(s.dueDate)}</td>
                     </tr>
                   );
                 })}

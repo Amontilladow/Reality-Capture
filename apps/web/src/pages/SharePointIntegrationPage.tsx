@@ -75,10 +75,10 @@ export default function SharePointIntegrationPage() {
     <>
       <PageHeader eyebrow="Admin" title="SharePoint Integration" subtitle="Connect a company's SharePoint tenant and map projects to a document library for the Site Drawing Hub." />
       <div className="p-6 space-y-6 max-w-3xl">
-        <div className="panel tick-frame p-5 space-y-4">
+        <div className="panel tick-frame p-6 space-y-4">
           <div>
             <h2 className="text-sm font-semibold text-ink-100">Connection</h2>
-            <p className="text-xs text-ink-500 mt-1">
+            <p className="text-xs text-ink-500 mt-2">
               The tenant ID is verified with Microsoft before it's saved. There's no separate credential to enter here --
               every customer reuses this app's own Microsoft Entra registration; a tenant admin grants it access to
               specific SharePoint sites directly in Microsoft Entra / Graph, outside RealityCapture.
@@ -88,7 +88,7 @@ export default function SharePointIntegrationPage() {
           {statusQuery.isLoading && <p className="text-sm text-ink-500">Loading…</p>}
 
           {!statusQuery.isLoading && status && (
-            <div className="flex items-center justify-between rounded border border-base-700/60 px-3 py-2.5">
+            <div className="flex items-center justify-between rounded border border-base-700/60 px-4 py-2">
               <div className="text-sm">
                 <span className="text-ink-100 font-medium">{status.connected ? status.tenantId : 'Not connected'}</span>
                 {status.connected && !status.isActive && <span className="text-ink-500 ml-2">(disconnected — mappings kept)</span>}
@@ -102,7 +102,7 @@ export default function SharePointIntegrationPage() {
           )}
 
           {status?.connected && (
-            <div className="text-xs text-ink-500 space-y-0.5">
+            <div className="text-xs text-ink-500 space-y-0">
               <p>Last successful sync: {formatTimestamp(status.lastSuccessfulSyncAt)}</p>
               <p>Last attempted sync: {formatTimestamp(status.lastAttemptedSyncAt)}</p>
               {status.lastSyncError && <p className="field-error">{status.lastSyncError}</p>}
@@ -128,10 +128,10 @@ export default function SharePointIntegrationPage() {
           </div>
         </div>
 
-        <div className="panel tick-frame p-5 space-y-4">
+        <div className="panel tick-frame p-6 space-y-4">
           <div>
             <h2 className="text-sm font-semibold text-ink-100">Project Site Mapping</h2>
-            <p className="text-xs text-ink-500 mt-1">
+            <p className="text-xs text-ink-500 mt-2">
               Map a project onto one SharePoint site + document library. The drive is checked for reachability before
               the mapping is saved. Column overrides are optional -- without them, the drawing number/title fall back
               to the filename, and the revision number falls back to SharePoint's own version label.
@@ -144,15 +144,15 @@ export default function SharePointIntegrationPage() {
           </Listbox>
 
           {selectedProjectId && (
-            <div className="space-y-3 pt-2 border-t border-base-700/60">
+            <div className="space-y-4 pt-2 border-t border-base-700/60">
               {existingMapping && (
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs text-ok">Mapped to drive {existingMapping.driveId}.</p>
                   <div className="flex gap-2">
-                    <button onClick={() => syncMutation.mutate()} disabled={syncMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
+                    <button onClick={() => syncMutation.mutate()} disabled={syncMutation.isPending} className="btn-secondary !px-2 !py-2 text-xs">
                       {syncMutation.isPending ? 'Syncing…' : 'Sync now'}
                     </button>
-                    <button onClick={() => unmapMutation.mutate()} disabled={unmapMutation.isPending} className="btn-ghost !px-2.5 !py-1 text-xs text-danger">
+                    <button onClick={() => unmapMutation.mutate()} disabled={unmapMutation.isPending} className="btn-ghost !px-2 !py-2 text-xs text-danger">
                       Unmap
                     </button>
                   </div>
@@ -167,7 +167,7 @@ export default function SharePointIntegrationPage() {
               {syncMutation.isError && <p className="field-error">{apiErrorMessage(syncMutation.error)}</p>}
               {unmapMutation.isError && <p className="field-error">{apiErrorMessage(unmapMutation.error)}</p>}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Site ID" value={siteForm.siteId} onChange={(v) => setSiteForm((f) => ({ ...f, siteId: v }))} />
                 <Field label="Drive ID" value={siteForm.driveId} onChange={(v) => setSiteForm((f) => ({ ...f, driveId: v }))} />
                 <Field label="Folder path (optional)" value={siteForm.folderPath ?? ''} onChange={(v) => setSiteForm((f) => ({ ...f, folderPath: v }))} span2 />
@@ -175,7 +175,7 @@ export default function SharePointIntegrationPage() {
 
               <details className="text-xs">
                 <summary className="cursor-pointer text-ink-500">Column name overrides (optional)</summary>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                   <Field label="Drawing number column" value={siteForm.drawingNumberField ?? ''} onChange={(v) => setSiteForm((f) => ({ ...f, drawingNumberField: v }))} />
                   <Field label="Drawing title column" value={siteForm.drawingTitleField ?? ''} onChange={(v) => setSiteForm((f) => ({ ...f, drawingTitleField: v }))} />
                   <Field label="Discipline column" value={siteForm.disciplineField ?? ''} onChange={(v) => setSiteForm((f) => ({ ...f, disciplineField: v }))} />

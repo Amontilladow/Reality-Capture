@@ -120,7 +120,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
         ) : (
           <div className="space-y-4">
             {/* Identifier, revision, status, source, verification -- all visible without leaving this view (brief section 7) */}
-            <div className="panel p-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+            <div className="panel p-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
               <div><span className="text-xs text-ink-500 block">Drawing No.</span>{drawing.drawingNumber}</div>
               <div><span className="text-xs text-ink-500 block">Revision</span>{revision?.revisionNumber ?? '—'}</div>
               <div>
@@ -133,12 +133,12 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
             </div>
 
             {revision && needsApprovalWarning(revision.workflowStatus) && (
-              <div className="panel p-3 border border-warn/40 bg-warn/5 text-xs text-ink-100">
+              <div className="panel p-4 border border-warn/40 bg-warn/5 text-xs text-ink-100">
                 ⚠ This revision's approval status is {revision.workflowStatus === 'UNKNOWN' ? 'unverified' : 'still under review'} — do not treat it as confirmed current for construction.
               </div>
             )}
             {revision && revision.isSuperseded && (
-              <div className="panel p-3 border border-base-500 bg-base-800/60 text-xs text-ink-300">
+              <div className="panel p-4 border border-base-500 bg-base-800/60 text-xs text-ink-300">
                 A newer revision supersedes this one. Open the Revision History tab to find the current revision.
               </div>
             )}
@@ -149,7 +149,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
                 {SITE_DRAWING_WORKFLOW_STATUSES.map((s) => (
                   <button
                     key={s} onClick={() => statusMutation.mutate(s)} disabled={statusMutation.isPending}
-                    className={`btn-secondary !px-2.5 !py-1 text-xs ${revision.workflowStatus === s ? '!bg-blueprint/20 !text-blueprint' : ''}`}
+                    className={`btn-secondary !px-2 !py-2 text-xs ${revision.workflowStatus === s ? '!bg-blueprint/20 !text-blueprint' : ''}`}
                   >
                     {WORKFLOW_STATUS_LABELS[s]}
                   </button>
@@ -159,11 +159,11 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
             {statusMutation.isError && <p className="field-error">{apiErrorMessage(statusMutation.error)}</p>}
 
             <div className="flex items-center gap-2 border-b border-base-600">
-              <button onClick={() => setTab('viewer')} className={`px-3 py-2 text-sm ${tab === 'viewer' ? 'border-b-2 border-blueprint text-blueprint' : 'text-ink-500 hover:text-ink-100'}`}>Viewer</button>
-              <button onClick={() => setTab('history')} className={`px-3 py-2 text-sm ${tab === 'history' ? 'border-b-2 border-blueprint text-blueprint' : 'text-ink-500 hover:text-ink-100'}`}>Revision History</button>
-              <div className="ml-auto flex items-center gap-2 py-1.5">
+              <button onClick={() => setTab('viewer')} className={`px-4 py-2 text-sm ${tab === 'viewer' ? 'border-b-2 border-blueprint text-blueprint' : 'text-ink-500 hover:text-ink-100'}`}>Viewer</button>
+              <button onClick={() => setTab('history')} className={`px-4 py-2 text-sm ${tab === 'history' ? 'border-b-2 border-blueprint text-blueprint' : 'text-ink-500 hover:text-ink-100'}`}>Revision History</button>
+              <div className="ml-auto flex items-center gap-2 py-2">
                 {revision && (
-                  <button onClick={() => setAddRevisionOpen(true)} className="btn-secondary !px-2.5 !py-1 text-xs">Add revision</button>
+                  <button onClick={() => setAddRevisionOpen(true)} className="btn-secondary !px-2 !py-2 text-xs">Add revision</button>
                 )}
               </div>
             </div>
@@ -184,16 +184,16 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
 
                 {/* Offline (brief section 8) -- unmistakable indicator + last-verified timestamp */}
                 {revision && (
-                  <div className="panel p-3 flex items-center justify-between gap-3 flex-wrap">
+                  <div className="panel p-4 flex items-center justify-between gap-4 flex-wrap">
                     <div className="text-xs text-ink-500">
                       {offlinePackage?.status === 'COMPLETE' && (
-                        <span className="inline-flex items-center gap-1.5">
+                        <span className="inline-flex items-center gap-2">
                           <span className="badge bg-ok/15 text-ok">OFFLINE AVAILABLE</span>
                           {formatVerifiedAt(offlinePackage.lastVerifiedAt)} · {formatFileSize(offlinePackage.fileSizeBytes)}
                         </span>
                       )}
                       {offlinePackage?.status === 'STALE' && (
-                        <span className="inline-flex items-center gap-1.5">
+                        <span className="inline-flex items-center gap-2">
                           <span className="badge bg-warn/15 text-warn">OFFLINE COPY OUTDATED</span>
                           A newer revision exists — remove and re-download.
                         </span>
@@ -203,10 +203,10 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
                     </div>
                     <div className="flex items-center gap-2">
                       {offlinePackage && offlinePackage.status !== 'REMOVED' ? (
-                        <button onClick={removeOffline} disabled={offlineBusy} className="btn-ghost !px-2.5 !py-1 text-xs">Remove offline copy</button>
+                        <button onClick={removeOffline} disabled={offlineBusy} className="btn-ghost !px-2 !py-2 text-xs">Remove offline copy</button>
                       ) : (
                         revision.offlineEligibility && user && (
-                          <button onClick={downloadForOffline} disabled={offlineBusy} className="btn-secondary !px-2.5 !py-1 text-xs">
+                          <button onClick={downloadForOffline} disabled={offlineBusy} className="btn-secondary !px-2 !py-2 text-xs">
                             {offlineBusy ? 'Downloading…' : 'Download for offline'}
                           </button>
                         )
@@ -221,7 +221,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
             {tab === 'history' && (
               <div className="panel tick-frame divide-y divide-base-700/60">
                 {(revisionsQuery.data ?? []).map((r) => (
-                  <div key={r.id} className="px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+                  <div key={r.id} className="px-4 py-4 flex items-center justify-between gap-4 flex-wrap">
                     <div>
                       <div className="text-sm text-ink-100 flex items-center gap-2">
                         Rev {r.revisionNumber}
@@ -229,13 +229,13 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
                         {r.documentClassification !== 'CONSTRUCTION' && <StatusBadge tone="neutral" label={DOCUMENT_CLASSIFICATION_LABELS[r.documentClassification]} />}
                         {r.isSuperseded && <StatusBadge tone="neutral" label="Superseded" />}
                       </div>
-                      <div className="text-xs text-ink-500 mt-0.5">
+                      <div className="text-xs text-ink-500 mt-0">
                         Issued {formatDate(r.issueDate)} · {formatFileSize(r.fileSizeBytes)} · {formatVerifiedAt(r.lastVerifiedAt)}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <StatusBadge tone={WORKFLOW_STATUS_TONE[r.workflowStatus]} label={WORKFLOW_STATUS_LABELS[r.workflowStatus]} dot />
-                      <button onClick={() => { setTab('viewer'); openViewer(r); }} className="btn-ghost !px-2 !py-1 text-xs">View</button>
+                      <button onClick={() => { setTab('viewer'); openViewer(r); }} className="btn-ghost !px-2 !py-2 text-xs">View</button>
                     </div>
                   </div>
                 ))}

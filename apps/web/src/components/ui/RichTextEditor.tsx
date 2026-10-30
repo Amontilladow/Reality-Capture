@@ -63,7 +63,7 @@ export function RichTextEditor({
   return (
     <div className={`field-input !p-0 overflow-hidden ${readOnly ? 'bg-base-800/60' : ''}`}>
       {!readOnly && (
-        <div className="flex items-center gap-0.5 border-b border-base-600 px-1.5 py-1 bg-base-800/60">
+        <div className="flex items-center gap-0 border-b border-base-600 px-2 py-2 bg-base-800/60">
           <ToolbarButton label="B" title="Bold" bold active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} />
           <ToolbarButton label="I" title="Italic" italic active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()} />
           <Divider />
@@ -74,7 +74,7 @@ export function RichTextEditor({
           <ToolbarButton label="1." title="Numbered list" active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()} />
         </div>
       )}
-      <EditorContent editor={editor} className="px-3 py-2.5 text-sm text-ink-100 min-h-[100px]" />
+      <EditorContent editor={editor} className="px-4 py-2 text-sm text-ink-100 min-h-[100px]" />
     </div>
   );
 }
@@ -89,7 +89,7 @@ export function isRichTextEmpty(html: string): boolean {
 }
 
 function Divider() {
-  return <span className="w-px h-4 bg-base-600 mx-1" />;
+  return <span className="w-px h-4 bg-base-600 mx-2" />;
 }
 
 function ToolbarButton({

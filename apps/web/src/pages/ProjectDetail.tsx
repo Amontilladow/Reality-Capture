@@ -113,7 +113,7 @@ export default function ProjectDetail() {
       <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-1">
           <div className="tick-frame panel p-4">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <h2 className="text-xs text-ink-500 font-medium">Hierarchy</h2>
               <button
                 onClick={() => setNodeModal({ kind: 'building' })}
@@ -143,7 +143,7 @@ export default function ProjectDetail() {
             <>
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold">Captures — {selectedLocation.name}</h2>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   <Link to={`/projects/${projectId}/viewer/${selectedLocation.id}`} className="text-xs text-blueprint hover:text-blueprint-hover">
                     Open 360° viewer →
                   </Link>
@@ -154,8 +154,8 @@ export default function ProjectDetail() {
               </div>
 
               {selectedLocationDetail?.description && (
-                <div className="panel p-3 text-sm text-ink-100">
-                  <div className="text-[11px] text-ink-500 mb-1 font-medium">Note</div>
+                <div className="panel p-4 text-sm text-ink-100">
+                  <div className="text-xs text-ink-500 mb-2 font-medium">Note</div>
                   {selectedLocationDetail.description}
                 </div>
               )}
@@ -220,11 +220,11 @@ function ProjectDetailsPanel({ project }: { project: Project }) {
 
   return (
     <div className="px-6 pt-4">
-      <div className="panel p-4 space-y-3">
+      <div className="panel p-4 space-y-4">
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           {fields.map((f) => (
             <div key={f.label} className="text-xs">
-              <div className="text-ink-500 mb-0.5 font-medium">{f.label}</div>
+              <div className="text-ink-500 mb-0 font-medium">{f.label}</div>
               <div className="text-ink-100">{f.value}</div>
             </div>
           ))}

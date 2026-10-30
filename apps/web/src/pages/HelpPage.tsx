@@ -78,19 +78,19 @@ export default function HelpPage() {
           <SearchResultsPanel query={query} results={searchResults} onOpenArticle={openArticle} />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_260px] gap-6">
-            <nav aria-label="Help categories" className="space-y-0.5">
+            <nav aria-label="Help categories" className="space-y-0">
               {companyRole && (
                 <button
                   onClick={openRoleGuide}
                   aria-current={!activeSlug && showRoleGuide ? 'true' : undefined}
-                  className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors mb-2 border ${
+                  className={`w-full text-left px-4 py-2 rounded text-sm font-medium transition-colors mb-2 border ${
                     !activeSlug && showRoleGuide
                       ? 'bg-signal text-base-800 border-signal'
                       : 'text-ink-200 border-base-700 hover:bg-base-700'
                   }`}
                 >
                   For My Role
-                  <span className="block text-[11px] font-normal text-ink-500">{COMPANY_ROLE_LABELS[companyRole]}</span>
+                  <span className="block text-xs font-normal text-ink-500">{COMPANY_ROLE_LABELS[companyRole]}</span>
                 </button>
               )}
               {HELP_CATEGORIES.map((key) => (
@@ -98,7 +98,7 @@ export default function HelpPage() {
                   key={key}
                   onClick={() => openCategory(key)}
                   aria-current={!activeSlug && !showRoleGuide && key === activeCategory ? 'true' : undefined}
-                  className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                  className={`w-full text-left px-4 py-2 rounded text-sm transition-colors ${
                     !activeSlug && !showRoleGuide && key === activeCategory ? 'bg-signal text-base-800' : 'text-ink-300 hover:bg-base-700'
                   }`}
                 >
@@ -108,7 +108,7 @@ export default function HelpPage() {
               {user && (
                 <button
                   onClick={restartOnboarding}
-                  className="w-full text-left px-3 py-2 rounded text-xs text-ink-500 hover:text-ink-100 hover:bg-base-700 mt-2"
+                  className="w-full text-left px-4 py-2 rounded text-xs text-ink-500 hover:text-ink-100 hover:bg-base-700 mt-2"
                 >
                   Restart onboarding tour
                 </button>
@@ -125,11 +125,11 @@ export default function HelpPage() {
               )}
             </div>
 
-            <aside className="space-y-5">
+            <aside className="space-y-6">
               {activeArticle && sectionTitles.length > 1 && (
                 <div>
                   <div className="field-label mb-2">On this page</div>
-                  <ul className="space-y-1 text-sm">
+                  <ul className="space-y-2 text-sm">
                     {sectionTitles.map((title) => (
                       <li key={title}>
                         <a href={`#${slugifySectionTitle(title)}`} className="text-ink-300 hover:text-signal">{title}</a>
@@ -141,7 +141,7 @@ export default function HelpPage() {
               {activeArticle && getRelatedArticles(activeArticle).length > 0 && (
                 <div>
                   <div className="field-label mb-2">Related topics</div>
-                  <ul className="space-y-1 text-sm">
+                  <ul className="space-y-2 text-sm">
                     {getRelatedArticles(activeArticle).map((r) => (
                       <li key={r.slug}>
                         <button onClick={() => openArticle(r.slug)} className="text-blueprint hover:text-blueprint-hover text-left">{r.title}</button>
@@ -153,7 +153,7 @@ export default function HelpPage() {
               {activeArticle && relatedTips.length > 0 && (
                 <div>
                   <div className="field-label mb-2">Helpful tips</div>
-                  <ul className="list-disc pl-4 space-y-1 text-xs text-ink-500">
+                  <ul className="list-disc pl-4 space-y-2 text-xs text-ink-500">
                     {relatedTips.slice(0, 3).map((tip, i) => <li key={i}>{tip}</li>)}
                   </ul>
                 </div>
@@ -175,20 +175,20 @@ function RoleGuideList({
 }) {
   return (
     <div>
-      <h1 className="text-lg font-semibold text-ink-100 mb-1">Guide for {roleLabel}</h1>
+      <h1 className="text-lg font-semibold text-ink-100 mb-2">Guide for {roleLabel}</h1>
       <p className="text-xs text-ink-500 mb-4">
         A quick-start subset of the Help Centre for your role -- the rest is still available via the categories on the left.
       </p>
       {articles.length === 0 ? (
         <div className="text-sm text-ink-500">No role-specific guide is available yet for {roleLabel}.</div>
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-4">
           {articles.map((a) => (
             <li key={a.slug}>
               <button onClick={() => onOpenArticle(a.slug)} className="text-left w-full panel p-4 hover:bg-base-700 transition-colors">
-                <div className="text-[11px] text-ink-500 font-medium">{HELP_CATEGORY_LABELS[a.category]}</div>
+                <div className="text-xs text-ink-500 font-medium">{HELP_CATEGORY_LABELS[a.category]}</div>
                 <div className="font-medium text-ink-100 text-sm">{a.title}</div>
-                <div className="text-xs text-ink-500 mt-0.5">{a.summary}</div>
+                <div className="text-xs text-ink-500 max-w-measure">{a.summary}</div>
               </button>
             </li>
           ))}
@@ -216,12 +216,12 @@ function CategoryArticleList({
   return (
     <div>
       <h1 className="text-lg font-semibold text-ink-100 mb-4">{HELP_CATEGORY_LABELS[category]}</h1>
-      <ul className="space-y-3">
+      <ul className="space-y-4">
         {articles.map((a) => (
           <li key={a.slug}>
             <button onClick={() => onOpenArticle(a.slug)} className="text-left w-full panel p-4 hover:bg-base-700 transition-colors">
               <div className="font-medium text-ink-100 text-sm">{a.title}</div>
-              <div className="text-xs text-ink-500 mt-0.5">{a.summary}</div>
+              <div className="text-xs text-ink-500 max-w-measure">{a.summary}</div>
             </button>
           </li>
         ))}
@@ -239,7 +239,7 @@ function SearchResultsPanel({
 }) {
   if (results.length === 0) {
     return (
-      <div className="panel tick-frame p-8 text-center space-y-3">
+      <div className="panel tick-frame p-8 text-center space-y-4">
         <p className="text-sm text-ink-300">No articles matched "{query}".</p>
         <p className="text-xs text-ink-500">
           Try a shorter term, or browse a category below: {HELP_CATEGORIES.slice(0, 4).map((c) => HELP_CATEGORY_LABELS[c]).join(', ')}.
@@ -255,9 +255,9 @@ function SearchResultsPanel({
         {results.map(({ article }) => (
           <li key={article.slug}>
             <button onClick={() => onOpenArticle(article.slug)} className="text-left w-full panel p-4 hover:bg-base-700 transition-colors">
-              <div className="text-[11px] text-ink-500 font-medium">{HELP_CATEGORY_LABELS[article.category]}</div>
+              <div className="text-xs text-ink-500 font-medium">{HELP_CATEGORY_LABELS[article.category]}</div>
               <div className="font-medium text-ink-100 text-sm">{article.title}</div>
-              <div className="text-xs text-ink-500 mt-0.5">{article.summary}</div>
+              <div className="text-xs text-ink-500 mt-0">{article.summary}</div>
             </button>
           </li>
         ))}

@@ -58,7 +58,7 @@ export function SubmittalDetailModal({
           <span className={`badge ${SUBMITTAL_PRIORITY_BADGE_CLASS[submittal.priority]}`}>{SUBMITTAL_PRIORITY_LABELS[submittal.priority]}</span>
           {submittal.specSection && <span className="badge bg-base-700 text-ink-500">§{submittal.specSection}</span>}
           {submittal.revision && <span className="badge bg-base-700 text-ink-500">{submittal.revision}</span>}
-          <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary !px-3 !py-1.5 text-xs ml-auto">Email</button>
+          <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary !px-4 !py-2 text-xs ml-auto">Email</button>
           <span className="text-xs text-ink-500">Due {formatDate(submittal.dueDate)}</span>
         </div>
 
@@ -102,19 +102,19 @@ export function SubmittalDetailModal({
               key={outcome}
               onClick={() => reviewMutation.mutate(outcome)}
               disabled={reviewMutation.isPending || submittal.status === outcome}
-              className="btn-secondary !px-3 !py-1.5 text-xs"
+              className="btn-secondary !px-4 !py-2 text-xs"
             >
               {SUBMITTAL_STATUS_LABELS[outcome]}
             </button>
           ))}
           {submittal.status !== 'under_review' && !REVIEW_OUTCOMES.includes(submittal.status) && (
-            <button onClick={() => statusMutation.mutate('under_review')} disabled={statusMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
+            <button onClick={() => statusMutation.mutate('under_review')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 text-xs">
               Start review
             </button>
           )}
           <button
             onClick={() => { if (confirm('Delete this submittal?')) deleteMutation.mutate(); }}
-            className="btn-danger !px-3 !py-1.5 text-xs ml-auto"
+            className="btn-danger !px-4 !py-2 text-xs ml-auto"
           >
             Delete
           </button>

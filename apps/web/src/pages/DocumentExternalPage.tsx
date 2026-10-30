@@ -47,9 +47,9 @@ export default function DocumentExternalPage() {
         {doc && (
           <div className="panel tick-frame p-6 text-center">
             <div className="text-xs text-ink-500 font-medium">{DOC_TYPE_LABELS[doc.docType]}</div>
-            <h1 className="text-xl font-semibold text-ink-100 mt-1">{doc.title}</h1>
+            <h1 className="text-xl font-semibold text-ink-100 mt-2">{doc.title}</h1>
             {(doc.documentNumber || doc.revision) && (
-              <div className="text-xs text-ink-500 mt-1">
+              <div className="text-xs text-ink-500 mt-2">
                 {doc.documentNumber ?? ''}{doc.documentNumber && doc.revision ? ' · Rev ' : doc.revision ? 'Rev ' : ''}{doc.revision ?? ''}
               </div>
             )}

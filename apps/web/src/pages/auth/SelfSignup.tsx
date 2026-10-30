@@ -70,7 +70,7 @@ export default function SelfSignup() {
           {...register('signupCode', { required: 'Ask your company administrator for this code' })}
         />
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <Input
             label="Organization name"
             placeholder="e.g. AECOM"
@@ -99,7 +99,7 @@ export default function SelfSignup() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <Input
             label="First name"
             error={errors.firstName?.message}

@@ -138,7 +138,7 @@ export function RfiFormModal({
   return (
     <Modal open={open} onClose={handleClose} title="New RFI">
       <div className="space-y-4">
-        <div className="flex items-center justify-between -mt-1">
+        <div className="flex items-center justify-between -mt-2">
           {raisedByOrganizationSlot === 'subcontractor' ? (
             <span className="badge bg-blueprint/15 text-blueprint">Raising as: Subcontractor</span>
           ) : <span />}
@@ -157,9 +157,9 @@ export function RfiFormModal({
         </div>
 
         <div>
-          <div className="field-label mb-1.5">Attachments</div>
+          <div className="field-label mb-2">Attachments</div>
           {files.length > 0 && (
-            <ul className="mb-2 space-y-1">
+            <ul className="mb-2 space-y-2">
               {files.map((file, i) => (
                 <li key={`${file.name}-${i}`} className="flex items-center justify-between text-xs text-ink-300">
                   <span>{file.name}</span>
@@ -176,7 +176,7 @@ export function RfiFormModal({
               ))}
             </ul>
           )}
-          <label className="btn-secondary !px-3 !py-1.5 text-xs cursor-pointer inline-block">
+          <label className="btn-secondary !px-4 !py-2 text-xs cursor-pointer inline-block">
             + Add attachment
             <input
               type="file"
@@ -192,7 +192,7 @@ export function RfiFormModal({
           </label>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="priority">Priority</label>
             <Listbox id="priority" className="field-input" value={priority} onChange={(e) => setPriority(e.target.value as RfiPriority)}>
@@ -207,7 +207,7 @@ export function RfiFormModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="assignedTo">Assignee</label>
             <Listbox id="assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
@@ -251,7 +251,7 @@ export function RfiFormModal({
             ))}
           </Listbox>
           {costImpactLevel !== 'no' && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <input
                 className="field-input"
                 type="number"
@@ -290,7 +290,7 @@ export function RfiFormModal({
             ))}
           </Listbox>
           {timeImpactLevel !== 'no' && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <input
                 className="field-input"
                 type="number"

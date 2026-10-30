@@ -39,17 +39,17 @@ export function HierarchyTree({
   }
 
   if (buildings.length === 0) {
-    return <div className="text-sm text-ink-500 px-1 py-4">No buildings added yet.</div>;
+    return <div className="text-sm text-ink-500 px-2 py-4">No buildings added yet.</div>;
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       {buildings.map((building) => (
         <div key={building.id}>
           <div className="flex items-center group">
             <button
               onClick={() => toggleBuilding(building.id)}
-              className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-base-700 text-left min-w-0"
+              className="flex-1 flex items-center gap-2 px-2 py-2 rounded text-sm hover:bg-base-700 text-left min-w-0"
             >
               <Chevron open={openBuildings.has(building.id)} />
               <BuildingIcon className="w-4 h-4 text-blueprint shrink-0" />
@@ -58,7 +58,7 @@ export function HierarchyTree({
             {onAddLevel && (
               <button
                 onClick={() => onAddLevel(building.id)}
-                className="opacity-0 group-hover:opacity-100 text-ink-500 hover:text-blueprint px-1.5 transition-opacity"
+                className="opacity-0 group-hover:opacity-100 text-ink-500 hover:text-blueprint px-2 transition-opacity"
                 title="Add level"
               >
                 <PlusIcon className="w-3.5 h-3.5" />
@@ -67,7 +67,7 @@ export function HierarchyTree({
           </div>
 
           {onSetBuildingPhase && (
-            <div className="ml-6 mb-1">
+            <div className="ml-6 mb-2">
               <PhaseEditor
                 phase={building.phase}
                 onSave={(phase) => onSetBuildingPhase(building.id, phase)}
@@ -77,16 +77,16 @@ export function HierarchyTree({
           )}
 
           {openBuildings.has(building.id) && (
-            <div className="ml-4 pl-3 border-l border-base-600 space-y-1 mt-0.5">
+            <div className="ml-4 pl-4 border-l border-base-600 space-y-2 mt-0">
               {(building.levels ?? []).length === 0 && (
-                <div className="text-xs text-ink-500 px-2 py-1">No levels yet</div>
+                <div className="text-xs text-ink-500 px-2 py-2">No levels yet</div>
               )}
               {(building.levels ?? []).map((level) => (
                 <div key={level.id}>
                   <div className="flex items-center group">
                     <button
                       onClick={() => toggleLevel(level.id)}
-                      className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-base-700 text-left min-w-0"
+                      className="flex-1 flex items-center gap-2 px-2 py-2 rounded text-sm hover:bg-base-700 text-left min-w-0"
                     >
                       <Chevron open={openLevels.has(level.id)} />
                       <LevelIcon className="w-3.5 h-3.5 text-ink-500 shrink-0" />
@@ -95,7 +95,7 @@ export function HierarchyTree({
                     {onAddLocation && (
                       <button
                         onClick={() => onAddLocation(building.id, level.id)}
-                        className="opacity-0 group-hover:opacity-100 text-ink-500 hover:text-blueprint px-1.5 transition-opacity"
+                        className="opacity-0 group-hover:opacity-100 text-ink-500 hover:text-blueprint px-2 transition-opacity"
                         title="Add location"
                       >
                         <PlusIcon className="w-3.5 h-3.5" />
@@ -104,15 +104,15 @@ export function HierarchyTree({
                   </div>
 
                   {openLevels.has(level.id) && (
-                    <div className="ml-4 pl-3 border-l border-base-600 space-y-0.5 mt-0.5">
+                    <div className="ml-4 pl-4 border-l border-base-600 space-y-0 mt-0">
                       {(level.locations ?? []).length === 0 && (
-                        <div className="text-xs text-ink-500 px-2 py-1">No locations yet</div>
+                        <div className="text-xs text-ink-500 px-2 py-2">No locations yet</div>
                       )}
                       {(level.locations ?? []).map((location) => (
                         <button
                           key={location.id}
                           onClick={() => onSelectLocation(location.id, location.name)}
-                          className={`w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded text-sm text-left transition-colors ${
+                          className={`w-full flex items-center justify-between gap-2 px-2 py-2 rounded text-sm text-left transition-colors ${
                             selectedLocationId === location.id
                               ? 'bg-signal text-base-800'
                               : 'text-ink-300 hover:bg-base-700 hover:text-ink-100'
@@ -120,7 +120,7 @@ export function HierarchyTree({
                         >
                           <span className="truncate">{location.name}</span>
                           {(location.captureCount ?? 0) > 0 && (
-                            <span className="text-[10px] font-mono text-ink-500 shrink-0">
+                            <span className="text-xs font-mono text-ink-500 shrink-0">
                               {location.captureCount}
                             </span>
                           )}

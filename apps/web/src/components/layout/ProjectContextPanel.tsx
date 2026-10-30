@@ -47,9 +47,9 @@ export function ProjectContextPanel({ projectId }: { projectId: string }) {
   const projects = projectsQuery.data?.data ?? [];
 
   return (
-    <div className="px-3 py-2.5 border-b border-base-600 space-y-1.5">
+    <div className="px-4 py-2 border-b border-base-600 space-y-2">
       <Listbox
-        className="field-input !py-1 text-xs w-full"
+        className="field-input !py-2 text-xs w-full"
         value={projectId}
         onChange={(e) => {
           if (e.target.value) navigate(`/projects/${e.target.value}`);
@@ -67,7 +67,7 @@ export function ProjectContextPanel({ projectId }: { projectId: string }) {
         ))}
       </Listbox>
       {(myMembership || myOrgSlot) && (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-2">
           {myMembership && (
             <Badge>{PROJECT_ROLE_LABELS[myMembership.role as ProjectRole] ?? myMembership.role}</Badge>
           )}

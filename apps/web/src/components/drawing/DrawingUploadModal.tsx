@@ -80,7 +80,7 @@ export function DrawingUploadModal({
           ) : (
             <>
               <p className="text-sm text-ink-300">Drag a PDF here, or click to browse</p>
-              <p className="text-xs text-ink-500 mt-1">Single-sheet floor plan drawing</p>
+              <p className="text-xs text-ink-500 mt-2">Single-sheet floor plan drawing</p>
             </>
           )}
         </div>
@@ -92,7 +92,7 @@ export function DrawingUploadModal({
 
         <BuildingLevelRoomPicker projectId={projectId} hierarchy={hierarchy} value={place} onChange={setPlace} />
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-4">
           <div>
             <label className="field-label" htmlFor="drawingType">Drawing type</label>
             <input
@@ -114,7 +114,7 @@ export function DrawingUploadModal({
         </div>
 
         {mutation.isError && (
-          <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded px-3 py-2">
+          <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded px-4 py-2">
             {apiErrorMessage(mutation.error)}
           </div>
         )}

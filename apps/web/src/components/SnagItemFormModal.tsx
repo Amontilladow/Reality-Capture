@@ -122,7 +122,7 @@ export function SnagItemFormModal({
           <textarea id="description" className="field-input min-h-[72px]" value={description} onChange={(e) => setDescription(e.target.value)} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="location">Location</label>
             <input id="location" className="field-input" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Level 2, Unit 204" />
@@ -135,7 +135,7 @@ export function SnagItemFormModal({
 
         <BuildingLevelRoomPicker projectId={projectId} hierarchy={hierarchy} value={place} onChange={setPlace} />
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="priority">Priority</label>
             <Listbox id="priority" className="field-input" value={priority} onChange={(e) => setPriority(e.target.value as SnagPriority)}>

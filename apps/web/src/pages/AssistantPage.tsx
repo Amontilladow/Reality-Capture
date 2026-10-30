@@ -117,7 +117,7 @@ export default function AssistantPage() {
             <div className="tick-frame panel p-12 text-center text-sm text-ink-500">
               Ask about RFIs, NCRs/SORs/WIRs/MIRs, issues, snagging, submittals, transmittals, QA inspections, risk, progress, or documents on this project.
               {currentResourceType && currentResourceId && (
-                <span className="block mt-1 text-xs">Currently looking at this {currentResourceType.replace('_', ' ')} -- follow-up questions can refer to it directly.</span>
+                <span className="block mt-2 text-xs">Currently looking at this {currentResourceType.replace('_', ' ')} -- follow-up questions can refer to it directly.</span>
               )}
             </div>
           )}
@@ -129,7 +129,7 @@ export default function AssistantPage() {
                   <Alert tone="warning">{m.content}</Alert>
                 </div>
               ) : (
-                <div className={`max-w-[75%] rounded-md px-4 py-2.5 text-sm ${m.role === 'user' ? 'bg-signal text-base-950' : 'panel'}`}>
+                <div className={`max-w-[75%] rounded-md px-4 py-2 text-sm ${m.role === 'user' ? 'bg-signal text-base-950' : 'panel'}`}>
                   <p className="whitespace-pre-wrap">{m.content}</p>
                   {m.draft && (
                     <button onClick={() => openDraft(m.draft)} className="btn-secondary !text-xs mt-2">
@@ -143,7 +143,7 @@ export default function AssistantPage() {
 
           {askMutation.isPending && (
             <div className="flex justify-start">
-              <div className="panel px-4 py-2.5 text-sm text-ink-500">Thinking…</div>
+              <div className="panel px-4 py-2 text-sm text-ink-500">Thinking…</div>
             </div>
           )}
 
@@ -157,7 +157,7 @@ export default function AssistantPage() {
             globally in AppShell, on top of every page). Without this, Send
             lands in the same corner on a full-width mobile layout and the
             launcher (z-50) covers it. */}
-        <div className="flex gap-2 pt-3 border-t border-base-600 mb-20 sm:mb-0">
+        <div className="flex gap-2 pt-4 border-t border-base-600 mb-20 sm:mb-0">
           <input
             className="field-input flex-1"
             placeholder="Ask a question about this project…"

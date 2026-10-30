@@ -208,22 +208,22 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
 
   return (
     <Modal open onClose={onClose} title="Project Risk Graph" wide>
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           {focusNodeId && (
-            <button onClick={() => setFocusNodeId(undefined)} className="btn-secondary !px-2.5 !py-1 text-xs">
+            <button onClick={() => setFocusNodeId(undefined)} className="btn-secondary !px-2 !py-2 text-xs">
               ← Show full graph
             </button>
           )}
-          <Listbox aria-label="Node type" value={nodeTypeFilter} onChange={(e) => setNodeTypeFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
+          <Listbox aria-label="Node type" value={nodeTypeFilter} onChange={(e) => setNodeTypeFilter(e.target.value)} className="field-input w-auto text-xs !py-2">
             <option value="">All node types</option>
             {nodeTypes.map((t) => <option key={t} value={t}>{NODE_TYPE_LABELS[t] ?? t}</option>)}
           </Listbox>
-          <Listbox aria-label="Discipline" value={disciplineFilter} onChange={(e) => setDisciplineFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
+          <Listbox aria-label="Discipline" value={disciplineFilter} onChange={(e) => setDisciplineFilter(e.target.value)} className="field-input w-auto text-xs !py-2">
             <option value="">All disciplines</option>
             {disciplines.map((d) => <option key={d} value={d}>{d}</option>)}
           </Listbox>
-          <Listbox aria-label="Risk level" value={riskLevelFilter} onChange={(e) => setRiskLevelFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
+          <Listbox aria-label="Risk level" value={riskLevelFilter} onChange={(e) => setRiskLevelFilter(e.target.value)} className="field-input w-auto text-xs !py-2">
             <option value="">All risk levels</option>
             {(['CRITICAL', 'HIGH', 'MODERATE', 'LOW'] as RiskLevel[]).map((l) => <option key={l} value={l}>{l}</option>)}
           </Listbox>
@@ -231,12 +231,12 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
         </div>
 
         <div className="flex items-center gap-4 text-xs text-ink-500 flex-wrap">
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.danger }} /> Critical</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.high }} /> High</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.warn }} /> Moderate</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.ok }} /> Low</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-4 border-t border-ink-500" /> Explicit relationship</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-4 border-t border-dashed border-blueprint" /> Inferred relationship</span>
+          <span className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.danger }} /> Critical</span>
+          <span className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.high }} /> High</span>
+          <span className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.warn }} /> Moderate</span>
+          <span className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.ok }} /> Low</span>
+          <span className="flex items-center gap-2"><span className="inline-block w-4 border-t border-ink-500" /> Explicit relationship</span>
+          <span className="flex items-center gap-2"><span className="inline-block w-4 border-t border-dashed border-blueprint" /> Inferred relationship</span>
         </div>
 
         {graphQuery.isLoading && <p className="text-sm text-ink-500">Loading graph…</p>}
@@ -280,8 +280,8 @@ function GraphNodeDetailPanel({ projectId, nodeId, onClose, onFocus }: { project
           </div>
 
           {detail.risk && (
-            <div className="panel p-3">
-              <div className="text-xs text-ink-500 mb-1 font-medium">Associated Risk</div>
+            <div className="panel p-4">
+              <div className="text-xs text-ink-500 mb-2 font-medium">Associated Risk</div>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-semibold tabular-nums" style={{ color: RISK_LEVEL_COLORS[detail.risk.level] }}>{detail.risk.score}</span>
                 <span className="text-sm text-ink-300">{detail.risk.title}</span>
@@ -292,7 +292,7 @@ function GraphNodeDetailPanel({ projectId, nodeId, onClose, onFocus }: { project
           {detail.related.length > 0 && (
             <div>
               <div className="text-xs text-ink-500 mb-2 font-medium">Connected ({detail.related.length})</div>
-              <ul className="space-y-1 max-h-64 overflow-y-auto">
+              <ul className="space-y-2 max-h-64 overflow-y-auto">
                 {detail.related.map((r, i) => (
                   <li key={i} className="text-sm flex items-center justify-between">
                     <span className="text-ink-100">{r.node.label} <span className="text-ink-500 text-xs">({NODE_TYPE_LABELS[r.node.nodeType] ?? r.node.nodeType})</span></span>
@@ -303,7 +303,7 @@ function GraphNodeDetailPanel({ projectId, nodeId, onClose, onFocus }: { project
             </div>
           )}
 
-          <button onClick={() => onFocus(nodeId)} className="btn-secondary !px-3 !py-1.5 text-xs">
+          <button onClick={() => onFocus(nodeId)} className="btn-secondary !px-4 !py-2 text-xs">
             Focus graph on this node
           </button>
         </div>

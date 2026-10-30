@@ -206,34 +206,34 @@ export function PinPanel({
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-base-950/80 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-2xl max-h-[85vh] tick-frame panel overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-base-600 shrink-0">
+        <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-base-600 shrink-0">
           <div className="min-w-0 flex-1">
-            <div className="text-[11px] text-ink-500 mb-0.5 font-medium">Pin</div>
+            <div className="text-xs text-ink-500 mb-0 font-medium">Pin</div>
             {editingTitle ? (
               <div className="flex items-center gap-2">
                 <input
                   autoFocus
-                  className="field-input !py-1.5 text-base font-semibold"
+                  className="field-input !py-2 text-base font-semibold"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') renameMutation.mutate(); if (e.key === 'Escape') { setTitle(lastSavedTitle.current); setEditingTitle(false); } }}
                 />
-                <button onClick={() => renameMutation.mutate()} disabled={renameMutation.isPending} className="btn-primary !px-3 !py-1.5 text-xs shrink-0">
+                <button onClick={() => renameMutation.mutate()} disabled={renameMutation.isPending} className="btn-primary !px-4 !py-2 text-xs shrink-0">
                   Save
                 </button>
-                <button onClick={() => { setTitle(lastSavedTitle.current); setEditingTitle(false); }} className="btn-ghost !px-2 !py-1.5 text-xs shrink-0">Cancel</button>
+                <button onClick={() => { setTitle(lastSavedTitle.current); setEditingTitle(false); }} className="btn-ghost !px-2 !py-2 text-xs shrink-0">Cancel</button>
               </div>
             ) : (
-              <button onClick={() => setEditingTitle(true)} className="flex items-center gap-1.5 min-w-0 hover:text-blueprint text-left">
+              <button onClick={() => setEditingTitle(true)} className="flex items-center gap-2 min-w-0 hover:text-blueprint text-left">
                 <h3 className="text-base font-semibold truncate">{title || 'Untitled pin'}</h3>
                 <EditIcon className="w-3.5 h-3.5 text-ink-500 shrink-0" />
               </button>
             )}
             {linkedRecord && (
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className="text-[11px] text-ink-500 font-medium">Assignee</span>
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-xs text-ink-500 font-medium">Assignee</span>
                 <Listbox aria-label="Assigned to"
-                  className="field-input w-auto !py-1 !text-xs"
+                  className="field-input w-auto !py-2 !text-xs"
                   value={assignedTo}
                   onChange={(e) => assignMutation.mutate(e.target.value)}
                   disabled={assignMutation.isPending}
@@ -245,19 +245,19 @@ export function PinPanel({
                 </Listbox>
               </div>
             )}
-            {assignMutation.isError && <p className="field-error mt-1">{apiErrorMessage(assignMutation.error)}</p>}
+            {assignMutation.isError && <p className="field-error mt-2">{apiErrorMessage(assignMutation.error)}</p>}
             {linkedRecord?.type === 'issue' && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
                 <Link
                   to={`/projects/${projectId}/issues?issueId=${linkedRecord.id}`}
-                  className="text-xs text-blueprint hover:text-blueprint-hover px-1"
+                  className="text-xs text-blueprint hover:text-blueprint-hover px-2"
                 >
                   View in Issues →
                 </Link>
                 <button
                   onClick={() => convertToSnagMutation.mutate()}
                   disabled={convertToSnagMutation.isPending}
-                  className="btn-ghost !px-2 !py-1 text-xs"
+                  className="btn-ghost !px-2 !py-2 text-xs"
                 >
                   {convertToSnagMutation.isPending ? 'Converting…' : 'Mark as snag'}
                 </button>
@@ -266,24 +266,24 @@ export function PinPanel({
             {linkedRecord?.type === 'snag' && (
               <Link
                 to={`/projects/${projectId}/snagging?snagId=${linkedRecord.id}`}
-                className="text-xs text-blueprint hover:text-blueprint-hover px-1"
+                className="text-xs text-blueprint hover:text-blueprint-hover px-2"
               >
                 View in Snagging →
               </Link>
             )}
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <button onClick={() => onMove(pin)} className="btn-ghost !px-2.5 !py-1.5 text-xs" title="Move this pin to a new spot on the drawing">
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => onMove(pin)} className="btn-ghost !px-2 !py-2 text-xs" title="Move this pin to a new spot on the drawing">
               Move
             </button>
             <button
               onClick={handleDelete}
               disabled={archiveMutation.isPending}
-              className="btn-ghost !px-2.5 !py-1.5 text-xs text-danger hover:!bg-danger/10"
+              className="btn-ghost !px-2 !py-2 text-xs text-danger hover:!bg-danger/10"
             >
               {archiveMutation.isPending ? 'Deleting…' : 'Delete'}
             </button>
-            <button onClick={onClose} className="text-ink-500 hover:text-ink-100 !px-1" aria-label="Close">
+            <button onClick={onClose} className="text-ink-500 hover:text-ink-100 !px-2" aria-label="Close">
               <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
               </svg>
@@ -291,10 +291,10 @@ export function PinPanel({
           </div>
         </div>
         {archiveMutation.isError && (
-          <p className="field-error px-5 pt-2">{apiErrorMessage(archiveMutation.error)}</p>
+          <p className="field-error px-6 pt-2">{apiErrorMessage(archiveMutation.error)}</p>
         )}
 
-        <div className="p-5 overflow-y-auto space-y-4">
+        <div className="p-6 overflow-y-auto space-y-4">
           {/* Note */}
           <div>
             <div className="field-label">Note</div>
@@ -308,14 +308,14 @@ export function PinPanel({
                   onChange={(e) => setNote(e.target.value)}
                 />
                 <div className="flex gap-2">
-                  <button onClick={() => noteMutation.mutate()} disabled={noteMutation.isPending} className="btn-primary !px-3 !py-1.5 text-xs">
+                  <button onClick={() => noteMutation.mutate()} disabled={noteMutation.isPending} className="btn-primary !px-4 !py-2 text-xs">
                     {noteMutation.isPending ? 'Saving…' : 'Save note'}
                   </button>
-                  <button onClick={() => { setNote(lastSavedNote.current); setEditingNote(false); }} className="btn-ghost !px-2 !py-1.5 text-xs">Cancel</button>
+                  <button onClick={() => { setNote(lastSavedNote.current); setEditingNote(false); }} className="btn-ghost !px-2 !py-2 text-xs">Cancel</button>
                 </div>
               </div>
             ) : note ? (
-              <button onClick={() => setEditingNote(true)} className="panel p-3 text-sm text-ink-100 text-left w-full hover:border-blueprint/50 transition-colors">
+              <button onClick={() => setEditingNote(true)} className="panel p-4 text-sm text-ink-100 text-left w-full hover:border-blueprint/50 transition-colors">
                 {note}
               </button>
             ) : (
@@ -336,30 +336,30 @@ export function PinPanel({
                   className="w-full"
                   onSelect={(el) => elementMutation.mutate(el)}
                 />
-                <button onClick={() => setPickingElement(false)} className="btn-ghost !px-2 !py-1.5 text-xs">
+                <button onClick={() => setPickingElement(false)} className="btn-ghost !px-2 !py-2 text-xs">
                   Cancel
                 </button>
               </div>
             ) : linkedElement ? (
-              <div className="flex items-center justify-between gap-2 panel p-3">
+              <div className="flex items-center justify-between gap-2 panel p-4">
                 <div className="min-w-0">
                   <div className="text-sm text-ink-100 truncate">{linkedElement.name || 'Unnamed element'}</div>
                   <div className="text-xs text-ink-500">{linkedElement.ifcType.replace('IFC', '')}</div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                   {pin.elementModelId && pin.elementGuid && (
                     <Link
                       to={`/projects/${projectId}/bim/${pin.elementModelId}?guid=${pin.elementGuid}`}
-                      className="text-xs text-blueprint hover:text-blueprint-hover px-1"
+                      className="text-xs text-blueprint hover:text-blueprint-hover px-2"
                     >
                       View in 3D →
                     </Link>
                   )}
-                  <button onClick={() => setPickingElement(true)} className="btn-ghost !px-2 !py-1 text-xs">Change</button>
+                  <button onClick={() => setPickingElement(true)} className="btn-ghost !px-2 !py-2 text-xs">Change</button>
                   <button
                     onClick={() => elementMutation.mutate(null)}
                     disabled={elementMutation.isPending}
-                    className="btn-ghost !px-2 !py-1 text-xs text-danger hover:!bg-danger/10"
+                    className="btn-ghost !px-2 !py-2 text-xs text-danger hover:!bg-danger/10"
                   >
                     Unlink
                   </button>
@@ -388,7 +388,7 @@ export function PinPanel({
             <button onClick={() => fileInputRef.current?.click()} disabled={uploading} className="btn-primary w-full justify-center">
               {uploading ? 'Uploading…' : '+ Add photo or video'}
             </button>
-            <label className="flex items-center gap-1.5 mt-1.5 text-xs text-ink-500 hover:text-ink-100 cursor-pointer w-fit">
+            <label className="flex items-center gap-2 mt-2 text-xs text-ink-500 hover:text-ink-100 cursor-pointer w-fit">
               <input
                 type="checkbox"
                 checked={is360}

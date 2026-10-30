@@ -184,7 +184,7 @@ export function ThreeJsViewer({
         <button
           key={h.id}
           onClick={() => onHotspotClick?.(h)}
-          className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 group"
+          className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 group"
           style={{ left: h.screenX, top: h.screenY }}
         >
           <span
@@ -205,7 +205,7 @@ export function ThreeJsViewer({
             )}
           </span>
           {h.label && (
-            <span className="text-[10px] font-mono bg-base-950/90 text-ink-100 px-1.5 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="text-xs font-mono bg-base-950/90 text-ink-100 px-2 py-0 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
               {h.label}
             </span>
           )}
@@ -214,7 +214,7 @@ export function ThreeJsViewer({
 
       <button
         onClick={resetView}
-        className="absolute bottom-4 right-4 btn-secondary !py-1.5 !px-3 text-xs"
+        className="absolute bottom-4 right-4 btn-secondary !py-2 !px-4 text-xs"
         title="Reset view"
       >
         Reset view

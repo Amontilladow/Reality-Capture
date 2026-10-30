@@ -66,23 +66,23 @@ export function TransmittalDetailModal({
 
         <div className="flex flex-wrap gap-2 pt-2 border-t border-base-600">
           {transmittal.status === 'draft' && (
-            <button onClick={() => statusMutation.mutate('sent')} disabled={statusMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
+            <button onClick={() => statusMutation.mutate('sent')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 text-xs">
               Mark as sent
             </button>
           )}
           {transmittal.status === 'sent' && (
-            <button onClick={() => statusMutation.mutate('acknowledged')} disabled={statusMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
+            <button onClick={() => statusMutation.mutate('acknowledged')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 text-xs">
               Mark as acknowledged
             </button>
           )}
           {transmittal.status !== 'void' && (
-            <button onClick={() => statusMutation.mutate('void')} disabled={statusMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
+            <button onClick={() => statusMutation.mutate('void')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 text-xs">
               Void
             </button>
           )}
           <button
             onClick={() => { if (confirm('Delete this transmittal?')) deleteMutation.mutate(); }}
-            className="btn-danger !px-3 !py-1.5 text-xs ml-auto"
+            className="btn-danger !px-4 !py-2 text-xs ml-auto"
           >
             Delete
           </button>

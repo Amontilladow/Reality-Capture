@@ -31,14 +31,14 @@ export function BrandPanel({ className = '', showThemeToggle = true }: { classNa
 
       {/* Stacked chips, top left: a sun card over a noir one. */}
       <div aria-hidden="true" className="absolute top-8 left-8">
-        <div className="relative w-64 rounded-2xl bg-sun text-noir px-4 py-3">
-          <div className="flex items-start justify-between gap-3">
+        <div className="relative w-64 rounded-2xl bg-sun text-noir px-4 py-4">
+          <div className="flex items-start justify-between gap-4">
             <span className="text-sm font-medium">360° site captures</span>
-            <span className="w-2 h-2 rounded-full bg-noir mt-1.5" />
+            <span className="w-2 h-2 rounded-full bg-noir mt-2" />
           </div>
-          <span className="block text-xs mt-1">Pinned to building, level and room</span>
+          <span className="block text-xs mt-2">Pinned to building, level and room</span>
         </div>
-        <div className="ml-8 -mt-2 w-60 rounded-b-2xl bg-noir text-on-noir px-4 pt-4 pb-3 flex items-center justify-between">
+        <div className="ml-8 -mt-2 w-60 rounded-b-2xl bg-noir text-on-noir px-4 pt-4 pb-4 flex items-center justify-between">
           <span className="text-xs text-on-noir/80">Linked to BIM elements</span>
           <span className="w-2 h-2 rounded-full bg-sun" />
         </div>
@@ -46,13 +46,13 @@ export function BrandPanel({ className = '', showThemeToggle = true }: { classNa
 
       {/* Hatched strip and a white card, bottom left. */}
       <div aria-hidden="true" className="absolute bottom-10 left-8 right-8 flex items-end gap-4">
-        <div className="w-64 rounded-2xl bg-base-800 text-ink-100 px-4 py-3">
-          <div className="flex items-start justify-between gap-3">
+        <div className="w-64 rounded-2xl bg-base-800 text-ink-100 px-4 py-4">
+          <div className="flex items-start justify-between gap-4">
             <span className="text-sm font-medium">Issues, RFIs and snags</span>
-            <span className="w-2 h-2 rounded-full bg-sun mt-1.5" />
+            <span className="w-2 h-2 rounded-full bg-sun mt-2" />
           </div>
-          <span className="block text-xs text-ink-300 mt-1">Tracked against what was actually built</span>
-          <div className="flex gap-1.5 mt-3">
+          <span className="block text-xs text-ink-300 mt-2">Tracked against what was actually built</span>
+          <div className="flex gap-2 mt-4">
             {['Capture', 'Analyze', 'Automate'].map((t) => (
               <span key={t} className="badge bg-base-700 text-ink-300">{t}</span>
             ))}

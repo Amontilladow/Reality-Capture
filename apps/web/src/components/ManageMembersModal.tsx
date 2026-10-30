@@ -186,7 +186,7 @@ export function ManageMembersModal({
           )}
           {removeMutation.isError && <p className="field-error">{apiErrorMessage(removeMutation.error)}</p>}
           {(membersQuery.data ?? []).map((m) => (
-            <div key={m.userId} className="flex items-center justify-between gap-2 text-sm py-1.5 border-b border-base-700/60 last:border-0">
+            <div key={m.userId} className="flex items-center justify-between gap-2 text-sm py-2 border-b border-base-700/60 last:border-0">
               <div className="min-w-0">
                 <span className="text-ink-100">{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</span>
                 <span className="text-ink-500 ml-2 text-xs">{PROJECT_ROLE_LABELS[m.role as ProjectRole] ?? m.role}</span>
@@ -194,7 +194,7 @@ export function ManageMembersModal({
               <div className="flex items-center gap-2 shrink-0">
                 {canManageOrganizations && (
                   <Listbox aria-label="Organization slot"
-                    className="field-input !py-0.5 !w-auto text-xs"
+                    className="field-input !py-0 !w-auto text-xs"
                     value={orgSlotByUserId.get(m.userId) ?? ''}
                     onChange={(e) =>
                       setOrgSlotMutation.mutate({ userId: m.userId, slot: e.target.value as ProjectOrganizationSlot | '' })
@@ -221,12 +221,12 @@ export function ManageMembersModal({
           {setOrgSlotMutation.isError && <p className="field-error">{apiErrorMessage(setOrgSlotMutation.error)}</p>}
         </div>
 
-        <div className="pt-2 border-t border-base-600 space-y-3">
+        <div className="pt-2 border-t border-base-600 space-y-4">
           <div className="field-label">Add a member</div>
           {deactivateMutation.isError && <p className="field-error">{apiErrorMessage(deactivateMutation.error)}</p>}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <Listbox aria-label="User"
                   className="field-input flex-1"
                   value={selectedUserId}
@@ -255,7 +255,7 @@ export function ManageMembersModal({
                 </button>
               </div>
               {usersQuery.isSuccess && addableUsers.length === 0 && (
-                <p className="text-xs text-ink-500 mt-1">
+                <p className="text-xs text-ink-500 mt-2">
                   Everyone in the company is already on this project — invite a new person below if you need someone else.
                 </p>
               )}
@@ -282,7 +282,7 @@ export function ManageMembersModal({
           </button>
         </div>
 
-        <div className="pt-2 border-t border-base-600 space-y-3">
+        <div className="pt-2 border-t border-base-600 space-y-4">
           {!showInvite ? (
             <button onClick={() => setShowInvite(true)} className="text-sm text-blueprint hover:text-blueprint-hover">
               + Invite someone new to the company
@@ -332,7 +332,7 @@ export function ManageMembersModal({
           )}
         </div>
 
-        <div className="pt-2 border-t border-base-600 space-y-3">
+        <div className="pt-2 border-t border-base-600 space-y-4">
           <div className="field-label">Pending approvals</div>
           <p className="text-xs text-ink-500">
             Company-wide, not specific to this project -- anyone who's accepted an invite but hasn't been approved yet.
@@ -343,7 +343,7 @@ export function ManageMembersModal({
           {pendingUsers.map((u) => {
             const role = overrideRole[u.id] ?? (u.requestedCompanyRole as CompanyRole);
             return (
-              <div key={u.id} className="flex items-center justify-between gap-3 text-sm py-1.5 border-b border-base-700/60 last:border-0">
+              <div key={u.id} className="flex items-center justify-between gap-4 text-sm py-2 border-b border-base-700/60 last:border-0">
                 <div>
                   <div className="text-ink-100">
                     {[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}
@@ -365,7 +365,7 @@ export function ManageMembersModal({
                   </Listbox>
                   <button
                     onClick={() => approveMutation.mutate({ userId: u.id, companyRole: role })}
-                    className="btn-primary !py-1 !px-2 text-xs shrink-0"
+                    className="btn-primary !py-2 !px-2 text-xs shrink-0"
                     disabled={approveMutation.isPending}
                   >
                     Approve
@@ -376,7 +376,7 @@ export function ManageMembersModal({
           })}
         </div>
 
-        <div className="pt-2 border-t border-base-600 space-y-3">
+        <div className="pt-2 border-t border-base-600 space-y-4">
           <div className="field-label">Company members</div>
           <p className="text-xs text-ink-500">
             Deactivating someone revokes their access company-wide (not just this project) and frees their seat.
@@ -391,8 +391,8 @@ export function ManageMembersModal({
             const roleChanged = role !== u.companyRole;
             const resetResult = resetLinks[u.id];
             return (
-              <div key={u.id} className="py-1.5 border-b border-base-700/60 last:border-0">
-                <div className="flex items-center justify-between gap-3 text-sm">
+              <div key={u.id} className="py-2 border-b border-base-700/60 last:border-0">
+                <div className="flex items-center justify-between gap-4 text-sm">
                   <div>
                     <div className="text-ink-100">
                       {[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}
@@ -421,7 +421,7 @@ export function ManageMembersModal({
                     {roleChanged && (
                       <button
                         onClick={() => changeRoleMutation.mutate({ userId: u.id, companyRole: role })}
-                        className="btn-primary !py-1 !px-2 text-xs shrink-0"
+                        className="btn-primary !py-2 !px-2 text-xs shrink-0"
                         disabled={changeRoleMutation.isPending}
                       >
                         Save
@@ -448,13 +448,13 @@ export function ManageMembersModal({
                   </div>
                 </div>
                 {resetResult && (
-                  <div className="mt-2 space-y-1">
+                  <div className="mt-2 space-y-2">
                     <p className="text-xs text-ink-100">
                       Reset link for {[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email} -- expires {new Date(resetResult.expiresAt).toLocaleString()}:
                     </p>
                     <div className="flex gap-2">
                       <input readOnly className="field-input font-mono text-xs" value={resetResult.resetLink} onClick={(e) => e.currentTarget.select()} />
-                      <button onClick={() => navigator.clipboard.writeText(resetResult.resetLink)} className="btn-secondary shrink-0 !py-1.5 text-xs">
+                      <button onClick={() => navigator.clipboard.writeText(resetResult.resetLink)} className="btn-secondary shrink-0 !py-2 text-xs">
                         Copy
                       </button>
                     </div>
@@ -468,7 +468,7 @@ export function ManageMembersModal({
           })}
         </div>
 
-        <div className="pt-2 border-t border-base-600 space-y-3">
+        <div className="pt-2 border-t border-base-600 space-y-4">
           <div className="field-label">Project permissions</div>
           <p className="text-xs text-ink-500">
             A Company Admin has no authority on a project by default — grant them specific permissions here,
@@ -480,9 +480,9 @@ export function ManageMembersModal({
             <p className="text-sm text-ink-500">No Company Admin accounts to grant permissions to.</p>
           )}
           {companyAdmins.map((u) => (
-            <div key={u.id} className="py-1.5 border-b border-base-700/60 last:border-0">
+            <div key={u.id} className="py-2 border-b border-base-700/60 last:border-0">
               <div className="text-ink-100 text-sm">{[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}</div>
-              <div className="flex flex-wrap gap-1.5 mt-1">
+              <div className="flex flex-wrap gap-2 mt-2">
                 {PROJECT_PERMISSIONS.map((permission) => {
                   const granted = grantedSet.has(`${u.id}:${permission}`);
                   const pending = grantMutation.isPending || revokeMutation.isPending;
@@ -497,8 +497,8 @@ export function ManageMembersModal({
                       disabled={pending}
                       className={
                         granted
-                          ? 'text-xs px-2 py-1 rounded border border-blueprint bg-blueprint/20 text-blueprint disabled:opacity-40'
-                          : 'text-xs px-2 py-1 rounded border border-base-600 text-ink-500 hover:text-ink-100 disabled:opacity-40'
+                          ? 'text-xs px-2 py-2 rounded border border-blueprint bg-blueprint/20 text-blueprint disabled:opacity-40'
+                          : 'text-xs px-2 py-2 rounded border border-base-600 text-ink-500 hover:text-ink-100 disabled:opacity-40'
                       }
                       title={granted ? `Click to revoke '${permission}'` : `Click to grant '${permission}'`}
                     >
@@ -511,7 +511,7 @@ export function ManageMembersModal({
           ))}
         </div>
 
-        <div className="pt-2 border-t border-base-600 space-y-3">
+        <div className="pt-2 border-t border-base-600 space-y-4">
           <div className="field-label">Project Organizations</div>
           <p className="text-xs text-ink-500">
             Configure the 5 stakeholder slots shown on every RFI's header and exported PDF -- name, reference,
@@ -597,17 +597,17 @@ function OrganizationRow({
 
   return (
     <div className="py-2 border-b border-base-700/60 last:border-0">
-      <div className="flex items-start gap-3">
-        <div className="shrink-0 flex flex-col items-center gap-1 w-16">
+      <div className="flex items-start gap-4">
+        <div className="shrink-0 flex flex-col items-center gap-2 w-16">
           {org?.logoUrl ? (
             <img src={org.logoUrl} alt="" loading="lazy" className="w-10 h-10 object-contain rounded border border-base-600 bg-base-950" />
           ) : (
-            <div className="w-10 h-10 rounded border border-dashed border-base-600 bg-base-900/60 flex items-center justify-center text-ink-500 text-[9px] text-center">
+            <div className="w-10 h-10 rounded border border-dashed border-base-600 bg-base-900/60 flex items-center justify-center text-ink-500 text-xs text-center">
               No logo
             </div>
           )}
           {canEdit && (
-            <label className="text-[10px] text-blueprint hover:text-blueprint-hover cursor-pointer text-center">
+            <label className="text-xs text-blueprint hover:text-blueprint-hover cursor-pointer text-center">
               {logoMutation.isPending ? 'Uploading…' : org?.logoUrl ? 'Change' : 'Upload'}
               <input
                 type="file"
@@ -624,25 +624,25 @@ function OrganizationRow({
           )}
         </div>
 
-        <div className="flex-1 space-y-1.5">
+        <div className="flex-1 space-y-2">
           <div className="text-xs text-ink-500 font-medium">{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</div>
           <div className="grid grid-cols-2 gap-2">
             <input
-              className="field-input !py-1 text-xs"
+              className="field-input !py-2 text-xs"
               placeholder="Organization name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={!canEdit}
             />
             <input
-              className="field-input !py-1 text-xs"
+              className="field-input !py-2 text-xs"
               placeholder="Reference"
               value={orgRef}
               onChange={(e) => setOrgRef(e.target.value)}
               disabled={!canEdit}
             />
             <input
-              className="field-input !py-1 text-xs"
+              className="field-input !py-2 text-xs"
               placeholder="Contact name"
               value={contactName}
               onChange={(e) => setContactName(e.target.value)}
@@ -650,7 +650,7 @@ function OrganizationRow({
             />
             <input
               type="email"
-              className="field-input !py-1 text-xs"
+              className="field-input !py-2 text-xs"
               placeholder="Contact email"
               value={contactEmail}
               onChange={(e) => setContactEmail(e.target.value)}
@@ -665,7 +665,7 @@ function OrganizationRow({
           <button
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending}
-            className="btn-primary !px-3 !py-1.5 text-xs shrink-0"
+            className="btn-primary !px-4 !py-2 text-xs shrink-0"
           >
             {saveMutation.isPending ? 'Saving…' : 'Save'}
           </button>

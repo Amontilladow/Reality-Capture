@@ -135,7 +135,7 @@ export default function WorkforcePage() {
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setSelectedUserId(null)}
-                className={`px-3 py-1.5 rounded text-xs border ${isSelf ? 'border-signal text-signal bg-signal/10' : 'border-base-600 text-ink-300 hover:bg-base-700'}`}
+                className={`px-4 py-2 rounded text-xs border ${isSelf ? 'border-signal text-signal bg-signal/10' : 'border-base-600 text-ink-300 hover:bg-base-700'}`}
               >
                 Me
               </button>
@@ -143,7 +143,7 @@ export default function WorkforcePage() {
                 <button
                   key={member.userId}
                   onClick={() => setSelectedUserId(member.userId)}
-                  className={`px-3 py-1.5 rounded text-xs border ${selectedUserId === member.userId ? 'border-signal text-signal bg-signal/10' : 'border-base-600 text-ink-300 hover:bg-base-700'}`}
+                  className={`px-4 py-2 rounded text-xs border ${selectedUserId === member.userId ? 'border-signal text-signal bg-signal/10' : 'border-base-600 text-ink-300 hover:bg-base-700'}`}
                 >
                   {member.name} <span className="text-ink-500">· {member.companyRole}</span>
                 </button>
@@ -193,7 +193,7 @@ export default function WorkforcePage() {
                 )}
 
                 {factors?.productivityRatio !== undefined && (
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs text-ink-500">
                       <span>Productive time (by app classification)</span>
                       <span className="text-ink-300 tabular-nums">{pct(factors.productivityRatio)} productive</span>
@@ -235,15 +235,15 @@ export default function WorkforcePage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                      <th className="px-4 py-2.5 font-medium">Project</th>
-                      <th className="px-4 py-2.5 font-medium">Time</th>
+                      <th className="px-4 py-2 font-medium">Project</th>
+                      <th className="px-4 py-2 font-medium">Time</th>
                     </tr>
                   </thead>
                   <tbody>
                     {summary.byProject.map((p) => (
                       <tr key={p.label} className="border-b border-base-700/60 last:border-0">
-                        <td className="px-4 py-2.5">{p.label}</td>
-                        <td className="px-4 py-2.5 text-ink-300 tabular-nums">{formatHm(p.seconds)}</td>
+                        <td className="px-4 py-2">{p.label}</td>
+                        <td className="px-4 py-2 text-ink-300 tabular-nums">{formatHm(p.seconds)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -266,7 +266,7 @@ export default function WorkforcePage() {
         <CalendarIntegrationPanel />
 
         {unattributed.length > 0 && (
-          <section className="space-y-3">
+          <section className="space-y-4">
             <h2 className="text-sm font-semibold text-ink-100">Unattributed activity</h2>
             <p className="text-xs text-ink-500">
               These activities have no confident project attribution yet. Assign one manually — a manual selection is always recorded at 100%
@@ -276,15 +276,15 @@ export default function WorkforcePage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                    <th className="px-4 py-2.5 font-medium">Application</th>
-                    <th className="px-4 py-2.5 font-medium">Duration</th>
-                    <th className="px-4 py-2.5 font-medium">Project</th>
+                    <th className="px-4 py-2 font-medium">Application</th>
+                    <th className="px-4 py-2 font-medium">Duration</th>
+                    <th className="px-4 py-2 font-medium">Project</th>
                   </tr>
                 </thead>
                 <tbody>
                   {unattributed.map((activity) => (
                     <tr key={activity.id} className="border-b border-base-700/60 last:border-0">
-                      <td className="px-4 py-2.5">
+                      <td className="px-4 py-2">
                         {activity.applicationName ?? activity.applicationNameRaw}
                         {activity.windowTitle && (
                           <span className="block text-xs text-ink-500 truncate max-w-xs" title={activity.windowTitle}>
@@ -292,10 +292,10 @@ export default function WorkforcePage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-2.5 text-ink-500 tabular-nums">{formatHm(activity.durationSeconds)}</td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-4 py-2 text-ink-500 tabular-nums">{formatHm(activity.durationSeconds)}</td>
+                      <td className="px-4 py-2">
                         <Listbox aria-label="Role"
-                          className="field-input !py-1 !text-xs"
+                          className="field-input !py-2 !text-xs"
                           value=""
                           disabled={attributingId === activity.id && attributeMutation.isPending}
                           onChange={(e) => {
@@ -427,10 +427,10 @@ function MyScheduling() {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-              <th className="px-4 py-2.5 font-medium">Day</th>
-              <th className="px-4 py-2.5 font-medium">Preferred?</th>
-              <th className="px-4 py-2.5 font-medium">Start</th>
-              <th className="px-4 py-2.5 font-medium">End</th>
+              <th className="px-4 py-2 font-medium">Day</th>
+              <th className="px-4 py-2 font-medium">Preferred?</th>
+              <th className="px-4 py-2 font-medium">Start</th>
+              <th className="px-4 py-2 font-medium">End</th>
             </tr>
           </thead>
           <tbody>
@@ -438,8 +438,8 @@ function MyScheduling() {
               const pref = preferenceByDay.get(dayOfWeek);
               return (
                 <tr key={dayOfWeek} className="border-b border-base-700/60 last:border-0">
-                  <td className="px-4 py-2.5">{name}</td>
-                  <td className="px-4 py-2.5">
+                  <td className="px-4 py-2">{name}</td>
+                  <td className="px-4 py-2">
                     <input
                       type="checkbox"
                       aria-label={`${name}: preferred working day`}
@@ -450,11 +450,11 @@ function MyScheduling() {
                       })}
                     />
                   </td>
-                  <td className="px-4 py-2.5">
+                  <td className="px-4 py-2">
                     <input
                       type="time"
                       aria-label={`${name}: start time`}
-                      className="field-input !py-1 !text-xs"
+                      className="field-input !py-2 !text-xs"
                       defaultValue={pref?.startTime ?? ''}
                       disabled={preferenceMutation.isPending}
                       onBlur={(e) => {
@@ -464,11 +464,11 @@ function MyScheduling() {
                       }}
                     />
                   </td>
-                  <td className="px-4 py-2.5">
+                  <td className="px-4 py-2">
                     <input
                       type="time"
                       aria-label={`${name}: end time`}
-                      className="field-input !py-1 !text-xs"
+                      className="field-input !py-2 !text-xs"
                       defaultValue={pref?.endTime ?? ''}
                       disabled={preferenceMutation.isPending}
                       onBlur={(e) => {
@@ -490,7 +490,7 @@ function MyScheduling() {
         <h3 className="text-xs font-semibold text-ink-300 mb-2">My upcoming shifts</h3>
         {shiftsQuery.data && shiftsQuery.data.length === 0 && <p className="text-sm text-ink-500">No shifts assigned yet.</p>}
         {shiftsQuery.data && shiftsQuery.data.length > 0 && (
-          <ul className="text-sm space-y-1">
+          <ul className="text-sm space-y-2">
             {shiftsQuery.data.map((s) => (
               <li key={s.id} className="text-ink-300">
                 {s.shiftDate} <span className="text-ink-500">· {s.startTime}–{s.endTime}</span>
@@ -506,7 +506,7 @@ function MyScheduling() {
           <label className="text-xs text-ink-500">
             Type
             <Listbox aria-label="Absence type"
-              className="field-input !py-1 !text-xs block"
+              className="field-input !py-2 !text-xs block"
               value={absenceForm.absenceType}
               onChange={(e) => setAbsenceForm({ ...absenceForm, absenceType: e.target.value as AbsenceType })}
             >
@@ -515,21 +515,21 @@ function MyScheduling() {
           </label>
           <label className="text-xs text-ink-500">
             Start
-            <input type="date" className="field-input !py-1 !text-xs block" value={absenceForm.startDate}
+            <input type="date" className="field-input !py-2 !text-xs block" value={absenceForm.startDate}
               onChange={(e) => setAbsenceForm({ ...absenceForm, startDate: e.target.value })} />
           </label>
           <label className="text-xs text-ink-500">
             End
-            <input type="date" className="field-input !py-1 !text-xs block" value={absenceForm.endDate}
+            <input type="date" className="field-input !py-2 !text-xs block" value={absenceForm.endDate}
               onChange={(e) => setAbsenceForm({ ...absenceForm, endDate: e.target.value })} />
           </label>
           <label className="text-xs text-ink-500 flex-1 min-w-[140px]">
             Reason (optional)
-            <input type="text" className="field-input !py-1 !text-xs block w-full" value={absenceForm.reason}
+            <input type="text" className="field-input !py-2 !text-xs block w-full" value={absenceForm.reason}
               onChange={(e) => setAbsenceForm({ ...absenceForm, reason: e.target.value })} />
           </label>
           <button
-            className="btn-secondary !py-1 !px-3 !text-xs"
+            className="btn-secondary !py-2 !px-4 !text-xs"
             disabled={!absenceForm.startDate || !absenceForm.endDate || absenceMutation.isPending}
             onClick={() => {
               absenceMutation.mutate(
@@ -547,7 +547,7 @@ function MyScheduling() {
       {absencesQuery.data && absencesQuery.data.length > 0 && (
         <div>
           <h3 className="text-xs font-semibold text-ink-300 mb-2">My absence requests</h3>
-          <ul className="text-sm space-y-1">
+          <ul className="text-sm space-y-2">
             {absencesQuery.data.map((a) => (
               <li key={a.id} className="text-ink-300">
                 {a.startDate} → {a.endDate} <span className="text-ink-500">· {a.absenceType} ·</span>{' '}
@@ -595,11 +595,11 @@ function CalendarIntegrationPanel() {
   };
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-4">
       <h2 className="text-sm font-semibold text-ink-100">Calendar integration</h2>
 
       {outcome && (
-        <div className={`panel tick-frame p-3 text-sm flex items-center justify-between ${outcome === 'connected' ? 'text-ok' : 'text-danger'}`}>
+        <div className={`panel tick-frame p-4 text-sm flex items-center justify-between ${outcome === 'connected' ? 'text-ok' : 'text-danger'}`}>
           <span>
             {outcome === 'connected' && 'Google Calendar connected.'}
             {outcome === 'declined' && 'Google Calendar connection was declined.'}
@@ -613,7 +613,7 @@ function CalendarIntegrationPanel() {
       {disconnectMutation.isError && <p className="field-error">{apiErrorMessage(disconnectMutation.error)}</p>}
 
       {statusQuery.data && !statusQuery.data.connected && (
-        <button className="btn-secondary !py-1.5 !px-3 !text-xs" disabled={connectMutation.isPending} onClick={() => connectMutation.mutate()}>
+        <button className="btn-secondary !py-2 !px-4 !text-xs" disabled={connectMutation.isPending} onClick={() => connectMutation.mutate()}>
           Connect Google Calendar
         </button>
       )}
@@ -625,7 +625,7 @@ function CalendarIntegrationPanel() {
               Connected {statusQuery.data.connectedAt ? new Date(statusQuery.data.connectedAt).toLocaleDateString() : ''} — read-only access
               to event times, never edited or shared beyond this view.
             </p>
-            <button className="btn-secondary !py-1 !px-2 !text-xs" disabled={disconnectMutation.isPending} onClick={() => disconnectMutation.mutate()}>
+            <button className="btn-secondary !py-2 !px-2 !text-xs" disabled={disconnectMutation.isPending} onClick={() => disconnectMutation.mutate()}>
               Disconnect
             </button>
           </div>
@@ -634,7 +634,7 @@ function CalendarIntegrationPanel() {
           {eventsQuery.isError && <p className="field-error">{apiErrorMessage(eventsQuery.error)}</p>}
           {eventsQuery.data && eventsQuery.data.length === 0 && <p className="text-sm text-ink-500">No events today.</p>}
           {eventsQuery.data && eventsQuery.data.length > 0 && (
-            <ul className="text-sm space-y-1">
+            <ul className="text-sm space-y-2">
               {eventsQuery.data.map((e) => (
                 <li key={e.id} className="text-ink-300">
                   {new Date(e.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}–{new Date(e.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -666,13 +666,13 @@ function PrivacySettingsAdmin() {
   const settings = privacyQuery.data;
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-4">
       <h2 className="text-sm font-semibold text-ink-100">Privacy & monitoring settings (admin)</h2>
       {privacyQuery.isLoading && <p className="text-sm text-ink-500">Loading…</p>}
       {updateMutation.isError && <p className="field-error">{apiErrorMessage(updateMutation.error)}</p>}
       {settings && (
         <div className="panel tick-frame p-4 space-y-4 max-w-xl">
-          <label className="block space-y-1">
+          <label className="block space-y-2">
             <div className="text-xs text-ink-500 font-medium">Monitoring level</div>
             <Listbox aria-label="Monitoring level"
               className="field-input"
@@ -689,7 +689,7 @@ function PrivacySettingsAdmin() {
           <label className="flex items-start gap-2">
             <input
               type="checkbox"
-              className="mt-1"
+              className="mt-2"
               checked={settings.screenshotEnabled}
               disabled={updateMutation.isPending}
               onChange={(e) => updateMutation.mutate({ screenshotEnabled: e.target.checked })}
@@ -705,7 +705,7 @@ function PrivacySettingsAdmin() {
           <label className="flex items-start gap-2">
             <input
               type="checkbox"
-              className="mt-1"
+              className="mt-2"
               checked={settings.windowTitleEnabled}
               disabled={updateMutation.isPending}
               onChange={(e) => updateMutation.mutate({ windowTitleEnabled: e.target.checked })}
@@ -719,7 +719,7 @@ function PrivacySettingsAdmin() {
             </span>
           </label>
 
-          <label className="block space-y-1">
+          <label className="block space-y-2">
             <div className="text-xs text-ink-500 font-medium">Retention (days)</div>
             <input
               type="number"
@@ -760,7 +760,7 @@ function ReportingLinesAdmin() {
   const users = usersQuery.data?.data ?? [];
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-4">
       <h2 className="text-sm font-semibold text-ink-100">Reporting lines (admin)</h2>
       <p className="text-xs text-ink-500">
         Sets who a manager sees in their Workforce team view -- direct reports and, transitively, the people who report to them.
@@ -772,19 +772,19 @@ function ReportingLinesAdmin() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                <th className="px-4 py-2.5 font-medium">User</th>
-                <th className="px-4 py-2.5 font-medium">Role</th>
-                <th className="px-4 py-2.5 font-medium">Manager</th>
+                <th className="px-4 py-2 font-medium">User</th>
+                <th className="px-4 py-2 font-medium">Role</th>
+                <th className="px-4 py-2 font-medium">Manager</th>
               </tr>
             </thead>
             <tbody>
               {users.map((user) => (
                 <tr key={user.id} className="border-b border-base-700/60 last:border-0">
-                  <td className="px-4 py-2.5">{user.firstName} {user.lastName}</td>
-                  <td className="px-4 py-2.5 text-ink-500">{user.companyRole}</td>
-                  <td className="px-4 py-2.5">
+                  <td className="px-4 py-2">{user.firstName} {user.lastName}</td>
+                  <td className="px-4 py-2 text-ink-500">{user.companyRole}</td>
+                  <td className="px-4 py-2">
                     <Listbox aria-label="Manager"
-                      className="field-input !py-1 !text-xs"
+                      className="field-input !py-2 !text-xs"
                       value={managerByUserId.get(user.id) ?? ''}
                       disabled={setManagerMutation.isPending}
                       onChange={(e) => {
@@ -851,11 +851,11 @@ function CompanyReportAdmin({ from, to }: { from: string; to: string }) {
   const rows = reportQuery.data ?? [];
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-ink-100">Company report (admin)</h2>
         {rows.length > 0 && (
-          <button className="btn-secondary !py-1 !px-3 !text-xs" onClick={() => downloadCompanyReportCsv(rows, from, to)}>
+          <button className="btn-secondary !py-2 !px-4 !text-xs" onClick={() => downloadCompanyReportCsv(rows, from, to)}>
             Export CSV
           </button>
         )}
@@ -868,21 +868,21 @@ function CompanyReportAdmin({ from, to }: { from: string; to: string }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                <th className="px-4 py-2.5 font-medium">Employee</th>
-                <th className="px-4 py-2.5 font-medium">Tracked time</th>
-                <th className="px-4 py-2.5 font-medium">Productive</th>
-                <th className="px-4 py-2.5 font-medium">Unproductive</th>
-                <th className="px-4 py-2.5 font-medium">Productive %</th>
+                <th className="px-4 py-2 font-medium">Employee</th>
+                <th className="px-4 py-2 font-medium">Tracked time</th>
+                <th className="px-4 py-2 font-medium">Productive</th>
+                <th className="px-4 py-2 font-medium">Unproductive</th>
+                <th className="px-4 py-2 font-medium">Productive %</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.userId} className="border-b border-base-700/60 last:border-0">
-                  <td className="px-4 py-2.5">{r.name} <span className="text-ink-500">· {r.companyRole}</span></td>
-                  <td className="px-4 py-2.5 text-ink-300 tabular-nums">{formatHm(r.totalActiveSeconds)}</td>
-                  <td className="px-4 py-2.5 text-ok tabular-nums">{formatHm(r.productiveSeconds)}</td>
-                  <td className="px-4 py-2.5 text-danger tabular-nums">{formatHm(r.unproductiveSeconds)}</td>
-                  <td className="px-4 py-2.5 text-ink-300 tabular-nums">{pct(r.productivityRatio)}</td>
+                  <td className="px-4 py-2">{r.name} <span className="text-ink-500">· {r.companyRole}</span></td>
+                  <td className="px-4 py-2 text-ink-300 tabular-nums">{formatHm(r.totalActiveSeconds)}</td>
+                  <td className="px-4 py-2 text-ok tabular-nums">{formatHm(r.productiveSeconds)}</td>
+                  <td className="px-4 py-2 text-danger tabular-nums">{formatHm(r.unproductiveSeconds)}</td>
+                  <td className="px-4 py-2 text-ink-300 tabular-nums">{pct(r.productivityRatio)}</td>
                 </tr>
               ))}
             </tbody>
@@ -916,32 +916,32 @@ function ShiftSchedulingAdmin() {
   const shifts = shiftsQuery.data ?? [];
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-4">
       <h2 className="text-sm font-semibold text-ink-100">Shift schedule (admin)</h2>
       <p className="text-xs text-ink-500">Assign a shift, and see everyone's assigned shifts for the next two weeks.</p>
 
       <div className="flex flex-wrap gap-2 items-end">
         <label className="text-xs text-ink-500">
           Employee
-          <Listbox aria-label="User" className="field-input !py-1 !text-xs block" value={form.userId} onChange={(e) => setForm({ ...form, userId: e.target.value })}>
+          <Listbox aria-label="User" className="field-input !py-2 !text-xs block" value={form.userId} onChange={(e) => setForm({ ...form, userId: e.target.value })}>
             <option value="">Select…</option>
             {users.map((u) => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}
           </Listbox>
         </label>
         <label className="text-xs text-ink-500">
           Date
-          <input type="date" className="field-input !py-1 !text-xs block" value={form.shiftDate} onChange={(e) => setForm({ ...form, shiftDate: e.target.value })} />
+          <input type="date" className="field-input !py-2 !text-xs block" value={form.shiftDate} onChange={(e) => setForm({ ...form, shiftDate: e.target.value })} />
         </label>
         <label className="text-xs text-ink-500">
           Start
-          <input type="time" className="field-input !py-1 !text-xs block" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
+          <input type="time" className="field-input !py-2 !text-xs block" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
         </label>
         <label className="text-xs text-ink-500">
           End
-          <input type="time" className="field-input !py-1 !text-xs block" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
+          <input type="time" className="field-input !py-2 !text-xs block" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
         </label>
         <button
-          className="btn-secondary !py-1 !px-3 !text-xs"
+          className="btn-secondary !py-2 !px-4 !text-xs"
           disabled={!form.userId || !form.shiftDate || !form.startTime || !form.endTime || assignMutation.isPending}
           onClick={() => assignMutation.mutate(form)}
         >
@@ -957,17 +957,17 @@ function ShiftSchedulingAdmin() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                <th className="px-4 py-2.5 font-medium">Date</th>
-                <th className="px-4 py-2.5 font-medium">Employee</th>
-                <th className="px-4 py-2.5 font-medium">Shift</th>
+                <th className="px-4 py-2 font-medium">Date</th>
+                <th className="px-4 py-2 font-medium">Employee</th>
+                <th className="px-4 py-2 font-medium">Shift</th>
               </tr>
             </thead>
             <tbody>
               {shifts.map((s) => (
                 <tr key={s.id} className="border-b border-base-700/60 last:border-0">
-                  <td className="px-4 py-2.5 tabular-nums">{s.shiftDate}</td>
-                  <td className="px-4 py-2.5">{s.firstName} {s.lastName}</td>
-                  <td className="px-4 py-2.5 text-ink-300 tabular-nums">{s.startTime}–{s.endTime}</td>
+                  <td className="px-4 py-2 tabular-nums">{s.shiftDate}</td>
+                  <td className="px-4 py-2">{s.firstName} {s.lastName}</td>
+                  <td className="px-4 py-2 text-ink-300 tabular-nums">{s.startTime}–{s.endTime}</td>
                 </tr>
               ))}
             </tbody>
@@ -993,7 +993,7 @@ function AbsenceRequestsAdmin() {
   const absences = absencesQuery.data ?? [];
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-4">
       <h2 className="text-sm font-semibold text-ink-100">Absence requests (admin)</h2>
       {decideMutation.isError && <p className="field-error">{apiErrorMessage(decideMutation.error)}</p>}
       {absences.length === 0 ? (
@@ -1003,31 +1003,31 @@ function AbsenceRequestsAdmin() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                <th className="px-4 py-2.5 font-medium">Employee</th>
-                <th className="px-4 py-2.5 font-medium">Type</th>
-                <th className="px-4 py-2.5 font-medium">Dates</th>
-                <th className="px-4 py-2.5 font-medium">Reason</th>
-                <th className="px-4 py-2.5 font-medium">Decision</th>
+                <th className="px-4 py-2 font-medium">Employee</th>
+                <th className="px-4 py-2 font-medium">Type</th>
+                <th className="px-4 py-2 font-medium">Dates</th>
+                <th className="px-4 py-2 font-medium">Reason</th>
+                <th className="px-4 py-2 font-medium">Decision</th>
               </tr>
             </thead>
             <tbody>
               {absences.map((a) => (
                 <tr key={a.id} className="border-b border-base-700/60 last:border-0">
-                  <td className="px-4 py-2.5">{a.firstName} {a.lastName}</td>
-                  <td className="px-4 py-2.5 text-ink-500">{a.absenceType}</td>
-                  <td className="px-4 py-2.5 tabular-nums">{a.startDate} → {a.endDate}</td>
-                  <td className="px-4 py-2.5 text-ink-500">{a.reason ?? '—'}</td>
-                  <td className="px-4 py-2.5">
-                    <div className="flex gap-1.5">
+                  <td className="px-4 py-2">{a.firstName} {a.lastName}</td>
+                  <td className="px-4 py-2 text-ink-500">{a.absenceType}</td>
+                  <td className="px-4 py-2 tabular-nums">{a.startDate} → {a.endDate}</td>
+                  <td className="px-4 py-2 text-ink-500">{a.reason ?? '—'}</td>
+                  <td className="px-4 py-2">
+                    <div className="flex gap-2">
                       <button
-                        className="btn-secondary !py-1 !px-2 !text-xs text-ok"
+                        className="btn-secondary !py-2 !px-2 !text-xs text-ok"
                         disabled={decideMutation.isPending}
                         onClick={() => decideMutation.mutate({ absenceId: a.id, status: 'approved' })}
                       >
                         Approve
                       </button>
                       <button
-                        className="btn-secondary !py-1 !px-2 !text-xs text-danger"
+                        className="btn-secondary !py-2 !px-2 !text-xs text-danger"
                         disabled={decideMutation.isPending}
                         onClick={() => decideMutation.mutate({ absenceId: a.id, status: 'denied' })}
                       >
@@ -1047,8 +1047,8 @@ function AbsenceRequestsAdmin() {
 
 function StatTile({ label, value, tone }: { label: string; value: string; tone?: 'signal' | 'ok' | 'danger' | 'warn' }) {
   return (
-    <div className="panel p-3 text-left">
-      <div className="text-[11px] text-ink-500 mb-0.5 font-medium">{label}</div>
+    <div className="panel p-4 text-left">
+      <div className="text-xs text-ink-500 mb-0 font-medium">{label}</div>
       <div className={`text-xl font-semibold tabular-nums ${tone ? STAT_TILE_TONE_CLASS[tone] : 'text-ink-100'}`}>{value}</div>
     </div>
   );
@@ -1104,7 +1104,7 @@ function ApplicationsAdmin() {
   const unclassifiedCount = apps.filter((a) => a.productivityClassification === 'unclassified').length;
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-4">
       <h2 className="text-sm font-semibold text-ink-100">Application productivity (admin)</h2>
       <p className="text-xs text-ink-500">
         Classify each app or executable the agent has reported as productive, neutral, or unproductive for your team's work — this
@@ -1122,19 +1122,19 @@ function ApplicationsAdmin() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                <th className="px-4 py-2.5 font-medium">Application</th>
-                <th className="px-4 py-2.5 font-medium">Match pattern</th>
-                <th className="px-4 py-2.5 font-medium">Classification</th>
+                <th className="px-4 py-2 font-medium">Application</th>
+                <th className="px-4 py-2 font-medium">Match pattern</th>
+                <th className="px-4 py-2 font-medium">Classification</th>
               </tr>
             </thead>
             <tbody>
               {apps.map((app) => (
                 <tr key={app.id} className="border-b border-base-700/60 last:border-0">
-                  <td className="px-4 py-2.5">{app.name}</td>
-                  <td className="px-4 py-2.5 text-ink-500 font-mono text-xs">{app.matchPattern}</td>
-                  <td className="px-4 py-2.5">
+                  <td className="px-4 py-2">{app.name}</td>
+                  <td className="px-4 py-2 text-ink-500 font-mono text-xs">{app.matchPattern}</td>
+                  <td className="px-4 py-2">
                     <Listbox aria-label="Productivity classification"
-                      className="field-input !py-1 !text-xs"
+                      className="field-input !py-2 !text-xs"
                       value={app.productivityClassification}
                       disabled={classifyMutation.isPending}
                       onChange={(e) => classifyMutation.mutate({ id: app.id, classification: e.target.value as ProductivityClassification })}

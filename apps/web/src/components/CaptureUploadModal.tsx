@@ -98,7 +98,7 @@ export function CaptureUploadModal({
   return (
     <Modal open={open} onClose={handleClose} title="Upload captures">
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="captureType">Capture type</label>
             <Listbox
@@ -152,13 +152,13 @@ export function CaptureUploadModal({
           <input {...getInputProps()} />
           <UploadIcon className="w-6 h-6 mx-auto mb-2 text-ink-500" />
           <p className="text-sm text-ink-300">Drag files here, or click to browse</p>
-          <p className="text-xs text-ink-500 mt-1">Images and video — uploaded directly to storage</p>
+          <p className="text-xs text-ink-500 mt-2">Images and video — uploaded directly to storage</p>
         </div>
 
         {files.length > 0 && (
-          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
             {files.map((f) => (
-              <div key={f.id} className="flex items-center gap-3 text-xs">
+              <div key={f.id} className="flex items-center gap-4 text-xs">
                 <span className="flex-1 truncate">{f.file.name}</span>
                 {f.status === 'queued' && !uploading && (
                   <button onClick={() => removeFile(f.id)} className="text-ink-500 hover:text-danger">

@@ -88,14 +88,14 @@ export default function RfiExternalPage() {
                   <span className="ml-auto text-xs text-ink-500">Due {formatDeadline(detailQuery.data.dueDate)}</span>
                 )}
               </div>
-              <h1 className="text-lg font-semibold text-ink-100 mb-3">{detailQuery.data.subject}</h1>
-              <div className="text-xs text-ink-500 mb-1">Question</div>
+              <h1 className="text-lg font-semibold text-ink-100 mb-4">{detailQuery.data.subject}</h1>
+              <div className="text-xs text-ink-500 mb-2">Question</div>
               <div className="text-sm text-ink-100 whitespace-pre-wrap mb-4">{detailQuery.data.question}</div>
 
               {detailQuery.data.attachments.length > 0 && (
                 <div>
-                  <div className="text-xs text-ink-500 mb-1.5">Attachments</div>
-                  <ul className="space-y-1">
+                  <div className="text-xs text-ink-500 mb-2">Attachments</div>
+                  <ul className="space-y-2">
                     {detailQuery.data.attachments.map((a) => (
                       <li key={a.id} className="text-sm">
                         {a.attachmentReadUrl ? (
@@ -113,7 +113,7 @@ export default function RfiExternalPage() {
 
               {detailQuery.data.answer && (
                 <div className="mt-4 pt-4 border-t border-base-600">
-                  <div className="text-xs text-ink-500 mb-1">Response</div>
+                  <div className="text-xs text-ink-500 mb-2">Response</div>
                   <div className="text-sm text-ink-100 whitespace-pre-wrap">{detailQuery.data.answer}</div>
                 </div>
               )}
@@ -122,7 +122,7 @@ export default function RfiExternalPage() {
                   internal detail page -- historical RFIs with all four
                   fields null render nothing extra here. */}
               {detailQuery.data.status === 'closed' && detailQuery.data.closedAt && (
-                <p className="text-xs text-ink-500 mt-3 pt-3 border-t border-base-600">
+                <p className="text-xs text-ink-500 mt-4 pt-4 border-t border-base-600">
                   Closed by {detailQuery.data.closedByName ?? detailQuery.data.closedByExternalEmail ?? 'Unknown'}
                   {detailQuery.data.closedAsOrganizationSlot ? ` (${PROJECT_ORGANIZATION_SLOT_LABELS[detailQuery.data.closedAsOrganizationSlot]})` : ''}
                   {' on '}{formatDateTime(detailQuery.data.closedAt)}
@@ -131,7 +131,7 @@ export default function RfiExternalPage() {
             </div>
 
             {detailQuery.data.action === 'respond' && (
-              <div className="panel tick-frame p-6 space-y-3">
+              <div className="panel tick-frame p-6 space-y-4">
                 <div className="field-label !mb-0">Your response</div>
                 {respondMutation.isSuccess ? (
                   <p className="text-sm text-ok">Response submitted. Thank you.</p>
@@ -157,7 +157,7 @@ export default function RfiExternalPage() {
             )}
 
             {detailQuery.data.action === 'review' && (
-              <div className="panel tick-frame p-6 space-y-3">
+              <div className="panel tick-frame p-6 space-y-4">
                 <div className="field-label !mb-0">Review this response</div>
                 {reviewMutation.isSuccess ? (
                   <p className="text-sm text-ok">Your decision has been recorded. Thank you.</p>
@@ -192,7 +192,7 @@ export default function RfiExternalPage() {
                           >
                             {reviewMutation.isPending ? 'Submitting…' : 'Send back for clarification'}
                           </button>
-                          <button onClick={() => setRejectOpen(false)} className="btn-ghost !px-3 !py-2 text-sm">Cancel</button>
+                          <button onClick={() => setRejectOpen(false)} className="btn-ghost !px-4 !py-2 text-sm">Cancel</button>
                         </div>
                       </div>
                     )}
@@ -202,12 +202,12 @@ export default function RfiExternalPage() {
               </div>
             )}
 
-            <div className="panel tick-frame p-6 space-y-3">
+            <div className="panel tick-frame p-6 space-y-4">
               <div className="field-label !mb-0">Comments ({detailQuery.data.comments.length})</div>
               <div className="space-y-2">
                 {detailQuery.data.comments.map((c) => (
-                  <div key={c.id} className="bg-base-700/40 rounded px-3 py-2 text-sm">
-                    <div className="flex items-center gap-2 text-xs text-ink-500 mb-1">
+                  <div key={c.id} className="bg-base-700/40 rounded px-4 py-2 text-sm">
+                    <div className="flex items-center gap-2 text-xs text-ink-500 mb-2">
                       <span className="font-medium text-ink-300">{c.userName ?? 'Someone'}</span>
                       {c.organizationSlot && (
                         <span className="badge bg-base-600 text-ink-500">{PROJECT_ORGANIZATION_SLOT_LABELS[c.organizationSlot]}</span>

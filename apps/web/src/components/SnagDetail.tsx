@@ -132,15 +132,15 @@ export function SnagDetail({
 
   return (
     <div className="p-6 max-w-3xl space-y-6">
-      <button onClick={onBack} className="btn-ghost !px-2 !py-1 text-xs">
+      <button onClick={onBack} className="btn-ghost !px-2 !py-2 text-xs">
         <BackIcon /> Back to snagging
       </button>
 
       {/* Header card */}
-      <div className="panel tick-frame p-5 space-y-4">
+      <div className="panel tick-frame p-6 space-y-4">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <div className="text-[10px] font-mono text-ink-500 mb-1">{snag.snagNumber ?? snag.id}</div>
+            <div className="text-xs font-mono text-ink-500 mb-2">{snag.snagNumber ?? snag.id}</div>
             <h2 className="text-lg font-semibold mb-2">{snag.title}</h2>
             <div className="flex items-center gap-2 flex-wrap">
               <StatusBadge tone={SNAG_STATUS_TONE[snag.status]} label={SNAG_STATUS_LABELS[snag.status]} />
@@ -152,15 +152,15 @@ export function SnagDetail({
               {snag.location && <span className="badge bg-base-700 text-ink-500">{snag.location}</span>}
             </div>
           </div>
-          <div className="flex flex-col gap-1.5 items-end">
-            <button onClick={() => onEdit(snag)} className="btn-secondary !px-3 !py-1.5 text-xs">Edit</button>
-            <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary !px-3 !py-1.5 text-xs">Email</button>
-            <button onClick={() => setForwardOpen((v) => !v)} className="btn-secondary !px-3 !py-1.5 text-xs">
+          <div className="flex flex-col gap-2 items-end">
+            <button onClick={() => onEdit(snag)} className="btn-secondary !px-4 !py-2 text-xs">Edit</button>
+            <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary !px-4 !py-2 text-xs">Email</button>
+            <button onClick={() => setForwardOpen((v) => !v)} className="btn-secondary !px-4 !py-2 text-xs">
               {forwardOpen ? 'Cancel forward' : 'Forward'}
             </button>
             <button
               onClick={() => { if (confirm('Delete this snag item? This cannot be undone.')) deleteMutation.mutate(); }}
-              className="btn-danger !px-3 !py-1.5 text-xs"
+              className="btn-danger !px-4 !py-2 text-xs"
             >
               Delete
             </button>
@@ -169,7 +169,7 @@ export function SnagDetail({
 
         {/* Forward form */}
         {forwardOpen && (
-          <div className="pt-3 border-t border-base-600 space-y-2">
+          <div className="pt-4 border-t border-base-600 space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <Listbox aria-label="Forward to" className="field-input" value={forwardTo} onChange={(e) => setForwardTo(e.target.value)}>
                 <option value="">Forward to…</option>
@@ -187,7 +187,7 @@ export function SnagDetail({
             <button
               onClick={() => forwardMutation.mutate()}
               disabled={!forwardTo || forwardMutation.isPending}
-              className="btn-primary !px-3 !py-1.5 text-xs"
+              className="btn-primary !px-4 !py-2 text-xs"
             >
               {forwardMutation.isPending ? 'Forwarding…' : 'Send forward'}
             </button>
@@ -201,17 +201,17 @@ export function SnagDetail({
             a full stepper. */}
         <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-base-600">
           {snag.status === 'open' && (
-            <button onClick={() => statusMutation.mutate('fixed')} disabled={statusMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
+            <button onClick={() => statusMutation.mutate('fixed')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 text-xs">
               Mark as fixed
             </button>
           )}
           {snag.status === 'fixed' && (
-            <button onClick={() => verifyMutation.mutate()} disabled={verifyMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
+            <button onClick={() => verifyMutation.mutate()} disabled={verifyMutation.isPending} className="btn-secondary !px-4 !py-2 text-xs">
               Verify
             </button>
           )}
           {snag.status !== 'void' && (
-            <button onClick={() => statusMutation.mutate('void')} disabled={statusMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
+            <button onClick={() => statusMutation.mutate('void')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 text-xs">
               Void
             </button>
           )}
@@ -222,7 +222,7 @@ export function SnagDetail({
         {/* Admin force-status override */}
         {isManager && (
           <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-base-600">
-            <span className="text-[11px] text-ink-500 font-medium">Admin override</span>
+            <span className="text-xs text-ink-500 font-medium">Admin override</span>
             <Listbox aria-label="Force status"
               className="field-input w-auto"
               value={forceStatusValue}
@@ -236,7 +236,7 @@ export function SnagDetail({
             <button
               onClick={() => forceStatusMutation.mutate()}
               disabled={!forceStatusValue || forceStatusMutation.isPending}
-              className="btn-danger !px-3 !py-1.5 text-xs"
+              className="btn-danger !px-4 !py-2 text-xs"
             >
               {forceStatusMutation.isPending ? 'Forcing…' : 'Force'}
             </button>
@@ -251,7 +251,7 @@ export function SnagDetail({
           <div className="field-label">Description</div>
           <p className="text-sm text-ink-300">{snag.description || '—'}</p>
         </div>
-        <div className="space-y-1.5 text-sm">
+        <div className="space-y-2 text-sm">
           <div className="field-label">Details</div>
           <DetailRow label="Trade" value={snag.trade || '—'} />
           <DetailRow label="Location" value={snag.location || '—'} />
@@ -274,10 +274,10 @@ export function SnagDetail({
       {/* Activity / comments */}
       <div>
         <div className="field-label">Activity ({activitiesQuery.data?.length ?? 0})</div>
-        <div className="space-y-2 mb-3">
+        <div className="space-y-2 mb-4">
           {(activitiesQuery.data ?? []).map((a) => (
-            <div key={a.id} className="panel p-3 text-sm">
-              <div className="flex items-center gap-2 text-xs text-ink-500 mb-1">
+            <div key={a.id} className="panel p-4 text-sm">
+              <div className="flex items-center gap-2 text-xs text-ink-500 mb-2">
                 <span className="font-medium text-ink-300">{a.performedByName ?? 'Someone'}</span>
                 <span>·</span>
                 <span>{snagActivityLabel(a.activityType, a.fromValue, a.toValue)}</span>
@@ -290,7 +290,7 @@ export function SnagDetail({
                     href={a.attachmentReadUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-1.5 flex items-center gap-1.5 text-xs text-blueprint hover:text-blueprint-hover bg-base-700/40 rounded px-2 py-1 w-fit"
+                    className="mt-2 flex items-center gap-2 text-xs text-blueprint hover:text-blueprint-hover bg-base-700/40 rounded px-2 py-2 w-fit"
                   >
                     <PaperclipIcon />
                     <span className="underline">{a.attachmentName}</span>
@@ -299,7 +299,7 @@ export function SnagDetail({
                     )}
                   </a>
                 ) : (
-                  <div className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-300 bg-base-700/40 rounded px-2 py-1 w-fit">
+                  <div className="mt-2 flex items-center gap-2 text-xs text-ink-300 bg-base-700/40 rounded px-2 py-2 w-fit">
                     <PaperclipIcon />
                     <span>{a.attachmentName}</span>
                     {a.attachmentSizeBytes != null && (
@@ -335,7 +335,7 @@ export function SnagDetail({
             value={attachComment}
             onChange={(e) => setAttachComment(e.target.value)}
           />
-          <label className="btn-secondary !px-3 !py-1.5 text-xs cursor-pointer shrink-0">
+          <label className="btn-secondary !px-4 !py-2 text-xs cursor-pointer shrink-0">
             {attachMutation.isPending ? 'Uploading…' : 'Attach file'}
             <input
               type="file"

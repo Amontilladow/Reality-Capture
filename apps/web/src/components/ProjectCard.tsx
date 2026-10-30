@@ -16,11 +16,11 @@ export function ProjectCard({ project }: { project: Project }) {
   return (
     <Link
       to={`/projects/${project.id}`}
-      className="tick-frame panel panel-interactive p-5 flex flex-col gap-4 group"
+      className="tick-frame panel panel-interactive p-6 flex flex-col gap-4 group"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-[11px] text-ink-500 mb-1 font-medium">
+          <div className="text-xs text-ink-500 mb-2 font-medium">
             {project.code ?? '—'}
           </div>
           <h3 className="font-semibold text-sm leading-snug group-hover:text-blueprint transition-colors truncate">
@@ -40,13 +40,13 @@ export function ProjectCard({ project }: { project: Project }) {
         )}
       </div>
 
-      <div className="flex items-center gap-4 text-xs font-mono text-ink-300 pt-3 border-t border-base-600">
+      <div className="flex items-center gap-4 text-xs font-mono text-ink-300 pt-4 border-t border-base-600">
         <span>{project.captureCount ?? 0} captures</span>
         <span>{project.openIssueCount ?? 0} open issues</span>
         <span>{project.memberCount ?? 0} members</span>
       </div>
 
-      <div className="text-[10px] text-ink-500 -mt-2">Updated {formatDeadline(project.updatedAt)}</div>
+      <div className="text-xs text-ink-500 -mt-2">Updated {formatDeadline(project.updatedAt)}</div>
     </Link>
   );
 }

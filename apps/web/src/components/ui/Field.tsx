@@ -45,12 +45,12 @@ function FieldShell({
       <div className="flex items-center justify-between">
         <label htmlFor={id} className="field-label">
           {label}
-          {REQUIREMENT_SUFFIX[requirement] && <span className="ml-1.5 font-normal normal-case tracking-normal text-ink-500">{REQUIREMENT_SUFFIX[requirement]}</span>}
+          {REQUIREMENT_SUFFIX[requirement] && <span className="ml-2 font-normal normal-case tracking-normal text-ink-500">{REQUIREMENT_SUFFIX[requirement]}</span>}
         </label>
         {labelAddon}
       </div>
       {children}
-      {hint && !error && <p id={hintId} className="text-xs text-ink-500 mt-1">{hint}</p>}
+      {hint && !error && <p id={hintId} className="text-xs text-ink-500 mt-2">{hint}</p>}
       {error && <p id={errorId} role="alert" className="field-error">{error}</p>}
     </div>
   );

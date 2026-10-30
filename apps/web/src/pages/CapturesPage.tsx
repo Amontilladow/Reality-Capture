@@ -214,7 +214,7 @@ export default function CapturesPage() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-6">
-        <div className="lg:col-span-1 space-y-3">
+        <div className="lg:col-span-1 space-y-4">
           {drawingsQuery.isLoading && <div className="text-sm text-ink-500">Loading…</div>}
           {drawingsQuery.isSuccess && (drawingsQuery.data ?? []).length === 0 && (
             <div className="tick-frame panel p-6 text-center text-sm text-ink-500">
@@ -223,7 +223,7 @@ export default function CapturesPage() {
           )}
 
           {(drawingsQuery.data ?? []).length > 0 && (
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               <Input
                 label="Search"
                 placeholder="Search by title…"
@@ -255,22 +255,22 @@ export default function CapturesPage() {
           )}
 
           {drawingsQuery.isSuccess && (drawingsQuery.data ?? []).length > 0 && filteredDrawings.length === 0 && (
-            <div className="text-xs text-ink-500 px-1">No floor plans match these filters.</div>
+            <div className="text-xs text-ink-500 px-2">No floor plans match these filters.</div>
           )}
 
           <div className="space-y-2">
             {groupedDrawings.buildingGroups.map(({ building, levelGroups }) => (
               <details key={building.id} open>
-                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-1 py-1 hover:text-ink-300">
+                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-2 py-2 hover:text-ink-300">
                   {building.name}
                 </summary>
-                <div className="pl-1 space-y-2 mt-1">
+                <div className="pl-2 space-y-2 mt-2">
                   {levelGroups.map(({ level, drawings }) => (
                     <div key={level?.id ?? '__no-level__'}>
-                      <div className="text-[11px] font-medium text-ink-500 px-2 py-1">
+                      <div className="text-xs font-medium text-ink-500 px-2 py-2">
                         {level?.name ?? 'No level'}
                       </div>
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         {drawings.map((d) => (
                           <DrawingRow key={d.id} drawing={d} active={activeDrawingId === d.id} onSelect={selectDrawing} />
                         ))}
@@ -283,10 +283,10 @@ export default function CapturesPage() {
 
             {groupedDrawings.unassigned.length > 0 && (
               <details open>
-                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-1 py-1 hover:text-ink-300">
+                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-2 py-2 hover:text-ink-300">
                   Unassigned
                 </summary>
-                <div className="pl-1 space-y-1 mt-1">
+                <div className="pl-2 space-y-2 mt-2">
                   {groupedDrawings.unassigned.map((d) => (
                     <DrawingRow key={d.id} drawing={d} active={activeDrawingId === d.id} onSelect={selectDrawing} />
                   ))}
@@ -296,9 +296,9 @@ export default function CapturesPage() {
           </div>
         </div>
 
-        <div className="lg:col-span-3 space-y-3">
+        <div className="lg:col-span-3 space-y-4">
           {activeDrawingId && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               {movingPin ? (
                 <div className="flex items-center gap-2 text-xs text-signal">
                   <span>Click the drawing to move "{movingPin.name || 'Untitled pin'}"</span>
@@ -307,7 +307,7 @@ export default function CapturesPage() {
                   </button>
                 </div>
               ) : !placingMode ? (
-                <button onClick={() => setPlacingMode(true)} className="btn-secondary text-xs !py-1.5">
+                <button onClick={() => setPlacingMode(true)} className="btn-secondary text-xs !py-2">
                   Assign camera location
                 </button>
               ) : (
@@ -319,11 +319,11 @@ export default function CapturesPage() {
                 </div>
               )}
               {numPages > 1 && (
-                <div className="flex items-center gap-1.5 text-xs text-ink-300">
+                <div className="flex items-center gap-2 text-xs text-ink-300">
                   <button
                     onClick={() => goToPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage <= 1}
-                    className="btn-ghost !px-2 !py-1 disabled:opacity-30"
+                    className="btn-ghost !px-2 !py-2 disabled:opacity-30"
                   >
                     ← Prev
                   </button>
@@ -331,14 +331,14 @@ export default function CapturesPage() {
                   <button
                     onClick={() => goToPage(Math.min(numPages, currentPage + 1))}
                     disabled={currentPage >= numPages}
-                    className="btn-ghost !px-2 !py-1 disabled:opacity-30"
+                    className="btn-ghost !px-2 !py-2 disabled:opacity-30"
                   >
                     Next →
                   </button>
                 </div>
               )}
               {cameraPins.length > 0 && (
-                <span className="text-[10px] font-mono text-ink-500 ml-auto">
+                <span className="text-xs font-mono text-ink-500 ml-auto">
                   {pinsForCurrentPage.length} pin{pinsForCurrentPage.length === 1 ? '' : 's'}
                   {numPages > 1 ? ` on this page (${cameraPins.length} total)` : ''}
                 </span>
@@ -384,7 +384,7 @@ function DrawingRow({ drawing, active, onSelect }: { drawing: Drawing; active: b
   return (
     <button
       onClick={() => onSelect(drawing.id)}
-      className={`w-full text-left px-3 py-2.5 rounded text-sm transition-colors ${
+      className={`w-full text-left px-4 py-2 rounded text-sm transition-colors ${
         active ? 'bg-signal text-base-800' : 'text-ink-300 hover:bg-base-700'
       }`}
     >

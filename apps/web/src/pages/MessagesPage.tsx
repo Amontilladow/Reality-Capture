@@ -119,12 +119,12 @@ export default function MessagesPage() {
           )}
 
           {messages.length > 0 && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {messages.map((m) => (
                 <div key={m.id} className="tick-frame panel p-4">
-                  <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium">{m.fromUserName ?? 'Unknown sender'}</span>
-                    <span className="text-[10px] font-mono text-ink-500">{timeAgo(m.createdAt)}</span>
+                    <span className="text-xs font-mono text-ink-500">{timeAgo(m.createdAt)}</span>
                   </div>
                   <div className="text-sm text-ink-300 whitespace-pre-wrap">{m.body}</div>
                 </div>
@@ -170,19 +170,19 @@ export default function MessagesPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setTab('inbox')}
-            className={`px-3 py-1.5 rounded text-sm ${tab === 'inbox' ? 'bg-signal text-base-800' : 'text-ink-300 hover:bg-base-700'}`}
+            className={`px-4 py-2 rounded text-sm ${tab === 'inbox' ? 'bg-signal text-base-800' : 'text-ink-300 hover:bg-base-700'}`}
           >
             Inbox
           </button>
           <button
             onClick={() => setTab('sent')}
-            className={`px-3 py-1.5 rounded text-sm ${tab === 'sent' ? 'bg-signal text-base-800' : 'text-ink-300 hover:bg-base-700'}`}
+            className={`px-4 py-2 rounded text-sm ${tab === 'sent' ? 'bg-signal text-base-800' : 'text-ink-300 hover:bg-base-700'}`}
           >
             Sent
           </button>
           <button
             onClick={() => setTab('email')}
-            className={`px-3 py-1.5 rounded text-sm ${tab === 'email' ? 'bg-signal text-base-800' : 'text-ink-300 hover:bg-base-700'}`}
+            className={`px-4 py-2 rounded text-sm ${tab === 'email' ? 'bg-signal text-base-800' : 'text-ink-300 hover:bg-base-700'}`}
           >
             Email History
           </button>
@@ -231,23 +231,23 @@ export default function MessagesPage() {
                   <button
                     key={t.threadId}
                     onClick={() => openThread(t)}
-                    className={`block w-full text-left px-4 py-3 border-b border-base-700/60 last:border-0 hover:bg-base-700 transition-colors ${
+                    className={`block w-full text-left px-4 py-4 border-b border-base-700/60 last:border-0 hover:bg-base-700 transition-colors ${
                       t.unread ? 'bg-blueprint/5' : ''
                     }`}
                   >
-                    <div className="flex items-start gap-3">
-                      {t.unread && <span className="w-1.5 h-1.5 rounded-full bg-blueprint mt-1.5 shrink-0" />}
+                    <div className="flex items-start gap-4">
+                      {t.unread && <span className="w-1.5 h-1.5 rounded-full bg-blueprint mt-2 shrink-0" />}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
                           <span className={`text-sm truncate ${t.unread ? 'text-ink-100 font-semibold' : 'text-ink-300'}`}>
                             {t.fromUserName ?? 'Unknown'}
                           </span>
-                          <span className="text-[10px] font-mono text-ink-500 shrink-0">{timeAgo(t.createdAt)}</span>
+                          <span className="text-xs font-mono text-ink-500 shrink-0">{timeAgo(t.createdAt)}</span>
                         </div>
                         <div className={`text-sm truncate ${t.unread ? 'text-ink-100 font-medium' : 'text-ink-300'}`}>
                           {t.subject}
                         </div>
-                        <div className="text-xs text-ink-500 truncate mt-0.5">{snippetOf(t)}</div>
+                        <div className="text-xs text-ink-500 truncate mt-0">{snippetOf(t)}</div>
                       </div>
                     </div>
                   </button>
@@ -305,13 +305,13 @@ function ComposeModal({ open, onClose }: { open: boolean; onClose: () => void })
     <Modal open={open} onClose={onClose} title="Compose message" wide>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="text-xs text-ink-500 block mb-1">Recipients</label>
+          <label className="text-xs text-ink-500 block mb-2">Recipients</label>
           {usersQuery.isLoading && <div className="text-sm text-ink-500">Loading users…</div>}
-          <div className="max-h-40 overflow-y-auto tick-frame panel p-2 space-y-1">
+          <div className="max-h-40 overflow-y-auto tick-frame panel p-2 space-y-2">
             {candidates.map((u) => (
               <label
                 key={u.id}
-                className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-base-700 cursor-pointer text-sm"
+                className="flex items-center gap-2 px-2 py-2 rounded hover:bg-base-700 cursor-pointer text-sm"
               >
                 <input
                   type="checkbox"
@@ -322,18 +322,18 @@ function ComposeModal({ open, onClose }: { open: boolean; onClose: () => void })
               </label>
             ))}
             {!usersQuery.isLoading && candidates.length === 0 && (
-              <div className="text-sm text-ink-500 px-2 py-1.5">No other users to message.</div>
+              <div className="text-sm text-ink-500 px-2 py-2">No other users to message.</div>
             )}
           </div>
         </div>
 
         <div>
-          <label className="text-xs text-ink-500 block mb-1">Subject</label>
+          <label className="text-xs text-ink-500 block mb-2">Subject</label>
           <input className="field-input w-full" value={subject} onChange={(e) => setSubject(e.target.value)} />
         </div>
 
         <div>
-          <label className="text-xs text-ink-500 block mb-1">Message</label>
+          <label className="text-xs text-ink-500 block mb-2">Message</label>
           <textarea
             className="field-input w-full min-h-[120px]"
             value={body}

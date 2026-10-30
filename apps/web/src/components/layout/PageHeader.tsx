@@ -19,17 +19,17 @@ export function PageHeader({
   useDocumentTitle(title);
 
   return (
-    <div className={`border-b border-base-600/60 bg-base-950/60 backdrop-blur px-4 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-10 ${breadcrumbs || subtitle ? 'py-3' : 'min-h-16 py-3'}`}>
+    <div className={`border-b border-base-600/60 bg-base-950/60 backdrop-blur px-4 sm:px-6 flex items-center justify-between gap-4 sticky top-0 z-10 ${breadcrumbs || subtitle ? 'py-4' : 'min-h-16 py-4'}`}>
       {/* Title block: breadcrumbs or a quiet eyebrow above one strong title.
           No accent bar or chip -- the title's size and weight are the
           hierarchy, and the page's own content gets the color. */}
       <div className="min-w-0 shrink">
         {breadcrumbs && <Breadcrumbs items={breadcrumbs} />}
         {eyebrow && (
-          <div className="text-xs font-medium text-ink-500 mb-0.5 truncate">{eyebrow}</div>
+          <div className="text-xs font-medium text-ink-500 mb-0 truncate">{eyebrow}</div>
         )}
         <h1 className="text-2xl font-normal tracking-tight truncate">{title}</h1>
-        {subtitle && <p className="text-xs text-ink-500 mt-0.5 truncate">{subtitle}</p>}
+        {subtitle && <p className="text-xs text-ink-500 mt-0 truncate">{subtitle}</p>}
       </div>
       {actions && (
         // min-w-0 lets this shrink below its content's natural width once

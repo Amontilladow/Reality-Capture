@@ -106,20 +106,20 @@ export function SiteDrawingPdfViewer({ fileUrl, onNumPages }: { fileUrl: string;
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-base-600 shrink-0">
-        <div className="flex items-center gap-1.5">
-          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="btn-ghost !px-2 !py-1 text-xs disabled:opacity-40">
+      <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-base-600 shrink-0">
+        <div className="flex items-center gap-2">
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="btn-ghost !px-2 !py-2 text-xs disabled:opacity-40">
             ← Prev
           </button>
-          <span className="text-xs text-ink-300 tabular-nums px-1">Page {page} of {numPages || '—'}</span>
-          <button onClick={() => setPage((p) => Math.min(numPages, p + 1))} disabled={page >= numPages} className="btn-ghost !px-2 !py-1 text-xs disabled:opacity-40">
+          <span className="text-xs text-ink-300 tabular-nums px-2">Page {page} of {numPages || '—'}</span>
+          <button onClick={() => setPage((p) => Math.min(numPages, p + 1))} disabled={page >= numPages} className="btn-ghost !px-2 !py-2 text-xs disabled:opacity-40">
             Next →
           </button>
         </div>
-        <div className="flex items-center gap-1.5">
-          <button onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))} className="btn-ghost !px-2 !py-1 text-xs">−</button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))} className="btn-ghost !px-2 !py-2 text-xs">−</button>
           <span className="text-xs text-ink-500 tabular-nums w-10 text-center">{Math.round(zoom * 100)}%</span>
-          <button onClick={() => setZoom((z) => Math.min(3, z + 0.25))} className="btn-ghost !px-2 !py-1 text-xs">+</button>
+          <button onClick={() => setZoom((z) => Math.min(3, z + 0.25))} className="btn-ghost !px-2 !py-2 text-xs">+</button>
         </div>
       </div>
       <div ref={containerRef} className="flex-1 overflow-auto bg-base-950 flex items-start justify-center p-4">

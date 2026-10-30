@@ -165,7 +165,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
       />
 
       <div className="p-6 space-y-4">
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-4 flex-wrap">
           <Listbox aria-label="Status" className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
             {(['open', 'answered', 'closed', 'void'] as const).map((s) => (
@@ -210,7 +210,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
             </Listbox>
           )}
 
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             <input
               type="date"
               className="field-input w-auto"
@@ -229,7 +229,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
           </div>
 
           {summaryQuery.data && (
-            <div className="flex gap-2 text-[10px] font-mono text-ink-500 ml-auto">
+            <div className="flex gap-2 text-xs font-mono text-ink-500 ml-auto">
               <span>{summaryQuery.data.total} total</span>
               <span>·</span>
               <span>{summaryQuery.data.open} open</span>
@@ -254,19 +254,19 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                  <th className="px-4 py-2.5 font-medium">Number</th>
-                  <th className="px-4 py-2.5 font-medium">Subject</th>
-                  <th className="px-4 py-2.5 font-medium">Discipline</th>
-                  <th className="px-4 py-2.5 font-medium">Status</th>
-                  <th className="px-4 py-2.5 font-medium">Priority</th>
-                  <th className="px-4 py-2.5 font-medium">Cost impact</th>
-                  <th className="px-4 py-2.5 font-medium">Time impact</th>
-                  <th className="px-4 py-2.5 font-medium">Drawing/Model Updated</th>
-                  <th className="px-4 py-2.5 font-medium">Sent to Site</th>
-                  <th className="px-4 py-2.5 font-medium">Assignee</th>
-                  <th className="px-4 py-2.5 font-medium">Due</th>
-                  <th className="px-4 py-2.5 font-medium">Aging</th>
-                  <th className="px-4 py-2.5 font-medium">Notice</th>
+                  <th className="px-4 py-2 font-medium">Number</th>
+                  <th className="px-4 py-2 font-medium">Subject</th>
+                  <th className="px-4 py-2 font-medium">Discipline</th>
+                  <th className="px-4 py-2 font-medium">Status</th>
+                  <th className="px-4 py-2 font-medium">Priority</th>
+                  <th className="px-4 py-2 font-medium">Cost impact</th>
+                  <th className="px-4 py-2 font-medium">Time impact</th>
+                  <th className="px-4 py-2 font-medium">Drawing/Model Updated</th>
+                  <th className="px-4 py-2 font-medium">Sent to Site</th>
+                  <th className="px-4 py-2 font-medium">Assignee</th>
+                  <th className="px-4 py-2 font-medium">Due</th>
+                  <th className="px-4 py-2 font-medium">Aging</th>
+                  <th className="px-4 py-2 font-medium">Notice</th>
                 </tr>
               </thead>
               <tbody>
@@ -287,27 +287,27 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                       onClick={() => navigate(`/projects/${projectId}/rfis/${r.id}`)}
                       className={`border-b border-base-700/60 last:border-0 hover:bg-base-700 cursor-pointer ${hasImpact ? 'border-l-2 border-l-warn bg-warn/5' : ''}`}
                     >
-                      <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{r.rfiNumber ?? '—'}</td>
-                      <td className="px-4 py-2.5">{r.subject}</td>
-                      <td className="px-4 py-2.5 text-ink-300">{r.discipline ? RFI_DISCIPLINE_LABELS[r.discipline] : '—'}</td>
-                      <td className="px-4 py-2.5"><StatusBadge tone={RFI_WORKFLOW_STATUS_TONE[r.status]} label={RFI_WORKFLOW_STATUS_LABELS[r.status]} /></td>
-                      <td className="px-4 py-2.5"><StatusBadge tone={RFI_PRIORITY_TONE[r.priority]} label={RFI_PRIORITY_LABELS[r.priority]} /></td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-4 py-2 font-mono text-xs text-ink-500">{r.rfiNumber ?? '—'}</td>
+                      <td className="px-4 py-2">{r.subject}</td>
+                      <td className="px-4 py-2 text-ink-300">{r.discipline ? RFI_DISCIPLINE_LABELS[r.discipline] : '—'}</td>
+                      <td className="px-4 py-2"><StatusBadge tone={RFI_WORKFLOW_STATUS_TONE[r.status]} label={RFI_WORKFLOW_STATUS_LABELS[r.status]} /></td>
+                      <td className="px-4 py-2"><StatusBadge tone={RFI_PRIORITY_TONE[r.priority]} label={RFI_PRIORITY_LABELS[r.priority]} /></td>
+                      <td className="px-4 py-2">
                         {costImpacting ? (
                           <span className={COST_IMPACT_BADGE_CLASS}>💰 Cost</span>
                         ) : (
                           <span className="text-ink-300">{RFI_IMPACT_LEVEL_LABELS[effectiveImpactLevel(r.costImpactLevel, r.costImpact)]}</span>
                         )}
                       </td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-4 py-2">
                         {timeImpacting ? (
                           <span className={TIME_IMPACT_BADGE_CLASS}>⏱ Time</span>
                         ) : (
                           <span className="text-ink-300">{RFI_IMPACT_LEVEL_LABELS[effectiveImpactLevel(r.timeImpactLevel, r.timeImpact)]}</span>
                         )}
                       </td>
-                      <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center gap-1.5 flex-wrap">
+                      <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-2 flex-wrap">
                           {/* Editable right from the list, not just the RFI
                               form -- same PATCH the detail page's own edit
                               view already sends for this field. */}
@@ -316,7 +316,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                             onChange={(e) => updateDrawingLevelMutation.mutate({ rfiId: r.id, level: e.target.value as RfiImpactLevel })}
                             disabled={updateDrawingLevelMutation.isPending || readOnly}
                             title={DRAWING_UPDATE_STATUS_LABELS[r.drawingImpactLevel ?? 'no']}
-                            className={`field-input w-auto !py-1 !text-xs ${(r.drawingImpactLevel ?? 'no') === 'no' ? '!text-ink-300' : '!border-warn/40 !text-warn'}`}
+                            className={`field-input w-auto !py-2 !text-xs ${(r.drawingImpactLevel ?? 'no') === 'no' ? '!text-ink-300' : '!border-warn/40 !text-warn'}`}
                           >
                             {RFI_IMPACT_LEVELS.map((l) => (
                               <option key={l} value={l}>{DRAWING_UPDATE_STATUS_LABELS[l]}</option>
@@ -346,7 +346,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
                         {(r.drawingImpactLevel ?? 'no') === 'no' ? (
                           <span className="text-ink-500">—</span>
                         ) : (
@@ -354,21 +354,21 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                             value={r.drawingUpdateSentToSite ? 'yes' : 'no'}
                             onChange={() => toggleDrawingSentToSiteMutation.mutate({ rfiId: r.id, sent: Boolean(r.drawingUpdateSentToSite) })}
                             disabled={toggleDrawingSentToSiteMutation.isPending || readOnly}
-                            className={`field-input w-auto !py-1 !text-xs ${r.drawingUpdateSentToSite ? '!border-ok/40 !text-ok' : '!text-ink-300'}`}
+                            className={`field-input w-auto !py-2 !text-xs ${r.drawingUpdateSentToSite ? '!border-ok/40 !text-ok' : '!text-ink-300'}`}
                           >
                             <option value="no">Not sent</option>
                             <option value="yes">Sent</option>
                           </Listbox>
                         )}
                       </td>
-                      <td className="px-4 py-2.5 text-ink-300">{r.assignedToName ?? 'Unassigned'}</td>
-                      <td className={`px-4 py-2.5 ${overdue ? 'text-danger' : 'text-ink-300'}`}>{formatDate(r.dueDate)}</td>
-                      <td className="px-4 py-2.5"><span className={`badge ${TIMER_BADGE_CLASS[aging.state]}`}>{aging.label}</span></td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-4 py-2 text-ink-300">{r.assignedToName ?? 'Unassigned'}</td>
+                      <td className={`px-4 py-2 ${overdue ? 'text-danger' : 'text-ink-300'}`}>{formatDate(r.dueDate)}</td>
+                      <td className="px-4 py-2"><span className={`badge ${TIMER_BADGE_CLASS[aging.state]}`}>{aging.label}</span></td>
+                      <td className="px-4 py-2">
                         {!hasImpact ? (
                           <span className="text-ink-500">—</span>
                         ) : r.noticeLetterStatus === 'shared' ? (
-                          <span className="inline-flex items-center gap-1 text-ok text-xs" title={`Shared ${formatDate(r.noticeLetterSharedAt)}`}>
+                          <span className="inline-flex items-center gap-2 text-ok text-xs" title={`Shared ${formatDate(r.noticeLetterSharedAt)}`}>
                             <CheckIcon /> {formatDate(r.noticeLetterSharedAt)}
                           </span>
                         ) : readOnly ? (

@@ -97,16 +97,48 @@ export default {
       // arbitrary values across pages (PageHeader's eyebrow, issue numbers) --
       // named here so new code reaches for a token instead of another magic number.
       fontSize: {
-        eyebrow: ['0.625rem', { lineHeight: '1rem', letterSpacing: '0.08em' }], // 10px -- uppercase mono section/page labels
-        kpi: ['1.75rem', { lineHeight: '2rem', letterSpacing: '-0.01em' }], // 28px -- dashboard/report stat-tile numbers
-        caption: ['0.6875rem', { lineHeight: '1rem' }], // 11px -- chart value labels, dense metadata
-        axis: ['0.625rem', { lineHeight: '0.875rem' }], // 10px -- chart tick labels (no tracking, unlike eyebrow)
+        // One modular scale, ratio 1.25 (major third), anchored on 14px body
+        // text (text-sm). Each step is the one below times 1.25:
+        //   xs 11.2 / sm 14 / base 17.5 / xl 21.9 / 2xl 27.3 / 3xl 34.2 /
+        //   4xl 42.7 / 5xl 53.4 / 6xl 66.8 / 7xl 83.4  (px)
+        // lg shares base's step and caption/axis/eyebrow share xs's, so no
+        // size exists off the scale. Line heights land on the 4px half-grid.
+        xs: ['0.7rem', { lineHeight: '1rem' }],
+        sm: ['0.875rem', { lineHeight: '1.25rem' }],
+        base: ['1.09375rem', { lineHeight: '1.5rem' }],
+        lg: ['1.09375rem', { lineHeight: '1.5rem' }],
+        xl: ['1.3671875rem', { lineHeight: '1.75rem' }],
+        '2xl': ['1.708984375rem', { lineHeight: '2rem' }],
+        '3xl': ['2.13623046875rem', { lineHeight: '2.5rem' }],
+        '4xl': ['2.6702880859375rem', { lineHeight: '3rem' }],
+        '5xl': ['3.337860107421875rem', { lineHeight: '1' }],
+        '6xl': ['4.172325134277344rem', { lineHeight: '1' }],
+        '7xl': ['5.21540641784668rem', { lineHeight: '1' }],
+        eyebrow: ['0.7rem', { lineHeight: '1rem', letterSpacing: '0.08em' }], // uppercase mono section/page labels
+        kpi: ['1.708984375rem', { lineHeight: '2rem', letterSpacing: '-0.01em' }], // dashboard/report stat-tile numbers (2xl step)
+        caption: ['0.7rem', { lineHeight: '1rem' }], // chart value labels, dense metadata (xs step)
+        axis: ['0.7rem', { lineHeight: '1rem' }], // chart tick labels (xs step)
+      },
+      // Shadows are tinted with --rc-shadow (espresso in light, a deep warm
+      // brown in dark) -- never Tailwind's flat black.
+      boxShadow: {
+        sm: '0 1px 2px 0 rgb(var(--rc-shadow) / 0.06)',
+        DEFAULT: '0 1px 3px 0 rgb(var(--rc-shadow) / 0.10), 0 1px 2px -1px rgb(var(--rc-shadow) / 0.10)',
+        md: '0 4px 8px -2px rgb(var(--rc-shadow) / 0.10), 0 2px 4px -2px rgb(var(--rc-shadow) / 0.08)',
+        lg: '0 8px 24px -4px rgb(var(--rc-shadow) / 0.14), 0 4px 8px -4px rgb(var(--rc-shadow) / 0.08)',
+        xl: '0 16px 32px -8px rgb(var(--rc-shadow) / 0.18), 0 8px 16px -8px rgb(var(--rc-shadow) / 0.10)',
+        '2xl': '0 24px 48px -12px rgb(var(--rc-shadow) / 0.28)',
+        inner: 'inset 0 2px 4px 0 rgb(var(--rc-shadow) / 0.06)',
+        none: 'none',
       },
       backgroundImage: {
         // --rc-grid-line flips from a faint dark line (light mode) to a
         // faint light line (dark mode) in index.css -- a literal dark hex
         // here would be invisible against the dark-mode canvas.
         'grid-fine': `linear-gradient(var(--rc-grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--rc-grid-line) 1px, transparent 1px)`,
+      },
+      maxWidth: {
+        measure: 'var(--rc-measure)', // running text: at most ~75 characters a line
       },
       backgroundSize: {
         'grid-fine': '24px 24px',

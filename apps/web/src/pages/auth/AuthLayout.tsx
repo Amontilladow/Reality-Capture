@@ -14,10 +14,10 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
   useDocumentTitle(title);
 
   return (
-    <div className="min-h-screen p-3 sm:p-5 lg:grid lg:grid-cols-2 lg:gap-5">
-      <div className="min-h-[calc(100vh-1.5rem)] sm:min-h-[calc(100vh-2.5rem)] flex flex-col px-3 py-4 sm:px-8 sm:py-6">
+    <div className="min-h-screen p-4 sm:p-6 lg:grid lg:grid-cols-2 lg:gap-6">
+      <div className="min-h-[calc(100vh-1.5rem)] sm:min-h-[calc(100vh-2.5rem)] flex flex-col px-4 py-4 sm:px-8 sm:py-6">
         <div className="flex items-center justify-between">
-          <div className="inline-flex items-center gap-2.5 rounded-full border border-ink-500/50 pl-2 pr-5 py-1.5">
+          <div className="inline-flex items-center gap-2 rounded-full border border-ink-500/50 pl-2 pr-6 py-2">
             <LogoMark className="w-8 h-8" />
             <span className="text-lg font-light tracking-tight text-ink-100">Reality Capture</span>
           </div>
