@@ -62,8 +62,8 @@
      warning tone takes warm taupe from the palette instead of amber. All clear
      4.5:1 as badge text on their own 15% tint. */
   --rc-ok: 22 101 52;
-  --rc-warn: 111 98 87;
-  --rc-danger: 185 28 28;
+  --rc-warn: 92 80 70;
+  --rc-danger: 160 22 22;
   --rc-high: 150 50 30; /* "High" risk: rust, between the taupe warning and critical red */
 
   /* Teal keeps its role (data accent) with the shared taupe; "orange"
@@ -119,7 +119,7 @@
   --rc-base-950: 42 36 31; /* page background (canvas) */
   --rc-base-900: 50 43 37; /* chrome bars / secondary surface */
   --rc-base-800: 58 50 43; /* panel surface (elevated cards) */
-  --rc-base-700: 72 63 55; /* raised surface / hover / selected */
+  --rc-base-700: 64 55 48; /* raised surface / hover / selected */
   --rc-base-600: 111 98 87; /* borders (hairline) */
   --rc-base-500: 64 55 48; /* muted borders / dividers -- closer to panel fill than base-600, so it reads as softer, same relative relationship as the light theme's 500 vs 600 */
 
@@ -138,10 +138,10 @@
 
   /* Success and danger lifted so they stay legible on espresso; warning
      uses the palette's soft mushroom. */
-  --rc-ok: 34 197 94;
-  --rc-warn: 184 170 155;
-  --rc-danger: 248 113 113;
-  --rc-high: 214 120 90;
+  --rc-ok: 74 222 128;
+  --rc-warn: 232 221 207;
+  --rc-danger: 252 165 165;
+  --rc-high: 244 170 140;
 
   /* Data accent and AI tone, lifted for the dark surface. */
   --rc-teal: 184 170 155;
@@ -176,7 +176,7 @@
     --rc-base-950: 42 36 31;
     --rc-base-900: 50 43 37;
     --rc-base-800: 58 50 43;
-    --rc-base-700: 72 63 55;
+    --rc-base-700: 64 55 48;
     --rc-base-600: 111 98 87;
     --rc-base-500: 64 55 48;
     --rc-ink-100: 255 248 237;
@@ -188,10 +188,10 @@
     --rc-blueprint: 184 170 155;
     --rc-blueprint-hover: 232 221 207;
     --rc-blueprint-muted: 72 63 55;
-    --rc-ok: 34 197 94;
-    --rc-warn: 184 170 155;
-    --rc-danger: 248 113 113;
-    --rc-high: 214 120 90;
+    --rc-ok: 74 222 128;
+    --rc-warn: 232 221 207;
+    --rc-danger: 252 165 165;
+    --rc-high: 244 170 140;
     --rc-teal: 184 170 155;
     --rc-teal-hover: 232 221 207;
     --rc-teal-muted: 72 63 55;

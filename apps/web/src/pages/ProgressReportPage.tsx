@@ -48,7 +48,7 @@ function ElementProgressSection({ elementProgress }: { elementProgress: Progress
   return (
     <div className="space-y-2">
       <SectionHeader title={`Planned vs Actual Progress (${elementProgress.overallCompletionPct ?? 0}% complete)`} />
-      <div className="panel tick-frame overflow-x-auto">
+      <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -83,7 +83,7 @@ function IssueSection({ title, items, emptyText }: { title: string; items: Progr
       {items.length === 0 ? (
         <p className="text-sm text-ink-500">{emptyText}</p>
       ) : (
-        <div className="panel tick-frame overflow-x-auto">
+        <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">

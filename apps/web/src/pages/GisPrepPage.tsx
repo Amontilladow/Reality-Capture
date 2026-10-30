@@ -309,7 +309,7 @@ export default function GisPrepPage() {
 
         {jobsQuery.isError && <div className="panel p-4 text-sm text-danger">{apiErrorMessage(jobsQuery.error)}</div>}
 
-        <div className="panel tick-frame overflow-x-auto">
+        <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">

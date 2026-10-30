@@ -145,7 +145,7 @@ export default function SiteDrawingHubPage() {
           <>
             {/* Desktop/tablet: table */}
             <div className="panel tick-frame overflow-hidden hidden md:block">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto" tabIndex={0}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-ink-500 border-b border-base-600">

@@ -689,7 +689,7 @@ function IssueDashboard({
       {/* Per-user KPI table */}
       <div>
         <div className="field-label">Per-user workload</div>
-        <div className="panel overflow-x-auto">
+        <div className="panel overflow-x-auto" tabIndex={0}>
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-ink-500 border-b border-base-600">

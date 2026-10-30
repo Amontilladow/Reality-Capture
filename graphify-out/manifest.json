@@ -4272,9 +4272,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/risk/RiskRegisterTable.tsx": {
-    "mtime": 1793331908.9232585,
-    "seen": 1793332050.0560656,
-    "ast_hash": "cddf64405ff207c1eee6b5eae77461ca",
+    "mtime": 1793341036.2197995,
+    "seen": 1793341273.7278361,
+    "ast_hash": "d729be0a9731cea744693eb4091b87c7",
     "semantic_hash": ""
   },
   "apps/web/src/components/risk/riskDisplay.ts": {
@@ -5004,9 +5004,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/DocumentsPage.tsx": {
-    "mtime": 1793331922.2635715,
-    "seen": 1793332050.0603905,
-    "ast_hash": "46b9343fec01655dbd4fa99bd243a7ba",
+    "mtime": 1793341036.2259417,
+    "seen": 1793341273.7355225,
+    "ast_hash": "b7cd971f2f0514c0a9a3cac1368ce425",
     "semantic_hash": ""
   },
   "apps/web/src/pages/EmailSettingsPage.tsx": {
@@ -5022,9 +5022,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/GisPrepPage.tsx": {
-    "mtime": 1793331908.9272587,
-    "seen": 1793332050.0604012,
-    "ast_hash": "599ddb6c1468f179cf4e51309dd3cf51",
+    "mtime": 1793341036.2283335,
+    "seen": 1793341273.7356353,
+    "ast_hash": "1b30ddc215d6bf1e1efd76da15e5ae44",
     "semantic_hash": ""
   },
   "apps/web/src/pages/HelpPage.tsx": {
@@ -5034,9 +5034,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/IssuesPage.tsx": {
-    "mtime": 1793339148.9637768,
-    "seen": 1793339428.49924,
-    "ast_hash": "befe9dc182af6e4a7869202d9e90cfca",
+    "mtime": 1793341036.2290761,
+    "seen": 1793341273.7356918,
+    "ast_hash": "c5c8cfe89ae49ae5b82678fdf9da0460",
     "semantic_hash": ""
   },
   "apps/web/src/pages/MessagesPage.tsx": {
@@ -5058,9 +5058,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/ProgressReportPage.tsx": {
-    "mtime": 1793331908.9272587,
-    "seen": 1793332050.060645,
-    "ast_hash": "388f88567c14a2e9326707616f3c3515",
+    "mtime": 1793341036.2278366,
+    "seen": 1793341273.735839,
+    "ast_hash": "6f01a34d5179448ffc1bb6e83480b1c5",
     "semantic_hash": ""
   },
   "apps/web/src/pages/ProjectDetail.tsx": {
@@ -5082,15 +5082,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/QaInspectionsPage.tsx": {
-    "mtime": 1793331908.9272587,
-    "seen": 1793332050.0606544,
-    "ast_hash": "c2e2c6228cd9c1b5fcb7074946be55da",
+    "mtime": 1793341036.2229638,
+    "seen": 1793341273.7359796,
+    "ast_hash": "605f9d686b163fc559e5cf1f4dfcdcf2",
     "semantic_hash": ""
   },
   "apps/web/src/pages/QaqcDetailPage.tsx": {
-    "mtime": 1793331908.9272587,
-    "seen": 1793332050.0606573,
-    "ast_hash": "de613b4844540b6735d45fcf4e4752d8",
+    "mtime": 1793341036.22149,
+    "seen": 1793341273.7359827,
+    "ast_hash": "9a839802af593c0439193385b9c64975",
     "semantic_hash": ""
   },
   "apps/web/src/pages/QaqcLandingPage.tsx": {
@@ -5100,21 +5100,21 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/QaqcListPage.tsx": {
-    "mtime": 1793331908.9272587,
-    "seen": 1793332050.0606616,
-    "ast_hash": "2dd0087b5758dfc465fd21286042035d",
+    "mtime": 1793341036.222511,
+    "seen": 1793341273.7360375,
+    "ast_hash": "b369455d23cadc70e369754a4512c7a7",
     "semantic_hash": ""
   },
   "apps/web/src/pages/ReportsPage.tsx": {
-    "mtime": 1793339080.87628,
-    "seen": 1793339428.4995623,
-    "ast_hash": "e34693276bb22ffa8265ce730ad313bf",
+    "mtime": 1793341036.2270048,
+    "seen": 1793341273.736041,
+    "ast_hash": "1413cd97b142431a3c4b55fc42895f99",
     "semantic_hash": ""
   },
   "apps/web/src/pages/RfiDetailPage.tsx": {
-    "mtime": 1793339080.8763325,
-    "seen": 1793339428.4995646,
-    "ast_hash": "bd956ee0b5d1d0fb344d4bfaa55195e6",
+    "mtime": 1793341036.2245896,
+    "seen": 1793341273.7360446,
+    "ast_hash": "89db0644d0793e5f1b7923b32fe6138e",
     "semantic_hash": ""
   },
   "apps/web/src/pages/RfiExternalPage.tsx": {
@@ -5130,9 +5130,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/RfisPage.tsx": {
-    "mtime": 1793331908.9272587,
-    "seen": 1793332050.0606735,
-    "ast_hash": "7515fe30f3a84bb20123ec28e15de415",
+    "mtime": 1793341036.2264113,
+    "seen": 1793341273.736151,
+    "ast_hash": "fae484c688062844c146861797671fb7",
     "semantic_hash": ""
   },
   "apps/web/src/pages/RiskPage.tsx": {
@@ -5148,27 +5148,27 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/SiteDrawingHubPage.tsx": {
-    "mtime": 1793331908.9272587,
-    "seen": 1793332050.060716,
-    "ast_hash": "c28dcc99c4ecda0505579d27f0f3f436",
+    "mtime": 1793341036.2275183,
+    "seen": 1793341273.7362704,
+    "ast_hash": "5c994bf4c10ce07576ff8d4cb239c92c",
     "semantic_hash": ""
   },
   "apps/web/src/pages/SnaggingPage.tsx": {
-    "mtime": 1793331908.9272587,
-    "seen": 1793332050.0607185,
-    "ast_hash": "41d49557382fad7f0668ee83aa9d0195",
+    "mtime": 1793341042.7826526,
+    "seen": 1793341273.7362745,
+    "ast_hash": "da71b1dbbdd9f23bafbcbe24490ded3f",
     "semantic_hash": ""
   },
   "apps/web/src/pages/SubmittalsPage.tsx": {
-    "mtime": 1793331908.9272587,
-    "seen": 1793332050.060721,
-    "ast_hash": "2bb20fba01bcfb9448736d2e6fccddb2",
+    "mtime": 1793341036.2233336,
+    "seen": 1793341273.7362778,
+    "ast_hash": "075be3721a517db752829d40f16c4906",
     "semantic_hash": ""
   },
   "apps/web/src/pages/TransmittalsPage.tsx": {
-    "mtime": 1793331908.9272587,
-    "seen": 1793332050.0607233,
-    "ast_hash": "5233e8f36de21f7bd7ea16d2abb1d3fb",
+    "mtime": 1793341036.2219305,
+    "seen": 1793341273.736282,
+    "ast_hash": "ae5a0f707a6696993e722950068006ef",
     "semantic_hash": ""
   },
   "apps/web/src/pages/Viewer360.tsx": {
@@ -5178,9 +5178,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/WorkforcePage.tsx": {
-    "mtime": 1793339103.8093197,
-    "seen": 1793339428.499896,
-    "ast_hash": "84fd3ddaf640d883aee2c9a84a2ec1af",
+    "mtime": 1793341036.2254615,
+    "seen": 1793341273.7363396,
+    "ast_hash": "38f13483ab1e682a9ead9de7066fdced",
     "semantic_hash": ""
   },
   "apps/web/src/pages/auth/AcceptInvitation.tsx": {

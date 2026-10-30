@@ -23,7 +23,7 @@ import {
   type MonitoringLevel, type ProductivityClassification, type ProductivityFactors, type AbsenceType,
 } from '@engineeringos/types';
 import { Listbox } from '../components/ui/Listbox';
-import { Tabs, type TabItem } from '../components/ui/Tabs';
+import { Tabs, TabPanel, type TabItem } from '../components/ui/Tabs';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -143,7 +143,7 @@ export default function WorkforcePage() {
             setting stacked together; tabs keep each job on its own. */}
         <Tabs items={tabs} active={tab} onChange={(key) => setTab(key as WorkforceTab)} />
 
-        {tab === 'activity' && (<>
+        <TabPanel tabKey="activity" active={tab}><div className="space-y-8">
         {teamQuery.data && teamQuery.data.length > 0 && (
           <section className="space-y-2">
             <h2 className="text-sm font-semibold text-ink-100">Team</h2>
@@ -246,7 +246,7 @@ export default function WorkforcePage() {
             )}
 
             {summary.byProject.length > 0 && (
-              <div className="panel tick-frame overflow-x-auto">
+              <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -285,7 +285,7 @@ export default function WorkforcePage() {
               These activities have no confident project attribution yet. Assign one manually — a manual selection is always recorded at 100%
               confidence, since only you can say for certain.
             </p>
-            <div className="panel tick-frame overflow-x-auto">
+            <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -332,22 +332,22 @@ export default function WorkforcePage() {
           </section>
         )}
 
-        </>)}
+        </div></TabPanel>
 
-        {tab === 'schedule' && (<>
+        <TabPanel tabKey="schedule" active={tab}><div className="space-y-8">
           <MyScheduling />
           <CalendarIntegrationPanel />
-        </>)}
+        </div></TabPanel>
 
-        {tab === 'admin' && isCompanyAdmin && (
-          <>
+        {isCompanyAdmin && (
+          <TabPanel tabKey="admin" active={tab}><div className="space-y-8">
             <PrivacySettingsAdmin />
             <ReportingLinesAdmin />
             <ApplicationsAdmin />
             <CompanyReportAdmin from={from} to={to} />
             <ShiftSchedulingAdmin />
             <AbsenceRequestsAdmin />
-          </>
+          </div></TabPanel>
         )}
       </div>
     </>
@@ -443,7 +443,7 @@ function MyScheduling() {
     <section className="space-y-4">
       <h2 className="text-sm font-semibold text-ink-100">My schedule</h2>
 
-      <div className="panel tick-frame overflow-x-auto">
+      <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -788,7 +788,7 @@ function ReportingLinesAdmin() {
       {(usersQuery.isLoading || linesQuery.isLoading) && <p className="text-sm text-ink-500">Loading company users…</p>}
       {setManagerMutation.isError && <p className="field-error">{apiErrorMessage(setManagerMutation.error)}</p>}
       {users.length > 0 && (
-        <div className="panel tick-frame overflow-x-auto">
+        <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -884,7 +884,7 @@ function CompanyReportAdmin({ from, to }: { from: string; to: string }) {
       {reportQuery.isLoading && <p className="text-sm text-ink-500">Loading report…</p>}
       {reportQuery.isError && <p className="field-error">{apiErrorMessage(reportQuery.error)}</p>}
       {rows.length > 0 && (
-        <div className="panel tick-frame overflow-x-auto">
+        <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -973,7 +973,7 @@ function ShiftSchedulingAdmin() {
       {shifts.length === 0 ? (
         <p className="text-sm text-ink-500">No shifts assigned in this window yet.</p>
       ) : (
-        <div className="panel tick-frame overflow-x-auto">
+        <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -1019,7 +1019,7 @@ function AbsenceRequestsAdmin() {
       {absences.length === 0 ? (
         <p className="text-sm text-ink-500">No pending absence requests.</p>
       ) : (
-        <div className="panel tick-frame overflow-x-auto">
+        <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -1138,7 +1138,7 @@ function ApplicationsAdmin() {
         </div>
       )}
       {apps.length > 0 && (
-        <div className="panel tick-frame overflow-x-auto">
+        <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">

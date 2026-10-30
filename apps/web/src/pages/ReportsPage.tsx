@@ -488,7 +488,7 @@ export default function ReportsPage() {
               )}
 
               {kpis.issues.openList.length > 0 && (
-                <div className="panel tick-frame overflow-x-auto">
+                <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -553,7 +553,7 @@ export default function ReportsPage() {
               )}
 
               {kpis.snagging.openList.length > 0 && (
-                <div className="panel tick-frame overflow-x-auto">
+                <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -729,7 +729,7 @@ export default function ReportsPage() {
                   No NCR/SOR/WIR/MIR records logged on this project yet.
                 </div>
               ) : kpis.qaqc.openList.length > 0 && (
-                <div className="panel tick-frame overflow-x-auto">
+                <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-xs text-ink-500 border-b border-base-600">
@@ -791,7 +791,7 @@ export default function ReportsPage() {
           )}
 
           {(documentsQuery.data?.data.length ?? 0) > 0 && (
-            <div className="panel tick-frame overflow-x-auto">
+            <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-ink-500 border-b border-base-600">

@@ -1360,7 +1360,7 @@ function AttachmentSection({
       <div className="field-label mb-2">{kind === 'query' ? 'Query attachments' : 'Response attachments'}</div>
       {attachments.length === 0 && <p className="text-xs text-ink-500 mb-2">No files attached yet.</p>}
       {attachments.length > 0 && (
-        <div className="overflow-x-auto mb-2">
+        <div className="overflow-x-auto mb-2" tabIndex={0}>
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-ink-500 border-b border-base-600">
