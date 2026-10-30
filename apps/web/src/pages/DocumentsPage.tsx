@@ -50,7 +50,7 @@ export default function DocumentsPage() {
             ))}
           </Listbox>
           {documentsQuery.data?.meta && (
-            <span className="text-xs font-mono text-ink-500 ml-auto">
+            <span className="text-xs text-ink-500 ml-auto">
               {documentsQuery.data.meta.total} document{documentsQuery.data.meta.total === 1 ? '' : 's'}
             </span>
           )}

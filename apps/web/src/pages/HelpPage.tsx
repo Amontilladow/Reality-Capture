@@ -177,7 +177,7 @@ function RoleGuideList({
     <div>
       <h1 className="text-lg font-semibold text-ink-100 mb-2">Guide for {roleLabel}</h1>
       <p className="text-xs text-ink-500 mb-4">
-        A quick-start subset of the Help Centre for your role -- the rest is still available via the categories on the left.
+        A quick-start subset of the Help Centre for your role. The rest is still available via the categories on the left.
       </p>
       {articles.length === 0 ? (
         <div className="text-sm text-ink-500">No role-specific guide is available yet for {roleLabel}.</div>

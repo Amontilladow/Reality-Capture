@@ -112,7 +112,7 @@ export function MessagesBell() {
                     {t.unread && <span className="w-1.5 h-1.5 rounded-full bg-blueprint mt-2 shrink-0" />}
                     <div className="min-w-0 flex-1">
                       <div className={`text-xs truncate ${t.unread ? 'text-ink-100' : 'text-ink-300'}`}>
-                        <span className="font-medium">{t.fromUserName ?? 'Unknown'}</span> — {t.subject}
+                        <span className="font-medium">{t.fromUserName ?? 'Unknown'}</span>: {t.subject}
                       </div>
                       <div className="text-xs text-ink-500 truncate mt-0">{snippetOf(t, 60)}</div>
                       <div className="text-xs font-mono text-ink-500 mt-0">{timeAgo(t.createdAt)}</div>
@@ -142,7 +142,7 @@ export function MessagesBell() {
 
 function ChatIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M4 5h16v11H8l-4 4V5z" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

@@ -91,7 +91,7 @@ export default function SharePointIntegrationPage() {
             <div className="flex items-center justify-between rounded border border-base-700/60 px-4 py-2">
               <div className="text-sm">
                 <span className="text-ink-100 font-medium">{status.connected ? status.tenantId : 'Not connected'}</span>
-                {status.connected && !status.isActive && <span className="text-ink-500 ml-2">(disconnected — mappings kept)</span>}
+                {status.connected && !status.isActive && <span className="text-ink-500 ml-2">(disconnected, mappings kept)</span>}
               </div>
               {status.connected && (
                 <span className={status.lastSyncError ? 'badge bg-danger/15 text-danger' : 'badge bg-ok/15 text-ok'}>
@@ -133,7 +133,7 @@ export default function SharePointIntegrationPage() {
             <h2 className="text-sm font-semibold text-ink-100">Project Site Mapping</h2>
             <p className="text-xs text-ink-500 mt-2">
               Map a project onto one SharePoint site + document library. The drive is checked for reachability before
-              the mapping is saved. Column overrides are optional -- without them, the drawing number/title fall back
+              the mapping is saved. Column overrides are optional. Without them, the drawing number/title fall back
               to the filename, and the revision number falls back to SharePoint's own version label.
             </p>
           </div>
@@ -160,7 +160,7 @@ export default function SharePointIntegrationPage() {
               )}
               {syncMutation.isSuccess && (
                 <p className="text-xs text-ok">
-                  Sync {syncMutation.data.status === 'SUCCESS' ? 'completed' : 'failed'} — {syncMutation.data.drawingsSeen} seen,
+                  Sync {syncMutation.data.status === 'SUCCESS' ? 'completed' : 'failed'}: {syncMutation.data.drawingsSeen} seen,
                   {' '}{syncMutation.data.drawingsCreated} new, {syncMutation.data.revisionsCreated} new revision(s).
                 </p>
               )}

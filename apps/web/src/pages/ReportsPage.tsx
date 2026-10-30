@@ -36,7 +36,7 @@ import {
 function sectionLead(total: number, flags: { label: string; count: number }[], noun: string): string {
   if (total === 0) return `No ${noun} logged on this project yet.`;
   const flagged = flags.filter((f) => f.count > 0);
-  if (flagged.length === 0) return `${total} ${noun} tracked — none critical or overdue.`;
+  if (flagged.length === 0) return `${total} ${noun} tracked, none critical or overdue.`;
   const parts = flagged.map((f) => `${f.count} ${f.label}`);
   return `${parts.join(' and ')} out of ${total} ${noun} need attention.`;
 }
@@ -401,7 +401,7 @@ export default function ReportsPage() {
               actions={
                 <>
                   <Link to={`/projects/${projectId}/risk`} className="btn-secondary !px-4 !py-2 text-xs">
-                    View full Risk Intelligence →
+                    View full Risk Intelligence
                   </Link>
                   <button
                     onClick={handleDownloadRiskPdf}
@@ -604,7 +604,7 @@ export default function ReportsPage() {
                   onClick={() => setDrawingListOpen((v) => !v)}
                   className="panel p-4 text-left hover:bg-base-700 transition-colors"
                 >
-                  <div className="text-xs text-ink-500 mb-0 font-medium">Drawing/Model Updated — Applied</div>
+                  <div className="text-xs text-ink-500 mb-0 font-medium">Drawing/Model Updated: Applied</div>
                   <div className={`text-xl font-semibold tabular-nums ${kpis.rfis.drawingUpdateStatus.notApplied > 0 ? 'text-warn' : 'text-ink-100'}`}>
                     {kpis.rfis.drawingUpdateStatus.applied} of {kpis.rfis.drawingUpdateStatus.totalRequiringDrawingUpdate}
                   </div>
@@ -691,7 +691,7 @@ export default function ReportsPage() {
             {/* ── QAQC (NCR/SOR/WIR/MIR) ──────────────────────────────── */}
             <MobileFold title="QAQC" summary={sectionLead(kpis.qaqc.summary.total, [{ label: 'critical', count: kpis.qaqc.summary.critical }, { label: 'overdue', count: kpis.qaqc.summary.overdue }], 'QA/QC records')}>
             <section className="space-y-4">
-              <SectionHeader title="QAQC — NCR, SOR, WIR & MIR" />
+              <SectionHeader title="QAQC: NCR, SOR, WIR & MIR" />
               <p className="text-sm text-ink-300">
                 {sectionLead(kpis.qaqc.summary.total, [
                   { label: 'critical', count: kpis.qaqc.summary.critical },
@@ -707,19 +707,19 @@ export default function ReportsPage() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <div className="panel p-4">
-                  <div className="text-xs text-ink-500 mb-0 font-medium">NCR — Open / Total / Closed</div>
+                  <div className="text-xs text-ink-500 mb-0 font-medium">NCR: Open / Total / Closed</div>
                   <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.ncrOpen} / {kpis.qaqc.summary.ncrTotal} / {kpis.qaqc.summary.ncrClosed}</div>
                 </div>
                 <div className="panel p-4">
-                  <div className="text-xs text-ink-500 mb-0 font-medium">SOR — Open / Total / Closed</div>
+                  <div className="text-xs text-ink-500 mb-0 font-medium">SOR: Open / Total / Closed</div>
                   <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.sorOpen} / {kpis.qaqc.summary.sorTotal} / {kpis.qaqc.summary.sorClosed}</div>
                 </div>
                 <div className="panel p-4">
-                  <div className="text-xs text-ink-500 mb-0 font-medium">WIR — Open / Total / Closed</div>
+                  <div className="text-xs text-ink-500 mb-0 font-medium">WIR: Open / Total / Closed</div>
                   <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.wirOpen} / {kpis.qaqc.summary.wirTotal} / {kpis.qaqc.summary.wirClosed}</div>
                 </div>
                 <div className="panel p-4">
-                  <div className="text-xs text-ink-500 mb-0 font-medium">MIR — Open / Total / Closed</div>
+                  <div className="text-xs text-ink-500 mb-0 font-medium">MIR: Open / Total / Closed</div>
                   <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.mirOpen} / {kpis.qaqc.summary.mirTotal} / {kpis.qaqc.summary.mirClosed}</div>
                 </div>
               </div>

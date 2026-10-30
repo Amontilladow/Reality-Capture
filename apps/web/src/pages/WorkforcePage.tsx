@@ -169,12 +169,12 @@ export default function WorkforcePage() {
 
         {privacyQuery.data && (
           <p className="text-xs text-ink-500">
-            Monitoring level: <span className="text-ink-300">{privacyQuery.data.monitoringLevel}</span> · Self-view{' '}
-            <span className="text-ink-300">{privacyQuery.data.selfViewEnabled ? 'enabled' : 'disabled'}</span> · Screenshots{' '}
-            <span className="text-ink-300">{privacyQuery.data.screenshotEnabled ? 'enabled' : 'not used'}</span> —{' '}
+            Monitoring level: <span className="text-ink-300">{privacyQuery.data.monitoringLevel}</span>. Self-view{' '}
+            <span className="text-ink-300">{privacyQuery.data.selfViewEnabled ? 'enabled' : 'disabled'}</span>. Screenshots{' '}
+            <span className="text-ink-300">{privacyQuery.data.screenshotEnabled ? 'enabled' : 'not used'}</span>.{' '}
             {isSelf
-              ? 'this page shows only your own activity.'
-              : `you're viewing ${selectedMember?.name ?? 'a team member'}'s activity as their manager or company leadership.`}
+              ? 'This page shows only your own activity.'
+              : `You’re viewing ${selectedMember?.name ?? 'a team member'}’s activity as their manager or company leadership.`}
           </p>
         )}
 
@@ -201,9 +201,9 @@ export default function WorkforcePage() {
 
                 {factors && (
                   <p className="text-xs text-ink-500">
-                    Score factors (model {score?.modelVersion}) — utilization {pct(factors.utilization)}, engineering share{' '}
+                    Score factors (model {score?.modelVersion}): utilization {pct(factors.utilization)}, engineering share{' '}
                     {pct(factors.engineeringShare)}, from {formatHm(factors.totalActiveSeconds)} of active time. This is one explainable
-                    v1 formula, not a ranking — see the factors, not just the number.
+                    v1 formula, not a ranking. See the factors, not just the number.
                   </p>
                 )}
 
@@ -222,12 +222,12 @@ export default function WorkforcePage() {
                     </div>
                     {(factors.unclassifiedSeconds ?? 0) > 0 && isCompanyAdmin && (
                       <p className="text-xs text-ink-500">
-                        Some time is in apps nobody has classified yet — see "Application productivity" under Team admin.
+                        Some time is in apps nobody has classified yet. See “Application productivity” under Team admin.
                       </p>
                     )}
                     {(factors.privateSeconds ?? 0) > 0 && (
                       <p className="text-xs text-ink-500">
-                        Private time: <span className="text-ink-300 tabular-nums">{formatHm(factors.privateSeconds)}</span> — counted as
+                        Private time: <span className="text-ink-300 tabular-nums">{formatHm(factors.privateSeconds)}</span>, counted as
                         tracked time, but app/window details were never captured while Private Time was on.
                       </p>
                     )}
@@ -282,7 +282,7 @@ export default function WorkforcePage() {
           <section className="space-y-4">
             <h2 className="text-sm font-semibold text-ink-100">Unattributed activity</h2>
             <p className="text-xs text-ink-500">
-              These activities have no confident project attribution yet. Assign one manually — a manual selection is always recorded at 100%
+              These activities have no confident project attribution yet. Assign one manually. A manual selection is always recorded at 100%
               confidence, since only you can say for certain.
             </p>
             <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
@@ -513,7 +513,7 @@ function MyScheduling() {
           <ul className="text-sm space-y-2">
             {shiftsQuery.data.map((s) => (
               <li key={s.id} className="text-ink-300">
-                {s.shiftDate} <span className="text-ink-500">· {s.startTime}–{s.endTime}</span>
+                {s.shiftDate} <span className="text-ink-500">{s.startTime} to {s.endTime}</span>
               </li>
             ))}
           </ul>
@@ -570,7 +570,7 @@ function MyScheduling() {
           <ul className="text-sm space-y-2">
             {absencesQuery.data.map((a) => (
               <li key={a.id} className="text-ink-300">
-                {a.startDate} → {a.endDate} <span className="text-ink-500">· {a.absenceType} ·</span>{' '}
+                {a.startDate} → {a.endDate} <span className="text-ink-500">{a.absenceType}</span>{' '}
                 <span className={a.status === 'approved' ? 'text-ok' : a.status === 'denied' ? 'text-danger' : 'text-warn'}>{a.status}</span>
               </li>
             ))}
@@ -623,7 +623,7 @@ function CalendarIntegrationPanel() {
           <span>
             {outcome === 'connected' && 'Google Calendar connected.'}
             {outcome === 'declined' && 'Google Calendar connection was declined.'}
-            {outcome === 'failed' && 'Could not connect Google Calendar — please try again.'}
+            {outcome === 'failed' && 'Could not connect Google Calendar. Please try again.'}
           </span>
           <button className="text-ink-500 hover:text-ink-300 text-xs" onClick={clearOutcome}>Dismiss</button>
         </div>
@@ -642,7 +642,7 @@ function CalendarIntegrationPanel() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-xs text-ink-500">
-              Connected {statusQuery.data.connectedAt ? new Date(statusQuery.data.connectedAt).toLocaleDateString() : ''} — read-only access
+              Connected {statusQuery.data.connectedAt ? new Date(statusQuery.data.connectedAt).toLocaleDateString() : ''}, read-only access
               to event times, never edited or shared beyond this view.
             </p>
             <button className="btn-secondary !py-2 !px-2 !text-xs" disabled={disconnectMutation.isPending} onClick={() => disconnectMutation.mutate()}>
@@ -657,7 +657,7 @@ function CalendarIntegrationPanel() {
             <ul className="text-sm space-y-2">
               {eventsQuery.data.map((e) => (
                 <li key={e.id} className="text-ink-300">
-                  {new Date(e.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}–{new Date(e.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(e.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} to {new Date(e.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   {' '}<span className="text-ink-500">{e.title}</span>
                 </li>
               ))}
@@ -717,7 +717,7 @@ function PrivacySettingsAdmin() {
             <span className="text-sm">
               Enable periodic screenshot capture
               <span className="block text-xs text-ink-500">
-                Off by default. Confirm your company's employee-monitoring disclosure requirements before turning this on.
+                Off by default. Confirm your company’s employee-monitoring disclosure requirements before turning this on.
               </span>
             </span>
           </label>
@@ -733,8 +733,8 @@ function PrivacySettingsAdmin() {
             <span className="text-sm">
               Enable window title capture
               <span className="block text-xs text-ink-500">
-                Off by default. More revealing than the app name alone — a title can carry a document name, email subject, or
-                browser tab title. Confirm your company's employee-monitoring disclosure requirements before turning this on.
+                Off by default. More revealing than the app name alone: a title can carry a document name, email subject, or
+                browser tab title. Confirm your company’s employee-monitoring disclosure requirements before turning this on.
               </span>
             </span>
           </label>
@@ -783,7 +783,7 @@ function ReportingLinesAdmin() {
     <section className="space-y-4">
       <h2 className="text-sm font-semibold text-ink-100">Reporting lines (admin)</h2>
       <p className="text-xs text-ink-500">
-        Sets who a manager sees in their Workforce team view -- direct reports and, transitively, the people who report to them.
+        Sets who a manager sees in their Workforce team view: direct reports and, transitively, the people who report to them.
       </p>
       {(usersQuery.isLoading || linesQuery.isLoading) && <p className="text-sm text-ink-500">Loading company users…</p>}
       {setManagerMutation.isError && <p className="field-error">{apiErrorMessage(setManagerMutation.error)}</p>}
@@ -987,7 +987,7 @@ function ShiftSchedulingAdmin() {
                 <tr key={s.id} className="border-b border-base-700/60 last:border-0">
                   <td className="px-4 py-2 tabular-nums">{s.shiftDate}</td>
                   <td className="px-4 py-2">{s.firstName} {s.lastName}</td>
-                  <td className="px-4 py-2 text-ink-300 tabular-nums">{s.startTime}–{s.endTime}</td>
+                  <td className="px-4 py-2 text-ink-300 tabular-nums">{s.startTime} to {s.endTime}</td>
                 </tr>
               ))}
             </tbody>
@@ -1127,14 +1127,14 @@ function ApplicationsAdmin() {
     <section className="space-y-4">
       <h2 className="text-sm font-semibold text-ink-100">Application productivity (admin)</h2>
       <p className="text-xs text-ink-500">
-        Classify each app or executable the agent has reported as productive, neutral, or unproductive for your team's work — this
+        Classify each app or executable the agent has reported as productive, neutral, or unproductive for your team’s work. This
         drives the productivity breakdown above. {unclassifiedCount > 0 && `${unclassifiedCount} app(s) still need review.`}
       </p>
       {appsQuery.isLoading && <p className="text-sm text-ink-500">Loading applications…</p>}
       {classifyMutation.isError && <p className="field-error">{apiErrorMessage(classifyMutation.error)}</p>}
       {apps.length === 0 && !appsQuery.isLoading && (
         <div className="panel tick-frame p-6 text-center text-sm text-ink-500">
-          No applications reported yet — they appear here automatically once a device is enrolled and reporting.
+          No applications reported yet. They appear here automatically once a device is enrolled and reporting.
         </div>
       )}
       {apps.length > 0 && (

@@ -216,7 +216,7 @@ export function EditProjectModal({
           <div>
             <div className="field-label">Stakeholders</div>
             <p className="text-xs text-ink-500">
-              Set once here — every RFI's exported PDF pulls these in automatically instead of asking again per document.
+              Set once here. Every RFI’s exported PDF pulls these in automatically instead of asking again per document.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-4">

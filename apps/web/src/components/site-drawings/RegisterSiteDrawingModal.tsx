@@ -108,7 +108,7 @@ export function RegisterSiteDrawingModal({ open, onClose, projectId }: { open: b
             <Listbox id="sd-status" className="field-input" value={workflowStatus} onChange={(e) => setWorkflowStatus(e.target.value as SiteDrawingWorkflowStatus)}>
               {SITE_DRAWING_WORKFLOW_STATUSES.map((s) => <option key={s} value={s}>{WORKFLOW_STATUS_LABELS[s]}</option>)}
             </Listbox>
-            <p className="text-xs text-ink-500 mt-2">Set this deliberately — never inferred from the filename or upload date.</p>
+            <p className="text-xs text-ink-500 mt-2">Set this deliberately. Never inferred from the filename or upload date.</p>
           </div>
         </div>
 

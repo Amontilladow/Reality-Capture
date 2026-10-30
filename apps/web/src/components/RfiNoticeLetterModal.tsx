@@ -125,7 +125,7 @@ export function RfiNoticeLetterModal({
   if (!open || !rfi) return null;
 
   return (
-    <Modal open={open} onClose={onClose} title={`Notice letter — ${rfi.rfiNumber ?? rfi.subject}`} wide>
+    <Modal open={open} onClose={onClose} title={`Notice letter: ${rfi.rfiNumber ?? rfi.subject}`} wide>
       <div className="space-y-4">
         {error && <p className="field-error">{error}</p>}
 
@@ -220,7 +220,7 @@ export function RfiNoticeLetterModal({
 
 function CheckIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5">
       <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

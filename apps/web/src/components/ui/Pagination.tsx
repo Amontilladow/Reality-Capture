@@ -24,7 +24,7 @@ export function Pagination({
   return (
     <nav aria-label="Pagination" className="flex items-center justify-between gap-4 text-sm">
       <span className="text-ink-500">
-        {from}–{to} of {total}
+        {from} to {to} of {total}
       </span>
       <div className="flex items-center gap-2">
         <PageButton label="Previous" disabled={page <= 1} onClick={() => onPageChange(page - 1)} />

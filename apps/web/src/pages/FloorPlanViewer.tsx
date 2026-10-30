@@ -386,20 +386,20 @@ export default function FloorPlanViewer() {
                     disabled={currentPage <= 1}
                     className="btn-ghost !px-2 !py-2 disabled:opacity-30"
                   >
-                    ← Prev
+                    Prev
                   </button>
-                  <span className="font-mono">Page {currentPage} of {numPages}</span>
+                  <span className="tabular-nums">Page {currentPage} of {numPages}</span>
                   <button
                     onClick={() => goToPage(Math.min(numPages, currentPage + 1))}
                     disabled={currentPage >= numPages}
                     className="btn-ghost !px-2 !py-2 disabled:opacity-30"
                   >
-                    Next →
+                    Next
                   </button>
                 </div>
               )}
               {issuePins.length > 0 && (
-                <span className="text-xs font-mono text-ink-500 ml-auto">
+                <span className="text-xs text-ink-500 ml-auto">
                   {pinsForCurrentPage.length} pin{pinsForCurrentPage.length === 1 ? '' : 's'}
                   {numPages > 1 ? ` on this page (${issuePins.length} total)` : ''}
                 </span>
@@ -459,7 +459,7 @@ function DrawingRow({ drawing, active, onSelect }: { drawing: Drawing; active: b
 
 function UploadIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 16V4M7 9l5-5 5 5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" strokeLinecap="round" />
     </svg>

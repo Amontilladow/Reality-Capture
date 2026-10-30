@@ -40,7 +40,7 @@ export default function PendingApproval() {
           </p>
         )}
         <p className="text-xs text-ink-500">
-          There's nothing to do here -- check back later, or contact whoever invited you.
+          There’s nothing to do here. Check back later, or contact whoever invited you.
         </p>
         <button onClick={handleLogout} className="btn-secondary w-full">
           Sign out

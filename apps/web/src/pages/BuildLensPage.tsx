@@ -164,7 +164,7 @@ export default function BuildLensPage() {
                     sortMode === mode ? 'bg-signal text-base-800' : 'text-ink-500 hover:text-ink-100 hover:bg-base-700'
                   }`}
                 >
-                  {mode === 'recent' ? 'Most recent' : 'A–Z'}
+                  {mode === 'recent' ? 'Most recent' : 'A to Z'}
                 </button>
               ))}
             </div>
@@ -273,14 +273,14 @@ function LocationRow({ loc, onClick, wide }: { loc: LocationSummary; onClick: ()
 
 function Chevron({ open }: { open: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" className={`w-3.5 h-3.5 shrink-0 text-ink-500 transition-transform ${open ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={`w-3.5 h-3.5 shrink-0 text-ink-500 transition-transform ${open ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 function BuildingIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <rect x="4" y="3" width="16" height="18" rx="1" />
       <path d="M8 7h2M14 7h2M8 11h2M14 11h2M8 15h2M14 15h2" strokeLinecap="round" />
     </svg>
@@ -288,14 +288,14 @@ function BuildingIcon({ className }: { className?: string }) {
 }
 function LevelIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M3 12h18M3 12l4-4M3 12l4 4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 function TimelineIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M3 12h4l2-6 4 12 2-6h6" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx="7" cy="12" r="1.3" fill="currentColor" stroke="none" />
       <circle cx="17" cy="12" r="1.3" fill="currentColor" stroke="none" />
@@ -304,7 +304,7 @@ function TimelineIcon({ className }: { className?: string }) {
 }
 function ChevronIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

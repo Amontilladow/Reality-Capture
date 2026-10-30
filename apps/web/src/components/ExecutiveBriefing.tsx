@@ -109,7 +109,7 @@ export function ExecutiveBriefing({ projectId }: { projectId: string }) {
                 <span className="text-xs text-ink-500 shrink-0 font-medium">{signal.domain}</span>
                 <span className="text-sm text-ink-100 truncate">{signal.label}</span>
               </div>
-              <span className="text-xs text-blueprint shrink-0">View →</span>
+              <span className="text-xs text-blueprint shrink-0">View</span>
             </Link>
           ))}
         </div>

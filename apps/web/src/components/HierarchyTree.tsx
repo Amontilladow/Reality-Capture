@@ -140,7 +140,7 @@ export function HierarchyTree({
 
 function Chevron({ open }: { open: boolean }) {
   return (
-    <svg
+    <svg aria-hidden="true"
       viewBox="0 0 24 24"
       className={`w-3.5 h-3.5 shrink-0 text-ink-500 transition-transform ${open ? 'rotate-90' : ''}`}
       fill="none"
@@ -153,14 +153,14 @@ function Chevron({ open }: { open: boolean }) {
 }
 function PlusIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 5v14M5 12h14" strokeLinecap="round" />
     </svg>
   );
 }
 function BuildingIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <rect x="4" y="3" width="16" height="18" rx="1" />
       <path d="M8 7h2M14 7h2M8 11h2M14 11h2M8 15h2M14 15h2" strokeLinecap="round" />
     </svg>
@@ -168,7 +168,7 @@ function BuildingIcon({ className }: { className?: string }) {
 }
 function LevelIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M3 12h18M3 12l4-4M3 12l4 4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

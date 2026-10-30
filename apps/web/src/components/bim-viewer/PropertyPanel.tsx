@@ -206,7 +206,7 @@ export function PropertyPanel({
             {element.linkedPin.linkedRecord?.type === 'issue' && (
               <div className="flex items-center gap-4 text-xs">
                 <Link to={`/projects/${projectId}/issues?issueId=${element.linkedPin.linkedRecord.id}`} className="text-blueprint hover:text-blueprint">
-                  View in Issues →
+                  View in Issues
                 </Link>
                 <button
                   type="button"
@@ -221,7 +221,7 @@ export function PropertyPanel({
             {element.linkedPin.linkedRecord?.type === 'snag' && (
               <div className="text-xs">
                 <Link to={`/projects/${projectId}/snagging?snagId=${element.linkedPin.linkedRecord.id}`} className="text-blueprint hover:text-blueprint">
-                  View in Snagging →
+                  View in Snagging
                 </Link>
               </div>
             )}
@@ -257,7 +257,7 @@ export function PropertyPanel({
               </button>
             </div>
             <p className="text-xs text-ink-500">
-              Creates the pin here, with no floor-plan position yet -- place it on a drawing later from the Floor Plans page.
+              Creates the pin here, with no floor-plan position yet. Place it on a drawing later from the Floor Plans page.
             </p>
           </div>
         ) : (
@@ -314,7 +314,7 @@ export function PropertyPanel({
                   <div key={h.id} className="text-xs text-ink-300">
                     <span className="font-medium text-ink-100">{h.toStatus.replace('_', ' ')}</span>
                     {h.completionPct !== null && ` (${h.completionPct}%)`}
-                    {' — '}{h.performedByName}, {formatDateTime(h.createdAt)}
+                    {', '}{h.performedByName}, {formatDateTime(h.createdAt)}
                     {h.captureTitle && <span className="text-ink-500"> · evidence: {h.captureTitle}</span>}
                   </div>
                 ))}
@@ -447,7 +447,7 @@ export function PropertyPanel({
       {element.classifications.length > 0 && (
         <Section title="Classifications">
           {element.classifications.map((c, i) => (
-            <KeyValueRow key={i} label={c.system} value={[c.code, c.name].filter(Boolean).join(' — ') || '—'} />
+            <KeyValueRow key={i} label={c.system} value={[c.code, c.name].filter(Boolean).join(', ') || 'None'} />
           ))}
         </Section>
       )}

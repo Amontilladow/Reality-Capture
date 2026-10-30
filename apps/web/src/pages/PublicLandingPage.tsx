@@ -55,9 +55,9 @@ function SiteHeader() {
   return (
     <header className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex items-center justify-between gap-4">
       <BrandPill />
-      <nav aria-label="Page sections" className="hidden md:flex items-center gap-2 rounded-full bg-base-800/80 p-2">
+      <nav aria-label="Page sections" className="hidden lg:flex items-center gap-2 rounded-full bg-base-800/80 p-2">
         {NAV.map((n) => (
-          <a key={n.href} href={n.href} className="px-4 h-9 inline-flex items-center rounded-full text-sm text-ink-300 hover:bg-base-700 hover:text-ink-100 transition-colors">
+          <a key={n.href} href={n.href} className="px-4 h-9 inline-flex items-center whitespace-nowrap rounded-full text-sm text-ink-300 hover:bg-base-700 hover:text-ink-100 transition-colors">
             {n.label}
           </a>
         ))}
@@ -72,7 +72,7 @@ function SiteHeader() {
 
 function Hero() {
   return (
-    <section className="grid gap-6 lg:grid-cols-2 lg:min-h-[36rem]">
+    <section className="grid gap-6 lg:grid-cols-2 lg:min-h-[42rem]">
       <div className="flex flex-col justify-center py-8 lg:py-16 lg:pr-6">
         <p className="text-sm text-ink-300 mb-4">Reality Capture by EngineeringOS</p>
         <h1 className="text-5xl sm:text-6xl font-light tracking-tight leading-[1.05]">Reality, understood.</h1>
@@ -84,7 +84,7 @@ function Hero() {
           <Link to="/login" className="btn h-12 px-8 bg-sun text-noir text-base hover:brightness-95">Sign in</Link>
           <Link to="/signup" className="btn-secondary !h-12 !px-8 text-base">Create an account</Link>
         </div>
-        <p className="text-xs text-ink-500 mt-4">Creating an account needs your company's signup code.</p>
+        <p className="text-sm text-ink-500 mt-4">Creating an account needs your company’s signup code.</p>
 
         {/* The product's own loop as a pill row, in the theme's pill-bar grammar. */}
         <ul aria-label="Capture, coordinate, resolve" className="flex gap-2 mt-10 max-w-xl">
@@ -150,7 +150,7 @@ function Capabilities() {
           </p>
           <div className="mt-auto pt-4">
             <RadialGauge value={14} max={25} label="Illustrative risk score" caption="of 25" />
-            <p className="text-xs text-ink-500 text-center mt-2">Illustrative score · human assessment available</p>
+            <p className="text-xs text-ink-500 text-center mt-2">Illustrative score, human assessment available</p>
           </div>
         </DashCard>
       </div>
@@ -190,7 +190,7 @@ function ClosingCta() {
       <div>
         <h2 className="text-4xl sm:text-5xl font-light tracking-tight text-on-noir">Bring your project into focus.</h2>
         <p className="text-on-noir/80 text-base mt-4 max-w-xl">
-          Sign in to pick up where your team left off, or create an account with your company's signup code.
+          Sign in to pick up where your team left off, or create an account with your company’s signup code.
         </p>
       </div>
       <div className="flex flex-wrap gap-4">

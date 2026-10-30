@@ -109,11 +109,11 @@ export function SiteDrawingPdfViewer({ fileUrl, onNumPages }: { fileUrl: string;
       <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-base-600 shrink-0">
         <div className="flex items-center gap-2">
           <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="btn-ghost !px-2 !py-2 text-xs disabled:opacity-40">
-            ← Prev
+            Prev
           </button>
           <span className="text-xs text-ink-300 tabular-nums px-2">Page {page} of {numPages || '—'}</span>
           <button onClick={() => setPage((p) => Math.min(numPages, p + 1))} disabled={page >= numPages} className="btn-ghost !px-2 !py-2 text-xs disabled:opacity-40">
-            Next →
+            Next
           </button>
         </div>
         <div className="flex items-center gap-2">
@@ -129,7 +129,7 @@ export function SiteDrawingPdfViewer({ fileUrl, onNumPages }: { fileUrl: string;
         {error && (
           <div className="flex items-center justify-center h-full text-sm text-danger text-center max-w-sm">{error}</div>
         )}
-        {!error && <canvas ref={canvasRef} className="shadow-lg" style={{ display: loading ? 'none' : 'block' }} />}
+        {!error && <canvas role="img" aria-label="Site drawing page" ref={canvasRef} className="shadow-lg" style={{ display: loading ? 'none' : 'block' }} />}
       </div>
     </div>
   );

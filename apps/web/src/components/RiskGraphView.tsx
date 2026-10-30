@@ -212,7 +212,7 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
         <div className="flex items-center gap-2 flex-wrap">
           {focusNodeId && (
             <button onClick={() => setFocusNodeId(undefined)} className="btn-secondary !px-2 !py-2 text-xs">
-              ← Show full graph
+              Show full graph
             </button>
           )}
           <Listbox aria-label="Node type" value={nodeTypeFilter} onChange={(e) => setNodeTypeFilter(e.target.value)} className="field-input w-auto text-xs !py-2">
@@ -246,7 +246,7 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
         )}
 
         <div ref={containerRef} className="panel tick-frame overflow-hidden" style={{ height: '60vh' }}>
-          <svg ref={svgRef} className="w-full h-full" />
+          <svg role="img" aria-label="Risk relationship graph" ref={svgRef} className="w-full h-full" />
         </div>
 
         {selectedNodeId && (

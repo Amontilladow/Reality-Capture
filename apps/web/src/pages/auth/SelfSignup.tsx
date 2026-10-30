@@ -60,7 +60,7 @@ export default function SelfSignup() {
   });
 
   return (
-    <AuthLayout title="Create your account" subtitle="Join your company's reality capture workspace.">
+    <AuthLayout title="Create your account" subtitle="Join your company’s reality capture workspace.">
       <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
         <Input
           label="Company signup code"
@@ -148,7 +148,7 @@ export default function SelfSignup() {
         </Button>
       </form>
 
-      <p className="text-xs text-ink-500 mt-6 text-center">
+      <p className="text-sm text-ink-500 mt-6 text-center">
         Already have an account? <Link to="/login" className="text-blueprint hover:text-blueprint-hover">Sign in</Link>
       </p>
     </AuthLayout>

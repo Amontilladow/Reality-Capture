@@ -167,7 +167,7 @@ export function RiskRegisterTable({ risks, members, ownerNames, filters, onFilte
                     <td className="px-4 py-2 text-right tabular-nums font-semibold text-ink-100">{r.score}</td>
                     <td className="px-4 py-2">
                       <span
-                        className="inline-flex items-center gap-2 px-2 py-0 rounded text-xs font-semibold uppercase tracking-wide"
+                        className="inline-flex items-center gap-2 px-2 py-0 rounded text-xs font-semibold"
                         style={{ color: levelColor[r.level], backgroundColor: `${levelColor[r.level]}22` }}
                       >
                         {LEVEL_LABELS[r.level]}

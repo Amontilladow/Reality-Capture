@@ -10,8 +10,8 @@ describe('EmailLink', () => {
   });
 
   it('renders custom children as the visible label while still addressing the real email', () => {
-    render(<EmailLink email="jane.doe@m4contracting.ae">Jane Doe</EmailLink>);
-    const link = screen.getByRole('link', { name: 'Jane Doe' });
+    render(<EmailLink email="jane.doe@m4contracting.ae">Sara Khalil</EmailLink>);
+    const link = screen.getByRole('link', { name: 'Sara Khalil' });
     expect(link).toHaveAttribute('href', 'mailto:jane.doe@m4contracting.ae');
   });
 

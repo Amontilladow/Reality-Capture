@@ -51,7 +51,7 @@ export function DocumentShareModal({
       <div className="space-y-4">
         <p className="text-xs text-ink-500">
           Generates a public link to this file. Anyone with the link can view and download it, logged out, until it expires or is revoked.
-          No email is sent automatically — copy the link yourself.
+          No email is sent automatically. Copy the link yourself.
         </p>
 
         <div className="flex items-end gap-2">

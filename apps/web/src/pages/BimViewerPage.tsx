@@ -41,7 +41,7 @@ export default function BimViewerPage() {
     enabled: Boolean(projectId),
   });
   const modelName = modelsQuery.data?.find((m) => m.id === modelId)?.name;
-  useDocumentTitle(modelName ? `BIM Viewer — ${modelName}` : undefined);
+  useDocumentTitle(modelName ? `BIM Viewer: ${modelName}` : undefined);
 
   const viewerDataQuery = useQuery({
     queryKey: ['bim-viewer-data', projectId, modelId],
@@ -198,7 +198,7 @@ export default function BimViewerPage() {
       <div className="flex items-center justify-between border-b border-base-600 bg-base-950 px-4 py-2 text-ink-100">
         <div className="flex items-center gap-4">
           <Link to={`/projects/${projectId}/bim`} className="text-sm text-ink-500 hover:text-ink-100">
-            ← Models
+            Back to models
           </Link>
           <h1 className="font-medium text-base">{modelName ?? 'Model'}</h1>
         </div>

@@ -209,7 +209,7 @@ export function QaqcFormModal({
             />
           </div>
           {photos.length === 0 && (
-            <p className="text-xs text-ink-500 mt-2">Optional -- quick evidence photos. They'll also appear in the project's Captures tab.</p>
+            <p className="text-xs text-ink-500 mt-2">Optional: quick evidence photos. They’ll also appear in the project’s Captures tab.</p>
           )}
           {photos.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
@@ -273,7 +273,7 @@ export function QaqcFormModal({
             />
           </div>
           {documents.length === 0 && (
-            <p className="text-xs text-ink-500 mt-2">Optional -- method statements, test certificates, specs, or other supporting documents.</p>
+            <p className="text-xs text-ink-500 mt-2">Optional: method statements, test certificates, specs, or other supporting documents.</p>
           )}
           {documents.length > 0 && (
             <div className="space-y-2 mt-2">

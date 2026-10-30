@@ -67,11 +67,9 @@ export default function SubmittalsPage() {
           </Listbox>
 
           {summaryQuery.data && (
-            <div className="flex gap-2 text-xs font-mono text-ink-500 ml-auto">
+            <div className="flex gap-4 text-xs tabular-nums text-ink-500 ml-auto">
               <span>{summaryQuery.data.total} total</span>
-              <span>·</span>
               <span>{summaryQuery.data.pending} pending</span>
-              <span>·</span>
               <span className={summaryQuery.data.overdue > 0 ? 'text-danger' : ''}>{summaryQuery.data.overdue} overdue</span>
             </div>
           )}

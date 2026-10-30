@@ -31,7 +31,7 @@ export default function ForgotPassword() {
       <AuthLayout title="Check your inbox" subtitle="If that email is registered, a reset link is on its way.">
         <p className="text-sm text-ink-300 leading-relaxed">
           Follow the link in the email to set a new password. The link expires after a short window
-          for security — request a new one if it lapses.
+          for security. Request a new one if it lapses.
         </p>
         <Link to="/login" className="btn-secondary w-full mt-6">Back to sign in</Link>
       </AuthLayout>

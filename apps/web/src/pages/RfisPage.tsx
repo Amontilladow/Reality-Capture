@@ -229,11 +229,9 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
           </div>
 
           {summaryQuery.data && (
-            <div className="flex gap-2 text-xs font-mono text-ink-500 ml-auto">
+            <div className="flex gap-4 text-xs tabular-nums text-ink-500 ml-auto">
               <span>{summaryQuery.data.total} total</span>
-              <span>·</span>
               <span>{summaryQuery.data.open} open</span>
-              <span>·</span>
               <span className={summaryQuery.data.overdue > 0 ? 'text-danger' : ''}>{summaryQuery.data.overdue} overdue</span>
             </div>
           )}
@@ -294,7 +292,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                       <td className="px-4 py-2"><StatusBadge tone={RFI_PRIORITY_TONE[r.priority]} label={RFI_PRIORITY_LABELS[r.priority]} /></td>
                       <td className="px-4 py-2">
                         {costImpacting ? (
-                          <span className={COST_IMPACT_BADGE_CLASS}>💰 Cost</span>
+                          <span className={COST_IMPACT_BADGE_CLASS}>Cost</span>
                         ) : (
                           <span className="text-ink-300">{RFI_IMPACT_LEVEL_LABELS[effectiveImpactLevel(r.costImpactLevel, r.costImpact)]}</span>
                         )}
@@ -348,7 +346,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                       </td>
                       <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
                         {(r.drawingImpactLevel ?? 'no') === 'no' ? (
-                          <span className="text-ink-500">—</span>
+                          <span className="text-ink-500">None</span>
                         ) : (
                           <Listbox aria-label="Drawing update sent to site"
                             value={r.drawingUpdateSentToSite ? 'yes' : 'no'}
@@ -366,13 +364,13 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                       <td className="px-4 py-2"><span className={`badge ${TIMER_BADGE_CLASS[aging.state]}`}>{aging.label}</span></td>
                       <td className="px-4 py-2">
                         {!hasImpact ? (
-                          <span className="text-ink-500">—</span>
+                          <span className="text-ink-500">None</span>
                         ) : r.noticeLetterStatus === 'shared' ? (
                           <span className="inline-flex items-center gap-2 text-ok text-xs" title={`Shared ${formatDate(r.noticeLetterSharedAt)}`}>
                             <CheckIcon /> {formatDate(r.noticeLetterSharedAt)}
                           </span>
                         ) : readOnly ? (
-                          <span className="text-ink-500">—</span>
+                          <span className="text-ink-500">None</span>
                         ) : (
                           <button
                             type="button"
@@ -414,7 +412,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
 
 function CheckIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5">
       <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

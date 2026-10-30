@@ -105,7 +105,7 @@ export function RiskMovementSection({ movement, isLoading, days, onDaysChange, o
   return (
     <div className="space-y-4">
       <SectionHeader
-        title={`Risk Movement — last ${days} days`}
+        title={`Risk Movement, last ${days} days`}
         size="sm"
         actions={
           <div className="flex items-center gap-2">

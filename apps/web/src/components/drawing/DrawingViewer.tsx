@@ -249,9 +249,9 @@ export function DrawingViewer({
         onClick={handleClick}
         style={size ? { width: size.width, height: size.height } : undefined}
       >
-        <canvas ref={canvasRef} className="block" />
+        <canvas role="img" aria-label="Floor plan drawing" ref={canvasRef} className="block" />
         {size && (
-          <svg className="absolute inset-0 pointer-events-none" width={size.width} height={size.height}>
+          <svg aria-hidden="true" className="absolute inset-0 pointer-events-none" width={size.width} height={size.height}>
             {pins.map((pin) => (
               <g
                 key={pin.locationId}

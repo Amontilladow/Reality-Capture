@@ -81,7 +81,7 @@ export function TransmittalFormModal({
 
         <div>
           <label className="field-label" htmlFor="items">Items included *</label>
-          <textarea id="items" className="field-input min-h-[72px]" value={items} onChange={(e) => setItems(e.target.value)} placeholder={'One per line, e.g.\nA-101 Rev C — Floor Plan\nS-201 Rev A — Foundation Plan'} />
+          <textarea id="items" className="field-input min-h-[72px]" value={items} onChange={(e) => setItems(e.target.value)} placeholder={'One per line, e.g.\nA-101 Rev C, Floor Plan\nS-201 Rev A, Foundation Plan'} />
         </div>
 
         <div>

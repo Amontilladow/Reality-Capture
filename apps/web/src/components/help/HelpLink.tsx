@@ -20,7 +20,7 @@ export function HelpLink({ slug, label = 'Help' }: { slug: string; label?: strin
 
 function IconHelpCircle({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <circle cx="12" cy="12" r="9" />
       <path d="M9.5 9.2a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.4" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx="12" cy="16.8" r="0.4" fill="currentColor" stroke="none" />

@@ -134,7 +134,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
 
             {revision && needsApprovalWarning(revision.workflowStatus) && (
               <div className="panel p-4 border border-warn/40 bg-warn/5 text-xs text-ink-100">
-                ⚠ This revision's approval status is {revision.workflowStatus === 'UNKNOWN' ? 'unverified' : 'still under review'} — do not treat it as confirmed current for construction.
+                This revision’s approval status is {revision.workflowStatus === 'UNKNOWN' ? 'unverified' : 'still under review'}. Do not treat it as confirmed current for construction.
               </div>
             )}
             {revision && revision.isSuperseded && (
@@ -195,7 +195,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
                       {offlinePackage?.status === 'STALE' && (
                         <span className="inline-flex items-center gap-2">
                           <span className="badge bg-warn/15 text-warn">OFFLINE COPY OUTDATED</span>
-                          A newer revision exists — remove and re-download.
+                          A newer revision exists. Remove and re-download.
                         </span>
                       )}
                       {!offlinePackage && !revision.offlineEligibility && 'Not eligible for offline download.'}

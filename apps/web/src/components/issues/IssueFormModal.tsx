@@ -185,7 +185,7 @@ export function IssueFormModal({
 
         {!isEdit && viewState && (
           <div className="text-xs text-ink-500 bg-base-700/40 rounded px-4 py-2">
-            3D view captured{viewState.screenshotStorageKey ? ' with screenshot' : ''} — "view in 3D" will reopen this exact vantage point.
+            3D view captured{viewState.screenshotStorageKey ? ' with screenshot' : ''}. “View in 3D” will reopen this exact vantage point.
           </div>
         )}
 
@@ -306,7 +306,7 @@ export function IssueFormModal({
               />
             </div>
             {photos.length === 0 && (
-              <p className="text-xs text-ink-500 mt-2">Optional -- attach photos as evidence. They'll also appear in the project's Captures tab.</p>
+              <p className="text-xs text-ink-500 mt-2">Optional: attach photos as evidence. They’ll also appear in the project’s Captures tab.</p>
             )}
             {photos.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">

@@ -44,7 +44,7 @@ export default function ProgressReportExternalPage() {
 
   const report = reportQuery.data;
 
-  useDocumentTitle(report ? `Progress Report — ${report.project.name}` : undefined);
+  useDocumentTitle(report ? `Progress Report: ${report.project.name}` : undefined);
 
   return (
     <div className="min-h-screen flex flex-col items-center px-4 py-10">
@@ -75,7 +75,7 @@ export default function ProgressReportExternalPage() {
               </div>
               <h1 className="text-xl font-semibold text-ink-100 mt-2">Progress Report</h1>
               <div className="text-xs text-ink-500 mt-2">
-                {new Date(report.dateFrom).toLocaleDateString('en-GB')} – {new Date(report.dateTo).toLocaleDateString('en-GB')}
+                {new Date(report.dateFrom).toLocaleDateString('en-GB')} to {new Date(report.dateTo).toLocaleDateString('en-GB')}
               </div>
             </div>
 

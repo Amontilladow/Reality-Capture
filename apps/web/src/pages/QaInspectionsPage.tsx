@@ -70,13 +70,10 @@ export default function QaInspectionsPage() {
           </Listbox>
 
           {summaryQuery.data && (
-            <div className="flex gap-2 text-xs font-mono text-ink-500 ml-auto">
+            <div className="flex gap-4 text-xs tabular-nums text-ink-500 ml-auto">
               <span>{summaryQuery.data.total} total</span>
-              <span>·</span>
               <span>{summaryQuery.data.pending} pending</span>
-              <span>·</span>
               <span>{summaryQuery.data.passed} passed</span>
-              <span>·</span>
               <span className={summaryQuery.data.failed > 0 ? 'text-danger' : ''}>{summaryQuery.data.failed} failed</span>
             </div>
           )}

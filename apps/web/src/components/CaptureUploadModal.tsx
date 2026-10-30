@@ -152,7 +152,7 @@ export function CaptureUploadModal({
           <input {...getInputProps()} />
           <UploadIcon className="w-6 h-6 mx-auto mb-2 text-ink-500" />
           <p className="text-sm text-ink-300">Drag files here, or click to browse</p>
-          <p className="text-xs text-ink-500 mt-2">Images and video — uploaded directly to storage</p>
+          <p className="text-xs text-ink-500 mt-2">Images and video, uploaded directly to storage</p>
         </div>
 
         {files.length > 0 && (
@@ -199,7 +199,7 @@ export function CaptureUploadModal({
 
 function UploadIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M12 16V4M7 9l5-5 5 5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" strokeLinecap="round" />
     </svg>

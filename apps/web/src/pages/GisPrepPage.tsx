@@ -273,7 +273,7 @@ export default function GisPrepPage() {
             )}
             {form.mode === 'convert' && (
               <label className="text-xs text-ink-500 space-y-2">
-                <span>Unit number (whole floor is one unit) — required for the QC links</span>
+                <span>Unit number (whole floor is one unit), required for the QC links</span>
                 <input className="field-input text-xs !py-2" value={form.unitNumber} onChange={e => setForm(f => ({ ...f, unitNumber: e.target.value }))} />
               </label>
             )}
@@ -520,7 +520,7 @@ function ConversionDetail({ projectId, job, onRerun }: { projectId: string; job:
         </tbody>
       </table>
       {preview?.url && <img src={preview.url} alt="Generated features preview" className="w-full bg-white rounded" />}
-      <div className="text-xs text-ink-300">Georeferencing: {report.georeferencing.status} — {report.georeferencing.messages.join(' ')}</div>
+      <div className="text-xs text-ink-300">Georeferencing: {report.georeferencing.status}: {report.georeferencing.messages.join(' ')}</div>
       {review.length > 0 && (
         <div className="space-y-2">
           <div className="text-xs font-medium text-ink-300">Items requiring review ({review.length})</div>
@@ -551,7 +551,7 @@ function ConversionDetail({ projectId, job, onRerun }: { projectId: string; job:
         <div className="text-xs">
           <div className="font-medium text-ink-300 mb-2">Mandatory values the drawing cannot provide ({report.missing_mandatory.length})</div>
           <ul className="list-disc pl-6 text-ink-500 max-h-48 overflow-y-auto">
-            {report.missing_mandatory.map((m, i) => <li key={i}>{m.feature}: {m.tag}{m.note ? ` — ${m.note}` : ''}</li>)}
+            {report.missing_mandatory.map((m, i) => <li key={i}>{m.feature}: {m.tag}{m.note ? `: ${m.note}` : ''}</li>)}
           </ul>
         </div>
       )}

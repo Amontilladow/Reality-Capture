@@ -105,7 +105,7 @@ export default function MessagesPage() {
           title={messages[0]?.subject ?? 'Thread'}
           actions={
             <button onClick={closeThread} className="btn-ghost text-xs">
-              ← Back to inbox
+              Back to inbox
             </button>
           }
         />

@@ -40,7 +40,7 @@ export function ProjectCard({ project }: { project: Project }) {
         )}
       </div>
 
-      <div className="flex items-center gap-4 text-xs font-mono text-ink-300 pt-4 border-t border-base-600">
+      <div className="flex items-center gap-4 text-xs tabular-nums text-ink-300 pt-4 border-t border-base-600">
         <span>{project.captureCount ?? 0} captures</span>
         <span>{project.openIssueCount ?? 0} open issues</span>
         <span>{project.memberCount ?? 0} members</span>

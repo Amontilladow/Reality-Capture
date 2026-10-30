@@ -246,7 +246,7 @@ export function ChatWidget() {
                   <div className="text-xs text-ink-100">
                     {projectQuery.data?.name ? `${projectQuery.data.name} team chat` : 'Project team chat'}
                   </div>
-                  <div className="text-xs font-mono text-ink-500 mt-0">This project · everyone</div>
+                  <div className="text-xs text-ink-500 mt-0">This project · everyone</div>
                 </button>
               )}
 
@@ -340,7 +340,7 @@ export function ChatWidget() {
               </div>
               <div className="border-t border-base-600 p-2 shrink-0">
                 {!connected && (
-                  <p className="text-xs text-ink-500 mb-2">Not connected — reconnecting…</p>
+                  <p className="text-xs text-ink-500 mb-2">Not connected, reconnecting…</p>
                 )}
                 <div className="flex items-center gap-2">
                   <input
@@ -381,14 +381,14 @@ function displayName(u: CompanyUser): string {
 
 function IconClose({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
     </svg>
   );
 }
 function IconArrowLeft({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M19 12H5M11 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

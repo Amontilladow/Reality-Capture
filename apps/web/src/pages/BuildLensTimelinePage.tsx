@@ -112,7 +112,7 @@ function CaptureMedia({
   if (capture.captureType === 'video') {
     return (
       <div className="absolute inset-0 flex items-center justify-center bg-base-950">
-        <video src={src} controls className="max-w-full max-h-full" />
+        <video src={src} controls preload="metadata" className="max-w-full max-h-full" />
       </div>
     );
   }
@@ -128,7 +128,7 @@ function CaptureMedia({
 function CaptureTypeIcon({ captureType, className }: { captureType: Capture['captureType']; className?: string }) {
   if (captureType === 'video') {
     return (
-      <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
+      <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
         <rect x="2" y="5" width="14" height="14" rx="2" />
         <path d="M16 9.5l6-3v11l-6-3z" strokeLinejoin="round" />
       </svg>
@@ -136,14 +136,14 @@ function CaptureTypeIcon({ captureType, className }: { captureType: Capture['cap
   }
   if (captureType === 'photo_360') {
     return (
-      <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
+      <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
         <ellipse cx="12" cy="12" rx="10" ry="6" />
         <path d="M12 6c-3.5 0-6.5 1-8.5 2.5M12 18c3.5 0 6.5-1 8.5-2.5" strokeLinecap="round" />
       </svg>
     );
   }
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M4 8h3l2-2h6l2 2h3v11H4z" strokeLinejoin="round" /><circle cx="12" cy="13.5" r="3.2" />
     </svg>
   );
@@ -507,14 +507,14 @@ function CompareView({
 
 function BackIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M19 12H5M11 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 function CompareIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M8 3v18M16 3v18" strokeLinecap="round" />
       <path d="M3 8h3M3 16h3M18 8h3M18 16h3" strokeLinecap="round" />
     </svg>
@@ -522,7 +522,7 @@ function CompareIcon({ className }: { className?: string }) {
 }
 function UploadIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M12 16V4M7 9l5-5 5 5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" strokeLinecap="round" />
     </svg>
@@ -530,21 +530,21 @@ function UploadIcon({ className }: { className?: string }) {
 }
 function PlayIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" stroke="none">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="currentColor" stroke="none">
       <path d="M8 5v14l11-7z" />
     </svg>
   );
 }
 function PauseIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" stroke="none">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="currentColor" stroke="none">
       <path d="M7 5h4v14H7zM13 5h4v14h-4z" />
     </svg>
   );
 }
 function EditIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
