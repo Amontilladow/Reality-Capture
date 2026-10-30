@@ -343,7 +343,7 @@ function NavGroupList({ groups, basePath }: { groups: NavGroup[]; basePath: stri
 
 function IconGrid({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <rect x="3" y="3" width="8" height="8" rx="1" /><rect x="13" y="3" width="8" height="8" rx="1" />
       <rect x="3" y="13" width="8" height="8" rx="1" /><rect x="13" y="13" width="8" height="8" rx="1" />
     </svg>
@@ -351,28 +351,28 @@ function IconGrid({ className }: { className?: string }) {
 }
 function IconLayers({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" strokeLinecap="round" />
     </svg>
   );
 }
 function IconCamera({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M4 8h3l2-2h6l2 2h3v11H4z" strokeLinejoin="round" /><circle cx="12" cy="13.5" r="3.2" />
     </svg>
   );
 }
 function IconFlag({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M5 3v18" strokeLinecap="round" /><path d="M5 4h13l-3 4 3 4H5" strokeLinejoin="round" />
     </svg>
   );
 }
 function IconMap({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M9 3L3 5v16l6-2 6 2 6-2V3l-6 2-6-2z" strokeLinejoin="round" />
       <path d="M9 3v16M15 5v16" />
     </svg>
@@ -380,7 +380,7 @@ function IconMap({ className }: { className?: string }) {
 }
 function IconDrawingStack({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <rect x="6" y="3" width="14" height="14" rx="1.5" />
       <path d="M4 7v12a1.5 1.5 0 0 0 1.5 1.5H17" />
     </svg>
@@ -388,7 +388,7 @@ function IconDrawingStack({ className }: { className?: string }) {
 }
 function IconTimeline({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M3 12h4l2-6 4 12 2-6h6" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx="7" cy="12" r="1.3" fill="currentColor" stroke="none" />
       <circle cx="17" cy="12" r="1.3" fill="currentColor" stroke="none" />
@@ -397,7 +397,7 @@ function IconTimeline({ className }: { className?: string }) {
 }
 function IconQuestion({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <circle cx="12" cy="12" r="9" />
       <path d="M9.5 9a2.5 2.5 0 014.9.8c0 1.7-2.4 2-2.4 3.7" strokeLinecap="round" />
       <circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none" />
@@ -406,7 +406,7 @@ function IconQuestion({ className }: { className?: string }) {
 }
 function IconTag({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M12 3h6a3 3 0 013 3v6l-9 9-9-9 9-9z" strokeLinejoin="round" />
       <circle cx="16" cy="8" r="1.5" fill="currentColor" stroke="none" />
     </svg>
@@ -417,7 +417,7 @@ function IconTag({ className }: { className?: string }) {
 // a checklist and not the risk score itself.
 function IconQaqc({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M6 3h9l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" strokeLinejoin="round" />
       <path d="M12 9v4" strokeLinecap="round" />
       <circle cx="12" cy="16" r="0.9" fill="currentColor" stroke="none" />
@@ -426,7 +426,7 @@ function IconQaqc({ className }: { className?: string }) {
 }
 function IconSpark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z" strokeLinejoin="round" />
       <path d="M19 15l0.8 2.2L22 18l-2.2 0.8L19 21l-0.8-2.2L16 18l2.2-0.8L19 15z" strokeLinejoin="round" />
     </svg>
@@ -434,7 +434,7 @@ function IconSpark({ className }: { className?: string }) {
 }
 function IconGauge({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M12 20a8 8 0 1 1 8-8" strokeLinecap="round" />
       <path d="M12 12l4-4" strokeLinecap="round" />
       <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
@@ -443,7 +443,7 @@ function IconGauge({ className }: { className?: string }) {
 }
 function IconShield({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6z" strokeLinejoin="round" />
       <path d="M12 8v5" strokeLinecap="round" />
       <circle cx="12" cy="16" r="0.6" fill="currentColor" stroke="none" />
@@ -452,7 +452,7 @@ function IconShield({ className }: { className?: string }) {
 }
 function IconReport({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M7 3h7l4 4v14H7z" strokeLinejoin="round" />
       <path d="M14 3v4h4" strokeLinejoin="round" />
       <path d="M9.5 13l2 2 3.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -461,7 +461,7 @@ function IconReport({ className }: { className?: string }) {
 }
 function IconTrending({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M3 17l6-6 4 4 8-8" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M15 7h6v6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -471,7 +471,7 @@ function IconTrending({ className }: { className?: string }) {
 // that shape; Help & Training needs its own silhouette in the same nav.
 function IconHelp({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M12 6c-1.5-1-4-1.5-6-1.2v12c2 -0.3 4.5 0.2 6 1.2 1.5-1 4-1.5 6-1.2V4.8c-2-0.3-4.5 0.2-6 1.2z" strokeLinejoin="round" />
       <path d="M12 6v12" />
     </svg>
@@ -479,7 +479,7 @@ function IconHelp({ className }: { className?: string }) {
 }
 function IconBim({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" strokeLinejoin="round" />
       <path d="M12 3v9m0 9v-9m-8-4.5L12 12l8-4.5" strokeLinejoin="round" />
     </svg>
@@ -487,7 +487,7 @@ function IconBim({ className }: { className?: string }) {
 }
 function IconKey({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <circle cx="8" cy="15" r="4" />
       <path d="M11 12l9-9M17 6l3 3M14 9l2 2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -495,7 +495,7 @@ function IconKey({ className }: { className?: string }) {
 }
 function IconMail({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <path d="M3 7l9 6 9-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -503,14 +503,14 @@ function IconMail({ className }: { className?: string }) {
 }
 function IconArrowLeft({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M19 12H5M11 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 function IconLogout({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" strokeLinecap="round" />
       <path d="M16 17l5-5-5-5M21 12H9" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -518,14 +518,14 @@ function IconLogout({ className }: { className?: string }) {
 }
 function IconMenu({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
     </svg>
   );
 }
 function IconClose({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
     </svg>
   );

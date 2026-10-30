@@ -86,7 +86,7 @@ export default function BimModelsPage() {
                   <div className="mt-2 w-64">
                     <div className="h-1.5 w-full rounded-full bg-base-700">
                       <div
-                        className="h-1.5 rounded-full bg-blueprint transition-all"
+                        className="h-1.5 rounded-full bg-blueprint"
                         style={{ width: `${model.processingProgress}%` }}
                       />
                     </div>

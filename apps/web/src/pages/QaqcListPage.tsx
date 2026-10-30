@@ -70,7 +70,7 @@ export default function QaqcListPage() {
         actions={
           <>
             <Link to={`/projects/${projectId}/qaqc`} className="btn-ghost !px-2 !py-2 text-xs">
-              ← QAQC
+              Back to QAQC
             </Link>
             {canCreate && (
               <button onClick={() => setCreateOpen(true)} className="btn-primary">

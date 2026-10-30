@@ -58,7 +58,7 @@ export function OnboardingFlow() {
         <div className="space-y-2">
           <p>
             Your company role is <span className="font-medium text-ink-100">{roleLabel}</span>.
-            It decides what you can do company-wide -- for example, whether you can invite
+            It decides what you can do company-wide. For example, whether you can invite
             teammates. On each project you're part of, you may also have a project role and
             an organization category (Client, PMC, LDC, Main Contractor, or Subcontractor)
             that shape what you see there.
@@ -96,11 +96,11 @@ export function OnboardingFlow() {
       title: 'Key Modules',
       body: (
         <ul className="space-y-2 list-disc pl-4">
-          <li><span className="font-medium text-ink-100">Floor Plans</span> -- drawings with pinpoints marking locations of issues.</li>
-          <li><span className="font-medium text-ink-100">Issues &amp; Snagging</span> -- defects and punch-list items tracked to closure.</li>
-          <li><span className="font-medium text-ink-100">RFIs</span> -- formal requests for information.</li>
-          <li><span className="font-medium text-ink-100">Documents</span> -- drawings, specifications, and other project files.</li>
-          <li><span className="font-medium text-ink-100">Reports</span> -- project KPIs, risk, and a date-scoped progress report.</li>
+          <li><span className="font-medium text-ink-100">Floor Plans</span>: drawings with pinpoints marking locations of issues.</li>
+          <li><span className="font-medium text-ink-100">Issues &amp; Snagging</span>: defects and punch-list items tracked to closure.</li>
+          <li><span className="font-medium text-ink-100">RFIs</span>: formal requests for information.</li>
+          <li><span className="font-medium text-ink-100">Documents</span>: drawings, specifications, and other project files.</li>
+          <li><span className="font-medium text-ink-100">Reports</span>: project KPIs, risk, and a date-scoped progress report.</li>
         </ul>
       ),
     },

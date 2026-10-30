@@ -485,7 +485,7 @@ export default function RfiDetailPage() {
               {rfi.discipline && (
                 <span className="badge bg-base-700 text-ink-500">
                   {RFI_DISCIPLINE_LABELS[rfi.discipline]}
-                  {rfi.discipline === 'other' && rfi.disciplineOther ? ` — ${rfi.disciplineOther}` : ''}
+                  {rfi.discipline === 'other' && rfi.disciplineOther ? ` (${rfi.disciplineOther})` : ''}
                 </span>
               )}
               <span className={`badge ${TIMER_BADGE_CLASS[dueTimer.state]}`} title={`Due ${formatDeadline(rfi.dueDate)}`}>
@@ -907,7 +907,7 @@ export default function RfiDetailPage() {
             )}
             {extGeneratedUrl && (
               <p className="text-xs text-ink-500">
-                No email is sent automatically — copy this link and paste it into an email or message to the recipient.
+                No email is sent automatically. Copy this link and paste it into an email or message to the recipient.
               </p>
             )}
 
@@ -954,7 +954,6 @@ export default function RfiDetailPage() {
             {rfiAudit.map((a) => (
               <div key={a.id} className="flex items-center gap-2 text-xs text-ink-500">
                 <span className="font-mono text-ink-300">{a.action}</span>
-                <span>·</span>
                 <span>{a.userName ?? 'System'}</span>
                 <span className="ml-auto">{formatDateTime(a.occurredAt)}</span>
               </div>
@@ -1025,7 +1024,7 @@ export default function RfiDetailPage() {
               value={closingOrgSlot}
               onChange={(e) => setClosingOrgSlot(e.target.value as ProjectOrganizationSlot | '')}
               className="field-input w-auto !py-2 text-xs"
-              title="Which party is closing this RFI -- required before Close RFI / Approve & close will submit"
+              title="Which party is closing this RFI, required before Close RFI / Approve & close will submit"
             >
               <option value="">Closing as…</option>
               {PROJECT_ORGANIZATION_SLOTS.map((slot) => (
@@ -1387,7 +1386,7 @@ function AttachmentSection({
                   </td>
                   <td className="py-2 pr-4 text-ink-300">
                     {a.documentType ? RFI_DOCUMENT_TYPE_LABELS[a.documentType] : '—'}
-                    {a.documentType === 'other' && a.documentTypeOther ? ` — ${a.documentTypeOther}` : ''}
+                    {a.documentType === 'other' && a.documentTypeOther ? ` (${a.documentTypeOther})` : ''}
                   </td>
                   <td className="py-2 pr-4 text-ink-300">{a.revision ?? '—'}</td>
                   <td className="py-2 pr-4 text-ink-300">{a.uploadedByName ?? '—'}</td>
@@ -1440,7 +1439,7 @@ function formatBytes(bytes: number): string {
 
 function BackIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

@@ -50,7 +50,7 @@ export default function QaqcLandingPage() {
 
       <div className="p-6 max-w-4xl mx-auto">
         <p className="text-sm text-ink-500 mb-6">
-          Non-Conformance, Site Observation, Work Inspection, and Material Inspection records -- restricted-issuer, risk-linked quality records.
+          Non-Conformance, Site Observation, Work Inspection, and Material Inspection records: restricted-issuer, risk-linked quality records.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -69,9 +69,8 @@ export default function QaqcLandingPage() {
                 </div>
                 <p className="text-xs text-ink-400 font-medium mb-2">{QAQC_RECORD_TYPE_LABELS[recordType]}</p>
                 <p className="text-sm text-ink-500 mb-4">{RECORD_TYPE_DESCRIPTION[recordType]}</p>
-                <div className="flex gap-4 text-xs text-ink-500 font-mono">
+                <div className="flex gap-4 text-xs tabular-nums text-ink-500">
                   <span>{total} total</span>
-                  <span>·</span>
                   <span>{closed} closed</span>
                 </div>
               </button>

@@ -160,7 +160,7 @@ export default function QaqcDetailPage() {
         title={record.recordNumber ?? shortLabel}
         actions={
           <Link to={`/projects/${projectId}/qaqc/${recordType}`} className="btn-ghost !px-2 !py-2 text-xs">
-            ← Back to {shortLabel}s
+            Back to {shortLabel}s
           </Link>
         }
       />
@@ -174,7 +174,7 @@ export default function QaqcDetailPage() {
             {record.discipline && (
               <span className="badge bg-base-700 text-ink-500">
                 {RFI_DISCIPLINE_LABELS[record.discipline]}
-                {record.discipline === 'other' && record.disciplineOther ? ` — ${record.disciplineOther}` : ''}
+                {record.discipline === 'other' && record.disciplineOther ? ` (${record.disciplineOther})` : ''}
               </span>
             )}
           </div>
@@ -190,7 +190,7 @@ export default function QaqcDetailPage() {
           )}
           {record.status === 'pending_confirmation' && record.respondedAt && (
             <p className="text-xs text-ink-500 mt-2">
-              Responded by {record.respondedByName ?? 'Unknown'} on {formatDateTime(record.respondedAt)} -- awaiting QAQC confirmation
+              Responded by {record.respondedByName ?? 'Unknown'} on {formatDateTime(record.respondedAt)}, awaiting QAQC confirmation
             </p>
           )}
         </div>

@@ -90,7 +90,7 @@ function LevelBadge({ level }: { level: RiskLevel }) {
   const color = levelColors(useThemeColors())[level];
   return (
     <span
-      className="inline-flex items-center gap-2 px-2 py-0 rounded text-xs font-semibold uppercase tracking-wide"
+      className="inline-flex items-center gap-2 px-2 py-0 rounded text-xs font-semibold"
       style={{ color, backgroundColor: `${color}22` }}
     >
       {LEVEL_LABELS[level]}
@@ -211,7 +211,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
         <div className="panel p-8 text-center space-y-2">
           <p className="text-sm text-ink-300">Risk intelligence is building.</p>
           <p className="text-xs text-ink-500">
-            No RFIs, Issues, Snag items, or QA inspections were found yet on this project — connect project data to begin generating risk intelligence.
+            No RFIs, Issues, Snag items, or QA inspections were found yet on this project. Connect project data to begin generating risk intelligence.
           </p>
         </div>
       )}
@@ -631,7 +631,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
             <div className="panel p-4">
               <div className="flex items-center justify-between !mb-2">
                 <div className="field-label !mb-0">Due date</div>
-                {tone === 'overdue' && <span className="text-xs font-semibold uppercase text-danger">Overdue</span>}
+                {tone === 'overdue' && <span className="text-xs font-semibold text-danger">Overdue</span>}
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -891,7 +891,7 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
         <div className="flex items-center gap-4 flex-wrap text-sm">
           <span className="text-2xl font-semibold tabular-nums" style={{ color: MATRIX_LEVEL_COLORS[risk.humanLevel!] }}>{risk.humanScore}</span>
           <span className="text-xs text-ink-500">/ 25</span>
-          <span className="px-2 py-0 rounded text-xs font-semibold uppercase" style={{ color: MATRIX_LEVEL_COLORS[risk.humanLevel!], backgroundColor: `${MATRIX_LEVEL_COLORS[risk.humanLevel!]}22` }}>
+          <span className="px-2 py-0 rounded text-xs font-semibold" style={{ color: MATRIX_LEVEL_COLORS[risk.humanLevel!], backgroundColor: `${MATRIX_LEVEL_COLORS[risk.humanLevel!]}22` }}>
             {MATRIX_LEVEL_LABELS[risk.humanLevel!]}
           </span>
           {risk.primaryDriver && <span className="text-xs text-ink-500">Driver: {RISK_DRIVER_LABELS[risk.primaryDriver]}{risk.secondaryDriver ? ` / ${RISK_DRIVER_LABELS[risk.secondaryDriver]}` : ''}</span>}
@@ -938,7 +938,7 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
           {risk.aiConfidence != null && ` · Confidence: ${risk.aiConfidence}%`}
         </p>
       ) : !risk && (
-        <p className="text-xs text-ink-500 mt-2">No automated risk signals detected for this item yet — your assessment will still be recorded.</p>
+        <p className="text-xs text-ink-500 mt-2">No automated risk signals detected for this item yet. Your assessment will still be recorded.</p>
       )}
     </div>
   );

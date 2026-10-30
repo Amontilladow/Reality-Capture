@@ -37,7 +37,7 @@ export function AddRevisionModal({ open, onClose, projectId, drawingId, drawingT
   const canSubmit = Boolean(file && revisionNumber.trim());
 
   return (
-    <Modal open={open} onClose={onClose} title={`Add revision — ${drawingTitle}`}>
+    <Modal open={open} onClose={onClose} title={`Add revision: ${drawingTitle}`}>
       <div className="space-y-4">
         <div
           {...getRootProps()}

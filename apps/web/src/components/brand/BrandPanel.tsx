@@ -14,12 +14,12 @@ export function BrandPanel({ className = '', showThemeToggle = true }: { classNa
       {/* The ribbon R as liquid metal (paper-design/liquid-logo shader), with
           the wordmark and tagline set as real text beneath it. */}
       <div className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center">
-        <LiquidLogo highlight="--rc-metal-hi" shadow="--rc-metal-lo" className="w-56 h-56 sm:w-64 sm:h-64" label="Reality Capture logo" />
+        <LiquidLogo highlight="--rc-metal-hi" shadow="--rc-metal-lo" className="w-52 h-52 sm:w-60 sm:h-60" label="Reality Capture logo" />
         <p className="mt-2 text-2xl sm:text-3xl tracking-[0.35em] text-white">
           <span className="font-light">REALITY</span> <span className="font-semibold">CAPTURE</span>
         </p>
-        <p className="mt-2 text-sm tracking-[0.2em] text-white/70">by EngineeringOS</p>
-        <p className="mt-6 text-axis tracking-[0.3em] uppercase text-white/50">Capture / Analyze / Automate / Single source of truth</p>
+        <p className="mt-2 text-sm tracking-wide text-white/70">by EngineeringOS</p>
+        <p className="mt-4 text-sm text-white/60">Capture / Analyze / Automate / Single source of truth</p>
       </div>
 
       {/* Theme toggle in the panel's top-right corner, on a light disc. */}
@@ -29,8 +29,10 @@ export function BrandPanel({ className = '', showThemeToggle = true }: { classNa
         </div>
       )}
 
-      {/* Stacked chips, top left: a sun card over a noir one. */}
-      <div aria-hidden="true" className="absolute top-8 left-8">
+      {/* Stacked chips, top left: a sun card over a noir one. They only show
+          where the panel is wide and tall enough (lg and up, 760px of height
+          or more); on a phone or a short window they covered the logo. */}
+      <div aria-hidden="true" className="hidden lg:block [@media(max-height:759px)]:!hidden absolute top-8 left-8">
         <div className="relative w-64 rounded-2xl bg-sun text-noir px-4 py-4">
           <div className="flex items-start justify-between gap-4">
             <span className="text-sm font-medium">360° site captures</span>
@@ -45,7 +47,7 @@ export function BrandPanel({ className = '', showThemeToggle = true }: { classNa
       </div>
 
       {/* Hatched strip and a white card, bottom left. */}
-      <div aria-hidden="true" className="absolute bottom-10 left-8 right-8 flex items-end gap-4">
+      <div aria-hidden="true" className="hidden lg:flex [@media(max-height:759px)]:!hidden absolute bottom-10 left-8 right-8 items-end gap-4">
         <div className="w-64 rounded-2xl bg-base-800 text-ink-100 px-4 py-4">
           <div className="flex items-start justify-between gap-4">
             <span className="text-sm font-medium">Issues, RFIs and snags</span>

@@ -123,7 +123,7 @@ export function CompanyExecutiveBriefing() {
                   <span className="text-xs text-ink-500 shrink-0">+{row.flaggedCount - 1} more</span>
                 )}
               </div>
-              <span className="text-xs text-blueprint shrink-0">Open project →</span>
+              <span className="text-xs text-blueprint shrink-0">Open project</span>
             </Link>
           ))}
         </div>

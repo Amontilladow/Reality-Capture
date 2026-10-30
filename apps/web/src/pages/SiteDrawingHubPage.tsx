@@ -94,8 +94,8 @@ export default function SiteDrawingHubPage() {
       <div className="p-6 space-y-4">
         {sourceHealthQuery.data && !sourceHealthQuery.data.reachable && (
           <div className="panel p-4 border border-warn/40 bg-warn/5 text-xs text-ink-100">
-            ⚠ {sourceProviderLabel(sourceHealthQuery.data.provider)} source is currently unreachable
-            {sourceHealthQuery.data.detail ? ` — ${sourceHealthQuery.data.detail}` : '.'} Drawing data shown below may be out of date.
+            {sourceProviderLabel(sourceHealthQuery.data.provider)} source is currently unreachable
+            {sourceHealthQuery.data.detail ? `: ${sourceHealthQuery.data.detail}` : '.'} Drawing data shown below may be out of date.
           </div>
         )}
 
@@ -172,7 +172,7 @@ export default function SiteDrawingHubPage() {
                         <td className="px-4 py-2">
                           <div className="flex items-center gap-2">
                             <StatusBadge tone={WORKFLOW_STATUS_TONE[d.currentWorkflowStatus]} label={WORKFLOW_STATUS_LABELS[d.currentWorkflowStatus]} dot />
-                            {needsApprovalWarning(d.currentWorkflowStatus) && <span title="Approval status needs attention">⚠</span>}
+                            {needsApprovalWarning(d.currentWorkflowStatus) && <span title="Approval status needs attention" className="inline-flex text-warn"><svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3 2 21h20L12 3Z" strokeLinejoin="round" /><path d="M12 10v5M12 18h.01" strokeLinecap="round" /></svg><span className="sr-only">Approval status needs attention</span></span>}
                           </div>
                         </td>
                         <td className="px-4 py-2 text-ink-300 whitespace-nowrap">{sourceProviderLabel(d.sourceProvider)}</td>

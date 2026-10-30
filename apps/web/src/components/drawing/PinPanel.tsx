@@ -252,7 +252,7 @@ export function PinPanel({
                   to={`/projects/${projectId}/issues?issueId=${linkedRecord.id}`}
                   className="text-xs text-blueprint hover:text-blueprint-hover px-2"
                 >
-                  View in Issues →
+                  View in Issues
                 </Link>
                 <button
                   onClick={() => convertToSnagMutation.mutate()}
@@ -268,7 +268,7 @@ export function PinPanel({
                 to={`/projects/${projectId}/snagging?snagId=${linkedRecord.id}`}
                 className="text-xs text-blueprint hover:text-blueprint-hover px-2"
               >
-                View in Snagging →
+                View in Snagging
               </Link>
             )}
           </div>
@@ -352,7 +352,7 @@ export function PinPanel({
                       to={`/projects/${projectId}/bim/${pin.elementModelId}?guid=${pin.elementGuid}`}
                       className="text-xs text-blueprint hover:text-blueprint-hover px-2"
                     >
-                      View in 3D →
+                      View in 3D
                     </Link>
                   )}
                   <button onClick={() => setPickingElement(true)} className="btn-ghost !px-2 !py-2 text-xs">Change</button>
@@ -411,7 +411,7 @@ export function PinPanel({
             ) : (
               !capturesQuery.isLoading && (
                 <div className="panel p-8 text-center text-sm text-ink-500">
-                  Nothing here yet — add the first photo or video above.
+                  Nothing here yet. Add the first photo or video above.
                 </div>
               )
             )}
@@ -424,7 +424,7 @@ export function PinPanel({
 
 function EditIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

@@ -74,7 +74,7 @@ export default function AiSettingsPage() {
           <div>
             <h2 className="text-sm font-semibold text-ink-100">AI Mode</h2>
             <p className="text-xs text-ink-500 mt-2">
-              By default, the AI Assistant runs on RealityCapture's own AI provider -- nothing to set up.
+              By default, the AI Assistant runs on RealityCapture’s own AI provider, nothing to set up.
               Connect your own provider below to run the assistant on your account instead. Either way, the
               assistant only answers within RealityCapture's own rules: the same domain guard, tools, and
               project permissions apply regardless of which provider answers.
@@ -145,7 +145,7 @@ export default function AiSettingsPage() {
               {connected ? 'Replace Connection' : 'Connect My AI Provider'}
             </h2>
             <p className="text-xs text-ink-500 mt-2">
-              Credentials are encrypted at rest and never shown again after you submit them -- only a last-4
+              Credentials are encrypted at rest and never shown again after you submit them. Only a last-4
               fingerprint is kept. We test the connection before saving it.
             </p>
           </div>

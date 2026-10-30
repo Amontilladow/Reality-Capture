@@ -19,7 +19,7 @@ function SecretReveal({ label, secret }: { label: string; secret: string }) {
   }
   return (
     <div className="panel p-4 space-y-2">
-      <p className="text-xs text-danger font-medium">{label} — copy it now, it won't be shown again.</p>
+      <p className="text-xs text-danger font-medium">{label}: copy it now, it won’t be shown again.</p>
       <div className="flex items-center gap-2">
         <input readOnly value={secret} className="field-input flex-1 text-xs font-mono" onFocus={(e) => e.target.select()} />
         <button onClick={handleCopy} className="btn-secondary !px-4 !py-2 text-xs">{copied ? 'Copied!' : 'Copy'}</button>
@@ -52,7 +52,7 @@ function SignupCodeSection() {
       <div>
         <h2 className="text-sm font-semibold text-ink-100">Self-Signup Code</h2>
         <p className="text-xs text-ink-500 mt-2">
-          Share this code (or the link below) with anyone who needs their own account -- clients, PMC,
+          Share this code (or the link below) with anyone who needs their own account: clients, PMC,
           consultants, contractors. They pick their own organization and position at signup; every new
           account lands pending until a Super Admin approves it, same as an accepted invitation.
         </p>

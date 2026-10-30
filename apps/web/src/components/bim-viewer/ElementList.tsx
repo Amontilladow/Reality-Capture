@@ -71,7 +71,7 @@ export function ElementList({
             onClick={() => setPage((p) => p - 1)}
             className="disabled:opacity-30"
           >
-            ← Prev
+            Prev
           </button>
           <span>
             Page {page} of {totalPages} ({total})
@@ -82,7 +82,7 @@ export function ElementList({
             onClick={() => setPage((p) => p + 1)}
             className="disabled:opacity-30"
           >
-            Next →
+            Next
           </button>
         </div>
       )}

@@ -30,7 +30,7 @@ export default function RfiExternalPage() {
     retry: false,
   });
 
-  useDocumentTitle(detailQuery.data ? `RFI — ${detailQuery.data.subject}` : undefined);
+  useDocumentTitle(detailQuery.data ? `RFI: ${detailQuery.data.subject}` : undefined);
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ['rfi-external', token] });

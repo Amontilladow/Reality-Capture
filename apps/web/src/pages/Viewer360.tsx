@@ -49,7 +49,7 @@ export default function Viewer360() {
     return null;
   }, [hierarchyQuery.data, locationId]);
 
-  useDocumentTitle(active?.title ? `360° Viewer — ${active.title}` : undefined);
+  useDocumentTitle(active?.title ? `360° Viewer: ${active.title}` : undefined);
 
   function handleHotspotClick(h: Hotspot) {
     if (h.hotspotType === 'navigation' && h.targetCaptureId) {
@@ -119,7 +119,7 @@ export default function Viewer360() {
 
 function BackIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M19 12H5M11 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

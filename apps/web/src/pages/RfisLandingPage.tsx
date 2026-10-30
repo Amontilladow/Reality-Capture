@@ -54,7 +54,7 @@ export default function RfisLandingPage() {
         <p className="text-sm text-ink-500 mb-6">
           {isSubcontractor
             ? "Raise and track your own RFIs, and read (but not action) the main contractor's register."
-            : "Your own RFI register, and the subcontractors' -- they raise their own, you respond."}
+            : "Your own RFI register, plus the subcontractors’: they raise their own, you respond."}
         </p>
 
         <div className="enter-stagger grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -70,11 +70,10 @@ export default function RfisLandingPage() {
               )}
             </div>
             <p className="text-sm text-ink-500 mb-4">
-              {isSubcontractor ? 'Read-only.' : 'Raise, respond to, and track your own RFIs -- unchanged from before.'}
+              {isSubcontractor ? 'Read-only.' : 'Raise, respond to, and track your own RFIs, unchanged from before.'}
             </p>
-            <div className="flex gap-4 text-xs text-ink-500 font-mono">
+            <div className="flex gap-4 text-xs tabular-nums text-ink-500">
               <span>{mainSummaryQuery.data?.total ?? 0} total</span>
-              <span>·</span>
               <span>{mainSummaryQuery.data?.overdue ?? 0} overdue</span>
             </div>
           </button>
@@ -91,11 +90,10 @@ export default function RfisLandingPage() {
               )}
             </div>
             <p className="text-sm text-ink-500 mb-4">
-              RFIs raised by subcontractors with platform access. You respond -- they can't close or review their own.
+              RFIs raised by subcontractors with platform access. You respond. They can’t close or review their own.
             </p>
-            <div className="flex gap-4 text-xs text-ink-500 font-mono">
+            <div className="flex gap-4 text-xs tabular-nums text-ink-500">
               <span>{subSummaryQuery.data?.total ?? 0} total</span>
-              <span>·</span>
               <span>{subSummaryQuery.data?.overdue ?? 0} overdue</span>
             </div>
           </button>

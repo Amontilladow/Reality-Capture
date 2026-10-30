@@ -233,7 +233,7 @@ export function IssueDetail({
             {ISSUE_STATUS_FLOW.map((s, i) => (
               <span key={s} className="flex items-center gap-2">
                 <span
-                  className={`px-2 py-2 rounded-sm font-mono uppercase tracking-wide ${
+                  className={`px-2 py-2 rounded-sm ${
                     i === currentStepIdx ? 'bg-signal text-base-950 font-semibold' : i < currentStepIdx ? 'bg-ok/15 text-ok' : 'bg-base-700 text-ink-500'
                   }`}
                 >
@@ -245,7 +245,7 @@ export function IssueDetail({
           </div>
         )}
         {issue.status === 'reopened' && (
-          <span className="badge bg-danger/15 text-danger">↺ Reopened — outside the normal status flow</span>
+          <span className="badge bg-danger/15 text-danger">↺ Reopened, outside the normal status flow</span>
         )}
       </div>
 
@@ -333,7 +333,7 @@ export function IssueDetail({
         {reminderOpen && (
           <div className="pt-4 border-t border-base-600 space-y-2">
             {!issue.assignedTo ? (
-              <p className="text-xs text-ink-500">This issue has no assignee yet -- assign it to someone before scheduling a reminder.</p>
+              <p className="text-xs text-ink-500">This issue has no assignee yet. Assign it to someone before scheduling a reminder.</p>
             ) : (
               <>
                 <div className="grid grid-cols-2 gap-2">
@@ -465,7 +465,7 @@ export function IssueDetail({
                   to={`/projects/${projectId}/drawings?drawingId=${issue.drawingId}&pinId=${issue.locationId}`}
                   className="text-blueprint hover:text-blueprint-hover"
                 >
-                  {issue.locationName ?? issue.buildingName ?? 'View pin'} — view on floor plan →
+                  {issue.locationName ?? issue.buildingName ?? 'View pin'} : view on floor plan
                 </Link>
               ) : (
                 issue.locationName ?? issue.buildingName ?? '—'
@@ -478,7 +478,7 @@ export function IssueDetail({
               value={
                 issue.elementModelId && issue.elementGuid ? (
                   <Link to={viewIn3dUrl(projectId, issue)} className="text-blueprint hover:text-blueprint-hover">
-                    {issue.elementName} — view in 3D →
+                    {issue.elementName} : view in 3D
                   </Link>
                 ) : (
                   issue.elementName
@@ -491,7 +491,7 @@ export function IssueDetail({
               label="3D view"
               value={
                 <Link to={viewIn3dUrl(projectId, issue)} className="text-blueprint hover:text-blueprint-hover">
-                  Reopen exact view →
+                  Reopen exact view
                 </Link>
               }
             />
@@ -545,7 +545,7 @@ export function IssueDetail({
         </div>
         {!evidenceQuery.isLoading && (evidenceQuery.data?.length ?? 0) === 0 && (
           <p className="text-xs text-ink-500 mb-2">
-            No evidence attached yet -- required before this issue can be closed.
+            No evidence attached yet. Required before this issue can be closed.
           </p>
         )}
         {(evidenceQuery.data?.length ?? 0) > 0 && (
@@ -577,7 +577,6 @@ export function IssueDetail({
             <div key={a.id} className="panel p-4 text-sm">
               <div className="flex items-center gap-2 text-xs text-ink-500 mb-2">
                 <span className="font-medium text-ink-300">{a.performedByName ?? 'Someone'}</span>
-                <span>·</span>
                 <span>{activityLabel(a.activityType, a.fromValue, a.toValue)}</span>
                 <span className="ml-auto">{formatDateTime(a.createdAt)}</span>
               </div>
@@ -759,7 +758,7 @@ function EvidencePicker({ projectId, issueId, onDone }: { projectId: string; iss
 
 function BackIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -767,7 +766,7 @@ function BackIcon() {
 
 function PaperclipIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M21 12.5l-8.5 8.5a4 4 0 01-5.7-5.7L15.3 6.8a2.7 2.7 0 013.8 3.8L10.6 19a1.3 1.3 0 01-1.9-1.9l7.5-7.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

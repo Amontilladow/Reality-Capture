@@ -69,7 +69,7 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
             size="sm"
             actions={
               <Link to={`/projects/${projectId}/issues`} className="text-xs text-blueprint hover:text-blueprint-hover">
-                View all →
+                View all
               </Link>
             }
           />
@@ -98,7 +98,7 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
             size="sm"
             actions={
               <Link to={`/projects/${projectId}/bim`} className="text-xs text-blueprint hover:text-blueprint-hover">
-                View models →
+                View models
               </Link>
             }
           />

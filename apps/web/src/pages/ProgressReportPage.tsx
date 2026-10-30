@@ -300,7 +300,7 @@ function ShareModal({
       <div className="space-y-4">
         <p className="text-xs text-ink-500">
           Generates a public link for the report with your current filters (date range{filters.buildingId ? ', building' : ''}{filters.levelId ? ', level' : ''}).
-          Anyone with the link can view it, logged out, until it expires or is revoked. No email is sent automatically — copy the link yourself.
+          Anyone with the link can view it, logged out, until it expires or is revoked. No email is sent automatically. Copy the link yourself.
         </p>
 
         <div className="flex items-end gap-2">
@@ -349,7 +349,7 @@ function ShareModal({
                     <div>
                       <span className={`badge ${status === 'Active' ? 'bg-ok/15 text-ok' : 'bg-base-700 text-ink-500'}`}>{status}</span>
                       <span className="text-ink-500 ml-2 text-xs">
-                        {new Date(s.dateFrom).toLocaleDateString('en-GB')} – {new Date(s.dateTo).toLocaleDateString('en-GB')} · expires {new Date(s.expiresAt).toLocaleDateString('en-GB')}
+                        {new Date(s.dateFrom).toLocaleDateString('en-GB')} to {new Date(s.dateTo).toLocaleDateString('en-GB')}, expires {new Date(s.expiresAt).toLocaleDateString('en-GB')}
                       </span>
                     </div>
                     {status === 'Active' && (

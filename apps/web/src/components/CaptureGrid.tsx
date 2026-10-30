@@ -75,7 +75,7 @@ function dateRangeLabel(captures: Capture[]): string {
   if (times.length === 0) return '';
   const earliest = new Date(Math.min(...times)).toLocaleDateString();
   const latest = new Date(Math.max(...times)).toLocaleDateString();
-  return earliest === latest ? earliest : `${earliest} – ${latest}`;
+  return earliest === latest ? earliest : `${earliest} to ${latest}`;
 }
 
 export function CaptureGrid({
@@ -154,7 +154,7 @@ export function CaptureGrid({
             <section key={group.key}>
               <div className="flex items-baseline gap-2 mb-4">
                 <h3 className="text-sm font-medium">{group.locationName}</h3>
-                <span className="text-xs font-mono text-ink-500">
+                <span className="text-xs text-ink-500">
                   {group.captures.length} capture{group.captures.length === 1 ? '' : 's'} · {dateRangeLabel(group.captures)}
                 </span>
               </div>
@@ -215,7 +215,7 @@ function CaptureCardBody({ c }: { c: Capture }) {
 
 function CameraIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.4">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.4">
       <path d="M4 8h3l2-2h6l2 2h3v11H4z" strokeLinejoin="round" /><circle cx="12" cy="13.5" r="3.2" />
     </svg>
   );

@@ -38,7 +38,7 @@ export default function Login() {
   });
 
   return (
-    <AuthLayout title="Sign in" subtitle="Access your company's reality capture workspace.">
+    <AuthLayout title="Sign in" subtitle="Access your company’s reality capture workspace.">
       <form
         onSubmit={handleSubmit((values) => {
           setServerError(null);
@@ -76,11 +76,11 @@ export default function Login() {
         </Button>
       </form>
 
-      <p className="text-xs text-ink-500 mt-6 text-center">
+      <p className="text-sm text-ink-500 mt-6 text-center">
         Have an invitation? Follow the link in your invitation email to accept it.
       </p>
-      <p className="text-xs text-ink-500 mt-2 text-center">
-        Don't have an account? <Link to="/signup" className="text-blueprint underline underline-offset-2 hover:text-blueprint-hover">Sign up</Link> with your company's signup code.
+      <p className="text-sm text-ink-500 mt-2 text-center">
+        Don’t have an account? <Link to="/signup" className="text-blueprint underline underline-offset-2 hover:text-blueprint-hover">Sign up</Link> with your company’s signup code.
       </p>
     </AuthLayout>
   );

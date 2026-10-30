@@ -65,13 +65,10 @@ export default function TransmittalsPage() {
           </Listbox>
 
           {summaryQuery.data && (
-            <div className="flex gap-2 text-xs font-mono text-ink-500 ml-auto">
+            <div className="flex gap-4 text-xs tabular-nums text-ink-500 ml-auto">
               <span>{summaryQuery.data.total} total</span>
-              <span>·</span>
               <span>{summaryQuery.data.draft} draft</span>
-              <span>·</span>
               <span>{summaryQuery.data.sent} sent</span>
-              <span>·</span>
               <span>{summaryQuery.data.acknowledged} acknowledged</span>
             </div>
           )}

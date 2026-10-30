@@ -154,10 +154,10 @@ export default function ProjectDetail() {
           {selectedLocation ? (
             <>
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold">Captures — {selectedLocation.name}</h2>
+                <h2 className="text-sm font-semibold">Captures: {selectedLocation.name}</h2>
                 <div className="flex items-center gap-4">
                   <Link to={`/projects/${projectId}/viewer/${selectedLocation.id}`} className="text-xs text-blueprint hover:text-blueprint-hover">
-                    Open 360° viewer →
+                    Open 360° viewer
                   </Link>
                   <button onClick={() => setSelectedLocation(null)} className="text-xs text-ink-500 hover:text-ink-100">
                     Clear filter
@@ -253,14 +253,14 @@ function ProjectDetailsPanel({ project }: { project: Project }) {
 
 function EditIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 function MailIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
       <rect x="2" y="4" width="20" height="16" rx="2" />
       <path d="M22 6l-10 7L2 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -268,7 +268,7 @@ function MailIcon() {
 }
 function TeamIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" strokeLinecap="round" strokeLinejoin="round" />
@@ -277,7 +277,7 @@ function TeamIcon() {
 }
 function PlusIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 5v14M5 12h14" strokeLinecap="round" />
     </svg>
   );

@@ -256,7 +256,7 @@ export function ManageMembersModal({
               </div>
               {usersQuery.isSuccess && addableUsers.length === 0 && (
                 <p className="text-xs text-ink-500 mt-2">
-                  Everyone in the company is already on this project — invite a new person below if you need someone else.
+                  Everyone in the company is already on this project. Invite a new person below if you need someone else.
                 </p>
               )}
             </div>
@@ -292,7 +292,7 @@ export function ManageMembersModal({
               <div className="field-label">Invite a new person</div>
               <p className="text-xs text-ink-500">
                 They'll pick their own position when they accept, and it stays pending until you approve it below.
-                Email delivery isn't set up yet -- inviting someone gives you a link to copy and send them yourself (WhatsApp, email, however). It won't land in their inbox automatically.
+                Email delivery isn’t set up yet. Inviting someone gives you a link to copy and send them yourself (WhatsApp, email, however). It won't land in their inbox automatically.
               </p>
               <input
                 type="email"
@@ -307,7 +307,7 @@ export function ManageMembersModal({
               {inviteLink ? (
                 <div className="space-y-2">
                   <p className="text-xs text-ink-100">
-                    Invite created for {inviteMutation.data?.email}. Send them this link -- it expires in 7 days:
+                    Invite created for {inviteMutation.data?.email}. Send them this link, which expires in 7 days:
                   </p>
                   <div className="flex gap-2">
                     <input readOnly className="field-input font-mono text-xs" value={inviteLink} onClick={(e) => e.currentTarget.select()} />
@@ -335,7 +335,7 @@ export function ManageMembersModal({
         <div className="pt-2 border-t border-base-600 space-y-4">
           <div className="field-label">Pending approvals</div>
           <p className="text-xs text-ink-500">
-            Company-wide, not specific to this project -- anyone who's accepted an invite but hasn't been approved yet.
+            Company-wide, not specific to this project: anyone who’s accepted an invite but hasn't been approved yet.
           </p>
           {pendingUsers.length === 0 && (
             <p className="text-sm text-ink-500">No one's waiting on approval.</p>
@@ -380,7 +380,7 @@ export function ManageMembersModal({
           <div className="field-label">Company members</div>
           <p className="text-xs text-ink-500">
             Deactivating someone revokes their access company-wide (not just this project) and frees their seat.
-            This includes people who were invited but never accepted -- deactivate them to cancel a stale invite.
+            This includes people who were invited but never accepted. Deactivate them to cancel a stale invite.
           </p>
           {deactivateMutation.isError && <p className="field-error">{apiErrorMessage(deactivateMutation.error)}</p>}
           {changeRoleMutation.isError && <p className="field-error">{apiErrorMessage(changeRoleMutation.error)}</p>}
@@ -400,7 +400,7 @@ export function ManageMembersModal({
                     </div>
                     <div className="text-ink-500 text-xs">
                       <EmailLink email={u.email} className="text-ink-500 hover:text-blueprint-hover" />
-                      {!u.firstName && !u.lastName && ' — invited, hasn’t accepted yet'}
+                      {!u.firstName && !u.lastName && ' (invited, hasn’t accepted yet)'}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -432,7 +432,7 @@ export function ManageMembersModal({
                         onClick={() => resetPasswordMutation.mutate(u.id)}
                         className="text-xs text-blueprint hover:text-blueprint-hover shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                         disabled={resetPasswordMutation.isPending}
-                        title="Generate a password reset link to copy and send this person yourself -- for when email isn't practical (site-based roles, etc.)"
+                        title="Generate a password reset link to copy and send this person yourself, for when email isn’t practical (site-based roles, etc.)"
                       >
                         Reset password
                       </button>
@@ -450,7 +450,7 @@ export function ManageMembersModal({
                 {resetResult && (
                   <div className="mt-2 space-y-2">
                     <p className="text-xs text-ink-100">
-                      Reset link for {[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email} -- expires {new Date(resetResult.expiresAt).toLocaleString()}:
+                      Reset link for {[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}, expires {new Date(resetResult.expiresAt).toLocaleString()}:
                     </p>
                     <div className="flex gap-2">
                       <input readOnly className="field-input font-mono text-xs" value={resetResult.resetLink} onClick={(e) => e.currentTarget.select()} />
@@ -459,7 +459,7 @@ export function ManageMembersModal({
                       </button>
                     </div>
                     <p className="text-xs text-ink-500">
-                      No email is sent automatically -- copy this link and send it to them yourself (WhatsApp, email, in person).
+                      No email is sent automatically. Copy this link and send it to them yourself (WhatsApp, email, in person).
                     </p>
                   </div>
                 )}
@@ -471,7 +471,7 @@ export function ManageMembersModal({
         <div className="pt-2 border-t border-base-600 space-y-4">
           <div className="field-label">Project permissions</div>
           <p className="text-xs text-ink-500">
-            A Company Admin has no authority on a project by default — grant them specific permissions here,
+            A Company Admin has no authority on a project by default. Grant them specific permissions here,
             scoped to just this project. Only a Super Admin can grant or revoke these.
           </p>
           {(grantMutation.isError) && <p className="field-error">{apiErrorMessage(grantMutation.error)}</p>}
@@ -514,7 +514,7 @@ export function ManageMembersModal({
         <div className="pt-2 border-t border-base-600 space-y-4">
           <div className="field-label">Project Organizations</div>
           <p className="text-xs text-ink-500">
-            Configure the 5 stakeholder slots shown on every RFI's header and exported PDF -- name, reference,
+            Configure the 5 stakeholder slots shown on every RFI’s header and exported PDF: name, reference,
             contact, and logo. Requires the 'Manage team' permission on this project.
           </p>
           {!canManageOrganizations && (

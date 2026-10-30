@@ -1,3 +1,10 @@
+/* Hallmark · checked: 2026-10-30 · genre: modern-minimal (inferred)
+ * floor: 0 FAIL · fixed: 10a, 19, 20, 26a, 26b, 30a, 33, 40, 48, 49a, 63, 64, 67, 73, 75, F1 (public and auth pages), F3 · structural: 4 printed (44c, 58, 59, 77)
+ * built: the project · redesign: polish · v2.0.0 */
+/* Hallmark · waive 28b · the two video elements in CaptureLightbox and BuildLensTimelinePage, played only on demand · each video src is the uploaded capture file itself and no poster image is passed to these components, so preload is set to metadata instead */
+/* Hallmark · dismissed 28a · every lazy image is a thumbnail inside a list, modal or report table below the fold, never the LCP element of its screen */
+/* Hallmark · dismissed 49 · the flagged controls are text links and whole-card buttons that are meant to wrap in a narrow modal; every pill button already holds white-space nowrap through .btn */
+/* Hallmark · answered F1 · help and hint copy on the app screens stays as the owner wrote it, and only the public and auth pages were converted to typographic quotes */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -45,16 +52,16 @@
 
   --rc-ink-100: 42 36 31; /* primary text (off-black, never #000) */
   --rc-ink-300: 80 70 62; /* secondary text */
-  --rc-ink-500: 111 98 87; /* muted / captions -- was #adadad (2.2:1), now AA on every surface */
+  --rc-ink-500: 104 92 81; /* muted / captions -- AA (4.8:1) even over the darkest end of the page gradient */
 
   --rc-signal: 42 36 31; /* primary action fill -- mirrors ink-100 */
   --rc-signal-hover: 70 61 53;
-  --rc-signal-muted: 111 98 87;
+  --rc-signal-muted: 104 92 81;
 
   /* One accent across the platform: warm taupe. "blueprint" (links,
      active, info) and "teal" (data accent) share it; soft mushroom ("sun",
      below) is kept for fills, since it's too light to read as text. */
-  --rc-blueprint: 111 98 87;
+  --rc-blueprint: 104 92 81;
   --rc-blueprint-hover: 42 36 31;
   --rc-blueprint-muted: 240 232 220;
 
@@ -68,7 +75,7 @@
 
   /* Teal keeps its role (data accent) with the shared taupe; "orange"
      keeps its role (AI-generated content) as a deep taupe. */
-  --rc-teal: 111 98 87;
+  --rc-teal: 104 92 81;
   --rc-teal-hover: 42 36 31;
   --rc-teal-muted: 240 232 220;
 
@@ -108,6 +115,7 @@
   --rc-radius-card: 24px; /* cards and panels */
   --rc-stripe: 2px;     /* hatch line width */
   --rc-stripe-gap: 8px; /* hatch repeat */
+  --rc-stripe-light: rgb(255 255 255 / 0.22); /* hatch lines on a dark field */
 }
 
 /* Palette (dark): espresso-ink canvas, warmer raised surfaces, ivory and
@@ -281,6 +289,14 @@
     outline: 2px solid rgb(var(--rc-focus));
     outline-offset: 2px;
   }
+  /* Display heads break evenly instead of leaving a one-word last line. */
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+  /* Running text avoids a one-word last line. */
+  p {
+    text-wrap: pretty;
+  }
 }
 
 @layer components {
@@ -298,7 +314,16 @@
      until hovered. Every variant shares the same focus ring (base layer)
      and the same disabled + pressed treatment. */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-full font-medium text-sm h-9 px-4 whitespace-nowrap transition-colors duration-150 disabled:opacity-45 disabled:cursor-not-allowed active:translate-y-px;
+    @apply inline-flex items-center justify-center gap-2 rounded-full font-medium text-sm h-9 px-4 whitespace-nowrap transition-colors duration-150;
+  }
+  /* Pressed and disabled, spelled out so every variant shares them. */
+  .btn:active:not(:disabled):not([aria-disabled='true']) {
+    transform: translateY(1px);
+  }
+  .btn:disabled,
+  .btn[aria-disabled='true'] {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
   .btn-primary {
     @apply btn bg-signal text-base-800 hover:bg-signal-hover;
@@ -352,6 +377,9 @@
     @apply border-ink-500/45;
     background-color: rgb(var(--rc-base-800));
   }
+  .panel-interactive:active {
+    background-color: rgb(var(--rc-base-700));
+  }
 
   /* Status/tag chips: sentence case, sans, pill-shaped. The old mono +
      uppercase + wide tracking pill shouted on every row of every list. */
@@ -363,6 +391,9 @@
   /* Dashboard pieces: the off-black card and the hatch pattern. */
   .dash-card-noir {
     @apply rounded-card bg-noir text-on-noir;
+    /* The page's espresso ring would vanish on this espresso card (1:1), so
+       controls inside it ring in the linen on-noir tone instead. */
+    --rc-focus: var(--rc-on-noir);
   }
   /* Diagonal hatch for the "in progress" segment of a pill bar. */
   .dash-stripes {
@@ -374,15 +405,20 @@
   .auth-form .field-label {
     @apply pl-6 font-normal text-ink-500;
   }
+  /* The field's edge is drawn in the muted ink so it holds 3:1 against the
+     canvas it sits on; it darkens on hover and takes the accent on focus. */
   .auth-form .field-input {
-    @apply rounded-full h-12 px-6 border-transparent bg-base-800/85 hover:border-base-600;
+    @apply rounded-full h-12 px-6 border-ink-500/80 bg-base-800/85 hover:border-ink-300;
+  }
+  .auth-form .btn-ghost {
+    @apply h-11;
   }
   .auth-form .btn-primary {
     @apply h-12 bg-sun text-noir text-base font-normal hover:bg-sun hover:brightness-95;
   }
   /* The same hatch as .dash-stripes, in light lines for a dark field. */
   .dash-stripes-light {
-    background-image: repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.22) 0 var(--rc-stripe), transparent var(--rc-stripe) var(--rc-stripe-gap));
+    background-image: repeating-linear-gradient(-45deg, var(--rc-stripe-light) 0 var(--rc-stripe), transparent var(--rc-stripe) var(--rc-stripe-gap));
   }
 
   /* Toast.tsx's entrance -- a 150ms slide+fade, not a decorative flourish:

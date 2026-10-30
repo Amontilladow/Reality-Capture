@@ -117,7 +117,7 @@ export default function AssistantPage() {
             <div className="tick-frame panel p-12 text-center text-sm text-ink-500">
               Ask about RFIs, NCRs/SORs/WIRs/MIRs, issues, snagging, submittals, transmittals, QA inspections, risk, progress, or documents on this project.
               {currentResourceType && currentResourceId && (
-                <span className="block mt-2 text-xs">Currently looking at this {currentResourceType.replace('_', ' ')} -- follow-up questions can refer to it directly.</span>
+                <span className="block mt-2 text-xs">Currently looking at this {currentResourceType.replace('_', ' ')}. Follow-up questions can refer to it directly.</span>
               )}
             </div>
           )}
