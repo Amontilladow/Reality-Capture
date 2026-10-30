@@ -19,9 +19,10 @@ import model as MD
 def sheet_id(path):
     name = os.path.basename(path)
     name = re.sub(r"^[0-9a-f]{8}-", "", name)  # upload prefix
-    m = re.match(r"(Basment|Ground_Floor|Mezzanine_Floor)-Emergency_Evacuation_Plan-(\d+)", name)
-    floor = {"Basment": "BASEMENT", "Ground_Floor": "GROUND", "Mezzanine_Floor": "MEZZANINE"}[m.group(1)]
-    code = {"BASEMENT": "B", "GROUND": "GF", "MEZZANINE": "MF"}[floor] + "-" + m.group(2)
+    m = re.match(r"(Basment|Ground_Floor|Mezzanine_Floor|Roof_Floor)-Emergency_Evacuation_Plan-(\d+)", name)
+    floor = {"Basment": "BASEMENT", "Ground_Floor": "GROUND", "Mezzanine_Floor": "MEZZANINE",
+             "Roof_Floor": "ROOF"}[m.group(1)]
+    code = {"BASEMENT": "B", "GROUND": "GF", "MEZZANINE": "MF", "ROOF": "RF"}[floor] + "-" + m.group(2)
     return name, floor, code
 
 
@@ -135,7 +136,7 @@ if __name__ == "__main__":
         ref = f'{s["code"].split("-")[0]}-01'
         if s["code"] != ref and ref in models:
             s["fit_to_01"] = fit_variant(models[ref], models[s["code"]])
-    results.sort(key=lambda s: ({"BASEMENT": 0, "GROUND": 1, "MEZZANINE": 2}[s["floor"]], s["code"]))
+    results.sort(key=lambda s: ({"BASEMENT": 0, "GROUND": 1, "MEZZANINE": 2, "ROOF": 3}[s["floor"]], s["code"]))
     with open(os.path.join(out, "analysis.json"), "w") as f:
         json.dump(results, f, indent=1)
     with open(os.path.join(out, "symbol_positions.json"), "w") as f:

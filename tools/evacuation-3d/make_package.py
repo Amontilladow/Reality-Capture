@@ -21,7 +21,8 @@ import sheet as SH
 from model import SCALE_PT_PER_M
 from report import Doc, M, A3L
 
-FLOOR_NAME = {"BASEMENT": "Basement Floor", "GROUND": "Ground Floor", "MEZZANINE": "Mezzanine Floor"}
+FLOOR_NAME = {"BASEMENT": "Basement Floor", "GROUND": "Ground Floor", "MEZZANINE": "Mezzanine Floor",
+              "ROOF": "Roof Floor"}
 KIND_NAME = {"fire_extinguisher": "Fire extinguisher", "wheeled_extinguisher": "Wheeled extinguisher",
              "fire_hose_reel": "Fire hose reel", "manual_call_point": "Manual call point", "lift": "Lift",
              "exit_sign": "Exit sign", "assembly_point": "Assembly point", "fire_brigade_inlet": "Fire brigade inlet"}
@@ -39,7 +40,7 @@ def register_rows(A):
     for s in A:
         fit = s.get("fit_to_01")
         orient = "Reference orientation for this floor" if s["code"].endswith("-01") else (
-            f"Plan rotated {fit['rotation_deg']}° vs {s['code'][:-3]}-01; plotted at {fit['scale_ratio']:.2f}x its size"
+            f"Plan rotated {fit['rotation_deg']}° vs {s['code'][:-3]}-01; plotted at {1 / fit['scale_ratio']:.2f}x its size"
             if fit else "-")
         missing = ["No drawing no., revision, date, scale, north point or project title on sheet"]
         if s["unexplained_text"]:
@@ -83,8 +84,8 @@ def route_end_table(m):
     return rows
 
 
-ORDER = ["B-01", "B-02", "B-03", "B-04", "GF-01", "GF-02", "GF-03", "MF-01", "MF-02", "MF-03"]
-FLOOR_CODE = {"BASEMENT": "B", "GROUND": "GF", "MEZZANINE": "MF"}
+ORDER = ["B-01", "B-02", "B-03", "B-04", "GF-01", "GF-02", "GF-03", "MF-01", "MF-02", "MF-03", "RF-01", "RF-02"]
+FLOOR_CODE = {"BASEMENT": "B", "GROUND": "GF", "MEZZANINE": "MF", "ROOF": "RF"}
 
 
 def sheet_checks(s, m):
@@ -144,7 +145,7 @@ def main(src_dir, out, logo=None):
     W, H = A3L
     G.text_en(c, M, H - 110, "3D ISOMETRIC EVACUATION PLANS", 40, bold=True)
     G.text_ar(c, M, H - 160, "مخططات الإخلاء ثلاثية الأبعاد", 32, bold=True, align="left")
-    G.text_en(c, M, H - 200, "All levels: Basement, Ground Floor, Mezzanine Floor - 10 sheets in the approved format", 18)
+    G.text_en(c, M, H - 200, "All levels: Basement, Ground, Mezzanine and Roof Floor - 12 sheets in the approved format", 18)
     G.text_en(c, M, H - 224, "Prepared for review against Abu Dhabi Civil Defence (ADCDA) evacuation-plan requirements",
               13, color=G.GREY)
     c.setFillColor(G.GREEN)
@@ -152,11 +153,11 @@ def main(src_dir, out, logo=None):
     D.y = H - 266
     D.h2("Contents")
     D.bullets([
-        "1. Drawing register (all 10 supplied PDFs)",
+        "1. Drawing register (all 12 supplied PDFs)",
         "2. Building configuration and information extracted per floor",
         "3. Missing and conflicting information",
         "4. 3D reconstruction methodology",
-        "5. 3D evacuation plans - Basement B-01 to B-04, Ground Floor GF-01 to GF-03, Mezzanine MF-01 to MF-03",
+        "5. 3D evacuation plans - Basement B-01 to B-04, Ground GF-01 to GF-03, Mezzanine MF-01 to MF-03, Roof RF-01 and RF-02",
         "6. QC comparison sheets - one per plan: original vs extraction vs 3D",
         "7. Quality-control report",
         "8. Items for engineering review",
@@ -172,7 +173,7 @@ def main(src_dir, out, logo=None):
 
     # ------------------------------------------------------ 1. register
     D.new_page("1. Drawing register")
-    D.para("All ten files are single-page A1 AutoCAD 2027 plots (pdfplot18) with CAD layers preserved as PDF optional "
+    D.para("All twelve files are single-page A1 AutoCAD 2027 plots (pdfplot18) with CAD layers preserved as PDF optional "
            "content. Each is an existing 2D evacuation plan (one per installation position) rather than a general "
            "arrangement plan. None carries a title block, so drawing numbers, revisions, dates and scales are not "
            "available; the PDF metadata 'Title' is a plot job number, not a drawing number.", 10)
@@ -182,11 +183,11 @@ def main(src_dir, out, logo=None):
 
     # ------------------------------------------- 2. building config
     D.new_page("2. Building configuration and extracted information")
-    D.para("Floors in the supplied set: Basement, Ground Floor, Mezzanine Floor (3 levels; floor names as printed). No "
-           "upper floors, roof or site plan were supplied. Floor-to-floor heights, levels and the vertical alignment of "
+    D.para("Floors in the supplied set: Basement, Ground Floor, Mezzanine Floor and Roof Floor (4 levels; floor names as "
+           "printed). No site plan was supplied. Floor-to-floor heights, levels and the vertical alignment of "
            "stairs between floors are not stated.", 10.5)
     rows = []
-    for fl in ("BASEMENT", "GROUND", "MEZZANINE"):
+    for fl in ("BASEMENT", "GROUND", "MEZZANINE", "ROOF"):
         ss = [s for s in A if s["floor"] == fl]
         same = all(s["symbols"] == ss[0]["symbols"] for s in ss)
         rows.append([FLOOR_NAME[fl], ", ".join(s["code"] for s in ss), fmt_counts(ss[0]["symbols"]),
@@ -202,10 +203,10 @@ def main(src_dir, out, logo=None):
         if not f:
             continue
         rows.append([s["code"], f"{f['rotation_deg']}\u00b0" + (" mirrored" if f["mirrored"] else ""),
-                     f"{f['scale_ratio']:.2f}", f"{f['median_residual_pt']:.1f} pt", f"{f['max_residual_pt']:.0f} pt",
+                     f"{1 / f['scale_ratio']:.2f}", f"{f['median_residual_pt']:.1f} pt", f"{f['max_residual_pt']:.0f} pt",
                      "VERIFIED - same layout" if f["max_residual_pt"] < 12 else
                      "PARTIAL - same equipment set; some symbols drawn in different positions; confirm on site"])
-    D.table(["Sheet", "Plan rotation vs -01", "Plot size ratio", "Median offset", "Max offset", "Result"],
+    D.table(["Sheet", "Plan rotation vs -01", "Plot size vs -01", "Median offset", "Max offset", "Result"],
             rows, [0.08, 0.14, 0.1, 0.1, 0.1, 0.48], size=8.6)
     D.h2("Per-sheet extraction summary")
     rows = []
@@ -401,6 +402,8 @@ def main(src_dir, out, logo=None):
         "with them; confirm whether it is a stair or ramp.",
         "Mezzanine: large areas marked with diagonal cross lines on the source (probably voids or double-height space over "
         "the showroom) are shown as floor plate. Confirm, and they can be cut out as voids.",
+        "Roof: plant plinths and roof equipment drawn as outlines are shown only where they sit on the wall layers; the "
+        "unexplained text '5189' on both Roof sheets is not reproduced. The large circular element is shown as drawn.",
         "All floors: the floor-plate edge is inferred and may differ from the slab edge by up to ~3 m at open facades.",
     ], size=10)
     D.h2("7.4 Assumptions made during reconstruction")
@@ -417,8 +420,9 @@ def main(src_dir, out, logo=None):
 
     D.new_page("8. Items for engineering review")
     D.bullets([
-        "Orientation of the variants that were portrait sources (B-03, B-04, GF-01, GF-03, MF-01, MF-03), which are now "
-        "turned to their floor's landscape reference: confirm against each sign's mounting position (M11).",
+        "Orientation of the variants that were portrait sources (B-03, B-04, GF-01, GF-03, MF-01, MF-03, RF-01, RF-02), "
+        "now turned to their floor's landscape reference (the Roof, which has no landscape sheet, is turned like the "
+        "Ground Floor): confirm against each sign's mounting position (M11).",
         "Route ends in section 7.2: confirm the final exits and the assembly points.",
         "Items M1-M13 and C1-C5 (section 3): FLS strategy, GA plans, print-quality logo artwork and site plan.",
         "Mezzanine voids and the Basement ladder-hatched element (section 7.3).",

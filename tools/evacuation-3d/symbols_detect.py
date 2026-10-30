@@ -30,7 +30,9 @@ def classify(doc, xref):
     f = {k: v.mean() for k, v in dict(red=red, dark_red=dark_red, green=green, black=black, white=white).items()}
     ar = max(h, w) / min(h, w)
     if f["black"] > 0.35:
-        return "lift"
+        # the lift tile carries a white car pictogram (~20% white); plain dark
+        # markers on the Roof sheets have none
+        return "lift" if f["white"] > 0.1 else None
     if f["green"] > 0.3:
         return "assembly_point" if ar < 1.3 else "exit_sign"
     if f["dark_red"] > 0.25:

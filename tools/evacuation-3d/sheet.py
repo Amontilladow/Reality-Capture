@@ -11,6 +11,7 @@ FLOORS = {
     "BASEMENT": ("BASEMENT FLOOR", "الطابق السفلي"),
     "GROUND": ("GROUND FLOOR", "الطابق الأرضي"),
     "MEZZANINE": ("MEZZANINE FLOOR", "طابق الميزانين"),
+    "ROOF": ("ROOF FLOOR", "طابق السطح"),
 }
 
 
