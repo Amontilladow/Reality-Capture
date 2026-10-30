@@ -4,6 +4,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   listInbox, getUnreadMessageCount, markThreadRead, snippetOf, type ThreadSummary,
 } from '../../lib/messaging.api';
+import { getChatUnreadCount } from '../../lib/chat.api';
+import { setChatPanelOpen } from '../../lib/chatPanel';
+import { EmailLauncherButton } from '../ui/EmailLauncherButton';
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -16,6 +19,10 @@ function timeAgo(iso: string): string {
   return `${days}d ago`;
 }
 
+// The header's one messaging icon. It gathers the three ways to talk to
+// someone -- the threaded inbox, live team chat (ChatWidget's panel) and
+// the user's own email app -- so they no longer sit side by side as look-
+// alike envelopes and a floating bubble.
 export function MessagesBell() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -27,9 +34,15 @@ export function MessagesBell() {
     refetchInterval: 30_000,
   });
 
+  const chatUnreadQuery = useQuery({
+    queryKey: ['chat-unread-count'],
+    queryFn: getChatUnreadCount,
+    refetchInterval: 30_000,
+  });
+
   const listQuery = useQuery({
     queryKey: ['messages-inbox-preview'],
-    queryFn: () => listInbox({ perPage: 10 }),
+    queryFn: () => listInbox({ perPage: 5 }),
     enabled: open,
   });
 
@@ -47,16 +60,18 @@ export function MessagesBell() {
     navigate(`/projects/messages?threadId=${t.threadId}`);
   }
 
-  const unreadCount = unreadQuery.data?.count ?? 0;
+  const chatUnread = chatUnreadQuery.data?.count ?? 0;
+  const unreadCount = (unreadQuery.data?.count ?? 0) + chatUnread;
 
   return (
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
         className="relative flex items-center justify-center w-8 h-8 rounded text-ink-300 hover:bg-base-700 hover:text-ink-100 transition-colors"
-        aria-label="Messages"
+        aria-label={unreadCount > 0 ? `Messages, ${unreadCount} unread` : 'Messages'}
+        aria-expanded={open}
       >
-        <MailIcon className="w-[18px] h-[18px]" />
+        <ChatIcon className="w-[18px] h-[18px]" />
         {unreadCount > 0 && (
           <span className="absolute top-1 right-1 min-w-[16px] h-4 px-2 rounded-full bg-signal text-base-950 text-xs font-mono font-bold flex items-center justify-center">
             {unreadCount > 99 ? '99+' : unreadCount}
@@ -67,7 +82,7 @@ export function MessagesBell() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute top-full mt-2 left-0 z-50 w-80 max-h-96 tick-frame panel overflow-hidden flex flex-col shadow-xl">
+          <div className="fixed md:absolute top-16 md:top-full inset-x-4 md:inset-x-auto md:mt-2 md:left-0 z-50 md:w-80 max-h-[32rem] tick-frame panel !bg-base-800 overflow-hidden flex flex-col shadow-xl">
             <div className="flex items-center justify-between px-4 py-2 border-b border-base-600 shrink-0">
               <span className="text-xs text-ink-500 font-medium">Messages</span>
               <button
@@ -106,6 +121,18 @@ export function MessagesBell() {
                 </button>
               ))}
             </div>
+            <div className="border-t border-base-600 shrink-0 py-2">
+              <button
+                type="button"
+                onClick={() => { setOpen(false); setChatPanelOpen(true); }}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-ink-300 text-left hover:bg-base-700 hover:text-ink-100 transition-colors"
+              >
+                <ChatIcon className="w-4 h-4 shrink-0" />
+                <span className="flex-1">Team chat</span>
+                {chatUnread > 0 && <span className="text-xs font-semibold text-ink-100 tabular-nums">{chatUnread} new</span>}
+              </button>
+              <EmailLauncherButton variant="row" />
+            </div>
           </div>
         </>
       )}
@@ -113,11 +140,10 @@ export function MessagesBell() {
   );
 }
 
-function MailIcon({ className }: { className?: string }) {
+function ChatIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="M3 7l9 6 9-6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 5h16v11H8l-4 4V5z" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

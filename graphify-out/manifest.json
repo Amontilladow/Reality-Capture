@@ -4044,9 +4044,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/RiskIntelligenceSection.tsx": {
-    "mtime": 1793331908.9232585,
-    "seen": 1793332050.0552325,
-    "ast_hash": "d9011943169e364b9a52215b6ecd38a0",
+    "mtime": 1793339080.8758254,
+    "seen": 1793339428.4939156,
+    "ast_hash": "1ceb27b1e67b1db4796beddddfb6ff3a",
     "semantic_hash": ""
   },
   "apps/web/src/components/SnagDetail.tsx": {
@@ -4158,9 +4158,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/chat/ChatWidget.tsx": {
-    "mtime": 1793331908.9232585,
-    "seen": 1793332050.055781,
-    "ast_hash": "103479991b338f8648156ae19aeac492",
+    "mtime": 1793339080.8758254,
+    "seen": 1793339428.4947343,
+    "ast_hash": "2ddb8827a4665df35ef36de427188e38",
     "semantic_hash": ""
   },
   "apps/web/src/components/drawing/DrawingUploadModal.tsx": {
@@ -4218,27 +4218,27 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/AppShell.tsx": {
-    "mtime": 1793331908.9232585,
-    "seen": 1793332050.0559824,
-    "ast_hash": "55d3f97373a0c47a8bb107704ddbf42e",
+    "mtime": 1793339080.8758254,
+    "seen": 1793339428.495063,
+    "ast_hash": "f248506ceab72ac46b189b95861caa21",
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/MessagesBell.tsx": {
-    "mtime": 1793331908.9232585,
-    "seen": 1793332050.0559852,
-    "ast_hash": "01c8614e15654b426ec8b0dfd9e57456",
+    "mtime": 1793339080.8760066,
+    "seen": 1793339428.4950657,
+    "ast_hash": "bd42f4b6d36fa06a8a4d9b9fd3fd1c1a",
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/NotificationBell.tsx": {
-    "mtime": 1793331908.9232585,
-    "seen": 1793332050.0559886,
-    "ast_hash": "166e9a9a03e85b1f944e51deda71eb66",
+    "mtime": 1793339080.876027,
+    "seen": 1793339428.495068,
+    "ast_hash": "156b87ebac1bee4773ffb2f53f7076f7",
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/PageHeader.tsx": {
-    "mtime": 1793331908.9232585,
-    "seen": 1793332050.0559914,
-    "ast_hash": "e1ad0e1ec247a66a984abc949af48c16",
+    "mtime": 1793339080.8760433,
+    "seen": 1793339428.4950702,
+    "ast_hash": "067597e43cac5d35b27fb85abbb0e24c",
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/ProjectContextPanel.tsx": {
@@ -4266,9 +4266,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/risk/RiskMovementSection.tsx": {
-    "mtime": 1793331908.9232585,
-    "seen": 1793332050.056062,
-    "ast_hash": "2b850722b7528d7b2b22e3a84cee1c57",
+    "mtime": 1793339080.8760433,
+    "seen": 1793339428.4952068,
+    "ast_hash": "91853806ec1365b21e64c34677e46a62",
     "semantic_hash": ""
   },
   "apps/web/src/components/risk/RiskRegisterTable.tsx": {
@@ -4344,15 +4344,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/ui/EmailLauncherButton.test.tsx": {
-    "mtime": 1793306138.1771183,
-    "seen": 1793330195.9252036,
-    "ast_hash": "6ea5a5157ea4896463320bf6d69cc805",
+    "mtime": 1793339204.2695463,
+    "seen": 1793339428.4956615,
+    "ast_hash": "a41f03c5836a711e14ad6073382b2efd",
     "semantic_hash": ""
   },
   "apps/web/src/components/ui/EmailLauncherButton.tsx": {
-    "mtime": 1793331908.9232585,
-    "seen": 1793332050.0563903,
-    "ast_hash": "b9ab5a61ffaed1dd9b79b78fa7e39350",
+    "mtime": 1793339080.8760433,
+    "seen": 1793339428.495664,
+    "ast_hash": "1ae64c6ee94c6cc9061db6fb9aca8461",
     "semantic_hash": ""
   },
   "apps/web/src/components/ui/EmailLink.test.tsx": {
@@ -4386,9 +4386,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/ui/LogoMark.tsx": {
-    "mtime": 1793252811.3747022,
-    "seen": 1793330195.9252279,
-    "ast_hash": "e5050e7bd836dd6a93482cc4906b72d4",
+    "mtime": 1793339080.8761313,
+    "seen": 1793339428.495839,
+    "ast_hash": "0bf12016dd40ff28581d28312d50fdd6",
     "semantic_hash": ""
   },
   "apps/web/src/components/ui/Modal.test.tsx": {
@@ -4416,9 +4416,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/ui/SectionHeader.tsx": {
-    "mtime": 1793331908.9232585,
-    "seen": 1793332050.0567012,
-    "ast_hash": "dab48ff7e6a3c079d351b46965635874",
+    "mtime": 1793339080.876172,
+    "seen": 1793339428.4959896,
+    "ast_hash": "42297362d9883710c83cb460f11ba93b",
     "semantic_hash": ""
   },
   "apps/web/src/components/ui/StatTile.tsx": {
@@ -4962,9 +4962,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/AssistantPage.tsx": {
-    "mtime": 1793331908.9232585,
-    "seen": 1793332050.0603642,
-    "ast_hash": "9af532df52e9027d39bd1373f55cf9fd",
+    "mtime": 1793339080.8762443,
+    "seen": 1793339428.4988866,
+    "ast_hash": "8e8ae257a39a827a2e714d0a3d6b1430",
     "semantic_hash": ""
   },
   "apps/web/src/pages/BimModelsPage.tsx": {
@@ -5034,9 +5034,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/IssuesPage.tsx": {
-    "mtime": 1793331908.9272587,
-    "seen": 1793332050.060534,
-    "ast_hash": "55da503c3ed68e7542b73dff17612d5e",
+    "mtime": 1793339148.9637768,
+    "seen": 1793339428.49924,
+    "ast_hash": "befe9dc182af6e4a7869202d9e90cfca",
     "semantic_hash": ""
   },
   "apps/web/src/pages/MessagesPage.tsx": {
@@ -5106,15 +5106,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/ReportsPage.tsx": {
-    "mtime": 1793331908.9272587,
-    "seen": 1793332050.0606635,
-    "ast_hash": "ede7db5436cff715ff7264a054146f3c",
+    "mtime": 1793339080.87628,
+    "seen": 1793339428.4995623,
+    "ast_hash": "e34693276bb22ffa8265ce730ad313bf",
     "semantic_hash": ""
   },
   "apps/web/src/pages/RfiDetailPage.tsx": {
-    "mtime": 1793331908.9272587,
-    "seen": 1793332050.0606666,
-    "ast_hash": "059439e4274c988a5f0736d5f1a4c19f",
+    "mtime": 1793339080.8763325,
+    "seen": 1793339428.4995646,
+    "ast_hash": "bd956ee0b5d1d0fb344d4bfaa55195e6",
     "semantic_hash": ""
   },
   "apps/web/src/pages/RfiExternalPage.tsx": {
@@ -5178,9 +5178,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/WorkforcePage.tsx": {
-    "mtime": 1793331908.9272587,
-    "seen": 1793332050.0607285,
-    "ast_hash": "a08416cfbd6fef3845531edfe0fed9a2",
+    "mtime": 1793339103.8093197,
+    "seen": 1793339428.499896,
+    "ast_hash": "84fd3ddaf640d883aee2c9a84a2ec1af",
     "semantic_hash": ""
   },
   "apps/web/src/pages/auth/AcceptInvitation.tsx": {
@@ -5256,9 +5256,9 @@
     "semantic_hash": ""
   },
   "apps/web/tailwind.config.js": {
-    "mtime": 1793331908.9272587,
-    "seen": 1793332050.0610368,
-    "ast_hash": "35c204593ed137ff0f0bb4d11065d50a",
+    "mtime": 1793339080.8763325,
+    "seen": 1793339428.500271,
+    "ast_hash": "c8fa12e7a24169a6e593b4cb54393c1e",
     "semantic_hash": ""
   },
   "apps/web/tsconfig.json": {
@@ -5994,9 +5994,9 @@
     "semantic_hash": ""
   },
   "apps/web/public/apple-touch-icon.png": {
-    "mtime": 1793252811.3544068,
-    "seen": 1793330195.926197,
-    "ast_hash": "3815259a7538e12fc54bd4ab7a27c9a2",
+    "mtime": 1793339080.8757489,
+    "seen": 1793339428.503641,
+    "ast_hash": "e17c5da82ad35a70a94999b7ed7a54ed",
     "semantic_hash": ""
   },
   "apps/web/public/branding/reality-capture-hero.webp": {
@@ -6006,15 +6006,15 @@
     "semantic_hash": ""
   },
   "apps/web/public/favicon.png": {
-    "mtime": 1793252811.3553283,
-    "seen": 1793330195.9262125,
-    "ast_hash": "555e4ca4684388be85ec3d167b194c08",
+    "mtime": 1793339080.8758037,
+    "seen": 1793339428.5037088,
+    "ast_hash": "850d100fd9da2c9d9811dc68fcc17b4b",
     "semantic_hash": ""
   },
   "apps/web/public/logo-mark.png": {
-    "mtime": 1793252811.3553283,
-    "seen": 1793330195.9262161,
-    "ast_hash": "66bd660092b366d02d3839c49258e798",
+    "mtime": 1793339080.8758254,
+    "seen": 1793339428.503711,
+    "ast_hash": "392044db405016b1fa839e72beb7242d",
     "semantic_hash": ""
   },
   "apps/web/public/og-image.png": {
@@ -6096,9 +6096,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/dash/Dash.tsx": {
-    "mtime": 1793331908.9232585,
-    "seen": 1793332050.0558448,
-    "ast_hash": "95b6c98f16ee848da18b203a7304584a",
+    "mtime": 1793339080.8758254,
+    "seen": 1793339428.4947715,
+    "ast_hash": "b81a6b10cfce95cadd1244aa6b80c4e2",
     "semantic_hash": ""
   },
   "docs/DATA_INVENTORY_AND_PRIVACY_GAPS.md": {
@@ -6135,6 +6135,30 @@
     "mtime": 1793331922.2306144,
     "seen": 1793332050.0603867,
     "ast_hash": "2a65ebe9cedb05877acc954bcb62d37d",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/ui/MobileFold.test.tsx": {
+    "mtime": 1793339213.3374135,
+    "seen": 1793339428.4958422,
+    "ast_hash": "18e1468daa1dd4439f7d9fc8ae5807d4",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/ui/MobileFold.tsx": {
+    "mtime": 1793339080.876151,
+    "seen": 1793339428.4958448,
+    "ast_hash": "5ebef3d414e34d0a08bb7e6706750e24",
+    "semantic_hash": ""
+  },
+  "apps/web/src/lib/chatPanel.ts": {
+    "mtime": 1793339080.876172,
+    "seen": 1793339428.4972687,
+    "ast_hash": "ebfe46fc916d9acb28c1c52ede7ab56e",
+    "semantic_hash": ""
+  },
+  "apps/web/src/lib/useMediaQuery.ts": {
+    "mtime": 1793339080.8762443,
+    "seen": 1793339428.498708,
+    "ast_hash": "01955f07c9170075baf429e866a80e88",
     "semantic_hash": ""
   },
   "pnpm-lock.yaml": {

@@ -25,7 +25,11 @@ const PROVIDER_ORDER: EmailProvider[] = ['outlook', 'gmail', 'default'];
 // plain web URL or mailto: link in response to the click that's already
 // happening -- never assumes the user is signed in to whichever provider
 // they picked.
-export function EmailLauncherButton({ className = '' }: { className?: string }) {
+// variant="row" is the same control laid out as a full-width menu row (used
+// inside the Messages menu, so the header carries one messaging icon); its
+// provider list opens inline instead of as a floating popover.
+export function EmailLauncherButton({ className = '', variant = 'icon' }: { className?: string; variant?: 'icon' | 'row' }) {
+  const row = variant === 'row';
   const [menuOpen, setMenuOpen] = useState(false);
   const [current, setCurrent] = useState<EmailProvider | null>(() => getStoredEmailProvider());
   const rootRef = useRef<HTMLDivElement>(null);
@@ -83,8 +87,19 @@ export function EmailLauncherButton({ className = '' }: { className?: string }) 
   const mainLabel = current ? `Open email (${PROVIDER_LABELS[current]})` : 'Open email';
 
   return (
-    <div ref={rootRef} className={`relative inline-flex ${className}`}>
-      <div className="inline-flex items-center rounded overflow-hidden">
+    <div ref={rootRef} className={`${row ? 'flex flex-col' : 'relative inline-flex'} ${className}`}>
+      <div className={row ? 'flex items-center' : 'inline-flex items-center rounded overflow-hidden'}>
+        {row ? (
+          <button
+            type="button"
+            onClick={handleMainClick}
+            aria-label={mainLabel}
+            className="flex-1 min-w-0 flex items-center gap-2 px-4 py-2 text-sm text-ink-300 text-left hover:bg-base-700 hover:text-ink-100 transition-colors"
+          >
+            <IconMail className="w-4 h-4 shrink-0" />
+            <span className="truncate">{current ? `Open my email (${PROVIDER_LABELS[current]})` : 'Open my email'}</span>
+          </button>
+        ) : (
         <Tooltip label={mainLabel}>
           <button
             type="button"
@@ -95,6 +110,7 @@ export function EmailLauncherButton({ className = '' }: { className?: string }) 
             <IconMail className="w-4 h-4" />
           </button>
         </Tooltip>
+        )}
         <Tooltip label="Change email app">
           <button
             type="button"
@@ -102,7 +118,7 @@ export function EmailLauncherButton({ className = '' }: { className?: string }) 
             aria-label="Change email app"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
-            className="w-6 h-9 inline-flex items-center justify-center text-ink-500 hover:bg-base-700 hover:text-ink-100 transition-colors"
+            className={`${row ? 'w-10' : 'w-6'} h-9 inline-flex items-center justify-center text-ink-500 hover:bg-base-700 hover:text-ink-100 transition-colors`}
           >
             <IconChevronDown className="w-3 h-3" />
           </button>
@@ -113,7 +129,7 @@ export function EmailLauncherButton({ className = '' }: { className?: string }) 
         <div
           role="menu"
           aria-label="Choose email app"
-          className="absolute top-full right-0 mt-2 w-52 rounded border border-base-600 bg-base-800 shadow-lg z-20 py-2"
+          className={row ? 'border-t border-base-600 py-2' : 'absolute top-full right-0 mt-2 w-52 rounded border border-base-600 bg-base-800 shadow-lg z-20 py-2'}
         >
           <div className="px-4 py-2 text-xs font-medium text-ink-500">Open email with</div>
           {PROVIDER_ORDER.map((provider) => (

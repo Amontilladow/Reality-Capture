@@ -37,6 +37,7 @@ import { RFI_WORKFLOW_STATUS_TONE, RFI_PRIORITY_TONE } from '../lib/status-tone'
 import { StatusBadge } from '../components/ui/Badge';
 import { apiErrorMessage, apiDownload } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
+import { MobileFold } from '../components/ui/MobileFold';
 import { Listbox } from '../components/ui/Listbox';
 
 // Source-status sets mirroring rfis.service.ts's own (server-authoritative --
@@ -557,10 +558,12 @@ export default function RfiDetailPage() {
             isSubcontractor's own comment) rather than rendering and letting
             its query 403. */}
         {!isSubcontractor && (
+          <MobileFold title="Email history">
           <section className="panel tick-frame p-6">
             <div className="field-label mb-4">Email History</div>
             <EmailHistoryList projectId={projectId} relatedRecordType="rfi" relatedRecordId={rfi.id} />
           </section>
+          </MobileFold>
         )}
 
         {/* RFI Information */}
@@ -676,9 +679,11 @@ export default function RfiDetailPage() {
         </section>
 
         {/* Human Risk Assessment */}
+        <MobileFold title="Risk assessment" summary="Probability × impact">
         <section className="panel tick-frame p-6">
           <InlineRiskAssessment projectId={projectId} nodeType="rfi" entityId={rfiId} />
         </section>
+        </MobileFold>
 
         {/* Query */}
         <section className="panel tick-frame p-6 space-y-4">
@@ -815,6 +820,7 @@ export default function RfiDetailPage() {
             copy-paste into whatever email/WhatsApp the internal user already
             uses (real transactional delivery is out of scope). */}
         {canManageExternalAccess && (
+          <MobileFold title="External access" summary="Share this RFI with someone outside the platform">
           <section className="panel tick-frame p-6 space-y-4">
             <div className="field-label !mb-0">External access</div>
             <p className="text-xs text-ink-500">
@@ -936,9 +942,11 @@ export default function RfiDetailPage() {
               {revokeExternalAccessMutation.isError && <p className="field-error">{apiErrorMessage(revokeExternalAccessMutation.error)}</p>}
             </div>
           </section>
+          </MobileFold>
         )}
 
         {/* Audit trail */}
+        <MobileFold title="Audit trail" summary={rfiAudit.length === 0 ? 'No events yet' : `${rfiAudit.length} events`}>
         <section className="panel tick-frame p-6 space-y-2">
           <div className="field-label">Audit trail</div>
           {rfiAudit.length === 0 && <p className="text-sm text-ink-500">No audit events recorded for this RFI yet.</p>}
@@ -953,6 +961,7 @@ export default function RfiDetailPage() {
             ))}
           </div>
         </section>
+        </MobileFold>
 
         {downloadError && <p className="field-error">{downloadError}</p>}
         {xlsError && <p className="field-error">{xlsError}</p>}
@@ -1270,7 +1279,13 @@ function OrganizationSlotRow({ projectId, canEdit }: { projectId: string; canEdi
     },
   });
 
+  // Five "No logo" placeholders tell a reader nothing, so an unconfigured
+  // strip only shows to someone who can fill it in.
+  const configured = PROJECT_ORGANIZATION_SLOTS.some((slot) => bySlot.get(slot)?.logoUrl || bySlot.get(slot)?.name);
+  if (!configured && !canEdit) return null;
+
   return (
+    <MobileFold title="Project organizations" summary={configured ? undefined : 'No logos added yet'}>
     <section className="panel tick-frame p-4">
       <div className="grid grid-cols-5 gap-4">
         {PROJECT_ORGANIZATION_SLOTS.map((slot) => {
@@ -1314,6 +1329,7 @@ function OrganizationSlotRow({ projectId, canEdit }: { projectId: string; canEdi
       </div>
       {logoMutation.isError && <p className="field-error mt-2">{apiErrorMessage(logoMutation.error)}</p>}
     </section>
+    </MobileFold>
   );
 }
 

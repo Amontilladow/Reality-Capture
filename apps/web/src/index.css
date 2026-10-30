@@ -89,6 +89,14 @@
   --rc-noir: 42 36 31;
   --rc-shadow: 42 36 31; /* shadow tint: espresso, never flat black */
   --rc-measure: 48ch; /* longest comfortable line of running text */
+
+  /* Display type sizes (tailwind text-3xl..7xl), all steps of the 1.25
+     scale. Phones take smaller steps; md and up restores the full ones. */
+  --rc-fs-3xl: 1.708984375rem; /* 27.3px */
+  --rc-fs-4xl: 2.13623046875rem; /* 34.2px */
+  --rc-fs-5xl: 2.13623046875rem; /* 34.2px */
+  --rc-fs-6xl: 2.6702880859375rem; /* 42.7px */
+  --rc-fs-7xl: 3.337860107421875rem; /* 53.4px */
   --rc-noir-hover: 70 61 53;
   --rc-on-noir: 232 221 207;
   --rc-dash-from: 255 248 237;
@@ -223,6 +231,16 @@
   }
 }
 
+@media (min-width: 768px) {
+  :root {
+    --rc-fs-3xl: 2.13623046875rem; /* 34.2px */
+    --rc-fs-4xl: 2.6702880859375rem; /* 42.7px */
+    --rc-fs-5xl: 3.337860107421875rem; /* 53.4px */
+    --rc-fs-6xl: 4.172325134277344rem; /* 66.8px */
+    --rc-fs-7xl: 5.21540641784668rem; /* 83.4px */
+  }
+}
+
 @layer base {
   * {
     @apply border-base-600;
@@ -311,6 +329,17 @@
   .panel {
     @apply rounded-card border border-base-800/60;
     background-color: rgb(var(--rc-base-800) / 0.78);
+  }
+  /* An open MobileFold already draws the card and names the section, so a
+     panel passed in as its body sheds its own frame and leading label. */
+  .mobile-fold-body > .panel {
+    border: 0;
+    border-radius: 0;
+    background: none;
+    padding: 0;
+  }
+  .mobile-fold-body > .panel > .field-label:first-child {
+    display: none;
   }
 
   /* Opt-in hover for panels that are also a click target (a card linking

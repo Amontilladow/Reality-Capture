@@ -23,6 +23,7 @@ import {
   type MonitoringLevel, type ProductivityClassification, type ProductivityFactors, type AbsenceType,
 } from '@engineeringos/types';
 import { Listbox } from '../components/ui/Listbox';
+import { Tabs, type TabItem } from '../components/ui/Tabs';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -66,6 +67,8 @@ function safeNumber(n: unknown): number | undefined {
   return Number.isFinite(v) ? v : undefined;
 }
 
+type WorkforceTab = 'activity' | 'schedule' | 'admin';
+
 export default function WorkforcePage() {
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((s) => s.user);
@@ -77,6 +80,7 @@ export default function WorkforcePage() {
   // see whom (self, weight-based leadership, or reporting-chain
   // visibility); this is just which one the page currently displays.
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [tab, setTab] = useState<WorkforceTab>('activity');
   const isSelf = selectedUserId === null;
 
   // Computed once (lazy initializer, not on every render) so both queries
@@ -122,6 +126,12 @@ export default function WorkforcePage() {
   // Manual project attribution only ever applies to your own activity
   // (POST /workforce/activities/:activityId/attribute is caller-scoped
   // server-side) -- never shown while viewing a team member's data.
+  const tabs: TabItem[] = [
+    { key: 'activity', label: 'My activity' },
+    { key: 'schedule', label: 'My schedule' },
+    ...(isCompanyAdmin ? [{ key: 'admin', label: 'Team admin' }] : []),
+  ];
+
   const unattributed = isSelf ? (summary?.activities ?? []).filter((a) => !a.projectId).slice(0, 20) : [];
 
   return (
@@ -129,6 +139,11 @@ export default function WorkforcePage() {
       <PageHeader eyebrow={isSelf ? 'My Activity' : `${selectedMember?.name ?? 'Team member'}'s Activity`} title="Workforce" />
 
       <div className="p-6 space-y-8">
+        {/* One page held your activity, your schedule and every admin
+            setting stacked together; tabs keep each job on its own. */}
+        <Tabs items={tabs} active={tab} onChange={(key) => setTab(key as WorkforceTab)} />
+
+        {tab === 'activity' && (<>
         {teamQuery.data && teamQuery.data.length > 0 && (
           <section className="space-y-2">
             <h2 className="text-sm font-semibold text-ink-100">Team</h2>
@@ -207,7 +222,7 @@ export default function WorkforcePage() {
                     </div>
                     {(factors.unclassifiedSeconds ?? 0) > 0 && isCompanyAdmin && (
                       <p className="text-xs text-ink-500">
-                        Some time is in apps nobody has classified yet — see "Application productivity (admin)" below.
+                        Some time is in apps nobody has classified yet — see "Application productivity" under Team admin.
                       </p>
                     )}
                     {(factors.privateSeconds ?? 0) > 0 && (
@@ -262,8 +277,6 @@ export default function WorkforcePage() {
           />
         )}
 
-        <MyScheduling />
-        <CalendarIntegrationPanel />
 
         {unattributed.length > 0 && (
           <section className="space-y-4">
@@ -319,7 +332,14 @@ export default function WorkforcePage() {
           </section>
         )}
 
-        {isCompanyAdmin && (
+        </>)}
+
+        {tab === 'schedule' && (<>
+          <MyScheduling />
+          <CalendarIntegrationPanel />
+        </>)}
+
+        {tab === 'admin' && isCompanyAdmin && (
           <>
             <PrivacySettingsAdmin />
             <ReportingLinesAdmin />

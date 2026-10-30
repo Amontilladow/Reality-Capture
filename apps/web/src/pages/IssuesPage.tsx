@@ -20,6 +20,7 @@ import { ISSUE_STATUS_TONE, ISSUE_PRIORITY_TONE } from '../lib/status-tone';
 import { StatusBadge } from '../components/ui/Badge';
 import { apiErrorMessage } from '../lib/api';
 import { Listbox } from '../components/ui/Listbox';
+import { DESKTOP_QUERY, useMediaQuery } from '../lib/useMediaQuery';
 
 type QuickFilter = 'all' | 'overdue' | 'critical' | 'mine';
 type Tab = 'issues' | 'dashboard' | 'reminders';
@@ -36,6 +37,8 @@ export default function IssuesPage() {
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
   const [search, setSearch] = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const desktop = useMediaQuery(DESKTOP_QUERY);
   const [assignedTo, setAssignedTo] = useState('');
   const [discipline, setDiscipline] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -214,6 +217,7 @@ export default function IssuesPage() {
   }
 
   const advancedActive = Boolean(assignedTo || discipline || dateFrom || dateTo);
+  const activeFilterCount = [buildingFilter, levelFilter, status].filter(Boolean).length + (advancedActive ? 1 : 0);
   function clearAdvanced() {
     setAssignedTo('');
     setDiscipline('');
@@ -311,8 +315,28 @@ export default function IssuesPage() {
             <FilterChip active={quickFilter === 'overdue'} onClick={() => { setQuickFilter('overdue'); setStatus(''); }}>Overdue</FilterChip>
             <FilterChip active={quickFilter === 'critical'} onClick={() => { setQuickFilter('critical'); setStatus(''); }}>Critical</FilterChip>
 
+            <input
+              className="field-input w-full md:w-48 md:order-last"
+              placeholder="Search issues…"
+              aria-label="Search issues"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {/* Phones: the location/status filters sit behind one button
+                instead of stacking three dropdowns above the list. */}
+            {!desktop && (
+              <button
+                type="button"
+                aria-expanded={filtersOpen}
+                onClick={() => setFiltersOpen((v) => !v)}
+                className="btn-secondary !px-4 !py-2 text-xs"
+              >
+                Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+              </button>
+            )}
+            <div className={desktop ? 'contents' : filtersOpen ? 'w-full grid grid-cols-1 gap-2' : 'hidden'}>
             <Listbox
-              className="field-input w-auto ml-auto"
+              className="field-input w-full md:w-auto md:ml-auto"
               aria-label="Filter by building"
               value={buildingFilter}
               onChange={(e) => { setBuildingFilter(e.target.value); setLevelFilter(''); }}
@@ -323,7 +347,7 @@ export default function IssuesPage() {
               ))}
             </Listbox>
             <Listbox
-              className="field-input w-auto"
+              className="field-input w-full md:w-auto"
               aria-label="Filter by level"
               value={levelFilter}
               onChange={(e) => setLevelFilter(e.target.value)}
@@ -335,7 +359,7 @@ export default function IssuesPage() {
               ))}
             </Listbox>
             <Listbox
-              className="field-input w-auto"
+              className="field-input w-full md:w-auto"
               aria-label="Filter by status"
               value={status}
               onChange={(e) => { setStatus(e.target.value); setQuickFilter('all'); }}
@@ -345,18 +369,13 @@ export default function IssuesPage() {
                 <option key={st} value={st}>{STATUS_LABELS[st]}</option>
               ))}
             </Listbox>
-            <input
-              className="field-input w-48"
-              placeholder="Search issues…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
             <button
               onClick={() => setAdvancedOpen((v) => !v)}
-              className={`btn-secondary !px-4 !py-2 text-xs ${advancedActive ? '!border-signal !text-signal' : ''}`}
+              className={`btn-secondary !px-4 !py-2 text-xs md:order-last ${advancedActive ? '!border-signal !text-signal' : ''}`}
             >
               Advanced{advancedActive ? ' •' : ''}
             </button>
+            </div>
           </div>
 
           {advancedOpen && (

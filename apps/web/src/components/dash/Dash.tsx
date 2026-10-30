@@ -1,6 +1,7 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { DESKTOP_QUERY, useMediaQuery } from '../../lib/useMediaQuery';
 
 // Building blocks for the dashboard canvas used by the Risk and Reports
 // pages: a soft gradient page, oversized rounded cards, thin oversized
@@ -284,11 +285,19 @@ export interface NoirItem {
   onClick?: () => void;
 }
 
+// On a phone a list shows its first PHONE_LIMIT rows and a "Show all"
+// toggle; desktop always shows every row (the card has the room).
+const PHONE_LIMIT = 3;
+
 export function NoirList({ items, empty }: { items: NoirItem[]; empty: string }) {
+  const desktop = useMediaQuery(DESKTOP_QUERY);
+  const [expanded, setExpanded] = useState(false);
   if (items.length === 0) return <p className="text-sm text-on-noir/70 py-6">{empty}</p>;
+  const capped = !desktop && !expanded && items.length > PHONE_LIMIT;
   return (
+    <>
     <ul className="space-y-2 -mx-2">
-      {items.map((it) => {
+      {(capped ? items.slice(0, PHONE_LIMIT) : items).map((it) => {
         const body = (
           <>
             <span aria-hidden="true" className="w-11 h-11 shrink-0 rounded-full bg-on-noir/10 flex items-center justify-center text-on-noir">
@@ -320,6 +329,17 @@ export function NoirList({ items, empty }: { items: NoirItem[]; empty: string })
         );
       })}
     </ul>
+    {!desktop && items.length > PHONE_LIMIT && (
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((v) => !v)}
+        className="mt-2 text-sm font-medium text-on-noir underline underline-offset-4"
+      >
+        {expanded ? 'Show fewer' : `Show all ${items.length}`}
+      </button>
+    )}
+    </>
   );
 }
 

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { Modal } from './ui/Modal';
 import { SectionHeader } from './ui/SectionHeader';
+import { MobileFold } from './ui/MobileFold';
 import { RiskGraphView } from './RiskGraphView';
 import { RiskMovementSection } from './risk/RiskMovementSection';
 import { RiskHeatmap } from './risk/RiskHeatmap';
@@ -35,6 +36,10 @@ import { Listbox } from './ui/Listbox';
 // component via useThemeColors(), rather than module-level constants, so
 // every chart and badge here re-renders with the right colors when the
 // theme changes.
+// The API reports a missing data source as "Not available" / "Not
+// connected — ..." (RiskService.getDataAvailability).
+const connected = (status: string) => !/^not (available|connected)/i.test(status);
+
 function levelColors(colors: ThemeColors): Record<RiskLevel, string> {
   return { LOW: colors.ok, MODERATE: colors.warn, HIGH: colors.high, CRITICAL: colors.danger };
 }
@@ -271,9 +276,11 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
                 <span>Issues {availability.issuesAvailable}</span>
                 <span>Snag items {availability.snagItemsAvailable}</span>
                 <span>QA inspections {availability.qaInspectionsAvailable}</span>
-                <span>BIM relationships: {availability.bimElementRelationships}</span>
-                <span className="max-w-measure">Programme data: {availability.programmeData}</span>
-                <span className="max-w-measure">Procurement data: {availability.procurementData}</span>
+                {/* Data sources that aren't connected say nothing a reader
+                    can act on, so only connected ones are listed. */}
+                {connected(availability.bimElementRelationships) && <span>BIM relationships: {availability.bimElementRelationships}</span>}
+                {connected(availability.programmeData) && <span className="max-w-measure">Programme data: {availability.programmeData}</span>}
+                {connected(availability.procurementData) && <span className="max-w-measure">Procurement data: {availability.procurementData}</span>}
               </p>
             )}
 
@@ -406,13 +413,18 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
             {/* Risk Movement (brief Phase 3): emerged/worsened/improved/
                 unresolved during a selectable window, from real snapshot
                 history. */}
-            <RiskMovementSection
-              movement={movementQuery.data}
-              isLoading={movementQuery.isLoading}
-              days={movementDays}
-              onDaysChange={setMovementDays}
-              onSelectRisk={openRisk}
-            />
+            <MobileFold
+              title="Risk movement"
+              summary={movementQuery.data ? `Last ${movementDays} days: ${movementQuery.data.emerged.length} new, ${movementQuery.data.worsened.length} worse` : undefined}
+            >
+              <RiskMovementSection
+                movement={movementQuery.data}
+                isLoading={movementQuery.isLoading}
+                days={movementDays}
+                onDaysChange={setMovementDays}
+                onSelectRisk={openRisk}
+              />
+            </MobileFold>
           </>
         );
       })()}
@@ -421,6 +433,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
         <>
           {/* Top Management Risks */}
           {(topQuery.data?.length ?? 0) > 0 && (
+            <MobileFold title="Top management risks" summary={`${topQuery.data!.length} risks to raise with management`}>
             <div className="space-y-2">
               <SectionHeader title="Top Management Risks" size="sm" />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -439,10 +452,12 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
                 ))}
               </div>
             </div>
+            </MobileFold>
           )}
 
           {/* Emerging Risks */}
           {(emergingQuery.data?.length ?? 0) > 0 && (
+            <MobileFold title="Emerging risks" summary={`${emergingQuery.data!.length} new or rising`}>
             <div className="space-y-2">
               <SectionHeader title="Emerging Risks" size="sm" />
               <div className="panel tick-frame divide-y divide-base-700/60">
@@ -460,10 +475,12 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
                 ))}
               </div>
             </div>
+            </MobileFold>
           )}
 
           {/* Risk Clusters */}
           {(clustersQuery.data?.length ?? 0) > 0 && (
+            <MobileFold title="Risk by location" summary={`${clustersQuery.data!.length} locations`}>
             <div className="space-y-2">
               <SectionHeader title="Risk Concentration by Location" size="sm" />
               <div className="panel tick-frame divide-y divide-base-700/60">
@@ -475,6 +492,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
                 ))}
               </div>
             </div>
+            </MobileFold>
           )}
 
           {/* Risk Register -- the primary working area (brief section 4E) */}
