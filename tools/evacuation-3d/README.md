@@ -24,8 +24,19 @@ through the same camera.
 | All-sheet analysis / register data | `analyze_all.py` |
 | QC comparison sheet | `compare.py` |
 | Combined review package | `make_package.py`, `report.py` |
+| Floor names from sheet titles (EN/AR) | `floors.py` |
+| **Batch runner used by the app's "Convert" button** | `convert.py` |
 
 ## Usage
+
+In the app: **Project → 3D Evacuation Plans → Convert to 3D** (runs `convert.py`
+inside `apps/evac3d-service`). From the command line:
+
+```sh
+python3 convert.py run <job_dir>   # job_dir/input/*.pdf (+ optional logo.png), see convert.py
+```
+
+Step by step (the original project workflow):
 
 ```sh
 (cd render && npm install)
@@ -41,7 +52,8 @@ Chromium + Playwright must be available (`require('playwright')`).
 
 - Drawing scale is not stated on the sheets; it is derived (parking bay, car and
   WC sizes) and only used for metre values in reports.
-- Arrow/dot templates are tuned to the Ground Floor plot size; Basement sheets
-  B-01/B-02 and GF-02 need size-relative templates. Some YAH markers and basement
-  stair highlights sit on other layers. See the QC report section 7.5.
+- Extraction relies on the CAD layer names and symbol style of AutoCAD-plotted
+  evacuation plans (A-WALL, A-HATCH, A-ESCAPE-ROUTE, embedded ISO-style icons).
+  Drawings from other CAD standards will need adapting; the conversion report
+  flags sheets where routes, stairs or the YOU ARE HERE marker were not found.
 - Authority emblems and logos are placeholders: approved artwork must be supplied.

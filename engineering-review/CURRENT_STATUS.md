@@ -51,6 +51,7 @@ listing `apps/api/src/modules/*.controller.ts` and cross-referencing
 | Native capture companion | `apps/mobile` (Expo/React Native) | n/a | Implemented as a capture-focused companion (camera, offline SQLite queue, background sync) — not full web feature parity |
 | Browser extension | `apps/browser-extension` | n/a | Implemented (small, has its own `node:test` suite); not covered by any typecheck/lint/build script |
 | Forensic BIM tooling | `tools/bim-debug` | n/a | Implemented; its one regression test self-skips without a real customer IFC file (`BIM_DEBUG_SOURCE_IFC` env var, not committed) — see the test file's own header comment |
+| 3D Evacuation Plans (2D evacuation-plan PDFs → 3D sheets) | `modules/evac-plans` (migration `078_evac_plan_jobs.sql`, Bull queue `evac-plans`) + `apps/evac3d-service` (FastAPI) running the engine in `tools/evacuation-3d` | EvacPlansPage ("Convert to 3D") | Implemented. Engine verified end to end on the 12 sheets of one project; service verified over HTTP locally with the real engine; page checked in a browser against a mocked API only. **Not yet deployed:** the Docker image was not built in the development environment (no Docker daemon), and the new `engineeringos-evac3d-service` needs a 2–4 GB instance (`plan: pro` in `render.yaml`). Output is a DRAFT for FLS consultant review; no compliance/approval is claimed |
 
 The README previously described the product as "Phase 1 Foundation" with
 Reality Capture, Drawings, BIM, Issues, and AI all "🔜 Next/Planned." That

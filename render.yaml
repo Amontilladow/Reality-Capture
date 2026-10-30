@@ -186,6 +186,9 @@ services:
       # not as its own paid instance -- see apps/adm-gis-prep docs D-034.
       - key: GIS_PREP_SERVICE_URL
         value: http://engineeringos-ai-service:8001/gis-prep
+      # 3D Evacuation Plans conversion (apps/evac3d-service), its own private service.
+      - key: EVAC3D_SERVICE_URL
+        value: http://engineeringos-evac3d-service:8003
 
   # ── Vector DB for the AI assistant/search (RAG) ─────────────────────────
   # Private service ONLY -- never expose this publicly. It has no auth of
@@ -259,6 +262,26 @@ services:
         sync: false
       - key: S3_BUCKET
         sync: false
+
+  # ── 3D evacuation-plan conversion service ───────────────────────────────
+  # Private service ONLY (shared-secret auth, no tenant checks of its own;
+  # engineeringos-api enforces tenancy before calling it). Its own instance,
+  # not inside engineeringos-ai-service: one sheet build peaks at ~1.5 GB plus
+  # headless Chromium for the 3D render, far over the AI service's 512 MB.
+  # "pro" = 4 GB / 2 CPU; "standard" (2 GB) is too tight for large sheets.
+  - type: pserv
+    name: engineeringos-evac3d-service
+    runtime: docker
+    dockerfilePath: apps/evac3d-service/Dockerfile
+    # Repository root: the image also copies the engine in tools/evacuation-3d.
+    dockerContext: .
+    plan: pro
+    region: oregon
+    envVars:
+      - key: INTERNAL_SERVICE_SECRET
+        sync: false
+      - key: PORT
+        value: 8003
 
   # ── IFC processing worker ───────────────────────────────────────────────
   - type: worker

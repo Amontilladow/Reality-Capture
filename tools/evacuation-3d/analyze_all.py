@@ -85,8 +85,14 @@ def fit_variant(ref, cur):
     return best
 
 
-def summarise(path):
-    name, floor, code = sheet_id(path)
+def summarise(path, code=None, floor=None):
+    """Register/QC summary + model for one sheet. code/floor are given by the
+    conversion runner (identified from the sheet title); otherwise they come
+    from this project's file-naming convention."""
+    if code is None:
+        name, floor, code = sheet_id(path)
+    else:
+        name = re.sub(r"^[0-9a-f]{8}-", "", os.path.basename(path))
     doc = pymupdf.open(path)
     meta = doc.metadata
     data = MD.extract(path)

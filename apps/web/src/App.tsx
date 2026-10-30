@@ -70,6 +70,7 @@ const CapturesPage = lazy(() => import('./pages/CapturesPage'));
 // bundle-splitting reason as the routes above.
 const SiteDrawingHubPage = lazy(() => import('./pages/SiteDrawingHubPage'));
 const GisPrepPage = lazy(() => import('./pages/GisPrepPage'));
+const EvacPlansPage = lazy(() => import('./pages/EvacPlansPage'));
 
 function RouteLoading() {
   return (
@@ -175,6 +176,7 @@ export default function App() {
             <Route path="/projects/:projectId/risk" element={<RiskPage />} />
             <Route path="/projects/:projectId/site-drawings" element={<SiteDrawingHubPage />} />
             <Route path="/projects/:projectId/gis-prep" element={<GisPrepPage />} />
+            <Route path="/projects/:projectId/evac-plans" element={<EvacPlansPage />} />
             <Route path="/projects/:projectId/reports" element={<ReportsPage />} />
           </Route>
         </Route>

@@ -1,0 +1,5 @@
+-r /opt/evac3d-engine/requirements.txt
+fastapi==0.111.0
+python-multipart==0.0.9
+uvicorn[standard]==0.29.0
+pydantic-settings==2.2.1

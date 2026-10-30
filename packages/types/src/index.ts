@@ -25,3 +25,4 @@ export * from './risk.types';
 export * from './email-integration.types';
 export * from './site-drawing.types';
 export * from './gis-prep.types';
+export * from './evac-plans.types';

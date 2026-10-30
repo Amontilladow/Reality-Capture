@@ -123,3 +123,25 @@ jobs:
       - name: Audit apps/adm-gis-prep
         working-directory: apps/adm-gis-prep
         run: pip-audit -r requirements.txt || true
+
+  evac3d-service-tests:
+    name: 3D evacuation-plan service tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # The tests run the service with a stand-in engine, so only FastAPI and
+      # pytest are needed (the real engine takes minutes per sheet).
+      - name: Install test dependencies
+        working-directory: apps/evac3d-service
+        run: pip install --quiet -r requirements-dev.txt
+
+      - name: Test
+        working-directory: apps/evac3d-service
+        run: python -m pytest -q tests

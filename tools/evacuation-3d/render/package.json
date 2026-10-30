@@ -4,5 +4,8 @@
   "description": "Headless three.js renderer for the 3D evacuation plan architecture layer",
   "dependencies": {
     "three": "0.160.0"
+  },
+  "peerDependencies": {
+    "playwright": "*"
   }
 }

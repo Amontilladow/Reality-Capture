@@ -90,6 +90,7 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
       { to: 'bim', label: 'BIM Models', icon: IconBim },
       { to: 'buildlens', label: 'BuildLens', icon: IconTimeline },
       { to: 'gis-prep', label: 'GIS Preparation', icon: IconMap },
+      { to: 'evac-plans', label: '3D Evacuation Plans', icon: IconExit },
     ],
   },
   {
@@ -375,6 +376,16 @@ function IconMap({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M9 3L3 5v16l6-2 6 2 6-2V3l-6 2-6-2z" strokeLinejoin="round" />
       <path d="M9 3v16M15 5v16" />
+    </svg>
+  );
+}
+// Running figure leaving through a door, after the emergency-exit sign.
+function IconExit({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M14 3h6v18h-6" strokeLinejoin="round" />
+      <circle cx="9" cy="5" r="1.6" />
+      <path d="M8 8l-3 3M8 8l2 5-3 5M10 13l3 2M8 8l3 1 2 2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

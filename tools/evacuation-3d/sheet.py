@@ -4,15 +4,10 @@ import math
 import numpy as np
 from reportlab.lib.colors import HexColor
 
+import floors
 import graphics as G
 from scene import WALL_H
 
-FLOORS = {
-    "BASEMENT": ("BASEMENT FLOOR", "الطابق السفلي"),
-    "GROUND": ("GROUND FLOOR", "الطابق الأرضي"),
-    "MEZZANINE": ("MEZZANINE FLOOR", "طابق الميزانين"),
-    "ROOF": ("ROOF FLOOR", "طابق السطح"),
-}
 
 
 class Mapper:
@@ -183,11 +178,12 @@ def draw_plan_sheet(c, sheet, model, cam, fr, frustum, png_path):
 
 def _title(c, r, sheet):
     x, y, w, h = r
-    en_floor, ar_floor = FLOORS[sheet["floor"]]
+    en_floor, ar_floor = floors.names(sheet["floor"])
     G.text_en(c, x + 26, y + h - 78, "EVACUATION PLAN", 64, bold=True, color=G.FRAME)
     G.text_en(c, x + 28, y + h - 118, en_floor, 30, bold=True, color=G.FRAME)
     G.text_ar(c, x + w - 26, y + h - 82, "خطة الإخلاء", 66, bold=True, color=G.FRAME)
-    G.text_ar(c, x + w - 26, y + h - 124, ar_floor, 32, bold=True, color=G.FRAME)
+    if ar_floor:
+        G.text_ar(c, x + w - 26, y + h - 124, ar_floor, 32, bold=True, color=G.FRAME)
     # ADCD logo: client-supplied artwork placed as-is (never redrawn); a marked
     # placeholder is shown when none is supplied
     lw, lh = 170, 128

@@ -309,24 +309,24 @@ def _route_components(data, bbox, stairs=()):
         single = 115 <= area_pt <= 190 and 18 <= size_pt <= 25 and sol < 0.85
         double = 230 <= area_pt <= 340 and 28 <= size_pt <= 42 and sol < 0.7
         if single or double:
-            am = lab == i
-            dash[am] = 0
-            ys, xs = np.nonzero(am)
-            P = np.c_[xs, ys].astype(np.float32)
+            # arrows keep only their own pixel list (a full-sheet mask per arrow
+            # cost ~30 MB each)
+            crop = lab[y:y + h, x:x + w] == i
+            dash[y:y + h, x:x + w][crop] = 0
+            ys, xs = np.nonzero(crop)
+            P = np.c_[xs + x, ys + y].astype(np.float32)
             parts = [P]
             if double:  # two stacked chevrons drawn touching
                 _, lbl, _ = cv2.kmeans(P, 2, None, (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 50, 0.1), 5,
                                        cv2.KMEANS_PP_CENTERS)
                 parts = [P[lbl[:, 0] == k] for k in (0, 1)]
             for Q in parts:
-                pm = np.zeros_like(am)
-                pm[Q[:, 1].astype(int), Q[:, 0].astype(int)] = True
                 hull = cv2.convexHull(Q.astype(np.int32))
                 mo = cv2.moments(hull)
                 hc = np.array([mo["m10"] / mo["m00"], mo["m01"] / mo["m00"]])
                 d = Q.mean(0) - hc
                 d = d / max(1e-6, np.hypot(*d))
-                arrows.append({"centre": _pt(Q.mean(0), bbox), "mask": pm, "dir": d,
+                arrows.append({"centre": _pt(Q.mean(0), bbox), "px": Q.astype(np.int32), "dir": d,
                                "size": float(np.ptp(Q, axis=0).max())})
         else:
             # dash axis end points (px), for gap bridging
@@ -342,8 +342,7 @@ def _route_components(data, bbox, stairs=()):
     for a in arrows:
         # an arrow is a route end unless a route line lies ahead of its apex;
         # if one does, the apex is linked forward onto it
-        ay, ax = np.nonzero(a["mask"])
-        apts = np.c_[ax, ay].astype(float)
+        apts = a["px"].astype(float)
         apex = apts[np.argmax(apts @ a["dir"])]
         v = dpts - apex
         dist = np.hypot(v[:, 0], v[:, 1])
@@ -398,9 +397,8 @@ def _bridge(dash, ends, dots, arrows, bbox, lab, gap_pt=9.0):
             ac = (np.asarray(a["centre"]) - [bbox[0], bbox[1]]) * R
             if float((p - ac) @ a["dir"]) > 0:
                 continue  # only join an arrow from behind it
-            ys, xs = np.nonzero(a["mask"][max(0, int(p[1] - lim)):int(p[1] + lim), max(0, int(p[0] - lim)):int(p[0] + lim)])
-            if len(xs):
-                q = np.c_[xs + max(0, int(p[0] - lim)), ys + max(0, int(p[1] - lim))]
+            q = a["px"][(np.abs(a["px"][:, 0] - p[0]) < lim) & (np.abs(a["px"][:, 1] - p[1]) < lim)]
+            if len(q):
                 qq = q[np.argmin(np.hypot(q[:, 0] - p[0], q[:, 1] - p[1]))]
                 if np.hypot(*(qq - p)) < lim:
                     cv2.line(dash, tuple(map(int, p)), tuple(map(int, qq)), 255, w)
@@ -418,7 +416,7 @@ _STEPS = [(dy, dx, (2 ** 0.5 if dy and dx else 1.0)) for dy in (-1, 0, 1) for dx
 def _geodesic(sk, sources):
     import heapq
     H, W = sk.shape
-    dist = np.full(sk.shape, np.inf)
+    dist = np.full(sk.shape, np.inf, np.float32)
     heap = [(0.0, p) for p in sources]
     for _, p in heap:
         dist[p] = 0.0
@@ -446,7 +444,7 @@ def routes(data, bbox, stairs=()):
     dash, dots, arrows, rs = _route_components(data, bbox, stairs)
     band = cv2.dilate(dash, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(1.0 * R * rs) | 1,) * 2))
     for a in arrows:
-        band[a["mask"]] = 255
+        band[a["px"][:, 1], a["px"][:, 0]] = 255
     sk = skeletonize(band > 0)
     sky, skx = np.nonzero(sk)
     skel_pts = np.c_[skx, sky]
@@ -460,8 +458,8 @@ def routes(data, bbox, stairs=()):
     # chevrons, so use the skeleton pixels inside each arrow as the exit sources
     sources, terminals = [], []
     for a in [a for a in arrows if a["terminal"]]:
-        inside = sk & a["mask"]
-        ys, xs = np.nonzero(inside)
+        on = sk[a["px"][:, 1], a["px"][:, 0]]
+        ys, xs = a["px"][on, 1], a["px"][on, 0]
         sources += list(zip(ys.tolist(), xs.tolist())) or [nearest(a["centre"])]
         terminals.append(a["centre"])
     nb = _neighbors(sk) * sk

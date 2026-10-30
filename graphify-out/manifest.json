@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   ".github/workflows/ci.yml": {
-    "mtime": 1793349858.019686,
-    "seen": 1793353151.4060905,
-    "ast_hash": "04aca3370729d0300a10de07b9d89aa2",
+    "mtime": 1793381019.6084924,
+    "seen": 1793381185.5882518,
+    "ast_hash": "b88c2486d908fcc220952929feda1ac5",
     "semantic_hash": ""
   },
   ".github/workflows/post-deploy-health-check.yml": {
@@ -636,9 +636,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/app.module.ts": {
-    "mtime": 1793252811.4739125,
-    "seen": 1793353151.4062304,
-    "ast_hash": "09ab3c945e1a1f17c8950fee42a199c2",
+    "mtime": 1793380768.0684774,
+    "seen": 1793381185.5927334,
+    "ast_hash": "fd9fc9a141681942b7983ea016f8a245",
     "semantic_hash": ""
   },
   "apps/api/src/common/authorization/authorization.module.ts": {
@@ -948,9 +948,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/config/app.config.ts": {
-    "mtime": 1793252811.4787755,
-    "seen": 1793353151.406293,
-    "ast_hash": "5db52bb676e8c279998aed00d8222e9d",
+    "mtime": 1793380768.0684774,
+    "seen": 1793381185.5951953,
+    "ast_hash": "0887bb8205f400fbb9f055b85a598be0",
     "semantic_hash": ""
   },
   "apps/api/src/config/database.config.ts": {
@@ -2850,9 +2850,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/storage/storage.service.ts": {
-    "mtime": 1793252811.5279424,
-    "seen": 1793353151.4067006,
-    "ast_hash": "2206188a40f9c8f62687b17d0d16a03e",
+    "mtime": 1793380768.0684774,
+    "seen": 1793381185.607863,
+    "ast_hash": "93cb742289e1476d49d2762b387bc200",
     "semantic_hash": ""
   },
   "apps/api/src/modules/submittals/dto/create-submittal.dto.ts": {
@@ -3894,9 +3894,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/App.tsx": {
-    "mtime": 1793349858.033952,
-    "seen": 1793353151.40695,
-    "ast_hash": "ed13a44ff23948877a878359e203ae62",
+    "mtime": 1793380768.0684774,
+    "seen": 1793381185.6137204,
+    "ast_hash": "1a4afb45549a35c64ade81ce80cd4019",
     "semantic_hash": ""
   },
   "apps/web/src/components/AddHierarchyNodeModal.tsx": {
@@ -4218,9 +4218,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/AppShell.tsx": {
-    "mtime": 1793349858.0433939,
-    "seen": 1793353151.4070313,
-    "ast_hash": "1e5c653fd0e6b4daec53c7abff64c402",
+    "mtime": 1793380768.0718496,
+    "seen": 1793381185.6157382,
+    "ast_hash": "9ce45cbb0958e046daec5ab85d570a14",
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/MessagesBell.tsx": {
@@ -5358,9 +5358,9 @@
     "semantic_hash": ""
   },
   "packages/types/src/index.ts": {
-    "mtime": 1793252811.5979426,
-    "seen": 1793353151.407328,
-    "ast_hash": "b85c1d22812705f1b7ab15280c4006ea",
+    "mtime": 1793380768.0718496,
+    "seen": 1793381185.6222816,
+    "ast_hash": "c6f69416d8b4c4ee555fe36b9f3d92ad",
     "semantic_hash": ""
   },
   "packages/types/src/issue.types.ts": {
@@ -5454,9 +5454,9 @@
     "semantic_hash": ""
   },
   "render.yaml": {
-    "mtime": 1793349858.5419521,
-    "seen": 1793353151.407348,
-    "ast_hash": "892efa1d481e4660e29c6133afd28c40",
+    "mtime": 1793380826.3866317,
+    "seen": 1793381185.6227462,
+    "ast_hash": "b6a48e49d3bf2c5793d8046c318f26b7",
     "semantic_hash": ""
   },
   "tools/bim-debug/extract-minimal-repro.cjs": {
@@ -5892,9 +5892,9 @@
     "semantic_hash": ""
   },
   "engineering-review/CURRENT_STATUS.md": {
-    "mtime": 1793252811.593838,
-    "seen": 1793353151.4074945,
-    "ast_hash": "a0457bf22c1d8c59a81d9e2007e23b87",
+    "mtime": 1793381005.1721127,
+    "seen": 1793381185.6250763,
+    "ast_hash": "bfb6ad7a5f1125e5d82e175616c515e1",
     "semantic_hash": ""
   },
   "engineering-review/DEPLOYMENT_PLAN_FOR_CLAUDE_CODE.txt": {
@@ -6198,9 +6198,9 @@
     "semantic_hash": ""
   },
   "tools/evacuation-3d/analyze_all.py": {
-    "mtime": 1793358596.407448,
-    "seen": 1793359007.1235518,
-    "ast_hash": "177d998f086b748b934c90a20bdb1e31",
+    "mtime": 1793380768.0721745,
+    "seen": 1793381185.6230137,
+    "ast_hash": "9aef103df20677c27b798c8889bc8416",
     "semantic_hash": ""
   },
   "tools/evacuation-3d/build_sheet.py": {
@@ -6234,15 +6234,15 @@
     "semantic_hash": ""
   },
   "tools/evacuation-3d/make_package.py": {
-    "mtime": 1793358907.4746475,
-    "seen": 1793359007.123652,
-    "ast_hash": "f152fa4c0a3085c1ec42420881aaf254",
+    "mtime": 1793380768.0723593,
+    "seen": 1793381185.623183,
+    "ast_hash": "3f3d552196fa9a64fad25ed3317f4936",
     "semantic_hash": ""
   },
   "tools/evacuation-3d/model.py": {
-    "mtime": 1793354446.1218297,
-    "seen": 1793354988.9208615,
-    "ast_hash": "b6b4ab0cd2fd180a4f41accc774530a3",
+    "mtime": 1793380768.072648,
+    "seen": 1793381185.6231859,
+    "ast_hash": "538513ee02fce2a35952787a70512342",
     "semantic_hash": ""
   },
   "tools/evacuation-3d/preview_layers.py": {
@@ -6252,9 +6252,9 @@
     "semantic_hash": ""
   },
   "tools/evacuation-3d/render/package.json": {
-    "mtime": 1793351672.1688857,
-    "seen": 1793353151.4073956,
-    "ast_hash": "5844790aba241a956b8a32a950dcfe6d",
+    "mtime": 1793380768.072648,
+    "seen": 1793381185.6232145,
+    "ast_hash": "20ae647771eed65c96e3b1d30495cd0a",
     "semantic_hash": ""
   },
   "tools/evacuation-3d/render/render.js": {
@@ -6276,9 +6276,9 @@
     "semantic_hash": ""
   },
   "tools/evacuation-3d/sheet.py": {
-    "mtime": 1793358596.4083707,
-    "seen": 1793359007.1237652,
-    "ast_hash": "2e2b0cb11c14c04525981edd31c5b304",
+    "mtime": 1793380768.0731504,
+    "seen": 1793381185.6232998,
+    "ast_hash": "9d5095bfe4cc13bdb6d844bd178f0ca6",
     "semantic_hash": ""
   },
   "tools/evacuation-3d/symbols_detect.py": {
@@ -6288,9 +6288,9 @@
     "semantic_hash": ""
   },
   "tools/evacuation-3d/README.md": {
-    "mtime": 1793353131.9021468,
-    "seen": 1793353151.4075158,
-    "ast_hash": "95d416b0dfc91f462efc45ca3eacbdba",
+    "mtime": 1793381005.172854,
+    "seen": 1793381185.6254566,
+    "ast_hash": "3bcb1cac3dc181525d0bd57efa583cdb",
     "semantic_hash": ""
   },
   "tools/evacuation-3d/render/page.html": {
@@ -6303,6 +6303,132 @@
     "mtime": 1793358596.4093013,
     "seen": 1793359007.123556,
     "ast_hash": "ac37b75419a44dbbd6551e5939f87eca",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/evac-plans/dto/evac-plans.dto.ts": {
+    "mtime": 1793380430.2979395,
+    "seen": 1793381185.6014037,
+    "ast_hash": "4c5e9af7941005c65f93a04d7119edc7",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/evac-plans/evac-plans.controller.ts": {
+    "mtime": 1793380506.092381,
+    "seen": 1793381185.6014073,
+    "ast_hash": "fe817d0f3e6a20f2e2c1a6a1ef9f9a6e",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/evac-plans/evac-plans.module.ts": {
+    "mtime": 1793380506.0939956,
+    "seen": 1793381185.6014097,
+    "ast_hash": "587aebba48b8108adcac8cd0857c98df",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/evac-plans/evac-plans.processor.spec.ts": {
+    "mtime": 1793380549.4924645,
+    "seen": 1793381185.6014113,
+    "ast_hash": "81174b18047da7dc4136ce9a3628bdae",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/evac-plans/evac-plans.processor.ts": {
+    "mtime": 1793380491.412461,
+    "seen": 1793381185.601414,
+    "ast_hash": "7d09686d27290bbe0fbeb5f6a7b388f3",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/evac-plans/evac-plans.service.spec.ts": {
+    "mtime": 1793380549.4972415,
+    "seen": 1793381185.6014156,
+    "ast_hash": "00188c5a08f9ee803907839192201708",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/evac-plans/evac-plans.service.ts": {
+    "mtime": 1793380460.5964592,
+    "seen": 1793381185.6014178,
+    "ast_hash": "193ba50df6321385be4d9d43fbd5633c",
+    "semantic_hash": ""
+  },
+  "apps/evac3d-service/app/__init__.py": {
+    "mtime": 1793380269.4804478,
+    "seen": 1793381185.6117306,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "apps/evac3d-service/app/config.py": {
+    "mtime": 1793380223.864445,
+    "seen": 1793381185.6117334,
+    "ast_hash": "9f864283023077b4732d2e3fce343161",
+    "semantic_hash": ""
+  },
+  "apps/evac3d-service/app/main.py": {
+    "mtime": 1793380342.422771,
+    "seen": 1793381185.6117353,
+    "ast_hash": "cc87f5da67557773aa001e623134b0ec",
+    "semantic_hash": ""
+  },
+  "apps/evac3d-service/tests/test_service.py": {
+    "mtime": 1793380269.4852579,
+    "seen": 1793381185.611737,
+    "ast_hash": "9127977c92f114acef4125c76d24b3a0",
+    "semantic_hash": ""
+  },
+  "apps/web/src/lib/evac-plans.api.ts": {
+    "mtime": 1793380638.1205711,
+    "seen": 1793381185.6186311,
+    "ast_hash": "27ea72e4d9c330023ff8e833023a49b9",
+    "semantic_hash": ""
+  },
+  "apps/web/src/lib/evac-plans.test.ts": {
+    "mtime": 1793380638.122573,
+    "seen": 1793381185.618634,
+    "ast_hash": "2e076dee12beaef288c1b81a04f9b509",
+    "semantic_hash": ""
+  },
+  "apps/web/src/pages/EvacPlansPage.tsx": {
+    "mtime": 1793380781.5595236,
+    "seen": 1793381185.620416,
+    "ast_hash": "36a2788ed9ece4680412d03163183711",
+    "semantic_hash": ""
+  },
+  "packages/types/src/evac-plans.types.ts": {
+    "mtime": 1793380408.208456,
+    "seen": 1793381185.6222224,
+    "ast_hash": "956fb18f40e2c2b110ea565780269e7b",
+    "semantic_hash": ""
+  },
+  "tools/evacuation-3d/convert.py": {
+    "mtime": 1793380203.5982642,
+    "seen": 1793381185.6230998,
+    "ast_hash": "b8322f046541d797f2affff9a63bc3df",
+    "semantic_hash": ""
+  },
+  "tools/evacuation-3d/floors.py": {
+    "mtime": 1793379861.9284236,
+    "seen": 1793381185.6231546,
+    "ast_hash": "8a33deffed664a2530b1d6195b87e807",
+    "semantic_hash": ""
+  },
+  "apps/evac3d-service/README.md": {
+    "mtime": 1793380390.158982,
+    "seen": 1793381185.6242723,
+    "ast_hash": "08fcfceceb78715fb6d52c94b67c6abd",
+    "semantic_hash": ""
+  },
+  "apps/evac3d-service/requirements-dev.txt": {
+    "mtime": 1793380219.4091845,
+    "seen": 1793381185.6242747,
+    "ast_hash": "1067aff28e2387b8a83bbb16a9d3ced2",
+    "semantic_hash": ""
+  },
+  "apps/evac3d-service/requirements.txt": {
+    "mtime": 1793380219.407637,
+    "seen": 1793381185.6242769,
+    "ast_hash": "b0c0e524bb474e76169e68739ac23375",
+    "semantic_hash": ""
+  },
+  "tools/evacuation-3d/requirements.txt": {
+    "mtime": 1793380219.4059815,
+    "seen": 1793381185.6254892,
+    "ast_hash": "9efbcd84481141146b0a1a1426475040",
     "semantic_hash": ""
   },
   "pnpm-lock.yaml": {

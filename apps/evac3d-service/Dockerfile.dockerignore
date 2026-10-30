@@ -1,0 +1,14 @@
+# Only the engine and this service go into the image.
+**/node_modules
+**/__pycache__
+**/*.pyc
+.git
+graphify-out
+apps/web
+apps/api
+apps/mobile
+apps/ifc-service
+apps/ai-service
+apps/adm-gis-prep
+apps/browser-extension
+packages
