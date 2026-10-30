@@ -39,7 +39,7 @@
   --rc-base-950: 245 238 227; /* page background (canvas) */
   --rc-base-900: 240 232 220; /* chrome bars / secondary surface / input fill */
   --rc-base-800: 255 250 243; /* panel surface */
-  --rc-base-700: 232 221 207; /* raised surface / hover (field) */
+  --rc-base-700: 236 227 214; /* raised surface / hover (field) */
   --rc-base-600: 210 198 184; /* borders (hairline) */
   --rc-base-500: 224 214 201; /* muted borders / dividers (hairline-soft) */
 
