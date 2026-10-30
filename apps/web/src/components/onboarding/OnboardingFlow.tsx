@@ -64,7 +64,7 @@ export function OnboardingFlow() {
             that shape what you see there.
           </p>
           {isSiteRestricted && (
-            <p className="text-xs text-ink-500 bg-base-800 rounded px-3 py-2">
+            <p className="text-xs text-ink-500 bg-base-800 rounded px-4 py-2">
               As a {roleLabel}, you have full access on Floor Plans, Issues, and Snagging,
               and read-only access everywhere else.
             </p>
@@ -95,7 +95,7 @@ export function OnboardingFlow() {
     {
       title: 'Key Modules',
       body: (
-        <ul className="space-y-1.5 list-disc pl-4">
+        <ul className="space-y-2 list-disc pl-4">
           <li><span className="font-medium text-ink-100">Floor Plans</span> -- drawings with pinpoints marking locations of issues.</li>
           <li><span className="font-medium text-ink-100">Issues &amp; Snagging</span> -- defects and punch-list items tracked to closure.</li>
           <li><span className="font-medium text-ink-100">RFIs</span> -- formal requests for information.</li>
@@ -131,8 +131,8 @@ export function OnboardingFlow() {
 
   return (
     <Modal open={active} onClose={() => finish(false)} title={steps[step].title}>
-      <div className="space-y-5">
-        <div className="text-[11px] text-ink-500 font-medium">
+      <div className="space-y-6">
+        <div className="text-xs text-ink-500 font-medium">
           Step {step + 1} of {steps.length}
         </div>
         <div className="text-sm text-ink-300 leading-relaxed">{steps[step].body}</div>

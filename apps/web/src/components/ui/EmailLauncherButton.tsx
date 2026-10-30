@@ -113,9 +113,9 @@ export function EmailLauncherButton({ className = '' }: { className?: string }) 
         <div
           role="menu"
           aria-label="Choose email app"
-          className="absolute top-full right-0 mt-1 w-52 rounded border border-base-600 bg-base-800 shadow-lg z-20 py-1"
+          className="absolute top-full right-0 mt-2 w-52 rounded border border-base-600 bg-base-800 shadow-lg z-20 py-2"
         >
-          <div className="px-3 py-1.5 text-[11px] font-medium text-ink-500">Open email with</div>
+          <div className="px-4 py-2 text-xs font-medium text-ink-500">Open email with</div>
           {PROVIDER_ORDER.map((provider) => (
             <button
               key={provider}
@@ -123,7 +123,7 @@ export function EmailLauncherButton({ className = '' }: { className?: string }) 
               aria-checked={current === provider}
               type="button"
               onClick={() => handleSelect(provider)}
-              className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between hover:bg-base-700 transition-colors ${
+              className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between hover:bg-base-700 transition-colors ${
                 current === provider ? 'text-ink-100 font-medium' : 'text-ink-300'
               }`}
             >

@@ -75,7 +75,7 @@ export function SubmittalFormModal({
           <textarea id="description" className="field-input min-h-[72px]" value={description} onChange={(e) => setDescription(e.target.value)} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="specSection">Spec section</label>
             <input id="specSection" className="field-input" value={specSection} onChange={(e) => setSpecSection(e.target.value)} placeholder="08 44 00" />
@@ -86,7 +86,7 @@ export function SubmittalFormModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="priority">Priority</label>
             <Listbox id="priority" className="field-input" value={priority} onChange={(e) => setPriority(e.target.value as SubmittalPriority)}>
@@ -101,7 +101,7 @@ export function SubmittalFormModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="assignedTo">Reviewer</label>
             <Listbox id="assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>

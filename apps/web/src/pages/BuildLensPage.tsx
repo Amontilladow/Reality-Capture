@@ -154,13 +154,13 @@ export default function BuildLensPage() {
         <div className="flex items-center justify-between gap-4">
           <p className="text-sm text-ink-500">See the project evolve.</p>
           {!isEmpty && !isLoading && (
-            <div className="flex items-center gap-1 shrink-0">
-              <span className="text-[11px] text-ink-500 mr-1 font-medium">Sort</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs text-ink-500 mr-2 font-medium">Sort</span>
               {(['recent', 'alpha'] as const).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => setSortMode(mode)}
-                  className={`px-2 py-1 rounded text-xs transition-colors ${
+                  className={`px-2 py-2 rounded text-xs transition-colors ${
                     sortMode === mode ? 'bg-signal text-base-800' : 'text-ink-500 hover:text-ink-100 hover:bg-base-700'
                   }`}
                 >
@@ -191,7 +191,7 @@ export default function BuildLensPage() {
               <div key={building.id}>
                 <button
                   onClick={() => toggleBuilding(building.id)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-base-700 text-left"
+                  className="w-full flex items-center gap-2 px-2 py-2 rounded text-sm hover:bg-base-700 text-left"
                 >
                   <Chevron open={openBuildings.has(building.id)} />
                   <BuildingIcon className="w-4 h-4 text-blueprint shrink-0" />
@@ -199,12 +199,12 @@ export default function BuildLensPage() {
                 </button>
 
                 {openBuildings.has(building.id) && (
-                  <div className="ml-4 pl-3 border-l border-base-600 space-y-0.5 mt-0.5 mb-1">
+                  <div className="ml-4 pl-4 border-l border-base-600 space-y-0 mt-0 mb-2">
                     {building.levels.map((level) => (
                       <div key={level.id}>
                         <button
                           onClick={() => toggleLevel(level.id)}
-                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-base-700 text-left"
+                          className="w-full flex items-center gap-2 px-2 py-2 rounded text-sm hover:bg-base-700 text-left"
                         >
                           <Chevron open={openLevels.has(level.id)} />
                           <LevelIcon className="w-3.5 h-3.5 text-ink-500 shrink-0" />
@@ -212,7 +212,7 @@ export default function BuildLensPage() {
                         </button>
 
                         {openLevels.has(level.id) && (
-                          <div className="ml-4 pl-3 border-l border-base-600 space-y-0.5 mt-0.5 mb-1">
+                          <div className="ml-4 pl-4 border-l border-base-600 space-y-0 mt-0 mb-2">
                             {sortLocations(
                               level.locations.map((loc) => summaryByLocation.get(loc.id)!),
                               sortMode,
@@ -232,9 +232,9 @@ export default function BuildLensPage() {
 
         {unassigned.length > 0 && (
           <div className="space-y-2">
-            <div className="flex items-center gap-2 px-1">
+            <div className="flex items-center gap-2 px-2">
               <span className="text-xs text-ink-500 font-medium">Unassigned</span>
-              <span className="text-[10px] text-ink-500" title="Locations reached from a floor-plan pin rather than the building/level hierarchy">
+              <span className="text-xs text-ink-500" title="Locations reached from a floor-plan pin rather than the building/level hierarchy">
                 (not in a building/level)
               </span>
             </div>
@@ -254,14 +254,14 @@ function LocationRow({ loc, onClick, wide }: { loc: LocationSummary; onClick: ()
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 text-left transition-colors hover:bg-base-700 rounded ${
-        wide ? 'px-4 py-3' : 'px-2 py-1.5'
+      className={`w-full flex items-center gap-4 text-left transition-colors hover:bg-base-700 rounded ${
+        wide ? 'px-4 py-4' : 'px-2 py-2'
       }`}
     >
       <TimelineIcon className="w-4 h-4 text-blueprint shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="text-sm truncate">{loc.label}</div>
-        <div className="text-xs text-ink-500 mt-0.5">
+        <div className="text-xs text-ink-500 mt-0">
           {loc.count} capture{loc.count === 1 ? '' : 's'} · most recent{' '}
           {new Date(loc.mostRecent).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
         </div>

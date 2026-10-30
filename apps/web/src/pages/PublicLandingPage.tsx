@@ -44,7 +44,7 @@ const NAV = [
 
 function BrandPill() {
   return (
-    <div className="inline-flex items-center gap-2.5 rounded-full border border-ink-500/50 pl-2 pr-5 py-1.5">
+    <div className="inline-flex items-center gap-2 rounded-full border border-ink-500/50 pl-2 pr-6 py-2">
       <LogoMark className="w-8 h-8" />
       <span className="text-lg font-light tracking-tight">Reality Capture</span>
     </div>
@@ -53,9 +53,9 @@ function BrandPill() {
 
 function SiteHeader() {
   return (
-    <header className="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between gap-4">
+    <header className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex items-center justify-between gap-4">
       <BrandPill />
-      <nav aria-label="Page sections" className="hidden md:flex items-center gap-1 rounded-full bg-base-800/80 p-1.5">
+      <nav aria-label="Page sections" className="hidden md:flex items-center gap-2 rounded-full bg-base-800/80 p-2">
         {NAV.map((n) => (
           <a key={n.href} href={n.href} className="px-4 h-9 inline-flex items-center rounded-full text-sm text-ink-300 hover:bg-base-700 hover:text-ink-100 transition-colors">
             {n.label}
@@ -72,22 +72,22 @@ function SiteHeader() {
 
 function Hero() {
   return (
-    <section className="grid gap-5 lg:grid-cols-2 lg:min-h-[36rem]">
+    <section className="grid gap-6 lg:grid-cols-2 lg:min-h-[36rem]">
       <div className="flex flex-col justify-center py-8 lg:py-16 lg:pr-6">
-        <p className="text-sm text-ink-300 mb-3">Reality Capture by EngineeringOS</p>
+        <p className="text-sm text-ink-300 mb-4">Reality Capture by EngineeringOS</p>
         <h1 className="text-5xl sm:text-6xl font-light tracking-tight leading-[1.05]">Reality, understood.</h1>
-        <p className="text-ink-300 text-base sm:text-lg leading-relaxed max-w-xl mt-6">
+        <p className="text-ink-300 text-base sm:text-lg leading-relaxed max-w-measure mt-6">
           Site documentation, BIM coordination, and issue tracking in one place: every capture,
           issue, and inspection tied to the exact building, level, and location it belongs to.
         </p>
-        <div className="flex flex-wrap items-center gap-3 mt-8">
+        <div className="flex flex-wrap items-center gap-4 mt-8">
           <Link to="/login" className="btn h-12 px-8 bg-sun text-noir text-base hover:brightness-95">Sign in</Link>
           <Link to="/signup" className="btn-secondary !h-12 !px-8 text-base">Create an account</Link>
         </div>
         <p className="text-xs text-ink-500 mt-4">Creating an account needs your company's signup code.</p>
 
         {/* The product's own loop as a pill row, in the theme's pill-bar grammar. */}
-        <ul aria-label="Capture, coordinate, resolve" className="flex gap-1.5 mt-10 max-w-xl">
+        <ul aria-label="Capture, coordinate, resolve" className="flex gap-2 mt-10 max-w-xl">
           {[
             { label: 'Capture', cls: 'bg-ink-100 text-base-800' },
             { label: 'Coordinate', cls: 'bg-sun text-noir' },
@@ -104,7 +104,7 @@ function Hero() {
 
 function Capabilities() {
   return (
-    <section aria-label="What it does" className="grid gap-5 lg:grid-cols-3">
+    <section aria-label="What it does" className="grid gap-6 lg:grid-cols-3">
       <div id="capture" className="scroll-mt-6 min-w-0">
         <DashCard title="Capture" className="h-full">
           <p className="text-sm text-ink-300 leading-relaxed">
@@ -112,13 +112,13 @@ function Capabilities() {
             location, not a loose folder of files. Every capture is tied to a place and a moment, so
             BuildLens can play back exactly how a location changed over time.
           </p>
-          <div className="mt-auto pt-6 flex flex-wrap items-end gap-x-2 gap-y-1">
+          <div className="mt-auto pt-6 flex flex-wrap items-end gap-x-2 gap-y-2">
             <span className="text-6xl font-light tracking-tight leading-none">360°</span>
-            <span className="text-sm text-ink-300 mb-1">photos, pinned in place</span>
+            <span className="text-sm text-ink-300 mb-2">photos, pinned in place</span>
           </div>
-          <div className="flex gap-1.5 mt-4" aria-hidden="true">
+          <div className="flex gap-2 mt-4" aria-hidden="true">
             {['Building', 'Level', 'Room'].map((t, i) => (
-              <span key={t} className={`flex-1 h-10 rounded-full px-3 flex items-center text-xs font-medium ${i === 2 ? 'bg-sun text-noir' : 'border border-ink-500/50'}`}>{t}</span>
+              <span key={t} className={`flex-1 h-10 rounded-full px-4 flex items-center text-xs font-medium ${i === 2 ? 'bg-sun text-noir' : 'border border-ink-500/50'}`}>{t}</span>
             ))}
           </div>
         </DashCard>
@@ -169,14 +169,14 @@ function WorkflowSequence() {
   return (
     <section id="how-it-works" className="panel p-6 sm:p-8 scroll-mt-6">
       <h2 className="text-3xl font-light tracking-tight mb-6">How it fits together</h2>
-      <ol className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <ol className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {WORKFLOW_STEPS.map((step, i) => (
           <li key={step.label}>
-            <div className={`h-12 rounded-full px-5 flex items-center justify-between text-sm font-medium ${step.cls}`}>
+            <div className={`h-12 rounded-full px-6 flex items-center justify-between text-sm font-medium ${step.cls}`}>
               <span>{step.label}</span>
               <span className="tabular-nums opacity-70">{i + 1}</span>
             </div>
-            <p className="text-sm text-ink-300 leading-relaxed mt-3 px-1">{step.body}</p>
+            <p className="text-sm text-ink-300 leading-relaxed mt-4 px-2">{step.body}</p>
           </li>
         ))}
       </ol>
@@ -193,7 +193,7 @@ function ClosingCta() {
           Sign in to pick up where your team left off, or create an account with your company's signup code.
         </p>
       </div>
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-4">
         <Link to="/login" className="btn h-12 px-8 bg-sun text-noir text-base hover:brightness-95">Sign in</Link>
         <Link to="/signup" className="btn h-12 px-8 border border-on-noir/40 text-on-noir text-base hover:bg-noir-hover">Create an account</Link>
       </div>

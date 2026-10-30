@@ -15,10 +15,10 @@ export function SubscriptionBanner({ subscription }: { subscription: CompanySubs
     : null;
 
   return (
-    <div className="tick-frame panel p-5">
+    <div className="tick-frame panel p-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <div className="text-[11px] text-ink-500 font-medium">Plan</div>
+          <div className="text-xs text-ink-500 font-medium">Plan</div>
           <div className="text-sm font-semibold">{TIER_LABELS[subscription.plan.tier] ?? subscription.plan.tier}</div>
         </div>
         {subscription.status === 'trial' && trialDaysLeft !== null && (

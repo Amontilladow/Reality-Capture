@@ -29,7 +29,7 @@ export function DashHero({ eyebrow, title, aside, children }: {
   return (
     <header className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
       <div className="min-w-0">
-        {eyebrow && <div className="text-sm text-ink-300 mb-1">{eyebrow}</div>}
+        {eyebrow && <div className="text-sm text-ink-300 mb-2">{eyebrow}</div>}
         <h2 className="text-4xl sm:text-5xl font-light tracking-tight text-ink-100">{title}</h2>
         {children && <div className="mt-6">{children}</div>}
       </div>
@@ -57,7 +57,7 @@ export function BigStat({ value, label, icon, onClick, actionLabel }: {
         )}
         <span className="text-6xl font-light tracking-tight tabular-nums text-ink-100 leading-none">{value}</span>
       </span>
-      <span className="block text-sm text-ink-300 mt-1.5 text-left">{label}</span>
+      <span className="block text-sm text-ink-300 mt-2 text-left">{label}</span>
     </>
   );
   if (!onClick) return <div>{body}</div>;
@@ -101,7 +101,7 @@ export function SegmentBar({ label, segments }: {
   const pct = (v: number) => Math.round((v / total) * 100);
   return (
     <div>
-      <ul aria-label={`${label}, ${total} total`} className="flex gap-1.5 w-full max-w-3xl">
+      <ul aria-label={`${label}, ${total} total`} className="flex gap-2 w-full max-w-3xl">
         {shown.map((s) => (
           // A floor on each share keeps a small category's label legible.
           <li key={s.key} className="min-w-0" style={{ flexGrow: Math.max(s.value / total, 0.2), flexBasis: 0 }}>
@@ -144,9 +144,9 @@ export function DashCard({ title, aside, to, onOpen, openLabel, tone = 'light', 
   const label = openLabel ?? `Open ${title}`;
   return (
     <section className={`${tone === 'noir' ? 'dash-card-noir' : 'panel'} p-6 flex flex-col ${className}`}>
-      <div className="flex items-start justify-between gap-3 mb-4">
+      <div className="flex items-start justify-between gap-4 mb-4">
         <h3 className={`text-xl font-normal tracking-tight ${tone === 'noir' ? 'text-on-noir' : 'text-ink-100'}`}>{title}</h3>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           {aside}
           {to && <Link to={to} aria-label={label} className={arrowClass}><ArrowIcon /></Link>}
           {!to && onOpen && <button type="button" onClick={onOpen} aria-label={label} className={arrowClass}><ArrowIcon /></button>}
@@ -235,9 +235,9 @@ export function ColumnBars({ title, unit, data, focalKey, onSelect, selectLabel 
         {rows.map((d) => {
           const focal = d.key === focalKey && d.value > 0;
           return (
-            <div key={d.key} className="flex-1 flex flex-col items-center justify-end h-full gap-1.5 min-w-0">
+            <div key={d.key} className="flex-1 flex flex-col items-center justify-end h-full gap-2 min-w-0">
               {focal ? (
-                <span className="px-2.5 py-1 rounded-full bg-sun text-noir text-caption font-medium tabular-nums">{d.value}</span>
+                <span className="px-2 py-2 rounded-full bg-sun text-noir text-caption font-medium tabular-nums">{d.value}</span>
               ) : (
                 <span className="text-caption text-ink-300 tabular-nums">{d.value}</span>
               )}
@@ -259,7 +259,7 @@ export function ColumnBars({ title, unit, data, focalKey, onSelect, selectLabel 
               onClick={() => onSelect(d.key)}
               aria-label={`${selectLabel}: ${d.label}, ${d.value} ${unit}`}
               title={d.label}
-              className="flex-1 min-w-0 truncate text-xs text-ink-300 rounded-full py-1 hover:bg-base-700/60 hover:text-ink-100 transition-colors"
+              className="flex-1 min-w-0 truncate text-xs text-ink-300 rounded-full py-2 hover:bg-base-700/60 hover:text-ink-100 transition-colors"
             >
               {text}
             </button>
@@ -287,7 +287,7 @@ export interface NoirItem {
 export function NoirList({ items, empty }: { items: NoirItem[]; empty: string }) {
   if (items.length === 0) return <p className="text-sm text-on-noir/70 py-6">{empty}</p>;
   return (
-    <ul className="space-y-1.5 -mx-2">
+    <ul className="space-y-2 -mx-2">
       {items.map((it) => {
         const body = (
           <>
@@ -296,7 +296,7 @@ export function NoirList({ items, empty }: { items: NoirItem[]; empty: string })
             </span>
             <span className="min-w-0 flex-1 text-left">
               <span className={`text-sm leading-snug line-clamp-2 ${it.state === 'done' ? 'line-through text-on-noir/70' : 'text-on-noir'}`}>{it.title}</span>
-              <span className="block text-xs text-on-noir/70 truncate mt-0.5">{it.meta}</span>
+              <span className="block text-xs text-on-noir/70 truncate mt-0">{it.meta}</span>
             </span>
             {it.state === 'done' ? (
               <span role="img" aria-label="Done" className="w-5 h-5 shrink-0 rounded-full bg-sun text-noir flex items-center justify-center">
@@ -310,11 +310,11 @@ export function NoirList({ items, empty }: { items: NoirItem[]; empty: string })
         return (
           <li key={it.key}>
             {it.onClick ? (
-              <button type="button" onClick={it.onClick} className="w-full flex items-center gap-3 p-2 rounded-2xl text-on-noir hover:bg-noir-hover focus-visible:bg-noir-hover transition-colors">
+              <button type="button" onClick={it.onClick} className="w-full flex items-center gap-4 p-2 rounded-2xl text-on-noir hover:bg-noir-hover focus-visible:bg-noir-hover transition-colors">
                 {body}
               </button>
             ) : (
-              <div className="flex items-center gap-3 p-2">{body}</div>
+              <div className="flex items-center gap-4 p-2">{body}</div>
             )}
           </li>
         );

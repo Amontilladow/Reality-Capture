@@ -27,7 +27,7 @@ function NodeRow({ node, depth, selectedId, onSelect }: {
   return (
     <div>
       <div
-        className={`flex items-center gap-1 rounded px-2 py-1 text-sm cursor-pointer hover:bg-base-700 ${
+        className={`flex items-center gap-2 rounded px-2 py-2 text-sm cursor-pointer hover:bg-base-700 ${
           selectedId === node.id ? 'bg-blueprint-muted text-blueprint' : ''
         }`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
@@ -69,7 +69,7 @@ export function SpatialTree({
   const tree = useMemo(() => buildTree(nodes), [nodes]);
 
   if (nodes.length === 0) {
-    return <p className="p-3 text-sm text-ink-500">No spatial hierarchy found in this model.</p>;
+    return <p className="p-4 text-sm text-ink-500">No spatial hierarchy found in this model.</p>;
   }
 
   return (

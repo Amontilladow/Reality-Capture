@@ -18,11 +18,11 @@ function SecretReveal({ label, secret }: { label: string; secret: string }) {
     setTimeout(() => setCopied(false), 2000);
   }
   return (
-    <div className="panel p-3 space-y-1">
+    <div className="panel p-4 space-y-2">
       <p className="text-xs text-danger font-medium">{label} — copy it now, it won't be shown again.</p>
       <div className="flex items-center gap-2">
         <input readOnly value={secret} className="field-input flex-1 text-xs font-mono" onFocus={(e) => e.target.select()} />
-        <button onClick={handleCopy} className="btn-secondary !px-3 !py-1.5 text-xs">{copied ? 'Copied!' : 'Copy'}</button>
+        <button onClick={handleCopy} className="btn-secondary !px-4 !py-2 text-xs">{copied ? 'Copied!' : 'Copy'}</button>
       </div>
     </div>
   );
@@ -48,10 +48,10 @@ function SignupCodeSection() {
   }
 
   return (
-    <div className="panel tick-frame p-5 space-y-4">
+    <div className="panel tick-frame p-6 space-y-4">
       <div>
         <h2 className="text-sm font-semibold text-ink-100">Self-Signup Code</h2>
-        <p className="text-xs text-ink-500 mt-1">
+        <p className="text-xs text-ink-500 mt-2">
           Share this code (or the link below) with anyone who needs their own account -- clients, PMC,
           consultants, contractors. They pick their own organization and position at signup; every new
           account lands pending until a Super Admin approves it, same as an accepted invitation.
@@ -66,7 +66,7 @@ function SignupCodeSection() {
       {code && (
         <div className="flex items-center gap-2">
           <input readOnly value={signupLink ?? ''} className="field-input flex-1 text-xs font-mono" onFocus={(e) => e.target.select()} />
-          <button onClick={copyLink} className="btn-secondary !px-3 !py-1.5 text-xs">Copy link</button>
+          <button onClick={copyLink} className="btn-secondary !px-4 !py-2 text-xs">Copy link</button>
         </div>
       )}
 
@@ -98,10 +98,10 @@ function ApiKeysSection() {
   });
 
   return (
-    <div className="panel tick-frame p-5 space-y-4">
+    <div className="panel tick-frame p-6 space-y-4">
       <div>
         <h2 className="text-sm font-semibold text-ink-100">Public API Keys</h2>
-        <p className="text-xs text-ink-500 mt-1">
+        <p className="text-xs text-ink-500 mt-2">
           Authenticate read-only requests to projects, captures, issues and progress via the X-API-Key header.
         </p>
       </div>
@@ -123,14 +123,14 @@ function ApiKeysSection() {
       ) : (
         <div className="divide-y divide-base-700/60">
           {(keysQuery.data ?? []).map((k: ApiKey) => (
-            <div key={k.id} className="flex items-center justify-between py-2.5 text-sm">
+            <div key={k.id} className="flex items-center justify-between py-2 text-sm">
               <div>
                 <span className="text-ink-100">{k.name}</span>
                 <span className="text-ink-500 ml-2 text-xs font-mono">{k.keyPrefix}…</span>
                 {k.revokedAt && <span className="badge bg-base-700 text-ink-500 ml-2">Revoked</span>}
               </div>
               {!k.revokedAt && (
-                <button onClick={() => revokeMutation.mutate(k.id)} disabled={revokeMutation.isPending} className="btn-ghost !px-2 !py-1 text-xs text-danger">
+                <button onClick={() => revokeMutation.mutate(k.id)} disabled={revokeMutation.isPending} className="btn-ghost !px-2 !py-2 text-xs text-danger">
                   Revoke
                 </button>
               )}
@@ -144,9 +144,9 @@ function ApiKeysSection() {
 
 function DeliveriesList({ endpointId }: { endpointId: string }) {
   const deliveriesQuery = useQuery({ queryKey: ['webhook-deliveries', endpointId], queryFn: () => listWebhookDeliveries(endpointId) });
-  if ((deliveriesQuery.data?.length ?? 0) === 0) return <p className="text-xs text-ink-500 px-3 pb-2">No deliveries yet.</p>;
+  if ((deliveriesQuery.data?.length ?? 0) === 0) return <p className="text-xs text-ink-500 px-4 pb-2">No deliveries yet.</p>;
   return (
-    <div className="px-3 pb-2 space-y-1">
+    <div className="px-4 pb-2 space-y-2">
       {(deliveriesQuery.data ?? []).slice(0, 10).map((d) => (
         <div key={d.id} className="flex items-center justify-between text-xs">
           <span className="text-ink-300">{d.eventType}</span>
@@ -184,10 +184,10 @@ function WebhooksSection() {
   }
 
   return (
-    <div className="panel tick-frame p-5 space-y-4">
+    <div className="panel tick-frame p-6 space-y-4">
       <div>
         <h2 className="text-sm font-semibold text-ink-100">Webhooks</h2>
-        <p className="text-xs text-ink-500 mt-1">
+        <p className="text-xs text-ink-500 mt-2">
           Receive an HMAC-signed POST (X-Webhook-Signature) on issue created, issue status changed, and capture uploaded.
         </p>
       </div>
@@ -197,9 +197,9 @@ function WebhooksSection() {
           <label className="field-label" htmlFor="webhook-url">Endpoint URL (https)</label>
           <input id="webhook-url" className="field-input" placeholder="https://example.com/webhooks/engineeringos" value={url} onChange={(e) => setUrl(e.target.value)} />
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-4">
           {WEBHOOK_EVENT_TYPES.map((type) => (
-            <label key={type} className="flex items-center gap-1.5 text-xs text-ink-300">
+            <label key={type} className="flex items-center gap-2 text-xs text-ink-300">
               <input type="checkbox" checked={eventTypes.includes(type)} onChange={() => toggleEventType(type)} />
               {type}
             </label>
@@ -222,7 +222,7 @@ function WebhooksSection() {
         <div className="panel tick-frame divide-y divide-base-700/60">
           {(endpointsQuery.data ?? []).map((e: WebhookEndpoint) => (
             <div key={e.id}>
-              <div className="flex items-center justify-between px-3 py-2.5 text-sm">
+              <div className="flex items-center justify-between px-4 py-2 text-sm">
                 <div className="min-w-0">
                   <div className="text-ink-100 truncate">{e.url}</div>
                   <div className="text-xs text-ink-500">{e.eventTypes.join(', ')}</div>

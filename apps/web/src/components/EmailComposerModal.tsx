@@ -159,7 +159,7 @@ export function EmailComposerModal({
           </button>
         )}
         {showCcBcc && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <Input label="CC" requirement="optional" value={cc} onChange={(e) => setCc(e.target.value)} />
             <Input label="BCC" requirement="optional" value={bcc} onChange={(e) => setBcc(e.target.value)} />
           </div>
@@ -171,9 +171,9 @@ export function EmailComposerModal({
         <div>
           <label className="field-label">Attachments (optional)</label>
           <input ref={fileInputRef} type="file" multiple onChange={(e) => handleFilesSelected(e.target.files)} className="text-xs text-ink-300" />
-          {uploadingCount > 0 && <p className="text-xs text-ink-500 mt-1">Uploading {uploadingCount} file(s)…</p>}
+          {uploadingCount > 0 && <p className="text-xs text-ink-500 mt-2">Uploading {uploadingCount} file(s)…</p>}
           {attachments.length > 0 && (
-            <ul className="mt-2 space-y-1">
+            <ul className="mt-2 space-y-2">
               {attachments.map((a, i) => (
                 <li key={a.storageKey} className="flex items-center justify-between text-xs text-ink-300">
                   <span>{a.filename}</span>

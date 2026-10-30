@@ -188,7 +188,7 @@ export default function ReportsPage() {
         eyebrow={projectQuery.data?.name ?? 'Project'}
         title="Reports"
         actions={
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <HelpLink slug="understanding-available-kpis" label="Understanding these KPIs" />
             <button onClick={handleDownloadXls} disabled={!kpis || xlsDownloading} className="btn-secondary">
               {xlsDownloading ? 'Preparing…' : 'Export as Excel'}
@@ -203,7 +203,7 @@ export default function ReportsPage() {
       <DashCanvas>
       <div className="space-y-8">
         {(xlsError || pdfError) && (
-          <div className="space-y-1">
+          <div className="space-y-2">
             {xlsError && <p className="field-error">{xlsError}</p>}
             {pdfError && <p className="field-error">{pdfError}</p>}
           </div>
@@ -272,7 +272,7 @@ export default function ReportsPage() {
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <DashCard title="Risk index" to={`/projects/${projectId}/risk`} openLabel="Open Risk Intelligence">
                 <RadialGauge value={risk.overallScore} label="Project risk index" caption={RISK_LEVEL_LABELS[risk.overallLevel]} />
-                <p className="text-xs text-ink-500 text-center mt-3">{risk.totalOpenRisks} open risk{risk.totalOpenRisks === 1 ? '' : 's'}, {risk.criticalCount} critical</p>
+                <p className="text-xs text-ink-500 text-center mt-4">{risk.totalOpenRisks} open risk{risk.totalOpenRisks === 1 ? '' : 's'}, {risk.criticalCount} critical</p>
               </DashCard>
 
               <DashCard title="Issues by priority" to={`/projects/${projectId}/issues`} openLabel="Go to Issues">
@@ -325,8 +325,8 @@ export default function ReportsPage() {
                 />
               </DashCard>
 
-              <section className="panel p-6 space-y-3">
-                <div className="flex items-center gap-2.5">
+              <section className="panel p-6 space-y-4">
+                <div className="flex items-center gap-2">
                   <StatusBadge tone={STATUS_TONE[status]} label={STATUS_LABEL[status]} dot />
                   {signals.length > 0 && (
                     <span className="text-xs text-ink-500">
@@ -336,7 +336,7 @@ export default function ReportsPage() {
                 </div>
                 <p className="text-base text-ink-100 leading-relaxed font-medium">{conclusion}</p>
                 {signals.length > 1 && (
-                  <div className="flex flex-wrap gap-2 pt-1">
+                  <div className="flex flex-wrap gap-2 pt-2">
                     {signals.slice(0, 4).map((s, i) => (
                       <StatusBadge key={i} tone={SEVERITY_TONE[s.severity]} label={`${SEVERITY_LABEL[s.severity]} · ${s.domain}`} />
                     ))}
@@ -357,7 +357,7 @@ export default function ReportsPage() {
                     tone="orange"
                     size="sm"
                     actions={
-                      <button onClick={() => aiBriefingMutation.mutate()} disabled={aiBriefingMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
+                      <button onClick={() => aiBriefingMutation.mutate()} disabled={aiBriefingMutation.isPending} className="btn-secondary !px-2 !py-2 text-xs">
                         {aiBriefingMutation.isPending ? 'Generating…' : aiBriefingMutation.data ? 'Regenerate' : 'Generate'}
                       </button>
                     }
@@ -371,7 +371,7 @@ export default function ReportsPage() {
                   <div className="space-y-2 text-sm">
                     <p className="text-ink-100 font-medium">{aiBriefingMutation.data.conclusion}</p>
                     {aiBriefingMutation.data.drivers.length > 0 && (
-                      <ul className="list-disc list-inside text-ink-300 space-y-0.5">
+                      <ul className="list-disc list-inside text-ink-300 space-y-0">
                         {aiBriefingMutation.data.drivers.map((d, i) => <li key={i}>{d}</li>)}
                       </ul>
                     )}
@@ -398,13 +398,13 @@ export default function ReportsPage() {
               title="Risk"
               actions={
                 <>
-                  <Link to={`/projects/${projectId}/risk`} className="btn-secondary !px-3 !py-1.5 text-xs">
+                  <Link to={`/projects/${projectId}/risk`} className="btn-secondary !px-4 !py-2 text-xs">
                     View full Risk Intelligence →
                   </Link>
                   <button
                     onClick={handleDownloadRiskPdf}
                     disabled={riskPdfDownloading || riskSummaryQuery.data.totalOpenRisks === 0}
-                    className="btn-secondary !px-3 !py-1.5 text-xs"
+                    className="btn-secondary !px-4 !py-2 text-xs"
                   >
                     {riskPdfDownloading ? 'Preparing…' : 'Download Risk Report'}
                   </button>
@@ -413,8 +413,8 @@ export default function ReportsPage() {
             />
             {riskPdfError && <p className="field-error">{riskPdfError}</p>}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-              <div className="panel p-3">
-                <div className="text-[11px] text-ink-500 mb-0.5 font-medium">Project Risk Index</div>
+              <div className="panel p-4">
+                <div className="text-xs text-ink-500 mb-0 font-medium">Project Risk Index</div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-xl font-semibold tabular-nums" style={{ color: RISK_LEVEL_COLORS[riskSummaryQuery.data.overallLevel] }}>
                     {riskSummaryQuery.data.overallScore}
@@ -430,8 +430,8 @@ export default function ReportsPage() {
             {(topRisksQuery.data?.length ?? 0) > 0 && (
               <div className="panel tick-frame divide-y divide-base-700/60">
                 {(topRisksQuery.data ?? []).map((r) => (
-                  <div key={r.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
-                    <span className="text-ink-100">{r.title}</span>
+                  <div key={r.id} className="flex items-center justify-between px-4 py-2 text-sm">
+                    <span className="text-ink-100 max-w-measure">{r.title}</span>
                     <span className="tabular-nums" style={{ color: RISK_LEVEL_COLORS[r.level] }}>{r.score}/100</span>
                   </div>
                 ))}
@@ -488,21 +488,21 @@ export default function ReportsPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                        <th className="px-4 py-2.5 font-medium">Number</th>
-                        <th className="px-4 py-2.5 font-medium">Title</th>
-                        <th className="px-4 py-2.5 font-medium">Status</th>
-                        <th className="px-4 py-2.5 font-medium">Priority</th>
-                        <th className="px-4 py-2.5 font-medium">Assigned to</th>
+                        <th className="px-4 py-2 font-medium">Number</th>
+                        <th className="px-4 py-2 font-medium">Title</th>
+                        <th className="px-4 py-2 font-medium">Status</th>
+                        <th className="px-4 py-2 font-medium">Priority</th>
+                        <th className="px-4 py-2 font-medium">Assigned to</th>
                       </tr>
                     </thead>
                     <tbody>
                       {kpis.issues.openList.map((item) => (
                         <tr key={item.id} className="border-b border-base-700/60 last:border-0">
-                          <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{item.issueNumber ?? item.id.slice(0, 8)}</td>
-                          <td className="px-4 py-2.5">{item.title}</td>
-                          <td className="px-4 py-2.5 text-ink-300">{STATUS_LABELS[item.status as keyof typeof STATUS_LABELS] ?? item.status}</td>
-                          <td className="px-4 py-2.5 text-ink-300">{PRIORITY_LABELS[item.priority as keyof typeof PRIORITY_LABELS] ?? item.priority}</td>
-                          <td className="px-4 py-2.5 text-ink-500">{item.assignedToName ?? 'Unassigned'}</td>
+                          <td className="px-4 py-2 font-mono text-xs text-ink-500">{item.issueNumber ?? item.id.slice(0, 8)}</td>
+                          <td className="px-4 py-2">{item.title}</td>
+                          <td className="px-4 py-2 text-ink-300">{STATUS_LABELS[item.status as keyof typeof STATUS_LABELS] ?? item.status}</td>
+                          <td className="px-4 py-2 text-ink-300">{PRIORITY_LABELS[item.priority as keyof typeof PRIORITY_LABELS] ?? item.priority}</td>
+                          <td className="px-4 py-2 text-ink-500">{item.assignedToName ?? 'Unassigned'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -551,23 +551,23 @@ export default function ReportsPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                        <th className="px-4 py-2.5 font-medium">Number</th>
-                        <th className="px-4 py-2.5 font-medium">Title</th>
-                        <th className="px-4 py-2.5 font-medium">Trade</th>
-                        <th className="px-4 py-2.5 font-medium">Status</th>
-                        <th className="px-4 py-2.5 font-medium">Priority</th>
-                        <th className="px-4 py-2.5 font-medium">Assigned to</th>
+                        <th className="px-4 py-2 font-medium">Number</th>
+                        <th className="px-4 py-2 font-medium">Title</th>
+                        <th className="px-4 py-2 font-medium">Trade</th>
+                        <th className="px-4 py-2 font-medium">Status</th>
+                        <th className="px-4 py-2 font-medium">Priority</th>
+                        <th className="px-4 py-2 font-medium">Assigned to</th>
                       </tr>
                     </thead>
                     <tbody>
                       {kpis.snagging.openList.map((item) => (
                         <tr key={item.id} className="border-b border-base-700/60 last:border-0">
-                          <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{item.snagNumber ?? item.id.slice(0, 8)}</td>
-                          <td className="px-4 py-2.5">{item.title}</td>
-                          <td className="px-4 py-2.5 text-ink-300">{item.trade ?? '—'}</td>
-                          <td className="px-4 py-2.5 text-ink-300">{SNAG_STATUS_LABELS[item.status as keyof typeof SNAG_STATUS_LABELS] ?? item.status}</td>
-                          <td className="px-4 py-2.5 text-ink-300">{SNAG_PRIORITY_LABELS[item.priority as keyof typeof SNAG_PRIORITY_LABELS] ?? item.priority}</td>
-                          <td className="px-4 py-2.5 text-ink-500">{item.assignedToName ?? 'Unassigned'}</td>
+                          <td className="px-4 py-2 font-mono text-xs text-ink-500">{item.snagNumber ?? item.id.slice(0, 8)}</td>
+                          <td className="px-4 py-2">{item.title}</td>
+                          <td className="px-4 py-2 text-ink-300">{item.trade ?? '—'}</td>
+                          <td className="px-4 py-2 text-ink-300">{SNAG_STATUS_LABELS[item.status as keyof typeof SNAG_STATUS_LABELS] ?? item.status}</td>
+                          <td className="px-4 py-2 text-ink-300">{SNAG_PRIORITY_LABELS[item.priority as keyof typeof SNAG_PRIORITY_LABELS] ?? item.priority}</td>
+                          <td className="px-4 py-2 text-ink-500">{item.assignedToName ?? 'Unassigned'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -594,9 +594,9 @@ export default function ReportsPage() {
                 <button
                   type="button"
                   onClick={() => setDrawingListOpen((v) => !v)}
-                  className="panel p-3 text-left hover:bg-base-700 transition-colors"
+                  className="panel p-4 text-left hover:bg-base-700 transition-colors"
                 >
-                  <div className="text-[11px] text-ink-500 mb-0.5 font-medium">Drawing/Model Updated — Applied</div>
+                  <div className="text-xs text-ink-500 mb-0 font-medium">Drawing/Model Updated — Applied</div>
                   <div className={`text-xl font-semibold tabular-nums ${kpis.rfis.drawingUpdateStatus.notApplied > 0 ? 'text-warn' : 'text-ink-100'}`}>
                     {kpis.rfis.drawingUpdateStatus.applied} of {kpis.rfis.drawingUpdateStatus.totalRequiringDrawingUpdate}
                   </div>
@@ -623,7 +623,7 @@ export default function ReportsPage() {
                         <div className="text-3xl font-semibold tabular-nums text-ink-100">
                           {kpis.rfis.drawingUpdateStatus.notApplied}
                         </div>
-                        <div className="text-xs text-ink-500 mt-1">not yet applied</div>
+                        <div className="text-xs text-ink-500 mt-2">not yet applied</div>
                       </div>
                     </div>
                   </div>
@@ -640,11 +640,11 @@ export default function ReportsPage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                          <th className="px-4 py-2.5 font-medium">Number</th>
-                          <th className="px-4 py-2.5 font-medium">Subject</th>
-                          <th className="px-4 py-2.5 font-medium">Owner</th>
-                          <th className="px-4 py-2.5 font-medium">Days flagged</th>
-                          <th className="px-4 py-2.5 font-medium" />
+                          <th className="px-4 py-2 font-medium">Number</th>
+                          <th className="px-4 py-2 font-medium">Subject</th>
+                          <th className="px-4 py-2 font-medium">Owner</th>
+                          <th className="px-4 py-2 font-medium">Days flagged</th>
+                          <th className="px-4 py-2 font-medium" />
                         </tr>
                       </thead>
                       <tbody>
@@ -654,16 +654,16 @@ export default function ReportsPage() {
                           const wasSent = remindedIds.has(item.id);
                           return (
                             <tr key={item.id} className="border-b border-base-700/60 last:border-0">
-                              <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{item.rfiNumber ?? item.id.slice(0, 8)}</td>
-                              <td className="px-4 py-2.5">{item.subject}</td>
-                              <td className="px-4 py-2.5 text-ink-300">{item.drawingUpdateOwnerName ?? 'Unassigned'}</td>
-                              <td className="px-4 py-2.5 text-ink-300">{daysFlagged}</td>
-                              <td className="px-4 py-2.5 text-right">
+                              <td className="px-4 py-2 font-mono text-xs text-ink-500">{item.rfiNumber ?? item.id.slice(0, 8)}</td>
+                              <td className="px-4 py-2">{item.subject}</td>
+                              <td className="px-4 py-2 text-ink-300">{item.drawingUpdateOwnerName ?? 'Unassigned'}</td>
+                              <td className="px-4 py-2 text-ink-300">{daysFlagged}</td>
+                              <td className="px-4 py-2 text-right">
                                 <button
                                   type="button"
                                   onClick={() => remindMutation.mutate(item.id)}
                                   disabled={isSending}
-                                  className="btn-secondary !px-2.5 !py-1 text-xs"
+                                  className="btn-secondary !px-2 !py-2 text-xs"
                                 >
                                   {isSending ? 'Sending…' : wasSent ? 'Sent' : 'Send reminder'}
                                 </button>
@@ -674,7 +674,7 @@ export default function ReportsPage() {
                       </tbody>
                     </table>
                   )}
-                  {remindMutation.isError && <p className="field-error p-3">{apiErrorMessage(remindMutation.error)}</p>}
+                  {remindMutation.isError && <p className="field-error p-4">{apiErrorMessage(remindMutation.error)}</p>}
                 </div>
               )}
             </section>
@@ -696,20 +696,20 @@ export default function ReportsPage() {
                 <StatTile label="Total" value={kpis.qaqc.summary.total} />
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <div className="panel p-3">
-                  <div className="text-[11px] text-ink-500 mb-0.5 font-medium">NCR — Open / Total / Closed</div>
+                <div className="panel p-4">
+                  <div className="text-xs text-ink-500 mb-0 font-medium">NCR — Open / Total / Closed</div>
                   <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.ncrOpen} / {kpis.qaqc.summary.ncrTotal} / {kpis.qaqc.summary.ncrClosed}</div>
                 </div>
-                <div className="panel p-3">
-                  <div className="text-[11px] text-ink-500 mb-0.5 font-medium">SOR — Open / Total / Closed</div>
+                <div className="panel p-4">
+                  <div className="text-xs text-ink-500 mb-0 font-medium">SOR — Open / Total / Closed</div>
                   <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.sorOpen} / {kpis.qaqc.summary.sorTotal} / {kpis.qaqc.summary.sorClosed}</div>
                 </div>
-                <div className="panel p-3">
-                  <div className="text-[11px] text-ink-500 mb-0.5 font-medium">WIR — Open / Total / Closed</div>
+                <div className="panel p-4">
+                  <div className="text-xs text-ink-500 mb-0 font-medium">WIR — Open / Total / Closed</div>
                   <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.wirOpen} / {kpis.qaqc.summary.wirTotal} / {kpis.qaqc.summary.wirClosed}</div>
                 </div>
-                <div className="panel p-3">
-                  <div className="text-[11px] text-ink-500 mb-0.5 font-medium">MIR — Open / Total / Closed</div>
+                <div className="panel p-4">
+                  <div className="text-xs text-ink-500 mb-0 font-medium">MIR — Open / Total / Closed</div>
                   <div className="text-xl font-semibold tabular-nums text-ink-100">{kpis.qaqc.summary.mirOpen} / {kpis.qaqc.summary.mirTotal} / {kpis.qaqc.summary.mirClosed}</div>
                 </div>
               </div>
@@ -723,23 +723,23 @@ export default function ReportsPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                        <th className="px-4 py-2.5 font-medium">Number</th>
-                        <th className="px-4 py-2.5 font-medium">Type</th>
-                        <th className="px-4 py-2.5 font-medium">Subject</th>
-                        <th className="px-4 py-2.5 font-medium">Status</th>
-                        <th className="px-4 py-2.5 font-medium">Priority</th>
-                        <th className="px-4 py-2.5 font-medium">Assigned to</th>
+                        <th className="px-4 py-2 font-medium">Number</th>
+                        <th className="px-4 py-2 font-medium">Type</th>
+                        <th className="px-4 py-2 font-medium">Subject</th>
+                        <th className="px-4 py-2 font-medium">Status</th>
+                        <th className="px-4 py-2 font-medium">Priority</th>
+                        <th className="px-4 py-2 font-medium">Assigned to</th>
                       </tr>
                     </thead>
                     <tbody>
                       {kpis.qaqc.openList.map((item) => (
                         <tr key={item.id} className="border-b border-base-700/60 last:border-0">
-                          <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{item.recordNumber ?? item.id.slice(0, 8)}</td>
-                          <td className="px-4 py-2.5 text-ink-300 font-medium">{QAQC_RECORD_TYPE_SHORT_LABELS[item.recordType as QaqcRecordType] ?? item.recordType}</td>
-                          <td className="px-4 py-2.5">{item.subject}</td>
-                          <td className="px-4 py-2.5 text-ink-300">{QAQC_STATUS_LABELS[item.status as QaqcStatus] ?? item.status}</td>
-                          <td className="px-4 py-2.5 text-ink-300">{PRIORITY_LABELS[item.priority as keyof typeof PRIORITY_LABELS] ?? item.priority}</td>
-                          <td className="px-4 py-2.5 text-ink-500">{item.assignedToName ?? 'Unassigned'}</td>
+                          <td className="px-4 py-2 font-mono text-xs text-ink-500">{item.recordNumber ?? item.id.slice(0, 8)}</td>
+                          <td className="px-4 py-2 text-ink-300 font-medium">{QAQC_RECORD_TYPE_SHORT_LABELS[item.recordType as QaqcRecordType] ?? item.recordType}</td>
+                          <td className="px-4 py-2">{item.subject}</td>
+                          <td className="px-4 py-2 text-ink-300">{QAQC_STATUS_LABELS[item.status as QaqcStatus] ?? item.status}</td>
+                          <td className="px-4 py-2 text-ink-300">{PRIORITY_LABELS[item.priority as keyof typeof PRIORITY_LABELS] ?? item.priority}</td>
+                          <td className="px-4 py-2 text-ink-500">{item.assignedToName ?? 'Unassigned'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -760,7 +760,7 @@ export default function ReportsPage() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadMutation.isPending}
-                  className="btn-secondary !px-3 !py-1.5 text-xs"
+                  className="btn-secondary !px-4 !py-2 text-xs"
                 >
                   {uploadMutation.isPending ? 'Uploading…' : '+ Upload attachment'}
                 </button>
@@ -783,17 +783,17 @@ export default function ReportsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                    <th className="px-4 py-2.5 font-medium">Title</th>
-                    <th className="px-4 py-2.5 font-medium">Uploaded by</th>
-                    <th className="px-4 py-2.5 font-medium">Uploaded at</th>
+                    <th className="px-4 py-2 font-medium">Title</th>
+                    <th className="px-4 py-2 font-medium">Uploaded by</th>
+                    <th className="px-4 py-2 font-medium">Uploaded at</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(documentsQuery.data?.data ?? []).map((d) => (
                     <tr key={d.id} className="border-b border-base-700/60 last:border-0">
-                      <td className="px-4 py-2.5">{d.title}</td>
-                      <td className="px-4 py-2.5 text-ink-500">{(d as unknown as { uploadedByName?: string }).uploadedByName ?? '—'}</td>
-                      <td className="px-4 py-2.5 text-ink-500">{formatDateTime(d.createdAt)}</td>
+                      <td className="px-4 py-2">{d.title}</td>
+                      <td className="px-4 py-2 text-ink-500">{(d as unknown as { uploadedByName?: string }).uploadedByName ?? '—'}</td>
+                      <td className="px-4 py-2 text-ink-500">{formatDateTime(d.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -810,7 +810,7 @@ export default function ReportsPage() {
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="panel p-4">
-      <div className="text-sm font-semibold text-ink-100 mb-3">{title}</div>
+      <div className="text-sm font-semibold text-ink-100 mb-4">{title}</div>
       {children}
     </div>
   );

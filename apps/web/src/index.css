@@ -87,6 +87,8 @@
   --rc-metal-lo: 140 79 85; /* deep rose: dark enough for depth, still visible on the black panel */
   --rc-sun: 184 170 155;
   --rc-noir: 42 36 31;
+  --rc-shadow: 42 36 31; /* shadow tint: espresso, never flat black */
+  --rc-measure: 48ch; /* longest comfortable line of running text */
   --rc-noir-hover: 70 61 53;
   --rc-on-noir: 232 221 207;
   --rc-dash-from: 255 248 237;
@@ -146,6 +148,7 @@
 
   --rc-sun: 184 170 155;
   --rc-noir: 30 26 22;
+  --rc-shadow: 18 15 12; /* shadow tint: a deep warm brown, never flat black */
   --rc-noir-hover: 72 63 55;
   --rc-on-noir: 232 221 207;
   --rc-dash-from: 42 36 31;
@@ -190,6 +193,7 @@
     --rc-grid-line: rgba(255, 255, 255, 0.05);
     --rc-sun: 184 170 155;
     --rc-noir: 30 26 22;
+    --rc-shadow: 18 15 12;
     --rc-noir-hover: 72 63 55;
     --rc-on-noir: 232 221 207;
     --rc-dash-from: 42 36 31;
@@ -230,10 +234,19 @@
     background-image: linear-gradient(120deg, rgb(var(--rc-dash-from)) 0%, rgb(var(--rc-dash-from)) 18%, rgb(var(--rc-dash-to)) 85%);
     background-attachment: fixed;
   }
+  /* Reading measure: running text never exceeds 75 characters a line.
+     Outfit's "0" (what ch measures) is wider than its average glyph, so
+     --rc-measure (48ch) lands at about 75 real characters. */
+  p, dd, blockquote, figcaption {
+    max-width: var(--rc-measure);
+  }
+  .text-center > p, p.text-center {
+    margin-inline: auto;
+  }
   /* Native file pickers get the theme's secondary pill instead of the
      browser's grey button. */
   input[type='file']::file-selector-button {
-    @apply mr-3 rounded-full border border-base-600 bg-base-800 px-4 h-9 text-sm font-medium text-ink-100 cursor-pointer transition-colors;
+    @apply mr-4 rounded-full border border-base-600 bg-base-800 px-4 h-9 text-sm font-medium text-ink-100 cursor-pointer transition-colors;
   }
   input[type='file']::file-selector-button:hover {
     @apply bg-base-700;
@@ -283,13 +296,13 @@
   }
 
   .field-label {
-    @apply block text-xs font-medium text-ink-300 mb-1.5;
+    @apply block text-xs font-medium text-ink-300 mb-2;
   }
   .field-input {
-    @apply w-full bg-base-800 border border-base-600 rounded-lg px-3 py-[7px] text-sm text-ink-100 placeholder:text-ink-500 hover:border-ink-500/50 focus:border-blueprint focus:ring-2 focus:ring-blueprint/20 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed aria-[invalid=true]:border-danger;
+    @apply w-full bg-base-800 border border-base-600 rounded-lg px-4 py-2 text-sm text-ink-100 placeholder:text-ink-500 hover:border-ink-500/50 focus:border-blueprint focus:ring-2 focus:ring-blueprint/20 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed aria-[invalid=true]:border-danger;
   }
   .field-error {
-    @apply text-xs text-danger mt-1;
+    @apply text-xs text-danger mt-2;
   }
 
   /* A card is a soft, slightly translucent surface with a large radius on
@@ -314,7 +327,7 @@
   /* Status/tag chips: sentence case, sans, pill-shaped. The old mono +
      uppercase + wide tracking pill shouted on every row of every list. */
   .badge {
-    @apply inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] leading-4 font-medium whitespace-nowrap;
+    @apply inline-flex items-center gap-2 px-2 py-0 rounded-full text-xs leading-4 font-medium whitespace-nowrap;
   }
 
 
@@ -330,10 +343,10 @@
   /* Auth screens (AuthLayout): soft pill inputs with indented labels and a
      mushroom submit button, after the dashboard theme's sign-up reference. */
   .auth-form .field-label {
-    @apply pl-5 font-normal text-ink-500;
+    @apply pl-6 font-normal text-ink-500;
   }
   .auth-form .field-input {
-    @apply rounded-full h-12 px-5 border-transparent bg-base-800/85 hover:border-base-600;
+    @apply rounded-full h-12 px-6 border-transparent bg-base-800/85 hover:border-base-600;
   }
   .auth-form .btn-primary {
     @apply h-12 bg-sun text-noir text-base font-normal hover:bg-sun hover:brightness-95;
@@ -412,16 +425,16 @@
     @apply mb-2 last:mb-0;
   }
   .rte-content h2 {
-    @apply text-base font-semibold mt-3 mb-1.5 first:mt-0;
+    @apply text-base font-semibold mt-4 mb-2 first:mt-0;
   }
   .rte-content h3 {
-    @apply text-sm font-semibold mt-2.5 mb-1 first:mt-0;
+    @apply text-sm font-semibold mt-2 mb-2 first:mt-0;
   }
   .rte-content ul {
-    @apply list-disc pl-5 mb-2 space-y-0.5;
+    @apply list-disc pl-6 mb-2 space-y-0;
   }
   .rte-content ol {
-    @apply list-decimal pl-5 mb-2 space-y-0.5;
+    @apply list-decimal pl-6 mb-2 space-y-0;
   }
   .rte-content strong {
     @apply font-semibold;

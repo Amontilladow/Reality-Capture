@@ -73,7 +73,7 @@ const GisPrepPage = lazy(() => import('./pages/GisPrepPage'));
 
 function RouteLoading() {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 h-screen">
+    <div className="flex flex-col items-center justify-center gap-4 h-screen">
       <LogoMark className="w-9 h-9 motion-safe:animate-pulse" />
       <span className="text-sm text-ink-500">Loading…</span>
     </div>

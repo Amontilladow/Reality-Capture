@@ -10,10 +10,10 @@ export function ArticleView({ article, onOpenArticle }: { article: HelpArticle; 
   const related = getRelatedArticles(article);
 
   return (
-    <article className="space-y-5">
+    <article className="space-y-6">
       <header>
         <h1 className="text-xl font-semibold text-ink-100">{article.title}</h1>
-        <p className="text-sm text-ink-300 mt-1">{article.summary}</p>
+        <p className="text-sm text-ink-300 mt-2">{article.summary}</p>
       </header>
 
       {article.notYetAvailable && (
@@ -36,17 +36,17 @@ export function ArticleView({ article, onOpenArticle }: { article: HelpArticle; 
       )}
       {article.prerequisites && article.prerequisites.length > 0 && (
         <Section title="Prerequisites">
-          <ul className="list-disc pl-5 space-y-1">{article.prerequisites.map((p, i) => <li key={i}>{p}</li>)}</ul>
+          <ul className="list-disc pl-6 space-y-2">{article.prerequisites.map((p, i) => <li key={i}>{p}</li>)}</ul>
         </Section>
       )}
       {article.steps && article.steps.length > 0 && (
         <Section title="Step-by-step instructions">
-          <ol className="list-decimal pl-5 space-y-1">{article.steps.map((s, i) => <li key={i}>{s}</li>)}</ol>
+          <ol className="list-decimal pl-6 space-y-2">{article.steps.map((s, i) => <li key={i}>{s}</li>)}</ol>
         </Section>
       )}
       {article.infoToEnter && article.infoToEnter.length > 0 && (
         <Section title="Information you must enter">
-          <ul className="list-disc pl-5 space-y-1">{article.infoToEnter.map((s, i) => <li key={i}>{s}</li>)}</ul>
+          <ul className="list-disc pl-6 space-y-2">{article.infoToEnter.map((s, i) => <li key={i}>{s}</li>)}</ul>
         </Section>
       )}
       {article.attachments && (
@@ -66,17 +66,17 @@ export function ArticleView({ article, onOpenArticle }: { article: HelpArticle; 
       )}
       {article.commonMistakes && article.commonMistakes.length > 0 && (
         <Section title="Common mistakes">
-          <ul className="list-disc pl-5 space-y-1">{article.commonMistakes.map((s, i) => <li key={i}>{s}</li>)}</ul>
+          <ul className="list-disc pl-6 space-y-2">{article.commonMistakes.map((s, i) => <li key={i}>{s}</li>)}</ul>
         </Section>
       )}
       {article.troubleshootingSteps && article.troubleshootingSteps.length > 0 && (
         <Section title="Troubleshooting">
-          <div className="space-y-3">
+          <div className="space-y-4">
             {article.troubleshootingSteps.map((t, i) => (
-              <div key={i} className="panel p-3">
+              <div key={i} className="panel p-4">
                 <div className="font-medium text-ink-100 text-sm">{t.problem}</div>
-                {t.likelyCause && <div className="text-xs text-ink-500 mt-0.5">Likely cause: {t.likelyCause}</div>}
-                <div className="text-sm text-ink-300 mt-1">{t.fix}</div>
+                {t.likelyCause && <div className="text-xs text-ink-500 mt-0">Likely cause: {t.likelyCause}</div>}
+                <div className="text-sm text-ink-300 mt-2">{t.fix}</div>
               </div>
             ))}
           </div>
@@ -85,7 +85,7 @@ export function ArticleView({ article, onOpenArticle }: { article: HelpArticle; 
 
       {related.length > 0 && (
         <Section title="Related articles">
-          <ul className="space-y-1">
+          <ul className="space-y-2">
             {related.map((r) => (
               <li key={r.slug}>
                 <button onClick={() => onOpenArticle(r.slug)} className="text-blueprint hover:text-blueprint-hover text-sm underline">
@@ -103,7 +103,7 @@ export function ArticleView({ article, onOpenArticle }: { article: HelpArticle; 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section id={slugifySectionTitle(title)}>
-      <h2 className="text-xs text-ink-500 mb-1.5 font-medium">{title}</h2>
+      <h2 className="text-xs text-ink-500 mb-2 font-medium">{title}</h2>
       <div className="text-sm text-ink-300 leading-relaxed">{children}</div>
     </section>
   );

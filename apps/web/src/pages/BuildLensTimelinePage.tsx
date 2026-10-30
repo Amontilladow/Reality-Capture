@@ -330,21 +330,21 @@ export default function BuildLensTimelinePage() {
 
             <div className="panel p-4 space-y-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   <button
                     onClick={() => setIsPlaying((v) => !v)}
-                    className="btn-primary !px-3 !py-1.5"
+                    className="btn-primary !px-4 !py-2"
                     disabled={captures.length < 2}
                   >
                     {isPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4" />}
                     {isPlaying ? 'Pause' : 'Play'}
                   </button>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-2">
                     {SPEEDS.map((s) => (
                       <button
                         key={s}
                         onClick={() => setSpeed(s)}
-                        className={`px-2 py-1 rounded text-xs font-mono transition-colors ${
+                        className={`px-2 py-2 rounded text-xs font-mono transition-colors ${
                           speed === s ? 'bg-signal text-base-800' : 'text-ink-500 hover:text-ink-100 hover:bg-base-700'
                         }`}
                       >
@@ -362,20 +362,20 @@ export default function BuildLensTimelinePage() {
                     </button>
                   )}
                   {active && editingDate && (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       <input
                         autoFocus
                         type="datetime-local"
-                        className="field-input !py-1 !text-xs w-auto"
+                        className="field-input !py-2 !text-xs w-auto"
                         value={dateBuffer}
                         onChange={(e) => setDateBuffer(e.target.value)}
                       />
-                      <button onClick={() => dateMutation.mutate()} disabled={dateMutation.isPending} className="btn-primary !px-2 !py-1 text-xs shrink-0">
+                      <button onClick={() => dateMutation.mutate()} disabled={dateMutation.isPending} className="btn-primary !px-2 !py-2 text-xs shrink-0">
                         Save
                       </button>
                       <button
                         onClick={() => { setDateBuffer(toDatetimeLocalValue(active.capturedAt)); setEditingDate(false); }}
-                        className="btn-ghost !px-1.5 !py-1 text-xs shrink-0"
+                        className="btn-ghost !px-2 !py-2 text-xs shrink-0"
                       >
                         Cancel
                       </button>
@@ -384,7 +384,7 @@ export default function BuildLensTimelinePage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-0 overflow-x-auto pb-1">
+              <div className="flex items-center gap-0 overflow-x-auto pb-2">
                 <div className="relative flex items-center min-w-full" style={{ minWidth: `${Math.max(captures.length * 90, 100)}px` }}>
                   <div className="absolute left-0 right-0 top-1/2 h-px bg-base-600 -translate-y-1/2" />
                   {captures.map((c) => {
@@ -393,16 +393,16 @@ export default function BuildLensTimelinePage() {
                       <button
                         key={c.id}
                         onClick={() => goTo(c)}
-                        className="relative flex flex-col items-center gap-1.5 flex-1 min-w-[80px] group"
+                        className="relative flex flex-col items-center gap-2 flex-1 min-w-[80px] group"
                         title={c.captureType === 'photo_360' ? '360° photo' : c.captureType === 'video' ? 'Video' : 'Photo'}
                       >
                         <CaptureTypeIcon
                           captureType={c.captureType}
-                          className={`w-3.5 h-3.5 rounded-full border p-0.5 transition-colors ${
+                          className={`w-3.5 h-3.5 rounded-full border p-0 transition-colors ${
                             isActive ? 'bg-signal/20 border-signal text-signal' : 'bg-base-900 border-base-500 text-ink-500 group-hover:border-blueprint group-hover:text-blueprint'
                           }`}
                         />
-                        <span className={`text-[10px] font-mono whitespace-nowrap ${isActive ? 'text-signal' : 'text-ink-500'}`}>
+                        <span className={`text-xs font-mono whitespace-nowrap ${isActive ? 'text-signal' : 'text-ink-500'}`}>
                           {formatDate(c.capturedAt)}
                         </span>
                       </button>
@@ -469,7 +469,7 @@ function CompareView({
         <div key={i} className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs text-ink-500 font-medium">{col.label}</span>
-            <span className="text-sm font-medium flex items-center gap-1.5">
+            <span className="text-sm font-medium flex items-center gap-2">
               {col.capture && (
                 <CaptureTypeIcon captureType={col.capture.captureType} className="w-3.5 h-3.5 text-ink-500" />
               )}

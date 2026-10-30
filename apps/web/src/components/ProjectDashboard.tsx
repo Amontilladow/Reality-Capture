@@ -76,7 +76,7 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
   return (
     <div className="p-6 pb-0 space-y-6">
       <div>
-        <div className="mb-3">
+        <div className="mb-4">
           <SectionHeader
             title="Issues"
             size="sm"
@@ -88,14 +88,14 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
           />
         </div>
         {issuesQuery.isLoading && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="tick-frame panel p-4 h-[68px] animate-pulse bg-base-700/40" />
             ))}
           </div>
         )}
         {issuesQuery.data && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <StatTile label="Open" value={issuesQuery.data.open} />
             <StatTile label="Critical" value={issuesQuery.data.critical} tone="danger" />
             <StatTile label="Overdue" value={issuesQuery.data.overdue} tone="warn" />
@@ -105,7 +105,7 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
       </div>
 
       <div>
-        <div className="mb-3">
+        <div className="mb-4">
           <SectionHeader
             title="BIM processing"
             size="sm"
@@ -117,7 +117,7 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
           />
         </div>
         {modelsQuery.isLoading && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="tick-frame panel p-4 h-[68px] animate-pulse bg-base-700/40" />
             ))}
@@ -127,7 +127,7 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
           <div className="tick-frame panel p-4 text-sm text-ink-500">No BIM models uploaded yet.</div>
         )}
         {modelsQuery.data && modelsQuery.data.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {(['ready', 'processing', 'pending', 'failed'] as const).map((status) => (
               <StatTile
                 key={status}
@@ -141,21 +141,21 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
       </div>
 
       <div>
-        <div className="mb-3"><SectionHeader title="Recent activity" size="sm" /></div>
+        <div className="mb-4"><SectionHeader title="Recent activity" size="sm" /></div>
         <div className="tick-frame panel divide-y divide-base-600">
           {activityQuery.isLoading && <div className="p-4 text-sm text-ink-500">Loading…</div>}
           {activityQuery.data && activityQuery.data.length === 0 && (
             <div className="p-4 text-sm text-ink-500">Nothing recorded yet.</div>
           )}
           {activityQuery.data?.map((entry) => (
-            <div key={entry.id} className="px-4 py-2.5 flex items-center justify-between gap-3 text-sm">
+            <div key={entry.id} className="px-4 py-2 flex items-center justify-between gap-4 text-sm">
               <div className="min-w-0 truncate">
                 <span className="text-ink-100 font-medium">{entry.userName ?? 'Someone'}</span>{' '}
                 <span className="text-ink-300">
                   {formatActivity(entry.action, entry.resourceType, entry.resourceLabel)}
                 </span>
               </div>
-              <span className="text-[10px] font-mono text-ink-500 shrink-0">{timeAgo(entry.occurredAt)}</span>
+              <span className="text-xs font-mono text-ink-500 shrink-0">{timeAgo(entry.occurredAt)}</span>
             </div>
           ))}
         </div>

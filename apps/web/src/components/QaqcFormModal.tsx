@@ -138,7 +138,7 @@ export function QaqcFormModal({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="qaqc-priority">Priority</label>
             <Listbox id="qaqc-priority" className="field-input" value={priority} onChange={(e) => setPriority(e.target.value as QaqcPriority)}>
@@ -153,7 +153,7 @@ export function QaqcFormModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="qaqc-assignedTo">Assignee</label>
             <Listbox id="qaqc-assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
@@ -209,7 +209,7 @@ export function QaqcFormModal({
             />
           </div>
           {photos.length === 0 && (
-            <p className="text-xs text-ink-500 mt-1">Optional -- quick evidence photos. They'll also appear in the project's Captures tab.</p>
+            <p className="text-xs text-ink-500 mt-2">Optional -- quick evidence photos. They'll also appear in the project's Captures tab.</p>
           )}
           {photos.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
@@ -242,9 +242,9 @@ export function QaqcFormModal({
           <div className="flex items-center justify-between">
             <label className="field-label !mb-0">Documents {documents.length > 0 ? `(${documents.length})` : ''}</label>
           </div>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-2">
             <Listbox aria-label="Document type"
-              className="field-input w-auto !py-1.5 text-xs"
+              className="field-input w-auto !py-2 text-xs"
               value={pendingDocumentType}
               onChange={(e) => setPendingDocumentType(e.target.value as RfiDocumentType)}
             >
@@ -254,7 +254,7 @@ export function QaqcFormModal({
             </Listbox>
             <button
               type="button"
-              className="btn-secondary !px-3 !py-1.5 text-xs"
+              className="btn-secondary !px-4 !py-2 text-xs"
               onClick={() => documentInputRef.current?.click()}
               disabled={mutation.isPending}
             >
@@ -273,12 +273,12 @@ export function QaqcFormModal({
             />
           </div>
           {documents.length === 0 && (
-            <p className="text-xs text-ink-500 mt-1">Optional -- method statements, test certificates, specs, or other supporting documents.</p>
+            <p className="text-xs text-ink-500 mt-2">Optional -- method statements, test certificates, specs, or other supporting documents.</p>
           )}
           {documents.length > 0 && (
-            <div className="space-y-1 mt-2">
+            <div className="space-y-2 mt-2">
               {documents.map(({ file, documentType }, i) => (
-                <div key={`${file.name}-${i}`} className="flex items-center justify-between text-xs bg-base-700/40 rounded px-2 py-1">
+                <div key={`${file.name}-${i}`} className="flex items-center justify-between text-xs bg-base-700/40 rounded px-2 py-2">
                   <span className="text-ink-300">{file.name} <span className="text-ink-500">({RFI_DOCUMENT_TYPE_LABELS[documentType]})</span></span>
                   <button
                     type="button"

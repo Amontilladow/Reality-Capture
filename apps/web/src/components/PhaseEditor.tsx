@@ -17,10 +17,10 @@ export function PhaseEditor({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
         <Listbox aria-label="Project phase"
           autoFocus
-          className="field-input !py-1 !text-xs w-auto"
+          className="field-input !py-2 !text-xs w-auto"
           value={value}
           onChange={(e) => setValue(e.target.value as ProjectPhase | '')}
         >
@@ -32,11 +32,11 @@ export function PhaseEditor({
         <button
           onClick={() => { onSave(value); setEditing(false); }}
           disabled={saving}
-          className="btn-primary !px-2 !py-1 text-xs shrink-0"
+          className="btn-primary !px-2 !py-2 text-xs shrink-0"
         >
           Save
         </button>
-        <button onClick={() => { setValue(phase ?? ''); setEditing(false); }} className="btn-ghost !px-1.5 !py-1 text-xs shrink-0">
+        <button onClick={() => { setValue(phase ?? ''); setEditing(false); }} className="btn-ghost !px-2 !py-2 text-xs shrink-0">
           Cancel
         </button>
       </div>
@@ -44,7 +44,7 @@ export function PhaseEditor({
   }
 
   return (
-    <button onClick={() => setEditing(true)} className="flex items-center gap-1 min-h-6 text-xs text-ink-500 hover:text-blueprint">
+    <button onClick={() => setEditing(true)} className="flex items-center gap-2 min-h-6 text-xs text-ink-500 hover:text-blueprint">
       <span>{phase ? PROJECT_PHASE_LABELS[phase] : 'Set phase'}</span>
       <EditIcon className="w-3 h-3" />
     </button>

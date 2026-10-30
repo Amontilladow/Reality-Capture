@@ -11,13 +11,13 @@ function MovementRow({ risk, detail, detailClass, onSelect }: {
 }) {
   return (
     <li>
-      <button onClick={() => onSelect(risk.id)} className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-base-700 transition-colors">
+      <button onClick={() => onSelect(risk.id)} className="w-full flex items-center justify-between gap-4 px-4 py-2 text-left hover:bg-base-700 transition-colors">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono text-ink-500 shrink-0">{riskRef(risk)}</span>
             <span className="text-sm text-ink-100 truncate">{risk.title}</span>
           </div>
-          <div className="text-xs text-ink-500 mt-0.5 truncate">
+          <div className="text-xs text-ink-500 mt-0 truncate">
             {disciplineLabel(risk.discipline)}{risk.locationLabel ? ` · ${risk.locationLabel}` : ''}
           </div>
         </div>
@@ -33,10 +33,10 @@ function MovementGroup({ title, description, tone, count, rows }: {
   const toneClass = tone === 'danger' ? 'text-danger' : tone === 'ok' ? 'text-ok' : 'text-ink-500';
   return (
     <div className="panel tick-frame">
-      <div className="px-4 py-2.5 border-b border-base-600 flex items-center justify-between">
+      <div className="px-4 py-2 border-b border-base-600 flex items-center justify-between">
         <div>
           <div className={`text-sm font-semibold ${count > 0 ? 'text-ink-100' : 'text-ink-500'}`}>{title} <span className={`tabular-nums ${toneClass}`}>({count})</span></div>
-          <p className="text-xs text-ink-500 mt-0.5">{description}</p>
+          <p className="text-xs text-ink-500 mt-0">{description}</p>
         </div>
       </div>
       {count === 0 ? (
@@ -96,18 +96,18 @@ export function RiskMovementSection({ movement, isLoading, days, onDaysChange, o
   ];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <SectionHeader
         title={`Risk Movement — last ${days} days`}
         size="sm"
         actions={
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             {DAY_OPTIONS.map((d) => (
               <button
                 key={d}
                 onClick={() => onDaysChange(d)}
                 aria-pressed={days === d}
-                className={`btn-secondary !px-2.5 !py-1 text-xs ${days === d ? '!bg-blueprint-muted !text-blueprint !border-blueprint/40' : ''}`}
+                className={`btn-secondary !px-2 !py-2 text-xs ${days === d ? '!bg-blueprint-muted !text-blueprint !border-blueprint/40' : ''}`}
               >
                 {d}d
               </button>

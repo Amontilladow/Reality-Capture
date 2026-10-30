@@ -76,10 +76,10 @@ export function DocumentShareModal({
         {createMutation.isError && <p className="field-error">{apiErrorMessage(createMutation.error)}</p>}
 
         {createMutation.data && (
-          <div className="panel p-3 space-y-2">
+          <div className="panel p-4 space-y-2">
             <div className="flex items-center gap-2">
               <input readOnly value={createMutation.data.shareUrl} className="field-input flex-1 text-xs" onFocus={(e) => e.target.select()} />
-              <button onClick={() => handleCopy(createMutation.data!.shareUrl)} className="btn-secondary !px-3 !py-1.5 text-xs">
+              <button onClick={() => handleCopy(createMutation.data!.shareUrl)} className="btn-secondary !px-4 !py-2 text-xs">
                 {copied ? 'Copied!' : 'Copy'}
               </button>
             </div>
@@ -96,7 +96,7 @@ export function DocumentShareModal({
                 const expired = new Date(s.expiresAt).getTime() <= now;
                 const status = s.revokedAt ? 'Revoked' : expired ? 'Expired' : 'Active';
                 return (
-                  <div key={s.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                  <div key={s.id} className="flex items-center justify-between px-4 py-2 text-sm">
                     <div>
                       <span className={`badge ${status === 'Active' ? 'bg-ok/15 text-ok' : 'bg-base-700 text-ink-500'}`}>{status}</span>
                       <span className="text-ink-500 ml-2 text-xs">
@@ -104,7 +104,7 @@ export function DocumentShareModal({
                       </span>
                     </div>
                     {status === 'Active' && (
-                      <button onClick={() => revokeMutation.mutate(s.id)} disabled={revokeMutation.isPending} className="btn-ghost !px-2 !py-1 text-xs text-danger">
+                      <button onClick={() => revokeMutation.mutate(s.id)} disabled={revokeMutation.isPending} className="btn-ghost !px-2 !py-2 text-xs text-danger">
                         Revoke
                       </button>
                     )}

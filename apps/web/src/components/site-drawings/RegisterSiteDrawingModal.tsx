@@ -69,12 +69,12 @@ export function RegisterSiteDrawingModal({ open, onClose, projectId }: { open: b
           {file ? <p className="text-sm text-ink-100">{file.name}</p> : (
             <>
               <p className="text-sm text-ink-300">Drag a PDF here, or click to browse</p>
-              <p className="text-xs text-ink-500 mt-1">PDF only, up to 200 MB</p>
+              <p className="text-xs text-ink-500 mt-2">PDF only, up to 200 MB</p>
             </>
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="sd-number">Drawing number</label>
             <input id="sd-number" className="field-input" value={drawingNumber} onChange={(e) => setDrawingNumber(e.target.value)} />
@@ -108,7 +108,7 @@ export function RegisterSiteDrawingModal({ open, onClose, projectId }: { open: b
             <Listbox id="sd-status" className="field-input" value={workflowStatus} onChange={(e) => setWorkflowStatus(e.target.value as SiteDrawingWorkflowStatus)}>
               {SITE_DRAWING_WORKFLOW_STATUSES.map((s) => <option key={s} value={s}>{WORKFLOW_STATUS_LABELS[s]}</option>)}
             </Listbox>
-            <p className="text-xs text-ink-500 mt-1">Set this deliberately — never inferred from the filename or upload date.</p>
+            <p className="text-xs text-ink-500 mt-2">Set this deliberately — never inferred from the filename or upload date.</p>
           </div>
         </div>
 

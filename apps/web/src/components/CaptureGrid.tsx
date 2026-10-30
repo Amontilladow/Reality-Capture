@@ -108,12 +108,12 @@ export function CaptureGrid({
       <div className="tick-frame panel p-12 text-center">
         {hasActiveFilters ? (
           <>
-            <div className="text-sm font-medium mb-1">No captures match these filters</div>
+            <div className="text-sm font-medium mb-2">No captures match these filters</div>
             <p className="text-sm text-ink-500">Try clearing a filter or your search to see more captures.</p>
           </>
         ) : (
           <>
-            <div className="text-sm font-medium mb-1">No captures here yet</div>
+            <div className="text-sm font-medium mb-2">No captures here yet</div>
             <p className="text-sm text-ink-500">Upload a 360° photo, standard photo, or video to get started.</p>
           </>
         )}
@@ -152,7 +152,7 @@ export function CaptureGrid({
         <div className="space-y-8">
           {groupByLocationId(captures).map((group) => (
             <section key={group.key}>
-              <div className="flex items-baseline gap-2 mb-3">
+              <div className="flex items-baseline gap-2 mb-4">
                 <h3 className="text-sm font-medium">{group.locationName}</h3>
                 <span className="text-xs font-mono text-ink-500">
                   {group.captures.length} capture{group.captures.length === 1 ? '' : 's'} · {dateRangeLabel(group.captures)}
@@ -203,9 +203,9 @@ function CaptureCardBody({ c }: { c: Capture }) {
           {CAPTURE_STATUS_LABELS[c.status] ?? c.status}
         </span>
       </div>
-      <div className="p-3">
+      <div className="p-4">
         <div className="text-xs font-medium truncate">{c.title ?? 'Untitled capture'}</div>
-        <div className="text-[10px] font-mono text-ink-500 mt-0.5">
+        <div className="text-xs font-mono text-ink-500 mt-0">
           {new Date(c.capturedAt).toLocaleDateString()} {c.phase ? `· ${c.phase.replace(/_/g, ' ')}` : ''}
         </div>
       </div>

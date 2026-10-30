@@ -53,7 +53,7 @@ function ProviderCard({
   const connected = value !== 'not_connected';
 
   return (
-    <div className="panel tick-frame p-5 space-y-4">
+    <div className="panel tick-frame p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-ink-100">{name}</h2>
         {!isLoading && <StatusBadge tone={STATUS_TONE[value]} label={STATUS_LABEL[value]} />}

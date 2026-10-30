@@ -35,7 +35,7 @@ export function PinSearch({
         onBlur={() => setTimeout(() => setOpen(false), 150)}
       />
       {open && (
-        <div className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded border border-base-600 bg-base-950 text-ink-100 shadow-lg">
+        <div className="absolute z-10 mt-2 max-h-56 w-full overflow-y-auto rounded border border-base-600 bg-base-950 text-ink-100 shadow-lg">
           {searchQuery.isFetching && <p className="p-2 text-xs text-ink-500">Searching…</p>}
           {!searchQuery.isFetching && results.length === 0 && (
             <p className="p-2 text-xs text-ink-500">No pins found.</p>
@@ -44,7 +44,7 @@ export function PinSearch({
             <button
               key={pin.locationId}
               type="button"
-              className="block w-full truncate px-3 py-2 text-left text-sm hover:bg-base-900"
+              className="block w-full truncate px-4 py-2 text-left text-sm hover:bg-base-900"
               onMouseDown={() => {
                 onSelect(pin);
                 setOpen(false);

@@ -45,16 +45,16 @@ export function ElementList({
         />
       </div>
       <div className="flex-1 overflow-y-auto">
-        {query.isLoading && <p className="p-3 text-sm text-ink-500">Loading…</p>}
+        {query.isLoading && <p className="p-4 text-sm text-ink-500">Loading…</p>}
         {!query.isLoading && elements.length === 0 && (
-          <p className="p-3 text-sm text-ink-500">No elements match.</p>
+          <p className="p-4 text-sm text-ink-500">No elements match.</p>
         )}
         {elements.map((el) => (
           <button
             key={el.id}
             type="button"
             onClick={() => onSelect(el)}
-            className={`block w-full truncate px-3 py-2 text-left text-sm hover:bg-base-700 ${
+            className={`block w-full truncate px-4 py-2 text-left text-sm hover:bg-base-700 ${
               selectedGuid === el.ifcGuid ? 'bg-blueprint-muted text-blueprint' : 'text-ink-100'
             }`}
           >
@@ -64,7 +64,7 @@ export function ElementList({
         ))}
       </div>
       {total > perPage && (
-        <div className="flex items-center justify-between border-t border-base-600 px-2 py-1.5 text-xs text-ink-500">
+        <div className="flex items-center justify-between border-t border-base-600 px-2 py-2 text-xs text-ink-500">
           <button
             type="button"
             disabled={page <= 1}

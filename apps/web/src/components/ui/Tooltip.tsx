@@ -23,7 +23,7 @@ export function Tooltip({ label, children }: { label: string; children: ReactNod
         <span
           id={id}
           role="tooltip"
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 rounded text-xs font-medium bg-base-700 text-ink-100 border border-base-500 whitespace-nowrap z-20 pointer-events-none"
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-2 rounded text-xs font-medium bg-base-700 text-ink-100 border border-base-500 whitespace-nowrap z-20 pointer-events-none"
         >
           {label}
         </span>

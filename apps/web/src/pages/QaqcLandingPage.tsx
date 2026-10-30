@@ -63,13 +63,13 @@ export default function QaqcLandingPage() {
                 onClick={() => navigate(`/projects/${projectId}/qaqc/${recordType}`)}
                 className="panel tick-frame p-6 text-left hover:border-blueprint/50 transition-colors"
               >
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-4">
                   <h3 className="text-base font-semibold">{QAQC_RECORD_TYPE_SHORT_LABELS[recordType]}</h3>
                   <span className="badge bg-danger/15 text-danger">{open} open</span>
                 </div>
-                <p className="text-xs text-ink-400 font-medium mb-1">{QAQC_RECORD_TYPE_LABELS[recordType]}</p>
-                <p className="text-sm text-ink-500 mb-3">{RECORD_TYPE_DESCRIPTION[recordType]}</p>
-                <div className="flex gap-3 text-xs text-ink-500 font-mono">
+                <p className="text-xs text-ink-400 font-medium mb-2">{QAQC_RECORD_TYPE_LABELS[recordType]}</p>
+                <p className="text-sm text-ink-500 mb-4">{RECORD_TYPE_DESCRIPTION[recordType]}</p>
+                <div className="flex gap-4 text-xs text-ink-500 font-mono">
                   <span>{total} total</span>
                   <span>·</span>
                   <span>{closed} closed</span>

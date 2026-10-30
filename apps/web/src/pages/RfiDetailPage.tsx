@@ -456,7 +456,7 @@ export default function RfiDetailPage() {
             )}
             <Link
               to={`/projects/${projectId}/rfis/${rfi.raisedByOrganizationSlot === 'subcontractor' ? 'subcontractor' : 'main'}`}
-              className="btn-ghost !px-2 !py-1 text-xs"
+              className="btn-ghost !px-2 !py-2 text-xs"
             >
               <BackIcon /> Back to RFIs
             </Link>
@@ -531,15 +531,15 @@ export default function RfiDetailPage() {
                 </>
               )}
             </div>
-            {remindDrawingMutation.isError && <p className="field-error mt-1">{apiErrorMessage(remindDrawingMutation.error)}</p>}
-            {markDrawingSentToSiteMutation.isError && <p className="field-error mt-1">{apiErrorMessage(markDrawingSentToSiteMutation.error)}</p>}
-            {markDrawingNotSentToSiteMutation.isError && <p className="field-error mt-1">{apiErrorMessage(markDrawingNotSentToSiteMutation.error)}</p>}
+            {remindDrawingMutation.isError && <p className="field-error mt-2">{apiErrorMessage(remindDrawingMutation.error)}</p>}
+            {markDrawingSentToSiteMutation.isError && <p className="field-error mt-2">{apiErrorMessage(markDrawingSentToSiteMutation.error)}</p>}
+            {markDrawingNotSentToSiteMutation.isError && <p className="field-error mt-2">{apiErrorMessage(markDrawingNotSentToSiteMutation.error)}</p>}
             {/* Who closed it, as which party -- historical RFIs closed before
                 this shipped have all four fields null and render nothing
                 extra here, no placeholder/error. Additive only -- the
                 audit-events timeline below is untouched. */}
             {rfi.status === 'closed' && rfi.closedAt && (
-              <p className="text-xs text-ink-500 mt-1">
+              <p className="text-xs text-ink-500 mt-2">
                 Closed by {rfi.closedByName ?? rfi.closedByExternalEmail ?? 'Unknown'}
                 {rfi.closedAsOrganizationSlot ? ` (${PROJECT_ORGANIZATION_SLOT_LABELS[rfi.closedAsOrganizationSlot]})` : ''}
                 {' on '}{formatDateTime(rfi.closedAt)}
@@ -557,27 +557,27 @@ export default function RfiDetailPage() {
             isSubcontractor's own comment) rather than rendering and letting
             its query 403. */}
         {!isSubcontractor && (
-          <section className="panel tick-frame p-5">
-            <div className="field-label mb-3">Email History</div>
+          <section className="panel tick-frame p-6">
+            <div className="field-label mb-4">Email History</div>
             <EmailHistoryList projectId={projectId} relatedRecordType="rfi" relatedRecordId={rfi.id} />
           </section>
         )}
 
         {/* RFI Information */}
-        <section className="panel tick-frame p-5">
-          <div className="flex items-center justify-between mb-3">
+        <section className="panel tick-frame p-6">
+          <div className="flex items-center justify-between mb-4">
             <div className="field-label !mb-0">RFI Information</div>
             {canEditQuery && (
               <button
                 onClick={() => saveDraftMutation.mutate()}
                 disabled={saveDraftMutation.isPending}
-                className="btn-secondary !px-3 !py-1.5 text-xs"
+                className="btn-secondary !px-4 !py-2 text-xs"
               >
                 {saveDraftMutation.isPending ? 'Saving…' : 'Save'}
               </button>
             )}
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
             <InfoRow label="RFI Number" value={rfi.rfiNumber ?? '—'} mono />
             <InfoRow label="Discipline" value={rfi.discipline ? RFI_DISCIPLINE_LABELS[rfi.discipline] : '—'} />
             <InfoRow label="Priority" value={RFI_PRIORITY_LABELS[rfi.priority]} />
@@ -625,9 +625,9 @@ export default function RfiDetailPage() {
                       to the first time impact is raised, editable from there. */}
                   {drawingImpactLevel !== 'no' && (
                     <div className="mt-2">
-                      <div className="text-xs text-ink-500 mb-1">Drawing update owner</div>
+                      <div className="text-xs text-ink-500 mb-2">Drawing update owner</div>
                       <Listbox aria-label="Drawing update owner"
-                        className="field-input !py-1.5 text-xs w-full"
+                        className="field-input !py-2 text-xs w-full"
                         value={drawingUpdateOwnerId}
                         onChange={(e) => setDrawingUpdateOwnerId(e.target.value)}
                       >
@@ -665,7 +665,7 @@ export default function RfiDetailPage() {
                     labels={DRAWING_UPDATE_STATUS_LABELS}
                   />
                   {(rfi.drawingImpactLevel ?? 'no') !== 'no' && (
-                    <div className="mt-1.5 text-xs text-ink-500">
+                    <div className="mt-2 text-xs text-ink-500">
                       Owner: <span className="text-ink-100">{rfi.drawingUpdateOwnerName ?? rfi.assignedToName ?? 'Unassigned'}</span>
                     </div>
                   )}
@@ -676,19 +676,19 @@ export default function RfiDetailPage() {
         </section>
 
         {/* Human Risk Assessment */}
-        <section className="panel tick-frame p-5">
+        <section className="panel tick-frame p-6">
           <InlineRiskAssessment projectId={projectId} nodeType="rfi" entityId={rfiId} />
         </section>
 
         {/* Query */}
-        <section className="panel tick-frame p-5 space-y-3">
+        <section className="panel tick-frame p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="field-label !mb-0">Query</div>
             {canEditQuery && (
               <button
                 onClick={() => saveDraftMutation.mutate()}
                 disabled={saveDraftMutation.isPending}
-                className="btn-secondary !px-3 !py-1.5 text-xs"
+                className="btn-secondary !px-4 !py-2 text-xs"
               >
                 {saveDraftMutation.isPending ? 'Saving…' : 'Save draft'}
               </button>
@@ -727,12 +727,12 @@ export default function RfiDetailPage() {
         </section>
 
         {/* Communication / Clarifications */}
-        <section className="panel tick-frame p-5 space-y-3">
+        <section className="panel tick-frame p-6 space-y-4">
           <div className="field-label">Communication / Clarifications ({commentsQuery.data?.length ?? 0})</div>
           <div className="space-y-2">
             {(commentsQuery.data ?? []).map((c) => (
-              <div key={c.id} className="bg-base-700/40 rounded px-3 py-2 text-sm">
-                <div className="flex items-center gap-2 text-xs text-ink-500 mb-1">
+              <div key={c.id} className="bg-base-700/40 rounded px-4 py-2 text-sm">
+                <div className="flex items-center gap-2 text-xs text-ink-500 mb-2">
                   <span className="font-medium text-ink-300">{c.userName ?? 'Someone'}</span>
                   {c.organizationSlot && (
                     <span className="badge bg-base-600 text-ink-500">{PROJECT_ORGANIZATION_SLOT_LABELS[c.organizationSlot]}</span>
@@ -747,7 +747,7 @@ export default function RfiDetailPage() {
             )}
           </div>
 
-          <div className="flex gap-2 items-start pt-1">
+          <div className="flex gap-2 items-start pt-2">
             <Listbox aria-label="Comment as organization"
               className="field-input w-auto shrink-0"
               value={commentOrgSlot}
@@ -778,7 +778,7 @@ export default function RfiDetailPage() {
         </section>
 
         {/* Response / Answer */}
-        <section className="panel tick-frame p-5 space-y-3">
+        <section className="panel tick-frame p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="field-label !mb-0">Response</div>
           </div>
@@ -815,7 +815,7 @@ export default function RfiDetailPage() {
             copy-paste into whatever email/WhatsApp the internal user already
             uses (real transactional delivery is out of scope). */}
         {canManageExternalAccess && (
-          <section className="panel tick-frame p-5 space-y-3">
+          <section className="panel tick-frame p-6 space-y-4">
             <div className="field-label !mb-0">External access</div>
             <p className="text-xs text-ink-500">
               Generate a link for a stakeholder with no EngineeringOS account (e.g. the Lead Design
@@ -824,9 +824,9 @@ export default function RfiDetailPage() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
               <div>
-                <div className="text-xs text-ink-500 mb-1">Action</div>
+                <div className="text-xs text-ink-500 mb-2">Action</div>
                 <Listbox aria-label="External access action"
-                  className="field-input !py-1.5 text-xs"
+                  className="field-input !py-2 text-xs"
                   value={extAction}
                   onChange={(e) => {
                     const action = e.target.value as RfiExternalAccessAction;
@@ -840,9 +840,9 @@ export default function RfiDetailPage() {
                 </Listbox>
               </div>
               <div>
-                <div className="text-xs text-ink-500 mb-1">Organization</div>
+                <div className="text-xs text-ink-500 mb-2">Organization</div>
                 <Listbox aria-label="Organization slot"
-                  className="field-input !py-1.5 text-xs"
+                  className="field-input !py-2 text-xs"
                   value={extSlot}
                   onChange={(e) => {
                     const slot = e.target.value as ProjectOrganizationSlot;
@@ -858,19 +858,19 @@ export default function RfiDetailPage() {
                 </Listbox>
               </div>
               <div>
-                <div className="text-xs text-ink-500 mb-1">Recipient email</div>
+                <div className="text-xs text-ink-500 mb-2">Recipient email</div>
                 <input
                   type="email"
-                  className="field-input !py-1.5 text-xs"
+                  className="field-input !py-2 text-xs"
                   placeholder="name@company.com"
                   value={extEmail}
                   onChange={(e) => setExtEmail(e.target.value)}
                 />
               </div>
               <div>
-                <div className="text-xs text-ink-500 mb-1">Recipient name (optional)</div>
+                <div className="text-xs text-ink-500 mb-2">Recipient name (optional)</div>
                 <input
-                  className="field-input !py-1.5 text-xs"
+                  className="field-input !py-2 text-xs"
                   placeholder="Jane Doe"
                   value={extName}
                   onChange={(e) => setExtName(e.target.value)}
@@ -881,7 +881,7 @@ export default function RfiDetailPage() {
             <button
               onClick={() => generateExternalAccessMutation.mutate()}
               disabled={!extEmail.trim() || generateExternalAccessMutation.isPending}
-              className="btn-primary !px-3 !py-1.5 text-xs"
+              className="btn-primary !px-4 !py-2 text-xs"
             >
               {generateExternalAccessMutation.isPending ? 'Generating…' : 'Generate link'}
             </button>
@@ -890,10 +890,10 @@ export default function RfiDetailPage() {
             )}
             {extGeneratedUrl && (
               <div className="flex items-center gap-2">
-                <input readOnly className="field-input !py-1.5 text-xs font-mono" value={extGeneratedUrl} onFocus={(e) => e.target.select()} />
+                <input readOnly className="field-input !py-2 text-xs font-mono" value={extGeneratedUrl} onFocus={(e) => e.target.select()} />
                 <button
                   onClick={() => navigator.clipboard.writeText(extGeneratedUrl)}
-                  className="btn-secondary !px-3 !py-1.5 text-xs shrink-0"
+                  className="btn-secondary !px-4 !py-2 text-xs shrink-0"
                 >
                   Copy
                 </button>
@@ -905,7 +905,7 @@ export default function RfiDetailPage() {
               </p>
             )}
 
-            <div className="pt-2 border-t border-base-600 space-y-1.5">
+            <div className="pt-2 border-t border-base-600 space-y-2">
               {(externalAccessQuery.data ?? []).length === 0 && (
                 <p className="text-xs text-ink-500">No external access links generated yet.</p>
               )}
@@ -915,7 +915,7 @@ export default function RfiDetailPage() {
                 const statusLabel = isRevoked ? 'Revoked' : isExpired ? 'Expired' : 'Active';
                 const statusClass = isRevoked || isExpired ? 'bg-base-700 text-ink-500' : 'bg-ok/15 text-ok';
                 return (
-                  <div key={a.id} className="flex items-center gap-2 text-xs flex-wrap bg-base-700/40 rounded px-3 py-2">
+                  <div key={a.id} className="flex items-center gap-2 text-xs flex-wrap bg-base-700/40 rounded px-4 py-2">
                     <span className={`badge ${statusClass}`}>{statusLabel}</span>
                     <span className="badge bg-base-600 text-ink-500">{PROJECT_ORGANIZATION_SLOT_LABELS[a.organizationSlot]}</span>
                     <span className="text-ink-300">{RFI_EXTERNAL_ACCESS_ACTION_LABELS[a.action]}</span>
@@ -939,10 +939,10 @@ export default function RfiDetailPage() {
         )}
 
         {/* Audit trail */}
-        <section className="panel tick-frame p-5 space-y-2">
+        <section className="panel tick-frame p-6 space-y-2">
           <div className="field-label">Audit trail</div>
           {rfiAudit.length === 0 && <p className="text-sm text-ink-500">No audit events recorded for this RFI yet.</p>}
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {rfiAudit.map((a) => (
               <div key={a.id} className="flex items-center gap-2 text-xs text-ink-500">
                 <span className="font-mono text-ink-300">{a.action}</span>
@@ -961,20 +961,20 @@ export default function RfiDetailPage() {
         {/* Action buttons */}
         <div className="flex flex-wrap gap-2 pt-2 border-t border-base-600">
           {canSubmit && (
-            <button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending} className="btn-primary !px-3 !py-1.5 text-xs">
+            <button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending} className="btn-primary !px-4 !py-2 text-xs">
               {submitMutation.isPending ? 'Submitting…' : 'Submit'}
             </button>
           )}
 
           {canRequestClarification && !clarifyOpen && (
-            <button onClick={() => setClarifyOpen(true)} className="btn-secondary !px-3 !py-1.5 text-xs">
+            <button onClick={() => setClarifyOpen(true)} className="btn-secondary !px-4 !py-2 text-xs">
               Request clarification
             </button>
           )}
           {canRequestClarification && clarifyOpen && (
             <div className="flex items-center gap-2">
               <input
-                className="field-input !py-1.5 text-xs"
+                className="field-input !py-2 text-xs"
                 placeholder="Reason…"
                 value={clarifyReason}
                 onChange={(e) => setClarifyReason(e.target.value)}
@@ -982,11 +982,11 @@ export default function RfiDetailPage() {
               <button
                 onClick={() => clarifyMutation.mutate()}
                 disabled={!clarifyReason.trim() || clarifyMutation.isPending}
-                className="btn-primary !px-3 !py-1.5 text-xs"
+                className="btn-primary !px-4 !py-2 text-xs"
               >
                 Send
               </button>
-              <button onClick={() => setClarifyOpen(false)} className="btn-ghost !px-2 !py-1.5 text-xs">Cancel</button>
+              <button onClick={() => setClarifyOpen(false)} className="btn-ghost !px-2 !py-2 text-xs">Cancel</button>
             </div>
           )}
           {clarifyMutation.isError && <p className="field-error">{apiErrorMessage(clarifyMutation.error)}</p>}
@@ -995,7 +995,7 @@ export default function RfiDetailPage() {
             <button
               onClick={() => respondMutation.mutate()}
               disabled={isRichTextEmpty(answerDraft) || respondMutation.isPending}
-              className="btn-primary !px-3 !py-1.5 text-xs"
+              className="btn-primary !px-4 !py-2 text-xs"
             >
               {respondMutation.isPending ? 'Submitting…' : 'Respond'}
             </button>
@@ -1004,7 +1004,7 @@ export default function RfiDetailPage() {
             <button
               onClick={() => submitForReviewMutation.mutate()}
               disabled={submitForReviewMutation.isPending}
-              className="btn-secondary !px-3 !py-1.5 text-xs"
+              className="btn-secondary !px-4 !py-2 text-xs"
             >
               {submitForReviewMutation.isPending ? 'Sending…' : 'Submit for review'}
             </button>
@@ -1015,7 +1015,7 @@ export default function RfiDetailPage() {
             <Listbox aria-label="Closing organization"
               value={closingOrgSlot}
               onChange={(e) => setClosingOrgSlot(e.target.value as ProjectOrganizationSlot | '')}
-              className="field-input w-auto !py-1.5 text-xs"
+              className="field-input w-auto !py-2 text-xs"
               title="Which party is closing this RFI -- required before Close RFI / Approve & close will submit"
             >
               <option value="">Closing as…</option>
@@ -1030,11 +1030,11 @@ export default function RfiDetailPage() {
               <button
                 onClick={() => decideReviewMutation.mutate({ decision: 'approved', organizationSlot: closingOrgSlot || undefined })}
                 disabled={!closingOrgSlot || decideReviewMutation.isPending}
-                className="btn-primary !px-3 !py-1.5 text-xs"
+                className="btn-primary !px-4 !py-2 text-xs"
               >
                 Approve &amp; close
               </button>
-              <button onClick={() => setReviewRejectOpen(true)} className="btn-secondary !px-3 !py-1.5 text-xs">
+              <button onClick={() => setReviewRejectOpen(true)} className="btn-secondary !px-4 !py-2 text-xs">
                 Reject
               </button>
             </>
@@ -1042,7 +1042,7 @@ export default function RfiDetailPage() {
           {canDecideReview && reviewRejectOpen && (
             <div className="flex items-center gap-2">
               <input
-                className="field-input !py-1.5 text-xs"
+                className="field-input !py-2 text-xs"
                 placeholder="Reason for rejection…"
                 value={reviewRejectComment}
                 onChange={(e) => setReviewRejectComment(e.target.value)}
@@ -1050,11 +1050,11 @@ export default function RfiDetailPage() {
               <button
                 onClick={() => decideReviewMutation.mutate({ decision: 'rejected', comment: reviewRejectComment.trim() })}
                 disabled={!reviewRejectComment.trim() || decideReviewMutation.isPending}
-                className="btn-primary !px-3 !py-1.5 text-xs"
+                className="btn-primary !px-4 !py-2 text-xs"
               >
                 Send back
               </button>
-              <button onClick={() => setReviewRejectOpen(false)} className="btn-ghost !px-2 !py-1.5 text-xs">Cancel</button>
+              <button onClick={() => setReviewRejectOpen(false)} className="btn-ghost !px-2 !py-2 text-xs">Cancel</button>
             </div>
           )}
           {decideReviewMutation.isError && <p className="field-error">{apiErrorMessage(decideReviewMutation.error)}</p>}
@@ -1063,24 +1063,24 @@ export default function RfiDetailPage() {
             <button
               onClick={() => closeMutation.mutate()}
               disabled={!closingOrgSlot || closeMutation.isPending}
-              className="btn-secondary !px-3 !py-1.5 text-xs"
+              className="btn-secondary !px-4 !py-2 text-xs"
             >
               Close RFI
             </button>
           )}
           {canReopen && (
-            <button onClick={() => reopenMutation.mutate()} disabled={reopenMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
+            <button onClick={() => reopenMutation.mutate()} disabled={reopenMutation.isPending} className="btn-secondary !px-4 !py-2 text-xs">
               ↩ Reopen
             </button>
           )}
 
-          <button onClick={handleDownloadPdf} disabled={downloading} className="btn-secondary !px-3 !py-1.5 text-xs ml-auto">
+          <button onClick={handleDownloadPdf} disabled={downloading} className="btn-secondary !px-4 !py-2 text-xs ml-auto">
             {downloading ? 'Preparing…' : 'Download PDF'}
           </button>
           <button
             onClick={handleDownloadXls}
             disabled={xlsDownloading}
-            className="btn-secondary !px-3 !py-1.5 text-xs"
+            className="btn-secondary !px-4 !py-2 text-xs"
             title="Editable spreadsheet, formatted to match the PDF"
           >
             {xlsDownloading ? 'Preparing…' : 'Download XLS'}
@@ -1125,12 +1125,12 @@ function ImpactSummary({
   const showDetails = effectiveLevel !== 'no';
   return (
     <div>
-      <div className="text-xs text-ink-500 mb-1">{title}</div>
+      <div className="text-xs text-ink-500 mb-2">{title}</div>
       <span className={`badge ${showDetails ? 'bg-warn/15 text-warn' : 'bg-base-600 text-ink-500'}`}>
         {labels[effectiveLevel]}
       </span>
       {showDetails && (
-        <div className="mt-1.5 text-sm text-ink-300 space-y-0.5">
+        <div className="mt-2 text-sm text-ink-300 space-y-0">
           {amount != null && <div>{currency ? `${currency} ` : ''}{amount}</div>}
           {days != null && <div>{days} day{days === 1 ? '' : 's'}</div>}
           {description && <p className="text-xs text-ink-500 whitespace-pre-wrap">{description}</p>}
@@ -1164,9 +1164,9 @@ function ImpactEditor({
   const showDetails = level !== 'no';
   return (
     <div>
-      <div className="text-xs text-ink-500 mb-1">{title}</div>
+      <div className="text-xs text-ink-500 mb-2">{title}</div>
       <Listbox aria-label="Level"
-        className="field-input !py-1.5 text-xs w-auto"
+        className="field-input !py-2 text-xs w-auto"
         value={level}
         onChange={(e) => onLevelChange(e.target.value as RfiImpactLevel)}
       >
@@ -1175,18 +1175,18 @@ function ImpactEditor({
         ))}
       </Listbox>
       {showDetails && (
-        <div className="mt-2 space-y-1.5">
+        <div className="mt-2 space-y-2">
           {onAmountChange && (
-            <div className="flex gap-1.5">
+            <div className="flex gap-2">
               <input
-                className="field-input !py-1.5 text-xs w-20"
+                className="field-input !py-2 text-xs w-20"
                 placeholder="Currency"
                 value={currency ?? ''}
                 onChange={(e) => onCurrencyChange?.(e.target.value)}
               />
               <input
                 type="number"
-                className="field-input !py-1.5 text-xs flex-1"
+                className="field-input !py-2 text-xs flex-1"
                 placeholder="Estimated amount (optional)"
                 value={amount ?? ''}
                 onChange={(e) => onAmountChange(e.target.value)}
@@ -1196,14 +1196,14 @@ function ImpactEditor({
           {onDaysChange && (
             <input
               type="number"
-              className="field-input !py-1.5 text-xs w-full"
+              className="field-input !py-2 text-xs w-full"
               placeholder="Estimated days (optional)"
               value={days ?? ''}
               onChange={(e) => onDaysChange(e.target.value)}
             />
           )}
           <textarea
-            className="field-input !py-1.5 text-xs w-full min-h-[50px]"
+            className="field-input !py-2 text-xs w-full min-h-[50px]"
             placeholder="Description (optional)"
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
@@ -1223,9 +1223,9 @@ function StampPanel({
   stamp: string;
 }) {
   return (
-    <div className="tick-frame bg-base-900/60 border border-base-600 rounded px-3 py-2.5">
-      <div className="text-[11px] text-blueprint mb-1.5 font-medium">{title}</div>
-      <div className="grid grid-cols-3 gap-3 text-xs">
+    <div className="tick-frame bg-base-900/60 border border-base-600 rounded px-4 py-2">
+      <div className="text-xs text-blueprint mb-2 font-medium">{title}</div>
+      <div className="grid grid-cols-3 gap-4 text-xs">
         <div>
           <div className="text-ink-500">Uploaded by</div>
           <div className="text-ink-100">{uploadedBy ?? '—'}</div>
@@ -1272,12 +1272,12 @@ function OrganizationSlotRow({ projectId, canEdit }: { projectId: string; canEdi
 
   return (
     <section className="panel tick-frame p-4">
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-5 gap-4">
         {PROJECT_ORGANIZATION_SLOTS.map((slot) => {
           const org = bySlot.get(slot);
           const isUploading = logoMutation.isPending && logoMutation.variables?.slot === slot;
           return (
-            <div key={slot} className="flex flex-col items-center gap-1.5 text-center">
+            <div key={slot} className="flex flex-col items-center gap-2 text-center">
               {org?.logoUrl ? (
                 <img
                   src={org.logoUrl}
@@ -1286,14 +1286,14 @@ function OrganizationSlotRow({ projectId, canEdit }: { projectId: string; canEdi
                   className="w-14 h-14 object-contain rounded border border-base-600 bg-base-950"
                 />
               ) : (
-                <div className="w-14 h-14 rounded border border-dashed border-base-600 bg-base-900/60 flex items-center justify-center text-ink-500 text-[10px]">
+                <div className="w-14 h-14 rounded border border-dashed border-base-600 bg-base-900/60 flex items-center justify-center text-ink-500 text-xs">
                   No logo
                 </div>
               )}
-              <div className="text-[11px] text-ink-500 font-medium">{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</div>
+              <div className="text-xs text-ink-500 font-medium">{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</div>
               {org?.name && <div className="text-xs text-ink-100 truncate max-w-full">{org.name}</div>}
               {canEdit && (
-                <label className="text-[10px] text-blueprint hover:text-blueprint-hover cursor-pointer">
+                <label className="text-xs text-blueprint hover:text-blueprint-hover cursor-pointer">
                   {isUploading ? 'Uploading…' : org?.logoUrl ? 'Change logo' : 'Upload logo'}
                   <input
                     type="file"
@@ -1341,25 +1341,25 @@ function AttachmentSection({
 
   return (
     <div>
-      <div className="field-label mb-1.5">{kind === 'query' ? 'Query attachments' : 'Response attachments'}</div>
+      <div className="field-label mb-2">{kind === 'query' ? 'Query attachments' : 'Response attachments'}</div>
       {attachments.length === 0 && <p className="text-xs text-ink-500 mb-2">No files attached yet.</p>}
       {attachments.length > 0 && (
         <div className="overflow-x-auto mb-2">
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-ink-500 border-b border-base-600">
-                <th className="py-1.5 pr-3 font-medium">File</th>
-                <th className="py-1.5 pr-3 font-medium">Document type</th>
-                <th className="py-1.5 pr-3 font-medium">Revision</th>
-                <th className="py-1.5 pr-3 font-medium">Uploaded by</th>
-                <th className="py-1.5 pr-3 font-medium">Date</th>
-                <th className="py-1.5 pr-3 font-medium" />
+                <th className="py-2 pr-4 font-medium">File</th>
+                <th className="py-2 pr-4 font-medium">Document type</th>
+                <th className="py-2 pr-4 font-medium">Revision</th>
+                <th className="py-2 pr-4 font-medium">Uploaded by</th>
+                <th className="py-2 pr-4 font-medium">Date</th>
+                <th className="py-2 pr-4 font-medium" />
               </tr>
             </thead>
             <tbody>
               {attachments.map((a) => (
                 <tr key={a.id} className="border-b border-base-700/60 last:border-0">
-                  <td className="py-1.5 pr-3">
+                  <td className="py-2 pr-4">
                     {a.attachmentReadUrl ? (
                       <a href={a.attachmentReadUrl} target="_blank" rel="noreferrer" className="text-blueprint hover:text-blueprint-hover underline">
                         {a.filename}
@@ -1369,14 +1369,14 @@ function AttachmentSection({
                     )}
                     <span className="text-ink-500"> ({formatBytes(Number(a.sizeBytes))})</span>
                   </td>
-                  <td className="py-1.5 pr-3 text-ink-300">
+                  <td className="py-2 pr-4 text-ink-300">
                     {a.documentType ? RFI_DOCUMENT_TYPE_LABELS[a.documentType] : '—'}
                     {a.documentType === 'other' && a.documentTypeOther ? ` — ${a.documentTypeOther}` : ''}
                   </td>
-                  <td className="py-1.5 pr-3 text-ink-300">{a.revision ?? '—'}</td>
-                  <td className="py-1.5 pr-3 text-ink-300">{a.uploadedByName ?? '—'}</td>
-                  <td className="py-1.5 pr-3 text-ink-300">{formatDateTime(a.uploadedAt)}</td>
-                  <td className="py-1.5 text-right">
+                  <td className="py-2 pr-4 text-ink-300">{a.revision ?? '—'}</td>
+                  <td className="py-2 pr-4 text-ink-300">{a.uploadedByName ?? '—'}</td>
+                  <td className="py-2 pr-4 text-ink-300">{formatDateTime(a.uploadedAt)}</td>
+                  <td className="py-2 text-right">
                     {canUpload && (
                       <button onClick={() => deleteMutation.mutate(a.id)} disabled={deleteMutation.isPending} className="text-danger hover:text-danger/80" title="Remove">
                         ✕
@@ -1392,12 +1392,12 @@ function AttachmentSection({
       {uploadMutation.isError && <p className="field-error">{apiErrorMessage(uploadMutation.error)}</p>}
       {canUpload && (
         <div className="flex items-center gap-2">
-          <Listbox aria-label="Document type" className="field-input w-auto !py-1.5 text-xs" value={documentType} onChange={(e) => setDocumentType(e.target.value as RfiDocumentType)}>
+          <Listbox aria-label="Document type" className="field-input w-auto !py-2 text-xs" value={documentType} onChange={(e) => setDocumentType(e.target.value as RfiDocumentType)}>
             {RFI_DOCUMENT_TYPES.map((t) => (
               <option key={t} value={t}>{RFI_DOCUMENT_TYPE_LABELS[t]}</option>
             ))}
           </Listbox>
-          <label className="btn-secondary !px-3 !py-1.5 text-xs cursor-pointer">
+          <label className="btn-secondary !px-4 !py-2 text-xs cursor-pointer">
             {uploadMutation.isPending ? 'Uploading…' : '+ Upload document'}
             <input
               type="file"

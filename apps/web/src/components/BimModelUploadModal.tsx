@@ -102,7 +102,7 @@ export function BimModelUploadModal({
         {files.length > 0 && (
           <ul className="space-y-2">
             {files.map((f) => (
-              <li key={f.id} className="flex items-center gap-3 rounded border border-base-600 p-2">
+              <li key={f.id} className="flex items-center gap-4 rounded border border-base-600 p-2">
                 <input
                   className="field-input flex-1"
                   value={f.name}

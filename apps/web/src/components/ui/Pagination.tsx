@@ -26,7 +26,7 @@ export function Pagination({
       <span className="text-ink-500">
         {from}–{to} of {total}
       </span>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         <PageButton label="Previous" disabled={page <= 1} onClick={() => onPageChange(page - 1)} />
         {pages.map((p, i) =>
           p === null ? (

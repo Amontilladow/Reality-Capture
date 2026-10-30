@@ -84,7 +84,7 @@ function LevelBadge({ level }: { level: RiskLevel }) {
   const color = levelColors(useThemeColors())[level];
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide"
+      className="inline-flex items-center gap-2 px-2 py-0 rounded text-xs font-semibold uppercase tracking-wide"
       style={{ color, backgroundColor: `${color}22` }}
     >
       {LEVEL_LABELS[level]}
@@ -266,21 +266,21 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
             </DashHero>
 
             {availability && (
-              <p className="text-xs text-ink-500 flex flex-wrap gap-x-5 gap-y-1">
+              <p className="text-xs text-ink-500 flex flex-wrap gap-x-6 gap-y-2">
                 <span>RFIs {availability.rfisAvailable}</span>
                 <span>Issues {availability.issuesAvailable}</span>
                 <span>Snag items {availability.snagItemsAvailable}</span>
                 <span>QA inspections {availability.qaInspectionsAvailable}</span>
                 <span>BIM relationships: {availability.bimElementRelationships}</span>
-                <span>Programme data: {availability.programmeData}</span>
-                <span>Procurement data: {availability.procurementData}</span>
+                <span className="max-w-measure">Programme data: {availability.programmeData}</span>
+                <span className="max-w-measure">Procurement data: {availability.procurementData}</span>
               </p>
             )}
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <DashCard title="Risk index" onOpen={() => setGraphOpen(true)} openLabel="Open the risk graph">
                 <RadialGauge value={summary.overallScore} label="Project risk index" caption={LEVEL_LABELS[summary.overallLevel]} />
-                <p className="text-xs text-ink-500 text-center mt-3">
+                <p className="text-xs text-ink-500 text-center mt-4">
                   {summary.overallScoreTrendPct === null
                     ? 'No trend yet'
                     : `${summary.overallScoreTrendPct > 0 ? 'Up' : 'Down'} ${Math.abs(summary.overallScoreTrendPct)}% over 7 days`}
@@ -303,7 +303,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
                 aside={<span className="text-4xl font-light tabular-nums text-ink-100">{mitigationRatePct ?? 0}%</span>}
               >
                 <p className="text-xs text-ink-500 -mt-2">of all risks resolved or closed</p>
-                <div className="mt-auto pt-6 space-y-5">
+                <div className="mt-auto pt-6 space-y-6">
                   <SegmentBar
                     label="All risks by status"
                     segments={[
@@ -423,14 +423,14 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
           {(topQuery.data?.length ?? 0) > 0 && (
             <div className="space-y-2">
               <SectionHeader title="Top Management Risks" size="sm" />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {(topQuery.data ?? []).map((r) => (
                   <button key={r.id} onClick={() => openRisk(r.id)} className="panel tick-frame p-4 text-left hover:bg-base-700 transition-colors space-y-2">
                     <div className="flex items-center justify-between">
                       <LevelBadge level={r.level} />
                       <span className="text-lg font-semibold tabular-nums text-ink-100">{r.score}</span>
                     </div>
-                    <div className="text-sm text-ink-100 font-medium">{r.title}</div>
+                    <div className="text-sm text-ink-100 font-medium max-w-measure">{r.title}</div>
                     <TrendIndicator trend={r.trend} />
                     {r.recommendedAction && (
                       <p className="text-xs text-ink-500">Recommended: {r.recommendedAction}</p>
@@ -447,10 +447,10 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
               <SectionHeader title="Emerging Risks" size="sm" />
               <div className="panel tick-frame divide-y divide-base-700/60">
                 {(emergingQuery.data ?? []).map((r) => (
-                  <button key={r.id} onClick={() => openRisk(r.id)} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-base-700 transition-colors">
+                  <button key={r.id} onClick={() => openRisk(r.id)} className="w-full flex items-center justify-between px-4 py-4 text-left hover:bg-base-700 transition-colors">
                     <div>
                       <div className="text-sm text-ink-100">{r.title}</div>
-                      <div className="text-xs text-ink-500 mt-0.5">{r.explanation}</div>
+                      <div className="text-xs text-ink-500 mt-0">{r.explanation}</div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-4">
                       <span className="text-sm tabular-nums text-ink-300">{r.score}</span>
@@ -468,7 +468,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
               <SectionHeader title="Risk Concentration by Location" size="sm" />
               <div className="panel tick-frame divide-y divide-base-700/60">
                 {(clustersQuery.data ?? []).map((c) => (
-                  <div key={c.location} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                  <div key={c.location} className="flex items-center justify-between px-4 py-2 text-sm">
                     <span className="text-ink-100">{c.location}</span>
                     <span className="text-ink-500">{c.connectedRiskCount} connected risk(s) · avg score {c.averageScore}</span>
                   </div>
@@ -591,14 +591,14 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
           {/* Owner & due date -- the two fields the KPI strip, Attention
               panel and Register all read; editable right here so assigning
               an owner or a deadline doesn't require a separate screen. */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="panel p-3">
-              <div className="field-label !mb-1.5">Owner</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="panel p-4">
+              <div className="field-label !mb-2">Owner</div>
               <Listbox aria-label="Risk owner"
                 value={risk.ownerId ?? ''}
                 onChange={(e) => ownerMutation.mutate(e.target.value || null)}
                 disabled={ownerMutation.isPending}
-                className="field-input !py-1.5 text-xs"
+                className="field-input !py-2 text-xs"
               >
                 <option value="">Unassigned</option>
                 {members.map((m) => (
@@ -606,46 +606,46 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
                 ))}
               </Listbox>
             </div>
-            <div className="panel p-3">
-              <div className="flex items-center justify-between !mb-1.5">
+            <div className="panel p-4">
+              <div className="flex items-center justify-between !mb-2">
                 <div className="field-label !mb-0">Due date</div>
-                {tone === 'overdue' && <span className="text-[10px] font-semibold uppercase text-danger">Overdue</span>}
+                {tone === 'overdue' && <span className="text-xs font-semibold uppercase text-danger">Overdue</span>}
               </div>
               <div className="flex items-center gap-2">
                 <input
                   type="date"
                   value={dueDateInput || (risk.dueDate ? risk.dueDate.slice(0, 10) : '')}
                   onChange={(e) => setDueDateInput(e.target.value)}
-                  className="field-input !py-1.5 text-xs flex-1"
+                  className="field-input !py-2 text-xs flex-1"
                 />
                 <button
                   onClick={() => dueDateMutation.mutate(dueDateInput ? new Date(dueDateInput).toISOString() : null)}
                   disabled={dueDateMutation.isPending}
-                  className="btn-secondary !px-2 !py-1.5 text-xs shrink-0"
+                  className="btn-secondary !px-2 !py-2 text-xs shrink-0"
                 >
                   Save
                 </button>
                 {risk.dueDate && (
-                  <button onClick={() => { setDueDateInput(''); dueDateMutation.mutate(null); }} disabled={dueDateMutation.isPending} className="btn-ghost !px-2 !py-1.5 text-xs shrink-0">
+                  <button onClick={() => { setDueDateInput(''); dueDateMutation.mutate(null); }} disabled={dueDateMutation.isPending} className="btn-ghost !px-2 !py-2 text-xs shrink-0">
                     Clear
                   </button>
                 )}
               </div>
-              {risk.dueDate && <p className="text-xs text-ink-500 mt-1.5">Currently {formatDueDate(risk.dueDate)}</p>}
+              {risk.dueDate && <p className="text-xs text-ink-500 mt-2">Currently {formatDueDate(risk.dueDate)}</p>}
             </div>
           </div>
 
           {risk.explanation && (
             <div>
-              <div className="field-label !mb-1">Why is this a risk?</div>
+              <div className="field-label !mb-2">Why is this a risk?</div>
               <p className="text-sm text-ink-300">{risk.explanation}</p>
             </div>
           )}
 
           <div>
-            <div className="flex items-center justify-between !mb-1">
+            <div className="flex items-center justify-between !mb-2">
               <div className="field-label !mb-0">AI explanation</div>
-              <button onClick={() => aiExplanationMutation.mutate()} disabled={aiExplanationMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
+              <button onClick={() => aiExplanationMutation.mutate()} disabled={aiExplanationMutation.isPending} className="btn-secondary !px-2 !py-2 text-xs">
                 {aiExplanationMutation.isPending ? 'Generating…' : aiExplanationMutation.data ? 'Regenerate' : 'Generate'}
               </button>
             </div>
@@ -666,7 +666,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {(['probability', 'impact', 'exposure', 'dependency', 'urgency', 'recurrence'] as const).map((factor) => (
                 <div key={factor} className="panel p-2 text-center">
-                  <div className="text-[11px] text-ink-500 font-medium">{factor}</div>
+                  <div className="text-xs text-ink-500 font-medium">{factor}</div>
                   <div className="text-sm font-semibold text-ink-100 tabular-nums">{risk[factor]}</div>
                 </div>
               ))}
@@ -675,21 +675,21 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
 
           {risk.recommendedAction && (
             <div>
-              <div className="field-label !mb-1">Recommended action</div>
+              <div className="field-label !mb-2">Recommended action</div>
               <p className="text-sm text-ink-300">{risk.recommendedAction}</p>
             </div>
           )}
 
           <HumanAssessmentPanel projectId={projectId} risk={risk} onChanged={invalidate} />
 
-          <button onClick={() => onViewGraph(risk.rootNodeId)} className="btn-secondary !px-2.5 !py-1 text-xs">
+          <button onClick={() => onViewGraph(risk.rootNodeId)} className="btn-secondary !px-2 !py-2 text-xs">
             View in Risk Graph
           </button>
 
           {(chainQuery.data?.steps.length ?? 0) > 1 && (
             <div>
               <div className="field-label !mb-2">Risk chain</div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 {(chainQuery.data?.steps ?? []).map((step, i) => (
                   <div key={step.nodeId} className="flex items-center gap-2 text-sm">
                     {i > 0 && <span className="text-ink-500">↓ {step.relationshipFromPrevious}{step.confidence !== null && step.confidence < 1 ? ` (inferred, ${Math.round((step.confidence ?? 0) * 100)}%)` : ''}</span>}
@@ -704,7 +704,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
           {(evidenceQuery.data?.length ?? 0) > 0 && (
             <div>
               <div className="field-label !mb-2">Evidence</div>
-              <ul className="space-y-1">
+              <ul className="space-y-2">
                 {(evidenceQuery.data ?? []).map((e) => (
                   <li key={e.id} className="text-sm">
                     <EvidenceLink projectId={projectId} node={e.node} role={e.role} />
@@ -720,7 +720,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
               {(Object.keys(STATUS_LABELS) as RiskStatus[]).map((s) => (
                 <button
                   key={s} onClick={() => statusMutation.mutate(s)} disabled={statusMutation.isPending}
-                  className={`btn-secondary !px-2.5 !py-1 text-xs ${risk.status === s ? '!bg-blueprint/20 !text-blueprint' : ''}`}
+                  className={`btn-secondary !px-2 !py-2 text-xs ${risk.status === s ? '!bg-blueprint/20 !text-blueprint' : ''}`}
                 >
                   {STATUS_LABELS[s]}
                 </button>
@@ -733,16 +733,16 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
             {risk.overrideScore !== undefined && risk.overrideScore !== null ? (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-ink-500">Override reason: {risk.overrideReason}</span>
-                <button onClick={() => clearOverrideMutation.mutate()} className="btn-secondary !px-2.5 !py-1 text-xs">Clear override</button>
+                <button onClick={() => clearOverrideMutation.mutate()} className="btn-secondary !px-2 !py-2 text-xs">Clear override</button>
               </div>
             ) : (
               <div className="flex items-center gap-2 flex-wrap">
-                <input type="number" min={0} max={100} placeholder="Score" value={overrideScore} onChange={(e) => setOverrideScore(e.target.value)} className="field-input w-24 !py-1 text-xs" />
-                <input type="text" placeholder="Reason (required)" value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} className="field-input flex-1 !py-1 text-xs" />
+                <input type="number" min={0} max={100} placeholder="Score" value={overrideScore} onChange={(e) => setOverrideScore(e.target.value)} className="field-input w-24 !py-2 text-xs" />
+                <input type="text" placeholder="Reason (required)" value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} className="field-input flex-1 !py-2 text-xs" />
                 <button
                   onClick={() => overrideMutation.mutate()}
                   disabled={overrideMutation.isPending || overrideReason.length < 3}
-                  className="btn-secondary !px-2.5 !py-1 text-xs"
+                  className="btn-secondary !px-2 !py-2 text-xs"
                 >
                   Apply override
                 </button>
@@ -837,7 +837,7 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
       </div>
 
       {showDiscrepancyBanner && risk && (
-        <div className="panel p-3 mb-2 border border-warn/40 bg-warn/5 space-y-2">
+        <div className="panel p-4 mb-2 border border-warn/40 bg-warn/5 space-y-2">
           <p className="text-xs text-ink-100">
             <span className="font-semibold">Human and AI disagree:</span> human assessment is{' '}
             <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[risk.humanLevel!] }}>{MATRIX_LEVEL_LABELS[risk.humanLevel!]}</span>, AI score is{' '}
@@ -845,13 +845,13 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
             {' '}({risk.discrepancy!.levelGap} level{risk.discrepancy!.levelGap === 1 ? '' : 's'} apart).
           </p>
           <div className="flex items-center gap-2 flex-wrap">
-            <button onClick={() => keepHumanMutation.mutate()} disabled={keepHumanMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
+            <button onClick={() => keepHumanMutation.mutate()} disabled={keepHumanMutation.isPending} className="btn-secondary !px-2 !py-2 text-xs">
               Keep Human Assessment
             </button>
-            <button onClick={() => acceptAiMutation.mutate()} disabled={acceptAiMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
+            <button onClick={() => acceptAiMutation.mutate()} disabled={acceptAiMutation.isPending} className="btn-secondary !px-2 !py-2 text-xs">
               Accept AI Assessment
             </button>
-            <button onClick={() => setExpanded(true)} className="btn-secondary !px-2.5 !py-1 text-xs">
+            <button onClick={() => setExpanded(true)} className="btn-secondary !px-2 !py-2 text-xs">
               Update Assessment
             </button>
           </div>
@@ -866,35 +866,35 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
       )}
 
       {risk?.humanScore != null && !expanded ? (
-        <div className="flex items-center gap-3 flex-wrap text-sm">
+        <div className="flex items-center gap-4 flex-wrap text-sm">
           <span className="text-2xl font-semibold tabular-nums" style={{ color: MATRIX_LEVEL_COLORS[risk.humanLevel!] }}>{risk.humanScore}</span>
           <span className="text-xs text-ink-500">/ 25</span>
-          <span className="px-2 py-0.5 rounded text-xs font-semibold uppercase" style={{ color: MATRIX_LEVEL_COLORS[risk.humanLevel!], backgroundColor: `${MATRIX_LEVEL_COLORS[risk.humanLevel!]}22` }}>
+          <span className="px-2 py-0 rounded text-xs font-semibold uppercase" style={{ color: MATRIX_LEVEL_COLORS[risk.humanLevel!], backgroundColor: `${MATRIX_LEVEL_COLORS[risk.humanLevel!]}22` }}>
             {MATRIX_LEVEL_LABELS[risk.humanLevel!]}
           </span>
           {risk.primaryDriver && <span className="text-xs text-ink-500">Driver: {RISK_DRIVER_LABELS[risk.primaryDriver]}{risk.secondaryDriver ? ` / ${RISK_DRIVER_LABELS[risk.secondaryDriver]}` : ''}</span>}
         </div>
       ) : (
-        <div className="panel p-3 space-y-2">
+        <div className="panel p-4 space-y-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <Listbox aria-label="Probability" value={probability} onChange={(e) => setProbability(e.target.value)} className="field-input !py-1 text-xs">
+            <Listbox aria-label="Probability" value={probability} onChange={(e) => setProbability(e.target.value)} className="field-input !py-2 text-xs">
               <option value="">Probability…</option>
               {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{PROBABILITY_LABELS[n]}</option>)}
             </Listbox>
-            <Listbox aria-label="Impact" value={impact} onChange={(e) => setImpact(e.target.value)} className="field-input !py-1 text-xs">
+            <Listbox aria-label="Impact" value={impact} onChange={(e) => setImpact(e.target.value)} className="field-input !py-2 text-xs">
               <option value="">Impact…</option>
               {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{IMPACT_LABELS[n]}</option>)}
             </Listbox>
-            <Listbox aria-label="Primary driver" value={primaryDriver} onChange={(e) => setPrimaryDriver(e.target.value as RiskDriver)} className="field-input !py-1 text-xs">
+            <Listbox aria-label="Primary driver" value={primaryDriver} onChange={(e) => setPrimaryDriver(e.target.value as RiskDriver)} className="field-input !py-2 text-xs">
               <option value="">Primary driver…</option>
               {RISK_DRIVERS.map((d) => <option key={d} value={d}>{RISK_DRIVER_LABELS[d]}</option>)}
             </Listbox>
-            <Listbox aria-label="Secondary driver" value={secondaryDriver} onChange={(e) => setSecondaryDriver(e.target.value as RiskDriver)} className="field-input !py-1 text-xs">
+            <Listbox aria-label="Secondary driver" value={secondaryDriver} onChange={(e) => setSecondaryDriver(e.target.value as RiskDriver)} className="field-input !py-2 text-xs">
               <option value="">Secondary driver (optional)…</option>
               {RISK_DRIVERS.map((d) => <option key={d} value={d}>{RISK_DRIVER_LABELS[d]}</option>)}
             </Listbox>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             {previewScore !== null ? (
               <span className="text-sm text-ink-300">
                 Risk Score <span className="font-semibold tabular-nums">{previewScore}</span> / 25
@@ -902,7 +902,7 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
             ) : (
               <span className="text-xs text-ink-500">Select probability and impact to see the score.</span>
             )}
-            <button onClick={() => mutation.mutate()} disabled={!canSave || mutation.isPending} className="btn-primary !px-2.5 !py-1 text-xs ml-auto">
+            <button onClick={() => mutation.mutate()} disabled={!canSave || mutation.isPending} className="btn-primary !px-2 !py-2 text-xs ml-auto">
               {mutation.isPending ? 'Saving…' : 'Save assessment'}
             </button>
           </div>

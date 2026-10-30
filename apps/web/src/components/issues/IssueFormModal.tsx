@@ -172,19 +172,19 @@ export function IssueFormModal({
   return (
     <Modal open={open} onClose={onClose} title={isEdit ? 'Edit issue' : 'New issue'} wide>
       <div className="space-y-4">
-        <div className="flex justify-end -mt-1">
+        <div className="flex justify-end -mt-2">
           <HelpLink slug={isEdit ? 'updating-an-issue' : 'creating-an-issue'} label={isEdit ? 'How to update an issue' : 'How to fill out an issue'} />
         </div>
         {error && <p className="field-error">{error}</p>}
 
         {!isEdit && defaultElementId && (
-          <div className="text-xs text-ink-500 bg-base-700/40 rounded px-3 py-2">
+          <div className="text-xs text-ink-500 bg-base-700/40 rounded px-4 py-2">
             BIM element: <span className="text-ink-100">{defaultElementName || defaultElementId}</span>
           </div>
         )}
 
         {!isEdit && viewState && (
-          <div className="text-xs text-ink-500 bg-base-700/40 rounded px-3 py-2">
+          <div className="text-xs text-ink-500 bg-base-700/40 rounded px-4 py-2">
             3D view captured{viewState.screenshotStorageKey ? ' with screenshot' : ''} — "view in 3D" will reopen this exact vantage point.
           </div>
         )}
@@ -199,7 +199,7 @@ export function IssueFormModal({
           <textarea id="description" className="field-input min-h-[72px]" value={description} onChange={(e) => setDescription(e.target.value)} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           {!isEdit && (
             <div>
               <label className="field-label" htmlFor="issueType">Type</label>
@@ -220,7 +220,7 @@ export function IssueFormModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="assignedTo">Assignee</label>
             <Listbox id="assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
@@ -240,7 +240,7 @@ export function IssueFormModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="discipline">Discipline *</label>
             <Listbox
@@ -306,7 +306,7 @@ export function IssueFormModal({
               />
             </div>
             {photos.length === 0 && (
-              <p className="text-xs text-ink-500 mt-1">Optional -- attach photos as evidence. They'll also appear in the project's Captures tab.</p>
+              <p className="text-xs text-ink-500 mt-2">Optional -- attach photos as evidence. They'll also appear in the project's Captures tab.</p>
             )}
             {photos.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">

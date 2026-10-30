@@ -23,7 +23,7 @@ export function ToastViewport() {
           key={t.id}
           role="status"
           onClick={() => dismiss(t.id)}
-          className={`panel border px-4 py-3 text-sm text-ink-100 shadow-lg toast-in cursor-pointer ${TONE_CLASS[t.tone]}`}
+          className={`panel border px-4 py-4 text-sm text-ink-100 shadow-lg toast-in cursor-pointer ${TONE_CLASS[t.tone]}`}
         >
           {t.message}
         </div>

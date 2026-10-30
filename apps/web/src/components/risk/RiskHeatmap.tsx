@@ -101,21 +101,21 @@ export function RiskHeatmap({ cells, risks, onSelectRisk, onFilterCell }: {
     <figure className="panel p-6 h-full flex flex-col" aria-labelledby="risk-matrix-title">
       <div className="mb-4">
         <div id="risk-matrix-title" className="text-xl font-normal tracking-tight text-ink-100">Risk matrix</div>
-        <p className="text-xs text-ink-500 mt-1">Where open risks sit by probability and impact</p>
+        <p className="text-xs text-ink-500 mt-2">Where open risks sit by probability and impact</p>
       </div>
 
       <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-2">
         {/* Row labels, probability 5 at the top */}
-        <div className="grid grid-rows-5 gap-1">
+        <div className="grid grid-rows-5 gap-2">
           {[5, 4, 3, 2, 1].map((p) => (
-            <div key={p} className="h-12 flex items-center justify-end gap-1.5 text-xs text-ink-300">
+            <div key={p} className="h-12 flex items-center justify-end gap-2 text-xs text-ink-300">
               <span className="hidden sm:inline">{PROBABILITY_LABELS[p]}</span>
               <span className="font-semibold tabular-nums text-ink-100 w-3 text-right">{p}</span>
             </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-5 gap-1">
+        <div className="grid grid-cols-5 gap-2">
           {[5, 4, 3, 2, 1].flatMap((p) => [1, 2, 3, 4, 5].map((i) => {
             const cell = cellByCoords.get(`${p}-${i}`);
             const count = cell?.count ?? 0;
@@ -154,7 +154,7 @@ export function RiskHeatmap({ cells, risks, onSelectRisk, onFilterCell }: {
 
         {/* Column labels, impact 1 on the left */}
         <div />
-        <div className="grid grid-cols-5 gap-1 mt-1.5">
+        <div className="grid grid-cols-5 gap-2 mt-2">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="text-center text-xs text-ink-300 leading-tight">
               <span className="font-semibold tabular-nums text-ink-100">{i}</span>
@@ -163,15 +163,15 @@ export function RiskHeatmap({ cells, risks, onSelectRisk, onFilterCell }: {
           ))}
         </div>
         <div />
-        <div className="flex justify-between text-axis text-ink-500 mt-1">
+        <div className="flex justify-between text-axis text-ink-500 mt-2">
           <span>Probability ↑ rows</span>
           <span>Impact → columns</span>
         </div>
       </div>
 
       {/* Legend strip along the bottom, one key per treatment in use */}
-      <div className="mt-auto pt-4 border-t border-base-600 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-ink-500">
-        <span className="flex items-center gap-1.5">
+      <div className="mt-auto pt-4 border-t border-base-600 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-ink-500">
+        <span className="flex items-center gap-2">
           <span className="flex" aria-hidden="true">
             {[0.12, 0.35, 0.6].map((o) => (
               <span key={o} className="w-3.5 h-3.5 first:rounded-l-sm last:rounded-r-sm" style={{ backgroundColor: `rgb(var(--rc-ink-100) / ${o})` }} />
@@ -180,12 +180,12 @@ export function RiskHeatmap({ cells, risks, onSelectRisk, onFilterCell }: {
           Fewer to more open risks
         </span>
         {focal && (
-          <span className="flex items-center gap-1.5">
+          <span className="flex items-center gap-2">
             <span aria-hidden="true" className="w-3.5 h-3.5 rounded-sm border border-danger" style={{ backgroundColor: mix(colors.danger, colors['base-800'], FOCAL_OPACITY) }} />
             Highest-scoring cell with open risks (score {focal.score}, {focal.count} risk{focal.count === 1 ? '' : 's'})
           </span>
         )}
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-2">
           <span aria-hidden="true" className="w-3.5 h-3.5 rounded-sm border border-dashed border-ink-500/70" />
           High severity or worse
         </span>

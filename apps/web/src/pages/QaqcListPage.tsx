@@ -69,7 +69,7 @@ export default function QaqcListPage() {
         title={shortLabel}
         actions={
           <>
-            <Link to={`/projects/${projectId}/qaqc`} className="btn-ghost !px-2 !py-1 text-xs">
+            <Link to={`/projects/${projectId}/qaqc`} className="btn-ghost !px-2 !py-2 text-xs">
               ← QAQC
             </Link>
             {canCreate && (
@@ -82,7 +82,7 @@ export default function QaqcListPage() {
       />
 
       <div className="p-6 space-y-4">
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-4 flex-wrap">
           <Listbox aria-label="Status" className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
             {(['open', 'pending_confirmation', 'closed', 'reopened'] as const).map((s) => (
@@ -118,13 +118,13 @@ export default function QaqcListPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                  <th className="px-4 py-2.5 font-medium">Number</th>
-                  <th className="px-4 py-2.5 font-medium">Subject</th>
-                  <th className="px-4 py-2.5 font-medium">Discipline</th>
-                  <th className="px-4 py-2.5 font-medium">Status</th>
-                  <th className="px-4 py-2.5 font-medium">Priority</th>
-                  <th className="px-4 py-2.5 font-medium">Assignee</th>
-                  <th className="px-4 py-2.5 font-medium">Due</th>
+                  <th className="px-4 py-2 font-medium">Number</th>
+                  <th className="px-4 py-2 font-medium">Subject</th>
+                  <th className="px-4 py-2 font-medium">Discipline</th>
+                  <th className="px-4 py-2 font-medium">Status</th>
+                  <th className="px-4 py-2 font-medium">Priority</th>
+                  <th className="px-4 py-2 font-medium">Assignee</th>
+                  <th className="px-4 py-2 font-medium">Due</th>
                 </tr>
               </thead>
               <tbody>
@@ -136,13 +136,13 @@ export default function QaqcListPage() {
                       onClick={() => navigate(`/projects/${projectId}/qaqc/${recordType}/${r.id}`)}
                       className="border-b border-base-700/60 last:border-0 hover:bg-base-700 cursor-pointer"
                     >
-                      <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{r.recordNumber ?? '—'}</td>
-                      <td className="px-4 py-2.5">{r.subject}</td>
-                      <td className="px-4 py-2.5 text-ink-300">{r.discipline ? RFI_DISCIPLINE_LABELS[r.discipline] : '—'}</td>
-                      <td className="px-4 py-2.5"><StatusBadge tone={QAQC_STATUS_TONE[r.status]} label={QAQC_STATUS_LABELS[r.status]} /></td>
-                      <td className="px-4 py-2.5"><StatusBadge tone={QAQC_PRIORITY_TONE[r.priority]} label={QAQC_PRIORITY_LABELS[r.priority]} /></td>
-                      <td className="px-4 py-2.5 text-ink-300">{r.assignedToName ?? 'Unassigned'}</td>
-                      <td className={`px-4 py-2.5 ${overdue ? 'text-danger' : 'text-ink-300'}`}>{formatDate(r.dueDate)}</td>
+                      <td className="px-4 py-2 font-mono text-xs text-ink-500">{r.recordNumber ?? '—'}</td>
+                      <td className="px-4 py-2">{r.subject}</td>
+                      <td className="px-4 py-2 text-ink-300">{r.discipline ? RFI_DISCIPLINE_LABELS[r.discipline] : '—'}</td>
+                      <td className="px-4 py-2"><StatusBadge tone={QAQC_STATUS_TONE[r.status]} label={QAQC_STATUS_LABELS[r.status]} /></td>
+                      <td className="px-4 py-2"><StatusBadge tone={QAQC_PRIORITY_TONE[r.priority]} label={QAQC_PRIORITY_LABELS[r.priority]} /></td>
+                      <td className="px-4 py-2 text-ink-300">{r.assignedToName ?? 'Unassigned'}</td>
+                      <td className={`px-4 py-2 ${overdue ? 'text-danger' : 'text-ink-300'}`}>{formatDate(r.dueDate)}</td>
                     </tr>
                   );
                 })}

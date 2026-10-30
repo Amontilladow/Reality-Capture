@@ -73,9 +73,9 @@ export function ExecutiveBriefing({ projectId }: { projectId: string }) {
 
   return (
     <div className="p-6 pb-0 space-y-4">
-      <div className="panel tick-frame p-5 space-y-3">
+      <div className="panel tick-frame p-6 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <StatusBadge tone={STATUS_TONE[status]} label={STATUS_LABEL[status]} dot />
             <span className="text-xs text-ink-500">
               {oldestUpdate ? `As of ${new Date(oldestUpdate).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}` : 'Live'}
@@ -91,7 +91,7 @@ export function ExecutiveBriefing({ projectId }: { projectId: string }) {
 
       {visibleSignals.length > 0 && (
         <div className="panel tick-frame divide-y divide-base-700/60">
-          <div className="px-4 py-2.5">
+          <div className="px-4 py-2">
             <SectionHeader
               title="Priority Actions"
               size="sm"
@@ -103,8 +103,8 @@ export function ExecutiveBriefing({ projectId }: { projectId: string }) {
             />
           </div>
           {visibleSignals.map((signal, i) => (
-            <Link key={`${signal.domain}-${i}`} to={signal.to} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-base-700 transition-colors">
-              <div className="flex items-center gap-3 min-w-0">
+            <Link key={`${signal.domain}-${i}`} to={signal.to} className="flex items-center justify-between gap-4 px-4 py-4 hover:bg-base-700 transition-colors">
+              <div className="flex items-center gap-4 min-w-0">
                 <StatusBadge tone={SEVERITY_TONE[signal.severity]} label={SEVERITY_LABEL[signal.severity]} />
                 <span className="text-xs text-ink-500 shrink-0 font-medium">{signal.domain}</span>
                 <span className="text-sm text-ink-100 truncate">{signal.label}</span>

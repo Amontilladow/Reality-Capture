@@ -70,10 +70,10 @@ export default function AiSettingsPage() {
     <>
       <PageHeader eyebrow="Account Settings" title="AI Provider" />
       <div className="p-6 space-y-6 max-w-3xl">
-        <div className="panel tick-frame p-5 space-y-4">
+        <div className="panel tick-frame p-6 space-y-4">
           <div>
             <h2 className="text-sm font-semibold text-ink-100">AI Mode</h2>
-            <p className="text-xs text-ink-500 mt-1">
+            <p className="text-xs text-ink-500 mt-2">
               By default, the AI Assistant runs on RealityCapture's own AI provider -- nothing to set up.
               Connect your own provider below to run the assistant on your account instead. Either way, the
               assistant only answers within RealityCapture's own rules: the same domain guard, tools, and
@@ -84,7 +84,7 @@ export default function AiSettingsPage() {
           {statusQuery.isLoading && <p className="text-sm text-ink-500">Loading…</p>}
 
           {!statusQuery.isLoading && (
-            <div className="flex items-center justify-between rounded border border-base-700/60 px-3 py-2.5">
+            <div className="flex items-center justify-between rounded border border-base-700/60 px-4 py-2">
               <div className="text-sm">
                 <span className="text-ink-100 font-medium">
                   {connected ? 'My AI Provider' : 'RealityCapture AI'}
@@ -139,18 +139,18 @@ export default function AiSettingsPage() {
           {testMutation.isError && <p className="field-error">{apiErrorMessage(testMutation.error)}</p>}
         </div>
 
-        <div className="panel tick-frame p-5 space-y-4">
+        <div className="panel tick-frame p-6 space-y-4">
           <div>
             <h2 className="text-sm font-semibold text-ink-100">
               {connected ? 'Replace Connection' : 'Connect My AI Provider'}
             </h2>
-            <p className="text-xs text-ink-500 mt-1">
+            <p className="text-xs text-ink-500 mt-2">
               Credentials are encrypted at rest and never shown again after you submit them -- only a last-4
               fingerprint is kept. We test the connection before saving it.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="field-label" htmlFor="ai-provider">Provider</label>
               <Listbox

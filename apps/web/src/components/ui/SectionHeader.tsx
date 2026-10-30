@@ -20,10 +20,10 @@ export function SectionHeader({ eyebrow, title, tone = 'teal', actions, size = '
   size?: 'sm' | 'md';
 }) {
   return (
-    <div className="flex items-end justify-between gap-3 flex-wrap">
+    <div className="flex items-end justify-between gap-4 flex-wrap">
       <div className="min-w-0">
         {eyebrow && (
-          <div className={`flex items-center gap-1.5 text-xs font-medium mb-0.5 ${TONE_EYEBROW[tone]}`}>
+          <div className={`flex items-center gap-2 text-xs font-medium mb-0 ${TONE_EYEBROW[tone]}`}>
             {tone === 'orange' && <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-orange" />}
             {eyebrow}
           </div>

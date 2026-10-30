@@ -24,13 +24,13 @@ export function Card({
   return (
     <div className={`panel ${tickFrame ? 'tick-frame' : ''} ${className}`}>
       {(title || actions) && (
-        <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3 border-b border-base-600">
+        <div className="flex items-center justify-between gap-4 px-6 pt-4 pb-4 border-b border-base-600">
           {title && <h3 className="text-sm font-semibold truncate">{title}</h3>}
           {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
         </div>
       )}
-      <div className="px-5 py-4">{children}</div>
-      {footer && <div className="px-5 py-3 border-t border-base-600">{footer}</div>}
+      <div className="px-6 py-4">{children}</div>
+      {footer && <div className="px-6 py-4 border-t border-base-600">{footer}</div>}
     </div>
   );
 }

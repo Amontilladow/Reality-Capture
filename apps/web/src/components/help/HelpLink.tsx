@@ -9,7 +9,7 @@ export function HelpLink({ slug, label = 'Help' }: { slug: string; label?: strin
       href={`/projects/help?article=${encodeURIComponent(slug)}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1 text-xs text-ink-500 hover:text-signal transition-colors"
+      className="inline-flex items-center gap-2 text-xs text-ink-500 hover:text-signal transition-colors"
       title="Open this topic in the Help Centre (opens in a new tab)"
     >
       <IconHelpCircle className="w-3.5 h-3.5" />

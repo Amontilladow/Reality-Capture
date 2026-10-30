@@ -61,7 +61,7 @@ export default function QaInspectionsPage() {
       />
 
       <div className="p-6 space-y-4">
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-4 flex-wrap">
           <Listbox aria-label="Status" className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
             {QA_STATUSES.map((s) => (
@@ -70,7 +70,7 @@ export default function QaInspectionsPage() {
           </Listbox>
 
           {summaryQuery.data && (
-            <div className="flex gap-2 text-[10px] font-mono text-ink-500 ml-auto">
+            <div className="flex gap-2 text-xs font-mono text-ink-500 ml-auto">
               <span>{summaryQuery.data.total} total</span>
               <span>·</span>
               <span>{summaryQuery.data.pending} pending</span>
@@ -95,13 +95,13 @@ export default function QaInspectionsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                  <th className="px-4 py-2.5 font-medium">Number</th>
-                  <th className="px-4 py-2.5 font-medium">Title</th>
-                  <th className="px-4 py-2.5 font-medium">Type</th>
-                  <th className="px-4 py-2.5 font-medium">Location</th>
-                  <th className="px-4 py-2.5 font-medium">Status</th>
-                  <th className="px-4 py-2.5 font-medium">Inspector</th>
-                  <th className="px-4 py-2.5 font-medium">Date</th>
+                  <th className="px-4 py-2 font-medium">Number</th>
+                  <th className="px-4 py-2 font-medium">Title</th>
+                  <th className="px-4 py-2 font-medium">Type</th>
+                  <th className="px-4 py-2 font-medium">Location</th>
+                  <th className="px-4 py-2 font-medium">Status</th>
+                  <th className="px-4 py-2 font-medium">Inspector</th>
+                  <th className="px-4 py-2 font-medium">Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -111,13 +111,13 @@ export default function QaInspectionsPage() {
                     onClick={() => setSelectedId(i.id)}
                     className="border-b border-base-700/60 last:border-0 hover:bg-base-700 cursor-pointer"
                   >
-                    <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{i.inspectionNumber ?? '—'}</td>
-                    <td className="px-4 py-2.5">{i.title}</td>
-                    <td className="px-4 py-2.5 text-ink-300">{i.inspectionType ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-ink-300">{i.location ?? '—'}</td>
-                    <td className="px-4 py-2.5"><span className={`badge ${QA_STATUS_BADGE_CLASS[i.status]}`}>{QA_STATUS_LABELS[i.status]}</span></td>
-                    <td className="px-4 py-2.5 text-ink-300">{i.assignedToName ?? 'Unassigned'}</td>
-                    <td className="px-4 py-2.5 text-ink-300">{formatDate(i.inspectionDate)}</td>
+                    <td className="px-4 py-2 font-mono text-xs text-ink-500">{i.inspectionNumber ?? '—'}</td>
+                    <td className="px-4 py-2">{i.title}</td>
+                    <td className="px-4 py-2 text-ink-300">{i.inspectionType ?? '—'}</td>
+                    <td className="px-4 py-2 text-ink-300">{i.location ?? '—'}</td>
+                    <td className="px-4 py-2"><span className={`badge ${QA_STATUS_BADGE_CLASS[i.status]}`}>{QA_STATUS_LABELS[i.status]}</span></td>
+                    <td className="px-4 py-2 text-ink-300">{i.assignedToName ?? 'Unassigned'}</td>
+                    <td className="px-4 py-2 text-ink-300">{formatDate(i.inspectionDate)}</td>
                   </tr>
                 ))}
               </tbody>
