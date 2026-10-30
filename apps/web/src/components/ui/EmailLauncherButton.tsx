@@ -102,7 +102,7 @@ export function EmailLauncherButton({ className = '' }: { className?: string }) 
             aria-label="Change email app"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
-            className="w-5 h-9 inline-flex items-center justify-center text-ink-500 hover:bg-base-700 hover:text-ink-100 transition-colors"
+            className="w-6 h-9 inline-flex items-center justify-center text-ink-500 hover:bg-base-700 hover:text-ink-100 transition-colors"
           >
             <IconChevronDown className="w-3 h-3" />
           </button>

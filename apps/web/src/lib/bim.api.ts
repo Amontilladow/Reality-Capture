@@ -148,7 +148,7 @@ export const CONSTRUCTION_STATUS_OPTIONS: Array<{ value: string; label: string }
 
 export const CONSTRUCTION_STATUS_COLORS: Record<string, string> = {
   not_started: '#9CA3AF',
-  in_progress: '#A88462', // palette tan (was amber); 3D material colour, not a CSS token
+  in_progress: '#6F6257', // warm taupe from the palette: distinct from the grey not_started; 3D material colour, not a CSS token
   complete: '#22C55E',
   defective: '#EF4444',
 };

@@ -18,7 +18,6 @@ const SEVERE_LEVELS = new Set<RiskMatrixLevel>(['HIGH', 'VERY_HIGH', 'CRITICAL']
 // text flips to the panel colour once the fill is dark enough to carry it.
 const RAMP_MIN = 0.07;
 const RAMP_MAX = 0.65;
-const TEXT_FLIP = 0.4;
 const FOCAL_OPACITY = 0.85;
 
 // Cell fills are painted as the opaque result of the ramp opacity over the
@@ -28,6 +27,24 @@ function mix(fgHex: string, bgHex: string, alpha: number): string {
   const ch = (hex: string, i: number) => parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16);
   const rgb = [0, 1, 2].map((i) => Math.round(ch(fgHex, i) * alpha + ch(bgHex, i) * (1 - alpha)));
   return `rgb(${rgb.join(', ')})`;
+}
+
+// The count's colour is whichever candidate reads best on the drawn fill,
+// so every palette (light or dark) keeps it at AA without hand-tuned
+// thresholds.
+function luminance(color: string): number {
+  const rgb = color.startsWith('#')
+    ? [0, 1, 2].map((i) => parseInt(color.slice(1 + i * 2, 3 + i * 2), 16))
+    : (color.match(/\d+/g) ?? []).slice(0, 3).map(Number);
+  const [r, g, b] = rgb.map((v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+function contrast(a: string, b: string): number {
+  const la = luminance(a), lb = luminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+function readableOn(bg: string, candidates: string[]): string {
+  return candidates.reduce((best, c) => (contrast(c, bg) > contrast(best, bg) ? c : best));
 }
 
 // 5x5 Risk Matrix (brief sections 4, 20-21). Probability increases upward,
@@ -106,11 +123,16 @@ export function RiskHeatmap({ cells, risks, onSelectRisk, onFilterCell }: {
             const severe = cell ? SEVERE_LEVELS.has(cell.level) : false;
             const opacity = count > 0 && !isFocal ? opacityFor(count) : 0;
             const label = describe(cell, p, i);
-            const style = isFocal
-              ? { backgroundColor: mix(colors.danger, colors['base-800'], FOCAL_OPACITY), color: colors['base-800'] }
-              : count > 0
-                ? { backgroundColor: mix(colors['ink-100'], colors['base-800'], opacity), color: opacity >= TEXT_FLIP ? colors['base-800'] : colors['ink-100'] }
-                : undefined;
+            const inks = [colors['base-800'], colors['ink-100'], colors.noir];
+            let fill = isFocal
+              ? mix(colors.danger, colors['base-800'], FOCAL_OPACITY)
+              : count > 0 ? mix(colors['ink-100'], colors['base-800'], opacity) : undefined;
+            // A mid-ramp shade can sit where no ink reaches 4.5:1; ease it
+            // toward the panel (which panel text always reads on) until one does.
+            for (let o = opacity; fill && !isFocal && o > 0 && contrast(readableOn(fill, inks), fill) < 4.5; o -= 0.005) {
+              fill = mix(colors['ink-100'], colors['base-800'], o);
+            }
+            const style = fill ? { backgroundColor: fill, color: readableOn(fill, inks) } : undefined;
             return (
               <button
                 key={`${p}-${i}`}

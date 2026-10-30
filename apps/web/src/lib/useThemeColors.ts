@@ -6,7 +6,7 @@ const TOKEN_NAMES = [
   'ink-100', 'ink-300', 'ink-500',
   'signal', 'signal-hover', 'signal-muted',
   'blueprint', 'blueprint-hover', 'blueprint-muted',
-  'ok', 'warn', 'danger', 'high',
+  'ok', 'warn', 'danger', 'high', 'noir',
 ] as const;
 
 export type ThemeColors = Record<typeof TOKEN_NAMES[number], string>;
