@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Project, ProjectPhase } from '@engineeringos/types';
 import { PROJECT_PHASE_LABELS } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
+import { MobileFold } from '../components/ui/MobileFold';
 import { HierarchyTree } from '../components/HierarchyTree';
 import { AddHierarchyNodeModal } from '../components/AddHierarchyNodeModal';
 import { CaptureGrid } from '../components/CaptureGrid';
@@ -17,6 +18,11 @@ import { listCaptures } from '../lib/captures.api';
 import { useAuthStore } from '../store/auth.store';
 
 type NodeModalState = { kind: 'building' } | { kind: 'level'; buildingId: string } | { kind: 'location'; buildingId: string; levelId: string } | null;
+
+function hierarchySummary(buildings: { levels?: unknown[] }[]): string {
+  const levels = buildings.reduce((n, b) => n + (b.levels?.length ?? 0), 0);
+  return `${buildings.length} ${buildings.length === 1 ? 'building' : 'buildings'} · ${levels} ${levels === 1 ? 'level' : 'levels'}`;
+}
 
 export default function ProjectDetail() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -112,6 +118,10 @@ export default function ProjectDetail() {
 
       <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-1">
+          <MobileFold
+            title="Buildings & locations"
+            summary={hierarchyQuery.data ? hierarchySummary(hierarchyQuery.data) : undefined}
+          >
           <div className="tick-frame panel p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xs text-ink-500 font-medium">Hierarchy</h2>
@@ -136,6 +146,7 @@ export default function ProjectDetail() {
               />
             )}
           </div>
+          </MobileFold>
         </div>
 
         <div className="lg:col-span-3 space-y-4">
@@ -170,7 +181,9 @@ export default function ProjectDetail() {
               {capturesQuery.data && <CaptureGrid projectId={projectId} captures={capturesQuery.data.data} />}
             </>
           ) : (
-            <div className="tick-frame panel p-12 text-center text-sm text-ink-500">
+            // Phones stack the tree above, so the hint (and its empty panel)
+            // only shows where there is a "left".
+            <div className="hidden lg:block tick-frame panel p-12 text-center text-sm text-ink-500">
               Select a location on the left to see what's there.
             </div>
           )}

@@ -253,13 +253,60 @@ export function AppShell() {
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0">
+      {/* pb-16 keeps the last row of a page clear of the phone tab bar. */}
+      <main className="flex-1 min-w-0 pb-16 md:pb-0">
         <Outlet />
       </main>
+
+      <PhoneTabBar
+        projectId={inProject ? params.projectId : undefined}
+        subcontractor={isSubcontractor}
+        onMore={() => setMobileNavOpen(true)}
+      />
 
       <ChatWidget />
       <OnboardingFlow />
     </div>
+  );
+}
+
+// Phones: the four places a site team goes most, as a bottom tab bar
+// (thumb reach, always visible), plus "More" for the full menu drawer.
+function PhoneTabBar({ projectId, subcontractor, onMore }: { projectId?: string; subcontractor: boolean; onMore: () => void }) {
+  const base = projectId ? `/projects/${projectId}` : '/projects';
+  const tabs: NavItem[] = projectId
+    ? subcontractor
+      ? [{ to: 'rfis', label: 'RFIs', icon: IconQuestion }]
+      : [
+          { to: '', label: 'Overview', icon: IconLayers, end: true },
+          { to: 'issues', label: 'Issues', icon: IconFlag },
+          { to: 'rfis', label: 'RFIs', icon: IconQuestion },
+          { to: 'risk', label: 'Risk', icon: IconShield },
+        ]
+    : [
+        { to: '', label: 'Projects', icon: IconGrid, end: true },
+        { to: 'messages', label: 'Messages', icon: IconMail },
+        { to: 'workforce', label: 'Workforce', icon: IconGauge },
+      ];
+  const tabClass = (active: boolean) =>
+    `flex-1 flex flex-col items-center justify-center gap-0 text-xs transition-colors ${active ? 'text-ink-100 font-semibold' : 'text-ink-500 hover:text-ink-100'}`;
+  return (
+    <nav
+      aria-label="Quick navigation"
+      className="md:hidden fixed bottom-0 inset-x-0 z-30 h-16 flex bg-base-950 border-t border-base-600/70"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      {tabs.map((t) => (
+        <NavLink key={t.label} to={t.to ? `${base}/${t.to}` : base} end={t.end} className={({ isActive }) => tabClass(isActive)}>
+          <t.icon className="w-5 h-5" />
+          {t.label}
+        </NavLink>
+      ))}
+      <button type="button" onClick={onMore} className={tabClass(false)}>
+        <IconMenu className="w-5 h-5" />
+        More
+      </button>
+    </nav>
   );
 }
 

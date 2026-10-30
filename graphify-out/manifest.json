@@ -3996,9 +3996,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/ProjectDashboard.tsx": {
-    "mtime": 1793331908.9192586,
-    "seen": 1793332050.055161,
-    "ast_hash": "e46ee1f3ad985f69b3e44a77b89eeee4",
+    "mtime": 1793344821.7603197,
+    "seen": 1793344906.4053085,
+    "ast_hash": "314b857d9b1eb6b9259978776162ae88",
     "semantic_hash": ""
   },
   "apps/web/src/components/ProtectedRoute.tsx": {
@@ -4044,9 +4044,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/RiskIntelligenceSection.tsx": {
-    "mtime": 1793339080.8758254,
-    "seen": 1793339428.4939156,
-    "ast_hash": "1ceb27b1e67b1db4796beddddfb6ff3a",
+    "mtime": 1793344810.1343248,
+    "seen": 1793344906.4056315,
+    "ast_hash": "e09d5b4279055204cbdace82a9413d1c",
     "semantic_hash": ""
   },
   "apps/web/src/components/SnagDetail.tsx": {
@@ -4158,9 +4158,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/chat/ChatWidget.tsx": {
-    "mtime": 1793339080.8758254,
-    "seen": 1793339428.4947343,
-    "ast_hash": "2ddb8827a4665df35ef36de427188e38",
+    "mtime": 1793344810.1343248,
+    "seen": 1793344906.4067793,
+    "ast_hash": "2c42108fcc61132b04d33cfa3e6192dc",
     "semantic_hash": ""
   },
   "apps/web/src/components/drawing/DrawingUploadModal.tsx": {
@@ -4218,9 +4218,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/AppShell.tsx": {
-    "mtime": 1793339080.8758254,
-    "seen": 1793339428.495063,
-    "ast_hash": "f248506ceab72ac46b189b95861caa21",
+    "mtime": 1793344810.1343248,
+    "seen": 1793344906.4073894,
+    "ast_hash": "1e5c653fd0e6b4daec53c7abff64c402",
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/MessagesBell.tsx": {
@@ -4272,9 +4272,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/risk/RiskRegisterTable.tsx": {
-    "mtime": 1793341036.2197995,
-    "seen": 1793341273.7278361,
-    "ast_hash": "d729be0a9731cea744693eb4091b87c7",
+    "mtime": 1793344810.1343248,
+    "seen": 1793344906.4078526,
+    "ast_hash": "e8d723144b35452108305f60e1245fc1",
     "semantic_hash": ""
   },
   "apps/web/src/components/risk/riskDisplay.ts": {
@@ -5034,9 +5034,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/IssuesPage.tsx": {
-    "mtime": 1793341036.2290761,
-    "seen": 1793341273.7356918,
-    "ast_hash": "c5c8cfe89ae49ae5b82678fdf9da0460",
+    "mtime": 1793344810.1348197,
+    "seen": 1793344906.4147987,
+    "ast_hash": "e1ca21db26159c47c8ebd9455e7fe526",
     "semantic_hash": ""
   },
   "apps/web/src/pages/MessagesPage.tsx": {
@@ -5064,9 +5064,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/ProjectDetail.tsx": {
-    "mtime": 1793331908.9272587,
-    "seen": 1793332050.060648,
-    "ast_hash": "f6ffc112d5b4cfc418687e496b99eb06",
+    "mtime": 1793344810.1349187,
+    "seen": 1793344906.4149768,
+    "ast_hash": "d2bc46c233aac5df27e04aa98502e624",
     "semantic_hash": ""
   },
   "apps/web/src/pages/ProjectList.tsx": {
@@ -6159,6 +6159,42 @@
     "mtime": 1793339080.8762443,
     "seen": 1793339428.498708,
     "ast_hash": "01955f07c9170075baf429e866a80e88",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/ui/RecordRow.test.tsx": {
+    "mtime": 1793344832.7754786,
+    "seen": 1793344906.409195,
+    "ast_hash": "84223f7958fc4ddc43202a6120f0a1d1",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/ui/RecordRow.tsx": {
+    "mtime": 1793344810.1343248,
+    "seen": 1793344906.4092,
+    "ast_hash": "d4118fc9198ff6bc61066e2fe1d7072c",
+    "semantic_hash": ""
+  },
+  "apps/web/src/lib/activity-feed.test.ts": {
+    "mtime": 1793344832.7733622,
+    "seen": 1793344906.4105542,
+    "ast_hash": "5e8af0c069d06959e0ea75fba2edb746",
+    "semantic_hash": ""
+  },
+  "apps/web/src/lib/activity-feed.ts": {
+    "mtime": 1793344821.7604952,
+    "seen": 1793344906.4105575,
+    "ast_hash": "3969d684a2da2cc4ecaabd78374acc27",
+    "semantic_hash": ""
+  },
+  "apps/web/src/lib/risk-title.test.ts": {
+    "mtime": 1793344810.1343248,
+    "seen": 1793344906.412819,
+    "ast_hash": "ebaa9d373e2bafd0f63f970f2f1f4134",
+    "semantic_hash": ""
+  },
+  "apps/web/src/lib/risk-title.ts": {
+    "mtime": 1793344810.1348197,
+    "seen": 1793344906.4128227,
+    "ast_hash": "52552e799b3ffa0585d177ef076df608",
     "semantic_hash": ""
   },
   "pnpm-lock.yaml": {

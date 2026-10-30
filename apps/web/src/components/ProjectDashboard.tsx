@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { DESKTOP_QUERY, useMediaQuery } from '../lib/useMediaQuery';
 import { useQuery } from '@tanstack/react-query';
 import { getIssueSummary } from '../lib/issues.api';
 import { getProjectActivity } from '../lib/audit.api';
+import { groupActivity } from '../lib/activity-feed';
 import { listBimModels } from '../lib/bim.api';
 import { StatTile } from './ui/StatTile';
 import { SectionHeader } from './ui/SectionHeader';
@@ -19,27 +22,6 @@ const PROCESSING_STATUS_TONE: Record<string, 'warn' | 'danger' | 'ok' | undefine
   ready: 'ok',
   failed: 'danger',
 };
-
-const ACTION_VERB_LABELS: Record<string, string> = {
-  created: 'created',
-  updated: 'updated',
-  deleted: 'deleted',
-  archived: 'archived',
-  uploaded: 'uploaded',
-  model_uploaded: 'uploaded a model for',
-  invited: 'invited',
-  login: 'logged in',
-  logout: 'logged out',
-};
-
-function formatActivity(action: string, resourceType: string, resourceLabel?: string): string {
-  const [, verbRaw] = action.split('.');
-  const verb = ACTION_VERB_LABELS[verbRaw] ?? verbRaw ?? 'updated';
-  const resourceName = resourceType.replace(/_/g, ' ');
-  const label = resourceLabel ? ` "${resourceLabel}"` : '';
-  if (action.startsWith('auth.') || action === 'session.login' || action === 'session.logout') return verb;
-  return `${verb} ${resourceName}${label}`;
-}
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -60,8 +42,13 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
 
   const activityQuery = useQuery({
     queryKey: ['project-activity', projectId],
-    queryFn: () => getProjectActivity(projectId, 8),
+    // Fetched wider than shown: internal pipeline events are filtered out.
+    queryFn: () => getProjectActivity(projectId, 30),
   });
+
+  const desktop = useMediaQuery(DESKTOP_QUERY);
+  const [activityExpanded, setActivityExpanded] = useState(false);
+  const activity = groupActivity(activityQuery.data ?? []);
 
   const modelsQuery = useQuery({
     queryKey: ['bim-models', projectId],
@@ -144,20 +131,28 @@ export function ProjectDashboard({ projectId }: { projectId: string }) {
         <div className="mb-4"><SectionHeader title="Recent activity" size="sm" /></div>
         <div className="tick-frame panel divide-y divide-base-600">
           {activityQuery.isLoading && <div className="p-4 text-sm text-ink-500">Loading…</div>}
-          {activityQuery.data && activityQuery.data.length === 0 && (
+          {activityQuery.data && activity.length === 0 && (
             <div className="p-4 text-sm text-ink-500">Nothing recorded yet.</div>
           )}
-          {activityQuery.data?.map((entry) => (
-            <div key={entry.id} className="px-4 py-2 flex items-center justify-between gap-4 text-sm">
-              <div className="min-w-0 truncate">
+          {activity.slice(0, desktop || activityExpanded ? 8 : 3).map((entry) => (
+            <div key={entry.id} className="px-4 py-2 flex items-start justify-between gap-4 text-sm">
+              <div className="min-w-0 line-clamp-2">
                 <span className="text-ink-100 font-medium">{entry.userName ?? 'Someone'}</span>{' '}
-                <span className="text-ink-300">
-                  {formatActivity(entry.action, entry.resourceType, entry.resourceLabel)}
-                </span>
+                <span className="text-ink-300">{entry.text}</span>
               </div>
-              <span className="text-xs font-mono text-ink-500 shrink-0">{timeAgo(entry.occurredAt)}</span>
+              <span className="text-xs text-ink-500 shrink-0 mt-0 tabular-nums">{timeAgo(entry.occurredAt)}</span>
             </div>
           ))}
+          {!desktop && activity.length > 3 && (
+            <button
+              type="button"
+              aria-expanded={activityExpanded}
+              onClick={() => setActivityExpanded((v) => !v)}
+              className="w-full px-4 py-2 text-left text-sm font-medium text-ink-300 hover:text-ink-100"
+            >
+              {activityExpanded ? 'Show less' : `Show ${Math.min(activity.length, 8) - 3} more`}
+            </button>
+          )}
         </div>
       </div>
     </div>

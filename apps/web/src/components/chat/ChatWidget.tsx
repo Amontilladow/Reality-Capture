@@ -211,7 +211,7 @@ export function ChatWidget() {
   if (!accessToken) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col items-end">
+    <div className="fixed bottom-20 md:bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col items-end">
       {open && (
         <div className="w-full sm:w-80 h-[28rem] tick-frame panel overflow-hidden flex flex-col shadow-xl">
           <div className="flex items-center justify-between px-4 py-2 border-b border-base-600 shrink-0">

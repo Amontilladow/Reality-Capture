@@ -21,6 +21,7 @@ import { StatusBadge } from '../components/ui/Badge';
 import { apiErrorMessage } from '../lib/api';
 import { Listbox } from '../components/ui/Listbox';
 import { DESKTOP_QUERY, useMediaQuery } from '../lib/useMediaQuery';
+import { RecordList, RecordRow } from '../components/ui/RecordRow';
 
 type QuickFilter = 'all' | 'overdue' | 'critical' | 'mine';
 type Tab = 'issues' | 'dashboard' | 'reminders';
@@ -416,8 +417,8 @@ export default function IssuesPage() {
             </div>
           )}
 
-          {/* Bulk-select action bar */}
-          {filteredIssues.length > 0 && (
+          {/* Bulk-select action bar (desktop: phones list without checkboxes) */}
+          {desktop && filteredIssues.length > 0 && (
             <div className="flex items-center gap-4 text-xs">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
@@ -487,17 +488,14 @@ export default function IssuesPage() {
                       <div className="text-xs font-medium text-ink-500 px-2 py-2">
                         {level?.name ?? 'No level'}
                       </div>
-                      <div className="space-y-2">
-                        {issues.map((issue) => (
-                          <IssueRow
-                            key={issue.id}
-                            issue={issue}
-                            selected={selectedIds.has(issue.id)}
-                            onToggleSelect={() => toggleSelect(issue.id)}
-                            onClick={() => setViewIssueId(issue.id)}
-                          />
-                        ))}
-                      </div>
+                      <IssueList
+                        compact={!desktop}
+                        label={`${building.name}, ${level?.name ?? 'No level'}`}
+                        issues={issues}
+                        selectedIds={selectedIds}
+                        onToggleSelect={toggleSelect}
+                        onOpen={setViewIssueId}
+                      />
                     </div>
                   ))}
                 </div>
@@ -509,16 +507,15 @@ export default function IssuesPage() {
                 <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-2 py-2 hover:text-ink-300">
                   Unassigned
                 </summary>
-                <div className="pl-2 space-y-2 mt-2">
-                  {groupedIssues.unassigned.map((issue) => (
-                    <IssueRow
-                      key={issue.id}
-                      issue={issue}
-                      selected={selectedIds.has(issue.id)}
-                      onToggleSelect={() => toggleSelect(issue.id)}
-                      onClick={() => setViewIssueId(issue.id)}
-                    />
-                  ))}
+                <div className="pl-2 mt-2">
+                  <IssueList
+                    compact={!desktop}
+                    label="Issues with no location"
+                    issues={groupedIssues.unassigned}
+                    selectedIds={selectedIds}
+                    onToggleSelect={toggleSelect}
+                    onOpen={setViewIssueId}
+                  />
                 </div>
               </details>
             )}
@@ -926,6 +923,69 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
     </button>
   );
 }
+
+// Desktop keeps the full card per issue (with its bulk-select box); a
+// phone gets the register layout -- one grouped panel of two-line rows,
+// see RecordRow -- and no per-row checkbox (bulk actions are a desk job).
+function IssueList({ compact, label, issues, selectedIds, onToggleSelect, onOpen }: {
+  compact: boolean;
+  label: string;
+  issues: IssueListItem[];
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
+  onOpen: (id: string) => void;
+}) {
+  if (compact) {
+    return (
+      <RecordList label={label}>
+        {issues.map((issue) => {
+          const timer = getDeadlineTimer(issue.deadline, issue.status);
+          const where = issue.locationName && issue.locationName.trim().toLowerCase() !== issue.title.trim().toLowerCase() ? issue.locationName : undefined;
+          return (
+            <RecordRow
+              key={issue.id}
+              marker={PRIORITY_MARKER[issue.priority]}
+              title={issue.title}
+              meta={[
+                issue.issueNumber ?? issue.id.slice(0, 8),
+                issue.status === 'open' ? undefined : STATUS_LABELS[issue.status],
+                PRIORITY_LABELS[issue.priority],
+                issue.discipline ? DISCIPLINE_LABELS[issue.discipline] : undefined,
+                where,
+              ].filter(Boolean).join(' · ')}
+              due={timer.label}
+              dueTone={timer.state === 'overdue' ? 'danger' : timer.state === 'warn' ? 'warn' : 'muted'}
+              owner={issue.assignedToName ?? undefined}
+              onClick={() => onOpen(issue.id)}
+            />
+          );
+        })}
+      </RecordList>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      {issues.map((issue) => (
+        <IssueRow
+          key={issue.id}
+          issue={issue}
+          selected={selectedIds.has(issue.id)}
+          onToggleSelect={() => onToggleSelect(issue.id)}
+          onClick={() => onOpen(issue.id)}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Severity bar colour per priority; the priority is also named in the
+// row's text, so colour is never the only signal.
+const PRIORITY_MARKER: Record<IssueListItem['priority'], string> = {
+  critical: 'bg-danger',
+  high: 'bg-high',
+  medium: 'bg-warn',
+  low: 'bg-base-600',
+};
 
 function IssueRow({
   issue, selected, onToggleSelect, onClick,
