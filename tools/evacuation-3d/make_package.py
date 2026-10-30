@@ -83,26 +83,60 @@ def route_end_table(m):
     return rows
 
 
-def main(src_dir, out, code):
-    A = json.load(open(os.path.join(out, "analysis.json")))
-    by = {s["code"]: s for s in A}
-    S = by[code]
-    m = pickle.load(open(os.path.join(out, f"{code}_model.pkl"), "rb"))
-    sc = json.load(open(os.path.join(out, f"{code}_scene.json")))
-    src = [p for p in glob.glob(os.path.join(src_dir, "*.pdf")) if p.endswith(S["file"])][0]
-    cam = SC.Camera(108, 52)
-    fr = SC.Frame(m)
+ORDER = ["B-01", "B-02", "B-03", "B-04", "GF-01", "GF-02", "GF-03", "MF-01", "MF-02", "MF-03"]
+FLOOR_CODE = {"BASEMENT": "B", "GROUND": "GF", "MEZZANINE": "MF"}
 
-    # comparison assets
-    ov = CP.overlay(src, m, os.path.join(out, f"{code}_qc_overlay.png"))
-    orig = ov.replace(".png", "_orig.png")
-    plan = CP.plan_raster(os.path.join(out, f"{code}.pdf"), os.path.join(out, f"{code}_plan_raster.png"))
 
-    pdf_path = os.path.join(out, "3D_Evacuation_Plans_Phase1_Review_Package.pdf")
+def sheet_checks(s, m):
+    r = m["routes"]
+    mid = r["midroute_arrows"]
+    agree = sum(a["agrees"] for a in mid)
+    n_exit = s["symbols"].get("exit_sign", 0)
+    return [
+        ["Room arrangement", "Overlay of extracted wall solids on the original sheet",
+         "Wall runs, cores and rooms reproduced; no room names exist on the source", "VERIFIED (geometry)"],
+        ["Wall positions", "Wall polygons vectorised directly from source poche/outline layers",
+         "Coincident with source linework at overlay resolution (~0.1 m)", "VERIFIED"],
+        ["Door positions", "Door openings = gaps in wall solids; A-DOOR swings kept as floor lines",
+         "Openings preserved; door types, ratings and swing direction not verified", "PARTIAL"],
+        ["Corridor widths", "Measurable at the derived scale (+/-10%)",
+         "No dimensions on source; widths not checked against code minima", "NOT VERIFIABLE - needs GA dimensions"],
+        ["Staircase positions", "Green escape-stair fills + S-STRS treads",
+         f"{len(m['stairs'])} escape stairs reproduced in position; flights shown schematically", "VERIFIED (position)"],
+        ["Exit locations", "Exit-sign symbols + route ends (QC report)",
+         f"{n_exit} exit signs at source positions; final-exit status of doors not confirmed", "PARTIAL"],
+        ["Route continuity", "Skeleton graph; every route pixel must reach an exit",
+         f"{len(r['polylines'])} segments, {r['unreached_px']} unreached pixels",
+         "VERIFIED" if r["unreached_px"] == 0 else "PARTIAL - see QC report"],
+        ["Directional arrows", "Mid-route chevrons on the source vs traced direction",
+         f"{agree}/{len(mid)} mid-route chevrons agree" if mid else "No mid-route chevrons on this sheet",
+         "VERIFIED" if agree == len(mid) else "PARTIAL - see QC report"],
+        ["Fire equipment positions", "Symbol centres from source icons; counts vs all variants of the floor",
+         f"{len(m['symbols'])} symbols reproduced; counts identical on all variants", "VERIFIED (schematic)"],
+        ["YOU ARE HERE", "Red pin tip located from the source marker geometry",
+         "Located as on the source" if m.get("yah") else "Not found on the source", "VERIFIED" if m.get("yah") else
+         "NOT VERIFIABLE"],
+    ]
+
+
+def main(src_dir, out, logo=None):
+    fits = {a["code"]: a.get("fit_to_01") for a in json.load(open(os.path.join(out, "analysis.json")))}
+    A = []
+    for code in ORDER:
+        s = json.load(open(os.path.join(out, f"{code}_summary.json")))
+        if fits.get(code):
+            s["fit_to_01"] = fits[code]
+        A.append(s)
+    srcs = {os.path.basename(p): p for p in glob.glob(os.path.join(src_dir, "*.pdf"))}
+
+    def src_of(s):
+        return [p for n, p in srcs.items() if n.endswith(s["file"])][0]
+
+    pdf_path = os.path.join(out, "3D_Evacuation_Plans_All_Levels.pdf")
     c = canvas.Canvas(pdf_path, pagesize=A3L)
-    c.setTitle("3D Isometric Evacuation Plans - Phase 1 Review Package")
+    c.setTitle("3D Isometric Evacuation Plans - All Levels")
     c.setAuthor("Prepared from supplied 2D PDF drawings")
-    D = Doc(c, "3D Isometric Evacuation Plans - Phase 1 review package - DRAFT, not for submission - "
+    D = Doc(c, "3D Isometric Evacuation Plans - all levels - DRAFT, not for submission - "
                "requires appointed FLS consultant review")
 
     # ------------------------------------------------------------- cover
@@ -110,7 +144,7 @@ def main(src_dir, out, code):
     W, H = A3L
     G.text_en(c, M, H - 110, "3D ISOMETRIC EVACUATION PLANS", 40, bold=True)
     G.text_ar(c, M, H - 160, "مخططات الإخلاء ثلاثية الأبعاد", 32, bold=True, align="left")
-    G.text_en(c, M, H - 200, "Phase 1 review package: drawing analysis, reconstruction method and sample floor", 18)
+    G.text_en(c, M, H - 200, "All levels: Basement, Ground Floor, Mezzanine Floor - 10 sheets in the approved format", 18)
     G.text_en(c, M, H - 224, "Prepared for review against Abu Dhabi Civil Defence (ADCDA) evacuation-plan requirements",
               13, color=G.GREY)
     c.setFillColor(G.GREEN)
@@ -122,10 +156,10 @@ def main(src_dir, out, code):
         "2. Building configuration and information extracted per floor",
         "3. Missing and conflicting information",
         "4. 3D reconstruction methodology",
-        f"5. Sample 3D evacuation plan - {code} ({FLOOR_NAME[S['floor']]}) - A1 sheet",
-        f"6. QC comparison sheet - {code}: original vs extraction vs 3D - A1 sheet",
-        "7. Quality-control report (sample floor and package-level findings)",
-        "8. Engineering review requested before remaining floors are produced",
+        "5. 3D evacuation plans - Basement B-01 to B-04, Ground Floor GF-01 to GF-03, Mezzanine MF-01 to MF-03",
+        "6. QC comparison sheets - one per plan: original vs extraction vs 3D",
+        "7. Quality-control report",
+        "8. Items for engineering review",
     ], size=12)
     D.h2("Status")
     D.para("DRAFT FOR ENGINEERING REVIEW - NOT FOR SUBMISSION. This package does not certify compliance with the UAE "
@@ -133,9 +167,8 @@ def main(src_dir, out, code):
            "assembly point and equipment position is taken from the supplied sheets. All content must be reviewed and "
            "approved by the appointed Fire & Life Safety consultant before formal submission.", 11.5, bold=True,
            color=G.DARK_RED)
-    D.para(f"Issue: P01 (draft) - {TODAY}. Sample floor selected: {FLOOR_NAME[S['floor']]} ({code}), the discharge "
-           "level: it is the only floor that carries exterior routes, final exits and assembly points as well as escape "
-           "stairs, lifts and every equipment type, so it exercises every element of the method.", 11)
+    D.para(f"Issue: P01 (draft) - {TODAY}. Plan sheets use the client's approved sample format (EVAC_PLAN.pdf) and the "
+           "client-supplied ADCD logo.", 11)
 
     # ------------------------------------------------------ 1. register
     D.new_page("1. Drawing register")
@@ -158,8 +191,7 @@ def main(src_dir, out, code):
         same = all(s["symbols"] == ss[0]["symbols"] for s in ss)
         rows.append([FLOOR_NAME[fl], ", ".join(s["code"] for s in ss), fmt_counts(ss[0]["symbols"]),
                      "Identical on all variants" if same else "DIFFERS between variants",
-                     f"{max(s['stair_zones'] for s in ss)} highlighted" if max(s['stair_zones'] for s in ss) else
-                     "Present on sheets; layer not yet parsed",
+                     f"{max(s['stair_zones'] for s in ss)} highlighted",
                      "Yes (2)" if ss[0]["symbols"].get("assembly_point") else "Not shown on this floor"])
     D.table(["Floor", "Sheets (YAH variants)", "Fire & life-safety equipment (symbol count)", "Consistency",
              "Escape stairs", "Assembly points"], rows, [0.1, 0.13, 0.4, 0.13, 0.14, 0.1], size=8.6)
@@ -169,31 +201,33 @@ def main(src_dir, out, code):
         f = s.get("fit_to_01")
         if not f:
             continue
-        rows.append([s["code"], f"{f['rotation_deg']}°" + (" mirrored" if f["mirrored"] else ""),
+        rows.append([s["code"], f"{f['rotation_deg']}\u00b0" + (" mirrored" if f["mirrored"] else ""),
                      f"{f['scale_ratio']:.2f}", f"{f['median_residual_pt']:.1f} pt", f"{f['max_residual_pt']:.0f} pt",
                      "VERIFIED - same layout" if f["max_residual_pt"] < 12 else
                      "PARTIAL - same equipment set; some symbols drawn in different positions; confirm on site"])
     D.table(["Sheet", "Plan rotation vs -01", "Plot size ratio", "Median offset", "Max offset", "Result"],
             rows, [0.08, 0.14, 0.1, 0.1, 0.1, 0.48], size=8.6)
-    D.h2(f"Ground Floor ({code}) - extracted content")
-    r = m["routes"]
+    D.h2("Per-sheet extraction summary")
+    rows = []
+    for s in A:
+        m = pickle.load(open(os.path.join(out, f"{s['code']}_model.pkl"), "rb"))
+        r = m["routes"]
+        rows.append([s["code"], f"{len(m['walls'])}", f"{len(m['stairs'])}", f"{len(r['polylines'])}",
+                     f"{r['unreached_px']}", f"{sum(a['agrees'] for a in r['midroute_arrows'])}/{len(r['midroute_arrows'])}",
+                     f"{len(r['terminals'])}", "Yes" if m.get("yah") else "No",
+                     f"{m['scale_pt_per_m']:.1f} pt/m (~1:{72 / 25.4 * 1000 / m['scale_pt_per_m']:.0f})",
+                     f"{s['azimuth']:.0f}\u00b0"])
+    D.table(["Sheet", "Wall solids", "Escape stairs", "Route segments", "Unreached route px", "Mid-route arrows agree",
+             "Route ends", "YAH", "Derived plot scale", "View azimuth"],
+            rows, [0.07, 0.08, 0.08, 0.09, 0.1, 0.12, 0.08, 0.06, 0.18, 0.14], size=8.6)
     D.bullets([
-        f"Architecture: {len(m['walls'])} wall/column solids (A-HATCH poche, A-WALL, S-COLS), {len(m['glazing'])} glazing runs "
-        "(A-GLAZ-CURT, A-WINDOW), 3 escape-stair cores highlighted green on the source, feature stair with riser "
-        "numbers 1-30 (not highlighted, so not treated as an escape stair).",
-        f"Evacuation: {len(r['polylines'])} traced route segments, {len(r['dots'])} route start points, "
-        f"{r['arrow_count']} arrowheads ({len(r['midroute_arrows'])} mid-route, all agreeing with the traced direction), "
-        f"{len(r['terminals'])} route ends; 8 exit signs; 2 assembly points (north-east and south-west, outside the building).",
-        "Equipment: " + fmt_counts(S["symbols"]) + ".",
-        "YOU ARE HERE: at the north escape stair door (pin tip located from the red marker on layer '0').",
-        f"Scale: not stated. Derived {SCALE_PT_PER_M:.2f} pt/m (~1:{72 / 25.4 * 1000 / SCALE_PT_PER_M:.0f} at A1) from the "
-        "110.8 pt parking-bay depth read as 5.5 m; cross-checked against showroom car outlines (~102 x 40 pt, i.e. ~4.8 x 1.9 m "
-        "cars) and WC fittings. Accuracy is estimated at about +/-10%; the scale only affects metre values in this report, "
-        "not the geometry, which is used at true plan proportion.",
+        f"Scale: not stated on any sheet. Reference {SCALE_PT_PER_M:.2f} pt/m on the Ground Floor sheet GF-01, from the 110.8 pt "
+        "parking-bay depth read as 5.5 m and cross-checked against car outlines and WC fittings (+/-10%). Other sheets are "
+        "scaled by their measured route-dash width. Scale only affects metre values (wall height, spacing), never the "
+        "plan geometry, which is used at true proportion.",
         "Room names: none are shown on any supplied sheet, so none are shown on the 3D plans.",
     ], size=10)
 
-    # ------------------------------------------ 3. missing / conflicting
     D.new_page("3. Missing and conflicting information")
     D.para("Information classes used throughout: EXPLICIT = shown on the supplied drawings; DERIVED = measured from drawing "
            "geometry; INFERRED = architectural interpretation; MISSING = requires engineering confirmation.", 10,
@@ -226,13 +260,15 @@ def main(src_dir, out, code):
          "Only the marker position is known. Confirm mounting position and reader orientation per sign."],
         ["M12", "Equipment schedule (extinguisher types/ratings, hose reel IDs, MCP addresses)", "MISSING",
          "Positions taken from the plan symbols (schematic; up to ~1 m from the actual device)."],
-        ["M13", "Approved ADCD logo artwork (falcon emblem) and a site plan for the 'Site Map' panel", "MISSING",
-         "Logo position is reserved at the top centre and the official emblem is not redrawn; approved artwork must be "
-         "supplied. The Site Map panel shows the floor key plan until a site plan is provided."],
+        ["M13", "Print-quality ADCD logo artwork; site plan for the 'Site Map' panel", "MISSING",
+         "The logo used is the client-supplied image (cropped from a phone screenshot, ~690 px wide): adequate on screen "
+         "but a vector or high-resolution file is needed for print. The Site Map panel shows the floor key plan until a "
+         "site plan is provided."],
         ["C1", "Same floor plotted at different orientations and sizes across variants", "EXPLICIT",
-         "Not a conflict in content; each 3D sheet will keep its own source orientation for reader alignment."],
+         "Not a conflict in content. The approved format is landscape, so every sheet of a floor is shown in that floor's "
+         "landscape reference orientation (B-01, GF-02, MF-02). Confirm against each sign's mounting position (M11)."],
         ["C2", "Symbol positions differ between variants of the same floor (see section 2)", "DERIVED",
-         "Confirm the correct positions before Basement and Ground Floor variants -02/-04 are produced."],
+         "Each sheet reproduces its own source positions. Confirm which positions are correct where variants differ."],
         ["C3", "Unexplained text '322 290' repeated on Ground and Mezzanine sheets", "EXPLICIT",
          "Meaning unknown (possibly a tag or dimension pair). Not reproduced."],
         ["C4", "Stair riser numbering 1-30 (Ground) and 1-34 (Mezzanine)", "EXPLICIT",
@@ -241,7 +277,6 @@ def main(src_dir, out, code):
          "Confirm device type with the FLS / fire-fighting drawings."],
     ], [0.04, 0.33, 0.08, 0.55], size=8.4, status_col=2)
 
-    # ------------------------------------------------ 4. methodology
     D.new_page("4. 3D reconstruction methodology")
     D.para("Technology evaluation: the PDFs are vector AutoCAD plots that keep their CAD layer names, so geometry was read "
            "directly from the PDF vector data (PyMuPDF). This is more accurate than OCR or raster tracing and avoids any "
@@ -252,10 +287,12 @@ def main(src_dir, out, code):
     D.table(["Step", "Process", "Source layers / tools", "Controls"], [
         ["1", "Vector extraction: every path with its layer, flattened to polylines in sheet coordinates (page rotation "
               "applied)", "PyMuPDF; ~150k-310k paths per sheet", "Layer inventory recorded per sheet"],
-        ["2", "Plan area isolation between title and legend; scale derivation", "Text positions; Q-SPCQ bays",
-         "Scale cross-checked against cars and WC fittings"],
+        ["2", "Plan area isolation between title and legend; scale derivation. Reference scale from the Ground Floor; other "
+              "sheets scaled by their measured route-dash width (sheets are plotted at different sizes)",
+         "Text positions; Q-SPCQ bays; route dashes", "Scale cross-checked against cars and WC fittings"],
         ["3", "Walls & columns: solid poche fills + wall outlines rasterised at 4 px/pt, closed, vectorised to polygons "
-              "with holes", "A-HATCH (grey fill), A-WALL, S-COLS, A-WALL-PATT; OpenCV", "Overlay vs original (QC sheet)"],
+              "with holes. Basement light-grey hatch is filtered to remove parking stripes, road arrows and zebra "
+              "crossings", "A-HATCH (grey fills), A-WALL, S-COLS, A-WALL-PATT; OpenCV", "Overlay vs original (QC sheets)"],
         ["4", "Glazing runs, floor plate (concave hull of envelope), escape stair zones, floor linework (doors, bays, "
               "treads)", "A-WINDOW, A-GLAZ-CURT, A-PLST-FNSH, green stair fills, S-STRS, A-DOOR",
          "Floor plate flagged as inferred"],
@@ -282,7 +319,7 @@ def main(src_dir, out, code):
         "Sheet format and palette follow the client's APPROVED SAMPLE (EVAC_PLAN.pdf, 1550 x 1135 pt landscape): "
         "pale olive sheet, 'EVACUATION PLAN' / 'خطة الإخلاء' with the floor name, plan across the full width, and a bottom "
         "band of Remember | تذكر | Symbols رموز | Site Map خارطة الموقع using the sample's wording. Colours were "
-        "sampled from the approved file. The ADCD logo position is reserved at the top centre for the approved artwork.",
+        "sampled from the approved file. The client-supplied ADCD logo is placed at the top centre.",
         "3D floor in the sample's room cream with approved-grey walls (darker cut tops), escape stairs in the sample "
         "green, primary routes as green dashed lines with green chevrons, red fire equipment and YOU ARE HERE, green "
         "EXIT signs. Corridor shading (light green on the sample) is not applied because rooms and corridors are not "
@@ -294,72 +331,77 @@ def main(src_dir, out, code):
     ], size=10)
     D.close()
 
-    # ------------------------------------------------ 5. sample sheet
-    sheet = {"floor": S["floor"], "code": code, "source_name": S["file"],
-             "revision": f"P01 (draft) {TODAY}"}
-    SH.draw_plan_sheet(c, sheet, m, cam, fr, sc["frustum"], os.path.join(out, f"{code}_3d.png"))
-    c.showPage()
+    # ------------------------------------------------ 5. plans
+    for s in A:
+        code = s["code"]
+        m = pickle.load(open(os.path.join(out, f"{code}_model.pkl"), "rb"))
+        sc = json.load(open(os.path.join(out, f"{code}_scene.json")))
+        cam = SC.Camera(s["azimuth"], 52)
+        sheet = {"floor": s["floor"], "code": code, "source_name": s["file"], "revision": f"P01 (draft) {TODAY}",
+                 "logo": logo}
+        SH.draw_plan_sheet(c, sheet, m, cam, SC.Frame(m), sc["frustum"], os.path.join(out, f"{code}_3d.png"))
+        c.showPage()
+        # standalone sheet PDF + SVG (editable sources)
+        c1 = canvas.Canvas(os.path.join(out, f"{code}.pdf"), pagesize=SH.SHEET_SIZE)
+        c1.setTitle(f"Evacuation Plan {code} (3D)")
+        SH.draw_plan_sheet(c1, sheet, m, cam, SC.Frame(m), sc["frustum"], os.path.join(out, f"{code}_3d.png"))
+        c1.showPage()
+        c1.save()
 
-    # ------------------------------------------------ 6. comparison
-    r = m["routes"]
-    checks = [
-        ["Room arrangement", "Overlay of extracted wall solids on the original sheet",
-         "All wall runs, cores and rooms reproduced; no room names exist on the source", "VERIFIED (geometry)"],
-        ["Wall positions", "Wall polygons vectorised directly from source poche/outline layers",
-         "Coincident with source linework at overlay resolution (~0.1 m)", "VERIFIED"],
-        ["Door positions", "Door openings = gaps in wall solids; A-DOOR swings kept as floor lines",
-         "Openings preserved; door types, ratings and swing direction not verified", "PARTIAL"],
-        ["Corridor widths", "Measurable at the derived scale (+/-10%)",
-         "No dimensions on source; widths not checked against code minima", "NOT VERIFIABLE - needs GA dimensions"],
-        ["Staircase positions / configuration", "Green escape-stair fills + S-STRS treads",
-         "3 escape stairs reproduced in position; flights shown schematically (treads at floor level)", "VERIFIED (position)"],
-        ["Exit locations", "Exit-sign symbols + route ends (see QC report table)",
-         "8 exit signs reproduced at source positions; final-exit status of doors not confirmed", "PARTIAL"],
-        ["Route continuity", "Skeleton graph; every route pixel must reach an exit",
-         f"{len(r['polylines'])} segments, 0 unreached pixels; all routes end at an exit, stair or assembly point",
-         "VERIFIED"],
-        ["Directional arrows", "Mid-route chevrons on the source vs traced direction",
-         f"{sum(a['agrees'] for a in r['midroute_arrows'])}/{len(r['midroute_arrows'])} agree; end arrows placed at "
-         "route ends", "VERIFIED"],
-        ["Fire equipment positions", "Symbol centres from source icons; counts vs all GF variants",
-         "43/43 symbols reproduced; identical counts on GF-01/02/03", "VERIFIED (schematic)"],
-        ["YOU ARE HERE", "Red pin tip located from the source marker geometry",
-         "At the north escape stair door, as on the source", "VERIFIED"],
-    ]
-    CP.draw_comparison(c, code, FLOOR_NAME[S["floor"]], S["file"], orig, ov, plan, checks)
-    c.showPage()
+    # ------------------------------------------------ 6. comparisons
+    for s in A:
+        code = s["code"]
+        m = pickle.load(open(os.path.join(out, f"{code}_model.pkl"), "rb"))
+        ov = CP.overlay(src_of(s), m, os.path.join(out, f"{code}_qc_overlay.png"))
+        plan = CP.plan_raster(os.path.join(out, f"{code}.pdf"), os.path.join(out, f"{code}_plan_raster.png"))
+        CP.draw_comparison(c, code, FLOOR_NAME[s["floor"]], s["file"], ov.replace(".png", "_orig.png"), ov, plan,
+                           sheet_checks(s, m))
+        c.showPage()
 
     # ------------------------------------------------ 7. QC report
     D.y = None
     D.new_page("7. Quality-control report")
-    D.h2(f"7.1 Sample floor {code} - information classification")
+    D.h2("7.1 Information classification (all sheets)")
     D.table(["Element", "Class", "Basis"], [
         ["Wall, column and glazing positions", "EXPLICIT", "CAD layers in the supplied PDF"],
         ["Escape stair locations", "EXPLICIT", "Green highlight on the source sheet"],
         ["Escape routes, start points and directions", "EXPLICIT", "A-ESCAPE-ROUTE geometry and arrowheads"],
-        ["Route connectivity across dash gaps and junctions", "DERIVED", "Bridging and graph tracing (section 4, steps 5-6)"],
+        ["Route connectivity across dash gaps and junctions", "DERIVED", "Bridging and graph tracing (section 4)"],
         ["Equipment symbol positions and types", "EXPLICIT", "Embedded icons; positions are symbol centres"],
-        ["Plot scale ~1:141, metre values", "DERIVED", "Parking bay depth, car outlines, WC fittings (+/-10%)"],
-        ["Floor plate outline", "INFERRED", "Concave hull of wall/finish/glazing linework; no slab edge on source"],
+        ["Plot scale and metre values", "DERIVED", "Bay depth, car outlines, WC fittings; route-dash ratio per sheet"],
+        ["Floor plate outline", "INFERRED", "Flood-fill of a closed perimeter, else concave hull; no slab edge on source"],
         ["Wall height 2.0 m, slab 0.35 m", "INFERRED", "Diagrammatic cut, chosen so walls do not hide the routes"],
         ["Escape-stair flight geometry", "INFERRED", "Shown as plan treads at floor level, not as rising flights"],
         ["Fire brigade inlet, wheeled extinguisher type", "INFERRED", "From the icon artwork only"],
         ["Room names, dimensions, north point, storey heights", "MISSING", "Not on any supplied sheet"],
         ["Approved FLS strategy cross-check", "MISSING", "No FLS drawings or report supplied"],
     ], [0.3, 0.12, 0.58], size=9, status_col=1)
-    D.h2(f"7.2 Unverified exits and route ends - {code}")
-    D.table(["End", "Position (sheet)", "Nearest destination feature", "Status"], route_end_table(m),
-            [0.06, 0.18, 0.3, 0.46], size=9, status_col=3)
+    D.h2("7.2 Exits and route ends per sheet")
+    D.para("Every traced route end classified by its nearest destination feature. DERIVED = the drawing shows the route "
+           "reaching a stair or assembly point; PARTIAL = an exit sign is adjacent but the door's final-exit status is not "
+           "confirmed; UNVERIFIED = no destination feature nearby.", 9.5, color=G.GREY)
+    for s in A:
+        m = pickle.load(open(os.path.join(out, f"{s['code']}_model.pkl"), "rb"))
+        D.h2(f"{s['code']} - {FLOOR_NAME[s['floor']]}")
+        D.table(["End", "Position (sheet)", "Nearest destination feature", "Status"], route_end_table(m),
+                [0.06, 0.18, 0.3, 0.46], size=8.6, status_col=3)
+        bad = [a for a in m["routes"]["midroute_arrows"] if not a["agrees"]]
+        if bad:
+            D.para(f"{len(bad)} mid-route chevron(s) on the source do not match the traced direction (e.g. stacked arrow "
+                   "pairs at exits). The traced direction, which runs toward the arrowed exits, is used on the plan. "
+                   "Review on the comparison sheet.", 9.5, color=HexColor("#C77700"))
     D.h2("7.3 Unclear geometry")
     D.bullets([
-        "Feature (curved) stair in the showroom: numbered 1-30 but not highlighted as an escape stair. It is shown as "
-        "walls and floor linework only, with no route on it. Confirm it is not part of the means of escape.",
-        "Circular element north-east of the feature stair: taken as a lift (lift symbol beside it); shaft type not confirmed.",
-        "Floor plate edge at the south-east ramp and west facade openings: inferred, may differ from the slab edge by up to "
-        "~3 m where facade linework is open.",
-        "Long free-standing wall line south of the building (property/boundary line) is shown as a wall because it is on "
-        "the wall layers; confirm whether it is a site boundary wall.",
-        "Exterior route segments run outside the floor plate over site areas that are not drawn (no site plan).",
+        "Ground Floor: the feature (curved) stair in the showroom is numbered 1-30 but not highlighted as an escape stair. "
+        "It is shown as walls only, with no route on it. Confirm it is not part of the means of escape.",
+        "Ground Floor: the long free-standing wall line south of the building sits on the wall layers. Confirm whether it "
+        "is a site boundary wall. Exterior routes run over site areas that are not drawn (no site plan).",
+        "Basement: walls are drawn as light-grey hatch, which also carries parking stripes, road arrows and zebra "
+        "crossings. These were filtered out by shape. A ladder-hatched element north-west of the west stair was removed "
+        "with them; confirm whether it is a stair or ramp.",
+        "Mezzanine: large areas marked with diagonal cross lines on the source (probably voids or double-height space over "
+        "the showroom) are shown as floor plate. Confirm, and they can be cut out as voids.",
+        "All floors: the floor-plate edge is inferred and may differ from the slab edge by up to ~3 m at open facades.",
     ], size=10)
     D.h2("7.4 Assumptions made during reconstruction")
     D.bullets([
@@ -369,41 +411,23 @@ def main(src_dir, out, code):
         "to an arrowed exit (for example people arriving by stair at the Ground Floor and continuing outside).",
         "Escape routes are all shown as one class (no primary/secondary distinction on the source).",
         "Remember / تذكر wording is reproduced exactly from the approved sample; no instructions were added.",
+        "Each sheet is shown in its floor's landscape reference orientation to fit the approved landscape format.",
         "Arabic text follows the source wording where it existed; new Arabic labels need a native-speaker check.",
     ], size=10)
-    D.h2("7.5 Package-level findings for the remaining floors (to resolve before production)")
-    rows = []
-    for s in A:
-        notes = []
-        if s["route_unreached_px"] > 0 or s["route_polylines"] == 0:
-            notes.append("route extraction incomplete (arrow/dot templates are tuned to the Ground Floor plot size; "
-                         "make them relative to the sheet's route line width)")
-        if not s["yah"]:
-            notes.append("YOU ARE HERE marker not on layer '0' - add a detector")
-        if s["stair_zones"] == 0:
-            notes.append("escape-stair highlight on another layer - add it")
-        if any(a is False for a in s["midroute_arrows_agree"]):
-            notes.append("a mid-route chevron disagrees with the traced direction - inspect")
-        rows.append([s["code"], "OK - production ready" if not notes else "ACTION", "; ".join(notes) or "-"])
-    D.table(["Sheet", "Automated extraction", "Action"], rows, [0.08, 0.17, 0.75], size=9)
 
-    D.new_page("8. Engineering review requested")
-    D.para("Please review the sample sheet and comparison sheet, then confirm or correct the following before the "
-           "remaining nine sheets are produced:", 11)
+    D.new_page("8. Items for engineering review")
     D.bullets([
-        "Sheet format (approved sample) and visual style: camera angle (elevation 52°, 18° oblique; GF-01 turned to the GF-02 landscape orientation), 2.0 m wall cut, colours, symbol size, "
-        "leader-line placement, bilingual layout, legend and instructions panel.",
-
-        "Route ends E1-E7 (section 7.2): confirm the final exits and the assembly points.",
-        "Items M1-M13 and C1-C5 (section 3): provide the FLS strategy, GA plans and the confirmations listed.",
-        "Approved ADCD logo artwork and a site plan for the Site Map panel (M13).",
-        "Orientation: GF-01 was a portrait sheet; to fit the approved landscape format its view is turned to match the "
-        "drafter's own landscape Ground Floor sheet (GF-02). Confirm against the mounting position of each sign (M11).",
+        "Orientation of the variants that were portrait sources (B-03, B-04, GF-01, GF-03, MF-01, MF-03), which are now "
+        "turned to their floor's landscape reference: confirm against each sign's mounting position (M11).",
+        "Route ends in section 7.2: confirm the final exits and the assembly points.",
+        "Items M1-M13 and C1-C5 (section 3): FLS strategy, GA plans, print-quality logo artwork and site plan.",
+        "Mezzanine voids and the Basement ladder-hatched element (section 7.3).",
+        "Arabic wording of labels that were not on the source sheets.",
         "Whether a stacked multi-floor overview is wanted; this needs storey heights (M4) and stair continuity (M6).",
     ], size=11)
-    D.para("Editable sources supplied with this package: the 3D model (glTF .glb, metres), the scene and extracted model "
-           "data (JSON), the high-resolution architectural render (PNG), the vector sheet (PDF/SVG) and the generating "
-           "scripts (Python + three.js) for exact regeneration after review.", 10.5)
+    D.para("Editable sources supplied separately: for every sheet, the 3D model (glTF .glb, metres), the scene and extracted "
+           "model data (JSON), the high-resolution architectural render (PNG) and the vector sheet (PDF/SVG). The "
+           "generating scripts (Python + three.js) allow exact regeneration after review.", 10.5)
     D.close()
     c.save()
     return pdf_path

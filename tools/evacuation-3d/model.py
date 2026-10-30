@@ -82,7 +82,7 @@ def _title_bottom(data):
 
 def _plan_bbox(data, top, bottom):
     pts = []
-    for lay in ("A-WALL", "A-ESCAPE-ROUTE", "S-COLS"):
+    for lay in ("A-WALL", "A-ESCAPE-ROUTE", "S-COLS", "A-HATCH"):  # basement walls are hatch-only
         for e in data["layers"].get(lay, []):
             p = e["pts"]
             p = p[(p[:, 1] > top) & (p[:, 1] < bottom)]
@@ -118,8 +118,47 @@ def _polys_from_mask(mask, bbox, eps_px=1.0, min_area_px=12):
     return out
 
 
-def wall_mask(data, bbox):
+LIGHT_HATCH = {(0.69, 0.69, 0.69), (0.73, 0.73, 0.73)}
+
+
+def _light_hatch_walls(data, bbox, spm):
+    """Basement-style walls: light-grey A-HATCH fills that also carry parking
+    stripes, road arrows, crosswalk bars and bay hatching. Keep only wall-like
+    pieces: thicker than linework, longer than a crosswalk bar, thinner than an arrow."""
     m = _canvas(bbox)
+    for e in data["layers"].get("A-HATCH", []):
+        if e["fill"] and e["closed"] and len(e["pts"]) > 2 and _rgb(e["fill"]) in LIGHT_HATCH:
+            cv2.fillPoly(m, [_px(e["pts"], bbox)], 255)
+    k = max(3, int(0.12 * spm * R)) | 1
+    m = cv2.morphologyEx(m, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (k, k)))
+    n, lab, st, _ = cv2.connectedComponentsWithStats(m, 8)
+    keep = np.zeros(n, bool)
+    for i in range(1, n):
+        x, y, w, h, a = st[i]
+        comp = (lab[y:y + h, x:x + w] == i).astype(np.uint8)
+        cs, _ = cv2.findContours(comp, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        long_m = max(cv2.minAreaRect(max(cs, key=cv2.contourArea))[1]) / R / spm
+        dt = cv2.distanceTransform(np.pad(comp, 1), cv2.DIST_L2, 5)
+        half_m = dt.max() / R / spm
+        if long_m >= 8:  # wall networks: keep (arrows and zebras are small pieces)
+            keep[i] = True
+            continue
+        # road arrows: a head much wider than the shaft
+        sk = skeletonize(np.pad(comp, 1) > 0)
+        along = dt[sk]
+        arrow = len(along) and dt.max() > 1.8 * np.median(along)
+        # zebra crossings: a ladder with several small enclosed gaps (< 1 m2 each)
+        hs, hier = cv2.findContours(comp, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+        small = 0 if hier is None else sum(1 for h_, hh in zip(hs, hier[0])
+                                           if hh[3] >= 0 and cv2.contourArea(h_) < (spm * R) ** 2)
+        keep[i] = long_m >= 2.4 and half_m <= 0.33 and not arrow and small < 3
+    return np.where(keep[lab], 255, 0).astype(np.uint8)
+
+
+def wall_mask(data, bbox, spm=None):
+    m = _canvas(bbox)
+    if spm:
+        m |= _light_hatch_walls(data, bbox, spm)
     for lay in WALL_FILL_LAYERS:
         for e in data["layers"].get(lay, []):
             if e["fill"] and e["closed"] and len(e["pts"]) > 2 and _rgb(e["fill"]) in GREY_FILLS:
@@ -156,7 +195,7 @@ def glazing_mask(data, bbox, walls):
     return m
 
 
-def slab_mask(data, bbox, walls, glazing, ratio=0.1):
+def slab_mask(data, bbox, walls, glazing, ratio=0.1, spm=None):
     """Floor plate = concave hull of the wall/finish/glazing envelope.
 
     Not a stated slab edge: the sheets carry no slab outline, so the plate is
@@ -171,6 +210,18 @@ def slab_mask(data, bbox, walls, glazing, ratio=0.1):
     out = np.zeros_like(m)
     if hull.geom_type == "Polygon":
         cv2.fillPoly(out, [np.array(hull.exterior.coords, np.int32)], 255)
+    # where the perimeter is continuous (gaps <= 3 m, e.g. the basement), flooding
+    # from outside gives the true plate; on a leaky envelope (large openings) the
+    # flood shrinks badly and the hull is kept instead
+    r = int(1.5 * spm * R) if spm else int(1.5 * SCALE_PT_PER_M * R)
+    pad = cv2.copyMakeBorder(m, r + 2, r + 2, r + 2, r + 2, cv2.BORDER_CONSTANT, 0)
+    closed = cv2.morphologyEx(pad, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1,) * 2))
+    cv2.floodFill(closed, None, (0, 0), 128)
+    inside = np.where(closed == 128, 0, 255).astype(np.uint8)[r + 2:-r - 2, r + 2:-r - 2]
+    if np.count_nonzero(out) and np.count_nonzero(inside) >= 0.9 * np.count_nonzero(out):
+        n, lab, st, _ = cv2.connectedComponentsWithStats(inside, 8)
+        if n > 1:
+            return np.where(lab == 1 + int(np.argmax(st[1:, 4])), 255, 0).astype(np.uint8)
     return out
 
 
@@ -207,6 +258,24 @@ def floor_lines(data, bbox):
 
 # ---------------------------------------------------------------- routes ----
 
+def route_plot_ratio(data, bbox):
+    """Plot size of this sheet relative to the Ground Floor reference sheet,
+    measured from the route-dash width (2.75 pt on the reference)."""
+    m = _canvas(bbox)
+    for e in data["layers"].get("A-ESCAPE-ROUTE", []):
+        if e["fill"] and _rgb(e["fill"]) == ROUTE_GREEN and len(e["pts"]) > 2:
+            cv2.fillPoly(m, [_px(e["pts"], bbox)], 255)
+    n, lab, st, _ = cv2.connectedComponentsWithStats(m, 8)
+    widths = []
+    for i in range(1, n):
+        x, y, w, h, a = st[i]
+        if a > 4:
+            cs, _ = cv2.findContours((lab[y:y + h, x:x + w] == i).astype(np.uint8), cv2.RETR_EXTERNAL,
+                                     cv2.CHAIN_APPROX_NONE)
+            widths.append(min(cv2.minAreaRect(max(cs, key=cv2.contourArea))[1]) / R)
+    return float(np.median(widths)) / 2.75 if widths else 1.0
+
+
 def _route_components(data, bbox, stairs=()):
     m = _canvas(bbox)
     for e in data["layers"].get("A-ESCAPE-ROUTE", []):
@@ -218,6 +287,9 @@ def _route_components(data, bbox, stairs=()):
         cv2.fillPoly(sm, [_px(z["outer"], bbox)], 255)
     m[cv2.erode(sm, np.ones((int(1.5 * R),) * 2, np.uint8)) > 0] = 0
     n, lab, st, cen = cv2.connectedComponentsWithStats(m, 8)
+    # sheets are plotted at different sizes: scale every route template by the
+    # measured dash width
+    rs = route_plot_ratio(data, bbox)
     dots, arrows, ends = [], [], []
     dash = m.copy()
     for i in range(1, n):
@@ -228,9 +300,9 @@ def _route_components(data, bbox, stairs=()):
         sol = a / max(1.0, cv2.contourArea(cv2.convexHull(c)))
         (_, _), (rw, rh), _ = cv2.minAreaRect(c)
         elong = max(rw, rh) / max(1.0, min(rw, rh))
-        area_pt = a / R / R
+        area_pt = a / R / R / rs ** 2   # normalised to the reference plot size
         centre = _pt(cen[i], bbox)
-        size_pt = max(rw, rh) / R
+        size_pt = max(rw, rh) / R / rs
         if area_pt > 60 and elong < 1.5 and sol > 0.9:
             dots.append(centre)  # dots sit on the route line; stay in dash
             continue
@@ -276,16 +348,16 @@ def _route_components(data, bbox, stairs=()):
         v = dpts - apex
         dist = np.hypot(v[:, 0], v[:, 1])
         cosang = (v @ a["dir"]) / np.maximum(dist, 1e-6)
-        ok = (cosang > 0.85) & (dist < 12 * R)
+        ok = (cosang > 0.85) & (dist < 12 * R * rs)
         a["terminal"] = not np.any(ok)
         a["apex"] = _pt(apex, bbox)
         if not a["terminal"]:
             q = dpts[np.argmin(np.where(ok, dist, np.inf))]
             links.append((apex, q))
-    _bridge(dash, ends, dots, arrows, bbox, lab)
+    _bridge(dash, ends, dots, arrows, bbox, lab, gap_pt=9.0 * rs)
     for p, q in links:
         cv2.line(dash, tuple(map(int, p)), tuple(map(int, q)), 255, max(1, int(1.2 * R)))
-    return dash, dots, arrows
+    return dash, dots, arrows, rs
 
 
 def _bridge(dash, ends, dots, arrows, bbox, lab, gap_pt=9.0):
@@ -371,8 +443,8 @@ def routes(data, bbox, stairs=()):
     source drawing points to); each route is then walked downhill from its
     start point, so direction comes from the drawing's own arrowheads.
     """
-    dash, dots, arrows = _route_components(data, bbox, stairs)
-    band = cv2.dilate(dash, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(1.0 * R) | 1,) * 2))
+    dash, dots, arrows, rs = _route_components(data, bbox, stairs)
+    band = cv2.dilate(dash, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(1.0 * R * rs) | 1,) * 2))
     for a in arrows:
         band[a["mask"]] = 255
     sk = skeletonize(band > 0)
@@ -399,7 +471,7 @@ def routes(data, bbox, stairs=()):
     sm = np.zeros_like(band)
     for z in stairs:
         cv2.fillPoly(sm, [_px(z["outer"], bbox)], 255)
-    sm = cv2.dilate(sm, np.ones((int(4 * R),) * 2, np.uint8))
+    sm = cv2.dilate(sm, np.ones((int(4 * R * rs),) * 2, np.uint8))
     dist = _geodesic(sk, sources)
     # a stair-side route end that already leads to an arrowed exit is a start
     # (people arriving by stair); otherwise the stair itself is the exit
@@ -410,13 +482,22 @@ def routes(data, bbox, stairs=()):
             terminals.append(_pt((p[1], p[0]), bbox))
         dist = _geodesic(sk, sources)
     starts = set(leaves) | {nearest(d) for d in dots}
-    starts = [p for p in starts if np.isfinite(dist[p]) and dist[p] > 3 * R]
+    starts = [p for p in starts if np.isfinite(dist[p]) and dist[p] > 3 * R * rs]
     starts.sort(key=lambda p: -dist[p])
 
     H, W = sk.shape
     used = np.zeros_like(sk, bool)
     paths = []
-    for st in starts:
+
+    def remaining():
+        # skeleton not yet traced (e.g. the second branch of a route that starts
+        # at a dot and runs both ways): restart from the farthest untraced pixel
+        ys, xs = np.nonzero(sk & np.isfinite(dist))
+        for k in np.argsort(-dist[ys, xs]):
+            yield (int(ys[k]), int(xs[k]))
+
+    import itertools
+    for st in itertools.chain(starts, remaining()):
         if used[st]:
             continue
         path = [st]
@@ -434,8 +515,8 @@ def routes(data, bbox, stairs=()):
             cur = nxt
         for p in path[:-1]:
             used[p] = True
-        used[path[-1]] = used[path[-1]] or dist[path[-1]] == 0
-        if len(path) >= 6 * R:  # drop dash-end / arrow-wing spurs
+        used[path[-1]] = used[path[-1]] or dist[path[-1]] == 0 or len(path) == 1
+        if len(path) >= 6 * R * rs:  # drop dash-end / arrow-wing spurs
             paths.append(path)
 
     polylines = []
@@ -461,7 +542,7 @@ def routes(data, bbox, stairs=()):
                 best = (dd[k], segs[k] / np.sqrt(L2[k]))
         agree = best is not None and best[0] < 15 and float(best[1] @ a["dir"]) > 0.5
         checks.append({"pos": a["centre"], "dir": a["dir"], "agrees": bool(agree)})
-    return {"polylines": polylines, "unreached_px": unreached, "dots": dots,
+    return {"polylines": polylines, "unreached_px": unreached, "dots": dots, "plot_ratio": rs,
             "terminals": terminals, "arrow_count": len(arrows), "midroute_arrows": checks}
 
 
@@ -482,7 +563,8 @@ def symbols(data, doc, bbox):
 def you_are_here(data, bbox):
     m = _canvas(bbox)
     found = False
-    for e in data["layers"].get("0", []):
+    # the marker is drawn on layer "0" on some sheets and on the route layer on others
+    for e in data["layers"].get("0", []) + data["layers"].get("A-ESCAPE-ROUTE", []):
         if e["fill"] and _rgb(e["fill"]) == (1.0, 0.0, 0.0) and len(e["pts"]) > 2:
             cv2.fillPoly(m, [_px(e["pts"], bbox)], 255)
             found = True
@@ -508,22 +590,26 @@ def build(pdf_path):
     doc = data.pop("doc")
     top, bottom = _title_bottom(data), _legend_top(data)
     bbox = _plan_bbox(data, top, bottom)
-    walls = wall_mask(data, bbox)
+    rs = route_plot_ratio(data, bbox)
+    spm = SCALE_PT_PER_M * rs
+    walls = wall_mask(data, bbox, spm)
     glaz = glazing_mask(data, bbox, walls)
-    slab = slab_mask(data, bbox, walls, glaz)
+    slab = slab_mask(data, bbox, walls, glaz, spm=spm)
     stairs = [z for z in stair_zones(data, bbox) if _covered(z, slab, bbox)]
+    rt = routes(data, bbox, stairs)
     model = {
         "source": pdf_path,
         "sheet_size": data["size"],
         "rotation": data["rotation"],
         "bbox": bbox,
-        "scale_pt_per_m": SCALE_PT_PER_M,
+        # plot scale of this sheet: reference scale x measured route-dash ratio
+        "scale_pt_per_m": spm,
         "walls": _polys_from_mask(walls, bbox),
         "glazing": _polys_from_mask(glaz, bbox, min_area_px=8),
         "slab": _polys_from_mask(slab, bbox, eps_px=2.0),
         "stairs": stairs,
         "floor_lines": floor_lines(data, bbox),
-        "routes": routes(data, bbox, stairs),
+        "routes": rt,
         "symbols": symbols(data, doc, bbox),
         "yah": you_are_here(data, bbox),
         "riser_labels": [t for t in data["text"] if t["text"].strip().isdigit() and _inside(t["bbox"][:2], bbox)],

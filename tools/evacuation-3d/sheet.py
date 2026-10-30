@@ -187,9 +187,13 @@ def _title(c, r, sheet):
     G.text_en(c, x + 28, y + h - 118, en_floor, 30, bold=True, color=G.FRAME)
     G.text_ar(c, x + w - 26, y + h - 82, "خطة الإخلاء", 66, bold=True, color=G.FRAME)
     G.text_ar(c, x + w - 26, y + h - 124, ar_floor, 32, bold=True, color=G.FRAME)
-    # ADCD logo position: approved artwork must be inserted here, never redrawn
-    lw, lh = 170, 104
-    lx, ly = x + w / 2 - lw / 2, y + h - lh - 22
+    # ADCD logo: client-supplied artwork placed as-is (never redrawn); a marked
+    # placeholder is shown when none is supplied
+    lw, lh = 170, 128
+    lx, ly = x + w / 2 - lw / 2, y + h - lh - 12
+    if sheet.get("logo"):
+        c.drawImage(sheet["logo"], lx, ly, lw, lh, preserveAspectRatio=True, anchor="c", mask="auto")
+        return
     c.setStrokeColor(G.GREY)
     c.setLineWidth(1)
     c.setDash(4, 3)
@@ -331,25 +335,26 @@ def _key_plan(c, model, r, cam=None):
         q = R(p)
         return np.c_[ox + (q[:, 0] - lo[0]) * k, oy + (q[:, 1] - lo[1]) * k]
 
-    def poly(p, fill, stroke=None, lw=0.5):
-        q = T(p)
+    def poly(p, fill, stroke=None, lw=0.5, holes=()):
         path = c.beginPath()
-        path.moveTo(*q[0])
-        for v in q[1:]:
-            path.lineTo(*v)
-        path.close()
+        for ring in [p] + list(holes):  # even-odd fill keeps courtyards/rooms open
+            q = T(ring)
+            path.moveTo(*q[0])
+            for v in q[1:]:
+                path.lineTo(*v)
+            path.close()
         c.setFillColor(fill)
         if stroke is not None:
             c.setStrokeColor(stroke)
             c.setLineWidth(lw)
-        c.drawPath(path, fill=1, stroke=1 if stroke is not None else 0)
+        c.drawPath(path, fill=1, stroke=1 if stroke is not None else 0, fillMode=0)
 
     for p in model["slab"]:
         poly(p["outer"], G.ROOM, HexColor("#9A9A9A"), 0.8)
     for p in model["stairs"]:
         poly(p["outer"], G.SIGN_GREEN)
     for p in model["walls"]:
-        poly(p["outer"], G.WALL)
+        poly(p["outer"], G.WALL, holes=p["holes"])
     c.setStrokeColor(G.GREEN)
     c.setLineWidth(1.6)
     c.setLineCap(1)

@@ -6234,15 +6234,15 @@
     "semantic_hash": ""
   },
   "tools/evacuation-3d/make_package.py": {
-    "mtime": 1793353384.4729912,
-    "seen": 1793353435.4971495,
-    "ast_hash": "d33f42e1ec8b9d352cfcc6be81748eee",
+    "mtime": 1793354643.0303895,
+    "seen": 1793354988.9208577,
+    "ast_hash": "c6c1365d50b31e5be6635d7ffbe8c978",
     "semantic_hash": ""
   },
   "tools/evacuation-3d/model.py": {
-    "mtime": 1793352810.7090642,
-    "seen": 1793353151.4073927,
-    "ast_hash": "de3b839ee80a894ecb9b1306ac071998",
+    "mtime": 1793354446.1218297,
+    "seen": 1793354988.9208615,
+    "ast_hash": "b6b4ab0cd2fd180a4f41accc774530a3",
     "semantic_hash": ""
   },
   "tools/evacuation-3d/preview_layers.py": {
@@ -6276,9 +6276,9 @@
     "semantic_hash": ""
   },
   "tools/evacuation-3d/sheet.py": {
-    "mtime": 1793353378.689757,
-    "seen": 1793353435.4972851,
-    "ast_hash": "98202d4498f744a3befbdd5981c325c6",
+    "mtime": 1793354687.8044088,
+    "seen": 1793354988.921,
+    "ast_hash": "cfb35310c0efa60f8582b109ce967508",
     "semantic_hash": ""
   },
   "tools/evacuation-3d/symbols_detect.py": {
@@ -6293,16 +6293,16 @@
     "ast_hash": "95d416b0dfc91f462efc45ca3eacbdba",
     "semantic_hash": ""
   },
-  "tools/evacuation-3d/fonts/OFL-NotoSansArabic.txt": {
-    "mtime": 1793350488.5344057,
-    "seen": 1793353151.407517,
-    "ast_hash": "39754420aa76eacea9df0e11e3c767ab",
-    "semantic_hash": ""
-  },
   "tools/evacuation-3d/render/page.html": {
     "mtime": 1793353275.24576,
     "seen": 1793353435.4995215,
     "ast_hash": "1007e8d5b46d3444d5ef364a296a47a5",
+    "semantic_hash": ""
+  },
+  "tools/evacuation-3d/build_all.py": {
+    "mtime": 1793354563.2096891,
+    "seen": 1793354988.9207103,
+    "ast_hash": "2405e69ddd0ffe867135d9d82149853d",
     "semantic_hash": ""
   },
   "pnpm-lock.yaml": {
