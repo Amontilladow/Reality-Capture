@@ -1,0 +1,153 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>html,body{margin:0;background:#fff}canvas{display:block}</style>
+<script type="importmap">
+{"imports": {"three": "/node_modules/three/build/three.module.js",
+             "three/addons/": "/node_modules/three/examples/jsm/"}}
+</script>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+
+// Architecture-only layer of the evacuation plan. All evacuation graphics are
+// drawn afterwards as flat vector overlays using the same camera maths.
+const S = await (await fetch('/scene.json')).json();
+const [W, H] = S.px;
+
+// Large outputs exceed the GL drawing-buffer limit, so the frame is rendered
+// in tiles (camera.setViewOffset keeps the projection exact) and composited.
+const TILE = 4000;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setClearColor(new THREE.Color(S.style.bg), 1);
+const out = document.createElement('canvas');
+out.width = W; out.height = H;
+document.body.appendChild(out);
+const ctx = out.getContext('2d');
+
+const scene = new THREE.Scene();
+scene.add(new THREE.AmbientLight(0xffffff, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+sun.position.set(-0.55, 1.0, 0.35);
+scene.add(sun);
+
+const st = S.style;
+const COL = {
+  // THREE.Color objects: LineMaterial needs a Color, not a CSS string
+  wallTop: new THREE.Color(st.wallTop), wallSide: new THREE.Color(st.wallSide), edge: new THREE.Color(st.edge),
+  slabTop: new THREE.Color(st.slabTop), slabSide: new THREE.Color(st.slabSide),
+  glass: 0xbfd3de, stair: new THREE.Color(st.stair), tread: 0x0e6b2c,
+  door: 0x9a9a9a, bay: 0xc8c8c8, rail: 0x9a9a9a,
+};
+
+function shapeOf(p) {
+  const sh = new THREE.Shape(p.outer.map(([x, z]) => new THREE.Vector2(x, z)));
+  for (const h of p.holes) sh.holes.push(new THREE.Path(h.map(([x, z]) => new THREE.Vector2(x, z))));
+  return sh;
+}
+
+// extrude a plan polygon between y0 and y1 (shape y = world z)
+function prism(p, y0, y1) {
+  const g = new THREE.ExtrudeGeometry(shapeOf(p), { depth: y1 - y0, bevelEnabled: false, curveSegments: 1 });
+  g.rotateX(Math.PI / 2);          // (x, z, d) -> (x, -d, z)
+  g.translate(0, y1, 0);
+  return g;
+}
+
+const lineMats = [];
+const LM = (o) => { const m = new LineMaterial(o); lineMats.push(m); return m; };
+const edgeMat = LM({ color: COL.edge, linewidth: 2.2, resolution: new THREE.Vector2(W, H) });
+function addEdges(geom, mat = edgeMat, angle = 25) {
+  const e = new THREE.EdgesGeometry(geom, angle);
+  const lg = new LineSegmentsGeometry().setPositions(e.attributes.position.array);
+  scene.add(new LineSegments2(lg, mat));
+}
+
+function addLines(polys, y, color, width) {
+  const pos = [];
+  for (const pl of polys) for (let i = 0; i + 1 < pl.length; i++) {
+    pos.push(pl[i][0], y, pl[i][1], pl[i + 1][0], y, pl[i + 1][1]);
+  }
+  if (!pos.length) return;
+  const lg = new LineSegmentsGeometry().setPositions(pos);
+  scene.add(new LineSegments2(lg, LM({ color, linewidth: width, resolution: new THREE.Vector2(W, H) })));
+}
+
+// floor plate
+const slabMats = [
+  new THREE.MeshBasicMaterial({ color: COL.slabTop }),
+  new THREE.MeshLambertMaterial({ color: COL.slabSide }),
+];
+for (const p of S.slab) {
+  const g = prism(p, -S.slab_t, 0);
+  scene.add(new THREE.Mesh(g, slabMats));
+  addEdges(g, LM({ color: 0x8a8a8a, linewidth: 2.0, resolution: new THREE.Vector2(W, H) }));
+}
+
+// floor linework (context only): door swings, parking bays, handrails
+addLines(S.lines.bay || [], 0.01, COL.bay, 1.2);
+addLines(S.lines.door || [], 0.01, COL.door, 1.4);
+addLines(S.lines.rail || [], 0.01, COL.rail, 1.4);
+
+// designated escape stairs (green, as highlighted on the source sheets)
+const stairMat = new THREE.MeshBasicMaterial({ color: COL.stair, transparent: true, opacity: 0.9, depthWrite: false });
+for (const p of S.stairs) scene.add(new THREE.Mesh(prism(p, 0.0, 0.03), stairMat));
+addLines(S.lines.stair || [], 0.04, 0x1d3b24, 1.3);
+
+// walls and columns
+const wallMats = [
+  new THREE.MeshBasicMaterial({ color: COL.wallTop }),
+  new THREE.MeshLambertMaterial({ color: COL.wallSide }),
+];
+for (const p of S.walls) {
+  const g = prism(p, 0, S.wall_h);
+  scene.add(new THREE.Mesh(g, wallMats));
+  addEdges(g);
+}
+
+// glazing: translucent, so routes and rooms behind stay readable
+const glassMat = new THREE.MeshLambertMaterial({ color: COL.glass, transparent: true, opacity: 0.45, depthWrite: false });
+for (const p of S.glazing) {
+  const g = prism(p, 0, S.glazing_h);
+  scene.add(new THREE.Mesh(g, glassMat));
+  addEdges(g, LM({ color: 0x7f99a8, linewidth: 1.6, resolution: new THREE.Vector2(W, H) }), 40);
+}
+
+const F = S.frustum;
+const cam = new THREE.OrthographicCamera(F.left, F.right, F.top, F.bottom, 0.1, 5000);
+const [dx, dy, dz] = S.camera.d;
+cam.position.set(dx * 1000, dy * 1000, dz * 1000);
+cam.up.set(0, 1, 0);
+cam.lookAt(0, 0, 0);
+cam.updateProjectionMatrix();
+
+for (let y = 0; y < H; y += TILE) {
+  for (let x = 0; x < W; x += TILE) {
+    const tw = Math.min(TILE, W - x), th = Math.min(TILE, H - y);
+    renderer.setSize(tw, th);
+    for (const m of lineMats) m.resolution.set(tw, th);
+    cam.setViewOffset(W, H, x, y, tw, th);
+    cam.updateProjectionMatrix();
+    renderer.render(scene, cam);
+    ctx.drawImage(renderer.domElement, x, y);
+  }
+}
+// editable source: meshes only (fat lines are a screen-space effect)
+const meshes = scene.children.filter((o) => o.isMesh && !o.isLineSegments2);
+new GLTFExporter().parse(meshes, (glb) => {
+  const b = new Uint8Array(glb);
+  let s = '';
+  for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000));
+  window.__glb = btoa(s);
+  window.__done = true;
+}, (e) => { console.error(e); window.__done = true; }, { binary: true });
+</script>
+</body>
+</html>
