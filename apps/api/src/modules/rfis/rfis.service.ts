@@ -942,13 +942,17 @@ export class RfisService {
   // are all optional -- omitting them keeps the DB defaults ('query'/'other')
   // from migration 028, so older callers that don't know about kinds yet
   // still work unchanged.
-  async addAttachment(companyId: string, rfiId: string, userId: string, dto: AddRfiAttachmentDto) {
+  async addAttachment(companyId: string, projectId: string, rfiId: string, userId: string, dto: AddRfiAttachmentDto) {
+    // H-1 fix: @RequireProjectPermission('manage_project_records') at the
+    // controller only confirms the caller has that permission on the
+    // :projectId named in the URL -- it says nothing about whether rfiId
+    // actually belongs to that project. findOne() is the real check (same
+    // boundary addComment() already used correctly above).
+    await this.findOne(companyId, projectId, rfiId);
+
     // Real post-upload size enforcement -- the client-declared dto.sizeBytes
     // was only ever checked against the limit at upload-url time (see
     // getAttachmentUploadUrl() above); it is not trusted for persistence.
-    // (Project authorization for this route is already enforced by
-    // @RequireProjectPermission('manage_project_records') at the controller
-    // -- see rfis.controller.ts.)
     const actualSizeBytes = await this.storage.getObjectSize(dto.storageKey);
     if (actualSizeBytes === null) {
       throw new BadRequestException('Uploaded file not found in storage. Complete the upload before adding the attachment.');
@@ -975,7 +979,9 @@ export class RfisService {
     return attachment;
   }
 
-  async getAttachments(companyId: string, rfiId: string) {
+  async getAttachments(companyId: string, projectId: string, rfiId: string) {
+    // H-1 fix: see addAttachment()'s identical comment above.
+    await this.findOne(companyId, projectId, rfiId);
     const rows = await this.db.withTenant(companyId, sql => sql`
       SELECT ra.*, u.first_name || ' ' || u.last_name AS uploaded_by_name
       FROM rfi_attachments ra
@@ -990,7 +996,9 @@ export class RfisService {
     return rows.map(r => ({ ...r, attachmentReadUrl: urls.get(r.storageKey as string) }));
   }
 
-  async deleteAttachment(companyId: string, rfiId: string, attachmentId: string) {
+  async deleteAttachment(companyId: string, projectId: string, rfiId: string, attachmentId: string) {
+    // H-1 fix: see addAttachment()'s identical comment above.
+    await this.findOne(companyId, projectId, rfiId);
     const result = await this.db.withTenant(companyId, sql => sql`
       DELETE FROM rfi_attachments
       WHERE id = ${attachmentId} AND rfi_id = ${rfiId} AND company_id = ${companyId}
@@ -1459,7 +1467,9 @@ export class RfisService {
     return comment;
   }
 
-  async getComments(companyId: string, rfiId: string) {
+  async getComments(companyId: string, projectId: string, rfiId: string) {
+    // H-1 fix: see addAttachment()'s identical comment above.
+    await this.findOne(companyId, projectId, rfiId);
     return this.db.withTenant(companyId, sql => sql`
       SELECT c.*, u.first_name || ' ' || u.last_name AS user_name
       FROM rfi_comments c

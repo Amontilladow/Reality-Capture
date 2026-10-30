@@ -83,21 +83,21 @@ export default function QaqcListPage() {
 
       <div className="p-6 space-y-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <Listbox className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <Listbox aria-label="Status" className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
             {(['open', 'pending_confirmation', 'closed', 'reopened'] as const).map((s) => (
               <option key={s} value={s}>{QAQC_STATUS_LABELS[s]}</option>
             ))}
           </Listbox>
 
-          <Listbox className="field-input w-auto" value={priority} onChange={(e) => setPriority(e.target.value)}>
+          <Listbox aria-label="Priority" className="field-input w-auto" value={priority} onChange={(e) => setPriority(e.target.value)}>
             <option value="">Any priority</option>
             {QAQC_PRIORITIES.map((p) => (
               <option key={p} value={p}>{QAQC_PRIORITY_LABELS[p]}</option>
             ))}
           </Listbox>
 
-          <Listbox className="field-input w-auto" value={discipline} onChange={(e) => setDiscipline(e.target.value)}>
+          <Listbox aria-label="Discipline" className="field-input w-auto" value={discipline} onChange={(e) => setDiscipline(e.target.value)}>
             <option value="">All disciplines</option>
             {RFI_DISCIPLINES.map((d) => (
               <option key={d} value={d}>{RFI_DISCIPLINE_LABELS[d]}</option>

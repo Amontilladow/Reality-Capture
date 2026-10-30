@@ -9,7 +9,6 @@ import {
 } from './riskDisplay';
 import { Listbox } from '../ui/Listbox';
 
-const HIGH_HEX = '#FB923C';
 const LEVEL_LABELS: Record<RiskLevel, string> = { LOW: 'Low', MODERATE: 'Moderate', HIGH: 'High', CRITICAL: 'Critical' };
 const STATUS_LABELS: Record<RiskStatus, string> = {
   DETECTED: 'Detected', ACTIVE: 'Active', MITIGATION_IN_PROGRESS: 'Mitigation in progress',
@@ -31,7 +30,7 @@ export function RiskRegisterTable({ risks, members, ownerNames, filters, onFilte
   onSelectRisk: (riskId: string) => void;
 }) {
   const themeColors = useThemeColors();
-  const levelColor: Record<RiskLevel, string> = { LOW: themeColors.ok, MODERATE: themeColors.warn, HIGH: HIGH_HEX, CRITICAL: themeColors.danger };
+  const levelColor: Record<RiskLevel, string> = { LOW: themeColors.ok, MODERATE: themeColors.warn, HIGH: themeColors.high, CRITICAL: themeColors.danger };
   const [sortField, setSortField] = useState<RegisterSortField>('score');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);

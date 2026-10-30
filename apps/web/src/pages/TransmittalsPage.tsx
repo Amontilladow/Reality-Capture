@@ -57,7 +57,7 @@ export default function TransmittalsPage() {
 
       <div className="p-6 space-y-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <Listbox className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <Listbox aria-label="Status" className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
             {TRANSMITTAL_STATUSES.map((s) => (
               <option key={s} value={s}>{TRANSMITTAL_STATUS_LABELS[s]}</option>

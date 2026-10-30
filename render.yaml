@@ -108,6 +108,25 @@ services:
         value: 15m
       - key: JWT_REFRESH_EXPIRES_IN
         value: 30d
+      # RealityCapture's own AI provider (Reports/Risk AI briefings, the
+      # Assistant's tool-routing/domain-guard classification -- see
+      # modules/ai/providers/provider.factory.ts). Previously no AI_PROVIDER
+      # or provider key was declared here at all, so every AI request from
+      # this service failed closed with "No AI provider configured" --
+      # Reports/Risk briefings always showed "unavailable" in production.
+      # custom_openai_compatible points this at a third-party OpenAI-
+      # compatible gateway rather than a provider's own API; CUSTOM_OPENAI_*
+      # values are filled in manually in the Render dashboard, never
+      # committed. CUSTOM_OPENAI_MODEL must match a model name that gateway
+      # actually serves.
+      - key: AI_PROVIDER
+        value: custom_openai_compatible
+      - key: CUSTOM_OPENAI_BASE_URL
+        sync: false
+      - key: CUSTOM_OPENAI_API_KEY
+        sync: false
+      - key: CUSTOM_OPENAI_MODEL
+        sync: false
       # Phase 6 security fix: this was previously missing from render.yaml
       # entirely. CredentialEncryptionService (common/crypto/) -- which
       # encrypts Outlook/Gmail OAuth tokens and BYO AI provider keys at rest
@@ -210,10 +229,22 @@ services:
         value: http://engineeringos-qdrant:6333
       - key: QDRANT_API_KEY
         value: ""
+      # Switched from anthropic to custom_openai_compatible so the AI
+      # Assistant (/assistant, this service) routes through the same
+      # third-party gateway as apps/api's Reports/Risk AI briefings --
+      # previously ANTHROPIC_API_KEY was never actually set here (see the
+      # old comment this replaced), so /assistant had been failing closed
+      # in production this whole time, same gap as apps/api.
       - key: DEFAULT_LLM_PROVIDER
-        value: anthropic
+        value: custom_openai_compatible
+      - key: CUSTOM_OPENAI_BASE_URL
+        sync: false
+      - key: CUSTOM_OPENAI_API_KEY
+        sync: false
+      - key: CUSTOM_OPENAI_MODEL
+        sync: false
       - key: ANTHROPIC_API_KEY
-        sync: false # must be set manually in the Render dashboard -- no key configured yet, /assistant will error until one is added
+        sync: false # kept as a manual fallback option; not used while DEFAULT_LLM_PROVIDER is custom_openai_compatible
       - key: OPENAI_API_KEY
         sync: false
       - key: OLLAMA_URL

@@ -43,8 +43,8 @@ export class DocumentsController {
   @Post(':id/link')
   @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Link a document to a capture, element, location, or issue' })
-  async link(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: LinkDocumentDto) {
-    return { data: await this.svc.link(u.companyId, id, u.id, dto), error: null };
+  async link(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: LinkDocumentDto) {
+    return { data: await this.svc.link(u.companyId, pid, id, u.id, dto), error: null };
   }
 
   // Generating/revoking a public link is gated the same as every other

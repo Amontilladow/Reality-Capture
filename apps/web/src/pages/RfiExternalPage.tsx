@@ -59,7 +59,7 @@ export default function RfiExternalPage() {
   });
 
   return (
-    <div className="min-h-screen bg-base-950 flex flex-col items-center px-4 py-10">
+    <div className="min-h-screen flex flex-col items-center px-4 py-10">
       <div className="fixed top-4 right-4 z-10">
         <ThemeToggle />
       </div>

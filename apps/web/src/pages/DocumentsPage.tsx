@@ -43,7 +43,7 @@ export default function DocumentsPage() {
 
       <div className="p-6 space-y-4">
         <div className="flex items-center gap-3">
-          <Listbox className="field-input w-auto" value={docType} onChange={(e) => setDocType(e.target.value)}>
+          <Listbox aria-label="Document type" className="field-input w-auto" value={docType} onChange={(e) => setDocType(e.target.value)}>
             <option value="">All types</option>
             {DOC_TYPES.map((t) => (
               <option key={t} value={t}>{DOC_TYPE_LABELS[t]}</option>

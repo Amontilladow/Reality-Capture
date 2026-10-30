@@ -126,9 +126,14 @@ export class BimService {
     return job;
   }
 
-  async getModel(companyId: string, modelId: string) {
+  // H-1 fix (KNOWN_ISSUES_AND_REMEDIATION.md): previously scoped only by
+  // company_id -- a user authorized for Project A could read/act on
+  // Project B's BIM model (including, via getModelViewerData below, a live
+  // presigned Fragments file URL) by guessing/enumerating a modelId. This
+  // is the shared base every model-scoped method below goes through.
+  async getModel(companyId: string, projectId: string, modelId: string) {
     const [model] = await this.db.withTenant(companyId, sql => sql`
-      SELECT * FROM bim_models WHERE id = ${modelId} AND company_id = ${companyId}
+      SELECT * FROM bim_models WHERE id = ${modelId} AND project_id = ${projectId} AND company_id = ${companyId}
     `);
     if (!model) throw new NotFoundException('BIM model not found.');
     return model;
@@ -137,8 +142,8 @@ export class BimService {
   // Polling-friendly status endpoint for the frontend — deliberately a
   // thin read of bim_models, no cross-service call, so it stays fast and
   // available even if apps/ifc-service is temporarily down.
-  async getModelStatus(companyId: string, modelId: string) {
-    const model = await this.getModel(companyId, modelId);
+  async getModelStatus(companyId: string, projectId: string, modelId: string) {
+    const model = await this.getModel(companyId, projectId, modelId);
     return {
       id: model.id,
       status: model.status,
@@ -153,7 +158,7 @@ export class BimService {
   // Re-queues a failed (or stuck) model for reprocessing without
   // re-uploading the file — the storage key doesn't change.
   async reprocessModel(companyId: string, projectId: string, modelId: string) {
-    const model = await this.getModel(companyId, modelId);
+    const model = await this.getModel(companyId, projectId, modelId);
     // stage_completion has to be cleared too, not just status -- otherwise
     // the resumability logic (built for retrying a crashed job without
     // redoing committed work) sees every stage as already done and skips
@@ -167,15 +172,15 @@ export class BimService {
       WHERE id = ${modelId} AND company_id = ${companyId}
     `);
     await this.enqueueParseJob(companyId, projectId, modelId, model.storageKey as string);
-    return this.getModelStatus(companyId, modelId);
+    return this.getModelStatus(companyId, projectId, modelId);
   }
 
   // Everything the viewer needs to open a ready model: a presigned URL to
   // the generated Fragments file, plus the current status (so the
   // frontend can show a clear message instead of a broken viewer if the
   // model isn't ready or Fragments generation failed/was skipped).
-  async getModelViewerData(companyId: string, modelId: string) {
-    const model = await this.getModel(companyId, modelId);
+  async getModelViewerData(companyId: string, projectId: string, modelId: string) {
+    const model = await this.getModel(companyId, projectId, modelId);
     if (model.status !== 'ready') {
       return { status: model.status, fragmentsUrl: null, processingError: model.processingError };
     }
@@ -191,8 +196,8 @@ export class BimService {
   // returns storage credentials, storage URLs, or file bytes; fields are
   // null until the model has been (re)processed by a worker build that
   // records them (see migration 011_bim_model_provenance.sql).
-  async getModelProvenance(companyId: string, modelId: string) {
-    const model = await this.getModel(companyId, modelId);
+  async getModelProvenance(companyId: string, projectId: string, modelId: string) {
+    const model = await this.getModel(companyId, projectId, modelId);
     return {
       modelId: model.id,
       originalFilename: model.originalFilename ?? null,
@@ -213,7 +218,8 @@ export class BimService {
   // The IFC-native spatial tree (Site → Building → Storey → Space),
   // returned flat with parent_id so the frontend builds the tree shape —
   // cheaper to transfer and easier to reason about than a nested payload.
-  async getHierarchy(companyId: string, modelId: string) {
+  async getHierarchy(companyId: string, projectId: string, modelId: string) {
+    await this.getModel(companyId, projectId, modelId);
     return this.db.withTenant(companyId, sql => sql`
       SELECT n.id, n.parent_id, n.ifc_guid, n.ifc_type, n.name, n.elevation,
         COUNT(e.id) AS element_count
@@ -264,14 +270,14 @@ export class BimService {
     return this.db.paginate(rows, page, perPage);
   }
 
-  async getElement(companyId: string, elementId: string) {
+  async getElement(companyId: string, projectId: string, elementId: string) {
     const [el] = await this.db.withTenant(companyId, sql => sql`
       SELECT e.*, m.name AS model_name, l.name AS level_name, sn.name AS spatial_node_name, sn.ifc_type AS spatial_node_type
       FROM bim_elements e
       LEFT JOIN bim_models m ON m.id = e.model_id
       LEFT JOIN levels l ON l.id = e.level_id
       LEFT JOIN bim_spatial_nodes sn ON sn.id = e.spatial_node_id
-      WHERE e.id = ${elementId} AND e.company_id = ${companyId}
+      WHERE e.id = ${elementId} AND e.project_id = ${projectId} AND e.company_id = ${companyId}
     `);
     if (!el) throw new NotFoundException('BIM element not found.');
 
@@ -323,19 +329,20 @@ export class BimService {
   // element's status at once to build its per-status GUID groups, not a
   // page of full element detail. Mirrors getHierarchy()'s "cheap flat read"
   // rationale above.
-  async getElementStatusMap(companyId: string, modelId: string) {
+  async getElementStatusMap(companyId: string, projectId: string, modelId: string) {
+    await this.getModel(companyId, projectId, modelId);
     return this.db.withTenant(companyId, sql => sql`
       SELECT ifc_guid, construction_status, completion_pct
       FROM bim_elements WHERE model_id = ${modelId} AND company_id = ${companyId}
     `);
   }
 
-  async getElementByGuid(companyId: string, modelId: string, ifcGuid: string) {
+  async getElementByGuid(companyId: string, projectId: string, modelId: string, ifcGuid: string) {
     const [el] = await this.db.withTenant(companyId, sql => sql`
-      SELECT id FROM bim_elements WHERE model_id = ${modelId} AND ifc_guid = ${ifcGuid} AND company_id = ${companyId}
+      SELECT id FROM bim_elements WHERE model_id = ${modelId} AND ifc_guid = ${ifcGuid} AND project_id = ${projectId} AND company_id = ${companyId}
     `);
     if (!el) throw new NotFoundException(`No element with GUID ${ifcGuid} in this model.`);
-    return this.getElement(companyId, el.id as string);
+    return this.getElement(companyId, projectId, el.id as string);
   }
 
   // Creates a pin that starts out attached to nothing but this element --
@@ -380,11 +387,16 @@ export class BimService {
     companyId: string, projectId: string, elementId: string, userId: string,
     dto: { status: string; completionPct?: number; captureId?: string },
   ) {
+    // H-1 fix: projectId was already a parameter here but was never
+    // actually used to scope either query below -- a user authorized for
+    // Project A could change Project B's element status by supplying
+    // Project B's own elementId.
     // withTenant required -- bim_elements carries the tenant_isolation RLS policy.
     const [existing] = await this.db.withTenant(companyId, sql => sql`
-      SELECT construction_status FROM bim_elements WHERE id = ${elementId} AND company_id = ${companyId}
+      SELECT construction_status FROM bim_elements WHERE id = ${elementId} AND project_id = ${projectId} AND company_id = ${companyId}
     `);
     if (!existing) throw new NotFoundException('BIM element not found.');
+    if (dto.captureId) await this.assertCaptureInProject(companyId, projectId, dto.captureId);
 
     const [el] = await this.db.withTenant(companyId, sql => sql`
       UPDATE bim_elements
@@ -392,7 +404,7 @@ export class BimService {
           completion_pct = ${dto.completionPct ?? null},
           installed_at = CASE WHEN ${dto.status} = 'complete' THEN NOW() ELSE installed_at END,
           updated_at = NOW()
-      WHERE id = ${elementId} AND company_id = ${companyId}
+      WHERE id = ${elementId} AND project_id = ${projectId} AND company_id = ${companyId}
       RETURNING *
     `);
 
@@ -405,7 +417,7 @@ export class BimService {
     return el;
   }
 
-  async getElementStatusHistory(companyId: string, elementId: string) {
+  async getElementStatusHistory(companyId: string, projectId: string, elementId: string) {
     return this.db.withTenant(companyId, sql => sql`
       SELECT h.id, h.from_status, h.to_status, h.completion_pct, h.capture_id, h.created_at,
              u.first_name || ' ' || u.last_name AS performed_by_name,
@@ -413,13 +425,40 @@ export class BimService {
       FROM bim_element_status_history h
       JOIN users u ON u.id = h.performed_by
       LEFT JOIN captures c ON c.id = h.capture_id
-      WHERE h.element_id = ${elementId} AND h.company_id = ${companyId}
+      WHERE h.element_id = ${elementId} AND h.project_id = ${projectId} AND h.company_id = ${companyId}
       ORDER BY h.created_at DESC
     `);
   }
 
+  // H-1 fix: lightweight ownership check for mutation/read routes
+  // (linkCaptureToElement/getCapturesForElement) that don't otherwise read
+  // the element row -- mirrors issues.service.ts's assertIssueInProject.
+  private async assertElementInProject(companyId: string, projectId: string, elementId: string): Promise<void> {
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      SELECT 1 FROM bim_elements WHERE id = ${elementId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!row) throw new NotFoundException('BIM element not found.');
+  }
+
+  // H-1 follow-up: linkCaptureToElement()/updateElementStatus()/
+  // upsertZoneProgress() all took an optional/required captureId that was
+  // never checked -- a user authorized for Project A could reference
+  // Project B's capture by id. For the two status methods this isn't just
+  // a dangling id: getElementStatusHistory()/getZoneProgressHistory() both
+  // LEFT JOIN captures and return capture_type/capture_title, so an
+  // unchecked cross-project captureId was a real metadata leak into
+  // Project A's own history view, not merely an orphaned reference.
+  private async assertCaptureInProject(companyId: string, projectId: string, captureId: string): Promise<void> {
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      SELECT 1 FROM captures WHERE id = ${captureId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!row) throw new NotFoundException('Capture not found.');
+  }
+
   // ── Capture ↔ Element linking ─────────────────────────────────────────────
-  async linkCaptureToElement(companyId: string, captureId: string, elementId: string, userId: string, linkType = 'documents') {
+  async linkCaptureToElement(companyId: string, projectId: string, captureId: string, elementId: string, userId: string, linkType = 'documents') {
+    await this.assertElementInProject(companyId, projectId, elementId);
+    await this.assertCaptureInProject(companyId, projectId, captureId);
     // withTenant required -- capture_element_links carries the tenant_isolation RLS policy.
     const [link] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO capture_element_links (capture_id, element_id, company_id, link_type, linked_by)
@@ -435,7 +474,8 @@ export class BimService {
   // Place, and a Place can now be a BIM element, the same as it can be a
   // floor-plan position. capture_element_links stays in the schema, unused,
   // same as capture_drawing_links was before the pins work replaced it.
-  async getCapturesForElement(companyId: string, elementId: string) {
+  async getCapturesForElement(companyId: string, projectId: string, elementId: string) {
+    await this.assertElementInProject(companyId, projectId, elementId);
     return this.db.withTenant(companyId, sql => sql`
       SELECT c.id, c.capture_type, c.captured_at, c.phase, c.title, c.status,
              NULL::varchar AS link_type,
@@ -511,6 +551,7 @@ export class BimService {
       WHERE lvl.id = ${levelId} AND b.project_id = ${projectId} AND b.company_id = ${companyId}
     `);
     if (!level) throw new NotFoundException('Level not found in this project.');
+    if (dto.captureId) await this.assertCaptureInProject(companyId, projectId, dto.captureId);
 
     const [existing] = await this.db.withTenant(companyId, sql => sql`
       SELECT status FROM zone_progress WHERE level_id = ${levelId} AND company_id = ${companyId}
@@ -535,7 +576,7 @@ export class BimService {
     return zone;
   }
 
-  async getZoneProgressHistory(companyId: string, levelId: string) {
+  async getZoneProgressHistory(companyId: string, projectId: string, levelId: string) {
     return this.db.withTenant(companyId, sql => sql`
       SELECT h.id, h.from_status, h.to_status, h.completion_pct, h.capture_id, h.created_at,
              u.first_name || ' ' || u.last_name AS performed_by_name,
@@ -543,7 +584,7 @@ export class BimService {
       FROM zone_progress_history h
       JOIN users u ON u.id = h.performed_by
       LEFT JOIN captures c ON c.id = h.capture_id
-      WHERE h.level_id = ${levelId} AND h.company_id = ${companyId}
+      WHERE h.level_id = ${levelId} AND h.project_id = ${projectId} AND h.company_id = ${companyId}
       ORDER BY h.created_at DESC
     `);
   }

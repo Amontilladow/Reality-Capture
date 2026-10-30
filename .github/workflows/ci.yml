@@ -78,3 +78,48 @@ jobs:
       # apps/web are left as-is; see CURRENT_STATUS.md.
       - name: Lint
         run: pnpm lint
+
+      # Security audit (2026-10-29 pass, H-3 in KNOWN_ISSUES_AND_REMEDIATION.md):
+      # deliberately non-blocking (|| true) for now -- the current baseline
+      # already has known, triaged findings (sharp/nodemailer/xlsx each need
+      # their own dedicated major-version upgrade pass, tracked in that doc)
+      # that would turn every unrelated PR's CI red today. This step exists
+      # so a *new* critical/high finding is visible in every run's log
+      # without blocking merges on pre-existing, already-accepted risk.
+      # Tighten this to a real gate (drop the `|| true`, or add
+      # --audit-level/an allowlist of the already-tracked findings) once the
+      # baseline above is cleared.
+      - name: Dependency audit (Node, non-blocking)
+        run: pnpm audit --prod || true
+
+  python-dependency-audit:
+    name: Python dependency audit (adm-gis-prep, non-blocking)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # apps/adm-gis-prep only -- its full dependency set installs cleanly
+      # and pip-audit returned zero findings against it in the 2026-10-29
+      # pass. apps/ai-service is deliberately NOT audited here: it pins
+      # torch via a separate --extra-index-url (download.pytorch.org),
+      # which made full-environment resolution unreliable in the sandbox
+      # this was authored in -- that service's dependency audit (which did
+      # surface real findings: Pillow, python-multipart, sentence-
+      # transformers) was done manually this pass via an isolated venv with
+      # each package installed --no-deps; see H-3 in
+      # KNOWN_ISSUES_AND_REMEDIATION.md for the full results. Wiring
+      # apps/ai-service into this job is a reasonable follow-up once
+      # someone can confirm it resolves cleanly in GitHub Actions' own
+      # (non-sandboxed) network.
+      - name: Install pip-audit
+        run: pip install --quiet pip-audit
+
+      - name: Audit apps/adm-gis-prep
+        working-directory: apps/adm-gis-prep
+        run: pip-audit -r requirements.txt || true

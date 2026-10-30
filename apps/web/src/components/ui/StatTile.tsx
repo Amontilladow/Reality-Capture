@@ -33,7 +33,7 @@ export function StatTile({
         {resolved.dot && <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full ${resolved.dot}`} />}
         <span className="truncate">{label}</span>
       </div>
-      <div className={`${size === 'lg' ? 'text-3xl mt-2' : 'text-xl mt-1'} font-semibold tabular-nums tracking-tight ${resolved.text}`}>
+      <div className={`${size === 'lg' ? 'text-4xl mt-2' : 'text-2xl mt-1'} font-light tabular-nums tracking-tight ${resolved.text}`}>
         {value.toLocaleString()}
       </div>
     </div>

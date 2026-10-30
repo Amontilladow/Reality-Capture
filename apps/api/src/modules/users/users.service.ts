@@ -5,6 +5,7 @@ import { randomBytes } from 'crypto';
 import { DatabaseService } from '../../database/database.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { AuthService } from '../auth/auth.service';
+import { SessionRevocationService } from '../auth/session-revocation.service';
 import { PaymentRequiredException } from '../../common/exceptions/payment-required.exception';
 import type { InviteUserDto } from './dto/invite-user.dto';
 import type { UpdateUserDto } from './dto/update-user.dto';
@@ -18,6 +19,7 @@ export class UsersService {
     private readonly db: DatabaseService,
     private readonly subscription: SubscriptionService,
     private readonly auth: AuthService,
+    private readonly sessionRevocation: SessionRevocationService,
   ) {}
 
   async findAll(companyId: string, query: PaginationQuery) {
@@ -192,6 +194,13 @@ export class UsersService {
     }
     // Revoke all sessions
     await this.db.withTenant(companyId, sql => sql`UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ${userId} AND company_id = ${companyId}`);
+    // M-1 fix: this message previously claimed immediate revocation while
+    // an already-issued access token actually stayed valid for its full
+    // remaining lifetime (refresh tokens were the only thing really
+    // revoked here). denyFutureAccess() closes that gap -- see
+    // SessionRevocationService's own comment -- so the message is now
+    // accurate rather than aspirational.
+    await this.sessionRevocation.denyFutureAccess(userId);
     return { message: 'User deactivated and all sessions revoked.' };
   }
 

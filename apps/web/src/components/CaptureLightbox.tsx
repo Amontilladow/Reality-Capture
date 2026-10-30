@@ -117,7 +117,7 @@ export function CaptureLightbox({
 
           {editingPhase ? (
             <div className="flex items-center gap-1.5">
-              <Listbox
+              <Listbox aria-label="Phase"
                 autoFocus
                 className="field-input !py-1 !text-xs w-auto"
                 value={phase}

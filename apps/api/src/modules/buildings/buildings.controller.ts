@@ -41,32 +41,32 @@ export class BuildingsController {
 
   @Patch('buildings/:bid')
   @RequireProjectPermission('manage_project_records')
-  async updateBuilding(@CurrentUser() u: AuthenticatedUser, @Param('bid') bid: string, @Body() dto: UpdateBuildingDto) {
-    return { data: await this.svc.updateBuilding(u.companyId, bid, dto), error: null };
+  async updateBuilding(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('bid') bid: string, @Body() dto: UpdateBuildingDto) {
+    return { data: await this.svc.updateBuilding(u.companyId, pid, bid, dto), error: null };
   }
 
   @Post('buildings/:bid/levels')
   @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Add a level to a building' })
-  async createLevel(@CurrentUser() u: AuthenticatedUser, @Param('bid') bid: string, @Body() dto: CreateLevelDto) {
-    return { data: await this.svc.createLevel(u.companyId, bid, dto), error: null };
+  async createLevel(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('bid') bid: string, @Body() dto: CreateLevelDto) {
+    return { data: await this.svc.createLevel(u.companyId, pid, bid, dto), error: null };
   }
 
   @Get('buildings/:bid/levels')
-  async getLevels(@CurrentUser() u: AuthenticatedUser, @Param('bid') bid: string) {
-    return { data: await this.svc.getLevels(u.companyId, bid), error: null };
+  async getLevels(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('bid') bid: string) {
+    return { data: await this.svc.getLevels(u.companyId, pid, bid), error: null };
   }
 
   @Post('buildings/:bid/levels/:lid/locations')
   @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Add a location to a level' })
-  async createLocation(@CurrentUser() u: AuthenticatedUser, @Param('lid') lid: string, @Body() dto: CreateLocationDto) {
-    return { data: await this.svc.createLocation(u.companyId, lid, dto), error: null };
+  async createLocation(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('lid') lid: string, @Body() dto: CreateLocationDto) {
+    return { data: await this.svc.createLocation(u.companyId, pid, lid, dto), error: null };
   }
 
   @Get('buildings/:bid/levels/:lid/locations')
-  async getLocations(@CurrentUser() u: AuthenticatedUser, @Param('lid') lid: string) {
-    return { data: await this.svc.getLocations(u.companyId, lid), error: null };
+  async getLocations(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('lid') lid: string) {
+    return { data: await this.svc.getLocations(u.companyId, pid, lid), error: null };
   }
 
   // Flat route (no building/level in the path) since a floor-plan pin is a
@@ -76,18 +76,19 @@ export class BuildingsController {
   @ApiOperation({ summary: 'Rename, re-describe, or reposition a location (including a floor-plan pin)' })
   async updateLocation(
     @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
     @Param('id') id: string,
     @Body() dto: UpdateLocationDto,
   ) {
-    return { data: await this.svc.updateLocation(u.companyId, id, dto), error: null };
+    return { data: await this.svc.updateLocation(u.companyId, pid, id, dto), error: null };
   }
 
   @Delete('locations/:id')
   @RequireProjectPermission('manage_project_records')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Archive a location -- hides it and its pin, but keeps everything attached intact and recoverable' })
-  async archiveLocation(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
-    return { data: await this.svc.archiveLocation(u.companyId, id), error: null };
+  async archiveLocation(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.archiveLocation(u.companyId, pid, id), error: null };
   }
 
   @Post('locations/:id/convert-to-snag')

@@ -626,7 +626,7 @@ export default function RfiDetailPage() {
                   {drawingImpactLevel !== 'no' && (
                     <div className="mt-2">
                       <div className="text-xs text-ink-500 mb-1">Drawing update owner</div>
-                      <Listbox
+                      <Listbox aria-label="Drawing update owner"
                         className="field-input !py-1.5 text-xs w-full"
                         value={drawingUpdateOwnerId}
                         onChange={(e) => setDrawingUpdateOwnerId(e.target.value)}
@@ -748,7 +748,7 @@ export default function RfiDetailPage() {
           </div>
 
           <div className="flex gap-2 items-start pt-1">
-            <Listbox
+            <Listbox aria-label="Comment as organization"
               className="field-input w-auto shrink-0"
               value={commentOrgSlot}
               onChange={(e) => setCommentOrgSlot(e.target.value as ProjectOrganizationSlot | '')}
@@ -825,7 +825,7 @@ export default function RfiDetailPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
               <div>
                 <div className="text-xs text-ink-500 mb-1">Action</div>
-                <Listbox
+                <Listbox aria-label="External access action"
                   className="field-input !py-1.5 text-xs"
                   value={extAction}
                   onChange={(e) => {
@@ -841,7 +841,7 @@ export default function RfiDetailPage() {
               </div>
               <div>
                 <div className="text-xs text-ink-500 mb-1">Organization</div>
-                <Listbox
+                <Listbox aria-label="Organization slot"
                   className="field-input !py-1.5 text-xs"
                   value={extSlot}
                   onChange={(e) => {
@@ -1012,7 +1012,7 @@ export default function RfiDetailPage() {
           {submitForReviewMutation.isError && <p className="field-error">{apiErrorMessage(submitForReviewMutation.error)}</p>}
 
           {(canDecideReview || canClose) && (
-            <Listbox
+            <Listbox aria-label="Closing organization"
               value={closingOrgSlot}
               onChange={(e) => setClosingOrgSlot(e.target.value as ProjectOrganizationSlot | '')}
               className="field-input w-auto !py-1.5 text-xs"
@@ -1165,7 +1165,7 @@ function ImpactEditor({
   return (
     <div>
       <div className="text-xs text-ink-500 mb-1">{title}</div>
-      <Listbox
+      <Listbox aria-label="Level"
         className="field-input !py-1.5 text-xs w-auto"
         value={level}
         onChange={(e) => onLevelChange(e.target.value as RfiImpactLevel)}
@@ -1392,7 +1392,7 @@ function AttachmentSection({
       {uploadMutation.isError && <p className="field-error">{apiErrorMessage(uploadMutation.error)}</p>}
       {canUpload && (
         <div className="flex items-center gap-2">
-          <Listbox className="field-input w-auto !py-1.5 text-xs" value={documentType} onChange={(e) => setDocumentType(e.target.value as RfiDocumentType)}>
+          <Listbox aria-label="Document type" className="field-input w-auto !py-1.5 text-xs" value={documentType} onChange={(e) => setDocumentType(e.target.value as RfiDocumentType)}>
             {RFI_DOCUMENT_TYPES.map((t) => (
               <option key={t} value={t}>{RFI_DOCUMENT_TYPE_LABELS[t]}</option>
             ))}

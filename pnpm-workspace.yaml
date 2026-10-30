@@ -14,3 +14,13 @@ allowBuilds:
   sharp: true # official install script resolves the platform-specific prebuilt libvips binary; needed for apps/api's capture rendition generation
 minimumReleaseAgeExclude:
   - '@thatopen/components@3.4.7'
+# Security audit (2026-10-29): forces a transitive dependency's patched
+# version without waiting on its parent (express -> @nestjs/platform-express,
+# both direct deps of apps/api) to bump it first. proxy-addr is critical
+# (GHSA: IP spoofing via an IPv4-mapped IPv6 trust subnet) and directly
+# reachable in the deployed API, which runs behind Render's reverse proxy
+# with trust proxy enabled -- a spoofed X-Forwarded-For could defeat the
+# per-IP rate limiter (see M-2/M-5 in KNOWN_ISSUES_AND_REMEDIATION.md). A
+# single patch-version bump (2.0.7 -> 2.0.8), not a breaking change.
+overrides:
+  proxy-addr: '>=2.0.8'

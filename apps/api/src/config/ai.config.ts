@@ -95,6 +95,19 @@ export default registerAs('ai', () => ({
     apiKey: process.env.OPENAI_API_KEY ?? '',
     model: process.env.OPENAI_MODEL ?? 'gpt-4o',
   },
+  // A third-party OpenAI-compatible gateway (e.g. a multi-model API
+  // reseller) rather than OpenAI itself -- OpenAICompatibleProvider
+  // already supports an arbitrary baseURL (it also backs the BYO
+  // "custom_openai_compatible"/"ollama" cases in provider.factory.ts), so
+  // this is just RealityCapture's own provider pointed at a different
+  // OpenAI-compatible endpoint. CUSTOM_OPENAI_MODEL must match a model
+  // name the gateway actually serves -- check the provider's own docs/
+  // dashboard; this default is a placeholder, not a verified working value.
+  customOpenAICompatible: {
+    baseUrl: process.env.CUSTOM_OPENAI_BASE_URL ?? '',
+    apiKey: process.env.CUSTOM_OPENAI_API_KEY ?? '',
+    model: process.env.CUSTOM_OPENAI_MODEL ?? 'gpt-4o',
+  },
 
   // Per-role daily + per-minute request limits ("INITIAL TESTING LIMITS" in
   // the spec, env-overridable as "daily,perMinute", e.g.

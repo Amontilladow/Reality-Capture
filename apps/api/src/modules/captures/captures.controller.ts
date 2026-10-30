@@ -82,21 +82,21 @@ export class CapturesController {
   @Post(':id/hotspots')
   @RequireProjectPermission('manage_project_records')
   @ApiOperation({ summary: 'Add a hotspot to a 360° capture' })
-  async createHotspot(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: CreateHotspotDto) {
-    return { data: await this.svc.createHotspot(u.companyId, id, u.id, dto), error: null };
+  async createHotspot(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: CreateHotspotDto) {
+    return { data: await this.svc.createHotspot(u.companyId, pid, id, u.id, dto), error: null };
   }
 
   @Patch(':id/hotspots/:hid')
   @RequireProjectPermission('manage_project_records')
-  async updateHotspot(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Param('hid') hid: string, @Body() dto: Partial<CreateHotspotDto>) {
-    return { data: await this.svc.updateHotspot(u.companyId, id, hid, dto), error: null };
+  async updateHotspot(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Param('hid') hid: string, @Body() dto: Partial<CreateHotspotDto>) {
+    return { data: await this.svc.updateHotspot(u.companyId, pid, id, hid, dto), error: null };
   }
 
   @Delete(':id/hotspots/:hid')
   @RequireProjectPermission('manage_project_records')
   @HttpCode(HttpStatus.OK)
-  async deleteHotspot(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Param('hid') hid: string) {
-    return { data: await this.svc.deleteHotspot(u.companyId, id, hid), error: null };
+  async deleteHotspot(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Param('hid') hid: string) {
+    return { data: await this.svc.deleteHotspot(u.companyId, pid, id, hid), error: null };
   }
 
   // ── Viewer ────────────────────────────────────────────────────────────────

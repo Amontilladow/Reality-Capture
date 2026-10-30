@@ -142,7 +142,7 @@ export function EmailComposerModal({
         {connectedProviders.length > 1 && (
           <div>
             <label className="field-label">Send from</label>
-            <Listbox className="field-input" value={provider} onChange={(e) => setProvider(e.target.value as EmailProvider)}>
+            <Listbox aria-label="Provider" className="field-input" value={provider} onChange={(e) => setProvider(e.target.value as EmailProvider)}>
               {connectedProviders.map((p) => <option key={p} value={p}>{PROVIDER_LABEL[p]}</option>)}
             </Listbox>
           </div>

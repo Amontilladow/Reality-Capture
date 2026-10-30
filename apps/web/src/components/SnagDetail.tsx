@@ -171,7 +171,7 @@ export function SnagDetail({
         {forwardOpen && (
           <div className="pt-3 border-t border-base-600 space-y-2">
             <div className="grid grid-cols-2 gap-2">
-              <Listbox className="field-input" value={forwardTo} onChange={(e) => setForwardTo(e.target.value)}>
+              <Listbox aria-label="Forward to" className="field-input" value={forwardTo} onChange={(e) => setForwardTo(e.target.value)}>
                 <option value="">Forward to…</option>
                 {members.map((m) => (
                   <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
@@ -223,7 +223,7 @@ export function SnagDetail({
         {isManager && (
           <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-base-600">
             <span className="text-[11px] text-ink-500 font-medium">Admin override</span>
-            <Listbox
+            <Listbox aria-label="Force status"
               className="field-input w-auto"
               value={forceStatusValue}
               onChange={(e) => setForceStatusValue(e.target.value as SnagStatus)}

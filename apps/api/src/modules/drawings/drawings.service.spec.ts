@@ -14,16 +14,24 @@ describe('DrawingsService pin page_number', () => {
     insertedPin?: Record<string, unknown>;
   }) {
     const query = jest.fn().mockResolvedValue(opts.insertedPin ? [opts.insertedPin] : []);
-    // createPin() now makes two withTenant calls (the drawing lookup, then the
-    // locations INSERT -- previously the INSERT went through plain this.db.query).
-    // First call resolves the canned drawing/getPins row; any call after that
-    // forwards to the query mock, so it still only ever sees the INSERT.
+    // createPin() makes two withTenant calls (the drawing lookup, then the
+    // locations INSERT). getPins() also makes two, since the H-1 fix added
+    // assertDrawingInProject's own ownership-check query ahead of the real
+    // pins SELECT. Distinguish by which opts key the test actually set:
+    // a createPin test sets 'drawingRow' (even to undefined, to test the
+    // not-found path) and leaves withTenantResult unset; a getPins test is
+    // the opposite -- it never touches drawingRow, so call 1 only needs a
+    // generic truthy row to satisfy the ownership check, and call 2 returns
+    // the real withTenantResult.
+    const isCreatePinTest = 'drawingRow' in opts;
     let callCount = 0;
     const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => {
       callCount += 1;
       if (callCount === 1) {
-        return Promise.resolve(opts.drawingRow !== undefined ? [opts.drawingRow] : (opts.withTenantResult ?? []));
+        if (isCreatePinTest) return Promise.resolve(opts.drawingRow !== undefined ? [opts.drawingRow] : []);
+        return Promise.resolve([{ '?column?': 1 }]); // assertDrawingInProject's ownership check
       }
+      if (opts.withTenantResult !== undefined) return Promise.resolve(opts.withTenantResult);
       return fn(query);
     });
     const db = { withTenant, query } as unknown as DatabaseService;
@@ -47,7 +55,7 @@ describe('DrawingsService pin page_number', () => {
         },
       });
 
-      const result = await svc.createPin(companyId, drawingId, 'user-1', { posXNorm: 0.5, posYNorm: 0.5 });
+      const result = await svc.createPin(companyId, 'project-1', drawingId, 'user-1', { posXNorm: 0.5, posYNorm: 0.5 });
 
       expect(result.pageNumber).toBe(1);
       const insertSql = (query.mock.calls[0][0] as TemplateStringsArray).join('');
@@ -65,14 +73,14 @@ describe('DrawingsService pin page_number', () => {
         },
       });
 
-      const result = await svc.createPin(companyId, drawingId, 'user-1', { posXNorm: 0.2, posYNorm: 0.3, pageNumber: 3 });
+      const result = await svc.createPin(companyId, 'project-1', drawingId, 'user-1', { posXNorm: 0.2, posYNorm: 0.3, pageNumber: 3 });
 
       expect(result.pageNumber).toBe(3);
     });
 
     it('throws NotFoundException for a drawing that does not exist', async () => {
       const { svc } = makeService({ drawingRow: undefined });
-      await expect(svc.createPin(companyId, 'missing', 'user-1', { posXNorm: 0, posYNorm: 0 })).rejects.toThrow(NotFoundException);
+      await expect(svc.createPin(companyId, 'project-1', 'missing', 'user-1', { posXNorm: 0, posYNorm: 0 })).rejects.toThrow(NotFoundException);
     });
 
     it('forwards assignedTo straight through to the auto-created Issue', async () => {
@@ -84,7 +92,7 @@ describe('DrawingsService pin page_number', () => {
         },
       });
 
-      const result = await svc.createPin(companyId, drawingId, 'user-1', {
+      const result = await svc.createPin(companyId, 'project-1', drawingId, 'user-1', {
         posXNorm: 0.5, posYNorm: 0.5, assignedTo: 'user-engineer',
       });
 
@@ -104,7 +112,7 @@ describe('DrawingsService pin page_number', () => {
         },
       });
 
-      const result = await svc.createPin(companyId, drawingId, 'user-1', { posXNorm: 0.5, posYNorm: 0.5 });
+      const result = await svc.createPin(companyId, 'project-1', drawingId, 'user-1', { posXNorm: 0.5, posYNorm: 0.5 });
 
       expect(issues.create).toHaveBeenCalledWith(
         companyId, undefined, 'user-1',
@@ -122,7 +130,7 @@ describe('DrawingsService pin page_number', () => {
         },
       });
 
-      const result = await svc.createPin(companyId, drawingId, 'user-1', { posXNorm: 0.5, posYNorm: 0.5 });
+      const result = await svc.createPin(companyId, 'project-1', drawingId, 'user-1', { posXNorm: 0.5, posYNorm: 0.5 });
 
       expect(issues.create).toHaveBeenCalled();
       expect(result.linkedRecord).toEqual({ type: 'issue', id: 'issue-1' });
@@ -138,7 +146,7 @@ describe('DrawingsService pin page_number', () => {
         },
       });
 
-      const result = await svc.createPin(companyId, drawingId, 'user-1', {
+      const result = await svc.createPin(companyId, 'project-1', drawingId, 'user-1', {
         posXNorm: 0.5, posYNorm: 0.5, purpose: 'camera_location',
       });
 
@@ -161,7 +169,7 @@ describe('DrawingsService pin page_number', () => {
         ],
       });
 
-      const pins = await svc.getPins(companyId, drawingId);
+      const pins = await svc.getPins(companyId, 'project-1', drawingId);
 
       expect(pins.map((p: Record<string, unknown>) => p.pageNumber)).toEqual([1, 2]);
     });
@@ -174,7 +182,7 @@ describe('DrawingsService pin page_number', () => {
         ],
       });
 
-      const pins = await svc.getPins(companyId, drawingId);
+      const pins = await svc.getPins(companyId, 'project-1', drawingId);
 
       expect(pins.map((p: Record<string, unknown>) => p.assignedTo)).toEqual(['user-a', 'user-b']);
     });
@@ -187,7 +195,7 @@ describe('DrawingsService pin page_number', () => {
         ],
       });
 
-      const pins = await svc.getPins(companyId, drawingId);
+      const pins = await svc.getPins(companyId, 'project-1', drawingId);
 
       expect(pins.map((p: Record<string, unknown>) => p.purpose)).toEqual(['issue', 'camera_location']);
     });
@@ -262,5 +270,112 @@ describe('DrawingsService upload enforcement', () => {
       await expect(svc.create(companyId, 'someone-elses-project', 'user-1', baseDto)).rejects.toThrow(NotFoundException);
       expect(getObjectSize).not.toHaveBeenCalled();
     });
+  });
+});
+
+// H-1 regression (KNOWN_ISSUES_AND_REMEDIATION.md): findOne/linkCapture/
+// unlinkCapture/getPins used to scope their drawing lookup only by
+// company_id -- a user authorized for Project A could fetch Project B's
+// drawing (findOne hands back a live presigned download URL) or mutate its
+// pins by supplying Project B's own drawingId. Each test below proves both
+// halves: the real project succeeds, the wrong one is rejected.
+describe('DrawingsService H-1: same-company cross-project access is rejected', () => {
+  const companyId = 'company-1';
+  const drawingId = 'drawing-1';
+  const REAL_PROJECT = 'project-A';
+  const OTHER_PROJECT = 'project-B';
+
+  // Only returns a row when the query's bound values include REAL_PROJECT
+  // -- i.e. the drawing genuinely belongs to REAL_PROJECT, so a lookup
+  // under OTHER_PROJECT must come back empty.
+  function makeProjectScopedDb(extra: (text: string) => unknown[] | undefined = () => undefined) {
+    const query = jest.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
+      const text = strings.join('?');
+      if (text.includes('FROM drawings')) {
+        return Promise.resolve(values.includes(REAL_PROJECT) ? [{ id: drawingId, projectId: REAL_PROJECT, storageKey: 'key.pdf', captureLinks: [] }] : []);
+      }
+      // assertCaptureInProject's own ownership check (linkCapture) -- same
+      // REAL_PROJECT-gated shape as the drawings branch above.
+      if (text.includes('FROM captures')) {
+        return Promise.resolve(values.includes(REAL_PROJECT) ? [{ '?column?': 1 }] : []);
+      }
+      const extraResult = extra(text);
+      if (extraResult) return Promise.resolve(extraResult);
+      return Promise.resolve([]);
+    });
+    const db = { withTenant: jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query)) } as unknown as DatabaseService;
+    return { db, query };
+  }
+
+  function makeSvc(db: DatabaseService, storage: Partial<StorageService> = {}) {
+    return new DrawingsService(db, storage as unknown as StorageService, {} as unknown as IssuesService);
+  }
+
+  it('findOne: succeeds under the real project, rejects the same drawingId under another project', async () => {
+    const { db } = makeProjectScopedDb();
+    const svc = makeSvc(db, { getReadUrl: jest.fn().mockResolvedValue('https://presigned.example/read') });
+
+    await expect(svc.findOne(companyId, REAL_PROJECT, drawingId)).resolves.toMatchObject({ id: drawingId });
+    await expect(svc.findOne(companyId, OTHER_PROJECT, drawingId)).rejects.toThrow(NotFoundException);
+  });
+
+  it('linkCapture: succeeds under the real project, rejects the same drawingId under another project', async () => {
+    const { db } = makeProjectScopedDb((text) => (text.includes('INSERT INTO capture_drawing_links') ? [{ id: 'link-1' }] : undefined));
+    const svc = makeSvc(db);
+    const dto = { captureId: 'capture-1', posXNorm: 0.5, posYNorm: 0.5 };
+
+    await expect(svc.linkCapture(companyId, REAL_PROJECT, drawingId, 'user-1', dto)).resolves.toBeDefined();
+    await expect(svc.linkCapture(companyId, OTHER_PROJECT, drawingId, 'user-1', dto)).rejects.toThrow(NotFoundException);
+  });
+
+  // H-1 follow-up: the drawing itself can be in the right project while the
+  // *capture* being linked belongs to a different one in the same company
+  // -- a parent-only check (the test above) doesn't cover this case. This
+  // mock, unlike makeProjectScopedDb, keys off the table queried rather
+  // than which project id was bound, so it can tell "the drawing is fine"
+  // apart from "this particular capture is not."
+  it('linkCapture: rejects a same-company capture that belongs to a different project, and writes no link', async () => {
+    const insertSpy = jest.fn();
+    const query = jest.fn((strings: TemplateStringsArray) => {
+      const text = strings.join('?');
+      if (text.includes('FROM drawings')) return Promise.resolve([{ id: drawingId }]);
+      if (text.includes('FROM captures')) return Promise.resolve([]); // capture exists, but not in this project
+      if (text.includes('INSERT INTO capture_drawing_links')) { insertSpy(); return Promise.resolve([{ id: 'link-1' }]); }
+      return Promise.resolve([]);
+    });
+    const db = { withTenant: jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query)) } as unknown as DatabaseService;
+    const svc = makeSvc(db);
+    const dto = { captureId: 'capture-from-other-project', posXNorm: 0.5, posYNorm: 0.5 };
+
+    await expect(svc.linkCapture(companyId, REAL_PROJECT, drawingId, 'user-1', dto)).rejects.toThrow(NotFoundException);
+    expect(insertSpy).not.toHaveBeenCalled();
+  });
+
+  it('unlinkCapture: succeeds under the real project, rejects the same drawingId under another project', async () => {
+    const { db } = makeProjectScopedDb((text) => (text.includes('DELETE FROM capture_drawing_links') ? [] as unknown[] : undefined));
+    // The DELETE itself reports a row count, not an array -- stub it directly.
+    (db.withTenant as jest.Mock).mockImplementation((_companyId: string, fn: (sql: unknown) => unknown) => {
+      const sql = jest.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
+        const text = strings.join('?');
+        if (text.includes('FROM drawings')) {
+          return Promise.resolve(values.includes(REAL_PROJECT) ? [{ id: drawingId }] : []);
+        }
+        if (text.includes('DELETE FROM capture_drawing_links')) return Promise.resolve({ count: 1 });
+        return Promise.resolve([]);
+      });
+      return fn(sql);
+    });
+    const svc = makeSvc(db);
+
+    await expect(svc.unlinkCapture(companyId, REAL_PROJECT, drawingId, 'capture-1')).resolves.toBeDefined();
+    await expect(svc.unlinkCapture(companyId, OTHER_PROJECT, drawingId, 'capture-1')).rejects.toThrow(NotFoundException);
+  });
+
+  it('getPins: succeeds under the real project, rejects the same drawingId under another project', async () => {
+    const { db } = makeProjectScopedDb();
+    const svc = makeSvc(db, { resolveUrls: jest.fn().mockResolvedValue(new Map()) });
+
+    await expect(svc.getPins(companyId, REAL_PROJECT, drawingId)).resolves.toEqual([]);
+    await expect(svc.getPins(companyId, OTHER_PROJECT, drawingId)).rejects.toThrow(NotFoundException);
   });
 });

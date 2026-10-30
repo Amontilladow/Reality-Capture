@@ -42,7 +42,7 @@ describe('BimService.getModelProvenance', () => {
       fragmentsStorageKey: 'should-not-be-exposed/model.frag',
     });
 
-    const result = await svc.getModelProvenance(companyId, modelId);
+    const result = await svc.getModelProvenance(companyId, 'project-1', modelId);
 
     expect(result).toEqual({
       modelId,
@@ -78,7 +78,7 @@ describe('BimService.getModelProvenance', () => {
       completedAt: '2026-07-28T06:44:10.000Z',
     });
 
-    const result = await svc.getModelProvenance(companyId, modelId);
+    const result = await svc.getModelProvenance(companyId, 'project-1', modelId);
 
     expect(result.sourceSha256).toBeNull();
     expect(result.generationGitCommit).toBeNull();
@@ -86,7 +86,7 @@ describe('BimService.getModelProvenance', () => {
 
   it('throws NotFoundException for a model that does not exist', async () => {
     const svc = makeService(undefined);
-    await expect(svc.getModelProvenance(companyId, 'missing')).rejects.toThrow(NotFoundException);
+    await expect(svc.getModelProvenance(companyId, 'project-1', 'missing')).rejects.toThrow(NotFoundException);
   });
 });
 
@@ -188,6 +188,7 @@ describe('BimService.updateElementStatus (F2)', () => {
   function makeService(existingStatus: string | null) {
     const withTenant = jest.fn()
       .mockResolvedValueOnce([{ constructionStatus: existingStatus }])
+      .mockResolvedValueOnce([{ '?column?': 1 }]) // H-1 follow-up: assertCaptureInProject's ownership check
       .mockResolvedValueOnce([{ id: elementId, constructionStatus: 'in_progress', completionPct: 50 }])
       .mockResolvedValueOnce([]);
     const db = { withTenant };
@@ -210,10 +211,11 @@ describe('BimService.updateElementStatus (F2)', () => {
       status: 'in_progress', completionPct: 50, captureId: 'capture-9',
     });
 
-    // Third withTenant call is the INSERT into bim_element_status_history --
-    // postgres.js's tagged-template sql`` is captured here as the strings
-    // array plus interpolated values, in call order.
-    const historyCall = withTenant.mock.calls[2];
+    // Fourth withTenant call is the INSERT into bim_element_status_history
+    // (1: existing-status SELECT, 2: assertCaptureInProject, 3: UPDATE, 4:
+    // history INSERT) -- postgres.js's tagged-template sql`` is captured
+    // here as the strings array plus interpolated values, in call order.
+    const historyCall = withTenant.mock.calls[3];
     const sqlFn = historyCall[1] as (sql: unknown) => unknown;
     const capturedValues: unknown[] = [];
     const fakeSql = (_strings: TemplateStringsArray, ...values: unknown[]) => { capturedValues.push(...values); return []; };
@@ -233,6 +235,28 @@ describe('BimService.updateElementStatus (F2)', () => {
     );
     await expect(svc.updateElementStatus(companyId, projectId, 'missing', 'user-1', { status: 'complete' }))
       .rejects.toThrow(NotFoundException);
+  });
+
+  // H-1 follow-up: the element itself can be in the right project while the
+  // optional evidence captureId belongs to a different one in the same
+  // company -- getElementStatusHistory() LEFT JOINs captures and would
+  // otherwise surface that other project's capture_type/title here.
+  it('rejects a same-company evidence capture that belongs to a different project, and writes no history row', async () => {
+    const withTenant = jest.fn()
+      .mockResolvedValueOnce([{ constructionStatus: 'not_started' }]) // element exists
+      .mockResolvedValueOnce([]); // capture exists, but not in this project
+    const db = { withTenant };
+    const svc = new BimService(
+      db as unknown as DatabaseService, {} as unknown as StorageService,
+      {} as unknown as IssuesService, {} as unknown as Queue,
+    );
+
+    await expect(svc.updateElementStatus(companyId, projectId, elementId, 'user-1', {
+      status: 'in_progress', captureId: 'capture-from-other-project',
+    })).rejects.toThrow(NotFoundException);
+    // Only the element-existence check and the failed capture check ran --
+    // the UPDATE and history INSERT (which would be calls 3 and 4) never did.
+    expect(withTenant).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -268,6 +292,28 @@ describe('BimService.upsertZoneProgress (F2)', () => {
 
     expect(result).toEqual({ id: 'zone-1', status: 'in_progress', completionPct: 40 });
     expect(withTenant).toHaveBeenCalledTimes(4);
+  });
+
+  // H-1 follow-up: the level itself can be in the right project while the
+  // optional evidence captureId belongs to a different one in the same
+  // company -- getZoneProgressHistory() LEFT JOINs captures and would
+  // otherwise surface that other project's capture_type/title here.
+  it('rejects a same-company evidence capture that belongs to a different project, and writes no zone_progress row', async () => {
+    const withTenant = jest.fn()
+      .mockResolvedValueOnce([{ id: levelId }]) // level exists
+      .mockResolvedValueOnce([]); // capture exists, but not in this project
+    const db = { withTenant };
+    const svc = new BimService(
+      db as unknown as DatabaseService, {} as unknown as StorageService,
+      {} as unknown as IssuesService, {} as unknown as Queue,
+    );
+
+    await expect(svc.upsertZoneProgress(companyId, projectId, levelId, 'user-1', {
+      status: 'in_progress', captureId: 'capture-from-other-project',
+    })).rejects.toThrow(NotFoundException);
+    // Only the level-existence check and the failed capture check ran --
+    // the existing-status read, upsert, and history INSERT never did.
+    expect(withTenant).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -325,5 +371,107 @@ describe('BimService.registerModel', () => {
     const { svc, getObjectSize } = makeService({ projectExists: false, actualSizeBytes: 1024 });
     await expect(svc.registerModel(companyId, 'someone-elses-project', 'user-1', baseDto)).rejects.toThrow(NotFoundException);
     expect(getObjectSize).not.toHaveBeenCalled();
+  });
+});
+
+// H-1 regression (KNOWN_ISSUES_AND_REMEDIATION.md): getModel (the shared
+// base for status/viewer-data/provenance/hierarchy/status-map) and the
+// element-scoped methods used to scope only by company_id -- a user
+// authorized for Project A could read Project B's model (including, via
+// getModelViewerData, a live presigned Fragments file URL) or act on its
+// elements by supplying Project B's own modelId/elementId. Each test below
+// proves both halves: the real project succeeds, the wrong one is rejected.
+describe('BimService H-1: same-company cross-project access is rejected', () => {
+  const companyId = 'company-1';
+  const REAL_PROJECT = 'project-A';
+  const OTHER_PROJECT = 'project-B';
+  const modelId = 'model-1';
+  const elementId = 'element-1';
+
+  function makeDb(extra: (text: string) => unknown[] | undefined = () => undefined) {
+    const query = jest.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
+      const text = strings.join('?');
+      if (text.includes('FROM bim_models')) {
+        return Promise.resolve(values.includes(REAL_PROJECT) ? [{ id: modelId, projectId: REAL_PROJECT, status: 'ready', fragmentsStorageKey: 'models/model-1.frag' }] : []);
+      }
+      if (text.includes('FROM bim_elements') && !text.includes('UPDATE')) {
+        return Promise.resolve(values.includes(REAL_PROJECT) ? [{ id: elementId, projectId: REAL_PROJECT }] : []);
+      }
+      // assertCaptureInProject's own ownership check (linkCaptureToElement)
+      // -- same REAL_PROJECT-gated shape as the two branches above.
+      if (text.includes('FROM captures')) {
+        return Promise.resolve(values.includes(REAL_PROJECT) ? [{ '?column?': 1 }] : []);
+      }
+      const extraResult = extra(text);
+      if (extraResult) return Promise.resolve(extraResult);
+      return Promise.resolve([]);
+    });
+    return { withTenant: jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query)) } as unknown as DatabaseService;
+  }
+
+  function makeSvc(db: DatabaseService, storage: Partial<StorageService> = {}) {
+    return new BimService(db, storage as unknown as StorageService, {} as unknown as IssuesService, {} as unknown as Queue);
+  }
+
+  it('getModelViewerData: succeeds under the real project, rejects the same modelId under another project', async () => {
+    const db = makeDb();
+    const svc = makeSvc(db, { getReadUrl: jest.fn().mockResolvedValue('https://presigned.example/read') });
+
+    await expect(svc.getModelViewerData(companyId, REAL_PROJECT, modelId)).resolves.toMatchObject({ status: 'ready' });
+    await expect(svc.getModelViewerData(companyId, OTHER_PROJECT, modelId)).rejects.toThrow(NotFoundException);
+  });
+
+  it('getModelStatus: succeeds under the real project, rejects the same modelId under another project', async () => {
+    const db = makeDb();
+    const svc = makeSvc(db);
+
+    await expect(svc.getModelStatus(companyId, REAL_PROJECT, modelId)).resolves.toMatchObject({ id: modelId });
+    await expect(svc.getModelStatus(companyId, OTHER_PROJECT, modelId)).rejects.toThrow(NotFoundException);
+  });
+
+  it('getElement: succeeds under the real project, rejects the same elementId under another project', async () => {
+    const db = makeDb();
+    const svc = makeSvc(db);
+
+    await expect(svc.getElement(companyId, REAL_PROJECT, elementId)).resolves.toMatchObject({ id: elementId });
+    await expect(svc.getElement(companyId, OTHER_PROJECT, elementId)).rejects.toThrow(NotFoundException);
+  });
+
+  it('updateElementStatus: succeeds under the real project, rejects the same elementId under another project (projectId was previously threaded through but never checked)', async () => {
+    const db = makeDb((text) => (text.includes('UPDATE bim_elements') ? [{ id: elementId, constructionStatus: 'in_progress' }] : undefined));
+    const svc = makeSvc(db);
+
+    await expect(svc.updateElementStatus(companyId, REAL_PROJECT, elementId, 'user-1', { status: 'in_progress' })).resolves.toBeDefined();
+    await expect(svc.updateElementStatus(companyId, OTHER_PROJECT, elementId, 'user-1', { status: 'in_progress' })).rejects.toThrow(NotFoundException);
+  });
+
+  it('linkCaptureToElement: succeeds under the real project, rejects the same elementId under another project', async () => {
+    const db = makeDb((text) => (text.includes('INSERT INTO capture_element_links') ? [{ id: 'link-1' }] : undefined));
+    const svc = makeSvc(db);
+
+    await expect(svc.linkCaptureToElement(companyId, REAL_PROJECT, 'capture-1', elementId, 'user-1')).resolves.toBeDefined();
+    await expect(svc.linkCaptureToElement(companyId, OTHER_PROJECT, 'capture-1', elementId, 'user-1')).rejects.toThrow(NotFoundException);
+  });
+
+  // H-1 follow-up: the element itself can be in the right project while the
+  // capture being linked belongs to a different one in the same company --
+  // a parent-only check (the test above) doesn't cover this case.
+  it('linkCaptureToElement: rejects a same-company capture that belongs to a different project, and writes no link', async () => {
+    const insertSpy = jest.fn();
+    // Unlike makeDb (which keys off whether REAL_PROJECT was bound), this
+    // mock keys off the table queried, so it can tell "the element is fine"
+    // apart from "this particular capture is not."
+    const query = jest.fn((strings: TemplateStringsArray) => {
+      const text = strings.join('?');
+      if (text.includes('FROM bim_elements')) return Promise.resolve([{ id: elementId }]);
+      if (text.includes('FROM captures')) return Promise.resolve([]); // capture exists, but not in this project
+      if (text.includes('INSERT INTO capture_element_links')) { insertSpy(); return Promise.resolve([{ id: 'link-1' }]); }
+      return Promise.resolve([]);
+    });
+    const db = { withTenant: jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query)) } as unknown as DatabaseService;
+    const svc = makeSvc(db);
+
+    await expect(svc.linkCaptureToElement(companyId, REAL_PROJECT, 'capture-from-other-project', elementId, 'user-1')).rejects.toThrow(NotFoundException);
+    expect(insertSpy).not.toHaveBeenCalled();
   });
 });

@@ -161,7 +161,7 @@ export default function BuildLensPage() {
                   key={mode}
                   onClick={() => setSortMode(mode)}
                   className={`px-2 py-1 rounded text-xs transition-colors ${
-                    sortMode === mode ? 'bg-signal/15 text-signal' : 'text-ink-500 hover:text-ink-100 hover:bg-base-700'
+                    sortMode === mode ? 'bg-signal text-base-800' : 'text-ink-500 hover:text-ink-100 hover:bg-base-700'
                   }`}
                 >
                   {mode === 'recent' ? 'Most recent' : 'A–Z'}
