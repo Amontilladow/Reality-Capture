@@ -140,7 +140,7 @@
      uses the palette's soft mushroom. */
   --rc-ok: 74 222 128;
   --rc-warn: 232 221 207;
-  --rc-danger: 252 165 165;
+  --rc-danger: 254 180 180;
   --rc-high: 244 170 140;
 
   /* Data accent and AI tone, lifted for the dark surface. */
@@ -190,7 +190,7 @@
     --rc-blueprint-muted: 72 63 55;
     --rc-ok: 74 222 128;
     --rc-warn: 232 221 207;
-    --rc-danger: 252 165 165;
+    --rc-danger: 254 180 180;
     --rc-high: 244 170 140;
     --rc-teal: 184 170 155;
     --rc-teal-hover: 232 221 207;
