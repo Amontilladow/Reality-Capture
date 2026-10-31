@@ -11,6 +11,10 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['error', 'warn', 'log', 'debug'],
+    // Keeps the unparsed body on req.rawBody alongside the parsed JSON --
+    // Stripe webhook signature verification (subscription.service.ts) is an
+    // HMAC over the exact bytes Stripe sent, which re-serialized JSON breaks.
+    rawBody: true,
   });
 
   const configService = app.get(ConfigService);

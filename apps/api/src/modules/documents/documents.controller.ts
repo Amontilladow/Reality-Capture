@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Delete, Body, Param, Query, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { DocumentsService } from './documents.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { LinkDocumentDto } from './dto/link-document.dto';
@@ -82,6 +83,8 @@ export class DocumentsController {
 // no request.user on this route.
 @ApiTags('documents')
 @Controller('public/documents/:token')
+// Token-only, unauthenticated: tighter than the 100/min default.
+@Throttle({ default: { limit: 30, ttl: 60_000 } })
 export class DocumentsPublicController {
   constructor(private readonly svc: DocumentsService) {}
 

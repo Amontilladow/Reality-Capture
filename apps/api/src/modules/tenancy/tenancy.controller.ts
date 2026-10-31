@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Patch, Body, ConflictException } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { TenancyService } from './tenancy.service';
 import { RegisterCompanyDto } from './dto/register-company.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -13,6 +14,9 @@ export class TenancyController {
   constructor(private readonly tenancy: TenancyService) {}
 
   @Public()
+  // Unauthenticated tenant + admin-account creation: same 10/min bucket as
+  // the auth routes' self-signup, not the generic 100/min default.
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('register')
   @ApiOperation({ summary: 'Register a new company — creates company_admin user and starts 30-day trial' })
   async register(@Body() dto: RegisterCompanyDto) {

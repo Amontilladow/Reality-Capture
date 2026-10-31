@@ -79,9 +79,14 @@ import gmailConfig from './config/google-gmail.config';
       load: [appConfig, databaseConfig, jwtConfig, storageConfig, redisConfig, googleCalendarConfig, aiConfig, emailConfig, microsoftGraphConfig, gmailConfig],
       envFilePath: ['.env.local', '.env'],
     }),
+    // A single named throttler on purpose. @nestjs/throttler v5 enforces
+    // EVERY named throttler on EVERY route (a @Throttle() override only
+    // changes that throttler's limit, it doesn't opt a route in), so a
+    // second 10/min 'auth' bucket here silently capped every API route at
+    // 10 req/min per IP. Stricter routes (auth, public signup, AI) instead
+    // override this one bucket with @Throttle({ default: {...} }).
     ThrottlerModule.forRoot([
       { name: 'default', ttl: 60_000, limit: 100 },
-      { name: 'auth',    ttl: 60_000, limit: 10  },
     ]),
     // Registered here rather than in IssuesModule, matching how Bull/Throttler's
     // own forRoot() calls live at the app root rather than in whichever

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from '../../database/database.service';
 import Stripe from 'stripe';
@@ -137,15 +137,52 @@ export class SubscriptionService {
   async createCheckoutSession(companyId: string, tier: string, returnUrl: string): Promise<{ url: string }> {
     const [plan] = await this.db.query`SELECT * FROM subscription_plans WHERE tier = ${tier}`;
     if (!plan) throw new NotFoundException('Plan not found.');
+    // returnUrl comes straight from the request body and is handed back as
+    // the URL the SPA navigates to, so without this check it's an open
+    // redirect (any http(s) URL passes CheckoutDto's @IsUrl). Only our own
+    // frontend origin(s) are allowed.
+    this.assertAllowedReturnUrl(returnUrl);
     // In production: create actual Stripe checkout session with price IDs
     // For now returns a placeholder
-    return { url: `${returnUrl}?plan=${tier}&demo=true` };
+    const url = new URL(returnUrl);
+    url.searchParams.set('plan', tier);
+    url.searchParams.set('demo', 'true');
+    return { url: url.toString() };
   }
 
-  async handleStripeWebhook(_rawBody: Buffer, _signature: string): Promise<void> {
+  private assertAllowedReturnUrl(returnUrl: string): void {
+    const allowedOrigins = new Set(
+      [this.config.get<string>('app.frontendUrl'), ...this.config.get<string>('ALLOWED_ORIGINS', '').split(',')]
+        .map(o => o?.trim())
+        .filter((o): o is string => !!o)
+        .map(o => { try { return new URL(o).origin; } catch { return null; } })
+        .filter((o): o is string => !!o),
+    );
+    let origin: string;
+    try {
+      origin = new URL(returnUrl).origin;
+    } catch {
+      throw new BadRequestException('returnUrl is not a valid URL.');
+    }
+    if (!allowedOrigins.has(origin)) {
+      throw new BadRequestException('returnUrl must point to this application.');
+    }
+  }
+
+  async handleStripeWebhook(rawBody: Buffer, signature: string): Promise<Stripe.Event | null> {
     const secret = this.config.get<string>('STRIPE_WEBHOOK_SECRET', '');
-    if (!secret) return;
+    if (!secret) return null;
+    // This route is @Public(), so the Stripe-Signature HMAC is the only thing
+    // proving a payload actually came from Stripe. Verify it before anything
+    // acts on the event -- needs the exact raw bytes (rawBody: true in main.ts).
+    let event: Stripe.Event;
+    try {
+      event = this.stripe.webhooks.constructEvent(rawBody, signature ?? '', secret);
+    } catch {
+      throw new BadRequestException('Invalid Stripe webhook signature.');
+    }
     // Webhook handler — update company_subscriptions based on Stripe events
     // Full implementation in Phase 2 when billing goes live
+    return event;
   }
 }

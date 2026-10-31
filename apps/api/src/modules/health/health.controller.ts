@@ -9,7 +9,7 @@ import { Public } from '../../common/decorators/public.decorator';
 
 @ApiTags('health')
 @Controller('health')
-@SkipThrottle({ default: true, auth: true })
+@SkipThrottle()
 export class HealthController {
   constructor(
     private readonly db: DatabaseService,

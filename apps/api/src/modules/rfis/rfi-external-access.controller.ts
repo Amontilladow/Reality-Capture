@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { RfiExternalAccessService } from './rfi-external-access.service';
 import { GenerateExternalAccessDto } from './dto/generate-external-access.dto';
 import { RespondToRfiDto } from './dto/respond-to-rfi.dto';
@@ -61,6 +62,8 @@ export class RfiExternalAccessController {
 // is the only credential; there is no request.user on any of these routes.
 @ApiTags('rfis')
 @Controller('public/rfis/external/:token')
+// Token-only, unauthenticated: tighter than the 100/min default.
+@Throttle({ default: { limit: 30, ttl: 60_000 } })
 export class RfiExternalAccessPublicController {
   constructor(private readonly svc: RfiExternalAccessService) {}
 

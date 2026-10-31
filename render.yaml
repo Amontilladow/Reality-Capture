@@ -332,3 +332,27 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+    # Browser security headers for the SPA (the API sets its own via helmet()).
+    # CSP is deliberately limited to the directives that can't break the app
+    # (no script/connect-src allowlist, which would need to track the API,
+    # R2 presigned-URL and web-ifc WASM origins): it blocks framing
+    # (clickjacking), <base> hijacking, plugins and off-site form posts.
+    headers:
+      - path: /*
+        name: Content-Security-Policy
+        value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'"
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Strict-Transport-Security
+        value: max-age=31536000; includeSubDomains
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=(), payment=(), usb=()
