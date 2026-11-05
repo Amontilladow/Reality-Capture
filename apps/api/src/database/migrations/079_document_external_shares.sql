@@ -1,5 +1,14 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Migration 077: Document external share links
+-- Migration 079: Document external share links
+--
+-- Originally numbered 077 (renumbered after that number was claimed by two
+-- unrelated migrations merged independently within the same hour:
+-- 077_encrypt_calendar_tokens.sql kept 077; this one moved to the next free
+-- slot, 079, rather than reusing/renaming anything already live). The
+-- migration runner (apps/api/src/database/run-migrations.ts) tracks applied
+-- migrations by exact filename, so a renamed file reruns under its new name
+-- on the next deploy -- safe here since every statement below is already
+-- idempotent (IF NOT EXISTS / DROP ... IF EXISTS).
 --
 -- Lets a project team hand a document (an internally-stored upload, not a
 -- metadata-only external reference) to someone outside the company; a
@@ -40,7 +49,7 @@ CREATE POLICY tenant_isolation ON document_external_shares
   USING (company_id = current_setting('app.current_company_id', true)::UUID);
 
 INSERT INTO _migrations (filename)
-VALUES ('077_document_external_shares.sql')
+VALUES ('079_document_external_shares.sql')
 ON CONFLICT (filename) DO NOTHING;
 
 COMMIT;
