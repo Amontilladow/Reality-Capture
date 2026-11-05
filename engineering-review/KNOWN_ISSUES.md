@@ -19,7 +19,7 @@ audit's own claims, and not taken on faith from this project's prior
 claims either).
 
 ## Critical
-None open. None were found by this project's own testing, and none found by
+None open. None were found by this project's own testing, or by
 the independent audit after a source-level security/architecture review.
 
 ## Major
