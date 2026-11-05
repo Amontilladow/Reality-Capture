@@ -7,12 +7,15 @@ import { apiErrorMessage } from '../lib/api';
 import { getProject } from '../lib/projects.api';
 import {
   listSiteDrawings, getSiteDrawingFilterOptions, getSiteDrawingSourceHealth, listOfflinePackages,
-  revalidateOfflinePackage, type SiteDrawingFilters, type SiteDrawingWorkflowStatus,
+  revalidateOfflinePackage, listReviewQueue, exportSiteDrawingRegister,
+  type SiteDrawingFilters, type SiteDrawingWorkflowStatus,
 } from '../lib/site-drawings.api';
 import {
   WORKFLOW_STATUS_LABELS, WORKFLOW_STATUS_TONE, sourceProviderLabel, formatVerifiedAt, needsApprovalWarning,
 } from '../components/site-drawings/siteDrawingDisplay';
 import { RegisterSiteDrawingModal } from '../components/site-drawings/RegisterSiteDrawingModal';
+import { ImportDrawingsModal } from '../components/site-drawings/ImportDrawingsModal';
+import { ImportActivityModal } from '../components/site-drawings/ImportActivityModal';
 import { SiteDrawingDetailDrawer } from '../components/site-drawings/SiteDrawingDetailDrawer';
 import { Listbox } from '../components/ui/Listbox';
 
@@ -28,7 +31,12 @@ export default function SiteDrawingHubPage() {
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
   const [registerOpen, setRegisterOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [activityInitialTab, setActivityInitialTab] = useState<'batches' | 'review'>('batches');
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   // Search is server-side (brief section 10: indexed queries, not a
   // client-side filter over a fully fetched register): debounced so
@@ -43,6 +51,7 @@ export default function SiteDrawingHubPage() {
   const filterOptionsQuery = useQuery({ queryKey: ['site-drawing-filter-options', projectId], queryFn: () => getSiteDrawingFilterOptions(projectId!), enabled: Boolean(projectId) });
   const sourceHealthQuery = useQuery({ queryKey: ['site-drawing-source-health', projectId], queryFn: () => getSiteDrawingSourceHealth(projectId!), enabled: Boolean(projectId) });
   const offlinePackagesQuery = useQuery({ queryKey: ['site-drawing-offline-packages', projectId], queryFn: () => listOfflinePackages(projectId!), enabled: Boolean(projectId) });
+  const reviewQueueQuery = useQuery({ queryKey: ['site-drawing-review-queue', projectId], queryFn: () => listReviewQueue(projectId!), enabled: Boolean(projectId) });
 
   const listQuery = useQuery({
     queryKey: ['site-drawings', projectId, filters, page],
@@ -81,6 +90,21 @@ export default function SiteDrawingHubPage() {
   const drawings = listQuery.data?.data ?? [];
   const hasActiveFilters = Boolean(filters.search || filters.discipline || filters.buildingOrZone || filters.floorOrLevel || filters.workflowStatus);
 
+  async function handleExport() {
+    if (!projectId) return;
+    setExportBusy(true);
+    setExportError('');
+    const date = new Date().toISOString().slice(0, 10);
+    const projectLabel = (projectQuery.data?.code ?? projectQuery.data?.name ?? 'drawing-register').replace(/[^a-z0-9-]+/gi, '-');
+    try {
+      await exportSiteDrawingRegister(projectId, filters, `${projectLabel}-drawing-register-${date}.xlsx`);
+    } catch (err) {
+      setExportError(apiErrorMessage(err));
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
   if (!projectId) return null;
 
   return (
@@ -89,9 +113,24 @@ export default function SiteDrawingHubPage() {
         breadcrumbs={[{ label: 'Projects', to: '/projects' }, { label: projectQuery.data?.name ?? 'Loading…', to: `/projects/${projectId}` }, { label: 'Site Drawings' }]}
         title="Site Drawing Hub"
         subtitle="Discover, open and verify the latest valid construction drawings."
-        actions={<button onClick={() => setRegisterOpen(true)} className="btn-primary">Register a drawing</button>}
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setActivityInitialTab('batches'); setActivityOpen(true); }}
+              className="btn-secondary"
+            >
+              Import activity{(reviewQueueQuery.data?.length ?? 0) > 0 ? ` (${reviewQueueQuery.data!.length})` : ''}
+            </button>
+            <button onClick={() => setImportOpen(true)} className="btn-secondary">Import package</button>
+            <button onClick={handleExport} disabled={exportBusy} className="btn-secondary">
+              {exportBusy ? 'Exporting…' : 'Export to Excel'}
+            </button>
+            <button onClick={() => setRegisterOpen(true)} className="btn-primary">Register a drawing</button>
+          </div>
+        }
       />
       <div className="p-6 space-y-4">
+        {exportError && <p className="field-error">{exportError}</p>}
         {sourceHealthQuery.data && !sourceHealthQuery.data.reachable && (
           <div className="panel p-4 border border-warn/40 bg-warn/5 text-xs text-ink-100">
             {sourceProviderLabel(sourceHealthQuery.data.provider)} source is currently unreachable
@@ -223,6 +262,17 @@ export default function SiteDrawingHubPage() {
       </div>
 
       {registerOpen && <RegisterSiteDrawingModal open onClose={() => setRegisterOpen(false)} projectId={projectId} />}
+      {importOpen && (
+        <ImportDrawingsModal
+          open
+          onClose={() => setImportOpen(false)}
+          projectId={projectId}
+          onCreated={() => { setActivityInitialTab('batches'); setActivityOpen(true); }}
+        />
+      )}
+      {activityOpen && (
+        <ImportActivityModal open onClose={() => setActivityOpen(false)} projectId={projectId} initialTab={activityInitialTab} />
+      )}
       {selectedDrawingId && <SiteDrawingDetailDrawer projectId={projectId} drawingId={selectedDrawingId} onClose={() => setSelectedDrawingId(null)} />}
     </>
   );

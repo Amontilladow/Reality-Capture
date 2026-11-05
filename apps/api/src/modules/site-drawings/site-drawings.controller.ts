@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Res, StreamableFile } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import type { Response } from 'express';
 import type { AuthenticatedUser, SiteDrawingWorkflowStatus } from '@engineeringos/types';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireCategoryAction } from '../../common/decorators/require-category-action.decorator';
@@ -73,6 +74,26 @@ export class SiteDrawingsController {
     return { data: await this.svc.getFilterOptions(u.companyId, pid), error: null };
   }
 
+  // Same filters as list() above, no pagination -- every matching drawing,
+  // not just the current page (brief section 3: "Excel export").
+  @Get('export')
+  @ApiOperation({ summary: 'Download the filtered drawing register as an Excel workbook' })
+  async exportRegister(
+    @CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Res({ passthrough: true }) res: Response,
+    @Query('search') search?: string, @Query('discipline') discipline?: string,
+    @Query('buildingOrZone') buildingOrZone?: string, @Query('floorOrLevel') floorOrLevel?: string,
+    @Query('workflowStatus') workflowStatus?: string,
+  ) {
+    const { buffer, filename } = await this.svc.exportRegister(u.companyId, pid, {
+      search, discipline, buildingOrZone, floorOrLevel, workflowStatus: workflowStatus as SiteDrawingWorkflowStatus | undefined,
+    });
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    });
+    return new StreamableFile(buffer);
+  }
+
   @Get('source-health')
   @ApiOperation({ summary: 'Reachability and last-sync facts for the Local source' })
   async getSourceHealth(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
@@ -114,7 +135,7 @@ export class SiteDrawingsController {
     @CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Param('revisionId') revisionId: string,
     @Body() dto: SetSiteDrawingWorkflowStatusDto,
   ) {
-    return { data: await this.svc.setWorkflowStatus(u.companyId, pid, id, revisionId, dto.workflowStatus), error: null };
+    return { data: await this.svc.setWorkflowStatus(u.companyId, pid, id, revisionId, dto.workflowStatus, u.id), error: null };
   }
 
   @Get('revisions/:revisionId/download')
