@@ -88,6 +88,7 @@ def run_bdms_checks(records: list[EntityRecord], target: dict[str, str | None], 
     _ids_and_references(records, target, floor_no, col)
     _space_unit(records, target, ctx, tol, col)
     _containment(ctx, tol, col)
+    _opening_adjacency(ctx, tol, col)
     _zero_insertion(records, target, specs, col)
     _code_lists(records, target, manifest, col)
     _one_floor(records, target, ctx, col)
@@ -332,13 +333,31 @@ def _containment(ctx: FeatureContext, tol: Tolerances, col: Collector) -> None:
                         f"Correct the {child} or {parent} boundary so the {child} lies within the {parent}.",
                         handle=f.handle, layer=child, entity_type=f.rec.structure, location=f.rec.location,
                         outside_area=outside)
+
+
+def _opening_adjacency(ctx: FeatureContext, tol: Tolerances, col: Collector) -> None:
+    """DRM review: a door/window must be adjacent to two spaces, or to one space and the floor outline."""
     spaces = [s.area_geom for s in ctx.features.get("Space", []) if s.area_geom is not None]
+    floors = [f.area_geom.exterior for f in ctx.features.get("Floor", []) if f.area_geom is not None]
+    if not spaces:
+        return
     for layer in ("Door", "Window"):
         for f in ctx.features.get(layer, []):
-            if f.area_geom is not None and spaces and min(f.area_geom.distance(s) for s in spaces) > tol.coincidence:
-                col.add("DRM-LOG-21", f"{layer} touches no Space polygon.",
-                        f"Snap the {layer.lower()} to the space it opens into.", handle=f.handle, layer=layer,
-                        entity_type=f.rec.structure, location=f.rec.location)
+            g = f.area_geom
+            if g is None:
+                continue
+            n_spaces = sum(1 for s in spaces if g.distance(s) <= tol.opening_contact)
+            on_floor_outline = any(g.distance(edge) <= tol.opening_contact for edge in floors)
+            if n_spaces >= 2 or (n_spaces == 1 and on_floor_outline):
+                continue
+            reaches = ("no space" if n_spaces == 0 else
+                       "only one space and not the floor outline")
+            col.add("DRM-LOG-22", f"{layer} reaches {reaches}; it must be adjacent to two spaces or to one space and "
+                    "the floor outline.",
+                    f"Draw the {layer.lower()} across the full wall thickness, from the space to the next space or to "
+                    "the floor outline.", handle=f.handle, layer=layer, entity_type=f.rec.structure,
+                    location=f.rec.location, official_qc_error=f"{layer.upper()} polygon is not in the correct "
+                    "location, it should be adjacent to two spaces or one space and floor outline.", qc_unit=f.handle)
 
 
 def _zero_insertion(records, target, specs: dict[str, LayerSpec], col: Collector) -> None:

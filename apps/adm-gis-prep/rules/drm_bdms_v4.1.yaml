@@ -231,6 +231,10 @@ tolerances:
   overlap_area: 0.0001
   arc_sagitta: 0.01
   attribute_vertex: 0.0001
+  # DRM review (Yas Island, Nov 2026): a door/window must be adjacent to two spaces or one space and the floor
+  # outline. The DRM-accepted KHALIFA CITY G file has doors 5-11 mm short of their second space, so "adjacent"
+  # tolerates a small gap; 2 cm passes all four accepted drawings.
+  opening_contact: 0.02
 
 # Generic checks are written once and emit generic rule ids; this profile maps them onto its own rules.
 # null = not applicable in this profile (listed in every report as "checks not applicable").
@@ -666,6 +670,15 @@ rules:
     check: bdms.containment
     implementation: IMPLEMENTED
     limitation: The manual does not state whether "corresponding" means spatial containment; reported as WARNING. Doors and windows that touch no space are accepted in the SAMPLES.
+  - id: DRM-LOG-22
+    title: Each door/window is adjacent to two spaces, or to one space and the floor outline
+    qc_error: "{LAYER} polygon is not in the correct location, it should be adjacent to two spaces or one space and floor outline."
+    evidence: PENDING_OFFICIAL_CONFIRMATION   # rule from the DRM review report; tolerance is ours
+    ref: {page: "-", section: "DRM review error report, Yas Island-YS1-P10 (Nov 2026), ErrorIDs 1-11"}
+    severity: ERROR
+    check: bdms.opening_adjacency
+    implementation: IMPLEMENTED
+    limitation: "Adjacent = within tolerances.opening_contact (2 cm) of the space, or overlapping it; calibrated on the four DRM-accepted KHALIFA CITY drawings (gaps up to 11 mm accepted, doors lying inside a roof-level space accepted). The review report gives no tolerance."
   - id: DRM-SNAP-01
     title: Where geometries of BuildingOutline, Floor, Space, Unit, Window and Door meet, a vertex lying on another geometry's edge has a matching vertex there
     qc_error: Snapping errors found between layers BuildingOutLine, Floor, Space, Unit, Window, and Door
