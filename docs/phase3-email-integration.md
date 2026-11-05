@@ -176,7 +176,7 @@ nothing to send from until the composer exists.
 - **Why no `Mail.Read`/`Mail.ReadWrite`**: reading messages/replies is
   Phase 3H, not yet built. Requesting that scope now, before the feature
   exists to use it, would be exactly the "request broader permissions
-  only if the relevant feature genuinely requires them" the brief warns
+  only if the relevant feature requires them" the brief warns
   against.
 - **Account type default**: `MICROSOFT_OAUTH_TENANT=organizations`
   accepts any Microsoft 365 work/school account from any organization,
@@ -394,7 +394,7 @@ end to end, per the brief's own standard.
   never bytes), `UNIQUE(initiating_user_id, idempotency_key)`. RLS
   `tenant_isolation` policy, same as every other tenant table.
 - **Provider send capability**: `EmailProviderClient.sendMail()` added to
-  the Phase 3C/3D interface and implemented by both concrete clients --
+  the Phase 3C/3D interface and implemented by both concrete clients:
   `MicrosoftGraphClient.sendMail()` (create-draft-then-send, two Graph
   calls, needed to get a real `messageId`/`conversationId` for the audit
   trail) and `GmailClient.sendMail()` (hand-built RFC 2822 MIME message,
@@ -404,47 +404,47 @@ end to end, per the brief's own standard.
   the provider client identically, returning the connected sender address
   alongside the provider's result.
 - **Orchestration**: `EmailComposerService` (new,
-  `apps/api/src/modules/email-integration/email-composer.service.ts`) --
+  `apps/api/src/modules/email-integration/email-composer.service.ts`):
   the one place a `send()` actually happens. In order: (1) project
   membership check (mirrors `ChatService.canAccessChannel`'s own
-  super_admin-bypass + `project_members` lookup -- Section 10's "only
+  super_admin-bypass + `project_members` lookup; Section 10's "only
   authorized project members"), (2) idempotency check (a retried request
   under an already-*sent* key returns the existing row unchanged without
   touching the provider again; a previously *failed* attempt is retried,
   since nothing was actually sent), (3) attachment re-validation against
   the real stored object (`StorageService.getObjectSize`/`.download()`,
   same `ATTACHMENT_MAX_SIZE`/`ATTACHMENT_ALLOWED_EXTENSIONS` allow-list
-  RFI attachments use -- ticket 2b's constants, not a second copy), (4)
+  RFI attachments use; ticket 2b's constants, not a second copy), (4)
   **auto-match by reference number** (the user's own chosen design,
   confirmed via `AskUserQuestion`): an explicit `relatedRecordType`/Id is
   verified to actually belong to the project before being trusted; absent
   that, the subject is scanned for a reference-number-shaped token
   (`[A-Z0-9]{2,}(-[A-Z0-9]{1,10}){2,}`, matching every numbering scheme
-  this codebase actually uses -- `PRJ-GEN-RFI-STR-0001`, `PRJ-STR-0001`,
+  this codebase actually uses; `PRJ-GEN-RFI-STR-0001`, `PRJ-STR-0001`,
   `PRJ-SUB-0001`, `PRJ-<snag>-0001`) and looked up across
   rfis/issues/submittals/snag_items; more than one hit or zero is left
   unmatched rather than guessed, per the brief's own "do not silently
   associate the wrong record" caution, (5) dispatch to the selected
   provider's `sendMail()`, (6) persist the outcome to `email_messages`
   (`INSERT ... ON CONFLICT (initiating_user_id, idempotency_key) DO
-  UPDATE` -- the same row a failed-then-retried attempt eventually lands
-  on). A provider error is never stored or returned raw -- only a
+  UPDATE`; the same row a failed-then-retried attempt eventually lands
+  on). A provider error is never stored or returned raw; only a
   truncated `Error.message`, never the full response body, which can echo
   request content.
-- **API surface**: `EmailComposerController` --
+- **API surface**: `EmailComposerController`:
   `POST /projects/:projectId/emails/attachments/upload-url` (presigned
   PUT, step 1, same shape as `RfisService.getAttachmentUploadUrl`) and
   `POST /projects/:projectId/emails` (send). `SendEmailDto` validates
   provider/to/cc/bcc (email format, size caps)/subject/bodyText/
   attachments (nested, max 10)/optional related record/idempotency key.
 - **Frontend**: `EmailComposerModal` (new,
-  `apps/web/src/components/EmailComposerModal.tsx`) -- To/CC/BCC (CC/BCC
+  `apps/web/src/components/EmailComposerModal.tsx`); To/CC/BCC (CC/BCC
   collapsed by default)/Subject/Message/Attachments (immediate presigned
   upload per file, same two-step flow as RFI attachments)/provider picker
   (only shown when more than one mailbox is connected; a clear "connect a
   mailbox first" prompt linking to Email Integration settings when
   neither is). A client-generated idempotency key is created once per
-  compose session and only replaced after a successful send -- a retried
+  compose session and only replaced after a successful send; a retried
   submit (e.g. after a network timeout) reuses it, so a duplicate click
   can't double-send. Wired into `ProjectDetail`'s own action bar
   ("Email" button) as the one general-purpose entry point for this
@@ -462,7 +462,7 @@ and serves the app; the composer's own render path was not exercised
 against a live backend.
 
 **Not verified**: an actual end-to-end send, or even opening the compose
-modal against a running API -- this environment has no live Postgres
+modal against a running API: this environment has no live Postgres
 (`pg_isready` reports no response) and no OAuth credentials for either
 provider (same account-level blocker as 3C/3D, Section 1). No claim is
 made that a real send, auto-match lookup, or attachment round-trip works
@@ -484,10 +484,10 @@ its number + title/subject, to every module the brief's Section 7 names:
   `relatedRecordType: 'snag_item'`.
 
 None of these auto-send, auto-populate recipients, or touch the record's
-own status/workflow in any way -- clicking "Email" only opens the composer
+own status/workflow in any way; clicking "Email" only opens the composer
 pre-filled; sending is still the user's own explicit action, exactly as
 Section 7's example workflow describes ("EngineeringOS prepares a message
-using the RFI's existing data" -- prepares, not sends). The explicit
+using the RFI's existing data"; prepares, not sends). The explicit
 `relatedRecordType`/`relatedRecordId` from a contextual entry point always
 wins over `EmailComposerService`'s own subject-text auto-match (see 3E),
 so an email opened from a specific record's page is never
@@ -498,27 +498,27 @@ unrelated warnings), full Jest suite still 551/551 (this stage is
 frontend-only, no backend changes), production build succeeds.
 
 **Not verified**: actually opening any of these four pages/modals and
-clicking "Email" against a live backend -- same no-Postgres-in-this-
+clicking "Email" against a live backend; same no-Postgres-in-this-
 environment limitation as 3E.
 
 ## Phase 3G: Email history and audit logging: IMPLEMENTED BUT NOT VERIFIED (same no-live-backend caveat as 3E/3F)
 
-- **Backend**: `EmailComposerService.listMessages()` -- the same
+- **Backend**: `EmailComposerService.listMessages()`; the same
   project-membership gate as `send()` (Section 10), paginated, optionally
   filtered by `relatedRecordType`/`relatedRecordId`. Joins `users` for the
   initiating user's display name only; never selects or returns a message
-  body (there isn't one -- see migration 066's own header comment).
+  body (there isn't one; see migration 066's own header comment).
   `GET /projects/:projectId/emails` on `EmailComposerController`, same
   `{ data, meta }` pagination envelope as every other list endpoint in
   this API (e.g. `RfisController.findAll`). 2 new tests (membership gate,
-  filter pass-through) -- 553/553 total.
+  filter pass-through); 553/553 total.
 - **Frontend**: `EmailHistoryList` (new,
-  `apps/web/src/components/EmailHistoryList.tsx`) -- a read-only list
+  `apps/web/src/components/EmailHistoryList.tsx`); a read-only list
   showing status/provider/timestamp/subject/sender/recipients/initiating
   user/attachment filenames (never content) for each message, plus the
   failure reason on a failed send. Embedded inline, filtered to that
   record, on all four Phase 3F pages (RFI/Issue/Submittal/Snag). A
-  second, unfiltered view -- `EmailHistoryModal` -- is reachable from
+  second, unfiltered view, `EmailHistoryModal`, is reachable from
   `ProjectDetail`'s own action bar ("Email History") for the full
   project-wide communication log. Access control is entirely
   server-side (the list endpoint's own membership check); the frontend
@@ -530,7 +530,7 @@ succeed.
 
 **Not verified**: opening any of these views against a live backend, or
 that a real cross-project-membership 403 actually renders correctly in
-the browser -- same no-Postgres-in-this-environment limitation as every
+the browser; same no-Postgres-in-this-environment limitation as every
 other Phase 3 stage.
 
 ## Phase 3H: Incoming replies / threading: NOT IMPLEMENTED (design reasoning only, by deliberate choice)
@@ -547,7 +547,7 @@ built partially or faked. Reasoning:
   equivalent (`users.watch` + a Google Cloud Pub/Sub topic) both require
   a publicly reachable HTTPS webhook endpoint, a subscription-renewal
   background job (Graph subscriptions expire in as little as a few
-  days; Gmail watch requests in 7), and -- for Gmail specifically -- a
+  days; Gmail watch requests in 7), and, for Gmail specifically, a
   separate Google Cloud Pub/Sub topic with its own IAM grant to Gmail's
   own service account. None of this exists yet, and none of it can be
   verified without a real, internet-reachable deployment and real OAuth
@@ -555,7 +555,7 @@ built partially or faked. Reasoning:
   Sections 1/3C/3D already flagged).
 - **No existing precedent in this codebase to extend.** The Calendar
   integration (`workforce/calendar-integration`) this phase's own OAuth
-  plumbing was modeled on has no webhook/subscription handling either --
+  plumbing was modeled on has no webhook/subscription handling either:
   there is nothing to adapt, only a wholly new subsystem to design.
 - **Building it anyway, untested, would violate the brief's own closing
   rule** ("never claim Outlook or Gmail is connected merely because the
@@ -563,18 +563,18 @@ built partially or faked. Reasoning:
   verified"). A reply-ingestion pipeline is specifically the kind of
   thing that looks correct in code review and silently drops messages,
   misattributes a reply to the wrong `email_messages` row, or leaks a
-  webhook payload cross-tenant in production -- exactly the class of bug
+  webhook payload cross-tenant in production; exactly the class of bug
   that *requires* a live end-to-end test against a real provider to have
   any confidence in, which this environment cannot provide.
 - **What *is* already in place for a future implementation**: both
   `email_messages.provider_message_id`/`thread_id` (captured for every
   outgoing send, Phase 3E) are the join keys a future reply-ingestion
   job would need to attach an inbound reply to the right outgoing
-  message's thread -- this groundwork was laid deliberately, even though
+  message's thread; this groundwork was laid deliberately, even though
   the ingestion side itself is not built.
 
 No code was written for this stage. Marking it NOT IMPLEMENTED here is
-itself the honest deliverable, per the brief's own explicit allowance
+itself the correct deliverable, per the brief's own explicit allowance
 not to build this if it can't be done reliably.
 
 ## Phase 3I: Security, permission, and regression tests
@@ -585,38 +585,38 @@ suite. Found and fixed two real issues; everything else already held.
 
 ### Findings and fixes
 
-1. **FIXED -- attachment storage-key exfiltration path (high severity).**
+1. **FIXED: attachment storage-key exfiltration path (high severity).**
    `EmailComposerService.resolveAttachments()` took the client-supplied
    `storageKey` on faith and called `StorageService.download()` on it
    directly, then embedded the real bytes in an outgoing email to
    external addresses. Unlike `RfisService.addAttachment()` (which only
    ever *registers* a key as a pointer, still gated by whatever
    permission protects viewing that RFI afterwards), this method reads
-   and forwards the actual content -- so any authenticated project
+   and forwards the actual content; so any authenticated project
    member who knew (or could learn, from a shared link, a chat message,
-   another API response) *any* storage key in the bucket -- another
+   another API response) *any* storage key in the bucket; another
    project's RFI attachment, another user's document, in the worst case
-   another company's object if a key ever leaked -- could have it
+   another company's object if a key ever leaked; could have it
    emailed to any external address they chose. **Fix**: every attachment
    `storageKey` must now start with the exact
    `${companyId}/email-attachments/${projectId}/` prefix
    `getAttachmentUploadUrl()` issues for this project (which is itself
-   gated on project membership) -- any other key is rejected before
+   gated on project membership); any other key is rejected before
    `download()` is ever called. Covered by a new test asserting
    `storage.download` is never invoked for a mismatched key.
-2. **FIXED -- email header injection via Gmail's raw MIME path (medium
+2. **FIXED: email header injection via Gmail's raw MIME path (medium
    severity).** `GmailClient.buildMimeMessage()` hand-builds raw RFC 2822
    headers by string interpolation (`Subject: ${message.subject}`,
    `Content-Disposition: attachment; filename="${a.filename}"`, etc.). An
    embedded `\r\n` in `subject` (`SendEmailDto`) or an attachment's
    `filename`/`contentType` (`SendEmailAttachmentDto`) could have
-   smuggled in an arbitrary extra header -- a hidden `Bcc:`, a second
-   `To:`, a `Content-Type` override defeating the MIME boundary --
+   smuggled in an arbitrary extra header; a hidden `Bcc:`, a second
+   `To:`, a `Content-Type` override defeating the MIME boundary:
    directly into a message actually sent through Gmail's API. The
    structured-JSON Outlook path was not vulnerable to this (Graph builds
    the real outbound MIME itself from JSON field values). **Fix**: added
    `@Matches(/^[^\r\n]*$/)` to `subject`/`filename`/`contentType` at the
-   DTO layer (the real control -- a 400 before the value ever reaches a
+   DTO layer (the real control; a 400 before the value ever reaches a
    provider client), plus a `stripCrlf()` backstop inside
    `buildMimeMessage()` itself as defense in depth, documented as a
    backstop rather than the primary control. Covered by 4 new DTO
@@ -631,7 +631,7 @@ suite. Found and fixed two real issues; everything else already held.
    query parameters, not identifiers or raw text, so no injection
    surface there either.
 4. **Reviewed, no change needed**: no endpoint accepts a client-supplied
-   `userId` anywhere in this feature -- every send, list, and
+   `userId` anywhere in this feature; every send, list, and
    upload-url call uses `@CurrentUser()`'s `u.id`/`u.companyId` only, so
    there is no path for one user to send as another, read another
    user's connection status, or act outside their own company.
@@ -655,7 +655,7 @@ stage (2 security-regression tests in `email-composer.service.spec.ts`,
 `getAttachmentUploadUrl` key-prefix test).
 
 **Not verified**: any of the above against a live backend with real
-OAuth credentials -- this review was static/adversarial code reading
+OAuth credentials; this review was static/adversarial code reading
 plus unit tests against mocked collaborators, not a penetration test
 against a running deployment. No claim is made beyond what the tests
 actually exercise.
@@ -674,7 +674,7 @@ actually exercise.
 
 ## Section 16: Final Report
 
-Honest, evidence-based status for every feature this phase covers.
+Evidence-based status for every feature this phase covers.
 Nothing here is marked VERIFIED COMPLETE unless it was actually exercised
 (a passing test, a real API response, or a user-confirmed manual step);
 code that compiles and typechecks but was never run against a live

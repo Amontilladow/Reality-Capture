@@ -270,7 +270,7 @@ pattern (`company_id = current_setting('app.current_company_id')`).
 ### Resume mechanism (on `bim_models`)
 - `stage_completion` (jsonb): one boolean flag per pipeline stage. Set
   **inside the same transaction** as that stage's data writes, so a flag
-  can only be true if its data genuinely committed.
+  can only be true if its data committed.
 - `processing_stage` / `processing_progress`: live-updated for polling,
   independent of the resume mechanism.
 - `attempt_count`, `started_at`, `completed_at`, `duration_ms`,

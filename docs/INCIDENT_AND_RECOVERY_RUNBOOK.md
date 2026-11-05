@@ -65,7 +65,7 @@ The scenarios below come from this engagement's code review and live testing, pl
 
 **Recovery:**
 - Known same-company cross-project gap (H-1): no live exploit mitigation exists today beyond restricting which users are added to sensitive projects' membership lists as a practical (not technical) mitigation, until the underlying routes are fixed.
-- Genuine new cross-tenant leak: treat as a security incident; see §7.
+- Real new cross-tenant leak: treat as a security incident; see §7.
 
 ## 6. AI Assistant failures
 

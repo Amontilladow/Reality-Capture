@@ -410,7 +410,7 @@ Verified directly against current code:
   session independently re-verified that resolution still holds on the
   current `main` tip (Section 5 above: `FORCE ROW LEVEL SECURITY` +
   explicit `app_user` grants + the `withSystemBypass()` GUC-flag mechanism
-  for the fixed set of genuinely pre-tenant operations). That confirms the
+  for the fixed set of pre-tenant operations). That confirms the
   prior audit's fix is still in place, not just taking its word for it.
 - **Login error-message specificity: reviewed, left as-is (prior
   product decision, not a new defect)**: `AuthService.login()` returns
@@ -830,7 +830,7 @@ since no AI provider key is configured at all.
    brief's own objective #1 is a production domain.
 4. No load test has ever been run. Current capacity under 100 concurrent
    users is unknown, not merely "untested for compliance reasons" but
-   genuinely unknown (Section 7).
+   unknown (Section 7).
 5. No alerting on logs/metrics between deploys (Section 11).
 
 Backup/restore (previously item 3 in this list) is **resolved**:

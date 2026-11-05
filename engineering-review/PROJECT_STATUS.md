@@ -32,7 +32,7 @@ and does not block this roadmap; see
 
 ## Overall completion estimate: ~55–60% of the full original EngineeringOS vision
 
-This is a rough, honest estimate against the full scope described across
+This is a rough estimate against the full scope described across
 all sessions (tenancy/auth/hierarchy/issues/documents/timeline/BIM
 processing/BIM viewer/AI search/reality capture image processing/export/
 dashboards/mobile/accessibility). It is **not** a estimate against v0.1

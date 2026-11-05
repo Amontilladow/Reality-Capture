@@ -17,7 +17,7 @@ versions we run):
 | `ThatOpen/engine_components` (`@thatopen/components`) | HEAD (3.4.0) | **3.4.7** (already a direct dependency) | MIT |
 | `ThatOpen/engine_fragment` (`@thatopen/fragments`) | HEAD (3.4.7) | **3.4.6** (already a direct dependency, used both client- and server-side) | MIT |
 
-**Both ThatOpen repos are libraries we already ship.** This is the single most
+**Both ThatOpen repos are libraries we already ship.** This is the most
 important framing fact in this whole analysis: most of what follows isn't "should
 we adopt a new library," it's "we already have this code installed and are
 calling a small fraction of its public API." xeokit-sdk is architecturally

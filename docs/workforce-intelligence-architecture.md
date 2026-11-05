@@ -320,11 +320,11 @@ than inventing a second AI integration path.
   design (not partitioned at MVP scale, but the `started_at`-keyed shape
   means partitioning is a later `ALTER`, not a redesign); see the data
   model doc.
-- **Project-attribution confidence is genuinely hard.** File-path/BIM-
+- **Project-attribution confidence is hard.** File-path/BIM-
   model/document-metadata signals (brief §12, mechanisms 3-6) need the
   desktop agent's file-system visibility, which doesn't exist until the
   agent does. MVP ships only mechanisms 1 (manual selection) and 2 (task/
-  active-project context) with honest confidence scores; the richer
+  active-project context) with realistic confidence scores; the richer
   signals are V1/V2 and must not be faked with a hardcoded high
   confidence in the meantime.
 - **Anti-gaming has no MVP answer beyond design intent.** Mouse-jiggler

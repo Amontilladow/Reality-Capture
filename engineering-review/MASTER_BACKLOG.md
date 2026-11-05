@@ -202,7 +202,7 @@ local S3-compatible server, `s3rver`, standing in for MinIO/R2 since
   model twice in a row → identical element (40) and relationship (72)
   counts both times: deterministic.
 
-### Known limitations (honestly scoped, not silently missing)
+### Known limitations (scoped and stated, not silently missing)
 - Stage-level resume, not element-level (see above): acceptable for
   current model sizes; a future option for very large (multi-GB)
   models would be batch-level checkpointing within the properties stage.
@@ -269,11 +269,11 @@ Built this session, on top of the frozen IFC Processing Engine:
    because each `${}` becomes its own bind position regardless of whether
    the same JS value also appears elsewhere with a cast. Found via the
    element search feature (first real caller of this endpoint with
-   optional filters genuinely absent), fixed by adding an explicit cast to
+   optional filters absent), fixed by adding an explicit cast to
    every bare occurrence, re-verified with three scenarios (all filters
    present, some absent, all absent).
 
-### What's real vs. what's honestly out of scope
+### What's real vs. what's out of scope
 Delivered: orbit navigation (via `camera-controls`, bundled with
 `OrthoPerspectiveCamera`), click-to-select with highlight, search-driven
 selection with highlight, fit-to-model, spatial tree navigation, full
@@ -307,7 +307,7 @@ claimed as done.
   screenshot tool is available in this environment. The 3D canvas
   rendering, click/orbit/search-to-highlight interaction, and overall
   visual correctness have not been confirmed in a real browser. This is
-  the single most important remaining verification step before
+  the most important remaining verification step before
   considering this flow production-ready, and should be done by a human
   or a browser-testing tool at the next opportunity.
 
@@ -433,7 +433,7 @@ undecorated `@Query()` endpoint, and a JS *string* parameter cast with
 direct reproduction against postgres.js; a real client-library
 serialization bug, not just a missing cast). `?overdue=true` and
 `?overdue=false` were previously indistinguishable from no filter at
-all. Fixed by coercing to a genuine JS boolean before SQL
+all. Fixed by coercing to a real JS boolean before SQL
 interpolation. Found and fixed the identical bug in
 `notifications.service.ts`'s `unreadOnly` filter while here. Verified
 live via raw API calls (membership rejection, successful member

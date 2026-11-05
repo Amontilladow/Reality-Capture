@@ -124,7 +124,7 @@ overlaps with those.)
   Confirmed by searching the entire project for `.spec.ts`/`.test.ts`
   files; none found. Every verification performed throughout this
   project was manual/live (real commands against real infrastructure,
-  documented as it happened), which is genuine verification but leaves
+  documented as it happened), which is real verification but leaves
   nothing that automatically catches a regression the next time code
   changes. Independently flagged by the audit as the single largest
   engineering-maturity gap, and confirmed accurate. Highest-priority
@@ -176,7 +176,7 @@ overlaps with those.)
   search-to-highlight interaction, and general visual correctness have
   never been confirmed by a human or automated browser tool. **Both this
   project's own documentation and the independent audit agree this is
-  the single most important outstanding verification item.**
+  the most important outstanding verification item.**
 - **No true multi-GB IFC file** was obtainable in this sandbox, so the
   IFC processing engine's architecture is reasoned about for large-scale
   performance (see `IFC_ENGINE_RELEASE_v1.0.0.md`'s Performance section)

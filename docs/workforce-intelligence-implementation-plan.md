@@ -21,7 +21,7 @@ Doctor/Teramind/Viva Insights) | EngineeringOS opportunity |
 | Productivity % = active time / total time, or a hardcoded "productive app" list | This is the thing to *not* copy. It's gameable (open Revit, go to lunch) and says nothing about output. What sets us apart is the Activity→Project→Task→Deliverable chain the brief lays out in §6. No competitor in this category connects time to BIM/RFI/issue/submittal output, because none of them own that domain data, so the advantage is specific to EngineeringOS and hard to copy. |
 | Project/task time allocation via manual timers or manual tagging | We can do better by *inferring* project context from what a competitor can't see: which BIM model is open, which project's RFI/issue is active in the same app session. Inferences are confidence-scored, not asserted as fact (brief §12). |
 | Manager leaderboards / employee ranking | The wrong pattern per brief §16 ("avoid simplistic employee rankings"). Skip it entirely, at every tier. |
-| Shift scheduling (preferences + assignment) and an absence request/approve calendar | Originally called out of scope in this row (clock-in/clock-out attendance, with its own labor-law compliance surface, genuinely still is). Built at explicit later product direction, scoped deliberately narrow to avoid that surface: no leave-balance accrual, no overtime/break-law logic, no payroll integration -- a preference grid, a per-date assigned-shift table, and a plain request/approve workflow. See migration `040_workforce_scheduling.sql`'s own header comment. |
+| Shift scheduling (preferences + assignment) and an absence request/approve calendar | Originally called out of scope in this row (clock-in/clock-out attendance, with its own labor-law compliance surface, still is). Built at explicit later product direction, scoped deliberately narrow to avoid that surface: no leave-balance accrual, no overtime/break-law logic, no payroll integration; a preference grid, a per-date assigned-shift table, and a plain request/approve workflow. See migration `040_workforce_scheduling.sql`'s own header comment. |
 | Per-app productivity classification (configurable) | Worth building: the brief's §11 application registry, seeded with construction/engineering tools (Revit, Navisworks, Bluebeam, Aconex, etc.) instead of generic office-suite categories a competitor ships. |
 | Desktop + browser agent, offline queue | Necessary infrastructure, not a differentiator. Build it properly (see architecture doc), but don't over-invest relative to the intelligence layer above it. |
 | "Insights"/AI narrative summaries | Useful *once there's real output data to summarize*, and premature before V1 has months of real activity + real issue/RFI throughput to correlate. Built against thin data, it would produce the "fabricated productivity metrics" the brief prohibits. |
@@ -57,7 +57,7 @@ as first-class fields, never optional decoration.
 **What could become technically expensive:** raw activity telemetry at
 real scale (brief §26: 100k+ employees). Mitigated by the append-only/
 partitionable schema (see data model doc) and by *not* building
-screenshot storage, which is the single biggest storage/egress cost
+screenshot storage, which is the biggest storage/egress cost
 center in this product category and the one with the least defensible
 ROI here.
 
@@ -126,7 +126,7 @@ adapter architecture only for now).
   "today's events" read) exists, scoped deliberately narrow: it does not
   write calendar events into `activities` or factor them into scoring.
   Real credentials to a live Google account were never available to test
-  against in the environment this was built in -- see migration 041's
+  against in the environment this was built in; see migration 041's
   header comment and `google-calendar-client.ts`'s own comment for what
   is and isn't verified. Writing calendar events into `activities` (real
   idempotency/dedup design needed) is an explicit, deferred follow-on.
@@ -134,11 +134,11 @@ adapter architecture only for now).
   desktop agent captures the active window's raw title (see `native.ts`'s
   `getWindowTitle()`) and always sends it, but the server only persists
   it when `workforce_privacy_settings.window_title_enabled` is on
-  (off by default) -- the exact same off-by-default/server-enforced/
+  (off by default); the exact same off-by-default/server-enforced/
   audited treatment as screenshots, and never captured during Private
   Time. See the architecture doc's own "Window title, update" note for
   why this is raw title rather than the category-only signal originally
-  designed -- a later, explicit product decision, not scope creep.
+  designed; a later, explicit product decision, not scope creep.
 - RBAC: reuses `@Roles()` / `@RequireProjectPermission()` /
   `@RequireFeature()` exactly as designed in the architecture doc.
 - Frontend: employee self-view page (today/this-week activity breakdown,

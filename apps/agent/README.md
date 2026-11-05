@@ -125,13 +125,13 @@ pnpm --filter agent private:off  # or: tsx src/index.ts private off
 ```
 
 While Private Time is on, the running agent never reads the real active
-window at all -- every segment is recorded as activity type `PRIVATE` with
+window at all; every segment is recorded as activity type `PRIVATE` with
 `applicationNameRaw` fixed to the literal string `"Private"`. It still
 counts as tracked/active time (the productivity dashboards show a
 "Private time" total), just with no app, window, or domain details. The
 scheduled screenshot cycle also skips entirely while Private Time is on
 (picked up on its next tick, so within one screenshot interval of toggling
-it) -- it used to keep running regardless, which contradicted both the
+it); it used to keep running regardless, which contradicted both the
 feature's name and window-title capture's own behavior. The API also
 force-redacts the activity fields server-side regardless of what any client
 sends, so that guarantee holds even against a modified or buggy agent.
@@ -139,7 +139,7 @@ sends, so that guarantee holds even against a modified or buggy agent.
 There is no tray icon or IPC channel in this plain-Node MVP, so `private
 on`/`private off` are short-lived one-off commands (same shape as
 `enroll`) that flip a marker file the long-running `start` process polls
-on its own next 10-second sample tick -- expect up to ~10s of lag, not
+on its own next 10-second sample tick; expect up to ~10s of lag, not
 instant effect.
 
 ## Configuration

@@ -259,7 +259,7 @@ SECURITY`, and `DB_USER`/`DB_PASSWORD` in both `render.yaml` and
 migrations run as a separate `DB_MIGRATOR_USER`/`DB_MIGRATOR_PASSWORD`
 credential instead. The "cross-tenant background job" question this
 section left open is also resolved: `DatabaseService.withSystemBypass()`
-gives the fixed set of genuinely pre-tenant/cross-tenant operations
+gives the fixed set of pre-tenant/cross-tenant operations
 (login-by-email, password reset/invitation-accept by token, company
 self-registration, the RFI external-access token lookup, and the two
 cross-tenant crons this section names) an explicit, narrowly-scoped,
@@ -348,7 +348,7 @@ this is the browser/device-verification gap the rest of this document
 and NEXT_STEPS.md refer to repeatedly. No frontend testing framework
 (Vitest, React Testing Library, Detox, etc.) exists in either package
 today; introducing one is explicitly out of scope for this sprint (see
-its own "do not implement" list) and is the single most valuable
+its own "do not implement" list) and is the most valuable
 follow-up; see the sprint report's "Recommended next step."
 
 ## 7. Known operational risks (not fixed this pass)

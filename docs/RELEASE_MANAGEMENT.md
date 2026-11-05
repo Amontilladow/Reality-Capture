@@ -31,7 +31,7 @@ Two workflows exist, confirmed by reading them directly:
 
 ## 3. Confirmed gaps
 
-- **No staging environment.** Every change's first real-world exposure is production. For a multi-tenant platform handling real company/project data, this is the single highest-value gap in this list.
+- **No staging environment.** Every change's first real-world exposure is production. For a multi-tenant platform handling real company/project data, this is the highest-value gap in this list.
 - **No feature-flag system for staged rollout.** The only "feature flag" concept (`subscription_plans.feature_flags`) gates features by paid tier, not by rollout percentage or cohort. A search for any staged-rollout or canary-flag pattern found none, so there is no way to ship a substantial new feature to a subset of users/companies before a full release.
 - **No automated regression suite beyond unit/integration tests.** There is no E2E browser suite (no Playwright/Cypress test files in this repo), so UI-level regressions (a button that silently stops working, a form that submits the wrong field) are caught only by manual testing or by users after deploy.
 - **No documented rollback procedure for a bad code deploy** (as distinct from the already-documented data-restore procedure). "Redeploy the prior commit" works on Render but isn't written down as a runbook step anywhere in this repo.

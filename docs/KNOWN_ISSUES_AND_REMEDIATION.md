@@ -15,7 +15,7 @@ Issues marked **FIXED** were corrected and re-verified (live retest + full regre
 - **Evidence:** Live-reproduced: logged in as the demo `project_manager`, called the invite endpoint with `companyRole: 'super_admin'`, received `HTTP 201` with the new row's `company_role` confirmed as `super_admin` in the database. Root cause: `apps/api/src/modules/users/users.service.ts:95` inserted `dto.companyRole` uncapped.
 - **Business impact:** Full takeover of a company's EngineeringOS account by any mid-level employee (or anyone who compromises their session), without needing the knowledge or consent of an actual admin.
 - **Fix applied:** `UsersService.invite()` now rejects any requested `companyRole` whose weight exceeds the inviter's own role weight (`ForbiddenException`). Verified live (re-attempt now returns `403`) and via 5 new unit tests in `users.service.spec.ts`.
-- **Verification criteria:** `users.service.spec.ts` "UsersService.invite -- role escalation cap" suite (5/5 passing); live retest documented in `ACCEPTANCE_TEST_MATRIX.md` (TC-SEC-01).
+- **Verification criteria:** `users.service.spec.ts` "UsersService.invite; role escalation cap" suite (5/5 passing); live retest documented in `ACCEPTANCE_TEST_MATRIX.md` (TC-SEC-01).
 - **Owner:** Fixed this engagement; no further action required unless the business wants a different UX (e.g. an explicit "request escalation" flow instead of a flat `403`).
 
 ### C-2. `PATCH /projects/:id` had no authorization at all: FIXED

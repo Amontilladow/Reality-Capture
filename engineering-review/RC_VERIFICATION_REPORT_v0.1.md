@@ -123,7 +123,7 @@ None open.
   depends on has been verified live and independently. The actual 3D
   canvas render and mouse-driven interaction (orbit, click-select,
   search-to-highlight) have not been visually confirmed. This is the
-  single most important remaining verification step before calling this
+  most important remaining verification step before calling this
   workflow production-verified end to end, and should be performed by a
   human or a browser-automation tool.
 - **BIM viewer feature scope**, per the original spec, is intentionally

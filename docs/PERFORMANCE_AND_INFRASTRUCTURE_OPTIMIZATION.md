@@ -54,7 +54,7 @@ This guard runs on every request to a feature-gated route (`@RequireFeature(...)
 | `pg` | None found. The actual Postgres client used everywhere is the `postgres` package (`postgres.js`), confirmed in `database.module.ts` |
 | `crypto` | None found. Node's built-in `crypto` module is used directly (no import needed at all); this npm package name shadows a Node builtin and serves no purpose here |
 
-These appear to be leftovers from an earlier, since-replaced data-access approach (the current `DatabaseService`/`postgres.js` pattern is what's actually wired in everywhere). Keeping them costs: slightly slower `npm install`/CI, slightly larger `node_modules` in any Docker build context, and (for the `crypto` package specifically) genuine confusion risk for a future engineer who might `import 'crypto'` expecting the Node builtin and get this unrelated npm package instead.
+These appear to be leftovers from an earlier, since-replaced data-access approach (the current `DatabaseService`/`postgres.js` pattern is what's actually wired in everywhere). Keeping them costs: slightly slower `npm install`/CI, slightly larger `node_modules` in any Docker build context, and (for the `crypto` package specifically) real confusion risk for a future engineer who might `import 'crypto'` expecting the Node builtin and get this unrelated npm package instead.
 
 **Recommendation (safe, low-risk):** remove all four from `apps/api/package.json`'s dependencies and run `npm install` to regenerate the lockfile, then re-run the full test suite and build to confirm nothing actually depended on them silently. Flagged in Task #130.
 

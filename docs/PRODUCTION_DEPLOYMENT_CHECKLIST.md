@@ -32,7 +32,7 @@ Grounded in a full read of `render.yaml`, `.github/workflows/ci.yml`, `.github/w
 - [x] Global rate limiting (100 req/min default, 10/min on auth, 20/min on AI), confirmed working live.
 - [x] Argon2id password hashing; JWT secrets validated at boot; refresh-token rotation and revocation confirmed working.
 - [x] SQL injection: fully parameterized queries throughout (tagged-template `postgres` driver); zero raw string-interpolation into SQL found in a full-repo grep.
-- [x] RLS (Row-Level Security) architecture (`withTenant`/`withSystemBypass`) applied consistently; the narrow "bypass" escape hatch is used only for genuinely pre-tenant lookups (login, token lookup, signup-code lookup), never generically.
+- [x] RLS (Row-Level Security) architecture (`withTenant`/`withSystemBypass`) applied consistently; the narrow "bypass" escape hatch is used only for pre-tenant lookups (login, token lookup, signup-code lookup), never generically.
 - [x] 4 authorization gaps found and fixed this engagement (see `KNOWN_ISSUES_AND_REMEDIATION.md` C-1 through C-4), re-verified live and via the full regression suite.
 - [ ] **`pnpm audit --prod` shows 3 critical / 87 high findings.** Priority: `sharp` (processes untrusted uploaded images), `axios`, `nodemailer` are all below patched versions. See H-3. *Action: schedule a dependency-upgrade pass before go-live, or explicitly accept the risk with a named owner and date.*
 - [ ] Same-company cross-project access gap on issue/drawing sub-resources (H-1): not fixed this engagement (needs a focused multi-file pass). *Decision needed before go-live if any customer runs multiple confidential, separately-staffed projects under one company account.*

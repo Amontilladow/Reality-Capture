@@ -95,7 +95,7 @@ those are downstream of this decision, not part of it.
   reported faster than `web-ifc` on much of its benchmark corpus), and it
   specifically targets streaming first-render for large files, which is
   the multi-GB story `web-ifc` alone doesn't have.
-- **Maturity**: this is a genuinely new project (recent activity, small
+- **Maturity**: this is a new project (recent activity, small
   install base relative to `web-ifc`/IfcOpenShell). Promising design, but
   no production track record to point to yet. Betting v1.0 on it carries
   real risk: fewer eyes have found its edge cases, and its API surface
