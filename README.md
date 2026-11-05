@@ -22,10 +22,10 @@ Monorepo (pnpm workspaces):
 
 | Path | What it is | Status |
 |---|---|---|
-| `apps/web` | React 18 + Vite + Tailwind SPA — the main product UI | Implemented but not browser-verified beyond the features explicitly noted in CURRENT_STATUS.md |
+| `apps/web` | React 18 + Vite + Tailwind SPA, the main product UI | Implemented but not browser-verified beyond the features explicitly noted in CURRENT_STATUS.md |
 | `apps/api` | NestJS REST API (`/api/v1`), the system of record | Implemented |
 | `apps/ifc-service` | NestJS worker consuming a Bull/Redis queue, parses IFC models into `.frag` geometry via `@thatopen/components`/`web-ifc` | Implemented |
-| `apps/ai-service` | Python/FastAPI RAG service (Qdrant-backed search + an LLM assistant) | Implemented; unusable in the deployed environment today — no `ANTHROPIC_API_KEY` configured in `render.yaml` |
+| `apps/ai-service` | Python/FastAPI RAG service (Qdrant-backed search + an LLM assistant) | Implemented; unusable in the deployed environment today because `render.yaml` configures no `ANTHROPIC_API_KEY` |
 | `apps/mobile` | Expo/React Native field-capture companion (camera, offline SQLite queue, background sync) | Implemented, phone/tablet capture-focused; not full web feature parity |
 | `apps/browser-extension` | Small browser extension | Implemented |
 | `apps/agent` | Desktop workforce-activity agent (idle/active detection, screenshot capture) | Implemented |
@@ -81,7 +81,7 @@ docker compose -f infrastructure/docker/docker-compose.yml up -d
 pnpm db:migrate
 ```
 Applies every file in `apps/api/src/database/migrations/` in order,
-tracked in a `_migrations` table. Safe to re-run — already-applied
+tracked in a `_migrations` table. It is safe to re-run: already-applied
 migrations are skipped.
 
 ### 5. Start the API
@@ -127,14 +127,14 @@ Continuous integration (`.github/workflows/ci.yml`) runs, on every PR and
 push to `main`, against real repository scripts (no `|| true`, no
 suppressed failures): install, build `@engineeringos/types`, typecheck,
 test, build, and lint. See `engineering-review/CURRENT_STATUS.md` §6 and
-§8 for exactly which packages each of those actually covers today (several
-packages don't declare every script — this is documented, not hidden) and
+§8 for which packages each of those covers today (several
+packages don't declare every script, and that document lists which) and
 the most recent verified pass/fail results.
 
 **Implemented but not browser-verified:** the web app's rendering,
 interaction, and responsive behavior beyond the specific features called
 out as Playwright-verified in `CURRENT_STATUS.md`. Every frontend
-correctness check in CI today is `tsc`/`vite build` succeeding — proof the
+correctness check in CI today is `tsc`/`vite build` succeeding. That proves the
 code compiles, not that it renders or behaves correctly.
 
 **Implemented but not load-tested:** IFC processing at scale, Bull queue
@@ -148,10 +148,10 @@ See `engineering-review/CURRENT_STATUS.md` (current, verified) and
 `engineering-review/NEXT_STEPS.md` (prioritized follow-ups) for the full,
 current list. Headline items:
 - Presigned upload URLs don't enforce their declared size limits at the
-  storage layer (a real, cross-cutting gap — not yet fixed).
+  storage layer. The gap affects every upload path and is not fixed yet.
 - Postgres row-level security is not a real security boundary in any
   environment this app currently runs in (production included, as
-  configured in `render.yaml`) — tenant isolation rests on application-level
+  configured in `render.yaml`). Tenant isolation rests on application-level
   `WHERE company_id = ...` filtering today. See `CURRENT_STATUS.md` §4.
 - No automated frontend or mobile test suite exists yet.
 - The AI assistant has no API key configured in the current production
@@ -164,5 +164,5 @@ manual deploy from the Render dashboard. Migrations run automatically as
 a pre-deploy step, before the new release takes traffic (see
 `CURRENT_STATUS.md` §5 for the exact mechanism). This document does not
 cover changing production credentials, environment values, or
-infrastructure — those require direct access to the Render dashboard and
+infrastructure. Those require direct access to the Render dashboard and
 are intentionally outside the scope of anything automated in this repo.

@@ -1,7 +1,7 @@
-# EngineeringOS v0.1 — Release Candidate Verification Report
+# EngineeringOS v0.1: Release Candidate Verification Report
 
 > **Historical record**, scoped to the v0.1 workflow (login through BIM
-> element property inspection) only — it predates Issues, Drawings, RFIs,
+> element property inspection) only. It predates Issues, Drawings, RFIs,
 > Submittals, Transmittals, QA, Snagging, Reports, Chat, Workforce, and
 > the AI assistant. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md) for
 > current, source-verified status across the whole product, including a
@@ -12,17 +12,17 @@ from login through BIM element property inspection, across `apps/api`,
 `apps/ifc-service`, and `apps/web`.
 
 **No new functionality was added during this verification pass. Two
-verified defects were fixed (see "Bugs found" below) — both were required
-to make the workflow actually work, not enhancements.**
+verified defects were fixed (see "Bugs found" below). Both were required
+to make the workflow work; neither is an enhancement.**
 
 ---
 
-## Workflow Verification — PASS/FAIL per step
+## Workflow Verification: PASS/FAIL per step
 
 | Step | Result | Evidence |
 |---|---|---|
 | Login | **PASS** | Real JWT issued via `/auth/login` against a real Postgres-backed user |
-| Dashboard | **PASS*** | `/projects` (ProjectList) serves as the current landing page. *No dedicated KPI dashboard (Active Projects/Processing Queue/Import History/Activity Feed) exists yet — see Known Limitations. |
+| Dashboard | **PASS*** | `/projects` (ProjectList) serves as the current landing page. *No dedicated KPI dashboard (Active Projects/Processing Queue/Import History/Activity Feed) exists yet; see Known Limitations. |
 | Projects (list) | **PASS** | `GET /projects` returns real data |
 | Open Project | **PASS** | `GET /projects/:id` returns real data |
 | Upload IFC | **PASS** | Presigned URL issued, real `PUT` to S3-compatible storage returns HTTP 200, model registered |
@@ -31,44 +31,44 @@ to make the workflow actually work, not enhancements.**
 | Models List | **PASS** | `GET /projects/:id/bim/models` includes the newly processed model |
 | Open Viewer | **PASS** | `viewer-data` endpoint returns a real presigned Fragments URL; the URL was independently fetched and confirmed to return the actual binary (HTTP 200) |
 | Navigate Model | **PASS** | Hierarchy endpoint returns the correct 3-node spatial tree (Site/Building/Storey) |
-| Search Element | **PASS** | Returns correct filtered results (verified with filters present, partially present, and absent — see bug #8 below) |
-| Select Element | **PASS** | Verified with a real GUID containing a `$` character (common in IFC GUIDs) — see note below |
-| Properties Display | **PASS** | Returned element included 127 property keys, 2 quantities, 1 material, 1 classification — all correct |
+| Search Element | **PASS** | Returns correct filtered results (verified with filters present, partially present, and absent; see bug #8 below) |
+| Select Element | **PASS** | Verified with a real GUID containing a `$` character (common in IFC GUIDs); see note below |
+| Properties Display | **PASS** | Returned element included 127 property keys, 2 quantities, 1 material, 1 classification, all correct |
 
 **Note on "Select Element":** the first test attempt showed a false FAIL
 caused by a bash scripting artifact (the shell interpreting `$` inside the
 GUID as a variable reference), not an application defect. Re-verified with
-a proper HTTP client (Python) using the exact GUID — confirmed **PASS**.
+a proper HTTP client (Python) using the exact GUID: confirmed **PASS**.
 This is documented here for transparency rather than silently corrected.
 
 ---
 
-## Subsystem Verification — PASS/FAIL
+## Subsystem Verification: PASS/FAIL
 
 | Subsystem | Result | Detail |
 |---|---|---|
-| Typecheck — `packages/types` | **PASS** | Clean |
-| Typecheck — `apps/api` | **PASS** | Clean except pre-existing, previously-documented `postgres.js` generic-typing noise in 4 files (`database.service.ts`, `auth.service.ts`, `captures.service.ts`, `audit.interceptor.ts`) — confirmed none of this session's changes introduced new instances |
-| Typecheck — `apps/ifc-service` | **PASS** | Clean except the same pre-existing pattern (1 line, `database.service.ts`) |
-| Typecheck — `apps/web` | **PASS** | Fully clean, no exceptions |
-| Production build — `packages/types` | **PASS** | `tsc` build clean |
-| Production build — `apps/api` | **PASS** | `nest build` (SWC), clean |
-| Production build — `apps/ifc-service` | **PASS** | `nest build` (SWC), clean |
-| Production build — `apps/web` | **PASS** | `vite build`, clean (large bundle warning only — expected given Three.js/@thatopen, not a failure) |
-| Dev server — `apps/web` | **PASS** | Starts, serves `index.html`, transforms every new source module without error |
-| Backend startup — `apps/api` | **PASS** | `/health` returns `{status: ok, database: ok}` |
-| Backend startup — `apps/ifc-service` | **PASS** | `/health` returns `{status: ok, database: ok}` |
+| Typecheck: `packages/types` | **PASS** | Clean |
+| Typecheck: `apps/api` | **PASS** | Clean except pre-existing, previously-documented `postgres.js` generic-typing noise in 4 files (`database.service.ts`, `auth.service.ts`, `captures.service.ts`, `audit.interceptor.ts`); confirmed none of this session's changes introduced new instances |
+| Typecheck: `apps/ifc-service` | **PASS** | Clean except the same pre-existing pattern (1 line, `database.service.ts`) |
+| Typecheck: `apps/web` | **PASS** | Fully clean, no exceptions |
+| Production build: `packages/types` | **PASS** | `tsc` build clean |
+| Production build: `apps/api` | **PASS** | `nest build` (SWC), clean |
+| Production build: `apps/ifc-service` | **PASS** | `nest build` (SWC), clean |
+| Production build: `apps/web` | **PASS** | `vite build`, clean (large bundle warning only, expected given Three.js/@thatopen, not a failure) |
+| Dev server: `apps/web` | **PASS** | Starts, serves `index.html`, transforms every new source module without error |
+| Backend startup: `apps/api` | **PASS** | `/health` returns `{status: ok, database: ok}` |
+| Backend startup: `apps/ifc-service` | **PASS** | `/health` returns `{status: ok, database: ok}` |
 | API verification | **PASS** | Every endpoint in the workflow verified live with real data (see table above) |
 | Database verification | **PASS** | All 8 IFC-related tables populated correctly for a real processed model (40 elements, 3 spatial nodes, 2 quantities, 1 material, 1 classification, 72 relationships, 1 SUCCESS report) |
 | Storage verification | **PASS** | Original IFC (114,099 bytes) and generated Fragments file (~16KB) both physically confirmed on the S3-compatible backend, matching the exact model tested |
 | Queue verification | **PASS** | Real Bull/Redis job keys confirmed present with unique per-attempt IDs; completed/failed job counts in Redis match this session's actual test history |
-| Viewer integration verification | **PARTIAL — see below** | Every REST endpoint the viewer page calls is verified correct. The 3D rendering, click/orbit/search-to-highlight interaction, and visual correctness **cannot be verified** — no browser or screenshot tool is available in this environment. This is stated plainly rather than assumed. |
+| Viewer integration verification | **PARTIAL; see below** | Every REST endpoint the viewer page calls is verified correct. The 3D rendering, click/orbit/search-to-highlight interaction, and visual correctness **cannot be verified**: no browser or screenshot tool is available in this environment. This is stated plainly rather than assumed. |
 
 ---
 
-## Bugs found and fixed during this verification (both real, both required — not speculative)
+## Bugs found and fixed during this verification (both real, both required: not speculative)
 
-**Bug #7 — Vite/Rollup CJS interop gap (pre-existing, found during the
+**Bug #7: Vite/Rollup CJS interop gap (pre-existing, found during the
 BIM viewer frontend work, re-confirmed still fixed in this pass).**
 `vite build` failed for the whole web app the moment any file imported a
 runtime value (not just a type) from the `@engineeringos/types` workspace
@@ -76,15 +76,15 @@ package, because Vite's default `commonjsOptions.include` only targets
 `node_modules/**`, excluding pnpm-workspace-linked packages from CJS→ESM
 conversion. Fixed in `apps/web/vite.config.ts`.
 
-**Bug #8 — Untyped-null Postgres parameter in element search (found
+**Bug #8: Untyped-null Postgres parameter in element search (found
 during the BIM viewer frontend work, re-confirmed still fixed in this
 pass).** `BimService.getElements()` had bare `${x ?? null} IS NULL` checks
 with no type cast on several optional filters. Postgres cannot infer a
 parameter's type from `IS NULL` alone, so the query failed at the
-planning stage for any call — not only when a filter was genuinely null.
+planning stage for any call, not only when a filter was actually null.
 Fixed by adding an explicit cast to every bare occurrence.
 
-**No new bugs were found in this specific verification pass** — both of
+**No new bugs were found in this specific verification pass.** Both of
 the above were already fixed in the prior session and this pass exists to
 confirm they hold, plus catch anything a full clean-room run might
 reveal. Nothing new did.
@@ -104,14 +104,14 @@ None open.
 
 ### Technical debt
 - Pre-existing `postgres.js` generic-typing noise in 5 files across
-  `apps/api`/`apps/ifc-service` (cosmetic — `tsc --noEmit` flags it,
+  `apps/api`/`apps/ifc-service` (cosmetic: `tsc --noEmit` flags it,
   `nest build` via SWC does not; documented and deliberately deferred,
   consistent with the repo's existing quality-sprint policy).
 - `apps/web`'s production bundle is large (~6.8MB main JS, unminified-
   gzip ~1.3MB) due to Three.js + `@thatopen/components` +
   `@thatopen/fragments`. Works correctly; code-splitting (dynamic
   `import()` for the viewer route) would improve initial load time. Not
-  done — would be an optimization, out of scope for "verify only."
+  done; it would be an optimization, out of scope for "verify only."
 
 ### Known limitations (verified, real, not hidden)
 - **No dedicated Dashboard page.** The workflow's "Dashboard" step is
@@ -123,7 +123,7 @@ None open.
   depends on has been verified live and independently. The actual 3D
   canvas render and mouse-driven interaction (orbit, click-select,
   search-to-highlight) have not been visually confirmed. This is the
-  single most important remaining verification step before calling this
+  most important remaining verification step before calling this
   workflow production-verified end to end, and should be performed by a
   human or a browser-automation tool.
 - **BIM viewer feature scope**, per the original spec, is intentionally
@@ -133,11 +133,11 @@ None open.
   (and not silently stubbed): walk/first-person mode, section planes/box,
   explode, isolation, hide/show, transparency, storey/discipline/category
   filter toggles.
-- **Issue Management is not yet integrated into the viewer** — explicitly
+- **Issue Management is not yet integrated into the viewer**: explicitly
   paused per instruction, to resume only after this RC report is
   accepted.
 - **No true multi-GB IFC file has been load-tested** (documented since the
-  IFC engine's own release — still true; no such fixture was obtainable
+  IFC engine's own release, and still true; no such fixture was obtainable
   in this sandbox).
 
 ---
@@ -228,12 +228,12 @@ POST /api/v1/company/register
 - [x] `apps/ifc-service` typecheck/build clean
 - [x] `apps/web` typecheck/build clean
 - [x] All three services start and report healthy
-- [ ] **Browser-level visual/interaction verification** — NOT done, no browser tool available. Remains open.
-- [ ] Dedicated KPI Dashboard — not built (scope gap, not a defect)
-- [ ] Issue Management integration in viewer — explicitly paused, next milestone
-- [ ] Seed/demo data script — does not exist; onboarding currently requires the register API call above
-- [x] Frontend `.env.example` — confirmed present and correct (`VITE_API_BASE`)
-- [ ] Bundle size optimization (code-splitting the viewer route) — not done, not required for correctness
+- [ ] **Browser-level visual/interaction verification**: NOT done, no browser tool available. Remains open.
+- [ ] Dedicated KPI Dashboard: not built (scope gap, not a defect)
+- [ ] Issue Management integration in viewer: explicitly paused, next milestone
+- [ ] Seed/demo data script: does not exist; onboarding currently requires the register API call above
+- [x] Frontend `.env.example`: confirmed present and correct (`VITE_API_BASE`)
+- [ ] Bundle size optimization (code-splitting the viewer route): not done, not required for correctness
 
 **Every unchecked item above is real remaining work, not hidden or
 assumed complete.**

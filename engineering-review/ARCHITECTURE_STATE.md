@@ -1,4 +1,4 @@
-# EngineeringOS — ARCHITECTURE_STATE.md
+# EngineeringOS: ARCHITECTURE_STATE.md
 
 ## System overview
 
@@ -59,13 +59,13 @@ polling, reprocess triggering, hierarchy/element read endpoints, viewer
 data endpoint). Does **not** contain any IFC parsing logic.
 
 Key modules touched/added across sessions:
-- `modules/bim/` — `bim.service.ts`, `bim.controller.ts`, `bim.module.ts`
-- `modules/notifications/` — real notifications (table+service+API)
-- `modules/ai-client/` — fire-and-forget calls into `apps/ai-service`
+- `modules/bim/`: `bim.service.ts`, `bim.controller.ts`, `bim.module.ts`
+- `modules/notifications/`: real notifications (table+service+API)
+- `modules/ai-client/`: fire-and-forget calls into `apps/ai-service`
 
-### `apps/ifc-service` (NestJS, TypeScript) — standalone, independently deployable
+### `apps/ifc-service` (NestJS, TypeScript): standalone, independently deployable
 Owns the entire IFC processing pipeline. Zero code dependency on
-`apps/api` — communicates only via the shared `ifc-processing` Bull queue
+`apps/api`. It communicates only via the shared `ifc-processing` Bull queue
 (Redis) and directly reads/writes the shared Postgres database and object
 storage. Has its own `DatabaseService`/`StorageService` (deliberately
 duplicated from `apps/api`'s equivalents, not imported, to preserve
@@ -116,7 +116,7 @@ Routing (`App.tsx`): `/projects/:projectId/bim` (models list, inside
 `AppShell`) and `/projects/:projectId/bim/:modelId` (full-bleed viewer,
 outside `AppShell`, matching the existing 360-viewer pattern).
 
-### `apps/ai-service` (Python FastAPI) — largely untouched this phase
+### `apps/ai-service` (Python FastAPI): largely untouched this phase
 Ingestion endpoints (`/ingest/capture`, `/ingest/issue`) exist and are
 called fire-and-forget from `apps/api`. Search/assistant routers exist,
 statically reviewed as sound, not live-verified (see Known Issues).
@@ -124,7 +124,7 @@ statically reviewed as sound, not live-verified (see Known Issues).
 ## Packages
 
 ### `packages/types` (`@engineeringos/types`)
-Shared TypeScript types only — no runtime logic shared between apps
+Shared TypeScript types only, with no runtime logic shared between apps
 beyond plain constants/types. CommonJS-compiled (`tsc`). Contains the
 IFC job/queue contract (`IFC_PROCESSING_QUEUE`, `IFC_PARSE_JOB_NAME`,
 `IfcParseJobData`, `IFC_PROCESSING_STAGES`, `IfcImportReport`, and the
@@ -138,7 +138,7 @@ install. Vite's default `commonjsOptions.include` only processes
 `node_modules/**`, so any file importing a runtime *value* (not just a
 type) from this package will fail at `vite build` time unless
 `apps/web/vite.config.ts` explicitly includes the package path in
-`build.commonjsOptions.include`. This is already fixed — **do not remove
+`build.commonjsOptions.include`. This is already fixed. **Do not remove
 that config** without understanding why it's there.
 
 ## Database architecture
@@ -151,7 +151,7 @@ both `apps/api`'s and `apps/ifc-service`'s `DatabaseService`).
 Migrations live in `apps/api/src/database/migrations/`, numbered
 sequentially, run via `apps/api`'s `run-migrations.ts` (tracks applied
 files in a `_migrations` table, idempotent). IFC-related migrations:
-`003_ifc_processing.sql`, `004_ifc_resumability.sql` — see
+`003_ifc_processing.sql`, `004_ifc_resumability.sql`; see
 `IFC_ENGINE_RELEASE_v1.0.0.md`'s Database Schema section for the full
 table-by-table breakdown (`bim_spatial_nodes`, `bim_element_quantities`,
 `bim_materials`/`bim_element_materials`, `bim_element_classifications`,
@@ -171,7 +171,7 @@ section; frontend-added endpoints (`viewer-data`, `hierarchy`,
 ## Frontend structure
 
 React Router, `AppShell` layout for most routes, full-bleed routes (no
-sidebar chrome) for immersive viewers (360 photo viewer, BIM viewer) —
+sidebar chrome) for immersive viewers (360 photo viewer, BIM viewer);
 both follow the same pattern. React Query for all server state, no global
 Redux-style store beyond `zustand` (used elsewhere, not by the BIM
 viewer). API client convention: one `lib/<domain>.api.ts` file per
@@ -180,17 +180,17 @@ backend domain, using shared `apiGet`/`apiPost`/`apiPatch`/
 
 ## Services / Integrations
 
-- PostgreSQL — shared, RLS-scoped.
-- Redis — shared, backs the `ifc-processing` Bull queue (and the earlier
+- PostgreSQL: shared, RLS-scoped.
+- Redis: shared, backs the `ifc-processing` Bull queue (and the earlier
   `image-processing` queue for captures).
-- S3-compatible object storage — shared bucket, used for original
+- S3-compatible object storage: shared bucket, used for original
   captures/drawings/IFC files and generated Fragments/thumbnails.
-- Qdrant — vector search backend for `apps/ai-service`; confirmed
+- Qdrant: vector search backend for `apps/ai-service`; confirmed
   reachable via a downloaded GitHub release binary in this sandbox
   (`dl.min.io`/MinIO direct download is blocked, but
   `release-assets.githubusercontent.com` is not).
 
-## Data flow — the BIM upload-to-viewer path (see `IFC_ENGINE_RELEASE_v1.0.0.md` for full stage-by-stage detail)
+## Data flow: the BIM upload-to-viewer path (see `IFC_ENGINE_RELEASE_v1.0.0.md` for full stage-by-stage detail)
 
 ```
 Client → apps/api: request presigned upload URL

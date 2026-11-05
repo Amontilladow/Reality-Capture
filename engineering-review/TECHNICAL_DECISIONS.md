@@ -1,4 +1,4 @@
-# EngineeringOS — TECHNICAL_DECISIONS.md
+# EngineeringOS: TECHNICAL_DECISIONS.md
 
 Every significant decision made across this project's sessions, with
 reasoning. Treat these as settled unless a verified problem emerges.
@@ -9,7 +9,7 @@ reasoning. Treat these as settled unless a verified problem emerges.
 
 **Decision:** IFC processing runs as its own independently-deployable
 NestJS app, communicating with `apps/api` only via a shared Redis/Bull
-queue and the shared Postgres database — zero code coupling.
+queue and the shared Postgres database, with no code coupling.
 
 **Why:** Explicitly directed (not just proposed) partway through the IFC
 engine work. Reasoning that held up: independent deployability/scaling
@@ -31,17 +31,17 @@ made an explicit requirement.
 approved before any implementation began.
 
 **Why `web-ifc` over IfcOpenShell:**
-- Stack fit — pure WASM, runs natively in the same Node/NestJS process
+- Stack fit: pure WASM, runs natively in the same Node/NestJS process
   as everything else; IfcOpenShell is Python, would need a cross-service
   call through `apps/ai-service` for a core, synchronous-feeling flow.
-- License — MPL-2.0 (permissive, file-level) vs. LGPL (more legal-review
+- License: MPL-2.0 (permissive, file-level) vs. LGPL (more legal-review
   friction for a closed-source commercial SaaS).
-- Performance — faster on large files in independent benchmarks and
+- Performance: faster on large files in independent benchmarks and
   IfcOpenShell's own documented issues; this was explicitly a
   requirement given real construction BIM models routinely exceed
   several hundred MB.
 - IfcOpenShell remains the stronger choice for a hypothetical future
-  need to *author* (write back) IFC files — this decision doesn't
+  need to *author* (write back) IFC files. This decision doesn't
   foreclose adding it later for that specific purpose.
 
 **Why not `ifc-lite-core` (Rust/WASM, newer entrant):** compelling
@@ -70,14 +70,14 @@ if it didn't finish.
 **Why:** true element-level checkpointing (resuming mid-stage from the
 exact last-processed element) would need a persisted cursor and much more
 complex state management, for uncertain benefit at current model sizes.
-Stage-level resume is safe (idempotent — each stage clears its own prior
-output before re-writing) and dramatically simpler to reason about and
-verify. Documented explicitly as a real, honest limitation rather than
-overclaiming finer granularity — see `KNOWN_ISSUES.md`.
+Stage-level resume is safe (idempotent: each stage clears its own prior
+output before re-writing) and much simpler to reason about and
+verify. It is documented as a known limitation rather than
+overclaiming finer granularity; see `KNOWN_ISSUES.md`.
 
 **Rejected alternative:** element-level/batch-level checkpointing within
-a stage. Not rejected permanently — flagged as a legitimate future
-enhancement once/if very large models make whole-stage-redo too costly.
+a stage. Not rejected permanently: it is a reasonable future
+change if very large models make whole-stage redo too costly.
 
 ---
 
@@ -95,7 +95,7 @@ a second, different multi-tenancy mechanism for the new service.
 
 **Note:** `apps/ifc-service`'s `DatabaseService` is a deliberate,
 independent re-implementation of the same pattern, not an import of
-`apps/api`'s version — preserves the "zero code coupling" architecture
+`apps/api`'s version. This keeps the "zero code coupling" architecture
 decision above at the cost of some duplication. Accepted tradeoff.
 
 ---
@@ -123,7 +123,7 @@ element-UUID map).
 `packages/types` to ship ESM output or changing its module system.
 
 **Why:** the root cause is that Vite/Rollup's default `commonjsOptions`
-only processes `node_modules/**`, not pnpm-workspace-symlinked packages —
+only processes `node_modules/**`, not pnpm-workspace-symlinked packages;
 this is a generic Vite/monorepo interaction, not specific to this
 package's module format. Fixing it at the Vite-config level is the
 smallest, most targeted fix and doesn't risk breaking `apps/api`/
@@ -139,12 +139,12 @@ changes for the same outcome.
 
 ## Security: JWT auth + RBAC, unchanged this phase
 
-No new security decisions were made in the BIM engine/viewer work — it
+No new security decisions were made in the BIM engine/viewer work. It
 reuses the existing `JwtAuthGuard`/`RolesGuard` pattern (guard order
 matters: Throttler → Jwt → Roles, established in an earlier session) and
 the existing tenancy/RLS model. Presigned S3 URLs (both upload and
 Fragments download) expire after a configured interval
-(`S3_PRESIGN_EXPIRES_IN`, default 3600s) — no new exposure introduced.
+(`S3_PRESIGN_EXPIRES_IN`, default 3600s), so no new exposure is introduced.
 
 ---
 
