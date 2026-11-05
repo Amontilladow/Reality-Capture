@@ -11,7 +11,7 @@ import {
 
 // Cross-project Executive Command Center: the "Head of Engineering" view
 // across every project in the company, same Minto Pyramid rules as the
-// per-project ExecutiveBriefing -- conclusion first, then a ranked list of
+// per-project ExecutiveBriefing; conclusion first, then a ranked list of
 // which PROJECTS need attention (not a flat list of every flagged item
 // across every project, which would just recreate the cognitive overload
 // this whole brief exists to remove). Each project row shows only its own
@@ -19,7 +19,7 @@ import {
 // that project's own Reports/Risk pages.
 //
 // Backed by GET /reports/company-summary (ReportsService.
-// getCompanySummary()) -- one network round trip for the whole company,
+// getCompanySummary()): one network round trip for the whole company,
 // not N. Ranking/conclusion logic is shared with ExecutiveBriefing via
 // lib/executive-signals.ts.
 

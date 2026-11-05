@@ -13,7 +13,7 @@ export const WORKFLOW_STATUS_LABELS: Record<SiteDrawingWorkflowStatus, string> =
 };
 
 // One shared tone vocabulary (status-tone.ts), same as every other module
-// in this app -- a drawing's workflow status is a status badge like any
+// in this app; a drawing's workflow status is a status badge like any
 // other, not a bespoke color scheme.
 export const WORKFLOW_STATUS_TONE: Record<SiteDrawingWorkflowStatus, StatusTone> = {
   UNDER_REVIEW: 'progress',
@@ -29,7 +29,7 @@ export function isValidForSiteUse(status: SiteDrawingWorkflowStatus): boolean {
   return (VALID_FOR_SITE_USE_STATUSES as readonly SiteDrawingWorkflowStatus[]).includes(status);
 }
 
-// documentClassification defaults to 'CONSTRUCTION' -- same backward-
+// documentClassification defaults to 'CONSTRUCTION'; same backward-
 // compatible default the API's own isConfirmedCurrent() uses, so a caller
 // that hasn't been updated to pass it yet keeps its exact prior behavior.
 export function isConfirmedCurrent(status: SiteDrawingWorkflowStatus, isSuperseded: boolean, documentClassification: SiteDrawingDocumentClassification = 'CONSTRUCTION'): boolean {

@@ -70,7 +70,7 @@ export function PinPanel({
   }, [pin?.locationId]);
 
   function invalidatePin() {
-    // Refreshes the marker list on the plan -- but the panel you're looking
+    // Refreshes the marker list on the plan; but the panel you're looking
     // at right now is holding a snapshot `pin` prop, not this query's data,
     // so it will NOT pick up the change on its own. Display below reads
     // from `title`/`note` (already holding the just-saved value) instead
@@ -124,7 +124,7 @@ export function PinPanel({
 
   // Mirrors renameMutation's shape: which record actually gets updated
   // depends on linkedRecord.type, exactly like title/note/element edits
-  // above -- a pin converted to a snag is assigned against the snag record,
+  // above; a pin converted to a snag is assigned against the snag record,
   // not a now-nonexistent issue.
   const assignMutation = useMutation({
     mutationFn: async (newAssignedTo: string) => {
@@ -146,7 +146,7 @@ export function PinPanel({
     onSuccess: (snag) => {
       setLinkedRecord({ type: 'snag', id: snag.id });
       // convertPinToSnag() carries over title/description but not the
-      // issue's assignee -- the new snag item starts unassigned, so the
+      // issue's assignee; the new snag item starts unassigned, so the
       // select shouldn't keep showing the old issue's assignee.
       setAssignedTo('');
       invalidatePin();
@@ -189,7 +189,7 @@ export function PinPanel({
       });
       queryClient.invalidateQueries({ queryKey: ['captures', projectId, 'pin', pin.locationId] });
       invalidatePin();
-      // Reset rather than leave it checked -- a 360° photo is the
+      // Reset rather than leave it checked: a 360° photo is the
       // exception here, not the common case, so the next upload from this
       // same panel shouldn't silently inherit the previous choice.
       setIs360(false);
@@ -374,7 +374,7 @@ export function PinPanel({
 
           {/* Camera-first add-media: capture="environment" is a no-op on desktop
               (opens a normal file picker) and opens the camera directly on a
-              phone -- included now even though mobile polish is a later phase,
+              phone; included now even though mobile polish is a later phase,
               since it costs nothing extra here. */}
           <div>
             <input

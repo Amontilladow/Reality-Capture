@@ -30,7 +30,7 @@ export default function BimModelsPage() {
     queryFn: () => listBimModels(projectId!),
     enabled: Boolean(projectId),
     // Poll while anything is still pending/processing so progress bars and
-    // status badges update without a manual refresh — stops polling once
+    // status badges update without a manual refresh; stops polling once
     // every model has settled into ready/failed.
     refetchInterval: (query) => {
       const models = query.state.data ?? [];

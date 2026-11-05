@@ -57,7 +57,7 @@ export default function Viewer360() {
       if (target) {
         setActiveCaptureId(target.id);
       } else {
-        // Target capture lives at a different location — fetch it to resolve where.
+        // Target capture lives at a different location; fetch it to resolve where.
         getCapture(projectId!, h.targetCaptureId).then((c) => {
           if (c.locationId) navigate(`/projects/${projectId}/viewer/${c.locationId}`);
         });

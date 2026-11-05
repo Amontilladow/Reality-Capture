@@ -29,9 +29,9 @@ function IssueList({ title, items, emptyText }: { title: string; items: Progress
   );
 }
 
-// No EngineeringOS account, no session -- the opaque token in the URL is the
+// No EngineeringOS account, no session (the opaque token in the URL is the
 // only credential. Deliberately outside ProtectedRoute/AppShell, same as
-// RfiExternalPage -- nothing else in the app is reachable from here.
+// RfiExternalPage) nothing else in the app is reachable from here.
 export default function ProgressReportExternalPage() {
   const { token } = useParams<{ token: string }>();
 

@@ -76,7 +76,7 @@ function LevelRow({ projectId, level }: { projectId: string; level: BimLevelProg
 // (always live) alongside the separately-set zone_progress status (an
 // office-level "this level is 80% done" call distinct from counting
 // individual element statuses). Grouped by building so the building-level
-// picture is just these rows read together -- no separate building query.
+// picture is just these rows read together; no separate building query.
 export function ProgressPanel({ projectId }: { projectId: string }) {
   const query = useQuery({
     queryKey: ['bim-level-progress', projectId],

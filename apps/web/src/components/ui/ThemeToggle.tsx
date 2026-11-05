@@ -2,7 +2,7 @@ import { useThemeStore } from '../../store/theme.store';
 import { Tooltip } from './Tooltip';
 
 // Single global toggle, rendered from AppShell/AuthLayout/PublicLandingPage
-// only -- every screen behind those shared layouts inherits it for free
+// only; every screen behind those shared layouts inherits it for free
 // rather than needing its own copy. Sized/styled to match
 // NotificationBell/MessagesBell's own header icon buttons (w-9 h-9, rounded,
 // ink-300 -> ink-100 on hover) so it reads as one more item in that same
@@ -20,7 +20,7 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
         aria-label={label}
         className={`relative w-9 h-9 shrink-0 inline-flex items-center justify-center rounded text-ink-300 hover:bg-base-700 hover:text-ink-100 transition-colors ${className}`}
       >
-        {/* Both icons are always mounted and crossfade -- swapping which
+        {/* Both icons are always mounted and crossfade; swapping which
             one renders would lose the transition and could show neither
             for a frame. Dark mode shows the sun (switch to light); light
             mode shows the moon (switch to dark), per spec. */}

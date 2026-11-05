@@ -3,7 +3,7 @@ import { DESKTOP_QUERY, useMediaQuery } from '../../lib/useMediaQuery';
 
 // On a phone, a long report or detail section folds down to one row: its
 // title plus a one-line summary, opened on tap. On desktop the section
-// renders exactly as before -- the fold only exists below the md
+// renders exactly as before; the fold only exists below the md
 // breakpoint, where stacking every tile, chart and table made pages run
 // to ten screens.
 //

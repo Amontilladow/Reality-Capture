@@ -8,8 +8,8 @@ import { WORKFLOW_STATUS_LABELS } from './siteDrawingDisplay';
 import { Listbox } from '../ui/Listbox';
 
 // The previous current revision is automatically marked superseded server-
-// side the moment this one is registered (SiteDrawingsService.addRevision)
-// -- it stays in the register, clearly labeled, never deleted (brief
+// side the moment this one is registered (SiteDrawingsService.addRevision);
+// it stays in the register, clearly labeled, never deleted (brief
 // section 5).
 export function AddRevisionModal({ open, onClose, projectId, drawingId, drawingTitle }: {
   open: boolean; onClose: () => void; projectId: string; drawingId: string; drawingTitle: string;

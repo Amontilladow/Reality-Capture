@@ -15,8 +15,8 @@ import {
 // the two or three reasons behind it second, full evidence only on demand.
 // Every number here is read from backend-aggregated, already-validated
 // sources this app already computes and already shows elsewhere (Risk's
-// own executive summary, Reports' own KPI endpoint, BIM's own model list)
-// -- nothing here is a new calculation invented for this screen, per the
+// own executive summary, Reports' own KPI endpoint, BIM's own model list);
+// nothing here is a new calculation invented for this screen, per the
 // brief's own "reuse existing calculations" / "do not introduce unsupported
 // composite health scores" constraints. The ranking/conclusion rules
 // themselves live in lib/executive-signals.ts, shared with the
@@ -55,7 +55,7 @@ export function ExecutiveBriefing({ projectId }: { projectId: string }) {
   const conclusion = buildConclusion(status, signals, 'on this project');
 
   // Freshness is the real moment these queries last actually resolved
-  // (react-query's own dataUpdatedAt) -- never a claim this screen can't
+  // (react-query's own dataUpdatedAt): never a claim this screen can't
   // back up. Shows the oldest of the three, since that's the one the
   // reader should trust least.
   const freshestTimestamps = [riskQuery.dataUpdatedAt, kpisQuery.dataUpdatedAt, bimQuery.dataUpdatedAt].filter((t) => t > 0);

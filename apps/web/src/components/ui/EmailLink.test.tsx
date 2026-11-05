@@ -20,7 +20,7 @@ describe('EmailLink', () => {
     const link = screen.getByRole('link');
     const href = link.getAttribute('href')!;
     expect(href.startsWith('mailto:jane.doe@m4contracting.ae?')).toBe(true);
-    // Decode via URLSearchParams, not decodeURIComponent -- the query
+    // Decode via URLSearchParams, not decodeURIComponent; the query
     // string is application/x-www-form-urlencoded (spaces as '+'), which
     // only URLSearchParams decodes correctly.
     const query = new URLSearchParams(href.split('?')[1]);

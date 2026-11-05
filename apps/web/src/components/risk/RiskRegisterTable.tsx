@@ -20,7 +20,7 @@ const PAGE_SIZE = 25;
 
 // The primary working area of the dashboard (brief section 4E): a
 // CRM-style register over the full register fetched once by
-// RiskIntelligenceSection -- filtering/sorting/paging all happen here,
+// RiskIntelligenceSection; filtering/sorting/paging all happen here,
 // client-side, same as the register this replaces, just with more filter
 // dimensions and real pagination instead of one long table.
 export function RiskRegisterTable({ risks, members, ownerNames, filters, onFiltersChange, onSelectRisk }: {

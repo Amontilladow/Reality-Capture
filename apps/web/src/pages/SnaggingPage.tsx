@@ -22,7 +22,7 @@ export default function SnaggingPage() {
   const [editSnag, setEditSnag] = useState<SnagListItem | null>(null);
   const [viewSnagId, setViewSnagId] = useState<string | null>(searchParams.get('snagId'));
 
-  // ── Building/level grouping (same treatment as Floor plans/Issues) --
+  // ── Building/level grouping (same treatment as Floor plans/Issues);
   // snag_items.building_id/level_id are joined into buildingName/levelName
   // server-side (snagging.service.ts findAll()); the hierarchy tree here is
   // only needed for building/level ORDER (levelOrder) and to scope the
@@ -68,7 +68,7 @@ export default function SnaggingPage() {
   };
 
   // Resolves each snag item's building/level objects from the hierarchy
-  // tree (for levelOrder sorting) -- a snag whose buildingId/levelId points
+  // tree (for levelOrder sorting): a snag whose buildingId/levelId points
   // at a building/level no longer in the tree resolves the same as one
   // with no building at all, and falls into "Unassigned" below.
   const snagsWithLocation = useMemo<SnagWithLocation[]>(() => {
@@ -95,7 +95,7 @@ export default function SnaggingPage() {
   }, [snagsWithLocation, buildingFilter, levelFilter]);
 
   // Grouped for render: buildings in hierarchy order, levels within each
-  // sorted by levelOrder (not name), "Unassigned" bucket last -- same
+  // sorted by levelOrder (not name), "Unassigned" bucket last; same
   // structure as FloorPlanViewer.tsx's/IssuesPage.tsx's grouping.
   const groupedSnags = useMemo(() => {
     const byBuilding = new Map<string, Map<string, { level?: ProjectHierarchy['levels'][number]; snags: SnagWithLocation[] }>>();
@@ -217,7 +217,7 @@ export default function SnaggingPage() {
         )}
 
         {/* Grouped by building -> level (same treatment as Floor plans/
-            Issues) -- one table per building, a level sub-header row inside,
+            Issues): one table per building, a level sub-header row inside,
             "Unassigned" table last for items with no building or a deleted
             one. */}
         <div className="space-y-4">
@@ -251,7 +251,7 @@ export default function SnaggingPage() {
 }
 
 // Shared by every building group (and the Unassigned bucket, as a single
-// level-less group) -- one table with its own column headers, a lightweight
+// level-less group): one table with its own column headers, a lightweight
 // level sub-header row inside the body per level, and each snag item's
 // exact original <tr> markup/onClick behavior, unchanged.
 function SnagTable({

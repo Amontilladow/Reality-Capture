@@ -14,7 +14,7 @@ import { apiErrorMessage } from '../lib/api';
 import type { EmailIntegrationStatus, EmailIntegrationStatusValue } from '@engineeringos/types';
 
 // Phase 3C/3D: both providers are now fully wired (connect/status/test/
-// disconnect), same shape for each -- the OAuth callback for either one
+// disconnect), same shape for each; the OAuth callback for either one
 // redirects the full browser back here with ?outlook=... or ?gmail=...
 // (see outlook-integration.controller.ts / gmail-integration.controller.ts).
 
@@ -131,7 +131,7 @@ export default function EmailSettingsPage() {
   const connectOutlookMutation = useMutation({
     mutationFn: async () => {
       const { url } = await getOutlookAuthorizeUrl();
-      window.location.href = url; // full browser redirect -- OAuth consent cannot happen inside an XHR
+      window.location.href = url; // full browser redirect: OAuth consent cannot happen inside an XHR
     },
   });
   const testOutlookMutation = useMutation({

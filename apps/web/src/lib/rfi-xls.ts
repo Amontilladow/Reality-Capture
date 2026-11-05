@@ -8,7 +8,7 @@ import {
 import { RFI_STATUS_LABELS, RFI_PRIORITY_LABELS, formatDate } from './rfi-constants';
 import { apiGet } from './api';
 
-// question/answer are stored as HTML from the RichTextEditor (Phase 3) --
+// question/answer are stored as HTML from the RichTextEditor (Phase 3);
 // converts Tiptap's StarterKit output (paragraphs, headings, lists,
 // bold/italic marks) to plain text with real line breaks for a static
 // spreadsheet cell, rather than leaking raw tags like "<p>...</p>". Mirrors
@@ -29,7 +29,7 @@ function richTextToPlain(html: string): string {
     .trim();
 }
 
-// Phase 5 additions -- organizations, upload stamps, and query/response
+// Phase 5 additions: organizations, upload stamps, and query/response
 // attachment lists, threaded in as optional parameters so every existing
 // caller (and every existing test) keeps working unchanged.
 export interface RfiXlsOrganization {
@@ -65,9 +65,9 @@ export interface RfiXlsAuditEvent {
   occurredAt: string;
 }
 
-// Mirrors rfi-pdf.template.ts's palette exactly -- both apps/web/tailwind
-// config.js's real "blueprint-dark technical" tokens, not generic slate/blue
-// -- so the two exports read as the same document family, and that family
+// Mirrors rfi-pdf.template.ts's palette exactly; both apps/web/tailwind
+// config.js's real "blueprint-dark technical" tokens, not generic slate/blue;
+// so the two exports read as the same document family, and that family
 // reads as the same product as the live app, not an unrelated template.
 const INK = 'FF0A141C';          // base-950
 const MUTED = 'FF4A6178';        // base-500
@@ -85,12 +85,12 @@ const thin = { style: 'thin' as const, color: { argb: BORDER } };
 const gridBorder = { top: thin, bottom: thin, left: thin, right: thin };
 
 // Full row width is 8 columns (A, then 5 narrow org-logo columns B-F, then
-// the wide value column G, then a trailing thumbnail column H) -- see the
+// the wide value column G, then a trailing thumbnail column H); see the
 // sheet.columns comment below for why the org columns sit right after A
 // instead of after the value column. Section headers and free-text blocks
 // span the whole thing (1-8); ordinary field rows merge everything from
 // column 2 onward into one value cell, so "Status | High" still reads as
-// two adjacent cells with no dead space in between, exactly as before --
+// two adjacent cells with no dead space in between, exactly as before;
 // only the org-strip rows (built separately, below) deliberately leave
 // columns 2-6 unmerged so each of the 5 slots gets its own real cell.
 const FULL_WIDTH_END = 8;
@@ -126,7 +126,7 @@ function fieldRow(sheet: ExcelJS.Worksheet, label: string, value: string) {
   return row;
 }
 
-// A merged full-width block for long free text (RFI title, query, response) --
+// A merged full-width block for long free text (RFI title, query, response);
 // same "one big cell" treatment the PDF gives these sections.
 function textBlockRow(sheet: ExcelJS.Worksheet, text: string) {
   const row = sheet.addRow([text]);
@@ -152,7 +152,7 @@ function spacerRow(sheet: ExcelJS.Worksheet) {
 // works for an <img src> (no CORS needed just to paint pixels) and works in
 // Node (fetch() there doesn't enforce CORS), but reading the response body
 // in a real browser strictly requires the bucket to send CORS headers for
-// this app's origin -- easy to be missing in production even when local
+// this app's origin; easy to be missing in production even when local
 // MinIO's permissive default masks it in dev. Routed through this
 // same-origin backend endpoint instead (mirrors rfis.service.ts's
 // generatePdf(), which has never had this problem since it downloads via
@@ -169,7 +169,7 @@ interface RfiExportAssets {
 }
 
 // Same raster-extension set rfis.service.ts's isImageFilename() uses server-
-// side to decide which attachments are even worth a thumbnail round trip --
+// side to decide which attachments are even worth a thumbnail round trip;
 // kept in sync manually (small, stable list) rather than threaded through
 // the API response, since every other attachment already renders correctly
 // via attachmentLabel() with no image at all.
@@ -184,7 +184,7 @@ async function fetchExportAssets(projectId: string, rfiId: string): Promise<RfiE
   try {
     return await apiGet<RfiExportAssets>(`/projects/${projectId}/rfis/${rfiId}/export-assets`);
   } catch {
-    // A network blip or auth hiccup shouldn't take down the whole export --
+    // A network blip or auth hiccup shouldn't take down the whole export;
     // the caller decides whether/how to surface this as a warning (same
     // rule the old per-image tryFetchImage() followed).
     return undefined;
@@ -204,13 +204,13 @@ function extensionFromMimeType(mimeType?: string): 'png' | 'jpeg' {
 
 // Places a small square image at an exact pixel position/size within a
 // single cell, via `twoCellAnchor` with explicit native (EMU) offsets on
-// both corners -- deliberately NOT exceljs's `{tl: {col, row}, ext}`
+// both corners; deliberately NOT exceljs's `{tl: {col, row}, ext}`
 // shorthand this file used before. That shorthand computes the small
 // in-cell offset via `Anchor#col`'s setter (`nativeColOff = fraction *
 // colWidth`), and `colWidth` (lib/doc/anchor.js) falls back to a hardcoded
 // value whenever the target column's width matches exceljs's own
 // DEFAULT_COLUMN_WIDTH (see the sheet.columns comment below for the
-// concrete bug that caused) -- one nine-only symptom already found and
+// concrete bug that caused): one nine-only symptom already found and
 // fixed, but the same fallback machinery is still in the loop for the
 // offset math even now, and its shorthand also writes `oneCellAnchor`
 // with an `editAs` attribute that isn't actually part of that element's
@@ -254,13 +254,13 @@ function attachmentLabel(item: RfiXlsAttachmentItem): string {
 
 // One row per attachment (previously a single row with every filename
 // joined by "; ") so an image-type attachment can carry its own thumbnail,
-// matching the small inline preview the PDF export already gives photos --
+// matching the small inline preview the PDF export already gives photos;
 // same underlying export-assets thumbnails, just anchored into a
 // spreadsheet cell instead of a react-pdf <Image>. Non-image attachments
 // (pdf/doc/xls/zip) render exactly as before, just one per row instead of
 // semicolon-joined. Thumbnail anchored at column H (index 7, the dedicated
-// trailing thumbnail column -- see the sheet.columns comment) -- an integer
-// column index, not a fraction of the value column -- for the same reason
+// trailing thumbnail column; see the sheet.columns comment) (an integer
+// column index, not a fraction of the value column) for the same reason
 // the organization logo strip above uses one dedicated column per icon: a
 // fractional column offset in exceljs does not scale against that column's
 // declared width, confirmed directly against its own anchor output.
@@ -282,7 +282,7 @@ function attachmentListRows(
       row.height = 24;
       addPixelImage(sheet, workbook, base64ToArrayBuffer(asset.base64), extensionFromMimeType(asset.mimeType), 7, row.number - 1, THUMB_PX);
     } else if (isImageAttachment(item.filename)) {
-      // A raster-image attachment whose thumbnail didn't resolve -- either
+      // A raster-image attachment whose thumbnail didn't resolve; either
       // this one attachment's own S3 download failed, or the whole
       // export-assets request failed. Worth telling the person who clicked
       // the button, same as the logo/stamp warnings above.
@@ -312,7 +312,7 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
     : discipline;
 
   // Image fetches (project logo/stamp, organization logos) are all a
-  // nice-to-have -- a network blip never blocks the export (same rule the
+  // nice-to-have; a network blip never blocks the export (same rule the
   // PDF template follows), but unlike the PDF path this failure is silent
   // to the person clicking the button, so it's worth telling them rather
   // than just quietly shipping a file that's missing branding they expected
@@ -322,7 +322,7 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
 
   // Single same-origin call for every image this export needs (project
   // logo/stamp + all 5 org logos), instead of one direct browser fetch()
-  // per image against S3 presigned URLs -- see the comment on
+  // per image against S3 presigned URLs; see the comment on
   // fetchExportAssets() above for why. `undefined` here means the whole
   // request failed (network/auth); the per-image fallbacks below already
   // treat "no asset for a slot/field that was actually configured" as a
@@ -340,15 +340,15 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
     views: [{ showGridLines: false }],
     pageSetup: { orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
   });
-  // Column A widened from 24 to 30 -- at 24, "REQUEST FOR INFORMATION" (24
+  // Column A widened from 24 to 30; at 24, "REQUEST FOR INFORMATION" (24
   // characters) in bold 14pt visually overflowed and got clipped at the
   // column boundary instead of spilling into the adjacent (non-empty)
-  // cell, which Excel only does for genuinely empty neighbors.
+  // cell, which Excel only does for empty neighbors.
   //
   // B-F (5 narrow columns) hold the organization logo strip; G is the wide
   // "value" column every fieldRow/textBlockRow/sectionRow merges into; H is
   // a dedicated trailing column for per-attachment thumbnails. Deliberately
-  // in THIS order -- org columns before the value column, not after it --
+  // in THIS order; org columns before the value column, not after it;
   // because Excel lays columns out strictly left to right: putting the org
   // strip after the wide value column (the layout this file used to have)
   // meant it only ever appeared past however much dead space that column's
@@ -358,12 +358,12 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
   // org columns to sit immediately after A removes that gap outright.
   // fieldRow merges columns 2 through H into one value cell so ordinary
   // rows ("Status | High") still read as two directly-adjacent cells with
-  // no gap, exactly as before -- only the org-strip rows (built separately,
+  // no gap, exactly as before; only the org-strip rows (built separately,
   // below) deliberately leave columns B-F unmerged, since each of the 5
   // slots needs its own real cell for its own image and label.
   //
   // A floating image's fractional column offset (e.g. col: 1.55) does NOT
-  // scale against that column's own declared width -- verified directly
+  // scale against that column's own declared width; verified directly
   // against exceljs's own anchor output, it consistently uses a fixed
   // ~65px unit regardless of the column's real width, so packing icons
   // into fractional offsets within one column would place them almost
@@ -374,27 +374,27 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
   // Narrow-column width is 10, not 9: exceljs's own `DEFAULT_COLUMN_WIDTH`
   // constant (lib/doc/column.js) is *exactly* 9, and a column whose
   // declared width equals that constant is treated as "not custom" and
-  // silently omitted from the file's <cols> XML entirely -- confirmed by
+  // silently omitted from the file's <cols> XML entirely; confirmed by
   // writing a real file and inspecting the raw XML directly (unzipped, not
   // re-parsed by exceljs itself, since that would just as consistently
   // misread its own bug). With no <col> entry at all, real Excel falls
   // back to its own undefined-column default instead of the width this
   // file actually needs, throwing the floating images anchored in those
-  // columns visibly out of position -- reported directly against
+  // columns visibly out of position; reported directly against
   // Microsoft Excel desktop, not a third-party-viewer quirk. Any value
   // other than precisely 9 avoids this; 10 was picked for headroom, not
   // because 9.01 wouldn't also work.
   sheet.columns = [{ width: 30 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 62 }, { width: 10 }];
 
   // Title bar. RFI number lives in the merged value+thumbnail columns
-  // (G:H) rather than column B now that B is the first org-logo column --
+  // (G:H) rather than column B now that B is the first org-logo column;
   // right-aligned to the sheet's actual right edge either way.
   const titleRow = sheet.addRow(['REQUEST FOR INFORMATION']);
   sheet.mergeCells(titleRow.number, 7, titleRow.number, FULL_WIDTH_END);
   titleRow.getCell(7).value = rfi.rfiNumber ?? rfi.id;
 
   // exceljs's own <dimension> element for the file (its calculated "used
-  // range") only ever covers cells that actually hold data -- floating
+  // range") only ever covers cells that actually hold data; floating
   // images (sheet.addImage()) never count. This sheet's own pageSetup
   // below sets fitToWidth: 1, and real Excel computes that print/page-
   // layout scale factor from the sheet's dimension, so any column entirely
@@ -410,7 +410,7 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
   titleRow.getCell(1).alignment = { vertical: 'middle' };
   titleRow.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
   titleRow.eachCell({ includeEmpty: true }, (cell) => {
-    // Matches rfi-pdf.template.ts's header rule exactly -- a signal-orange
+    // Matches rfi-pdf.template.ts's header rule exactly; a signal-orange
     // underline, not a plain black one. includeEmpty so the underline
     // spans the full row (columns B-F would otherwise be skipped, since
     // they're never explicitly touched on this row).
@@ -419,7 +419,7 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
   spacerRow(sheet);
 
   // Compact "Name · No." line, folded into the header area instead of a
-  // standalone "PROJECT" section -- matches the live page's PageHeader
+  // standalone "PROJECT" section; matches the live page's PageHeader
   // eyebrow shown just above the RFI number heading. Location/Date dropped
   // entirely (the live page never shows either; Date is already covered by
   // the RFI DETAILS section's own creation-adjacent fields below).
@@ -434,16 +434,16 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
     spacerRow(sheet);
   }
 
-  // Organization logos -- one image, its name (or slot label if
+  // Organization logos: one image, its name (or slot label if
   // unconfigured) directly underneath, nothing else. Matches the PDF's own
   // orgRow exactly (image + `org.name || slotLabel`, no separate text
-  // table listing the same 5 organizations again below it) -- an earlier
+  // table listing the same 5 organizations again below it): an earlier
   // version here had both a floating logo strip AND a full ORGANIZATIONS
   // table repeating the same names, which read as two disconnected things
   // rather than one. Always all 5 slots (an unconfigured slot still gets
   // its label, just no image), matching the live page's OrganizationSlotRow.
-  // Each slot gets its own column (B-F, immediately after the label column
-  // -- see the sheet.columns comment) for both the image row and the label
+  // Each slot gets its own column (B-F, immediately after the label column;
+  //; see the sheet.columns comment) for both the image row and the label
   // row, so the label is real cell content sitting directly under its own
   // image, not a separate table. Deliberately positioned right after A
   // (not after the wide value column, which now lives at G) so the strip
@@ -464,7 +464,7 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
       addPixelImage(sheet, workbook, base64ToArrayBuffer(asset.base64), extensionFromMimeType(asset.mimeType), col0, logoImageRow.number - 1, ICON_PX);
     } else if (org?.logoUrl) {
       // A logo was configured (RfiDetailPage's OrganizationSlotRow shows
-      // one on screen) but the backend couldn't resolve it -- either this
+      // one on screen) but the backend couldn't resolve it; either this
       // slot's own S3 download failed, or the whole export-assets request
       // failed. Either way, worth telling the person who clicked the
       // button, same as the old per-image tryFetchImage() did.
@@ -486,7 +486,7 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
   spacerRow(sheet);
 
   // Full 4-state impact detail (level + amount/currency or days +
-  // description), not just a Yes/No boolean -- matches RfiDetailPage's own
+  // description), not just a Yes/No boolean; matches RfiDetailPage's own
   // ImpactSummary/ImpactEditor exactly. Falls back to the legacy boolean
   // for RFIs created before the level field existed, same precedence
   // rfis.service.ts itself uses server-side.
@@ -512,7 +512,7 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
   attachmentListRows(sheet, workbook, 'Query Attachments', extras?.queryAttachments, exportAssetsByAttachmentId, warnings);
   spacerRow(sheet);
 
-  // Only rendered when set -- an unsubmitted/legacy RFI has no query_stamp
+  // Only rendered when set: an unsubmitted/legacy RFI has no query_stamp
   // yet. Same field choice as the PDF template and RfiDetailPage's own
   // on-screen StampPanel (createdByName/updatedAt) so all three never
   // disagree with each other.
@@ -524,7 +524,7 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
     spacerRow(sheet);
   }
 
-  // Communication/Clarifications before Response -- matches the live page's
+  // Communication/Clarifications before Response: matches the live page's
   // own top-to-bottom order (comment thread renders above the Response
   // panel on RfiDetailPage).
   sectionRow(sheet, 'COMMUNICATION / CLARIFICATIONS');
@@ -561,8 +561,8 @@ export async function buildRfiWorkbookBuffer(rfi: Rfi, project?: Project, extras
   }
 
   // Anchored at column G (index 6, the value column) via the same
-  // addPixelImage native-offset technique as everything else in this file
-  // -- the old fractional `{tl: {col: 1.55, row}}` shorthand this used to
+  // addPixelImage native-offset technique as everything else in this file;
+  // the old fractional `{tl: {col: 1.55, row}}` shorthand this used to
   // use pointed at column B, which now holds the first org-logo slot
   // instead of the wide value column, and fractional offsets don't scale
   // against a column's real declared width regardless (see addPixelImage's

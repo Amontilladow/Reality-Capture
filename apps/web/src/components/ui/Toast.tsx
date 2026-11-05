@@ -8,7 +8,7 @@ const TONE_CLASS: Record<ToastTone, string> = {
 };
 
 // Mounted once near the app root (main.tsx). Renders whatever's currently
-// in useToastStore -- call showToast(message, tone) from anywhere to add
+// in useToastStore; call showToast(message, tone) from anywhere to add
 // one, no provider wiring needed at the call site.
 export function ToastViewport() {
   const items = useToastStore((s) => s.items);

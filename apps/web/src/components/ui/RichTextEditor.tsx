@@ -4,10 +4,10 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 
 // Shared rich-text editor for RFI query/answer authoring (Phase 3). One
-// component, two modes (editable / readOnly) -- reused for both fields per
+// component, two modes (editable / readOnly): reused for both fields per
 // the ticket, rather than a second component or a parallel
 // dangerouslySetInnerHTML renderer. Kept deliberately small: paragraphs,
-// bold/italic, bullet/ordered lists, two heading levels -- everything
+// bold/italic, bullet/ordered lists, two heading levels; everything
 // StarterKit ships beyond that (code blocks, blockquotes, horizontal rules,
 // strike, tables) is left off rather than wired up unused.
 export function RichTextEditor({
@@ -39,7 +39,7 @@ export function RichTextEditor({
 
   // Keep the editor's document in sync with an externally-changed `value`
   // (e.g. the RFI query loading in after the detail query resolves, or the
-  // form resetting) without fighting the user's own in-progress typing --
+  // form resetting) without fighting the user's own in-progress typing;
   // only pushes a new document when the prop actually diverges from what's
   // already rendered.
   useEffect(() => {
@@ -47,7 +47,7 @@ export function RichTextEditor({
     const current = editor.getHTML();
     if (value !== current && !(value === '' && current === '<p></p>')) {
       // Tiptap v3's setContent takes an options object (not a bare boolean
-      // like v2) -- emitUpdate: false avoids re-triggering onUpdate/onChange
+      // like v2): emitUpdate: false avoids re-triggering onUpdate/onChange
       // for a change that originated from the `value` prop itself.
       editor.commands.setContent(value || '', { emitUpdate: false });
     }
@@ -79,7 +79,7 @@ export function RichTextEditor({
   );
 }
 
-// Tiptap's "empty" document still serializes to '<p></p>', not ''  -- plain
+// Tiptap's "empty" document still serializes to '<p></p>', not ''; plain
 // .trim() on the stored HTML doesn't catch that, so every empty-field
 // validation in this app that gates on a RichTextEditor value should use
 // this instead of a bare truthiness/trim check.

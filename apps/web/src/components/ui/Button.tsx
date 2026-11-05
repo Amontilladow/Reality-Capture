@@ -9,7 +9,7 @@ const VARIANT_CLASS: Record<Variant, string> = {
   danger: 'btn-danger',
 };
 
-// Thin wrapper over the existing .btn-* classes (index.css) -- gives every
+// Thin wrapper over the existing .btn-* classes (index.css): gives every
 // button a consistent loading state and spinner instead of each page
 // hand-rolling its own "disabled + different label while pending" logic.
 export function Button({

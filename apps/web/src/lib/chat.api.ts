@@ -1,10 +1,10 @@
 import type { PaginationQuery } from '@engineeringos/types';
 import { apiGet, apiGetWithMeta, apiPatch } from './api';
 
-// Live floating-chat widget's REST client -- a project team channel plus
+// Live floating-chat widget's REST client: a project team channel plus
 // 1-to-1 DMs, both backed by the Socket.io /chat gateway for the live
 // message stream (see chat-socket.ts). This is deliberately separate from
-// messaging.api.ts (the async, threaded "Messages" inbox) -- different
+// messaging.api.ts (the async, threaded "Messages" inbox): different
 // feature, different backend routes, not to be merged.
 
 export interface ChatMessage {
@@ -12,7 +12,7 @@ export interface ChatMessage {
   channelType: 'project' | 'dm';
   channelId: string;
   fromUserId: string;
-  // Defensive: the backend contract lists this as optional -- fall back to
+  // Defensive: the backend contract lists this as optional; fall back to
   // a generic label rather than rendering "undefined" if it's ever missing.
   fromUserName?: string;
   body: string;
@@ -29,7 +29,7 @@ export interface ChatDmThread {
 }
 
 // Project team channel: one channel per project, keyed by the project's own
-// id as the channelId. Assumption (backend ticket landing in parallel) --
+// id as the channelId. Assumption (backend ticket landing in parallel);
 // the contract doesn't spell out what channelId a project channel uses, but
 // the REST route is scoped by :projectId and the WS side needs a channelId
 // to join/send on, so the project id is the only value both sides already

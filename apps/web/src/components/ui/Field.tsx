@@ -11,8 +11,8 @@ const REQUIREMENT_SUFFIX: Record<Requirement, string> = {
   system: '(auto-generated)',
 };
 
-// Shared label/error/hint chrome around .field-input/.field-label (index.css)
-// -- every form field gets the same required/optional/system-generated
+// Shared label/error/hint chrome around .field-input/.field-label (index.css);
+// every form field gets the same required/optional/system-generated
 // marking (brief section 8) and the same error-to-input wiring
 // (aria-invalid + aria-describedby pointing at the error text) for free,
 // instead of each form re-deriving ids and deciding its own wording for
@@ -30,7 +30,7 @@ function FieldShell({
   label: string;
   requirement?: Requirement;
   // A trailing element on the label's own row (e.g. Login's "Forgot
-  // password?" link) -- rare enough not to warrant every field reasoning
+  // password?" link): rare enough not to warrant every field reasoning
   // about layout, common enough that re-deriving this flex row per form
   // isn't worth it either.
   labelAddon?: ReactNode;
@@ -64,13 +64,13 @@ type SharedProps = {
   error?: string;
 };
 
-// forwardRef is required on Input and Textarea below -- react-hook-form's
+// forwardRef is required on Input and Textarea below; react-hook-form's
 // register() returns a ref that must reach the real <input>/<textarea>
 // DOM node for RHF to register and read the field's value.
 // Without it, React silently drops the ref (dev-mode warning: "Function
 // components cannot be given refs") and RHF never sees the field as
 // registered, so handleSubmit() intermittently treats a visibly-filled,
-// required field as empty -- confirmed by hand against the Login form,
+// required field as empty; confirmed by hand against the Login form,
 // which uses this exact component.
 export const Input = forwardRef<HTMLInputElement, SharedProps & InputHTMLAttributes<HTMLInputElement>>(
   function Input({ label, requirement, labelAddon, hint, error, id, className, ...rest }, ref) {

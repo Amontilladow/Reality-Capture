@@ -49,7 +49,7 @@ export default function IssuesPage() {
   const [viewIssueId, setViewIssueId] = useState<string | null>(searchParams.get('issueId'));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // ── Building/level grouping (same treatment as the Floor plans sidebar) --
+  // ── Building/level grouping (same treatment as the Floor plans sidebar);
   // issues.building_id/level_id are already joined into buildingName/
   // levelName server-side (issues.service.ts findAll()), so unlike Floor
   // plans no per-row lookup against level_id alone is needed here; the
@@ -102,7 +102,7 @@ export default function IssuesPage() {
   };
 
   // Resolves each issue's building/level objects from the hierarchy tree
-  // (for level-order sorting) -- an issue whose buildingId/levelId points
+  // (for level-order sorting): an issue whose buildingId/levelId points
   // at a building/level no longer in the tree (deleted) resolves the same
   // as one with no building at all, and falls into "Unassigned" below.
   const issuesWithLocation = useMemo<IssueWithLocation[]>(() => {
@@ -129,7 +129,7 @@ export default function IssuesPage() {
   }, [issuesWithLocation, buildingFilter, levelFilter]);
 
   // Grouped for render: buildings in hierarchy order, levels within each
-  // sorted by levelOrder (not name), "Unassigned" bucket last -- same
+  // sorted by levelOrder (not name), "Unassigned" bucket last; same
   // structure as FloorPlanViewer.tsx's groupedDrawings.
   const groupedIssues = useMemo(() => {
     const byBuilding = new Map<string, Map<string, { level?: ProjectHierarchy['levels'][number]; issues: IssueWithLocation[] }>>();
@@ -160,11 +160,11 @@ export default function IssuesPage() {
   }, [filteredIssues, hierarchy]);
 
   // Dashboard needs the full (unfiltered) project issue set to compute the
-  // per-user KPI table and status/priority breakdown client-side — there's
+  // per-user KPI table and status/priority breakdown client-side; there's
   // no dedicated backend aggregate endpoint for those (only getSummary(),
   // which is project-wide totals, not per-user). Capped at 100 rows by the
   // backend's own perPage clamp (issues.service.ts findAll(): `Math.min(
-  // query.perPage ?? 20, 100)`) — see the "Deviations" note in the final
+  // query.perPage ?? 20, 100)`); see the "Deviations" note in the final
   // report for projects with more than 100 issues.
   const dashboardIssuesQuery = useQuery({
     queryKey: ['issues-dashboard', projectId],
@@ -466,7 +466,7 @@ export default function IssuesPage() {
           )}
 
           {/* List, grouped by building -> level (same treatment as the Floor
-              plans sidebar) -- levels sorted by levelOrder, an "Unassigned"
+              plans sidebar): levels sorted by levelOrder, an "Unassigned"
               group last for issues with no building or a deleted one. */}
           {issuesQuery.isLoading && <p className="text-sm text-ink-500">Loading issues…</p>}
           {issuesQuery.isSuccess && rows.length === 0 && (
@@ -738,9 +738,9 @@ function IssueDashboard({
         </div>
       </div>
 
-      {/* Status / priority breakdown — plain CSS bars (no charting library
+      {/* Status / priority breakdown: plain CSS bars (no charting library
           in this repo's dependency tree; see ReportsPage.tsx / package.json,
-          confirmed before implementing — a new charting dependency was
+          confirmed before implementing; a new charting dependency was
           intentionally not added). */}
       <div className="grid grid-cols-2 gap-6">
         <div>
@@ -925,8 +925,8 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
 }
 
 // Desktop keeps the full card per issue (with its bulk-select box); a
-// phone gets the register layout -- one grouped panel of two-line rows,
-// see RecordRow -- and no per-row checkbox (bulk actions are a desk job).
+// phone gets the register layout (one grouped panel of two-line rows,
+// see RecordRow) and no per-row checkbox (bulk actions are a desk job).
 function IssueList({ compact, label, issues, selectedIds, onToggleSelect, onOpen }: {
   compact: boolean;
   label: string;
@@ -1019,11 +1019,11 @@ function IssueRow({
           <span className="text-xs text-ink-500 shrink-0">Due {formatDeadline(issue.deadline)}</span>
         </div>
 
-        {/* Row 2: title -- the only thing with real visual weight. */}
+        {/* Row 2: title; the only thing with real visual weight. */}
         <div className="font-medium text-sm mb-2">{issue.title}</div>
 
         {/* Row 3: state badges on the left, assignee called out clearly on
-            the right -- previously an unlabeled gray span buried in this
+            the right; previously an unlabeled gray span buried in this
             same badge row, easy to miss when following up on who owns
             what. */}
         <div className="flex items-center gap-2 flex-wrap text-xs">
@@ -1038,7 +1038,7 @@ function IssueRow({
 }
 
 // A small colored-initial "avatar" plus a labeled name, so the assignee
-// reads as a distinct, glanceable fact rather than one more gray badge --
+// reads as a distinct, glanceable fact rather than one more gray badge;
 // no dependency on assignedToAvatar actually resolving to a loadable image
 // (nothing else in the issues UI renders that field yet either).
 function AssigneeTag({ name, className = '' }: { name?: string; className?: string }) {

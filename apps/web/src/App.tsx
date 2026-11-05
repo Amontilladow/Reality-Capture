@@ -47,7 +47,7 @@ import HelpPage from './pages/HelpPage';
 // These four pull in the heaviest dependencies in the app (Three.js +
 // @thatopen/components + @thatopen/fragments for the two BIM routes,
 // pdf.js for the drawing viewer) and are far from every user's most common
-// path — lazy-loading them keeps those libraries out of the bundle every
+// path; lazy-loading them keeps those libraries out of the bundle every
 // other route has to download and parse. Confirmed by hand: before this,
 // the single main JS chunk was ~6.9MB (1.33MB gzipped) regardless of which
 // page a user actually landed on first.
@@ -56,12 +56,12 @@ const BimModelsPage = lazy(() => import('./pages/BimModelsPage'));
 const BimViewerPage = lazy(() => import('./pages/BimViewerPage'));
 const FloorPlanViewer = lazy(() => import('./pages/FloorPlanViewer'));
 // BuildLensTimelinePage reuses ThreeJsViewer (the same Three.js panorama
-// renderer Viewer360 uses) -- lazy-loaded for the same bundle-splitting
+// renderer Viewer360 uses): lazy-loaded for the same bundle-splitting
 // reason as the routes above. The BuildLens landing page has no such
 // dependency and stays a normal eager import.
 const BuildLensTimelinePage = lazy(() => import('./pages/BuildLensTimelinePage'));
 // "Buildlense Captures" (nav label; route/component keep the original
-// "captures" name) is the camera-location plan-upload-and-pin tool -- pulls
+// "captures" name) is the camera-location plan-upload-and-pin tool; pulls
 // in pdf.js via DrawingViewer just like FloorPlanViewer, so it's lazy-loaded
 // the same way. Deliberately separate from FloorPlanViewer: Floor Plans is
 // the Issues/Snags pin workflow and stays that way.
@@ -82,7 +82,7 @@ function RouteLoading() {
 
 // "/" used to redirect straight to /projects unconditionally, which meant
 // an unauthenticated visitor landed on nothing before being bounced again
-// to /login by ProtectedRoute -- there was no public page to read first.
+// to /login by ProtectedRoute; there was no public page to read first.
 // Now: a signed-in visitor still goes straight into the app (unchanged
 // behavior), and a signed-out visitor sees the public marketing page
 // instead. Mirrors ProtectedRoute's own isHydrated wait (see auth.store.ts)
@@ -99,7 +99,7 @@ function RootRoute() {
 
 export default function App() {
   // Re-establishes a session from the httpOnly refresh cookie once per full
-  // page load -- the access token is kept in memory only (see auth.store.ts)
+  // page load; the access token is kept in memory only (see auth.store.ts)
   // and doesn't survive a reload on its own. ProtectedRoute waits on
   // isHydrated before deciding whether to redirect to /login.
   useEffect(() => {
@@ -116,7 +116,7 @@ export default function App() {
         <Route path="/accept-invitation" element={<AcceptInvitation />} />
         <Route path="/signup" element={<SelfSignup />} />
 
-        {/* No EngineeringOS account, no session -- the opaque token in the URL
+        {/* No EngineeringOS account, no session; the opaque token in the URL
             is the only credential. Deliberately outside ProtectedRoute/AppShell:
             nothing else in the app is reachable from here (see
             RfiExternalPage's own comment). */}
@@ -124,13 +124,13 @@ export default function App() {
         <Route path="/progress-report/:token" element={<ProgressReportExternalPage />} />
         <Route path="/documents/external/:token" element={<DocumentExternalPage />} />
 
-        {/* The 360 viewer and BIM viewer are full-bleed immersive views — no sidebar chrome */}
+        {/* The 360 viewer and BIM viewer are full-bleed immersive views; no sidebar chrome */}
         <Route element={<ProtectedRoute />}>
           <Route path="/projects/:projectId/viewer/:locationId" element={<Viewer360 />} />
           <Route path="/projects/:projectId/bim/:modelId" element={<BimViewerPage />} />
         </Route>
 
-        {/* Needs a valid token (ProtectedRoute) but no AppShell -- this is the
+        {/* Needs a valid token (ProtectedRoute) but no AppShell; this is the
             hard-gated dead end a pending-approval user is confined to. */}
         <Route element={<ProtectedRoute />}>
           <Route path="/pending-approval" element={<PendingApproval />} />
@@ -155,7 +155,7 @@ export default function App() {
             <Route path="/projects/:projectId/bim" element={<BimModelsPage />} />
             <Route path="/projects/:projectId/issues" element={<IssuesPage />} />
             <Route path="/projects/:projectId/rfis" element={<RfisLandingPage />} />
-            {/* Literal path segments, not a shared :view param -- React
+            {/* Literal path segments, not a shared :view param; React
                 Router ranks a static segment above a dynamic one, so these
                 two always win over :rfiId below for the exact strings
                 "main"/"subcontractor" (never a real RFI id, always a UUID). */}

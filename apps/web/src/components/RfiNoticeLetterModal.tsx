@@ -42,8 +42,8 @@ export function RfiNoticeLetterModal({
     enabled: open && Boolean(projectId) && Boolean(rfi?.id),
   });
 
-  // Seeds the form from the existing draft/shared letter, or -- only when no
-  // letter exists yet for this RFI -- from the default template. Runs again
+  // Seeds the form from the existing draft/shared letter, or (only when no
+  // letter exists yet for this RFI) from the default template. Runs again
   // whenever a different RFI's letter finishes loading (fresh query result),
   // never overwriting an existing draft's real saved body with the template.
   useEffect(() => {

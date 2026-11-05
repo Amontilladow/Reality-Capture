@@ -1,6 +1,6 @@
 // Phase 4G: a reusable contextual help link. Always deep-links to one
 // specific article (never the Help Centre homepage), and always opens
-// in a new tab -- most of this component's callers sit inside a form or
+// in a new tab; most of this component's callers sit inside a form or
 // a mid-task page, so navigating away in the same tab would discard
 // whatever the user was in the middle of entering.
 export function HelpLink({ slug, label = 'Help' }: { slug: string; label?: string }) {

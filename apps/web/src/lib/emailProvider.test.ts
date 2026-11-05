@@ -61,7 +61,7 @@ describe('email provider preference (device-local only)', () => {
 
     // getStoredEmailProvider() only consults the in-memory fallback when
     // storage access itself throws (simulated here), not merely when a
-    // real, successful read finds nothing -- the real getItem would
+    // real, successful read finds nothing; the real getItem would
     // correctly return null here, since the mocked setItem above never
     // actually wrote anything.
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {

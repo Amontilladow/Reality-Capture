@@ -4,13 +4,13 @@ import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
-// A dedicated multi-page document viewer for the Site Drawing Hub --
+// A dedicated multi-page document viewer for the Site Drawing Hub;
 // DrawingViewer.tsx (components/drawing/) is a single-page, pin-overlay
 // canvas built for the Buildlense Captures floor-plan feature and isn't a
 // fit here (no pin placement, needs page navigation instead). This reuses
 // the same proven pdf.js technique for a robust render (timeout + retry +
 // cancellation-aware, since some CAD-exported PDFs take pdf.js's canvas
-// renderer an impractically long time to rasterize -- see DrawingViewer's
+// renderer an impractically long time to rasterize; see DrawingViewer's
 // own comment on the real file that motivated this), without copying its
 // pin-specific code.
 export function SiteDrawingPdfViewer({ fileUrl, onNumPages }: { fileUrl: string; onNumPages?: (n: number) => void }) {
@@ -25,7 +25,7 @@ export function SiteDrawingPdfViewer({ fileUrl, onNumPages }: { fileUrl: string;
 
   // fileUrl is a presigned URL: its signature/expiry changes on every
   // refetch even when the underlying file hasn't (see
-  // SiteDrawingsService.getAuthorizedDownloadUrl's 15-minute expiry) --
+  // SiteDrawingsService.getAuthorizedDownloadUrl's 15-minute expiry);
   // keyed on the stable part so a background refetch doesn't restart an
   // in-progress render.
   const fileUrlRef = useRef(fileUrl);

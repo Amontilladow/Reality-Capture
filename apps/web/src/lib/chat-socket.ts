@@ -4,8 +4,8 @@ import { refreshAccessToken } from './api';
 
 // Singleton Socket.io connection for the live chat widget (namespace /chat).
 // Connected once the user is authenticated, and torn down + recreated
-// whenever the access token changes -- including a silent refresh performed
-// by the response interceptor in api.ts -- so we never sit on a socket
+// whenever the access token changes (including a silent refresh performed
+// by the response interceptor in api.ts) so we never sit on a socket
 // authenticated with a stale/expiring token.
 
 // ── Resolving the Socket.io server's base URL ──────────────────────────────
@@ -16,13 +16,13 @@ import { refreshAccessToken } from './api';
 // needs the *origin* the REST calls resolve to, not API_BASE itself.
 //
 // In production, VITE_API_BASE is set at build time to the deployed API's
-// full URL (e.g. https://api.example.com/api/v1) -- stripping it down to
+// full URL (e.g. https://api.example.com/api/v1): stripping it down to
 // its origin gives the right host for both REST and the socket.
 //
 // In dev, VITE_API_BASE is unset and API_BASE falls back to the *relative*
 // path '/api/v1', proxied by Vite's dev server to http://localhost:3000
 // (see apps/web/vite.config.ts `server.proxy['/api']`). That proxy entry
-// only matches the '/api' prefix -- Socket.io's own handshake (an initial
+// only matches the '/api' prefix; Socket.io's own handshake (an initial
 // HTTP long-poll to /socket.io/... followed by the websocket upgrade) does
 // not go through that rule at all, since its path doesn't start with /api.
 // So in dev there is no proxied path that gets a socket connection to the
@@ -68,7 +68,7 @@ function connectSocket(token: string) {
   // The gateway re-checks the session on every event and drops the socket
   // once its access token expires (or the user/company is deactivated).
   // socket.io never auto-reconnects after a server-side disconnect, and a
-  // chat-only user may make no REST call to trigger api.ts's 401 refresh --
+  // chat-only user may make no REST call to trigger api.ts's 401 refresh;
   // so refresh here. A new token reconnects via syncSocketWithAuth(); a
   // failed refresh clears the session (signed out), same as for REST.
   socket.on('disconnect', (reason) => {
@@ -109,7 +109,7 @@ useAuthStore.subscribe((state, prevState) => {
   }
 });
 
-// React-friendly accessors (for useSyncExternalStore) -- the socket
+// React-friendly accessors (for useSyncExternalStore): the socket
 // *instance* changes identity on reconnect/token-change, so components that
 // hold a reference need to know when to pick up the new one.
 export function subscribeToChatSocket(listener: () => void): () => void {

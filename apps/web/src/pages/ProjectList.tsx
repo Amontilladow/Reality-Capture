@@ -25,7 +25,7 @@ export default function ProjectList() {
   const projects = projectsQuery.data?.data ?? [];
 
   // Every KPI below is a sum over fields listProjects() already returns per
-  // project (openIssueCount/captureCount/memberCount) -- no new endpoint,
+  // project (openIssueCount/captureCount/memberCount): no new endpoint,
   // no per-project fan-out queries. memberCount double-counts anyone on
   // multiple projects, so this reads "Project Memberships," not "People,"
   // to not imply a unique headcount the data doesn't actually give us.

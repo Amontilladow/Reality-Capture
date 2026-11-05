@@ -5,12 +5,12 @@ import { getProject, getMembers } from '../lib/projects.api';
 import { getRfiSummary } from '../lib/rfis.api';
 import { useAuthStore } from '../store/auth.store';
 
-// The moment someone clicks "RFIs" they get two clearly-labeled windows --
-// Main Contractor's RFIs and Subcontractor's RFIs -- each its own shareable
+// The moment someone clicks "RFIs" they get two clearly-labeled windows;
+// Main Contractor's RFIs and Subcontractor's RFIs; each its own shareable
 // sub-route (/rfis/main, /rfis/subcontractor), same pattern QaqcLandingPage
 // already uses for its four record types. A subcontractor project member
 // still sees both cards (they have read-only access to the main register,
-// per spec) -- SubcontractorRfiAccessGuard and RfisPage's own role check
+// per spec): SubcontractorRfiAccessGuard and RfisPage's own role check
 // handle the actual read/write restriction once inside a window, not this
 // page.
 export default function RfisLandingPage() {

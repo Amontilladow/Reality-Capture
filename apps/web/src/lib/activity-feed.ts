@@ -13,7 +13,7 @@ const ACTION_VERB_LABELS: Record<string, string> = {
 };
 
 // What a site team would call each record. The audit trail also logs
-// internal steps by their URL segment ("jobs", "uploads", "rerun" -- a
+// internal steps by their URL segment ("jobs", "uploads", "rerun"; a
 // capture's processing pipeline); those mean nothing to a reader, so only
 // the record types named here appear in the feed.
 const RESOURCE_LABELS: Record<string, string> = {

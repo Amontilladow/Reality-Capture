@@ -27,7 +27,7 @@ export default function HelpPage() {
     if (!user) return;
     setUser({ ...user, onboardingCompleted: false });
     setOnboardingCompleted(user.id, false).catch(() => {
-      // Best-effort -- the restart already took effect locally for this session.
+      // Best-effort: the restart already took effect locally for this session.
     });
   }
 

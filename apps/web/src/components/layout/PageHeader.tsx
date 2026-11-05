@@ -21,7 +21,7 @@ export function PageHeader({
   return (
     <div className={`border-b border-base-600/60 bg-base-950/60 backdrop-blur px-4 sm:px-6 flex flex-col items-stretch md:flex-row md:items-center justify-between gap-2 md:gap-4 sticky top-0 z-10 ${breadcrumbs || subtitle ? 'py-4' : 'min-h-16 py-4'}`}>
       {/* Title block: breadcrumbs or a quiet eyebrow above one strong title.
-          No accent bar or chip -- the title's size and weight are the
+          No accent bar or chip; the title's size and weight are the
           hierarchy, and the page's own content gets the color. */}
       <div className="min-w-0 shrink">
         {breadcrumbs && <Breadcrumbs items={breadcrumbs} />}
@@ -39,7 +39,7 @@ export function PageHeader({
         // both it and the title (above) have given up what they can; the
         // row of action buttons then scrolls horizontally within itself
         // instead of widening the whole page, which would drag the sidebar
-        // nav off-screen too — see LAUNCH_READINESS.md. The title keeps a
+        // nav off-screen too; see LAUNCH_READINESS.md. The title keeps a
         // plain auto flex-basis (not flex-1, which resolves to basis 0% and
         // would let it collapse to nothing whenever the actions row alone
         // doesn't fit) so it shrinks proportionally with the actions row

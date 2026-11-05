@@ -14,7 +14,7 @@ import { subscribeToChatSocket, getChatSocketSnapshot } from '../../lib/chat-soc
 // Floating live-chat widget: a persistent launcher button + compact panel
 // with a real-time project team channel and real-time 1-to-1 DMs, over the
 // Socket.io /chat gateway. Deliberately separate from the async, threaded
-// "Messages" inbox (MessagesPage.tsx / MessagesBell.tsx) -- no subjects, no
+// "Messages" inbox (MessagesPage.tsx / MessagesBell.tsx): no subjects, no
 // threads, just a running live conversation.
 
 type ActiveChannel = {
@@ -65,7 +65,7 @@ export function ChatWidget() {
     setConnected(socket.connected);
     function onConnect() {
       setConnected(true);
-      // Reconnected (e.g. after a token refresh swapped the socket) --
+      // Reconnected (e.g. after a token refresh swapped the socket);
       // rejoin whatever room is currently open so live messages keep
       // flowing without the user having to reselect the conversation.
       const active = activeChannelRef.current;
@@ -85,7 +85,7 @@ export function ChatWidget() {
   }, [socket]);
 
   // ── Incoming messages ────────────────────────────────────────────────────
-  // Server broadcasts to every socket in the room, including the sender --
+  // Server broadcasts to every socket in the room, including the sender;
   // we never optimistically render our own composed message; every message
   // shown (ours or anyone else's) arrives through this listener.
   useEffect(() => {
@@ -139,7 +139,7 @@ export function ChatWidget() {
   // loadMessages() always resolves the CHANNEL'S REAL ID alongside its
   // messages (for a project channel this is just projectId again; for a DM
   // it's the server-assigned chat_dm_channels.id, which the initial
-  // `channel` argument only approximates with a same-tick placeholder --
+  // `channel` argument only approximates with a same-tick placeholder;
   // see openDm() below). Reading that resolved id back out here, rather
   // than reusing the `channel` parameter's own (possibly-stale) channelId,
   // is what keeps chat:join/markChatRead targeting the real room instead of
@@ -163,7 +163,7 @@ export function ChatWidget() {
       setMessagesLoading(false);
     }
     // Fire right after history load resolves, for both channel kinds, so
-    // the room is always fresh -- including a DM channel created moments
+    // the room is always fresh; including a DM channel created moments
     // ago by the history call itself.
     socket?.emit('chat:join', { channelType: channel.channelType, channelId: resolvedChannelId });
     markReadMutation.mutate({ channelType: channel.channelType, channelId: resolvedChannelId });

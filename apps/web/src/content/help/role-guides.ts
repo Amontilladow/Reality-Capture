@@ -1,11 +1,11 @@
 import type { CompanyRole } from '@engineeringos/types';
 
 // Phase 4E: a short, curated set of already-written article slugs per
-// company role -- not a new filter over the whole library (most
+// company role; not a new filter over the whole library (most
 // articles are open to "any project member" and curating by role would
 // just reproduce the full list), but a hand-picked quick-start pointing
 // at what that role's own, verified permissions actually let them do.
-// Every slug here must exist in ALL_HELP_ARTICLES -- checked by
+// Every slug here must exist in ALL_HELP_ARTICLES; checked by
 // Phase 4I's link-integrity pass, same as relatedSlugs.
 export const ROLE_GUIDE_SLUGS: Record<CompanyRole, string[]> = {
   super_admin: [
@@ -52,7 +52,7 @@ export const ROLE_GUIDE_SLUGS: Record<CompanyRole, string[]> = {
     'understanding-site-role-restrictions', 'creating-an-issue', 'creating-a-pinpoint',
     'opening-a-floor-plan',
   ],
-  // Org-category sprint additions (packages/types/src/user.types.ts) --
+  // Org-category sprint additions (packages/types/src/user.types.ts);
   // reusing the closest existing role's set above rather than curating a
   // fresh one from scratch for each new title.
   chairman: [

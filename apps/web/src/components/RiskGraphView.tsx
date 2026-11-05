@@ -15,9 +15,9 @@ function riskLevelColors(colors: ThemeColors): Record<RiskLevel, string> {
 }
 
 // Neutral per-node-type colors for nodes with no associated risk (structural
-// context nodes -- building/level/location/user -- and risk-worthy nodes
-// that currently have no active signals). Fixed literals, not theme tokens
-// -- this is a categorical legend (one color per entity type), and all 16
+// context nodes (building/level/location/user) and risk-worthy nodes
+// that currently have no active signals). Fixed literals, not theme tokens;
+// this is a categorical legend (one color per entity type), and all 16
 // entries need to read as one consistent palette in both themes rather
 // than some shifting shade with the accent color while others don't.
 // Already mid-brightness "400"-weight tones, so each already has
@@ -79,7 +79,7 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
   const nodes = useMemo(() => {
     const all = graphQuery.data?.nodes ?? [];
     if (!riskLevelFilter) return all;
-    // Risk-level filter only removes risk-bearing nodes that don't match --
+    // Risk-level filter only removes risk-bearing nodes that don't match;
     // structural context nodes (building/level/location/...) with no risk
     // of their own are always kept, so the graph doesn't lose its shape.
     return all.filter((n) => !n.risk || n.risk.level === riskLevelFilter);
@@ -151,7 +151,7 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
       .attr('r', nodeRadius)
       .attr('fill', makeNodeColor(themeColors))
       // Matches the container's own .panel fill (bg-base-800) rather than a
-      // fixed dark hex -- a "cutout" ring that separates overlapping nodes
+      // fixed dark hex; a "cutout" ring that separates overlapping nodes
       // cleanly in both themes instead of only the dark one.
       .attr('stroke', themeColors['base-800'])
       .attr('stroke-width', 1.5);
@@ -193,7 +193,7 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
       })
       .on('end', (event: D3DragEvent<SVGGElement, SimNode, SimNode>) => {
         if (!event.active) simulation.alphaTarget(0);
-        // Leave fx/fy set -- pins the node where the user dropped it, a
+        // Leave fx/fy set: pins the node where the user dropped it, a
         // deliberate choice so an arranged layout stays put until dragged again.
       });
     nodeGroup.call(dragBehavior);
@@ -201,7 +201,7 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
     return () => { simulation.stop(); };
     // themeColors included so the whole force-directed graph re-renders
     // (node fills, edge strokes, label color, stroke-matches-panel ring)
-    // when the theme changes -- D3 draws directly into the SVG DOM, so
+    // when the theme changes; D3 draws directly into the SVG DOM, so
     // nothing here is reachable by a CSS variable flip the way a normal
     // React-rendered/Tailwind-classed element is.
   }, [nodes, edges, themeColors]);

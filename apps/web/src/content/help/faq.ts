@@ -1,6 +1,6 @@
 import type { HelpArticle } from './types';
 
-// FAQ entries use title as the question and summary as the answer --
+// FAQ entries use title as the question and summary as the answer;
 // kept short and direct, no steps/permissions sections (those belong in
 // the full feature articles these link to via relatedSlugs).
 export const faqArticles: HelpArticle[] = [

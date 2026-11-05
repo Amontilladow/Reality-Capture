@@ -30,15 +30,15 @@ import { Listbox } from './ui/Listbox';
 
 // Risk levels map onto the theme's status ladder: ok (low), warn
 // (moderate/medium), high (rust, for High and Very High) and danger
-// (critical) -- all tokens, so they follow the brown palette and dark mode.
+// (critical): all tokens, so they follow the brown palette and dark mode.
 // Every other color below comes from useThemeColors() (resolves the same
 // --rc-* custom properties every Tailwind utility class in the app
-// resolves) -- built as functions of the resolved colors, called once per
+// resolves): built as functions of the resolved colors, called once per
 // component via useThemeColors(), rather than module-level constants, so
 // every chart and badge here re-renders with the right colors when the
 // theme changes.
 // The API reports a missing data source as "Not available" / "Not
-// connected — ..." (RiskService.getDataAvailability).
+// connected; ..." (RiskService.getDataAvailability).
 const connected = (status: string) => !/^not (available|connected)/i.test(status);
 
 function levelColors(colors: ThemeColors): Record<RiskLevel, string> {
@@ -55,7 +55,7 @@ const STATUS_LABELS: Record<RiskStatus, string> = {
   RESOLVED: 'Resolved', CLOSED: 'Closed',
 };
 
-// Risk Matrix (1-25, 5-level) -- deliberately a different palette/label set
+// Risk Matrix (1-25, 5-level): deliberately a different palette/label set
 // from levelColors()/LEVEL_LABELS above, which belong to the 0-100/4-level
 // deterministic engine score. Never mix the two scales in one place.
 function matrixLevelColors(colors: ThemeColors): Record<RiskMatrixLevel, string> {
@@ -149,7 +149,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
     setPdfDownloading(true);
     try {
       // If the user already generated an AI briefing on this page, it's
-      // passed through verbatim -- the PDF never triggers its own AI call
+      // passed through verbatim; the PDF never triggers its own AI call
       // and can never show a different narrative than what's on screen.
       const briefingText = aiBriefingMutation.data && 'narrative' in aiBriefingMutation.data
         ? aiBriefingMutation.data.narrative
@@ -499,7 +499,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
             </MobileFold>
           )}
 
-          {/* Risk Register -- the primary working area (brief section 4E) */}
+          {/* Risk Register: the primary working area (brief section 4E) */}
           <div ref={registerRef}>
             <RiskRegisterTable
               risks={allRisks}
@@ -610,7 +610,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
             <p className="text-xs text-ink-500">Data-driven project risk assessment. Confidence reason: {risk.confidenceReason}</p>
           )}
 
-          {/* Owner & due date -- the two fields the KPI strip, Attention
+          {/* Owner & due date: the two fields the KPI strip, Attention
               panel and Register all read; editable right here so assigning
               an owner or a deadline doesn't require a separate screen. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -796,12 +796,12 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
 // Progressive-disclosure Human Risk Assessment: Probability x Impact (brief
 // sections 3-6, 42-43). A separate component (not inline in its callers)
 // purely so its form state initializes from `risk`'s already-loaded values
-// via plain useState lazy init -- no useEffect sync needed, since the
+// via plain useState lazy init; no useEffect sync needed, since the
 // RiskDetailDrawer usage never mounts this before `risk` exists (see its
 // own !risk guard). `risk` is nullable here specifically for the inline
 // Issue/RFI/Snag widget (InlineRiskAssessment below): an item the automated
 // engine hasn't flagged yet has no Risk row at all, but a human must still
-// be able to record an assessment -- nodeType/entityId are required in
+// be able to record an assessment; nodeType/entityId are required in
 // that case so the mutation can bootstrap one (setHumanAssessmentByEntity).
 export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onChanged }: {
   projectId: string;
@@ -841,7 +841,7 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
   const showDiscrepancyBanner = Boolean(risk?.discrepancy?.hasDiscrepancy && !risk.discrepancy.reviewed);
 
   // Client-side preview only, purely for immediate feedback while picking
-  // values -- the actually-persisted score/level always comes back from
+  // values; the actually-persisted score/level always comes back from
   // the server response (see risk.humanScore/humanLevel above), never
   // computed here and trusted as the real answer.
   const previewScore = probability && impact ? Number(probability) * Number(impact) : null;

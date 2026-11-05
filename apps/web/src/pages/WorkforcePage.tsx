@@ -29,7 +29,7 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 
 // Resolved from the same --rc-* custom properties every Tailwind utility
 // class in the app resolves (useThemeColors(), called once per component
-// below) -- recharts needs real hex values, it doesn't read Tailwind
+// below): recharts needs real hex values, it doesn't read Tailwind
 // classes. A fixed, non-themed orange rounds out the rotating series
 // palette purely for visual variety, same reasoning as
 // RiskIntelligenceSection.tsx's HIGH_HEX constant.
@@ -42,8 +42,8 @@ function tooltipStyle(c: ThemeColors) {
   return { background: c['base-800'], border: `1px solid ${c['base-700']}`, borderRadius: 4, fontSize: 12, color: c['ink-100'] };
 }
 
-// Renders '—' instead of "NaN%"/"NaNh NaNm" whenever a numeric field isn't
-// actually a finite number -- a stale cache, a future backend change, or a
+// Renders '-' instead of "NaN%"/"NaNh NaNm" whenever a numeric field isn't
+// actually a finite number; a stale cache, a future backend change, or a
 // malformed row must never surface raw NaN to the user (regardless of the
 // fact that computeFactors() on the backend already guards its own
 // divisions; this is the last line of defense, not a duplicate of that).
@@ -58,7 +58,7 @@ function formatHm(seconds: number | undefined | null): string {
   return `${h}h ${m}m`;
 }
 
-// productivity_scores.score is a NUMERIC(5,2) column -- postgres.js returns
+// productivity_scores.score is a NUMERIC(5,2) column; postgres.js returns
 // NUMERIC as a string to avoid precision loss, so `score.score` may arrive
 // as "0.00" (a string), not a number, despite the shared type declaring it
 // as `number`. Coerce defensively rather than trusting the wire value.
@@ -76,7 +76,7 @@ export default function WorkforcePage() {
 
   const [attributingId, setAttributingId] = useState<string | null>(null);
   // null = viewing your own activity. Set to a team member's userId to
-  // view theirs instead -- the backend enforces who's actually allowed to
+  // view theirs instead; the backend enforces who's actually allowed to
   // see whom (self, weight-based leadership, or reporting-chain
   // visibility); this is just which one the page currently displays.
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -84,11 +84,11 @@ export default function WorkforcePage() {
   const isSelf = selectedUserId === null;
 
   // Computed once (lazy initializer, not on every render) so both queries
-  // below request the exact same window -- getMyActivitySummary() and
+  // below request the exact same window; getMyActivitySummary() and
   // getMyProductivityScore() otherwise default to two different ranges
   // (trailing 7 days vs. ISO week-to-date) while sharing one "Last 7 days"
   // heading. Passing this explicit range to both keeps "Tracked time" and
-  // "Productivity score"/"Utilization"/"Engineering share" honestly
+  // "Productivity score"/"Utilization"/"Engineering share"
   // describing the same period.
   const [{ from, to }] = useState(() => {
     const toDate = new Date();
@@ -125,7 +125,7 @@ export default function WorkforcePage() {
 
   // Manual project attribution only ever applies to your own activity
   // (POST /workforce/activities/:activityId/attribute is caller-scoped
-  // server-side) -- never shown while viewing a team member's data.
+  // server-side): never shown while viewing a team member's data.
   const tabs: TabItem[] = [
     { key: 'activity', label: 'My activity' },
     { key: 'schedule', label: 'My schedule' },
@@ -357,7 +357,7 @@ export default function WorkforcePage() {
 // Chronological thumbnail strip for one user's screenshots in the same
 // from/to range the rest of the page uses, click-to-enlarge. Renders an
 // honest empty state (screenshots off, or none yet) instead of ever
-// showing a broken image icon -- `url` is only used once a row actually
+// showing a broken image icon; `url` is only used once a row actually
 // has one (a presigned URL that failed to resolve server-side is filtered
 // out, not rendered broken).
 function ScreenshotsPanel({ userId, from, to, screenshotsEnabled }: { userId: string; from: string; to: string; screenshotsEnabled: boolean }) {
@@ -411,11 +411,11 @@ function ScreenshotsPanel({ userId, from, to, screenshotsEnabled }: { userId: st
 }
 
 // Self-service: "which days/times do I prefer to work" (DeskTime's own
-// shift-preference grid, considered -- not guaranteed -- by whoever
+// shift-preference grid, considered (not guaranteed) by whoever
 // builds the actual schedule) + "my upcoming assigned shifts" + "request
 // time off" + "my absence requests." Always about the logged-in user
 // themselves, regardless of which team member's activity the rest of the
-// page is currently showing -- there's no "view someone else's
+// page is currently showing; there's no "view someone else's
 // preferences" concept here, only a manager viewing their assigned shifts
 // (a separate, visibility-checked route not used by this component).
 function MyScheduling() {
@@ -583,7 +583,7 @@ function MyScheduling() {
 
 // Self-service Google Calendar connect/disconnect + "today's meetings."
 // The connect button is a full-page navigation (not a fetch) because
-// Google's OAuth consent screen is a real page the browser has to load --
+// Google's OAuth consent screen is a real page the browser has to load;
 // there's no XHR way to do this. `?calendar=connected|declined|failed` is
 // how GET /workforce/calendar-integration/google-calendar/callback reports
 // its outcome back after redirecting the browser here.
@@ -669,7 +669,7 @@ function CalendarIntegrationPanel() {
   );
 }
 
-// Turns the privacy toggle from read-only into real -- the literal switch
+// Turns the privacy toggle from read-only into real; the literal switch
 // that turns screenshot capture (§2's server-side pipeline) on for the
 // company. Off by default; each control fires its own update immediately
 // on change, matching the existing dropdown-per-row pattern in
@@ -760,7 +760,7 @@ function PrivacySettingsAdmin() {
   );
 }
 
-// Minimal company-admin-only screen for setting who reports to whom --
+// Minimal company-admin-only screen for setting who reports to whom;
 // not an org-chart builder, just a table with one "manager" dropdown per
 // row (per the brief's own scope: "this is not an HRIS"). Gated
 // client-side on the current user's companyRole for display only; the
@@ -836,7 +836,7 @@ const STAT_TILE_TONE_CLASS: Record<string, string> = {
 };
 
 // Builds a CSV blob client-side from already-fetched report rows and
-// triggers a browser download -- DeskTime's own "export report" button.
+// triggers a browser download; DeskTime's own "export report" button.
 // No server-side export endpoint needed since the JSON the page already
 // has is the same data a CSV would contain.
 function downloadCompanyReportCsv(rows: CompanyReportRow[], from: string, to: string) {
@@ -847,7 +847,7 @@ function downloadCompanyReportCsv(rows: CompanyReportRow[], from: string, to: st
     toHours(r.neutralSeconds), toHours(r.unproductiveSeconds), toHours(r.unclassifiedSeconds),
     Math.round(r.productivityRatio * 100).toString(),
   ]);
-  // Quote every field and escape embedded quotes -- a name/role containing
+  // Quote every field and escape embedded quotes; a name/role containing
   // a comma must never silently shift columns in the exported file.
   const csv = [header, ...lines].map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
 
@@ -860,7 +860,7 @@ function downloadCompanyReportCsv(rows: CompanyReportRow[], from: string, to: st
   URL.revokeObjectURL(url);
 }
 
-// Company-wide report (admin) -- every active employee's tracked and
+// Company-wide report (admin): every active employee's tracked and
 // productive/neutral/unproductive time for the shared page range, plus a
 // CSV export button. DeskTime's own "Reports" screen; unlike the rest of
 // this page (self-view or one team member at a time), this is
@@ -1101,10 +1101,10 @@ function ProductivityBar({ factors }: { factors: ProductivityFactors }) {
 }
 
 // Company-admin-only screen for classifying each app the desktop agent has
-// reported as Productive / Neutral / Unproductive -- DeskTime's own
+// reported as Productive / Neutral / Unproductive, the equivalent of DeskTime's own
 // "Productivity Calculation" screen. New apps appear here already, as
 // 'unclassified', the moment the agent first reports them (see
-// ActivitiesService.ingest()'s auto-registration) -- an admin doesn't have
+// ActivitiesService.ingest()'s auto-registration), so an admin doesn't have
 // to pre-populate the registry before it starts working.
 function ApplicationsAdmin() {
   const queryClient = useQueryClient();

@@ -40,7 +40,7 @@ export function ManageMembersModal({
     enabled: open,
   });
 
-  // Company-wide user directory, not just this project -- addMember() picks
+  // Company-wide user directory, not just this project; addMember() picks
   // from users who aren't members of this specific project yet.
   const usersQuery = useQuery({
     queryKey: ['companyUsers'],
@@ -89,19 +89,19 @@ export function ManageMembersModal({
     },
   });
 
-  // Admin-assisted password reset (fallback for when email isn't practical
-  // -- site-based engineers/draftsmen). Keyed per-user since several rows
+  // Admin-assisted password reset (fallback for when email isn't practical;
+  // site-based engineers/draftsmen). Keyed per-user since several rows
   // could each generate their own link independently.
   const [resetLinks, setResetLinks] = useState<Record<string, AdminResetPasswordResult>>({});
   const resetPasswordMutation = useMutation({
     mutationFn: (userId: string) => adminResetPassword(userId),
     onSuccess: (result, userId) => setResetLinks((prev) => ({ ...prev, [userId]: result })),
   });
-  // Gated the same as the server (company_admin or above) -- purely a UX
+  // Gated the same as the server (company_admin or above): purely a UX
   // nicety to hide a doomed button; the 403 is the real enforcement.
   const canResetPasswords = currentUser?.companyRole === 'company_admin' || currentUser?.companyRole === 'super_admin';
 
-  // Same underlying PATCH /users/:id as approveMutation -- separate mutation
+  // Same underlying PATCH /users/:id as approveMutation; separate mutation
   // instance so its pending/error state doesn't collide with the Approve
   // button, even though they share the overrideRole picker state below.
   const changeRoleMutation = useMutation({
@@ -109,7 +109,7 @@ export function ManageMembersModal({
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['companyUsers'] }),
   });
 
-  // Only company_admin accounts are ever grant targets -- super_admin already
+  // Only company_admin accounts are ever grant targets; super_admin already
   // has every permission everywhere, and every other role gets project-level
   // authority through project_members.role instead, never through a grant.
   const companyAdmins = (usersQuery.data?.data ?? []).filter((u) => u.companyRole === 'company_admin');
@@ -135,7 +135,7 @@ export function ManageMembersModal({
   });
 
   // ── Project organizations (Phase 4) ─────────────────────────────────────
-  // Client-side-only optimistic gate -- mirrors the same bypass set
+  // Client-side-only optimistic gate; mirrors the same bypass set
   // ProjectPermissionGuard enforces server-side for 'manage_team'
   // (super_admin, this project's own project_lead, or an explicit grant).
   // Purely a UX nicety: hides the edit controls (and skips firing a doomed
@@ -157,7 +157,7 @@ export function ManageMembersModal({
   const organizationsBySlot = new Map((organizationsQuery.data ?? []).map((o) => [o.slot, o]));
 
   // Which organization slot (if any) each project member personally belongs
-  // to (RBAC Phase 4) -- distinct from the 5 slots' own branding/contact
+  // to (RBAC Phase 4): distinct from the 5 slots' own branding/contact
   // rows above. Same manage_team gate as those, since assigning membership
   // is the same kind of project-team administration.
   const organizationMembersQuery = useQuery({
@@ -410,7 +410,7 @@ export function ManageMembersModal({
                       onChange={(e) => setOverrideRole((prev) => ({ ...prev, [u.id]: e.target.value as CompanyRole }))}
                     >
                       {/* Unlike the self-requested-role picker above, super_admin IS a
-                          valid option here -- this is an admin deliberately setting someone
+                          valid option here; this is an admin deliberately setting someone
                           else's role, and excluding it would make an existing super_admin's
                           own row silently misdisplay as company_admin, with a Save button
                           one click away from actually demoting them. */}
@@ -542,7 +542,7 @@ export function ManageMembersModal({
 
 // One row per stakeholder slot. Edits are buffered locally and committed
 // with an explicit "Save" button (shown only once a field actually differs
-// from the server value) -- same "dirty -> Save button appears" pattern
+// from the server value): same "dirty -> Save button appears" pattern
 // this file already uses for the company-role picker above, rather than
 // autosaving on blur. The logo, however, uploads immediately on file pick
 // (EditProjectModal's pattern), independent of the row's Save button.
@@ -561,7 +561,7 @@ function OrganizationRow({
   const [contactEmail, setContactEmail] = useState(org?.contactEmail ?? '');
 
   // Re-sync the local buffer whenever the server row changes (e.g. after a
-  // save, or the modal re-fetches) -- same pattern RfiDetailPage uses to
+  // save, or the modal re-fetches): same pattern RfiDetailPage uses to
   // reset its own drafts when the underlying query data changes.
   useEffect(() => {
     setName(org?.name ?? '');

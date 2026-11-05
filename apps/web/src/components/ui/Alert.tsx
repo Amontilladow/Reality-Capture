@@ -23,7 +23,7 @@ const TONE_STYLE: Record<AlertTone, { wrap: string; icon: ReactNode }> = {
 
 // Inline banner for a persistent, page-level condition (validation summary,
 // "this project is archived," a feature-degraded notice). For a one-shot
-// reaction to an action the user just took, use the Toast system instead --
+// reaction to an action the user just took, use the Toast system instead;
 // an Alert stays until its cause is resolved or it's dismissed, a Toast
 // times out on its own.
 export function Alert({

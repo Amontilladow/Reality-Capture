@@ -2,10 +2,10 @@ import type { HelpArticle } from './types';
 
 // Verified against the actual login/auth flow (Login.tsx, ForgotPassword.tsx,
 // ResetPassword.tsx, AcceptInvitation.tsx, SelfSignup.tsx, PendingApproval.tsx,
-// AppShell.tsx's sidebar, ProjectContextPanel.tsx) -- not assumed. "Updating
+// AppShell.tsx's sidebar, ProjectContextPanel.tsx): not assumed. "Updating
 // Your Profile" from the brief's suggested list is deliberately omitted:
 // there is no self-service profile-editing feature anywhere in this
-// codebase (confirmed: no endpoint, no page, no form) -- see
+// codebase (confirmed: no endpoint, no page, no form); see
 // docs/phase4-help-centre.md's Phase 4A findings.
 export const gettingStartedArticles: HelpArticle[] = [
   {

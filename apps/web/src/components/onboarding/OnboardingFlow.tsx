@@ -7,13 +7,13 @@ import { COMPANY_ROLE_LABELS } from '../../lib/issue-constants';
 
 // Phase 4F: a short, optional first-login tour. Shown whenever the
 // signed-in user's own onboardingCompleted flag (stored in the existing
-// users.preferences JSONB column -- see users.service.ts's update()) is
+// users.preferences JSONB column; see users.service.ts's update()) is
 // not yet true, and dismissed on Skip/Finish/closing it, which marks it
 // complete so it doesn't reappear on the next login. "Restart" (in the
 // Help Centre) just flips the flag back to false, which re-shows this
 // the same way a brand-new account would see it.
 //
-// Every step below describes only verified, real app behavior -- nothing
+// Every step below describes only verified, real app behavior; nothing
 // here claims a button, screen, or permission that doesn't actually
 // exist, and the one "try it" step only asks the user to do something
 // every project member is always authorized to do (view a project's
@@ -26,7 +26,7 @@ export function OnboardingFlow() {
 
   const active = Boolean(user) && !user?.pendingApproval && user?.onboardingCompleted !== true;
   if (!active || !user) return null;
-  // Narrowed reference for the closures below -- TS control-flow narrowing
+  // Narrowed reference for the closures below: TS control-flow narrowing
   // of `user` from the guard above doesn't carry into nested functions.
   const currentUser = user;
 
@@ -36,7 +36,7 @@ export function OnboardingFlow() {
   function finish(goToHelp: boolean) {
     setUser({ ...currentUser, onboardingCompleted: true });
     setOnboardingCompleted(currentUser.id, true).catch(() => {
-      // Best-effort -- the dismissal already took effect locally for this
+      // Best-effort: the dismissal already took effect locally for this
       // session; a failed write just means it may show again next login.
     });
     if (goToHelp) navigate('/projects/help');

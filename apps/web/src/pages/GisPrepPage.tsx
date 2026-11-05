@@ -18,7 +18,7 @@ import { Listbox } from '../components/ui/Listbox';
 
 // GIS Preparation (apps/adm-gis-prep as a built-in module). Every result is a
 // PRELIMINARY check: nothing on this page may say a drawing is ADM/DRM
-// compliant, approved, or passed QC -- only the official QC tool and review
+// compliant, approved, or passed QC; only the official QC tool and review
 // decide that.
 const PROVISIONAL = 'PROVISIONAL: NOT ADM-VALIDATED';
 

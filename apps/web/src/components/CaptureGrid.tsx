@@ -19,8 +19,8 @@ const STATUS_STYLES: Record<string, string> = {
 
 // Clamp bounds for card aspect ratio (width / height). A raw ratio outside
 // this range (an ultra-tall portrait phone photo, or an ultra-wide stitched
-// panorama) would blow out the masonry layout -- one column item towering
-// over or dwarfing its neighbors -- so we cap the *box shape* here. The
+// panorama) would blow out the masonry layout (one column item towering
+// over or dwarfing its neighbors) so we cap the *box shape* here. The
 // image itself is never cropped to fit the cap: CaptureCardBody renders it
 // with object-contain, so a capture whose real ratio falls outside these
 // bounds just letterboxes within the (still reasonably-shaped) box instead
@@ -38,7 +38,7 @@ function getAspectRatio(c: Capture): number {
   if (typeof w === 'number' && typeof h === 'number' && Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
     return Math.min(MAX_ASPECT_RATIO, Math.max(MIN_ASPECT_RATIO, w / h));
   }
-  // Missing/invalid dimensions -- older captures, or an in-flight
+  // Missing/invalid dimensions: older captures, or an in-flight
   // upload/processing job that hasn't produced dimensions yet.
   return DEFAULT_ASPECT_RATIO;
 }
@@ -96,8 +96,8 @@ export function CaptureGrid({
   hasActiveFilters?: boolean;
   // Opt-in: render a section heading (location name, count, date range) per
   // distinct locationId instead of a flat masonry grid. Off by default so
-  // ProjectDetail.tsx and PinPanel.tsx -- which already scope their capture
-  // set to a single location -- render exactly as before, just with the new
+  // ProjectDetail.tsx and PinPanel.tsx (which already scope their capture
+  // set to a single location) render exactly as before, just with the new
   // masonry/aspect-ratio card layout. Only CapturesPage.tsx opts in.
   groupByLocation?: boolean;
 }) {
@@ -121,7 +121,7 @@ export function CaptureGrid({
     );
   }
 
-  // 360° photos already assigned to a location go to the immersive viewer —
+  // 360° photos already assigned to a location go to the immersive viewer;
   // everything else (standard photos, video, or a 360° photo with nowhere
   // to view it in context) opens in the lightbox instead of going nowhere.
   const goesToViewer = (c: Capture) => c.captureType === 'photo_360' && c.locationId;
@@ -129,7 +129,7 @@ export function CaptureGrid({
   const renderCard = (c: Capture) => {
     // Multi-column masonry needs a block-level, full-width item for
     // break-inside-avoid to actually keep each card in one column segment
-    // instead of splitting across a column break -- Link renders an <a>
+    // instead of splitting across a column break; Link renders an <a>
     // (inline by default) and button is inline-block, so both need an
     // explicit block + w-full here.
     const className = `tick-frame panel overflow-hidden group block w-full break-inside-avoid mb-4 text-left${

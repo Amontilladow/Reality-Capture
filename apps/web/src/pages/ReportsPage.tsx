@@ -32,7 +32,7 @@ import {
 // One-line lead for each report section, so the reader gets the
 // implication before the stat-tile wall and tables below it (Phase 4:
 // "lead with implication, not a status table"). Pure prose over numbers
-// this page already fetched -- no new calculation, no invented thresholds.
+// this page already fetched; no new calculation, no invented thresholds.
 function sectionLead(total: number, flags: { label: string; count: number }[], noun: string): string {
   if (total === 0) return `No ${noun} logged on this project yet.`;
   const flagged = flags.filter((f) => f.count > 0);
@@ -41,7 +41,7 @@ function sectionLead(total: number, flags: { label: string; count: number }[], n
   return `${parts.join(' and ')} out of ${total} ${noun} need attention.`;
 }
 
-// Mirrors RiskIntelligenceSection.tsx's own levelColors() exactly -- the
+// Mirrors RiskIntelligenceSection.tsx's own levelColors() exactly; the
 // 0-100/4-level deterministic-engine palette, never the separate 1-25
 // Risk Matrix one (this page never shows Risk Matrix numbers).
 const RISK_LEVEL_LABELS: Record<RiskLevel, string> = { LOW: 'Low', MODERATE: 'Moderate', HIGH: 'High', CRITICAL: 'Critical' };
@@ -96,7 +96,7 @@ export default function ReportsPage() {
   });
 
   // Risk Intelligence lives on its own top-level tab (moved out of Reports
-  // per an earlier, explicit decision) -- this just surfaces its headline
+  // per an earlier, explicit decision): this just surfaces its headline
   // numbers here too, with a link to the full page and a download button
   // for the SAME PDF export that page already offers, never a second
   // generator for the same data (Phase 22).
@@ -111,12 +111,12 @@ export default function ReportsPage() {
     enabled: Boolean(projectId),
   });
 
-  // AI Report Briefing -- on-demand only (never auto-fetched), same pattern
+  // AI Report Briefing: on-demand only (never auto-fetched), same pattern
   // as RiskIntelligenceSection's "AI Project Risk Briefing".
   const aiBriefingMutation = useMutation({ mutationFn: () => getReportsBriefing(projectId!) });
 
   // The "one click" the ticket asked for: clicking the not-applied stat tile
-  // expands this list inline, right on the Reports page -- following up
+  // expands this list inline, right on the Reports page; following up
   // never requires leaving it. remindedIds tracks which rows already got a
   // reminder this session so the button can say "Sent" instead of silently
   // going back to "Send reminder" after a successful call.
@@ -211,7 +211,7 @@ export default function ReportsPage() {
         )}
 
         {/* ── Report conclusion (Minto Pyramid: lead with this, the
-            charts/tables below are the evidence layer) — built from the
+            charts/tables below are the evidence layer): built from the
             exact same risk summary + KPI data the sections below already
             fetched, never a second calculation. ───────────────────────── */}
         {riskSummaryQuery.data && kpis && (() => {
@@ -345,7 +345,7 @@ export default function ReportsPage() {
                 )}
               </section>
 
-              {/* AI Report Briefing — an LLM-polished Conclusion/Drivers/
+              {/* AI Report Briefing: an LLM-polished Conclusion/Drivers/
                   Impact/Action/Evidence structure, generated on demand from
                   the exact same computed data above, never a fresh
                   retrieval. Same pattern as RiskIntelligenceSection's own
@@ -597,7 +597,7 @@ export default function ReportsPage() {
                 <StatTile label="Total" value={kpis.rfis.summary.total} />
                 <StatTile label="Open" value={kpis.rfis.summary.open} />
                 <StatTile label="Overdue" value={kpis.rfis.summary.overdue} tone="danger" />
-                {/* The "one click" -- clicking this tile expands the
+                {/* The "one click": clicking this tile expands the
                     not-applied list below, right on this page. */}
                 <button
                   type="button"

@@ -48,7 +48,7 @@ function readableOn(bg: string, candidates: string[]): string {
 }
 
 // 5x5 Risk Matrix (brief sections 4, 20-21). Probability increases upward,
-// impact rightward -- the standard risk-matrix reading convention.
+// impact rightward; the standard risk-matrix reading convention.
 //
 // Drawn to the heatmap spec rather than as a traffic-light grid:
 // - Fill encodes one thing, how many open risks sit in the cell, on a

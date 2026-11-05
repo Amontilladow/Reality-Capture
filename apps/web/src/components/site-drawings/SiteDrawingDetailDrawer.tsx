@@ -17,7 +17,7 @@ import {
 } from './siteDrawingDisplay';
 import { useAuthStore } from '../../store/auth.store';
 
-// Status controls are shown to any signed-in viewer -- there's no
+// Status controls are shown to any signed-in viewer; there's no
 // company-role -> OrgCategory mapping on the frontend to gate them with
 // precisely (the real matrix lives server-side in org-permission.types.ts),
 // and the brief itself warns against relying on a hidden button as the
@@ -67,7 +67,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
     }
   }
 
-  // Explicit, opt-in download (brief section 8) -- fetches the file once
+  // Explicit, opt-in download (brief section 8): fetches the file once
   // through the same short-lived authorized URL the viewer uses, verifies
   // its integrity against the server's own content hash when one exists,
   // and only reports COMPLETE if the bytes actually arrived intact. A
@@ -119,7 +119,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
           <p className="text-sm text-ink-500">Loading…</p>
         ) : (
           <div className="space-y-4">
-            {/* Identifier, revision, status, source, verification -- all visible without leaving this view (brief section 7) */}
+            {/* Identifier, revision, status, source, verification; all visible without leaving this view (brief section 7) */}
             <div className="panel p-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
               <div><span className="text-xs text-ink-500 block">Drawing No.</span>{drawing.drawingNumber}</div>
               <div><span className="text-xs text-ink-500 block">Revision</span>{revision?.revisionNumber ?? '—'}</div>
@@ -182,7 +182,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
                   </div>
                 )}
 
-                {/* Offline (brief section 8) -- unmistakable indicator + last-verified timestamp */}
+                {/* Offline (brief section 8): unmistakable indicator + last-verified timestamp */}
                 {revision && (
                   <div className="panel p-4 flex items-center justify-between gap-4 flex-wrap">
                     <div className="text-xs text-ink-500">

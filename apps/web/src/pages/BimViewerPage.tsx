@@ -159,7 +159,7 @@ export default function BimViewerPage() {
       return;
     }
     const screenshotDataUrl = viewerRef.current?.getScreenshotDataUrl() ?? null;
-    // Open immediately with position/target -- don't make the user wait on
+    // Open immediately with position/target: don't make the user wait on
     // the screenshot upload before they can start filling out the form.
     // The upload result attaches itself once it resolves.
     setCapturedView({

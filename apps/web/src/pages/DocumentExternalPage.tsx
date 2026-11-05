@@ -7,9 +7,9 @@ import { DOC_TYPE_LABELS } from '../lib/document-constants';
 import { LogoMark } from '../components/ui/LogoMark';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 
-// No EngineeringOS account, no session -- the opaque token in the URL is the
+// No EngineeringOS account, no session; the opaque token in the URL is the
 // only credential. Deliberately outside ProtectedRoute/AppShell, same as
-// ProgressReportExternalPage/RfiExternalPage -- nothing else in the app is
+// ProgressReportExternalPage/RfiExternalPage; nothing else in the app is
 // reachable from here.
 export default function DocumentExternalPage() {
   const { token } = useParams<{ token: string }>();

@@ -1,4 +1,4 @@
-// Risk titles from the engine read "Unresolved RFI: MGT-B-GEN-RFI-STR-0001 —
+// Risk titles from the engine read "Unresolved RFI: MGT-B-GEN-RFI-STR-0001;
 // Transfer beam TB-07 reinforcement congestion": a state, the source record's
 // type and code, then what it's about. In a list that buries the subject
 // behind 40 characters of bookkeeping, so lists show the subject as the

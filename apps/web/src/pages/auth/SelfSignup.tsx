@@ -23,7 +23,7 @@ interface FormValues {
 }
 
 // Distinct from AcceptInvitation: there's no pre-created placeholder row or
-// per-email token here -- the company-wide signup code (shared by an admin,
+// per-email token here; the company-wide signup code (shared by an admin,
 // e.g. via a link containing ?code=...) is the only credential, and this
 // creates a brand new account directly in one step rather than "claiming" a
 // row an admin already set up. Same end state either way: the account lands

@@ -25,7 +25,7 @@ interface NavGroup {
 }
 
 // Grouped so the list reads as sections (brief: "the navigation must be
-// scalable as more modules are added") instead of one flat column -- every
+// scalable as more modules are added") instead of one flat column; every
 // item here is a route that already exists; nothing added for show.
 const NAV_GROUPS: NavGroup[] = [
   {
@@ -35,7 +35,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: 'workforce', label: 'Workforce', icon: IconGauge },
     ],
   },
-  // Personal, account-level settings -- every user connects their own AI
+  // Personal, account-level settings; every user connects their own AI
   // provider (spec section 7) and their own mailbox (Phase 3: "a user can
   // connect only their authorized mailbox"), so neither is gated like
   // DEVELOPER_NAV_GROUP below. Merged from four one-item groups whose
@@ -50,7 +50,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-// Company-admin-only -- API keys and webhooks are per-tenant (company_id),
+// Company-admin-only: API keys and webhooks are per-tenant (company_id),
 // not per-project, so this lives alongside the other company-level nav
 // groups, not under PROJECT_NAV_GROUPS. Same role check WorkforcePage.tsx
 // uses for its own admin-only sections.
@@ -74,7 +74,7 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
       { to: 'snagging', label: 'Snagging', icon: IconTag },
       { to: 'rfis', label: 'RFIs', icon: IconQuestion },
       // Submittals/Transmittals/QA Inspections/Documents: hidden from nav
-      // per request, backend modules/routes left untouched -- still
+      // per request, backend modules/routes left untouched; still
       // reachable by direct URL, just not linked from the sidebar.
       { to: 'qaqc', label: 'QAQC', icon: IconQaqc },
       { to: 'progress-report', label: 'Progress Report', icon: IconTrending },
@@ -83,7 +83,7 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
   },
   {
     // BIM Models already existed as a route (linked only from a button on
-    // ProjectDetail's header) with no sidebar entry at all -- surfacing an
+    // ProjectDetail's header) with no sidebar entry at all; surfacing an
     // existing module here, not adding a new one.
     heading: 'Engineering',
     items: [
@@ -102,11 +102,11 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
 ];
 
 // A 'subcontractor' project member (SubcontractorRfiAccessGuard) has
-// backend access to this project's RFI module only -- every other link
+// backend access to this project's RFI module only; every other link
 // above would 403 if clicked, so none of them are shown. No "Overview"
 // entry either (ProjectDetail pulls from several of those same blocked
 // modules); RFIs is both the only destination and, functionally, the
-// project's landing page for this role -- see RootRoute-style redirect in
+// project's landing page for this role; see RootRoute-style redirect in
 // ProjectDetail.tsx for what happens if they land on /projects/:id anyway.
 const SUBCONTRACTOR_NAV_GROUPS: NavGroup[] = [
   { items: [{ to: 'rfis', label: 'RFIs', icon: IconQuestion }] },
@@ -120,7 +120,7 @@ export function AppShell() {
   const params = useParams<{ projectId?: string }>();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  // A route change means the user picked a destination — close the drawer
+  // A route change means the user picked a destination; close the drawer
   // so it doesn't stay covering the page it just navigated to.
   useEffect(() => {
     setMobileNavOpen(false);
@@ -130,12 +130,12 @@ export function AppShell() {
     try {
       await apiLogout();
     } catch {
-      // best-effort — clear local session regardless
+      // best-effort: clear local session regardless
     }
     clear();
     // Site Drawing Hub offline packages (brief section 9: "Clear locally
     // cached protected data when the user signs out"). Best-effort and
-    // fire-and-forget, same as apiLogout() above -- a failure here must
+    // fire-and-forget, same as apiLogout() above; a failure here must
     // never block sign-out itself.
     clearAllOfflinePackages().catch(() => {});
     navigate('/login', { replace: true });
@@ -146,7 +146,7 @@ export function AppShell() {
   const navGroups = isCompanyAdmin ? [...NAV_GROUPS, DEVELOPER_NAV_GROUP] : NAV_GROUPS;
 
   // Same query ProjectContextPanel already makes (shares its cache entry,
-  // no extra request) -- read here too so the nav itself can collapse down
+  // no extra request): read here too so the nav itself can collapse down
   // to RFIs-only for a subcontractor project member, rather than showing
   // every link and letting each one 403 when clicked.
   const membersQuery = useQuery({
@@ -412,7 +412,7 @@ function IconTag({ className }: { className?: string }) {
     </svg>
   );
 }
-// Document-with-alert-mark -- distinct from a checklist pass/fail icon and
+// Document-with-alert-mark: distinct from a checklist pass/fail icon and
 // IconShield (Risk) since NCR/SOR is neither: a formal flagged report, not
 // a checklist and not the risk score itself.
 function IconQaqc({ className }: { className?: string }) {
@@ -467,7 +467,7 @@ function IconTrending({ className }: { className?: string }) {
     </svg>
   );
 }
-// Open book, not another question mark -- IconQuestion (RFI) already owns
+// Open book, not another question mark; IconQuestion (RFI) already owns
 // that shape; Help & Training needs its own silhouette in the same nav.
 function IconHelp({ className }: { className?: string }) {
   return (

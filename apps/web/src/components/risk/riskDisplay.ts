@@ -5,7 +5,7 @@ import type { RiskDiscipline } from '@engineeringos/types';
 // Lifted to RiskIntelligenceSection (the single source of truth) so the KPI
 // strip, heatmap and discipline chart can all drive the register below them
 // by calling one setter, per the brief's "KPI cards / heatmap cells /
-// discipline bars filter the register" requirement -- never a second,
+// discipline bars filter the register" requirement; never a second,
 // disconnected copy of the risk list.
 export interface RegisterFilters {
   levels: RiskLevel[]; // empty = all
@@ -15,7 +15,7 @@ export interface RegisterFilters {
   overdueOnly: boolean;
   activeOnly: boolean; // excludes RESOLVED/CLOSED
   // A heatmap cell click filters by the exact risk IDs the server already
-  // placed in that cell (RiskService.getRiskHeatmap) -- never recomputed
+  // placed in that cell (RiskService.getRiskHeatmap): never recomputed
   // client-side. That server-side placement bands the deterministic
   // probability/impact factor scores (0-100ish) into the 1-5 matrix scale
   // via scoring.toMatrixBand() for risks with no human assessment; matching
@@ -37,7 +37,7 @@ export function hasActiveFilters(f: RegisterFilters): boolean {
     || f.overdueOnly || f.activeOnly || f.cellRiskIds !== null || Boolean(f.search);
 }
 
-// Mirrors RiskService.isOpenStatus() server-side exactly (risk.service.ts) --
+// Mirrors RiskService.isOpenStatus() server-side exactly (risk.service.ts);
 // never invent a different definition of "open" than the one the summary
 // KPIs/overdueCount already use.
 export function isOpenRiskStatus(status: RiskStatus): boolean {
@@ -67,7 +67,7 @@ export function formatDueDate(dueDate?: string): string {
   return new Date(dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-// Short, stable display reference -- purely a truncation of the real `id`
+// Short, stable display reference; purely a truncation of the real `id`
 // field for a compact column/label, not an invented identifier; the full
 // id is still what every click/link/mutation uses.
 export function riskRef(risk: Risk): string {
@@ -75,8 +75,8 @@ export function riskRef(risk: Risk): string {
 }
 
 // Discipline values are an UPPER_SNAKE enum (RiskDiscipline, plus the
-// server's own 'UNSPECIFIED' literal for a null discipline -- see
-// RiskService.getRiskByDiscipline's own comment) -- never shown raw.
+// server's own 'UNSPECIFIED' literal for a null discipline; see
+// RiskService.getRiskByDiscipline's own comment): never shown raw.
 export const RISK_DISCIPLINE_LABELS: Record<RiskDiscipline | 'UNSPECIFIED', string> = {
   CIVIL: 'Civil', STRUCTURAL: 'Structural', ARCHITECTURAL: 'Architectural', INTERIOR_DESIGN: 'Interior Design',
   MECHANICAL: 'Mechanical', ELECTRICAL: 'Electrical', PLUMBING: 'Plumbing', HVAC: 'HVAC', MEP: 'MEP',
@@ -91,7 +91,7 @@ export function disciplineLabel(discipline?: string): string {
 // Priority ordering for the "Requires Attention" panel (brief section 4C):
 // overdue critical/high first, then unassigned critical/high, then any
 // other open critical/high, then everything else by score. A pure sort
-// comparator over already-fetched register data -- no new query, no
+// comparator over already-fetched register data; no new query, no
 // invented urgency score.
 export function applyRegisterFilters(risks: Risk[], f: RegisterFilters): Risk[] {
   return risks.filter((r) => {

@@ -3,7 +3,7 @@ import type { HelpArticle } from './types';
 // Verified against FloorPlanViewer.tsx, PinPanel.tsx,
 // drawings.controller.ts, and buildings.controller.ts directly. The key
 // fact that shapes this whole category: a "pinpoint" is not a separate
-// record type -- dropping a pin on a floor plan auto-creates an Issue at
+// record type; dropping a pin on a floor plan auto-creates an Issue at
 // that location (locations.pos_x_norm/pos_y_norm), and the pin's detail
 // panel is really that Issue's (or, after conversion, Snag's) own quick
 // editor. There is no standalone "create a pinpoint" action independent
@@ -11,12 +11,12 @@ import type { HelpArticle } from './types';
 //
 // Permission note, verified directly against the controllers rather than
 // assumed from the pattern elsewhere: *creating* a pin
-// (`POST drawings/:id/pins`) requires "manage_project_records" -- but
+// (`POST drawings/:id/pins`) requires "manage_project_records"; but
 // renaming/moving it, archiving (deleting) it, and converting it to a
 // Snag (`PATCH/DELETE/POST locations/:id...` on buildings.controller.ts)
 // have no such gate at all and are open to any project member. This is a
-// genuine asymmetry in the real permission model, not a mistake in this
-// doc -- described as-is, not "corrected" by this Help Centre phase.
+// real asymmetry in the real permission model, not a mistake in this
+// doc; described as-is, not "corrected" by this Help Centre phase.
 export const floorPlansArticles: HelpArticle[] = [
   {
     slug: 'opening-a-floor-plan',

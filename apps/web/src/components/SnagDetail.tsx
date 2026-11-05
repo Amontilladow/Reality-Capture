@@ -70,7 +70,7 @@ export function SnagDetail({
     onSuccess: invalidateAll,
   });
 
-  // RBAC Phase 3: a dedicated endpoint, not statusMutation above -- this one
+  // RBAC Phase 3: a dedicated endpoint, not statusMutation above; this one
   // also works for someone granted only the narrower verify_snag_items
   // permission (not manage_project_records), who'd get a 403 from the
   // generic PATCH statusMutation hits.
@@ -195,7 +195,7 @@ export function SnagDetail({
           </div>
         )}
 
-        {/* Status actions -- snagging's two-step closure (fixed -> verified)
+        {/* Status actions: snagging's two-step closure (fixed -> verified)
             is simpler than Issues' linear flow, so this ports the same three
             conditional buttons the old SnagItemDetailModal used, rather than
             a full stepper. */}
@@ -265,7 +265,7 @@ export function SnagDetail({
 
       <InlineRiskAssessment projectId={projectId} nodeType="snag_item" entityId={snagId} />
 
-      {/* Email history -- Phase 3G */}
+      {/* Email history: Phase 3G */}
       <div>
         <div className="field-label mb-2">Email History</div>
         <EmailHistoryList projectId={projectId} relatedRecordType="snag_item" relatedRecordId={snagId} />

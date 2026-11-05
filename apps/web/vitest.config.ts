@@ -3,7 +3,7 @@ import viteConfig from './vite.config';
 
 // Separate from vite.config.ts (rather than merged into it) so `vitest`
 // doesn't have to parse/apply the dev-server proxy and production
-// rollupOptions.input that only make sense for `vite`/`vite build` --
+// rollupOptions.input that only make sense for `vite`/`vite build`;
 // mergeConfig still reuses the same plugins/resolve/alias setup so test
 // imports resolve identically to the real app (same @engineeringos/types
 // CJS interop fix, same `@/` alias).

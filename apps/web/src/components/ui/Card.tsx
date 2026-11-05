@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 // pages stop hand-building "title row + divider + content" inside a bare
 // .panel div differently each time. tickFrame opts into the app's corner-tick
 // framing device (see .tick-frame in index.css) for the handful of surfaces
-// that already use it (modals, the BIM viewer's property panel) -- most
+// that already use it (modals, the BIM viewer's property panel): most
 // cards should leave it off, it's a deliberate accent, not a default.
 export function Card({
   title,

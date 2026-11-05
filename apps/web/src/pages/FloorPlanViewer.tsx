@@ -17,8 +17,8 @@ export default function FloorPlanViewer() {
   // Deep-link support (e.g. from IssueDetail.tsx's "view on floor plan"
   // link): /projects/:id/drawings?drawingId=X&pinId=Y. drawingId can be
   // read straight into initial state, same as IssuesPage.tsx's own
-  // ?issueId= pattern; pinId can't resolve until pinsQuery.data loads --
-  // PinPanel needs the full Pin object, not just an id -- so that part is
+  // ?issueId= pattern; pinId can't resolve until pinsQuery.data loads;
+  // PinPanel needs the full Pin object, not just an id; so that part is
   // handled by the effect below instead.
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(searchParams.get('drawingId'));
@@ -28,13 +28,13 @@ export default function FloorPlanViewer() {
   const [openPin, setOpenPin] = useState<Pin | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [numPages, setNumPages] = useState(1);
-  // Who a newly-placed pin's auto-created Issue is assigned to -- lets
+  // Who a newly-placed pin's auto-created Issue is assigned to; lets
   // someone walking a site drop several pins in a row all pre-assigned to
   // the same person, without opening each pin's panel afterward.
   const [newPinAssignee, setNewPinAssignee] = useState('');
 
   // ── Sidebar grouping/filtering (building → level, plus a title search and
-  // an optional drawing-type filter) -- all client-side against the one
+  // an optional drawing-type filter): all client-side against the one
   // full listDrawings() fetch below, never re-fetched per filter change.
   const [buildingFilter, setBuildingFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState('');
@@ -62,7 +62,7 @@ export default function FloorPlanViewer() {
   const hierarchy = useMemo(() => hierarchyQuery.data ?? [], [hierarchyQuery.data]);
 
   // Resolves each drawing's building/level from the hierarchy tree by
-  // matching drawing.levelId against a level nested under some building --
+  // matching drawing.levelId against a level nested under some building;
   // no backend join needed, hierarchy is already fetched on this page.
   // A drawing with no levelId, or one pointing at a level no longer in the
   // tree (deleted level), resolves to {building: undefined, level: undefined}
@@ -109,7 +109,7 @@ export default function FloorPlanViewer() {
   // Grouped for render: buildings in hierarchy order (so it's stable as
   // filters change), levels within each building sorted by levelOrder, and
   // anything that didn't resolve to a building in an "Unassigned" bucket at
-  // the end -- never hidden, per the ask.
+  // the end; never hidden, per the ask.
   const groupedDrawings = useMemo(() => {
     const byBuilding = new Map<string, Map<string, { level?: ProjectHierarchy['levels'][number]; drawings: DrawingWithLocation[] }>>();
     const unassigned: DrawingWithLocation[] = [];
@@ -160,7 +160,7 @@ export default function FloorPlanViewer() {
     enabled: Boolean(projectId && activeDrawingId),
   });
 
-  // Floor Plans is the Issues/Snags pin workflow -- a camera-location pin
+  // Floor Plans is the Issues/Snags pin workflow; a camera-location pin
   // (placed from the separate Buildlense Captures plan page, same drawing
   // backend) never shows up here, so the two pin-creation flows never mix
   // on screen even though they can share the same uploaded plan file.
@@ -172,7 +172,7 @@ export default function FloorPlanViewer() {
   const pinsForCurrentPage = issuePins.filter((p) => p.pageNumber === currentPage);
 
   // Resolves the ?pinId= deep link once this drawing's pins are in, jumps
-  // to that pin's page, and opens its panel -- then strips both params so
+  // to that pin's page, and opens its panel; then strips both params so
   // navigating elsewhere and back via the sidebar doesn't keep re-opening
   // the same pin every time.
   useEffect(() => {
@@ -441,7 +441,7 @@ export default function FloorPlanViewer() {
   );
 }
 
-// Same row markup/behavior as the old flat sidebar's inline .map() -- just
+// Same row markup/behavior as the old flat sidebar's inline .map(): just
 // pulled out so it can be reused under every building/level group and the
 // Unassigned bucket without repeating the button/className logic.
 function DrawingRow({ drawing, active, onSelect }: { drawing: Drawing; active: boolean; onSelect: (id: string) => void }) {

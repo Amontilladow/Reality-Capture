@@ -9,12 +9,12 @@ import { Badge, StatusBadge } from '../ui/Badge';
 import { Listbox } from '../ui/Listbox';
 
 // RBAC Phase 5: shows which project you're in, your own role and
-// organization slot on it, and a switcher to jump to another project --
+// organization slot on it, and a switcher to jump to another project;
 // all previously invisible once inside a project (the sidebar only ever
 // showed company-wide nav + the signed-in person's name/email). Every
 // query here hits an already-ungated read (getProject/getMembers/
 // getOrganizationMembers), same endpoints ManageMembersModal already
-// calls -- this doesn't add any new backend surface, just surfaces it.
+// calls; this doesn't add any new backend surface, just surfaces it.
 export function ProjectContextPanel({ projectId }: { projectId: string }) {
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
@@ -34,7 +34,7 @@ export function ProjectContextPanel({ projectId }: { projectId: string }) {
     queryFn: () => getOrganizationMembers(projectId),
   });
 
-  // Every project the signed-in person can see, for the switcher -- same
+  // Every project the signed-in person can see, for the switcher; same
   // list ProjectList.tsx itself renders. 100 is this app's existing
   // "effectively unpaginated" convention (see e.g. getDrawingUpdatesNotApplied).
   const projectsQuery = useQuery({

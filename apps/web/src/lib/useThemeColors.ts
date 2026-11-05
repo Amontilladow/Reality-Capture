@@ -13,7 +13,7 @@ export type ThemeColors = Record<typeof TOKEN_NAMES[number], string>;
 
 // index.css stores each --rc-* color as space-separated "R G B" channel
 // numbers (Tailwind's own documented pattern for a CSS-variable color that
-// still supports its opacity-modifier syntax, e.g. bg-danger/10 -- see
+// still supports its opacity-modifier syntax, e.g. bg-danger/10; see
 // tailwind.config.js's header comment), not a hex string. Consumers here
 // (recharts SVG props, an inline style's `color`/`fill`, the `${color}XX`
 // hex-alpha-suffix trick used in a few status chips) all want a normal
@@ -26,20 +26,20 @@ function tripletToHex(triplet: string): string {
 }
 
 // Resolves the same --rc-* custom properties index.css defines, as actual
-// #rrggbb color strings -- for the handful of spots that need a literal
+// #rrggbb color strings; for the handful of spots that need a literal
 // color value rather than a Tailwind class: recharts SVG props (axis/grid/
 // tooltip colors aren't settable via className), inline-style status chips
 // built from a dynamic palette, canvas/WebGL surfaces. Re-reads on every
 // theme change, since by the time the theme store's value updates, <html
-// data-theme> (and so every --rc-* value) has already flipped synchronously
-// -- see theme.store.ts's applyTheme().
+// data-theme> (and so every --rc-* value) has already flipped synchronously;
+//; see theme.store.ts's applyTheme().
 export function useThemeColors(): ThemeColors {
   const theme = useThemeStore((s) => s.theme);
   return useMemo(() => {
     const style = getComputedStyle(document.documentElement);
     const read = (name: string) => tripletToHex(style.getPropertyValue(`--rc-${name}`));
     return Object.fromEntries(TOKEN_NAMES.map((t) => [t, read(t)])) as ThemeColors;
-    // theme is read only to retrigger this memo when it changes -- the
+    // theme is read only to retrigger this memo when it changes; the
     // actual values always come from the DOM, never from the theme string.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [theme]);

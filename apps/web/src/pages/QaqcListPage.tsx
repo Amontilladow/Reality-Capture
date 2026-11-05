@@ -16,7 +16,7 @@ import { Listbox } from '../components/ui/Listbox';
 
 // One shared list implementation for all four record types, parameterized
 // by the :recordType path segment (/projects/:projectId/qaqc/ncr, /sor,
-// /wir, or /mir) -- per the brief's §3/§4, this is one implementation, not
+// /wir, or /mir): per the brief's §3/§4, this is one implementation, not
 // four forked pages.
 export default function QaqcListPage() {
   const { projectId, recordType } = useParams<{ projectId: string; recordType: QaqcRecordType }>();
@@ -55,10 +55,10 @@ export default function QaqcListPage() {
 
   const shortLabel = QAQC_RECORD_TYPE_SHORT_LABELS[recordType];
 
-  // Client-side visual gating only -- QaqcService's per-type role check is
+  // Client-side visual gating only: QaqcService's per-type role check is
   // the real enforcement (see qaqc.service.ts's ISSUE_ROLES_BY_TYPE). Hides
   // (not just disables) the create action for anyone outside this specific
-  // record type's issuer role set -- NCR/SOR issued by QAQC-in-charge,
+  // record type's issuer role set; NCR/SOR issued by QAQC-in-charge,
   // WIR/MIR issued by the construction team (roles swapped per type).
   const canCreate = Boolean(currentUser?.companyRole && QAQC_ISSUE_ROLES_BY_TYPE[recordType].includes(currentUser.companyRole));
 

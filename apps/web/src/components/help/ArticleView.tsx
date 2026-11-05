@@ -4,7 +4,7 @@ import type { HelpArticle } from '../../content/help';
 import { getRelatedArticles } from '../../content/help';
 import { slugifySectionTitle } from './article-sections';
 
-// Renders the brief's 16-field article template -- but only the fields a
+// Renders the brief's 16-field article template: but only the fields a
 // given article actually has.
 export function ArticleView({ article, onOpenArticle }: { article: HelpArticle; onOpenArticle: (slug: string) => void }) {
   const related = getRelatedArticles(article);

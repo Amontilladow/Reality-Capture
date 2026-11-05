@@ -31,7 +31,7 @@ export default function SiteDrawingHubPage() {
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
 
   // Search is server-side (brief section 10: indexed queries, not a
-  // client-side filter over a fully fetched register) -- debounced so
+  // client-side filter over a fully fetched register): debounced so
   // every keystroke doesn't fire a request.
   useEffect(() => {
     const t = setTimeout(() => setFilters((f) => ({ ...f, search: searchInput })), 300);
@@ -52,7 +52,7 @@ export default function SiteDrawingHubPage() {
 
   // Reconnect revalidation (brief section 8): on coming back online, check
   // every locally stored package against the source for a changed,
-  // superseded, or withdrawn revision -- never silently assumed still
+  // superseded, or withdrawn revision; never silently assumed still
   // current just because the bytes are sitting in IndexedDB.
   useEffect(() => {
     if (!projectId) return;

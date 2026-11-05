@@ -13,11 +13,11 @@ import { apiErrorMessage } from '../lib/api';
 import { Listbox } from './ui/Listbox';
 
 // Field set deliberately mirrors RfiFormModal's "subject/question(->description)/
-// priority/discipline+disciplineOther/assignedTo/dueDate" shape -- see
+// priority/discipline+disciplineOther/assignedTo/dueDate" shape; see
 // create-qaqc-record.dto.ts's own comment for why RFI's cost/time/
 // drawing-impact fields have no equivalent here.
 //
-// Two distinct attachment affordances, per the brief's §4 -- NOT the same
+// Two distinct attachment affordances, per the brief's §4; NOT the same
 // control:
 // - "+ Add photo" mirrors IssueFormModal.tsx's pattern exactly: picked
 //   locally before the record exists, uploaded as a real Capture
@@ -45,12 +45,12 @@ export function QaqcFormModal({
   const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState('');
 
-  // "+ Add photo" -- same local-pick-then-upload-as-Capture shape as
+  // "+ Add photo"; same local-pick-then-upload-as-Capture shape as
   // IssueFormModal.tsx's own `photos` state.
   const [photos, setPhotos] = useState<{ file: File; previewUrl: string }[]>([]);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
-  // "+ Add document" -- generic typed attachments, picked locally the same
+  // "+ Add document"; generic typed attachments, picked locally the same
   // way (the record doesn't exist yet either), uploaded via
   // uploadQaqcAttachment() with a documentType once it does.
   const [documents, setDocuments] = useState<{ file: File; documentType: RfiDocumentType }[]>([]);
@@ -85,7 +85,7 @@ export function QaqcFormModal({
       });
 
       // Sequential, not parallel, same rationale as IssueFormModal's own
-      // upload loop -- one failed upload doesn't race the others.
+      // upload loop; one failed upload doesn't race the others.
       for (const { file } of photos) {
         const capture = await uploadCapture(projectId, file, {
           captureType: 'photo_standard',
@@ -181,7 +181,7 @@ export function QaqcFormModal({
           </div>
         )}
 
-        {/* "+ Add photo" -- quick picker, uploaded as a real Capture on save. */}
+        {/* "+ Add photo"; quick picker, uploaded as a real Capture on save. */}
         <div className="pt-2 border-t border-base-600">
           <div className="flex items-center justify-between">
             <label className="field-label !mb-0">Photos {photos.length > 0 ? `(${photos.length})` : ''}</label>
@@ -197,7 +197,7 @@ export function QaqcFormModal({
               ref={photoInputRef}
               type="file"
               accept="image/*"
-              // No `capture` attribute -- forcing the camera directly would
+              // No `capture` attribute: forcing the camera directly would
               // leave no option to pick an existing photo from the library.
               multiple
               className="hidden"
@@ -234,9 +234,9 @@ export function QaqcFormModal({
           )}
         </div>
 
-        {/* "+ Add document" -- generic typed attachment, in case additional
+        {/* "+ Add document"; generic typed attachment, in case additional
             supporting documents are needed (method statements, test
-            certificates, specs, etc.) -- a distinct control from the photo
+            certificates, specs, etc.): a distinct control from the photo
             picker above, not the same uploader. */}
         <div>
           <div className="flex items-center justify-between">
