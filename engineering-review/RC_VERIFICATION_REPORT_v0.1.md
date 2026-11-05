@@ -133,7 +133,7 @@ None open.
   (and not silently stubbed): walk/first-person mode, section planes/box,
   explode, isolation, hide/show, transparency, storey/discipline/category
   filter toggles.
-- **Issue Management is not yet integrated into the viewer** — explicitly
+- **Issue Management is not yet integrated into the viewer**: explicitly
   paused per instruction, to resume only after this RC report is
   accepted.
 - **No true multi-GB IFC file has been load-tested** (documented since the
@@ -228,12 +228,12 @@ POST /api/v1/company/register
 - [x] `apps/ifc-service` typecheck/build clean
 - [x] `apps/web` typecheck/build clean
 - [x] All three services start and report healthy
-- [ ] **Browser-level visual/interaction verification** — NOT done, no browser tool available. Remains open.
+- [ ] **Browser-level visual/interaction verification**: NOT done, no browser tool available. Remains open.
 - [ ] Dedicated KPI Dashboard — not built (scope gap, not a defect)
 - [ ] Issue Management integration in viewer — explicitly paused, next milestone
 - [ ] Seed/demo data script — does not exist; onboarding currently requires the register API call above
-- [x] Frontend `.env.example` — confirmed present and correct (`VITE_API_BASE`)
-- [ ] Bundle size optimization (code-splitting the viewer route) — not done, not required for correctness
+- [x] Frontend `.env.example`: confirmed present and correct (`VITE_API_BASE`)
+- [ ] Bundle size optimization (code-splitting the viewer route): not done, not required for correctness
 
 **Every unchecked item above is real remaining work, not hidden or
 assumed complete.**

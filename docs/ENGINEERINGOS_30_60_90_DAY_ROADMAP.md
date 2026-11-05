@@ -7,18 +7,18 @@ Synthesizes every finding across this phase's documents into a single prioritize
 
 ## First 5 actions (do these first)
 
-1. **Add structured auth-failure logging** (P0, §1 below) — closes a confirmed real security-visibility gap, zero cost, needs your sign-off only because it touches auth code.
-2. **Decide the BYO-AI-fallback policy** (P0, §1) — a product decision already fully scoped in `AI_USAGE_AND_COST_POLICY.md` §5; the fix itself is small once decided.
-3. **Add a company deactivation endpoint** (P0, §1) — closes a confirmed operational gap (no way to cut off a company today).
-4. **Build the self-service company registration frontend form** (P1, §2) — the backend already works; this is the single highest commercial-leverage item for the least backend risk.
-5. **Build RFI aging alerts** (P1, §2) — the highest-value construction-workflow feature identified, mirrors an existing cron pattern exactly, zero new schema.
+1. **Add structured auth-failure logging** (P0, §1 below): closes a confirmed real security-visibility gap, zero cost, needs your sign-off only because it touches auth code.
+2. **Decide the BYO-AI-fallback policy** (P0, §1): a product decision already fully scoped in `AI_USAGE_AND_COST_POLICY.md` §5; the fix itself is small once decided.
+3. **Add a company deactivation endpoint** (P0, §1): closes a confirmed operational gap (no way to cut off a company today).
+4. **Build the self-service company registration frontend form** (P1, §2): the backend already works; this is the single highest commercial-leverage item for the least backend risk.
+5. **Build RFI aging alerts** (P1, §2): the highest-value construction-workflow feature identified, mirrors an existing cron pattern exactly, zero new schema.
 
 ---
 
 ## P0: Critical (security, reliability, data integrity)
 
 ### P0-1: Structured auth-failure logging
-- **Justification:** confirmed zero visibility today into failed logins or invalid-token attempts (`MONITORING_AND_INCIDENT_MANAGEMENT.md` §2) — an existing code comment claiming this is handled is false.
+- **Justification:** confirmed zero visibility today into failed logins or invalid-token attempts (`MONITORING_AND_INCIDENT_MANAGEMENT.md` §2): an existing code comment claiming this is handled is false.
 - **Effort:** small (a few `logger.warn()` calls in `AuthService.login()` and `JwtAuthGuard`).
 - **Dependencies:** none.
 - **Running cost:** $0.
@@ -28,7 +28,7 @@ Synthesizes every finding across this phase's documents into a single prioritize
 - **Approval needed:** yes — touches authentication code, should be reviewed before merge even though it's additive-only.
 
 ### P0-2: Decide and implement the BYO-AI-fallback policy
-- **Justification:** confirmed silent fallback to the platform's own paid provider on any BYO error, with no approval/spend gate (`AI_USAGE_AND_COST_POLICY.md` §5) — directly contradicts this engagement's own mandatory rule on provider fallback approval.
+- **Justification:** confirmed silent fallback to the platform's own paid provider on any BYO error, with no approval/spend gate (`AI_USAGE_AND_COST_POLICY.md` §5): directly contradicts this engagement's own mandatory rule on provider fallback approval.
 - **Effort:** small once a decision is made (Option A: fail the request instead of silently falling back, when a BYO connection is configured).
 - **Dependencies:** your decision between Option A/B/C in `AI_USAGE_AND_COST_POLICY.md` §5.
 - **Running cost:** $0 (Option A actually prevents unapproved spend; Option B would need new schema).
@@ -38,7 +38,7 @@ Synthesizes every finding across this phase's documents into a single prioritize
 - **Approval needed:** yes — this is the decision itself, not a side detail.
 
 ### P0-3: Company deactivation endpoint
-- **Justification:** confirmed zero way to deactivate a company today despite `is_active` being fully enforced everywhere it's checked (`SAAS_COMMERCIAL_READINESS.md` §5) — a real operational/security gap (no way to cut off a company that should no longer have access).
+- **Justification:** confirmed zero way to deactivate a company today despite `is_active` being fully enforced everywhere it's checked (`SAAS_COMMERCIAL_READINESS.md` §5): a real operational/security gap (no way to cut off a company that should no longer have access).
 - **Effort:** small — one new platform-operator-only endpoint plus a service method.
 - **Dependencies:** none.
 - **Running cost:** $0.
@@ -52,7 +52,7 @@ Synthesizes every finding across this phase's documents into a single prioritize
 ## P1: High-value, measurable
 
 ### P1-1: Self-service company registration frontend
-- **Justification:** the backend (`POST /company/register`) already works end-to-end but has zero frontend form (`SAAS_COMMERCIAL_READINESS.md` §1) — the single cheapest path to new self-service signups.
+- **Justification:** the backend (`POST /company/register`) already works end-to-end but has zero frontend form (`SAAS_COMMERCIAL_READINESS.md` §1): the single cheapest path to new self-service signups.
 - **Effort:** medium — a registration form + validation + routing, no backend change.
 - **Dependencies:** none.
 - **Running cost:** $0.
@@ -65,14 +65,14 @@ Synthesizes every finding across this phase's documents into a single prioritize
 - **Justification:** confirmed zero staging environment — every merge to `main` goes straight to production (`RELEASE_MANAGEMENT.md` §1,§3) — the single highest-leverage reliability gap identified this phase.
 - **Effort:** medium — a second Render environment + database, gated manual promotion.
 - **Dependencies:** none technically, but needs your approval for the new infrastructure cost.
-- **Running cost:** **a new recurring cost** (a second running web service + database instance) — not quoted here since no specific tier has been chosen; needs explicit approval per this engagement's cost-approval rule.
+- **Running cost:** **a new recurring cost** (a second running web service + database instance): not quoted here since no specific tier has been chosen; needs explicit approval per this engagement's cost-approval rule.
 - **Regression risk:** none to existing production (additive infrastructure).
 - **Success metric:** percentage of deploys validated in staging before reaching production (0% today).
 - **Acceptance criteria:** a deploy can be promoted from staging to production as a distinct, deliberate step.
 - **Approval needed:** **yes — this is the one item in this entire roadmap with a real new recurring dollar cost.**
 
 ### P1-3: Wire storage-quota enforcement into upload paths
-- **Justification:** the check (`checkLimit('storage', ...)`) is fully written but never called (`SAAS_COMMERCIAL_READINESS.md` §4) — a company can exceed its plan's storage allotment indefinitely today.
+- **Justification:** the check (`checkLimit('storage', ...)`) is fully written but never called (`SAAS_COMMERCIAL_READINESS.md` §4): a company can exceed its plan's storage allotment indefinitely today.
 - **Effort:** small — call the existing method from the capture/document/BIM upload services, mirroring the existing project/user-limit pattern.
 - **Dependencies:** none.
 - **Running cost:** $0.
@@ -82,7 +82,7 @@ Synthesizes every finding across this phase's documents into a single prioritize
 - **Approval needed:** yes — user-facing behavior change.
 
 ### P1-4: RFI aging alerts (construction workflow)
-- **Justification:** highest-priority new feature identified in `CONSTRUCTION_WORKFLOW_IMPROVEMENT_ROADMAP.md` — mirrors the existing `issue-warning.service.ts` cron pattern exactly, zero new schema needed.
+- **Justification:** highest-priority new feature identified in `CONSTRUCTION_WORKFLOW_IMPROVEMENT_ROADMAP.md`: mirrors the existing `issue-warning.service.ts` cron pattern exactly, zero new schema needed.
 - **Effort:** small-medium — one new cron job + notification, following an established pattern.
 - **Dependencies:** none.
 - **Running cost:** $0.

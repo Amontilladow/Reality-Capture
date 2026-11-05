@@ -12,7 +12,7 @@ Verified against the actual code in `apps/api/src/modules/ai/`, `ai-connections/
 - **Server-side only.** No client-supplied value participates in the limit check; the limit is looked up server-side by the authenticated user's role.
 - **Atomic.** Uses Redis `INCR` on a per-user-per-day key and a per-user-per-minute key, in that order, with rollback (`DECR`) if either is exceeded. Two concurrent requests from the same user cannot both slip through under the limit — `INCR` is atomic at the Redis level, there is no read-then-write race.
 - **Pre-reserved, not post-counted.** The quota is consumed by `checkAndReserve()` itself, before the provider is ever called — a request that fails after reservation (caught in `ask()`'s `catch` block) still logs `status: 'error'` but the quota consumption already happened, which is the conservative (harder-to-exploit) direction to err in.
-- **Per-role, configurable without a deploy for env-settable overrides** (`AI_LIMIT_<ROLE>=daily,perMinute` — `ai.config.ts:64-83`), defaulting to 100/day for admins down to 20/day (5/min) for site-restricted roles.
+- **Per-role, configurable without a deploy for env-settable overrides** (`AI_LIMIT_<ROLE>=daily,perMinute`: `ai.config.ts:64-83`), defaulting to 100/day for admins down to 20/day (5/min) for site-restricted roles.
 - **Not spent by a blocked question.** `DomainGuardService.evaluate()` runs first and unconditionally (`ai.service.ts`; see the domain-guard section of `AI_EVALUATION_FRAMEWORK.md`); an off-topic or draft-blocked request never reaches `checkAndReserve()`, confirmed by the existing test `'blocks an off-topic question before checking usage or calling the provider'` in `ai.service.spec.ts`.
 
 **No bypass path found.** This was tested directly in this phase, not just read: the quota check happens before provider resolution, before BYO-vs-platform routing, and cannot be skipped by any request shape the DTO (`AskAssistantDto`) accepts.
@@ -25,7 +25,7 @@ No response cache exists for AI requests today — confirmed by reading `ai.serv
 
 **If caching is ever added**, these constraints are non-negotiable, consistent with this phase's own privacy rules:
 - Cache key must include `companyId` + `projectId` + the exact tool-call parameters — never cache across companies or projects under any circumstance (this is the same tenant-isolation boundary as everything else in this codebase).
-- Never cache a response that depended on live, time-sensitive tool data (open RFI counts, overdue issues) beyond a very short TTL (seconds, not hours) — a stale "no overdue issues" answer is actively harmful.
+- Never cache a response that depended on live, time-sensitive tool data (open RFI counts, overdue issues) beyond a very short TTL (seconds, not hours): a stale "no overdue issues" answer is actively harmful.
 - Never cache a BYO-mode response under the platform's own cache — that would mean one company's AI spend silently subsidizing another's answer, and crosses the BYO privacy boundary (a company's own provider, own data).
 - A draft response (`generateDraft()`) should never be cached at all — it's meant to be a one-off, user-reviewed suggestion, not a reusable answer.
 
@@ -95,8 +95,8 @@ There is no spend/budget concept anywhere in the schema — confirmed by searchi
 **Confirmed defect (now fixed):** `ai_usage_log.input_tokens`/`output_tokens` have existed in the schema since migration 062 and every provider adapter already returns real counts via `GenerateResponseResult.inputTokens`/`outputTokens` — but `AiService.generate()` and `generateDraft()` discarded those fields before they reached `usage.log()`, so **every row in this table had `NULL` token counts since the column was added**, silently defeating the whole point of logging them.
 
 **Fix applied:** `generate()` and `generateDraft()` now thread `inputTokens`/`outputTokens` through to `ask()`'s `usage.log()` call, without changing the public `AskAssistantResult` response shape the frontend consumes. Verified:
-- `npx tsc --noEmit` — clean.
-- `npx jest ai.service` — 13/13 pass, including a new regression test (`'passes the provider-reported token counts through to usage.log()'`) that locks this in.
+- `npx tsc --noEmit`: clean.
+- `npx jest ai.service`: 13/13 pass, including a new regression test (`'passes the provider-reported token counts through to usage.log()'`) that locks this in.
 - Full API suite — 594/594 pass, 60/60 suites, no regressions.
 
 **Practical effect:** from this deploy forward, `ai_usage_log` carries real, per-request token counts, which is the prerequisite for §6's proposed cost-budgeting feature and for any future per-company/per-provider cost reporting. **No historical cost data exists before this fix** — any cost report built on this table can only cover usage from this point forward; do not back-fill or estimate pre-fix spend, since the raw data to do so honestly does not exist.

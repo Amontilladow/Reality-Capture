@@ -58,15 +58,15 @@ Objective statements only — each one independently checked against real eviden
 - 2999 distinct `bim_elements` rows, 2999 distinct `ifc_guid` values for this model — the parser is not dropping elements.
 - Every GUID checked (up to 2887 in one pass, plus targeted individual checks) resolves successfully via `guidsToModelIdMap()` against the loaded fragments model. No GUID-level data loss found anywhere in the pipeline.
 - `IFCELEMENTASSEMBLY` containers have `Representation = $` (null) in the raw IFC source itself (e.g. `#31862= IFCELEMENTASSEMBLY(...,$,'D/9',...)`). 162 of the 194 originally-flagged "degenerate" elements are this — zero geometry is correct for them, not a bug.
-- `getItemsGeometry(localIds)` can return an array shorter than the requested `localIds` — it omits entries for zero-geometry items rather than padding them. Confirmed by direct logging.
-- Three local, back-to-back generations of the same source file (`IfcImporter.process()`, same machine, same command) produce the identical set of 3,737 zero-geometry local IDs (of 6542 total) — verified by hashing the sorted id list. The three `.frag` outputs have different byte sizes (526,017 / 526,015 / 526,018 bytes) but identical total triangle count (266,982).
+- `getItemsGeometry(localIds)` can return an array shorter than the requested `localIds`: it omits entries for zero-geometry items rather than padding them. Confirmed by direct logging.
+- Three local, back-to-back generations of the same source file (`IfcImporter.process()`, same machine, same command) produce the identical set of 3,737 zero-geometry local IDs (of 6542 total): verified by hashing the sorted id list. The three `.frag` outputs have different byte sizes (526,017 / 526,015 / 526,018 bytes) but identical total triangle count (266,982).
 - Local source IFC (`LATEST STAIR-03.ifc`, from the user's Downloads folder): SHA-256 `bc16edc48460c65f849a178939dbcb28df4b21f450563da73bd4a4f51795d9b2`, 2,583,629 bytes.
 - Production's actual uploaded-IFC object key (from `bim_models.storage_key` in the restored backup): `511f38d4-e2ca-45f7-b38c-c1a112862490/captures/4196109b-8eec-49ad-81c1-c798d83c99df/331e5dba-074d-4b3c-a3ed-912a5dc05827.ifc`. **Its SHA-256 is unknown**; see Open Questions.
 - Production's fragments output object: SHA-256 `c95829bf...` (fetched once via a presigned URL from the live app).
 - Three local `.frag` outputs: SHA-256 `3365f57d...` / `c2aaf093...` / (third run, hash not captured).
 - A specific weld (local id 16118, GUID `1eDJg6002nA34tD3WpCZ0m`) showed 0 geometry in the production `.frag`, but is **not** a member of the 3,737-id set any of the three local runs produce.
 - Local generation environment: Node.js v24.18.1, pnpm 11.15.1, `@thatopen/fragments@3.4.6` + `three@0.185.1` + `web-ifc@0.0.77`, Windows.
-- Production generation environment per `apps/ifc-service/Dockerfile` + `pnpm-lock.yaml`: base image `node:22-alpine` (Node 22.x, musl libc/Linux), pnpm 11.15.1, same resolved `@thatopen/fragments@3.4.6` + `three@0.185.1` + `web-ifc@0.0.77` triple. **Node major version differs from local (22 vs. 24) — this was not checked until this pass, and its impact is unverified.**
+- Production generation environment per `apps/ifc-service/Dockerfile` + `pnpm-lock.yaml`: base image `node:22-alpine` (Node 22.x, musl libc/Linux), pnpm 11.15.1, same resolved `@thatopen/fragments@3.4.6` + `three@0.185.1` + `web-ifc@0.0.77` triple. **Node major version differs from local (22 vs. 24): this was not checked until this pass, and its impact is unverified.**
 
 ### Disproved hypotheses
 
@@ -76,8 +76,8 @@ Do not re-investigate any of these without new evidence.
 2. ❌ **Representation failure specific to Brep welds**
 3. ❌ **Content/scale-dependent trigger**
 4. ❌ **Environment parity — dependency versions** (versions matched; runtime/OS parity was a separate, unchecked question; see Confirmed Facts)
-5. ❌ **Client-side loading non-determinism** — claimed, then retracted (see detail below; the retraction itself is now flagged as unverified, not re-affirmed)
-6. ❌ **Server-side generation non-determinism** — claimed, filed upstream, then corrected in the same thread
+5. ❌ **Client-side loading non-determinism**: claimed, then retracted (see detail below; the retraction itself is now flagged as unverified, not re-affirmed)
+6. ❌ **Server-side generation non-determinism**: claimed, filed upstream, then corrected in the same thread
 
 Detail on each, kept in full because the disproof evidence is exactly what a future investigator needs to avoid repeating these paths:
 
@@ -149,7 +149,7 @@ GUID `32$ek4m5rEgvoHmkRSTjkO` ("Bolt assembly", `IFCMECHANICALFASTENER`) showed 
 
 None of these are related to the BIM viewer directly, but were discovered while building diagnostic tooling for it and are real, independently-verified, deterministic fixes — unlike Issue 2 above, these are done.
 
-1. **`POST /auth/refresh` always 500'd** (`apps/api/src/modules/auth/auth.service.ts`). The query selected `rt.*` (refresh_tokens.*) then also explicitly selected `u.company_id` etc. `rt.*` already includes `refresh_tokens.id`, and nothing overrode it with the user's actual `id` — so `stored.id` silently held the refresh token's own row id instead of the user's id. `issueTokens()` then used that wrong value as both the new JWT's `sub` claim and the `user_id` column on the new `refresh_tokens` row, violating the `user_id -> users.id` foreign key on every single refresh. Fixed by aliasing `rt.id AS refresh_token_id` and explicitly selecting `u.id`.
+1. **`POST /auth/refresh` always 500'd** (`apps/api/src/modules/auth/auth.service.ts`). The query selected `rt.*` (refresh_tokens.*) then also explicitly selected `u.company_id` etc. `rt.*` already includes `refresh_tokens.id`, and nothing overrode it with the user's actual `id`: so `stored.id` silently held the refresh token's own row id instead of the user's id. `issueTokens()` then used that wrong value as both the new JWT's `sub` claim and the `user_id` column on the new `refresh_tokens` row, violating the `user_id -> users.id` foreign key on every single refresh. Fixed by aliasing `rt.id AS refresh_token_id` and explicitly selecting `u.id`.
 
 2. **Pagination `total`/`totalPages` always wrong on every paginated endpoint** (`apps/api/src/database/database.service.ts`, `paginate()`). Checked for the literal key `'full_count'`, but the DB client is configured with `transform: postgres.camel`, so the actual key is always `fullCount`. The check never matched, silently falling back to `rows.length` (the current page's size) as the reported total. Affects bim elements, issues, captures, projects, notifications, and users list endpoints.
 
@@ -161,12 +161,12 @@ None of these are related to the BIM viewer directly, but were discovered while 
 
 These are treated as permanent forensic assets, not throwaway debug scripts — retained for the next pass at Issue 2, or the next time a similar BIM viewer geometry/loading issue needs this kind of investigation.
 
-- `tools/bim-debug/generate-fragment.cjs` — generates a `.frag` from a raw `.ifc` using the exact production `IfcImporter` code path (own workspace package, pinned to the same `@thatopen/fragments`/`web-ifc` versions as `apps/ifc-service`).
-- `tools/bim-debug/extract-minimal-repro.cjs`, `extract-sized-subset.cjs`, `extract-prefix-subset.cjs`, `reserialize-full.cjs` — IFC dependency-closure extractors used for the MRE and binary-search testing above.
-- `tools/bim-debug/hash-compare.cjs` — SHA-256 + size comparison for `.frag` (or any) files.
-- `apps/web/dev-harness/repro.html` + `repro-main.ts` — standalone Vite-served harness replicating `BimViewer.tsx`'s world/camera/renderer/fragments setup, parametrized by query string (`?file=name`), for isolated (non-production) testing of camera and geometry behavior. Lives inside `apps/web` because it needs Vite's dev server and the app's resolved `node_modules`, but is excluded from production builds via `vite.config.ts`'s explicit `rollupOptions.input` (only `index.html` is ever built) and is not linked from anywhere in the shipped app. Verified via a real `vite build` that only `dist/index.html` is produced.
-- **Critical caveat for anyone reusing `repro-main.ts`'s geometry-scanning logic**: `model.getItemsGeometry(localIds)` can return an array shorter than the requested `localIds`, omitting entries for zero-geometry items rather than padding them. Always index by the request (`meshData[j] ?? []`), never iterate the returned array directly (`for (const x of meshData)`) — that exact pattern produced two of the three retracted claims in this investigation.
-- `tools/bim-debug/fragment_determinism.test.ts` — a Jest regression test (currently `describe.skip`/`it.todo`, gated behind `BIM_DEBUG_SOURCE_IFC`) documenting the expected end-state: N generations of the same file should produce identical zero-geometry sets, ideally an empty one. Not yet runnable end-to-end — the geometry-verification half needs a browser/Worker context this repo has only exercised manually so far, not from Jest.
+- `tools/bim-debug/generate-fragment.cjs`: generates a `.frag` from a raw `.ifc` using the exact production `IfcImporter` code path (own workspace package, pinned to the same `@thatopen/fragments`/`web-ifc` versions as `apps/ifc-service`).
+- `tools/bim-debug/extract-minimal-repro.cjs`, `extract-sized-subset.cjs`, `extract-prefix-subset.cjs`, `reserialize-full.cjs`: IFC dependency-closure extractors used for the MRE and binary-search testing above.
+- `tools/bim-debug/hash-compare.cjs`: SHA-256 + size comparison for `.frag` (or any) files.
+- `apps/web/dev-harness/repro.html` + `repro-main.ts`: standalone Vite-served harness replicating `BimViewer.tsx`'s world/camera/renderer/fragments setup, parametrized by query string (`?file=name`), for isolated (non-production) testing of camera and geometry behavior. Lives inside `apps/web` because it needs Vite's dev server and the app's resolved `node_modules`, but is excluded from production builds via `vite.config.ts`'s explicit `rollupOptions.input` (only `index.html` is ever built) and is not linked from anywhere in the shipped app. Verified via a real `vite build` that only `dist/index.html` is produced.
+- **Critical caveat for anyone reusing `repro-main.ts`'s geometry-scanning logic**: `model.getItemsGeometry(localIds)` can return an array shorter than the requested `localIds`, omitting entries for zero-geometry items rather than padding them. Always index by the request (`meshData[j] ?? []`), never iterate the returned array directly (`for (const x of meshData)`): that exact pattern produced two of the three retracted claims in this investigation.
+- `tools/bim-debug/fragment_determinism.test.ts`: a Jest regression test (currently `describe.skip`/`it.todo`, gated behind `BIM_DEBUG_SOURCE_IFC`) documenting the expected end-state: N generations of the same file should produce identical zero-geometry sets, ideally an empty one. Not yet runnable end-to-end — the geometry-verification half needs a browser/Worker context this repo has only exercised manually so far, not from Jest.
 - A local, throwaway PostgreSQL 18 instance was used to `pg_restore` a real production backup for exact, verified element/GUID/type counts, avoiding reliance on memory or assumptions about database state. Not part of the committed tooling (ad hoc, data-dependent, requires a fresh backup file each time).
 
 ---
@@ -188,14 +188,14 @@ Grounded in real commit timestamps, not reconstructed from memory. Where orderin
 - `8e195fa` Fixed the "Fit to model" button
 - `45aa4ff` Added temporary wheel-event diagnostic logging for the root-cause hunt
 - `8c10996` Found and fixed the unrelated `POST /auth/refresh` 500 bug
-- `c965f24` **Camera root cause confirmed and fixed** — `infinityDolly`
+- `c965f24` **Camera root cause confirmed and fixed**: `infinityDolly`
 - `c2b2259` Added a temporary diagnostic hook — the missing-geometry audit begins
 - `96b044f` Found and fixed two pagination bugs surfaced by that audit
 
 **2026-08-03 — Geometry investigation deepens, is frozen (not solved); provenance feature built**
 - *(inferred order, no individual commits)* Hypotheses 1–4 tested and disproved (representation type, Brep welds, content/scale, dependency-version parity)
 - Filed [engine_fragment#260](https://github.com/ThatOpen/engine_fragment/issues/260) upstream, with initial framing later found to need correction
-- **Sparse-array `getItemsGeometry()` counting bug discovered** — both the client-side and server-side "confirmed nondeterminism" claims (Hypotheses 5–6) retracted as a result; the GitHub issue was corrected in place rather than left standing
+- **Sparse-array `getItemsGeometry()` counting bug discovered**: both the client-side and server-side "confirmed nondeterminism" claims (Hypotheses 5–6) retracted as a result; the GitHub issue was corrected in place rather than left standing
 - `4a152eb` Archived the investigation as a report (pre-provenance version)
 - `9a67499` Relocated forensic tooling into `tools/bim-debug/` and `apps/web/dev-harness/`
 - A direct question about the production `.frag`'s exact provenance surfaced the checksum gap this investigation hadn't closed — investigation formally **frozen**, explicitly not claimed solved

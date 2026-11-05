@@ -72,7 +72,7 @@ Inspected directly against the current `main` tip (not assumed):
   Phase 3C/3D ships a frontend route) until explicitly wired in, so
   landing this incrementally on `main` carries the same low risk as any
   other additive, flag-off-by-default feature.
-- **No unified "Settings" hub page** — `AiSettingsPage`/
+- **No unified "Settings" hub page**: `AiSettingsPage`/
   `DeveloperSettingsPage` are separate top-level routes, not sections of
   one page. `SETTINGS → EMAIL INTEGRATION` will be a new
   `EmailSettingsPage` following that same pattern (Phase 3C/3D/3E).
@@ -110,7 +110,7 @@ Provider-agnostic pieces only — no Outlook- or Gmail-specific code yet
 (that's 3C/3D). Everything here is shared by both.
 
 **Files added:**
-- `apps/api/src/database/migrations/065_email_integrations.sql` — one
+- `apps/api/src/database/migrations/065_email_integrations.sql`: one
   shared table (`provider` column distinguishes Outlook/Gmail rows, not
   two parallel tables), RLS `tenant_isolation` policy (migration 052
   pattern), encrypted token columns (ciphertext/IV/auth-tag triples for
@@ -120,7 +120,7 @@ Provider-agnostic pieces only — no Outlook- or Gmail-specific code yet
   implements (`buildAuthorizeUrl`/`exchangeCodeForTokens`/
   `refreshAccessToken`/`fetchConnectedEmailAddress`), and
   `ProviderTokens`/`DecryptedConnection` shapes.
-- `apps/api/src/modules/email-integration/oauth-state.util.ts` — signed,
+- `apps/api/src/modules/email-integration/oauth-state.util.ts`: signed,
   self-describing OAuth state (same HMAC design as Calendar's, kept as
   its own copy rather than modifying the working original; see the
   file's own comment), with a `provider` field so a state signed for
@@ -139,7 +139,7 @@ Provider-agnostic pieces only — no Outlook- or Gmail-specific code yet
   `OutlookModule`/`GmailModule` once those exist (3C/3D), not yet
   registered in `app.module.ts` itself since there is no
   provider-agnostic controller to expose.
-- `packages/types/src/email-integration.types.ts` — the shared
+- `packages/types/src/email-integration.types.ts`: the shared
   `EmailProvider`/`EmailIntegrationStatus` shapes the frontend will
   consume once 3C/3D add routes.
 
@@ -164,7 +164,7 @@ this stage delivers the connection and the one piece sending will need
 nothing to send from until the composer exists.
 
 **OAuth design decisions, with rationale:**
-- **Delegated permissions only** — the brief's own instruction ("do not
+- **Delegated permissions only**: the brief's own instruction ("do not
   request application-wide mailbox access merely to simplify
   implementation"). `MicrosoftGraphClient` requests
   `openid email offline_access https://graph.microsoft.com/Mail.Send`,
@@ -221,7 +221,7 @@ test with a real account):
    `https://engineeringos-api.onrender.com/api/v1/email-integration/outlook/callback`
    (add `http://localhost:3000/api/v1/email-integration/outlook/callback`
    too if you want local-dev testing).
-5. After creation, copy the **Application (client) ID** — this is
+5. After creation, copy the **Application (client) ID**: this is
    `MICROSOFT_OAUTH_CLIENT_ID`. If you chose single-tenant, also copy the
    **Directory (tenant) ID** — this is `MICROSOFT_OAUTH_TENANT`.
 6. **Certificates & secrets** → **New client secret** → copy the secret
@@ -316,12 +316,12 @@ a paid Google Workspace, and who the real users are):**
    required at all**, regardless of scope. This is very likely the right
    choice if your actual users are your own company's Workspace accounts,
    and avoids the entire verification question below.
-2. **External app type, Testing mode** — up to 100 explicitly-added test
+2. **External app type, Testing mode**: up to 100 explicitly-added test
    users, no verification required, but each test user sees an
    "unverified app" warning screen during consent and must click through
    it. Fine for an internal pilot/rollout even without Workspace, not
    fine for a public-facing product.
-3. **External app type, Production (published) status** — required once
+3. **External app type, Production (published) status**: required once
    you exceed 100 users or want to remove the warning screen for
    non-added users. Since `gmail.send` is a Gmail API scope, this
    requires Google's full OAuth verification process, which **for a
@@ -386,7 +386,7 @@ end to end, per the brief's own standard.
 
 **Built, bottom-up, in one verified pass:**
 
-- **Audit trail**: migration `066_email_messages.sql` — `email_messages`
+- **Audit trail**: migration `066_email_messages.sql`: `email_messages`
   table, metadata-only by deliberate design (see the migration's own
   header comment): company/project/related-record IDs, initiating user,
   provider, sender/recipient addresses, subject, provider message/thread
@@ -474,13 +474,13 @@ Added an "Email" entry point, each opening the same `EmailComposerModal`
 with `prefill` set to that record's own type/ID and a subject seeded from
 its number + title/subject, to every module the brief's Section 7 names:
 
-- `RfiDetailPage.tsx` — header actions, next to "Back to RFIs".
+- `RfiDetailPage.tsx`: header actions, next to "Back to RFIs".
   `prefill={{ subject: '<rfiNumber>: <subject>', relatedRecordType: 'rfi', relatedRecordId: rfi.id }}`.
-- `IssueDetail.tsx` — header card action button group, next to "Edit".
+- `IssueDetail.tsx`: header card action button group, next to "Edit".
   `relatedRecordType: 'issue'`.
-- `SubmittalDetailModal.tsx` — badge row (opens as a second, stacked modal
+- `SubmittalDetailModal.tsx`: badge row (opens as a second, stacked modal
   on top of the submittal modal). `relatedRecordType: 'submittal'`.
-- `SnagDetail.tsx` — header card action button group, next to "Edit".
+- `SnagDetail.tsx`: header card action button group, next to "Edit".
   `relatedRecordType: 'snag_item'`.
 
 None of these auto-send, auto-populate recipients, or touch the record's
@@ -662,13 +662,13 @@ actually exercise.
 
 ## Open items requiring the account owner's action (running list)
 
-1. **Microsoft Entra App Registration** — needed before Phase 3C can be
+1. **Microsoft Entra App Registration**: needed before Phase 3C can be
    tested with a real account. Exact steps will be given when Phase 3C
    is implemented.
 2. **Google Cloud OAuth client** (separate from Calendar's existing,
    still-unconfigured one) — needed before Phase 3D can be tested with a
    real account. Exact steps will be given when Phase 3D is implemented.
-3. **Google OAuth verification / Microsoft admin consent** — to be
+3. **Google OAuth verification / Microsoft admin consent**: to be
    investigated and documented precisely in 3C/3D, per the brief's
    explicit "do not assume verification is unnecessary" instruction.
 

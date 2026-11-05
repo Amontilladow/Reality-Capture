@@ -84,7 +84,7 @@ guaranteed compatible on both sides.
   Elements, into `bim_spatial_nodes`
 - Extracts element properties (arbitrary Pset key/value pairs) into
   `bim_elements.properties` (jsonb)
-- Extracts quantities (`IfcElementQuantity` — length/area/volume/weight/
+- Extracts quantities (`IfcElementQuantity`: length/area/volume/weight/
   count) into `bim_element_quantities`
 - Extracts materials (handles direct material, layer sets, and material
   lists) into `bim_materials` / `bim_element_materials`
@@ -128,7 +128,7 @@ from any evaluated library).
 
 ### Bugs found and fixed during verification (all confirmed via a failing
 test first, then a fix, then a passing re-test — not assumed)
-1. **Postgres bulk-insert misuse** — `INSERT INTO x SELECT ... FROM
+1. **Postgres bulk-insert misuse**: `INSERT INTO x SELECT ... FROM
    ${sql(rows, cols)}` is not valid usage of postgres.js's bulk-insert
    helper (it emits a full `(cols) VALUES (...)` clause, not something
    usable as a `FROM` source). Caused a hard crash (`x.replace is not a
@@ -136,15 +136,15 @@ test first, then a fix, then a passing re-test — not assumed)
    repository methods (elements, quantities, materials, classifications,
    relationships) to use the documented form: `INSERT INTO table
    ${sql(rows, cols)}` directly.
-2. **Missing required column** — `insertElementsBatch` never included
+2. **Missing required column**: `insertElementsBatch` never included
    `project_id`, which is `NOT NULL` on `bim_elements`. Fixed.
-3. **camelCase read-back mismatch** — `RETURNING id, ifc_guid` results
+3. **camelCase read-back mismatch**: `RETURNING id, ifc_guid` results
    were read via `row.ifc_guid` (snake_case), but the connection's
    `postgres.camel` transform returns `row.ifcGuid` (camelCase) — so
    dependent maps (element GUID → DB id) were always empty past the first
    row, silently dropping quantities/materials/classifications for every
    element after the first. Fixed in 3 call sites.
-4. **Bull job-id reuse breaking reprocess** — `enqueueParseJob` reused
+4. **Bull job-id reuse breaking reprocess**: `enqueueParseJob` reused
    `modelId` as the Bull job id on every enqueue. Bull treats job id as a
    lifetime dedup key (not just "while active"), so re-adding the same id
    after the original job **completed** silently no-op'd — reprocess
@@ -152,7 +152,7 @@ test first, then a fix, then a passing re-test — not assumed)
    Confirmed via zero `job_start` log events despite a 200 response. Fixed
    by using a fresh unique job id (`${modelId}:${timestamp}`) per enqueue;
    `modelId` remains the stable identifier for all DB/business logic.
-5. **jsonb key-casing on `stage_completion`** — postgres.js's camel
+5. **jsonb key-casing on `stage_completion`**: postgres.js's camel
    transform rewrites jsonb **value** keys (not just column names) on
    every read, e.g. writing `{extracting_hierarchy: true}` reads back as
    `{extractingHierarchy: true}`. `isStageComplete()` was checking the
@@ -203,7 +203,7 @@ local S3-compatible server — `s3rver`, standing in for MinIO/R2 since
   counts both times — deterministic.
 
 ### Known limitations (honestly scoped, not silently missing)
-- Stage-level resume, not element-level (see above) — acceptable for
+- Stage-level resume, not element-level (see above): acceptable for
   current model sizes; a future enhancement for very large (multi-GB)
   models would be batch-level checkpointing within the properties stage.
 - Never tested against a true multi-GB IFC file — no such fixture was
@@ -228,12 +228,12 @@ local S3-compatible server — `s3rver`, standing in for MinIO/R2 since
    thumbnail/rendition pipeline (`sharp` + `exifr`, embedded in
    `apps/api`) replaces the Phase-1 stub. See
    `apps/api/src/modules/captures/processors/image-processing.processor.ts`.
-2. **AI validation** — live verification of `search.py` / `assistant.py`
+2. **AI validation**: live verification of `search.py` / `assistant.py`
    against a real embedding pipeline. Blocked by network allowlist
    (`huggingface.co` unreachable), not a code defect. Qdrant itself is
    confirmed reachable in this sandbox via GitHub release binary.
-3. **Export** — not yet investigated at all.
-4. **Production-readiness audit** — full pass across the platform, once
+3. **Export**: not yet investigated at all.
+4. **Production-readiness audit**: full pass across the platform, once
    the above are done.
 
 ## BIM Viewer (frontend): IN PROGRESS, core flow built and verified
@@ -326,13 +326,13 @@ frontend integration (see above).
   limitations above.
 
 ## Blockers (environmental, not code)
-- MinIO/S3 itself unreachable in this sandbox (`dl.min.io` blocked) — a
+- MinIO/S3 itself unreachable in this sandbox (`dl.min.io` blocked): a
   local `s3rver` stand-in was used for real verification instead (see IFC
   engine verification section); production MinIO/R2 behavior should still
   be smoke-tested once deployed somewhere that can reach it.
 - HuggingFace Hub unreachable — blocks live embedding tests for AI
   search/assistant.
-- Qdrant server IS reachable (GitHub release binary) — update any future
+- Qdrant server IS reachable (GitHub release binary): update any future
   assumption that it isn't.
 - No true multi-GB IFC test fixture was obtainable; see IFC engine
   limitations above.

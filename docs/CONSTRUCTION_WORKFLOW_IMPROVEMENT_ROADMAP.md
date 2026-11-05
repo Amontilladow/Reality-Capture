@@ -114,10 +114,10 @@ For each: user problem, intended roles, required source data, proposed workflow,
 
 ## Part 4: Recommended build order
 
-1. **Feature 1 (RFI aging alerts)** — lowest complexity, highest confidence of value (direct parity with an already-proven pattern), zero new schema.
-2. **Feature 3 (recurring defect detection)** — low-medium complexity, genuinely novel value, zero new schema.
-3. **Feature 4 (project-level team workload)** — low complexity, moderate value, zero new schema.
-4. **Feature 2 (drawing approval cycle)** — defer until validated with real customers; needs a schema decision.
-5. **Feature 5 (document approval cycle)** — defer further; same reasoning as Feature 2, lower priority.
+1. **Feature 1 (RFI aging alerts)**: lowest complexity, highest confidence of value (direct parity with an already-proven pattern), zero new schema.
+2. **Feature 3 (recurring defect detection)**: low-medium complexity, genuinely novel value, zero new schema.
+3. **Feature 4 (project-level team workload)**: low complexity, moderate value, zero new schema.
+4. **Feature 2 (drawing approval cycle)**: defer until validated with real customers; needs a schema decision.
+5. **Feature 5 (document approval cycle)**: defer further; same reasoning as Feature 2, lower priority.
 
 Features 1, 3, and 4 share a key property worth naming explicitly: **none require a new database table or a new write path** — they're all read-side aggregations over data the platform already collects for other purposes. That makes them genuinely low-risk, and they are the three carried into the 30/60/90-day roadmap's P1 tier (see `ENGINEERINGOS_30_60_90_DAY_ROADMAP.md`).

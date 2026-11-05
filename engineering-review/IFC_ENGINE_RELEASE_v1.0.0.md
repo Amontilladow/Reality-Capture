@@ -82,29 +82,29 @@ the same library guarantees producer (`apps/api`) and consumer
                                                 └──────────────────┘
 ```
 
-- **`apps/api`** — owns model registration, the presigned-upload flow,
+- **`apps/api`**: owns model registration, the presigned-upload flow,
   status polling, and reprocess triggering. Contains **zero** IFC parsing
   logic and has no source-level dependency on `apps/ifc-service`.
-- **`apps/ifc-service`** — a separately deployable NestJS app. Owns the
+- **`apps/ifc-service`**: a separately deployable NestJS app. Owns the
   entire parse → extract → generate → report pipeline. Has its own
   `DatabaseService` and `StorageService` (deliberately duplicated, not
   imported from `apps/api`, so it can be built/deployed with zero
   reference to the other app's code).
-- **Redis / Bull** — the only coupling between the two apps. `apps/api`
+- **Redis / Bull**: the only coupling between the two apps. `apps/api`
   calls `queue.add()`; `apps/ifc-service` has the `@Processor` that
   consumes it. Job payload shape is a shared contract in
   `packages/types/src/ifc-processing.types.ts` (imported by both, but this
   is a pure type-only shared package, not shared runtime code).
-- **PostgreSQL** — shared database, both apps connect directly (not
+- **PostgreSQL**: shared database, both apps connect directly (not
   through each other). Row-level security scopes every query by
   `company_id`; both apps set `app.current_company_id` per-transaction via
   their respective `withTenant()` helpers.
-- **Object storage (S3-compatible)** — holds the original uploaded IFC
+- **Object storage (S3-compatible)**: holds the original uploaded IFC
   file and the generated Fragments file. `apps/ifc-service` downloads the
   former and uploads the latter directly.
-- **`web-ifc`** — parses the IFC/STEP file, exposes the spatial structure
+- **`web-ifc`**: parses the IFC/STEP file, exposes the spatial structure
   tree and per-entity attribute/property/quantity/material access.
-- **`@thatopen/fragments`** (`IfcImporter`) — runs its own internal
+- **`@thatopen/fragments`** (`IfcImporter`): runs its own internal
   `web-ifc` instance to convert the file into the compact Fragments binary
   format for efficient viewer delivery.
 
@@ -186,12 +186,12 @@ apps/ifc-service/
 ```
 
 ### Module responsibilities, one line each
-- `IfcParserService` — the only place that touches `web-ifc` directly.
-- `IfcFragmentsService` — the only place that touches `@thatopen/fragments`.
-- `IfcRepositoryService` — the only place that writes to IFC-related tables.
-- `IfcReportService` — pure function: inputs in, report text/object out.
-- `JobMetrics` — observability only; no side effects on the pipeline's data.
-- `IfcProcessingProcessor` — orchestration only; delegates all real work.
+- `IfcParserService`: the only place that touches `web-ifc` directly.
+- `IfcFragmentsService`: the only place that touches `@thatopen/fragments`.
+- `IfcRepositoryService`: the only place that writes to IFC-related tables.
+- `IfcReportService`: pure function: inputs in, report text/object out.
+- `JobMetrics`: observability only; no side effects on the pipeline's data.
+- `IfcProcessingProcessor`: orchestration only; delegates all real work.
 
 ---
 
@@ -268,10 +268,10 @@ All tables have row-level security matching the existing tenant-isolation
 pattern (`company_id = current_setting('app.current_company_id')`).
 
 ### Resume mechanism (on `bim_models`)
-- `stage_completion` (jsonb) — one boolean flag per pipeline stage. Set
+- `stage_completion` (jsonb): one boolean flag per pipeline stage. Set
   **inside the same transaction** as that stage's data writes, so a flag
   can only be true if its data genuinely committed.
-- `processing_stage` / `processing_progress` — live-updated for polling,
+- `processing_stage` / `processing_progress`: live-updated for polling,
   independent of the resume mechanism.
 - `attempt_count`, `started_at`, `completed_at`, `duration_ms`,
   `peak_memory_bytes`, `elements_skipped`, `warnings` — observability.
@@ -288,32 +288,32 @@ See Release Notes bug #5 for why this matters and how it was found.
 
 Executed in this exact order by `IfcProcessingProcessor.handle()`:
 
-1. **Upload** — handled entirely by `apps/api` + client, before a job ever exists.
-2. **Queue** — `apps/api` enqueues; `apps/ifc-service` is the sole consumer.
-3. **Parse** — `web-ifc` opens the model from downloaded bytes; malformed
+1. **Upload**: handled entirely by `apps/api` + client, before a job ever exists.
+2. **Queue**: `apps/api` enqueues; `apps/ifc-service` is the sole consumer.
+3. **Parse**: `web-ifc` opens the model from downloaded bytes; malformed
    files fail here with a readable error (verified).
-4. **Spatial hierarchy** — one recursive walk of `getSpatialStructure()`
+4. **Spatial hierarchy**: one recursive walk of `getSpatialStructure()`
    builds the Site→Building→Storey→Space tree AND simultaneously derives
    aggregation/containment relationships (same walk, not a second pass).
-5. **Elements** — every non-spatial node from the walk becomes a
+5. **Elements**: every non-spatial node from the walk becomes a
    `bim_elements` row, batched (200/batch) to bound memory.
-6. **Properties** — per-element Pset key/value pairs, extracted in the
+6. **Properties**: per-element Pset key/value pairs, extracted in the
    same batch pass as elements (one web-ifc read per element, not three).
-7. **Quantities** — `IfcElementQuantity` values, same batch pass.
-8. **Materials** — direct material / layer set / material list, same batch pass.
-9. **Classifications** — one global query for
+7. **Quantities**: `IfcElementQuantity` values, same batch pass.
+8. **Materials**: direct material / layer set / material list, same batch pass.
+9. **Classifications**: one global query for
    `IfcRelAssociatesClassification`, resolved against already-inserted
    element ids.
-10. **Relationships** — aggregates + contained-in-structure (from the tree
+10. **Relationships**: aggregates + contained-in-structure (from the tree
     walk) plus voids/fills (one more global query), stored by GUID.
-11. **Fragments** — `@thatopen/fragments` converts the file to a compact
+11. **Fragments**: `@thatopen/fragments` converts the file to a compact
     binary, uploaded to storage. **Failure here is a warning, not a job
     failure** — the structured data is already safely persisted by this
     point, and a viewer-convenience file failing shouldn't undo that.
-12. **Report generation** — structured (`bim_import_reports.report_json`)
+12. **Report generation**: structured (`bim_import_reports.report_json`)
     and human-readable (`report_text`) versions, in the exact format
     requested, logged and persisted.
-13. **Completion** — `bim_models.status = 'ready'` (or `'failed'`, with
+13. **Completion**: `bim_models.status = 'ready'` (or `'failed'`, with
     `processing_error` set, on any unhandled exception — Bull's
     attempts/backoff then governs automatic retry).
 
@@ -423,11 +423,11 @@ path.
   business expects to support, with headroom above the baseline ~200MB.
 
 ### Monitoring
-- `GET /health` — liveness/readiness (checks DB connectivity).
+- `GET /health`: liveness/readiness (checks DB connectivity).
 - Structured JSON log lines for `job_start`, `stage_start`, `stage_end`,
   `element_skipped`, `job_end` — every line includes `modelId`, so logs
   are filterable per-import in any log aggregator.
-- `bim_models.status = 'failed'` + `processing_error` — the primary
+- `bim_models.status = 'failed'` + `processing_error`: the primary
   signal for alerting; consider a poll/alert on failed-status counts.
 
 ### Logging
@@ -528,12 +528,12 @@ orchestrated (not executed) by `apps/api`.
    element in a batch.
 4. Bull job-id reuse across reprocess attempts — silently no-op'd re-runs
    of already-completed jobs.
-5. jsonb key-casing on `stage_completion` — resume-skip logic never
+5. jsonb key-casing on `stage_completion`: resume-skip logic never
    actually triggered until fixed (stages redid unnecessarily, though
    safely).
 
 Plus one defect found during the final release audit itself:
-6. `report_json` was being persisted as an empty `{}` — the structured
+6. `report_json` was being persisted as an empty `{}`: the structured
    report object was built but discarded before being saved. Fixed;
    verified `report_json` now contains the full structured report.
 

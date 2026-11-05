@@ -10,34 +10,34 @@ Specific, not summarized. Organized by feature.
 - `apps/ifc-service/` created from scratch as a standalone NestJS app
   (own `package.json`, `nest-cli.json`, `.swcrc`, `tsconfig.json`,
   `.env.local`/`.env.example`).
-- `src/config/{app,database,redis,storage}.config.ts` — `registerAs()`
+- `src/config/{app,database,redis,storage}.config.ts`: `registerAs()`
   pattern matching `apps/api`'s conventions.
-- `src/database/{database.module.ts,database.service.ts}` — independent
+- `src/database/{database.module.ts,database.service.ts}`: independent
   postgres.js connection + `withTenant()`/`withTransaction()` helpers.
-- `src/storage/{storage.module.ts,storage.service.ts}` — S3 download
+- `src/storage/{storage.module.ts,storage.service.ts}`: S3 download
   (original IFC) + upload (Fragments), path-style client.
-- `src/health/health.controller.ts` — `GET /health`.
-- `src/ifc/ifc-value.util.ts` — unwraps web-ifc's typed attribute value
+- `src/health/health.controller.ts`: `GET /health`.
+- `src/ifc/ifc-value.util.ts`: unwraps web-ifc's typed attribute value
   objects (`{value}`, `{_representationValue}`) into plain JS values;
   `extractQuantityValue()` for the 6 IFC quantity subtypes.
-- `src/ifc/ifc-parser.service.ts` — `openModel()` (with malformed-file
+- `src/ifc/ifc-parser.service.ts`: `openModel()` (with malformed-file
   error handling), `walkHierarchy()` (single tree walk producing spatial
   nodes + element skeletons + aggregates/contained-in-structure
   relationships together), `getVoidsAndFills()`, `getClassifications()`,
   `extractElement()` (per-element properties+quantities+materials in one
   pass).
-- `src/ifc/ifc-fragments.service.ts` — wraps `@thatopen/fragments`'
+- `src/ifc/ifc-fragments.service.ts`: wraps `@thatopen/fragments`'
   `IfcImporter`.
-- `src/ifc/ifc-repository.service.ts` — all Postgres writes:
+- `src/ifc/ifc-repository.service.ts`: all Postgres writes:
   `runStage()` (atomic stage + `stage_completion` flag), batch insert
   methods for elements/quantities/materials/classifications/
   relationships, `finalize()`, `saveReport()`.
-- `src/ifc/ifc-report.service.ts` — builds the exact requested report
+- `src/ifc/ifc-report.service.ts`: builds the exact requested report
   format (duration, peak memory, element/hierarchy/object counts,
   warnings/errors, extraction counts, Fragments status).
-- `src/ifc/job-metrics.ts` — per-stage timing, peak RSS memory tracking,
+- `src/ifc/job-metrics.ts`: per-stage timing, peak RSS memory tracking,
   element processed/skipped counts, structured JSON log lines.
-- `src/ifc/ifc-processing.processor.ts` — the Bull `@Processor`,
+- `src/ifc/ifc-processing.processor.ts`: the Bull `@Processor`,
   orchestrates all 11 pipeline stages in order, batches elements 200/
   batch, checks `stage_completion` to skip already-done stages on resume.
 - Migrations: `apps/api/src/database/migrations/003_ifc_processing.sql`
@@ -49,7 +49,7 @@ Specific, not summarized. Organized by feature.
   `reprocessModel()`, `getModelViewerData()`, `getHierarchy()`,
   `getElementByGuid()`, and `getElement()` enriched with quantities/
   materials/classifications.
-- `packages/types/src/ifc-processing.types.ts` — the full job/progress/
+- `packages/types/src/ifc-processing.types.ts`: the full job/progress/
   extraction-input contract shared (as types only) between `apps/api` and
   `apps/ifc-service`.
 - Test fixtures: `apps/ifc-service/test-fixtures/{IfcOpenHouse_IFC4.ifc,
@@ -76,12 +76,12 @@ Specific, not summarized. Organized by feature.
    requests once the original job had completed (Bull treats job id as a
    lifetime dedup key). Fixed: unique `${modelId}:${timestamp}` per
    enqueue.
-5. jsonb key-casing on `stage_completion` — postgres.js's camel transform
+5. jsonb key-casing on `stage_completion`: postgres.js's camel transform
    rewrites jsonb *value* keys too, not just column names, so
    `isStageComplete()` was checking the wrong casing and resume-skip never
    actually triggered (safe, but not actually resuming). Fixed with a
    `toCamelKey()` conversion matching postgres.js's own `toCamel()`.
-6. `report_json` was persisted as an empty `{}` — the structured report
+6. `report_json` was persisted as an empty `{}`: the structured report
    object was built then discarded. Fixed; verified non-empty.
    Also removed 2 unused type definitions found via repo-wide search
    during the release audit (`ParsedElementBatch`, `IfcProcessingProgress`).
@@ -101,30 +101,30 @@ Specific, not summarized. Organized by feature.
 ## Feature: BIM Viewer (frontend)
 
 ### Completed
-- `apps/web/src/lib/bim.api.ts` — full REST client module: `listBimModels`,
+- `apps/web/src/lib/bim.api.ts`: full REST client module: `listBimModels`,
   `getModelUploadUrl`, `registerBimModel`, `uploadBimModel` (combines
   upload+register), `getModelStatus`, `reprocessModel`,
   `getModelViewerData`, `getModelHierarchy`, `getElement`,
   `getElementByGuid`, `listElements`, `updateElementStatus`.
-- `apps/web/src/components/BimModelUploadModal.tsx` — drag/drop IFC
+- `apps/web/src/components/BimModelUploadModal.tsx`: drag/drop IFC
   upload, per-file progress, mirrors the existing `CaptureUploadModal`
   pattern.
-- `apps/web/src/components/bim-viewer/BimViewer.tsx` — core 3D viewer:
+- `apps/web/src/components/bim-viewer/BimViewer.tsx`: core 3D viewer:
   `@thatopen/components` `Components`/`Worlds`/`SimpleScene`/
   `OrthoPerspectiveCamera`/`SimpleRenderer`, `@thatopen/fragments` model
   loading, click-to-select with highlight, `fitToModel()` and
   `selectByGuid()` exposed via `forwardRef`/`useImperativeHandle`.
-- `apps/web/src/components/bim-viewer/SpatialTree.tsx` — builds a nested
+- `apps/web/src/components/bim-viewer/SpatialTree.tsx`: builds a nested
   tree from the flat `bim_spatial_nodes` API response, click to select.
-- `apps/web/src/components/bim-viewer/PropertyPanel.tsx` — renders
+- `apps/web/src/components/bim-viewer/PropertyPanel.tsx`: renders
   element attrs, properties, quantities, materials, classifications.
-- `apps/web/src/components/bim-viewer/ElementSearch.tsx` — search box,
+- `apps/web/src/components/bim-viewer/ElementSearch.tsx`: search box,
   results click through to both the property panel and a 3D highlight
   via `BimViewer`'s `selectByGuid`.
-- `apps/web/src/pages/BimModelsPage.tsx` — list, upload trigger, live
+- `apps/web/src/pages/BimModelsPage.tsx`: list, upload trigger, live
   status/progress polling (`refetchInterval` while any model is pending/
   processing), retry-on-failure.
-- `apps/web/src/pages/BimViewerPage.tsx` — full-bleed layout: spatial
+- `apps/web/src/pages/BimViewerPage.tsx`: full-bleed layout: spatial
   tree (left) + 3D viewer (center) + property panel (right) + search in
   the toolbar.
 - Routing added to `App.tsx`: `/projects/:projectId/bim` (inside
@@ -135,7 +135,7 @@ Specific, not summarized. Organized by feature.
   `getHierarchy()`, `getElementByGuid()` in `bim.service.ts`/
   `bim.controller.ts`; `getElement()` enriched with quantities/materials/
   classifications.
-- `apps/web/package.json` — added `@thatopen/components@3.4.7`,
+- `apps/web/package.json`: added `@thatopen/components@3.4.7`,
   `@thatopen/fragments@3.4.6`, `camera-controls@^3.1.2`,
   `web-ifc@0.0.77`; upgraded `three` from `^0.169.0` to `^0.182.0` (peer
   requirement of `@thatopen/components`).
@@ -188,7 +188,7 @@ Specific, not summarized. Organized by feature.
 ## Feature: Notifications (real, replacing an earlier fake stub)
 
 ### Completed
-- Migration `002_notifications.sql` — `notifications` table, RLS.
+- Migration `002_notifications.sql`: `notifications` table, RLS.
 - `apps/api/src/modules/notifications/{notifications.service.ts,
   notifications.controller.ts,notifications.module.ts}` — create, list
   (paginated, unread-only filter), unread count, mark-read, mark-all-read.

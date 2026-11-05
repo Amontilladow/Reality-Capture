@@ -144,7 +144,7 @@ verification, load testing).
   method's own comment documents a prior version that raced (separate
   SELECT-then-UPDATE) and how it was confirmed and fixed. No change made
   here; this was verified, not assumed.
-- **Root `pnpm lint` was red before this pass** — 3 pre-existing
+- **Root `pnpm lint` was red before this pass**: 3 pre-existing
   `@typescript-eslint/no-unused-vars` errors, unrelated to this sprint's
   own changes (`rfi-notice-letter-pdf.template.ts`: two unused brand-color
   constants; `rfis.service.ts`: an unused `pageWidth` destructure). Fixed
@@ -294,7 +294,7 @@ the cast before the guard.
   which is stale (that entry itself notes the underlying incident was
   "Confirmed fixed 2026-08-06"; `render.yaml`'s `preDeployCommand` appears
   to be that fix, added after `KNOWN_ISSUES.md` was last updated).
-- **Startup itself does not run migrations** — `apps/api/Dockerfile`'s
+- **Startup itself does not run migrations**: `apps/api/Dockerfile`'s
   `CMD` is `node apps/api/dist/main`, nothing else. Only Render's
   `preDeployCommand` mechanism runs them, and only there. This is the
   right split: migrations are a release-gate concern, not a request-path

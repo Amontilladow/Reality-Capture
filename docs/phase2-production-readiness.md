@@ -641,7 +641,7 @@ has been activated this session; nothing above has changed.
   incident (`app_bypass_rls` role-creation failure, 2026-10-04) to its
   root cause and confirmed same-day resolution, with zero recurrence
   since (Section 11).
-- Added `.github/workflows/post-deploy-health-check.yml` — a read-only
+- Added `.github/workflows/post-deploy-health-check.yml`: a read-only
   post-deploy readiness poll against the existing public health endpoint,
   since there was previously zero automated signal when a deploy broke
   production (which has happened twice: 2026-10-04 and 2026-10-08)
@@ -678,7 +678,7 @@ succeeds; the new workflow's YAML was syntax-validated.
 3. Staging/dev environment — duplicating the Render blueprint has a real
    monthly cost; do you want a cost estimate before I document the
    concrete setup options?
-4. Backup/recovery (Section 10) — I cannot verify this via any tool
+4. Backup/recovery (Section 10): I cannot verify this via any tool
    available in this session (the database correctly has no public
    network access). Please open `engineeringos-db` → Backups in the
    Render dashboard and tell me the configured frequency/retention, or
@@ -705,11 +705,11 @@ Section 2. **VERIFIED COMPLETE.**
 ### 2. Changes made
 
 1. Added `helmet` security-headers middleware to `apps/api` (Section 9).
-2. Fixed `app.set('trust proxy', 1)` — resolved a real bug where rate
+2. Fixed `app.set('trust proxy', 1)`: resolved a real bug where rate
    limiting was a single shared bucket across all users instead of
    per-client, and login-IP logging was recording the wrong address
    (Section 9).
-3. Added `.github/workflows/post-deploy-health-check.yml` — read-only
+3. Added `.github/workflows/post-deploy-health-check.yml`: read-only
    post-deploy readiness polling (Section 12).
 4. Wrote this tracking document (`docs/phase2-production-readiness.md`).
 
@@ -720,10 +720,10 @@ already in place before this phase started. **VERIFIED COMPLETE.**
 
 ### 3. Files changed
 
-- `apps/api/package.json`, `pnpm-lock.yaml` — added `helmet` dependency.
-- `apps/api/src/main.ts` — `helmet()` middleware, `trust proxy` setting.
-- `.github/workflows/post-deploy-health-check.yml` — new file.
-- `docs/phase2-production-readiness.md` — new file (this document).
+- `apps/api/package.json`, `pnpm-lock.yaml`: added `helmet` dependency.
+- `apps/api/src/main.ts`: `helmet()` middleware, `trust proxy` setting.
+- `.github/workflows/post-deploy-health-check.yml`: new file.
+- `docs/phase2-production-readiness.md`: new file (this document).
 
 **VERIFIED COMPLETE.**
 
@@ -825,7 +825,7 @@ since no AI provider key is configured at all.
 2. No staging/dev environment — every merge to `main` goes straight to
    production with no pre-production gate beyond CI's lint/test/build
    and the new post-deploy health check (Sections 3, 12).
-3. No custom domain (Section 4) — not a functional blocker, both services
+3. No custom domain (Section 4): not a functional blocker, both services
    work correctly on their `*.onrender.com` URLs, but named here since the
    brief's own objective #1 is a production domain.
 4. No load test has ever been run — current capacity under 100 concurrent
@@ -838,18 +838,18 @@ configuration confirmed and a real restore test passed (Section 10).
 
 ### 13. Exact actions requiring your involvement
 
-1. **Custom domain** — tell me the registrar/DNS provider and approve the
+1. **Custom domain**: tell me the registrar/DNS provider and approve the
    purchase cost, or confirm you don't want one yet.
-2. **AI Assistant provider key** — confirm whether this feature should be
+2. **AI Assistant provider key**: confirm whether this feature should be
    live; if yes, I'll add the `sync: false` declaration to `render.yaml`
    and you paste the real key only into the Render dashboard (never into
    this chat).
-3. **Staging environment** — approve the recurring cost (roughly doubles
+3. **Staging environment**: approve the recurring cost (roughly doubles
    the current fixed-cost total) before I build it, or tell me to
    document the setup without building it yet.
-4. **Alerting** — tell me if you want Render's built-in deploy-failure/
+4. **Alerting**: tell me if you want Render's built-in deploy-failure/
    metric alerts configured (no cost) and which channel (email/Slack).
-5. **Load testing** — explicit approval needed before even a safe,
+5. **Load testing**: explicit approval needed before even a safe,
    low-intensity test runs against any environment, and production is
    off-limits for an aggressive one regardless.
 

@@ -111,7 +111,7 @@ overlaps with those.)
   with the repo's existing "quality/lint sprint comes later" policy.
 - **`strictPropertyInitialization`/`noUnusedLocals`** disabled repo-wide —
   same deferred-quality-sprint policy, predates this phase.
-- **`apps/web` production bundle size** — ~6.8MB main JS
+- **`apps/web` production bundle size**: ~6.8MB main JS
   (~1.3MB gzipped) due to Three.js + `@thatopen/components` +
   `@thatopen/fragments`. Functionally fine; code-splitting the viewer
   route (dynamic `import()`) would improve initial page load. Not done —
@@ -182,11 +182,11 @@ overlaps with those.)
   performance (see `IFC_ENGINE_RELEASE_v1.0.0.md`'s Performance section)
   but has not been empirically load-tested at real-world scale. The
   audit independently flagged the same gap.
-- **[Audit] No load/stress testing performed** — concurrent imports,
+- **[Audit] No load/stress testing performed**: concurrent imports,
   high user concurrency, queue backlog behavior under hundreds of queued
   jobs, worker crash/restart recovery under load. All architecturally
   reasoned about, none empirically tested.
-- **[Audit] No live penetration testing performed** — XSS, CSRF, SSRF,
+- **[Audit] No live penetration testing performed**: XSS, CSRF, SSRF,
   and similar live-attack classes require an actual running, attackable
   instance and/or dedicated security tooling, neither of which is
   available in this environment. Source-level review found no obvious
@@ -197,11 +197,11 @@ overlaps with those.)
   embedding step needs `huggingface.co`, which is outside this sandbox's
   network allowlist. Qdrant itself IS confirmed reachable (downloaded via
   GitHub release binary). Not a code defect — an environment constraint.
-- **IFC2x3 schema** — only IFC4 has been directly tested (via the
+- **IFC2x3 schema**: only IFC4 has been directly tested (via the
   `IfcOpenHouse` fixture and its hand-augmented copy). `web-ifc` supports
   both schemas and the extraction code doesn't assume schema version, but
   no real IFC2x3 sample has been run through the pipeline.
-- **Production MinIO/R2 behavior** — all storage verification this phase
+- **Production MinIO/R2 behavior**: all storage verification this phase
   used `s3rver` (a local Node-based S3-compatible emulator) as a stand-in,
   because `dl.min.io` is blocked in this sandbox's network allowlist. The
   API-level logic (presigned URLs, upload/download calls) is verified
@@ -245,7 +245,7 @@ overlaps with those.)
   with other tutorials/examples found online, since this project pins
   specific versions (`3.4.7`/`3.4.6`) that may differ from what's
   commonly documented.
-- **Export functionality has not been investigated at all** — first step
+- **Export functionality has not been investigated at all**: first step
   for that item is scoping, not implementation.
 
 ## Future Enhancement

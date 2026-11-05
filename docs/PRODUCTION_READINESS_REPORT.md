@@ -79,7 +79,7 @@ Full detail in `KNOWN_ISSUES_AND_REMEDIATION.md`; summarized by area:
 
 ## 7. Missing Capabilities
 
-- No literal "engineering calculations" feature exists (UAT-E in the acceptance matrix) — the closest real functionality is BIM Models access.
+- No literal "engineering calculations" feature exists (UAT-E in the acceptance matrix): the closest real functionality is BIM Models access.
 - No e2e test suite exists despite a `test:e2e` script being configured (0 `.spec.ts` files under `apps/api/test`).
 - Web frontend has minimal automated test coverage (2 test files).
 - No staging environment.
@@ -93,7 +93,7 @@ Full detail in `KNOWN_ISSUES_AND_REMEDIATION.md`; summarized by area:
 2. Set a real `GEMINI_API_KEY`/`ANTHROPIC_API_KEY`/`OPENAI_API_KEY` to make the AI Assistant functional in production (currently unset in `render.yaml`).
 3. Set real `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` if billing needs to be live at launch.
 4. Set real Microsoft Entra / Google Cloud OAuth app credentials to enable live Outlook/Gmail connection (needed to fully verify UAT-K beyond code review).
-5. Decide on, and schedule, the open High-severity items (H-1 cross-project access gap, H-3 dependency upgrades, H-4 Google Calendar plaintext tokens) — each has a recommended fix documented in `KNOWN_ISSUES_AND_REMEDIATION.md` but was deliberately not applied unilaterally in this engagement given its broader scope.
+5. Decide on, and schedule, the open High-severity items (H-1 cross-project access gap, H-3 dependency upgrades, H-4 Google Calendar plaintext tokens): each has a recommended fix documented in `KNOWN_ISSUES_AND_REMEDIATION.md` but was deliberately not applied unilaterally in this engagement given its broader scope.
 6. Decide whether to invest in a staging environment before the next major release, given its absence limits how confidently any future change can be validated before reaching production.
 
 ## 9. What Was Tested and Verified
@@ -111,7 +111,7 @@ One test failed outright: **TC-SEC-10** — a deactivated user's pre-existing ac
 - Live AI provider failure modes (timeout, real 429) against an actually-configured provider (no provider key available in this sandbox; the code path and the one specific failure scenario asked about — a BYO decrypt failure not leaking into the response — were both verified via the automated test suite reproducing the exact scenario).
 - The full line-by-line body of `documents.controller.ts`, `drawings.controller.ts`, `captures.controller.ts`, `submittals.controller.ts`, `transmittals.controller.ts`, `qa.controller.ts` beyond decorator-level review (the pattern found — ungated create, `manage_project_records`-gated update/delete — was consistent everywhere it was checked, but not every line of every one of these files was read).
 - The complete `apps/web/src` frontend for every frontend-only-enforcement gap (two representative components were checked and matched their server-side rules; the rest was not exhaustively audited).
-- The Google Calendar integration module's plaintext-token-storage claim was not independently re-verified against current source this engagement (relied on an in-repo comment cross-reference) — flagged as H-4, not confirmed exploited.
+- The Google Calendar integration module's plaintext-token-storage claim was not independently re-verified against current source this engagement (relied on an in-repo comment cross-reference): flagged as H-4, not confirmed exploited.
 - A real database restore (the Phase 2 restore test was not re-run this engagement — re-running it would require provisioning real disposable Render infrastructure, outside this sandbox's reach).
 
 ## 12. What Has Been Fixed and Retested
@@ -121,11 +121,11 @@ All five Critical findings (C-1 through C-5) — fixed in this engagement's own 
 ## 13. What Remains Before Production Deployment
 
 In priority order:
-1. Resolve the `CREDENTIAL_ENCRYPTION_KEY` production-history question (§8.1) — this alone could be a hard blocker depending on the answer.
-2. Decide on and schedule H-1 (cross-project access gap) and H-3 (dependency upgrades) — both have clear, documented fixes, neither was applied unilaterally given their broader scope.
+1. Resolve the `CREDENTIAL_ENCRYPTION_KEY` production-history question (§8.1): this alone could be a hard blocker depending on the answer.
+2. Decide on and schedule H-1 (cross-project access gap) and H-3 (dependency upgrades): both have clear, documented fixes, neither was applied unilaterally given their broader scope.
 3. Set the missing production secrets (§8.2–8.4) relevant to the features you intend to launch with.
 4. Run a proper staged load test against production-equivalent infrastructure before relying on the local-sandbox performance numbers in §6 as proof of 100-concurrent-user readiness.
-5. Make an informed decision on each Medium/Low item in `KNOWN_ISSUES_AND_REMEDIATION.md` — none are blocking on their own, but several (account lockout, health-check status code, APM) are the kind of thing worth deciding deliberately rather than by default.
+5. Make an informed decision on each Medium/Low item in `KNOWN_ISSUES_AND_REMEDIATION.md`: none are blocking on their own, but several (account lockout, health-check status code, APM) are the kind of thing worth deciding deliberately rather than by default.
 
 ## 14. Expected Costs Not Verifiable From This Sandbox
 
