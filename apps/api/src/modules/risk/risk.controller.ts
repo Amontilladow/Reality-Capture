@@ -1,5 +1,6 @@
 import { BadRequestException, Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Delete, Res, StreamableFile } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import type { AuthenticatedUser, RiskNodeType } from '@engineeringos/types';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -97,9 +98,12 @@ export class RiskController {
   }
 
   @Get('briefing')
+  // Paid LLM call: own tighter bucket on top of the per-role AiUsageService
+  // quota the service applies (same pattern as the assistant's ai.controller.ts).
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'AI-generated project risk briefing, grounded in the executive summary/top risks/clusters -- never a raw model call' })
   async getAiBriefing(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
-    return { data: await this.risk.generateAiBriefing(u.companyId, pid), error: null };
+    return { data: await this.risk.generateAiBriefing(u.companyId, pid, u), error: null };
   }
 
   // Binary-response endpoint -- same StreamableFile + passthrough Response
@@ -256,9 +260,12 @@ export class RiskController {
   }
 
   @Get(':riskId/ai-explanation')
+  // Paid LLM call: own tighter bucket on top of the per-role AiUsageService
+  // quota the service applies (same pattern as the assistant's ai.controller.ts).
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'AI-generated explanation of this risk, grounded in its own factors/evidence/chain -- never a different recommendation than the deterministic one' })
   async getAiExplanation(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('riskId') riskId: string) {
-    return { data: await this.risk.generateAiExplanation(u.companyId, pid, riskId), error: null };
+    return { data: await this.risk.generateAiExplanation(u.companyId, pid, riskId, u), error: null };
   }
 
   @Patch(':riskId/override')

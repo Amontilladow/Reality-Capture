@@ -11,7 +11,7 @@ import { AiClientModule } from '../ai-client/ai-client.module';
 import { AiController } from './ai.controller';
 import { AiService } from './ai.service';
 import { AiToolsService } from './ai-tools.service';
-import { AiUsageService } from './ai-usage.service';
+import { AiUsageModule } from './ai-usage.module';
 import { DomainGuardService } from './domain-guard.service';
 import { ProvidersModule } from './providers/providers.module';
 import { AiConnectionsModule } from '../ai-connections/ai-connections.module';
@@ -31,8 +31,9 @@ import { QaModule } from '../qa/qa.module';
     RfisModule, IssuesModule, SnaggingModule, RiskModule,
     ProgressReportsModule, DocumentsModule, ProjectsModule, DrawingsModule, AiClientModule,
     ProvidersModule, AiConnectionsModule, QaqcModule, SubmittalsModule, TransmittalsModule, QaModule,
+    AiUsageModule,
   ],
   controllers: [AiController],
-  providers: [AiService, AiToolsService, AiUsageService, DomainGuardService],
+  providers: [AiService, AiToolsService, DomainGuardService],
 })
 export class AiModule {}

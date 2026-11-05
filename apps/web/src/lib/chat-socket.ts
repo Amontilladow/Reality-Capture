@@ -1,5 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import { useAuthStore } from '../store/auth.store';
+import { refreshAccessToken } from './api';
 
 // Singleton Socket.io connection for the live chat widget (namespace /chat).
 // Connected once the user is authenticated, and torn down + recreated
@@ -40,6 +41,9 @@ const SOCKET_BASE_URL = resolveSocketBaseUrl();
 
 let socket: Socket | null = null;
 let currentToken: string | null = null;
+// The token a server-side disconnect already triggered a refresh for, so a
+// socket the server keeps rejecting can't loop on /auth/refresh.
+let refreshedAfterDisconnect: string | null = null;
 
 const listeners = new Set<() => void>();
 function notifyListeners() {
@@ -61,6 +65,17 @@ function connectSocket(token: string) {
     reconnection: true,
   });
   currentToken = token;
+  // The gateway re-checks the session on every event and drops the socket
+  // once its access token expires (or the user/company is deactivated).
+  // socket.io never auto-reconnects after a server-side disconnect, and a
+  // chat-only user may make no REST call to trigger api.ts's 401 refresh --
+  // so refresh here. A new token reconnects via syncSocketWithAuth(); a
+  // failed refresh clears the session (signed out), same as for REST.
+  socket.on('disconnect', (reason) => {
+    if (reason !== 'io server disconnect' || refreshedAfterDisconnect === token) return;
+    refreshedAfterDisconnect = token;
+    void refreshAccessToken();
+  });
 }
 
 // Keeps the singleton socket's identity in sync with the auth store's

@@ -1,5 +1,6 @@
 import { Controller, Get, Param, Res, StreamableFile } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { ReportsService } from './reports.service';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -18,9 +19,12 @@ export class ReportsController {
   }
 
   @Get('briefing')
+  // Paid LLM call: own tighter bucket on top of the per-role AiUsageService
+  // quota the service applies (same pattern as the assistant's ai.controller.ts).
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'AI-generated cross-domain report briefing (Conclusion/Drivers/Impact/Action/Evidence), grounded in the same KPIs/risk summary this page already shows -- never a raw model call' })
   async getAiBriefing(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
-    return { data: await this.svc.generateAiBriefing(u.companyId, pid), error: null };
+    return { data: await this.svc.generateAiBriefing(u.companyId, pid, u), error: null };
   }
 
   // Binary-response endpoint -- same StreamableFile + passthrough Response

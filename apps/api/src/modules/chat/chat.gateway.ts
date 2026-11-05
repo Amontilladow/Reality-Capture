@@ -13,6 +13,7 @@ import type { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 import { ChatJoinDto, ChatSendDto } from './dto/chat-gateway.dto';
 import { DatabaseService } from '../../database/database.service';
+import { SessionRevocationService } from '../auth/session-revocation.service';
 import type { JwtPayload, AuthenticatedUser } from '@engineeringos/types';
 
 // NOTE (scaling): single-instance deployment only. Socket.io rooms live in
@@ -23,8 +24,26 @@ import type { JwtPayload, AuthenticatedUser } from '@engineeringos/types';
 // behind a load balancer, a socket.io-redis (or similar) adapter is
 // required for chat:message broadcasts to reach every connected client.
 
+// Same allow-list as the REST API's CORS (main.ts). Read per handshake, not
+// at decoration time, so it sees ALLOWED_ORIGINS however it was loaded.
+function isAllowedOrigin(origin: string | undefined): boolean {
+  if (!origin) return true; // non-browser clients (mobile app) send no Origin
+  const allowed = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:5173').split(',').map(o => o.trim());
+  return allowed.includes(origin);
+}
+
+// Stored on client.data alongside the user, so every event can re-check
+// the session -- a socket outlives the access token it connected with.
+interface ChatSocketSession {
+  user: AuthenticatedUser;
+  tokenExpiresAt: number; // epoch seconds, from the JWT's exp claim
+}
+
 @Injectable()
-@WebSocketGateway({ cors: { origin: true, credentials: true }, namespace: '/chat' })
+@WebSocketGateway({
+  cors: { origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => cb(null, isAllowedOrigin(origin)), credentials: true },
+  namespace: '/chat',
+})
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(ChatGateway.name);
 
@@ -34,7 +53,30 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly jwtService: JwtService,
     private readonly chat: ChatService,
     private readonly db: DatabaseService,
+    private readonly sessionRevocation: SessionRevocationService,
   ) {}
+
+  // The REST equivalent of this is JwtStrategy.validate() (deny-list) plus
+  // TenancyGuard (company still active), which run on every HTTP request.
+  // The handshake alone isn't enough: a socket stays open after its token
+  // expires or its user/company is deactivated, so every event re-checks.
+  private async isSessionValid(session: ChatSocketSession): Promise<boolean> {
+    if (Date.now() / 1000 >= session.tokenExpiresAt) return false;
+    if (await this.sessionRevocation.isDenied(session.user.id)) return false;
+    const [company] = await this.db.withSystemBypass(sql => sql`
+      SELECT id FROM companies WHERE id = ${session.user.companyId} AND is_active = true
+    `);
+    return !!company;
+  }
+
+  // Returns the socket's user if its session is still valid; otherwise
+  // disconnects it and returns undefined.
+  private async requireUser(client: Socket): Promise<AuthenticatedUser | undefined> {
+    const session = client.data.session as ChatSocketSession | undefined;
+    if (session && await this.isSessionValid(session)) return session.user;
+    client.disconnect();
+    return undefined;
+  }
 
   // ── Connection: verify the same JWT used for REST auth, then join rooms ─
   async handleConnection(client: Socket) {
@@ -43,7 +85,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (!token) throw new Error('No token');
 
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
-      if (!payload.sub || !payload.companyId) throw new Error('Invalid payload');
+      if (!payload.sub || !payload.companyId || !payload.exp) throw new Error('Invalid payload');
 
       // Mirrors JwtStrategy.validate()'s exact null-coalescing/field mapping.
       const user: AuthenticatedUser = {
@@ -55,7 +97,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         lastName: payload.lastName ?? '',
         pendingApproval: payload.pendingApproval ?? false,
       };
-      client.data.user = user;
+      const session: ChatSocketSession = { user, tokenExpiresAt: payload.exp };
+      if (!(await this.isSessionValid(session))) throw new Error('Session revoked or company inactive');
+      client.data.session = session;
 
       // Join every project room this user belongs to.
       const projects = await this.db.withTenant(user.companyId, sql => sql`
@@ -85,7 +129,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: ChatJoinDto,
   ) {
-    const user = client.data.user as AuthenticatedUser | undefined;
+    const user = await this.requireUser(client);
     if (!user) return;
 
     // Verify membership the same way sendMessage() does before joining --
@@ -108,7 +152,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: ChatSendDto,
   ) {
-    const user = client.data.user as AuthenticatedUser | undefined;
+    const user = await this.requireUser(client);
     if (!user) return;
 
     const message = await this.chat.sendMessage(

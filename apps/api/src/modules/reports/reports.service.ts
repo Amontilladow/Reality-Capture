@@ -6,8 +6,9 @@ import { IssuesService } from '../issues/issues.service';
 import { SnaggingService } from '../snagging/snagging.service';
 import { RfisService } from '../rfis/rfis.service';
 import { QaqcService } from '../qaqc/qaqc.service';
-import { RiskService } from '../risk/risk.service';
+import { RiskService, AI_QUOTA_REACHED, type AiQuotaSubject } from '../risk/risk.service';
 import { AiClientService } from '../ai-client/ai-client.service';
+import { AiUsageService } from '../ai/ai-usage.service';
 import { BimService } from '../bim/bim.service';
 import { renderReportsPdf, type ReportsPdfSectionData } from './reports-pdf.template';
 
@@ -23,6 +24,7 @@ export class ReportsService {
     private readonly risk: RiskService,
     private readonly aiClient: AiClientService,
     private readonly bim: BimService,
+    private readonly aiUsage: AiUsageService,
   ) {}
 
   // withTenant required -- projects carries the tenant_isolation RLS policy,
@@ -164,7 +166,7 @@ export class ReportsService {
   // never a fabricated narrative) if there's nothing to summarize, the AI
   // service is unreachable, or its response doesn't contain a usable
   // conclusion.
-  async generateAiBriefing(companyId: string, projectId: string): Promise<StructuredBriefing | { unavailable: true; reason: string }> {
+  async generateAiBriefing(companyId: string, projectId: string, user: AiQuotaSubject): Promise<StructuredBriefing | { unavailable: true; reason: string }> {
     const [kpis, risk] = await Promise.all([
       this.getKpis(companyId, projectId),
       this.risk.getExecutiveSummary(companyId, projectId).catch(() => null),
@@ -177,6 +179,11 @@ export class ReportsService {
     }
 
     const context = buildReportsBriefingContext(kpis, risk);
+    // Paid LLM call on the shared provider -- same per-role quota as the
+    // assistant (see RiskService.generateAiBriefing()).
+    if (!(await this.aiUsage.checkAndReserve(user.id, user.companyRole)).allowed) {
+      return { unavailable: true, reason: AI_QUOTA_REACHED };
+    }
     try {
       const { narrative } = await this.aiClient.generateReportsBriefing(companyId, projectId, context);
       const parsed = parseStructuredBriefing(narrative);

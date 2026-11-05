@@ -8,19 +8,12 @@ import { NotificationsService } from '../notifications/notifications.service';
 // IssuesService.scheduleReminder(). Same 5-minute cadence as
 // IssueWarningService's auto-warning cron.
 //
-// Unlike IssueWarningService.checkOverdueIssues() and ScreenshotsService's
-// retention cron, this.db.query() here is correct as-is and does not need
-// DatabaseService.withSystemBypass() (migration 052): issue_reminders never
-// received a tenant_isolation RLS policy in any migration (confirmed by
-// grepping every migration's RLS-enabling table list), unlike issues and
-// workforce_privacy_settings, which those two crons scan. Querying a table
-// with no RLS policy at all behaves the same under app_user as it always
-// did -- this cron was never affected by the ownership-bypass gap migration
-// 052 fixes, because there was no policy here for ownership to bypass.
-// (issue_reminders itself joining the small set of tenant tables that
-// never got RLS -- alongside rfis/submittals/transmittals/qa_inspections/
-// snag_items, a separate, already-tracked finding -- is worth fixing
-// someday, but is not a correctness problem for this specific cron.)
+// The due-reminder scan spans every company, so it runs under
+// DatabaseService.withSystemBypass() (migration 057), the same as
+// IssueWarningService.checkOverdueIssues() and ScreenshotsService's
+// retention cron. issue_reminders had no RLS policy until migration 078;
+// a plain this.db.query() here would now see zero rows. Each reminder is
+// then handled inside its own company's withTenant() below.
 @Injectable()
 export class IssueScheduledRemindersService {
   private readonly logger = new Logger(IssueScheduledRemindersService.name);
@@ -43,11 +36,11 @@ export class IssueScheduledRemindersService {
   }
 
   async fireDueReminders(): Promise<{ checked: number; fired: number }> {
-    const due = await this.db.query`
+    const due = await this.db.withSystemBypass(sql => sql`
       SELECT id, company_id, project_id, issue_id, sent_by, sent_to, message
       FROM issue_reminders
       WHERE scheduled_for IS NOT NULL AND scheduled_for <= NOW() AND sent_at IS NULL
-    `;
+    `);
 
     let fired = 0;
     for (const reminder of due) {

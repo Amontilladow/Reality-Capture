@@ -7,6 +7,7 @@ import { RelationshipExtractionService } from './relationship-extraction.service
 import { SignalsService } from './signals.service';
 import { ScoringService } from './scoring.service';
 import { AiClientService } from '../ai-client/ai-client.service';
+import { AiUsageService } from '../ai/ai-usage.service';
 import { renderRiskPdf, type RiskPdfTopRisk } from './risk-pdf.template';
 
 // Only NCR is risk-worthy among the four QAQC record types -- SOR/WIR/MIR
@@ -112,6 +113,7 @@ export class RiskService {
     private readonly signals: SignalsService,
     private readonly scoring: ScoringService,
     private readonly aiClient: AiClientService,
+    private readonly aiUsage: AiUsageService,
   ) {}
 
   /** Full pipeline for one project: rebuild the graph, redetect signals, recalculate every risk-worthy node. */
@@ -1053,7 +1055,7 @@ export class RiskService {
   // than a 500 or a fabricated narrative -- the deterministic explanation/
   // recommendedAction on the Risk itself remain the ground truth either way.
 
-  async generateAiBriefing(companyId: string, projectId: string): Promise<{ narrative: string } | { unavailable: true; reason: string }> {
+  async generateAiBriefing(companyId: string, projectId: string, user: AiQuotaSubject): Promise<{ narrative: string } | { unavailable: true; reason: string }> {
     const [summary, topRisks, clusters] = await Promise.all([
       this.getExecutiveSummary(companyId, projectId),
       this.getTopRisks(companyId, projectId, 5),
@@ -1063,6 +1065,11 @@ export class RiskService {
       return { unavailable: true, reason: 'No open risks to summarize yet.' };
     }
     const context = buildRiskBriefingContext(summary, topRisks, clusters);
+    // Each call is a paid LLM request on RealityCapture's shared provider,
+    // so it draws on the same per-role quota as the assistant.
+    if (!(await this.aiUsage.checkAndReserve(user.id, user.companyRole)).allowed) {
+      return { unavailable: true, reason: AI_QUOTA_REACHED };
+    }
     try {
       const { narrative } = await this.aiClient.generateRiskBriefing(companyId, projectId, context);
       return { narrative };
@@ -1072,13 +1079,16 @@ export class RiskService {
     }
   }
 
-  async generateAiExplanation(companyId: string, projectId: string, riskId: string): Promise<{ narrative: string } | { unavailable: true; reason: string }> {
+  async generateAiExplanation(companyId: string, projectId: string, riskId: string, user: AiQuotaSubject): Promise<{ narrative: string } | { unavailable: true; reason: string }> {
     const [risk, evidence, chain] = await Promise.all([
       this.getRisk(companyId, riskId),
       this.getEvidenceWithNodes(companyId, riskId),
       this.getRiskChain(companyId, riskId),
     ]);
     const context = buildRiskExplanationContext(risk, evidence, chain);
+    if (!(await this.aiUsage.checkAndReserve(user.id, user.companyRole)).allowed) {
+      return { unavailable: true, reason: AI_QUOTA_REACHED };
+    }
     try {
       const { narrative } = await this.aiClient.explainRisk(companyId, projectId, context);
       return { narrative };
@@ -1088,6 +1098,11 @@ export class RiskService {
     }
   }
 }
+
+// The user an AI briefing/explanation is charged to (AiUsageService quota).
+export type AiQuotaSubject = { id: string; companyRole: string };
+
+export const AI_QUOTA_REACHED = "You've reached your AI usage limit for now. Please try again later.";
 
 // ── Pure context-building functions (exported for direct unit testing) ─────
 

@@ -9,6 +9,7 @@ import { RfisModule } from '../rfis/rfis.module';
 import { QaqcModule } from '../qaqc/qaqc.module';
 import { RiskModule } from '../risk/risk.module';
 import { AiClientModule } from '../ai-client/ai-client.module';
+import { AiUsageModule } from '../ai/ai-usage.module';
 import { BimModule } from '../bim/bim.module';
 
 @Module({
@@ -21,7 +22,7 @@ import { BimModule } from '../bim/bim.module';
   // DatabaseModule/AiClientModule), so no circular-dependency risk.
   // AiClientModule is the same AI reasoning layer RiskModule already uses,
   // reused (not reimplemented) for the Reports AI briefing.
-  imports: [StorageModule, IssuesModule, SnaggingModule, RfisModule, QaqcModule, RiskModule, AiClientModule, BimModule],
+  imports: [StorageModule, IssuesModule, SnaggingModule, RfisModule, QaqcModule, RiskModule, AiClientModule, BimModule, AiUsageModule],
   controllers: [ReportsController, CompanyReportsController],
   providers: [ReportsService],
 })
