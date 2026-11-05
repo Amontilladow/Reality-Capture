@@ -1,8 +1,37 @@
 import { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import type { SiteDrawingOverlay } from './siteDrawingDisplay';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+
+// Composited onto the already-rendered canvas, never onto the PDF bytes
+// themselves (those are untouched in storage; this redraws on every render,
+// every page, every zoom level). A diagonal translucent banner is the
+// familiar "stamped" look for a construction document's status, readable
+// without obscuring the drawing underneath.
+function drawOverlayStamp(canvas: HTMLCanvasElement, overlay: SiteDrawingOverlay) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const { width, height } = canvas;
+
+  ctx.save();
+  ctx.translate(width / 2, height / 2);
+  ctx.rotate(-Math.PI / 8);
+
+  const bandHeight = Math.max(32, Math.min(64, height * 0.07));
+  ctx.globalAlpha = 0.82;
+  ctx.fillStyle = overlay.color;
+  ctx.fillRect(-width, -bandHeight / 2, width * 2, bandHeight);
+
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${Math.max(14, Math.round(bandHeight * 0.5))}px system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(overlay.label, 0, 1);
+  ctx.restore();
+}
 
 // A dedicated multi-page document viewer for the Site Drawing Hub;
 // DrawingViewer.tsx (components/drawing/) is a single-page, pin-overlay
@@ -13,7 +42,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 // renderer an impractically long time to rasterize; see DrawingViewer's
 // own comment on the real file that motivated this), without copying its
 // pin-specific code.
-export function SiteDrawingPdfViewer({ fileUrl, onNumPages }: { fileUrl: string; onNumPages?: (n: number) => void }) {
+export function SiteDrawingPdfViewer({ fileUrl, overlay, onNumPages }: { fileUrl: string; overlay?: SiteDrawingOverlay; onNumPages?: (n: number) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
@@ -52,6 +81,14 @@ export function SiteDrawingPdfViewer({ fileUrl, onNumPages }: { fileUrl: string;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stableUrlKey]);
 
+  // overlay is a freshly computed object on every caller render (siteDrawingOverlay()
+  // isn't memoized by its caller); keying the render effect on its VALUES rather than
+  // its reference stops an unrelated parent re-render from re-triggering a full,
+  // visibly-flickering PDF re-render just to redraw the exact same stamp.
+  const overlayRef = useRef(overlay);
+  overlayRef.current = overlay;
+  const overlayKey = overlay ? `${overlay.label}|${overlay.color}` : '';
+
   useEffect(() => {
     if (!pdfDoc) return;
     let cancelled = false;
@@ -89,6 +126,7 @@ export function SiteDrawingPdfViewer({ fileUrl, onNumPages }: { fileUrl: string;
         if (outcome === 'timeout' && !cancelled) outcome = await attemptRender(pdfPage, canvas, viewport, 15000);
         if (cancelled) return;
         if (outcome === 'timeout') throw new Error('RENDER_TIMEOUT');
+        if (overlayRef.current) drawOverlayStamp(canvas, overlayRef.current);
       } catch (err) {
         const isCancellation = err instanceof Error && err.name === 'RenderingCancelledException';
         if (!cancelled && !isCancellation) {
@@ -102,7 +140,7 @@ export function SiteDrawingPdfViewer({ fileUrl, onNumPages }: { fileUrl: string;
     }
     render();
     return () => { cancelled = true; currentRenderTask?.cancel(); };
-  }, [pdfDoc, page, zoom]);
+  }, [pdfDoc, page, zoom, overlayKey]);
 
   return (
     <div className="flex flex-col h-full">
@@ -129,7 +167,13 @@ export function SiteDrawingPdfViewer({ fileUrl, onNumPages }: { fileUrl: string;
         {error && (
           <div className="flex items-center justify-center h-full text-sm text-danger text-center max-w-sm">{error}</div>
         )}
-        {!error && <canvas role="img" aria-label="Site drawing page" ref={canvasRef} className="shadow-lg" style={{ display: loading ? 'none' : 'block' }} />}
+        {!error && (
+          <canvas
+            role="img"
+            aria-label={overlay ? `Site drawing page, status: ${overlay.label}` : 'Site drawing page'}
+            ref={canvasRef} className="shadow-lg" style={{ display: loading ? 'none' : 'block' }}
+          />
+        )}
       </div>
     </div>
   );

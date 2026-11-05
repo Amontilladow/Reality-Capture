@@ -3,12 +3,13 @@ import { apiGet, apiGetWithMeta, apiPatch, apiPost } from './api';
 import type {
   SiteDrawingWithCurrentRevision, SiteDrawingRevision, SiteDrawingWorkflowStatus,
   SiteDrawingOfflinePackage, SiteDrawingOfflinePackageStatus, SiteDrawingSourceHealth,
+  SiteDrawingImportBatch, SiteDrawingReviewQueueItem, DocSource,
 } from '@engineeringos/types';
 export type {
   SiteDrawing, SiteDrawingRevision, SiteDrawingWithCurrentRevision, SiteDrawingWorkflowStatus,
   SiteDrawingOfflinePackage, SiteDrawingOfflinePackageStatus, SiteDrawingSourceHealth, SiteDrawingSourceProvider,
   SiteDrawingDocumentClassification, SiteDrawingExtractionStatus, SiteDrawingImportBatch, SiteDrawingImportBatchStatus,
-  ExtractedDrawingFields,
+  SiteDrawingReviewQueueItem, ExtractedDrawingFields, DocSource,
 } from '@engineeringos/types';
 export {
   SITE_DRAWING_WORKFLOW_STATUSES, VALID_FOR_SITE_USE_STATUSES, SITE_DRAWING_DOCUMENT_CLASSIFICATIONS,
@@ -125,3 +126,51 @@ export const revalidateOfflinePackage = (projectId: string, packageId: string) =
 
 export const removeOfflinePackage = (projectId: string, packageId: string) =>
   apiPatch<{ removed: boolean }>(`${base(projectId)}/offline-packages/${packageId}/remove`, {});
+
+// ── Bulk import (ZIP/PDF packages) + review queue ──────────────────────────
+// The backend side of this (SiteDrawingImportController/Service) already
+// existed with no frontend client at all -- these functions, the upload
+// flow below, and the Hub's Import/Review Queue UI are what actually make
+// it reachable.
+
+const importBase = (projectId: string) => `${base(projectId)}/import-batches`;
+
+export const getImportBatchUploadUrl = (projectId: string, filename: string) =>
+  apiPost<{ uploadUrl: string; storageKey: string }>(`${importBase(projectId)}/upload-url`, { filename });
+
+export interface CreateImportBatchInput {
+  storageKey: string;
+  originalFilename: string;
+  sourceSystem: DocSource;
+}
+export const createImportBatch = (projectId: string, input: CreateImportBatchInput) =>
+  apiPost<SiteDrawingImportBatch>(importBase(projectId), input);
+
+// Same 3-step upload flow as uploadAndRegisterSiteDrawing -- the content
+// type has to match exactly what getUploadUrl() signed server-side
+// (SiteDrawingImportService.getUploadUrl: .zip -> application/zip, else
+// application/pdf), or the presigned PUT's signature won't match.
+export async function uploadImportBatch(projectId: string, file: File, sourceSystem: DocSource): Promise<SiteDrawingImportBatch> {
+  const { uploadUrl, storageKey } = await getImportBatchUploadUrl(projectId, file.name);
+  const contentType = file.name.toLowerCase().endsWith('.zip') ? 'application/zip' : 'application/pdf';
+  await axios.put(uploadUrl, file, { headers: { 'Content-Type': contentType } });
+  return createImportBatch(projectId, { storageKey, originalFilename: file.name, sourceSystem });
+}
+
+export const listImportBatches = (projectId: string) =>
+  apiGet<SiteDrawingImportBatch[]>(importBase(projectId));
+
+export const getImportBatch = (projectId: string, batchId: string) =>
+  apiGet<SiteDrawingImportBatch>(`${importBase(projectId)}/${batchId}`);
+
+export const listReviewQueue = (projectId: string) =>
+  apiGet<SiteDrawingReviewQueueItem[]>(`${importBase(projectId)}/review-queue`);
+
+export interface ResolveReviewInput {
+  drawingNumber?: string;
+  drawingTitle?: string;
+  revisionNumber?: string;
+  reviewNotes: string;
+}
+export const resolveReview = (projectId: string, revisionId: string, input: ResolveReviewInput) =>
+  apiPatch<SiteDrawingRevision>(`${importBase(projectId)}/review-queue/${revisionId}`, { ...input, extractionStatus: 'CONFIRMED' });
