@@ -13,7 +13,7 @@
 (workflow PASS/FAIL matrix, subsystem checks, deployment guide, release
 checklist) is in `engineering-review/RC_VERIFICATION_REPORT_v0.1.md`. Zero
 critical/major bugs open. One real gap: no browser-level visual
-verification was possible in this environment (no browser tool) — flagged
+verification was possible in this environment (no browser tool). It is flagged
 explicitly there, not assumed passing.
 
 **IFC Processing Engine: RELEASED v1.0.0, FROZEN.** Full release
@@ -32,7 +32,7 @@ No `/docs` directory exists in this repo. This backlog is built from the
 locked Architecture Specification v1.1 (referenced in the original
 continuation prompt but not included in the handover zip) and the
 documented scope carried forward session to session. Anything not
-traceable to a stated requirement is flagged **[unscoped — needs product
+traceable to a stated requirement is flagged **[unscoped: needs product
 decision]** rather than built speculatively.
 
 **Overall completion (business workflows toward v1.0): ~80%.**
@@ -59,21 +59,21 @@ perf issue found)
 - Real notifications (table + service + polling API), replacing the old
   "Phase 2" log-only stub. Verified live: assign → notification row →
   poll → mark read → idempotent re-mark.
-- **IFC Processing Engine — fully implemented and verified this session.**
+- **IFC Processing Engine: fully implemented and verified this session.**
   See dedicated section below.
 
-## IFC Processing Engine: COMPLETE ✅
+## IFC Processing Engine: COMPLETE
 
 ### Architecture (approved before implementation)
 Full comparison in `engineering-review/IFC_ARCHITECTURE_PROPOSAL.md`.
 Chosen: `web-ifc` (parsing) + `@thatopen/fragments` (viewer-ready geometry),
-run inside a **new standalone app, `apps/ifc-service`** — not embedded in
-`apps/api` — per explicit architectural direction to keep IFC processing
+run inside a **new standalone app, `apps/ifc-service`**, not embedded in
+`apps/api`, per explicit architectural direction to keep IFC processing
 independently deployable. `apps/api` is orchestration-only: it registers
 the model, enqueues a job, and exposes status/reprocess endpoints; it owns
 no parsing logic and has no code dependency on `apps/ifc-service`.
 
-Queue: existing Bull (`@nestjs/bull`) architecture, not BullMQ — both
+Queue: existing Bull (`@nestjs/bull`) architecture, not BullMQ. Both
 producer (`apps/api`) and consumer (`apps/ifc-service`) share the same
 Redis-backed queue (`ifc-processing`), same library, so job data is
 guaranteed compatible on both sides.
@@ -90,10 +90,10 @@ guaranteed compatible on both sides.
   lists) into `bim_materials` / `bim_element_materials`
 - Extracts classifications (`IfcRelAssociatesClassification`, e.g.
   Uniclass/OmniClass) into `bim_element_classifications`
-- Extracts relationships — aggregates, contained-in-structure (both
+- Extracts relationships: aggregates, contained-in-structure (both
   derived from the same spatial tree walk that builds the hierarchy, so
   they're guaranteed consistent with it), plus voids/fills (openings,
-  doors/windows) from a direct global query — into
+  doors/windows) from a direct global query, into
   `bim_element_relationships`
 - Generates Fragments (compact viewer-ready binary) and uploads it to
   object storage alongside the original file
@@ -107,27 +107,27 @@ guaranteed compatible on both sides.
 Processing is broken into ordered stages (`IFC_PROCESSING_STAGES` in
 `packages/types`). Each stage's DB writes happen in **one transaction**
 that clears that stage's prior output for the model and sets
-`bim_models.stage_completion['<stage>'] = true` in the same transaction —
+`bim_models.stage_completion['<stage>'] = true` in the same transaction,
 so a stage is atomic: it either fully landed or didn't happen at all.
 Retries/resumes check `stage_completion` and skip any stage already
-marked done. This is **stage-level resume, not element-level** — a crash
+marked done. This is **stage-level resume, not element-level**: a crash
 mid-stage redoes that whole stage from scratch (safe/idempotent, not
-always minimal-cost for a huge model) — documented as a real, honest
-scope limit, not oversold.
+always minimal-cost for a huge model). This is documented as a known
+scope limit.
 `downloading`/`parsing` always re-run every attempt (cheap, side-effect-
 free, not tracked in `stage_completion`).
 Property/quantity/material extraction is combined into one per-element
-pass (not three) — real per-element web-ifc reads are the expensive part;
-doing it once instead of three times is a genuine efficiency win, and the
+pass (not three). Per-element web-ifc reads are the expensive part;
+doing it once instead of three times is a real efficiency gain, and the
 three stage labels are preserved for progress-reporting granularity only.
 Elements are processed and written in fixed batches (200/batch) so memory
-stays bounded by batch size, not total model size — the realistic
+stays bounded by batch size, not total model size, the realistic
 scalability lever available given web-ifc's synchronous, whole-file-open
 API (see architecture proposal for why streaming parse isn't available
 from any evaluated library).
 
 ### Bugs found and fixed during verification (all confirmed via a failing
-test first, then a fix, then a passing re-test — not assumed)
+test first, then a fix, then a passing re-test, not assumed)
 1. **Postgres bulk-insert misuse**: `INSERT INTO x SELECT ... FROM
    ${sql(rows, cols)}` is not valid usage of postgres.js's bulk-insert
    helper (it emits a full `(cols) VALUES (...)` clause, not something
@@ -140,14 +140,14 @@ test first, then a fix, then a passing re-test — not assumed)
    `project_id`, which is `NOT NULL` on `bim_elements`. Fixed.
 3. **camelCase read-back mismatch**: `RETURNING id, ifc_guid` results
    were read via `row.ifc_guid` (snake_case), but the connection's
-   `postgres.camel` transform returns `row.ifcGuid` (camelCase) — so
+   `postgres.camel` transform returns `row.ifcGuid` (camelCase), so
    dependent maps (element GUID → DB id) were always empty past the first
    row, silently dropping quantities/materials/classifications for every
    element after the first. Fixed in 3 call sites.
 4. **Bull job-id reuse breaking reprocess**: `enqueueParseJob` reused
    `modelId` as the Bull job id on every enqueue. Bull treats job id as a
    lifetime dedup key (not just "while active"), so re-adding the same id
-   after the original job **completed** silently no-op'd — reprocess
+   after the original job **completed** silently no-op'd: reprocess
    requests returned success but the worker never actually re-ran.
    Confirmed via zero `job_start` log events despite a 200 response. Fixed
    by using a fresh unique job id (`${modelId}:${timestamp}`) per enqueue;
@@ -156,24 +156,24 @@ test first, then a fix, then a passing re-test — not assumed)
    transform rewrites jsonb **value** keys (not just column names) on
    every read, e.g. writing `{extracting_hierarchy: true}` reads back as
    `{extractingHierarchy: true}`. `isStageComplete()` was checking the
-   snake_case key directly, so resume-skip never actually triggered — a
+   snake_case key directly, so resume-skip never actually triggered; a
    "resumed" job silently redid every stage (safe, since stages are
    idempotent, but not actually resuming). Root-caused via a direct
    isolated read/write test, then fixed by converting the stage name to
    camelCase (matching postgres.js's own `toCamel()` exactly) before the
    lookup.
 6. **[Found during the final release audit]** `report_json` was being
-   persisted as an empty `{}` — the structured report object returned by
+   persisted as an empty `{}`: the structured report object returned by
    `IfcReportService.build()` was destructured and discarded, only the
    text rendering was kept. Fixed; verified `report_json` now contains
    the full structured report (confirmed non-empty via a live re-run).
    Also removed two unused type definitions (`ParsedElementBatch`,
    `IfcProcessingProgress`) found via repository-wide search during the
-   same audit — dead code from earlier design iterations, confirmed
+   same audit: dead code from earlier design iterations, confirmed
    unreferenced before removal.
 
 ### Verification performed (all live, against real Postgres + Redis + a
-local S3-compatible server — `s3rver`, standing in for MinIO/R2 since
+local S3-compatible server, `s3rver`, standing in for MinIO/R2 since
 `dl.min.io` is blocked in this sandbox's network allowlist)
 - **Happy path, full pipeline, twice** (once before cleanup, once as a
   final regression check after all fixes): upload via real presigned URL
@@ -182,11 +182,11 @@ local S3-compatible server — `s3rver`, standing in for MinIO/R2 since
   on disk) and uploaded → report generated and stored → `status: ready`.
   Every table's contents cross-checked against the source IFC file
   (element counts by type, quantity values, material name, classification
-  system/code, relationship counts) — all correct, no regression between
+  system/code, relationship counts), all correct, no regression between
   the two runs.
 - **Malformed IFC**: garbage (non-STEP) input → clean `status: failed`
   with a readable error, **zero** rows in any extraction table, empty
-  `stage_completion` — no partial/corrupted state.
+  `stage_completion`, no partial/corrupted state.
 - **Empty IFC model**: valid IFC4 file with only `IfcProject`, no
   hierarchy or elements → `status: ready`, `element_count: 0`, no crash.
 - **Duplicate upload**: same file registered as two independent models →
@@ -200,20 +200,20 @@ local S3-compatible server — `s3rver`, standing in for MinIO/R2 since
   reflects all 4 tracked stages as done.
 - **Repeated reprocessing (idempotency)**: reprocessed an already-`ready`
   model twice in a row → identical element (40) and relationship (72)
-  counts both times — deterministic.
+  counts both times: deterministic.
 
 ### Known limitations (honestly scoped, not silently missing)
 - Stage-level resume, not element-level (see above): acceptable for
-  current model sizes; a future enhancement for very large (multi-GB)
+  current model sizes; a future option for very large (multi-GB)
   models would be batch-level checkpointing within the properties stage.
-- Never tested against a true multi-GB IFC file — no such fixture was
+- Never tested against a true multi-GB IFC file; no such fixture was
   obtainable in this sandbox (public samples with real Psets/Qtos were
   either too small to exercise every code path, requiring a hand-authored
   synthetic augmentation, or LFS-gated and unreachable). Architecture
   reasoning for large-file behavior is in the proposal doc; it has not
   been empirically load-tested at scale.
 - Fragments generation failure is treated as a warning, not a job
-  failure (by design — hierarchy/properties/etc. are the source of truth
+  failure (by design: hierarchy/properties/etc. are the source of truth
   and are already safely persisted by that point), so a systematically
   broken Fragments pipeline could go unnoticed without someone reading
   warnings. Worth a monitoring/alerting hook eventually, not urgent now.
@@ -224,7 +224,7 @@ local S3-compatible server — `s3rver`, standing in for MinIO/R2 since
 
 ## Remaining features, priority order
 
-1. ~~**Reality Capture (image) processing**~~ — **Shipped.** Real
+1. ~~**Reality Capture (image) processing**~~ **Shipped.** Real
    thumbnail/rendition pipeline (`sharp` + `exifr`, embedded in
    `apps/api`) replaces the Phase-1 stub. See
    `apps/api/src/modules/captures/processors/image-processing.processor.ts`.
@@ -241,31 +241,31 @@ local S3-compatible server — `s3rver`, standing in for MinIO/R2 since
 Built this session, on top of the frozen IFC Processing Engine:
 - `apps/web`: BIM model upload modal, models list with live status/progress
   polling, a real 3D Fragments viewer (`@thatopen/components` +
-  `@thatopen/fragments`), spatial tree, property panel, and element search
-  — all wired into navigation (`ProjectDetail` → "BIM models" link →
+  `@thatopen/fragments`), spatial tree, property panel, and element search.
+  All are wired into navigation (`ProjectDetail` → "BIM models" link →
   models list → "Open viewer" → full-bleed viewer page).
 - `apps/api`: added `getModelViewerData` (presigned Fragments URL +
   status), `getHierarchy` (spatial tree), `getElementByGuid`, and enriched
-  `getElement` with quantities/materials/classifications — all consumed
+  `getElement` with quantities/materials/classifications, all consumed
   by the new frontend pages.
 
 ### Bugs found and fixed during this integration
 7. **Vite/Rollup CJS interop gap (pre-existing, not introduced this
-   session)** — `vite build` failed the moment any file imported a runtime
+   session)**: `vite build` failed the moment any file imported a runtime
    *value* (not just a type) from `@engineeringos/types`, because Vite's
    default `commonjsOptions.include` only targets `node_modules/**`,
    excluding pnpm-workspace-linked packages from CJS→ESM conversion
    entirely. `CapturesPage.tsx` (pre-existing code) was the first file to
    trip this. Fixed in `apps/web/vite.config.ts` by explicitly including
    the workspace package. This was blocking *any* production build of the
-   web app, not just BIM-viewer-related code — a real platform-level fix.
+   web app, not just BIM-viewer-related code. This was a platform-level fix.
 8. **Untyped-null Postgres parameter (same class as the earlier-documented
-   IFC-engine bugs)** — `BimService.getElements()` had bare
+   IFC-engine bugs)**: `BimService.getElements()` had bare
    `${x ?? null} IS NULL` checks with no cast on several optional filters
    (`modelId`, `ifcType`, `levelId`, `constructionStatus`, `search`).
    Postgres can't infer a parameter's type from `IS NULL` alone (that
    operator accepts any type), so the query failed at the *planning*
-   stage — not only when a filter was actually null, but for *any* call,
+   stage, not only when a filter was actually null, but for *any* call,
    because each `${}` becomes its own bind position regardless of whether
    the same JS value also appears elsewhere with a cast. Found via the
    element search feature (first real caller of this endpoint with
@@ -284,8 +284,8 @@ first-person mode, section planes/box, explode, isolation, hide/show,
 transparency, storey/discipline/category filter toggles, issue management
 integrated into the viewer (camera position + screenshot capture),
 dashboard KPIs, dark/light mode, accessibility pass, mobile layouts.
-These are real, substantial scopes of their own — not silently stubbed,
-not claimed as done.
+Each is a substantial piece of work in its own right. None is stubbed or
+claimed as done.
 
 ### Verification performed
 - `tsc --noEmit`: clean (both before and after every change in this slice).
@@ -304,7 +304,7 @@ not claimed as done.
   element search (confirmed correct results across three filter
   combinations after the fix above).
 - **Not verified: actual browser rendering/interaction.** No browser or
-  screenshot tool is available in this environment — the 3D canvas
+  screenshot tool is available in this environment. The 3D canvas
   rendering, click/orbit/search-to-highlight interaction, and overall
   visual correctness have not been confirmed in a real browser. This is
   the single most important remaining verification step before
@@ -321,7 +321,7 @@ frontend integration (see above).
   are solid.
 - `apps/ifc-service`'s `DatabaseService` has the same pre-existing
   postgres.js generic-typing strictness noise as `apps/api`'s (harmless,
-  cosmetic, cataloged not fixed — same category as the item above).
+  cosmetic, cataloged not fixed; same category as the item above).
 - Stage-level (not element-level) resume granularity; see IFC engine
   limitations above.
 
@@ -330,7 +330,7 @@ frontend integration (see above).
   local `s3rver` stand-in was used for real verification instead (see IFC
   engine verification section); production MinIO/R2 behavior should still
   be smoke-tested once deployed somewhere that can reach it.
-- HuggingFace Hub unreachable — blocks live embedding tests for AI
+- HuggingFace Hub unreachable. This blocks live embedding tests for AI
   search/assistant.
 - Qdrant server IS reachable (GitHub release binary): update any future
   assumption that it isn't.
@@ -342,31 +342,31 @@ frontend integration (see above).
 Added as a new phase per an explicit product brief: six BIM-native site
 documentation/coordination features, built one at a time as small, tested,
 independently releasable increments. Do NOT build procurement, finance, or
-estimating — integrate with those systems instead, never replace them.
+estimating; integrate with those systems instead, never replace them.
 Tracked session-to-session via this repo's task list (not duplicated here
 item-by-item); update this section's status line after each feature ships.
 
-1. **F1 — Automated Progress Report.** Per project/building/level report
+1. **F1: Automated Progress Report.** Per project/building/level report
    from captures/pins/issues over a date range (thumbnails, new/closed/
    overdue issues, blockers). In-app view + PDF + expiring public share
-   link + WhatsApp `wa.me` deep link (no WhatsApp API provider — budget
+   link + WhatsApp `wa.me` deep link (no WhatsApp API provider; budget
    paused).
-2. **F2 — Planned vs Actual Progress by Element/Zone.** Status per BIM
+2. **F2: Planned vs Actual Progress by Element/Zone.** Status per BIM
    element/zone (not started/in progress/complete, optional %), each
    change linked to its evidencing capture. Colour-coded BIM viewer
    overlay + per-level summary, feeding F1's totals.
-3. **F3 — Public API and Webhooks.** Per-tenant API keys (hashed,
+3. **F3: Public API and Webhooks.** Per-tenant API keys (hashed,
    revocable), tenant-scoped read endpoints (projects/captures/issues/
    progress), outbound HMAC-signed webhooks with retry/backoff, OpenAPI
    spec.
-4. **F4 — Subcontractor Issue Assignment.** Assignee/due date/status
+4. **F4: Subcontractor Issue Assignment.** Assignee/due date/status
    workflow + overdue flag/filter on Issues and Overview, respecting the
    existing role model (Super Admin approves users; Company Admin default
    authority is project creation only).
-5. **F5 — Evidence-Based Issue Close-Out.** Closing an issue requires at
+5. **F5: Evidence-Based Issue Close-Out.** Closing an issue requires at
    least one evidence photo/capture plus approver sign-off from a
    permitted role; backend-enforced, not just UI; full audit trail.
-6. **F6 — Scheduled Capture Comparison.** Side-by-side comparison of two
+6. **F6: Scheduled Capture Comparison.** Side-by-side comparison of two
    captures of the same Place across two dates, with a date slider.
    Automated change detection explicitly deferred to a later phase.
 
@@ -395,7 +395,7 @@ environment to run the real IFC pipeline, so a fixture was used instead
 of a real processed model) and a full browser pass of the Progress tab,
 zone editor, and element status editor. Known gap: the 3D colour overlay
 itself could not be visually confirmed here for the same storage-pipeline
-reason — it reuses the existing, working `guidsToModelIdMap`/`highlight`
+reason. It reuses the existing, working `guidsToModelIdMap`/`highlight`
 calls, so it should work against a real processed model in the live app;
 flagging for a follow-up visual check once one is available.
 
@@ -414,23 +414,23 @@ signed webhook delivery with an independently-recomputed HMAC match, and
 retry-with-backoff recovering after an endpoint outage (attempts 1→4).
 Caught and fixed a real bug during verification: webhook payloads were
 double-JSON-encoded because the JSONB insert used `JSON.stringify()`
-instead of postgres.js's `sql.json()` — same failure mode already
+instead of postgres.js's `sql.json()`, the same failure mode already
 documented in `tenancy.service.ts`. No known risks or follow-ups.
 
 **Status: F4 shipped.** Most of
 F4's surface (assignee, due date, status workflow, the overdue flag/
 filter on the Issues tab and Overview page) already existed from
 earlier phases. Two real gaps found and fixed, committed and pushed
-(`89f7169`): (1) assignment had no project-membership check — any
+(`89f7169`): (1) assignment had no project-membership check; any
 caller with `manage_issues` could assign to any UUID, including a user
 with no visibility into the project; added
 `assertAssigneeIsProjectMember()` and wired it into `create()`,
 `update()`, and `forward()`. (2) the `overdue`/`myIssues` query filters
-were silently broken — `query.overdue` never gets coerced from the
+were silently broken: `query.overdue` never gets coerced from the
 query-string string `"true"`/`"false"` to a real boolean on this
 undecorated `@Query()` endpoint, and a JS *string* parameter cast with
 `::boolean` in SQL comes back `false` for every input (confirmed by
-direct reproduction against postgres.js — a real client-library
+direct reproduction against postgres.js; a real client-library
 serialization bug, not just a missing cast). `?overdue=true` and
 `?overdue=false` were previously indistinguishable from no filter at
 all. Fixed by coercing to a genuine JS boolean before SQL
@@ -439,22 +439,22 @@ interpolation. Found and fixed the identical bug in
 live via raw API calls (membership rejection, successful member
 assignment, `manage_issues`/admin-only 403s) and in the browser (the
 Issues tab's Overdue filter chip now correctly narrows the list; the
-Overview page's overdue stat tile was never affected — it computes its
+Overview page's overdue stat tile was never affected; it computes its
 count directly in SQL). No known risks or follow-ups.
 
 **Status: F5 shipped.** `close()`/`forceStatus()` (when closing)/
 `bulkClose()` now require (1) at least one evidence capture attached
 (`issue_captures`, new `getEvidenceCaptureId()` check, 400
 `EVIDENCE_REQUIRED` otherwise, with the evidencing `capture_id` recorded
-on the closure's own `issue_activities` row — no migration needed) and
+on the closure's own `issue_activities` row, no migration needed) and
 (2) sign-off from a permitted-approver role via a new
-`isPermittedApprover()` weight comparison — the old "creator can always
+`isPermittedApprover()` weight comparison. The old "creator can always
 close their own issue" bypass is gone. Caught and fixed a real gap
 during this change's own verification: the obvious hardcoded
 `['company_admin','engineering_manager']` array check would have
 silently excluded `super_admin`/`technical_director` despite both
 outranking `engineering_manager` everywhere else in this app (`RolesGuard`
-resolves `@Roles(...)` via weight, not list membership) — fixed to reuse
+resolves `@Roles(...)` via weight, not list membership). Fixed to reuse
 `COMPANY_ROLE_WEIGHT`, and the identical frontend gap in
 `isIssueManager()`/`ISSUE_MANAGER_ROLES` fixed the same way, since
 removing the creator bypass there too would have newly hidden the Close
@@ -464,8 +464,8 @@ way to see what was already attached) and gates the Close button's
 disabled/tooltip state client-side. Committed and pushed (`36182a8`).
 Verified live via raw API calls (evidence-less closure rejected
 regardless of role; a non-permitted creator rejected even with evidence
-attached; a permitted approver — tested for both company_admin-tier and
-super_admin — succeeds once evidence exists, with the capture recorded
+attached; a permitted approver (tested for both company_admin-tier and
+super_admin) succeeds once evidence exists, with the capture recorded
 on the audit row) and in the browser (Close button disabled with "No
 evidence attached yet" until a capture is attached, then enables). No
 known risks or follow-ups.
@@ -473,7 +473,7 @@ known risks or follow-ups.
 **Status: F6 shipped.** Researched before building: BuildLens
 (`BuildLensTimelinePage.tsx`) already had a "Compare" mode rendering two
 captures of the same location side by side, each picked via a plain
-`<select>` dropdown — it already satisfied F6's literal acceptance test
+`<select>` dropdown. It already satisfied F6's literal acceptance test
 ("two captures of the same pin load side by side") but not its "with a
 date slider" requirement, and no other page in the app had any
 comparison UI. Rather than duplicate this as a new page (same data,
@@ -481,7 +481,7 @@ same location model, same existing
 `GET /projects/:projectId/captures/viewer/:locationId` endpoint already
 returns the full dated capture list for a pin), replaced each side's
 dropdown with an `<input type="range">` bound to that side's position
-in the (already chronologically sorted) capture array — dragging it
+in the (already chronologically sorted) capture array; dragging it
 steps through that pin's capture history by date, with the resolved
 date and capture-type icon shown live above each slider. No backend
 change needed; the existing `CaptureMedia` component already branches
@@ -533,6 +533,6 @@ Sprint-based roadmap now (Sprint 1: core platform, done; Sprint 2: Issue
 Management [done] -> Reality Capture [done] -> next up: **Drawings**,
 then RFIs/Submittals/Documents; Sprint 3: QA/QC; Sprint 4: AI/reports).
 The BIM viewer geometry-inconsistency investigation is deliberately
-frozen and out of active scope — tracked as
+frozen and out of active scope, tracked as
 [Amontilladow/Reality-Capture#1](https://github.com/Amontilladow/Reality-Capture/issues/1),
 not a blocker for this roadmap.
