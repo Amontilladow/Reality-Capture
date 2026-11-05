@@ -38,7 +38,7 @@ export default function BuildLensPage() {
   });
 
   // getHierarchy() only returns level-anchored locations (locations.level_id
-  // IS NOT NULL, per projects.service.ts's getHierarchy() query) -- a
+  // IS NOT NULL, per projects.service.ts's getHierarchy() query): a
   // location reached via a floor-plan pin's drawing_id instead never
   // appears here. That's exactly why the "Unassigned" section below exists:
   // any 360° capture whose location doesn't turn up in this tree still gets
@@ -49,7 +49,7 @@ export default function BuildLensPage() {
     enabled: Boolean(projectId),
   });
 
-  // All capture types (360s, standard photos, videos) -- BuildLens shows a
+  // All capture types (360s, standard photos, videos): BuildLens shows a
   // location's full media timeline, not just 360s, per the product decision
   // to make BuildLens the general "watch this location evolve" view rather
   // than a 360-only one.
@@ -60,7 +60,7 @@ export default function BuildLensPage() {
   });
 
   // Per-location capture count/most-recent-date, keyed by locationId.
-  // Deliberately separate from getHierarchy()'s own location.captureCount --
+  // Deliberately separate from getHierarchy()'s own location.captureCount;
   // that field carries no date at all, so it can't drive this page on its
   // own even though it now counts the same thing (every capture type).
   const summaryByLocation = useMemo(() => {
@@ -154,17 +154,17 @@ export default function BuildLensPage() {
         <div className="flex items-center justify-between gap-4">
           <p className="text-sm text-ink-500">See the project evolve.</p>
           {!isEmpty && !isLoading && (
-            <div className="flex items-center gap-1 shrink-0">
-              <span className="text-[11px] text-ink-500 mr-1 font-medium">Sort</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs text-ink-500 mr-2 font-medium">Sort</span>
               {(['recent', 'alpha'] as const).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => setSortMode(mode)}
-                  className={`px-2 py-1 rounded text-xs transition-colors ${
-                    sortMode === mode ? 'bg-signal/15 text-signal' : 'text-ink-500 hover:text-ink-100 hover:bg-base-700'
+                  className={`px-2 py-2 rounded text-xs transition-colors ${
+                    sortMode === mode ? 'bg-signal text-base-800' : 'text-ink-500 hover:text-ink-100 hover:bg-base-700'
                   }`}
                 >
-                  {mode === 'recent' ? 'Most recent' : 'A–Z'}
+                  {mode === 'recent' ? 'Most recent' : 'A to Z'}
                 </button>
               ))}
             </div>
@@ -191,7 +191,7 @@ export default function BuildLensPage() {
               <div key={building.id}>
                 <button
                   onClick={() => toggleBuilding(building.id)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-base-700 text-left"
+                  className="w-full flex items-center gap-2 px-2 py-2 rounded text-sm hover:bg-base-700 text-left"
                 >
                   <Chevron open={openBuildings.has(building.id)} />
                   <BuildingIcon className="w-4 h-4 text-blueprint shrink-0" />
@@ -199,12 +199,12 @@ export default function BuildLensPage() {
                 </button>
 
                 {openBuildings.has(building.id) && (
-                  <div className="ml-4 pl-3 border-l border-base-600 space-y-0.5 mt-0.5 mb-1">
+                  <div className="ml-4 pl-4 border-l border-base-600 space-y-0 mt-0 mb-2">
                     {building.levels.map((level) => (
                       <div key={level.id}>
                         <button
                           onClick={() => toggleLevel(level.id)}
-                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-base-700 text-left"
+                          className="w-full flex items-center gap-2 px-2 py-2 rounded text-sm hover:bg-base-700 text-left"
                         >
                           <Chevron open={openLevels.has(level.id)} />
                           <LevelIcon className="w-3.5 h-3.5 text-ink-500 shrink-0" />
@@ -212,7 +212,7 @@ export default function BuildLensPage() {
                         </button>
 
                         {openLevels.has(level.id) && (
-                          <div className="ml-4 pl-3 border-l border-base-600 space-y-0.5 mt-0.5 mb-1">
+                          <div className="ml-4 pl-4 border-l border-base-600 space-y-0 mt-0 mb-2">
                             {sortLocations(
                               level.locations.map((loc) => summaryByLocation.get(loc.id)!),
                               sortMode,
@@ -232,9 +232,9 @@ export default function BuildLensPage() {
 
         {unassigned.length > 0 && (
           <div className="space-y-2">
-            <div className="flex items-center gap-2 px-1">
+            <div className="flex items-center gap-2 px-2">
               <span className="text-xs text-ink-500 font-medium">Unassigned</span>
-              <span className="text-[10px] text-ink-500" title="Locations reached from a floor-plan pin rather than the building/level hierarchy">
+              <span className="text-xs text-ink-500" title="Locations reached from a floor-plan pin rather than the building/level hierarchy">
                 (not in a building/level)
               </span>
             </div>
@@ -254,14 +254,14 @@ function LocationRow({ loc, onClick, wide }: { loc: LocationSummary; onClick: ()
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 text-left transition-colors hover:bg-base-700 rounded ${
-        wide ? 'px-4 py-3' : 'px-2 py-1.5'
+      className={`w-full flex items-center gap-4 text-left transition-colors hover:bg-base-700 rounded ${
+        wide ? 'px-4 py-4' : 'px-2 py-2'
       }`}
     >
       <TimelineIcon className="w-4 h-4 text-blueprint shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="text-sm truncate">{loc.label}</div>
-        <div className="text-xs text-ink-500 mt-0.5">
+        <div className="text-xs text-ink-500 mt-0">
           {loc.count} capture{loc.count === 1 ? '' : 's'} · most recent{' '}
           {new Date(loc.mostRecent).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
         </div>
@@ -273,14 +273,14 @@ function LocationRow({ loc, onClick, wide }: { loc: LocationSummary; onClick: ()
 
 function Chevron({ open }: { open: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" className={`w-3.5 h-3.5 shrink-0 text-ink-500 transition-transform ${open ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={`w-3.5 h-3.5 shrink-0 text-ink-500 transition-transform ${open ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 function BuildingIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <rect x="4" y="3" width="16" height="18" rx="1" />
       <path d="M8 7h2M14 7h2M8 11h2M14 11h2M8 15h2M14 15h2" strokeLinecap="round" />
     </svg>
@@ -288,14 +288,14 @@ function BuildingIcon({ className }: { className?: string }) {
 }
 function LevelIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M3 12h18M3 12l4-4M3 12l4 4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 function TimelineIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M3 12h4l2-6 4 12 2-6h6" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx="7" cy="12" r="1.3" fill="currentColor" stroke="none" />
       <circle cx="17" cy="12" r="1.3" fill="currentColor" stroke="none" />
@@ -304,7 +304,7 @@ function TimelineIcon({ className }: { className?: string }) {
 }
 function ChevronIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

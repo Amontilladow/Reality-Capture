@@ -14,7 +14,7 @@ import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 export class TransmittalsController {
   constructor(private readonly svc: TransmittalsService) {}
 
-  // Previously ungated -- same new restriction as submittals.controller.ts's
+  // Previously ungated: same new restriction as submittals.controller.ts's
   // own create(), part of the same "Document Approvals" matrix row.
   @Post()
   @RequireCategoryAction('document_approvals', 'create')

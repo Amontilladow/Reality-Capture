@@ -4,13 +4,13 @@ import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
-// A dedicated multi-page document viewer for the Site Drawing Hub --
+// A dedicated multi-page document viewer for the Site Drawing Hub;
 // DrawingViewer.tsx (components/drawing/) is a single-page, pin-overlay
 // canvas built for the Buildlense Captures floor-plan feature and isn't a
 // fit here (no pin placement, needs page navigation instead). This reuses
 // the same proven pdf.js technique for a robust render (timeout + retry +
 // cancellation-aware, since some CAD-exported PDFs take pdf.js's canvas
-// renderer an impractically long time to rasterize -- see DrawingViewer's
+// renderer an impractically long time to rasterize; see DrawingViewer's
 // own comment on the real file that motivated this), without copying its
 // pin-specific code.
 export function SiteDrawingPdfViewer({ fileUrl, onNumPages }: { fileUrl: string; onNumPages?: (n: number) => void }) {
@@ -25,7 +25,7 @@ export function SiteDrawingPdfViewer({ fileUrl, onNumPages }: { fileUrl: string;
 
   // fileUrl is a presigned URL: its signature/expiry changes on every
   // refetch even when the underlying file hasn't (see
-  // SiteDrawingsService.getAuthorizedDownloadUrl's 15-minute expiry) --
+  // SiteDrawingsService.getAuthorizedDownloadUrl's 15-minute expiry);
   // keyed on the stable part so a background refetch doesn't restart an
   // in-progress render.
   const fileUrlRef = useRef(fileUrl);
@@ -106,20 +106,20 @@ export function SiteDrawingPdfViewer({ fileUrl, onNumPages }: { fileUrl: string;
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-base-600 shrink-0">
-        <div className="flex items-center gap-1.5">
-          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="btn-ghost !px-2 !py-1 text-xs disabled:opacity-40">
-            ← Prev
+      <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-base-600 shrink-0">
+        <div className="flex items-center gap-2">
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="btn-ghost !px-2 !py-2 text-xs disabled:opacity-40">
+            Prev
           </button>
-          <span className="text-xs text-ink-300 tabular-nums px-1">Page {page} of {numPages || '—'}</span>
-          <button onClick={() => setPage((p) => Math.min(numPages, p + 1))} disabled={page >= numPages} className="btn-ghost !px-2 !py-1 text-xs disabled:opacity-40">
-            Next →
+          <span className="text-xs text-ink-300 tabular-nums px-2">Page {page} of {numPages || '—'}</span>
+          <button onClick={() => setPage((p) => Math.min(numPages, p + 1))} disabled={page >= numPages} className="btn-ghost !px-2 !py-2 text-xs disabled:opacity-40">
+            Next
           </button>
         </div>
-        <div className="flex items-center gap-1.5">
-          <button onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))} className="btn-ghost !px-2 !py-1 text-xs">−</button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))} className="btn-ghost !px-2 !py-2 text-xs">−</button>
           <span className="text-xs text-ink-500 tabular-nums w-10 text-center">{Math.round(zoom * 100)}%</span>
-          <button onClick={() => setZoom((z) => Math.min(3, z + 0.25))} className="btn-ghost !px-2 !py-1 text-xs">+</button>
+          <button onClick={() => setZoom((z) => Math.min(3, z + 0.25))} className="btn-ghost !px-2 !py-2 text-xs">+</button>
         </div>
       </div>
       <div ref={containerRef} className="flex-1 overflow-auto bg-base-950 flex items-start justify-center p-4">
@@ -129,7 +129,7 @@ export function SiteDrawingPdfViewer({ fileUrl, onNumPages }: { fileUrl: string;
         {error && (
           <div className="flex items-center justify-center h-full text-sm text-danger text-center max-w-sm">{error}</div>
         )}
-        {!error && <canvas ref={canvasRef} className="shadow-lg" style={{ display: loading ? 'none' : 'block' }} />}
+        {!error && <canvas role="img" aria-label="Site drawing page" ref={canvasRef} className="shadow-lg" style={{ display: loading ? 'none' : 'block' }} />}
       </div>
     </div>
   );

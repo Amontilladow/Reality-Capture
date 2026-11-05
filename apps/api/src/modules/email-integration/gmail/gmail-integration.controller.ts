@@ -7,7 +7,7 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Public } from '../../../common/decorators/public.decorator';
 import type { AuthenticatedUser } from '@engineeringos/types';
 
-// Mirrors OutlookIntegrationController (Phase 3C) exactly -- same five
+// Mirrors OutlookIntegrationController (Phase 3C) exactly; same five
 // routes, same shape, same @Public() reasoning on the callback.
 @ApiTags('email-integration')
 @ApiBearerAuth()

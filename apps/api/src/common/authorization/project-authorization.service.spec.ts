@@ -68,7 +68,7 @@ describe('ProjectAuthorizationService.hasProjectPermission', () => {
     const svc = makeService((text, values) => {
       if (text.includes('SELECT role FROM project_members')) return [{ role: 'site_engineer' }];
       if (text.includes('SELECT id FROM project_permission_grants')) {
-        // Only a 'manage_issues' grant exists -- 'manage_rfis' should still be denied.
+        // Only a 'manage_issues' grant exists: 'manage_rfis' should still be denied.
         return values.includes('manage_issues') ? [{ id: 'grant-1' }] : [];
       }
       return undefined;

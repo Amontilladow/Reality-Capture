@@ -57,7 +57,7 @@ export interface UpsertEdgeInput {
   evidence?: Record<string, unknown>;
 }
 
-// Bounds for server-side traversal (brief section 42 — never load the whole
+// Bounds for server-side traversal (brief section 42; never load the whole
 // project graph, and never let one query balloon unboundedly).
 const DEFAULT_MAX_DEPTH = 6;
 const DEFAULT_MAX_NODES = 500;
@@ -65,7 +65,7 @@ const DEFAULT_MAX_NODES = 500;
 /**
  * Thin persistence + traversal layer over risk_graph_nodes/risk_graph_edges
  * (migration 050). Nothing here knows about RFIs, Issues, or any other
- * domain entity — that's RelationshipExtractionService's job. This service
+ * domain entity; that's RelationshipExtractionService's job. This service
  * only knows how to store and walk a generic node/edge graph, tenant-scoped.
  */
 @Injectable()
@@ -138,7 +138,7 @@ export class RiskGraphService {
   }
 
   /**
-   * Every edge whose endpoints are BOTH within nodeIds (brief section 28 —
+   * Every edge whose endpoints are BOTH within nodeIds (brief section 28;
    * the whole-project graph view). Dangling edges to a node outside the
    * given set are intentionally omitted, the standard behavior for a
    * filtered graph view (e.g. after a node-type/discipline filter narrows
@@ -158,7 +158,7 @@ export class RiskGraphService {
       SELECT * FROM risk_graph_edges WHERE from_node_id = ${nodeId}`);
   }
 
-  /** Edges pointing into nodeId — the inverse direction (e.g. "affected by"), derived rather than duplicated (see migration 050). */
+  /** Edges pointing into nodeId: the inverse direction (e.g. "affected by"), derived rather than duplicated (see migration 050). */
   async getIncomingEdges(companyId: string, nodeId: string): Promise<GraphEdgeRow[]> {
     return this.db.withTenant(companyId, sql => sql<GraphEdgeRow[]>`
       SELECT * FROM risk_graph_edges WHERE to_node_id = ${nodeId}`);
@@ -166,7 +166,7 @@ export class RiskGraphService {
 
   /**
    * Bounded-depth, bounded-size BFS neighborhood of a node in both
-   * directions (brief section 42 — "graph neighborhood queries", never the
+   * directions (brief section 42; "graph neighborhood queries", never the
    * whole project graph). Batches one query per depth level instead of one
    * query per node.
    */
@@ -217,10 +217,10 @@ export class RiskGraphService {
 
   /**
    * Builds one representative, explainable chain of connected nodes
-   * starting at rootNodeId (brief sections 8/13/30 — "Risk Chain"). This is
+   * starting at rootNodeId (brief sections 8/13/30; "Risk Chain"). This is
    * a greedy walk, not a true optimal path: at each step it follows the
    * outgoing (or, if none, incoming) edge that leads to the node with the
-   * most further connections — i.e. it keeps walking toward the most
+   * most further connections, i.e. it keeps walking toward the most
    * "downstream-connected" part of the graph, which is what the brief's
    * own examples (RFI -> Issue -> Location -> Elements -> Activity) are
    * describing. It never revisits a node, and stops at maxSteps or when no

@@ -17,7 +17,7 @@ export default function App() {
       initDatabase();
       setDbReady(true);
     } catch (err) {
-      // A failure here means captures can't be queued at all — surfacing it loudly
+      // A failure here means captures can't be queued at all; surfacing it loudly
       // is more useful than silently degrading into a broken capture flow.
       console.error('Failed to initialise local database', err);
       setDbReady(true);

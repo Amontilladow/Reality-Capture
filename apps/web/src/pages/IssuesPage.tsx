@@ -20,6 +20,8 @@ import { ISSUE_STATUS_TONE, ISSUE_PRIORITY_TONE } from '../lib/status-tone';
 import { StatusBadge } from '../components/ui/Badge';
 import { apiErrorMessage } from '../lib/api';
 import { Listbox } from '../components/ui/Listbox';
+import { DESKTOP_QUERY, useMediaQuery } from '../lib/useMediaQuery';
+import { RecordList, RecordRow } from '../components/ui/RecordRow';
 
 type QuickFilter = 'all' | 'overdue' | 'critical' | 'mine';
 type Tab = 'issues' | 'dashboard' | 'reminders';
@@ -36,6 +38,8 @@ export default function IssuesPage() {
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
   const [search, setSearch] = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const desktop = useMediaQuery(DESKTOP_QUERY);
   const [assignedTo, setAssignedTo] = useState('');
   const [discipline, setDiscipline] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -45,7 +49,7 @@ export default function IssuesPage() {
   const [viewIssueId, setViewIssueId] = useState<string | null>(searchParams.get('issueId'));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // ── Building/level grouping (same treatment as the Floor plans sidebar) --
+  // ── Building/level grouping (same treatment as the Floor plans sidebar);
   // issues.building_id/level_id are already joined into buildingName/
   // levelName server-side (issues.service.ts findAll()), so unlike Floor
   // plans no per-row lookup against level_id alone is needed here; the
@@ -98,7 +102,7 @@ export default function IssuesPage() {
   };
 
   // Resolves each issue's building/level objects from the hierarchy tree
-  // (for level-order sorting) -- an issue whose buildingId/levelId points
+  // (for level-order sorting): an issue whose buildingId/levelId points
   // at a building/level no longer in the tree (deleted) resolves the same
   // as one with no building at all, and falls into "Unassigned" below.
   const issuesWithLocation = useMemo<IssueWithLocation[]>(() => {
@@ -125,7 +129,7 @@ export default function IssuesPage() {
   }, [issuesWithLocation, buildingFilter, levelFilter]);
 
   // Grouped for render: buildings in hierarchy order, levels within each
-  // sorted by levelOrder (not name), "Unassigned" bucket last -- same
+  // sorted by levelOrder (not name), "Unassigned" bucket last; same
   // structure as FloorPlanViewer.tsx's groupedDrawings.
   const groupedIssues = useMemo(() => {
     const byBuilding = new Map<string, Map<string, { level?: ProjectHierarchy['levels'][number]; issues: IssueWithLocation[] }>>();
@@ -156,11 +160,11 @@ export default function IssuesPage() {
   }, [filteredIssues, hierarchy]);
 
   // Dashboard needs the full (unfiltered) project issue set to compute the
-  // per-user KPI table and status/priority breakdown client-side — there's
+  // per-user KPI table and status/priority breakdown client-side; there's
   // no dedicated backend aggregate endpoint for those (only getSummary(),
   // which is project-wide totals, not per-user). Capped at 100 rows by the
   // backend's own perPage clamp (issues.service.ts findAll(): `Math.min(
-  // query.perPage ?? 20, 100)`) — see the "Deviations" note in the final
+  // query.perPage ?? 20, 100)`); see the "Deviations" note in the final
   // report for projects with more than 100 issues.
   const dashboardIssuesQuery = useQuery({
     queryKey: ['issues-dashboard', projectId],
@@ -214,6 +218,7 @@ export default function IssuesPage() {
   }
 
   const advancedActive = Boolean(assignedTo || discipline || dateFrom || dateTo);
+  const activeFilterCount = [buildingFilter, levelFilter, status].filter(Boolean).length + (advancedActive ? 1 : 0);
   function clearAdvanced() {
     setAssignedTo('');
     setDiscipline('');
@@ -284,7 +289,7 @@ export default function IssuesPage() {
         }
       />
 
-      <div className="px-6 pt-4 flex items-center gap-1 border-b border-base-600">
+      <div className="px-6 pt-4 flex items-center gap-2 border-b border-base-600">
         <TabButton active={tab === 'issues'} onClick={() => setTab('issues')}>Issues</TabButton>
         {isManager && <TabButton active={tab === 'dashboard'} onClick={() => setTab('dashboard')}>Dashboard</TabButton>}
         <TabButton active={tab === 'reminders'} onClick={() => setTab('reminders')}>Reminders</TabButton>
@@ -311,8 +316,28 @@ export default function IssuesPage() {
             <FilterChip active={quickFilter === 'overdue'} onClick={() => { setQuickFilter('overdue'); setStatus(''); }}>Overdue</FilterChip>
             <FilterChip active={quickFilter === 'critical'} onClick={() => { setQuickFilter('critical'); setStatus(''); }}>Critical</FilterChip>
 
+            <input
+              className="field-input w-full md:w-48 md:order-last"
+              placeholder="Search issues…"
+              aria-label="Search issues"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {/* Phones: the location/status filters sit behind one button
+                instead of stacking three dropdowns above the list. */}
+            {!desktop && (
+              <button
+                type="button"
+                aria-expanded={filtersOpen}
+                onClick={() => setFiltersOpen((v) => !v)}
+                className="btn-secondary !px-4 !py-2 text-xs"
+              >
+                Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+              </button>
+            )}
+            <div className={desktop ? 'contents' : filtersOpen ? 'w-full grid grid-cols-1 gap-2' : 'hidden'}>
             <Listbox
-              className="field-input w-auto ml-auto"
+              className="field-input w-full md:w-auto md:ml-auto"
               aria-label="Filter by building"
               value={buildingFilter}
               onChange={(e) => { setBuildingFilter(e.target.value); setLevelFilter(''); }}
@@ -323,7 +348,7 @@ export default function IssuesPage() {
               ))}
             </Listbox>
             <Listbox
-              className="field-input w-auto"
+              className="field-input w-full md:w-auto"
               aria-label="Filter by level"
               value={levelFilter}
               onChange={(e) => setLevelFilter(e.target.value)}
@@ -335,7 +360,7 @@ export default function IssuesPage() {
               ))}
             </Listbox>
             <Listbox
-              className="field-input w-auto"
+              className="field-input w-full md:w-auto"
               aria-label="Filter by status"
               value={status}
               onChange={(e) => { setStatus(e.target.value); setQuickFilter('all'); }}
@@ -345,22 +370,17 @@ export default function IssuesPage() {
                 <option key={st} value={st}>{STATUS_LABELS[st]}</option>
               ))}
             </Listbox>
-            <input
-              className="field-input w-48"
-              placeholder="Search issues…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
             <button
               onClick={() => setAdvancedOpen((v) => !v)}
-              className={`btn-secondary !px-3 !py-1.5 text-xs ${advancedActive ? '!border-signal !text-signal' : ''}`}
+              className={`btn-secondary !px-4 !py-2 text-xs md:order-last ${advancedActive ? '!border-signal !text-signal' : ''}`}
             >
               Advanced{advancedActive ? ' •' : ''}
             </button>
+            </div>
           </div>
 
           {advancedOpen && (
-            <div className="panel p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
+            <div className="panel p-4 grid grid-cols-2 sm:grid-cols-4 gap-4 items-end">
               <div>
                 <label className="field-label" htmlFor="fAssignee">Assignee</label>
                 <Listbox id="fAssignee" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
@@ -397,20 +417,20 @@ export default function IssuesPage() {
             </div>
           )}
 
-          {/* Bulk-select action bar */}
-          {filteredIssues.length > 0 && (
-            <div className="flex items-center gap-3 text-xs">
-              <label className="flex items-center gap-1.5 cursor-pointer">
+          {/* Bulk-select action bar (desktop: phones list without checkboxes) */}
+          {desktop && filteredIssues.length > 0 && (
+            <div className="flex items-center gap-4 text-xs">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
                 Select all ({filteredIssues.length})
               </label>
               {selectedIds.size > 0 && (
-                <div className="flex items-center gap-2 ml-auto panel !py-1.5 !px-3">
+                <div className="flex items-center gap-2 ml-auto panel !py-2 !px-4">
                   <span className="text-ink-300">{selectedIds.size} selected</span>
                   <button
                     onClick={handleBulkDownloadPdf}
                     disabled={bulkDownloading === 'pdf'}
-                    className="btn-secondary !px-3 !py-1 text-xs"
+                    className="btn-secondary !px-4 !py-2 text-xs"
                     title="A ZIP with each selected issue as its own PDF"
                   >
                     {bulkDownloading === 'pdf' ? 'Preparing…' : 'Download PDF'}
@@ -418,7 +438,7 @@ export default function IssuesPage() {
                   <button
                     onClick={handleBulkDownloadXls}
                     disabled={bulkDownloading === 'xls'}
-                    className="btn-secondary !px-3 !py-1 text-xs"
+                    className="btn-secondary !px-4 !py-2 text-xs"
                     title="A ZIP with each selected issue as its own Excel file"
                   >
                     {bulkDownloading === 'xls' ? 'Preparing…' : 'Download XLS'}
@@ -426,7 +446,7 @@ export default function IssuesPage() {
                   <button
                     onClick={() => { if (confirm(`Close ${selectedIds.size} issue(s)?`)) bulkCloseMutation.mutate(); }}
                     disabled={bulkCloseMutation.isPending}
-                    className="btn-secondary !px-3 !py-1 text-xs"
+                    className="btn-secondary !px-4 !py-2 text-xs"
                   >
                     {bulkCloseMutation.isPending ? 'Closing…' : 'Bulk close'}
                   </button>
@@ -440,13 +460,13 @@ export default function IssuesPage() {
             <p className="text-xs text-ok">
               Closed {bulkCloseMutation.data.closed} issue(s).
               {bulkCloseMutation.data.skipped > 0 && (
-                <> {bulkCloseMutation.data.skipped} skipped — only the issues you raised can be closed this way.</>
+                <> {bulkCloseMutation.data.skipped} skipped. Only the issues you raised can be closed this way.</>
               )}
             </p>
           )}
 
           {/* List, grouped by building -> level (same treatment as the Floor
-              plans sidebar) -- levels sorted by levelOrder, an "Unassigned"
+              plans sidebar): levels sorted by levelOrder, an "Unassigned"
               group last for issues with no building or a deleted one. */}
           {issuesQuery.isLoading && <p className="text-sm text-ink-500">Loading issues…</p>}
           {issuesQuery.isSuccess && rows.length === 0 && (
@@ -456,29 +476,26 @@ export default function IssuesPage() {
             <div className="panel p-10 text-center text-sm text-ink-500">No issues match these filters.</div>
           )}
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {groupedIssues.buildingGroups.map(({ building, levelGroups }) => (
               <details key={building.id} open>
-                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-1 py-1.5 hover:text-ink-300">
+                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-2 py-2 hover:text-ink-300">
                   {building.name}
                 </summary>
-                <div className="pl-1 space-y-3 mt-1">
+                <div className="pl-2 space-y-4 mt-2">
                   {levelGroups.map(({ level, issues }) => (
                     <div key={level?.id ?? '__no-level__'}>
-                      <div className="text-[11px] font-medium text-ink-500 px-2 py-1">
+                      <div className="text-xs font-medium text-ink-500 px-2 py-2">
                         {level?.name ?? 'No level'}
                       </div>
-                      <div className="space-y-2">
-                        {issues.map((issue) => (
-                          <IssueRow
-                            key={issue.id}
-                            issue={issue}
-                            selected={selectedIds.has(issue.id)}
-                            onToggleSelect={() => toggleSelect(issue.id)}
-                            onClick={() => setViewIssueId(issue.id)}
-                          />
-                        ))}
-                      </div>
+                      <IssueList
+                        compact={!desktop}
+                        label={`${building.name}, ${level?.name ?? 'No level'}`}
+                        issues={issues}
+                        selectedIds={selectedIds}
+                        onToggleSelect={toggleSelect}
+                        onOpen={setViewIssueId}
+                      />
                     </div>
                   ))}
                 </div>
@@ -487,19 +504,18 @@ export default function IssuesPage() {
 
             {groupedIssues.unassigned.length > 0 && (
               <details open>
-                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-1 py-1.5 hover:text-ink-300">
+                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-2 py-2 hover:text-ink-300">
                   Unassigned
                 </summary>
-                <div className="pl-1 space-y-2 mt-1">
-                  {groupedIssues.unassigned.map((issue) => (
-                    <IssueRow
-                      key={issue.id}
-                      issue={issue}
-                      selected={selectedIds.has(issue.id)}
-                      onToggleSelect={() => toggleSelect(issue.id)}
-                      onClick={() => setViewIssueId(issue.id)}
-                    />
-                  ))}
+                <div className="pl-2 mt-2">
+                  <IssueList
+                    compact={!desktop}
+                    label="Issues with no location"
+                    issues={groupedIssues.unassigned}
+                    selectedIds={selectedIds}
+                    onToggleSelect={toggleSelect}
+                    onOpen={setViewIssueId}
+                  />
                 </div>
               </details>
             )}
@@ -649,7 +665,7 @@ function IssueDashboard({
     <div className="p-6 space-y-6">
       <p className="text-xs text-ink-500">
         Per-user KPIs and the breakdowns below are computed from the {dashboardIssues.length} most recent issues
-        (backend list endpoint caps at 100 per page — projects with more issues than that won't be fully represented here).
+        (backend list endpoint caps at 100 per page, so projects with more issues than that won’t be fully represented here).
       </p>
 
       {/* Stat tiles */}
@@ -670,7 +686,7 @@ function IssueDashboard({
       {/* Per-user KPI table */}
       <div>
         <div className="field-label">Per-user workload</div>
-        <div className="panel overflow-x-auto">
+        <div className="panel overflow-x-auto" tabIndex={0}>
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-ink-500 border-b border-base-600">
@@ -704,7 +720,7 @@ function IssueDashboard({
                     ) : (
                       <button
                         onClick={() => warnMutation.mutate(k.userId)}
-                        className="btn-secondary !py-1 !px-2 text-xs"
+                        className="btn-secondary !py-2 !px-2 text-xs"
                         disabled={k.overdue === 0 || (warnMutation.isPending && warnedUserId === k.userId)}
                         title={k.overdue === 0 ? "No overdue issues to warn about" : undefined}
                       >
@@ -722,9 +738,9 @@ function IssueDashboard({
         </div>
       </div>
 
-      {/* Status / priority breakdown — plain CSS bars (no charting library
+      {/* Status / priority breakdown: plain CSS bars (no charting library
           in this repo's dependency tree; see ReportsPage.tsx / package.json,
-          confirmed before implementing — a new charting dependency was
+          confirmed before implementing; a new charting dependency was
           intentionally not added). */}
       <div className="grid grid-cols-2 gap-6">
         <div>
@@ -812,7 +828,7 @@ function RemindersPanel({
             <button
               onClick={() => broadcastMutation.mutate()}
               disabled={!broadcastMessage.trim() || broadcastMutation.isPending}
-              className="btn-primary !px-3 !py-1.5 text-xs"
+              className="btn-primary !px-4 !py-2 text-xs"
             >
               {broadcastMutation.isPending ? 'Sending…' : 'Send broadcast'}
             </button>
@@ -838,7 +854,7 @@ function RemindersPanel({
             <button
               onClick={() => userReminderMutation.mutate()}
               disabled={!userReminderTarget || !userReminderMessage.trim() || userReminderMutation.isPending}
-              className="btn-primary !px-3 !py-1.5 text-xs"
+              className="btn-primary !px-4 !py-2 text-xs"
             >
               {userReminderMutation.isPending ? 'Sending…' : 'Send reminder'}
             </button>
@@ -851,10 +867,10 @@ function RemindersPanel({
       <div>
         <div className="field-label">Reminder log</div>
         {isLoading && <p className="text-sm text-ink-500">Loading…</p>}
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {reminders.map((r) => (
-            <div key={r.id} className="panel p-3 text-xs">
-              <div className="flex items-center gap-2 text-ink-500 mb-1">
+            <div key={r.id} className="panel p-4 text-xs">
+              <div className="flex items-center gap-2 text-ink-500 mb-2">
                 <span className="font-medium text-ink-300">{r.sentByName ?? 'Someone'}</span>
                 <span>→</span>
                 <span>{r.sentToName ?? 'All open issues'}</span>
@@ -875,7 +891,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-2.5 text-sm border-b-2 transition-colors -mb-px ${
+      className={`px-4 py-2 text-sm border-b-2 transition-colors -mb-px ${
         active ? 'border-signal text-signal font-medium' : 'border-transparent text-ink-500 hover:text-ink-100'
       }`}
     >
@@ -886,8 +902,8 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 
 function StatTile({ label, value, onClick, tone, suffix }: { label: string; value: number; onClick: () => void; tone?: 'danger'; suffix?: string }) {
   return (
-    <button onClick={onClick} className="panel p-3 text-left hover:border-blueprint transition-colors">
-      <div className="text-[11px] text-ink-500 mb-0.5 font-medium">{label}</div>
+    <button onClick={onClick} className="panel p-4 text-left hover:border-blueprint transition-colors">
+      <div className="text-xs text-ink-500 mb-0 font-medium">{label}</div>
       <div className={`text-xl font-semibold tabular-nums ${tone === 'danger' && value > 0 ? 'text-danger' : 'text-ink-100'}`}>
         {value}{suffix}
       </div>
@@ -899,7 +915,7 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+      className={`px-4 py-2 rounded-full text-xs border transition-colors ${
         active ? 'bg-signal text-base-950 border-signal font-medium' : 'border-base-600 text-ink-300 hover:border-base-500'
       }`}
     >
@@ -907,6 +923,69 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
     </button>
   );
 }
+
+// Desktop keeps the full card per issue (with its bulk-select box); a
+// phone gets the register layout (one grouped panel of two-line rows,
+// see RecordRow) and no per-row checkbox (bulk actions are a desk job).
+function IssueList({ compact, label, issues, selectedIds, onToggleSelect, onOpen }: {
+  compact: boolean;
+  label: string;
+  issues: IssueListItem[];
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
+  onOpen: (id: string) => void;
+}) {
+  if (compact) {
+    return (
+      <RecordList label={label}>
+        {issues.map((issue) => {
+          const timer = getDeadlineTimer(issue.deadline, issue.status);
+          const where = issue.locationName && issue.locationName.trim().toLowerCase() !== issue.title.trim().toLowerCase() ? issue.locationName : undefined;
+          return (
+            <RecordRow
+              key={issue.id}
+              marker={PRIORITY_MARKER[issue.priority]}
+              title={issue.title}
+              meta={[
+                issue.issueNumber ?? issue.id.slice(0, 8),
+                issue.status === 'open' ? undefined : STATUS_LABELS[issue.status],
+                PRIORITY_LABELS[issue.priority],
+                issue.discipline ? DISCIPLINE_LABELS[issue.discipline] : undefined,
+                where,
+              ].filter(Boolean).join(' · ')}
+              due={timer.label}
+              dueTone={timer.state === 'overdue' ? 'danger' : timer.state === 'warn' ? 'warn' : 'muted'}
+              owner={issue.assignedToName ?? undefined}
+              onClick={() => onOpen(issue.id)}
+            />
+          );
+        })}
+      </RecordList>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      {issues.map((issue) => (
+        <IssueRow
+          key={issue.id}
+          issue={issue}
+          selected={selectedIds.has(issue.id)}
+          onToggleSelect={() => onToggleSelect(issue.id)}
+          onClick={() => onOpen(issue.id)}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Severity bar colour per priority; the priority is also named in the
+// row's text, so colour is never the only signal.
+const PRIORITY_MARKER: Record<IssueListItem['priority'], string> = {
+  critical: 'bg-danger',
+  high: 'bg-high',
+  medium: 'bg-warn',
+  low: 'bg-base-600',
+};
 
 function IssueRow({
   issue, selected, onToggleSelect, onClick,
@@ -918,10 +997,10 @@ function IssueRow({
 }) {
   const timer = getDeadlineTimer(issue.deadline, issue.status);
   return (
-    <div className="panel panel-interactive w-full p-4 flex items-start gap-3">
+    <div className="panel panel-interactive w-full p-4 flex items-start gap-4">
       <input
         type="checkbox"
-        className="mt-1 shrink-0"
+        className="mt-2 shrink-0"
         aria-label={`Select issue ${issue.issueNumber ?? issue.title}`}
         checked={selected}
         onClick={(e) => e.stopPropagation()}
@@ -930,9 +1009,9 @@ function IssueRow({
       <button onClick={onClick} className="flex-1 text-left min-w-0">
         {/* Row 1: identifying tags, with the due date pulled out to its own
             corner so it doesn't compete with the badges below. */}
-        <div className="flex items-start justify-between gap-3 mb-1.5">
+        <div className="flex items-start justify-between gap-4 mb-2">
           <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <span className="text-[11px] font-mono text-ink-500 shrink-0">{issue.issueNumber ?? issue.id.slice(0, 8)}</span>
+            <span className="text-xs font-mono text-ink-500 shrink-0">{issue.issueNumber ?? issue.id.slice(0, 8)}</span>
             {issue.locationName && <span className="badge bg-base-700 text-ink-500">{issue.locationName}</span>}
             {issue.discipline && <span className="badge bg-base-700 text-ink-500">{DISCIPLINE_LABELS[issue.discipline]}</span>}
             {issue.category && <span className="badge bg-base-700 text-ink-500">{CATEGORY_LABELS[issue.category]}</span>}
@@ -940,11 +1019,11 @@ function IssueRow({
           <span className="text-xs text-ink-500 shrink-0">Due {formatDeadline(issue.deadline)}</span>
         </div>
 
-        {/* Row 2: title -- the only thing with real visual weight. */}
+        {/* Row 2: title; the only thing with real visual weight. */}
         <div className="font-medium text-sm mb-2">{issue.title}</div>
 
         {/* Row 3: state badges on the left, assignee called out clearly on
-            the right -- previously an unlabeled gray span buried in this
+            the right; previously an unlabeled gray span buried in this
             same badge row, easy to miss when following up on who owns
             what. */}
         <div className="flex items-center gap-2 flex-wrap text-xs">
@@ -959,7 +1038,7 @@ function IssueRow({
 }
 
 // A small colored-initial "avatar" plus a labeled name, so the assignee
-// reads as a distinct, glanceable fact rather than one more gray badge --
+// reads as a distinct, glanceable fact rather than one more gray badge;
 // no dependency on assignedToAvatar actually resolving to a loadable image
 // (nothing else in the issues UI renders that field yet either).
 function AssigneeTag({ name, className = '' }: { name?: string; className?: string }) {
@@ -968,8 +1047,8 @@ function AssigneeTag({ name, className = '' }: { name?: string; className?: stri
   }
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join('');
   return (
-    <span className={`flex items-center gap-1.5 ${className}`}>
-      <span className="w-5 h-5 rounded-full bg-blueprint/20 text-blueprint text-[10px] font-semibold flex items-center justify-center shrink-0">
+    <span className={`flex items-center gap-2 ${className}`}>
+      <span className="w-5 h-5 rounded-full bg-blueprint/20 text-blueprint text-xs font-semibold flex items-center justify-center shrink-0">
         {initials}
       </span>
       <span className="text-ink-500">Assigned to</span>
@@ -980,7 +1059,7 @@ function AssigneeTag({ name, className = '' }: { name?: string; className?: stri
 
 function PlusIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 5v14M5 12h14" strokeLinecap="round" />
     </svg>
   );
@@ -988,7 +1067,7 @@ function PlusIcon() {
 
 function ExportIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 3v12M7 10l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M5 21h14" strokeLinecap="round" />
     </svg>

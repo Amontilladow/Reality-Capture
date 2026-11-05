@@ -8,8 +8,8 @@ import { WORKFLOW_STATUS_LABELS } from './siteDrawingDisplay';
 import { Listbox } from '../ui/Listbox';
 
 // The previous current revision is automatically marked superseded server-
-// side the moment this one is registered (SiteDrawingsService.addRevision)
-// -- it stays in the register, clearly labeled, never deleted (brief
+// side the moment this one is registered (SiteDrawingsService.addRevision);
+// it stays in the register, clearly labeled, never deleted (brief
 // section 5).
 export function AddRevisionModal({ open, onClose, projectId, drawingId, drawingTitle }: {
   open: boolean; onClose: () => void; projectId: string; drawingId: string; drawingTitle: string;
@@ -37,7 +37,7 @@ export function AddRevisionModal({ open, onClose, projectId, drawingId, drawingT
   const canSubmit = Boolean(file && revisionNumber.trim());
 
   return (
-    <Modal open={open} onClose={onClose} title={`Add revision — ${drawingTitle}`}>
+    <Modal open={open} onClose={onClose} title={`Add revision: ${drawingTitle}`}>
       <div className="space-y-4">
         <div
           {...getRootProps()}
@@ -48,7 +48,7 @@ export function AddRevisionModal({ open, onClose, projectId, drawingId, drawingT
           <input {...getInputProps()} />
           {file ? <p className="text-sm text-ink-100">{file.name}</p> : <p className="text-sm text-ink-300">Drag the new revision's PDF here, or click to browse</p>}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="rev-number">Revision</label>
             <input id="rev-number" className="field-input" value={revisionNumber} onChange={(e) => setRevisionNumber(e.target.value)} placeholder="e.g. D" />

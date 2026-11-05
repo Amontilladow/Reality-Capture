@@ -2,11 +2,11 @@ import type { StatusTone } from './status-tone';
 
 // Shared Minto Pyramid primitives for both the per-project Executive
 // Command Center (ExecutiveBriefing.tsx) and the cross-project one
-// (CompanyExecutiveBriefing.tsx) -- one ranking rule, one conclusion
+// (CompanyExecutiveBriefing.tsx): one ranking rule, one conclusion
 // sentence builder, used identically at either scope so "critical" means
 // the same thing on both screens. Nothing here is a new calculation: every
 // number a caller passes in is already computed by an existing, validated
-// backend aggregate (risk executive summary, report KPI summaries) -- this
+// backend aggregate (risk executive summary, report KPI summaries): this
 // file only ranks and phrases them.
 
 export type Severity = 'critical' | 'high' | 'medium';
@@ -18,7 +18,7 @@ export interface PrioritySignal {
   severity: Severity;
   to: string;
   // Only set by the cross-project builder, to label/link each row back to
-  // its project -- undefined on the per-project screen, where it would be
+  // its project; undefined on the per-project screen, where it would be
   // redundant (the whole page is already scoped to one project).
   projectId?: string;
   projectName?: string;
@@ -36,7 +36,7 @@ export const STATUS_TONE: Record<OverallStatus, StatusTone> = {
   critical: 'critical', at_risk: 'warning', stable: 'success', no_data: 'neutral',
 };
 
-// The transparent, documented rule "overall status" is derived from --
+// The transparent, documented rule "overall status" is derived from;
 // never a hidden formula. CRITICAL whenever any signal is itself
 // critical-severity; AT_RISK when nothing is critical but something needs
 // attention soon; STABLE only once both of those are empty AND there is
@@ -52,7 +52,7 @@ export function sortBySeverity(signals: PrioritySignal[]): PrioritySignal[] {
   return [...signals].sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]);
 }
 
-// Lean per-domain inputs -- just the fields the signal rules below actually
+// Lean per-domain inputs: just the fields the signal rules below actually
 // read, not a full ReportKpis/RiskExecutiveSummary. The per-project
 // ExecutiveBriefing.tsx slices those fuller types down to this shape; the
 // company-wide endpoint returns exactly this shape already, since nothing
@@ -67,7 +67,7 @@ export interface SignalInputs {
 }
 
 // basePath is the project-scoped route prefix (`/projects/${projectId}`)
-// every generated signal's `to` link is built from -- the one thing that
+// every generated signal's `to` link is built from; the one thing that
 // differs between the per-project and cross-project callers.
 export function buildSignals(basePath: string, input: SignalInputs): PrioritySignal[] {
   const signals: PrioritySignal[] = [];

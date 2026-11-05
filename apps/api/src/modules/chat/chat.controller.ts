@@ -59,7 +59,7 @@ export class ChatController {
   ) {
     const result = await this.svc.getDmHistory(u.companyId, u.id, otherUserId, query);
     // channelId lives in `data` (alongside the messages it belongs to), not
-    // `meta` -- `meta` is the fixed PaginationMeta shape (page/perPage/total/
+    // `meta`: `meta` is the fixed PaginationMeta shape (page/perPage/total/
     // totalPages) every paginated endpoint in this codebase returns, with no
     // room for extra business fields; the frontend chat.api.ts client was
     // already built against this exact { channelId, messages } data shape.

@@ -6,20 +6,22 @@ import type {
 
 // One shared visual vocabulary for every status badge in the app. Every
 // module (Issues, RFIs, Snagging, Submittals, Transmittals, QA, Projects,
-// BIM models, Captures) defines its own status strings -- those differ on
-// purpose and are NOT touched here -- but each one maps to one of these six
+// BIM models, Captures) defines its own status strings (those differ on
+// purpose and are NOT touched here) but each one maps to one of these six
 // tones, so "resolved" and "verified" and "approved" all read the same way
 // even though they're different words in different modules.
 //
 // Colors match what IssuesPage/issue-constants.ts already shipped (bg-X/15
 // text-X for most tones, danger gets /20 + border for critical since that's
-// the one tone that needs to out-rank a plain "high priority" danger badge)
-// -- this file centralizes that choice, it doesn't invent a new one.
+// the one tone that needs to out-rank a plain "high priority" danger badge);
+// this file centralizes that choice, it doesn't invent a new one.
 export type StatusTone = 'neutral' | 'info' | 'progress' | 'success' | 'warning' | 'danger' | 'critical';
 
 export const TONE_CLASS: Record<StatusTone, string> = {
   neutral: 'bg-base-700 text-ink-300',
-  info: 'bg-blueprint/15 text-blueprint',
+  // Neutral ink, not the accent: under the dashboard theme the accent is
+  // amber, which would read as the warning/progress tone beside it.
+  info: 'bg-ink-100/10 text-ink-100',
   progress: 'bg-warn/15 text-warn',
   success: 'bg-ok/15 text-ok',
   warning: 'bg-warn/15 text-warn',
@@ -27,13 +29,13 @@ export const TONE_CLASS: Record<StatusTone, string> = {
   critical: 'bg-danger/15 text-danger ring-1 ring-inset ring-danger/35',
 };
 
-// The small dot rendered inside <StatusBadge dot /> -- a plain background
+// The small dot rendered inside <StatusBadge dot />; a plain background
 // color per tone, used at low opacity text sizes where bg-X/15 text-X alone
 // reads too flat to tell "progress" and "warning" apart from each other at
 // a glance in a dense table row.
 export const TONE_DOT_CLASS: Record<StatusTone, string> = {
   neutral: 'bg-ink-500',
-  info: 'bg-blueprint',
+  info: 'bg-ink-100',
   progress: 'bg-warn',
   success: 'bg-ok',
   warning: 'bg-warn',
@@ -54,7 +56,7 @@ export const ISSUE_STATUS_TONE: Record<IssueStatus, StatusTone> = {
 };
 
 // IssuePriority/RfiPriority/SnagPriority/SubmittalPriority are all the exact
-// same 'critical'|'high'|'medium'|'low' union -- one shared map instead of
+// same 'critical'|'high'|'medium'|'low' union; one shared map instead of
 // four hand-copied duplicates, aliased per module below purely for
 // call-site readability (ISSUE_PRIORITY_TONE reads better at an Issues call
 // site than a generic PRIORITY_TONE would).
@@ -67,7 +69,7 @@ export const PRIORITY_TONE: Record<'critical' | 'high' | 'medium' | 'low', Statu
 
 export const ISSUE_PRIORITY_TONE: Record<IssuePriority, StatusTone> = PRIORITY_TONE;
 
-// Legacy RFI status ('open'/'answered'/'closed'/'void') -- still live for
+// Legacy RFI status ('open'/'answered'/'closed'/'void'): still live for
 // rows created before the Phase 1 workflow existed. See rfi.types.ts.
 export const RFI_LEGACY_STATUS_TONE: Record<RfiStatus, StatusTone> = {
   open: 'info',
@@ -93,7 +95,7 @@ export const RFI_WORKFLOW_STATUS_TONE: Record<RfiWorkflowStatus, StatusTone> = {
 export const RFI_PRIORITY_TONE: Record<RfiPriority, StatusTone> = PRIORITY_TONE;
 
 // 'open' here (an unfixed defect sitting unaddressed) is intentionally
-// 'danger', not 'info' like Issues/RFIs' own 'open' -- matches
+// 'danger', not 'info' like Issues/RFIs' own 'open'; matches
 // snagging-constants.ts's original SNAG_STATUS_BADGE_CLASS, a deliberate
 // product choice (a found-but-unfixed snag already IS the problem) this
 // consolidation preserves rather than overrides.

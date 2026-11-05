@@ -12,7 +12,7 @@ router = APIRouter()
 # Drawing Intelligence & Control, Decision 1 step 3: "use image
 # preprocessing and appropriate resolution to improve title-block
 # recognition." 300 DPI is the commonly cited floor for Tesseract to
-# reliably segment small title-block text -- a page rendered at ordinary
+# reliably segment small title-block text: a page rendered at ordinary
 # screen resolution (72-96 DPI) is usually too blurry for accurate
 # character recognition, especially for the dense, small-font title
 # blocks typical of construction drawings.
@@ -24,7 +24,7 @@ class OcrExtractRequest(BaseModel):
     project_id: str
     # A short-lived, already-authorized URL (apps/api's own
     # StorageService.getReadUrl(), the same presigned-GET mechanism every
-    # other download in that app uses) -- never a raw storage key or
+    # other download in that app uses): never a raw storage key or
     # credential. This service fetches the bytes itself; nothing is
     # pushed to it.
     pdf_url: str
@@ -34,7 +34,7 @@ class OcrExtractRequest(BaseModel):
 class OcrExtractResponse(BaseModel):
     text: str
     # Tesseract's own mean per-word confidence for the page, normalized to
-    # 0-1 -- the caller (apps/api's title-block extractor) treats this as
+    # 0-1: the caller (apps/api's title-block extractor) treats this as
     # one more signal alongside its own pattern-match confidence, never as
     # a standalone guarantee.
     confidence: float
@@ -68,7 +68,7 @@ async def extract_text(req: OcrExtractRequest) -> OcrExtractResponse:
 
     data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
     # Tesseract reports -1 confidence for a box it didn't actually
-    # recognize as text (e.g. pure whitespace/layout boxes) -- excluded
+    # recognize as text (e.g. pure whitespace/layout boxes): excluded
     # from the average rather than dragging it down for no real reason.
     word_confidences = [c for c in data["conf"] if c is not None and int(c) >= 0]
     confidence = (sum(word_confidences) / len(word_confidences) / 100.0) if word_confidences else 0.0

@@ -33,16 +33,16 @@ interface CurrentRevisionRow {
 }
 
 // Runs in a Bull worker, same pattern as ImageProcessingProcessor/
-// WebhookDeliveryProcessor -- never blocks the request that uploaded the
+// WebhookDeliveryProcessor; never blocks the request that uploaded the
 // archive (brief section 2: "handle large packages through background
 // processing, with progress, retry and error reporting").
 //
 // Per-file failures (a corrupt individual PDF, an extraction error) are
-// caught and counted, never allowed to abort the rest of the batch --
+// caught and counted, never allowed to abort the rest of the batch;
 // one bad file in a package of hundreds must not lose the other 399.
 // A whole-batch failure (the archive itself won't open, storage is
 // unreachable) fails the batch record and rethrows so Bull's own retry/
-// backoff (3 attempts, exponential) takes over -- this is the "retry
+// backoff (3 attempts, exponential) takes over; this is the "retry
 // logic" brief section 2 asks for, reused rather than reinvented.
 @Processor('site-drawing-import')
 export class SiteDrawingImportProcessor {
@@ -74,7 +74,7 @@ export class SiteDrawingImportProcessor {
         ? (await extractPdfEntriesFromZip(archiveBuffer)).entries
         : [{ filename: batch.originalFilename, buffer: archiveBuffer }];
     } catch (err) {
-      // The archive itself is unsafe/corrupt/unreadable -- never a partial
+      // The archive itself is unsafe/corrupt/unreadable; never a partial
       // success for something this fundamentally wrong (brief section 10:
       // "never silently fall back to a potentially stale/incomplete state").
       await this.finish(companyId, batchId, 'FAILED', { fileCount: 0, createdCount: 0, revisionCount: 0, skippedCount: 0, errorCount: 0 }, this.describeError(err));
@@ -104,7 +104,7 @@ export class SiteDrawingImportProcessor {
 
   private async processOneFile(companyId: string, projectId: string, batch: ImportBatchDbRow, entry: ExtractedZipEntry): Promise<ReconcileOutcome> {
     // The original consultant-issued file, preserved exactly as uploaded
-    // (brief section 2) -- a new, dedicated storage key per drawing, same
+    // (brief section 2): a new, dedicated storage key per drawing, same
     // convention registerDrawing() already uses for a direct upload.
     const storageKey = this.storage.generateKey(companyId, projectId, 'documents', entry.filename);
     await this.storage.upload(storageKey, entry.buffer, 'application/pdf');
@@ -119,13 +119,13 @@ export class SiteDrawingImportProcessor {
       this.logger.warn(`Embedded-text extraction failed for "${entry.filename}": ${this.describeError(err)}`);
     }
 
-    // OCR fallback (Decision 1 step 2) -- only when the embedded layer had
+    // OCR fallback (Decision 1 step 2): only when the embedded layer had
     // nothing usable at all, never as a second opinion on top of a real
     // text layer. An AI-service outage/timeout here degrades to
     // NEEDS_REVIEW (fields stays null), exactly like a failed embedded-text
-    // extraction above -- never allowed to fail the whole file, let alone
+    // extraction above; never allowed to fail the whole file, let alone
     // the batch (brief: "if existing infrastructure cannot support
-    // reliable processing, report the limitation" -- this file's own
+    // reliable processing, report the limitation"; this file's own
     // extraction_status is that report, not a thrown error).
     if (!hasUsableText) {
       try {
@@ -149,7 +149,7 @@ export class SiteDrawingImportProcessor {
     const drawingNumber = fields?.drawingNumber ?? filenameWithoutExtension;
     const drawingTitle = fields?.drawingTitle ?? filenameWithoutExtension;
     const revisionNumber = fields?.revisionNumber ?? '1';
-    // Never inferred as MANUAL -- an import always went through extraction
+    // Never inferred as MANUAL: an import always went through extraction
     // (even a fallback-to-filename case), so 'MANUAL' (reserved for a
     // human directly typing values in the register UI) would misrepresent
     // its origin.
@@ -182,7 +182,7 @@ export class SiteDrawingImportProcessor {
 
       // A possible drawing-number mismatch (brief section 4): the same
       // drawing number already exists under a materially different
-      // title. Flagged as CONFLICT rather than silently overwritten --
+      // title. Flagged as CONFLICT rather than silently overwritten;
       // unlike SiteDrawingSyncService's SharePoint path (which trusts its
       // source), extracted metadata here is uncertain by construction.
       const titleConflict = Boolean(fields?.drawingTitle) && !titlesCompatible(existing.drawingTitle, drawingTitle);
@@ -196,7 +196,7 @@ export class SiteDrawingImportProcessor {
         : [];
 
       // "Repeated packages containing previously imported drawings" (brief
-      // section 2) -- the SAME revision number re-imported is a duplicate,
+      // section 2): the SAME revision number re-imported is a duplicate,
       // not a new revision (brief section 2: "prevent... duplicate
       // processing"). The already-uploaded file for this revision is left
       // alone; this one is simply not attached as a new revision. Its
@@ -222,7 +222,7 @@ export class SiteDrawingImportProcessor {
         await sql`UPDATE site_drawing_revisions SET is_superseded = true WHERE id = ${currentRevision.id}`;
       }
       // Never changes workflow_status away from what the previous current
-      // revision had set -- a new, unreviewed revision starts at UNKNOWN,
+      // revision had set; a new, unreviewed revision starts at UNKNOWN,
       // the same "never auto-promote" rule applies regardless of path.
       const newWorkflowStatus: SiteDrawingWorkflowStatus = 'UNKNOWN';
       await sql`
@@ -267,17 +267,17 @@ export class SiteDrawingImportProcessor {
 }
 
 // Normalizes whitespace/case before comparing two drawing titles for the
-// conflict check above -- not a fuzzy/edit-distance match, just enough to
+// conflict check above; not a fuzzy/edit-distance match, just enough to
 // not flag "Ground Floor Plan" against "GROUND FLOOR PLAN " as a
 // conflict. Anything beyond exact-after-normalization is treated as a
-// genuine mismatch worth a human's attention, not silently reconciled.
+// real mismatch worth a human's attention, not silently reconciled.
 function titlesCompatible(a: string, b: string): boolean {
   const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
   return normalize(a) === normalize(b);
 }
 
 // sql.json()'s JSONValue type needs an index signature a plain interface
-// can't structurally satisfy -- same boundary TenancyService.
+// can't structurally satisfy; same boundary TenancyService.
 // updateSettings() already documents. Also handles null directly (no
 // extraction at all), since sql.json(null) is itself a valid jsonb NULL.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

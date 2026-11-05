@@ -5,7 +5,7 @@ import type { IngestResult } from './api-client.js';
 // Sends up to 500 queued items (the ingestion DTO's own batch cap) and
 // only removes them from the queue after a confirmed successful response.
 // If `ingest` throws (network error, 5xx, etc.), execution stops before
-// removeFromQueue runs -- the queue is untouched and the same items are
+// removeFromQueue runs; the queue is untouched and the same items are
 // retried on the next flush cycle. Returns null when there was nothing to
 // flush, so the caller can skip logging a no-op cycle.
 export async function flushQueue(

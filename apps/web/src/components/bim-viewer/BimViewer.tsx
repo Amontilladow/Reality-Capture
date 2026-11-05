@@ -29,7 +29,7 @@ export interface BimViewerHandle {
   // bucket), independent of click-to-select highlighting below. Known
   // overlap: selecting an element that's also part of the overlay
   // temporarily shows the selection colour, then reverts to no colour
-  // (not back to its status colour) on deselect -- reapplying the overlay
+  // (not back to its status colour) on deselect; reapplying the overlay
   // is the workaround until these two highlight layers are unified.
   applyStatusOverlay: (groups: Array<{ guids: string[]; color: string }>) => Promise<void>;
   clearStatusOverlay: () => Promise<void>;
@@ -39,7 +39,7 @@ interface BimViewerProps {
   fragmentsUrl: string;
   onSelect?: (guid: string | null) => void;
   // Fires once after the model has loaded AND the initial fit-to-model has
-  // run -- the reliable point after which nothing else will move the
+  // run; the reliable point after which nothing else will move the
   // camera on its own, so callers doing their own camera restoration
   // (e.g. reopening an issue's captured view) know their call won't get
   // silently overwritten by the load sequence's own positioning.
@@ -47,12 +47,12 @@ interface BimViewerProps {
 }
 
 // Core BIM model viewer. Loads a pre-generated Fragments file (never parses
-// IFC in the browser — see engineering-review/IFC_ARCHITECTURE_PROPOSAL.md).
+// IFC in the browser; see engineering-review/IFC_ARCHITECTURE_PROPOSAL.md).
 // Scope note: this delivers orbit navigation, click-to-select with
 // highlight, search-driven selection, and fit-to-model. Walk/first-person
 // mode, section planes/box, explode, isolation, hide/show, transparency,
 // and storey/discipline/category filters are real, separately-scoped
-// enhancements on top of this foundation — not implemented here, and not
+// enhancements on top of this foundation; not implemented here, and not
 // silently stubbed either. See MASTER_BACKLOG.md for status.
 export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function BimViewer(
   { fragmentsUrl, onSelect, onModelReady },
@@ -97,7 +97,7 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
       const fragments = fragmentsRef.current;
       if (!world || !fragments) return;
       // world.meshes is never populated by our own loading code (we only add
-      // model.object to the scene graph directly), so it's always empty --
+      // model.object to the scene graph directly), so it's always empty;
       // read the box straight from the loaded model instead, same as the
       // initial-load fit.
       const model = fragments.list.get(modelIdRef.current);
@@ -135,7 +135,7 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
     getScreenshotDataUrl: () => {
       const world = worldRef.current;
       if (!world || !world.renderer) return null;
-      // Force a render immediately before reading the canvas -- toDataURL()
+      // Force a render immediately before reading the canvas; toDataURL()
       // reads whatever is currently in the drawing buffer, and without a
       // render call right beforehand that can be stale or blank depending
       // on when the browser last painted.
@@ -180,10 +180,10 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
     // reproduction: once the cursor isn't dead-centered on the model (the
     // normal case for a small/off-center model in a large viewport), this
     // walks the target away from the model within a handful of scroll
-    // ticks -- this is "zoom loses the model". Disabling it makes wheel-zoom
+    // ticks; this is "zoom loses the model". Disabling it makes wheel-zoom
     // dolly straight along the current view axis, always toward the target
     // that was last explicitly set (e.g. by fitToBox), regardless of cursor
-    // position -- standard, predictable CAD-viewer zoom behavior.
+    // position; standard, predictable CAD-viewer zoom behavior.
     world.camera.controls.dollyToCursor = false;
 
     // ROOT CAUSE of "extreme zoom loses the model" (both zoom-in and
@@ -198,7 +198,7 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
     // maxDistance: target walked over 42,000 units away. With
     // infinityDolly=false, the same test sequences (including 100 zoom-in
     // ticks, 200 zoom-out ticks, and 80 interleaved rotate+zoom cycles) left
-    // the target byte-for-byte unchanged from its original fitted value --
+    // the target byte-for-byte unchanged from its original fitted value;
     // the camera simply stops at min/maxDistance instead of flying through
     // the model into empty space.
     world.camera.controls.infinityDolly = false;
@@ -209,17 +209,17 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
     fragmentsRef.current = fragments;
 
     // fragments.raycast() expects `mouse` in raw viewport (clientX/clientY)
-    // coordinates -- it does its own `element.getBoundingClientRect()`
+    // coordinates; it does its own `element.getBoundingClientRect()`
     // subtraction internally. Subtracting the container's offset here too,
     // on top of that, double-counts it and sends every ray off by however
     // far the canvas sits from the browser's left/top edge (here: a full
-    // sidebar + header's worth) -- effectively never hitting real geometry
+    // sidebar + header's worth): effectively never hitting real geometry
     // once the viewer isn't flush against the viewport corner. Pass the
     // raw client coordinates straight through.
     //
     // Thin elements (conduit, cable, rebar) are still only a couple of
     // screen pixels wide even with correct math, so a single raycast can
-    // miss them by a pixel -- retry in a small ring around the click point
+    // miss them by a pixel; retry in a small ring around the click point
     // as a cheap fallback (only on an actual miss).
     async function raycastWithTolerance(clientX: number, clientY: number) {
       const offsets: [number, number][] = [
@@ -260,7 +260,7 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
 
     container.addEventListener('click', handlePointerClick);
 
-    // Drives @thatopen/fragments' camera-aware LOD/culling/streaming --
+    // Drives @thatopen/fragments' camera-aware LOD/culling/streaming;
     // without this, the worker never receives a live camera frustum after
     // the initial (pre-camera) load and simply stops refining the tile set
     // it produced at load time, which is why elements that exist in the
@@ -278,7 +278,7 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
         const response = await fetch(fragmentsUrl);
         if (!response.ok) throw new Error(`Failed to download Fragments file (HTTP ${response.status})`);
         const buffer = await response.arrayBuffer();
-        // core.load() resolves directly with the loaded FragmentsModel — use that,
+        // core.load() resolves directly with the loaded FragmentsModel; use that,
         // rather than waiting on the separate onFragmentsLoaded event, which is not
         // guaranteed to fire for this specific load call.
         const model = await fragments.core.load(buffer, { modelId: modelIdRef.current });
@@ -288,7 +288,7 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
 
         // Register the live camera with the model so the worker has a
         // frustum to compute LOD/culling/streaming against, then force an
-        // immediate refresh rather than waiting for the next camera move --
+        // immediate refresh rather than waiting for the next camera move;
         // matches @thatopen/fragments' own canonical usage pattern.
         model.useCamera(world.camera.three);
         await fragments.core.update(true);
@@ -305,14 +305,14 @@ export const BimViewer = forwardRef<BimViewerHandle, BimViewerProps>(function Bi
           // unrelated to this model's actual scale. Scale it to the model's own
           // size so small and large models both get generous, but bounded,
           // zoom-out room. (The actual target-jump/fly-through bug this used to
-          // be attributed to is infinityDolly, fixed above -- this maxDistance
+          // be attributed to is infinityDolly, fixed above; this maxDistance
           // scaling is just sizing the zoom-out range sensibly per model.)
           const modelSize = box.getSize(new THREE.Vector3()).length();
           world.camera.controls.maxDistance = Math.max(1000, modelSize * 50);
           // Keep the far clipping plane comfortably beyond maxDistance.
           // Confirmed by direct reproduction: the camera's far plane is a
           // fixed 1000 (set in the library's setupCamera()), and the
-          // maxDistance formula above floors at exactly that value -- so
+          // maxDistance formula above floors at exactly that value; so
           // without this, reaching max zoom-out silently far-clips the whole
           // model on every load, regardless of model size.
           world.camera.three.far = world.camera.controls.maxDistance * 1.5;

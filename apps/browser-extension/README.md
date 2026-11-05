@@ -1,16 +1,16 @@
-# Workforce Intelligence — Browser Extension (MVP)
+# Workforce Intelligence browser extension (MVP)
 
 A plain Manifest V3 browser extension (no bundler, no build step, no
 store publishing) that reports the **domain** of the browser's active tab
 to EngineeringOS's Workforce Intelligence API. It exists to close the one
 real gap the desktop agent (`apps/agent`) leaves: the agent reports "the
 active app is Chrome" for the entire time someone is in a browser, with
-no visibility into *which* site — the piece DeskTime calls URL tracking.
+no visibility into *which* site. DeskTime calls this piece URL tracking.
 
 **This pass deliberately does not build**: icons, a Chrome Web Store
 listing, Firefox/Safari-specific manifest variants, or full-URL/path/query
 tracking. It also does not do any keystroke logging, page-content
-inspection, or history scraping — the only signal read from a tab is its
+inspection, or history scraping. The only signal read from a tab is its
 `URL.hostname`, nothing else about the page.
 
 ## What this captures, precisely
@@ -30,25 +30,25 @@ inspection, or history scraping — the only signal read from a tab is its
 
 This package required **zero backend changes**. It reuses:
 
-- `POST /auth/login` + `POST /workforce/devices` with `platform: 'web'` —
-  already a valid `DEVICE_PLATFORMS` value since the original MVP schema,
-  just never previously used by a real client.
-- `POST /workforce/activities/ingest` — identical DTO the desktop agent
+- `POST /auth/login` + `POST /workforce/devices` with `platform: 'web'`.
+  `'web'` has been a valid `DEVICE_PLATFORMS` value since the original MVP schema,
+  but no real client used it before.
+- `POST /workforce/activities/ingest`, the same DTO the desktop agent
   uses. A closed domain segment maps `applicationNameRaw` to the domain
   itself (e.g. `"github.com"`), which means a visited domain flows through
   the *exact same* `application_registry` auto-registration and
   productive/neutral/unproductive classification pipeline the desktop
   agent's application names already use (see
   `apps/api/.../activities/activities.service.ts` and the "Application
-  productivity (admin)" screen in `WorkforcePage`) — an admin classifies
+  productivity (admin)" screen in `WorkforcePage`). An admin classifies
   `github.com` the same way they'd classify `revit.exe`, no separate
   "domains" screen needed.
-- The `'PRIVATE'` activity type — the popup's Private Time checkbox works
+- The `'PRIVATE'` activity type. The popup's Private Time checkbox works
   exactly like the desktop agent's `private on`/`private off` (same
   server-side force-redaction in `ActivitiesService.insertOne()` applies
   here too, for free).
 
-## Load it (development/testing only — no store listing)
+## Load it (development/testing only, no store listing)
 
 1. Open `chrome://extensions` (or the Edge/Brave/other Chromium
    equivalent).
@@ -59,12 +59,12 @@ This package required **zero backend changes**. It reuses:
    **Enroll this browser**. This performs the same login + device
    enrollment the desktop agent's `enroll` command does, just via a form.
 6. Browse normally. The service worker listens for tab/window/idle events
-   (not a polling loop — see "Architecture" below) and flushes queued
+   (not a polling loop; see "Architecture" below) and flushes queued
    segments to the API roughly once a minute.
 
 To turn on Private Time, open the popup and check the box; uncheck it to
 resume normal tracking. There's no live push from the popup to the
-background worker — the running service worker picks up the change on its
+background worker. The running service worker picks up the change on its
 next tab/window/idle event, the same "polls a marker on its own next tick,
 not instant" tradeoff the desktop agent's `private on/off` documents.
 
@@ -74,7 +74,7 @@ Unlike the desktop agent's 10-second polling loop, this extension is
 **event-driven**: `chrome.tabs.onActivated`, `chrome.tabs.onUpdated`,
 `chrome.windows.onFocusChanged`, and `chrome.idle.onStateChanged` each
 trigger a state check, and `chrome.alarms` (not `setInterval`) drives the
-once-a-minute flush — Manifest V3 service workers can be suspended between
+once-a-minute flush. Manifest V3 service workers can be suspended between
 events at any time, so a `setInterval` loop would not reliably survive the
 way it does in the desktop agent's single long-lived Node process.
 
@@ -98,14 +98,14 @@ when the worker is suspended isn't silently lost when it wakes back up.
 Unit tests (`pnpm --filter browser-extension test`, Node's built-in test
 runner, no browser involved) cover every pure decision this extension
 makes: segment open/close logic, URL-to-domain resolution (including every
-"don't track this" case), and the storage read-modify-write helpers — 19
+"don't track this" case), and the storage read-modify-write helpers: 19
 tests, all passing.
 
 **This has not been loaded into a real browser and exercised end-to-end.**
 This sandbox has no browser UI to load an unpacked extension into, click
 its popup, or watch `chrome.tabs`/`chrome.idle`/`chrome.alarms` fire for
-real. `src/background.js` and `src/popup.js` — the two files that actually
-call `chrome.*` APIs — are unverified beyond a manual read-through. If
+real. `src/background.js` and `src/popup.js`, the two files that
+call `chrome.*` APIs, are unverified beyond a manual read-through. If
 something is wrong with this extension, it is much more likely to be in
 those two files (a `chrome.*` API used incorrectly, a permission missing
 from `manifest.json`) than in the tested logic they call. Loading this
@@ -126,11 +126,11 @@ for the desktop agent.
   testing, not a published extension.
 - **Plaintext tokens in `chrome.storage.local`.** Same tradeoff the
   desktop agent's `config.json` makes (see its README), for the same
-  reason — per-device token auth is an already-documented V1 hardening
+  reason: per-device token auth is an already-documented V1 hardening
   item, not an MVP requirement.
 - **One browser window/profile at a time, informally.** Nothing stops
   enrolling the same account in multiple browser profiles as separate
-  devices (each gets its own `deviceId`), which is fine — it's just not a
+  devices (each gets its own `deviceId`). That works; it's just not a
   scenario this MVP specifically designed for or tested against.
 - **No offline queue cap enforcement beyond the 500-item flush batch.**
   Unlike the desktop agent, this doesn't have a disk-space concern (it's a

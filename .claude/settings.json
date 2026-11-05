@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "C:/Users/User/AppData/Roaming/Python/Python314/Scripts/graphify.EXE hook-guard search"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/graphify-guard.sh search"
           }
         ]
       },
@@ -15,7 +15,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "C:/Users/User/AppData/Roaming/Python/Python314/Scripts/graphify.EXE hook-guard read"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/graphify-guard.sh read"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/graphify-session-start.sh",
+            "timeout": 600
           }
         ]
       }

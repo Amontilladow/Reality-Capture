@@ -26,7 +26,7 @@ export class AuditController {
     @Query('to') to?: string,
   ) {
     const offset = (page - 1) * perPage;
-    // withTenant required -- audit_log carries the tenant_isolation RLS policy. A plain
+    // withTenant required: audit_log carries the tenant_isolation RLS policy. A plain
     // this.db.query() never sets app.current_company_id, so this always returns 0 rows.
     const rows = await this.db.withTenant(user.companyId, sql => sql`
       SELECT *, COUNT(*) OVER() AS full_count
@@ -51,7 +51,7 @@ export class AuditController {
     @Query('perPage') perPage = 50,
   ) {
     const offset = (page - 1) * perPage;
-    // withTenant required -- see findAll() above.
+    // withTenant required; see findAll() above.
     const rows = await this.db.withTenant(user.companyId, sql => sql`
       SELECT *, COUNT(*) OVER() AS full_count
       FROM audit_log

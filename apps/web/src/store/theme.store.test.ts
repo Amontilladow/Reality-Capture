@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useThemeStore } from './theme.store';
 
 // theme.store.ts applies its initial theme to <html> and persists to
-// localStorage as a side effect of module load, outside any component --
+// localStorage as a side effect of module load, outside any component;
 // so these tests drive the store directly rather than through a render.
 describe('theme.store', () => {
   beforeEach(() => {

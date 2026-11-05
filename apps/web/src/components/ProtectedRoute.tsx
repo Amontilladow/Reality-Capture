@@ -7,7 +7,7 @@ export function ProtectedRoute() {
   const user = useAuthStore((s) => s.user);
   const location = useLocation();
 
-  // The access token is memory-only now (see auth.store.ts) -- on a fresh
+  // The access token is memory-only now (see auth.store.ts): on a fresh
   // page load it's always null until bootstrapSession()'s silent refresh
   // against the httpOnly cookie resolves. Redirecting to /login before that
   // finishes would log out every user on every reload.
@@ -24,7 +24,7 @@ export function ProtectedRoute() {
   }
 
   // Hard gate: a pending-approval user can only ever reach /pending-approval.
-  // This is a UX convenience, not the real enforcement -- the backend's
+  // This is a UX convenience, not the real enforcement; the backend's
   // PendingApprovalGuard is what actually blocks every API call except
   // /auth/me and /auth/logout regardless of what route renders here.
   if (user?.pendingApproval && location.pathname !== '/pending-approval') {

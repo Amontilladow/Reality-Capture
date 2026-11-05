@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════════════
-// Project Risk Intelligence / Project Risk Graph — shared types
+// Project Risk Intelligence / Project Risk Graph; shared types
 //
 // Mirrors the DB enums added in migrations 050 (risk_node_type,
 // risk_relationship_type, risk_edge_source) and 051 (risks, risk_signals,
@@ -11,7 +11,7 @@
 import type { IssueDiscipline } from './issue.types';
 import type { RfiDiscipline } from './rfi.types';
 
-// ── Graph node/edge vocabulary (controlled — brief sections 3-5) ───────────
+// ── Graph node/edge vocabulary (controlled; brief sections 3-5) ───────────
 
 export const RISK_NODE_TYPES = [
   'project', 'building', 'level', 'location',
@@ -77,7 +77,7 @@ export interface RiskGraphEdge {
 // ── Canonical discipline vocabulary ─────────────────────────────────────────
 // IssueDiscipline (8 codes) and RfiDiscipline (14 values) are two separate,
 // non-overlapping vocabularies in this codebase today (see issue.types.ts /
-// rfi.types.ts) — neither is touched here. This canonical superset exists
+// rfi.types.ts): neither is touched here. This canonical superset exists
 // only for risk-graph/signal purposes (grouping, filtering, cross-entity
 // discipline matching), never written back to rfis.discipline or
 // issues.discipline.
@@ -120,7 +120,7 @@ export const RFI_DISCIPLINE_TO_RISK_DISCIPLINE: Record<RfiDiscipline, RiskDiscip
 // ── Risk signal catalog (brief section 9) ───────────────────────────────────
 // Only signal types this codebase's real data can actually produce.
 // Programme/procurement signal families from the brief are intentionally
-// absent — no programme-activity or material/procurement module exists
+// absent; no programme-activity or material/procurement module exists
 // (see the architecture assessment); adding fabricated signals for data
 // that doesn't exist is explicitly forbidden.
 
@@ -170,7 +170,7 @@ export const QUALITY_SIGNAL_TYPES = [
   'QA_RECURRING_LOCATION',
 ] as const;
 
-// QAQC NCR/SOR -- same overdue/approaching-due/high-priority shape as
+// QAQC NCR/SOR: same overdue/approaching-due/high-priority shape as
 // SUBMITTAL_SIGNAL_TYPES above (qaqc_records has the same due_date/priority
 // columns an RFI or submittal does), kept as its own array rather than
 // folded into QUALITY_SIGNAL_TYPES since QA_* above is specifically about
@@ -204,7 +204,7 @@ export type RiskLevel = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
 export type RiskConfidenceLevel = 'HIGH' | 'MODERATE' | 'LOW';
 export type RiskTrend = 'NEW' | 'INCREASING' | 'STABLE' | 'DECREASING';
 // MONITORING/ACCEPTED/ESCALATED added for the Risk Matrix brief's lifecycle
-// (section 6) -- purely additive to the original 5 values, DETECTED doubles
+// (section 6): purely additive to the original 5 values, DETECTED doubles
 // as that brief's "Not Assessed" (a risk the engine found but no human has
 // assigned Probability/Impact to yet).
 export type RiskStatus = 'DETECTED' | 'ACTIVE' | 'MITIGATION_IN_PROGRESS' | 'MONITORING' | 'ACCEPTED' | 'ESCALATED' | 'RESOLVED' | 'CLOSED';
@@ -218,7 +218,7 @@ export interface RiskScoreFactors {
   recurrence: number;
 }
 
-// Configurable weighted-sum formula (section 10). Weights must sum to 1 —
+// Configurable weighted-sum formula (section 10). Weights must sum to 1;
 // validated by the scoring engine, not assumed.
 export interface RiskScoringWeights {
   probability: number;
@@ -238,7 +238,7 @@ export const DEFAULT_RISK_SCORING_WEIGHTS: RiskScoringWeights = {
   recurrence: 0.1,
 };
 
-// Configurable thresholds (section 11) — never hardcoded in UI code.
+// Configurable thresholds (section 11): never hardcoded in UI code.
 export interface RiskLevelThresholds {
   low: number;      // score < moderate.min is LOW
   moderate: number;
@@ -263,7 +263,7 @@ export function scoreToRiskLevel(score: number, thresholds: RiskLevelThresholds 
 // ── Risk Matrix: Human/AI Probability × Impact assessment ───────────────────
 //
 // A second, deliberately separate scoring system from the 6-factor engine
-// above (automatedScore/overrideScore/score, 0-100, 4-level) -- that engine
+// above (automatedScore/overrideScore/score, 0-100, 4-level): that engine
 // stays exactly as-is and continues to drive exposure amplification,
 // clustering, trend math, and every existing dashboard/PDF number. This is
 // the Risk Assessment brief's own 5x5 Probability x Impact matrix (1-25,
@@ -282,7 +282,7 @@ export interface RiskMatrixThresholds {
   critical: [number, number];
 }
 
-// The exact 5x5 table the brief specifies (section 4) -- a company can
+// The exact 5x5 table the brief specifies (section 4): a company can
 // override this via PATCH /company/settings { riskMatrix: { thresholds } },
 // which RiskService reads at assessment time rather than this constant
 // being hardcoded into any UI component.
@@ -302,7 +302,7 @@ export function scoreToMatrixLevel(score: number, thresholds: RiskMatrixThreshol
   return 'LOW';
 }
 
-// Primary/secondary Risk Driver taxonomy (brief section 5) -- a company can
+// Primary/secondary Risk Driver taxonomy (brief section 5): a company can
 // extend this list via PATCH /company/settings { riskMatrix: { drivers } };
 // this is the default/fallback list.
 export const RISK_DRIVERS = [
@@ -323,8 +323,8 @@ export const RISK_DRIVER_LABELS: Record<RiskDriver, string> = {
 };
 
 // Company-level configuration, read from companies.settings.riskMatrix (the
-// existing generic settings JSONB column + PATCH /company/settings endpoint
-// -- no new settings table/endpoint needed). Both fields optional: unset
+// existing generic settings JSONB column + PATCH /company/settings endpoint;
+// no new settings table/endpoint needed). Both fields optional: unset
 // means "use the brief's own defaults above."
 export interface RiskMatrixSettings {
   thresholds?: RiskMatrixThresholds;
@@ -368,7 +368,7 @@ export interface Risk {
   overrideAt?: string;
   overrideReason?: string;
 
-  // Effective values — override if present, else automated. Always present.
+  // Effective values: override if present, else automated. Always present.
   score: number;
   level: RiskLevel;
 
@@ -382,7 +382,7 @@ export interface Risk {
   confidenceLevel: RiskConfidenceLevel;
   confidenceReason?: string;
 
-  // ── Risk Matrix (Probability x Impact, 1-25) — see the block above this
+  // ── Risk Matrix (Probability x Impact, 1-25); see the block above this
   // interface. Independent of automatedScore/score/level above. humanScore/
   // humanLevel are null until an engineer actually assesses this risk
   // (status stays DETECTED, the brief's "Not Assessed", until then).
@@ -397,7 +397,7 @@ export interface Risk {
 
   // Phase 18 populates these: the deterministic engine's own output
   // re-expressed on the same 1-25/5-level scale as humanScore/humanLevel,
-  // purely so the two can be compared — never a second, independent LLM
+  // purely so the two can be compared; never a second, independent LLM
   // guess (brief section 36).
   aiScore?: number;
   aiLevel?: RiskMatrixLevel;
@@ -406,7 +406,7 @@ export interface Risk {
   // The number actually shown as "the" risk score on this matrix: an
   // explicit engineer override if one was made, else the human assessment
   // if one exists, else the AI score. Kept in sync by application code,
-  // like score/level above — never written to directly.
+  // like score/level above; never written to directly.
   finalScore?: number;
   finalLevel?: RiskMatrixLevel;
   matrixOverrideBy?: string;
@@ -507,11 +507,11 @@ export interface RiskDataConfidenceInput {
 
 // percent (0-100) is the same underlying direct-vs-inferred-relationship
 // signal as level, just continuous rather than bucketed into HIGH/MODERATE/
-// LOW -- added for the Risk Matrix's AI Confidence (brief sections 7-10),
+// LOW; added for the Risk Matrix's AI Confidence (brief sections 7-10),
 // which the brief explicitly wants shown as a percentage ("Confidence:
 // 91%") rather than a 3-level bucket. Both are derived from the exact same
 // inferredShare computation below, so they can never disagree with each
-// other -- level is just percent read through the existing breakpoints.
+// other; level is just percent read through the existing breakpoints.
 export function computeConfidenceLevel(input: RiskDataConfidenceInput): { level: RiskConfidenceLevel; reason: string; percent: number } {
   if (input.missingCriticalFields.length > 0) {
     return { level: 'LOW', reason: `Missing: ${input.missingCriticalFields.join(', ')}`, percent: 30 };

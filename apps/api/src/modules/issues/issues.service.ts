@@ -27,7 +27,7 @@ import { COMPANY_ROLE_WEIGHT, getOrgCategory, categoryCan, type PaginationQuery,
 import { ProjectAuthorizationService } from '../../common/authorization/project-authorization.service';
 
 // No shared label maps for these exist in @engineeringos/types (unlike RFI's
-// RFI_DISCIPLINE_LABELS) -- apps/web/src/lib/issue-constants.ts defines its
+// RFI_DISCIPLINE_LABELS): apps/web/src/lib/issue-constants.ts defines its
 // own copies locally and the API can't import a frontend-only file, so these
 // are duplicated here, display-only, for the PDF/XLS export's benefit alone.
 const ISSUE_DISCIPLINE_LABELS: Record<string, string> = {
@@ -44,7 +44,7 @@ const ISSUE_TYPE_LABELS: Record<string, string> = {
   safety_observation: 'Safety Observation', quality_hold: 'Quality Hold', inspection_point: 'Inspection Point', general: 'General',
 };
 
-const ISSUE_SCREENSHOT_MAX_SIZE = 5 * 1024 * 1024; // 5 MB -- matches getScreenshotUploadUrl()'s existing figure
+const ISSUE_SCREENSHOT_MAX_SIZE = 5 * 1024 * 1024; // 5 MB: matches getScreenshotUploadUrl()'s existing figure
 
 @Injectable()
 export class IssuesService {
@@ -56,22 +56,22 @@ export class IssuesService {
     private readonly notifications: NotificationsService,
     private readonly storage: StorageService,
     // @Optional(): see RfisService's identical comment on its own
-    // constructor -- keeps the many existing issues.service.spec.ts call
+    // constructor; keeps the many existing issues.service.spec.ts call
     // sites (which construct IssuesService with the pre-existing 4-arg
     // list) working unchanged; IssuesModule registers RiskModule as a real
     // provider, so production always gets a live instance here.
     @Optional() private readonly risk?: RiskService,
-    // @Optional(): same rationale as `risk` above -- keeps every existing
+    // @Optional(): same rationale as `risk` above; keeps every existing
     // issues.service.spec.ts call site (built against the pre-F3 arg list)
     // working unchanged.
     @Optional() private readonly webhooks?: WebhooksService,
-    // @Optional(): same rationale again -- see isPermittedApprover() below.
+    // @Optional(): same rationale again; see isPermittedApprover() below.
     // Every existing spec call site only exercises the company-role-weight
     // path, which this.projectAuth being undefined there doesn't change.
     @Optional() private readonly projectAuth?: ProjectAuthorizationService,
   ) {}
 
-  // Event-driven incremental risk recalculation (brief section 41) -- see
+  // Event-driven incremental risk recalculation (brief section 41); see
   // RfisService.triggerRiskRecalc()'s identical comment for the full
   // rationale (fired after any write that can change an issue's overdue/
   // severity/reopened/location/open-vs-closed state; never allowed to fail
@@ -90,8 +90,8 @@ export class IssuesService {
   // Previously keyed off issue type ({projectCode}-{typeCode}-{0001}); this
   // ticket (2a) moves numbering to discipline to match the reference
   // issue-tracker's scheme. Existing rows' issue_number values are left
-  // untouched -- this only affects newly created issues.
-  // withTenant required -- projects and issues both carry the tenant_isolation RLS policy.
+  // untouched; this only affects newly created issues.
+  // withTenant required; projects and issues both carry the tenant_isolation RLS policy.
   // A plain this.db.query() never sets app.current_company_id, so under any DB role that
   // isn't the table owner/a superuser both SELECTs see no rows: the project-code lookup
   // silently falls back to the generic 'PRJ' prefix, and the sequence count is always 0.
@@ -100,7 +100,7 @@ export class IssuesService {
       const [proj] = await sql`SELECT code FROM projects WHERE id = ${projectId} AND company_id = ${companyId}`;
       const prefix = (proj?.code as string ?? 'PRJ').toUpperCase();
       // The issue_discipline_enum values (MEP, ARC, STR, CIV, ELE, INFRA,
-      // LANDSCAPE, OTHER) are already short codes -- used directly, no
+      // LANDSCAPE, OTHER) are already short codes; used directly, no
       // separate code-lookup table needed.
       const disciplineCode = discipline.toUpperCase();
       const [cnt] = await sql`
@@ -111,11 +111,11 @@ export class IssuesService {
   }
 
   // F4: assignment was previously accepted for any UUID with no check that
-  // the user is even on this project -- holding manage_issues lets a caller
+  // the user is even on this project; holding manage_issues lets a caller
   // reassign to someone with no visibility into the project at all, which
   // defeats "assign to a subcontractor" as a meaningful access boundary.
   // project_members is the single source of truth for project membership
-  // (project_lead is a role value within it, not a separate table/column --
+  // (project_lead is a role value within it, not a separate table/column;
   // see projects.service.ts's own createProject()).
   private async assertAssigneeIsProjectMember(companyId: string, projectId: string, assigneeId: string): Promise<void> {
     const [member] = await this.db.withTenant(companyId, sql => sql`
@@ -134,7 +134,7 @@ export class IssuesService {
     await this.assertProjectBelongsToCompany(companyId, projectId);
 
     // Real post-upload size enforcement for the optional BIM-viewer
-    // screenshot -- getScreenshotUploadUrl() below signs a max size but
+    // screenshot; getScreenshotUploadUrl() below signs a max size but
     // (like every presigned PUT in this codebase) can't enforce it at the
     // signature level. Verify the actual object before it's ever persisted
     // or queued.
@@ -154,9 +154,14 @@ export class IssuesService {
 
     if (dto.assignedTo) await this.assertAssigneeIsProjectMember(companyId, projectId, dto.assignedTo);
 
+    await this.assertLinkedResourcesInProject(companyId, projectId, {
+      buildingId: dto.buildingId, levelId: dto.levelId, locationId: dto.locationId,
+      elementId: dto.elementId, captureId: dto.captureId, drawingId: dto.drawingId,
+    });
+
     const issueNumber = await this.generateIssueNumber(companyId, projectId, dto.discipline);
 
-    // withTenant required -- issues carries the tenant_isolation RLS policy. A plain
+    // withTenant required: issues carries the tenant_isolation RLS policy. A plain
     // this.db.query() never sets app.current_company_id, so under any DB role that isn't
     // the table owner/a superuser the implicit WITH CHECK rejects this insert outright.
     const [issue] = await this.db.withTenant(companyId, sql => sql`
@@ -186,7 +191,7 @@ export class IssuesService {
       RETURNING *`);
 
     // Log creation activity
-    await this.addActivity(companyId, issue.id as string, userId, {
+    await this.addActivity(companyId, projectId, issue.id as string, userId, {
       activityType: 'comment',
       content: `Issue created: ${issueNumber}`,
     });
@@ -206,7 +211,7 @@ export class IssuesService {
       });
     }
 
-    // Make the issue searchable via AI search/assistant. Fire-and-forget —
+    // Make the issue searchable via AI search/assistant. Fire-and-forget;
     // never blocks or fails the create response if the AI service is down.
     this.aiClient.ingestIssue({
       id: issue.id as string,
@@ -228,8 +233,8 @@ export class IssuesService {
   // ── List ──────────────────────────────────────────────────────────────────
   // Owner's org-category RBAC sprint, "critical" subcontractor isolation:
   // one subcontractor account must never read another's issues, even on the
-  // same project (the matrix's "Subcontractor: C,V -- own company's issues
-  // only"). Same pattern as RfisService's own isViewerSubcontractor() --
+  // same project (the matrix's "Subcontractor: C,V; own company's issues
+  // only"). Same pattern as RfisService's own isViewerSubcontractor();
   // kept as a private duplicate here rather than a shared util, matching
   // how ownership checks are already scoped per-module in this codebase
   // (e.g. SubcontractorRfiAccessService is RFI-specific, not generic).
@@ -253,7 +258,7 @@ export class IssuesService {
     const isolateToViewer = await this.isViewerSubcontractor(companyId, projectId, query.userId);
 
     // F4: `overdue`/`myIssues` arrive over the wire as the query-string
-    // STRING "true"/"false" -- `@Query()` here has no decorated DTO class
+    // STRING "true"/"false"; `@Query()` here has no decorated DTO class
     // for the global ValidationPipe's transform step to coerce against, so
     // `query.overdue` is never actually converted to a real boolean before
     // this point. That alone would just be a silent no-op (a truthy string
@@ -261,8 +266,8 @@ export class IssuesService {
     // confirmed by direct reproduction against postgres.js, a JS *string*
     // bound as a parameter and cast with `::boolean` in SQL comes back
     // `false` for every input ('true', 'false', 'hello', 't' all cast to
-    // `false`) -- a real serialization bug, not just a missing cast. A
-    // genuine JS *boolean* bound the same way behaves correctly. Coercing
+    // `false`): a real serialization bug, not just a missing cast. A
+    // real JS *boolean* bound the same way behaves correctly. Coercing
     // here, before the value ever reaches the SQL template, is the fix.
     const overdue = query.overdue === true || (query.overdue as unknown) === 'true';
     const myIssues = query.myIssues === true || (query.myIssues as unknown) === 'true';
@@ -311,7 +316,7 @@ export class IssuesService {
 
   // ── Find one ──────────────────────────────────────────────────────────────
   // viewerId is optional and only matters for subcontractor isolation (see
-  // isViewerSubcontractor() above) -- every internal caller (update/close/
+  // isViewerSubcontractor() above): every internal caller (update/close/
   // delete/forward/...) omits it and is completely unaffected; only the
   // controller's own GET :id route passes it.
   async findOne(companyId: string, projectId: string, issueId: string, viewerId?: string) {
@@ -335,7 +340,7 @@ export class IssuesService {
     if (!issue) throw new NotFoundException(`Issue ${issueId} not found.`);
     // Unlike RFIs (which has an explicit "Main Contractor's RFIs, read-only"
     // window for subcontractors), the owner's Issues/Snags matrix row grants
-    // Subcontractor nothing beyond "own company's issues only" -- so a
+    // Subcontractor nothing beyond "own company's issues only"; so a
     // subcontractor viewer is isolated from EVERY issue they didn't create
     // themselves, not just other subcontractors'.
     if (issue.createdBy !== viewerId && await this.isViewerSubcontractor(companyId, projectId, viewerId)) {
@@ -347,8 +352,86 @@ export class IssuesService {
     return issue;
   }
 
+  // H-1 fix (KNOWN_ISSUES_AND_REMEDIATION.md): every sub-resource route
+  // below (activities, evidence, capture-attach, attachments) used to scope
+  // its issue lookup only by company_id, so a user authorized for Project A
+  // could read/write Project B's issue sub-resources by guessing/enumerating
+  // an issueId; not a cross-company leak (company_id was always checked),
+  // but a same-company cross-project gap. This is the lightweight
+  // equivalent of findOne()'s own project_id check, without findOne()'s
+  // full join, for callers that only need to confirm ownership before
+  // touching a sub-resource, not render the issue itself.
+  private async assertIssueInProject(companyId: string, projectId: string, issueId: string): Promise<void> {
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      SELECT 1 FROM issues WHERE id = ${issueId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!row) throw new NotFoundException(`Issue ${issueId} not found.`);
+  }
+
+  // H-1 follow-up: create()/update() accept several optional cross-resource
+  // references (building/level/location/element/capture/drawing), each with
+  // its own project_id (directly or via a join). None of these were
+  // checked; a user authorized for Project A could attach Project B's
+  // building/level/location/element/capture/drawing to an issue in Project
+  // A merely by supplying its id, and findOne() then joins through
+  // location_id/building_id/level_id/element_id and would display that
+  // other project's names/IFC metadata on an issue the Project-A user can
+  // see. Each branch mirrors the project-resolution path already
+  // established for that table elsewhere (buildings.service.ts's own
+  // asserts for the building/level/location chain; bim/drawings/captures'
+  // own direct project_id columns for the rest). Only provided (truthy)
+  // refs are checked, so update()'s elementId: null unlink path is
+  // unaffected.
+  private async assertLinkedResourcesInProject(companyId: string, projectId: string, refs: {
+    buildingId?: string | null; levelId?: string | null; locationId?: string | null;
+    elementId?: string | null; captureId?: string | null; drawingId?: string | null;
+  }): Promise<void> {
+    if (refs.buildingId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT 1 FROM buildings WHERE id = ${refs.buildingId ?? null} AND project_id = ${projectId} AND company_id = ${companyId}
+      `);
+      if (!row) throw new NotFoundException(`Building ${refs.buildingId} not found.`);
+    }
+    if (refs.levelId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT lvl.id FROM levels lvl JOIN buildings b ON b.id = lvl.building_id
+        WHERE lvl.id = ${refs.levelId ?? null} AND b.project_id = ${projectId} AND b.company_id = ${companyId}
+      `);
+      if (!row) throw new NotFoundException(`Level ${refs.levelId} not found.`);
+    }
+    if (refs.locationId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT loc.id FROM locations loc
+        LEFT JOIN levels lvl ON lvl.id = loc.level_id
+        LEFT JOIN buildings b ON b.id = lvl.building_id
+        LEFT JOIN drawings d ON d.id = loc.drawing_id
+        WHERE loc.id = ${refs.locationId ?? null} AND loc.company_id = ${companyId}
+          AND COALESCE(b.project_id, d.project_id) = ${projectId}
+      `);
+      if (!row) throw new NotFoundException(`Location ${refs.locationId} not found.`);
+    }
+    if (refs.elementId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT 1 FROM bim_elements WHERE id = ${refs.elementId ?? null} AND project_id = ${projectId} AND company_id = ${companyId}
+      `);
+      if (!row) throw new NotFoundException(`BIM element ${refs.elementId} not found.`);
+    }
+    if (refs.captureId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT 1 FROM captures WHERE id = ${refs.captureId ?? null} AND project_id = ${projectId} AND company_id = ${companyId}
+      `);
+      if (!row) throw new NotFoundException(`Capture ${refs.captureId} not found.`);
+    }
+    if (refs.drawingId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT 1 FROM drawings WHERE id = ${refs.drawingId ?? null} AND project_id = ${projectId} AND company_id = ${companyId}
+      `);
+      if (!row) throw new NotFoundException(`Drawing ${refs.drawingId} not found.`);
+    }
+  }
+
   // ── View-state screenshot upload ────────────────────────────────────────
-  // Mirrors bim.service.ts's getModelUploadUrl -- a lightweight presigned
+  // Mirrors bim.service.ts's getModelUploadUrl; a lightweight presigned
   // PUT URL, no DB row of its own. The resulting storageKey is passed
   // straight into create()'s screenshotStorageKey.
   async getScreenshotUploadUrl(companyId: string, projectId: string) {
@@ -359,7 +442,7 @@ export class IssuesService {
   }
 
   // ── Update ────────────────────────────────────────────────────────────────
-  // Can no longer transition status to 'closed' -- UpdateIssueDto rejects
+  // Can no longer transition status to 'closed'; UpdateIssueDto rejects
   // that value entirely; closing only happens through close() below, which
   // enforces the creator-only rule this generic endpoint has no way to.
   async update(companyId: string, projectId: string, issueId: string, userId: string, dto: UpdateIssueDto) {
@@ -367,7 +450,11 @@ export class IssuesService {
 
     if (dto.assignedTo) await this.assertAssigneeIsProjectMember(companyId, projectId, dto.assignedTo);
 
-    // withTenant required -- see generateIssueNumber() above.
+    await this.assertLinkedResourcesInProject(companyId, projectId, {
+      buildingId: dto.buildingId, levelId: dto.levelId, locationId: dto.locationId, elementId: dto.elementId,
+    });
+
+    // withTenant required; see generateIssueNumber() above.
     const [updated] = await this.db.withTenant(companyId, sql => sql`
       UPDATE issues SET
         title               = COALESCE(${dto.title ?? null}, title),
@@ -392,7 +479,7 @@ export class IssuesService {
 
     // Log status change activity automatically
     if (dto.status && dto.status !== existing.status) {
-      await this.addActivity(companyId, issueId, userId, {
+      await this.addActivity(companyId, projectId, issueId, userId, {
         activityType: 'status_change',
         fromValue: existing.status as string,
         toValue: dto.status,
@@ -421,17 +508,17 @@ export class IssuesService {
 
   // ── Close ─────────────────────────────────────────────────────────────────
   // Deliberately its own endpoint, not reachable via update()'s DTO (which
-  // rejects 'closed' outright -- see UpdateIssueDto).
+  // rejects 'closed' outright; see UpdateIssueDto).
   //
-  // F5 — Evidence-Based Issue Close-Out. Closing is no longer "the creator
+  // F5: Evidence-Based Issue Close-Out. Closing is no longer "the creator
   // can always close their own issue": the brief specifically wants
   // evidence plus "an approver sign-off from a permitted role," so the
   // old creator-or-admin bypass (matching delete()'s own escape hatch) is
-  // gone -- only a permitted role (same weight-based threshold RolesGuard
-  // applies for @Roles('company_admin','engineering_manager') elsewhere --
+  // gone; only a permitted role (same weight-based threshold RolesGuard
+  // applies for @Roles('company_admin','engineering_manager') elsewhere;
   // see isPermittedApprover() below) may close, and only once at least one
   // capture is attached as evidence. Still deliberately NOT gated by
-  // @RequireProjectPermission at the controller -- the role check happens
+  // @RequireProjectPermission at the controller; the role check happens
   // here, same place as before.
   async close(companyId: string, projectId: string, issueId: string, userId: string, userRole: string) {
     const existing = await this.findOne(companyId, projectId, issueId);
@@ -452,7 +539,7 @@ export class IssuesService {
       });
     }
 
-    // withTenant required -- see generateIssueNumber() above.
+    // withTenant required; see generateIssueNumber() above.
     const [updated] = await this.db.withTenant(companyId, sql => sql`
       UPDATE issues SET
         status     = 'closed',
@@ -465,7 +552,7 @@ export class IssuesService {
 
     // capture_id links this closure's audit row to the specific evidence
     // that justified it, not just "status changed to closed."
-    await this.addActivity(companyId, issueId, userId, {
+    await this.addActivity(companyId, projectId, issueId, userId, {
       activityType: 'status_change',
       fromValue: existing.status as string,
       toValue: 'closed',
@@ -491,7 +578,8 @@ export class IssuesService {
   }
 
   // ── Activities ────────────────────────────────────────────────────────────
-  async getActivities(companyId: string, issueId: string) {
+  async getActivities(companyId: string, projectId: string, issueId: string) {
+    await this.assertIssueInProject(companyId, projectId, issueId);
     const activities = await this.db.withTenant(companyId, sql => sql`
       SELECT a.*, u.first_name || ' ' || u.last_name AS performed_by_name, u.avatar_url
       FROM issue_activities a
@@ -501,13 +589,13 @@ export class IssuesService {
     `);
 
     // attachment_url stores the raw storage key, not a usable link (see
-    // addAttachment() below and the ticket 2b report) -- resolve it to a
+    // addAttachment() below and the ticket 2b report): resolve it to a
     // presigned read URL under a *different* field (attachmentReadUrl),
     // same raw-key/resolved-url split as findOne()'s
     // screenshotStorageKey -> screenshotUrl, rather than overwriting
     // attachmentUrl in place (which would erase the raw key from the
     // response for no benefit). getReadUrl() only computes a local SigV4
-    // signature via the AWS SDK presigner -- no network or DB call -- so
+    // signature via the AWS SDK presigner (no network or DB call) so
     // resolving one per activity in this loop is cheap, not an N+1 query.
     return Promise.all(activities.map(async (activity) => {
       if (!activity.attachmentUrl) return activity;
@@ -516,11 +604,12 @@ export class IssuesService {
   }
 
   // Notifies the issue's current assignee on a plain comment (unless
-  // they're the one commenting) -- mirrors update()'s existing
+  // they're the one commenting): mirrors update()'s existing
   // reassignment-notification pattern. Only 'comment' triggers this: the
   // other activity types (status_change, forward, etc.) already notify
   // through their own dedicated code paths where relevant.
-  async addActivity(companyId: string, issueId: string, userId: string, dto: AddActivityDto) {
+  async addActivity(companyId: string, projectId: string, issueId: string, userId: string, dto: AddActivityDto) {
+    await this.assertIssueInProject(companyId, projectId, issueId);
     const { activity, issue } = await this.db.withTenant(companyId, async (sql) => {
       const [activity] = await sql`
         INSERT INTO issue_activities (
@@ -559,7 +648,7 @@ export class IssuesService {
 
   // F5: the same "permitted role" threshold @Roles('company_admin',
   // 'engineering_manager') resolves to via RolesGuard's weight comparison
-  // (roles.guard.ts) -- close()/bulkClose() can't use that decorator
+  // (roles.guard.ts): close()/bulkClose() can't use that decorator
   // (close() is deliberately ungated at the controller so a plain
   // @Roles() check isn't available there), so this reimplements the same
   // weight-based logic rather than a hardcoded two-role array, which would
@@ -567,19 +656,19 @@ export class IssuesService {
   // both outranking engineering_manager everywhere else in this app.
   //
   // Also an OR with ProjectAuthorizationService's own check (manage_issues
-  // grant, or the project's own project_lead) -- previously this method
+  // grant, or the project's own project_lead): previously this method
   // only ever considered company role, so a project's own project_lead
   // with no company-wide engineering_manager+ title could not close an
   // issue on their own project, a real gap relative to how every other
   // project-permission-gated route in this app already treats project_lead.
   // Owner's org-category RBAC sprint: QAQC Team holds Approve/Close (A/X) on
-  // the Issues/Snags matrix row -- added here as one more OR branch,
+  // the Issues/Snags matrix row; added here as one more OR branch,
   // alongside the two pre-existing ones (weight threshold, manage_issues
   // grant), never replacing either. engineering_manager is already covered
   // by the weight check above it (weight 70 == the threshold itself) and
   // also by OrgCategoryPermissionService's own unconditional bypass for
   // that category, so checking categoryCan() for it here would be
-  // redundant, not wrong -- included anyway for a single, complete,
+  // redundant, not wrong; included anyway for a single, complete,
   // self-contained permission check that doesn't depend on reading the
   // weight branch above it to understand who's covered.
   private async isPermittedApprover(companyId: string, userRole: string, projectId: string, userId: string): Promise<boolean> {
@@ -591,7 +680,7 @@ export class IssuesService {
   }
 
   // F5: the capture that justifies closing this issue, for the closure's
-  // own audit-trail row (issue_activities.capture_id) -- the primary
+  // own audit-trail row (issue_activities.capture_id): the primary
   // evidence photo if one was marked, else the most recently attached one.
   // Returns null when no evidence exists at all, which callers treat as
   // "closure not allowed."
@@ -610,7 +699,8 @@ export class IssuesService {
   // enforces the real requirement in close()/forceStatus()/bulkClose();
   // this is purely for the UI to show the right thing, not a second source
   // of truth).
-  async getEvidence(companyId: string, issueId: string) {
+  async getEvidence(companyId: string, projectId: string, issueId: string) {
+    await this.assertIssueInProject(companyId, projectId, issueId);
     const rows = await this.db.withTenant(companyId, sql => sql`
       SELECT ic.id, ic.capture_id, ic.is_primary, ic.caption, ic.created_at,
              c.capture_type, c.captured_at, c.title, c.original_key,
@@ -632,15 +722,21 @@ export class IssuesService {
   }
 
   // ── Add evidence capture ──────────────────────────────────────────────────
-  async addCapture(companyId: string, issueId: string, userId: string, captureId: string, isPrimary = false, caption?: string) {
-    // withTenant required -- issue_captures carries the tenant_isolation RLS policy.
+  async addCapture(companyId: string, projectId: string, issueId: string, userId: string, captureId: string, isPrimary = false, caption?: string) {
+    await this.assertIssueInProject(companyId, projectId, issueId);
+    // H-1 follow-up: captureId was never checked; a user authorized for
+    // Project A could link Project B's capture (by id) as evidence on a
+    // Project A issue. Mirrors assertLinkedResourcesInProject's own capture
+    // check.
+    await this.assertLinkedResourcesInProject(companyId, projectId, { captureId });
+    // withTenant required: issue_captures carries the tenant_isolation RLS policy.
     const [link] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO issue_captures (issue_id, capture_id, company_id, is_primary, caption, added_by)
       VALUES (${issueId}, ${captureId}, ${companyId}, ${isPrimary}, ${caption ?? null}, ${userId})
       ON CONFLICT (issue_id, capture_id) DO UPDATE SET caption = ${caption ?? null}
       RETURNING *
     `);
-    await this.addActivity(companyId, issueId, userId, {
+    await this.addActivity(companyId, projectId, issueId, userId, {
       activityType: 'capture_added',
       captureId,
       content: caption,
@@ -689,7 +785,7 @@ export class IssuesService {
   }
 
   // ── Reports KPI breakdown ────────────────────────────────────────────────
-  // Sibling to getSummary() above -- deliberately not folded into it, since
+  // Sibling to getSummary() above; deliberately not folded into it, since
   // other pages already depend on getSummary()'s exact current shape. One
   // GROUP BY query, folded in JS into three Record<string, number> maps
   // (status/priority/discipline), for the Reports feature's KPI dashboard
@@ -717,7 +813,7 @@ export class IssuesService {
     return { byStatus, byPriority, byDiscipline };
   }
 
-  // Mirrors findAll()'s join pattern (assigned_to_name via u_assignee) --
+  // Mirrors findAll()'s join pattern (assigned_to_name via u_assignee);
   // used by the Reports KPI dashboard/PDF for its "currently open" table,
   // not a general-purpose list endpoint, hence the flat limit + no pagination.
   async getOpenList(companyId: string, projectId: string, limit = 50) {
@@ -737,14 +833,14 @@ export class IssuesService {
   }
 
   // ══════════════════════════════════════════════════════════════════════
-  // Ticket 2b — workflow actions
+  // Ticket 2b: workflow actions
   // ══════════════════════════════════════════════════════════════════════
 
   // ── Forward ─────────────────────────────────────────────────────────────
   // Reassigns the issue to another user and logs a 'forward' activity.
   // Mirrors update()'s existing reassignment-notification behavior for
   // consistency, since this is functionally a targeted reassignment.
-  // Restricted to the issue's current assignee -- the one person actually
+  // Restricted to the issue's current assignee; the one person actually
   // doing the work is the one who gets to hand it off. If the issue is
   // still unassigned there's no current assignee to check against, so the
   // creator may forward it instead (functionally an initial assignment).
@@ -763,14 +859,14 @@ export class IssuesService {
 
     await this.assertAssigneeIsProjectMember(companyId, projectId, dto.toUserId);
 
-    // withTenant required -- see generateIssueNumber() above.
+    // withTenant required; see generateIssueNumber() above.
     const [updated] = await this.db.withTenant(companyId, sql => sql`
       UPDATE issues SET assigned_to = ${dto.toUserId}::uuid, updated_at = NOW()
       WHERE id = ${issueId} AND project_id = ${projectId} AND company_id = ${companyId}
       RETURNING *
     `);
 
-    await this.addActivity(companyId, issueId, userId, {
+    await this.addActivity(companyId, projectId, issueId, userId, {
       activityType: 'forward',
       fromValue: (existing.assignedTo as string | null) ?? undefined,
       toValue: dto.toUserId,
@@ -793,7 +889,7 @@ export class IssuesService {
   }
 
   // ── Admin force-status ─────────────────────────────────────────────────
-  // Bypasses the normal update() path entirely -- there is no transition
+  // Bypasses the normal update() path entirely; there is no transition
   // validation to bypass today (update() unconditionally COALESCEs status),
   // but this is still a distinct, @Roles-gated path so it logs a dedicated
   // 'status_force' activity instead of 'status_change', per the reference
@@ -804,7 +900,7 @@ export class IssuesService {
 
     // F5: the force-status path is already @Roles-gated to the same
     // permitted-approver set close() requires, but it had no evidence
-    // check at all -- "closing an issue requires... evidence" applies
+    // check at all; "closing an issue requires... evidence" applies
     // here too, there's no force-path exception for it in the brief.
     let evidenceCaptureId: string | null = null;
     if (isClosing) {
@@ -817,7 +913,7 @@ export class IssuesService {
       }
     }
 
-    // withTenant required -- see generateIssueNumber() above.
+    // withTenant required; see generateIssueNumber() above.
     const [updated] = await this.db.withTenant(companyId, sql => sql`
       UPDATE issues SET
         status     = ${dto.status},
@@ -828,7 +924,7 @@ export class IssuesService {
       RETURNING *
     `);
 
-    await this.addActivity(companyId, issueId, userId, {
+    await this.addActivity(companyId, projectId, issueId, userId, {
       activityType: 'status_force',
       fromValue: existing.status as string,
       toValue: dto.status,
@@ -848,14 +944,14 @@ export class IssuesService {
   // ── Bulk close ──────────────────────────────────────────────────────────
   // Scoped to (project_id, company_id) like every other issues query here,
   // and additionally uses withTenant() so RLS enforces the company
-  // boundary at the DB level too -- an issueId belonging to another
+  // boundary at the DB level too; an issueId belonging to another
   // company/project simply won't match and is silently skipped, same as
   // findOne()'s tenant scoping elsewhere in this file. Wrapped in
   // withTenant()'s transaction so the status updates and their activity
   // log entries succeed or fail together.
   //
-  // F5: same permitted-role-and-evidence rule as the single-issue close()
-  // -- the old creator-only bypass is gone, and an issue with no evidence
+  // F5: same permitted-role-and-evidence rule as the single-issue close();
+  // the old creator-only bypass is gone, and an issue with no evidence
   // attached is treated the same as one the caller isn't allowed to touch:
   // silently skipped (reported back via `skipped`) rather than failing the
   // whole batch, same "don't let one bad item block the rest" shape this
@@ -897,7 +993,7 @@ export class IssuesService {
     });
 
     // Recalculated one at a time, after (not inside) the transaction above
-    // commits -- recalculateForEntity() opens its own withTenant transaction
+    // commits; recalculateForEntity() opens its own withTenant transaction
     // internally, which would otherwise read this batch's rows before they
     // were actually committed (Postgres transaction isolation: an
     // in-progress transaction's writes are invisible to a second, separate
@@ -911,7 +1007,7 @@ export class IssuesService {
   // ── Reminders ───────────────────────────────────────────────────────────
   // Broadcasts to every open (non-closed/void) issue in the project. One
   // issue_reminders row per affected issue (so the log shows exactly what
-  // was sent and to whom -- sent_to is that issue's current assignee,
+  // was sent and to whom; sent_to is that issue's current assignee,
   // which may be null for unassigned issues), plus a 'reminder' activity
   // on each.
   async broadcastReminder(companyId: string, projectId: string, userId: string, dto: BroadcastReminderDto) {
@@ -962,11 +1058,11 @@ export class IssuesService {
     });
   }
 
-  // One-click "Warn" from the dashboard's per-user KPI row -- unlike the
+  // One-click "Warn" from the dashboard's per-user KPI row; unlike the
   // scheduled IssueWarningService (which has no real actor and falls back to
   // attributing to the issue's own creator), this always has a real manager
   // triggering it, so performed_by is that manager's own id, not a workaround.
-  // Scoped to overdue issues specifically, not all open ones -- matches what
+  // Scoped to overdue issues specifically, not all open ones; matches what
   // the KPI row's "overdue" count is actually about.
   async warnUser(companyId: string, projectId: string, performedBy: string, dto: WarnUserDto) {
     return this.db.withTenant(companyId, async (sql) => {
@@ -1042,23 +1138,18 @@ export class IssuesService {
     return { uploadUrl, storageKey: key };
   }
 
-  // Step 2: client already PUT the bytes to `storageKey` from step 1 --
+  // Step 2: client already PUT the bytes to `storageKey` from step 1;
   // this registers it as a new issue_activities row. attachment_url
-  // stores the storage key (not a raw presigned URL, which would expire) --
+  // stores the storage key (not a raw presigned URL, which would expire);
   // same pattern as documents.storageKey / issues.screenshotStorageKey,
   // resolved to a live presigned URL by the caller/read path when needed.
-  async addAttachment(companyId: string, issueId: string, userId: string, dto: AddIssueAttachmentDto) {
-    // No projectId is threaded through this route today (see
-    // issues.controller.ts) -- confirming the issue itself exists under this
-    // company is the authorization boundary available here, and also
-    // catches a bogus/foreign issueId before an orphan activity row gets
-    // written for it.
-    const [issue] = await this.db.withTenant(companyId, sql => sql`
-      SELECT id FROM issues WHERE id = ${issueId} AND company_id = ${companyId}
-    `);
-    if (!issue) throw new NotFoundException(`Issue ${issueId} not found.`);
+  async addAttachment(companyId: string, projectId: string, issueId: string, userId: string, dto: AddIssueAttachmentDto) {
+    // H-1 fix: projectId is now threaded through from issues.controller.ts
+    // and checked here, closing the same-company cross-project gap this
+    // comment used to document as an accepted limitation.
+    await this.assertIssueInProject(companyId, projectId, issueId);
 
-    // Real post-upload size enforcement -- the client-declared dto.sizeBytes
+    // Real post-upload size enforcement: the client-declared dto.sizeBytes
     // was only ever checked against the limit at upload-url time; it is not
     // trusted for persistence here.
     const actualSizeBytes = await this.storage.getObjectSize(dto.storageKey);
@@ -1090,14 +1181,14 @@ export class IssuesService {
   }
 
   // ══════════════════════════════════════════════════════════════════════
-  // Export -- PDF/XLS, shared data-gathering + two renderers
+  // Export: PDF/XLS, shared data-gathering + two renderers
   // ══════════════════════════════════════════════════════════════════════
 
-  // Single shared query, used by both generatePdf() and generateXls() --
+  // Single shared query, used by both generatePdf() and generateXls();
   // per the ticket's own decision, one server-side pipeline rather than
   // mirroring RFI's PDF/XLS split. Unlike RFI (separate rfi_comments/
-  // rfi_attachments tables), everything here -- comments, attachments,
-  // status changes -- lives unified in issue_activities (see
+  // rfi_attachments tables), everything here (comments, attachments,
+  // status changes) lives unified in issue_activities (see
   // getActivities()); the export splits that single feed three ways.
   private async getExportData(companyId: string, projectId: string, issueId: string) {
     const issue = await this.findOne(companyId, projectId, issueId);
@@ -1112,7 +1203,7 @@ export class IssuesService {
       SELECT name, code FROM projects WHERE id = ${projectId} AND company_id = ${companyId}
     `);
     // Photos/videos belonging to the pin (locations row) this issue was
-    // raised from, if any -- captures.location_id = issue.locationId is
+    // raised from, if any; captures.location_id = issue.locationId is
     // the same relationship PinPanel.tsx's own "History" grid already
     // reads from (listCaptures({ locationId })), not a new concept.
     const pinCaptures = issue.locationId
@@ -1128,7 +1219,7 @@ export class IssuesService {
     return { issue, activities: activities as Array<Record<string, unknown>>, project, pinCaptures: pinCaptures as Array<Record<string, unknown>> };
   }
 
-  // Mirrors CaptureGrid.tsx's TYPE_LABEL exactly -- display-only, kept as
+  // Mirrors CaptureGrid.tsx's TYPE_LABEL exactly; display-only, kept as
   // its own copy for the same reason the discipline/category/type label
   // maps above are (no shared package export, and duplicating three
   // literals isn't worth a cross-module import for it).
@@ -1137,7 +1228,7 @@ export class IssuesService {
   };
 
   // Mirrors IssueDetail.tsx's own activityLabel() exactly, for the export's
-  // Activity Log section -- kept as a separate copy since one lives in
+  // Activity Log section; kept as a separate copy since one lives in
   // apps/web and the other here, same split as richTextToPlain() between
   // rfi-pdf.template.ts and rfi-xls.ts.
   private activityActionLabel(activityType: string, fromValue?: string, toValue?: string): string {
@@ -1155,9 +1246,9 @@ export class IssuesService {
   }
 
   // A plain comment (activity_type='comment', no attachment) vs. an
-  // attachment (attachment_url set, regardless of activity_type -- see
+  // attachment (attachment_url set, regardless of activity_type; see
   // addAttachment()'s own comment: it always inserts as 'comment') vs.
-  // everything else (status changes, forwards, reminders, etc.) --
+  // everything else (status changes, forwards, reminders, etc.);
   // three-way split shared by both generatePdf() and generateXls().
   private splitActivitiesForExport(activities: Array<Record<string, unknown>>) {
     const comments = activities.filter((a) => a.activityType === 'comment' && !a.attachmentUrl);
@@ -1169,11 +1260,11 @@ export class IssuesService {
   // Turns a pinCaptures row (see getExportData()) into the {attachmentName,
   // attachmentUrl} shape appendAttachmentPages()/mergeAttachmentPdfs()
   // already expect, so pin photos merge into the PDF appendix through the
-  // exact same tested code path as a regular attachment -- not a parallel
+  // exact same tested code path as a regular attachment; not a parallel
   // implementation. Prefers the thumbnail_lg rendition (a real, always-
   // present-once-processed .jpg, cheap to download) over the original file
   // (could be a multi-MB raw upload, and for a 360 photo isn't flat).
-  // Videos have no static rendition at all -- attachmentUrl stays
+  // Videos have no static rendition at all; attachmentUrl stays
   // undefined, so appendAttachmentPages() skips the appendix page for them
   // and the summary's own text line is their only representation.
   private pinPhotoAttachmentRow(capture: Record<string, unknown>): Record<string, unknown> {
@@ -1244,7 +1335,7 @@ export class IssuesService {
 
   // Factored out of generateXls() so generateBulkXls() (below) can gather
   // each selected issue's data and add it as its own sheet on one shared
-  // workbook, rather than needing N separate un-combinable workbooks --
+  // workbook, rather than needing N separate un-combinable workbooks;
   // exceljs has no supported way to merge sheets across workbooks after
   // the fact, so sharing this step is the only way to avoid re-deriving
   // the same field-mapping logic twice.
@@ -1262,7 +1353,7 @@ export class IssuesService {
     }));
 
     // Renditions are always .jpg (image-processing.processor.ts always
-    // encodes them via sharp's .jpeg()) -- no need for the label-based
+    // encodes them via sharp's .jpeg()): no need for the label-based
     // getFileExtension()/isImageFilename() detection attachments use above,
     // since a pin photo's label has no real extension at all.
     const pinPhotosWithImage = await Promise.all(pinCaptures.map(async (c) => {
@@ -1312,11 +1403,11 @@ export class IssuesService {
     return { buffer: Buffer.from(buffer), filename: `${data.issueNumber}.xlsx` };
   }
 
-  // ── Bulk export -- mirrors bulkClose()'s selection model (a list of
+  // ── Bulk export; mirrors bulkClose()'s selection model (a list of
   // issue ids from the list page's checkboxes).
   //
   // Both PDF and XLS ship as a ZIP containing each selected issue's own
-  // export as its own separate file -- deliberately NOT one merged PDF /
+  // export as its own separate file; deliberately NOT one merged PDF /
   // one multi-sheet workbook (an earlier version did that for both; per
   // explicit feedback, a bulk export of otherwise-independent documents
   // reads better as separate, individually-shareable files than as one
@@ -1335,7 +1426,7 @@ export class IssuesService {
   }
 
   // Same "separate files in a zip" treatment as generateBulkPdf() above,
-  // per the same feedback -- each selected issue gets its own .xlsx
+  // per the same feedback; each selected issue gets its own .xlsx
   // (reusing buildIssueWorkbookBuffer() wholesale, unchanged) rather than
   // being folded into one multi-sheet workbook.
   async generateBulkXls(companyId: string, projectId: string, issueIds: string[]): Promise<{ buffer: Buffer; filename: string }> {
@@ -1350,7 +1441,7 @@ export class IssuesService {
     return { buffer: bytes, filename: `issues-export-${new Date().toISOString().slice(0, 10)}.zip` };
   }
 
-  // Shared by generateBulkPdf()/generateBulkXls() above -- ensures two
+  // Shared by generateBulkPdf()/generateBulkXls() above; ensures two
   // selected issues sharing an issue_number don't silently overwrite one
   // another as the same zip entry.
   private uniqueZipEntryName(filename: string, used: Set<string>): string {
@@ -1371,7 +1462,7 @@ export class IssuesService {
     return candidate;
   }
 
-  // Raster-image extensions eligible for inline PDF embedding -- everything
+  // Raster-image extensions eligible for inline PDF embedding; everything
   // else (pdf, docx, dwg, etc.) keeps a plain "• filename" text line only.
   // Mirrors RfisService's identical constant/method pair exactly.
   private static readonly IMAGE_ATTACHMENT_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp']);
@@ -1389,7 +1480,7 @@ export class IssuesService {
     return sharp(buffer).rotate().resize(900, 900, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 78 }).toBuffer();
   }
 
-  // Full-page section-marker page -- plain drawText(), not routed through
+  // Full-page section-marker page: plain drawText(), not routed through
   // react-pdf. Mirrors RfisService's identical method exactly.
   private addAttachmentDividerPage(mainDoc: PDFDocument, headingFont: PDFFont, bodyFont: PDFFont, filename: string): void {
     const [, pageHeight] = PageSizes.A4;
@@ -1402,11 +1493,11 @@ export class IssuesService {
   // Mirrors RfisService.appendAttachmentPages() exactly, adapted for
   // issue_activities' attachment_url/attachment_name fields in place of
   // rfi_attachments' storage_key/filename. Extension is read from the
-  // storage key, not the display name -- for a real uploaded attachment
+  // storage key, not the display name; for a real uploaded attachment
   // those always match (generateKey() preserves the original extension),
   // but a pin photo's "filename" here is a human label ("Crack near
   // entrance (Photo)") with no real extension at all, while its storage
-  // key (a capture_renditions row) always genuinely ends .jpg.
+  // key (a capture_renditions row) always ends .jpg.
   private async appendAttachmentPages(mainDoc: PDFDocument, row: Record<string, unknown>, headingFont: PDFFont, bodyFont: PDFFont): Promise<void> {
     const filename = row.attachmentName as string;
     const storageKey = row.attachmentUrl as string | undefined;
@@ -1417,7 +1508,7 @@ export class IssuesService {
 
     try {
       const bytes = await this.storage.download(storageKey);
-      // MUST copy into a fresh Uint8Array before handing to pdf-lib -- see
+      // MUST copy into a fresh Uint8Array before handing to pdf-lib; see
       // RfisService.appendAttachmentPages()'s identical comment on the
       // Buffer.concat / pdf-lib JpegEmbedder byteOffset bug.
       const normalizedBytes = Uint8Array.from(bytes);
@@ -1453,9 +1544,9 @@ export class IssuesService {
   }
 
   // ══════════════════════════════════════════════════════════════════════
-  // Scheduled reminders -- a specific future date/time for one issue,
+  // Scheduled reminders: a specific future date/time for one issue,
   // targeting its current assignee. Distinct from broadcastReminder()/
-  // userReminder() above (admin-only, immediate, all-of-a-user's-issues) --
+  // userReminder() above (admin-only, immediate, all-of-a-user's-issues);
   // open to anyone who can view the issue (no @RequireProjectPermission or
   // @Roles gate), same baseline as forward()/addActivity() already have.
   // ══════════════════════════════════════════════════════════════════════
@@ -1478,7 +1569,7 @@ export class IssuesService {
     return reminder;
   }
 
-  // Pending == scheduled but not yet fired (sent_at IS NULL) -- fired ones
+  // Pending == scheduled but not yet fired (sent_at IS NULL): fired ones
   // already show up in the issue's own Activity feed as a 'reminder' entry,
   // so there's no need to surface them here too.
   async listPendingReminders(companyId: string, projectId: string, issueId: string) {
@@ -1502,7 +1593,7 @@ export class IssuesService {
     return { message: 'Scheduled reminder cancelled.' };
   }
 
-  // Same rationale as captures.service.ts's assertProjectBelongsToCompany --
+  // Same rationale as captures.service.ts's assertProjectBelongsToCompany;
   // issues.controller.ts has no @RequireProjectPermission gate on create/
   // screenshot-upload-url/attachments-upload-url, unlike rfis/snagging's
   // equivalents.

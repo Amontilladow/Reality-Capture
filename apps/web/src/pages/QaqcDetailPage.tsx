@@ -61,7 +61,7 @@ export default function QaqcDetailPage() {
     queryClient.invalidateQueries({ queryKey: ['qaqc-summary', projectId] });
   }
 
-  // Step 1: respond -- open/reopened -> pending_confirmation. Does NOT
+  // Step 1: respond; open/reopened -> pending_confirmation. Does NOT
   // close the record; see confirmMutation below for the step that does.
   const respondMutation = useMutation({
     mutationFn: () => respondToQaqcRecord(projectId!, id!, responseDraft.trim()),
@@ -71,7 +71,7 @@ export default function QaqcDetailPage() {
     },
   });
 
-  // Step 2: confirm -- QAQC-in-charge only. 'confirmed' -> closed
+  // Step 2: confirm; QAQC-in-charge only. 'confirmed' -> closed
   // (terminal). 'rejected' -> reopened (comment required).
   const confirmMutation = useMutation({
     mutationFn: (decision: 'confirmed' | 'rejected') => confirmQaqcRecord(projectId!, id!, decision, confirmComment.trim() || undefined),
@@ -118,14 +118,14 @@ export default function QaqcDetailPage() {
     );
   }
 
-  // Client-side visual gating only -- QaqcService's per-type role check
+  // Client-side visual gating only: QaqcService's per-type role check
   // (ISSUE_ROLES_BY_TYPE/RESPOND_ROLES_BY_TYPE) is the real enforcement.
-  // NCR/SOR and WIR/MIR swap issuer/responder roles -- construction
+  // NCR/SOR and WIR/MIR swap issuer/responder roles; construction
   // responds to NCR/SOR, QAQC responds to WIR/MIR (a WIR/MIR is the
-  // construction team's own inspection request) -- so this keys off the
+  // construction team's own inspection request): so this keys off the
   // record's own recordType, not a fixed list. Confirm never swaps:
   // QAQC-in-charge confirms every type, a deliberately narrower gate than
-  // respond -- the whole point of the two-step close.
+  // respond; the whole point of the two-step close.
   const canRespond = Boolean(
     (record.status === 'open' || record.status === 'reopened') &&
     currentUser?.companyRole && QAQC_RESPOND_ROLES_BY_TYPE[record.recordType].includes(currentUser.companyRole),
@@ -136,11 +136,11 @@ export default function QaqcDetailPage() {
   );
   // Attaching a missed photo/document is a narrower ask than editing the
   // record's substantive fields, and the backend never gated addAttachment/
-  // linkCapture on status in the first place -- these two stay role-only
+  // linkCapture on status in the first place; these two stay role-only
   // (never status-gated) so the issuer/responder can still attach evidence
   // they forgot, even after the record moved on (including past closed).
   // The confirm step itself, and the response/description text, stay
-  // exactly as status-gated as before -- only "attach what I forgot" opens up.
+  // exactly as status-gated as before; only "attach what I forgot" opens up.
   const canUploadIssueEvidence = Boolean(
     currentUser?.companyRole && QAQC_ISSUE_ROLES_BY_TYPE[record.recordType].includes(currentUser.companyRole),
   );
@@ -159,8 +159,8 @@ export default function QaqcDetailPage() {
         eyebrow={projectQuery.data?.name ?? 'Project'}
         title={record.recordNumber ?? shortLabel}
         actions={
-          <Link to={`/projects/${projectId}/qaqc/${recordType}`} className="btn-ghost !px-2 !py-1 text-xs">
-            ← Back to {shortLabel}s
+          <Link to={`/projects/${projectId}/qaqc/${recordType}`} className="btn-ghost !px-2 !py-2 text-xs">
+            Back to {shortLabel}s
           </Link>
         }
       />
@@ -174,30 +174,30 @@ export default function QaqcDetailPage() {
             {record.discipline && (
               <span className="badge bg-base-700 text-ink-500">
                 {RFI_DISCIPLINE_LABELS[record.discipline]}
-                {record.discipline === 'other' && record.disciplineOther ? ` — ${record.disciplineOther}` : ''}
+                {record.discipline === 'other' && record.disciplineOther ? ` (${record.disciplineOther})` : ''}
               </span>
             )}
           </div>
           {record.status === 'closed' && record.confirmedAt && (
-            <p className="text-xs text-ink-500 mt-1">
+            <p className="text-xs text-ink-500 mt-2">
               Confirmed closed by {record.confirmedByName ?? 'Unknown'} on {formatDateTime(record.confirmedAt)}
             </p>
           )}
           {record.status === 'reopened' && (
-            <p className="text-xs text-warn mt-1">
+            <p className="text-xs text-warn mt-2">
               Reopened by QAQC{record.confirmationComment ? `: ${record.confirmationComment}` : ''}
             </p>
           )}
           {record.status === 'pending_confirmation' && record.respondedAt && (
-            <p className="text-xs text-ink-500 mt-1">
-              Responded by {record.respondedByName ?? 'Unknown'} on {formatDateTime(record.respondedAt)} -- awaiting QAQC confirmation
+            <p className="text-xs text-ink-500 mt-2">
+              Responded by {record.respondedByName ?? 'Unknown'} on {formatDateTime(record.respondedAt)}, awaiting QAQC confirmation
             </p>
           )}
         </div>
 
-        <section className="panel tick-frame p-5">
-          <div className="field-label mb-3">{shortLabel} Information</div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
+        <section className="panel tick-frame p-6">
+          <div className="field-label mb-4">{shortLabel} Information</div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
             <InfoRow label="Number" value={record.recordNumber ?? '—'} mono />
             <InfoRow label="Issued by" value={record.issuedByName ?? '—'} />
             <InfoRow label="Assigned to" value={record.assignedToName ?? 'Unassigned'} />
@@ -210,8 +210,8 @@ export default function QaqcDetailPage() {
         {/* Description + issue-time evidence. The two attachment affordances
             are primarily filled in on the create form (§4), but stay open
             here too (role-gated, not status-gated) so the issuer can still
-            attach something they forgot -- even after the record closed. */}
-        <section className="panel tick-frame p-5 space-y-3">
+            attach something they forgot; even after the record closed. */}
+        <section className="panel tick-frame p-6 space-y-4">
           <div className="field-label">Description</div>
           <p className="text-sm text-ink-100 whitespace-pre-wrap">{record.description}</p>
           <CaptureSection projectId={projectId} qaqcId={id} kind="issue" captures={issueCaptures} canUpload={canUploadIssueEvidence} onChanged={() => queryClient.invalidateQueries({ queryKey: ['qaqc-captures', projectId, id] })} />
@@ -225,10 +225,10 @@ export default function QaqcDetailPage() {
           />
         </section>
 
-        {/* Response -- step 1 of the two-step close. Both attachment
+        {/* Response: step 1 of the two-step close. Both attachment
             affordances again here, writing kind: 'response', exactly
             mirroring RFI's query-time/response-time attachment split. */}
-        <section className="panel tick-frame p-5 space-y-3">
+        <section className="panel tick-frame p-6 space-y-4">
           <div className="field-label">Response</div>
           {record.response && (
             <p className="text-sm text-ink-100 whitespace-pre-wrap">{record.response}</p>
@@ -245,7 +245,7 @@ export default function QaqcDetailPage() {
               <button
                 onClick={() => respondMutation.mutate()}
                 disabled={!responseDraft.trim() || respondMutation.isPending}
-                className="btn-primary !px-3 !py-1.5 text-xs"
+                className="btn-primary !px-4 !py-2 text-xs"
               >
                 {respondMutation.isPending ? 'Submitting…' : 'Submit response'}
               </button>
@@ -273,11 +273,11 @@ export default function QaqcDetailPage() {
           />
         </section>
 
-        {/* QAQC Confirmation -- step 2, deliberately separate section with
+        {/* QAQC Confirmation: step 2, deliberately separate section with
             its own, narrower role gate. No attachment affordance of its
-            own (§4) -- just the confirm/reject decision and comment. */}
+            own (§4): just the confirm/reject decision and comment. */}
         {(canConfirm || record.status === 'pending_confirmation') && (
-          <section className="panel tick-frame p-5 space-y-3">
+          <section className="panel tick-frame p-6 space-y-4">
             <div className="field-label">QAQC Confirmation</div>
             {canConfirm ? (
               <>
@@ -299,11 +299,11 @@ export default function QaqcDetailPage() {
                       <button
                         onClick={() => confirmMutation.mutate('confirmed')}
                         disabled={confirmMutation.isPending}
-                        className="btn-primary !px-3 !py-1.5 text-xs"
+                        className="btn-primary !px-4 !py-2 text-xs"
                       >
                         {confirmMutation.isPending ? 'Confirming…' : `Confirm & close ${shortLabel}`}
                       </button>
-                      <button onClick={() => setRejecting(true)} className="btn-secondary !px-3 !py-1.5 text-xs">
+                      <button onClick={() => setRejecting(true)} className="btn-secondary !px-4 !py-2 text-xs">
                         Reject
                       </button>
                     </>
@@ -313,11 +313,11 @@ export default function QaqcDetailPage() {
                       <button
                         onClick={() => confirmMutation.mutate('rejected')}
                         disabled={!confirmComment.trim() || confirmMutation.isPending}
-                        className="btn-primary !px-3 !py-1.5 text-xs"
+                        className="btn-primary !px-4 !py-2 text-xs"
                       >
                         {confirmMutation.isPending ? 'Sending back…' : 'Send back (reopen)'}
                       </button>
-                      <button onClick={() => { setRejecting(false); setConfirmComment(''); }} className="btn-ghost !px-2 !py-1.5 text-xs">
+                      <button onClick={() => { setRejecting(false); setConfirmComment(''); }} className="btn-ghost !px-2 !py-2 text-xs">
                         Cancel
                       </button>
                     </>
@@ -330,14 +330,14 @@ export default function QaqcDetailPage() {
           </section>
         )}
 
-        {/* Human Risk Assessment -- only NCR feeds the Risk Engine (see
+        {/* Human Risk Assessment: only NCR feeds the Risk Engine (see
             risk.service.ts's RISK_WORTHY_NODE_TYPES); SOR/WIR/MIR never get
             a Risk at all, so this section doesn't apply to them. Lets
             whoever's looking at this NCR set/override the Probability x
             Impact assessment directly, same widget already embedded on
             Issue/RFI/Snag/Submittal detail pages. */}
         {record.recordType === 'ncr' && (
-          <section className="panel tick-frame p-5">
+          <section className="panel tick-frame p-6">
             <InlineRiskAssessment projectId={projectId} nodeType="ncr" entityId={id} />
           </section>
         )}
@@ -345,7 +345,7 @@ export default function QaqcDetailPage() {
         {downloadError && <p className="field-error">{downloadError}</p>}
 
         <div className="flex flex-wrap gap-2 pt-2 border-t border-base-600">
-          <button onClick={handleDownloadPdf} disabled={downloading} className="btn-secondary !px-3 !py-1.5 text-xs ml-auto">
+          <button onClick={handleDownloadPdf} disabled={downloading} className="btn-secondary !px-4 !py-2 text-xs ml-auto">
             {downloading ? 'Preparing…' : 'Download PDF'}
           </button>
         </div>
@@ -363,8 +363,8 @@ function InfoRow({ label, value, mono }: { label: string; value: string; mono?: 
   );
 }
 
-// "+ Add document" -- generic typed attachment affordance. Distinct from
-// CaptureSection below (the "+ Add photo" affordance) -- per the brief's
+// "+ Add document"; generic typed attachment affordance. Distinct from
+// CaptureSection below (the "+ Add photo" affordance): per the brief's
 // §4, these are two different, already-established patterns in this app,
 // not one generic uploader.
 function AttachmentSection({
@@ -391,24 +391,24 @@ function AttachmentSection({
 
   return (
     <div>
-      <div className="field-label mb-1.5">{kind === 'issue' ? 'Issue documents' : 'Response documents'}</div>
+      <div className="field-label mb-2">{kind === 'issue' ? 'Issue documents' : 'Response documents'}</div>
       {attachments.length === 0 && <p className="text-xs text-ink-500 mb-2">No documents attached yet.</p>}
       {attachments.length > 0 && (
-        <div className="overflow-x-auto mb-2">
+        <div className="overflow-x-auto mb-2" tabIndex={0}>
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-ink-500 border-b border-base-600">
-                <th className="py-1.5 pr-3 font-medium">File</th>
-                <th className="py-1.5 pr-3 font-medium">Type</th>
-                <th className="py-1.5 pr-3 font-medium">Uploaded by</th>
-                <th className="py-1.5 pr-3 font-medium">Date</th>
-                <th className="py-1.5 pr-3 font-medium" />
+                <th className="py-2 pr-4 font-medium">File</th>
+                <th className="py-2 pr-4 font-medium">Type</th>
+                <th className="py-2 pr-4 font-medium">Uploaded by</th>
+                <th className="py-2 pr-4 font-medium">Date</th>
+                <th className="py-2 pr-4 font-medium" />
               </tr>
             </thead>
             <tbody>
               {attachments.map((a) => (
                 <tr key={a.id} className="border-b border-base-700/60 last:border-0">
-                  <td className="py-1.5 pr-3">
+                  <td className="py-2 pr-4">
                     {a.attachmentReadUrl ? (
                       <a href={a.attachmentReadUrl} target="_blank" rel="noreferrer" className="text-blueprint hover:text-blueprint-hover underline">
                         {a.filename}
@@ -418,10 +418,10 @@ function AttachmentSection({
                     )}
                     <span className="text-ink-500"> ({formatBytes(Number(a.sizeBytes))})</span>
                   </td>
-                  <td className="py-1.5 pr-3 text-ink-300">{a.documentType ? RFI_DOCUMENT_TYPE_LABELS[a.documentType] : '—'}</td>
-                  <td className="py-1.5 pr-3 text-ink-300">{a.uploadedByName ?? '—'}</td>
-                  <td className="py-1.5 pr-3 text-ink-300">{formatDateTime(a.uploadedAt)}</td>
-                  <td className="py-1.5 text-right">
+                  <td className="py-2 pr-4 text-ink-300">{a.documentType ? RFI_DOCUMENT_TYPE_LABELS[a.documentType] : '—'}</td>
+                  <td className="py-2 pr-4 text-ink-300">{a.uploadedByName ?? '—'}</td>
+                  <td className="py-2 pr-4 text-ink-300">{formatDateTime(a.uploadedAt)}</td>
+                  <td className="py-2 text-right">
                     {canUpload && (
                       <button onClick={() => deleteMutation.mutate(a.id)} disabled={deleteMutation.isPending} className="text-danger hover:text-danger/80" title="Remove">
                         ✕
@@ -437,12 +437,12 @@ function AttachmentSection({
       {uploadMutation.isError && <p className="field-error">{apiErrorMessage(uploadMutation.error)}</p>}
       {canUpload && (
         <div className="flex items-center gap-2">
-          <Listbox className="field-input w-auto !py-1.5 text-xs" value={documentType} onChange={(e) => setDocumentType(e.target.value as RfiDocumentType)}>
+          <Listbox aria-label="Document type" className="field-input w-auto !py-2 text-xs" value={documentType} onChange={(e) => setDocumentType(e.target.value as RfiDocumentType)}>
             {RFI_DOCUMENT_TYPES.map((t) => (
               <option key={t} value={t}>{RFI_DOCUMENT_TYPE_LABELS[t]}</option>
             ))}
           </Listbox>
-          <label className="btn-secondary !px-3 !py-1.5 text-xs cursor-pointer inline-block">
+          <label className="btn-secondary !px-4 !py-2 text-xs cursor-pointer inline-block">
             + Add document
             <input
               type="file"
@@ -460,7 +460,7 @@ function AttachmentSection({
   );
 }
 
-// "+ Add photo" -- links an already-uploaded Capture, mirroring
+// "+ Add photo"; links an already-uploaded Capture, mirroring
 // IssueFormModal's quick-photo pattern. Distinct from AttachmentSection
 // above.
 function CaptureSection({
@@ -483,7 +483,7 @@ function CaptureSection({
 
   return (
     <div>
-      <div className="field-label mb-1.5">{kind === 'issue' ? 'Issue photos' : 'Response photos'}</div>
+      <div className="field-label mb-2">{kind === 'issue' ? 'Issue photos' : 'Response photos'}</div>
       {captures.length === 0 && <p className="text-xs text-ink-500 mb-2">No photos attached yet.</p>}
       {captures.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2">
@@ -492,7 +492,7 @@ function CaptureSection({
               {c.thumbnailUrl ? (
                 <img src={c.thumbnailUrl} alt={c.title ?? 'Photo'} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-[10px] text-ink-500 px-1 text-center">{c.title ?? 'Photo'}</span>
+                <span className="text-xs text-ink-500 px-2 text-center">{c.title ?? 'Photo'}</span>
               )}
             </div>
           ))}
@@ -500,7 +500,7 @@ function CaptureSection({
       )}
       {uploadMutation.isError && <p className="field-error">{apiErrorMessage(uploadMutation.error)}</p>}
       {canUpload && (
-        <label className="btn-secondary !px-3 !py-1.5 text-xs cursor-pointer inline-block">
+        <label className="btn-secondary !px-4 !py-2 text-xs cursor-pointer inline-block">
           + Add photo
           <input
             type="file"

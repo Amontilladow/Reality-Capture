@@ -19,29 +19,32 @@ export function PageHeader({
   useDocumentTitle(title);
 
   return (
-    <div className={`border-b border-base-600 bg-base-950/85 backdrop-blur px-4 sm:px-6 flex items-center justify-between gap-3 sticky top-0 z-10 ${breadcrumbs || subtitle ? 'py-3' : 'min-h-16 py-3'}`}>
+    <div className={`border-b border-base-600/60 bg-base-950/60 backdrop-blur px-4 sm:px-6 flex flex-col items-stretch md:flex-row md:items-center justify-between gap-2 md:gap-4 sticky top-0 z-10 ${breadcrumbs || subtitle ? 'py-4' : 'min-h-16 py-4'}`}>
       {/* Title block: breadcrumbs or a quiet eyebrow above one strong title.
-          No accent bar or chip -- the title's size and weight are the
+          No accent bar or chip; the title's size and weight are the
           hierarchy, and the page's own content gets the color. */}
       <div className="min-w-0 shrink">
         {breadcrumbs && <Breadcrumbs items={breadcrumbs} />}
         {eyebrow && (
-          <div className="text-xs font-medium text-ink-500 mb-0.5 truncate">{eyebrow}</div>
+          <div className="text-xs font-medium text-ink-500 mb-0 truncate">{eyebrow}</div>
         )}
-        <h1 className="text-xl font-semibold tracking-tight truncate">{title}</h1>
-        {subtitle && <p className="text-xs text-ink-500 mt-0.5 truncate">{subtitle}</p>}
+        {/* On a phone the title wraps (one scale step smaller) rather than
+            truncating to "Rep..." beside the actions; the actions drop to
+            their own row underneath. */}
+        <h1 className="text-xl md:text-2xl font-normal tracking-tight break-words md:truncate">{title}</h1>
+        {subtitle && <p className="text-xs text-ink-500 mt-0 md:truncate">{subtitle}</p>}
       </div>
       {actions && (
         // min-w-0 lets this shrink below its content's natural width once
         // both it and the title (above) have given up what they can; the
         // row of action buttons then scrolls horizontally within itself
         // instead of widening the whole page, which would drag the sidebar
-        // nav off-screen too — see LAUNCH_READINESS.md. The title keeps a
+        // nav off-screen too; see LAUNCH_READINESS.md. The title keeps a
         // plain auto flex-basis (not flex-1, which resolves to basis 0% and
         // would let it collapse to nothing whenever the actions row alone
         // doesn't fit) so it shrinks proportionally with the actions row
         // instead of disappearing first.
-        <div className="flex items-center gap-2 min-w-0 shrink overflow-x-auto">{actions}</div>
+        <div className="flex flex-wrap md:flex-nowrap items-center gap-2 min-w-0 shrink md:overflow-x-auto">{actions}</div>
       )}
     </div>
   );

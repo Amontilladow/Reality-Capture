@@ -35,7 +35,7 @@ export interface IngestIssuePayload {
  *
  * Every call here is fire-and-forget: indexing failures must never block or
  * fail the primary request that created the resource. If the AI service is
- * down, the resource still exists correctly in Postgres — it's just not
+ * down, the resource still exists correctly in Postgres; it's just not
  * searchable yet. This mirrors the AuditInterceptor's error-isolation pattern
  * used elsewhere in this codebase.
  */
@@ -50,7 +50,7 @@ export class AiClientService {
     private readonly config: ConfigService,
   ) {
     this.baseUrl = this.config.get<string>('app.aiServiceUrl') ?? 'http://localhost:8001';
-    // Proves our identity to the AI service on every call -- it has no auth
+    // Proves our identity to the AI service on every call; it has no auth
     // of its own otherwise and trusts whatever company_id/project_id we send.
     this.authHeaders = { 'X-Internal-Service-Secret': this.config.get<string>('app.internalServiceSecret') ?? '' };
   }
@@ -87,7 +87,7 @@ export class AiClientService {
 
   /**
    * Narrow semantic-search call backing the AI Gateway's searchProjectDocuments
-   * tool (modules/ai/ai-tools.service.ts) -- the Python service's own
+   * tool (modules/ai/ai-tools.service.ts): the Python service's own
    * monolithic /assistant/ RAG endpoint (full retrieval + prompt build + LLM
    * call in one request) is no longer used by anything in apps/api; the new
    * Gateway owns prompt building, tool orchestration and the provider call
@@ -112,10 +112,10 @@ export class AiClientService {
 
   /**
    * Risk reasoning layer (brief section 13): the caller builds `context` from
-   * real, already-computed risk data (never raw retrieval) -- this call is
+   * real, already-computed risk data (never raw retrieval): this call is
    * awaited, not fire-and-forget, since its result is shown directly to the
    * user, but it throws on failure exactly like ask() does. Callers must
-   * catch and degrade gracefully (never surface a 500 for an AI outage) --
+   * catch and degrade gracefully (never surface a 500 for an AI outage);
    * see RiskService.generateAiBriefing()/generateAiExplanation().
    */
   async generateRiskBriefing(companyId: string, projectId: string, context: string): Promise<{ narrative: string }> {
@@ -134,7 +134,7 @@ export class AiClientService {
 
   /**
    * Cross-domain reporting briefing (Phase 4 extension of the risk
-   * reasoning layer above): same contract exactly -- the caller builds
+   * reasoning layer above): same contract exactly; the caller builds
    * `context` from already-computed, already-authorized Reports KPIs/Risk
    * summary, this is awaited and shown directly to the user, and callers
    * must catch and degrade gracefully. See ReportsService.generateAiBriefing().
@@ -148,12 +148,12 @@ export class AiClientService {
 
   /**
    * OCR fallback for the Site Drawing Hub's extraction pipeline (Drawing
-   * Intelligence & Control, Decision 1) -- used only when a page's
+   * Intelligence & Control, Decision 1): used only when a page's
    * embedded text layer is missing/insufficient. pdfUrl must be a
    * short-lived, already-authorized URL (StorageService.getReadUrl()),
    * never a raw storage key or credential; the AI service fetches the
    * bytes itself. Awaited and throws on failure, like the risk-briefing
-   * calls above -- the caller (SiteDrawingImportProcessor) must catch and
+   * calls above; the caller (SiteDrawingImportProcessor) must catch and
    * degrade to NEEDS_REVIEW rather than let an AI-service outage fail the
    * whole import batch.
    */
@@ -182,7 +182,7 @@ export class AiClientService {
   }
 
   private logDown(context: string, err: unknown): void {
-    // Deliberately a warning, not an error — a down/slow AI service is an
+    // Deliberately a warning, not an error; a down/slow AI service is an
     // operational concern, not a defect in the request that triggered it.
     const message = err instanceof Error ? err.message : String(err);
     this.logger.warn(`AI service call failed (${context}): ${message}`);

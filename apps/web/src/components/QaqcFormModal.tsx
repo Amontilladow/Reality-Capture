@@ -13,11 +13,11 @@ import { apiErrorMessage } from '../lib/api';
 import { Listbox } from './ui/Listbox';
 
 // Field set deliberately mirrors RfiFormModal's "subject/question(->description)/
-// priority/discipline+disciplineOther/assignedTo/dueDate" shape -- see
+// priority/discipline+disciplineOther/assignedTo/dueDate" shape; see
 // create-qaqc-record.dto.ts's own comment for why RFI's cost/time/
 // drawing-impact fields have no equivalent here.
 //
-// Two distinct attachment affordances, per the brief's §4 -- NOT the same
+// Two distinct attachment affordances, per the brief's §4; NOT the same
 // control:
 // - "+ Add photo" mirrors IssueFormModal.tsx's pattern exactly: picked
 //   locally before the record exists, uploaded as a real Capture
@@ -45,12 +45,12 @@ export function QaqcFormModal({
   const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState('');
 
-  // "+ Add photo" -- same local-pick-then-upload-as-Capture shape as
+  // "+ Add photo"; same local-pick-then-upload-as-Capture shape as
   // IssueFormModal.tsx's own `photos` state.
   const [photos, setPhotos] = useState<{ file: File; previewUrl: string }[]>([]);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
-  // "+ Add document" -- generic typed attachments, picked locally the same
+  // "+ Add document"; generic typed attachments, picked locally the same
   // way (the record doesn't exist yet either), uploaded via
   // uploadQaqcAttachment() with a documentType once it does.
   const [documents, setDocuments] = useState<{ file: File; documentType: RfiDocumentType }[]>([]);
@@ -85,7 +85,7 @@ export function QaqcFormModal({
       });
 
       // Sequential, not parallel, same rationale as IssueFormModal's own
-      // upload loop -- one failed upload doesn't race the others.
+      // upload loop; one failed upload doesn't race the others.
       for (const { file } of photos) {
         const capture = await uploadCapture(projectId, file, {
           captureType: 'photo_standard',
@@ -138,7 +138,7 @@ export function QaqcFormModal({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="qaqc-priority">Priority</label>
             <Listbox id="qaqc-priority" className="field-input" value={priority} onChange={(e) => setPriority(e.target.value as QaqcPriority)}>
@@ -153,7 +153,7 @@ export function QaqcFormModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="qaqc-assignedTo">Assignee</label>
             <Listbox id="qaqc-assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
@@ -181,7 +181,7 @@ export function QaqcFormModal({
           </div>
         )}
 
-        {/* "+ Add photo" -- quick picker, uploaded as a real Capture on save. */}
+        {/* "+ Add photo"; quick picker, uploaded as a real Capture on save. */}
         <div className="pt-2 border-t border-base-600">
           <div className="flex items-center justify-between">
             <label className="field-label !mb-0">Photos {photos.length > 0 ? `(${photos.length})` : ''}</label>
@@ -197,7 +197,7 @@ export function QaqcFormModal({
               ref={photoInputRef}
               type="file"
               accept="image/*"
-              // No `capture` attribute -- forcing the camera directly would
+              // No `capture` attribute: forcing the camera directly would
               // leave no option to pick an existing photo from the library.
               multiple
               className="hidden"
@@ -209,7 +209,7 @@ export function QaqcFormModal({
             />
           </div>
           {photos.length === 0 && (
-            <p className="text-xs text-ink-500 mt-1">Optional -- quick evidence photos. They'll also appear in the project's Captures tab.</p>
+            <p className="text-xs text-ink-500 mt-2">Optional: quick evidence photos. They’ll also appear in the project’s Captures tab.</p>
           )}
           {photos.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
@@ -234,17 +234,17 @@ export function QaqcFormModal({
           )}
         </div>
 
-        {/* "+ Add document" -- generic typed attachment, in case additional
+        {/* "+ Add document"; generic typed attachment, in case additional
             supporting documents are needed (method statements, test
-            certificates, specs, etc.) -- a distinct control from the photo
+            certificates, specs, etc.): a distinct control from the photo
             picker above, not the same uploader. */}
         <div>
           <div className="flex items-center justify-between">
             <label className="field-label !mb-0">Documents {documents.length > 0 ? `(${documents.length})` : ''}</label>
           </div>
-          <div className="flex items-center gap-2 mt-1">
-            <Listbox
-              className="field-input w-auto !py-1.5 text-xs"
+          <div className="flex items-center gap-2 mt-2">
+            <Listbox aria-label="Document type"
+              className="field-input w-auto !py-2 text-xs"
               value={pendingDocumentType}
               onChange={(e) => setPendingDocumentType(e.target.value as RfiDocumentType)}
             >
@@ -254,7 +254,7 @@ export function QaqcFormModal({
             </Listbox>
             <button
               type="button"
-              className="btn-secondary !px-3 !py-1.5 text-xs"
+              className="btn-secondary !px-4 !py-2 text-xs"
               onClick={() => documentInputRef.current?.click()}
               disabled={mutation.isPending}
             >
@@ -273,12 +273,12 @@ export function QaqcFormModal({
             />
           </div>
           {documents.length === 0 && (
-            <p className="text-xs text-ink-500 mt-1">Optional -- method statements, test certificates, specs, or other supporting documents.</p>
+            <p className="text-xs text-ink-500 mt-2">Optional: method statements, test certificates, specs, or other supporting documents.</p>
           )}
           {documents.length > 0 && (
-            <div className="space-y-1 mt-2">
+            <div className="space-y-2 mt-2">
               {documents.map(({ file, documentType }, i) => (
-                <div key={`${file.name}-${i}`} className="flex items-center justify-between text-xs bg-base-700/40 rounded px-2 py-1">
+                <div key={`${file.name}-${i}`} className="flex items-center justify-between text-xs bg-base-700/40 rounded px-2 py-2">
                   <span className="text-ink-300">{file.name} <span className="text-ink-500">({RFI_DOCUMENT_TYPE_LABELS[documentType]})</span></span>
                   <button
                     type="button"

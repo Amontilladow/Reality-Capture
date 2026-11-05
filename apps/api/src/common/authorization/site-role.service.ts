@@ -3,7 +3,7 @@ import { SITE_RESTRICTED_COMPANY_ROLES } from '@engineeringos/types';
 import { DatabaseService } from '../../database/database.service';
 
 // Shared by SiteRoleRestrictionGuard (common/guards/site-role-restriction.guard.ts)
-// and AiService's draft-blocking check (modules/ai/ai.service.ts) -- both need
+// and AiService's draft-blocking check (modules/ai/ai.service.ts): both need
 // the exact same answer to "is this user restricted to Floor Plans/Issues/
 // Snagging only?" (CTO spec sections 16-21), so the identity check lives in
 // exactly one place rather than being duplicated and risking drift.

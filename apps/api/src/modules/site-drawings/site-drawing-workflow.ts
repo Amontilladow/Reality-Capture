@@ -2,8 +2,8 @@ import type { SiteDrawingWorkflowStatus, SiteDrawingDocumentClassification } fro
 import { VALID_FOR_SITE_USE_STATUSES } from '@engineeringos/types';
 
 // The one place "is this drawing safe to build from" is decided (brief
-// section 5). Every caller — the register's badge, the PDF viewer's
-// warning banner, the offline-download eligibility check — goes through
+// section 5). Every caller (the register's badge, the PDF viewer's
+// warning banner, the offline-download eligibility check) goes through
 // this function rather than comparing against the status list itself, so
 // the rule can never drift between call sites.
 export function isValidForSiteUse(status: SiteDrawingWorkflowStatus): boolean {
@@ -14,7 +14,7 @@ export function isValidForSiteUse(status: SiteDrawingWorkflowStatus): boolean {
 // only when it is valid-for-site-use, not itself superseded by a later
 // revision, AND not a FINAL/AS_BUILT document (the brief's own Decision 2:
 // "a final document can be approved but should not automatically be
-// treated as the current drawing authorized for construction" -- document
+// treated as the current drawing authorized for construction"; document
 // classification is a separate axis from approval status, see
 // SiteDrawingDocumentClassification's own comment in site-drawing.types.ts).
 // documentClassification defaults to 'CONSTRUCTION' so every existing call
@@ -64,7 +64,7 @@ export function documentClassificationLabel(classification: SiteDrawingDocumentC
 // system's own canonical set, used only as a fallback when a provider
 // adapter doesn't supply its own explicit mapping. Deliberately narrow:
 // anything it doesn't recognize maps to 'UNKNOWN' rather than guessing,
-// per section 5's "do not infer approval status" rule — an unrecognized
+// per section 5's "do not infer approval status" rule; an unrecognized
 // string is exactly the case that must surface a warning, not a guess.
 const FALLBACK_STATUS_PATTERNS: [RegExp, SiteDrawingWorkflowStatus][] = [
   [/approved.*construction|issued.*construction|\bifc\b/i, 'APPROVED_FOR_CONSTRUCTION'],

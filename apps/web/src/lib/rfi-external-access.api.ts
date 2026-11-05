@@ -1,10 +1,10 @@
 import type { ProjectOrganizationSlot, RfiExternalAccess, RfiExternalAccessAction, RfiExternalDetail } from '@engineeringos/types';
 import { apiGet, apiPost, apiDelete } from './api';
 
-// Internal, authenticated side -- same manage_rfis gate as respond/close/reopen.
+// Internal, authenticated side; same manage_rfis gate as respond/close/reopen.
 // `http` (used by apiGet/apiPost/apiDelete under the hood) only attaches a
 // bearer token when one exists in the auth store, so these same helpers work
-// fine for the public/unauthenticated calls below too -- no separate client.
+// fine for the public/unauthenticated calls below too; no separate client.
 
 export interface GenerateExternalAccessPayload {
   organizationSlot: ProjectOrganizationSlot;
@@ -30,7 +30,7 @@ export function revokeRfiExternalAccess(projectId: string, rfiId: string, access
 }
 
 // ── Public, unauthenticated side (the /rfi/external/:token page) ──────────
-// Distinct base path from the internal routes above -- see
+// Distinct base path from the internal routes above; see
 // rfi-external-access.controller.ts's own comment on why.
 
 export function getRfiExternalDetail(token: string) {

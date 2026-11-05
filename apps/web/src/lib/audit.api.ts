@@ -5,7 +5,7 @@ export interface AuditEntry {
   userName?: string;
   action: string;
   resourceType: string;
-  // Added (Phase 3, additive) -- not previously exposed on this type since no
+  // Added (Phase 3, additive): not previously exposed on this type since no
   // caller needed to filter by it; RfiDetailPage's audit trail section
   // filters this endpoint's results down to resourceType === 'rfi' &&
   // resourceId === rfiId client-side (no per-resource audit endpoint exists).

@@ -5,7 +5,7 @@ export type IssuePriority = 'critical' | 'high' | 'medium' | 'low';
 export type IssueStatus = 'open' | 'assigned' | 'in_progress' | 'resolved' | 'under_review' | 'closed' | 'void' | 'waiting_for_information' | 'reopened';
 
 // Distinct from IssueType above (defect/rfi/coordination_clash/etc, which
-// existed already) -- this is a separate classification axis added by the
+// existed already): this is a separate classification axis added by the
 // issue-tracker reconciliation (ticket 2a).
 export type IssueDiscipline = 'MEP' | 'ARC' | 'STR' | 'CIV' | 'ELE' | 'INFRA' | 'LANDSCAPE' | 'OTHER';
 export type IssueCategory =
@@ -66,17 +66,17 @@ export interface IssueActivity {
   fromValue?: string;
   toValue?: string;
   captureId?: string;
-  // File-attachment fields (ticket 2b / migration 022) -- always present
+  // File-attachment fields (ticket 2b / migration 022): always present
   // together on an attachment-carrying activity row, all three null on a
   // plain comment/status-change row.
   attachmentUrl?: string;
   attachmentName?: string;
-  // BIGINT in Postgres -- node-postgres returns BIGINT columns as strings
+  // BIGINT in Postgres: node-postgres returns BIGINT columns as strings
   // (to avoid precision loss outside the JS safe-integer range), so this
   // is a string over the wire despite being a byte count.
   attachmentSizeBytes?: number | string;
   // Presigned read URL (~1hr expiry), resolved server-side from
-  // attachmentUrl's raw storage key -- present only on activities that
+  // attachmentUrl's raw storage key; present only on activities that
   // actually have an attachment (absent, never null, otherwise).
   // attachmentUrl itself stays a raw storage key, not directly usable.
   attachmentReadUrl?: string;

@@ -23,7 +23,7 @@ export class TenancyGuard implements CanActivate {
     if (!companyId) return false;
 
     // No RLS tenant context is (or should be) set yet at this point in the
-    // guard chain -- this check runs on every request, before any handler's
+    // guard chain; this check runs on every request, before any handler's
     // own withTenant() call. Under migration 052's FORCE ROW LEVEL SECURITY,
     // a plain this.db.query here would see zero rows unconditionally (same
     // bootstrap category as auth.service.ts's login()), falsely throwing

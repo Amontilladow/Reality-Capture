@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Project, ProjectPhase } from '@engineeringos/types';
 import { PROJECT_PHASE_LABELS } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
+import { MobileFold } from '../components/ui/MobileFold';
 import { HierarchyTree } from '../components/HierarchyTree';
 import { AddHierarchyNodeModal } from '../components/AddHierarchyNodeModal';
 import { CaptureGrid } from '../components/CaptureGrid';
@@ -17,6 +18,11 @@ import { listCaptures } from '../lib/captures.api';
 import { useAuthStore } from '../store/auth.store';
 
 type NodeModalState = { kind: 'building' } | { kind: 'level'; buildingId: string } | { kind: 'location'; buildingId: string; levelId: string } | null;
+
+function hierarchySummary(buildings: { levels?: unknown[] }[]): string {
+  const levels = buildings.reduce((n, b) => n + (b.levels?.length ?? 0), 0);
+  return `${buildings.length} ${buildings.length === 1 ? 'building' : 'buildings'} · ${levels} ${levels === 1 ? 'level' : 'levels'}`;
+}
 
 export default function ProjectDetail() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -35,9 +41,9 @@ export default function ProjectDetail() {
   });
 
   // Same ['members', projectId] query AppShell/ProjectContextPanel already
-  // run -- shares their cache entry. This Overview page pulls from several
+  // run; shares their cache entry. This Overview page pulls from several
   // modules (hierarchy, captures) a 'subcontractor' project member has no
-  // access to (SubcontractorRfiAccessGuard) -- they land here the same way
+  // access to (SubcontractorRfiAccessGuard): they land here the same way
   // anyone does (clicking a project card), so this redirects them straight
   // to the one page they actually have, rather than showing an Overview
   // that's mostly 403s. AppShell's own nav never links here for them.
@@ -63,7 +69,7 @@ export default function ProjectDetail() {
   const capturesQuery = useQuery({
     queryKey: ['captures', projectId, selectedLocation?.id],
     queryFn: () => listCaptures(projectId!, { locationId: selectedLocation?.id, perPage: 24 }),
-    // Only fetch once something is actually selected -- there is no
+    // Only fetch once something is actually selected; there is no
     // "browse everything" view here by design; an unfiltered fetch would
     // just be every capture in the project dumped on screen at once.
     enabled: Boolean(projectId) && Boolean(selectedLocation) && !isSubcontractor,
@@ -73,7 +79,7 @@ export default function ProjectDetail() {
     (b.levels ?? []).flatMap((l) => l.locations ?? []),
   );
 
-  // The tree only passes id/name on click -- the note itself lives on the
+  // The tree only passes id/name on click; the note itself lives on the
   // full location record already loaded as part of the hierarchy.
   const selectedLocationDetail = selectedLocation
     ? allLocations.find((l) => l.id === selectedLocation.id)
@@ -112,13 +118,18 @@ export default function ProjectDetail() {
 
       <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-1">
+          <MobileFold
+            title="Buildings & locations"
+            summary={hierarchyQuery.data ? hierarchySummary(hierarchyQuery.data) : undefined}
+          >
           <div className="tick-frame panel p-4">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <h2 className="text-xs text-ink-500 font-medium">Hierarchy</h2>
               <button
                 onClick={() => setNodeModal({ kind: 'building' })}
-                className="text-ink-500 hover:text-blueprint"
+                className="w-8 h-8 -mr-2 flex items-center justify-center rounded text-ink-500 hover:text-blueprint hover:bg-base-700"
                 title="Add building"
+                aria-label="Add building"
               >
                 <PlusIcon />
               </button>
@@ -136,16 +147,17 @@ export default function ProjectDetail() {
               />
             )}
           </div>
+          </MobileFold>
         </div>
 
         <div className="lg:col-span-3 space-y-4">
           {selectedLocation ? (
             <>
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold">Captures — {selectedLocation.name}</h2>
-                <div className="flex items-center gap-3">
+                <h2 className="text-sm font-semibold">Captures: {selectedLocation.name}</h2>
+                <div className="flex items-center gap-4">
                   <Link to={`/projects/${projectId}/viewer/${selectedLocation.id}`} className="text-xs text-blueprint hover:text-blueprint-hover">
-                    Open 360° viewer →
+                    Open 360° viewer
                   </Link>
                   <button onClick={() => setSelectedLocation(null)} className="text-xs text-ink-500 hover:text-ink-100">
                     Clear filter
@@ -154,8 +166,8 @@ export default function ProjectDetail() {
               </div>
 
               {selectedLocationDetail?.description && (
-                <div className="panel p-3 text-sm text-ink-100">
-                  <div className="text-[11px] text-ink-500 mb-1 font-medium">Note</div>
+                <div className="panel p-4 text-sm text-ink-100">
+                  <div className="text-xs text-ink-500 mb-2 font-medium">Note</div>
                   {selectedLocationDetail.description}
                 </div>
               )}
@@ -170,7 +182,9 @@ export default function ProjectDetail() {
               {capturesQuery.data && <CaptureGrid projectId={projectId} captures={capturesQuery.data.data} />}
             </>
           ) : (
-            <div className="tick-frame panel p-12 text-center text-sm text-ink-500">
+            // Phones stack the tree above, so the hint (and its empty panel)
+            // only shows where there is a "left".
+            <div className="hidden lg:block tick-frame panel p-12 text-center text-sm text-ink-500">
               Select a location on the left to see what's there.
             </div>
           )}
@@ -220,11 +234,11 @@ function ProjectDetailsPanel({ project }: { project: Project }) {
 
   return (
     <div className="px-6 pt-4">
-      <div className="panel p-4 space-y-3">
+      <div className="panel p-4 space-y-4">
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           {fields.map((f) => (
             <div key={f.label} className="text-xs">
-              <div className="text-ink-500 mb-0.5 font-medium">{f.label}</div>
+              <div className="text-ink-500 mb-0 font-medium">{f.label}</div>
               <div className="text-ink-100">{f.value}</div>
             </div>
           ))}
@@ -239,14 +253,14 @@ function ProjectDetailsPanel({ project }: { project: Project }) {
 
 function EditIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 function MailIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
       <rect x="2" y="4" width="20" height="16" rx="2" />
       <path d="M22 6l-10 7L2 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -254,7 +268,7 @@ function MailIcon() {
 }
 function TeamIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" strokeLinecap="round" strokeLinejoin="round" />
@@ -263,7 +277,7 @@ function TeamIcon() {
 }
 function PlusIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 5v14M5 12h14" strokeLinecap="round" />
     </svg>
   );

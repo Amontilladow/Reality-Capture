@@ -3,11 +3,11 @@ import type { DatabaseService } from '../../database/database.service';
 
 // Regression test for a real production bug: qaqc_records.record_type is a
 // plain VARCHAR(10) (migration 067), while risk_graph_nodes.node_type is the
-// risk_node_type enum (migration 050) -- joining them without an explicit
+// risk_node_type enum (migration 050): joining them without an explicit
 // cast throws "operator does not exist: risk_node_type = character varying"
 // on EVERY call, which went undetected by the mocked unit tests elsewhere in
 // this module (they never execute against a real Postgres engine) and
-// silently broke risk recalculation project-wide -- not just for QAQC, but
+// silently broke risk recalculation project-wide; not just for QAQC, but
 // for every entity type, since detectSignalsForProject() runs every
 // detector in one sequence and this one threw unconditionally, aborting
 // whatever recalculateForEntity()/recalculateForNode() call was in

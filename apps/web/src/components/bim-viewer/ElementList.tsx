@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { listElements, type BimElementDetail } from '../../lib/bim.api';
 
-// A flat, searchable list of every element in a model -- independent of the
+// A flat, searchable list of every element in a model; independent of the
 // spatial tree. Some models (infrastructure/MEP especially) dump everything
 // under a single storey, which makes the tree useless for finding anything;
 // this always works regardless of how (or whether) the model is organized
@@ -45,16 +45,16 @@ export function ElementList({
         />
       </div>
       <div className="flex-1 overflow-y-auto">
-        {query.isLoading && <p className="p-3 text-sm text-ink-500">Loading…</p>}
+        {query.isLoading && <p className="p-4 text-sm text-ink-500">Loading…</p>}
         {!query.isLoading && elements.length === 0 && (
-          <p className="p-3 text-sm text-ink-500">No elements match.</p>
+          <p className="p-4 text-sm text-ink-500">No elements match.</p>
         )}
         {elements.map((el) => (
           <button
             key={el.id}
             type="button"
             onClick={() => onSelect(el)}
-            className={`block w-full truncate px-3 py-2 text-left text-sm hover:bg-base-700 ${
+            className={`block w-full truncate px-4 py-2 text-left text-sm hover:bg-base-700 ${
               selectedGuid === el.ifcGuid ? 'bg-blueprint-muted text-blueprint' : 'text-ink-100'
             }`}
           >
@@ -64,14 +64,14 @@ export function ElementList({
         ))}
       </div>
       {total > perPage && (
-        <div className="flex items-center justify-between border-t border-base-600 px-2 py-1.5 text-xs text-ink-500">
+        <div className="flex items-center justify-between border-t border-base-600 px-2 py-2 text-xs text-ink-500">
           <button
             type="button"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
             className="disabled:opacity-30"
           >
-            ← Prev
+            Prev
           </button>
           <span>
             Page {page} of {totalPages} ({total})
@@ -82,7 +82,7 @@ export function ElementList({
             onClick={() => setPage((p) => p + 1)}
             className="disabled:opacity-30"
           >
-            Next →
+            Next
           </button>
         </div>
       )}

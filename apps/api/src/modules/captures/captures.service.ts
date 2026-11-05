@@ -38,7 +38,7 @@ export class CapturesService {
   ) {}
 
   // ── Get presigned upload URL ──────────────────────────────────────────────
-  // Client uploads directly to S3 — our API never handles the binary data.
+  // Client uploads directly to S3; our API never handles the binary data.
   // On completion, client calls registerCapture() to create the DB record.
   async getUploadUrl(companyId: string, projectId: string, dto: UploadUrlDto) {
     await this.assertProjectBelongsToCompany(companyId, projectId);
@@ -76,12 +76,12 @@ export class CapturesService {
     await this.assertProjectBelongsToCompany(companyId, projectId);
 
     // The presigned PUT this app hands out has no enforced size limit (see
-    // StorageService.getUploadUrl's comment) -- a client can declare one
+    // StorageService.getUploadUrl's comment): a client can declare one
     // size at upload-url time and then upload a larger file. This is the
     // real enforcement: a HEAD request against the object actually sitting
     // in storage, checked against the same per-type limit, before this
     // capture is ever registered or queued for processing. A client-reported
-    // dto.originalSizeBytes is never trusted for the DB row below -- the
+    // dto.originalSizeBytes is never trusted for the DB row below; the
     // verified size from storage is used instead.
     const maxSize = this.maxSizeForCaptureType(dto.captureType);
     const actualSizeBytes = await this.storage.getObjectSize(dto.storageKey);
@@ -98,7 +98,7 @@ export class CapturesService {
 
     // Validate location belongs to this project if provided. A location
     // reaches a project either via the building hierarchy (level_id) or,
-    // for a pin created directly on a drawing, via drawing_id — it may
+    // for a pin created directly on a drawing, via drawing_id; it may
     // have one, the other, or both, but never neither (enforced by the
     // locations_has_a_place_check constraint).
     const locationId = dto.locationId;
@@ -115,7 +115,7 @@ export class CapturesService {
     }
 
     // Re-check the quota against the verified size, not whatever the client
-    // declared at upload-url time -- a client that under-declared to slip
+    // declared at upload-url time; a client that under-declared to slip
     // past that earlier check must not still get to consume real quota.
     const limitCheck = await this.checkStorageLimit(companyId, actualSizeBytes);
     if (!limitCheck.allowed) {
@@ -123,7 +123,7 @@ export class CapturesService {
       throw new ForbiddenException(limitCheck.reason);
     }
 
-    // withTenant required -- captures carries the tenant_isolation RLS policy;
+    // withTenant required: captures carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id, so this INSERT
     // would be rejected outright under any DB role that isn't the table owner/a superuser.
     const [capture] = await this.db.withTenant(companyId, sql => sql`
@@ -147,10 +147,10 @@ export class CapturesService {
       RETURNING *
     `);
 
-    // Update company storage usage -- the verified size, not the client's declared one.
+    // Update company storage usage: the verified size, not the client's declared one.
     await this.tenancy.incrementStorage(companyId, actualSizeBytes);
 
-    // Queue image processing — thumbnail, preview, metadata extraction
+    // Queue image processing: thumbnail, preview, metadata extraction
     await this.queue.add('process-capture', {
       captureId: capture.id,
       companyId,
@@ -162,7 +162,7 @@ export class CapturesService {
       attempts: 3,
       backoff: { type: 'exponential', delay: 5000 },
       removeOnComplete: true,
-      // Phase 7: was `false` (keep forever) -- the only Bull queue in this
+      // Phase 7: was `false` (keep forever): the only Bull queue in this
       // codebase without a bound on failed-job retention (ifc-processing and
       // webhook-delivery both cap at 100). On a free-tier Redis plan,
       // permanently-failed jobs (corrupted uploads, unsupported formats)
@@ -172,7 +172,7 @@ export class CapturesService {
 
     this.logger.log(`Capture ${capture.id as string} registered, queued for processing`);
 
-    // Make the capture searchable via AI search/assistant. Fire-and-forget —
+    // Make the capture searchable via AI search/assistant. Fire-and-forget;
     // never blocks or fails the upload response if the AI service is down.
     this.aiClient.ingestCapture({
       id: capture.id as string,
@@ -205,7 +205,7 @@ export class CapturesService {
 
     const rows = await this.db.withTenant(companyId, sql => {
       // Validate against the two known values before handing this to the
-      // query builder -- query.sortOrder is client-controlled, so it must
+      // query builder; query.sortOrder is client-controlled, so it must
       // never be interpolated into the SQL as a raw string. Composing a
       // `sql` fragment (postgres.js's safe idiom for a dynamic-but-bounded
       // ORDER BY direction) keeps this injection-proof while still letting
@@ -326,7 +326,22 @@ export class CapturesService {
   // ── Update capture metadata ───────────────────────────────────────────────
   async update(companyId: string, projectId: string, captureId: string, dto: UpdateCaptureDto) {
     await this.findOne(companyId, projectId, captureId);
-    // withTenant required -- captures carries the tenant_isolation RLS policy;
+    // H-1 follow-up: create() validates locationId against this project
+    // (see its own comment above) but update() never did; a user
+    // authorized for Project A could re-point a Project A capture's
+    // location_id at Project B's location by supplying its id.
+    if (dto.locationId) {
+      const [loc] = await this.db.withTenant(companyId, sql => sql`
+        SELECT l.id FROM locations l
+        LEFT JOIN levels lv ON lv.id = l.level_id
+        LEFT JOIN buildings b ON b.id = lv.building_id
+        LEFT JOIN drawings d ON d.id = l.drawing_id
+        WHERE l.id = ${dto.locationId ?? null}
+          AND (b.project_id = ${projectId} OR d.project_id = ${projectId})
+      `);
+      if (!loc) throw new BadRequestException('Location does not belong to this project.');
+    }
+    // withTenant required: captures carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id, so this UPDATE
     // would silently match 0 rows under any DB role that isn't the table owner/a superuser.
     const [updated] = await this.db.withTenant(companyId, sql => sql`
@@ -348,10 +363,10 @@ export class CapturesService {
   async delete(companyId: string, projectId: string, captureId: string) {
     const capture = await this.findOne(companyId, projectId, captureId);
 
-    // withTenant required -- capture_renditions and captures both carry the tenant_isolation
+    // withTenant required: capture_renditions and captures both carry the tenant_isolation
     // RLS policy. A plain this.db.query() never sets app.current_company_id, so under any DB
     // role that isn't the table owner/a superuser the renditions SELECT would see no rows
-    // (skipping storage cleanup for renditions -- an S3 leak) and the DELETE would silently
+    // (skipping storage cleanup for renditions; an S3 leak) and the DELETE would silently
     // match 0 rows (reporting success while the capture row stays in the DB forever).
     const result = await this.db.withTenant(companyId, async (sql) => {
       // Get all storage keys (original + renditions) for cleanup
@@ -372,7 +387,7 @@ export class CapturesService {
     }
     const renditions = result.renditions;
 
-    // Clean up storage (fire-and-forget — don't fail delete if storage cleanup fails)
+    // Clean up storage (fire-and-forget; don't fail delete if storage cleanup fails)
     const captureRow = capture as unknown as { originalKey: string; originalSizeBytes: number };
     const keys = [
       captureRow.originalKey,
@@ -388,9 +403,29 @@ export class CapturesService {
     return { message: 'Capture deleted.' };
   }
 
+  // Lightweight existence+ownership check for a referenced capture id that
+  // isn't the route's own :id (e.g. a hotspot's targetCaptureId): mirrors
+  // findOne()'s own project_id/company_id scoping without its full join.
+  private async assertCaptureInProject(companyId: string, projectId: string, captureId: string): Promise<void> {
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      SELECT 1 FROM captures WHERE id = ${captureId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!row) throw new NotFoundException(`Capture ${captureId} not found.`);
+  }
+
   // ── Hotspots ──────────────────────────────────────────────────────────────
-  async createHotspot(companyId: string, captureId: string, userId: string, dto: CreateHotspotDto) {
-    // withTenant required -- hotspots carries the tenant_isolation RLS policy;
+  async createHotspot(companyId: string, projectId: string, captureId: string, userId: string, dto: CreateHotspotDto) {
+    // H-1 fix: this previously had no existence/ownership check at all for
+    // captureId; findOne() both confirms the capture exists and that it
+    // belongs to the project named in the URL (project_id = projectId AND
+    // company_id = companyId), the same boundary used throughout the rest
+    // of this codebase for sub-resource routes.
+    await this.findOne(companyId, projectId, captureId);
+    // H-1 follow-up: the optional targetCaptureId (the capture a 360 hotspot
+    // navigates to) was never checked; a user authorized for Project A
+    // could point a hotspot at Project B's capture by supplying its id.
+    if (dto.targetCaptureId) await this.assertCaptureInProject(companyId, projectId, dto.targetCaptureId);
+    // withTenant required: hotspots carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id, so this INSERT
     // would be rejected outright under any DB role that isn't the table owner/a superuser.
     const [hotspot] = await this.db.withTenant(companyId, sql => sql`
@@ -409,8 +444,12 @@ export class CapturesService {
     return hotspot;
   }
 
-  async updateHotspot(companyId: string, captureId: string, hotspotId: string, dto: Partial<CreateHotspotDto>) {
-    // withTenant required -- hotspots carries the tenant_isolation RLS policy;
+  async updateHotspot(companyId: string, projectId: string, captureId: string, hotspotId: string, dto: Partial<CreateHotspotDto>) {
+    // H-1 fix: see createHotspot()'s identical comment above.
+    await this.findOne(companyId, projectId, captureId);
+    // H-1 follow-up: see createHotspot()'s identical targetCaptureId comment above.
+    if (dto.targetCaptureId) await this.assertCaptureInProject(companyId, projectId, dto.targetCaptureId);
+    // withTenant required: hotspots carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id, so this UPDATE
     // would silently match 0 rows under any DB role that isn't the table owner/a superuser.
     const [updated] = await this.db.withTenant(companyId, sql => sql`
@@ -427,8 +466,10 @@ export class CapturesService {
     return updated;
   }
 
-  async deleteHotspot(companyId: string, captureId: string, hotspotId: string) {
-    // withTenant required -- hotspots carries the tenant_isolation RLS policy;
+  async deleteHotspot(companyId: string, projectId: string, captureId: string, hotspotId: string) {
+    // H-1 fix: see createHotspot()'s identical comment above.
+    await this.findOne(companyId, projectId, captureId);
+    // withTenant required: hotspots carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id, so this DELETE
     // would silently match 0 rows under any DB role that isn't the table owner/a superuser.
     const result = await this.db.withTenant(companyId, sql => sql`
@@ -450,7 +491,7 @@ export class CapturesService {
     for (const item of dto.captures) {
       try {
         // Check if already processed (idempotency)
-        // withTenant required -- captures carries the tenant_isolation RLS policy;
+        // withTenant required; captures carries the tenant_isolation RLS policy;
         // a plain this.db.query() never sets app.current_company_id, so this SELECT
         // would see no rows under any DB role that isn't the table owner/a superuser.
         const [existing] = await this.db.withTenant(companyId, sql => sql`
@@ -495,7 +536,7 @@ export class CapturesService {
     return { results, summary: { total: dto.captures.length, created, failed, skipped: dto.captures.length - created - failed } };
   }
 
-  // ── Viewer data — all captures at a location for walkthrough ─────────────
+  // ── Viewer data; all captures at a location for walkthrough ─────────────
   async getViewerData(companyId: string, projectId: string, locationId: string) {
     const captures = await this.db.withTenant(companyId, sql => sql`
       SELECT c.id, c.capture_type, c.captured_at, c.phase, c.title,
@@ -541,10 +582,10 @@ export class CapturesService {
 
   // Every capture-upload entry point takes a client-supplied projectId with
   // no route-level guard verifying it belongs to the caller's company (see
-  // captures.controller.ts -- unlike issues/rfis/snagging, nothing here is
+  // captures.controller.ts; unlike issues/rfis/snagging, nothing here is
   // gated by @RequireProjectPermission). Without this, a request naming a
   // foreign project's id would still insert a row (with the caller's own,
-  // correct company_id) that's an orphan under neither company's queries --
+  // correct company_id) that's an orphan under neither company's queries;
   // not a cross-tenant data leak, but a real "upload against a project you
   // have no relationship to" gap. This is deliberately just a company-
   // ownership check, not a permission grant check: it must not change who is
@@ -557,11 +598,11 @@ export class CapturesService {
   }
 
   private async checkStorageLimit(companyId: string, additionalBytes: number): Promise<{ allowed: boolean; reason?: string }> {
-    // HIGH SEVERITY -- withTenant required. companies and company_subscriptions both
+    // HIGH SEVERITY: withTenant required. companies and company_subscriptions both
     // carry the tenant_isolation RLS policy; a plain this.db.query() never sets
     // app.current_company_id, so under any DB role that isn't the table owner/a superuser
     // this SELECT always returns undefined, meaning checkStorageLimit always returns
-    // {allowed:false, reason:'Company not found.'} -- every single capture upload is
+    // {allowed:false, reason:'Company not found.'}; every single capture upload is
     // currently blocked in production.
     const [data] = await this.db.withTenant(companyId, sql => sql`
       SELECT c.storage_used_bytes,

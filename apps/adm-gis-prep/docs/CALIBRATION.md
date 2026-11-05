@@ -46,7 +46,7 @@ Getting from the original to the accepted file therefore takes:
 
 Run in strict mode with the `bdms_building` profile, after calibration:
 
-| Accepted drawing | ERROR | WARNING | Warning content (all genuine spec-rule-1 deviations the official QC lets through) |
+| Accepted drawing | ERROR | WARNING | Warning content (all real spec-rule-1 deviations the official QC lets through) |
 |---|---|---|---|
 | …-G | **0** | 11 | 9 edge crossings / near-miss snaps, 1 repeated vertex, 1 trailing space in "OFFICE AREA " |
 | …-F1 | **0** | 39 | 35 crossings / near-miss snaps (0.9–4 mm), 1 space overhanging the unit, 2 repeated vertices, 1 trailing space |

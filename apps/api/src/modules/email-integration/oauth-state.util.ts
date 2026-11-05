@@ -5,7 +5,7 @@ import type { EmailProvider } from '@engineeringos/types';
 // workforce/calendar-integration/oauth-state.util.ts (see that file's own
 // comment for the full reasoning: no pre-tenant DB lookup needed to resume
 // an OAuth callback). Kept as its own copy rather than importing/generalizing
-// the existing one -- the calendar integration is live, working code this
+// the existing one; the calendar integration is live, working code this
 // phase must not touch (see migration 065's header comment), and the one
 // real difference here (the `provider` field) is exactly the kind of change
 // that would otherwise need modifying code outside this new module's own

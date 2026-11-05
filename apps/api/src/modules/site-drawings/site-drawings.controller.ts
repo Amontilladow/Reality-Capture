@@ -13,7 +13,7 @@ import { StartOfflinePackageDto, CompleteOfflinePackageDto } from './dto/offline
 import { TriggerSiteDrawingSyncDto } from './dto/trigger-sync.dto';
 
 // Reads are ungated (company-wide read visibility), consistent with every
-// other module in this app (risk, RFIs, issues, ...) -- see
+// other module in this app (risk, RFIs, issues, ...); see
 // RiskController's own comment on this convention. Mutations go through
 // RequireCategoryAction('drawings', ...), reusing the existing Drawings
 // category rather than inventing a new permission module, per the brief's

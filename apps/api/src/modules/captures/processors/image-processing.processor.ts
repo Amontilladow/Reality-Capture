@@ -22,7 +22,7 @@ interface RenditionSpec {
   quality: number;
 }
 
-// EXIF orientation values 5-8 mean the image is rotated 90/270 degrees --
+// EXIF orientation values 5-8 mean the image is rotated 90/270 degrees;
 // the visually-correct width/height are swapped relative to the raw
 // encoded pixel grid sharp's metadata() reports.
 function isSidewaysOrientation(orientation: number | undefined): boolean {
@@ -32,10 +32,10 @@ function isSidewaysOrientation(orientation: number | undefined): boolean {
 /**
  * Image Processing Processor
  *
- * Runs in a separate Bull worker -- never blocks the API. Photos
+ * Runs in a separate Bull worker: never blocks the API. Photos
  * (photo_360, photo_standard) get real thumbnail/preview renditions and
  * EXIF/GPS extraction via sharp + exifr. Video captures are left as a
- * pass-through (no frame extraction/thumbnailing) -- that would need
+ * pass-through (no frame extraction/thumbnailing): that would need
  * ffmpeg, a separate scope not covered by the original Phase 1 -> Phase 2
  * design this replaces (see git history for the removed Python-microservice
  * stub comment).
@@ -48,7 +48,7 @@ export class ImageProcessingProcessor {
     private readonly db: DatabaseService,
     private readonly storage: StorageService,
     // @Optional(): same rationale as issues.service.ts's `risk`/`webhooks`
-    // params -- keeps the existing image-processing.processor.spec.ts call
+    // params; keeps the existing image-processing.processor.spec.ts call
     // sites (built against the pre-F3 2-arg list) working unchanged.
     @Optional() private readonly webhooks?: WebhooksService,
   ) {}
@@ -60,7 +60,7 @@ export class ImageProcessingProcessor {
 
     try {
       if (captureType === 'video') {
-        // withTenant required -- captures carries the tenant_isolation RLS policy. A plain
+        // withTenant required: captures carries the tenant_isolation RLS policy. A plain
         // this.db.query() never sets app.current_company_id, so under any DB role that isn't
         // the table owner/a superuser this UPDATE silently touches 0 rows.
         await this.db.withTenant(companyId, sql => sql`UPDATE captures SET status = 'ready', processed_at = NOW() WHERE id = ${captureId} AND company_id = ${companyId}`);
@@ -103,7 +103,7 @@ export class ImageProcessingProcessor {
         });
       }
 
-      // withTenant required -- capture_renditions carries the tenant_isolation RLS policy. A
+      // withTenant required: capture_renditions carries the tenant_isolation RLS policy. A
       // plain this.db.query() never sets app.current_company_id, so under any DB role that
       // isn't the table owner/a superuser this INSERT's implicit WITH CHECK rejects it outright.
       await this.db.withTenant(companyId, async (sql) => {
@@ -115,12 +115,12 @@ export class ImageProcessingProcessor {
         }
       });
 
-      // EXIF GPS is a fallback enrichment only -- never overwrite GPS the
+      // EXIF GPS is a fallback enrichment only; never overwrite GPS the
       // client already supplied (a live device sensor reading, when
       // present, is more trustworthy than embedded EXIF metadata).
       const gps = await exifr.gps(original).catch(() => null);
 
-      // withTenant required -- see capture_renditions INSERT above.
+      // withTenant required; see capture_renditions INSERT above.
       await this.db.withTenant(companyId, sql => sql`
         UPDATE captures SET
           status = 'ready',
@@ -136,7 +136,7 @@ export class ImageProcessingProcessor {
       void this.webhooks?.emitEvent(companyId, 'capture.uploaded', { captureId, projectId, captureType });
     } catch (error) {
       this.logger.error(`Processing failed for capture ${captureId}`, error);
-      // withTenant required -- see capture_renditions INSERT above.
+      // withTenant required; see capture_renditions INSERT above.
       await this.db.withTenant(companyId, sql => sql`
         UPDATE captures
         SET status = 'failed',
@@ -155,7 +155,7 @@ export class ImageProcessingProcessor {
         type: 'preview',
         quality: 85,
         build: (p) => captureType === 'photo_360'
-          ? p.resize(1920, 960, { fit: 'fill' }) // equirectangular -- must stay exactly 2:1, never letterboxed
+          ? p.resize(1920, 960, { fit: 'fill' }) // equirectangular: must stay exactly 2:1, never letterboxed
           : p.resize(1920, 1920, { fit: 'inside', withoutEnlargement: true }),
       },
     ];

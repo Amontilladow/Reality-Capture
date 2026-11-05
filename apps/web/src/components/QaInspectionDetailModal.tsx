@@ -84,19 +84,19 @@ export function QaInspectionDetailModal({
               key={outcome}
               onClick={() => outcomeMutation.mutate(outcome)}
               disabled={outcomeMutation.isPending || inspection.status === outcome}
-              className="btn-secondary !px-3 !py-1.5 text-xs"
+              className="btn-secondary !px-4 !py-2 text-xs"
             >
               {QA_STATUS_LABELS[outcome]}
             </button>
           ))}
           {inspection.status === 'scheduled' && (
-            <button onClick={() => statusMutation.mutate('in_progress')} disabled={statusMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
+            <button onClick={() => statusMutation.mutate('in_progress')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 text-xs">
               Start inspection
             </button>
           )}
           <button
             onClick={() => { if (confirm('Delete this inspection?')) deleteMutation.mutate(); }}
-            className="btn-danger !px-3 !py-1.5 text-xs ml-auto"
+            className="btn-danger !px-4 !py-2 text-xs ml-auto"
           >
             Delete
           </button>

@@ -8,9 +8,9 @@ import type { OutgoingMessage, SendResult } from '../email-integration.types';
 
 const PROVIDER = 'google' as const;
 
-// Mirrors OutlookIntegrationService (Phase 3C) exactly -- same shape, same
+// Mirrors OutlookIntegrationService (Phase 3C) exactly; same shape, same
 // EmailTokenStore composition, same testConnection()/ensureFreshAccessToken()
-// contracts -- so a later sending/composer stage can treat both providers
+// contracts; so a later sending/composer stage can treat both providers
 // identically rather than special-casing each one.
 @Injectable()
 export class GmailIntegrationService {
@@ -44,7 +44,7 @@ export class GmailIntegrationService {
     await this.tokenStore.disconnect(companyId, userId, PROVIDER);
   }
 
-  // Never sends a real email -- see OutlookIntegrationService.testConnection()'s
+  // Never sends a real email; see OutlookIntegrationService.testConnection()'s
   // identical comment (Section 13: "never send test messages to real
   // external recipients without explicit approval").
   async testConnection(companyId: string, userId: string): Promise<{ ok: boolean; error?: string }> {
@@ -58,7 +58,7 @@ export class GmailIntegrationService {
       return { ok: true };
     } catch {
       // Google's token endpoint returns 400 invalid_grant for a
-      // revoked/expired refresh token -- same simplified interpretation
+      // revoked/expired refresh token; same simplified interpretation
       // as Outlook's client (the HTTP layer doesn't parse the specific
       // error code out today), treated as "needs reconnect."
       await this.tokenStore.recordError(companyId, userId, PROVIDER, 'invalid_grant');
@@ -84,7 +84,7 @@ export class GmailIntegrationService {
     }
   }
 
-  // Mirrors OutlookIntegrationService.sendMail() exactly -- see its comment
+  // Mirrors OutlookIntegrationService.sendMail() exactly; see its comment
   // for the shared reasoning (senderEmail returned alongside the provider
   // result, throws rather than returning a failure value on any problem).
   async sendMail(companyId: string, userId: string, message: OutgoingMessage): Promise<SendResult & { senderEmail: string }> {

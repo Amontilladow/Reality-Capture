@@ -70,7 +70,7 @@ export function QaInspectionFormModal({
           <textarea id="checklist" className="field-input min-h-[72px]" value={checklist} onChange={(e) => setChecklist(e.target.value)} placeholder={'One per line, e.g.\nRebar spacing per drawing S-201\nFormwork alignment and bracing\nEmbeds and sleeves in place'} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="inspectionType">Type</label>
             <input id="inspectionType" className="field-input" value={inspectionType} onChange={(e) => setInspectionType(e.target.value)} placeholder="Structural, MEP, Final…" />
@@ -81,7 +81,7 @@ export function QaInspectionFormModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="assignedTo">Inspector</label>
             <Listbox id="assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>

@@ -19,7 +19,7 @@ export interface Project {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
-  // Stakeholder directory -- set once per project, pulled onto every RFI PDF.
+  // Stakeholder directory: set once per project, pulled onto every RFI PDF.
   orgCode?: string;
   clientName?: string;
   leadDesigner?: string;
@@ -28,7 +28,7 @@ export interface Project {
   pmcName?: string;
   mainContractor?: string;
   subcontractor?: string;
-  // Branding for RFI PDFs -- one logo + one stamp per project. Storage
+  // Branding for RFI PDFs: one logo + one stamp per project. Storage
   // keys are the persisted values; the Url fields are presigned read URLs
   // resolved fresh on every fetch, never stored.
   logoStorageKey?: string;

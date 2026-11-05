@@ -8,15 +8,15 @@
  * What this actually verifies, once enabled: that `IfcImporter.process()`,
  * run N times against the same source IFC, produces a `.frag` where every
  * fragment local id resolves to non-empty geometry via
- * `model.getItemsGeometry()` -- and that this holds identically across all
+ * `model.getItemsGeometry()`: and that this holds identically across all
  * N runs (same set of any failures, if there are any at all).
  *
  * IMPORTANT if you're the one re-enabling this: `getItemsGeometry(ids)` can
- * return an array SHORTER than `ids` -- it omits entries for zero-geometry
+ * return an array SHORTER than `ids`: it omits entries for zero-geometry
  * items rather than padding them. Index by request (`meshData[j] ?? []`),
  * never `for (const x of meshData)`. Getting this wrong is exactly what
  * produced the incorrect "0 failures" result that had to be retracted
- * during the original investigation -- see README.md's "Critical gotcha"
+ * during the original investigation; see README.md's "Critical gotcha"
  * section before touching this file.
  *
  * This test needs a real source IFC file, which is not committed to the
@@ -52,7 +52,7 @@ function sha256(buffer: Uint8Array): string {
  * NOTE: this needs @thatopen/fragments' client-side FragmentsManager +
  * a Worker, which this repo has only ever exercised in a real browser
  * (see apps/web/dev-harness/). Whether @thatopen/fragments' Node story
- * supports this without a browser is unverified -- flagged here rather
+ * supports this without a browser is unverified; flagged here rather
  * than assumed, since asserting it works without having run it would be
  * exactly the kind of unverified claim this whole investigation was
  * about avoiding.
@@ -91,7 +91,7 @@ describeOrSkip('fragment generation determinism (blocked by engine_fragment#260)
     }
 
     // Total triangle count should be identical across all runs regardless
-    // of anything else -- geometry isn't created or destroyed, only
+    // of anything else; geometry isn't created or destroyed, only
     // (potentially) misattributed between items.
     for (const run of runs.slice(1)) {
       expect(run.totalTriangles).toEqual(runs[0].totalTriangles);

@@ -43,41 +43,41 @@ export class DrawingsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get drawing with all linked capture pins' })
-  async findOne(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
-    return { data: await this.svc.findOne(u.companyId, id), error: null };
+  async findOne(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.findOne(u.companyId, pid, id), error: null };
   }
 
   @Get(':id/floor-plan')
   @ApiOperation({ summary: 'Get floor plan data for the viewer — drawing + all capture pins with thumbnails' })
-  async getFloorPlanData(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
-    return { data: await this.svc.getFloorPlanData(u.companyId, id), error: null };
+  async getFloorPlanData(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.getFloorPlanData(u.companyId, pid, id), error: null };
   }
 
   @Post(':id/link-capture')
   @RequireCategoryAction('drawings', 'edit', 'manage_project_records')
   @ApiOperation({ summary: 'Place a capture pin on a drawing at normalized (x,y) coordinates' })
-  async linkCapture(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: LinkCaptureToDrawingDto) {
-    return { data: await this.svc.linkCapture(u.companyId, id, u.id, dto), error: null };
+  async linkCapture(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: LinkCaptureToDrawingDto) {
+    return { data: await this.svc.linkCapture(u.companyId, pid, id, u.id, dto), error: null };
   }
 
   @Delete(':id/captures/:captureId')
   @RequireCategoryAction('drawings', 'edit', 'manage_project_records')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Remove a capture pin from a drawing' })
-  async unlinkCapture(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Param('captureId') cid: string) {
-    return { data: await this.svc.unlinkCapture(u.companyId, id, cid), error: null };
+  async unlinkCapture(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Param('captureId') cid: string) {
+    return { data: await this.svc.unlinkCapture(u.companyId, pid, id, cid), error: null };
   }
 
   @Post(':id/pins')
   @RequireCategoryAction('drawings', 'edit', 'manage_project_records')
   @ApiOperation({ summary: 'Create a pin on a drawing at normalized (x,y) coordinates — no capture required yet' })
-  async createPin(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: CreatePinDto) {
-    return { data: await this.svc.createPin(u.companyId, id, u.id, dto), error: null };
+  async createPin(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: CreatePinDto) {
+    return { data: await this.svc.createPin(u.companyId, pid, id, u.id, dto), error: null };
   }
 
   @Get(':id/pins')
   @ApiOperation({ summary: 'List pins for a drawing — one marker per place, with a capture count and latest thumbnail' })
-  async getPins(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
-    return { data: await this.svc.getPins(u.companyId, id), error: null };
+  async getPins(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.getPins(u.companyId, pid, id), error: null };
   }
 }

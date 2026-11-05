@@ -30,13 +30,13 @@ export interface UsageLogEntry {
 
 // Spec sections 12-15: configurable per-role daily + per-minute limits,
 // enforced server-side, with a clean "you've hit your limit" message and
-// NO quota consumed by a domain-guard-blocked question (spec section 13 --
+// NO quota consumed by a domain-guard-blocked question (spec section 13;
 // checkAndReserve() is only ever called once the domain guard has already
 // allowed a question through; see AiService.ask()).
 //
 // Counters live in Redis (already a dependency via BullModule, just not
 // previously exposed as its own injectable client) for fast, cheap
-// per-minute/per-day arithmetic -- ai_usage_log in Postgres is the
+// per-minute/per-day arithmetic; ai_usage_log in Postgres is the
 // permanent telemetry record (spec section 14's usage dashboard source),
 // not the hot path for every request's rate check.
 @Injectable()
@@ -67,7 +67,7 @@ export class AiUsageService implements OnModuleDestroy {
   }
 
   // Atomically checks AND reserves one request against both the per-minute
-  // and daily buckets in a single round trip -- callers must not call this
+  // and daily buckets in a single round trip; callers must not call this
   // speculatively and then skip the request, since it already counts.
   async checkAndReserve(userId: string, role: string): Promise<UsageCheckResult> {
     const limit = this.limitForRole(role);
@@ -99,7 +99,7 @@ export class AiUsageService implements OnModuleDestroy {
     return { dailyUsed: used, dailyLimit: limit.dailyLimit };
   }
 
-  // Fire-and-forget write to the permanent log -- mirrors AuditInterceptor's
+  // Fire-and-forget write to the permanent log: mirrors AuditInterceptor's
   // own error-isolation pattern (a logging failure must never fail or
   // delay the actual assistant response). Called for every outcome
   // (allowed/blocked/error) so the usage dashboard (spec section 14) can

@@ -44,7 +44,7 @@ export default function AcceptInvitation() {
       }),
     onSuccess: (result) => {
       setSession(result.tokens, result.user);
-      // Every self-registration lands pending -- ProtectedRoute would send
+      // Every self-registration lands pending: ProtectedRoute would send
       // them here anyway once it checks pendingApproval, but routing there
       // directly avoids a pointless bounce through /projects first.
       navigate('/pending-approval', { replace: true });
@@ -64,7 +64,7 @@ export default function AcceptInvitation() {
   return (
     <AuthLayout title="Accept your invitation" subtitle="Set up your account to join your company's workspace.">
       <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <Input
             label="First name"
             error={errors.firstName?.message}

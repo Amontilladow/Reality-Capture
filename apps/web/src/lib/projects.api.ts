@@ -50,7 +50,7 @@ export function getBrandingUploadUrl(projectId: string, filename: string, sizeBy
 
 // Full client-side flow: request the presigned URL, PUT the file straight
 // to storage, then save the resulting key on the project (reusing the
-// normal update path -- no separate "register" endpoint for branding).
+// normal update path; no separate "register" endpoint for branding).
 export async function uploadProjectBranding(projectId: string, file: File, kind: 'logo' | 'stamp'): Promise<Project> {
   const { uploadUrl, storageKey } = await getBrandingUploadUrl(projectId, file.name, file.size, kind);
   await axios.put(uploadUrl, file, { headers: { 'Content-Type': file.type || 'application/octet-stream' } });
@@ -107,7 +107,7 @@ export function convertPinToSnag(projectId: string, locationId: string) {
 }
 
 // ── Project organizations (Phase 4) ────────────────────────────────────────
-// One row per configured stakeholder slot -- an unconfigured slot simply
+// One row per configured stakeholder slot; an unconfigured slot simply
 // isn't in this list (see projects.service.ts's getOrganizations()).
 export interface ProjectOrganization {
   id: string;
@@ -150,7 +150,7 @@ export function getOrganizationLogoUploadUrl(projectId: string, slot: ProjectOrg
 // Full client-side flow, same shape as uploadProjectBranding() above:
 // request the presigned URL, PUT the file straight to storage, then save
 // the resulting key on the organization row (reusing the normal upsert
-// path -- no separate "register" endpoint).
+// path; no separate "register" endpoint).
 export async function uploadOrganizationLogo(projectId: string, slot: ProjectOrganizationSlot, file: File): Promise<ProjectOrganization> {
   const { uploadUrl, storageKey } = await getOrganizationLogoUploadUrl(projectId, slot, file.name, file.size);
   await axios.put(uploadUrl, file, { headers: { 'Content-Type': file.type || 'application/octet-stream' } });
@@ -159,7 +159,7 @@ export async function uploadOrganizationLogo(projectId: string, slot: ProjectOrg
 
 // ── Project organization membership (RBAC Phase 4) ─────────────────────────
 // Which of the project's 5 stakeholder slots an existing project member
-// personally belongs to -- distinct from both their own project role
+// personally belongs to; distinct from both their own project role
 // (ProjectMember.role below) and the slot's own branding/contact row
 // (ProjectOrganization above, which has no user link at all).
 export interface ProjectOrganizationMember {
@@ -178,7 +178,7 @@ export function getOrganizationMembers(projectId: string) {
 }
 
 // The target must already be a project member (see ProjectsService.
-// addOrganizationMember()'s own comment) -- add them via addMember() below
+// addOrganizationMember()'s own comment): add them via addMember() below
 // first if they aren't one yet.
 export function addOrganizationMember(projectId: string, slot: ProjectOrganizationSlot, userId: string) {
   return apiPost<ProjectOrganizationMember>(`/projects/${projectId}/organizations/${slot}/members`, { userId });
@@ -190,7 +190,7 @@ export function removeOrganizationMember(projectId: string, userId: string) {
 
 export interface ProjectMember {
   userId: string;
-  // Actual field name returned by GET /projects/:id/members -- was
+  // Actual field name returned by GET /projects/:id/members; was
   // incorrectly declared as `projectRole` here, which silently rendered as
   // undefined everywhere this type was used (both the Team modal's member
   // list and the Issues form's assignee dropdown showed no role at all).

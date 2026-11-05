@@ -8,7 +8,7 @@ export class RegisterBimModelDto {
   storageKey: string;
 
   // Only 'IFC' is actually parsed end-to-end today (apps/ifc-service's
-  // processor assumes IFC SPF syntax unconditionally) -- NWD/RVT are kept
+  // processor assumes IFC SPF syntax unconditionally): NWD/RVT are kept
   // here as already-existing schema/column values (bim_models.format,
   // never enforced before this DTO existed) rather than removed, since
   // dropping them would be a behavior change beyond this fix's scope.

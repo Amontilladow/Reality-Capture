@@ -1,5 +1,6 @@
 import { BadRequestException, Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Delete, Res, StreamableFile } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import type { AuthenticatedUser, RiskNodeType } from '@engineeringos/types';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -15,12 +16,12 @@ import { SetMatrixOverrideDto } from './dto/set-matrix-override.dto';
 
 // Phase 6 security fix: every mutating route in this controller previously
 // had no @Roles/@RequireProjectPermission, and RiskService scoped only by
-// companyId -- confirmed by the Phase 6 audit (grepped for companyRole/
+// companyId; confirmed by the Phase 6 audit (grepped for companyRole/
 // ForbiddenException/project_members/hasProjectPermission across
 // risk.service.ts: zero hits). Any authenticated company user could
 // recalculate, override scores, set risk status/owner, or clear matrix
 // overrides for any project in the company, not just ones they are
-// permitted to edit. Gated to 'manage_project_records' -- the same
+// permitted to edit. Gated to 'manage_project_records'; the same
 // permission that already governs editing structural project data
 // elsewhere. Reads remain ungated, consistent with this platform's
 // company-wide read-visibility model.
@@ -97,14 +98,17 @@ export class RiskController {
   }
 
   @Get('briefing')
+  // Paid LLM call: own tighter bucket on top of the per-role AiUsageService
+  // quota the service applies (same pattern as the assistant's ai.controller.ts).
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'AI-generated project risk briefing, grounded in the executive summary/top risks/clusters -- never a raw model call' })
   async getAiBriefing(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
-    return { data: await this.risk.generateAiBriefing(u.companyId, pid), error: null };
+    return { data: await this.risk.generateAiBriefing(u.companyId, pid, u), error: null };
   }
 
-  // Binary-response endpoint -- same StreamableFile + passthrough Response
+  // Binary-response endpoint: same StreamableFile + passthrough Response
   // pattern as reports.controller.ts's own :projectId/reports/pdf route.
-  // POST (not GET) because aiBriefing can run to a few paragraphs -- too
+  // POST (not GET) because aiBriefing can run to a few paragraphs; too
   // long to carry safely in a query string, same reasoning apiDownloadPost()
   // documents on the frontend.
   @Post('pdf')
@@ -256,9 +260,12 @@ export class RiskController {
   }
 
   @Get(':riskId/ai-explanation')
+  // Paid LLM call: own tighter bucket on top of the per-role AiUsageService
+  // quota the service applies (same pattern as the assistant's ai.controller.ts).
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'AI-generated explanation of this risk, grounded in its own factors/evidence/chain -- never a different recommendation than the deterministic one' })
   async getAiExplanation(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('riskId') riskId: string) {
-    return { data: await this.risk.generateAiExplanation(u.companyId, pid, riskId), error: null };
+    return { data: await this.risk.generateAiExplanation(u.companyId, pid, riskId, u), error: null };
   }
 
   @Patch(':riskId/override')

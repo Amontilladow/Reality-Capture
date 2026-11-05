@@ -1,4 +1,4 @@
-# Workforce Intelligence™ — Data Model (MVP)
+# Workforce Intelligence™ data model (MVP)
 
 Follows this repo's existing migration conventions exactly (see
 `apps/api/src/database/migrations/001_initial_schema.sql`): UUID PKs via
@@ -14,19 +14,19 @@ Implemented as `apps/api/src/database/migrations/037_workforce_intelligence.sql`
 | `application_registry` | reference/config | mutable (admin-managed) |
 | `activities` | **raw telemetry** | insert-only; never updated by the scoring engine |
 | `activity_project_attributions` | derived (but source-of-truth for "current best guess") | replaceable (re-attribution upserts) |
-| `productivity_scores` | **derived intelligence** | recalculable — a formula-version change deletes and re-inserts by `model_version`, never an in-place UPDATE of history |
+| `productivity_scores` | **derived intelligence** | recalculable: a formula-version change deletes and re-inserts by `model_version`, never an in-place UPDATE of history |
 | `workforce_privacy_settings` | config | mutable, admin-managed, changes audit-logged like every other sensitive action in this codebase |
 
-## Extensibility decisions (deliberate — brief §10/§11 "do not blindly
+## Extensibility decisions (deliberate; brief §10/§11 "do not blindly
 hardcode, design extensible")
 
 - `activities.activity_type` and `application_registry.category`/
   `discipline` are `VARCHAR`, not Postgres enum types. A Postgres enum
-  would need a migration to add a value — the opposite of "extensible."
+  would need a migration to add a value, which is the opposite of "extensible."
   Validity is enforced at the API layer (`class-validator` `@IsIn(...)`
   against a `const` array in `packages/types`), which can grow without a
   schema migration. `application_registry.category`/`discipline` aren't
-  even a fixed whitelist — brief §11 explicitly calls for a
+  even a fixed whitelist: brief §11 explicitly calls for a
   *configurable* registry, so these are free text set by whoever manages
   the registry (`company_admin`+), exactly like the brief's own example
   list ("BIM", "Documentation", "Collaboration") is illustrative, not
@@ -35,7 +35,7 @@ hardcode, design extensible")
   `activity_project_attributions.method` *are* validated against small,
   stable vocabularies (`productive|neutral|unproductive|unclassified` and
   the brief §12 mechanism list respectively) because the scoring engine's
-  logic branches on these values — growing the vocabulary is a deliberate
+  logic branches on these values. Growing the vocabulary is a deliberate
   code change to the scoring engine anyway, not something that should
   silently vary per company.
 
@@ -53,7 +53,7 @@ revoked_by, created_at
 ```
 
 ### `application_registry`
-Per-company, admin-managed. No global/system rows in MVP — each company
+Per-company, admin-managed. No global/system rows in MVP; each company
 starts empty and populates it (a future seed script can pre-populate
 common construction/engineering tools per brief §11's example list, but
 that's a convenience, not a schema requirement).
@@ -67,7 +67,7 @@ is_active, created_by, created_at, updated_at
 UNIQUE (company_id, match_pattern)
 ```
 
-### `activities` — raw, immutable
+### `activities`: raw, immutable
 ```
 id, company_id, user_id, device_id (nullable — null for seed/manual
 entries), client_event_id (nullable — the agent's idempotency key),
@@ -91,7 +91,7 @@ Indexes: (company_id, user_id, started_at DESC) — the hot query path
 for "my activity this week" and for productivity aggregation.
 ```
 
-### `activity_project_attributions` — which project this activity belongs to
+### `activity_project_attributions`: which project this activity belongs to
 Kept separate from `activities` rather than as columns on it: attribution
 can be revised (a better signal arrives later, or a user corrects a
 mis-attribution) without ever mutating the immutable raw row.
@@ -108,11 +108,11 @@ attributed_at
 
 `confidence = 1.0` only for `manual_selection` (a human said so) or an
 unambiguous single-project company. Every inferred method starts below
-1.0 — MVP's `task_context` inference is a simple "does this user have
+1.0. MVP's `task_context` inference is a simple "does this user have
 exactly one project with an active/assigned task right now" check, scored
 accordingly; it never asserts certainty it doesn't have.
 
-### `productivity_scores` — derived, versioned, recalculable
+### `productivity_scores`: derived, versioned, recalculable
 ```
 id, company_id, user_id, project_id (nullable — null means the
 all-projects rollup for that user/period), period_type (day|week),
@@ -127,10 +127,10 @@ formula change is always a full, auditable replacement rather than a
 silent in-place drift.
 ```
 
-A score is **never** returned by the API without its `factors` — there is
+A score is **never** returned by the API without its `factors`. There is
 no "just give me the number" endpoint, by design (brief §14).
 
-### `workforce_privacy_settings` — one row per company
+### `workforce_privacy_settings`: one row per company
 ```
 id, company_id (UNIQUE — same one-row-per-tenant pattern as
 company_subscriptions), monitoring_level (minimal|standard|detailed,
@@ -148,7 +148,7 @@ on because brief §16 treats employee self-view as core, not optional),
 updated_by, updated_at, created_at
 ```
 
-`keystroke logging` has no column at all in MVP — there is no partial
+`keystroke logging` has no column at all in MVP. There is no partial
 feature to gate; per brief §9/§18 it's treated as a hypothetical future
 capability requiring its own explicit architectural/privacy work if ever
 proposed, not a flag to ship half-built today.
@@ -166,7 +166,7 @@ No new tenancy mechanism.
 hundreds of employees) a single table with the
 `(company_id, user_id, started_at DESC)` index is sufficient. The schema
 is written so that range-partitioning by `started_at` (month) is a
-non-breaking `ALTER` later — no foreign key or application code assumes
-a single physical table — deferred until real volume justifies the
+non-breaking `ALTER` later (no foreign key or application code assumes
+a single physical table). It is deferred until real volume justifies the
 operational overhead of partitioning, per brief §19's ask to identify the
 scaling strategy without necessarily implementing it before it's needed.

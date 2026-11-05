@@ -21,10 +21,10 @@ export function RfiFormModal({
   projectId: string;
   members: ProjectMember[];
   // Pre-fills a brand-new (never submitted) RFI, e.g. from an AI-generated
-  // draft -- the user still edits and submits through this exact same form
+  // draft; the user still edits and submits through this exact same form
   // and createRfi() call, nothing about the write path changes.
   initialValues?: { subject?: string; question?: string; discipline?: RfiDiscipline; priority?: RfiPriority };
-  // Set by RfisPage's Subcontractor's-RFIs window -- the server re-derives
+  // Set by RfisPage's Subcontractor's-RFIs window: the server re-derives
   // and overrides this from the caller's actual project role regardless
   // (see RfisService.create()), so this is purely which window the new RFI
   // should land in for a non-subcontractor raising it on someone's behalf;
@@ -39,7 +39,7 @@ export function RfiFormModal({
   const [discipline, setDiscipline] = useState<RfiDiscipline | ''>('');
   const [disciplineOther, setDisciplineOther] = useState('');
 
-  // 4-state cost/time impact (Phase 1 backend shape) -- replaces the plain
+  // 4-state cost/time impact (Phase 1 backend shape): replaces the plain
   // checkboxes. 'yes'/'potential'/'tbd' all reveal the detail fields per the
   // original spec's field rules; only 'no' hides them.
   const [costImpactLevel, setCostImpactLevel] = useState<RfiImpactLevel>('no');
@@ -51,12 +51,12 @@ export function RfiFormModal({
   const [timeImpactDays, setTimeImpactDays] = useState('');
   const [timeImpactDescription, setTimeImpactDescription] = useState('');
 
-  // Third impact field -- same 4-state shape, no amount/currency-or-days
+  // Third impact field: same 4-state shape, no amount/currency-or-days
   // companion, just level + description + an owner for the follow-up.
   const [drawingImpactLevel, setDrawingImpactLevel] = useState<RfiImpactLevel>('no');
   const [drawingImpactDescription, setDrawingImpactDescription] = useState('');
   // Defaults to whoever assignedTo is already set to once impact is raised
-  // above 'no' -- see the effect below -- but stays freely editable from
+  // above 'no'; see the effect below; but stays freely editable from
   // there, per the ticket ("defaulting to whoever assigned_to is already
   // set to, editable").
   const [drawingUpdateOwnerId, setDrawingUpdateOwnerId] = useState('');
@@ -65,7 +65,7 @@ export function RfiFormModal({
   const [dueDate, setDueDate] = useState('');
   const [error, setError] = useState('');
 
-  // Staged client-side until the RFI exists -- attachments.upload-url needs
+  // Staged client-side until the RFI exists: attachments.upload-url needs
   // a real rfiId (see rfis.api.ts's uploadRfiAttachment), so these upload
   // one by one, as 'query' attachments, right after createRfi() succeeds
   // below, same presigned-PUT flow RfiDetailPage's own attachment section
@@ -138,7 +138,7 @@ export function RfiFormModal({
   return (
     <Modal open={open} onClose={handleClose} title="New RFI">
       <div className="space-y-4">
-        <div className="flex items-center justify-between -mt-1">
+        <div className="flex items-center justify-between -mt-2">
           {raisedByOrganizationSlot === 'subcontractor' ? (
             <span className="badge bg-blueprint/15 text-blueprint">Raising as: Subcontractor</span>
           ) : <span />}
@@ -157,9 +157,9 @@ export function RfiFormModal({
         </div>
 
         <div>
-          <div className="field-label mb-1.5">Attachments</div>
+          <div className="field-label mb-2">Attachments</div>
           {files.length > 0 && (
-            <ul className="mb-2 space-y-1">
+            <ul className="mb-2 space-y-2">
               {files.map((file, i) => (
                 <li key={`${file.name}-${i}`} className="flex items-center justify-between text-xs text-ink-300">
                   <span>{file.name}</span>
@@ -176,7 +176,7 @@ export function RfiFormModal({
               ))}
             </ul>
           )}
-          <label className="btn-secondary !px-3 !py-1.5 text-xs cursor-pointer inline-block">
+          <label className="btn-secondary !px-4 !py-2 text-xs cursor-pointer inline-block">
             + Add attachment
             <input
               type="file"
@@ -192,7 +192,7 @@ export function RfiFormModal({
           </label>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="priority">Priority</label>
             <Listbox id="priority" className="field-input" value={priority} onChange={(e) => setPriority(e.target.value as RfiPriority)}>
@@ -207,7 +207,7 @@ export function RfiFormModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="assignedTo">Assignee</label>
             <Listbox id="assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
@@ -235,7 +235,7 @@ export function RfiFormModal({
           </div>
         )}
 
-        {/* Cost impact -- 4-state, revealing amount/currency/description
+        {/* Cost impact: 4-state, revealing amount/currency/description
             whenever the level isn't 'no' (Yes/Potential/TBD all reveal, per
             the original spec's field rules). */}
         <div className="pt-2 border-t border-base-600 space-y-2">
@@ -251,7 +251,7 @@ export function RfiFormModal({
             ))}
           </Listbox>
           {costImpactLevel !== 'no' && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <input
                 className="field-input"
                 type="number"
@@ -275,7 +275,7 @@ export function RfiFormModal({
           )}
         </div>
 
-        {/* Time impact -- same 4-state shape, days + description instead of
+        {/* Time impact: same 4-state shape, days + description instead of
             amount/currency. */}
         <div className="space-y-2">
           <label className="field-label" htmlFor="timeImpactLevel">Time impact</label>
@@ -290,7 +290,7 @@ export function RfiFormModal({
             ))}
           </Listbox>
           {timeImpactLevel !== 'no' && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <input
                 className="field-input"
                 type="number"
@@ -308,10 +308,10 @@ export function RfiFormModal({
           )}
         </div>
 
-        {/* Drawing/Model Updated -- same 4-state shape as cost/time above,
+        {/* Drawing/Model Updated: same 4-state shape as cost/time above,
             but with its own field-specific wording ('potential'/'tbd' are
             two distinct reasons an update is still undecided, not a
-            generic "maybe" -- see DRAWING_UPDATE_STATUS_LABELS) and no
+            generic "maybe"; see DRAWING_UPDATE_STATUS_LABELS) and no
             amount/currency-or-days companion field, just status +
             description + a drawing-update owner (only meaningfully shown
             once status isn't 'no'). */}
@@ -325,7 +325,7 @@ export function RfiFormModal({
               const level = e.target.value as RfiImpactLevel;
               setDrawingImpactLevel(level);
               // Defaults the owner to the RFI's general assignee the first
-              // time impact is raised above 'no' -- editable from there.
+              // time impact is raised above 'no'; editable from there.
               if (level !== 'no' && !drawingUpdateOwnerId && assignedTo) setDrawingUpdateOwnerId(assignedTo);
             }}
           >

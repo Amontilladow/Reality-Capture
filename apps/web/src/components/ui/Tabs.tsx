@@ -8,7 +8,7 @@ export interface TabItem {
 }
 
 // Accessible tab list (role="tablist"/"tab", roving tabindex, arrow-key
-// navigation) rendering only the strip itself -- the caller still owns
+// navigation) rendering only the strip itself; the caller still owns
 // which panel is shown for `active`, same as every page that already
 // hand-rolls a "Tab" union + button row (IssuesPage, SnaggingPage, etc.)
 // does today. This replaces that button row, not the panel-switching logic.
@@ -36,7 +36,7 @@ export function Tabs({
   }
 
   return (
-    <div role="tablist" className="flex items-center gap-1 border-b border-base-600">
+    <div role="tablist" className="flex items-center gap-2 border-b border-base-600">
       {items.map((item, i) => {
         const selected = item.key === active;
         return (
@@ -50,7 +50,7 @@ export function Tabs({
             tabIndex={selected ? 0 : -1}
             onKeyDown={(e) => onKeyDown(e, i)}
             onClick={() => onChange(item.key)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
               selected
                 ? 'border-signal text-ink-100'
                 : 'border-transparent text-ink-500 hover:text-ink-300'
@@ -67,7 +67,7 @@ export function Tabs({
   );
 }
 
-// Wraps a tab's content with the matching ARIA attributes -- pairs with the
+// Wraps a tab's content with the matching ARIA attributes; pairs with the
 // `id`/`aria-controls` above. Pass through unconditionally (don't unmount
 // inactive panels) when a panel holds state (form input, scroll position)
 // that should survive switching tabs and back.

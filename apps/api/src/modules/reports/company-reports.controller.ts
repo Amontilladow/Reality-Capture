@@ -5,7 +5,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '@engineeringos/types';
 
 // Top-level (no :projectId) sibling to ReportsController, same shape as
-// SubscriptionController -- company-wide data scoped only by the caller's
+// SubscriptionController; company-wide data scoped only by the caller's
 // own companyId, same scoping GET /projects already uses (no membership
 // filter: any authenticated company user already sees every non-archived
 // company project there, and this endpoint mirrors that exactly).

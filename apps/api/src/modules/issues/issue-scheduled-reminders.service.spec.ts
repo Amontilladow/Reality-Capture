@@ -11,11 +11,12 @@ describe('IssueScheduledRemindersService.fireDueReminders', () => {
       return Promise.resolve(responder(text, values) ?? []);
     });
     const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
-    return { query: query as unknown as DatabaseService['query'], withTenant, calls };
+    const withSystemBypass = jest.fn((fn: (sql: unknown) => unknown) => fn(query));
+    return { withSystemBypass, withTenant, calls };
   }
 
   it('fires a due reminder: marks it sent, logs an activity, and notifies the target user', async () => {
-    const { query, withTenant, calls } = makeQuery((text) => {
+    const { withSystemBypass, withTenant, calls } = makeQuery((text) => {
       if (text.includes('FROM issue_reminders')) {
         return [{
           id: 'reminder-1', companyId: 'company-1', projectId: 'project-1', issueId: 'issue-1',
@@ -29,13 +30,15 @@ describe('IssueScheduledRemindersService.fireDueReminders', () => {
     });
     const notifications = { create: jest.fn() };
     const svc = new IssueScheduledRemindersService(
-      { query, withTenant } as unknown as DatabaseService,
+      { withSystemBypass, withTenant } as unknown as DatabaseService,
       notifications as unknown as NotificationsService,
     );
 
     const result = await svc.fireDueReminders();
 
     expect(result).toEqual({ checked: 1, fired: 1 });
+    // Cross-company scan: must run under the RLS system bypass (migration 078).
+    expect(withSystemBypass).toHaveBeenCalledTimes(1);
     expect(calls.some((c) => c.text.includes('UPDATE issue_reminders SET sent_at = NOW()'))).toBe(true);
     const activityCall = calls.find((c) => c.text.includes('INSERT INTO issue_activities'));
     expect(activityCall).toBeDefined();
@@ -46,10 +49,10 @@ describe('IssueScheduledRemindersService.fireDueReminders', () => {
   });
 
   it('is a no-op when there are no due reminders', async () => {
-    const { query, withTenant } = makeQuery(() => []);
+    const { withSystemBypass, withTenant } = makeQuery(() => []);
     const notifications = { create: jest.fn() };
     const svc = new IssueScheduledRemindersService(
-      { query, withTenant } as unknown as DatabaseService,
+      { withSystemBypass, withTenant } as unknown as DatabaseService,
       notifications as unknown as NotificationsService,
     );
 

@@ -1,10 +1,7 @@
-/** The app's icon mark (public/logo-mark.png) -- a tight crop of the approved
- * "ribbon R" emblem from the official brand artwork (public/branding/
- * reality-capture-hero.webp is the untouched master; this is a separate,
- * purpose-built derivative since the full wide hero composition isn't
- * legible at icon sizes). Rendered as an iOS-style squircle tile, per the
- * app's Mobbin-derived design language (app-icon-squircle: 30% corner
- * radius). The same crop also backs favicon.png and apple-touch-icon.png. */
+/** The app's icon mark (public/logo-mark.png): the rose-gold "ribbon R",
+ * a still frame of the liquid-metal logo (components/brand/liquid) on an
+ * espresso tile. Rendered as an iOS-style squircle (30% corner radius).
+ * favicon.png and apple-touch-icon.png are the same tile at their sizes. */
 export function LogoMark({ className = 'w-6 h-6' }: { className?: string }) {
   return (
     <img

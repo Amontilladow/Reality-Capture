@@ -132,7 +132,7 @@ describe('SubcontractorRfiAccessGuard', () => {
   });
 
   // Regression test: ProjectsController's own routes use :id, not
-  // :projectId (RfisController's own param name) -- reading
+  // :projectId (RfisController's own param name): reading
   // request.params.projectId for those requests silently returned
   // undefined, which made isSubcontractor() return false and let the
   // request straight through, unguarded, regardless of the path. The fix
@@ -185,7 +185,7 @@ describe('SubcontractorRfiAccessGuard', () => {
   });
 
   // Owner's org-category RBAC sprint: Drawings grants Subcontractor
-  // "V -- own project scope only" -- a new, narrow read-only carve-out.
+  // "V (own project scope only") a new, narrow read-only carve-out.
   it("allows GET access to this project's Drawings (new, matrix-granted 'view' access)", async () => {
     const { guard } = makeGuard(false, true);
     await expect(
@@ -207,7 +207,7 @@ describe('SubcontractorRfiAccessGuard', () => {
   });
 
   // Owner's org-category RBAC sprint: Issues grants Subcontractor
-  // "C,V -- own company's issues only".
+  // "C,V; own company's issues only".
   describe('Issues access', () => {
     it('allows list/read/create (own-company isolation enforced at the service layer, not here)', async () => {
       const { guard } = makeGuard(false, true);
@@ -252,8 +252,8 @@ describe('SubcontractorRfiAccessGuard', () => {
   });
 
   // Owner's org-category RBAC sprint: Submittals grants Subcontractor
-  // "C,V -- own submittals only". Transmittals gets nothing (deliberately
-  // scoped out -- see SUBMITTALS_BASE_PATH_PATTERN's own comment).
+  // "C,V; own submittals only". Transmittals gets nothing (deliberately
+  // scoped out; see SUBMITTALS_BASE_PATH_PATTERN's own comment).
   describe('Submittals access', () => {
     it('allows list/read/create (own-submittals isolation enforced at the service layer, not here)', async () => {
       const { guard } = makeGuard(false, true);

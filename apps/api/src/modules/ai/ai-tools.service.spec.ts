@@ -52,7 +52,7 @@ function makeTools() {
 // CRITICAL regression: these three tools previously called their underlying
 // service methods WITHOUT the asking user's id, which silently disables
 // RfisService/IssuesService's own subcontractor-isolation check
-// (isViewerSubcontractor returns false when viewerId is falsy) -- a
+// (isViewerSubcontractor returns false when viewerId is falsy): a
 // subcontractor asking the AI assistant could see every other
 // subcontractor's RFIs/issues, the exact leak that check exists to prevent
 // on the regular REST routes.

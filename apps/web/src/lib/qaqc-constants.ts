@@ -66,11 +66,11 @@ export function formatDateTime(iso?: string): string {
 
 // Role-list (membership, not weight) constants mirroring the backend's own
 // ISSUE_ROLES_BY_TYPE/RESPOND_ROLES_BY_TYPE/CONFIRM_ROLES in qaqc.service.ts/
-// qaqc.controller.ts -- client-side visual-only gating for the create/
+// qaqc.controller.ts; client-side visual-only gating for the create/
 // respond/confirm actions. The server is the real enforcement; this only
 // decides which buttons are worth showing.
 //
-// NCR/SOR and WIR/MIR swap issuer/responder roles -- a WIR/MIR *is* the
+// NCR/SOR and WIR/MIR swap issuer/responder roles; a WIR/MIR *is* the
 // construction team's own request for QAQC to inspect, so for those two
 // types QAQC responds (performs the inspection) instead of issuing, and
 // the construction team issues instead of responding. Confirm never
@@ -91,5 +91,5 @@ export const QAQC_RESPOND_ROLES_BY_TYPE: Record<QaqcRecordType, readonly string[
   wir: [...QAQC_ROLE_SET, ...ADMIN_ROLE_SET],
   mir: [...QAQC_ROLE_SET, ...ADMIN_ROLE_SET],
 };
-// Never varies by type -- QAQC-in-charge confirms NCR/SOR and WIR/MIR alike.
+// Never varies by type: QAQC-in-charge confirms NCR/SOR and WIR/MIR alike.
 export const QAQC_CONFIRM_ROLES = [...QAQC_ROLE_SET, ...ADMIN_ROLE_SET] as const;

@@ -17,7 +17,7 @@ export class IfcFragmentsService {
     try {
       return await importer.process({ bytes: data });
     } catch (error) {
-      // Fragments generation failing doesn't have to fail the whole job —
+      // Fragments generation failing doesn't have to fail the whole job;
       // the model's data (hierarchy/properties/quantities/etc.) is still
       // valuable without a viewer-ready geometry file. The processor
       // decides whether to treat this as a warning or a hard failure.

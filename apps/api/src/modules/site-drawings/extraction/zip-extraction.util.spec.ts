@@ -11,7 +11,7 @@ async function buildZip(entries: { name: string; content: string }[]): Promise<B
 }
 
 // yazl's own addBuffer() refuses to even construct a path-traversal entry
-// name (validateMetadataPath throws "invalid relative path") -- the exact
+// name (validateMetadataPath throws "invalid relative path"): the exact
 // same class of defense this test exists to prove the READ side
 // (extractPdfEntriesFromZip, via yauzl.validateFileName) also has. To
 // build a fixture a well-behaved zip WRITER would never produce, this
@@ -29,7 +29,7 @@ function buildRawZipWithUnsafeName(unsafeName: string, content: string): Buffer 
   localHeader.writeUInt16LE(0, 8); // compression: stored
   localHeader.writeUInt16LE(0, 10); // mod time
   localHeader.writeUInt16LE(0x21, 12); // mod date (a valid arbitrary DOS date)
-  localHeader.writeUInt32LE(0, 14); // crc32 (unchecked -- entry is rejected before read)
+  localHeader.writeUInt32LE(0, 14); // crc32 (unchecked; entry is rejected before read)
   localHeader.writeUInt32LE(dataBuf.length, 18); // compressed size
   localHeader.writeUInt32LE(dataBuf.length, 22); // uncompressed size
   localHeader.writeUInt16LE(nameBuf.length, 26); // filename length

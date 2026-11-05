@@ -11,7 +11,7 @@ import { useElementWidth } from '../../lib/useElementWidth';
 // - Horizontal bars, because category labels here are long ("Waiting for
 //   Information", "Architectural"); nothing is ever rotated.
 // - Every bar is the same muted tint + hairline stroke. At most one focal
-//   bar takes the accent -- editorial emphasis, not a colour per category.
+//   bar takes the accent; editorial emphasis, not a colour per category.
 // - The value axis always starts at zero, and every bar prints its value.
 // - At most 8 bars: a longer tail folds into one "Other" bar, and the
 //   description says what it holds.
@@ -56,7 +56,7 @@ function foldTail(rows: BarDatum[]): { rows: BarDatum[]; folded: BarDatum[] } {
   const other: BarDatum = {
     key: '__other',
     label: `Other (${folded.length})`,
-    value: folded.reduce((sum, r) => sum + r.value, 0),
+    value: folded.reduce((sum, r) => sum + Number(r.value), 0),
   };
   return { rows: [...rows.filter((r) => keep.has(r.key)), other], folded };
 }

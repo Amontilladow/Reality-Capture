@@ -14,10 +14,10 @@ import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 export class QaController {
   constructor(private readonly svc: QaService) {}
 
-  // Previously ungated -- the owner's org-category matrix ("QAQC
+  // Previously ungated: the owner's org-category matrix ("QAQC
   // Checklists/Inspections") scopes creation to QAQC Team (and Engineering
   // Manager, always); Construction Team only gets view/edit on items
-  // already assigned to them, not creation. No fallbackPermissions -- no
+  // already assigned to them, not creation. No fallbackPermissions; no
   // discretionary grant for "create a QA inspection" existed to preserve.
   @Post()
   @RequireCategoryAction('qaqc_checklists', 'create')

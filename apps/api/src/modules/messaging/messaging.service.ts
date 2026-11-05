@@ -12,7 +12,7 @@ export class MessagingService {
   // ── Compose ─────────────────────────────────────────────────────────────
   // THE single choke point where a `messages` row is inserted for a new
   // thread. A future email-delivery step (design intent: in-app only for
-  // now) adds one call here later -- don't scatter message-INSERT logic
+  // now) adds one call here later; don't scatter message-INSERT logic
   // anywhere else in this service.
   async create(companyId: string, fromUserId: string, dto: CreateMessageDto) {
     const id = randomUUID();
@@ -63,8 +63,8 @@ export class MessagingService {
         throw new ForbiddenException('You are not a participant of this thread.');
       }
 
-      // Subject is inherited from the thread root -- the message whose own
-      // id equals the thread_id -- not supplied by the caller.
+      // Subject is inherited from the thread root (the message whose own
+      // id equals the thread_id) not supplied by the caller.
       const [root] = await sql`
         SELECT subject, project_id FROM messages WHERE id = ${threadId}
       `;
@@ -219,7 +219,7 @@ export class MessagingService {
   // action only has a thread id on hand at that point (the inbox/sent list
   // is one row per THREAD, latest-message-first, not one row per message),
   // and a thread id is always itself a valid messages.id (the thread root's
-  // own id, since the root sets thread_id = id) -- so accepting either a
+  // own id, since the root sets thread_id = id): so accepting either a
   // thread's root id or any individual message id and resolving to "every
   // unread row in that thread" makes both call sites correct without the
   // frontend needing to track individual message ids per thread, and is
@@ -238,7 +238,7 @@ export class MessagingService {
     `);
     if (rows.length === 0) {
       // Either `id` doesn't resolve to any thread, this user has no
-      // recipient row in it, or everything in it is already read -- check
+      // recipient row in it, or everything in it is already read; check
       // existence of at least one recipient row for this user in the
       // resolved thread to give an honest 404 vs a silent no-op.
       const [existing] = await this.db.withTenant(companyId, sql => sql`

@@ -1,21 +1,21 @@
 BEGIN;
 
 -- ══════════════════════════════════════════════════════════════════════════
--- Workforce Intelligence™ — Shift scheduling + absence calendar
+-- Workforce Intelligence™: Shift scheduling + absence calendar
 --
 -- Reverses this feature's own earlier documented scope call
--- ("attendance/clock-in-clock-out... not this product's job" --
+-- ("attendance/clock-in-clock-out... not this product's job";
 -- docs/workforce-intelligence-implementation-plan.md) at explicit product
 -- direction. Kept deliberately minimal per that same doc's other standing
 -- principle ("this is not an HRIS"): no leave-balance accrual, no PTO
 -- policy engine, no payroll integration. Just three things DeskTime itself
--- ships -- a weekly shift-preference grid, a per-date assigned-shift
+-- ships; a weekly shift-preference grid, a per-date assigned-shift
 -- table, and a simple request/approve absence calendar.
 -- ══════════════════════════════════════════════════════════════════════════
 
 -- ══════════════════════════════════════════════════════════════════════════
 -- TABLE: workforce_shift_preferences
--- One row per (user, day-of-week) they'd prefer to work -- "which days and
+-- One row per (user, day-of-week) they'd prefer to work; "which days and
 -- times they prefer working," matching DeskTime's own shift-scheduling
 -- feature description. Not a schedule, just a preference a manager
 -- considers when building one (workforce_shift_assignments below).
@@ -37,7 +37,7 @@ CREATE INDEX IF NOT EXISTS idx_shift_preferences_company ON workforce_shift_pref
 
 -- ══════════════════════════════════════════════════════════════════════════
 -- TABLE: workforce_shift_assignments
--- The actual schedule -- one assigned shift per (user, calendar date).
+-- The actual schedule; one assigned shift per (user, calendar date).
 -- Admin-managed (see ShiftSchedulingController's @Roles gate), not
 -- self-service like the preferences above.
 -- ══════════════════════════════════════════════════════════════════════════
@@ -59,7 +59,7 @@ CREATE INDEX IF NOT EXISTS idx_shift_assignments_user_date ON workforce_shift_as
 
 -- ══════════════════════════════════════════════════════════════════════════
 -- TABLE: workforce_absences
--- Self-requested, admin-decided -- a request/approve calendar, not a leave-
+-- Self-requested, admin-decided; a request/approve calendar, not a leave-
 -- balance/accrual system. absence_type/status are plain VARCHAR, validated
 -- at the API layer against packages/types const arrays (same
 -- extensible-without-a-migration pattern as activity_type).
@@ -84,7 +84,7 @@ CREATE INDEX IF NOT EXISTS idx_absences_company_dates ON workforce_absences(comp
 CREATE INDEX IF NOT EXISTS idx_absences_user ON workforce_absences(user_id);
 
 -- ══════════════════════════════════════════════════════════════════════════
--- ROW-LEVEL SECURITY -- identical pattern to every prior migration
+-- ROW-LEVEL SECURITY: identical pattern to every prior migration
 -- ══════════════════════════════════════════════════════════════════════════
 DO $$
 DECLARE

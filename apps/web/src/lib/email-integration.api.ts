@@ -37,7 +37,7 @@ export function disconnectGmail() {
   return apiDelete<{ disconnected: true }>('/email-integration/gmail');
 }
 
-// Phase 3E: the reusable compose/send layer -- provider-agnostic from the
+// Phase 3E: the reusable compose/send layer; provider-agnostic from the
 // caller's point of view (the connected mailbox is resolved server-side
 // from `provider`, never passed as a "from" field).
 
@@ -95,7 +95,7 @@ function getEmailAttachmentUploadUrl(projectId: string, filename: string, sizeBy
 }
 
 // Full client-side flow: request the presigned URL, PUT the file straight
-// to storage, then hand back just the metadata the send() call needs --
+// to storage, then hand back just the metadata the send() call needs;
 // same two-step shape as uploadRfiAttachment (rfis.api.ts).
 export async function uploadEmailAttachment(projectId: string, file: File): Promise<EmailAttachmentInput> {
   const { uploadUrl, storageKey } = await getEmailAttachmentUploadUrl(projectId, file.name, file.size);
@@ -103,7 +103,7 @@ export async function uploadEmailAttachment(projectId: string, file: File): Prom
   return { storageKey, filename: file.name, contentType: file.type || 'application/octet-stream' };
 }
 
-// Phase 3G: the email history / audit-trail view -- metadata only, same as
+// Phase 3G: the email history / audit-trail view; metadata only, same as
 // the backend table it reads (no message body is ever returned, because
 // none is ever stored).
 export function listEmailMessages(

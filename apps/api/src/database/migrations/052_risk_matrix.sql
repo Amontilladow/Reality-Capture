@@ -1,21 +1,21 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Migration 052 — Risk Matrix (human Probability x Impact assessment)
+-- Migration 052: Risk Matrix (human Probability x Impact assessment)
 --
 -- Adds a second, deliberately separate scoring system to `risks` alongside
 -- the existing 6-factor deterministic engine (automated_score/override_score/
--- score, 0-100, 4-level, migration 051) -- that engine is untouched and
+-- score, 0-100, 4-level, migration 051): that engine is untouched and
 -- keeps driving exposure amplification, clustering, trend math, and every
 -- existing dashboard/PDF number.
 --
 -- This is the Risk Assessment brief's own 5x5 Probability x Impact matrix:
 -- an engineer assigns human_probability/human_impact (1-5 each), the app
 -- computes human_score (1-25) and human_level deterministically (never an
--- LLM -- brief section 36). ai_score/ai_level/ai_confidence (populated by a
+-- LLM; brief section 36). ai_score/ai_level/ai_confidence (populated by a
 -- later phase) re-express the existing deterministic engine's own output on
 -- this same 1-25/5-level scale purely so the two can be compared side by
--- side -- not a second independent AI guess. final_score/final_level are
+-- side; not a second independent AI guess. final_score/final_level are
 -- the one number actually shown as "the" risk on this matrix: an explicit
--- engineer override if made, else the human assessment, else the AI score --
+-- engineer override if made, else the human assessment, else the AI score;
 -- kept in sync by application code, exactly like score/level already are
 -- for the 0-100 engine in migration 051.
 --
@@ -27,7 +27,7 @@
 --
 -- Configurable matrix thresholds (brief section 4) reuse the existing
 -- companies.settings JSONB column + PATCH /company/settings endpoint
--- (tenancy.controller.ts) rather than a new settings table -- RiskService
+-- (tenancy.controller.ts) rather than a new settings table; RiskService
 -- reads company.settings.riskMatrix.thresholds at assessment time, falling
 -- back to DEFAULT_RISK_MATRIX_THRESHOLDS (packages/types) when unset.
 --
@@ -36,7 +36,7 @@
 -- Separate from risk_status_history (migration 051), which only tracks the
 -- risk's lifecycle status, not its probability/impact/score inputs.
 --
--- status gains MONITORING/ACCEPTED/ESCALATED (brief section 6) -- purely
+-- status gains MONITORING/ACCEPTED/ESCALATED (brief section 6): purely
 -- additive to the CHECK constraint; DETECTED continues to double as that
 -- brief's "Not Assessed" (a risk the engine found but no human has assessed
 -- yet), so no new status value was needed for it.

@@ -1,6 +1,6 @@
 // Numbered pagination for any list backed by DatabaseService.paginate()'s
-// {page, pageSize, total} shape (apps/api/src/database/database.service.ts)
-// -- the API contract already returns exactly this, nothing new needed
+// {page, pageSize, total} shape (apps/api/src/database/database.service.ts);
+// the API contract already returns exactly this, nothing new needed
 // there. Collapses long ranges with an ellipsis rather than rendering every
 // page number, which tables with hundreds of pages would otherwise do.
 export function Pagination({
@@ -24,9 +24,9 @@ export function Pagination({
   return (
     <nav aria-label="Pagination" className="flex items-center justify-between gap-4 text-sm">
       <span className="text-ink-500">
-        {from}–{to} of {total}
+        {from} to {to} of {total}
       </span>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         <PageButton label="Previous" disabled={page <= 1} onClick={() => onPageChange(page - 1)} />
         {pages.map((p, i) =>
           p === null ? (

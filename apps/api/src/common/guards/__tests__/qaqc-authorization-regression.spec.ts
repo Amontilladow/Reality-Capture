@@ -1,6 +1,6 @@
 // QAQC NCR/SOR/WIR/MIR brief §2: create/respond/confirm/attachment/capture
 // routes must be gated by an EXPLICIT role list (@RequireExactRoles), never
-// @Roles()'s minimum-weight threshold -- see exact-roles.guard.ts's own
+// @Roles()'s minimum-weight threshold; see exact-roles.guard.ts's own
 // comment for why @Roles('qa_qc_manager') would incorrectly also admit
 // every higher-weight role. Same reflection-based convention as phase6-
 // authorization-regression.spec.ts: reads the real NestJS route metadata
@@ -9,7 +9,7 @@
 //
 // NCR/SOR and WIR/MIR swap issuer/responder roles (see qaqc.service.ts's
 // own comment), which can't be expressed as a single static role list per
-// route since one route serves all four types -- so create/respond carry
+// route since one route serves all four types; so create/respond carry
 // the BROADENED union here (a coarse pre-filter against bim_manager,
 // commercial_manager, consultant, client_representative, etc.), and the
 // exact-for-this-type enforcement is asserted separately in
@@ -18,9 +18,9 @@
 // type, so it stays the sole narrow, unbroadened gate.
 //
 // Owner's org-category RBAC sprint: 'qaqc_team_member' (the new, generic
-// QAQC Team individual-contributor placeholder role -- see COMPANY_ROLES in
-// user.types.ts) was added to both lists so this module -- named for its
-// own category in the owner's matrix -- isn't silently inaccessible to it.
+// QAQC Team individual-contributor placeholder role; see COMPANY_ROLES in
+// user.types.ts) was added to both lists so this module (named for its
+// own category in the owner's matrix) isn't silently inaccessible to it.
 import 'reflect-metadata';
 import { EXACT_ROLES_KEY } from '../../decorators/require-exact-roles.decorator';
 import { QaqcController } from '../../../modules/qaqc/qaqc.controller';

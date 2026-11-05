@@ -16,15 +16,15 @@ export class SubmittalsService {
     private readonly db: DatabaseService,
     private readonly notifications: NotificationsService,
     // @Optional(): SubmittalsModule registers RiskModule as a real provider,
-    // so production always gets a live instance here -- this stays optional
+    // so production always gets a live instance here; this stays optional
     // purely so existing test call sites constructing SubmittalsService
     // directly keep working unchanged (see rfis.service.ts's identical
     // reasoning for its own `risk` dependency).
     @Optional() private readonly risk?: RiskService,
   ) {}
 
-  // Event-driven incremental risk recalculation (brief section 41, Phase 20)
-  // -- fired after any write that can change a submittal's overdue/priority/
+  // Event-driven incremental risk recalculation (brief section 41, Phase 20);
+  // fired after any write that can change a submittal's overdue/priority/
   // review-outcome state. Never allowed to fail or slow down the submittal
   // write it's attached to, exactly like the identical pattern in
   // rfis.service.ts/issues.service.ts/snagging.service.ts.
@@ -37,7 +37,7 @@ export class SubmittalsService {
     }
   }
 
-  // withTenant required for the projects lookup -- projects carries the tenant_isolation
+  // withTenant required for the projects lookup: projects carries the tenant_isolation
   // RLS policy. A plain this.db.query() never sets app.current_company_id, so under any DB
   // role that isn't the table owner/a superuser this SELECT sees no rows and silently falls
   // back to the generic 'PRJ' prefix instead of the real project code.
@@ -81,8 +81,8 @@ export class SubmittalsService {
     return submittal;
   }
 
-  // Owner's org-category RBAC sprint, subcontractor isolation: "C,V -- own
-  // submittals only" -- same pattern as RfisService/IssuesService's own
+  // Owner's org-category RBAC sprint, subcontractor isolation: "C,V (own
+  // submittals only") same pattern as RfisService/IssuesService's own
   // isViewerSubcontractor().
   private async isViewerSubcontractor(companyId: string, projectId: string, viewerId: string | undefined): Promise<boolean> {
     if (!viewerId) return false;

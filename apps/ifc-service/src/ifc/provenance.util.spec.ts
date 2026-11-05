@@ -32,7 +32,7 @@ describe('captureGenerationVersions', () => {
     const versions = captureGenerationVersions();
 
     expect(versions.nodeVersion).toBe(process.version);
-    // Real installed versions, not hardcoded strings -- pinned in
+    // Real installed versions, not hardcoded strings; pinned in
     // package.json, must match what pnpm-lock.yaml actually resolved.
     expect(versions.fragmentsVersion).toBe('3.4.6');
     expect(versions.webIfcVersion).toBe('0.0.77');

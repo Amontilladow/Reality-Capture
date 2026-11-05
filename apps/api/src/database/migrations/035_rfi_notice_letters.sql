@@ -3,7 +3,7 @@ BEGIN;
 -- ══════════════════════════════════════════════════════════════════════════
 -- TABLE: rfi_notice_letters
 -- One formal notice letter per RFI (UNIQUE (rfi_id) enforces this), created
--- as a draft and then "shared" -- shared delivery goes through the internal
+-- as a draft and then "shared"; shared delivery goes through the internal
 -- messaging feature (messages/message_recipients, see 034_internal_messages.sql)
 -- so the recipient's inbox becomes the audit trail proving the letter was
 -- sent. status/shared_at/shared_by track that delivery; editing an already-

@@ -31,7 +31,7 @@ export default function SiteDrawingHubPage() {
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
 
   // Search is server-side (brief section 10: indexed queries, not a
-  // client-side filter over a fully fetched register) -- debounced so
+  // client-side filter over a fully fetched register): debounced so
   // every keystroke doesn't fire a request.
   useEffect(() => {
     const t = setTimeout(() => setFilters((f) => ({ ...f, search: searchInput })), 300);
@@ -52,7 +52,7 @@ export default function SiteDrawingHubPage() {
 
   // Reconnect revalidation (brief section 8): on coming back online, check
   // every locally stored package against the source for a changed,
-  // superseded, or withdrawn revision -- never silently assumed still
+  // superseded, or withdrawn revision; never silently assumed still
   // current just because the bytes are sitting in IndexedDB.
   useEffect(() => {
     if (!projectId) return;
@@ -93,40 +93,40 @@ export default function SiteDrawingHubPage() {
       />
       <div className="p-6 space-y-4">
         {sourceHealthQuery.data && !sourceHealthQuery.data.reachable && (
-          <div className="panel p-3 border border-warn/40 bg-warn/5 text-xs text-ink-100">
-            ⚠ {sourceProviderLabel(sourceHealthQuery.data.provider)} source is currently unreachable
-            {sourceHealthQuery.data.detail ? ` — ${sourceHealthQuery.data.detail}` : '.'} Drawing data shown below may be out of date.
+          <div className="panel p-4 border border-warn/40 bg-warn/5 text-xs text-ink-100">
+            {sourceProviderLabel(sourceHealthQuery.data.provider)} source is currently unreachable
+            {sourceHealthQuery.data.detail ? `: ${sourceHealthQuery.data.detail}` : '.'} Drawing data shown below may be out of date.
           </div>
         )}
 
-        <div className="panel p-3 flex items-center gap-2 flex-wrap">
+        <div className="panel p-4 flex items-center gap-2 flex-wrap">
           <input
             type="text" placeholder="Search drawing number, title…" value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="field-input w-56 text-xs !py-1.5"
+            className="field-input w-56 text-xs !py-2"
           />
-          <Listbox value={filters.discipline} onChange={(e) => setFilters((f) => ({ ...f, discipline: e.target.value }))} className="field-input w-auto text-xs !py-1.5">
+          <Listbox aria-label="Discipline" value={filters.discipline} onChange={(e) => setFilters((f) => ({ ...f, discipline: e.target.value }))} className="field-input w-auto text-xs !py-2">
             <option value="">All disciplines</option>
             {(filterOptionsQuery.data?.disciplines ?? []).map((d) => <option key={d} value={d}>{d}</option>)}
           </Listbox>
-          <Listbox value={filters.buildingOrZone} onChange={(e) => setFilters((f) => ({ ...f, buildingOrZone: e.target.value }))} className="field-input w-auto text-xs !py-1.5">
+          <Listbox aria-label="Building or zone" value={filters.buildingOrZone} onChange={(e) => setFilters((f) => ({ ...f, buildingOrZone: e.target.value }))} className="field-input w-auto text-xs !py-2">
             <option value="">All buildings / zones</option>
             {(filterOptionsQuery.data?.buildingsOrZones ?? []).map((b) => <option key={b} value={b}>{b}</option>)}
           </Listbox>
-          <Listbox value={filters.floorOrLevel} onChange={(e) => setFilters((f) => ({ ...f, floorOrLevel: e.target.value }))} className="field-input w-auto text-xs !py-1.5">
+          <Listbox aria-label="Floor or level" value={filters.floorOrLevel} onChange={(e) => setFilters((f) => ({ ...f, floorOrLevel: e.target.value }))} className="field-input w-auto text-xs !py-2">
             <option value="">All floors / levels</option>
             {(filterOptionsQuery.data?.floorsOrLevels ?? []).map((l) => <option key={l} value={l}>{l}</option>)}
           </Listbox>
-          <Listbox
+          <Listbox aria-label="Workflow status"
             value={filters.workflowStatus ?? ''}
             onChange={(e) => setFilters((f) => ({ ...f, workflowStatus: (e.target.value || undefined) as SiteDrawingWorkflowStatus | undefined }))}
-            className="field-input w-auto text-xs !py-1.5"
+            className="field-input w-auto text-xs !py-2"
           >
             <option value="">All statuses</option>
             {Object.entries(WORKFLOW_STATUS_LABELS).map(([s, label]) => <option key={s} value={s}>{label}</option>)}
           </Listbox>
           {hasActiveFilters && (
-            <button onClick={() => { setSearchInput(''); setFilters(EMPTY_FILTERS); }} className="btn-ghost !px-2 !py-1 text-xs ml-auto">
+            <button onClick={() => { setSearchInput(''); setFilters(EMPTY_FILTERS); }} className="btn-ghost !px-2 !py-2 text-xs ml-auto">
               Reset filters
             </button>
           )}
@@ -137,7 +137,7 @@ export default function SiteDrawingHubPage() {
         {listQuery.isError && (
           <div className="panel tick-frame p-10 text-center space-y-2">
             <p className="text-sm text-danger">{apiErrorMessage(listQuery.error)}</p>
-            <button onClick={() => listQuery.refetch()} className="btn-secondary !px-3 !py-1.5 text-xs">Retry</button>
+            <button onClick={() => listQuery.refetch()} className="btn-secondary !px-4 !py-2 text-xs">Retry</button>
           </div>
         )}
 
@@ -145,39 +145,39 @@ export default function SiteDrawingHubPage() {
           <>
             {/* Desktop/tablet: table */}
             <div className="panel tick-frame overflow-hidden hidden md:block">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto" tabIndex={0}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                      <th className="px-3 py-2.5 font-medium">Drawing No.</th>
-                      <th className="px-3 py-2.5 font-medium">Title</th>
-                      <th className="px-3 py-2.5 font-medium">Discipline</th>
-                      <th className="px-3 py-2.5 font-medium">Rev.</th>
-                      <th className="px-3 py-2.5 font-medium">Status</th>
-                      <th className="px-3 py-2.5 font-medium">Source</th>
-                      <th className="px-3 py-2.5 font-medium">Last Verified</th>
-                      <th className="px-3 py-2.5 font-medium">Offline</th>
+                      <th className="px-4 py-2 font-medium">Drawing No.</th>
+                      <th className="px-4 py-2 font-medium">Title</th>
+                      <th className="px-4 py-2 font-medium">Discipline</th>
+                      <th className="px-4 py-2 font-medium">Rev.</th>
+                      <th className="px-4 py-2 font-medium">Status</th>
+                      <th className="px-4 py-2 font-medium">Source</th>
+                      <th className="px-4 py-2 font-medium">Last Verified</th>
+                      <th className="px-4 py-2 font-medium">Offline</th>
                     </tr>
                   </thead>
                   <tbody>
                     {drawings.map((d) => (
                       <tr key={d.id} onClick={() => setSelectedDrawingId(d.id)} className="border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-700">
-                        <td className="px-3 py-2.5 font-mono text-xs text-ink-500 whitespace-nowrap">{d.drawingNumber}</td>
-                        <td className="px-3 py-2.5 max-w-xs">
+                        <td className="px-4 py-2 font-mono text-xs text-ink-500 whitespace-nowrap">{d.drawingNumber}</td>
+                        <td className="px-4 py-2 max-w-xs">
                           <div className="text-ink-100 truncate">{d.drawingTitle}</div>
                           {d.buildingOrZone && <div className="text-xs text-ink-500 truncate">{d.buildingOrZone}{d.floorOrLevel ? ` · ${d.floorOrLevel}` : ''}</div>}
                         </td>
-                        <td className="px-3 py-2.5 text-ink-300 whitespace-nowrap">{d.discipline ?? '—'}</td>
-                        <td className="px-3 py-2.5 text-ink-300 whitespace-nowrap">{d.currentRevision?.revisionNumber ?? '—'}</td>
-                        <td className="px-3 py-2.5">
-                          <div className="flex items-center gap-1.5">
+                        <td className="px-4 py-2 text-ink-300 whitespace-nowrap">{d.discipline ?? '—'}</td>
+                        <td className="px-4 py-2 text-ink-300 whitespace-nowrap">{d.currentRevision?.revisionNumber ?? '—'}</td>
+                        <td className="px-4 py-2">
+                          <div className="flex items-center gap-2">
                             <StatusBadge tone={WORKFLOW_STATUS_TONE[d.currentWorkflowStatus]} label={WORKFLOW_STATUS_LABELS[d.currentWorkflowStatus]} dot />
-                            {needsApprovalWarning(d.currentWorkflowStatus) && <span title="Approval status needs attention">⚠</span>}
+                            {needsApprovalWarning(d.currentWorkflowStatus) && <span title="Approval status needs attention" className="inline-flex text-warn"><svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3 2 21h20L12 3Z" strokeLinejoin="round" /><path d="M12 10v5M12 18h.01" strokeLinecap="round" /></svg><span className="sr-only">Approval status needs attention</span></span>}
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 text-ink-300 whitespace-nowrap">{sourceProviderLabel(d.sourceProvider)}</td>
-                        <td className="px-3 py-2.5 text-ink-500 whitespace-nowrap">{formatVerifiedAt(d.currentRevision?.lastVerifiedAt)}</td>
-                        <td className="px-3 py-2.5 whitespace-nowrap">{offlineDrawingIds.has(d.id) && <StatusBadge tone="info" label="Offline" />}</td>
+                        <td className="px-4 py-2 text-ink-300 whitespace-nowrap">{sourceProviderLabel(d.sourceProvider)}</td>
+                        <td className="px-4 py-2 text-ink-500 whitespace-nowrap">{formatVerifiedAt(d.currentRevision?.lastVerifiedAt)}</td>
+                        <td className="px-4 py-2 whitespace-nowrap">{offlineDrawingIds.has(d.id) && <StatusBadge tone="info" label="Offline" />}</td>
                       </tr>
                     ))}
                     {drawings.length === 0 && (
@@ -194,7 +194,7 @@ export default function SiteDrawingHubPage() {
                 <div className="panel tick-frame p-8 text-center text-sm text-ink-500">No drawings match the current filters.</div>
               )}
               {drawings.map((d) => (
-                <button key={d.id} onClick={() => setSelectedDrawingId(d.id)} className="panel tick-frame w-full text-left p-3.5 space-y-1.5">
+                <button key={d.id} onClick={() => setSelectedDrawingId(d.id)} className="panel tick-frame w-full text-left p-4 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-mono text-xs text-ink-500">{d.drawingNumber}</span>
                     <StatusBadge tone={WORKFLOW_STATUS_TONE[d.currentWorkflowStatus]} label={WORKFLOW_STATUS_LABELS[d.currentWorkflowStatus]} dot />
@@ -210,11 +210,11 @@ export default function SiteDrawingHubPage() {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-between text-xs text-ink-500 px-1">
+              <div className="flex items-center justify-between text-xs text-ink-500 px-2">
                 <span>Page {page} of {totalPages} · {total} drawing{total === 1 ? '' : 's'}</span>
-                <div className="flex items-center gap-1.5">
-                  <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="btn-ghost !px-2 !py-1 text-xs disabled:opacity-40">Previous</button>
-                  <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn-ghost !px-2 !py-1 text-xs disabled:opacity-40">Next</button>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="btn-ghost !px-2 !py-2 text-xs disabled:opacity-40">Previous</button>
+                  <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn-ghost !px-2 !py-2 text-xs disabled:opacity-40">Next</button>
                 </div>
               </div>
             )}

@@ -21,8 +21,8 @@ function summaryFieldsFor(recordType: QaqcRecordType, summary?: QaqcSummary) {
   };
 }
 
-// The moment someone clicks "QAQC" they get four clearly-labeled options --
-// NCR, SOR, WIR, MIR -- per the brief's §3. Each card navigates into
+// The moment someone clicks "QAQC" they get four clearly-labeled options;
+// NCR, SOR, WIR, MIR; per the brief's §3. Each card navigates into
 // /projects/:projectId/qaqc/{ncr|sor|wir|mir}, a path sub-route (not a
 // query param) so the list for one record type has its own shareable URL
 // and back-button behavior, the same way /rfis and /qa-inspections already do.
@@ -50,7 +50,7 @@ export default function QaqcLandingPage() {
 
       <div className="p-6 max-w-4xl mx-auto">
         <p className="text-sm text-ink-500 mb-6">
-          Non-Conformance, Site Observation, Work Inspection, and Material Inspection records -- restricted-issuer, risk-linked quality records.
+          Non-Conformance, Site Observation, Work Inspection, and Material Inspection records: restricted-issuer, risk-linked quality records.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -63,15 +63,14 @@ export default function QaqcLandingPage() {
                 onClick={() => navigate(`/projects/${projectId}/qaqc/${recordType}`)}
                 className="panel tick-frame p-6 text-left hover:border-blueprint/50 transition-colors"
               >
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-4">
                   <h3 className="text-base font-semibold">{QAQC_RECORD_TYPE_SHORT_LABELS[recordType]}</h3>
                   <span className="badge bg-danger/15 text-danger">{open} open</span>
                 </div>
-                <p className="text-xs text-ink-400 font-medium mb-1">{QAQC_RECORD_TYPE_LABELS[recordType]}</p>
-                <p className="text-sm text-ink-500 mb-3">{RECORD_TYPE_DESCRIPTION[recordType]}</p>
-                <div className="flex gap-3 text-xs text-ink-500 font-mono">
+                <p className="text-xs text-ink-400 font-medium mb-2">{QAQC_RECORD_TYPE_LABELS[recordType]}</p>
+                <p className="text-sm text-ink-500 mb-4">{RECORD_TYPE_DESCRIPTION[recordType]}</p>
+                <div className="flex gap-4 text-xs tabular-nums text-ink-500">
                   <span>{total} total</span>
-                  <span>·</span>
                   <span>{closed} closed</span>
                 </div>
               </button>

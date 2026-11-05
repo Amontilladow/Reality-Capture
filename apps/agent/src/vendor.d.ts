@@ -4,7 +4,7 @@
 
 declare module 'desktop-idle' {
   const desktopIdle: {
-    // Seconds since the last user input, system-wide -- the OS idle-time
+    // Seconds since the last user input, system-wide; the OS idle-time
     // API only, never a keyboard/mouse hook.
     getIdleTime(): number;
   };

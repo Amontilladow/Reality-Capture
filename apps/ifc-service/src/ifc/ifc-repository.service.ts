@@ -40,10 +40,10 @@ export class IfcRepositoryService {
 
   // postgres.js's camel transform converts jsonb VALUE keys (not just
   // column names) to camelCase on every read, regardless of how they were
-  // written — confirmed via a direct test: writing {extracting_hierarchy:
+  // written; confirmed via a direct test: writing {extracting_hierarchy:
   // true} reads back as {extractingHierarchy: true}. IFC_PROCESSING_STAGES
   // are snake_case string literals (matching the DB's processing_stage
-  // VARCHAR values, which are NOT affected — only this jsonb column is),
+  // VARCHAR values, which are NOT affected; only this jsonb column is),
   // so the stage name has to be converted the same way postgres.js's own
   // toCamel() does before indexing into the parsed object.
   private toCamelKey(snakeCase: string): string {
@@ -78,7 +78,7 @@ export class IfcRepositoryService {
   // Runs one pipeline stage inside a single transaction: the caller's
   // writes AND the stage_completion flag land atomically together. If the
   // process crashes mid-stage, the transaction never commits, so
-  // stage_completion never shows this stage as done — a retry safely
+  // stage_completion never shows this stage as done; a retry safely
   // redoes the whole stage (each stage's fn is expected to clear its own
   // prior output for this model before writing fresh output, making that
   // redo idempotent).
@@ -93,7 +93,7 @@ export class IfcRepositoryService {
     });
   }
 
-  // Removes only what's genuinely gone from this run of the file --
+  // Removes only what's gone from this run of the file;
   // elements/nodes still present are left alone here and get updated in
   // place by the ON CONFLICT upserts below, keeping the same id. That
   // matters beyond this pipeline: a pin's or issue's element_id points at
@@ -104,7 +104,7 @@ export class IfcRepositoryService {
   // unconditionally, including ones that hadn't actually changed.
   // bim_element_relationships and bim_materials have no external
   // references into them (only bim_elements does, via FK), so a full wipe
-  // there is still safe -- both get freshly rebuilt from the walk anyway.
+  // there is still safe; both get freshly rebuilt from the walk anyway.
   async removeStaleResults(
     sql: TransactionSql, companyId: string, modelId: string,
     currentSpatialGuids: string[], currentElementGuids: string[],

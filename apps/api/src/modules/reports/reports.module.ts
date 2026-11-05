@@ -9,6 +9,7 @@ import { RfisModule } from '../rfis/rfis.module';
 import { QaqcModule } from '../qaqc/qaqc.module';
 import { RiskModule } from '../risk/risk.module';
 import { AiClientModule } from '../ai-client/ai-client.module';
+import { AiUsageModule } from '../ai/ai-usage.module';
 import { BimModule } from '../bim/bim.module';
 
 @Module({
@@ -16,12 +17,12 @@ import { BimModule } from '../bim/bim.module';
   // imported (not re-implemented) so ReportsService can call the
   // getKpiBreakdown()/getOpenList()-equivalent sibling methods and
   // RiskService's own getExecutiveSummary() directly on the existing
-  // services -- every module already exports what's needed. RiskModule ->
+  // services; every module already exports what's needed. RiskModule ->
   // ReportsModule is a one-way edge (RiskModule itself only imports
   // DatabaseModule/AiClientModule), so no circular-dependency risk.
   // AiClientModule is the same AI reasoning layer RiskModule already uses,
   // reused (not reimplemented) for the Reports AI briefing.
-  imports: [StorageModule, IssuesModule, SnaggingModule, RfisModule, QaqcModule, RiskModule, AiClientModule, BimModule],
+  imports: [StorageModule, IssuesModule, SnaggingModule, RfisModule, QaqcModule, RiskModule, AiClientModule, BimModule, AiUsageModule],
   controllers: [ReportsController, CompanyReportsController],
   providers: [ReportsService],
 })

@@ -1,7 +1,7 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Migration 054 — Progress Report share links (F1: Automated Progress Report)
+-- Migration 054: Progress Report share links (F1: Automated Progress Report)
 --
--- A progress report's content is never stored -- it's always computed live
+-- A progress report's content is never stored; it's always computed live
 -- from captures/issues at view time (see ProgressReportsService.generate()),
 -- exactly like the general Reports tab's KPI payload. This table only
 -- persists the SHARE: an opaque, expiring, revocable token authorizing an
@@ -9,10 +9,10 @@
 -- level scope, one date range) without an EngineeringOS account.
 --
 -- Mirrors rfi_external_access (migration 043) deliberately: same random
--- 128-hex-char token (the secret itself, not hashed -- same category as a
+-- 128-hex-char token (the secret itself, not hashed; same category as a
 -- password-reset token), same expires_at/revoked_at/used_at shape, same
 -- public-controller + withSystemBypass validation pattern. No "action"
--- column here -- a progress report link only ever grants one capability
+-- column here; a progress report link only ever grants one capability
 -- (view), unlike RFI external access's respond/review/comment_only split.
 -- ══════════════════════════════════════════════════════════════════════════
 

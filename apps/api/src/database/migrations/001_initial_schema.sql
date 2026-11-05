@@ -1,6 +1,6 @@
 -- ══════════════════════════════════════════════════════════════════════════
 -- EngineeringOS™ Reality Capture Module
--- Migration 001 — Initial Schema
+-- Migration 001; Initial Schema
 -- Architecture Specification v1.1
 -- Phase 1, Sprint 1.1
 --
@@ -14,7 +14,7 @@
 -- Run with: psql $DATABASE_URL -f this_file.sql
 -- Or via:   pnpm db:migrate
 --
--- This migration is IDEMPOTENT — safe to run multiple times.
+-- This migration is IDEMPOTENT: safe to run multiple times.
 -- ══════════════════════════════════════════════════════════════════════════
 
 BEGIN;
@@ -245,7 +245,7 @@ CREATE TABLE IF NOT EXISTS locations (
 CREATE INDEX IF NOT EXISTS idx_locations_level ON locations(level_id);
 
 -- ══════════════════════════════════════════════════════════════════════════
--- TABLE 9: bim_models  (BIM Foundation — schema present from Phase 1)
+-- TABLE 9: bim_models  (BIM Foundation; schema present from Phase 1)
 -- ══════════════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS bim_models (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -584,7 +584,7 @@ CREATE TRIGGER documents_search_vector_trigger
   FOR EACH ROW EXECUTE FUNCTION documents_search_vector_update();
 
 -- ══════════════════════════════════════════════════════════════════════════
--- TABLE 22: document_links  (polymorphic — links doc to any entity)
+-- TABLE 22: document_links  (polymorphic; links doc to any entity)
 -- ══════════════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS document_links (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -719,7 +719,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
   source          audit_source_enum NOT NULL DEFAULT 'api',
   checksum        VARCHAR(64),
   occurred_at     TIMESTAMPTZ     NOT NULL DEFAULT NOW()
-  -- No updated_at — this table is write-once
+  -- No updated_at: this table is write-once
 );
 
 CREATE INDEX IF NOT EXISTS idx_audit_company_time ON audit_log(company_id, occurred_at DESC);
@@ -755,7 +755,7 @@ CREATE TRIGGER audit_log_checksum_trigger
 -- Applied to every table that contains company_id.
 -- The application sets app.current_company_id at the start of every
 -- transaction via DatabaseService.withTenant().
--- A bug in application code cannot leak cross-tenant data — even a raw
+-- A bug in application code cannot leak cross-tenant data; even a raw
 -- SQL query with no WHERE clause will only see the current tenant's rows.
 -- ══════════════════════════════════════════════════════════════════════════
 
@@ -776,7 +776,7 @@ BEGIN
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %I', t);
 
-    -- Special case: companies table — isolate by id, not company_id
+    -- Special case: companies table; isolate by id, not company_id
     IF t = 'companies' THEN
       EXECUTE format(
         'CREATE POLICY tenant_isolation ON companies USING (id = current_setting(''app.current_company_id'', true)::UUID)',
@@ -803,7 +803,7 @@ END $$;
 REVOKE UPDATE, DELETE ON audit_log FROM app_user;
 
 -- ══════════════════════════════════════════════════════════════════════════
--- SUBSCRIPTION SEED DATA — plan tiers as defined in spec v1.1
+-- SUBSCRIPTION SEED DATA: plan tiers as defined in spec v1.1
 -- ══════════════════════════════════════════════════════════════════════════
 INSERT INTO subscription_plans (tier, name, price_monthly_usd, price_annual_usd,
   max_projects, max_users, max_storage_bytes, feature_flags, is_public)

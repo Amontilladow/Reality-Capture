@@ -6,10 +6,10 @@ import type { HelpArticle } from './types';
 // don't match the intuitive assumption, confirmed by reading the
 // controller/guard/service code directly rather than inferring from the
 // UI alone:
-// 1. There is no dedicated "Dashboard" page -- ProjectList ("Projects")
+// 1. There is no dedicated "Dashboard" page; ProjectList ("Projects")
 //    is the de-facto company-wide landing page.
 // 2. Editing an existing project's details (including setting it to
-//    "archived" -- there is no separate archive/delete endpoint) has no
+//    "archived"; there is no separate archive/delete endpoint) has no
 //    role or project-permission gate at all: PATCH /projects/:id carries
 //    neither a @Roles nor a @RequireProjectPermission decorator, and the
 //    global guards (RolesGuard, ProjectPermissionGuard) both pass

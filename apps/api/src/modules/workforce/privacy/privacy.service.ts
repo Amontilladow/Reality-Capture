@@ -12,7 +12,7 @@ export class PrivacyService {
     if (existing) return existing;
 
     // Lazily create the default row on first read, rather than requiring a
-    // seed step for every company -- defaults match the schema's own
+    // seed step for every company; defaults match the schema's own
     // DEFAULTs (standard monitoring, screenshots off, self-view on).
     const [created] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO workforce_privacy_settings (company_id) VALUES (${companyId})

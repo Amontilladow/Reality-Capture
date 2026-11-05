@@ -20,7 +20,7 @@ export class NotificationsService {
   constructor(private readonly db: DatabaseService) {}
 
   // Called synchronously from other services (e.g. IssuesService on
-  // assignment). Deliberately not fire-and-forget like AiClientService —
+  // assignment). Deliberately not fire-and-forget like AiClientService;
   // an in-app notification IS the feature here, not a best-effort side
   // effect, so a failure to write it should surface rather than vanish
   // silently. Callers that want to isolate failures can still wrap this.
@@ -43,12 +43,12 @@ export class NotificationsService {
     const offset  = (page - 1) * perPage;
     // `@Query()` has no decorated DTO class here, so query.unreadOnly never
     // gets coerced from the query-string value "true"/"false" to a real
-    // boolean before this point -- and interpolating that string with an
+    // boolean before this point; and interpolating that string with an
     // explicit `::boolean` cast doesn't save it either: confirmed by direct
     // reproduction against postgres.js, a JS *string* parameter cast with
     // `::boolean` comes back `false` for every input, a real serialization
     // bug, not just a missing cast (see issues.service.ts findAll()'s
-    // identical fix for the full writeup). Coercing to a genuine JS
+    // identical fix for the full writeup). Coercing to a real JS
     // boolean here, before it reaches the SQL template, is the fix.
     const unreadOnly = query.unreadOnly === true || (query.unreadOnly as unknown) === 'true';
 
@@ -82,7 +82,7 @@ export class NotificationsService {
       RETURNING id, read_at
     `);
     if (!row) {
-      // Either it doesn't exist, isn't this user's, or is already read —
+      // Either it doesn't exist, isn't this user's, or is already read;
       // check existence to give an honest 404 vs a silent no-op.
       const [existing] = await this.db.withTenant(companyId, sql => sql`
         SELECT id, read_at FROM notifications WHERE id = ${id} AND user_id = ${userId}

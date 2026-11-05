@@ -1,26 +1,26 @@
 BEGIN;
 
 -- ══════════════════════════════════════════════════════════════════════════
--- Phase 3E/3G — outgoing email audit trail
+-- Phase 3E/3G: outgoing email audit trail
 --
--- Deliberately metadata-only -- the brief's own Section 8 field list
+-- Deliberately metadata-only: the brief's own Section 8 field list
 -- (company/project/record IDs, initiating user, sender account, recipient
 -- metadata, subject, provider, provider message/thread IDs, timestamp,
 -- result, failure reason, attachment metadata) never includes the message
--- BODY. The real message lives in the user's own mailbox (Sent Items) --
+-- BODY. The real message lives in the user's own mailbox (Sent Items);
 -- this table is a pointer/audit record to it, not a copy of it. This is a
 -- deliberate reading of "do not silently import an entire mailbox" and "do
 -- not expose private mailbox contents to other project members": project
 -- members see that a message was sent, to whom, about what subject, and
--- whether it succeeded -- not its content.
+-- whether it succeeded; not its content.
 --
--- project_id is NOT NULL -- every field in the brief's own example workflow
+-- project_id is NOT NULL: every field in the brief's own example workflow
 -- (Section 7) is project-scoped ("EngineeringOS prepares a message using
 -- the RFI's existing data... the relevant authorized project members can
 -- see the communication history"); an email with no project context has
 -- nowhere for that visibility rule to apply.
 --
--- related_record_type/id are nullable -- Section 7's workflow names RFI as
+-- related_record_type/id are nullable: Section 7's workflow names RFI as
 -- the example, but Section 7's module list is broader (issues, snagging,
 -- submittals, drawings, documents, "project communications" generally),
 -- and a general project-communication email may have no single record to
@@ -43,11 +43,11 @@ CREATE TABLE IF NOT EXISTS email_messages (
   provider_message_id   TEXT,
   thread_id             TEXT,
   status                VARCHAR(20)  NOT NULL, -- 'sent' | 'failed'
-  failure_reason        TEXT,                  -- never a raw provider error body / never a secret -- see EmailSendingService's own comment
+  failure_reason        TEXT,                  -- never a raw provider error body / never a secret; see EmailSendingService's own comment
   attachment_metadata   JSONB        NOT NULL DEFAULT '[]'::JSONB, -- [{filename, sizeBytes, contentType}], never file content
   -- Client-generated per compose-and-send attempt (Section 6: "prevent
   -- accidental duplicate sends when users retry after a timeout"). The
-  -- UNIQUE constraint below is the actual enforcement -- a retried request
+  -- UNIQUE constraint below is the actual enforcement; a retried request
   -- with the same key hits a conflict instead of sending twice.
   idempotency_key       VARCHAR(100) NOT NULL,
   created_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW(),

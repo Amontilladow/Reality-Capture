@@ -4,15 +4,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { Modal } from './ui/Modal';
 import { SectionHeader } from './ui/SectionHeader';
+import { MobileFold } from './ui/MobileFold';
+import { splitRiskTitle } from '../lib/risk-title';
 import { RiskGraphView } from './RiskGraphView';
-import { RiskKpiStrip } from './risk/RiskKpiStrip';
-import { RiskAttentionPanel } from './risk/RiskAttentionPanel';
 import { RiskMovementSection } from './risk/RiskMovementSection';
 import { RiskHeatmap } from './risk/RiskHeatmap';
-import { RiskDisciplineChart } from './risk/RiskDisciplineChart';
+import { BigStat, ColumnBars, DashCard, DashHero, Glyph, NoirList, RadialGauge, SegmentBar } from './dash/Dash';
 import { RiskRegisterTable } from './risk/RiskRegisterTable';
 import {
-  DEFAULT_REGISTER_FILTERS, dueDateTone, formatDueDate, isOpenRiskStatus, ownerNameMap,
+  DEFAULT_REGISTER_FILTERS, attentionRank, disciplineLabel, dueDateTone, formatDueDate, isOpenRiskStatus, isOverdue, ownerNameMap, riskRef,
   type RegisterFilters,
 } from './risk/riskDisplay';
 import { apiErrorMessage } from '../lib/api';
@@ -28,23 +28,21 @@ import {
 } from '../lib/risk.api';
 import { Listbox } from './ui/Listbox';
 
-// HIGH/VERY_HIGH have no dedicated semantic token (the design system only
-// has a 3-step ok/warn/danger scale) -- these two literal oranges sit
-// between warn and danger in both hue and severity and already read
-// clearly on both a light and a dark surface (mid-brightness, not washed
-// out either direction), so they're left as fixed constants rather than
-// invented tokens for a single consumer.
-const HIGH_HEX = '#FB923C';
-const VERY_HIGH_HEX = '#F97316';
-
+// Risk levels map onto the theme's status ladder: ok (low), warn
+// (moderate/medium), high (rust, for High and Very High) and danger
+// (critical): all tokens, so they follow the brown palette and dark mode.
 // Every other color below comes from useThemeColors() (resolves the same
 // --rc-* custom properties every Tailwind utility class in the app
-// resolves) -- built as functions of the resolved colors, called once per
+// resolves): built as functions of the resolved colors, called once per
 // component via useThemeColors(), rather than module-level constants, so
 // every chart and badge here re-renders with the right colors when the
 // theme changes.
+// The API reports a missing data source as "Not available" / "Not
+// connected; ..." (RiskService.getDataAvailability).
+const connected = (status: string) => !/^not (available|connected)/i.test(status);
+
 function levelColors(colors: ThemeColors): Record<RiskLevel, string> {
-  return { LOW: colors.ok, MODERATE: colors.warn, HIGH: HIGH_HEX, CRITICAL: colors.danger };
+  return { LOW: colors.ok, MODERATE: colors.warn, HIGH: colors.high, CRITICAL: colors.danger };
 }
 
 const LEVEL_LABELS: Record<RiskLevel, string> = {
@@ -57,11 +55,11 @@ const STATUS_LABELS: Record<RiskStatus, string> = {
   RESOLVED: 'Resolved', CLOSED: 'Closed',
 };
 
-// Risk Matrix (1-25, 5-level) -- deliberately a different palette/label set
+// Risk Matrix (1-25, 5-level): deliberately a different palette/label set
 // from levelColors()/LEVEL_LABELS above, which belong to the 0-100/4-level
 // deterministic engine score. Never mix the two scales in one place.
 function matrixLevelColors(colors: ThemeColors): Record<RiskMatrixLevel, string> {
-  return { LOW: colors.ok, MEDIUM: colors.warn, HIGH: HIGH_HEX, VERY_HIGH: VERY_HIGH_HEX, CRITICAL: colors.danger };
+  return { LOW: colors.ok, MEDIUM: colors.warn, HIGH: colors.high, VERY_HIGH: colors.high, CRITICAL: colors.danger };
 }
 const MATRIX_LEVEL_LABELS: Record<RiskMatrixLevel, string> = {
   LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High', VERY_HIGH: 'Very High', CRITICAL: 'Critical',
@@ -92,7 +90,7 @@ function LevelBadge({ level }: { level: RiskLevel }) {
   const color = levelColors(useThemeColors())[level];
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide"
+      className="inline-flex items-center gap-2 px-2 py-0 rounded text-xs font-semibold"
       style={{ color, backgroundColor: `${color}22` }}
     >
       {LEVEL_LABELS[level]}
@@ -109,7 +107,6 @@ function TrendIndicator({ trend }: { trend: Risk['trend'] }) {
 
 export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
   const themeColors = useThemeColors();
-  const LEVEL_COLORS = levelColors(themeColors);
   const MATRIX_LEVEL_COLORS = matrixLevelColors(themeColors);
   const queryClient = useQueryClient();
   const [detailRiskId, setDetailRiskId] = useState<string | null>(null);
@@ -152,7 +149,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
     setPdfDownloading(true);
     try {
       // If the user already generated an AI briefing on this page, it's
-      // passed through verbatim -- the PDF never triggers its own AI call
+      // passed through verbatim; the PDF never triggers its own AI call
       // and can never show a different narrative than what's on screen.
       const briefingText = aiBriefingMutation.data && 'narrative' in aiBriefingMutation.data
         ? aiBriefingMutation.data.narrative
@@ -194,88 +191,204 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
   }
 
   return (
-    <section className="space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-3 pb-1 border-b border-base-700/60">
-        <div className="flex items-center gap-3 flex-wrap">
-          {summary && (
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-lg font-semibold tabular-nums" style={{ color: LEVEL_COLORS[summary.overallLevel] }}>{summary.overallScore}</span>
-              <span className="text-xs text-ink-500">/100 overall</span>
-              {summary.overallScoreTrendPct !== null && (
-                <span className={`text-xs ${summary.overallScoreTrendPct > 0 ? 'text-danger' : 'text-ok'}`}>
-                  {summary.overallScoreTrendPct > 0 ? '↑' : '↓'} {Math.abs(summary.overallScoreTrendPct)}%
-                </span>
-              )}
-            </div>
-          )}
-          <span className="text-xs text-ink-500">Last updated {timeAgo(lastUpdated)}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setGraphOpen(true)} className="btn-secondary !px-3 !py-1.5 text-xs">
-            View Risk Graph
-          </button>
-          <button onClick={handleDownloadPdf} disabled={pdfDownloading || !hasAnyData} className="btn-secondary !px-3 !py-1.5 text-xs">
-            {pdfDownloading ? 'Preparing…' : 'Export Report'}
-          </button>
-          <button onClick={() => recalcMutation.mutate()} disabled={recalcMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
-            {recalcMutation.isPending ? 'Analyzing…' : 'Refresh'}
-          </button>
-        </div>
+    <section className="space-y-6">
+      {/* Page actions as quiet pills above the hero, the way the reference
+          dashboard parks its controls in the top bar. */}
+      <div className="flex items-center justify-end flex-wrap gap-2">
+        <button onClick={() => setGraphOpen(true)} className="btn-secondary !rounded-full">View risk graph</button>
+        <button onClick={handleDownloadPdf} disabled={pdfDownloading || !hasAnyData} className="btn-secondary !rounded-full">
+          {pdfDownloading ? 'Preparing…' : 'Export report'}
+        </button>
+        <button onClick={() => recalcMutation.mutate()} disabled={recalcMutation.isPending} className="btn-primary !rounded-full">
+          {recalcMutation.isPending ? 'Analyzing…' : 'Refresh'}
+        </button>
       </div>
 
       {recalcMutation.isError && <p className="field-error">{apiErrorMessage(recalcMutation.error)}</p>}
       {pdfError && <p className="field-error">{pdfError}</p>}
 
       {!hasAnyData && !dataAvailabilityQuery.isLoading && (
-        <div className="panel tick-frame p-8 text-center space-y-2">
+        <div className="panel p-8 text-center space-y-2">
           <p className="text-sm text-ink-300">Risk intelligence is building.</p>
           <p className="text-xs text-ink-500">
-            No RFIs, Issues, Snag items, or QA inspections were found yet on this project — connect project data to begin generating risk intelligence.
+            No RFIs, Issues, Snag items, or QA inspections were found yet on this project. Connect project data to begin generating risk intelligence.
           </p>
         </div>
       )}
 
-      {availability && hasAnyData && (
-        <div className="panel p-3 text-xs text-ink-500 flex flex-wrap gap-x-6 gap-y-1">
-          <span>RFIs available: <span className="text-ink-300">{availability.rfisAvailable}</span></span>
-          <span>Issues available: <span className="text-ink-300">{availability.issuesAvailable}</span></span>
-          <span>Snag items available: <span className="text-ink-300">{availability.snagItemsAvailable}</span></span>
-          <span>QA inspections available: <span className="text-ink-300">{availability.qaInspectionsAvailable}</span></span>
-          <span>BIM relationships: <span className="text-ink-300">{availability.bimElementRelationships}</span></span>
-          <span>Programme data: <span className="text-ink-300">{availability.programmeData}</span></span>
-          <span>Procurement data: <span className="text-ink-300">{availability.procurementData}</span></span>
-        </div>
-      )}
+      {summary && hasAnyData && (() => {
+        const bySeverity = (level: RiskLevel) => openRisks.filter((r) => r.level === level).length;
+        const statusGroup = (statuses: RiskStatus[]) => allRisks.filter((r) => statuses.includes(r.status)).length;
+        const disciplineRows = [...(byDisciplineQuery.data ?? [])]
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 8)
+          .map((d) => {
+            const label = disciplineLabel(d.discipline);
+            return { key: d.discipline ?? 'UNSPECIFIED', label, short: label.length > 5 ? label.slice(0, 3) : label, value: d.count };
+          });
+        const attention = openRisks
+          .filter((r) => r.status !== 'ACCEPTED')
+          .map((r) => ({ r, rank: attentionRank(r) }))
+          .filter((x) => x.rank <= 4)
+          .sort((a, b) => a.rank - b.rank || b.r.score - a.r.score)
+          .map((x) => x.r);
+        const glyphFor = (level: RiskLevel) => (level === 'CRITICAL' ? 'alert' : level === 'HIGH' ? 'flag' : 'shield') as 'alert' | 'flag' | 'shield';
 
-      {summary && hasAnyData && (
-        <>
-          {/* Minto Pyramid: the conclusion comes first -- before the KPI
-              strip and attention panel below, not after. A reader should
-              get the principal message and its reasons before being shown
-              the numbers that support it, not the reverse. */}
-          {/* Risk Summary — deterministic, grounded in the summary above; never a free-floating claim */}
-          {(summary.totalOpenRisks > 0 || (discrepanciesQuery.data?.length ?? 0) > 0) && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        return (
+          <>
+            <DashHero
+              eyebrow={<>Risk intelligence · updated {timeAgo(lastUpdated)}</>}
+              title={projectQuery.data?.name ?? 'Project risk'}
+              aside={
+                <>
+                  <BigStat
+                    value={openRisks.length} label="Open risks" icon={<Glyph name="stack" />}
+                    onClick={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, activeOnly: true })} actionLabel="Show in the register"
+                  />
+                  <BigStat
+                    value={Number(summary.criticalCount) + Number(summary.highCount)} label="Critical or high" icon={<Glyph name="alert" />}
+                    onClick={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, levels: ['CRITICAL', 'HIGH'] })} actionLabel="Show in the register"
+                  />
+                  <BigStat
+                    value={summary.overdueCount} label="Overdue" icon={<Glyph name="clock" />}
+                    onClick={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, overdueOnly: true })} actionLabel="Show in the register"
+                  />
+                  <BigStat
+                    value={unassignedCount} label="Without owner" icon={<Glyph name="user" />}
+                    onClick={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, owner: 'UNASSIGNED' })} actionLabel="Show in the register"
+                  />
+                </>
+              }
+            >
+              <SegmentBar
+                label="Open risks by severity"
+                segments={[
+                  { key: 'CRITICAL', label: 'Critical', value: bySeverity('CRITICAL'), style: 'noir' },
+                  { key: 'HIGH', label: 'High', value: bySeverity('HIGH'), style: 'sun' },
+                  { key: 'MODERATE', label: 'Moderate', value: bySeverity('MODERATE'), style: 'stripes' },
+                  { key: 'LOW', label: 'Low', value: bySeverity('LOW'), style: 'outline' },
+                ]}
+              />
+            </DashHero>
+
+            {availability && (
+              <p className="text-xs text-ink-500 flex flex-wrap gap-x-6 gap-y-2">
+                <span>RFIs {availability.rfisAvailable}</span>
+                <span>Issues {availability.issuesAvailable}</span>
+                <span>Snag items {availability.snagItemsAvailable}</span>
+                <span>QA inspections {availability.qaInspectionsAvailable}</span>
+                {/* Data sources that aren't connected say nothing a reader
+                    can act on, so only connected ones are listed. */}
+                {connected(availability.bimElementRelationships) && <span>BIM relationships: {availability.bimElementRelationships}</span>}
+                {connected(availability.programmeData) && <span className="max-w-measure">Programme data: {availability.programmeData}</span>}
+                {connected(availability.procurementData) && <span className="max-w-measure">Procurement data: {availability.procurementData}</span>}
+              </p>
+            )}
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <DashCard title="Risk index" onOpen={() => setGraphOpen(true)} openLabel="Open the risk graph">
+                <RadialGauge value={summary.overallScore} label="Project risk index" caption={LEVEL_LABELS[summary.overallLevel]} />
+                <p className="text-xs text-ink-500 text-center mt-4">
+                  {summary.overallScoreTrendPct === null
+                    ? 'No trend yet'
+                    : `${summary.overallScoreTrendPct > 0 ? 'Up' : 'Down'} ${Math.abs(summary.overallScoreTrendPct)}% over 7 days`}
+                </p>
+              </DashCard>
+
+              <DashCard title="By discipline">
+                <ColumnBars
+                  title="Open risks by discipline"
+                  unit="open risks"
+                  data={disciplineRows}
+                  focalKey={disciplineRows[0]?.key}
+                  onSelect={(d) => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, discipline: d, activeOnly: true })}
+                  selectLabel="Filter the register to"
+                />
+              </DashCard>
+
+              <DashCard
+                title="Mitigation"
+                aside={<span className="text-4xl font-light tabular-nums text-ink-100">{mitigationRatePct ?? 0}%</span>}
+              >
+                <p className="text-xs text-ink-500 -mt-2">of all risks resolved or closed</p>
+                <div className="mt-auto pt-6 space-y-6">
+                  <SegmentBar
+                    label="All risks by status"
+                    segments={[
+                      { key: 'open', label: 'Open', value: statusGroup(['DETECTED', 'ACTIVE', 'ESCALATED']), style: 'sun' },
+                      { key: 'mitigating', label: 'Mitigating', value: statusGroup(['MITIGATION_IN_PROGRESS', 'MONITORING', 'ACCEPTED']), style: 'noir' },
+                      { key: 'resolved', label: 'Resolved', value: statusGroup(['RESOLVED', 'CLOSED']), style: 'outline' },
+                    ]}
+                  />
+                  <button
+                    onClick={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, statuses: ['RESOLVED', 'CLOSED'] })}
+                    className="text-xs text-ink-300 hover:text-ink-100 underline underline-offset-2"
+                  >
+                    Show resolved risks
+                  </button>
+                </div>
+              </DashCard>
+
+              <DashCard
+                tone="noir"
+                title="Requires attention"
+                aside={<span className="text-4xl font-light tabular-nums text-on-noir">{attention.length}/{openRisks.length}</span>}
+                className="xl:row-span-2"
+              >
+                <NoirList
+                  empty="Nothing needs attention right now."
+                  items={attention.slice(0, 7).map((r) => {
+                    const { subject, source } = splitRiskTitle(r.title);
+                    return {
+                    key: r.id,
+                    title: subject,
+                    meta: `${source ?? riskRef(r)} · ${isOverdue(r) ? `overdue, ${formatDueDate(r.dueDate)}` : r.ownerId ? (ownerNames.get(r.ownerId) ?? 'Owned') : 'No owner'}`,
+                    icon: <Glyph name={glyphFor(r.level)} />,
+                    state: isOverdue(r) || r.level === 'CRITICAL' ? 'flag' : 'idle',
+                    onClick: () => openRisk(r.id),
+                    };
+                  })}
+                />
+              </DashCard>
+
               <div className="space-y-4">
                 {summary.totalOpenRisks > 0 && (
-                  <div className="panel p-4">
-                    <div className="!mb-2"><SectionHeader title="Risk Summary" size="sm" /></div>
+                  <DashCard title="Summary">
                     <p className="text-sm text-ink-300 leading-relaxed">
                       {buildBriefing(summary, topQuery.data ?? [], clustersQuery.data ?? [])}
                     </p>
-                  </div>
+                  </DashCard>
+                )}
+
+                {summary.totalOpenRisks > 0 && (
+                  <DashCard
+                    title="AI briefing"
+                    aside={
+                      <button onClick={() => aiBriefingMutation.mutate()} disabled={aiBriefingMutation.isPending} className="btn-secondary !rounded-full !h-8 text-xs">
+                        {aiBriefingMutation.isPending ? 'Generating…' : aiBriefingMutation.data ? 'Regenerate' : 'Generate'}
+                      </button>
+                    }
+                  >
+                    {aiBriefingMutation.isError && <p className="field-error">{apiErrorMessage(aiBriefingMutation.error)}</p>}
+                    {aiBriefingMutation.data && 'unavailable' in aiBriefingMutation.data && (
+                      <p className="text-sm text-ink-500 italic">{aiBriefingMutation.data.reason}</p>
+                    )}
+                    {aiBriefingMutation.data && 'narrative' in aiBriefingMutation.data && (
+                      <p className="text-sm text-ink-300 leading-relaxed">{aiBriefingMutation.data.narrative}</p>
+                    )}
+                    {!aiBriefingMutation.data && !aiBriefingMutation.isPending && (
+                      <p className="text-xs text-ink-500">An AI-written narrative of the summary, generated on request.</p>
+                    )}
+                  </DashCard>
                 )}
 
                 {(discrepanciesQuery.data?.length ?? 0) > 0 && (
-                  <div className="panel tick-frame p-4 border border-warn/40 bg-warn/5 space-y-2">
-                    <div className="field-label !mb-1">
-                      Alerts — {discrepanciesQuery.data!.length} risk{discrepanciesQuery.data!.length === 1 ? '' : 's'} need{discrepanciesQuery.data!.length === 1 ? 's' : ''} discrepancy review
-                    </div>
-                    <div className="divide-y divide-base-700/60">
+                  <DashCard title={`Discrepancies (${discrepanciesQuery.data!.length})`}>
+                    <div className="divide-y divide-base-700/60 -mx-2">
                       {(discrepanciesQuery.data ?? []).map(({ risk: r, discrepancy }) => (
-                        <button key={r.id} onClick={() => openRisk(r.id)} className="w-full flex items-center justify-between gap-4 py-2 text-left hover:bg-base-700 transition-colors">
-                          <span className="text-sm text-ink-100">{r.title}</span>
-                          <span className="text-xs text-ink-500 shrink-0">
+                        <button key={r.id} onClick={() => openRisk(r.id)} className="w-full text-left px-2 py-2 rounded-xl hover:bg-base-700/60 transition-colors">
+                          <span className="block text-sm text-ink-100">{r.title}</span>
+                          <span className="block text-xs text-ink-500">
                             Human <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[r.humanLevel!] }}>{MATRIX_LEVEL_LABELS[r.humanLevel!]}</span>
                             {' '}vs AI <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[r.aiLevel!] }}>{MATRIX_LEVEL_LABELS[r.aiLevel!]}</span>
                             {' '}({discrepancy.levelGap} apart)
@@ -283,103 +396,58 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
                         </button>
                       ))}
                     </div>
-                  </div>
+                  </DashCard>
                 )}
               </div>
 
-              {/* AI Project Risk Briefing — an LLM-polished narrative generated
-                  on demand from the exact same computed data above, never from
-                  a fresh retrieval. Clearly labeled as AI-generated and never
-                  auto-fetched, since it's a real model call with real latency. */}
-              {summary.totalOpenRisks > 0 && (
-                <div className="panel p-4">
-                  <div className="!mb-2">
-                    <SectionHeader
-                      title="AI Project Risk Briefing"
-                      tone="orange"
-                      size="sm"
-                      actions={
-                        <button onClick={() => aiBriefingMutation.mutate()} disabled={aiBriefingMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
-                          {aiBriefingMutation.isPending ? 'Generating…' : aiBriefingMutation.data ? 'Regenerate' : 'Generate'}
-                        </button>
-                      }
-                    />
-                  </div>
-                  {aiBriefingMutation.isError && <p className="field-error">{apiErrorMessage(aiBriefingMutation.error)}</p>}
-                  {aiBriefingMutation.data && 'unavailable' in aiBriefingMutation.data && (
-                    <p className="text-sm text-ink-500 italic">{aiBriefingMutation.data.reason}</p>
-                  )}
-                  {aiBriefingMutation.data && 'narrative' in aiBriefingMutation.data && (
-                    <p className="text-sm text-ink-300 leading-relaxed">{aiBriefingMutation.data.narrative}</p>
-                  )}
-                  {!aiBriefingMutation.data && !aiBriefingMutation.isPending && (
-                    <p className="text-xs text-ink-500">Generate an AI-polished narrative of the risk summary above.</p>
-                  )}
-                </div>
-              )}
+              <div className="md:col-span-2 xl:col-span-2">
+                {heatmapQuery.data?.some((c) => c.count > 0) ? (
+                  <RiskHeatmap
+                    cells={heatmapQuery.data!}
+                    risks={allRisks}
+                    onSelectRisk={openRisk}
+                    onFilterCell={(riskIds, label) => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, cellRiskIds: riskIds, cellLabel: label })}
+                  />
+                ) : (
+                  <div className="panel p-6 h-full text-sm text-ink-500">No open risks have a probability and impact assessment yet.</div>
+                )}
+              </div>
             </div>
-          )}
 
-          <RiskKpiStrip
-            summary={summary}
-            totalActive={openRisks.length}
-            unassignedCount={unassignedCount}
-            mitigationRatePct={mitigationRatePct}
-            onFilterTotalActive={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, activeOnly: true })}
-            onFilterCriticalHigh={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, levels: ['CRITICAL', 'HIGH'] })}
-            onFilterOverdue={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, overdueOnly: true })}
-            onFilterUnassigned={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, owner: 'UNASSIGNED' })}
-            onFilterMitigated={() => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, statuses: ['RESOLVED', 'CLOSED'] })}
-          />
+            {/* Risk Movement (brief Phase 3): emerged/worsened/improved/
+                unresolved during a selectable window, from real snapshot
+                history. */}
+            <MobileFold
+              title="Risk movement"
+              summary={movementQuery.data ? `Last ${movementDays} days: ${movementQuery.data.emerged.length} new, ${movementQuery.data.worsened.length} worse` : undefined}
+            >
+              <RiskMovementSection
+                movement={movementQuery.data}
+                isLoading={movementQuery.isLoading}
+                days={movementDays}
+                onDaysChange={setMovementDays}
+                onSelectRisk={openRisk}
+              />
+            </MobileFold>
+          </>
+        );
+      })()}
 
-          <RiskAttentionPanel risks={openRisks} ownerNames={ownerNames} onSelectRisk={openRisk} />
-
-          {/* Risk Movement (brief Phase 3): emerged/worsened/improved/
-              unresolved during a selectable window, from real snapshot
-              history -- placed right after the critical-risk views above
-              and before the heatmap/register below, per the brief's own
-              prescribed order. */}
-          <RiskMovementSection
-            movement={movementQuery.data}
-            isLoading={movementQuery.isLoading}
-            days={movementDays}
-            onDaysChange={setMovementDays}
-            onSelectRisk={openRisk}
-          />
-
-          {/* Risk analytics -- heatmap + discipline chart side by side on
-              desktop, stacked on mobile, consistent card heights. */}
-          {((heatmapQuery.data?.some((c) => c.count > 0)) || (byDisciplineQuery.data?.length ?? 0) > 0) && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-              {heatmapQuery.data?.some((c) => c.count > 0) && (
-                <RiskHeatmap
-                  cells={heatmapQuery.data!}
-                  risks={allRisks}
-                  onSelectRisk={openRisk}
-                  onFilterCell={(riskIds, label) => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, cellRiskIds: riskIds, cellLabel: label })}
-                />
-              )}
-              {(byDisciplineQuery.data?.length ?? 0) > 0 && (
-                <RiskDisciplineChart
-                  data={byDisciplineQuery.data!}
-                  onSelectDiscipline={(d) => applyFiltersAndScroll({ ...DEFAULT_REGISTER_FILTERS, discipline: d, activeOnly: true })}
-                />
-              )}
-            </div>
-          )}
-
+      {summary && hasAnyData && (
+        <>
           {/* Top Management Risks */}
           {(topQuery.data?.length ?? 0) > 0 && (
+            <MobileFold title="Top management risks" summary={`${topQuery.data!.length} risks to raise with management`}>
             <div className="space-y-2">
               <SectionHeader title="Top Management Risks" size="sm" />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {(topQuery.data ?? []).map((r) => (
                   <button key={r.id} onClick={() => openRisk(r.id)} className="panel tick-frame p-4 text-left hover:bg-base-700 transition-colors space-y-2">
                     <div className="flex items-center justify-between">
                       <LevelBadge level={r.level} />
                       <span className="text-lg font-semibold tabular-nums text-ink-100">{r.score}</span>
                     </div>
-                    <div className="text-sm text-ink-100 font-medium">{r.title}</div>
+                    <div className="text-sm text-ink-100 font-medium max-w-measure">{r.title}</div>
                     <TrendIndicator trend={r.trend} />
                     {r.recommendedAction && (
                       <p className="text-xs text-ink-500">Recommended: {r.recommendedAction}</p>
@@ -388,18 +456,20 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
                 ))}
               </div>
             </div>
+            </MobileFold>
           )}
 
           {/* Emerging Risks */}
           {(emergingQuery.data?.length ?? 0) > 0 && (
+            <MobileFold title="Emerging risks" summary={`${emergingQuery.data!.length} new or rising`}>
             <div className="space-y-2">
               <SectionHeader title="Emerging Risks" size="sm" />
               <div className="panel tick-frame divide-y divide-base-700/60">
                 {(emergingQuery.data ?? []).map((r) => (
-                  <button key={r.id} onClick={() => openRisk(r.id)} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-base-700 transition-colors">
+                  <button key={r.id} onClick={() => openRisk(r.id)} className="w-full flex items-center justify-between px-4 py-4 text-left hover:bg-base-700 transition-colors">
                     <div>
                       <div className="text-sm text-ink-100">{r.title}</div>
-                      <div className="text-xs text-ink-500 mt-0.5">{r.explanation}</div>
+                      <div className="text-xs text-ink-500 mt-0">{r.explanation}</div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-4">
                       <span className="text-sm tabular-nums text-ink-300">{r.score}</span>
@@ -409,24 +479,27 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
                 ))}
               </div>
             </div>
+            </MobileFold>
           )}
 
           {/* Risk Clusters */}
           {(clustersQuery.data?.length ?? 0) > 0 && (
+            <MobileFold title="Risk by location" summary={`${clustersQuery.data!.length} locations`}>
             <div className="space-y-2">
               <SectionHeader title="Risk Concentration by Location" size="sm" />
               <div className="panel tick-frame divide-y divide-base-700/60">
                 {(clustersQuery.data ?? []).map((c) => (
-                  <div key={c.location} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                  <div key={c.location} className="flex items-center justify-between px-4 py-2 text-sm">
                     <span className="text-ink-100">{c.location}</span>
                     <span className="text-ink-500">{c.connectedRiskCount} connected risk(s) · avg score {c.averageScore}</span>
                   </div>
                 ))}
               </div>
             </div>
+            </MobileFold>
           )}
 
-          {/* Risk Register -- the primary working area (brief section 4E) */}
+          {/* Risk Register: the primary working area (brief section 4E) */}
           <div ref={registerRef}>
             <RiskRegisterTable
               risks={allRisks}
@@ -537,17 +610,17 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
             <p className="text-xs text-ink-500">Data-driven project risk assessment. Confidence reason: {risk.confidenceReason}</p>
           )}
 
-          {/* Owner & due date -- the two fields the KPI strip, Attention
+          {/* Owner & due date: the two fields the KPI strip, Attention
               panel and Register all read; editable right here so assigning
               an owner or a deadline doesn't require a separate screen. */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="panel p-3">
-              <div className="field-label !mb-1.5">Owner</div>
-              <Listbox
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="panel p-4">
+              <div className="field-label !mb-2">Owner</div>
+              <Listbox aria-label="Risk owner"
                 value={risk.ownerId ?? ''}
                 onChange={(e) => ownerMutation.mutate(e.target.value || null)}
                 disabled={ownerMutation.isPending}
-                className="field-input !py-1.5 text-xs"
+                className="field-input !py-2 text-xs"
               >
                 <option value="">Unassigned</option>
                 {members.map((m) => (
@@ -555,46 +628,46 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
                 ))}
               </Listbox>
             </div>
-            <div className="panel p-3">
-              <div className="flex items-center justify-between !mb-1.5">
+            <div className="panel p-4">
+              <div className="flex items-center justify-between !mb-2">
                 <div className="field-label !mb-0">Due date</div>
-                {tone === 'overdue' && <span className="text-[10px] font-semibold uppercase text-danger">Overdue</span>}
+                {tone === 'overdue' && <span className="text-xs font-semibold text-danger">Overdue</span>}
               </div>
               <div className="flex items-center gap-2">
                 <input
                   type="date"
                   value={dueDateInput || (risk.dueDate ? risk.dueDate.slice(0, 10) : '')}
                   onChange={(e) => setDueDateInput(e.target.value)}
-                  className="field-input !py-1.5 text-xs flex-1"
+                  className="field-input !py-2 text-xs flex-1"
                 />
                 <button
                   onClick={() => dueDateMutation.mutate(dueDateInput ? new Date(dueDateInput).toISOString() : null)}
                   disabled={dueDateMutation.isPending}
-                  className="btn-secondary !px-2 !py-1.5 text-xs shrink-0"
+                  className="btn-secondary !px-2 !py-2 text-xs shrink-0"
                 >
                   Save
                 </button>
                 {risk.dueDate && (
-                  <button onClick={() => { setDueDateInput(''); dueDateMutation.mutate(null); }} disabled={dueDateMutation.isPending} className="btn-ghost !px-2 !py-1.5 text-xs shrink-0">
+                  <button onClick={() => { setDueDateInput(''); dueDateMutation.mutate(null); }} disabled={dueDateMutation.isPending} className="btn-ghost !px-2 !py-2 text-xs shrink-0">
                     Clear
                   </button>
                 )}
               </div>
-              {risk.dueDate && <p className="text-xs text-ink-500 mt-1.5">Currently {formatDueDate(risk.dueDate)}</p>}
+              {risk.dueDate && <p className="text-xs text-ink-500 mt-2">Currently {formatDueDate(risk.dueDate)}</p>}
             </div>
           </div>
 
           {risk.explanation && (
             <div>
-              <div className="field-label !mb-1">Why is this a risk?</div>
+              <div className="field-label !mb-2">Why is this a risk?</div>
               <p className="text-sm text-ink-300">{risk.explanation}</p>
             </div>
           )}
 
           <div>
-            <div className="flex items-center justify-between !mb-1">
+            <div className="flex items-center justify-between !mb-2">
               <div className="field-label !mb-0">AI explanation</div>
-              <button onClick={() => aiExplanationMutation.mutate()} disabled={aiExplanationMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
+              <button onClick={() => aiExplanationMutation.mutate()} disabled={aiExplanationMutation.isPending} className="btn-secondary !px-2 !py-2 text-xs">
                 {aiExplanationMutation.isPending ? 'Generating…' : aiExplanationMutation.data ? 'Regenerate' : 'Generate'}
               </button>
             </div>
@@ -615,7 +688,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {(['probability', 'impact', 'exposure', 'dependency', 'urgency', 'recurrence'] as const).map((factor) => (
                 <div key={factor} className="panel p-2 text-center">
-                  <div className="text-[11px] text-ink-500 font-medium">{factor}</div>
+                  <div className="text-xs text-ink-500 font-medium">{factor}</div>
                   <div className="text-sm font-semibold text-ink-100 tabular-nums">{risk[factor]}</div>
                 </div>
               ))}
@@ -624,21 +697,21 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
 
           {risk.recommendedAction && (
             <div>
-              <div className="field-label !mb-1">Recommended action</div>
+              <div className="field-label !mb-2">Recommended action</div>
               <p className="text-sm text-ink-300">{risk.recommendedAction}</p>
             </div>
           )}
 
           <HumanAssessmentPanel projectId={projectId} risk={risk} onChanged={invalidate} />
 
-          <button onClick={() => onViewGraph(risk.rootNodeId)} className="btn-secondary !px-2.5 !py-1 text-xs">
+          <button onClick={() => onViewGraph(risk.rootNodeId)} className="btn-secondary !px-2 !py-2 text-xs">
             View in Risk Graph
           </button>
 
           {(chainQuery.data?.steps.length ?? 0) > 1 && (
             <div>
               <div className="field-label !mb-2">Risk chain</div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 {(chainQuery.data?.steps ?? []).map((step, i) => (
                   <div key={step.nodeId} className="flex items-center gap-2 text-sm">
                     {i > 0 && <span className="text-ink-500">↓ {step.relationshipFromPrevious}{step.confidence !== null && step.confidence < 1 ? ` (inferred, ${Math.round((step.confidence ?? 0) * 100)}%)` : ''}</span>}
@@ -653,7 +726,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
           {(evidenceQuery.data?.length ?? 0) > 0 && (
             <div>
               <div className="field-label !mb-2">Evidence</div>
-              <ul className="space-y-1">
+              <ul className="space-y-2">
                 {(evidenceQuery.data ?? []).map((e) => (
                   <li key={e.id} className="text-sm">
                     <EvidenceLink projectId={projectId} node={e.node} role={e.role} />
@@ -669,7 +742,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
               {(Object.keys(STATUS_LABELS) as RiskStatus[]).map((s) => (
                 <button
                   key={s} onClick={() => statusMutation.mutate(s)} disabled={statusMutation.isPending}
-                  className={`btn-secondary !px-2.5 !py-1 text-xs ${risk.status === s ? '!bg-blueprint/20 !text-blueprint' : ''}`}
+                  className={`btn-secondary !px-2 !py-2 text-xs ${risk.status === s ? '!bg-blueprint/20 !text-blueprint' : ''}`}
                 >
                   {STATUS_LABELS[s]}
                 </button>
@@ -682,16 +755,16 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
             {risk.overrideScore !== undefined && risk.overrideScore !== null ? (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-ink-500">Override reason: {risk.overrideReason}</span>
-                <button onClick={() => clearOverrideMutation.mutate()} className="btn-secondary !px-2.5 !py-1 text-xs">Clear override</button>
+                <button onClick={() => clearOverrideMutation.mutate()} className="btn-secondary !px-2 !py-2 text-xs">Clear override</button>
               </div>
             ) : (
               <div className="flex items-center gap-2 flex-wrap">
-                <input type="number" min={0} max={100} placeholder="Score" value={overrideScore} onChange={(e) => setOverrideScore(e.target.value)} className="field-input w-24 !py-1 text-xs" />
-                <input type="text" placeholder="Reason (required)" value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} className="field-input flex-1 !py-1 text-xs" />
+                <input type="number" min={0} max={100} placeholder="Score" value={overrideScore} onChange={(e) => setOverrideScore(e.target.value)} className="field-input w-24 !py-2 text-xs" />
+                <input type="text" placeholder="Reason (required)" value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} className="field-input flex-1 !py-2 text-xs" />
                 <button
                   onClick={() => overrideMutation.mutate()}
                   disabled={overrideMutation.isPending || overrideReason.length < 3}
-                  className="btn-secondary !px-2.5 !py-1 text-xs"
+                  className="btn-secondary !px-2 !py-2 text-xs"
                 >
                   Apply override
                 </button>
@@ -723,12 +796,12 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
 // Progressive-disclosure Human Risk Assessment: Probability x Impact (brief
 // sections 3-6, 42-43). A separate component (not inline in its callers)
 // purely so its form state initializes from `risk`'s already-loaded values
-// via plain useState lazy init -- no useEffect sync needed, since the
+// via plain useState lazy init; no useEffect sync needed, since the
 // RiskDetailDrawer usage never mounts this before `risk` exists (see its
 // own !risk guard). `risk` is nullable here specifically for the inline
 // Issue/RFI/Snag widget (InlineRiskAssessment below): an item the automated
 // engine hasn't flagged yet has no Risk row at all, but a human must still
-// be able to record an assessment -- nodeType/entityId are required in
+// be able to record an assessment; nodeType/entityId are required in
 // that case so the mutation can bootstrap one (setHumanAssessmentByEntity).
 export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onChanged }: {
   projectId: string;
@@ -768,7 +841,7 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
   const showDiscrepancyBanner = Boolean(risk?.discrepancy?.hasDiscrepancy && !risk.discrepancy.reviewed);
 
   // Client-side preview only, purely for immediate feedback while picking
-  // values -- the actually-persisted score/level always comes back from
+  // values; the actually-persisted score/level always comes back from
   // the server response (see risk.humanScore/humanLevel above), never
   // computed here and trusted as the real answer.
   const previewScore = probability && impact ? Number(probability) * Number(impact) : null;
@@ -786,7 +859,7 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
       </div>
 
       {showDiscrepancyBanner && risk && (
-        <div className="panel p-3 mb-2 border border-warn/40 bg-warn/5 space-y-2">
+        <div className="panel p-4 mb-2 border border-warn/40 bg-warn/5 space-y-2">
           <p className="text-xs text-ink-100">
             <span className="font-semibold">Human and AI disagree:</span> human assessment is{' '}
             <span className="font-semibold" style={{ color: MATRIX_LEVEL_COLORS[risk.humanLevel!] }}>{MATRIX_LEVEL_LABELS[risk.humanLevel!]}</span>, AI score is{' '}
@@ -794,13 +867,13 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
             {' '}({risk.discrepancy!.levelGap} level{risk.discrepancy!.levelGap === 1 ? '' : 's'} apart).
           </p>
           <div className="flex items-center gap-2 flex-wrap">
-            <button onClick={() => keepHumanMutation.mutate()} disabled={keepHumanMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
+            <button onClick={() => keepHumanMutation.mutate()} disabled={keepHumanMutation.isPending} className="btn-secondary !px-2 !py-2 text-xs">
               Keep Human Assessment
             </button>
-            <button onClick={() => acceptAiMutation.mutate()} disabled={acceptAiMutation.isPending} className="btn-secondary !px-2.5 !py-1 text-xs">
+            <button onClick={() => acceptAiMutation.mutate()} disabled={acceptAiMutation.isPending} className="btn-secondary !px-2 !py-2 text-xs">
               Accept AI Assessment
             </button>
-            <button onClick={() => setExpanded(true)} className="btn-secondary !px-2.5 !py-1 text-xs">
+            <button onClick={() => setExpanded(true)} className="btn-secondary !px-2 !py-2 text-xs">
               Update Assessment
             </button>
           </div>
@@ -815,35 +888,35 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
       )}
 
       {risk?.humanScore != null && !expanded ? (
-        <div className="flex items-center gap-3 flex-wrap text-sm">
+        <div className="flex items-center gap-4 flex-wrap text-sm">
           <span className="text-2xl font-semibold tabular-nums" style={{ color: MATRIX_LEVEL_COLORS[risk.humanLevel!] }}>{risk.humanScore}</span>
           <span className="text-xs text-ink-500">/ 25</span>
-          <span className="px-2 py-0.5 rounded text-xs font-semibold uppercase" style={{ color: MATRIX_LEVEL_COLORS[risk.humanLevel!], backgroundColor: `${MATRIX_LEVEL_COLORS[risk.humanLevel!]}22` }}>
+          <span className="px-2 py-0 rounded text-xs font-semibold" style={{ color: MATRIX_LEVEL_COLORS[risk.humanLevel!], backgroundColor: `${MATRIX_LEVEL_COLORS[risk.humanLevel!]}22` }}>
             {MATRIX_LEVEL_LABELS[risk.humanLevel!]}
           </span>
           {risk.primaryDriver && <span className="text-xs text-ink-500">Driver: {RISK_DRIVER_LABELS[risk.primaryDriver]}{risk.secondaryDriver ? ` / ${RISK_DRIVER_LABELS[risk.secondaryDriver]}` : ''}</span>}
         </div>
       ) : (
-        <div className="panel p-3 space-y-2">
+        <div className="panel p-4 space-y-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <Listbox value={probability} onChange={(e) => setProbability(e.target.value)} className="field-input !py-1 text-xs">
+            <Listbox aria-label="Probability" value={probability} onChange={(e) => setProbability(e.target.value)} className="field-input !py-2 text-xs">
               <option value="">Probability…</option>
               {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{PROBABILITY_LABELS[n]}</option>)}
             </Listbox>
-            <Listbox value={impact} onChange={(e) => setImpact(e.target.value)} className="field-input !py-1 text-xs">
+            <Listbox aria-label="Impact" value={impact} onChange={(e) => setImpact(e.target.value)} className="field-input !py-2 text-xs">
               <option value="">Impact…</option>
               {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{IMPACT_LABELS[n]}</option>)}
             </Listbox>
-            <Listbox value={primaryDriver} onChange={(e) => setPrimaryDriver(e.target.value as RiskDriver)} className="field-input !py-1 text-xs">
+            <Listbox aria-label="Primary driver" value={primaryDriver} onChange={(e) => setPrimaryDriver(e.target.value as RiskDriver)} className="field-input !py-2 text-xs">
               <option value="">Primary driver…</option>
               {RISK_DRIVERS.map((d) => <option key={d} value={d}>{RISK_DRIVER_LABELS[d]}</option>)}
             </Listbox>
-            <Listbox value={secondaryDriver} onChange={(e) => setSecondaryDriver(e.target.value as RiskDriver)} className="field-input !py-1 text-xs">
+            <Listbox aria-label="Secondary driver" value={secondaryDriver} onChange={(e) => setSecondaryDriver(e.target.value as RiskDriver)} className="field-input !py-2 text-xs">
               <option value="">Secondary driver (optional)…</option>
               {RISK_DRIVERS.map((d) => <option key={d} value={d}>{RISK_DRIVER_LABELS[d]}</option>)}
             </Listbox>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             {previewScore !== null ? (
               <span className="text-sm text-ink-300">
                 Risk Score <span className="font-semibold tabular-nums">{previewScore}</span> / 25
@@ -851,7 +924,7 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
             ) : (
               <span className="text-xs text-ink-500">Select probability and impact to see the score.</span>
             )}
-            <button onClick={() => mutation.mutate()} disabled={!canSave || mutation.isPending} className="btn-primary !px-2.5 !py-1 text-xs ml-auto">
+            <button onClick={() => mutation.mutate()} disabled={!canSave || mutation.isPending} className="btn-primary !px-2 !py-2 text-xs ml-auto">
               {mutation.isPending ? 'Saving…' : 'Save assessment'}
             </button>
           </div>
@@ -865,7 +938,7 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
           {risk.aiConfidence != null && ` · Confidence: ${risk.aiConfidence}%`}
         </p>
       ) : !risk && (
-        <p className="text-xs text-ink-500 mt-2">No automated risk signals detected for this item yet — your assessment will still be recorded.</p>
+        <p className="text-xs text-ink-500 mt-2">No automated risk signals detected for this item yet. Your assessment will still be recorded.</p>
       )}
     </div>
   );

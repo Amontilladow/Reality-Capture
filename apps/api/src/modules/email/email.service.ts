@@ -5,7 +5,7 @@ import * as nodemailer from 'nodemailer';
 // Small, single-purpose: real email delivery for password resets, via
 // nodemailer's SMTP transport (already an installed dependency, never
 // previously used anywhere in this app). Deliberately throws on any
-// failure -- not configured, can't connect, rejected send -- rather than
+// failure (not configured, can't connect, rejected send) rather than
 // swallowing it itself: the caller (AuthService.forgotPassword(), per its
 // own enumeration-protection requirement) decides whether/how to hide that
 // from the end user. This service has no opinion on that; it just sends,

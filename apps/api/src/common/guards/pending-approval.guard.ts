@@ -6,7 +6,7 @@ import { ALLOW_PENDING_KEY } from '../decorators/allow-pending.decorator';
 // Registered right after JwtAuthGuard (needs request.user) and before
 // RolesGuard, so a pending user gets a clear PENDING_APPROVAL rejection
 // rather than a generic insufficient-role one. This is real backend
-// enforcement, not a frontend routing convenience -- a pending user's
+// enforcement, not a frontend routing convenience; a pending user's
 // access token literally cannot reach anything except @AllowPending()
 // routes, regardless of what company_role they were seeded with.
 @Injectable()

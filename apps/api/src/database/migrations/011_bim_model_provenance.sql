@@ -1,10 +1,10 @@
 -- Records exactly what produced a given BIM model's generated artifacts,
 -- so a future investigation can answer "which input produced this output,
 -- in which environment" without guessing. Surfaced by the BIM viewer
--- missing-geometry investigation (ROOT_CAUSE_REPORT_BIM_VIEWER.md) -- the
+-- missing-geometry investigation (ROOT_CAUSE_REPORT_BIM_VIEWER.md): the
 -- uploaded IFC was never checksummed anywhere, making it impossible to
 -- confirm a locally-tested copy actually matched what production received.
--- Additive and nullable throughout -- existing rows simply have NULL until
+-- Additive and nullable throughout; existing rows simply have NULL until
 -- reprocessed; nothing existing changes shape or behavior.
 ALTER TABLE bim_models
   ADD COLUMN IF NOT EXISTS original_filename VARCHAR(500),

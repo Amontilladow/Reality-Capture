@@ -12,7 +12,7 @@ import type { RegisterSiteDrawingDto } from './dto/register-drawing.dto';
 import type { RegisterSiteDrawingRevisionDto } from './dto/register-revision.dto';
 import type { CompleteOfflinePackageDto } from './dto/offline-package.dto';
 
-const DRAWING_MAX_SIZE_BYTES = 200 * 1024 * 1024; // 200 MB -- larger than the floor-plan drawings cap; real IFC/architectural PDF sets run bigger
+const DRAWING_MAX_SIZE_BYTES = 200 * 1024 * 1024; // 200 MB: larger than the floor-plan drawings cap; real IFC/architectural PDF sets run bigger
 const DRAWING_ALLOWED_EXTENSIONS = new Set(['pdf']);
 
 export interface SiteDrawingFilters {
@@ -33,7 +33,7 @@ export class SiteDrawingsService {
     private readonly adapters: SiteDrawingAdapterRegistry,
   ) {}
 
-  // ── Upload / registration (Local/internal source — brief section 6's
+  // ── Upload / registration (Local/internal source; brief section 6's
   // "first source for which valid API access and administrator
   // authorization are available": our own platform needs neither, unlike
   // SharePoint/Aconex/Procore, which all require admin-provisioned
@@ -99,7 +99,7 @@ export class SiteDrawingsService {
   }
 
   // Adds a new revision to an existing drawing. The previous current
-  // revision (if any) is marked superseded — section 5's "latest revision
+  // revision (if any) is marked superseded; section 5's "latest revision
   // known to the system" moves forward, but the old file stays in the
   // register, clearly labeled, not deleted (section 5: "Keep historical
   // revisions accessible ... label superseded revisions clearly").
@@ -179,7 +179,7 @@ export class SiteDrawingsService {
   }
 
   // Distinct discipline/building/floor values actually present, for filter
-  // dropdowns -- never a hardcoded list, since every project's own taxonomy
+  // dropdowns; never a hardcoded list, since every project's own taxonomy
   // differs.
   async getFilterOptions(companyId: string, projectId: string) {
     await this.assertProjectBelongsToCompany(companyId, projectId);
@@ -219,7 +219,7 @@ export class SiteDrawingsService {
   // sufficient (it's resolved through the project it actually belongs to).
   //
   // Audited explicitly (writeAccessAudit below) rather than relying on
-  // AuditInterceptor -- this is a GET route (read, by design: issuing a
+  // AuditInterceptor; this is a GET route (read, by design: issuing a
   // download URL doesn't change anything), and the interceptor only covers
   // mutating methods. Section 9's "audit events for document access,
   // download" needs this logged regardless of HTTP verb.
@@ -238,11 +238,11 @@ export class SiteDrawingsService {
     return { url, expiresInSeconds, workflowStatus: revision.workflowStatus, isSuperseded: revision.isSuperseded };
   }
 
-  // The "not stored locally" branch above -- resolves the revision's own
+  // The "not stored locally" branch above: resolves the revision's own
   // drawing (for its sourceProvider + sourceFileId) and asks that
   // provider's adapter for a short-lived URL to the file itself
   // (revision.sourceRevisionId, when set, asks for that specific
-  // historical version rather than the current one -- see
+  // historical version rather than the current one; see
   // DrawingSourceAdapter's own comment).
   private async getAuthorizedFileFromSource(companyId: string, projectId: string, revision: SiteDrawingRevisionRow): Promise<{ url: string; expiresInSeconds: number }> {
     const [drawing] = await this.db.withTenant(companyId, sql => sql<SiteDrawingRow[]>`
@@ -258,7 +258,7 @@ export class SiteDrawingsService {
   }
 
   // Supplements, does not replace, AuditInterceptor's generic coverage of
-  // mutating routes -- mirrors RfisService.writeRfiAudit()'s own pattern
+  // mutating routes; mirrors RfisService.writeRfiAudit()'s own pattern
   // for the same reason (a GET-based access the interceptor can't see).
   private async writeAccessAudit(companyId: string, projectId: string, userId: string, resourceType: string, resourceId: string, action: string): Promise<void> {
     await this.db.withTenant(companyId, sql => sql`
@@ -267,7 +267,7 @@ export class SiteDrawingsService {
     `);
   }
 
-  // ── Workflow status (document-control decisions — gated by the
+  // ── Workflow status (document-control decisions; gated by the
   // 'approve' category action in the controller, stricter than 'edit') ────
 
   async setWorkflowStatus(companyId: string, projectId: string, drawingId: string, revisionId: string, status: SiteDrawingWorkflowStatus): Promise<SiteDrawingRevision> {
@@ -304,7 +304,7 @@ export class SiteDrawingsService {
     };
   }
 
-  // ── Offline packages (brief section 8 — metadata only; the PDF bytes
+  // ── Offline packages (brief section 8; metadata only; the PDF bytes
   // live in the client's own IndexedDB, never in Postgres) ───────────────
 
   async startOfflinePackage(companyId: string, userId: string, projectId: string, revisionId: string): Promise<SiteDrawingOfflinePackage> {
@@ -324,7 +324,7 @@ export class SiteDrawingsService {
     });
   }
 
-  // The client reports what actually happened to the download -- a
+  // The client reports what actually happened to the download; a
   // 'FAILED' report here is exactly how section 8/10's "a partial or
   // corrupted download is never presented as a complete package" is
   // enforced: the server trusts the client's own integrity check, not a
@@ -382,7 +382,7 @@ export class SiteDrawingsService {
   // Clears every offline-package record for a user in this company (section
   // 9: "Clear locally cached protected data when the user signs out or
   // access policy requires it"). Only clears the server-side *record* of
-  // what's cached -- the client is responsible for actually deleting the
+  // what's cached; the client is responsible for actually deleting the
   // IndexedDB bytes on sign-out; see the web app's offline store for that
   // half.
   async clearAllOfflinePackagesForUser(companyId: string, userId: string): Promise<number> {

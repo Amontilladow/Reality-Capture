@@ -2,7 +2,7 @@
 -- company_admin a specific, named capability on a specific project,
 -- without making it company-wide or permanent-by-default (revocable
 -- anytime). company_admin has no special authority beyond creating
--- projects unless granted here -- everything else flows through this
+-- projects unless granted here; everything else flows through this
 -- table, or through the target project's own project_lead, who keeps
 -- natural authority over their own project regardless of grants.
 DO $$ BEGIN

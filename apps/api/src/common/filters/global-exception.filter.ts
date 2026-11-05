@@ -33,7 +33,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       ? exception.getResponse()
       : null;
 
-    // Don't log 4xx as errors — they're expected client mistakes
+    // Don't log 4xx as errors: they're expected client mistakes
     if (status >= 500) {
       this.logger.error(`[${req.method}] ${req.url} -> ${status}`, exception instanceof Error ? exception.stack : String(exception));
     }

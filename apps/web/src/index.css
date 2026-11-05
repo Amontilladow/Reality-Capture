@@ -1,3 +1,10 @@
+/* Hallmark · checked: 2026-10-30 · genre: modern-minimal (inferred)
+ * floor: 0 FAIL · fixed: 10a, 19, 20, 26a, 26b, 30a, 33, 40, 48, 49a, 63, 64, 67, 73, 75, F1 (public and auth pages), F3 · structural: 4 printed (44c, 58, 59, 77)
+ * built: the project · redesign: polish · v2.0.0 */
+/* Hallmark · waive 28b · the two video elements in CaptureLightbox and BuildLensTimelinePage, played only on demand · each video src is the uploaded capture file itself and no poster image is passed to these components, so preload is set to metadata instead */
+/* Hallmark · dismissed 28a · every lazy image is a thumbnail inside a list, modal or report table below the fold, never the LCP element of its screen */
+/* Hallmark · dismissed 49 · the flagged controls are text links and whole-card buttons that are meant to wrap in a narrow modal; every pill button already holds white-space nowrap through .btn */
+/* Hallmark · answered F1 · help and hint copy on the app screens stays as the owner wrote it, and only the public and auth pages were converted to typographic quotes */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -32,110 +39,136 @@
    bootstrap script, which normally beats this by setting the attribute
    before first paint). */
 :root {
-  /* Precision redesign: warm off-white canvas with pure-white panels on top,
-     so a card separates from the page by surface step + hairline instead of
-     the old grey-panel-on-white (which read muddy and needed a grid texture
-     to hold together). Neutrals carry the weight; every text tone below is
-     chosen to clear WCAG AA on both the canvas and the panel surface. */
-  --rc-base-950: 250 250 249; /* page background (canvas) */
-  --rc-base-900: 244 244 242; /* chrome bars / secondary surface / input fill */
-  --rc-base-800: 255 255 255; /* panel surface */
-  --rc-base-700: 238 238 235; /* raised surface / hover (field) */
-  --rc-base-600: 226 226 222; /* borders (hairline) */
-  --rc-base-500: 236 236 232; /* muted borders / dividers (hairline-soft) */
+  /* Palette (light): #2A241F espresso ink, #6F6257 warm taupe, #B8AA9B soft
+     mushroom, #E8DDCF linen beige, #FFF8ED ivory cream. An ivory-to-linen
+     canvas with ivory panels; espresso text, taupe secondary text, and
+     every text tone chosen to clear WCAG AA on both canvas and panel. */
+  --rc-base-950: 245 238 227; /* page background (canvas) */
+  --rc-base-900: 240 232 220; /* chrome bars / secondary surface / input fill */
+  --rc-base-800: 255 250 243; /* panel surface */
+  --rc-base-700: 236 227 214; /* raised surface / hover (field) */
+  --rc-base-600: 210 198 184; /* borders (hairline) */
+  --rc-base-500: 224 214 201; /* muted borders / dividers (hairline-soft) */
 
-  --rc-ink-100: 23 23 26; /* primary text (off-black, never #000) */
-  --rc-ink-300: 82 82 91; /* secondary text */
-  --rc-ink-500: 104 104 113; /* muted / captions -- was #adadad (2.2:1), now AA on every surface */
+  --rc-ink-100: 42 36 31; /* primary text (off-black, never #000) */
+  --rc-ink-300: 80 70 62; /* secondary text */
+  --rc-ink-500: 104 92 81; /* muted / captions -- AA (4.8:1) even over the darkest end of the page gradient */
 
-  --rc-signal: 23 23 26; /* primary action fill -- mirrors ink-100 */
-  --rc-signal-hover: 52 52 58;
-  --rc-signal-muted: 104 104 113;
+  --rc-signal: 42 36 31; /* primary action fill -- mirrors ink-100 */
+  --rc-signal-hover: 70 61 53;
+  --rc-signal-muted: 104 92 81;
 
-  --rc-blueprint: 0 88 220;
-  --rc-blueprint-hover: 0 72 186;
-  --rc-blueprint-muted: 232 240 254;
+  /* One accent across the platform: warm taupe. "blueprint" (links,
+     active, info) and "teal" (data accent) share it; soft mushroom ("sun",
+     below) is kept for fills, since it's too light to read as text. */
+  --rc-blueprint: 104 92 81;
+  --rc-blueprint-hover: 42 36 31;
+  --rc-blueprint-muted: 240 232 220;
 
-  /* Status hues deepened to the -800 step (red -700): the old values
-     (#16A34A/#D97706) fell to ~3:1 as badge text on their own 15% tint,
-     and the -700 step still measured 4.1:1 there. */
+  /* Status: green and red keep their meaning (success, critical); the
+     warning tone takes warm taupe from the palette instead of amber. All clear
+     4.5:1 as badge text on their own 15% tint. */
   --rc-ok: 22 101 52;
-  --rc-warn: 146 64 14;
-  --rc-danger: 185 28 28;
+  --rc-warn: 92 80 70;
+  --rc-danger: 160 22 22;
+  --rc-high: 150 50 30; /* "High" risk: rust, between the taupe warning and critical red */
 
-  /* Teal (data accent) and orange (AI-only) keep their meanings, darkened
-     the same way so they read as text on a white panel. */
-  --rc-teal: 15 118 110;
-  --rc-teal-hover: 13 148 136;
-  --rc-teal-muted: 230 246 244;
+  /* Teal keeps its role (data accent) with the shared taupe; "orange"
+     keeps its role (AI-generated content) as a deep taupe. */
+  --rc-teal: 104 92 81;
+  --rc-teal-hover: 42 36 31;
+  --rc-teal-muted: 240 232 220;
 
-  --rc-orange: 194 65 12;
-  --rc-orange-hover: 234 88 12;
-  --rc-orange-muted: 255 241 230;
+  --rc-orange: 70 61 53;
+  --rc-orange-hover: 42 36 31;
+  --rc-orange-muted: 240 232 220;
 
   --rc-grid-line: rgba(20, 20, 20, 0.04);
+
+  /* Dashboard theme: the soft-mushroom fill accent ("sun"), the espresso
+     card ("noir"), and the two ends of the ivory-to-linen page gradient. */
+  --rc-focus: 42 36 31; /* espresso ring: mushroom would be too faint on ivory */
+  /* Liquid-metal logo tones (LiquidLogo shader): rose gold -- a blush
+     highlight over a deep rose shadow (around classic rose gold #B76E79). */
+  --rc-metal-hi: 247 217 207;
+  --rc-metal-lo: 140 79 85; /* deep rose: dark enough for depth, still visible on the black panel */
+  --rc-sun: 184 170 155;
+  --rc-noir: 42 36 31;
+  --rc-shadow: 42 36 31; /* shadow tint: espresso, never flat black */
+  --rc-measure: 48ch; /* longest comfortable line of running text */
+
+  /* Display type sizes (tailwind text-3xl..7xl), all steps of the 1.25
+     scale. Phones take smaller steps; md and up restores the full ones. */
+  --rc-fs-3xl: 1.708984375rem; /* 27.3px */
+  --rc-fs-4xl: 2.13623046875rem; /* 34.2px */
+  --rc-fs-5xl: 2.13623046875rem; /* 34.2px */
+  --rc-fs-6xl: 2.6702880859375rem; /* 42.7px */
+  --rc-fs-7xl: 3.337860107421875rem; /* 53.4px */
+  --rc-noir-hover: 70 61 53;
+  --rc-on-noir: 232 221 207;
+  --rc-dash-from: 255 248 237;
+  --rc-dash-to: 232 221 207;
 
   --rc-radius-sm: 6px;
   --rc-radius-md: 8px;
   --rc-radius-lg: 12px;
+  --rc-radius-card: 24px; /* cards and panels */
+  --rc-stripe: 2px;     /* hatch line width */
+  --rc-stripe-gap: 8px; /* hatch repeat */
+  --rc-stripe-light: rgb(255 255 255 / 0.22); /* hatch lines on a dark field */
 }
 
-/* Deep charcoal/navy, not an inverted/pure-black palette -- a flat #000
-   background reads as a basic "dark mode filter" on a dense data-table-and-
-   drawings-heavy engineering tool; a slightly blue-tinted charcoal with a
-   clear 4-step elevation ladder (950 -> 900 -> 800 -> 700, darkest to
-   lightest) gives cards, sidebars and hover states the same "fill + hairline,
-   never a shadow" hierarchy the light theme already uses, per
-   index.css's/.panel's existing comment, just inverted in direction. */
+/* Palette (dark): espresso-ink canvas, warmer raised surfaces, ivory and
+   linen text, soft-mushroom accents. A clear 4-step elevation ladder
+   (950 -> 900 -> 800 -> 700, darkest to lightest) keeps cards, sidebars and
+   hover states the same "fill + hairline" hierarchy the light theme uses. */
 :root[data-theme='dark'] {
-  /* Deepened + re-saturated toward true navy (platform visual overhaul) --
-     the previous values were a gray-leaning charcoal; these push the same
-     4-step elevation ladder further into blue so the canvas itself carries
-     the reference deck's "deep navy" weight instead of reading as generic
-     dark mode. */
-  --rc-base-950: 8 13 24; /* page background (canvas) */
-  --rc-base-900: 13 21 37; /* chrome bars / secondary surface */
-  --rc-base-800: 18 29 48; /* panel surface (elevated cards) */
-  --rc-base-700: 26 40 64; /* raised surface / hover / selected */
-  --rc-base-600: 37 53 82; /* borders (hairline) */
-  --rc-base-500: 26 38 58; /* muted borders / dividers -- closer to panel fill than base-600, so it reads as softer, same relative relationship as the light theme's 500 vs 600 */
+  --rc-focus: 232 221 207; /* linen ring on espresso */
+  --rc-base-950: 42 36 31; /* page background (canvas) */
+  --rc-base-900: 50 43 37; /* chrome bars / secondary surface */
+  --rc-base-800: 58 50 43; /* panel surface (elevated cards) */
+  --rc-base-700: 64 55 48; /* raised surface / hover / selected */
+  --rc-base-600: 111 98 87; /* borders (hairline) */
+  --rc-base-500: 64 55 48; /* muted borders / dividers -- closer to panel fill than base-600, so it reads as softer, same relative relationship as the light theme's 500 vs 600 */
 
-  --rc-ink-100: 241 245 249; /* primary text */
-  --rc-ink-300: 167 179 194; /* secondary text */
-  --rc-ink-500: 143 155 171; /* muted / placeholder */
+  --rc-ink-100: 255 248 237; /* primary text */
+  --rc-ink-300: 232 221 207; /* secondary text */
+  --rc-ink-500: 184 170 155; /* muted / placeholder */
 
-  --rc-signal: 241 245 249; /* primary action fill -- mirrors ink-100, same as light mode's relationship, just inverted (near-white button on charcoal) */
-  --rc-signal-hover: 216 222 229;
-  --rc-signal-muted: 167 179 194;
+  --rc-signal: 232 221 207; /* primary action fill -- mirrors ink-100, same as light mode's relationship, just inverted (linen button on espresso) */
+  --rc-signal-hover: 255 248 237;
+  --rc-signal-muted: 184 170 155;
 
-  /* Brand accent preserved -- same hue, lifted slightly so it stays vivid
-     (not muddy) against a dark surface instead of the deeper light-mode
-     shade, which would under-contrast here. */
-  --rc-blueprint: 96 165 250;
-  --rc-blueprint-hover: 147 197 253;
-  --rc-blueprint-muted: 21 35 61;
+  /* The accent becomes soft mushroom here so it reads as text on espresso. */
+  --rc-blueprint: 184 170 155;
+  --rc-blueprint-hover: 232 221 207;
+  --rc-blueprint-muted: 72 63 55;
 
-  /* Success/warning/danger lifted the same way as the accent -- the light
-     theme's deeper shades (#16A34A/#D97706/#DC2626) read as muddy/low-
-     contrast on a dark surface; these keep the same hue family at a
-     brightness that stays accessible on --rc-base-800/900 panels. */
-  --rc-ok: 34 197 94;
-  --rc-warn: 245 158 11;
-  --rc-danger: 248 113 113;
+  /* Success and danger lifted so they stay legible on espresso; warning
+     uses the palette's soft mushroom. */
+  --rc-ok: 74 222 128;
+  --rc-warn: 232 221 207;
+  --rc-danger: 254 180 180;
+  --rc-high: 244 170 140;
 
-  /* Same lift pattern as blueprint/ok/warn/danger above -- lighter, more
-     saturated shades so they stay vivid (not muddy) against the dark
-     charcoal surface. See the :root block's own comment for what each is
-     for and why they're kept separate from blueprint/warn. */
-  --rc-teal: 45 212 191;
-  --rc-teal-hover: 94 234 212;
-  --rc-teal-muted: 19 46 43;
+  /* Data accent and AI tone, lifted for the dark surface. */
+  --rc-teal: 184 170 155;
+  --rc-teal-hover: 232 221 207;
+  --rc-teal-muted: 72 63 55;
 
-  --rc-orange: 251 146 60;
-  --rc-orange-hover: 253 186 116;
-  --rc-orange-muted: 56 32 15;
+  --rc-orange: 232 221 207;
+  --rc-orange-hover: 255 248 237;
+  --rc-orange-muted: 72 63 55;
 
   --rc-grid-line: rgba(255, 255, 255, 0.05);
+
+  --rc-sun: 184 170 155;
+  --rc-noir: 30 26 22;
+  --rc-shadow: 18 15 12; /* shadow tint: a deep warm brown, never flat black */
+  --rc-noir-hover: 72 63 55;
+  --rc-on-noir: 232 221 207;
+  --rc-dash-from: 42 36 31;
+  --rc-dash-to: 72 63 55;
 }
 
 /* Covers the gap between first paint and index.html's inline bootstrap
@@ -147,31 +180,40 @@
    match, so it always wins over the OS preference below. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --rc-base-950: 8 13 24;
-    --rc-base-900: 13 21 37;
-    --rc-base-800: 18 29 48;
-    --rc-base-700: 26 40 64;
-    --rc-base-600: 37 53 82;
-    --rc-base-500: 26 38 58;
-    --rc-ink-100: 241 245 249;
-    --rc-ink-300: 167 179 194;
-    --rc-ink-500: 143 155 171;
-    --rc-signal: 241 245 249;
-    --rc-signal-hover: 216 222 229;
-    --rc-signal-muted: 167 179 194;
-    --rc-blueprint: 96 165 250;
-    --rc-blueprint-hover: 147 197 253;
-    --rc-blueprint-muted: 21 35 61;
-    --rc-ok: 34 197 94;
-    --rc-warn: 245 158 11;
-    --rc-danger: 248 113 113;
-    --rc-teal: 45 212 191;
-    --rc-teal-hover: 94 234 212;
-    --rc-teal-muted: 19 46 43;
-    --rc-orange: 251 146 60;
-    --rc-orange-hover: 253 186 116;
-    --rc-orange-muted: 56 32 15;
+    --rc-focus: 232 221 207;
+    --rc-base-950: 42 36 31;
+    --rc-base-900: 50 43 37;
+    --rc-base-800: 58 50 43;
+    --rc-base-700: 64 55 48;
+    --rc-base-600: 111 98 87;
+    --rc-base-500: 64 55 48;
+    --rc-ink-100: 255 248 237;
+    --rc-ink-300: 232 221 207;
+    --rc-ink-500: 184 170 155;
+    --rc-signal: 232 221 207;
+    --rc-signal-hover: 255 248 237;
+    --rc-signal-muted: 184 170 155;
+    --rc-blueprint: 184 170 155;
+    --rc-blueprint-hover: 232 221 207;
+    --rc-blueprint-muted: 72 63 55;
+    --rc-ok: 74 222 128;
+    --rc-warn: 232 221 207;
+    --rc-danger: 254 180 180;
+    --rc-high: 244 170 140;
+    --rc-teal: 184 170 155;
+    --rc-teal-hover: 232 221 207;
+    --rc-teal-muted: 72 63 55;
+    --rc-orange: 232 221 207;
+    --rc-orange-hover: 255 248 237;
+    --rc-orange-muted: 72 63 55;
     --rc-grid-line: rgba(255, 255, 255, 0.05);
+    --rc-sun: 184 170 155;
+    --rc-noir: 30 26 22;
+    --rc-shadow: 18 15 12;
+    --rc-noir-hover: 72 63 55;
+    --rc-on-noir: 232 221 207;
+    --rc-dash-from: 42 36 31;
+    --rc-dash-to: 72 63 55;
   }
 }
 
@@ -197,12 +239,43 @@
   }
 }
 
+@media (min-width: 768px) {
+  :root {
+    --rc-fs-3xl: 2.13623046875rem; /* 34.2px */
+    --rc-fs-4xl: 2.6702880859375rem; /* 42.7px */
+    --rc-fs-5xl: 3.337860107421875rem; /* 53.4px */
+    --rc-fs-6xl: 4.172325134277344rem; /* 66.8px */
+    --rc-fs-7xl: 5.21540641784668rem; /* 83.4px */
+  }
+}
+
 @layer base {
   * {
     @apply border-base-600;
   }
+  /* Every screen sits on the soft ivory-to-linen gradient of the dashboard
+     theme; fixed so long pages don't stretch it into a flat band. */
   body {
     @apply bg-base-950 text-ink-100 font-sans antialiased;
+    background-image: linear-gradient(120deg, rgb(var(--rc-dash-from)) 0%, rgb(var(--rc-dash-from)) 18%, rgb(var(--rc-dash-to)) 85%);
+    background-attachment: fixed;
+  }
+  /* Reading measure: running text never exceeds 75 characters a line.
+     Outfit's "0" (what ch measures) is wider than its average glyph, so
+     --rc-measure (48ch) lands at about 75 real characters. */
+  p, dd, blockquote, figcaption {
+    max-width: var(--rc-measure);
+  }
+  .text-center > p, p.text-center {
+    margin-inline: auto;
+  }
+  /* Native file pickers get the theme's secondary pill instead of the
+     browser's grey button. */
+  input[type='file']::file-selector-button {
+    @apply mr-4 rounded-full border border-base-600 bg-base-800 px-4 h-9 text-sm font-medium text-ink-100 cursor-pointer transition-colors;
+  }
+  input[type='file']::file-selector-button:hover {
+    @apply bg-base-700;
   }
   ::selection {
     /* A light blue-tinted highlight reads correctly on the white canvas --
@@ -213,8 +286,16 @@
   :focus-visible {
     /* One focus ring for every interactive element: the interactive accent,
        offset so it never merges with a hairline border. */
-    outline: 2px solid rgb(var(--rc-blueprint));
+    outline: 2px solid rgb(var(--rc-focus));
     outline-offset: 2px;
+  }
+  /* Display heads break evenly instead of leaving a one-word last line. */
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+  /* Running text avoids a one-word last line. */
+  p {
+    text-wrap: pretty;
   }
 }
 
@@ -228,12 +309,21 @@
     position: relative;
   }
 
-  /* Buttons: 36px tall, 8px radius, one weight. Primary is the off-black
-     ink fill; secondary is a white surface with a hairline; ghost is text
+  /* Buttons: 36px tall pills, one weight. Primary is the off-black ink
+     fill; secondary is a white surface with a hairline; ghost is text
      until hovered. Every variant shares the same focus ring (base layer)
      and the same disabled + pressed treatment. */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded font-medium text-sm h-9 px-3.5 whitespace-nowrap transition-colors duration-150 disabled:opacity-45 disabled:cursor-not-allowed active:translate-y-px;
+    @apply inline-flex items-center justify-center gap-2 rounded-full font-medium text-sm h-9 px-4 whitespace-nowrap transition-colors duration-150;
+  }
+  /* Pressed and disabled, spelled out so every variant shares them. */
+  .btn:active:not(:disabled):not([aria-disabled='true']) {
+    transform: translateY(1px);
+  }
+  .btn:disabled,
+  .btn[aria-disabled='true'] {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
   .btn-primary {
     @apply btn bg-signal text-base-800 hover:bg-signal-hover;
@@ -249,21 +339,32 @@
   }
 
   .field-label {
-    @apply block text-xs font-medium text-ink-300 mb-1.5;
+    @apply block text-xs font-medium text-ink-300 mb-2;
   }
   .field-input {
-    @apply w-full bg-base-800 border border-base-600 rounded px-3 py-[7px] text-sm text-ink-100 placeholder:text-ink-500 hover:border-ink-500/50 focus:border-blueprint focus:ring-2 focus:ring-blueprint/20 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed aria-[invalid=true]:border-danger;
+    @apply w-full bg-base-800 border border-base-600 rounded-lg px-4 py-2 text-sm text-ink-100 placeholder:text-ink-500 hover:border-ink-500/50 focus:border-blueprint focus:ring-2 focus:ring-blueprint/20 focus:outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed aria-[invalid=true]:border-danger;
   }
   .field-error {
-    @apply text-xs text-danger mt-1;
+    @apply text-xs text-danger mt-2;
   }
 
-  /* A card is a white surface + hairline on the off-white canvas. One
-     faint resting shadow gives panels a floor; overlays (Modal) get the
-     deeper one, so elevation reads in three steps: canvas, panel, overlay. */
+  /* A card is a soft, slightly translucent surface with a large radius on
+     the gradient canvas, no shadow -- the dashboard theme's card. Overlays
+     (Modal) stay opaque so they read above the page. */
   .panel {
-    @apply bg-base-800 border border-base-600 rounded-lg;
-    box-shadow: 0 1px 2px rgb(var(--rc-ink-100) / 0.04);
+    @apply rounded-card border border-base-800/60;
+    background-color: rgb(var(--rc-base-800) / 0.78);
+  }
+  /* An open MobileFold already draws the card and names the section, so a
+     panel passed in as its body sheds its own frame and leading label. */
+  .mobile-fold-body > .panel {
+    border: 0;
+    border-radius: 0;
+    background: none;
+    padding: 0;
+  }
+  .mobile-fold-body > .panel > .field-label:first-child {
+    display: none;
   }
 
   /* Opt-in hover for panels that are also a click target (a card linking
@@ -274,13 +375,50 @@
   }
   .panel-interactive:hover {
     @apply border-ink-500/45;
-    box-shadow: 0 2px 8px rgb(var(--rc-ink-100) / 0.06);
+    background-color: rgb(var(--rc-base-800));
+  }
+  .panel-interactive:active {
+    background-color: rgb(var(--rc-base-700));
   }
 
-  /* Status/tag chips: sentence case, sans, 4px radius. The old mono +
+  /* Status/tag chips: sentence case, sans, pill-shaped. The old mono +
      uppercase + wide tracking pill shouted on every row of every list. */
   .badge {
-    @apply inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded-sm text-[11px] leading-4 font-medium whitespace-nowrap;
+    @apply inline-flex items-center gap-2 px-2 py-0 rounded-full text-xs leading-4 font-medium whitespace-nowrap;
+  }
+
+
+  /* Dashboard pieces: the off-black card and the hatch pattern. */
+  .dash-card-noir {
+    @apply rounded-card bg-noir text-on-noir;
+    /* The page's espresso ring would vanish on this espresso card (1:1), so
+       controls inside it ring in the linen on-noir tone instead. */
+    --rc-focus: var(--rc-on-noir);
+  }
+  /* Diagonal hatch for the "in progress" segment of a pill bar. */
+  .dash-stripes {
+    background-image: repeating-linear-gradient(-45deg, rgb(var(--rc-ink-100) / 0.14) 0 var(--rc-stripe), transparent var(--rc-stripe) var(--rc-stripe-gap));
+  }
+
+  /* Auth screens (AuthLayout): soft pill inputs with indented labels and a
+     mushroom submit button, after the dashboard theme's sign-up reference. */
+  .auth-form .field-label {
+    @apply pl-6 font-normal text-ink-500;
+  }
+  /* The field's edge is drawn in the muted ink so it holds 3:1 against the
+     canvas it sits on; it darkens on hover and takes the accent on focus. */
+  .auth-form .field-input {
+    @apply rounded-full h-12 px-6 border-ink-500/80 bg-base-800/85 hover:border-ink-300;
+  }
+  .auth-form .btn-ghost {
+    @apply h-11;
+  }
+  .auth-form .btn-primary {
+    @apply h-12 bg-sun text-noir text-base font-normal hover:bg-sun hover:brightness-95;
+  }
+  /* The same hatch as .dash-stripes, in light lines for a dark field. */
+  .dash-stripes-light {
+    background-image: repeating-linear-gradient(-45deg, var(--rc-stripe-light) 0 var(--rc-stripe), transparent var(--rc-stripe) var(--rc-stripe-gap));
   }
 
   /* Toast.tsx's entrance -- a 150ms slide+fade, not a decorative flourish:
@@ -352,16 +490,16 @@
     @apply mb-2 last:mb-0;
   }
   .rte-content h2 {
-    @apply text-base font-semibold mt-3 mb-1.5 first:mt-0;
+    @apply text-base font-semibold mt-4 mb-2 first:mt-0;
   }
   .rte-content h3 {
-    @apply text-sm font-semibold mt-2.5 mb-1 first:mt-0;
+    @apply text-sm font-semibold mt-2 mb-2 first:mt-0;
   }
   .rte-content ul {
-    @apply list-disc pl-5 mb-2 space-y-0.5;
+    @apply list-disc pl-6 mb-2 space-y-0;
   }
   .rte-content ol {
-    @apply list-decimal pl-5 mb-2 space-y-0.5;
+    @apply list-decimal pl-6 mb-2 space-y-0;
   }
   .rte-content strong {
     @apply font-semibold;

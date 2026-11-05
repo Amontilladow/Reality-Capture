@@ -10,19 +10,14 @@ import { getRiskGraph, getGraphNodeDetail, type RiskGraphNode, type RiskLevel } 
 import { useThemeColors, type ThemeColors } from '../lib/useThemeColors';
 import { Listbox } from './ui/Listbox';
 
-// HIGH has no dedicated semantic token (see RiskIntelligenceSection.tsx's
-// identical reasoning) -- a fixed mid-brightness orange that already reads
-// clearly on both a light and a dark canvas.
-const HIGH_HEX = '#FB923C';
-
 function riskLevelColors(colors: ThemeColors): Record<RiskLevel, string> {
-  return { LOW: colors.ok, MODERATE: colors.warn, HIGH: HIGH_HEX, CRITICAL: colors.danger };
+  return { LOW: colors.ok, MODERATE: colors.warn, HIGH: colors.high, CRITICAL: colors.danger };
 }
 
 // Neutral per-node-type colors for nodes with no associated risk (structural
-// context nodes -- building/level/location/user -- and risk-worthy nodes
-// that currently have no active signals). Fixed literals, not theme tokens
-// -- this is a categorical legend (one color per entity type), and all 16
+// context nodes (building/level/location/user) and risk-worthy nodes
+// that currently have no active signals). Fixed literals, not theme tokens;
+// this is a categorical legend (one color per entity type), and all 16
 // entries need to read as one consistent palette in both themes rather
 // than some shifting shade with the accent color while others don't.
 // Already mid-brightness "400"-weight tones, so each already has
@@ -84,7 +79,7 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
   const nodes = useMemo(() => {
     const all = graphQuery.data?.nodes ?? [];
     if (!riskLevelFilter) return all;
-    // Risk-level filter only removes risk-bearing nodes that don't match --
+    // Risk-level filter only removes risk-bearing nodes that don't match;
     // structural context nodes (building/level/location/...) with no risk
     // of their own are always kept, so the graph doesn't lose its shape.
     return all.filter((n) => !n.risk || n.risk.level === riskLevelFilter);
@@ -156,7 +151,7 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
       .attr('r', nodeRadius)
       .attr('fill', makeNodeColor(themeColors))
       // Matches the container's own .panel fill (bg-base-800) rather than a
-      // fixed dark hex -- a "cutout" ring that separates overlapping nodes
+      // fixed dark hex; a "cutout" ring that separates overlapping nodes
       // cleanly in both themes instead of only the dark one.
       .attr('stroke', themeColors['base-800'])
       .attr('stroke-width', 1.5);
@@ -198,7 +193,7 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
       })
       .on('end', (event: D3DragEvent<SVGGElement, SimNode, SimNode>) => {
         if (!event.active) simulation.alphaTarget(0);
-        // Leave fx/fy set -- pins the node where the user dropped it, a
+        // Leave fx/fy set: pins the node where the user dropped it, a
         // deliberate choice so an arranged layout stays put until dragged again.
       });
     nodeGroup.call(dragBehavior);
@@ -206,29 +201,29 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
     return () => { simulation.stop(); };
     // themeColors included so the whole force-directed graph re-renders
     // (node fills, edge strokes, label color, stroke-matches-panel ring)
-    // when the theme changes -- D3 draws directly into the SVG DOM, so
+    // when the theme changes; D3 draws directly into the SVG DOM, so
     // nothing here is reachable by a CSS variable flip the way a normal
     // React-rendered/Tailwind-classed element is.
   }, [nodes, edges, themeColors]);
 
   return (
     <Modal open onClose={onClose} title="Project Risk Graph" wide>
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           {focusNodeId && (
-            <button onClick={() => setFocusNodeId(undefined)} className="btn-secondary !px-2.5 !py-1 text-xs">
-              ← Show full graph
+            <button onClick={() => setFocusNodeId(undefined)} className="btn-secondary !px-2 !py-2 text-xs">
+              Show full graph
             </button>
           )}
-          <Listbox value={nodeTypeFilter} onChange={(e) => setNodeTypeFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
+          <Listbox aria-label="Node type" value={nodeTypeFilter} onChange={(e) => setNodeTypeFilter(e.target.value)} className="field-input w-auto text-xs !py-2">
             <option value="">All node types</option>
             {nodeTypes.map((t) => <option key={t} value={t}>{NODE_TYPE_LABELS[t] ?? t}</option>)}
           </Listbox>
-          <Listbox value={disciplineFilter} onChange={(e) => setDisciplineFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
+          <Listbox aria-label="Discipline" value={disciplineFilter} onChange={(e) => setDisciplineFilter(e.target.value)} className="field-input w-auto text-xs !py-2">
             <option value="">All disciplines</option>
             {disciplines.map((d) => <option key={d} value={d}>{d}</option>)}
           </Listbox>
-          <Listbox value={riskLevelFilter} onChange={(e) => setRiskLevelFilter(e.target.value)} className="field-input w-auto text-xs !py-1">
+          <Listbox aria-label="Risk level" value={riskLevelFilter} onChange={(e) => setRiskLevelFilter(e.target.value)} className="field-input w-auto text-xs !py-2">
             <option value="">All risk levels</option>
             {(['CRITICAL', 'HIGH', 'MODERATE', 'LOW'] as RiskLevel[]).map((l) => <option key={l} value={l}>{l}</option>)}
           </Listbox>
@@ -236,12 +231,12 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
         </div>
 
         <div className="flex items-center gap-4 text-xs text-ink-500 flex-wrap">
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.danger }} /> Critical</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: HIGH_HEX }} /> High</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.warn }} /> Moderate</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.ok }} /> Low</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-4 border-t border-ink-500" /> Explicit relationship</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-4 border-t border-dashed border-blueprint" /> Inferred relationship</span>
+          <span className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.danger }} /> Critical</span>
+          <span className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.high }} /> High</span>
+          <span className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.warn }} /> Moderate</span>
+          <span className="flex items-center gap-2"><span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: themeColors.ok }} /> Low</span>
+          <span className="flex items-center gap-2"><span className="inline-block w-4 border-t border-ink-500" /> Explicit relationship</span>
+          <span className="flex items-center gap-2"><span className="inline-block w-4 border-t border-dashed border-blueprint" /> Inferred relationship</span>
         </div>
 
         {graphQuery.isLoading && <p className="text-sm text-ink-500">Loading graph…</p>}
@@ -251,7 +246,7 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
         )}
 
         <div ref={containerRef} className="panel tick-frame overflow-hidden" style={{ height: '60vh' }}>
-          <svg ref={svgRef} className="w-full h-full" />
+          <svg role="img" aria-label="Risk relationship graph" ref={svgRef} className="w-full h-full" />
         </div>
 
         {selectedNodeId && (
@@ -285,8 +280,8 @@ function GraphNodeDetailPanel({ projectId, nodeId, onClose, onFocus }: { project
           </div>
 
           {detail.risk && (
-            <div className="panel p-3">
-              <div className="text-xs text-ink-500 mb-1 font-medium">Associated Risk</div>
+            <div className="panel p-4">
+              <div className="text-xs text-ink-500 mb-2 font-medium">Associated Risk</div>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-semibold tabular-nums" style={{ color: RISK_LEVEL_COLORS[detail.risk.level] }}>{detail.risk.score}</span>
                 <span className="text-sm text-ink-300">{detail.risk.title}</span>
@@ -297,7 +292,7 @@ function GraphNodeDetailPanel({ projectId, nodeId, onClose, onFocus }: { project
           {detail.related.length > 0 && (
             <div>
               <div className="text-xs text-ink-500 mb-2 font-medium">Connected ({detail.related.length})</div>
-              <ul className="space-y-1 max-h-64 overflow-y-auto">
+              <ul className="space-y-2 max-h-64 overflow-y-auto">
                 {detail.related.map((r, i) => (
                   <li key={i} className="text-sm flex items-center justify-between">
                     <span className="text-ink-100">{r.node.label} <span className="text-ink-500 text-xs">({NODE_TYPE_LABELS[r.node.nodeType] ?? r.node.nodeType})</span></span>
@@ -308,7 +303,7 @@ function GraphNodeDetailPanel({ projectId, nodeId, onClose, onFocus }: { project
             </div>
           )}
 
-          <button onClick={() => onFocus(nodeId)} className="btn-secondary !px-3 !py-1.5 text-xs">
+          <button onClick={() => onFocus(nodeId)} className="btn-secondary !px-4 !py-2 text-xs">
             Focus graph on this node
           </button>
         </div>

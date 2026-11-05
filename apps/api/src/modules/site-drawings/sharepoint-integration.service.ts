@@ -26,16 +26,16 @@ interface DocIntegrationRow {
 
 // Company-admin-facing config for the SharePoint adapter (gated by
 // @Roles('company_admin') on the controller, same mechanism as every
-// other company-wide admin action in this app -- see ApiKeysController's
+// other company-wide admin action in this app; see ApiKeysController's
 // own comment). Writes exactly the doc_integrations.config shape
 // SiteDrawingSharePointAdapter reads (sharepoint-integration-config.types.ts),
-// and nothing else -- this service owns the admin-facing side of that one
+// and nothing else; this service owns the admin-facing side of that one
 // row, the adapter owns the read (and its own deltaLink writes) side.
 //
-// There is no per-company secret to store for this provider -- see
-// SharePointGraphClient's own header comment -- so, unlike
+// There is no per-company secret to store for this provider; see
+// SharePointGraphClient's own header comment; so, unlike
 // AiConnectionsService/EmailTokenStore, there is no CredentialEncryptionService
-// dependency here: the only thing genuinely confidential about this
+// dependency here: the only thing confidential about this
 // config is the tenant ID itself, and that's an identifier a company's own
 // admin already knows, not a secret this app is trusted to keep.
 @Injectable()
@@ -62,16 +62,16 @@ export class SharePointIntegrationService {
     };
   }
 
-  // Validates the tenant ID against Microsoft BEFORE saving it -- same
+  // Validates the tenant ID against Microsoft BEFORE saving it; same
   // "never save a connection that was never tested" rule
   // AiConnectionsService.connect() follows for a BYO AI provider. A
   // successful token request only confirms the tenant exists and
   // recognizes this app's registration (see SharePointGraphClient.
   // verifyTenant's own comment on what it does NOT confirm); reconnecting
   // with a new tenantId preserves any project site mappings already saved
-  // under the old one would be wrong across a genuine tenant change, so a
+  // under the old one would be wrong across a real tenant change, so a
   // caller switching tenants should disconnect and reconnect, re-mapping
-  // projects fresh -- this method does not clear projectSites itself
+  // projects fresh; this method does not clear projectSites itself
   // since the common case (re-saving the SAME tenant after a transient
   // failure) must not lose them.
   async connect(companyId: string, dto: ConnectSharePointDto): Promise<SharePointIntegrationStatus> {
@@ -94,7 +94,7 @@ export class SharePointIntegrationService {
     return this.getStatus(companyId);
   }
 
-  // Deactivates rather than deletes -- the tenant ID and every project's
+  // Deactivates rather than deletes: the tenant ID and every project's
   // site mapping stay saved (brief section 6's own "track last successful
   // vs. last attempted sync separately" spirit extends naturally to "don't
   // make an admin re-enter every project mapping after a brief
@@ -121,7 +121,7 @@ export class SharePointIntegrationService {
     const siteConfig = this.buildSiteConfig(dto);
     await this.db.withTenant(companyId, (sql) => {
       // sql.json()'s JSONValue type requires an index signature a plain
-      // interface can't structurally satisfy -- same boundary
+      // interface can't structurally satisfy; same boundary
       // TenancyService.updateSettings() already documents for the same
       // reason.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

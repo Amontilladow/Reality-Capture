@@ -68,7 +68,7 @@ export function TransmittalFormModal({
           <input id="subject" className="field-input" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Structural drawings for permit review" />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="recipientName">Recipient *</label>
             <input id="recipientName" className="field-input" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Jane Doe" />
@@ -81,7 +81,7 @@ export function TransmittalFormModal({
 
         <div>
           <label className="field-label" htmlFor="items">Items included *</label>
-          <textarea id="items" className="field-input min-h-[72px]" value={items} onChange={(e) => setItems(e.target.value)} placeholder={'One per line, e.g.\nA-101 Rev C — Floor Plan\nS-201 Rev A — Foundation Plan'} />
+          <textarea id="items" className="field-input min-h-[72px]" value={items} onChange={(e) => setItems(e.target.value)} placeholder={'One per line, e.g.\nA-101 Rev C, Floor Plan\nS-201 Rev A, Foundation Plan'} />
         </div>
 
         <div>
@@ -89,7 +89,7 @@ export function TransmittalFormModal({
           <textarea id="notes" className="field-input min-h-[56px]" value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="purpose">Purpose</label>
             <Listbox id="purpose" className="field-input" value={purpose} onChange={(e) => setPurpose(e.target.value as TransmittalPurpose)}>

@@ -6,7 +6,7 @@
 -- migration.
 --
 -- building_id, level_id, and location_id (the "room" reference) already
--- exist on the issues table (added in 001_initial_schema.sql) -- verified
+-- exist on the issues table (added in 001_initial_schema.sql): verified
 -- via `\d issues` against the local dev DB before writing this migration.
 -- They were simply never exposed on the create/update DTOs, which is an
 -- application-layer fix, not a schema change, and is handled in
@@ -14,7 +14,7 @@
 --
 -- The issue_activities.activity_type column is plain VARCHAR(50) with no
 -- backing DB enum or CHECK constraint (verified: no ALTER/CHECK on it in
--- any migration) -- the actual "enum" there is the class-validator
+-- any migration): the actual "enum" there is the class-validator
 -- @IsIn([...]) list in add-activity.dto.ts. There is nothing to migrate
 -- at the DB level for that; the 6 new activity-type values ('forward',
 -- 'reopened', 'auto_warning', 'manual_warning', 'status_force',

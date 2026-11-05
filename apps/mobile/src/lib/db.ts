@@ -3,7 +3,7 @@ import * as SQLite from 'expo-sqlite';
 export type QueueStatus = 'pending' | 'uploading' | 'uploaded' | 'failed';
 
 export interface QueuedCapture {
-  id: string; // client-generated UUID — also used as idempotency key server-side
+  id: string; // client-generated UUID: also used as idempotency key server-side
   projectId: string;
   locationId: string | null;
   captureType: 'photo_360' | 'photo_standard' | 'video';

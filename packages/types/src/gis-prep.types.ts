@@ -1,4 +1,4 @@
-// GIS Preparation (M4 ADM/DRM GIS drawing preparation) -- the platform side
+// GIS Preparation (M4 ADM/DRM GIS drawing preparation): the platform side
 // of apps/adm-gis-prep. Results are PRELIMINARY checks only: the official
 // ADM/DRM QC tool and review decide acceptance, so no status here ever
 // claims compliance or approval.

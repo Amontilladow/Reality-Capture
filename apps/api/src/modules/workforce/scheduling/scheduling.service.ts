@@ -9,7 +9,7 @@ import type { RequestAbsenceDto } from './dto/request-absence.dto';
 const DEFAULT_SCHEDULE_LOOKAHEAD_DAYS = 14;
 
 // Shifts are forward-looking ("what's coming up"), unlike activity/
-// productivity's trailing-7-days default -- defaults to today through two
+// productivity's trailing-7-days default; defaults to today through two
 // weeks out when no explicit range is given.
 function resolveScheduleRange(from?: string, to?: string): { from: string; to: string } {
   const rangeStart = from ? new Date(from) : new Date();
@@ -43,7 +43,7 @@ export class SchedulingService {
       SELECT * FROM workforce_shift_preferences WHERE user_id = ${userId} ORDER BY day_of_week`);
   }
 
-  // Company-wide, for whoever is building the schedule -- admin only (see
+  // Company-wide, for whoever is building the schedule; admin only (see
   // @Roles on the controller route), same "sees everyone, not gated by
   // reporting chain" precedent as ReportingLinesController/ApplicationsController.
   async getCompanyShiftPreferences(companyId: string) {
@@ -78,7 +78,7 @@ export class SchedulingService {
   }
 
   // Same targetUserId/callerCompanyRole convention as
-  // ActivitiesService.getMySummary -- self by default, a visibility-checked
+  // ActivitiesService.getMySummary; self by default, a visibility-checked
   // other user via the reporting-chain/leadership rule otherwise.
   async getShifts(
     companyId: string,
@@ -132,7 +132,7 @@ export class SchedulingService {
       SELECT * FROM workforce_absences WHERE user_id = ${userId} ORDER BY start_date DESC`);
   }
 
-  // Company-wide "who's out when" -- admin only. Defaults to pending
+  // Company-wide "who's out when": admin only. Defaults to pending
   // requests (the actionable queue) unless includeDecided is set, so the
   // admin screen doesn't have to wade through a growing history of already-
   // decided requests just to find the ones awaiting a decision.

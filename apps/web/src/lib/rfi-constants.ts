@@ -4,7 +4,7 @@ import { TONE_CLASS, RFI_LEGACY_STATUS_TONE, RFI_WORKFLOW_STATUS_TONE, RFI_PRIOR
 export const RFI_STATUSES: RfiStatus[] = ['open', 'answered', 'closed', 'void'];
 export const RFI_PRIORITIES: RfiPriority[] = ['critical', 'high', 'medium', 'low'];
 
-// Legacy-only label/badge maps -- kept exactly as they were (RfisPage's status
+// Legacy-only label/badge maps: kept exactly as they were (RfisPage's status
 // filter dropdown and any other legacy-only consumer still key off these).
 export const RFI_STATUS_LABELS: Record<RfiStatus, string> = {
   open: 'Open',
@@ -17,7 +17,7 @@ export const RFI_STATUS_BADGE_CLASS: Record<RfiStatus, string> = Object.fromEntr
   Object.entries(RFI_LEGACY_STATUS_TONE).map(([status, tone]) => [status, TONE_CLASS[tone]]),
 ) as Record<RfiStatus, string>;
 
-// Full workflow vocabulary (Phase 3, additive) -- superset of the legacy maps
+// Full workflow vocabulary (Phase 3, additive): superset of the legacy maps
 // above, used by RfiDetailPage, which renders both legacy RFIs (status
 // 'open'/'answered') and RFIs that have moved through the new state machine
 // ('draft'/'submitted'/'under_review'/'awaiting_clarification'/'responded'/
@@ -51,12 +51,12 @@ export const RFI_PRIORITY_BADGE_CLASS: Record<RfiPriority, string> = Object.from
   Object.entries(RFI_PRIORITY_TONE).map(([priority, tone]) => [priority, TONE_CLASS[tone]]),
 ) as Record<RfiPriority, string>;
 
-// Warning-colored badge for the Drawing impact column/field -- same 'warn'
+// Warning-colored badge for the Drawing impact column/field; same 'warn'
 // token RfisPage's own Cost/Time impact badges already use, so all three
 // impact fields read as one consistent visual family.
 export const DRAWING_IMPACT_BADGE_CLASS = 'badge bg-warn/15 text-warn';
 
-// Widened to RfiWorkflowStatus -- Rfi.status carries the full workflow
+// Widened to RfiWorkflowStatus: Rfi.status carries the full workflow
 // vocabulary now (see rfi.types.ts), and every terminal/answered-equivalent
 // value (legacy or new) should stop counting as overdue the same way.
 export function isRfiOverdue(dueDate: string | undefined, status: RfiWorkflowStatus): boolean {

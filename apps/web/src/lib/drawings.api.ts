@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { apiGet, apiPost, apiDelete } from './api';
 
-// A pin is a place someone marked on a drawing — it can exist before any
+// A pin is a place someone marked on a drawing; it can exist before any
 // photo does. Distinct from the legacy per-photo FloorPlanPin below.
 export interface Pin {
   locationId: string;
@@ -22,7 +22,7 @@ export interface Pin {
   elementGuid?: string;
   elementModelId?: string;
   linkedRecord: { type: 'issue' | 'snag'; id: string } | null;
-  // The linked issue's (or, once converted, snag's) assignee -- see
+  // The linked issue's (or, once converted, snag's) assignee; see
   // drawings.service.ts's getPins()/createPin() for how this is resolved.
   assignedTo?: string;
   // 'issue' (default) is a Floor-Plans/Issues-Snags pin; 'camera_location'
@@ -38,8 +38,8 @@ export function createPin(
   payload: {
     posXNorm: number; posYNorm: number; name?: string; pageNumber?: number; assignedTo?: string;
     // 'issue' (default) auto-creates a linked Issue, same as before this
-    // field existed. 'camera_location' is a pure BuildLens/Captures marker
-    // -- no Issue, nothing in the Issues list/KPIs.
+    // field existed. 'camera_location' is a pure BuildLens/Captures marker;
+    // no Issue, nothing in the Issues list/KPIs.
     purpose?: 'issue' | 'camera_location';
   },
 ) {
@@ -65,7 +65,7 @@ export interface Drawing {
   id: string;
   projectId: string;
   levelId?: string;
-  // Joined in by findAll() (drawings.service.ts) -- not present on a
+  // Joined in by findAll() (drawings.service.ts): not present on a
   // single getDrawing() response, only on the list.
   levelName?: string;
   title: string;

@@ -1,11 +1,11 @@
 import { apiGet } from './api';
 
-// KPI dashboard payload for the project Reports page — built server-side by
+// KPI dashboard payload for the project Reports page; built server-side by
 // GET /projects/:projectId/reports/kpis (backend ticket, built in parallel).
 // Field names below mirror getIssueSummary()'s IssueSummary (issues.api.ts)
 // and getSnagSummary()'s SnagSummary (snagging.api.ts) exactly, since the
 // stat tiles here are meant to match what the Issues/Snagging tabs already
-// show — no separate shape invented for this page.
+// show; no separate shape invented for this page.
 export interface ReportIssueSummary {
   total: number;
   open: number;
@@ -50,7 +50,7 @@ export interface ReportOpenSnag {
 }
 
 // RFIs join the Reports module for the first time here (there was no
-// existing RFI reports section to extend) -- see RfisService.getSummary()/
+// existing RFI reports section to extend); see RfisService.getSummary()/
 // getKpiBreakdown()/getDrawingUpdatesNotApplied() (apps/api). summary reuses
 // RfisPage's own RfiSummary shape exactly (total/open/answered/overdue).
 export interface ReportRfiSummary {
@@ -69,7 +69,7 @@ export interface ReportRfiDrawingUpdate {
   drawingUpdateOwnerName?: string;
 }
 
-// QAQC NCR/SOR/WIR/MIR -- mirrors QaqcService.getSummary()'s exact shape
+// QAQC NCR/SOR/WIR/MIR: mirrors QaqcService.getSummary()'s exact shape
 // (apps/api). Per-type counts are split rather than merged, per the
 // brief's explicit ask.
 export interface ReportQaqcSummary {
@@ -138,10 +138,10 @@ export function getReportKpis(projectId: string) {
 }
 
 // ── Company-wide executive summary (Phase 4 cross-project view) ───────────
-// Lean per-project rollup from GET /reports/company-summary -- backed by
+// Lean per-project rollup from GET /reports/company-summary; backed by
 // ReportsService.getCompanySummary(), itself a loop over the exact same
 // per-project getSummary()/getExecutiveSummary() methods the single-project
-// pages call. Never the full ReportKpis shape (no byStatus/openList here --
+// pages call. Never the full ReportKpis shape (no byStatus/openList here;
 // unused at company scale and expensive to carry for every project).
 export interface CompanyProjectSummary {
   projectId: string;
@@ -164,7 +164,7 @@ export function getCompanySummary() {
 }
 
 // AI-generated cross-domain report briefing (Conclusion/Drivers/Impact/
-// Action/Evidence) -- grounded in the exact same KPIs/risk summary this
+// Action/Evidence): grounded in the exact same KPIs/risk summary this
 // page already fetches, never a raw model call. Mirrors risk.api.ts's own
 // AI briefing fallback shape (RiskService.generateAiBriefing()): either a
 // usable structured result, or an honest "unavailable" + reason.

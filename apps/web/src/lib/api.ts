@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/auth.store';
 
 // In dev, requests go through the Vite dev proxy at /api -> http://localhost:3000/api/v1.
 // In production (frontend and backend on separate hosts), VITE_API_BASE must point
-// at the deployed API's full URL — set at build time, baked into the bundle by Vite.
+// at the deployed API's full URL; set at build time, baked into the bundle by Vite.
 export const API_BASE = import.meta.env.VITE_API_BASE ?? '/api/v1';
 
 export const http = axios.create({
@@ -28,7 +28,7 @@ http.interceptors.request.use((config) => {
 // Single-flight refresh: if multiple requests 401 at once, only refresh once.
 let refreshPromise: Promise<string | null> | null = null;
 
-// No refreshToken to pass -- the API reads it from the httpOnly cookie
+// No refreshToken to pass: the API reads it from the httpOnly cookie
 // `withCredentials: true` above already sends along. Exported so
 // bootstrapSession() (called once on app start) can reuse the identical
 // single-flight logic to re-establish a session after a page reload, since
@@ -60,7 +60,7 @@ export async function refreshAccessToken(): Promise<string | null> {
 // Re-establishes a session on app load from the httpOnly refresh cookie,
 // since the access token itself is kept in memory only and doesn't survive
 // a page reload. Call once at startup; safe to call when there's no cookie
-// at all (a logged-out visitor) -- it just resolves with null and
+// at all (a logged-out visitor): it just resolves with null and
 // ProtectedRoute sends them to /login as before.
 export async function bootstrapSession(): Promise<void> {
   await refreshAccessToken();
@@ -130,7 +130,7 @@ function saveBlob(blob: Blob, filename: string): void {
 // Downloads a binary response (e.g. a generated PDF) and saves it via the
 // browser, the same way a normal <a href download> would. Goes through the
 // same authenticated `http` instance as every other call here, since these
-// endpoints require the same auth header everything else already gets --
+// endpoints require the same auth header everything else already gets;
 // unlike the S3 downloads elsewhere in this app (those are presigned URLs
 // with their own auth baked in and don't need this).
 export async function apiDownload(url: string, filename: string): Promise<void> {
@@ -138,7 +138,7 @@ export async function apiDownload(url: string, filename: string): Promise<void> 
   saveBlob(res.data as Blob, filename);
 }
 
-// Same as apiDownload(), but POSTs a body first -- for exports whose input
+// Same as apiDownload(), but POSTs a body first; for exports whose input
 // (e.g. a bulk selection of issue ids) doesn't belong in a query string.
 export async function apiDownloadPost(url: string, body: unknown, filename: string): Promise<void> {
   const res = await http.post(url, body, { responseType: 'blob' });

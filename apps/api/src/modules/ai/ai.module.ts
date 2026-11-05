@@ -11,7 +11,7 @@ import { AiClientModule } from '../ai-client/ai-client.module';
 import { AiController } from './ai.controller';
 import { AiService } from './ai.service';
 import { AiToolsService } from './ai-tools.service';
-import { AiUsageService } from './ai-usage.service';
+import { AiUsageModule } from './ai-usage.module';
 import { DomainGuardService } from './domain-guard.service';
 import { ProvidersModule } from './providers/providers.module';
 import { AiConnectionsModule } from '../ai-connections/ai-connections.module';
@@ -20,9 +20,9 @@ import { SubmittalsModule } from '../submittals/submittals.module';
 import { TransmittalsModule } from '../transmittals/transmittals.module';
 import { QaModule } from '../qa/qa.module';
 
-// The AI Gateway (spec section 2/28): everything the rebuild brief asks for
-// -- domain guard, project-scoped tools, usage tracking, rate limiting,
-// provider abstraction -- lives here, importing the EXISTING feature
+// The AI Gateway (spec section 2/28): everything the rebuild brief asks for;
+// (domain guard, project-scoped tools, usage tracking, rate limiting,
+// provider abstraction) lives here, importing the EXISTING feature
 // modules' services rather than re-implementing any of their query/
 // authorization logic. AuthorizationModule/DatabaseModule are both
 // @Global(), so they don't need to be listed here.
@@ -31,8 +31,9 @@ import { QaModule } from '../qa/qa.module';
     RfisModule, IssuesModule, SnaggingModule, RiskModule,
     ProgressReportsModule, DocumentsModule, ProjectsModule, DrawingsModule, AiClientModule,
     ProvidersModule, AiConnectionsModule, QaqcModule, SubmittalsModule, TransmittalsModule, QaModule,
+    AiUsageModule,
   ],
   controllers: [AiController],
-  providers: [AiService, AiToolsService, AiUsageService, DomainGuardService],
+  providers: [AiService, AiToolsService, DomainGuardService],
 })
 export class AiModule {}

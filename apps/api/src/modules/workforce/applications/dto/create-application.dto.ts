@@ -9,7 +9,7 @@ export class CreateApplicationDto {
   @IsString() @MinLength(1) @MaxLength(255)
   matchPattern: string;
 
-  // Free text by design -- brief §11 requires a configurable registry,
+  // Free text by design: brief §11 requires a configurable registry,
   // not a hardcoded category taxonomy.
   @IsOptional() @IsString() @MaxLength(100)
   category?: string;

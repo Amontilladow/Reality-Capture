@@ -46,7 +46,7 @@ export const registerSiteDrawing = (projectId: string, input: RegisterSiteDrawin
 
 // The 3-step upload flow every other upload in this app uses (get a
 // presigned URL, PUT the file straight to storage, then register the
-// metadata) -- see drawings.api.ts's uploadDrawing() for the pattern this
+// metadata); see drawings.api.ts's uploadDrawing() for the pattern this
 // mirrors.
 export async function uploadAndRegisterSiteDrawing(projectId: string, file: File, meta: Omit<RegisterSiteDrawingInput, 'storageKey'>): Promise<SiteDrawingWithCurrentRevision> {
   const { uploadUrl, storageKey } = await getSiteDrawingUploadUrl(projectId, file.name);
@@ -81,7 +81,7 @@ export interface SiteDrawingSyncOutcome {
   revisionsCreated: number;
 }
 // Triggers an immediate sync rather than waiting for the sync job's own
-// 15-minute schedule (SiteDrawingSyncService) -- 'sharepoint' is the
+// 15-minute schedule (SiteDrawingSyncService): 'sharepoint' is the
 // default since it's the only provider with a real adapter today.
 export const triggerSiteDrawingSync = (projectId: string, provider: 'sharepoint' | 'aconex' | 'procore' = 'sharepoint') =>
   apiPost<SiteDrawingSyncOutcome>(`${base(projectId)}/sync`, { provider });
@@ -105,7 +105,7 @@ export const addSiteDrawingRevision = (projectId: string, drawingId: string, inp
 export const setSiteDrawingWorkflowStatus = (projectId: string, drawingId: string, revisionId: string, workflowStatus: SiteDrawingWorkflowStatus, reason?: string) =>
   apiPatch<SiteDrawingRevision>(`${base(projectId)}/${drawingId}/revisions/${revisionId}/workflow-status`, { workflowStatus, reason });
 
-// A fresh short-lived (15 min) presigned URL -- never cached/reused past
+// A fresh short-lived (15 min) presigned URL; never cached/reused past
 // that window (brief section 9). Callers should fetch this right before
 // opening the viewer or starting an offline download, not store it.
 export const getSiteDrawingDownloadUrl = (projectId: string, revisionId: string) =>

@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
+import { useInsideMobileFold } from './MobileFold';
 
 // Primary section heading for dashboards/reports. Hierarchy comes from the
 // title's weight and size, not decoration: no accent bar, no chip. tone
-// still carries meaning on the eyebrow only -- 'orange' marks AI-generated
+// still carries meaning on the eyebrow only; 'orange' marks AI-generated
 // content (the one place that color appears), 'blueprint' a navigational
 // section, 'teal' (default) a plain data section, rendered in muted ink so
 // ordinary sections stay quiet.
@@ -19,11 +20,14 @@ export function SectionHeader({ eyebrow, title, tone = 'teal', actions, size = '
   actions?: ReactNode;
   size?: 'sm' | 'md';
 }) {
+  // Inside an open MobileFold the fold's button already shows the title.
+  const folded = useInsideMobileFold();
+  if (folded && !actions) return null;
   return (
-    <div className="flex items-end justify-between gap-3 flex-wrap">
-      <div className="min-w-0">
+    <div className="flex items-end justify-between gap-4 flex-wrap">
+      <div className={folded ? 'hidden' : 'min-w-0'}>
         {eyebrow && (
-          <div className={`flex items-center gap-1.5 text-xs font-medium mb-0.5 ${TONE_EYEBROW[tone]}`}>
+          <div className={`flex items-center gap-2 text-xs font-medium mb-0 ${TONE_EYEBROW[tone]}`}>
             {tone === 'orange' && <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-orange" />}
             {eyebrow}
           </div>

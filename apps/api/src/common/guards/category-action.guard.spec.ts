@@ -40,7 +40,7 @@ describe('CategoryActionGuard', () => {
   it('passes when the category check alone grants it', async () => {
     const { guard, projectAuth } = makeGuard({ module: 'rfis', action: 'create' }, true);
     await expect(guard.canActivate(makeContext({ user, params }))).resolves.toBe(true);
-    // Category already satisfied it -- never falls through to the legacy grant check.
+    // Category already satisfied it: never falls through to the legacy grant check.
     expect(projectAuth.hasProjectPermission).not.toHaveBeenCalled();
   });
 

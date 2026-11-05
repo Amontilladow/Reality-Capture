@@ -13,15 +13,15 @@ import type { SharePointIntegrationConfig, SharePointProjectSiteConfig } from '.
 // library schemas (brief section 4/5: "configurable, never one hardcoded
 // taxonomy for every project"). The config shape itself lives in
 // sharepoint-integration-config.types.ts, shared with
-// SharePointIntegrationService (the admin-facing service that writes it --
+// SharePointIntegrationService (the admin-facing service that writes it;
 // see sharepoint-integration.service.ts).
 //
 // Everything here is non-secret (a tenant ID, a site/drive GUID, column
-// names) -- it lives in doc_integrations.config as plain JSONB, same as
+// names): it lives in doc_integrations.config as plain JSONB, same as
 // every other provider's config. There is deliberately no secret stored
 // per company for THIS provider: the credential that talks to Graph is
 // this app's own single Entra app registration
-// (MICROSOFT_OAUTH_CLIENT_ID/_SECRET), reused across every customer --
+// (MICROSOFT_OAUTH_CLIENT_ID/_SECRET), reused across every customer;
 // see SharePointGraphClient's own header comment for why, and for the two
 // admin-side Entra steps a customer's tenant admin must complete before
 // any of this can reach their data.
@@ -56,7 +56,7 @@ const PDF_EXTENSION = /\.pdf$/i;
 
 // The first real external-source adapter (brief section 6 Phase 2). Built
 // and unit-tested against mocked Graph responses (see
-// sharepoint-adapter.spec.ts) -- it has NOT been exercised end-to-end
+// sharepoint-adapter.spec.ts): it has NOT been exercised end-to-end
 // against a real Microsoft 365 tenant, because this environment has
 // neither a customer tenant ID nor the two admin-side Entra grants
 // SharePointGraphClient's header comment describes. Per the brief's own
@@ -107,14 +107,14 @@ export class SiteDrawingSharePointAdapter implements DrawingSourceAdapter {
 
   // SharePoint's own version history on the ONE driveItem (brief section
   // 5: "Keep drawing and revision records logically separate" still
-  // holds here -- the item is the drawing, each version is a revision).
+  // holds here; the item is the drawing, each version is a revision).
   // revisionNumber is the version's own label ("1.0", "2.0", ...), which
   // SharePoint assigns itself and is real data, not an inference.
   async listRevisions(companyId: string, projectId: string, sourceFileId: string): Promise<DiscoveredDrawing[]> {
     const { tenantId, site } = await this.requireProjectSite(companyId, projectId);
     const item = await this.graph.get<DriveItem>(tenantId, `/drives/${site.driveId}/items/${sourceFileId}?$select=id,name,webUrl,lastModifiedDateTime,size,file&$expand=listItem($expand=fields)`);
     if (!item) return [];
-    // The shared (non-revisionNumber) fields only -- each version below
+    // The shared (non-revisionNumber) fields only; each version below
     // supplies its OWN revisionNumber from its own version id, so there's
     // no need for toDiscoveredDrawing()'s revisionNumber-resolution path
     // (and the extra "latest version" Graph call it can make) here.
@@ -128,7 +128,7 @@ export class SiteDrawingSharePointAdapter implements DrawingSourceAdapter {
       .map((v) => ({ ...base, revisionNumber: v.id, sourceRevisionId: v.id, sourceModifiedAt: v.lastModifiedDateTime }));
   }
 
-  // Delta query (brief section 6) -- an incremental, resumable poll for
+  // Delta query (brief section 6): an incremental, resumable poll for
   // "has anything in this drive changed" rather than re-listing the whole
   // library on every check. The resume token is persisted back to
   // doc_integrations immediately, before the caller does anything with the
@@ -156,7 +156,7 @@ export class SiteDrawingSharePointAdapter implements DrawingSourceAdapter {
       ? await this.graph.getVersionContentUrl(tenantId, site.driveId, sourceFileId, sourceRevisionId)
       : await this.graph.getCurrentDownloadUrl(tenantId, site.driveId, sourceFileId);
     if (!url) throw new BadRequestException('Could not resolve an authorized download URL from SharePoint for this file.');
-    // Approximate, not Microsoft-guaranteed -- see SharePointGraphClient's
+    // Approximate, not Microsoft-guaranteed; see SharePointGraphClient's
     // own comment on getCurrentDownloadUrl.
     return { url, expiresInSeconds: 3600 };
   }
@@ -186,7 +186,7 @@ export class SiteDrawingSharePointAdapter implements DrawingSourceAdapter {
     `);
   }
 
-  // Pagination up to MAX_PAGES -- a documented limit, not a silent drop:
+  // Pagination up to MAX_PAGES: a documented limit, not a silent drop:
   // a library deep enough to exceed it logs a warning rather than quietly
   // returning a partial register. A real production sync job would make
   // this resumable (persist the nextLink the same way checkForChanges()
@@ -219,7 +219,7 @@ export class SiteDrawingSharePointAdapter implements DrawingSourceAdapter {
     return { ...base, revisionNumber: configured ?? await this.latestVersionLabel(tenantId, site.driveId, item.id) };
   }
 
-  // Every field EXCEPT revisionNumber -- shared between the current-state
+  // Every field EXCEPT revisionNumber: shared between the current-state
   // mapping above and listRevisions()'s per-version mapping, neither of
   // which needs to repeat this logic or (for listRevisions) make any extra
   // Graph call to fill it in, since each version supplies its own.
@@ -237,7 +237,7 @@ export class SiteDrawingSharePointAdapter implements DrawingSourceAdapter {
       buildingOrZone: field(site.buildingOrZoneField),
       floorOrLevel: field(site.floorOrLevelField),
       // Never inferred from the filename, modified date, or anything else
-      // (brief section 5) -- left undefined unless a status column is
+      // (brief section 5): left undefined unless a status column is
       // actually configured, which maps to 'UNKNOWN' downstream
       // (fallbackMapSourceStatus) and surfaces the required warning.
       sourceStatusRaw: field(site.statusField),
@@ -245,7 +245,7 @@ export class SiteDrawingSharePointAdapter implements DrawingSourceAdapter {
       sourceModifiedAt: item.lastModifiedDateTime,
       fileSizeBytes: item.size,
       // Deliberately NOT populated from item.file.hashes (SharePoint's own
-      // quickXorHash/sha1Hash) -- SiteDrawingRevision.contentHash is
+      // quickXorHash/sha1Hash): SiteDrawingRevision.contentHash is
       // compared against the WEB CLIENT's own SHA-256 of the downloaded
       // bytes (site-drawings-offline.ts's computeContentHash) the first
       // time a user downloads it for offline use. Seeding it here with a
@@ -260,7 +260,7 @@ export class SiteDrawingSharePointAdapter implements DrawingSourceAdapter {
     return typeof value === 'string' && value.length > 0 ? value : undefined;
   }
 
-  // Real data (SharePoint's own version label), not a guess -- used as
+  // Real data (SharePoint's own version label), not a guess; used as
   // listDrawings()'s default revisionNumber when no revisionNumberField is
   // configured for the project. One extra Graph call per item; acceptable
   // here since listDrawings() is a periodic sync-job operation, not a

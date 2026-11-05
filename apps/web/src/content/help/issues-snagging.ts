@@ -4,7 +4,7 @@ import type { HelpArticle } from './types';
 // snagging.controller.ts, IssueFormModal.tsx, SnagItemFormModal.tsx, and
 // IssueDetail.tsx/SnagDetail.tsx directly. One correction worth flagging
 // for anyone extending this file: editing an existing issue requires the
-// "manage_issues" permission -- only *creating* a new one is open to
+// "manage_issues" permission; only *creating* a new one is open to
 // every project member. It is easy to misread the controller and assume
 // otherwise (this file's own audit did, on the first pass).
 export const issuesSnaggingArticles: HelpArticle[] = [

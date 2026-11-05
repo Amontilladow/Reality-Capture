@@ -11,13 +11,13 @@ function MovementRow({ risk, detail, detailClass, onSelect }: {
 }) {
   return (
     <li>
-      <button onClick={() => onSelect(risk.id)} className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-base-700 transition-colors">
+      <button onClick={() => onSelect(risk.id)} className="w-full flex items-center justify-between gap-4 px-4 py-2 text-left hover:bg-base-700 transition-colors">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono text-ink-500 shrink-0">{riskRef(risk)}</span>
             <span className="text-sm text-ink-100 truncate">{risk.title}</span>
           </div>
-          <div className="text-xs text-ink-500 mt-0.5 truncate">
+          <div className="text-xs text-ink-500 mt-0 truncate">
             {disciplineLabel(risk.discipline)}{risk.locationLabel ? ` · ${risk.locationLabel}` : ''}
           </div>
         </div>
@@ -33,10 +33,10 @@ function MovementGroup({ title, description, tone, count, rows }: {
   const toneClass = tone === 'danger' ? 'text-danger' : tone === 'ok' ? 'text-ok' : 'text-ink-500';
   return (
     <div className="panel tick-frame">
-      <div className="px-4 py-2.5 border-b border-base-600 flex items-center justify-between">
+      <div className="px-4 py-2 border-b border-base-600 flex items-center justify-between">
         <div>
           <div className={`text-sm font-semibold ${count > 0 ? 'text-ink-100' : 'text-ink-500'}`}>{title} <span className={`tabular-nums ${toneClass}`}>({count})</span></div>
-          <p className="text-xs text-ink-500 mt-0.5">{description}</p>
+          <p className="text-xs text-ink-500 mt-0">{description}</p>
         </div>
       </div>
       {count === 0 ? (
@@ -50,7 +50,7 @@ function MovementGroup({ title, description, tone, count, rows }: {
 
 // Risk Movement (brief Phase 3): emerged/worsened/improved/unresolved during
 // the selected window, each a real bucket from RiskService.getRiskMovement()
-// (risk_snapshots history + firstDetectedAt/resolvedAt/closedAt) -- nothing
+// (risk_snapshots history + firstDetectedAt/resolvedAt/closedAt): nothing
 // computed here, this only renders what the backend already classified.
 // Placed after the conclusion/KPI/attention panels and before the heatmap/
 // register, per the brief's own prescribed order: conclusion -> critical
@@ -95,19 +95,26 @@ export function RiskMovementSection({ movement, isLoading, days, onDaysChange, o
     ...movement.resolvedDuringPeriod.map((risk): ImprovedRow => ({ kind: 'resolved', risk })),
   ];
 
+  const emptyBuckets = [
+    movement.emerged.length === 0 && 'emerged',
+    movement.worsened.length === 0 && 'worsened',
+    allImproved.length === 0 && 'improved',
+    movement.unresolved.length === 0 && 'stayed unresolved',
+  ].filter((b): b is string => Boolean(b));
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <SectionHeader
-        title={`Risk Movement — last ${days} days`}
+        title={`Risk Movement, last ${days} days`}
         size="sm"
         actions={
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             {DAY_OPTIONS.map((d) => (
               <button
                 key={d}
                 onClick={() => onDaysChange(d)}
                 aria-pressed={days === d}
-                className={`btn-secondary !px-2.5 !py-1 text-xs ${days === d ? '!bg-blueprint-muted !text-blueprint !border-blueprint/40' : ''}`}
+                className={`btn-secondary !px-2 !py-2 text-xs ${days === d ? '!bg-blueprint-muted !text-blueprint !border-blueprint/40' : ''}`}
               >
                 {d}d
               </button>
@@ -122,51 +129,64 @@ export function RiskMovementSection({ movement, isLoading, days, onDaysChange, o
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <MovementGroup
-            title="Emerged" tone="danger" count={movement.emerged.length}
-            description="New risks detected during this period."
-            rows={<>
-              {visible('emerged', movement.emerged).map((r) => (
-                <MovementRow key={r.id} risk={r} detail={`${r.score}/100`} onSelect={onSelectRisk} />
-              ))}
-              {showAllLink('emerged', movement.emerged)}
-            </>}
-          />
+          {emptyBuckets.length > 0 && (
+            <p className="lg:col-span-2 text-xs text-ink-500 order-last">
+              No risks {emptyBuckets.join(', ').replace(/, ([^,]*)$/, ' or $1')} in this period.
+            </p>
+          )}
+          {movement.emerged.length > 0 && (
+            <MovementGroup
+              title="Emerged" tone="danger" count={movement.emerged.length}
+              description="New risks detected during this period."
+              rows={<>
+                {visible('emerged', movement.emerged).map((r) => (
+                  <MovementRow key={r.id} risk={r} detail={`${r.score}/100`} onSelect={onSelectRisk} />
+                ))}
+                {showAllLink('emerged', movement.emerged)}
+              </>}
+            />
+          )}
 
-          <MovementGroup
-            title="Worsened" tone="danger" count={movement.worsened.length}
-            description={`Score rose materially since ${days} days ago.`}
-            rows={<>
-              {visible('worsened', movement.worsened).map(({ risk, deltaScore }) => (
-                <MovementRow key={risk.id} risk={risk} detail={`+${deltaScore} → ${risk.score}`} detailClass="text-danger" onSelect={onSelectRisk} />
-              ))}
-              {showAllLink('worsened', movement.worsened)}
-            </>}
-          />
+          {movement.worsened.length > 0 && (
+            <MovementGroup
+              title="Worsened" tone="danger" count={movement.worsened.length}
+              description={`Score rose materially since ${days} days ago.`}
+              rows={<>
+                {visible('worsened', movement.worsened).map(({ risk, deltaScore }) => (
+                  <MovementRow key={risk.id} risk={risk} detail={`+${deltaScore} → ${risk.score}`} detailClass="text-danger" onSelect={onSelectRisk} />
+                ))}
+                {showAllLink('worsened', movement.worsened)}
+              </>}
+            />
+          )}
 
-          <MovementGroup
-            title="Improved" tone="ok" count={allImproved.length}
-            description="Score fell materially, or the risk was resolved/closed, during this period."
-            rows={<>
-              {visible('improved', allImproved).map((row) => row.kind === 'scored' ? (
-                <MovementRow key={row.item.risk.id} risk={row.item.risk} detail={`${row.item.deltaScore} → ${row.item.risk.score}`} detailClass="text-ok" onSelect={onSelectRisk} />
-              ) : (
-                <MovementRow key={row.risk.id} risk={row.risk} detail="Resolved" detailClass="text-ok" onSelect={onSelectRisk} />
-              ))}
-              {showAllLink('improved', allImproved)}
-            </>}
-          />
+          {allImproved.length > 0 && (
+            <MovementGroup
+              title="Improved" tone="ok" count={allImproved.length}
+              description="Score fell materially, or the risk was resolved/closed, during this period."
+              rows={<>
+                {visible('improved', allImproved).map((row) => row.kind === 'scored' ? (
+                  <MovementRow key={row.item.risk.id} risk={row.item.risk} detail={`${row.item.deltaScore} → ${row.item.risk.score}`} detailClass="text-ok" onSelect={onSelectRisk} />
+                ) : (
+                  <MovementRow key={row.risk.id} risk={row.risk} detail="Resolved" detailClass="text-ok" onSelect={onSelectRisk} />
+                ))}
+                {showAllLink('improved', allImproved)}
+              </>}
+            />
+          )}
 
-          <MovementGroup
-            title="Unresolved" tone="neutral" count={movement.unresolved.length}
-            description="Still open with no material change this period."
-            rows={<>
-              {visible('unresolved', movement.unresolved).map((r) => (
-                <MovementRow key={r.id} risk={r} detail={`${r.score}/100`} onSelect={onSelectRisk} />
-              ))}
-              {showAllLink('unresolved', movement.unresolved)}
-            </>}
-          />
+          {movement.unresolved.length > 0 && (
+            <MovementGroup
+              title="Unresolved" tone="neutral" count={movement.unresolved.length}
+              description="Still open with no material change this period."
+              rows={<>
+                {visible('unresolved', movement.unresolved).map((r) => (
+                  <MovementRow key={r.id} risk={r} detail={`${r.score}/100`} onSelect={onSelectRisk} />
+                ))}
+                {showAllLink('unresolved', movement.unresolved)}
+              </>}
+            />
+          )}
         </div>
       )}
     </div>

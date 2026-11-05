@@ -1,8 +1,8 @@
--- RFI external stakeholder access -- lets a Lead Design Consultant, PMC, or
+-- RFI external stakeholder access: lets a Lead Design Consultant, PMC, or
 -- Client respond to or review an RFI via an opaque, expiring, revocable link
 -- with no EngineeringOS account, mirroring the same "unauthenticated holder
 -- of a secret DB-backed token" pattern this codebase already uses for
--- password-reset/invitation tokens (see auth.service.ts). Not single-use --
+-- password-reset/invitation tokens (see auth.service.ts). Not single-use;
 -- the same link is meant to be reopened to re-read the RFI, add a follow-up
 -- comment, or revise before final submission, so `used_at` is an
 -- informational last-access timestamp, not a consumption lock. Always
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS rfi_external_access (
   expires_at         TIMESTAMPTZ NOT NULL,
   revoked_at         TIMESTAMPTZ,
   revoked_by         UUID REFERENCES users(id),
-  used_at            TIMESTAMPTZ,          -- last successful use, not single-use -- see note above
+  used_at            TIMESTAMPTZ,          -- last successful use, not single-use; see note above
   created_by         UUID NOT NULL REFERENCES users(id),
   created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -36,7 +36,7 @@ CREATE POLICY tenant_isolation ON rfi_external_access
 -- Reserved, non-login placeholder account so audit_log rows for an action
 -- taken by an external token holder (who has no real `users` row) still
 -- attribute to a valid, joinable user_id rather than requiring
--- audit_log.user_id to become nullable -- a cross-cutting change to a table
+-- audit_log.user_id to become nullable; a cross-cutting change to a table
 -- every other module also writes to, which this avoids on purpose. One row
 -- PER COMPANY (not a single platform-wide row): `users` carries the same
 -- tenant_isolation RLS policy as everywhere else, and every existing
@@ -44,7 +44,7 @@ CREATE POLICY tenant_isolation ON rfi_external_access
 -- `LEFT JOIN users u ON u.id = a.user_id`, run under
 -- db.withTenant(companyId, ...)) would silently resolve to no row at all
 -- for a system account belonging to a different company than the one
--- currently in RLS context -- a platform-wide row would make the existing
+-- currently in RLS context; a platform-wide row would make the existing
 -- audit-trail name lookup go blank for every company except whichever one
 -- happens to own it. A per-company row keeps that lookup working with zero
 -- changes to that existing query. Rows are created lazily (get-or-create)

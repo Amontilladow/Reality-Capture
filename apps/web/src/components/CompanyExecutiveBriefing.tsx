@@ -11,7 +11,7 @@ import {
 
 // Cross-project Executive Command Center: the "Head of Engineering" view
 // across every project in the company, same Minto Pyramid rules as the
-// per-project ExecutiveBriefing -- conclusion first, then a ranked list of
+// per-project ExecutiveBriefing; conclusion first, then a ranked list of
 // which PROJECTS need attention (not a flat list of every flagged item
 // across every project, which would just recreate the cognitive overload
 // this whole brief exists to remove). Each project row shows only its own
@@ -19,7 +19,7 @@ import {
 // that project's own Reports/Risk pages.
 //
 // Backed by GET /reports/company-summary (ReportsService.
-// getCompanySummary()) -- one network round trip for the whole company,
+// getCompanySummary()): one network round trip for the whole company,
 // not N. Ranking/conclusion logic is shared with ExecutiveBriefing via
 // lib/executive-signals.ts.
 
@@ -82,9 +82,9 @@ export function CompanyExecutiveBriefing() {
 
   return (
     <div className="space-y-4 mb-6">
-      <div className="panel tick-frame p-5 space-y-3">
+      <div className="panel tick-frame p-6 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <StatusBadge tone={STATUS_TONE[status]} label={STATUS_LABEL[status]} dot />
             <span className="text-xs text-ink-500">{projects.length} project{projects.length === 1 ? '' : 's'}</span>
           </div>
@@ -98,7 +98,7 @@ export function CompanyExecutiveBriefing() {
 
       {visibleRows.length > 0 && (
         <div className="panel tick-frame divide-y divide-base-700/60">
-          <div className="px-4 py-2.5">
+          <div className="px-4 py-2">
             <SectionHeader
               title="Projects needing attention"
               size="sm"
@@ -113,9 +113,9 @@ export function CompanyExecutiveBriefing() {
             <Link
               key={row.projectId}
               to={`/projects/${row.projectId}`}
-              className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-base-900 transition-colors"
+              className="flex items-center justify-between gap-4 px-4 py-4 hover:bg-base-900 transition-colors"
             >
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 min-w-0">
                 <StatusBadge tone={SEVERITY_TONE[row.topSignal.severity]} label={SEVERITY_LABEL[row.topSignal.severity]} />
                 <span className="text-sm text-ink-100 font-medium shrink-0">{row.projectName}</span>
                 <span className="text-sm text-ink-300 truncate">{row.topSignal.label}</span>
@@ -123,7 +123,7 @@ export function CompanyExecutiveBriefing() {
                   <span className="text-xs text-ink-500 shrink-0">+{row.flaggedCount - 1} more</span>
                 )}
               </div>
-              <span className="text-xs text-blueprint shrink-0">Open project →</span>
+              <span className="text-xs text-blueprint shrink-0">Open project</span>
             </Link>
           ))}
         </div>

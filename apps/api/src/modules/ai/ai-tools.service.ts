@@ -22,15 +22,15 @@ export interface ToolResult {
 export interface AssistantContext {
   companyId: string;
   projectId: string;
-  // The authenticated user asking the question -- required so RFI/Issue
+  // The authenticated user asking the question: required so RFI/Issue
   // tools can pass it as viewerId to RfisService/IssuesService's own
   // subcontractor-isolation check (isViewerSubcontractor). Without it, that
   // check silently no-ops (viewerId undefined -> isolateToViewer false) and
   // a subcontractor asking the assistant sees every other subcontractor's
-  // records too -- the exact leak that check exists to prevent on the
+  // records too; the exact leak that check exists to prevent on the
   // regular REST routes. See getOpenRfis/getRfiDetails/getIssueDetails.
   userId: string;
-  // What the user is currently looking at in the app, if anything -- lets
+  // What the user is currently looking at in the app, if anything; lets
   // "why is this high risk?" resolve without the user re-explaining what
   // "this" is (spec section 18).
   currentResourceType?: 'issue' | 'rfi' | 'snag_item';
@@ -39,12 +39,12 @@ export interface AssistantContext {
 
 // Every method here enforces tenancy exactly like the equivalent read route
 // already does (companyId from the authenticated session, projectId from
-// the route/context -- never client-controllable beyond that), and returns
-// a small, already-aggregated/trimmed shape -- never a raw table dump (spec
+// the route/context; never client-controllable beyond that), and returns
+// a small, already-aggregated/trimmed shape; never a raw table dump (spec
 // section 8 and 10's "minimal context principle"). Reuses the SAME service
 // methods the normal REST endpoints call, so there is exactly one place
 // (RfisService, IssuesService, ...) that owns the actual query/authorization
-// logic -- these wrappers only shape the result down to what the model
+// logic; these wrappers only shape the result down to what the model
 // needs to answer, and tag it with a resource-type source for citation.
 @Injectable()
 export class AiToolsService {
@@ -101,7 +101,7 @@ export class AiToolsService {
     };
   }
 
-  // NCR/SOR/WIR/MIR all live in qaqc_records (record_type discriminator) --
+  // NCR/SOR/WIR/MIR all live in qaqc_records (record_type discriminator);
   // getOpenNcrs covers the one users actually ask the assistant about
   // ("open NCRs"); QaqcService.findAll's recordType filter already supports
   // sor/wir/mir the same way if those are ever needed here too.
@@ -184,7 +184,7 @@ export class AiToolsService {
 
   // QA Inspections: no subcontractor isolation. Statuses are
   // scheduled/in_progress (pending) and passed/passed_with_exceptions/failed
-  // (outcomes) -- "open" here means not yet completed.
+  // (outcomes): "open" here means not yet completed.
   async getOpenInspections(ctx: AssistantContext, limit = 10): Promise<ToolResult> {
     const page = await this.qa.findAll(ctx.companyId, ctx.projectId, { page: 1, perPage: 100 });
     const pending = (page.data as Record<string, unknown>[])
@@ -223,7 +223,7 @@ export class AiToolsService {
   }
 
   // Issues list: isolation is driven by query.userId here (not a trailing
-  // param) -- IssuesService.findAll's own isViewerSubcontractor check reads
+  // param): IssuesService.findAll's own isViewerSubcontractor check reads
   // it off the query object, unlike RfisService/SubmittalsService.
   async getOpenIssues(ctx: AssistantContext, limit = 10): Promise<ToolResult> {
     const page = await this.issues.findAll(ctx.companyId, ctx.projectId, {
@@ -257,7 +257,7 @@ export class AiToolsService {
   }
 
   // Floor Plans (spec sections 16-21): a per-level listing, trimmed to what
-  // the assistant needs to answer "which drawings cover level 3?" etc --
+  // the assistant needs to answer "which drawings cover level 3?" etc;
   // never the full capture-pin payload the real floor-plan viewer needs.
   async getFloorPlanDetails(ctx: AssistantContext, levelId?: string): Promise<ToolResult> {
     const rows = await this.drawings.findAll(ctx.companyId, ctx.projectId, levelId) as unknown as Record<string, unknown>[];
@@ -295,7 +295,7 @@ export class AiToolsService {
 
   async getProgressSummary(ctx: AssistantContext): Promise<ToolResult> {
     // No explicit date range requested yet (routeIntent() doesn't parse one
-    // out of the question today) -- default to the last 30 days, a
+    // out of the question today): default to the last 30 days, a
     // reasonable "recent progress" window matching how a PM would read
     // "summarize progress this month" without over-promising date-range
     // parsing this pass doesn't actually do.
@@ -345,7 +345,7 @@ export class AiToolsService {
   }
 
   // Semantic search (documents, captures, issues, timeline) via the
-  // narrowed Python ai-service /search/ endpoint -- the only tool that
+  // narrowed Python ai-service /search/ endpoint; the only tool that
   // isn't a direct Postgres read, since full-text/semantic matching over
   // unstructured content is what Qdrant+embeddings are for, not SQL.
   async searchProjectDocuments(ctx: AssistantContext, query: string, limit = 6): Promise<ToolResult> {
@@ -364,7 +364,7 @@ export class AiToolsService {
   // ── Draft tools (spec section 9) ────────────────────────────────────────
   // These never touch the database. They return a structured, pre-filled
   // draft the frontend renders in the existing RfiFormModal/IssueFormModal
-  // (Edit/Submit) -- only the user's own explicit Submit click calls the
+  // (Edit/Submit): only the user's own explicit Submit click calls the
   // real, already-authorized createRfi/createIssue API. The AI has no write
   // path of its own.
 

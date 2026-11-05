@@ -30,7 +30,7 @@ describe('mergeAttachmentPdfs', () => {
     const merged = await mergeAttachmentPdfs(summary, attachments, { download });
     const doc = await PDFDocument.load(merged);
     expect(doc.getPageCount()).toBe(1);
-    expect(download).not.toHaveBeenCalled(); // never even attempted -- extension check happens first
+    expect(download).not.toHaveBeenCalled(); // never even attempted: extension check happens first
   });
 
   it('appends a divider page + the real pages for a mergeable PDF attachment', async () => {

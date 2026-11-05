@@ -35,12 +35,12 @@ function refsOf(line) {
 }
 
 // Include literally everything (this is the "100%, plus reverse refs"
-// bracket) -- the point of this test is just to confirm reverse-referenced
+// bracket): the point of this test is just to confirm reverse-referenced
 // property/material/classification content is now present, matching the
 // true original file exactly. If this reproduces the bug, we know
 // property/material data was never the differentiator either, and the
 // true original file IS exactly reproducible by full inclusion (as
-// expected) -- if it does NOT reproduce, something else is going on
+// expected): if it does NOT reproduce, something else is going on
 // (see notes below).
 const allIds = [...entityById.keys()];
 
