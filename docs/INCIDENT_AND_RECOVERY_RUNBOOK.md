@@ -1,4 +1,4 @@
-# EngineeringOS — Incident and Recovery Runbook
+# EngineeringOS: Incident and Recovery Runbook
 
 **Phase 6: Final Production Readiness & Acceptance Testing**
 Scenarios below are grounded in this engagement's code review and live testing, plus the Phase 2 restore test already on record (`docs/phase2-production-readiness.md`). Diagnostic steps reference real file paths and the real `/api/v1/health*` endpoints this codebase actually exposes — nothing here is generic boilerplate.
@@ -31,7 +31,7 @@ Scenarios below are grounded in this engagement's code review and live testing, 
 
 ## 3. A user reports they were just deactivated but can still see data
 
-**This is expected, not a bug, for up to 15 minutes** — see `KNOWN_ISSUES_AND_REMEDIATION.md` M-1. `JwtStrategy.validate()` does not re-check `is_active` per request; only refresh tokens are immediately revoked on deactivation. An already-issued access token remains valid for its remaining lifetime (`JWT_ACCESS_EXPIRES_IN`, default 15 minutes).
+**This is expected, not a bug, for up to 15 minutes**; see `KNOWN_ISSUES_AND_REMEDIATION.md` M-1. `JwtStrategy.validate()` does not re-check `is_active` per request; only refresh tokens are immediately revoked on deactivation. An already-issued access token remains valid for its remaining lifetime (`JWT_ACCESS_EXPIRES_IN`, default 15 minutes).
 
 **Diagnostic steps:**
 1. Confirm the user's `is_active` flag in the `users` table is actually `false` (if not, the deactivation itself didn't take — a real bug, escalate).
@@ -43,7 +43,7 @@ Scenarios below are grounded in this engagement's code review and live testing, 
 
 **Diagnostic steps:**
 1. Determine scope: is this about the platform's own secrets (`JWT_ACCESS_SECRET`, `CREDENTIAL_ENCRYPTION_KEY`, `INTERNAL_SERVICE_SECRET`), or a specific user's connected Outlook/Gmail/BYO-AI credential?
-2. If it's about whether `CREDENTIAL_ENCRYPTION_KEY` was ever left unset in production: this is C-5 in `KNOWN_ISSUES_AND_REMEDIATION.md`. **Resolved by cross-referencing git history against Render's own deploy log (2026-10-29 pass)** — see exact evidence and reasoning below. The Render dashboard's env-var change history itself was not directly queried (no tool access to it from this sandbox); the deploy-timeline method below is an independently sufficient substitute, since `generateValue: true` vars are provisioned at the deploy that first introduces them in `render.yaml`.
+2. If it's about whether `CREDENTIAL_ENCRYPTION_KEY` was ever left unset in production: this is C-5 in `KNOWN_ISSUES_AND_REMEDIATION.md`. **Resolved by cross-referencing git history against Render's own deploy log (2026-10-29 pass)**; see exact evidence and reasoning below. The Render dashboard's env-var change history itself was not directly queried (no tool access to it from this sandbox); the deploy-timeline method below is an independently sufficient substitute, since `generateValue: true` vars are provisioned at the deploy that first introduces them in `render.yaml`.
    - `CREDENTIAL_ENCRYPTION_KEY` was first added to `render.yaml` in commit `8f5be67` (2026-10-09T16:47:33Z).
    - `engineeringos-api`'s deploy log (`srv-d9jlh8741pts73ctb09g`, queried via the Render API) shows the deploy for commit `841d148fd4` (2026-10-08T18:17:58Z) succeeded (`status: deactivated`, i.e. it *was* live before being superseded) and remained the live build — every deploy attempt between it and 2026-10-15T05:06:09Z either failed (`update_failed`) or doesn't exist in the log — until commit `3026063191` (PR #57, which necessarily includes `8f5be67`) finally succeeded.
    - `841d148fd4` already contains commit `52dbbfb` (`user_ai_connections` / BYO AI, 2026-10-08), merged earlier the same day — so the table and its write path were live in that deploy.
@@ -60,19 +60,19 @@ Scenarios below are grounded in this engagement's code review and live testing, 
 
 **Diagnostic steps:**
 1. Check the audit log (`audit_log` table) for the affected resource — actor, action, timestamp are reliably recorded (though note M-7: no before/after diff is captured, only that an action happened).
-2. Cross-reference the actor's `company_id` against the resource's actual `company_id` to confirm whether this is a genuine cross-tenant leak (should be structurally impossible per this engagement's testing — see `ACCEPTANCE_TEST_MATRIX.md` TC-SEC-06/07/08) or a same-company cross-project access (a known, documented gap — H-1 in `KNOWN_ISSUES_AND_REMEDIATION.md`, on issue activities/evidence/attachments and drawing lookup specifically).
+2. Cross-reference the actor's `company_id` against the resource's actual `company_id` to confirm whether this is a genuine cross-tenant leak (should be structurally impossible per this engagement's testing; see `ACCEPTANCE_TEST_MATRIX.md` TC-SEC-06/07/08) or a same-company cross-project access (a known, documented gap — H-1 in `KNOWN_ISSUES_AND_REMEDIATION.md`, on issue activities/evidence/attachments and drawing lookup specifically).
 3. If it's a genuine cross-company leak not matching any known gap: **this is a new, serious finding** — stop and escalate immediately (see §7), do not attempt a quiet fix.
 
 **Recovery:**
 - Known same-company cross-project gap (H-1): no live exploit mitigation exists today beyond restricting which users are added to sensitive projects' membership lists as a practical (not technical) mitigation, until the underlying routes are fixed.
-- Genuine new cross-tenant leak: treat as a security incident — see §7.
+- Genuine new cross-tenant leak: treat as a security incident; see §7.
 
 ## 6. AI Assistant failures
 
 **Diagnostic steps:**
-1. Check server logs for `[ProviderFactory]` or `[AiService]` warnings — a "No AI provider configured" warning at boot means no API key is set at all (expected in this sandbox; should not be the case in a properly configured production deployment — see `PRODUCTION_DEPLOYMENT_CHECKLIST.md`).
+1. Check server logs for `[ProviderFactory]` or `[AiService]` warnings — a "No AI provider configured" warning at boot means no API key is set at all (expected in this sandbox; should not be the case in a properly configured production deployment; see `PRODUCTION_DEPLOYMENT_CHECKLIST.md`).
 2. A user-facing "temporarily unavailable" message is the expected, generic wrapper around any provider failure (timeout, rate limit, model unavailable) — confirmed by code review this never leaks the raw provider error or any credential to the client.
-3. For a BYO-AI-specific failure: check for a server-side "BYO provider resolution failed, falling back to RealityCapture AI" warning log — this is expected graceful-degradation behavior (the user silently gets the platform's own AI instead), not an error requiring action unless it happens for every BYO user (which would suggest a systemic decrypt failure, possibly related to a `CREDENTIAL_ENCRYPTION_KEY` rotation — see §4).
+3. For a BYO-AI-specific failure: check for a server-side "BYO provider resolution failed, falling back to RealityCapture AI" warning log — this is expected graceful-degradation behavior (the user silently gets the platform's own AI instead), not an error requiring action unless it happens for every BYO user (which would suggest a systemic decrypt failure, possibly related to a `CREDENTIAL_ENCRYPTION_KEY` rotation; see §4).
 
 **Recovery:**
 - Platform provider outage (e.g. Anthropic/Gemini/OpenAI down): no action available from this codebase; the app already degrades gracefully (generic error to users, no crash, no data corruption). Wait for the provider to recover.
@@ -82,4 +82,4 @@ Scenarios below are grounded in this engagement's code review and live testing, 
 
 - **Any suspected genuine cross-tenant data leak, credential compromise, or active exploitation of a known-critical finding** (C-1 through C-5 in `KNOWN_ISSUES_AND_REMEDIATION.md`, even post-fix, in case the fix itself has a gap): stop, do not attempt a live fix under pressure, and escalate to whoever owns production access decisions for this deployment.
 - **Any destructive recovery action** (database restore, mass credential rotation, bulk row deletion as in §4's `CREDENTIAL_ENCRYPTION_KEY` rotation path): requires explicit sign-off from the account/platform owner before execution, per this engagement's own safety rules — this runbook describes the correct recovery procedure, it does not pre-authorize anyone to execute it unilaterally.
-- **Recovery Time Objective / Recovery Point Objective:** no formally agreed RTO/RPO exists in any document reviewed this engagement. The only concrete data point on record is the 3-day PITR window (so RPO is bounded at a maximum of ~3 days of data loss in the worst case, likely much less in practice given continuous PITR) and the Phase 2 restore test's own timing (not reproduced in this engagement — see `docs/phase2-production-readiness.md` for whatever duration was recorded there). **Recommend formally setting and documenting an RTO/RPO target as a follow-up**, since none currently exists to hold the team accountable to.
+- **Recovery Time Objective / Recovery Point Objective:** no formally agreed RTO/RPO exists in any document reviewed this engagement. The only concrete data point on record is the 3-day PITR window (so RPO is bounded at a maximum of ~3 days of data loss in the worst case, likely much less in practice given continuous PITR) and the Phase 2 restore test's own timing (not reproduced in this engagement; see `docs/phase2-production-readiness.md` for whatever duration was recorded there). **Recommend formally setting and documenting an RTO/RPO target as a follow-up**, since none currently exists to hold the team accountable to.

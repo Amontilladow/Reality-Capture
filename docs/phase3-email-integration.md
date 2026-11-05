@@ -1,4 +1,4 @@
-# Phase 3 — Outlook & Gmail Integration
+# Phase 3: Outlook & Gmail Integration
 
 Tracks the brief's 16 implementation stages (3A–3I) and its Section 16
 final-report items against evidence actually gathered and work actually
@@ -8,7 +8,7 @@ done. Status values match Phase 2's doc: **VERIFIED COMPLETE**,
 complete without evidence, and never claim a provider is connected merely
 because the code compiles.
 
-## Phase 3A — Audit the existing email architecture — VERIFIED COMPLETE
+## Phase 3A: Audit the existing email architecture: VERIFIED COMPLETE
 
 Inspected directly against the current `main` tip (not assumed):
 
@@ -104,7 +104,7 @@ Inspected directly against the current `main` tip (not assumed):
   the brief's own "do not implement the entire phase in one uncontrolled
   change."
 
-## Phase 3B — Secure backend OAuth infrastructure — VERIFIED COMPLETE
+## Phase 3B: Secure backend OAuth infrastructure: VERIFIED COMPLETE
 
 Provider-agnostic pieces only — no Outlook- or Gmail-specific code yet
 (that's 3C/3D). Everything here is shared by both.
@@ -122,7 +122,7 @@ Provider-agnostic pieces only — no Outlook- or Gmail-specific code yet
   `ProviderTokens`/`DecryptedConnection` shapes.
 - `apps/api/src/modules/email-integration/oauth-state.util.ts` — signed,
   self-describing OAuth state (same HMAC design as Calendar's, kept as
-  its own copy rather than modifying the working original — see the
+  its own copy rather than modifying the working original; see the
   file's own comment), with a `provider` field so a state signed for
   Outlook's callback cannot be replayed against Gmail's, or vice versa.
 - `apps/api/src/modules/email-integration/email-token-store.service.ts`
@@ -155,7 +155,7 @@ touch).
 **Verified**: `tsc --noEmit` clean, `eslint` clean, full Jest suite
 passing (518/518 — 502 prior + 16 new), production build succeeds.
 
-## Phase 3C — Microsoft Outlook connection — IMPLEMENTED BUT NOT VERIFIED (code-complete, no real Entra App Registration exists to test against)
+## Phase 3C: Microsoft Outlook connection: IMPLEMENTED BUT NOT VERIFIED (code-complete, no real Entra App Registration exists to test against)
 
 Connect/status/test/disconnect are fully implemented end to end (backend +
 frontend). Sending mail itself is deferred to Phase 3E (the composer) —
@@ -274,7 +274,7 @@ token exchange, a real connected-account email confirmed, a real test
 connection against a live Microsoft account, or anything about which
 Microsoft account types actually work end to end.
 
-## Phase 3D — Gmail connection — IMPLEMENTED BUT NOT VERIFIED (code-complete, no real Google Cloud OAuth client exists to test against)
+## Phase 3D: Gmail connection: IMPLEMENTED BUT NOT VERIFIED (code-complete, no real Google Cloud OAuth client exists to test against)
 
 Mirrors Phase 3C's Outlook implementation exactly — same
 `EmailProviderClient` contract, same `EmailTokenStore` composition, same
@@ -382,7 +382,7 @@ no Google Cloud OAuth client exists in this environment. No claim is made
 about which account types (Workspace vs. personal Gmail) actually work
 end to end, per the brief's own standard.
 
-## Phase 3E — Reusable email composer — IMPLEMENTED BUT NOT VERIFIED (code-complete; no live backend/DB in this environment to exercise a real send against)
+## Phase 3E: Reusable email composer: IMPLEMENTED BUT NOT VERIFIED (code-complete; no live backend/DB in this environment to exercise a real send against)
 
 **Built, bottom-up, in one verified pass:**
 
@@ -468,7 +468,7 @@ provider (same account-level blocker as 3C/3D, Section 1). No claim is
 made that a real send, auto-match lookup, or attachment round-trip works
 beyond what the unit tests exercise against mocked collaborators.
 
-## Phase 3F — Project-workflow integration — IMPLEMENTED BUT NOT VERIFIED (same no-live-backend caveat as 3E)
+## Phase 3F: Project-workflow integration: IMPLEMENTED BUT NOT VERIFIED (same no-live-backend caveat as 3E)
 
 Added an "Email" entry point, each opening the same `EmailComposerModal`
 with `prefill` set to that record's own type/ID and a subject seeded from
@@ -501,7 +501,7 @@ frontend-only, no backend changes), production build succeeds.
 clicking "Email" against a live backend -- same no-Postgres-in-this-
 environment limitation as 3E.
 
-## Phase 3G — Email history and audit logging — IMPLEMENTED BUT NOT VERIFIED (same no-live-backend caveat as 3E/3F)
+## Phase 3G: Email history and audit logging: IMPLEMENTED BUT NOT VERIFIED (same no-live-backend caveat as 3E/3F)
 
 - **Backend**: `EmailComposerService.listMessages()` -- the same
   project-membership gate as `send()` (Section 10), paginated, optionally
@@ -533,7 +533,7 @@ that a real cross-project-membership 403 actually renders correctly in
 the browser -- same no-Postgres-in-this-environment limitation as every
 other Phase 3 stage.
 
-## Phase 3H — Incoming replies / threading — NOT IMPLEMENTED (design reasoning only, by deliberate choice)
+## Phase 3H: Incoming replies / threading: NOT IMPLEMENTED (design reasoning only, by deliberate choice)
 
 Per the brief's own Section 9 allowance ("implement only if the
 infrastructure, permissions, provider configuration, and security
@@ -577,7 +577,7 @@ No code was written for this stage. Marking it NOT IMPLEMENTED here is
 itself the honest deliverable, per the brief's own explicit allowance
 not to build this if it can't be done reliably.
 
-## Phase 3I — Security, permission, and regression tests
+## Phase 3I: Security, permission, and regression tests
 
 Reviewed the full email feature adversarially (every endpoint, every
 service method, every DTO) rather than just re-running the existing
@@ -672,7 +672,7 @@ actually exercise.
    investigated and documented precisely in 3C/3D, per the brief's
    explicit "do not assume verification is unnecessary" instruction.
 
-## Section 16 — Final Report
+## Section 16: Final Report
 
 Honest, evidence-based status for every feature this phase covers.
 Nothing here is marked VERIFIED COMPLETE unless it was actually exercised

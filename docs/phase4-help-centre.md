@@ -1,4 +1,4 @@
-# Phase 4 — Help Centre, User Guides & Interactive Onboarding
+# Phase 4: Help Centre, User Guides & Interactive Onboarding
 
 Tracks the brief's 9 stages (4A–4I) against evidence actually gathered.
 Status values match Phase 2/3's docs: **VERIFIED COMPLETE**,
@@ -6,7 +6,7 @@ Status values match Phase 2/3's docs: **VERIFIED COMPLETE**,
 **NOT IMPLEMENTED**. Per the brief's own final rule: describe the real
 application, not an imagined version of it.
 
-## Phase 4A — Audit actual features and permissions — VERIFIED COMPLETE
+## Phase 4A: Audit actual features and permissions: VERIFIED COMPLETE
 
 Inspected directly against this branch's actual code (`App.tsx`,
 `AppShell.tsx`, controllers, `packages/types`), not assumed or carried
@@ -173,7 +173,7 @@ Developer settings (API keys, webhooks — company_admin/super_admin only).
   Help Centre content exists yet (this phase builds the user-facing
   Help Centre first, per the brief's own fallback: "implement the
   user-facing Help Centre first and document the recommended
-  administration phase separately" — see the Phase 4I report).
+  administration phase separately"; see the Phase 4I report).
 - **Any existing onboarding/tour component** — grepped the whole
   frontend for "onboarding," "tour," "walkthrough": no matches (two
   unrelated false-positive hits in `SnaggingPage.tsx`/the migrations).
@@ -186,7 +186,7 @@ Developer settings (API keys, webhooks — company_admin/super_admin only).
 page audited above. The Help Centre and onboarding (4B–4H) are built
 entirely from these; no new UI library is introduced.
 
-## Phase 4B/4C — Help Centre navigation/layout + article rendering/search — VERIFIED COMPLETE (framework; see 4D for content coverage)
+## Phase 4B/4C: Help Centre navigation/layout + article rendering/search: VERIFIED COMPLETE (framework; see 4D for content coverage)
 
 **Architecture decision (brief: "investigate the simplest secure way to
 maintain help articles... prefer an approach consistent with the
@@ -270,7 +270,7 @@ against this real content, not placeholder text.
 environment -- same limitation as every prior phase; confirmed via
 `pg_isready`).
 
-## Phase 4D — Write + verify highest-priority articles — VERIFIED COMPLETE
+## Phase 4D: Write + verify highest-priority articles: VERIFIED COMPLETE
 
 Ten category files written, each only after reading the relevant
 controller(s)/service(s)/page(s) directly (full method bodies, not just
@@ -360,7 +360,7 @@ environment). Role-specific filtering (4E), onboarding (4F), contextual
 help links (4G), and expanded FAQ/troubleshooting coverage (4H) are not
 yet done at the time this section was written.
 
-## Phase 4E — Role-specific guides — VERIFIED COMPLETE
+## Phase 4E: Role-specific guides: VERIFIED COMPLETE
 
 Added a "For My Role" entry point to the Help Centre
 (`apps/web/src/pages/HelpPage.tsx`), reading the signed-in user's real
@@ -414,7 +414,7 @@ same method as the `relatedSlugs` integrity check).
 **Not yet verified**: a real browser render. Onboarding (4F), contextual
 help links (4G), and expanded FAQ/troubleshooting coverage (4H) remain.
 
-## Phase 4F — Interactive onboarding — VERIFIED COMPLETE
+## Phase 4F: Interactive onboarding: VERIFIED COMPLETE
 
 **Persistence decision**, made after dedicated investigation rather than
 guessing: reused the `users.preferences JSONB` column that already
@@ -476,7 +476,7 @@ applies unchanged).
 live backend/DB in this environment). Contextual help links (4G) and
 expanded FAQ/troubleshooting coverage (4H) remain.
 
-## Phase 4G — Contextual help links — VERIFIED COMPLETE
+## Phase 4G: Contextual help links: VERIFIED COMPLETE
 
 Added `apps/web/src/components/help/HelpLink.tsx`: a small reusable
 link that always deep-links to one specific article slug (never the
@@ -508,7 +508,7 @@ production build succeeds.
 Expanded FAQ/troubleshooting coverage (4H) and the final permissions/
 responsiveness/navigation test pass + report (4I) remain.
 
-## Phase 4H — Expand FAQ and troubleshooting coverage — VERIFIED COMPLETE
+## Phase 4H: Expand FAQ and troubleshooting coverage: VERIFIED COMPLETE
 
 **Caught and fixed two more leftover errors from before the Phase 4D
 correction pass**, both in content written during 4B/4C (before the
@@ -552,7 +552,7 @@ references, zero missing, zero duplicates).
 4I (permissions/responsiveness/navigation testing + final report)
 remains.
 
-## Phase 4I — Final verification and report
+## Phase 4I: Final verification and report
 
 ### Verification performed this stage (code/test-level; no live browser or DB in this environment)
 

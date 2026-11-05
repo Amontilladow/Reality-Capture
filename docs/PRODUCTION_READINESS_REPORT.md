@@ -1,4 +1,4 @@
-# EngineeringOS / RealityCapture — Production Readiness Report
+# EngineeringOS / RealityCapture: Production Readiness Report
 
 **Phase 6: Final Production Readiness & Acceptance Testing**
 Prepared as a Senior QA Architect / SaaS Security Engineer / DevOps Engineer / Performance Engineer / Construction Technology Product Auditor review. Every claim in this report is backed by either a live test against a running instance of the actual application, or a specific file:line code citation. Nothing here is asserted from the existence of prior phase documentation alone — every prior claim (Phase 2's production-readiness doc, Phase 3's email-integration doc) was independently re-verified against current source, and several places where current code has drifted from those docs are called out explicitly below.
@@ -17,7 +17,7 @@ Against that foundation, this audit found and **fixed** five Critical-severity a
 
 ## 2. Overall Readiness Assessment
 
-**CONDITIONAL GO** — see §14 for the full reasoning. Core platform functionality, tenant isolation, and the now-fixed Critical authorization defects support a GO; the open items (cross-project access gap, dependency upgrades, and especially the `CREDENTIAL_ENCRYPTION_KEY` production-history question) are real enough to withhold an unconditional GO until you've made an informed decision on each.
+**CONDITIONAL GO**; see §14 for the full reasoning. Core platform functionality, tenant isolation, and the now-fixed Critical authorization defects support a GO; the open items (cross-project access gap, dependency upgrades, and especially the `CREDENTIAL_ENCRYPTION_KEY` production-history question) are real enough to withhold an unconditional GO until you've made an informed decision on each.
 
 ## 3. Verified Functionality
 
@@ -74,7 +74,7 @@ Full detail in `KNOWN_ISSUES_AND_REMEDIATION.md`; summarized by area:
 - Single-request latency on representative endpoints (project list, project detail, issues list, reports dashboard): **2–11ms**, warm process, local network.
 - Under light concurrent load (10 connections, requests under the global rate-limit threshold): p50 **5ms**, p97.5 **136ms**, p99 **147ms**.
 - The global default rate limit (100 req/min per IP) is the dominant constraint observed at any higher synthetic concurrency — this is the abuse-prevention mechanism working as designed, not a performance ceiling, but it means a true "100 concurrent real users" load test (humans clicking at human pace, not a load-test tool firing continuously) was not fully reproducible in this single-machine sandbox without either disabling the throttle (not done, to avoid masking real throttle behavior) or running from 100 distinct source IPs (not available in this sandbox).
-- **Honest limitation:** this sandbox is a single local machine, not Render's actual production infrastructure. These numbers demonstrate the application code and query patterns are fast (no N+1 patterns or missing-index symptoms observed in any tested path), but they are not a substitute for a real staged load test against production-equivalent infrastructure, network latency, and the real managed Postgres instance's actual resource limits. **Recommend a proper staged load test (10/25/50/100 concurrent, from multiple source IPs, against a staging environment once one exists — see the "no staging environment" gap in `PRODUCTION_DEPLOYMENT_CHECKLIST.md`) before claiming the 100-registered-user target is validated under realistic concurrent load.**
+- **Honest limitation:** this sandbox is a single local machine, not Render's actual production infrastructure. These numbers demonstrate the application code and query patterns are fast (no N+1 patterns or missing-index symptoms observed in any tested path), but they are not a substitute for a real staged load test against production-equivalent infrastructure, network latency, and the real managed Postgres instance's actual resource limits. **Recommend a proper staged load test (10/25/50/100 concurrent, from multiple source IPs, against a staging environment once one exists; see the "no staging environment" gap in `PRODUCTION_DEPLOYMENT_CHECKLIST.md`) before claiming the 100-registered-user target is validated under realistic concurrent load.**
 - Web bundle: production build succeeds; several chunks exceed 500KB (notably `BimViewerPage` at 5.4MB/919KB gzipped), flagged as L-5 — not measured against real network conditions in this sandbox, so actual page-load-time impact is unverified, not assumed negligible.
 
 ## 7. Missing Capabilities
@@ -89,7 +89,7 @@ Full detail in `KNOWN_ISSUES_AND_REMEDIATION.md`; summarized by area:
 
 ## 8. Dependencies Requiring Your Action
 
-1. **Confirm whether `CREDENTIAL_ENCRYPTION_KEY` was ever unset in a live production deployment** (check the Render dashboard's environment-variable history for `engineeringos-api`). If yes, every row in `email_integrations` and `user_ai_connections` must be treated as compromised — see `INCIDENT_AND_RECOVERY_RUNBOOK.md` §4 for the exact recovery procedure (rotate the key, then delete the affected rows and force reconnection — do not attempt to re-encrypt them).
+1. **Confirm whether `CREDENTIAL_ENCRYPTION_KEY` was ever unset in a live production deployment** (check the Render dashboard's environment-variable history for `engineeringos-api`). If yes, every row in `email_integrations` and `user_ai_connections` must be treated as compromised; see `INCIDENT_AND_RECOVERY_RUNBOOK.md` §4 for the exact recovery procedure (rotate the key, then delete the affected rows and force reconnection — do not attempt to re-encrypt them).
 2. Set a real `GEMINI_API_KEY`/`ANTHROPIC_API_KEY`/`OPENAI_API_KEY` to make the AI Assistant functional in production (currently unset in `render.yaml`).
 3. Set real `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` if billing needs to be live at launch.
 4. Set real Microsoft Entra / Google Cloud OAuth app credentials to enable live Outlook/Gmail connection (needed to fully verify UAT-K beyond code review).

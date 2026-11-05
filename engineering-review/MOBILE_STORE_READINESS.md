@@ -1,4 +1,4 @@
-# Mobile Store Readiness — Android (Google Play) & iOS (Apple App Store)
+# Mobile Store Readiness: Android (Google Play) & iOS (Apple App Store)
 
 Status as of this launch-readiness sprint. This document is a checklist, not a
 submission plan — nothing in this sprint submitted, signed, or published
@@ -59,7 +59,7 @@ a real Play Store submission — this was not changed in this sprint because
 removing a permission the app may still depend on for a device/OS
 combination in its current Expo SDK version needs an actual on-device check
 this sandbox can't perform. **Needs owner/dev decision** after a physical
-device test — see below for a related, newly-observed but separate finding.
+device test; see below for a related, newly-observed but separate finding.
 
 **Duplicate permission entries (new this sprint, not fixed)**: `npx expo
 config --type public` shows `CAMERA`, `RECORD_AUDIO`, `ACCESS_COARSE_LOCATION`,
@@ -113,7 +113,7 @@ should manufacture.
 |---|---|
 | Signed build ownership | **Needs owner decision.** No signing credentials, keystores, or certificates exist in this repository (correctly — they must never be committed), and none were requested, generated, or handled in this sprint. Whoever owns the Apple Developer account / Google Play Console account must generate and hold these themselves via `eas credentials` or manually. |
 | Keystore / certificate custody | **Needs owner decision** — establish who holds the Android upload keystore and the iOS distribution certificate/provisioning profile before the first real build. Losing the Android upload key is unrecoverable without going through Google's key-upgrade process; this should be backed up somewhere durable and access-controlled from day one. |
-| Secret storage for CI/EAS | **Corrected this sprint**: `eas.json`'s `preview`/`production` profiles previously committed literal placeholder URLs (`REPLACE_WITH_STAGING_API_URL` / `REPLACE_WITH_PRODUCTION_API_URL`); these have been removed entirely rather than left as accept-if-unfixed placeholders. Each profile now only sets `EXPO_PUBLIC_APP_ENV`; the real `EXPO_PUBLIC_API_BASE_URL` must be supplied via EAS's own encrypted per-profile environment variable store (`eas env:create`) at build time — see the App Identity section above for the exact command. `config.ts` fails the build/startup loudly if it's missing, so there's no way to accidentally ship without it. |
+| Secret storage for CI/EAS | **Corrected this sprint**: `eas.json`'s `preview`/`production` profiles previously committed literal placeholder URLs (`REPLACE_WITH_STAGING_API_URL` / `REPLACE_WITH_PRODUCTION_API_URL`); these have been removed entirely rather than left as accept-if-unfixed placeholders. Each profile now only sets `EXPO_PUBLIC_APP_ENV`; the real `EXPO_PUBLIC_API_BASE_URL` must be supplied via EAS's own encrypted per-profile environment variable store (`eas env:create`) at build time; see the App Identity section above for the exact command. `config.ts` fails the build/startup loudly if it's missing, so there's no way to accidentally ship without it. |
 | Version/build process | EAS Build with three profiles (development/preview/production) now exists (`apps/mobile/eas.json`, added this sprint). `appVersionSource: "remote"` means EAS — not this repo — is the source of truth for the Android version code and iOS build number. |
 | Rollback / hotfix process | **Not defined.** Expo's OTA update mechanism (`expo-updates`) is not currently configured in this app — there is no fast-patch path for a JS-only bug short of a full store resubmission. **Needs owner decision**: adopt EAS Update for OTA patching, or accept store-review turnaround as the only rollback/hotfix path. |
 | Support contact | **Not defined anywhere in the app or store metadata (neither exists yet).** Both stores require a support contact/URL at listing time. **Needs owner decision.** |
@@ -129,7 +129,7 @@ real decision, a real device, or a real console this sandbox cannot reach:
 - Production database role with password, grants, and `rolbypassrls = false` (see `LAUNCH_READINESS.md`)
 - Verification of table ownership and RLS behavior under the actual application role
 - Production backup retention and restore drill
-- Redis/object-storage monitoring and alerting (an endpoint now exists — see `LAUNCH_READINESS.md`'s Monitoring row — but nothing polls or alerts on it yet)
+- Redis/object-storage monitoring and alerting (an endpoint now exists; see `LAUNCH_READINESS.md`'s Monitoring row — but nothing polls or alerts on it yet)
 - Crash reporting choice (Sentry, Crashlytics, or equivalent) — none wired in
 - Support contact and incident-response process
 - Privacy policy and terms of service
@@ -163,7 +163,7 @@ Android storage permissions that should be reviewed against current Play
 policy, no privacy policy/data-safety materials, no crash reporting, no
 signing/credential ownership decided, and no store listing assets of any
 kind. (The iOS microphone usage string, previously reported missing here,
-was re-verified this sprint and is actually present and correct — see the
+was re-verified this sprint and is actually present and correct; see the
 Privacy & Permissions section.) All of the above are either owner-level
 decisions or require a real device/store-console step this sandbox cannot
 perform — they are listed here precisely so they aren't silently discovered

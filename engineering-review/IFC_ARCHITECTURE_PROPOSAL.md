@@ -1,4 +1,4 @@
-# IFC Parsing Architecture Proposal — EngineeringOS Reality Capture
+# IFC Parsing Architecture Proposal: EngineeringOS Reality Capture
 
 Status: **Awaiting approval. No implementation started.**
 

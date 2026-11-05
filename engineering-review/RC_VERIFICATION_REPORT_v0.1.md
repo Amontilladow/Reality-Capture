@@ -1,4 +1,4 @@
-# EngineeringOS v0.1 — Release Candidate Verification Report
+# EngineeringOS v0.1: Release Candidate Verification Report
 
 > **Historical record**, scoped to the v0.1 workflow (login through BIM
 > element property inspection) only — it predates Issues, Drawings, RFIs,
@@ -17,12 +17,12 @@ to make the workflow actually work, not enhancements.**
 
 ---
 
-## Workflow Verification — PASS/FAIL per step
+## Workflow Verification: PASS/FAIL per step
 
 | Step | Result | Evidence |
 |---|---|---|
 | Login | **PASS** | Real JWT issued via `/auth/login` against a real Postgres-backed user |
-| Dashboard | **PASS*** | `/projects` (ProjectList) serves as the current landing page. *No dedicated KPI dashboard (Active Projects/Processing Queue/Import History/Activity Feed) exists yet — see Known Limitations. |
+| Dashboard | **PASS*** | `/projects` (ProjectList) serves as the current landing page. *No dedicated KPI dashboard (Active Projects/Processing Queue/Import History/Activity Feed) exists yet; see Known Limitations. |
 | Projects (list) | **PASS** | `GET /projects` returns real data |
 | Open Project | **PASS** | `GET /projects/:id` returns real data |
 | Upload IFC | **PASS** | Presigned URL issued, real `PUT` to S3-compatible storage returns HTTP 200, model registered |
@@ -31,8 +31,8 @@ to make the workflow actually work, not enhancements.**
 | Models List | **PASS** | `GET /projects/:id/bim/models` includes the newly processed model |
 | Open Viewer | **PASS** | `viewer-data` endpoint returns a real presigned Fragments URL; the URL was independently fetched and confirmed to return the actual binary (HTTP 200) |
 | Navigate Model | **PASS** | Hierarchy endpoint returns the correct 3-node spatial tree (Site/Building/Storey) |
-| Search Element | **PASS** | Returns correct filtered results (verified with filters present, partially present, and absent — see bug #8 below) |
-| Select Element | **PASS** | Verified with a real GUID containing a `$` character (common in IFC GUIDs) — see note below |
+| Search Element | **PASS** | Returns correct filtered results (verified with filters present, partially present, and absent; see bug #8 below) |
+| Select Element | **PASS** | Verified with a real GUID containing a `$` character (common in IFC GUIDs); see note below |
 | Properties Display | **PASS** | Returned element included 127 property keys, 2 quantities, 1 material, 1 classification — all correct |
 
 **Note on "Select Element":** the first test attempt showed a false FAIL
@@ -43,7 +43,7 @@ This is documented here for transparency rather than silently corrected.
 
 ---
 
-## Subsystem Verification — PASS/FAIL
+## Subsystem Verification: PASS/FAIL
 
 | Subsystem | Result | Detail |
 |---|---|---|
@@ -62,11 +62,11 @@ This is documented here for transparency rather than silently corrected.
 | Database verification | **PASS** | All 8 IFC-related tables populated correctly for a real processed model (40 elements, 3 spatial nodes, 2 quantities, 1 material, 1 classification, 72 relationships, 1 SUCCESS report) |
 | Storage verification | **PASS** | Original IFC (114,099 bytes) and generated Fragments file (~16KB) both physically confirmed on the S3-compatible backend, matching the exact model tested |
 | Queue verification | **PASS** | Real Bull/Redis job keys confirmed present with unique per-attempt IDs; completed/failed job counts in Redis match this session's actual test history |
-| Viewer integration verification | **PARTIAL — see below** | Every REST endpoint the viewer page calls is verified correct. The 3D rendering, click/orbit/search-to-highlight interaction, and visual correctness **cannot be verified** — no browser or screenshot tool is available in this environment. This is stated plainly rather than assumed. |
+| Viewer integration verification | **PARTIAL; see below** | Every REST endpoint the viewer page calls is verified correct. The 3D rendering, click/orbit/search-to-highlight interaction, and visual correctness **cannot be verified** — no browser or screenshot tool is available in this environment. This is stated plainly rather than assumed. |
 
 ---
 
-## Bugs found and fixed during this verification (both real, both required — not speculative)
+## Bugs found and fixed during this verification (both real, both required: not speculative)
 
 **Bug #7 — Vite/Rollup CJS interop gap (pre-existing, found during the
 BIM viewer frontend work, re-confirmed still fixed in this pass).**

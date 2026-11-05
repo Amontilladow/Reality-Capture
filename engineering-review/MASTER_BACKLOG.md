@@ -1,4 +1,4 @@
-# EngineeringOS Reality Capture — Master Backlog
+# EngineeringOS Reality Capture: Master Backlog
 
 > **Historical record.** Written at the v0.1 Release Candidate stage; the
 > "highest-priority unfinished task" framing below describes that era's
@@ -21,7 +21,7 @@ documentation (architecture, schema, pipeline, resilience, deployment,
 runbook, known limitations) is in
 `engineering-review/IFC_ENGINE_RELEASE_v1.0.0.md`. Do not modify this
 subsystem without a verified bug/security issue or explicit product
-requirement — see that document before touching anything under
+requirement; see that document before touching anything under
 `apps/ifc-service`.
 
 Read this file first, every session. Continue from the highest-priority
@@ -43,7 +43,7 @@ Reality Capture (image) processing, AI search live verification
 
 ---
 
-## Completed features (frozen — do not revisit without a real bug/security/
+## Completed features (frozen: do not revisit without a real bug/security/
 perf issue found)
 
 - Company registration → login → project → building → level → location
@@ -62,7 +62,7 @@ perf issue found)
 - **IFC Processing Engine — fully implemented and verified this session.**
   See dedicated section below.
 
-## IFC Processing Engine — COMPLETE ✅
+## IFC Processing Engine: COMPLETE ✅
 
 ### Architecture (approved before implementation)
 Full comparison in `engineering-review/IFC_ARCHITECTURE_PROPOSAL.md`.
@@ -236,7 +236,7 @@ local S3-compatible server — `s3rver`, standing in for MinIO/R2 since
 4. **Production-readiness audit** — full pass across the platform, once
    the above are done.
 
-## BIM Viewer (frontend) — IN PROGRESS, core flow built and verified
+## BIM Viewer (frontend): IN PROGRESS, core flow built and verified
 
 Built this session, on top of the frozen IFC Processing Engine:
 - `apps/web`: BIM model upload modal, models list with live status/progress
@@ -322,7 +322,7 @@ frontend integration (see above).
 - `apps/ifc-service`'s `DatabaseService` has the same pre-existing
   postgres.js generic-typing strictness noise as `apps/api`'s (harmless,
   cosmetic, cataloged not fixed — same category as the item above).
-- Stage-level (not element-level) resume granularity — see IFC engine
+- Stage-level (not element-level) resume granularity; see IFC engine
   limitations above.
 
 ## Blockers (environmental, not code)
@@ -334,10 +334,10 @@ frontend integration (see above).
   search/assistant.
 - Qdrant server IS reachable (GitHub release binary) — update any future
   assumption that it isn't.
-- No true multi-GB IFC test fixture was obtainable — see IFC engine
+- No true multi-GB IFC test fixture was obtainable; see IFC engine
   limitations above.
 
-## Reality Capture Module feature set (F1-F6) — COMPLETE
+## Reality Capture Module feature set (F1-F6): COMPLETE
 
 Added as a new phase per an explicit product brief: six BIM-native site
 documentation/coordination features, built one at a time as small, tested,

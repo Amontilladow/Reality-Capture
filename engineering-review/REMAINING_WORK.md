@@ -1,4 +1,4 @@
-# EngineeringOS — REMAINING_WORK.md
+# EngineeringOS: REMAINING_WORK.md
 
 > **Historical record.** Its "NEXT OBJECTIVE" (Issue Management in the BIM
 > viewer) and the items after it describe a backlog from before Issues,
@@ -64,7 +64,7 @@ Closed Issues, Recently Updated Models, Activity Feed.
 
 ---
 
-## 3. ~~Reality Capture (image) processing~~ — Shipped
+## 3. ~~Reality Capture (image) processing~~: Shipped
 
 Real thumbnail/rendition pipeline (`sharp` + `exifr`, embedded in
 `apps/api`, not a standalone service — resolves the open architecture

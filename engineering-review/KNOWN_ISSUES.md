@@ -1,4 +1,4 @@
-# EngineeringOS — KNOWN_ISSUES.md
+# EngineeringOS: KNOWN_ISSUES.md
 
 > **Historical record — at least one entry below is stale.** The "Major"
 > item claiming "Production deploys never run new migrations" is
@@ -259,7 +259,7 @@ overlaps with those.)
   (architecture was designed to make this feasible later without a
   rewrite, but isn't implemented).
 - Dark/light mode, accessibility pass, mobile layouts, keyboard
-  shortcuts — see `REMAINING_WORK.md` item 7.
+  shortcuts; see `REMAINING_WORK.md` item 7.
 - Code-splitting the BIM viewer route to reduce initial bundle size.
 - **[Audit]** Add CI pipeline with automated tests, linting, and
   dependency vulnerability scanning.

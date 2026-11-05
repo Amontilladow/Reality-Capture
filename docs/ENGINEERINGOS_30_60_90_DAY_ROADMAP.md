@@ -1,4 +1,4 @@
-# EngineeringOS — 30/60/90-Day Roadmap
+# EngineeringOS: 30/60/90-Day Roadmap
 
 **Phase 7: Continuous Improvement, AI Optimization & Product Growth**
 Synthesizes every finding across this phase's documents into a single prioritized plan. Every task states its business justification, effort, dependencies, running cost, regression risk, success metric, acceptance criteria, and whether it needs your approval before starting. Nothing here is built by virtue of being listed — P0/P1 items marked "no approval needed" are small, safe, zero-cost code changes consistent with this engagement's "fix only clearly-safe defects" rule; everything else is a proposal.
@@ -15,7 +15,7 @@ Synthesizes every finding across this phase's documents into a single prioritize
 
 ---
 
-## P0 — Critical (security, reliability, data integrity)
+## P0: Critical (security, reliability, data integrity)
 
 ### P0-1: Structured auth-failure logging
 - **Justification:** confirmed zero visibility today into failed logins or invalid-token attempts (`MONITORING_AND_INCIDENT_MANAGEMENT.md` §2) — an existing code comment claiming this is handled is false.
@@ -49,7 +49,7 @@ Synthesizes every finding across this phase's documents into a single prioritize
 
 ---
 
-## P1 — High-value, measurable
+## P1: High-value, measurable
 
 ### P1-1: Self-service company registration frontend
 - **Justification:** the backend (`POST /company/register`) already works end-to-end but has zero frontend form (`SAAS_COMMERCIAL_READINESS.md` §1) — the single cheapest path to new self-service signups.
@@ -103,7 +103,7 @@ Synthesizes every finding across this phase's documents into a single prioritize
 
 ---
 
-## P2 — Valuable follow-on
+## P2: Valuable follow-on
 
 | Item | Source | One-line justification |
 |---|---|---|
@@ -118,7 +118,7 @@ Synthesizes every finding across this phase's documents into a single prioritize
 | Document revision bottleneck detection | `CONSTRUCTION_WORKFLOW...md` Feature 5 | Lower priority than Feature 2 |
 | Full-company data export | `SAAS_COMMERCIAL_READINESS.md` §6 | Trust/compliance value, no current customer request |
 
-## P3 — Optional experiments (not recommended without a demonstrated need)
+## P3: Optional experiments (not recommended without a demonstrated need)
 
 | Item | Why it's P3, not higher |
 |---|---|
@@ -131,7 +131,7 @@ Synthesizes every finding across this phase's documents into a single prioritize
 
 ---
 
-## Success metrics — what's measured vs. unavailable
+## Success metrics: what's measured vs. unavailable
 
 Per this phase's own rule: labeled explicitly, nothing invented.
 

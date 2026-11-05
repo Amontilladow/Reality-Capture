@@ -1,4 +1,4 @@
-# EngineeringOS — Product Analytics and Adoption
+# EngineeringOS: Product Analytics and Adoption
 
 **Phase 7: Continuous Improvement, AI Optimization & Product Growth**
 Grounded in a direct read of `apps/api/src/common/interceptors/audit.interceptor.ts` and `apps/api/src/modules/ai/ai-usage.service.ts` — this platform already has two production, RLS-protected, company/project-scoped event tables (`audit_log`, `ai_usage_log`) that cover a meaningful fraction of what's being asked for here. **The core design principle of this document is: extend what exists, duplicate nothing.** No third-party analytics SaaS (PostHog, Mixpanel, Segment, Amplitude) is proposed — everything here runs on the existing Postgres instance, at no new recurring cost.
@@ -37,10 +37,10 @@ Grounded in a direct read of `apps/api/src/common/interceptors/audit.interceptor
 
 ## 3. Design: three layers, reusing what exists
 
-### Layer 1 — Extend `audit_log`'s `ROUTE_MAP` (near-zero cost, no schema change)
+### Layer 1: Extend `audit_log`'s `ROUTE_MAP` (near-zero cost, no schema change)
 Add RFI lifecycle entries (`rfi.created`, `rfi.responded`, `rfi.closed`) and snag-creation (`snag_item.created`) to the existing `ROUTE_MAP` in `audit.interceptor.ts`, exactly matching the pattern already used for Issues. This is a pure code change — no migration, no new table, no new write path, reuses infrastructure already running in production. **Classified as safe to implement in this engagement** (see §7).
 
-### Layer 2 — A new, minimal `product_events` table for what has no mutating-request shape
+### Layer 2: A new, minimal `product_events` table for what has no mutating-request shape
 Views, searches, and "I didn't find what I needed" signals aren't `POST`/`PATCH` requests — `AuditInterceptor` structurally cannot capture them. A new, deliberately small table is needed:
 
 ```sql
@@ -62,7 +62,7 @@ CREATE INDEX idx_product_events_event_time   ON product_events(event_name, creat
 
 This table is proposed, not yet implemented in this engagement — it's a schema change (new migration), which per this brief's own rules is exactly the kind of "substantial new functionality" to get your sign-off on before building, even though it introduces no new cost or third-party dependency. See §7 for what WAS implemented without asking (Layer 1 above) versus what's proposed here for your decision.
 
-### Layer 3 — Derived/aggregate views, computed from Layers 1+2 (no new collection, read-side only)
+### Layer 3: Derived/aggregate views, computed from Layers 1+2 (no new collection, read-side only)
 Once Layers 1-2 exist, workflow-completion metrics are pure SQL aggregation over already-collected timestamps — no new tracking needed:
 - RFI response time: `rfi.responded.occurred_at - rfi.created.occurred_at`, grouped by project/discipline.
 - Onboarding completion rate: `COUNT(DISTINCT user_id WHERE event_name='onboarding_step_completed' AND event_target='final') / COUNT(DISTINCT user_id WHERE event_name='onboarding_step_completed' AND event_target='first')`.
@@ -92,5 +92,5 @@ Once Layers 1-3 exist, a company admin can see (scoped to their own company only
 
 ## 7. Implementation status in this engagement
 
-- **Layer 1 (RFI/Snag `ROUTE_MAP` additions):** implemented this engagement — see the companion code change and `PRODUCTION_READINESS_REPORT.md`-style verification in the Phase 7 commit. Zero schema change, reuses existing `audit_log` infrastructure exactly as designed above.
+- **Layer 1 (RFI/Snag `ROUTE_MAP` additions):** implemented this engagement; see the companion code change and `PRODUCTION_READINESS_REPORT.md`-style verification in the Phase 7 commit. Zero schema change, reuses existing `audit_log` infrastructure exactly as designed above.
 - **Layer 2 (new `product_events` table) and Layer 3 (aggregate views/admin UI):** **proposed, not implemented.** This is a new table (schema change) and a new admin-facing surface (UI work) — real, bounded scope, but surpasses this engagement's "safe, no-new-infrastructure" bar for unilateral implementation. Recommended as a P1 item in `ENGINEERINGOS_30_60_90_DAY_ROADMAP.md`, pending your approval.

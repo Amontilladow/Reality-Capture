@@ -1,4 +1,4 @@
-# BIM Viewer Gap Analysis — xeokit-sdk / engine_components / engine_fragment vs. our viewer
+# BIM Viewer Gap Analysis: xeokit-sdk / engine_components / engine_fragment vs. our viewer
 
 Status: **Analysis only. No code changed.**
 
@@ -90,7 +90,7 @@ as the load-bearing prerequisite for all three.
 
 **Ours:** `OBC.OrthoPerspectiveCamera` with `camera-controls`
 (`BimViewer.tsx:139,154,171`) — orbit only. Two real bugs already found and
-fixed this session (`dollyToCursor`, `infinityDolly` — see the code comments
+fixed this session (`dollyToCursor`, `infinityDolly`; see the code comments
 at `BimViewer.tsx:144-171`). `fitToBox`, `getCameraState`/`setCameraState` for
 issue-linked view restoration, `getScreenshotDataUrl`.
 
@@ -163,7 +163,7 @@ to our renderer, but the technique is simple enough not to need it to be).
 ## 3. LOD
 
 **Ours:** whatever LOD the very first, pre-camera `refreshView` produces at
-load time — see Finding Zero. No visible per-distance detail switching after
+load time; see Finding Zero. No visible per-distance detail switching after
 that, because the mechanism that would drive it is never invoked again.
 
 **What's already installed and unused:** real, tunable, per-model LOD —

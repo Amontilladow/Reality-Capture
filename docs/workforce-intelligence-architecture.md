@@ -1,4 +1,4 @@
-# Workforce Intelligence™ — Architecture
+# Workforce Intelligence™: Architecture
 
 Status: Phase 2 (Architect) output for the Workforce Intelligence initiative.
 Written after Phase 1 discovery against this repository as it actually
@@ -54,7 +54,7 @@ foreign key.** It does not mean calling out to other deployed services.
 | Object storage | S3-compatible (MinIO dev / R2 prod) | `StorageService`, presigned upload URLs |
 | Audit | Global `AuditInterceptor` + append-only `audit_log` table | Route-pattern → (action, resourceType) mapping, checksummed rows, `UPDATE`/`DELETE` revoked from `app_user` |
 
-### RBAC — the exact mechanism to reuse
+### RBAC: the exact mechanism to reuse
 
 There is **no** string-permission system like `workforce.view` /
 `workforce.manage` in this codebase today. There are two real mechanisms,
@@ -63,7 +63,7 @@ and Workforce Intelligence should extend both rather than invent a third:
 1. **`CompanyRole` weight hierarchy** (`packages/types/src/user.types.ts`):
    11 roles (`super_admin` → `client_representative`), each with an integer
    weight. `@Roles(...roles)` + `RolesGuard` compares the caller's weight
-   against `Math.min(...requiredRoles.map(weight))` — i.e. "at least as
+   against `Math.min(...requiredRoles.map(weight))`, i.e. "at least as
    senior as the least senior role listed." This is the right tool for
    "who can configure workforce monitoring policy company-wide" and "who
    can see roll-ups across the whole company/department" (`manage`,
@@ -135,7 +135,7 @@ attribution (e.g., which specific Revit session produced which drawing
 revision) needs the desktop agent's file-path/model-context signal, which
 is V2, not MVP.
 
-## Reality Capture — explicit non-interference
+## Reality Capture: explicit non-interference
 
 Per the brief's non-negotiable §22/§29: Reality Capture (captures, 360
 timeline/BuildLens, hotspots, drawings) is untouched by this work. No
@@ -235,7 +235,7 @@ never mutated by the scoring engine, and `productivity_scores` carries a
 `model_version` so re-running a changed formula is a `DELETE ... WHERE
 model_version = ?` + re-insert, never an in-place UPDATE of history.
 
-### Desktop Agent — designed, not built, in this pass
+### Desktop Agent: designed, not built, in this pass
 
 Building and code-signing an actual Windows/macOS agent is a separate,
 multi-week engineering effort (native packaging, OS-level idle/active-app
@@ -318,7 +318,7 @@ than inventing a second AI integration path.
   The schema uses append-only inserts with an index on
   `(company_id, user_id, started_at)` and a monthly-partition-ready
   design (not partitioned at MVP scale, but the `started_at`-keyed shape
-  means partitioning is a later `ALTER`, not a redesign) — see the data
+  means partitioning is a later `ALTER`, not a redesign); see the data
   model doc.
 - **Project-attribution confidence is genuinely hard.** File-path/BIM-
   model/document-metadata signals (brief §12, mechanisms 3-6) need the

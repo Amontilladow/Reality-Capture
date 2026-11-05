@@ -1,4 +1,4 @@
-# Lessons Learned — BIM Viewer Investigation
+# Lessons Learned: BIM Viewer Investigation
 
 Not a bug report. `ROOT_CAUSE_REPORT_BIM_VIEWER.md` is the record of *what happened* to this specific model. This document is the record of *what the investigation itself taught us* — technique, process, and a few sharp-edged API/architecture gotchas — generalized so it's useful the next time someone on EngineeringOS is debugging something that doesn't look like this bug at all.
 

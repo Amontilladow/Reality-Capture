@@ -1,4 +1,4 @@
-# EngineeringOS — Monitoring and Incident Management
+# EngineeringOS: Monitoring and Incident Management
 
 **Phase 7: Continuous Improvement, AI Optimization & Product Growth**
 Every finding below is verified against the actual code and deployment config (`render.yaml`), not assumed from prior phases. This phase does not add any new paid monitoring service — every proposal below is explicitly flagged as needing approval before any cost is incurred.
@@ -50,7 +50,7 @@ Consistent with "actionable alerts with configurable thresholds" and no new paid
 
 **Recommendation:** the two $0 code-only items (auth-failure logging, differentiated third-party failure logging) are the highest-value, lowest-cost next step and are flagged in the roadmap as P0/P1 candidates. The paid options are explicitly not recommended without a demonstrated incident that existing visibility failed to catch — speculative APM spend isn't justified by anything measured in this pass.
 
-## 6. Incident severity, escalation, and recovery — process, not code
+## 6. Incident severity, escalation, and recovery: process, not code
 
 No formal incident-response process exists in this codebase (this is expected — it's an organizational process, not something code implements). Proposed classification, consistent with industry-standard severity framing and this platform's actual blast-radius shape (multi-tenant, RLS-isolated):
 

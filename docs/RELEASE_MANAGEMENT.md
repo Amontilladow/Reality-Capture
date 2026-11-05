@@ -1,11 +1,11 @@
-# EngineeringOS — Release Management and Regression Prevention
+# EngineeringOS: Release Management and Regression Prevention
 
 **Phase 7: Continuous Improvement, AI Optimization & Product Growth**
 Section 9 of this phase's brief. Describes the actual current pipeline, confirmed from `.github/workflows/` and `render.yaml`, then proposes the gaps — never recommending a release purely because the build succeeded.
 
 ---
 
-## 1. Current pipeline — confirmed from the actual config
+## 1. Current pipeline: confirmed from the actual config
 
 ```
 PR opened → ci.yml (install, typecheck, test, build, lint) → merge to main
@@ -36,7 +36,7 @@ Two workflows exist, confirmed by reading them directly:
 - **No automated regression suite beyond unit/integration tests** — no E2E browser test suite was found (no Playwright/Cypress test files in this repo), so UI-level regressions (a button that silently stops working, a form that submits the wrong field) are caught only by manual testing or by users after deploy.
 - **No documented rollback procedure specific to a bad code deploy** (as distinct from the already-documented data-restore procedure) — "redeploy the prior commit" works on Render's platform but isn't written down as a runbook step anywhere in this repo.
 
-## 4. Proposed process (not built — process and tooling recommendations only)
+## 4. Proposed process (not built: process and tooling recommendations only)
 
 1. **Dev → review → automated checks** — already real, keep as-is.
 2. **Regression testing** — already real (594 tests); recommend simply keeping this bar as the codebase grows, not lowering it under time pressure.
@@ -47,7 +47,7 @@ Two workflows exist, confirmed by reading them directly:
 7. **Release notes** — proposed in `PRODUCT_FEEDBACK_AND_GOVERNANCE.md` §7 (reusing Help Centre infrastructure) — not duplicated here.
 8. **Post-release verification** — currently just the health check; a slightly richer version (checking a few key user-facing flows, not just "is the server up") is a reasonable low-cost follow-on, not built in this pass.
 
-## 5. Feature flags for substantial features — recommendation
+## 5. Feature flags for substantial features: recommendation
 
 For any future *substantial* new feature (the brief's own term) — something that changes a core workflow, not a small UI tweak — a simple, self-hosted feature-flag approach (a boolean column per company, or an env-var-driven flag checked at the service layer) is sufficient and avoids a new paid service. This is proposed as a convention to adopt for the next substantial feature this platform ships, not a system to build speculatively ahead of having a feature that needs it.
 

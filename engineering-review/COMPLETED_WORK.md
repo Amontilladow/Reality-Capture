@@ -1,4 +1,4 @@
-# EngineeringOS — COMPLETED_WORK.md
+# EngineeringOS: COMPLETED_WORK.md
 
 Specific, not summarized. Organized by feature.
 
@@ -45,7 +45,7 @@ Specific, not summarized. Organized by feature.
   (`stage_completion`, timing/memory columns, `bim_import_reports` table).
 - `apps/api/src/modules/bim/{bim.service.ts,bim.module.ts,bim.controller.ts}`
   extended: `registerModel()` now enqueues a real Bull job (unique job id
-  per attempt — see bug #4 below), plus `getModelStatus()`,
+  per attempt; see bug #4 below), plus `getModelStatus()`,
   `reprocessModel()`, `getModelViewerData()`, `getHierarchy()`,
   `getElementByGuid()`, and `getElement()` enriched with quantities/
   materials/classifications.

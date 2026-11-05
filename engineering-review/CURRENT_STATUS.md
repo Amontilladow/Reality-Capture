@@ -1,4 +1,4 @@
-# EngineeringOS Reality Capture — CURRENT_STATUS.md
+# EngineeringOS Reality Capture: CURRENT_STATUS.md
 
 **This is the authoritative status document.** Every other file in
 `engineering-review/` predates it and describes an earlier snapshot of the
@@ -50,7 +50,7 @@ listing `apps/api/src/modules/*.controller.ts` and cross-referencing
 | AI assistant / search | `modules/ai-client` + `apps/ai-service` (Python/FastAPI, Qdrant-backed RAG) | AI Assistant page | Implemented; `ANTHROPIC_API_KEY` unset in `render.yaml` today (`sync: false`, "no key configured yet, /assistant will error until one is added") |
 | Native capture companion | `apps/mobile` (Expo/React Native) | n/a | Implemented as a capture-focused companion (camera, offline SQLite queue, background sync) — not full web feature parity |
 | Browser extension | `apps/browser-extension` | n/a | Implemented (small, has its own `node:test` suite); not covered by any typecheck/lint/build script |
-| Forensic BIM tooling | `tools/bim-debug` | n/a | Implemented; its one regression test self-skips without a real customer IFC file (`BIM_DEBUG_SOURCE_IFC` env var, not committed) — see the test file's own header comment |
+| Forensic BIM tooling | `tools/bim-debug` | n/a | Implemented; its one regression test self-skips without a real customer IFC file (`BIM_DEBUG_SOURCE_IFC` env var, not committed); see the test file's own header comment |
 
 The README previously described the product as "Phase 1 Foundation" with
 Reality Capture, Drawings, BIM, Issues, and AI all "🔜 Next/Planned." That
@@ -99,7 +99,7 @@ verification, load testing).
 
   Nothing is left relying on client-declared size alone. True transport-level
   (presigned-POST signature) enforcement remains a deployment/provider-level task, not
-  done here — see the note above on why that's a broader change than this pass's scope.
+  done here; see the note above on why that's a broader change than this pass's scope.
 - **BIM model uploads had no file-extension validation before this pass.**
   Fixed here: `BimService.getModelUploadUrl()` now rejects anything but a
   `.ifc` filename before issuing a presigned URL. `NWD`/`RVT` remain valid
@@ -155,7 +155,7 @@ verification, load testing).
   left as-is; warnings don't fail the lint command and neither looked like
   a live bug worth a scope-creeping fix in this pass.
 
-## 3. Authentication error disclosure — reviewed, not changed
+## 3. Authentication error disclosure: reviewed, not changed
 
 `AuthService.login()` currently returns distinct, human-readable messages
 for: wrong email/password ("Invalid email or password."), a deactivated
@@ -176,7 +176,7 @@ keep the current messages (better UX, accepted enumeration risk — common
 for B2B SaaS where email lists aren't public). Whoever owns that call
 should make it deliberately.
 
-## 4. Database role / row-level security — verified, documented, not changed
+## 4. Database role / row-level security: verified, documented, not changed
 
 **Every environment in this repo — local dev, the Render production
 deployment as configured, and this sprint's own test runs — connects to
@@ -279,7 +279,7 @@ original `tenant_isolation` policy's `::UUID` cast would throw on. Every
 reorder/split a top-level `AND` in a policy's `USING` clause and evaluate
 the cast before the guard.
 
-## 5. Migration behavior — documented
+## 5. Migration behavior: documented
 
 - Migrations live in `apps/api/src/database/migrations/*.sql`, numbered
   sequentially (currently through `049_snag_items_building_level.sql`),
@@ -325,7 +325,7 @@ Root `package.json`'s `typecheck`/`test`/`lint` all shell out to
 package that doesn't declare that script — it is not an error, and it
 gives no visible signal that a package was skipped. Verified directly
 (`pnpm typecheck`, `pnpm test`, `pnpm lint`, `pnpm build`, each run for
-real — see the Verification section of the sprint report for exact
+real; see the Verification section of the sprint report for exact
 output):
 
 | Script | Packages it actually runs against | Packages silently skipped |
@@ -349,7 +349,7 @@ and NEXT_STEPS.md refer to repeatedly. No frontend testing framework
 (Vitest, React Testing Library, Detox, etc.) exists in either package
 today; introducing one is explicitly out of scope for this sprint (see
 its own "do not implement" list) and is the single most valuable
-follow-up — see the sprint report's "Recommended next step."
+follow-up; see the sprint report's "Recommended next step."
 
 ## 7. Known operational risks (not fixed this pass)
 
@@ -377,7 +377,7 @@ follow-up — see the sprint report's "Recommended next step."
    code compiles, not that it renders or behaves correctly in a real
    browser (a real exception this session: the building/level grouping
    work on Floor Plans, Issues, and Snagging *was* verified against a real
-   running browser via Playwright — see those PRs' descriptions — but that
+   running browser via Playwright; see those PRs' descriptions — but that
    is the exception, not the rule, across this codebase).
 5. No load testing exists anywhere in this repository (no k6/artillery/
    autocannon config found) — IFC processing throughput, Bull queue

@@ -1,4 +1,4 @@
-# EngineeringOS — PROJECT_STATUS.md
+# EngineeringOS: PROJECT_STATUS.md
 
 > **Historical record.** This describes the v0.1 Release Candidate /
 > early-Sprint-2 snapshot of the codebase. Many modules this document
@@ -39,14 +39,14 @@ dashboards/mobile/accessibility). It is **not** a estimate against v0.1
 alone — v0.1's own scope (the workflow above) is 100% complete and
 verified.
 
-## Completed modules (frozen — do not modify without a verified bug)
+## Completed modules (frozen: do not modify without a verified bug)
 
 - **Tenancy / Auth** — company registration, JWT auth, role-based
   authorization, rate limiting, subscription limit enforcement.
 - **Projects / Hierarchy** — project → building → level → location chain,
   audit logging.
 - **Issues (backend)** — creation, assignment/reassignment, activity log,
-  role permissions. (No viewer integration yet — see Remaining Work.)
+  role permissions. (No viewer integration yet; see Remaining Work.)
 - **Documents, Timeline, Captures (backend)** — CRUD, linking, hierarchy
   fetch, capture listing/filtering.
 - **Notifications** — real table + service + polling API (replaced an

@@ -1,4 +1,4 @@
-# EngineeringOS — Production Deployment Checklist
+# EngineeringOS: Production Deployment Checklist
 
 **Phase 6: Final Production Readiness & Acceptance Testing**
 Grounded in a full read of `render.yaml`, `.github/workflows/ci.yml`, `.github/workflows/post-deploy-health-check.yml`, and the health/config modules. Checked items (`[x]`) are confirmed either by code review or a live test this engagement performed. Unchecked items (`[ ]`) are gaps or require your action — each says exactly what and why.

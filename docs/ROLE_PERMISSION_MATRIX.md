@@ -1,4 +1,4 @@
-# EngineeringOS — Role & Permission Matrix
+# EngineeringOS: Role & Permission Matrix
 
 **Phase 6: Final Production Readiness & Acceptance Testing**
 Generated from direct code review of `apps/api/src/common/{authorization,guards,decorators}`, `packages/types/src/user.types.ts`, and all 42 controllers under `apps/api/src/modules/**`, cross-checked with live requests against a running instance. Every claim below is grounded in a specific file:line citation or a live HTTP test — none is inferred from documentation or UI behavior alone.
@@ -57,11 +57,11 @@ Legend: ✅ = passes by default · **Grant/Lead only** = requires an explicit `p
 | consultant (30) | — | — | ✅ | ✅ | Grant/Lead | Grant/Lead | — | Grant/Lead | — | — | — | ✅ read; write=Grant/Lead | ✅ |
 | client_representative (20) | — | — | ✅ | ✅ | Grant/Lead | Grant/Lead | — | Grant/Lead | — | — | — | ✅ read; write=Grant/Lead | ✅ |
 
-\* Admitted only by weight resolution, not named in the `@Roles()` decorator — see §4 below.
+\* Admitted only by weight resolution, not named in the `@Roles()` decorator; see §4 below.
 
 `project_lead` (a project role any company role can hold on a given project) grants `manage_team`/`manage_issues`/`manage_project_records`/`manage_rfis`/`approve_rfis`/`verify_snag_items` on that one project with no grant needed. Project roles `surveyor`/`document_controller`/`capture_operator`/`viewer` carry no authorization weight anywhere in the API layer today — they affect only `project_members.role` lookups (`site_engineer` triggers `SiteRoleRestrictionGuard`).
 
-## 3. RFI / Issue / Snag lifecycle — the real gating per transition
+## 3. RFI / Issue / Snag lifecycle: the real gating per transition
 
 **RFI** (4 distinct, separately-gated transitions):
 | Transition | Gate | Citation |
@@ -91,7 +91,7 @@ Legend: ✅ = passes by default · **Grant/Lead only** = requires an explicit `p
 
 ## 4. Confirmed gaps / concerns (ranked by severity)
 
-### 4.0 HIGH (functionality, not security) — Fine-grained permission grants are unreachable for every role except company_admin (LIVE-VERIFIED)
+### 4.0 HIGH (functionality, not security): Fine-grained permission grants are unreachable for every role except company_admin (LIVE-VERIFIED)
 See the "CRITICAL CORRECTION" callout in §1. `grantPermission()` rejects any target whose company role isn't literally `company_admin`. The practical consequence, confirmed live during UAT:
 - A `project_manager` cannot be given narrow `manage_rfis` access to review/respond to RFIs on one project — the grant endpoint refuses the request outright.
 - The only way to give a non-`company_admin` user any of the six project permissions is to make them that project's `project_lead`, which hands them all six at once (`manage_team`, `manage_issues`, `manage_project_records`, `manage_rfis`, `approve_rfis`, `verify_snag_items`) — there is no narrower project role.
@@ -99,7 +99,7 @@ See the "CRITICAL CORRECTION" callout in §1. `grantPermission()` rejects any ta
 
 **Recommended fix:** either allow `grantPermission()` to target any company role (removing the `company_admin`-only restriction, since the endpoint itself is already `@Roles('super_admin')`-gated — only a super_admin can call it in the first place, so the extra restriction on the *target* appears to be stricter than necessary) or introduce one or more narrower project roles between `viewer` and `project_lead` that map to subsets of the six permissions.
 
-### 4.1 CRITICAL — Privilege escalation via user invite (LIVE-VERIFIED)
+### 4.1 CRITICAL: Privilege escalation via user invite (LIVE-VERIFIED)
 `POST /users/invite` is gated `@Roles('company_admin','engineering_manager','project_manager')` (admits anyone ≥ `project_manager` weight — 6 of 12 roles). `UsersService.invite()` (`users.service.ts:95`) inserts the caller-supplied `dto.companyRole` **directly and uncapped** as the new user's `company_role`, with `is_active` defaulting to `true` and no pending-approval gate on this path.
 
 **Live reproduction (this audit):** logged in as the demo `project_manager`, called `POST /users/invite` with `{"companyRole":"super_admin", ...}` → `HTTP 201`, and the resulting DB row showed `company_role = 'super_admin'`, `is_active = true`. Any user at `project_manager` weight or above can mint a brand-new `super_admin` account for an email they control. Test account deleted after confirmation.
@@ -108,7 +108,7 @@ The `InviteUserDto`'s own comment claims this field is "harmless" pending a sepa
 
 **Recommended fix:** cap the inserted `companyRole` to the inviter's own weight (never higher), or ignore client-supplied `companyRole` entirely for anything above the lowest default role and require a separate `super_admin`/`company_admin`-only promotion endpoint.
 
-### 4.2 CRITICAL — `PATCH /projects/:id` has no authorization at all (LIVE-VERIFIED)
+### 4.2 CRITICAL: `PATCH /projects/:id` has no authorization at all (LIVE-VERIFIED)
 `projects.controller.ts:45-49` carries no `@Roles`/`@RequireProjectPermission`. `ProjectsService.update()` (`projects.service.ts:119-158`) performs only tenant (`company_id`) scoping — no role, permission, or membership check.
 
 **Live reproduction:** logged in as the demo `consultant` (weight 30, the second-lowest company role) and successfully renamed the demo project and changed its status via `PATCH /projects/:id` — `HTTP 200`, change persisted in the database. Reverted after confirmation.
@@ -117,17 +117,17 @@ Any authenticated user of **any** company role can rename, re-phase, or rewrite 
 
 **Recommended fix:** gate to `@RequireProjectPermission('manage_project_records')` or project_lead/super_admin, matching every other settings-level mutation on this same controller.
 
-### 4.3 CRITICAL — Buildings/Levels/Locations module has zero authorization (CODE-VERIFIED)
+### 4.3 CRITICAL: Buildings/Levels/Locations module has zero authorization (CODE-VERIFIED)
 All 9 routes in `buildings.controller.ts` (create/update building, levels, locations, archive, convert-pin-to-snag) carry no `@Roles`/`@RequireProjectPermission`; `BuildingsService` contains no role/permission/membership check anywhere (grepped for `ForbiddenException`/`companyRole`/`hasProjectPermission` — zero hits). `SiteRoleRestrictionGuard` does correctly block site-restricted identities from these writes (not in its allowlist), but all other 9 company roles are unrestricted.
 
 **Recommended fix:** gate mutating routes to `manage_project_records`, matching Documents/Drawings/Captures/BIM.
 
-### 4.4 CRITICAL — Risk module has zero project-scoped authorization (CODE-VERIFIED)
+### 4.4 CRITICAL: Risk module has zero project-scoped authorization (CODE-VERIFIED)
 Every route in `risk.controller.ts` (recalculate, override, matrix-override, human-assessment, set-status, assign-owner) has no `@Roles`/`@RequireProjectPermission`; `RiskService` scopes only by `companyId`, never by project membership or role (zero hits for `companyRole`/`ForbiddenException`/`hasProjectPermission`). Any authenticated company user can override risk scores, set risk status/owner, or clear matrix overrides on any project in the company.
 
 **Recommended fix:** same pattern — gate mutating routes to `manage_project_records`, reads can likely remain open consistent with the company-wide-visibility design.
 
-### 4.5 HIGH — Deactivation does not revoke a live access token (LIVE-VERIFIED)
+### 4.5 HIGH: Deactivation does not revoke a live access token (LIVE-VERIFIED)
 `DELETE /users/:id` (`@Roles('super_admin')`) responds `"User deactivated and all sessions revoked."` and correctly sets `is_active = false`. `JwtStrategy.validate()` (`jwt.strategy.ts:19-32`) performs **no database lookup** — it trusts the JWT's embedded claims for the token's full lifetime.
 
 **Live reproduction:** deactivated the demo `consultant` account as `super_admin`, then replayed the consultant's pre-existing access token against `GET /projects` → `HTTP 200`, full data returned. Access tokens are not actually revoked; refresh tokens are (confirmed separately: `auth.service.ts:107` checks `is_active` on refresh).
@@ -136,10 +136,10 @@ Impact is bounded by `JWT_ACCESS_EXPIRES_IN=15m`, but a 15-minute live window di
 
 **Recommended fix:** either shorten access-token TTL further for this threat model, add a cheap `is_active` check (e.g. cached) to the JWT validation path, or correct the user-facing message to describe the actual guarantee.
 
-### 4.6 MEDIUM — Inconsistent creation gating across record types (CODE-VERIFIED)
+### 4.6 MEDIUM: Inconsistent creation gating across record types (CODE-VERIFIED)
 Issues, RFIs, Snags, Submittals, Transmittals, and QA Inspections all have **open, ungated creation**; Documents, Drawings, Captures, and BIM models all require `manage_project_records` to create. No in-code rationale documents why creation itself (as opposed to the later workflow transitions) differs this way. Recommend confirming with the product owner whether this is intentional or drift.
 
-### 4.7 LOW — Weight-based `@Roles()` resolution silently widens access
+### 4.7 LOW: Weight-based `@Roles()` resolution silently widens access
 Confirmed mechanically for `users.controller.ts:33` (invite — silently admits `technical_director`/`bim_manager` though neither is named) and present by construction anywhere `@Roles(a, b)` is used. Not a bug in the guard's documented design, but a maintenance risk: inserting a new role between two existing weights changes who passes an existing check without touching the decorator.
 
 ### 4.8 Positive findings worth recording

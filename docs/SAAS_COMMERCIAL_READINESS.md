@@ -1,4 +1,4 @@
-# EngineeringOS — SaaS Commercial Readiness
+# EngineeringOS: SaaS Commercial Readiness
 
 **Phase 7: Continuous Improvement, AI Optimization & Product Growth**
 Every item below distinguishes **implemented** (verified in code) from **proposed** (not built, needs approval). No billing/subscription/payment integration is implemented or recommended for implementation anywhere in this document without explicit approval, per this phase's constraints.
@@ -47,7 +47,7 @@ No dedicated "export everything this company owns" feature exists. Per-project/p
 
 Confirmed: no support-ticketing integration, no live chat, no support email address surfaced in the product UI — the only customer-facing support surface is the static Help Centre (built in Phase 4). This is consistent with `PRODUCT_FEEDBACK_AND_GOVERNANCE.md`'s finding that no feedback/bug-report mechanism exists either — the two gaps compound: a stuck user today has no in-product way to report a problem or ask a question, only whatever support channel exists entirely outside the product (email, phone, etc. — not something code can confirm either way).
 
-## 8. Billing/subscription/payment — explicitly not touched
+## 8. Billing/subscription/payment: explicitly not touched
 
 `stripe` appears as a dependency in `apps/api/package.json`, but this phase did **not** investigate, change, or recommend changes to any billing/payment integration — per this phase's explicit constraint ("do NOT implement billing/subscription/payment integration without approval"), that entire surface is out of scope for this document. Nothing here should be read as a statement about whether Stripe integration is complete, partial, or absent — that would require a dedicated review this phase didn't do, and isn't needed for this document's commercial-readiness-gap findings above, which are all about limit/lifecycle management, not payment processing itself.
 

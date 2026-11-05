@@ -1,4 +1,4 @@
-# EngineeringOS — Performance and Infrastructure Optimization
+# EngineeringOS: Performance and Infrastructure Optimization
 
 **Phase 7: Continuous Improvement, AI Optimization & Product Growth**
 Every finding below was verified directly against the current codebase and, where noted, a real local build/test run — not inherited from prior-phase documentation without re-checking. Distinguishes **measured** facts from **code-level observations** (true of the code as written, not load-tested) and from **estimates**. No premature caching, no unnecessary microservices, and no "trend-chasing" framework swaps are proposed anywhere below — every recommendation ties back to a specific, confirmed finding.
@@ -31,7 +31,7 @@ Three queues exist: `image-processing` (captures), `ifc-processing` (BIM models)
 
 **Confirmed by reading the code** (`subscription.guard.ts:29`): the comment says "single query, cached in Redis in production," but the method directly below it is a plain `this.db.query` with no Redis, no cache client, and no conditional "in production" branch anywhere in the file. The comment describes a caching behavior that does not exist in the code.
 
-This guard runs on every request to a feature-gated route (`@RequireFeature(...)`), so it is a genuinely hot path — but there's no measured evidence this query is actually slow (it's a two-table join on primary-key-indexed columns, likely sub-millisecond in practice; this is an inference from the query shape, not a measured timing, since no APM/latency instrumentation exists to check — see `MONITORING_AND_INCIDENT_MANAGEMENT.md`).
+This guard runs on every request to a feature-gated route (`@RequireFeature(...)`), so it is a genuinely hot path — but there's no measured evidence this query is actually slow (it's a two-table join on primary-key-indexed columns, likely sub-millisecond in practice; this is an inference from the query shape, not a measured timing, since no APM/latency instrumentation exists to check; see `MONITORING_AND_INCIDENT_MANAGEMENT.md`).
 
 **Implemented this phase:** the comment was corrected to describe what the code actually does (the false "cached in Redis" claim was removed) — a trivial, zero-risk documentation fix, no behavior change. **Real caching was deliberately not added** — there's no measured latency problem to justify it, and a subscription-status cache has real staleness risk (a downgraded/cancelled company could keep feature access past its actual expiry) that isn't worth taking on without evidence it's needed.
 
@@ -41,7 +41,7 @@ This guard runs on every request to a feature-gated route (`@RequireFeature(...)
 
 **Scope of exposure is narrow, not a general request-path problem:** this endpoint (`POST .../risk/recalculate`) is gated behind `@RequireProjectPermission('manage_project_records')` — not called on every page load, only on an explicit "refresh analysis" action by an authorized user. The incremental path (`recalculateForEntity()`, used by the automatic RFI/Issue/Snag event hooks) only ever touches one node per call, so it doesn't have this shape at all.
 
-**No measured timing exists** for how long a full recalculation actually takes on a realistically-sized project — this would need a project with a known node count and a wall-clock measurement, which wasn't available to run in this pass (no seeded large-project fixture exists in this environment). **Recommendation: do not optimize without that measurement.** Batching this into fewer round-trips is possible but adds real complexity (the per-node logic has node-type-specific branches and a careful "don't override an existing human assessment or matrix override" upsert — see the `CASE` logic kept intact in `risk.service.ts`'s upsert, which batching would need to preserve exactly). This is a "measure first" item, not a "fix now" item — flagged for the roadmap (P2), not Task #130's safe-fix list.
+**No measured timing exists** for how long a full recalculation actually takes on a realistically-sized project — this would need a project with a known node count and a wall-clock measurement, which wasn't available to run in this pass (no seeded large-project fixture exists in this environment). **Recommendation: do not optimize without that measurement.** Batching this into fewer round-trips is possible but adds real complexity (the per-node logic has node-type-specific branches and a careful "don't override an existing human assessment or matrix override" upsert; see the `CASE` logic kept intact in `risk.service.ts`'s upsert, which batching would need to preserve exactly). This is a "measure first" item, not a "fix now" item — flagged for the roadmap (P2), not Task #130's safe-fix list.
 
 ## 5. Dead dependencies in `apps/api/package.json`
 
@@ -79,11 +79,11 @@ These appear to be leftovers from an earlier, since-replaced data-access approac
 
 **This is not necessarily wrong** — 10 is a reasonable default for a moderate-traffic API — but it is **unverified against this app's actual concurrency needs**, because no production traffic/connection-saturation metrics exist to check it against (see `MONITORING_AND_INCIDENT_MANAGEMENT.md` for the broader absence of APM). **Recommendation: do not change this speculatively.** Changing pool size without evidence of either connection exhaustion (errors/timeouts under load) or idle-connection waste is a guess, not an optimization. This is flagged as a "watch, don't touch" item pending real traffic data, consistent with this phase's "measure before optimizing" rule.
 
-## 8. Storage tiering — not implemented, not recommended now
+## 8. Storage tiering: not implemented, not recommended now
 
 Confirmed: no cold/archival storage tier exists anywhere in the codebase (search for `storageTier`/`storage_tier`/archival-related code returned nothing). All capture/document/BIM files live in one storage class regardless of age or access frequency. **Not recommended as a near-term item** — this is a genuine cost optimization for a mature, large-scale deployment with meaningfully aged data, but there's no measured storage-cost or access-pattern data today to justify it, and it adds real complexity (a tiering policy, a migration path for existing objects, and retrieval-latency tradeoffs for tiered-down files). Noted for awareness, not actioned.
 
-## 9. Index coverage — spot-checked, looks solid
+## 9. Index coverage: spot-checked, looks solid
 
 42 of this project's migration files contain explicit `CREATE INDEX` statements, confirming index additions have been a consistent habit as the schema grew, not an afterthought. No systematic missing-index audit against live query plans was possible in this pass (no `EXPLAIN ANALYZE` access to representative production-sized data) — this is a code-level observation (indexes exist on the columns that matter for the query shapes seen while reading the code), not a verified-against-real-data audit.
 

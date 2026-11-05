@@ -1,4 +1,4 @@
-# Phase 2 — Production Deployment & Scalability
+# Phase 2: Production Deployment & Scalability
 
 Tracks the brief's 16 sections against evidence actually gathered in this
 repo and in the live Render workspace. Status values: **VERIFIED**
@@ -24,7 +24,7 @@ current tip) confirms, extends, or supersedes a claim from that prior
 audit, it says so explicitly below rather than silently repeating or
 silently overriding it.
 
-## 1. Current deployment configuration — VERIFIED (read-only review complete)
+## 1. Current deployment configuration: VERIFIED (read-only review complete)
 
 Live Render workspace (`tea-d9jkl43tqb8s73aishng`) inspected directly via
 the Render API and cross-checked against `render.yaml` (HEAD `080d6e8`,
@@ -63,7 +63,7 @@ deployment mechanism — every merged PR goes straight to the one production
 environment with no pre-production verification beyond CI's lint/
 typecheck/test/build gates. See Section 13.
 
-## 2. Production architecture — VERIFIED (not Firebase-based)
+## 2. Production architecture: VERIFIED (not Firebase-based)
 
 The brief's template assumes a Firebase/Firestore stack. Grepped the
 entire repository (`firebase`, `firestore`, case-insensitive) — **zero
@@ -121,7 +121,7 @@ database and auth system for no demonstrated benefit, which the brief
 itself says not to do without justification. No such migration is
 proposed.
 
-## 3. Environment separation — PARTIAL
+## 3. Environment separation: PARTIAL
 
 No dev/staging/production separation exists at the infrastructure level —
 `render.yaml` defines exactly one set of services, all tracking `main`.
@@ -143,7 +143,7 @@ variable template with names/descriptions only" requirements; the four
 existing `.env.example` files (`apps/api`, `apps/web`, `apps/ai-service`,
 `apps/ifc-service`) were spot-checked and are accurate and current.
 
-## 4. Domain & access — BLOCKED, awaiting your decision
+## 4. Domain & access: BLOCKED, awaiting your decision
 
 No custom domain exists. **Will not purchase one without approval.** If
 you want one, I need: the domain registrar/DNS provider you want to use,
@@ -156,7 +156,7 @@ below — all already correct for the current (no-custom-domain) setup, and
 need no change when/if a domain is added beyond updating `ALLOWED_ORIGINS`/
 `API_URL`/`FRONTEND_URL` to the new hostnames.
 
-## 5. Authentication and authorization — VERIFIED (code-level review against current `main`)
+## 5. Authentication and authorization: VERIFIED (code-level review against current `main`)
 
 Re-verified directly against the current `main` tip rather than trusting
 the earlier RBAC audit's conclusions to still hold:
@@ -207,7 +207,7 @@ the earlier RBAC audit's conclusions to still hold:
   the earlier RBAC phases) is unchanged on the current tip and still the
   single place project-scoped access is decided.
 
-## 6. Multi-user and multi-tenant readiness — VERIFIED (isolation), PARTIAL (concurrency)
+## 6. Multi-user and multi-tenant readiness: VERIFIED (isolation), PARTIAL (concurrency)
 
 - **Organization isolation**: see Section 5's IDOR finding above — RLS +
   explicit `company_id` filters together. No cross-tenant leakage path
@@ -232,7 +232,7 @@ the earlier RBAC audit's conclusions to still hold:
 - No multi-tenancy assumptions were introduced and no schema migration is
   proposed here, per the brief's explicit instruction.
 
-## 7. Capacity and performance — PARTIAL, NO LOAD TEST RUN
+## 7. Capacity and performance: PARTIAL, NO LOAD TEST RUN
 
 - `engineeringos-db`: Postgres 16, `basic-256mb` plan, 15GB disk, no
   high-availability, no read replicas. This is Render's lowest real
@@ -260,7 +260,7 @@ the earlier RBAC audit's conclusions to still hold:
   go-ahead before it's attempted even at low intensity.
 - No concurrency-level claim is made here, consistent with the brief.
 
-## 8. File / media upload handling — VERIFIED (code-level review)
+## 8. File / media upload handling: VERIFIED (code-level review)
 
 Reviewed `apps/api/src/modules/storage/storage.service.ts` and every
 caller of its size-check helper:
@@ -304,7 +304,7 @@ No regression risk here since nothing was changed — this is a read-only
 code review confirming the existing implementation already meets the
 brief's Section 8 requirements.
 
-## 9. Security review — VERIFIED against the brief's own checklist, two real fixes applied
+## 9. Security review: VERIFIED against the brief's own checklist, two real fixes applied
 
 Every item the brief's Section 9 explicitly names has been checked
 directly against current code/config (not assumed): exposed secrets,
@@ -441,7 +441,7 @@ Verified directly against current code:
   declaration is safe but a real key has a cost/account implication only
   you can authorize.
 
-## 10. Backup & recovery — VERIFIED COMPLETE (configuration confirmed, restore test performed and passed)
+## 10. Backup & recovery: VERIFIED COMPLETE (configuration confirmed, restore test performed and passed)
 
 The prior audit (`engineering-review/CURRENT_STATUS.md` §5, §7;
 `LAUNCH_READINESS.md`'s readiness table; `NEXT_STEPS.md`) had flagged this
@@ -516,7 +516,7 @@ backup configuration is real and active (3-day PITR + on-demand export),
 and a real restore was performed, completed successfully, and cleaned up,
 without ever touching or risking the live database or its data.
 
-## 11. Logging & monitoring — PARTIAL, one historical incident traced to resolution
+## 11. Logging & monitoring: PARTIAL, one historical incident traced to resolution
 
 - Render provides built-in log aggregation and the metrics shown in
   Section 7 for every service by default — already active, no
@@ -564,7 +564,7 @@ without ever touching or risking the live database or its data.
   additional cost) is a reasonable next step; I can set this up once you
   confirm you want it and which channel (email/Slack) to send to.
 
-## 12. CI/CD and release management — ONE SAFE ADDITION IMPLEMENTED
+## 12. CI/CD and release management: ONE SAFE ADDITION IMPLEMENTED
 
 Confirmed via direct read of `.github/workflows/ci.yml`: lint, typecheck,
 test, and build run on every PR/push, but there was no deploy/smoke-test
@@ -587,7 +587,7 @@ has no hook into Render's own deploy pipeline — so this is a detection
 improvement, not a prevention one; true pre-production gating needs the
 staging environment this section's real gap still is.
 
-## 13. Cost identification — PARTIAL (rough estimate, verify against Render's current pricing)
+## 13. Cost identification: PARTIAL (rough estimate, verify against Render's current pricing)
 
 Current known recurring services, with Render's publicly listed starting
 prices for these plan tiers **as a rough order of magnitude — please
@@ -692,7 +692,7 @@ succeeds; the new workflow's YAML was syntax-validated.
 ### 1. Actual production architecture
 
 Not Firebase-based (the brief's template assumes Firebase; this repo has
-none — see Section 2). NestJS 10 (`apps/api`) on Node 22, Docker, Render
+none; see Section 2). NestJS 10 (`apps/api`) on Node 22, Docker, Render
 `web_service`; React + Vite SPA (`apps/web`), Render `static_site`;
 self-hosted PostgreSQL 16 with Row-Level Security (`engineeringos-db`,
 Render managed, private-network-only); S3-compatible object storage
@@ -813,7 +813,7 @@ VERIFIED** for the health-check workflow (first real trigger pending);
 
 ~$45–50/month fixed cost at current scale (4 starter services + 1
 basic-256mb Postgres + free Redis + free static site), explicitly
-caveated against Render's current published pricing — see the full
+caveated against Render's current published pricing; see the full
 breakdown in Section 13. No paid service was activated this phase; usage-
 based costs (AI API calls, object-storage bandwidth) are currently $0
 since no AI provider key is configured at all.

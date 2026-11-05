@@ -1,4 +1,4 @@
-# EngineeringOS — AI Evaluation Framework
+# EngineeringOS: AI Evaluation Framework
 
 **Phase 7: Continuous Improvement, AI Optimization & Product Growth**
 A repeatable, versioned evaluation approach for the AI Assistant's correctness, scope, safety and reliability — verified against the actual guard/provider/tool code, not a theoretical design.
@@ -43,7 +43,7 @@ The genuine, reproducible bypasses are requests that pair one in-domain keyword 
 
 ## 3. Proposed: versioned evaluation dataset (not built)
 
-A small, checked-into-the-repo dataset — e.g. `apps/api/src/modules/ai/eval/dataset.v1.json` — of representative test cases, each with an expected outcome:
+A small, checked-into-the-repo dataset, e.g. `apps/api/src/modules/ai/eval/dataset.v1.json` — of representative test cases, each with an expected outcome:
 
 ```json
 {
@@ -68,11 +68,11 @@ A small, checked-into-the-repo dataset — e.g. `apps/api/src/modules/ai/eval/da
 
 This phase's own constraint ("never use confidential project data in external model testing without authorization") is already structurally easy to honor for the proposed dataset above since it's synthetic-only by design. The one place this needs active vigilance going forward: any future ad hoc "let's try this real customer's data against the new model" testing must not happen without that customer's (or at minimum the platform operator's) explicit authorization — this is a process rule for future engineers/operators, not a code change.
 
-## 5. Human escalation for engineering/contractual decisions — VERIFIED by design
+## 5. Human escalation for engineering/contractual decisions: VERIFIED by design
 
 Already covered structurally in `AI_USAGE_AND_COST_POLICY.md` §8: the AI has no write/approval/close path at all — every draft is human-reviewed and submitted through the normal authenticated, authorized endpoints. There is no "AI auto-approves an RFI" or "AI auto-closes an issue" path to evaluate against, because none exists. This framework's job going forward is to keep verifying that boundary holds as new AI tools are added (any new tool proposal should be checked against this same question: read-only or draft-only, never a direct write).
 
-## 6. Summary — what's proposed vs. built
+## 6. Summary: what's proposed vs. built
 
 | Item | Status |
 |---|---|

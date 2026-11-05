@@ -1,4 +1,4 @@
-# Workforce Intelligence™ — Implementation Plan
+# Workforce Intelligence™: Implementation Plan
 
 Companion to `workforce-intelligence-architecture.md`. Covers competitive
 research, the product challenge, MVP/V1/V2/Future scope, and the
@@ -40,7 +40,7 @@ them here dilutes the differentiator and adds compliance surface (labor
 law) unrelated to engineering output.
 
 **What could create employee distrust (and should shape defaults):**
-screenshots and keystroke logging (not built — see below), any
+screenshots and keystroke logging (not built; see below), any
 "productivity score" presented without its contributing factors,
 manager-vs-employee visibility asymmetry with no employee self-view, and
 silent monitoring-policy changes. Mitigations: factors always shown

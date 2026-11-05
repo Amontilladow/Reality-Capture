@@ -1,4 +1,4 @@
-# EngineeringOS IFC Processing Engine — Release v1.0.0
+# EngineeringOS IFC Processing Engine: Release v1.0.0
 
 Status: **RELEASED — FROZEN**. This subsystem is stable. Do not modify
 without a verified bug, security issue, or explicit product requirement.
@@ -349,7 +349,7 @@ server, not reviewed in the abstract.
 
 ## Performance
 
-### Observed (against the ~40-element test fixture — see Known Limitations for scale caveats)
+### Observed (against the ~40-element test fixture; see Known Limitations for scale caveats)
 - Full pipeline duration: ~1–2 seconds
 - Peak RSS: ~210–240MB (dominated by the Node/Nest/web-ifc/WASM baseline,
   not by this specific small file)
@@ -511,7 +511,7 @@ procedure needed. `stage_completion` ensures only incomplete work re-runs.
 
 ---
 
-## Release Notes — v1.0.0
+## Release Notes: v1.0.0
 
 ### Features delivered
 Full IFC parsing pipeline: hierarchy, elements, properties, quantities,
