@@ -6,7 +6,7 @@ import type { StorageService } from '../storage/storage.service';
 import type { ProjectAuthorizationService } from '../../common/authorization/project-authorization.service';
 
 // The presigned PUT getAttachmentUploadUrl() hands out has no enforced size
-// limit -- dto.sizeBytes there is only ever a declared value. Real
+// limit; dto.sizeBytes there is only ever a declared value. Real
 // enforcement is this HEAD-based check against the object actually sitting
 // in storage, run in addAttachment() before it's persisted. Also covers the
 // project/snag-ownership checks that were previously entirely absent
@@ -67,7 +67,7 @@ describe('SnaggingService attachment enforcement', () => {
   describe('addAttachment', () => {
     // H-1 fix: addAttachment() now takes projectId and resolves the snag
     // item through findOne() (project_id = projectId AND company_id =
-    // companyId), not a bare company-only existence check -- so the first
+    // companyId), not a bare company-only existence check; so the first
     // withTenant call here mocks findOne()'s own SELECT, which must return
     // a full-enough row for findOne() to pass it through unmodified
     // (no screenshotStorageKey field on snag_items, so no second query).
@@ -78,13 +78,13 @@ describe('SnaggingService attachment enforcement', () => {
       const findOneRow = { id: snagId, projectId, companyId, status: 'open' };
       const withTenant = jest.fn()
         // findOne()'s SELECT: a WHERE clause already filters by
-        // project_id -- simulating "wrong project" by returning no row is
+        // project_id; simulating "wrong project" by returning no row is
         // how the fix is actually exercised (the real query does the
         // filtering; the mock only needs to reflect its outcome).
         .mockResolvedValueOnce(snagExists && !wrongProject ? [findOneRow] : [])
         // addAttachment()'s second withTenant call passes a callback that does
         // its own `const [activity] = await sql...` destructuring internally
-        // and returns the plain object -- so withTenant itself resolves to
+        // and returns the plain object; so withTenant itself resolves to
         // that object directly, not an array (unlike the first call above,
         // which the service destructures at the call site).
         .mockResolvedValueOnce(insertedRow);
@@ -129,7 +129,7 @@ describe('SnaggingService attachment enforcement', () => {
     });
 
     // H-1 regression: the snag item is real and in the same company, but
-    // under a DIFFERENT project than the one named in the URL -- a user
+    // under a DIFFERENT project than the one named in the URL; a user
     // authorized only for `projectId` must not be able to attach a file to
     // it just by knowing/guessing its UUID.
     it("rejects an attachment for a snag item that belongs to a different project in the caller's company", async () => {
@@ -140,7 +140,7 @@ describe('SnaggingService attachment enforcement', () => {
   });
 
   // H-1 fix: getActivities()/addActivity() previously scoped only by
-  // company_id, not project_id -- a user authorized for a different
+  // company_id, not project_id; a user authorized for a different
   // project in the same company could read or post to any snag item's
   // activity feed by guessing its UUID. Both now resolve the snag item via
   // findOne() first, same boundary as addAttachment() above.
@@ -197,7 +197,7 @@ describe('SnaggingService attachment enforcement', () => {
 
   // RBAC Phase 3: verify() is a dedicated fixed -> verified transition,
   // gated at the controller on ('manage_project_records' OR
-  // 'verify_snag_items') -- authorization itself is the guard's job, not
+  // 'verify_snag_items'): authorization itself is the guard's job, not
   // this method's, so these tests only cover the state-transition guard and
   // that it stamps verified_at/verified_by the same way update() always has.
   describe('verify', () => {
@@ -229,7 +229,7 @@ describe('SnaggingService attachment enforcement', () => {
     it("rejects verifying a snag item that is not currently 'fixed'", async () => {
       const { svc, withTenant } = makeService({ existingStatus: 'open' });
       await expect(svc.verify(companyId, projectId, snagId, 'user-1')).rejects.toThrow(BadRequestException);
-      // Only findOne()'s own withTenant call happened -- no UPDATE was attempted.
+      // Only findOne()'s own withTenant call happened; no UPDATE was attempted.
       expect(withTenant).toHaveBeenCalledTimes(1);
     });
 
@@ -238,14 +238,14 @@ describe('SnaggingService attachment enforcement', () => {
     it('rejects self-verification -- the same user who marked it fixed cannot also verify it', async () => {
       const { svc, withTenant } = makeService({ existingStatus: 'fixed', fixedBy: 'user-1' });
       await expect(svc.verify(companyId, projectId, snagId, 'user-1')).rejects.toThrow(ForbiddenException);
-      // Only findOne()'s own withTenant call happened -- no UPDATE was attempted.
+      // Only findOne()'s own withTenant call happened; no UPDATE was attempted.
       expect(withTenant).toHaveBeenCalledTimes(1);
     });
   });
 });
 
 // H-1 follow-up: create()/update() accept optional building/level/location
-// references that were never checked against this project -- a user
+// references that were never checked against this project; a user
 // authorized for Project A could attach Project B's building/level/
 // location to a snag item by supplying its id. findAll()/findOne() both
 // JOIN buildings/levels for display, so an unchecked cross-project id was a

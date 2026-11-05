@@ -7,28 +7,28 @@ import type { InitialProviderTokens, OutgoingMessage, ProviderTokens, SendResult
 
 // Thin wrapper over Google's OAuth token endpoint, same "raw HTTP client,
 // no vendor SDK" convention as GoogleCalendarClient (workforce/
-// calendar-integration) and MicrosoftGraphClient (Phase 3C) -- no
+// calendar-integration) and MicrosoftGraphClient (Phase 3C): no
 // googleapis dependency. Not unit-tested for the same reason those
 // aren't: live third-party network glue this sandbox has no real
 // credentials for. See gmail-integration.service.spec.ts for what's
 // actually covered.
 //
 // Scope requested: `openid email
-// https://www.googleapis.com/auth/gmail.send` -- the brief's own
+// https://www.googleapis.com/auth/gmail.send`; the brief's own
 // "prefer sending-only authorization if a user only needs to send
 // email" and "request minimum scopes necessary" directly. `openid
 // email` gets the connected mailbox address from the ID token with no
-// extra People API call; `gmail.send` only -- not gmail.readonly,
+// extra People API call; `gmail.send` only; not gmail.readonly,
 // gmail.modify, or the full https://mail.google.com/ scope. No read
 // access is requested because nothing in this codebase reads mail yet
-// (Phase 3H, not built) -- requesting it now would be exactly the
+// (Phase 3H, not built): requesting it now would be exactly the
 // "broader permissions... only if the relevant feature genuinely
 // requires them" violation the brief warns against.
 const SCOPES = 'openid email https://www.googleapis.com/auth/gmail.send';
 
 interface GoogleTokenResponse {
   access_token: string;
-  refresh_token?: string; // absent on a refresh response -- Google only issues one on the initial grant
+  refresh_token?: string; // absent on a refresh response: Google only issues one on the initial grant
   expires_in: number;
   scope: string;
   id_token?: string;
@@ -50,7 +50,7 @@ export class GmailClient {
       response_type: 'code',
       scope: SCOPES,
       access_type: 'offline', // required to receive a refresh_token
-      prompt: 'consent', // forces a fresh refresh_token on every connect, not just the first-ever grant -- same reasoning as Calendar's own client
+      prompt: 'consent', // forces a fresh refresh_token on every connect, not just the first-ever grant; same reasoning as Calendar's own client
       state,
     });
     return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
@@ -104,12 +104,12 @@ export class GmailClient {
   }
 
   // The Gmail API's send endpoint takes one base64url-encoded raw RFC 2822
-  // message, unlike Graph's structured JSON -- a real MIME multipart
+  // message, unlike Graph's structured JSON; a real MIME multipart
   // message has to be built by hand here, since this codebase deliberately
   // has no nodemailer-MIME-builder or googleapis dependency for it (same
   // "no vendor SDK" preference as everywhere else in this client). Unlike
   // Outlook's two-call approach, Gmail's single send call already returns
-  // both the new message id and threadId -- no separate draft step needed.
+  // both the new message id and threadId; no separate draft step needed.
   async sendMail(accessToken: string, message: OutgoingMessage): Promise<SendResult> {
     const raw = this.buildMimeMessage(message);
     const res = await firstValueFrom(this.http.post<{ id: string; threadId: string }>(
@@ -123,7 +123,7 @@ export class GmailClient {
   // Every header value below comes from EmailComposerService's own DTO
   // validation (SendEmailDto.subject, SendEmailAttachmentDto.filename/
   // contentType all reject CR/LF; to/cc/bcc are validated email
-  // addresses). stripCrlf() is a backstop, not the primary control --
+  // addresses). stripCrlf() is a backstop, not the primary control;
   // raw headers built by string interpolation are inherently one
   // embedded line break away from smuggling in an extra header (a
   // hidden Bcc, a second To, a Content-Type override), and this method

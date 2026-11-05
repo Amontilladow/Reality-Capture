@@ -27,7 +27,7 @@ import {
 
 // ── Workflow state machine (Phase 1) ────────────────────────────────────────
 // Legacy 'open'/'answered' are the pre-existing names for the same lifecycle
-// positions as 'submitted'/'responded' -- an RFI created through the
+// positions as 'submitted'/'responded'; an RFI created through the
 // untouched create() method (which still always sets status='open') can
 // walk through these same transitions without ever being renamed at the
 // data layer; only the app-layer state machine treats them as equivalent.
@@ -46,7 +46,7 @@ const REVIEW_SOURCE_STATUSES = new Set(['responded', 'answered']);
 // write anyway, so an action taken through an rfi_external_access link
 // attributes to that identity in metadata rather than silently looking
 // like a real employee acted. Trailing, optional, undefined for every
-// existing internal call site -- see RfiExternalAccessService, the only
+// existing internal call site; see RfiExternalAccessService, the only
 // caller that ever passes one.
 interface ExternalActorAttribution {
   recipientEmail: string;
@@ -64,7 +64,7 @@ export class RfisService {
     private readonly messaging: MessagingService,
     private readonly projectAuth: ProjectAuthorizationService,
     // @Optional(): RfisModule registers RiskModule as a real provider, so
-    // production always gets a live instance here -- this stays optional
+    // production always gets a live instance here; this stays optional
     // purely so the many existing rfis.service.spec.ts call sites that
     // construct RfisService directly with the pre-existing 4-arg list keep
     // working unchanged (they get undefined here, and triggerRiskRecalc()
@@ -72,7 +72,7 @@ export class RfisService {
     @Optional() private readonly risk?: RiskService,
   ) {}
 
-  // Event-driven incremental risk recalculation (brief section 41) -- fired
+  // Event-driven incremental risk recalculation (brief section 41): fired
   // after any write that can change an RFI's overdue/priority/impact/
   // drawing-impact/open-vs-closed state, i.e. every real risk signal input.
   // Never allowed to fail or slow down the RFI write it's attached to: a
@@ -88,7 +88,7 @@ export class RfisService {
     }
   }
 
-  // withTenant required for the projects lookup -- projects carries the tenant_isolation
+  // withTenant required for the projects lookup: projects carries the tenant_isolation
   // RLS policy. A plain this.db.query() never sets app.current_company_id, so under any DB
   // role that isn't the table owner/a superuser this SELECT sees no rows and silently falls
   // back to the generic 'PRJ' prefix instead of the real project code.
@@ -96,7 +96,7 @@ export class RfisService {
   // Format: {ProjectCode}-{OrgCode}-RFI-{DisciplineCode}-{0001}, matching the
   // real-world reference document this scheme was modeled on (e.g.
   // P162-CSC-RFI-STR-0186). Sequence counts per (project, discipline), same
-  // approach issues.service.ts already uses -- so STR and ARC RFIs on the
+  // approach issues.service.ts already uses; so STR and ARC RFIs on the
   // same project each get their own independent 0001, 0002, ...
   private async generateRfiNumber(companyId: string, projectId: string, discipline: string): Promise<string> {
     return this.db.withTenant(companyId, async (sql) => {
@@ -114,7 +114,7 @@ export class RfisService {
     const rfiNumber = await this.generateRfiNumber(companyId, projectId, dto.discipline);
 
     // A subcontractor project member can only ever raise a 'subcontractor'
-    // RFI, regardless of what raisedByOrganizationSlot the client sent --
+    // RFI, regardless of what raisedByOrganizationSlot the client sent;
     // this is the one place that matters, since SubcontractorRfiAccessGuard
     // only blocks the WRITE endpoints it already knows are main-contractor-
     // only; it doesn't rewrite this request's body. Everyone else gets
@@ -130,7 +130,7 @@ export class RfisService {
     // Upload-RFI quick-create path: a DC backfilling an RFI already raised
     // and answered elsewhere can set the initial status straight away
     // (rather than walking it through later) and attach the answer text at
-    // creation time -- answered_at/answered_by are only meaningful once an
+    // creation time; answered_at/answered_by are only meaningful once an
     // answer actually exists, so both stay null for a plain 'open' create.
     const initialStatus = dto.initialStatus ?? 'open';
     const isPreAnswered = initialStatus === 'answered' || initialStatus === 'closed';
@@ -138,15 +138,15 @@ export class RfisService {
     // 4-state level fields take precedence when provided; otherwise derive
     // the level from the legacy boolean; otherwise default as before this
     // ticket ('no'/false). Both old and new columns are always written in
-    // sync -- nothing outside this module reads the booleans yet, but the
+    // sync; nothing outside this module reads the booleans yet, but the
     // booleans stay authoritative for the current (unmodified) frontend.
     const costImpactLevel: RfiImpactLevel = dto.costImpactLevel ?? (dto.costImpact ? 'yes' : 'no');
     const costImpactBool = dto.costImpactLevel ? dto.costImpactLevel === 'yes' : (dto.costImpact ?? false);
     const timeImpactLevel: RfiImpactLevel = dto.timeImpactLevel ?? (dto.timeImpact ? 'yes' : 'no');
     const timeImpactBool = dto.timeImpactLevel ? dto.timeImpactLevel === 'yes' : (dto.timeImpact ?? false);
 
-    // withTenant required -- rfis carries the tenant_isolation RLS policy, same as
-    // every other table (migration 053 added it here -- rfis/submittals/transmittals/
+    // withTenant required: rfis carries the tenant_isolation RLS policy, same as
+    // every other table (migration 053 added it here; rfis/submittals/transmittals/
     // qa_inspections/snag_items/snag_activities had no RLS policy at all before that,
     // despite every other table's own child tables getting one). A plain this.db.query()
     // would silently reject this insert under any non-owner/non-superuser DB role.
@@ -193,12 +193,12 @@ export class RfisService {
 
   // viewerId + a project_members lookup for its role: when the caller is
   // themselves a 'subcontractor' project member, every result is further
-  // narrowed to r.created_by = viewerId -- a real, critical isolation gap
+  // narrowed to r.created_by = viewerId; a real, critical isolation gap
   // otherwise, since "Subcontractor's RFIs" was previously one shared
   // window showing EVERY subcontractor-raised RFI to ANY subcontractor on
   // the project, letting one subcontractor-company account read another's.
   // A non-subcontractor viewer (any org category, any company role) is
-  // completely unaffected -- they keep seeing everything the view/other
+  // completely unaffected; they keep seeing everything the view/other
   // filters already select, same as before this check existed.
   private async isViewerSubcontractor(companyId: string, projectId: string, viewerId: string | undefined): Promise<boolean> {
     if (!viewerId) return false;
@@ -276,7 +276,7 @@ export class RfisService {
       WHERE r.id = ${rfiId} AND r.project_id = ${projectId} AND r.company_id = ${companyId}
     `);
     if (!rfi) throw new NotFoundException(`RFI ${rfiId} not found.`);
-    // Direct-by-id reads bypass findAll()'s own isolation filter -- re-check
+    // Direct-by-id reads bypass findAll()'s own isolation filter; re-check
     // here so a subcontractor can't reach another subcontractor's RFI by
     // guessing/pasting its id. Main-contractor-raised RFIs stay visible to
     // any subcontractor on the project (the existing, unaffected "read
@@ -289,7 +289,7 @@ export class RfisService {
     return rfi;
   }
 
-  // Everything the PDF template needs, joined in one place -- the RFI (with
+  // Everything the PDF template needs, joined in one place; the RFI (with
   // the names already joined above) plus the project's stakeholder fields,
   // which the PDF pulls in automatically rather than asking for them again.
   //
@@ -297,7 +297,7 @@ export class RfisService {
   // attachment lists. RfisModule doesn't import ProjectsModule (and doesn't
   // export/need ProjectsService for anything else), so rather than wiring up
   // that whole module import for one read-only SELECT, this queries
-  // project_organizations directly -- the exact same query
+  // project_organizations directly; the exact same query
   // ProjectsService.getOrganizations() runs, minus the resolveUrls() call
   // (the PDF needs raw buffers via storage.download(), not presigned URLs;
   // see generatePdf() below). Documented here as the judgment call the
@@ -305,7 +305,7 @@ export class RfisService {
   async getPdfData(companyId: string, projectId: string, rfiId: string) {
     const rfi = await this.findOne(companyId, projectId, rfiId);
     // Stakeholder free-text columns (client_name/lead_designer/etc.) and
-    // location dropped from this SELECT -- the PDF/XLS no longer render a
+    // location dropped from this SELECT; the PDF/XLS no longer render a
     // Stakeholders or standalone Project section (neither exists on the
     // live RfiDetailPage; see rfi-pdf.template.ts / rfi-xls.ts), so nothing
     // downstream of this query reads them anymore.
@@ -319,13 +319,13 @@ export class RfisService {
       WHERE project_id = ${projectId} AND company_id = ${companyId}
       ORDER BY slot
     `);
-    // Filename + document type + storage_key -- no presigned read URL
+    // Filename + document type + storage_key: no presigned read URL
     // needed (these aren't clickable links in a static generated document,
     // see rfi-xls.ts), but storage_key is needed here so generatePdf() can
     // download+embed image-type attachments directly as PDF thumbnails (see
     // rfi-pdf.template.ts's attachmentsBlock()). id is needed so
     // getExportAssets() can key its returned thumbnails to the exact
-    // attachment the browser already has (RfiAttachment.id) -- filename
+    // attachment the browser already has (RfiAttachment.id): filename
     // alone isn't a safe key, two attachments can share a name.
     const attachmentRows = await this.db.withTenant(companyId, sql => sql`
       SELECT id, filename, kind, document_type, document_type_other, storage_key
@@ -333,7 +333,7 @@ export class RfisService {
       WHERE rfi_id = ${rfiId} AND company_id = ${companyId}
       ORDER BY uploaded_at ASC
     `);
-    // Comments and audit trail -- shown live on RfiDetailPage's
+    // Comments and audit trail: shown live on RfiDetailPage's
     // Communication/Clarifications and Audit Trail sections, but never made
     // it into either export. Same data, same read pattern as
     // getComments()/the audit endpoint, just inlined here for the export.
@@ -346,7 +346,7 @@ export class RfisService {
     `);
     // writeRfiAudit() (the workflow state machine below) only ever sets
     // user_id, not the denormalized user_name/user_email columns the
-    // generic AuditInterceptor fills in for other routes -- resolve the
+    // generic AuditInterceptor fills in for other routes; resolve the
     // name via users here rather than showing blank for every RFI-specific
     // event, which would otherwise be most of this list.
     const auditRows = await this.db.withTenant(companyId, sql => sql`
@@ -364,7 +364,7 @@ export class RfisService {
     const discipline = rfi.discipline as RfiDiscipline | undefined;
     const filename = `${(rfi.rfiNumber as string) ?? rfiId}.pdf`;
 
-    // Downloaded straight to a Buffer rather than a presigned URL -- the
+    // Downloaded straight to a Buffer rather than a presigned URL; the
     // template embeds it directly (see rfi-pdf.template.ts), no URL-expiry
     // race since this all happens synchronously server-side. Both optional:
     // a project with no logo/stamp set yet still renders a clean PDF.
@@ -374,7 +374,7 @@ export class RfisService {
     ]);
 
     // Always all 5 slots, matching RfiDetailPage's own OrganizationSlotRow
-    // exactly -- an unconfigured slot still shows up there (as a "No logo"
+    // exactly; an unconfigured slot still shows up there (as a "No logo"
     // placeholder), so silently dropping it here would make the export show
     // less than what the live page shows, not just render it differently.
     const orgsBySlot = new Map((organizations as Array<Record<string, unknown>>).map(o => [o.slot as string, o]));
@@ -443,10 +443,10 @@ export class RfisService {
       timeImpactLevel: (rfi.timeImpactLevel as string | undefined) ?? (rfi.timeImpact ? 'yes' : 'no'),
       timeImpactDays: rfi.timeImpactDays != null ? Number(rfi.timeImpactDays) : undefined,
       timeImpactDescription: rfi.timeImpactDescription as string | undefined,
-      // Only rendered by the template if set -- an unsubmitted/legacy RFI
+      // Only rendered by the template if set; an unsubmitted/legacy RFI
       // has no query_stamp/answer_stamp yet. "Uploaded By"/"date-time" mirror
       // exactly what RfiDetailPage's own StampPanel already shows on screen
-      // for these two stamps (createdByName/updatedAt for the query stamp --
+      // for these two stamps (createdByName/updatedAt for the query stamp;
       // there's no dedicated "submitted at" column, and submit() is the only
       // thing that touches updated_at at that point; answeredByName/answeredAt
       // for the answer stamp) so the PDF and the live page never disagree.
@@ -475,14 +475,14 @@ export class RfisService {
     });
 
     // Appends the real, full content of every query/response attachment as
-    // additional pages after the react-pdf summary -- the summary's own
+    // additional pages after the react-pdf summary; the summary's own
     // attachment list (plain text lines + small in-summary image
     // thumbnails, both rendered above via renderRfiPdf()) is left entirely
     // untouched; this is a separate appendix, not a replacement. Query rows
     // first, then response rows, same order the summary's own attachment
     // lists render in. The merge mechanics themselves (divider pages, per-
     // attachment failure isolation, the pdf-lib byteOffset workaround) live
-    // in the shared attachment-pdf-merge util -- QAQC's PDF export is the
+    // in the shared attachment-pdf-merge util; QAQC's PDF export is the
     // second caller of the exact same function.
     const queryRows = attachmentRowsTyped.filter((a) => (a.kind ?? 'query') === 'query');
     const responseRows = attachmentRowsTyped.filter((a) => a.kind === 'response');
@@ -497,13 +497,13 @@ export class RfisService {
   }
 
   // Raster-image extensions eligible for inline PDF embedding (see
-  // rfi-pdf.template.ts's attachmentsBlock()) -- everything else (pdf,
+  // rfi-pdf.template.ts's attachmentsBlock()): everything else (pdf,
   // docx, dwg, etc.) has no reasonable inline-image treatment and keeps the
   // existing plain "• filename (type)" text line only.
   private static readonly IMAGE_ATTACHMENT_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp']);
 
   // Same label format as rfi-pdf.template.ts's own attachmentLabel() (kept
-  // as a separate copy rather than exported/shared -- the template's
+  // as a separate copy rather than exported/shared; the template's
   // version formats a full "• filename (type)" line for react-pdf, this one
   // only needs the "(type)" fragment for the divider page).
   private attachmentTypeLabel(row: Record<string, unknown>): string {
@@ -520,15 +520,15 @@ export class RfisService {
   }
 
   // Resizes + re-encodes a query/response attachment image before it's
-  // embedded in the PDF -- a handful of multi-MB phone screenshots/photos
+  // embedded in the PDF; a handful of multi-MB phone screenshots/photos
   // would otherwise bloat the generated PDF into something unusable. 900px
   // on the longest side / JPEG quality 78 is deliberately smaller than
   // ImageProcessingProcessor's own 1920px "preview" rendition
-  // (image-processing.processor.ts) -- these render as a ~150x110pt
+  // (image-processing.processor.ts): these render as a ~150x110pt
   // thumbnail card in the PDF (see rfi-pdf.template.ts), not a full-page
   // image, so there's no reason to carry more pixels than that. fit:
   // 'inside' (never 'cover'/'fill') means the image is only ever shrunk to
-  // fit within the box, never cropped -- aspect ratio is fully preserved
+  // fit within the box, never cropped; aspect ratio is fully preserved
   // ("contain, not crop", per the ticket). .rotate() with no args
   // auto-applies the source image's own EXIF orientation before resizing,
   // same convention the capture-processing pipeline uses, so a sideways
@@ -541,7 +541,7 @@ export class RfisService {
       .toBuffer();
   }
 
-  // PNG/JPEG magic-byte sniff -- the only two types the org-logo/project-
+  // PNG/JPEG magic-byte sniff: the only two types the org-logo/project-
   // logo/stamp upload flows accept (see ManageMembersModal's/OrganizationSlotRow's
   // <input accept="image/jpeg,image/png">), so no need for anything fancier.
   // Defaults to JPEG when the signature doesn't match PNG, same fallback
@@ -559,13 +559,13 @@ export class RfisService {
   }
 
   // Same-origin counterpart to generatePdf()'s image handling, for the XLS
-  // export (apps/web/src/lib/rfi-xls.ts) -- exceljs's workbook.addImage()
+  // export (apps/web/src/lib/rfi-xls.ts): exceljs's workbook.addImage()
   // needs raw image bytes, and fetching those straight from S3 presigned
   // URLs in a browser fetch() requires the bucket to send CORS headers for
   // the app's origin, which local MinIO's permissive default masks but a
   // real production bucket may not have configured. This reuses the exact
   // same this.storage.download(key).catch(() => undefined) pattern
-  // generatePdf() already uses -- no CORS involved at all, since the
+  // generatePdf() already uses; no CORS involved at all, since the
   // browser only ever talks to this same-origin API endpoint.
   async getExportAssets(companyId: string, projectId: string, rfiId: string) {
     const { project, organizations, attachmentRows } = await this.getPdfData(companyId, projectId, rfiId);
@@ -587,7 +587,7 @@ export class RfisService {
     );
 
     // Same small-thumbnail treatment generatePdf() gives image-type query/
-    // response attachments (see withImageBuffer() there) -- reuses the
+    // response attachments (see withImageBuffer() there): reuses the
     // exact same isImageFilename()/resizeAttachmentImage() pair, just keyed
     // by attachment id instead of embedded directly into a PDF page. Only
     // image-type rows are worth the round trip; non-image attachments (pdf/
@@ -629,7 +629,7 @@ export class RfisService {
       dto.timeImpactLevel ?? (dto.timeImpact !== undefined ? (dto.timeImpact ? 'yes' : 'no') : undefined);
     const timeImpactBool = dto.timeImpactLevel !== undefined ? dto.timeImpactLevel === 'yes' : dto.timeImpact;
 
-    // withTenant required -- see create() above.
+    // withTenant required; see create() above.
     const [updated] = await this.db.withTenant(companyId, sql => sql`
       UPDATE rfis SET
         subject                  = COALESCE(${dto.subject ?? null}, subject),
@@ -664,7 +664,7 @@ export class RfisService {
   }
 
   async delete(companyId: string, projectId: string, rfiId: string) {
-    // withTenant required -- see create() above. Without it this silently
+    // withTenant required; see create() above. Without it this silently
     // deletes 0 rows under RLS instead of erroring or actually deleting.
     const result = await this.db.withTenant(companyId, sql => sql`
       DELETE FROM rfis WHERE id = ${rfiId} AND project_id = ${projectId} AND company_id = ${companyId}
@@ -673,7 +673,7 @@ export class RfisService {
     return { message: 'RFI deleted.' };
   }
 
-  // view: same 'main'/'subcontractor' split as findAll() -- omitted keeps
+  // view: same 'main'/'subcontractor' split as findAll(): omitted keeps
   // today's unfiltered, whole-project summary (every pre-existing caller).
   async getSummary(companyId: string, projectId: string, view?: 'main' | 'subcontractor', viewerId?: string) {
     const isolateToViewer = await this.isViewerSubcontractor(companyId, projectId, viewerId);
@@ -695,7 +695,7 @@ export class RfisService {
 
   // ── Reports KPI breakdown (drawing-impact rollup) ──────────────────────────
   // Sibling to getSummary() above, mirroring issues.service.ts's own
-  // getKpiBreakdown()/getOpenList() pair -- getSummary() itself is left
+  // getKpiBreakdown()/getOpenList() pair; getSummary() itself is left
   // completely untouched (RfisPage's stat tiles already depend on its exact
   // current shape, same reasoning issues.service.ts's own comment gives for
   // not folding these into it) and is reused as-is for the new "rfis" key's
@@ -728,16 +728,16 @@ export class RfisService {
     };
   }
 
-  // Mirrors issues.service.ts's getOpenList() -- used by the Reports
+  // Mirrors issues.service.ts's getOpenList(): used by the Reports
   // rollup's "one click" not-applied list, not a general-purpose endpoint,
   // hence the flat limit + no pagination. Only RFIs that actually require a
-  // drawing update and haven't gotten one yet -- an RFI left at 'no' impact
+  // drawing update and haven't gotten one yet; an RFI left at 'no' impact
   // never appears here. drawing_update_owner_name falls back to
   // assigned_to's name when no owner is explicitly set, exactly the
   // fallback remindDrawingUpdate() itself uses to resolve who to notify, so
   // this list always shows the same person a "Send reminder" click would
   // actually reach. "Days since flagged" (shown by the frontend) is
-  // computed off created_at -- there is no dedicated "impact set at"
+  // computed off created_at; there is no dedicated "impact set at"
   // timestamp column (not asked for in the schema), so this is the same
   // judgment call as nextStampSequence()'s format choice: documented here,
   // not a hidden assumption.
@@ -758,18 +758,18 @@ export class RfisService {
 
   // ── Drawing-impact follow-up ─────────────────────────────────────────────
   // drawing_update_applied only means anything once drawing_impact_level !=
-  // 'no' -- both methods below reject a 'no'-impact RFI rather than
+  // 'no'; both methods below reject a 'no'-impact RFI rather than
   // silently flipping a flag nothing reads, per the ticket ("leave it
   // false-and-ignored for 'no'-impact RFIs... the UI should simply not show
   // applied/not-applied controls at all"). Gated with
-  // @RequireProjectPermission('manage_project_records') at the controller --
+  // @RequireProjectPermission('manage_project_records') at the controller;
   // the same permission that already gates general RFI field edits
   // (@Patch(':id')), since flipping this flag is a records-update action,
   // not an RFI-workflow transition like respond/close (which stay on
   // manage_rfis). Per the ticket's own explicit invitation to diverge and
   // state why: kept manage_project_records rather than manage_rfis because
   // "applied" is a statement about the physical drawings, not about the
-  // RFI's own lifecycle -- someone with manage_project_records but not
+  // RFI's own lifecycle; someone with manage_project_records but not
   // manage_rfis (e.g. a drafter maintaining drawing registers) is exactly
   // who should be able to flip this, and RfisController.update() already
   // establishes that same permission as this app's "edit RFI fields" gate.
@@ -798,7 +798,7 @@ export class RfisService {
     return updated;
   }
 
-  // Reverse of markDrawingApplied() above, for correcting a mistaken mark --
+  // Reverse of markDrawingApplied() above, for correcting a mistaken mark;
   // same permission gate, same 'no'-impact guard.
   async markDrawingNotApplied(companyId: string, projectId: string, rfiId: string, userId: string) {
     const rfi = await this.findOne(companyId, projectId, rfiId);
@@ -878,7 +878,7 @@ export class RfisService {
   }
 
   // ── Drawing-update reminder ──────────────────────────────────────────────
-  // Gated with @RequireProjectPermission('manage_rfis') at the controller --
+  // Gated with @RequireProjectPermission('manage_rfis') at the controller;
   // different reasoning from markDrawingApplied/markDrawingNotApplied's
   // manage_project_records gate above: nudging a specific person is a
   // management action, consistent with respond/close's own manage_rfis
@@ -887,7 +887,7 @@ export class RfisService {
   //
   // Target resolves to drawing_update_owner_id if set, else the RFI's
   // general assigned_to, else a clear rejection telling the caller to set
-  // an owner first -- never a silent no-op, per the ticket.
+  // an owner first; never a silent no-op, per the ticket.
   async remindDrawingUpdate(companyId: string, projectId: string, rfiId: string, userId: string) {
     const rfi = await this.findOne(companyId, projectId, rfiId);
     if ((rfi.drawingImpactLevel as string) === 'no') {
@@ -917,7 +917,7 @@ export class RfisService {
 
   // ── Attachments ───────────────────────────────────────────────────────────
   // Same presigned-PUT pattern, allow-list, and size cap as issues.service.ts's
-  // attachment methods -- RFIs have no activity/comment thread to hang these
+  // attachment methods; RFIs have no activity/comment thread to hang these
   // off, so they're their own flat table (rfi_attachments) instead.
   async getAttachmentUploadUrl(companyId: string, projectId: string, dto: RfiAttachmentUploadUrlDto) {
     const ext = dto.filename.split('.').pop()?.toLowerCase() ?? '';
@@ -937,20 +937,20 @@ export class RfisService {
     return { uploadUrl, storageKey: key };
   }
 
-  // Step 2: client already PUT the bytes to `storageKey` from step 1 --
+  // Step 2: client already PUT the bytes to `storageKey` from step 1;
   // this registers it as a new rfi_attachments row. kind/documentType/etc.
-  // are all optional -- omitting them keeps the DB defaults ('query'/'other')
+  // are all optional; omitting them keeps the DB defaults ('query'/'other')
   // from migration 028, so older callers that don't know about kinds yet
   // still work unchanged.
   async addAttachment(companyId: string, projectId: string, rfiId: string, userId: string, dto: AddRfiAttachmentDto) {
     // H-1 fix: @RequireProjectPermission('manage_project_records') at the
     // controller only confirms the caller has that permission on the
-    // :projectId named in the URL -- it says nothing about whether rfiId
+    // :projectId named in the URL; it says nothing about whether rfiId
     // actually belongs to that project. findOne() is the real check (same
     // boundary addComment() already used correctly above).
     await this.findOne(companyId, projectId, rfiId);
 
-    // Real post-upload size enforcement -- the client-declared dto.sizeBytes
+    // Real post-upload size enforcement: the client-declared dto.sizeBytes
     // was only ever checked against the limit at upload-url time (see
     // getAttachmentUploadUrl() above); it is not trusted for persistence.
     const actualSizeBytes = await this.storage.getObjectSize(dto.storageKey);
@@ -989,7 +989,7 @@ export class RfisService {
       WHERE ra.rfi_id = ${rfiId} AND ra.company_id = ${companyId}
       ORDER BY ra.uploaded_at DESC
     `);
-    // Resolve storage keys to live presigned read URLs at read time --
+    // Resolve storage keys to live presigned read URLs at read time;
     // never persist a URL that can expire, same convention as everywhere
     // else in this codebase.
     const urls = await this.storage.resolveUrls(rows.map(r => r.storageKey as string));
@@ -1008,14 +1008,14 @@ export class RfisService {
   }
 
   // ── Workflow (Phase 1) ──────────────────────────────────────────────────────
-  // Resource-level authorization for submit() -- "is the creator" can't be
+  // Resource-level authorization for submit(): "is the creator" can't be
   // expressed by the route-level ProjectPermissionGuard alone (a creator
   // with no grant must still be able to submit their own RFI), so this calls
   // through to ProjectAuthorizationService (the same shared check the guard
   // itself uses: super_admin, project_lead, manage_rfis grant) for the
   // "not the creator" branch. The four reviewer-only transitions below
   // (requestClarification/respond/close/reopen) are gated at the route with
-  // @RequireProjectPermission('manage_rfis') instead -- that guard already
+  // @RequireProjectPermission('manage_rfis') instead; that guard already
   // covers this exact same bypass set, so those methods don't repeat it.
   private canManageRfiReview(companyId: string, companyRole: string, projectId: string, userId: string): Promise<boolean> {
     return this.projectAuth.hasProjectPermission(companyId, companyRole, userId, projectId, 'manage_rfis');
@@ -1024,7 +1024,7 @@ export class RfisService {
   // Deterministic, unique-per-RFI stamp sequence: counts how many RFIs in
   // this project already carry a stamp in the given column and adds one.
   // Format: `{rfiNumber}-Q-{seq}` / `{rfiNumber}-A-{seq}`, zero-padded to 3
-  // digits (judgment call -- ticket left the exact format open as long as
+  // digits (judgment call; ticket left the exact format open as long as
   // it's deterministic and unique per RFI; documented here for review).
   private async nextStampSequence(companyId: string, projectId: string, column: 'query_stamp' | 'answer_stamp'): Promise<number> {
     const [row] = await this.db.withTenant(companyId, sql => (
@@ -1035,7 +1035,7 @@ export class RfisService {
     return Number(row.n) + 1;
   }
 
-  // Explicit, semantic audit_log write for a named lifecycle event -- adds
+  // Explicit, semantic audit_log write for a named lifecycle event; adds
   // to, does not replace, the generic AuditInterceptor coverage every
   // mutating RFI route already gets. user_email/user_name are left null
   // here (only user_id is known at this layer); the generic interceptor
@@ -1064,7 +1064,7 @@ export class RfisService {
 
   // draft -> submitted. Not reachable through the existing create() method
   // (which always sets status='open', i.e. the legacy equivalent of
-  // 'submitted' itself) -- this becomes reachable once a later phase adds
+  // 'submitted' itself): this becomes reachable once a later phase adds
   // an explicit "save as draft" creation path. Implemented per the state
   // machine as specified regardless, so it's correct the moment that
   // exists.
@@ -1115,7 +1115,7 @@ export class RfisService {
   }
 
   // (submitted|open|under_review) -> awaiting_clarification. Route-gated
-  // with @RequireProjectPermission('manage_rfis') -- reviewer-only, no
+  // with @RequireProjectPermission('manage_rfis'): reviewer-only, no
   // creator bypass, so no additional check here.
   async requestClarification(companyId: string, projectId: string, rfiId: string, userId: string, dto: RequestClarificationDto) {
     const rfi = await this.findOne(companyId, projectId, rfiId);
@@ -1152,7 +1152,7 @@ export class RfisService {
   }
 
   // (submitted|open|under_review|awaiting_clarification) -> responded.
-  // Route-gated with @RequireProjectPermission('manage_rfis') -- reviewer-only
+  // Route-gated with @RequireProjectPermission('manage_rfis'): reviewer-only
   // for the internal front door; RfiExternalAccessService calls this same
   // method for the external 'respond'-action front door, passing
   // externalActor so the audit row attributes correctly.
@@ -1178,11 +1178,11 @@ export class RfisService {
       RETURNING *
     `);
 
-    // Two distinct audit rows, as specced -- stamp generation is its own
+    // Two distinct audit rows, as specced; stamp generation is its own
     // auditable event, separate from the response submission itself.
     // externalActor (present only when this was called through an
     // rfi_external_access link) is attached to the response event only,
-    // not the stamp-generation one -- the stamp is a system-computed
+    // not the stamp-generation one; the stamp is a system-computed
     // side effect of the response, not a second action someone "did".
     await this.writeRfiAudit(companyId, projectId, userId, rfiId, rfi.subject as string, 'rfi.response_submitted', {
       previousValue: oldStatus,
@@ -1209,7 +1209,7 @@ export class RfisService {
   }
 
   // (responded|answered) -> under_review. The "PMC or client reviews the
-  // answer" stage -- the status value has existed in the CHECK constraint
+  // answer" stage; the status value has existed in the CHECK constraint
   // and RESPOND_SOURCE_STATUSES since migration 028, but nothing ever
   // transitioned an RFI into it until now. Route-gated with
   // @RequireProjectPermission('manage_rfis') for the internal front door;
@@ -1251,14 +1251,14 @@ export class RfisService {
 
   // under_review -> closed (approved) or -> awaiting_clarification (rejected).
   // Judgment call on the reject branch: routes to 'awaiting_clarification',
-  // not back to 'responded' -- a review rejection is modeled as the
+  // not back to 'responded'; a review rejection is modeled as the
   // reviewer's own form of "this needs more from the engineer before I can
   // accept it," the exact same lifecycle position requestClarification()
   // already puts an RFI in, and 'awaiting_clarification' is already a legal
   // predecessor to respond() (RESPOND_SOURCE_STATUSES), so the engineer can
   // simply re-answer and the RFI can be sent for review again. Because of
   // that, `comment` is required on rejection for the same reason
-  // RequestClarificationDto.reason is required -- see DecideReviewDto.
+  // RequestClarificationDto.reason is required; see DecideReviewDto.
   // Route-gated with @RequireProjectPermission('manage_rfis') internally;
   // the external 'review'-action front door calls this same method,
   // passing externalActor so the audit row attributes correctly.
@@ -1276,18 +1276,18 @@ export class RfisService {
       : null;
     // DecideReviewDto is shared between the internal :id/decide-review route
     // and the public /rfis/external/:token/review route (RfiExternalAccessService.
-    // reviewExternal()) -- dto.organizationSlot must never be trusted once
+    // reviewExternal()): dto.organizationSlot must never be trusted once
     // externalActor is present, since that would let an external caller's own
     // request body claim a different party than the link was actually issued
     // for. Same "source it from the token, not client input" rule
     // commentExternal() already applies to organizationSlot.
     const closingOrganizationSlot = externalActor ? externalActor.organizationSlot : (dto.organizationSlot ?? null);
 
-    // Same "closed by whom, as which party" attribution as close() below --
+    // Same "closed by whom, as which party" attribution as close() below;
     // an approval is the other door that can transition an RFI to 'closed',
     // so it needs the identical treatment for the summary line (§4) to hold
     // regardless of which door was used. Only written when actually
-    // closing -- a rejection leaves these columns untouched.
+    // closing; a rejection leaves these columns untouched.
     const [updated] = await this.db.withTenant(companyId, sql => sql`
       UPDATE rfis SET
         status                       = ${newStatus},
@@ -1327,20 +1327,20 @@ export class RfisService {
 
   // Any non-terminal status -> closed. Deliberate manager override: closing
   // is legal from any active status, not just responded/answered ("RFI
-  // Manager: Full control, Close RFI" per spec) -- documented here as an
+  // Manager: Full control, Close RFI" per spec): documented here as an
   // intentional broadening, not an oversight. Route-gated with
   // @RequireProjectPermission('manage_rfis').
   //
   // organizationSlot/externalActor: same "closed by whom, as which party"
-  // attribution as decideReview()'s approve branch -- closed_at/closed_by
+  // attribution as decideReview()'s approve branch; closed_at/closed_by
   // have existed since migration 001 but were never written to before this.
   // externalActor has no real caller today (there is no external 'close'
-  // action -- only respond/review/comment_only), but the trailing-optional
+  // action; only respond/review/comment_only), but the trailing-optional
   // param is added for the same reason respond()/decideReview()/addComment()
   // already carry one: consistency, and so this method doesn't need
   // reshaping if an external close front door is ever added later.
   //
-  // reopen() is deliberately left untouched (out of scope) -- these four
+  // reopen() is deliberately left untouched (out of scope): these four
   // columns are NOT cleared on reopen, so a reopened-then-reclosed RFI's
   // previous closer stays in the row (and the audit trail) until the next
   // close() call overwrites them with the new close's attribution. The
@@ -1389,7 +1389,7 @@ export class RfisService {
 
   // closed -> responded only. Judgment call: always reopens to 'responded'
   // rather than reading the prior status (which could have been 'answered')
-  // off the most recent 'rfi.closed' audit_log row -- the ticket explicitly
+  // off the most recent 'rfi.closed' audit_log row; the ticket explicitly
   // allowed either; this is the simpler, deterministic option. Route-gated
   // with @RequireProjectPermission('manage_rfis').
   async reopen(companyId: string, projectId: string, rfiId: string, userId: string) {
@@ -1430,7 +1430,7 @@ export class RfisService {
   // externalActor: present only when called through an rfi_external_access
   // link (RfiExternalAccessService), which also builds `dto.organizationSlot`
   // from that link's own row rather than trusting any value an external
-  // caller could otherwise claim -- see that service's commentExternal().
+  // caller could otherwise claim; see that service's commentExternal().
   async addComment(companyId: string, projectId: string, rfiId: string, userId: string, dto: AddRfiCommentDto, externalActor?: ExternalActorAttribution) {
     const rfi = await this.findOne(companyId, projectId, rfiId);
 
@@ -1446,7 +1446,7 @@ export class RfisService {
       externalActor ? { commentId: comment.id, externalActor } : { commentId: comment.id },
     );
 
-    // Notify created_by + assigned_to, deduped -- same person (and never
+    // Notify created_by + assigned_to, deduped; same person (and never
     // the commenter themself) only gets notified once.
     const recipients = new Set<string>();
     if (rfi.createdBy && rfi.createdBy !== userId) recipients.add(rfi.createdBy as string);
@@ -1481,7 +1481,7 @@ export class RfisService {
 
   // ── Notice Letters ───────────────────────────────────────────────────────
   // "No letter yet" is a normal, expected state the frontend needs to
-  // distinguish from an actual error -- returns null rather than a 404,
+  // distinguish from an actual error; returns null rather than a 404,
   // unlike findOne()'s own not-found handling.
   async getNoticeLetter(companyId: string, projectId: string, rfiId: string) {
     const [letter] = await this.db.withTenant(companyId, sql => sql`
@@ -1496,7 +1496,7 @@ export class RfisService {
   // null/undefined impact levels (a pre-Phase-1 row that never got a
   // *_impact_level value) are treated the same as the explicit 'no' default.
   // The ON CONFLICT (rfi_id) DO UPDATE deliberately only touches
-  // recipient_user_id/recipient_title/body/updated_at -- status/shared_at/
+  // recipient_user_id/recipient_title/body/updated_at; status/shared_at/
   // shared_by are left alone so editing an already-shared letter's text
   // doesn't silently erase its sharing record.
   async upsertNoticeLetter(companyId: string, projectId: string, rfiId: string, userId: string, dto: UpsertRfiNoticeLetterDto) {
@@ -1523,11 +1523,11 @@ export class RfisService {
     return letter;
   }
 
-  // Delivers the letter through the internal messaging feature -- the
+  // Delivers the letter through the internal messaging feature; the
   // message landing in the recipient's inbox IS the audit trail proving it
   // was sent, so this is the sole "share" mechanism (no separate share log).
   // Re-sharing an already-shared letter is allowed (re-sends the message,
-  // refreshes shared_at/shared_by) rather than blocked -- simpler than
+  // refreshes shared_at/shared_by) rather than blocked; simpler than
   // idempotency logic the spec doesn't ask for.
   async shareNoticeLetter(companyId: string, projectId: string, rfiId: string, userId: string) {
     const letter = await this.getNoticeLetter(companyId, projectId, rfiId);
@@ -1552,7 +1552,7 @@ export class RfisService {
     return updated;
   }
 
-  // Much simpler than generatePdf() above -- a notice letter has no
+  // Much simpler than generatePdf() above; a notice letter has no
   // attachments of its own, so this is a single branded-letterhead render
   // with no attachment-merging step.
   async generateNoticeLetterPdf(companyId: string, projectId: string, rfiId: string): Promise<{ buffer: Buffer; filename: string }> {
@@ -1564,7 +1564,7 @@ export class RfisService {
       SELECT name, code, logo_storage_key FROM projects WHERE id = ${projectId} AND company_id = ${companyId}
     `);
 
-    // Never blocks on missing branding -- same
+    // Never blocks on missing branding: same
     // this.storage.download(key).catch(() => undefined) convention as
     // generatePdf() above.
     const logoBuffer = project?.logoStorageKey

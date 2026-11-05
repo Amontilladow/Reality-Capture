@@ -27,7 +27,7 @@ export class ProductivityController {
   }
 
   // Declared after 'me' so that literal route keeps matching
-  // /workforce/productivity/me -- see the identical note on
+  // /workforce/productivity/me; see the identical note on
   // ActivitiesController.getSummaryForUser.
   @Get(':userId')
   @ApiOperation({ summary: 'Get another user\'s explainable productivity score (manager/leadership visibility only)' })

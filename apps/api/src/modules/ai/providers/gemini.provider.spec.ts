@@ -74,7 +74,7 @@ describe('GeminiProvider.selectTools', () => {
 // Owner-reported outage: gemini-3.5-flash-lite (the model this project
 // locked in as "confirmed working" after two earlier Gemini capacity
 // incidents the same day) itself returned a 503 "experiencing high demand"
-// in production -- the third model tier to do so. These tests lock in the
+// in production; the third model tier to do so. These tests lock in the
 // fix: a failed request retries against each configured fallback model
 // before the assistant is reported unavailable.
 describe('GeminiProvider.generateResponse -- model fallback', () => {
@@ -132,7 +132,7 @@ describe('GeminiProvider.generateResponse -- model fallback', () => {
     await provider.generateResponse(input);
 
     // Only one entry for the primary model despite it also being listed as
-    // its own fallback -- confirms modelChain is deduped via Set.
+    // its own fallback; confirms modelChain is deduped via Set.
     expect(mockGetGenerativeModel).toHaveBeenCalledTimes(1);
   });
 

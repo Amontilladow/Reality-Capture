@@ -18,7 +18,7 @@ import { AllowPending } from '../../common/decorators/allow-pending.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '@engineeringos/types';
 
-// httpOnly refresh-token cookie for the web SPA -- see auth.store.ts (apps/web)
+// httpOnly refresh-token cookie for the web SPA; see auth.store.ts (apps/web)
 // for why: a refresh token readable by page-context JavaScript (localStorage)
 // is a one-shot account-takeover target for any future XSS bug. Mobile has no
 // cookie jar and keeps sending/receiving refreshToken in the body via
@@ -41,7 +41,7 @@ export class AuthController {
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
       httpOnly: true,
       // SameSite=None requires Secure, and only makes sense once the API is
-      // actually served over HTTPS -- true in every deployed environment,
+      // actually served over HTTPS; true in every deployed environment,
       // false for plain-http local dev (where frontend/backend share a site
       // via Vite's dev proxy, so Lax is both sufficient and functional).
       secure: isProduction,

@@ -110,7 +110,7 @@ describe('ScoringService.computeScore / levelForScore — deterministic, configu
   it('normalizes weights defensively even if they do not sum to exactly 1', () => {
     const svc = new ScoringService({} as RiskGraphService);
     const factors = { probability: 100, impact: 100, exposure: 100, dependency: 100, urgency: 100, recurrence: 100 };
-    // Weights sum to 2, not 1 -- should still normalize to a max of 100, not 200.
+    // Weights sum to 2, not 1; should still normalize to a max of 100, not 200.
     const score = svc.computeScore(factors, { probability: 0.4, impact: 0.4, exposure: 0.4, dependency: 0.4, urgency: 0.2, recurrence: 0.2 });
     expect(score).toBe(100);
   });

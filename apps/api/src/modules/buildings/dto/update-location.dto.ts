@@ -13,7 +13,7 @@ export class UpdateLocationDto {
   @IsOptional() @IsNumber()
   posYNorm?: number;
 
-  // Nullable (not just optional) -- the UI clears a pin's element link by
+  // Nullable (not just optional): the UI clears a pin's element link by
   // sending elementId: null, distinct from omitting the field entirely.
   // @IsOptional() skips validation for both undefined and null, so a real
   // string is still checked as a UUID.

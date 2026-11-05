@@ -26,7 +26,7 @@ describe('ReportsService.getCompanySummary', () => {
     expect(ada.productiveSeconds).toBe(3600);
     expect(ada.productivityRatio).toBe(1);
 
-    // A user with no rows in the period still appears, at zero -- never
+    // A user with no rows in the period still appears, at zero; never
     // silently dropped from a company-wide report.
     const bo = report.find((r) => r.userId === 'user-b')!;
     expect(bo.totalActiveSeconds).toBe(0);

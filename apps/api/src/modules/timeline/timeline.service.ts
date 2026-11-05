@@ -11,7 +11,7 @@ export class TimelineService {
   ) {}
 
   async create(companyId: string, projectId: string, userId: string, dto: CreateTimelineEntryDto) {
-    // withTenant required -- timeline_entries carries the tenant_isolation RLS policy;
+    // withTenant required: timeline_entries carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id, so this INSERT
     // would be rejected outright under any DB role that isn't the table owner/a superuser.
     const [entry] = await this.db.withTenant(companyId, sql => sql`
@@ -26,7 +26,7 @@ export class TimelineService {
     return entry;
   }
 
-  // Full project timeline — grouped by month for calendar view
+  // Full project timeline: grouped by month for calendar view
   async getProjectTimeline(companyId: string, projectId: string, query: {
     phase?: string; locationId?: string; dateFrom?: string; dateTo?: string;
   }) {
@@ -49,7 +49,7 @@ export class TimelineService {
     `);
   }
 
-  // Location history — all captures at one location across time (the core timeline UX)
+  // Location history: all captures at one location across time (the core timeline UX)
   async getLocationHistory(companyId: string, projectId: string, locationId: string) {
     const captures = await this.db.withTenant(companyId, sql => sql`
       SELECT
@@ -80,7 +80,7 @@ export class TimelineService {
     }));
   }
 
-  // Side-by-side comparison — two captures at the same location, different dates
+  // Side-by-side comparison: two captures at the same location, different dates
   async getComparison(companyId: string, captureIdA: string, captureIdB: string) {
     const captures = await this.db.withTenant(companyId, sql => sql`
       SELECT c.id, c.capture_type, c.captured_at, c.phase, c.title,

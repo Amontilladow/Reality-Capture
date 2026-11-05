@@ -1,7 +1,7 @@
 import { SetMetadata } from '@nestjs/common';
 import type { CompanyRole } from '@engineeringos/types';
 
-// @Roles() (roles.decorator.ts) is a MINIMUM-WEIGHT threshold -- RolesGuard
+// @Roles() (roles.decorator.ts) is a MINIMUM-WEIGHT threshold; RolesGuard
 // takes the lowest COMPANY_ROLE_WEIGHT among the roles passed and admits
 // anyone at or above it. That can't express "exactly these roles, not
 // whoever outranks them" (e.g. QAQC NCR/SOR creation: only qa_qc_manager

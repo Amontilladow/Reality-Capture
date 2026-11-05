@@ -8,7 +8,7 @@ const KEY_PREFIX = 'rc_live_';
 export class ApiKeysService {
   constructor(private readonly db: DatabaseService) {}
 
-  // The full secret is shown to the caller exactly once, at creation --
+  // The full secret is shown to the caller exactly once, at creation;
   // only its SHA-256 hash is ever persisted (see migration 056's comment
   // for why this mirrors refresh_tokens' hashing, not progress-report-share's
   // raw-token storage). Losing it means generating a new key; there is no
@@ -28,7 +28,7 @@ export class ApiKeysService {
     return { ...row, apiKey: fullKey };
   }
 
-  // Never selects key_hash -- same "don't re-display a bearer credential"
+  // Never selects key_hash: same "don't re-display a bearer credential"
   // practice as rfi-external-access.service.ts's list().
   async list(companyId: string) {
     return this.db.withTenant(companyId, sql => sql`

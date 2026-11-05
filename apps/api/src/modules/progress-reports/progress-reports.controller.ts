@@ -46,7 +46,7 @@ export class ProgressReportsController {
   }
 
   // Generating/revoking a public link is gated the same as managing any
-  // other project record (manage_project_records) -- it hands out
+  // other project record (manage_project_records): it hands out
   // unauthenticated view access to real project data, same sensitivity
   // class as the RFI external-access link it mirrors.
   @Post('shares')

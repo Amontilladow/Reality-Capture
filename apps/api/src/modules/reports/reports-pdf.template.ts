@@ -1,7 +1,7 @@
 import { createElement as h } from 'react';
 
 // status/priority/discipline/trade arrive as raw lowercase DB enum values
-// ('critical', 'in_progress') -- same reasoning as rfi-pdf.template.ts's own
+// ('critical', 'in_progress'): same reasoning as rfi-pdf.template.ts's own
 // capitalize(): no shared label map exists for every one of these across
 // Issues + Snagging, so a plain capitalize is used here for display.
 function capitalize(value: string): string {
@@ -10,7 +10,7 @@ function capitalize(value: string): string {
 
 // @react-pdf/renderer is ESM-only ("type": "module" in its package.json);
 // this API compiles to CommonJS (see apps/api/.swcrc), so it must be loaded
-// via dynamic import() rather than a static import -- a static import would
+// via dynamic import() rather than a static import; a static import would
 // compile to require(), which cannot load an ESM package. Mirrors
 // rfi-pdf.template.ts's own dynamic-import structure exactly.
 
@@ -24,7 +24,7 @@ const SECTION_FILL = '#EAF0F4';
 const SIGNAL = '#E56A1F';
 const BLUEPRINT = '#1E6E93';
 
-// Small fixed palette for chart categories -- SIGNAL/BLUEPRINT (the two
+// Small fixed palette for chart categories: SIGNAL/BLUEPRINT (the two
 // brand accents) plus three more tones chosen to stay legible in a legend
 // printed on white paper. Cycled by index, not semantically bound to any
 // particular status/priority value (categories are open-ended enum values
@@ -44,7 +44,7 @@ function registerFonts(Font: typeof import('@react-pdf/renderer').Font) {
       { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff'), fontWeight: 700 },
     ],
   });
-  // IBM Plex Mono deliberately NOT registered -- see rfi-pdf.template.ts's
+  // IBM Plex Mono deliberately NOT registered; see rfi-pdf.template.ts's
   // comment on this exact same line for the fontkit crash this avoids.
   Font.registerHyphenationCallback((word) => [word]);
 }
@@ -140,7 +140,7 @@ export async function renderReportsPdf(data: ReportsPdfData): Promise<Buffer> {
   const toEntries = (rec: Record<string, number>) => Object.entries(rec).filter(([, count]) => count > 0);
 
   // Pie chart: fixed-size Svg (Path per non-zero slice) plus a plain
-  // flexbox legend -- SVG-nested <Text> labels were avoided deliberately
+  // flexbox legend; SVG-nested <Text> labels were avoided deliberately
   // (@react-pdf/types' SVGPresentationAttributes has no fontSize field, so
   // precisely-sized in-SVG labels aren't practically typeable here); the
   // legend achieves the same "which slice is which" readout via ordinary
@@ -179,7 +179,7 @@ export async function renderReportsPdf(data: ReportsPdfData): Promise<Buffer> {
 
   // Bar chart: a fixed-height Svg of Rects only (same fontSize-typing
   // reasoning as pieChart() above), with the value/category labels rendered
-  // as two ordinary flexbox rows immediately above/below it -- each cell in
+  // as two ordinary flexbox rows immediately above/below it; each cell in
   // those rows is given the exact same width as one bar+gap slot, so the
   // value sits above, and the label sits below, its own bar.
   const barChart = (entries: Array<[string, number]>, width = 200, height = 70) => {

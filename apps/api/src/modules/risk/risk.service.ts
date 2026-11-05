@@ -10,7 +10,7 @@ import { AiClientService } from '../ai-client/ai-client.service';
 import { AiUsageService } from '../ai/ai-usage.service';
 import { renderRiskPdf, type RiskPdfTopRisk } from './risk-pdf.template';
 
-// Only NCR is risk-worthy among the four QAQC record types -- SOR/WIR/MIR
+// Only NCR is risk-worthy among the four QAQC record types; SOR/WIR/MIR
 // are deliberately excluded (see qaqc.service.ts's own comment on the
 // NCR/SOR vs WIR/MIR role split: NCR is the non-conformance record this
 // feature is meant to surface risk for; SOR/WIR/MIR don't feed the Risk
@@ -37,7 +37,7 @@ const TITLE_PREFIX_BY_NODE_TYPE: Record<string, string> = {
   ncr: 'Open NCR',
 };
 
-// Ordered by how directly actionable/severe the recommendation is — the
+// Ordered by how directly actionable/severe the recommendation is; the
 // first matching signal in a risk's evidence picks the recommended action.
 const RECOMMENDED_ACTION_BY_SIGNAL: [string, string][] = [
   ['RFI_OVERDUE', 'Escalate this RFI for an immediate response — it is already overdue.'],
@@ -74,7 +74,7 @@ export interface RiskRow {
   score: number; level: RiskLevel;
   probability: number; impact: number; exposure: number; dependency: number; urgency: number; recurrence: number;
   confidenceLevel: 'HIGH' | 'MODERATE' | 'LOW'; confidenceReason: string | null;
-  // ── Risk Matrix (Probability x Impact, 1-25) -- see packages/types'
+  // ── Risk Matrix (Probability x Impact, 1-25); see packages/types'
   // risk.types.ts comment block for how this relates to automatedScore/
   // score above (a separate, parallel scoring system, not a replacement).
   humanProbability: number | null; humanImpact: number | null;
@@ -99,7 +99,7 @@ const AUTOMATED_CONTROLLED_STATUSES: RiskStatus[] = ['DETECTED', 'ACTIVE', 'RESO
  * (brief sections 7-9, 16-18): extraction -> signals -> deterministic
  * scoring -> graph exposure amplification -> risk persistence -> evidence
  * -> snapshot -> lifecycle. This is the "core implementation" the brief
- * describes -- everything in the Reports tab reads from what this service
+ * describes; everything in the Reports tab reads from what this service
  * produces, never the other way around.
  */
 @Injectable()
@@ -231,7 +231,7 @@ export class RiskService {
    * Resolves an issue/RFI/snag's own entity ID to its Risk, for the inline
    * Human Risk Assessment widget on those forms (brief sections 42-43).
    * Read-only: returns null rather than creating anything when the
-   * automated engine hasn't flagged this item yet -- a plain page view
+   * automated engine hasn't flagged this item yet; a plain page view
    * must never have a side effect.
    */
   async getRiskByEntity(companyId: string, nodeType: typeof RISK_WORTHY_NODE_TYPES[number], entityId: string) {
@@ -244,12 +244,12 @@ export class RiskService {
 
   /**
    * Same resolution as getRiskByEntity(), but bootstraps a Risk row (with
-   * every automated factor at 0 -- an honest "nothing detected yet", not a
+   * every automated factor at 0; an honest "nothing detected yet", not a
    * fabricated value) when none exists. Only called from the human-
    * assessment-by-entity write path: an engineer choosing to record a
    * Probability x Impact judgment is exactly the case the brief says must
    * not be gated behind the automated engine having already flagged
-   * something (sections 3, 42-43) -- without this, an item with zero
+   * something (sections 3, 42-43): without this, an item with zero
    * automated signals could never receive a human assessment at all, since
    * setHumanAssessment() needs an existing risk row to attach to.
    */
@@ -486,7 +486,7 @@ export class RiskService {
   }
 
   // due_date already existed on the risks table (migration 051) for the
-  // Executive Summary's overdueCount to read -- this is the first write
+  // Executive Summary's overdueCount to read; this is the first write
   // path for it, mirroring assignOwner above exactly. No migration needed.
   async setDueDate(companyId: string, riskId: string, dueDate: string | null): Promise<RiskRow> {
     return this.db.withTenant(companyId, async (sql) => {
@@ -498,14 +498,14 @@ export class RiskService {
   // ── Risk Matrix: human Probability x Impact assessment (sections 3-6, 40) ──
   //
   // A second, parallel scoring system to the automated/override/score
-  // columns above -- see RiskRow's own comment and packages/types'
+  // columns above; see RiskRow's own comment and packages/types'
   // risk.types.ts for why these never mix. probability/impact are never
   // delegated to an LLM (section 36): humanScore is pure multiplication,
   // computed here, not asked of the AI service.
 
   // Configurable matrix thresholds (section 4) reuse the existing
   // companies.settings JSONB column + PATCH /company/settings endpoint
-  // (tenancy.controller.ts) -- no new settings table/endpoint needed.
+  // (tenancy.controller.ts): no new settings table/endpoint needed.
   private async getRiskMatrixSettings(companyId: string): Promise<RiskMatrixSettings> {
     const [row] = await this.db.withTenant(companyId, sql => sql<{ settings: Record<string, unknown> }[]>`
       SELECT settings FROM companies WHERE id = ${companyId}`);
@@ -515,7 +515,7 @@ export class RiskService {
   /**
    * Records (or updates) an engineer's manual Probability x Impact
    * assessment for one risk. A fresh human assessment is never itself an
-   * "override" -- per section 11, keeping the human assessment is the
+   * "override"; per section 11, keeping the human assessment is the
    * default once one exists, so this becomes the new final value and
    * clears out any earlier matrix override (which was made against a now-
    * superseded assessment and would otherwise silently keep applying).
@@ -544,7 +544,7 @@ export class RiskService {
     const { finalScore, finalLevel } = computeFinalMatrix({ humanScore, humanLevel, aiScore: existing.aiScore, aiLevel: existing.aiLevel });
 
     // A risk sitting at DETECTED is the brief's own "Not Assessed" (section
-    // 6) -- the engine found it, but no human has assigned Probability/
+    // 6): the engine found it, but no human has assigned Probability/
     // Impact yet. The very act of doing so is what "assessed" means, so it
     // moves to ACTIVE here. Any other status (already ACTIVE, MONITORING,
     // ESCALATED, etc.) reflects a deliberate lifecycle decision a human
@@ -593,7 +593,7 @@ export class RiskService {
 
   /**
    * Human-vs-AI discrepancy (brief section 11/40): null whenever either side
-   * hasn't been computed yet -- a risk that's never had a human assessment
+   * hasn't been computed yet; a risk that's never had a human assessment
    * has nothing to disagree with, and that is not itself a discrepancy.
    * levelGap is the distance between the two levels on the matrix's own
    * ordered 5-level scale (RISK_MATRIX_LEVELS), not a raw score difference,
@@ -627,7 +627,7 @@ export class RiskService {
    * The 5x5 Risk Matrix heatmap (brief sections 4, 20-21): how many open
    * risks fall into each Probability x Impact cell. A risk's cell uses its
    * human assessment when one exists (that's the actual judgment call an
-   * engineer made), else the AI's own probability/impact bands -- derived
+   * engineer made), else the AI's own probability/impact bands; derived
    * here from the SAME stored 0-100 automated factors computeAiMatrixScore
    * already rescales, never a second persisted copy of the AI's bands.
    * Always returns all 25 cells (zero-count ones included) so the frontend
@@ -659,12 +659,12 @@ export class RiskService {
   /**
    * The audited Risk Matrix override layer (brief sections 11, 40):
    * "Accept AI Assessment" / "Keep Human Assessment" / "Update Assessment"
-   * (the last of these is just a fresh setHumanAssessment() call -- it
+   * (the last of these is just a fresh setHumanAssessment() call; it
    * already clears any override, no separate code path needed) plus a
    * free-form CUSTOM override for an engineer who disagrees with both.
    * Every decision is written to risk_assessment_history, including
    * KEEP_HUMAN even though it stores the same score/level the human
-   * assessment already produced -- recording an explicit override is what
+   * assessment already produced; recording an explicit override is what
    * marks the discrepancy as reviewed/dismissed (detectMatrixDiscrepancy()
    * still reports a level gap purely from humanLevel vs aiLevel, so without
    * this the UI would have no way to know a human already looked at it and
@@ -774,7 +774,7 @@ export class RiskService {
       }
     }
 
-    // Open, unreviewed Human-vs-AI discrepancies (Phase 18/21) -- ties the
+    // Open, unreviewed Human-vs-AI discrepancies (Phase 18/21): ties the
     // Risk Matrix system into the headline Executive Summary for the first
     // time. Computed inline over the already-fetched openRisks rather than
     // a second getMatrixDiscrepancies() round trip.
@@ -823,7 +823,7 @@ export class RiskService {
     return rows.map(r => ({ location: r.locationLabel, count: Number(r.c), averageScore: Math.round(Number(r.avgScore)) }));
   }
 
-  /** Real historical trend from risk_snapshots only — never fabricated (section 25). */
+  /** Real historical trend from risk_snapshots only; never fabricated (section 25). */
   async getProjectRiskTrend(companyId: string, projectId: string, days: 7 | 14 | 30 | 90) {
     const since = new Date(Date.now() - days * 86400000).toISOString();
     const rows = await this.db.withTenant(companyId, sql => sql<{ day: string; avgScore: string }[]>`
@@ -836,12 +836,12 @@ export class RiskService {
   /**
    * Risk movement during a period (brief Phase 3): emerged/worsened/
    * improved/unresolved, each a plain bucket over data that already
-   * exists -- never a new scoring concept. "Emerged" and "resolved/closed"
+   * exists; never a new scoring concept. "Emerged" and "resolved/closed"
    * come straight from firstDetectedAt/resolvedAt/closedAt; "worsened" and
    * "improved" compare each open risk's CURRENT score against its real
    * risk_snapshots score as of the window start (the exact same snapshot
    * lookup and the exact same ±5 "material change" threshold
-   * recalculateForNode() already uses live), not the live `trend` field --
+   * recalculateForNode() already uses live), not the live `trend` field;
    * that field reflects the change since this risk's last recalculation
    * (event-driven, could be hours or months ago), which isn't the same
    * question as "what changed during this reporting window". A risk with
@@ -854,7 +854,7 @@ export class RiskService {
     const risks = await this.listRisks(companyId, projectId);
 
     // Only risks old enough to have existed before the window are
-    // candidates for a prior-snapshot comparison -- anything newer is
+    // candidates for a prior-snapshot comparison; anything newer is
     // already classified as "emerged" inside classifyRiskMovement().
     const candidates = risks.filter(r => this.isOpenStatus(r.status) && new Date(r.firstDetectedAt) < since);
     const priorScores = candidates.length > 0
@@ -909,7 +909,7 @@ export class RiskService {
 
   /**
    * The whole-project (or filtered) graph for the Risk Graph visualization.
-   * Bounded by whatever real data exists for the project -- there is no
+   * Bounded by whatever real data exists for the project; there is no
    * separate depth/node cap here the way getNeighborhood has one, since
    * this reads the already-persisted, already-bounded per-project node set
    * rather than doing a live traversal. Each node is annotated with its
@@ -984,7 +984,7 @@ export class RiskService {
   // ── Management report export (brief section 15) ─────────────────────────
   //
   // aiBriefing is the exact narrative text the caller already generated (and
-  // the user already read) via generateAiBriefing() above -- this method
+  // the user already read) via generateAiBriefing() above; this method
   // never calls the AI itself, so the PDF can never show a different
   // narrative than what's on screen, and never blocks/slows PDF generation
   // on an LLM round trip. Omitted entirely, not replaced with a
@@ -1047,12 +1047,12 @@ export class RiskService {
   // ── AI reasoning layer (brief sections 13, 21, 39) ──────────────────────
   //
   // The AI never computes a score, never decides a recommended action, and
-  // never sees raw project data directly -- it only receives a plain-text
+  // never sees raw project data directly; it only receives a plain-text
   // context string built here from already-computed, real values (the same
   // risk/evidence/chain data the deterministic UI already shows) and turns
   // it into readable prose. If the AI service is unreachable or the LLM
   // call fails, this degrades to an explicit "unavailable" result rather
-  // than a 500 or a fabricated narrative -- the deterministic explanation/
+  // than a 500 or a fabricated narrative; the deterministic explanation/
   // recommendedAction on the Risk itself remain the ground truth either way.
 
   async generateAiBriefing(companyId: string, projectId: string, user: AiQuotaSubject): Promise<{ narrative: string } | { unavailable: true; reason: string }> {
@@ -1106,17 +1106,17 @@ export const AI_QUOTA_REACHED = "You've reached your AI usage limit for now. Ple
 
 // ── Pure context-building functions (exported for direct unit testing) ─────
 
-// Each level up weighs twice as much as the one below it -- a project
+// Each level up weighs twice as much as the one below it; a project
 // dominated by a handful of CRITICAL risks should read as far riskier than
 // the same count of LOW ones, which a flat average of 0-100 scores could
 // easily wash out (ten LOW risks at 5 and one CRITICAL at 90 averages to
-// 12.7 -- barely distinguishable from "no real risk here"). This is still
+// 12.7; barely distinguishable from "no real risk here"). This is still
 // a plain weighted average of the SAME real 0-100 scores already computed
 // by the deterministic engine, never a fabricated or AI-guessed number,
 // and it stays within [0,100] by construction (Phase 22).
 const PROJECT_RISK_INDEX_LEVEL_WEIGHT: Record<RiskLevel, number> = { LOW: 1, MODERATE: 2, HIGH: 4, CRITICAL: 8 };
 
-/** The Project Risk Index (brief section 19/Phase 22): a severity-weighted average of open risks' automated scores, never their Risk Matrix (1-25) scores -- the two scales are never mixed (see RiskRow's own comment). 0 when there are no open risks -- never a fabricated non-zero baseline. */
+/** The Project Risk Index (brief section 19/Phase 22): a severity-weighted average of open risks' automated scores, never their Risk Matrix (1-25) scores; the two scales are never mixed (see RiskRow's own comment). 0 when there are no open risks; never a fabricated non-zero baseline. */
 export function computeProjectRiskIndex(openRisks: { score: number; level: RiskLevel }[]): number {
   if (openRisks.length === 0) return 0;
   const weightedSum = openRisks.reduce((sum, r) => sum + r.score * PROJECT_RISK_INDEX_LEVEL_WEIGHT[r.level], 0);
@@ -1125,7 +1125,7 @@ export function computeProjectRiskIndex(openRisks: { score: number; level: RiskL
 }
 
 // The same "material change" threshold recalculateForNode() already uses
-// live when setting trend INCREASING/DECREASING vs STABLE -- reused here,
+// live when setting trend INCREASING/DECREASING vs STABLE; reused here,
 // not reinvented, so a risk bucketed WORSENED here would also show
 // trend='INCREASING' if recalculated right now.
 const MATERIAL_SCORE_DELTA = 5;
@@ -1135,7 +1135,7 @@ const MATERIAL_SCORE_DELTA = 5;
  * risk on the project, the window start, and each open-and-old-enough
  * risk's score as of that window start (from risk_snapshots, looked up by
  * the caller), sorts them into emerged/worsened/improved/resolved/
- * unresolved. No DB access and no scoring logic of its own -- it only reads
+ * unresolved. No DB access and no scoring logic of its own; it only reads
  * fields the engine already computed (score, status, firstDetectedAt,
  * resolvedAt, closedAt) and the caller's own snapshot lookup, so it can be
  * tested with plain fixtures.
@@ -1163,7 +1163,7 @@ export function classifyRiskMovement(
   for (const risk of openRisks) {
     if (new Date(risk.firstDetectedAt) >= since) continue; // already counted as emerged
     const priorScore = priorScoreById.get(risk.id);
-    if (priorScore === undefined) continue; // no snapshot this far back -- not enough data to classify, never guessed
+    if (priorScore === undefined) continue; // no snapshot this far back: not enough data to classify, never guessed
     const deltaScore = risk.score - priorScore;
     if (deltaScore >= MATERIAL_SCORE_DELTA) worsened.push({ risk, deltaScore });
     else if (deltaScore <= -MATERIAL_SCORE_DELTA) improved.push({ risk, deltaScore });

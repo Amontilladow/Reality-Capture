@@ -12,7 +12,7 @@ const userId = 'user-1';
 
 // A single sql-tag mock that handles both call styles this service actually
 // uses: a tagged template (sql`...`, first arg is the strings array) and a
-// plain identifier call (sql(tableName), first arg is a bare string) --
+// plain identifier call (sql(tableName), first arg is a bare string);
 // see email-composer.service.ts's own dynamic-table comment. Responses are
 // looked up by substring match against the joined template text, the same
 // text-keyed dispatch style issues.service.spec.ts already uses.
@@ -193,8 +193,8 @@ describe('EmailComposerService.send -- attachment validation', () => {
   });
 
   // Security regression (Phase 3I): without this check, a project member
-  // could pass ANY storage key they happen to know -- another project's
-  // RFI attachment, another company's object, anything -- and this
+  // could pass ANY storage key they happen to know (another project's
+  // RFI attachment, another company's object, anything) and this
   // service would download and email its real bytes to an external
   // address. Verifies the fix rejects a key that was never issued for
   // this project's own email attachments, before download() is ever called.

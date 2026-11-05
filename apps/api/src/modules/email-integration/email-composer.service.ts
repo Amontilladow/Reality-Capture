@@ -9,7 +9,7 @@ import type { SendEmailDto } from './dto/send-email.dto';
 import type { EmailAttachmentUploadUrlDto } from './dto/email-attachment-upload-url.dto';
 import type { CompanyRole, PaginationQuery } from '@engineeringos/types';
 
-// A single, project-scoped reference-number lookup -- one entry per table
+// A single, project-scoped reference-number lookup; one entry per table
 // the brief names as an email workflow target (Section 7: RFIs, issues,
 // snagging, submittals). Adding a fifth related-record type later means
 // adding one entry here, not a new branch of custom logic.
@@ -21,7 +21,7 @@ const REFERENCE_NUMBER_TABLES: { type: string; table: string; column: string }[]
 ];
 
 // Every number format in this codebase (PRJ-GEN-RFI-STR-0001, PRJ-STR-0001,
-// PRJ-SUB-0001, ...) is 2+ uppercase-alnum segments joined by hyphens -- a
+// PRJ-SUB-0001, ...) is 2+ uppercase-alnum segments joined by hyphens; a
 // bare word like "Re:" or "Update" never matches, so this only ever
 // surfaces real candidates, not every capitalized word in the subject line.
 const REFERENCE_NUMBER_PATTERN = /\b[A-Z0-9]{2,}(?:-[A-Z0-9]{1,10}){2,}\b/g;
@@ -35,7 +35,7 @@ export class EmailComposerService {
     private readonly gmail: GmailIntegrationService,
   ) {}
 
-  // Mirrors ChatService.canAccessChannel('project', ...) exactly -- same
+  // Mirrors ChatService.canAccessChannel('project', ...) exactly; same
   // super_admin bypass, same project_members lookup. A separate copy
   // because EmailComposerService has no reason to depend on the chat
   // module, but the rule itself (Section 10: only authorized project
@@ -49,7 +49,7 @@ export class EmailComposerService {
   }
 
   // Step 1 of the presigned-PUT flow, same allow-list/size cap and shape as
-  // RfisService.getAttachmentUploadUrl() -- the client PUTs the bytes
+  // RfisService.getAttachmentUploadUrl(): the client PUTs the bytes
   // straight to storage with this URL, then hands the resulting storageKey
   // back as one of SendEmailDto.attachments on the actual send() call,
   // where resolveAttachments() re-validates the real stored object.
@@ -76,7 +76,7 @@ export class EmailComposerService {
       throw new ForbiddenException('You are not a member of this project.');
     }
 
-    // Idempotent no-op on a retried request that already sent -- the whole
+    // Idempotent no-op on a retried request that already sent; the whole
     // point of the UNIQUE constraint (Section 6: "prevent accidental
     // duplicate sends when users retry after a timeout"). A previously
     // *failed* attempt is not short-circuited: nothing was actually sent,
@@ -104,7 +104,7 @@ export class EmailComposerService {
     try {
       result = await providerService.sendMail(companyId, userId, message);
     } catch (err) {
-      // Never the raw provider error body (migration 066's own comment) --
+      // Never the raw provider error body (migration 066's own comment);
       // a Graph/Gmail error can echo back request content or internal
       // detail not meant for an audit trail any project member can read.
       failureReason = err instanceof Error ? err.message.slice(0, 500) : 'Unknown error sending email.';
@@ -136,9 +136,9 @@ export class EmailComposerService {
   }
 
   // Phase 3G: the email history / audit-trail view. Gated by the exact
-  // same project-membership check as send() -- Section 10's "only
+  // same project-membership check as send(): Section 10's "only
   // authorized project members" applies to reading the communication
-  // history just as much as sending it. Never returns a message body --
+  // history just as much as sending it. Never returns a message body;
   // there isn't one stored (see migration 066's own header comment); only
   // the metadata the brief's Section 8 actually asks for.
   async listMessages(
@@ -169,7 +169,7 @@ export class EmailComposerService {
 
   // Fetches and re-validates each already-uploaded attachment against the
   // same size/extension allow-list RFI attachments use (ticket 2b's own
-  // constants) -- the client-declared contentType/filename on the DTO is
+  // constants): the client-declared contentType/filename on the DTO is
   // never trusted for the size check, only the real object as stored.
   //
   // Security-critical: unlike RfisService.addAttachment() (which only ever
@@ -178,12 +178,12 @@ export class EmailComposerService {
   // bytes and embeds them in an outgoing email to addresses outside this
   // system entirely. Trusting an arbitrary client-supplied storageKey here
   // would turn "I know a storage key string" into "I can exfiltrate that
-  // object to any external email address" -- a strictly more dangerous
+  // object to any external email address"; a strictly more dangerous
   // primitive. The prefix check below restricts every attachment to a key
   // this exact project's own getAttachmentUploadUrl() could have issued
   // (StorageService.generateKey's own `${companyId}/email-attachments/
   // ${projectId}/...` shape), which was itself already gated on this
-  // user's project membership -- so no key for another company, another
+  // user's project membership; so no key for another company, another
   // project, or another attachment type (RFI/issue/document/etc.) is ever
   // accepted here, however it was obtained.
   private async resolveAttachments(companyId: string, projectId: string, items: { storageKey: string; filename: string; contentType: string }[]) {
@@ -209,7 +209,7 @@ export class EmailComposerService {
 
   // "Auto-match by reference number" (the brief's own chosen design): an
   // explicit relatedRecordType/Id always wins over guessing, and is
-  // verified to actually belong to this project before being trusted --
+  // verified to actually belong to this project before being trusted;
   // a client-supplied ID is not proof by itself. Only when neither is
   // given does this scan the subject for a reference-number-shaped token
   // and look it up across every workflow table; more than one hit (or

@@ -25,8 +25,8 @@ function makeEdge(id: string, fromNodeId: string, toNodeId: string): GraphEdgeRo
  * than a canned response, the same technique used in
  * workforce-visibility.util.spec.ts, since this sandbox has no real
  * Postgres available for the tests CI actually runs (see .github/workflows/
- * ci.yml -- "test in this repo mocks its DB/storage/queue dependencies").
- * This lets the traversal logic itself be genuinely exercised against a
+ * ci.yml; "test in this repo mocks its DB/storage/queue dependencies").
+ * This lets the traversal logic itself be exercised against a
  * constructed graph shape, not just against a hand-written expected result.
  */
 function makeGraphSql(edges: GraphEdgeRow[], nodes: GraphNodeRow[]) {

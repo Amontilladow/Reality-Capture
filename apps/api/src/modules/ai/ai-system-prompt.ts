@@ -1,4 +1,4 @@
-// Centralized system prompt (spec section 16) -- the ONE place this text
+// Centralized system prompt (spec section 16): the ONE place this text
 // lives. Nothing in the frontend or elsewhere in the backend should embed
 // its own copy or variant of these instructions.
 //

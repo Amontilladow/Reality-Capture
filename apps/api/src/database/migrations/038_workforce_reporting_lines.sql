@@ -1,11 +1,11 @@
 BEGIN;
 
 -- ══════════════════════════════════════════════════════════════════════════
--- Workforce Intelligence™ — reporting-chain table (manager -> employee)
+-- Workforce Intelligence™: reporting-chain table (manager -> employee)
 -- Adds manager/chain-of-command visibility on top of the existing
 -- self-view-only Workforce Intelligence MVP (037). Deliberately its own
 -- workforce-scoped table, not a manager_id column on the core `users`
--- table -- see docs/workforce-intelligence-architecture.md's
+-- table; see docs/workforce-intelligence-architecture.md's
 -- independent-deployability principle (Workforce Intelligence's data model
 -- has no dependency on, and is not depended on by, the rest of the app).
 -- ══════════════════════════════════════════════════════════════════════════
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS workforce_reporting_lines (
   CHECK (user_id <> manager_id)
 );
 
--- One row per employee (user_id UNIQUE -- one manager per person). A user
+-- One row per employee (user_id UNIQUE; one manager per person). A user
 -- with no row simply has no manager recorded, which is the common case.
 CREATE INDEX IF NOT EXISTS idx_workforce_reporting_lines_manager ON workforce_reporting_lines(manager_id);
 

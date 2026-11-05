@@ -17,7 +17,7 @@ export class ProjectPermissionGuard implements CanActivate {
       context.getClass(),
     ]);
 
-    // No @RequireProjectPermission() -- not a gated route
+    // No @RequireProjectPermission(): not a gated route
     if (!permissions || permissions.length === 0) return true;
 
     const request = context.switchToHttp().getRequest();
@@ -32,13 +32,13 @@ export class ProjectPermissionGuard implements CanActivate {
 
     // See ProjectAuthorizationService for the exact bypass order
     // (super_admin, then the project's own project_lead, then a matching
-    // project_permission_grants row) -- shared with RfisService and
+    // project_permission_grants row): shared with RfisService and
     // IssuesService, which need the same check for logic a route guard
     // alone can't express (e.g. "the RFI's own creator may act on it even
     // with no grant").
     //
     // A route naming more than one permission (e.g. 'manage_rfis' OR
-    // 'approve_rfis') is satisfied by any one of them -- checked in order,
+    // 'approve_rfis') is satisfied by any one of them; checked in order,
     // short-circuiting on the first match so the common case (holding the
     // first-listed, broader permission) never pays for a second query.
     for (const permission of permissions) {

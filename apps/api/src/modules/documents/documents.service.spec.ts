@@ -7,7 +7,7 @@ import type { ConfigService } from '@nestjs/config';
 // getUploadUrl() never had a client-declared size to check (it only takes a
 // filename); create() is the one place a document's storage key is ever
 // persisted. Real size enforcement only applies to an internal, storage-
-// backed upload -- a metadata-only reference to an external system
+// backed upload; a metadata-only reference to an external system
 // (Procore/Aconex/SharePoint/BIM360/a manual link) has no object of ours to
 // verify and must not be broken by this. Also covers the project-ownership
 // check that was previously entirely absent (documents.controller.ts has no
@@ -111,7 +111,7 @@ describe('DocumentsService upload enforcement', () => {
 // own share/external-access test coverage pattern: a token generated on the
 // authenticated side, validated on the public side with no company_id/
 // session of its own. A tagged-template sql mock just returns its
-// pre-configured resolved value and ignores the actual query text/values --
+// pre-configured resolved value and ignores the actual query text/values;
 // these tests assert on what the service does with the DB's response, not
 // on the exact SQL generated.
 describe('DocumentsService external share links', () => {
@@ -124,7 +124,7 @@ describe('DocumentsService external share links', () => {
   }
 
   // withTenant/withSystemBypass take (companyId, fn) or (fn) respectively
-  // and invoke fn with a tagged-template sql function -- each entry in
+  // and invoke fn with a tagged-template sql function; each entry in
   // `results` becomes one call's sql() return value, in order.
   function withQueue(results: unknown[]) {
     const queue = [...results];
@@ -237,7 +237,7 @@ describe('DocumentsService external share links', () => {
 });
 
 // H-1 regression (KNOWN_ISSUES_AND_REMEDIATION.md): link() used to scope
-// its document lookup only by company_id -- a user authorized for Project
+// its document lookup only by company_id; a user authorized for Project
 // A could link an arbitrary capture/element/location/issue to Project B's
 // document by supplying Project B's own documentId. Each test proves both
 // halves: the real project succeeds, the wrong one is rejected.
@@ -284,7 +284,7 @@ describe('DocumentsService H-1: same-company cross-project access is rejected on
 
   // H-1 follow-up: the document itself can be in the right project while
   // the single supplied target (capture/element/location/issue) belongs to
-  // a different one in the same company -- a parent-only check (the test
+  // a different one in the same company; a parent-only check (the test
   // above) doesn't cover this case. One test per supported target type.
   it.each([
     ['captureId', 'capture-from-other-project'],

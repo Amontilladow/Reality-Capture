@@ -18,7 +18,7 @@ export class UpdateProjectDto {
   @IsOptional() @IsIn(['active','on_hold','completed','archived']) status?: string;
   @IsOptional() @IsIn(PROJECT_PHASES) phase?: string;
 
-  // Stakeholder directory -- see create-project.dto.ts for context.
+  // Stakeholder directory; see create-project.dto.ts for context.
   @IsOptional() @IsString() orgCode?: string;
   @IsOptional() @IsString() clientName?: string;
   @IsOptional() @IsString() leadDesigner?: string;
@@ -29,7 +29,7 @@ export class UpdateProjectDto {
   @IsOptional() @IsString() subcontractor?: string;
 
   // Set via POST /projects/:id/branding/upload-url, then this PATCH with
-  // the resulting storageKey -- see projects.service.ts's getBrandingUploadUrl.
+  // the resulting storageKey; see projects.service.ts's getBrandingUploadUrl.
   @IsOptional() @IsString() logoStorageKey?: string;
   @IsOptional() @IsString() stampStorageKey?: string;
 }

@@ -7,7 +7,7 @@ import type { SnaggingService } from '../snagging/snagging.service';
 // H-1 fix (KNOWN_ISSUES_AND_REMEDIATION.md): every mutating/reading route in
 // this module except createBuilding() previously scoped only by
 // company_id (or, for locations, didn't even use the projectId parameter
-// it already had) -- RequireProjectPermission at the controller only
+// it already had): RequireProjectPermission at the controller only
 // confirms the caller has the permission on the URL's :projectId, never
 // that the building/level/location id actually belongs to it. A user
 // authorized for a different project in the same company could
@@ -141,7 +141,7 @@ describe('BuildingsService project-scoping (H-1)', () => {
 
     // H-1 follow-up: the location itself can be in the right project while
     // the BIM element being linked to it belongs to a different one in the
-    // same company -- the test above doesn't cover this case.
+    // same company; the test above doesn't cover this case.
     it('rejects linking a BIM element that belongs to a different project, and writes no update', async () => {
       const { svc, withTenant } = makeService();
       withTenant
@@ -166,7 +166,7 @@ describe('BuildingsService project-scoping (H-1)', () => {
       const { svc, withTenant } = makeService();
       withTenant
         .mockResolvedValueOnce([{ id: locationId, name: 'Loc', description: null }]) // getLocationInProject
-        .mockResolvedValueOnce([{ id: locationId, elementId: null }]); // UPDATE -- no element check in between
+        .mockResolvedValueOnce([{ id: locationId, elementId: null }]); // UPDATE: no element check in between
       const result = await svc.updateLocation(companyId, projectId, locationId, { elementId: null });
       expect(result).toEqual({ id: locationId, elementId: null });
       expect(withTenant).toHaveBeenCalledTimes(2);
@@ -193,7 +193,7 @@ describe('BuildingsService project-scoping (H-1)', () => {
   });
 
   // convertPinToSnag: projectId was already a parameter here before the
-  // fix, but was never checked against the location -- the clearest H-1
+  // fix, but was never checked against the location; the clearest H-1
   // instance in this module, since it looked safe (projectId threaded
   // through) without actually being enforced.
   describe('convertPinToSnag', () => {

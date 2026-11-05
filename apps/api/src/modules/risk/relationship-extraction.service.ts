@@ -32,8 +32,8 @@ export function jaccard(a: Set<string>, b: Set<string>): number {
 // RFI_DISCIPLINE_TO_RISK_DISCIPLINE/ISSUE_DISCIPLINE_TO_RISK_DISCIPLINE do.
 // Rather than inventing a classification for arbitrary free text, this only
 // recognizes an exact (case-insensitive) match against the canonical
-// RiskDiscipline vocabulary itself -- a real, very common way for someone to
-// type "Structural" or "MEP" -- and leaves anything else unclassified
+// RiskDiscipline vocabulary itself (a real, very common way for someone to
+// type "Structural" or "MEP") and leaves anything else unclassified
 // (null) rather than guessing.
 export function canonicalizeFreeTextDiscipline(value: string | null | undefined): RiskDiscipline | null {
   if (!value) return null;
@@ -45,10 +45,10 @@ export const RFI_ISSUE_MAX_DAY_GAP = 14;
 
 /**
  * Pure decision function for whether/how confidently an RFI and an Issue
- * should be linked by inference (brief section 6 — every inferred
+ * should be linked by inference (brief section 6; every inferred
  * relationship must be explainable and never presented as fact). Returns
  * null when the two entities should NOT be linked at all (different
- * canonical discipline, or too far apart in time) -- this is the "no
+ * canonical discipline, or too far apart in time): this is the "no
  * fabricated relationship" guarantee (Scenario G), kept as a standalone
  * function so it can be unit-tested without a database.
  */
@@ -70,7 +70,7 @@ export function computeInferredRfiIssueConfidence(
  * issues, snag_items, or any other domain table, and every explicit edge
  * it creates mirrors a foreign key that already exists in that table's own
  * schema (see the architecture assessment for exactly which FKs exist on
- * which table -- notably: RFIs have none, so every RFI relationship beyond
+ * which table; notably: RFIs have none, so every RFI relationship beyond
  * ASSIGNED_TO/OWNED_BY is RULE_INFERENCE, never EXPLICIT).
  *
  * Each extractX method is idempotent (upsert-based) and safe to call
@@ -454,7 +454,7 @@ export class RelationshipExtractionService {
     }
   }
 
-  // ── QA inspections (weakest-linked module -- free-text location only) ──────
+  // ── QA inspections (weakest-linked module; free-text location only) ──────
 
   async extractQaInspections(companyId: string, projectId: string, onlyId?: string): Promise<void> {
     const rows = await this.db.withTenant(companyId, sql => sql<{
@@ -480,8 +480,8 @@ export class RelationshipExtractionService {
   }
 
   // ── QAQC NCR (brief section 6 registered all four record_type values as
-  // node types; only 'ncr' is risk-worthy -- see risk.service.ts's
-  // RISK_WORTHY_NODE_TYPES -- so SOR/WIR/MIR are excluded here and never
+  // node types; only 'ncr' is risk-worthy; see risk.service.ts's
+  // RISK_WORTHY_NODE_TYPES; so SOR/WIR/MIR are excluded here and never
   // get a graph node at all) ──────────────────────────────────────────────
 
   async extractQaqcRecords(companyId: string, projectId: string, onlyId?: string): Promise<void> {
@@ -537,8 +537,8 @@ export class RelationshipExtractionService {
   // inference: same canonical discipline + created within
   // RFI_ISSUE_MAX_DAY_GAP days of each other + optional subject/title word
   // overlap. Every edge this produces is source=RULE_INFERENCE with
-  // confidence < 1 and a stored `evidence` explaining exactly what matched
-  // -- never presented as a confirmed relationship (brief section 6).
+  // confidence < 1 and a stored `evidence` explaining exactly what matched;
+  // never presented as a confirmed relationship (brief section 6).
 
   async extractInferredRfiIssueLinks(companyId: string, projectId: string): Promise<void> {
     const rfis = await this.db.withTenant(companyId, sql => sql<{

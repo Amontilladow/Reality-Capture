@@ -20,11 +20,11 @@ import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 export class SnaggingController {
   constructor(private readonly svc: SnaggingService) {}
 
-  // Previously ungated -- the owner's org-category matrix ("Issues/Snags")
+  // Previously ungated: the owner's org-category matrix ("Issues/Snags")
   // scopes creation to Construction Team/QAQC Team (and Engineering
   // Manager, always); Management/Engineering Team/Document Control are now
-  // genuinely restricted here, same new restriction as issues.controller.ts's
-  // own create(). No fallbackPermissions -- no discretionary grant for
+  // restricted here, same new restriction as issues.controller.ts's
+  // own create(). No fallbackPermissions; no discretionary grant for
   // "create a snag item" existed to preserve.
   @Post()
   @RequireCategoryAction('issues_snags', 'create')
@@ -89,7 +89,7 @@ export class SnaggingController {
   }
 
   // RBAC Phase 3: either manage_project_records (everyone who could already
-  // verify) OR the narrower verify_snag_items permission -- see
+  // verify) OR the narrower verify_snag_items permission; see
   // SnaggingService.verify()'s own comment for the segregation-of-duties
   // rationale.
   @Post(':id/verify')

@@ -3,17 +3,17 @@ import { Cron } from '@nestjs/schedule';
 import { DatabaseService } from '../../database/database.service';
 
 // Server-side auto-warning check (reference tracker's client-side 60s poll
-// re-implemented as a server cron -- 60s is far too chatty for a job that
+// re-implemented as a server cron; 60s is far too chatty for a job that
 // does DB writes, so this runs every 5 minutes instead; see ticket 2b).
 //
 // v1 scope: always-on for every company, no per-company toggle/settings UI.
-// That's a deliberate scope reduction, not an oversight -- building a
+// That's a deliberate scope reduction, not an oversight; building a
 // settings surface for this is out of scope for 2b (frontend work is
 // ticket 3, and there's no "company settings" concept for issues today).
 //
 // issue_activities.performed_by is NOT NULL REFERENCES users(id), and this
 // codebase has no system/service-account user concept anywhere (checked:
-// no seeded system user, no nullable performed_by precedent -- audit_log
+// no seeded system user, no nullable performed_by precedent; audit_log
 // is the only table with a nullable user_id, and issue_activities isn't
 // audit_log). Rather than relaxing that NOT NULL constraint (a schema
 // change to a column ticket 2a never touched, done here without being
@@ -39,10 +39,10 @@ export class IssueWarningService {
 
   // Extracted from handleCron() so unit tests can invoke the logic directly
   // without depending on @Cron's scheduling.
-  // Deliberately cross-tenant -- this is a system cron scanning overdue issues across
+  // Deliberately cross-tenant; this is a system cron scanning overdue issues across
   // every company, not a single tenant's request, so this.db.withTenant(oneCompanyId, ...)
   // would be the wrong fix even though it's the pattern used everywhere else in this
-  // codebase. withSystemBypass required -- see DatabaseService.withSystemBypass() and
+  // codebase. withSystemBypass required; see DatabaseService.withSystemBypass() and
   // migration 052. Same root cause as tenancy.service.ts's register() and
   // auth.service.ts's login()/refresh() bootstrap lookups.
   async checkOverdueIssues(): Promise<{ checked: number; warned: number; skipped: number }> {
@@ -65,7 +65,7 @@ export class IssueWarningService {
 
       // Unlike the overdue scan above, company_id IS known here (from the row just fetched),
       // so these two are ordinary single-tenant operations, not part of the cross-tenant
-      // bootstrap problem -- withTenant required, same as everywhere else in this codebase.
+      // bootstrap problem; withTenant required, same as everywhere else in this codebase.
       const [recent] = await this.db.withTenant(companyId, sql => sql`
         SELECT id FROM issue_activities
         WHERE issue_id = ${issueId}

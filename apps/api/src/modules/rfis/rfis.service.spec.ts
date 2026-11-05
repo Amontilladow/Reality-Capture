@@ -7,7 +7,7 @@ import type { StorageService } from '../storage/storage.service';
 import type { MessagingService } from '../messaging/messaging.service';
 import type { CreateRfiDto } from './dto/create-rfi.dto';
 
-// Generic tagged-template mock for this.db.withTenant's `sql` callback --
+// Generic tagged-template mock for this.db.withTenant's `sql` callback;
 // records every call (reconstructed text + interpolated values) and lets
 // each test supply a responder keyed off substrings of the query text.
 // Mirrors issues.service.spec.ts's own makeQuery/withTenant convention
@@ -28,7 +28,7 @@ function makeQuery(responder: (text: string, values: unknown[]) => unknown[] | u
 function makeService(responder: (text: string, values: unknown[]) => unknown[] | undefined) {
   const { query, calls } = makeQuery(responder);
   const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
-  // paginate() is plain synchronous JS, not a DB call -- stub it with the
+  // paginate() is plain synchronous JS, not a DB call; stub it with the
   // same shape DatabaseService.paginate returns.
   const paginate = jest.fn((rows: unknown[], page: number, perPage: number) => ({
     data: rows, total: rows.length, page, perPage, totalPages: Math.ceil(rows.length / perPage) || 1,
@@ -37,7 +37,7 @@ function makeService(responder: (text: string, values: unknown[]) => unknown[] |
   const notifications = { create: jest.fn() };
   const storage = {};
   const messaging = { create: jest.fn() };
-  // A real ProjectAuthorizationService wrapping the same mock db -- its own
+  // A real ProjectAuthorizationService wrapping the same mock db; its own
   // queries (project_members role lookup, project_permission_grants lookup)
   // are the exact same two queries canManageRfiReview() used to run inline,
   // so they're still intercepted transparently by each test's own
@@ -106,7 +106,7 @@ describe('RfisService', () => {
 
       const insertCall = calls.find((c) => c.text.includes('INSERT INTO rfis'));
       // status is now a bound parameter (dto.initialStatus ?? 'open'), not a
-      // literal in the query text -- see the Upload-RFI quick-create path
+      // literal in the query text; see the Upload-RFI quick-create path
       // in RfisService.create(). values[22] = status (company_id, project_id,
       // rfi_number, subject, question, priority, discipline, discipline_other,
       // cost_impact, time_impact, cost_impact_level/amount/currency/description,
@@ -158,7 +158,7 @@ describe('RfisService', () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  // findAll — new filter params
+  // findAll: new filter params
   // ══════════════════════════════════════════════════════════════════════
   describe('findAll', () => {
     function findAllRows() {
@@ -216,8 +216,8 @@ describe('RfisService', () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  // Subcontractor cross-company isolation (owner's RBAC sprint, "critical")
-  // — one subcontractor account must never read another's RFIs, even on the
+  // Subcontractor cross-company isolation (owner's RBAC sprint, "critical");
+  // one subcontractor account must never read another's RFIs, even on the
   // same project. findAll()/getSummary() narrow to viewer-owned rows when
   // the viewer is themselves a subcontractor project member; a
   // non-subcontractor viewer (any company role) is completely unaffected.
@@ -231,7 +231,7 @@ describe('RfisService', () => {
       });
       await svc.findAll(companyId, projectId, {}, 'viewer-1');
       const listCall = calls.find((c) => c.text.includes('FROM rfis r'));
-      // isolateToViewer resolves false -- the clause is present but inert
+      // isolateToViewer resolves false: the clause is present but inert
       // (its OR branch never excludes a row with a non-matching created_by).
       expect(listCall!.values).toContain(false);
     });
@@ -306,7 +306,7 @@ describe('RfisService', () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  // submit() — draft -> submitted
+  // submit(): draft -> submitted
   // ══════════════════════════════════════════════════════════════════════
   describe('submit', () => {
     it("the creator, with no permission grant at all, can submit their own draft RFI", async () => {
@@ -486,11 +486,11 @@ describe('RfisService', () => {
     // stage... never that a later stage can be performed before the stages
     // that must precede it." OrgCategoryPermissionService/CategoryActionGuard
     // only decide whether the ROUTE may be called at all (and bypass
-    // unconditionally for engineering_manager) -- close()'s own status
+    // unconditionally for engineering_manager): close()'s own status
     // precondition below is enforced entirely inside the service method,
     // which has no role/category parameter whatsoever to special-case. The
     // same terminal-status rejection above therefore applies identically no
-    // matter who calls it, Engineering Manager included -- there is no code
+    // matter who calls it, Engineering Manager included; there is no code
     // path by which a role could skip it.
     it('no caller, including Engineering Manager, can close an already-closed RFI -- the status check has no role to special-case', async () => {
       const { svc } = makeService((text) => {
@@ -499,7 +499,7 @@ describe('RfisService', () => {
         }
         return undefined;
       });
-      // close() takes no companyRole/category argument -- an Engineering
+      // close() takes no companyRole/category argument; an Engineering
       // Manager calling it hits the exact same code path as anyone else.
       await expect(svc.close(companyId, projectId, rfiId, 'engineering-manager-user')).rejects.toThrow(BadRequestException);
     });
@@ -597,7 +597,7 @@ describe('RfisService', () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  // submitForReview() -- new: the previously-missing "PMC/client reviews
+  // submitForReview(): new: the previously-missing "PMC/client reviews
   // the answer" transition into 'under_review'.
   // ══════════════════════════════════════════════════════════════════════
   describe('submitForReview', () => {
@@ -647,7 +647,7 @@ describe('RfisService', () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  // decideReview() -- new: approve closes the RFI, reject sends it back to
+  // decideReview(): new: approve closes the RFI, reject sends it back to
   // 'awaiting_clarification' (see the service's own comment for why).
   // ══════════════════════════════════════════════════════════════════════
   describe('decideReview', () => {
@@ -736,7 +736,7 @@ describe('RfisService', () => {
       });
 
       // A malicious/mistaken external request body claims 'ldc', but the
-      // link was actually issued for 'pmc' -- the token's own attribution
+      // link was actually issued for 'pmc'; the token's own attribution
       // must win.
       await svc.decideReview(
         companyId, projectId, rfiId, 'system-user-1',
@@ -751,7 +751,7 @@ describe('RfisService', () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  // Drawing impact -- new: a third impact field (structurally identical to
+  // Drawing impact: new: a third impact field (structurally identical to
   // cost/time impact) plus follow-up tracking (owner, applied/not-applied)
   // and the Reports rollup that surfaces it.
   // ══════════════════════════════════════════════════════════════════════
@@ -1004,13 +1004,13 @@ describe('RfisService', () => {
   });
 
   // The presigned PUT getAttachmentUploadUrl() hands out has no enforced
-  // size limit -- dto.sizeBytes there is only ever a declared value. Real
+  // size limit; dto.sizeBytes there is only ever a declared value. Real
   // enforcement is this HEAD-based check against the object actually
   // sitting in storage, run here in addAttachment() before it's persisted.
   //
   // H-1 fix (KNOWN_ISSUES_AND_REMEDIATION.md): addAttachment(), getAttachments(),
   // deleteAttachment(), and getComments() previously scoped only by
-  // company_id -- @RequireProjectPermission at the controller confirms the
+  // company_id; @RequireProjectPermission at the controller confirms the
   // caller has the permission on the URL's :projectId, but never that rfiId
   // actually belongs to that project, so a user authorized for a different
   // project in the same company could reach any RFI's attachments/comments
@@ -1019,7 +1019,7 @@ describe('RfisService', () => {
   // already used correctly.
   describe('addAttachment', () => {
     // findOne()'s SELECT is query call #0 (truthy row = project check
-    // passes); the real INSERT is query call #1 -- the size-enforcement
+    // passes); the real INSERT is query call #1; the size-enforcement
     // tests below index into calls[1], not calls[0], for that reason.
     function makeAttachmentService(opts: { actualSizeBytes: number | null; wrongProject?: boolean }) {
       const findOneRow = { id: rfiId, projectId, companyId, raisedByOrganizationSlot: null, createdBy: null };

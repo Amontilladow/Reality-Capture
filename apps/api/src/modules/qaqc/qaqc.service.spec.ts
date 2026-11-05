@@ -8,7 +8,7 @@ import type { CreateQaqcRecordDto } from './dto/create-qaqc-record.dto';
 
 // Same generic tagged-template mock convention as rfis.service.spec.ts's
 // own makeQuery/makeService (see that file's comment for the full
-// rationale) -- QaqcService never calls this.db.query() directly, only
+// rationale): QaqcService never calls this.db.query() directly, only
 // this.db.withTenant(), so one shared query mock forwarded through
 // withTenant covers every method under test here.
 function makeQuery(responder: (text: string, values: unknown[]) => unknown[] | undefined) {
@@ -17,7 +17,7 @@ function makeQuery(responder: (text: string, values: unknown[]) => unknown[] | u
     const text = strings.join('?');
     calls.push({ text, values });
     // assertQaqcInProject's ownership check (H-1 fix) runs ahead of every
-    // attachment/capture method below -- default it to "found" so each
+    // attachment/capture method below; default it to "found" so each
     // test's own responder doesn't need to know about a query it isn't
     // testing; a test can still override by handling this text itself.
     // assertCaptureInProject (H-1 follow-up, linkCapture) and
@@ -71,7 +71,7 @@ describe('QaqcService', () => {
     it("formats the record number as {TYPE}-{seq}, zero-padded to 3 digits, scoped per (project, record_type)", async () => {
       const { svc } = makeService((text, values) => {
         if (text.includes('SELECT COUNT(*) AS n FROM qaqc_records')) {
-          // values: [projectId, recordType] -- confirm the count query is scoped by both.
+          // values: [projectId, recordType]; confirm the count query is scoped by both.
           expect(values).toEqual([projectId, 'ncr']);
           return [{ n: '4' }];
         }
@@ -153,7 +153,7 @@ describe('QaqcService', () => {
       expect(risk.recalculateForEntity).toHaveBeenCalledWith(companyId, projectId, 'ncr', 'qaqc-new');
     });
 
-    // Only NCR is risk-worthy (risk.service.ts's RISK_WORTHY_NODE_TYPES) --
+    // Only NCR is risk-worthy (risk.service.ts's RISK_WORTHY_NODE_TYPES);
     // SOR/WIR/MIR must never reach the Risk Engine at all.
     it.each(['sor', 'wir', 'mir'] as const)(
       'does NOT trigger risk recalculation for a new %s',
@@ -400,7 +400,7 @@ describe('QaqcService', () => {
     });
 
     it('a record can be responded to again after being reopened', async () => {
-      // Confirms the reopened status isn't a dead end -- respond() accepts
+      // Confirms the reopened status isn't a dead end; respond() accepts
       // 'open' or 'reopened' as its source statuses (see the respond()
       // describe block above for the full assertion of that behavior).
       const { svc } = makeService((text) => {
@@ -422,7 +422,7 @@ describe('QaqcService', () => {
     });
 
     // Owner's org-category RBAC sprint, segregation-of-duties fix: the same
-    // user who responded cannot also confirm their own response -- applies
+    // user who responded cannot also confirm their own response; applies
     // to every record type, not just WIR/MIR (see this check's own comment
     // in qaqc.service.ts for why).
     it('rejects self-confirmation -- the same user who responded cannot also confirm it', async () => {
@@ -434,7 +434,7 @@ describe('QaqcService', () => {
       });
       await expect(svc.confirm(companyId, projectId, qaqcId, 'user-2', { decision: 'confirmed' }))
         .rejects.toBeInstanceOf(ForbiddenException);
-      // Only findOne()'s own withTenant call happened -- no UPDATE was attempted.
+      // Only findOne()'s own withTenant call happened; no UPDATE was attempted.
       expect(db.withTenant).toHaveBeenCalledTimes(1);
     });
 
@@ -546,7 +546,7 @@ describe('QaqcService', () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  // Quick photo picker -- links a Capture (mirrors issue_captures)
+  // Quick photo picker: links a Capture (mirrors issue_captures)
   // ══════════════════════════════════════════════════════════════════════
   describe('linkCapture', () => {
     it('links an already-uploaded capture with kind defaulted to "issue"', async () => {
@@ -615,7 +615,7 @@ describe('QaqcService', () => {
 
   // H-1 regression (KNOWN_ISSUES_AND_REMEDIATION.md): addAttachment/
   // getAttachments/deleteAttachment/linkCapture/getLinkedCaptures used to
-  // scope their record lookup only by company_id -- a user authorized for
+  // scope their record lookup only by company_id; a user authorized for
   // Project A could read/write Project B's QAQC record sub-resources by
   // supplying Project B's own qaqcId. Each test proves both halves: the
   // real project succeeds, the wrong one is rejected.
@@ -650,7 +650,7 @@ describe('QaqcService', () => {
 
     it('deleteAttachment: succeeds under the real project, rejects the same qaqcId under another project', async () => {
       const { svc, db } = makeScopedService();
-      // DELETE reports a row count, not an array -- stub the DELETE
+      // DELETE reports a row count, not an array; stub the DELETE
       // specifically so the "real project" case succeeds.
       const originalWithTenant = db.withTenant as jest.Mock;
       originalWithTenant.mockImplementation((_companyId: string, fn: (sql: unknown) => unknown) => {
@@ -684,7 +684,7 @@ describe('QaqcService', () => {
 
     // H-1 follow-up: the QAQC record itself can be in the right project
     // while the *capture* being linked belongs to a different one in the
-    // same company -- a parent-only check (the test above) doesn't cover
+    // same company; a parent-only check (the test above) doesn't cover
     // this case.
     it('linkCapture: rejects a same-company capture that belongs to a different project, and writes no link', async () => {
       const insertSpy = jest.fn();

@@ -8,15 +8,15 @@ import { isAtLeast } from './workforce-role.util';
 // activity regardless of reporting lines ("leadership"), reusing
 // COMPANY_ROLE_WEIGHT rather than a new permission (see
 // docs/workforce-intelligence-architecture.md's RBAC section).
-// engineering_manager (weight 70) and above -- company_admin/
+// engineering_manager (weight 70) and above; company_admin/
 // technical_director/super_admin inherit this for free via isAtLeast's
 // weight comparison. project_manager/construction_manager/qa_qc_manager
 // sit below it: they manage a project or discipline, not engineering
 // staff, so they don't get company-wide workforce visibility for free.
 export const LEADERSHIP_OVERRIDE_ROLE: CompanyRole = 'engineering_manager';
 
-// Everyone in the viewer's downward transitive closure -- direct reports
-// and their reports, recursively -- via workforce_reporting_lines. Must be
+// Everyone in the viewer's downward transitive closure (direct reports
+// and their reports, recursively) via workforce_reporting_lines. Must be
 // called with a `sql` handle already scoped by DatabaseService.withTenant
 // (RLS then does the tenant filtering; no explicit company_id needed here,
 // matching every other query in this module).

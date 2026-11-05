@@ -22,7 +22,7 @@ export class OutlookIntegrationController {
     return { data: { url: this.svc.getAuthorizeUrl(u.companyId, u.id) }, error: null };
   }
 
-  // Microsoft redirects the browser here directly -- no JWT bearer token,
+  // Microsoft redirects the browser here directly: no JWT bearer token,
   // no request.user, no tenant context. @Public() bypasses JwtAuthGuard the
   // same way Calendar's own callback route does; the signed `state` is the
   // actual authorization (see oauth-state.util.ts).

@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Migration 031 — Snag Items Location
+-- Migration 031: Snag Items Location
 --
 -- Lets a pin's auto-created Issue (issues.location_id, from migration 005 /
 -- the pin-creation feature) be converted into a Snag item instead, without

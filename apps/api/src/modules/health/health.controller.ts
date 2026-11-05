@@ -20,12 +20,12 @@ export class HealthController {
     @InjectQueue('image-processing') private readonly queue: Queue,
   ) {}
 
-  // Liveness: is the process up at all. Deliberately checks nothing else --
+  // Liveness: is the process up at all. Deliberately checks nothing else;
   // this is the path Render's render.yaml `healthCheckPath` actually points
   // at today, and it gates whether a fresh deploy is allowed to take traffic
   // and whether a running instance gets restarted. Making it depend on
   // Redis/object-storage reachability would mean a brief, unrelated Redis or
-  // R2 blip could get a perfectly healthy API instance killed -- so this
+  // R2 blip could get a perfectly healthy API instance killed; so this
   // stays a plain DB ping, exactly its existing behavior.
   @Public()
   @Get()
@@ -40,10 +40,10 @@ export class HealthController {
     };
   }
 
-  // Readiness: are this instance's actual required dependencies reachable --
+  // Readiness: are this instance's actual required dependencies reachable;
   // database, Redis (the job queue), and object storage. Not currently wired
   // into Render's deploy/restart gate (see render.yaml's single
-  // healthCheckPath, still pointed at the liveness check above) -- that's a
+  // healthCheckPath, still pointed at the liveness check above): that's a
   // deliberate choice, not an oversight: promoting this to the deploy gate
   // is a real production-behavior change that needs its own deliberate
   // decision once the on-call/monitoring story exists. This endpoint exists

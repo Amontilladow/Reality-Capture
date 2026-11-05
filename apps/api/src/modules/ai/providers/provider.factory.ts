@@ -12,7 +12,7 @@ import type { ByoAiProvider } from '../../ai-connections/dto/connect-ai-provider
 // ANTHROPIC_API_KEY is set, else openai if OPENAI_API_KEY is set, else
 // fails closed at startup rather than booting with a gateway that can
 // never actually answer anything. This is RealityCapture's OWN provider
-// (spec Mode A) -- a single, cached, app-wide instance.
+// (spec Mode A): a single, cached, app-wide instance.
 //
 // For Mode B (BYO AI), use buildFromCredentials() instead: a stateless
 // constructor for a one-off provider instance from a user's own stored
@@ -20,9 +20,9 @@ import type { ByoAiProvider } from '../../ai-connections/dto/connect-ai-provider
 // can have different providers/credentials simultaneously.
 //
 // Switching RealityCapture's own provider later (spec section 20/31) means
-// either: (a) set AI_PROVIDER + the new key and redeploy -- zero code
+// either: (a) set AI_PROVIDER + the new key and redeploy; zero code
 // changes for gemini/anthropic/openai, since adapters already exist; or
-// (b) for a genuinely new vendor, write one new class implementing
+// (b) for a new vendor, write one new class implementing
 // AIProvider and add one more branch to both resolve() and
 // buildFromCredentials(). Nothing in AiService, the domain guard, the tool
 // router, or the frontend changes either way.
@@ -35,9 +35,9 @@ export class ProviderFactory implements OnModuleInit {
 
   // Deliberately non-fatal: an unconfigured/misconfigured AI provider is a
   // real gap, but it shouldn't take the rest of the app down with it (every
-  // other module -- auth, projects, issues, RFIs, BIM, etc. -- has nothing
+  // other module (auth, projects, issues, RFIs, BIM, etc.) has nothing
   // to do with AI and would otherwise fail to boot too). getProvider()
-  // below still fails closed, just lazily -- the first AI request after a
+  // below still fails closed, just lazily; the first AI request after a
   // bad config gets a clear error instead of the whole API never starting.
   onModuleInit() {
     try {
@@ -56,7 +56,7 @@ export class ProviderFactory implements OnModuleInit {
     return this.provider;
   }
 
-  // Builds a standalone provider instance from arbitrary credentials --
+  // Builds a standalone provider instance from arbitrary credentials;
   // used for BYO AI (a user's own connection) and for validating a
   // connection before it's saved. Deliberately does not touch/replace
   // this.provider (RealityCapture's own, shared instance).
@@ -97,7 +97,7 @@ export class ProviderFactory implements OnModuleInit {
     if (!apiKey) throw new Error('AI_PROVIDER=gemini but GEMINI_API_KEY is not set.');
     // Fallback models are RealityCapture's own operational safety net
     // (ai.config.ts), not applied to a user's BYO Gemini connection in
-    // buildFromCredentials() below -- a BYO user configured one specific
+    // buildFromCredentials() below; a BYO user configured one specific
     // model and should get exactly that, or a clear failure, not a silent
     // switch to a model they didn't choose.
     const fallbackModels = this.config.get<string[]>('ai.gemini.fallbackModels') ?? [];

@@ -1,16 +1,16 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Migration 077 — Document external share links
+-- Migration 077: Document external share links
 --
 -- Lets a project team hand a document (an internally-stored upload, not a
--- metadata-only external reference) to someone outside the company -- a
--- client, consultant, or subcontractor with no EngineeringOS account --
+-- metadata-only external reference) to someone outside the company; a
+-- client, consultant, or subcontractor with no EngineeringOS account;
 -- without routing through Dropbox/WeTransfer/etc. Mirrors
 -- progress_report_shares (migration 054) and rfi_external_access (migration
 -- 043) deliberately: same random 128-hex-char token (the secret itself, not
--- hashed -- same category as a password-reset token), same
+-- hashed; same category as a password-reset token), same
 -- expires_at/revoked_at/used_at shape, same public-controller +
 -- withSystemBypass validation pattern. No "action" column (unlike RFI
--- external access) -- a document share only ever grants one capability
+-- external access): a document share only ever grants one capability
 -- (view/download).
 -- ══════════════════════════════════════════════════════════════════════════
 

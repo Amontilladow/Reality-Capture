@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Migration 006 — Drawing Location
+-- Migration 006: Drawing Location
 --
 -- Lets a drawing optionally reference a Room (a Location) in addition to
 -- its existing Level reference, so the upload form's "Room" field can

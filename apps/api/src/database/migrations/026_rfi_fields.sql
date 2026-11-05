@@ -11,7 +11,7 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Convert the existing free-text column in place. Any existing value that
 -- doesn't cleanly match one of the new enum labels becomes NULL rather
--- than blocking the migration -- discipline was optional free text before
+-- than blocking the migration; discipline was optional free text before
 -- (placeholder examples like "MEP, Structural…"), so there's no reliable
 -- way to map arbitrary prior text onto the new fixed list. Left nullable
 -- at the DB level even though it's required going forward at the

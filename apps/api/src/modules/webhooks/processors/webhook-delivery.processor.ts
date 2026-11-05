@@ -7,13 +7,13 @@ import type { WebhookDeliveryJobData } from '../webhook-delivery.constants';
 
 const DELIVERY_TIMEOUT_MS = 10_000;
 
-// Runs in a separate Bull worker, same pattern as ImageProcessingProcessor --
+// Runs in a separate Bull worker, same pattern as ImageProcessingProcessor;
 // never blocks the API request (issue create/status-change, capture
 // processing) that triggered the event. Every attempt updates the
 // webhook_deliveries row (attempts/last_attempted_at/last_response_status/
 // last_error, status 'delivered' or 'failed') independently of Bull's own
 // retry bookkeeping, then re-throws on failure so Bull retries with the
-// exponential backoff configured in webhooks.module.ts -- identical
+// exponential backoff configured in webhooks.module.ts; identical
 // "update status, then re-throw" shape to image-processing.processor.ts's
 // catch block.
 @Processor('webhook-delivery')
@@ -55,7 +55,7 @@ export class WebhookDeliveryProcessor {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown delivery error';
-      // withTenant required -- webhook_deliveries carries the tenant_isolation RLS policy.
+      // withTenant required: webhook_deliveries carries the tenant_isolation RLS policy.
       await this.db.withTenant(companyId, sql => sql`
         UPDATE webhook_deliveries SET
           attempts = attempts + 1, last_attempted_at = NOW(), status = 'failed', last_error = ${message}
@@ -65,7 +65,7 @@ export class WebhookDeliveryProcessor {
       throw error; // Re-throw so Bull retries the job
     }
 
-    // withTenant required -- see the UPDATE above.
+    // withTenant required; see the UPDATE above.
     await this.db.withTenant(companyId, sql => sql`
       UPDATE webhook_deliveries SET
         attempts = attempts + 1, last_attempted_at = NOW(),

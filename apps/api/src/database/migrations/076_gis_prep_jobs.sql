@@ -8,7 +8,7 @@ BEGIN;
 -- new decisions is a NEW row (parent_job_id) on the same original, never an
 -- overwrite, so every run stays auditable. status is the platform job state
 -- plus the tool's own outcome; status_label keeps the tool's exact wording.
--- None of these values claims ADM/DRM compliance or approval -- the official
+-- None of these values claims ADM/DRM compliance or approval; the official
 -- QC tool and review decide that.
 -- ══════════════════════════════════════════════════════════════════════════
 

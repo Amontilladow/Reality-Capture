@@ -26,9 +26,9 @@ export class AuthService {
 
   // ── Login ─────────────────────────────────────────────────────────────────
   async login(dto: LoginDto, ipAddress?: string, userAgent?: string): Promise<{ tokens: AuthTokens; user: AuthenticatedUser }> {
-    // Find user — email is globally unique across the platform (unique per company, but
+    // Find user: email is globally unique across the platform (unique per company, but
     // we search globally so users with the same email at different companies get a clear error).
-    // withSystemBypass required -- there's no companyId to withTenant() by here, that's the
+    // withSystemBypass required; there's no companyId to withTenant() by here, that's the
     // whole point of a global lookup. See DatabaseService.withSystemBypass() and migration 052.
     const [user] = await this.db.withSystemBypass(sql => sql`
       SELECT u.*, c.is_active AS company_active
@@ -46,8 +46,8 @@ export class AuthService {
     const passwordValid = await argon2.verify(user.passwordHash as string, dto.password);
     if (!passwordValid) throw new UnauthorizedException('Invalid email or password.');
 
-    // Update last login timestamp (fire-and-forget — don't block the response).
-    // withTenant required -- users carries the tenant_isolation RLS policy; company_id is
+    // Update last login timestamp (fire-and-forget; don't block the response).
+    // withTenant required; users carries the tenant_isolation RLS policy; company_id is
     // known now that the user row has been found, unlike the lookup above.
     this.db.withTenant(user.companyId as string, sql => sql`UPDATE users SET last_login_at = NOW() WHERE id = ${user.id} AND company_id = ${user.companyId}`).catch(e =>
       this.logger.error('Failed to update last_login_at', e),
@@ -71,25 +71,25 @@ export class AuthService {
   }
 
   // ── Refresh ───────────────────────────────────────────────────────────────
-  // Takes the raw token rather than RefreshTokenDto -- the controller resolves
+  // Takes the raw token rather than RefreshTokenDto; the controller resolves
   // it from either the web SPA's httpOnly cookie or (mobile) the request body
   // before calling this, so by the time it gets here it's always a real string.
   async refresh(refreshToken: string, ipAddress?: string, userAgent?: string): Promise<AuthTokens> {
     const tokenHash = this.hashToken(refreshToken);
 
-    // Select rt.id under its own alias -- `rt.*` here would otherwise collide
+    // Select rt.id under its own alias; `rt.*` here would otherwise collide
     // with u.id below (both output as `id`), and the *last* one selected
     // silently wins when the row is built. That previously left `stored.id`
     // holding the refresh token's own row id instead of the user's id, which
     // issueTokens() then used as the new token's `user_id`, violating the
     // refresh_tokens.user_id -> users.id foreign key on every refresh.
-    // requested_company_role must be selected here too -- issueTokens() below
+    // requested_company_role must be selected here too; issueTokens() below
     // uses it to set the JWT's pendingApproval claim, and this is an explicit
     // column list (unlike login()'s SELECT u.*), so it's easy to silently
     // lose. Missing it here would mean a still-pending user's access token
     // stops carrying pendingApproval the moment they refresh it, bypassing
     // PendingApprovalGuard after as little as 15 minutes.
-    // withSystemBypass required -- the token hash is the only identifier here, no
+    // withSystemBypass required; the token hash is the only identifier here, no
     // companyId yet. See DatabaseService.withSystemBypass() and migration 052.
     const [stored] = await this.db.withSystemBypass(sql => sql`
       SELECT rt.id AS refresh_token_id, u.id, u.company_id, u.company_role, u.email,
@@ -106,8 +106,8 @@ export class AuthService {
     if (!stored) throw new UnauthorizedException('Invalid or expired refresh token.');
     if (!stored.isActive || !stored.companyActive) throw new UnauthorizedException('Account deactivated.');
 
-    // Rotate the token — revoke old, issue new (prevents token reuse).
-    // withTenant required -- refresh_tokens carries the tenant_isolation RLS policy;
+    // Rotate the token: revoke old, issue new (prevents token reuse).
+    // withTenant required; refresh_tokens carries the tenant_isolation RLS policy;
     // company_id is known now (stored.companyId), unlike the lookup above.
     await this.db.withTenant(stored.companyId as string, sql => sql`
       UPDATE refresh_tokens SET revoked_at = NOW() WHERE id = ${stored.refreshTokenId} AND company_id = ${stored.companyId}
@@ -118,7 +118,7 @@ export class AuthService {
 
   // ── Logout ────────────────────────────────────────────────────────────────
   // Unlike login()/refresh(), this route is authenticated (not @Public()), so companyId
-  // is already known from the caller's JWT -- withTenant applies here, no bootstrap issue.
+  // is already known from the caller's JWT; withTenant applies here, no bootstrap issue.
   async logout(refreshToken: string, companyId: string): Promise<void> {
     const tokenHash = this.hashToken(refreshToken);
     await this.db.withTenant(companyId, sql => sql`
@@ -134,26 +134,26 @@ export class AuthService {
     // Atomic check-and-consume: the old code did a separate SELECT to
     // validate the token, then a separate UPDATE to consume it. Two
     // concurrent accept requests on the same fresh token could both pass
-    // that SELECT before either UPDATE committed -- confirmed by hand,
-    // firing two genuinely concurrent requests at the same token: both
+    // that SELECT before either UPDATE committed; confirmed by hand,
+    // firing two concurrent requests at the same token: both
     // returned 200 with a valid session for the same user row, and
     // whichever UPDATE committed last silently won the name/password,
     // with no error to either caller. A single UPDATE ... WHERE ...
-    // RETURNING is one indivisible operation per row -- Postgres itself
+    // RETURNING is one indivisible operation per row; Postgres itself
     // guarantees only one concurrent request can ever match this WHERE
     // clause, so this closes the race at the database level rather than
     // trying to catch it in application code.
     //
     // Deliberately does NOT null out invitation_token on success (unlike
-    // before) -- keeping it lets the lookup below, on the failure path,
+    // before): keeping it lets the lookup below, on the failure path,
     // tell "already used" apart from "never existed"/"expired" instead of
     // collapsing all three into one generic message. It's permanently
     // inert either way once email_verified flips to true, since that's
     // what the WHERE clause actually guards on.
     //
-    // Deliberately global -- the invitation token itself is the globally-unique secret;
+    // Deliberately global: the invitation token itself is the globally-unique secret;
     // the caller doesn't know (and shouldn't need to know) which company they're in yet.
-    // withSystemBypass required -- no companyId exists to scope by here. See
+    // withSystemBypass required; no companyId exists to scope by here. See
     // DatabaseService.withSystemBypass() and migration 052.
     const [user] = await this.db.withSystemBypass(sql => sql`
       UPDATE users SET
@@ -181,7 +181,7 @@ export class AuthService {
           companyRole: user.companyRole as CompanyRole,
           firstName: dto.firstName,
           lastName: dto.lastName,
-          // Always true right after accepting -- every self-registration is
+          // Always true right after accepting: every self-registration is
           // pending until a company_admin/super_admin approves it.
           pendingApproval: true,
           onboardingCompleted: false,
@@ -189,7 +189,7 @@ export class AuthService {
       };
     }
 
-    // The UPDATE above matched nothing -- work out why, for a clearer
+    // The UPDATE above matched nothing: work out why, for a clearer
     // message than one generic catch-all.
     const [existing] = await this.db.withSystemBypass(sql => sql`
       SELECT email_verified, invitation_expires_at FROM users WHERE invitation_token = ${dto.token}
@@ -205,16 +205,16 @@ export class AuthService {
 
   // ── Self-signup ───────────────────────────────────────────────────────────
   // Distinct from acceptInvitation() above: there is no pre-created
-  // placeholder row and no per-email token here -- the company-wide
+  // placeholder row and no per-email token here; the company-wide
   // signup_code is the only credential, and this INSERTs a brand new user
   // row directly rather than UPDATEing an existing one. Same end state as
   // accepting an invitation, though: requested_company_role is set
   // (pendingApproval: true), company_role stays at the generic default
   // until a company_admin/super_admin actually approves it.
   async selfSignup(dto: SelfSignupDto): Promise<{ tokens: AuthTokens; user: AuthenticatedUser }> {
-    // Deliberately global/pre-tenant lookup -- the caller doesn't have a
+    // Deliberately global/pre-tenant lookup: the caller doesn't have a
     // companyId yet, that's the whole point of the code. withSystemBypass
-    // required -- see DatabaseService.withSystemBypass() and migration 052.
+    // required; see DatabaseService.withSystemBypass() and migration 052.
     const [company] = await this.db.withSystemBypass(sql => sql`
       SELECT id, is_active FROM companies WHERE signup_code = ${dto.signupCode}
     `);
@@ -225,7 +225,7 @@ export class AuthService {
 
     const passwordHash = await argon2.hash(dto.password, { type: argon2.argon2id });
 
-    // withTenant required from here on -- company_id is known now. users
+    // withTenant required from here on: company_id is known now. users
     // carries the tenant_isolation RLS policy, same as invite()/
     // acceptInvitation() elsewhere in this file.
     const [user] = await this.db.withTenant(companyId, async (sql) => {
@@ -260,7 +260,7 @@ export class AuthService {
         companyRole: user.companyRole as CompanyRole,
         firstName: dto.firstName,
         lastName: dto.lastName,
-        // Always true right after self-signup -- same as acceptInvitation().
+        // Always true right after self-signup: same as acceptInvitation().
         pendingApproval: true,
         onboardingCompleted: false,
       },
@@ -271,14 +271,14 @@ export class AuthService {
 
   // Shared by forgotPassword() (below, emails the link) and
   // UsersService.adminResetPassword() (the admin-assisted fallback, returns
-  // the link directly for an admin to deliver by hand) -- same secure,
+  // the link directly for an admin to deliver by hand): same secure,
   // opaque, 1-hour-expiring, single-use token either way. Only the delivery
   // mechanism differs between the two callers, never the token scheme.
   async generatePasswordResetToken(companyId: string, userId: string): Promise<{ token: string; expiresAt: Date }> {
     const token = randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 3600 * 1000); // 1 hour
 
-    // withTenant required -- users carries the tenant_isolation RLS policy.
+    // withTenant required: users carries the tenant_isolation RLS policy.
     await this.db.withTenant(companyId, sql => sql`
       UPDATE users SET
         password_reset_token = ${token},
@@ -298,21 +298,21 @@ export class AuthService {
   }
 
   async forgotPassword(email: string): Promise<void> {
-    // Deliberately global -- email is unique platform-wide, and the caller doesn't know
-    // (and shouldn't need to know) which company they're in yet. withSystemBypass required
-    // -- see DatabaseService.withSystemBypass() and migration 052.
+    // Deliberately global: email is unique platform-wide, and the caller doesn't know
+    // (and shouldn't need to know) which company they're in yet. withSystemBypass required;
+    //; see DatabaseService.withSystemBypass() and migration 052.
     const [user] = await this.db.withSystemBypass(sql => sql`
       SELECT id, company_id, email FROM users WHERE LOWER(email) = LOWER(${email}) AND is_active = true
     `);
 
-    // Always return success — never reveal whether an email exists (enumeration attack prevention)
+    // Always return success: never reveal whether an email exists (enumeration attack prevention)
     if (!user) return;
 
     const { token } = await this.generatePasswordResetToken(user.companyId as string, user.id as string);
     const resetLink = this.buildPasswordResetLink(token);
 
     // Judgment call: SMTP being unconfigured, unreachable, or rejecting the
-    // send must never surface to the caller -- that would both leak a 500
+    // send must never surface to the caller; that would both leak a 500
     // where the enumeration-protected "always succeed" response is expected,
     // and (worse) let response timing/shape reveal whether the email existed.
     // Log it server-side and move on; the token is already stored either
@@ -327,9 +327,9 @@ export class AuthService {
 
   // ── Reset password ────────────────────────────────────────────────────────
   async resetPassword(dto: ResetPasswordDto): Promise<void> {
-    // Deliberately global -- the reset token itself is the globally-unique secret; the
+    // Deliberately global: the reset token itself is the globally-unique secret; the
     // caller doesn't know (and shouldn't need to know) which company they're in yet.
-    // withSystemBypass required -- see DatabaseService.withSystemBypass() and migration 052.
+    // withSystemBypass required; see DatabaseService.withSystemBypass() and migration 052.
     const [user] = await this.db.withSystemBypass(sql => sql`
       SELECT id, company_id FROM users
       WHERE password_reset_token = ${dto.token}
@@ -341,7 +341,7 @@ export class AuthService {
 
     const passwordHash = await argon2.hash(dto.newPassword, { type: argon2.argon2id });
 
-    // withTenant required from here on -- company_id is known now that the user row has
+    // withTenant required from here on: company_id is known now that the user row has
     // been found. users and refresh_tokens both carry the tenant_isolation RLS policy.
     await this.db.withTenant(user.companyId as string, async (sql) => {
       await sql`
@@ -353,13 +353,13 @@ export class AuthService {
         WHERE id = ${user.id} AND company_id = ${user.companyId}
       `;
 
-      // Revoke all existing refresh tokens — force re-login everywhere
+      // Revoke all existing refresh tokens: force re-login everywhere
       await sql`UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ${user.id} AND company_id = ${user.companyId}`;
     });
   }
 
   // ── Get current user ──────────────────────────────────────────────────────
-  // @AllowPending() on the controller route -- a pending user can reach this
+  // @AllowPending() on the controller route; a pending user can reach this
   // (needed so the "Awaiting Approval" screen can show who they are and what
   // they requested) even though PendingApprovalGuard blocks everything else.
   async getMe(userId: string, companyId: string): Promise<AuthenticatedUser & { phone?: string; avatarUrl?: string; lastLoginAt?: string; requestedCompanyRole?: CompanyRole }> {
@@ -413,10 +413,10 @@ export class AuthService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
-    // withTenant required -- refresh_tokens carries the tenant_isolation RLS policy. A plain
+    // withTenant required: refresh_tokens carries the tenant_isolation RLS policy. A plain
     // this.db.query() never sets app.current_company_id, so under any DB role that isn't the
     // table owner/a superuser the implicit WITH CHECK rejects this insert outright with
-    // "new row violates row-level security policy" -- meaning every successful login/refresh/
+    // "new row violates row-level security policy"; meaning every successful login/refresh/
     // accept-invitation would currently throw here.
     await this.db.withTenant(payload.companyId, sql => sql`
       INSERT INTO refresh_tokens (user_id, company_id, token_hash, expires_at, ip_address, user_agent)

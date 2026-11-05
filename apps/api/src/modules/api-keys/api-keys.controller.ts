@@ -6,7 +6,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import type { AuthenticatedUser } from '@engineeringos/types';
 
-// Company-wide (not per-project) administration of Public API credentials --
+// Company-wide (not per-project) administration of Public API credentials;
 // gated by CompanyRole via RolesGuard, same mechanism as every other
 // company-admin-only action in this app, not ProjectPermissionGuard (which
 // is for per-project capabilities and doesn't apply here).

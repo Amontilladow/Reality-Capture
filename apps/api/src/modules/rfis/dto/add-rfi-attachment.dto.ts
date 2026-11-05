@@ -10,7 +10,7 @@ export class AddRfiAttachmentDto {
   @IsString() filename: string;
   @IsNumber() @IsPositive() sizeBytes: number;
 
-  // Defaults to 'query' at the DB level (see migration 028) if omitted --
+  // Defaults to 'query' at the DB level (see migration 028) if omitted;
   // existing callers that don't know about kinds yet keep working unchanged.
   @IsOptional() @IsIn(['query', 'response', 'comment'])
   kind?: RfiAttachmentKind;
@@ -25,7 +25,7 @@ export class AddRfiAttachmentDto {
   @IsOptional() @IsString() revision?: string;
   @IsOptional() @IsString() description?: string;
 
-  // Only meaningful when kind === 'comment' -- links the attachment to the
+  // Only meaningful when kind === 'comment': links the attachment to the
   // rfi_comments row it was uploaded alongside (see rfi_attachments.comment_id).
   @IsOptional() @IsString() commentId?: string;
 }

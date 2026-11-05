@@ -11,7 +11,7 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: ['error', 'warn', 'log', 'debug'],
-    // Keeps the unparsed body on req.rawBody alongside the parsed JSON --
+    // Keeps the unparsed body on req.rawBody alongside the parsed JSON;
     // Stripe webhook signature verification (subscription.service.ts) is an
     // HMAC over the exact bytes Stripe sent, which re-serialized JSON breaks.
     rawBody: true,
@@ -27,7 +27,7 @@ async function bootstrap() {
   // Render terminates TLS and proxies every request through exactly one
   // internal hop before it reaches this container. Without this, Express's
   // req.ip is Render's proxy address for every request, not the real
-  // client -- which silently turns the per-client ThrottlerGuard rate
+  // client; which silently turns the per-client ThrottlerGuard rate
   // limits (app.module.ts) into one shared bucket across all users, and
   // makes the IP logged at login/refresh (auth.controller.ts) useless.
   // Trusting exactly one hop (not `true`, which would trust an
@@ -35,7 +35,7 @@ async function bootstrap() {
   // minimal fix for this single-reverse-proxy topology.
   app.set('trust proxy', 1);
 
-  // Parses the Cookie request header into req.cookies -- needed to read the
+  // Parses the Cookie request header into req.cookies; needed to read the
   // httpOnly refresh-token cookie the web SPA relies on (see auth.controller.ts).
   // Setting a cookie on the response (res.cookie()) needs no middleware;
   // this is only for reading one back on a later request.

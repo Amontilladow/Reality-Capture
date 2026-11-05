@@ -7,7 +7,7 @@ import { IssuesService } from '../issues/issues.service';
 import type { PaginationQuery, IfcParseJobData } from '@engineeringos/types';
 import { IFC_PROCESSING_QUEUE, IFC_PARSE_JOB_NAME } from '@engineeringos/types';
 
-// apps/ifc-service's processor assumes IFC SPF syntax unconditionally --
+// apps/ifc-service's processor assumes IFC SPF syntax unconditionally;
 // there is no NWD/RVT parsing path, so those are not accepted for upload
 // even though bim_models.format historically allowed them as column values
 // (see register-bim-model.dto.ts). Restricting the upload itself, not just
@@ -52,7 +52,7 @@ export class BimService {
     }
     const key = this.storage.generateKey(companyId, projectId, 'captures', filename);
     // The 500 MB figure below is still documentation only as far as this
-    // presigned PUT's signature goes -- see storage.service.ts's
+    // presigned PUT's signature goes; see storage.service.ts's
     // getUploadUrl() comment on why _maxSizeBytes isn't wired into the
     // signature itself. Real enforcement now happens in registerModel()
     // below, against the object actually sitting in storage.
@@ -63,7 +63,7 @@ export class BimService {
   async registerModel(companyId: string, projectId: string, userId: string, dto: { name: string; storageKey: string; format?: string; ifcSchema?: string; originalFilename?: string }) {
     await this.assertProjectBelongsToCompany(companyId, projectId);
 
-    // Real post-upload size enforcement -- getModelUploadUrl() never had any
+    // Real post-upload size enforcement: getModelUploadUrl() never had any
     // client-declared size to check in the first place (unlike captures),
     // so this HEAD-based check against the actual stored object is the only
     // enforcement that exists for IFC uploads. Worth getting right: an
@@ -81,7 +81,7 @@ export class BimService {
       );
     }
 
-    // withTenant required -- bim_models carries the tenant_isolation RLS policy.
+    // withTenant required: bim_models carries the tenant_isolation RLS policy.
     const [model] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO bim_models (company_id, project_id, name, format, ifc_schema, storage_key, status, uploaded_by, original_filename)
       VALUES (${companyId}, ${projectId}, ${dto.name}, ${dto.format ?? 'IFC'}, ${dto.ifcSchema ?? null}, ${dto.storageKey}, 'pending', ${userId}, ${dto.originalFilename ?? null})
@@ -91,7 +91,7 @@ export class BimService {
     return model;
   }
 
-  // Same rationale as captures.service.ts's assertProjectBelongsToCompany --
+  // Same rationale as captures.service.ts's assertProjectBelongsToCompany;
   // this controller has no @RequireProjectPermission gate either, and
   // getModelUploadUrl/registerModel both take a client-supplied projectId.
   private async assertProjectBelongsToCompany(companyId: string, projectId: string): Promise<void> {
@@ -101,14 +101,14 @@ export class BimService {
     if (!project) throw new NotFoundException(`Project ${projectId} not found.`);
   }
 
-  // Queues (or re-queues) IFC parsing for a model. Orchestration only —
+  // Queues (or re-queues) IFC parsing for a model. Orchestration only;
   // apps/ifc-service owns everything past this point. Each enqueue gets a
-  // fresh, unique Bull job id — reusing modelId as the job id was tried
+  // fresh, unique Bull job id; reusing modelId as the job id was tried
   // first but reverted: Bull treats jobId as a dedup key across a job's
   // entire lifecycle, not just while active, so a second add() with the
   // same id after the first job COMPLETED silently no-ops and returns the
   // stale completed job instead of actually re-running (confirmed via a
-  // reprocess resilience test — see MASTER_BACKLOG.md). Idempotency for
+  // reprocess resilience test; see MASTER_BACKLOG.md). Idempotency for
   // resume/retry is enforced at the application level instead, via
   // bim_models.stage_completion (see ifc-repository.service.ts).
   private async enqueueParseJob(companyId: string, projectId: string, modelId: string, storageKey: string) {
@@ -117,7 +117,7 @@ export class BimService {
       { modelId, companyId, projectId, storageKey } satisfies IfcParseJobData,
       { jobId: `${modelId}:${Date.now()}` },
     );
-    // withTenant required -- bim_models carries the tenant_isolation RLS policy.
+    // withTenant required: bim_models carries the tenant_isolation RLS policy.
     await this.db.withTenant(companyId, sql => sql`
       UPDATE bim_models SET job_id = ${job.id as string}, updated_at = NOW()
       WHERE id = ${modelId} AND company_id = ${companyId}
@@ -127,7 +127,7 @@ export class BimService {
   }
 
   // H-1 fix (KNOWN_ISSUES_AND_REMEDIATION.md): previously scoped only by
-  // company_id -- a user authorized for Project A could read/act on
+  // company_id; a user authorized for Project A could read/act on
   // Project B's BIM model (including, via getModelViewerData below, a live
   // presigned Fragments file URL) by guessing/enumerating a modelId. This
   // is the shared base every model-scoped method below goes through.
@@ -139,7 +139,7 @@ export class BimService {
     return model;
   }
 
-  // Polling-friendly status endpoint for the frontend — deliberately a
+  // Polling-friendly status endpoint for the frontend; deliberately a
   // thin read of bim_models, no cross-service call, so it stays fast and
   // available even if apps/ifc-service is temporarily down.
   async getModelStatus(companyId: string, projectId: string, modelId: string) {
@@ -156,15 +156,15 @@ export class BimService {
   }
 
   // Re-queues a failed (or stuck) model for reprocessing without
-  // re-uploading the file — the storage key doesn't change.
+  // re-uploading the file; the storage key doesn't change.
   async reprocessModel(companyId: string, projectId: string, modelId: string) {
     const model = await this.getModel(companyId, projectId, modelId);
-    // stage_completion has to be cleared too, not just status -- otherwise
+    // stage_completion has to be cleared too, not just status; otherwise
     // the resumability logic (built for retrying a crashed job without
     // redoing committed work) sees every stage as already done and skips
     // straight to the end, re-running nothing. A deliberate reprocess
     // should always start over for real.
-    // withTenant required -- bim_models carries the tenant_isolation RLS policy.
+    // withTenant required; bim_models carries the tenant_isolation RLS policy.
     await this.db.withTenant(companyId, sql => sql`
       UPDATE bim_models
       SET status = 'pending', processing_progress = 0, processing_stage = NULL,
@@ -191,7 +191,7 @@ export class BimService {
     return { status: 'ready', fragmentsUrl, processingError: null };
   }
 
-  // Metadata-only provenance for a model's generated artifacts -- what
+  // Metadata-only provenance for a model's generated artifacts; what
   // produced this .frag, from which exact IFC, in which environment. Never
   // returns storage credentials, storage URLs, or file bytes; fields are
   // null until the model has been (re)processed by a worker build that
@@ -216,7 +216,7 @@ export class BimService {
   }
 
   // The IFC-native spatial tree (Site → Building → Storey → Space),
-  // returned flat with parent_id so the frontend builds the tree shape —
+  // returned flat with parent_id so the frontend builds the tree shape;
   // cheaper to transfer and easier to reason about than a nested payload.
   async getHierarchy(companyId: string, projectId: string, modelId: string) {
     await this.getModel(companyId, projectId, modelId);
@@ -324,7 +324,7 @@ export class BimService {
   }
 
   // Flat {ifcGuid, constructionStatus, completionPct} list for every element
-  // in a model -- deliberately unpaginated and two-three columns wide, for
+  // in a model; deliberately unpaginated and two-three columns wide, for
   // the BIM viewer's colour-coded status overlay (F2), which needs every
   // element's status at once to build its per-status GUID groups, not a
   // page of full element detail. Mirrors getHierarchy()'s "cheap flat read"
@@ -345,14 +345,14 @@ export class BimService {
     return this.getElement(companyId, projectId, el.id as string);
   }
 
-  // Creates a pin that starts out attached to nothing but this element --
+  // Creates a pin that starts out attached to nothing but this element;
   // no drawing, no position yet. It's a real Location like any other pin,
   // so it shows up normally in the floor-plan pin list and capture picker
   // once someone (from the floor plan side) gives it a position; until
   // then it's still valid, since locations_has_a_place_check now accepts
   // element_id on its own as a place.
   async createPinForElement(companyId: string, projectId: string, elementId: string, userId: string, name: string, assignedTo?: string) {
-    // withTenant required -- locations carries the tenant_isolation RLS policy.
+    // withTenant required: locations carries the tenant_isolation RLS policy.
     const [loc] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO locations (company_id, name, element_id)
       VALUES (${companyId}, ${name}, ${elementId})
@@ -361,8 +361,8 @@ export class BimService {
 
     // Every pin automatically gets a matching Issue, linked via
     // issues.location_id (and, for an element-originated pin, issues.element_id
-    // too) -- see the drawings.service.ts createPin() equivalent. assignedTo
-    // forwarded the same way, for consistency -- not currently sent by
+    // too); see the drawings.service.ts createPin() equivalent. assignedTo
+    // forwarded the same way, for consistency; not currently sent by
     // PropertyPanel.tsx's "raise issue from element" flow, which has no
     // assignee picker of its own.
     const issue = await this.issues.create(companyId, projectId, userId, {
@@ -380,7 +380,7 @@ export class BimService {
 
   // F2: records completion_pct alongside construction_status, and logs
   // every change to bim_element_status_history with the from/to status and
-  // an optional evidence capture_id -- same from_value/to_value/capture_id
+  // an optional evidence capture_id; same from_value/to_value/capture_id
   // shape as issues.service.ts's addActivity(), so this element's status
   // timeline is auditable the same way an issue's is.
   async updateElementStatus(
@@ -388,10 +388,10 @@ export class BimService {
     dto: { status: string; completionPct?: number; captureId?: string },
   ) {
     // H-1 fix: projectId was already a parameter here but was never
-    // actually used to scope either query below -- a user authorized for
+    // actually used to scope either query below; a user authorized for
     // Project A could change Project B's element status by supplying
     // Project B's own elementId.
-    // withTenant required -- bim_elements carries the tenant_isolation RLS policy.
+    // withTenant required; bim_elements carries the tenant_isolation RLS policy.
     const [existing] = await this.db.withTenant(companyId, sql => sql`
       SELECT construction_status FROM bim_elements WHERE id = ${elementId} AND project_id = ${projectId} AND company_id = ${companyId}
     `);
@@ -408,7 +408,7 @@ export class BimService {
       RETURNING *
     `);
 
-    // withTenant required -- bim_element_status_history carries the tenant_isolation RLS policy.
+    // withTenant required: bim_element_status_history carries the tenant_isolation RLS policy.
     await this.db.withTenant(companyId, sql => sql`
       INSERT INTO bim_element_status_history (company_id, project_id, element_id, from_status, to_status, completion_pct, capture_id, performed_by)
       VALUES (${companyId}, ${projectId}, ${elementId}, ${existing.constructionStatus as string | null}, ${dto.status}, ${dto.completionPct ?? null}, ${dto.captureId ?? null}, ${userId})
@@ -432,7 +432,7 @@ export class BimService {
 
   // H-1 fix: lightweight ownership check for mutation/read routes
   // (linkCaptureToElement/getCapturesForElement) that don't otherwise read
-  // the element row -- mirrors issues.service.ts's assertIssueInProject.
+  // the element row; mirrors issues.service.ts's assertIssueInProject.
   private async assertElementInProject(companyId: string, projectId: string, elementId: string): Promise<void> {
     const [row] = await this.db.withTenant(companyId, sql => sql`
       SELECT 1 FROM bim_elements WHERE id = ${elementId} AND project_id = ${projectId} AND company_id = ${companyId}
@@ -442,7 +442,7 @@ export class BimService {
 
   // H-1 follow-up: linkCaptureToElement()/updateElementStatus()/
   // upsertZoneProgress() all took an optional/required captureId that was
-  // never checked -- a user authorized for Project A could reference
+  // never checked; a user authorized for Project A could reference
   // Project B's capture by id. For the two status methods this isn't just
   // a dangling id: getElementStatusHistory()/getZoneProgressHistory() both
   // LEFT JOIN captures and return capture_type/capture_title, so an
@@ -459,7 +459,7 @@ export class BimService {
   async linkCaptureToElement(companyId: string, projectId: string, captureId: string, elementId: string, userId: string, linkType = 'documents') {
     await this.assertElementInProject(companyId, projectId, elementId);
     await this.assertCaptureInProject(companyId, projectId, captureId);
-    // withTenant required -- capture_element_links carries the tenant_isolation RLS policy.
+    // withTenant required: capture_element_links carries the tenant_isolation RLS policy.
     const [link] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO capture_element_links (capture_id, element_id, company_id, link_type, linked_by)
       VALUES (${captureId}, ${elementId}, ${companyId}, ${linkType}, ${userId})
@@ -470,7 +470,7 @@ export class BimService {
   }
 
   // Routed through whichever Location (pin) carries this element's
-  // element_id, not through capture_element_links -- a photo attaches to a
+  // element_id, not through capture_element_links; a photo attaches to a
   // Place, and a Place can now be a BIM element, the same as it can be a
   // floor-plan position. capture_element_links stays in the schema, unused,
   // same as capture_drawing_links was before the pins work replaced it.
@@ -508,7 +508,7 @@ export class BimService {
   }
 
   // F2: element-completion rollup per level (building is a live rollup of
-  // its levels, computed on the frontend from this same row set -- no
+  // its levels, computed on the frontend from this same row set; no
   // separate building-level query needed). zone_progress is LEFT JOINed in
   // so a level with no elements yet (or an explicitly-set zone status with
   // no elements at all) still shows up.
@@ -539,7 +539,7 @@ export class BimService {
   }
 
   // ── Zone (level) progress ─────────────────────────────────────────────────
-  // "Zone" maps onto the existing levels table -- see migration 055's header
+  // "Zone" maps onto the existing levels table; see migration 055's header
   // comment. One current-status row per level (upserted here), with every
   // change logged to zone_progress_history, mirroring bim_element_status_history.
   async upsertZoneProgress(
@@ -557,7 +557,7 @@ export class BimService {
       SELECT status FROM zone_progress WHERE level_id = ${levelId} AND company_id = ${companyId}
     `);
 
-    // withTenant required -- zone_progress carries the tenant_isolation RLS policy.
+    // withTenant required: zone_progress carries the tenant_isolation RLS policy.
     const [zone] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO zone_progress (company_id, project_id, level_id, status, completion_pct, capture_id, updated_by)
       VALUES (${companyId}, ${projectId}, ${levelId}, ${dto.status}, ${dto.completionPct ?? null}, ${dto.captureId ?? null}, ${userId})
@@ -567,7 +567,7 @@ export class BimService {
       RETURNING *
     `);
 
-    // withTenant required -- zone_progress_history carries the tenant_isolation RLS policy.
+    // withTenant required: zone_progress_history carries the tenant_isolation RLS policy.
     await this.db.withTenant(companyId, sql => sql`
       INSERT INTO zone_progress_history (company_id, project_id, level_id, from_status, to_status, completion_pct, capture_id, performed_by)
       VALUES (${companyId}, ${projectId}, ${levelId}, ${existing?.status as string | undefined ?? null}, ${dto.status}, ${dto.completionPct ?? null}, ${dto.captureId ?? null}, ${userId})

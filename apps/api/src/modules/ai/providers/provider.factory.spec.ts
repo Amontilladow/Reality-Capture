@@ -45,7 +45,7 @@ describe('ProviderFactory.resolve (RealityCapture\'s own provider, auto mode)', 
   it('onModuleInit does not throw when unconfigured -- the rest of the app must still boot', () => {
     const factory = new ProviderFactory(makeConfig({ 'ai.provider': 'auto' }));
     expect(() => factory.onModuleInit()).not.toThrow();
-    // Still fails closed, just lazily -- the first real AI request surfaces the error.
+    // Still fails closed, just lazily; the first real AI request surfaces the error.
     expect(() => factory.getProvider()).toThrow(/No AI provider configured/);
   });
 
@@ -143,7 +143,7 @@ describe('ProviderFactory.buildFromCredentials (BYO AI, Mode B)', () => {
 // demand" error in production (the third Gemini model tier to do so in one
 // day). RealityCapture's own Gemini provider now retries against
 // ai.gemini.fallbackModels before failing; a BYO user's own Gemini
-// connection deliberately does not get this -- they configured one
+// connection deliberately does not get this; they configured one
 // specific model and should get exactly that, or a clear failure.
 describe('ProviderFactory.buildGemini -- model fallback wiring', () => {
   beforeEach(() => {

@@ -41,7 +41,7 @@ describe('QaService.update -- owner\'s org-category RBAC sprint item-scoping', (
     await expect(
       svc.update(companyId, projectId, inspectionId, 'user-1', { status: 'passed' }, 'construction_manager'),
     ).rejects.toBeInstanceOf(ForbiddenException);
-    // Only findOne()'s own SELECT ran -- no UPDATE was attempted.
+    // Only findOne()'s own SELECT ran; no UPDATE was attempted.
     expect(query).not.toHaveBeenCalledWith(expect.arrayContaining([expect.stringContaining('UPDATE')]));
   });
 

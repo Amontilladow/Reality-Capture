@@ -3,7 +3,7 @@ BEGIN;
 -- ══════════════════════════════════════════════════════════════════════════
 -- TABLES: messages, message_recipients
 -- Internal (in-app only) messaging: users compose messages to each other,
--- with reply threads and an inbox. No outbound email sending yet -- the
+-- with reply threads and an inbox. No outbound email sending yet; the
 -- schema is designed so a future email-delivery step can be added later
 -- without restructuring (MessagingService.create()/reply() are the sole
 -- choke points where a `messages` row is inserted).

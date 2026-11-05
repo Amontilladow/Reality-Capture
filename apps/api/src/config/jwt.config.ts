@@ -3,7 +3,7 @@ import { registerAs } from '@nestjs/config';
 const MIN_SECRET_LENGTH = 32;
 
 // Fails the process at startup rather than silently signing/verifying every
-// JWT with a well-known fallback string -- the old `?? 'change-me-in-...'`
+// JWT with a well-known fallback string; the old `?? 'change-me-in-...'`
 // default meant any deployment that forgot to set these env vars (or, on
 // docker-compose, left them unset so Compose substituted an empty string,
 // which `??` doesn't catch since '' is not null/undefined) would boot

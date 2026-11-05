@@ -1,12 +1,12 @@
 BEGIN;
 
 -- ══════════════════════════════════════════════════════════════════════════
--- Workforce Intelligence™ — screenshot capture pipeline
+-- Workforce Intelligence™: screenshot capture pipeline
 -- Deliberately gated: workforce_privacy_settings.screenshot_enabled
 -- defaults to false (set in 037) and this table only ever fills once a
 -- company_admin explicitly turns it on. The enforcement point is in
 -- ScreenshotsService (checked before ever issuing an upload URL, and
--- re-checked before recording), not here -- this migration only adds
+-- re-checked before recording), not here; this migration only adds
 -- storage for rows that enforcement already allowed to be created.
 -- ══════════════════════════════════════════════════════════════════════════
 

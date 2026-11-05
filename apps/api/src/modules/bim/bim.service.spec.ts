@@ -213,7 +213,7 @@ describe('BimService.updateElementStatus (F2)', () => {
 
     // Fourth withTenant call is the INSERT into bim_element_status_history
     // (1: existing-status SELECT, 2: assertCaptureInProject, 3: UPDATE, 4:
-    // history INSERT) -- postgres.js's tagged-template sql`` is captured
+    // history INSERT): postgres.js's tagged-template sql`` is captured
     // here as the strings array plus interpolated values, in call order.
     const historyCall = withTenant.mock.calls[3];
     const sqlFn = historyCall[1] as (sql: unknown) => unknown;
@@ -239,7 +239,7 @@ describe('BimService.updateElementStatus (F2)', () => {
 
   // H-1 follow-up: the element itself can be in the right project while the
   // optional evidence captureId belongs to a different one in the same
-  // company -- getElementStatusHistory() LEFT JOINs captures and would
+  // company; getElementStatusHistory() LEFT JOINs captures and would
   // otherwise surface that other project's capture_type/title here.
   it('rejects a same-company evidence capture that belongs to a different project, and writes no history row', async () => {
     const withTenant = jest.fn()
@@ -254,7 +254,7 @@ describe('BimService.updateElementStatus (F2)', () => {
     await expect(svc.updateElementStatus(companyId, projectId, elementId, 'user-1', {
       status: 'in_progress', captureId: 'capture-from-other-project',
     })).rejects.toThrow(NotFoundException);
-    // Only the element-existence check and the failed capture check ran --
+    // Only the element-existence check and the failed capture check ran;
     // the UPDATE and history INSERT (which would be calls 3 and 4) never did.
     expect(withTenant).toHaveBeenCalledTimes(2);
   });
@@ -296,7 +296,7 @@ describe('BimService.upsertZoneProgress (F2)', () => {
 
   // H-1 follow-up: the level itself can be in the right project while the
   // optional evidence captureId belongs to a different one in the same
-  // company -- getZoneProgressHistory() LEFT JOINs captures and would
+  // company; getZoneProgressHistory() LEFT JOINs captures and would
   // otherwise surface that other project's capture_type/title here.
   it('rejects a same-company evidence capture that belongs to a different project, and writes no zone_progress row', async () => {
     const withTenant = jest.fn()
@@ -311,7 +311,7 @@ describe('BimService.upsertZoneProgress (F2)', () => {
     await expect(svc.upsertZoneProgress(companyId, projectId, levelId, 'user-1', {
       status: 'in_progress', captureId: 'capture-from-other-project',
     })).rejects.toThrow(NotFoundException);
-    // Only the level-existence check and the failed capture check ran --
+    // Only the level-existence check and the failed capture check ran;
     // the existing-status read, upsert, and history INSERT never did.
     expect(withTenant).toHaveBeenCalledTimes(2);
   });
@@ -376,7 +376,7 @@ describe('BimService.registerModel', () => {
 
 // H-1 regression (KNOWN_ISSUES_AND_REMEDIATION.md): getModel (the shared
 // base for status/viewer-data/provenance/hierarchy/status-map) and the
-// element-scoped methods used to scope only by company_id -- a user
+// element-scoped methods used to scope only by company_id; a user
 // authorized for Project A could read Project B's model (including, via
 // getModelViewerData, a live presigned Fragments file URL) or act on its
 // elements by supplying Project B's own modelId/elementId. Each test below
@@ -397,8 +397,8 @@ describe('BimService H-1: same-company cross-project access is rejected', () => 
       if (text.includes('FROM bim_elements') && !text.includes('UPDATE')) {
         return Promise.resolve(values.includes(REAL_PROJECT) ? [{ id: elementId, projectId: REAL_PROJECT }] : []);
       }
-      // assertCaptureInProject's own ownership check (linkCaptureToElement)
-      // -- same REAL_PROJECT-gated shape as the two branches above.
+      // assertCaptureInProject's own ownership check (linkCaptureToElement);
+      // same REAL_PROJECT-gated shape as the two branches above.
       if (text.includes('FROM captures')) {
         return Promise.resolve(values.includes(REAL_PROJECT) ? [{ '?column?': 1 }] : []);
       }
@@ -454,7 +454,7 @@ describe('BimService H-1: same-company cross-project access is rejected', () => 
   });
 
   // H-1 follow-up: the element itself can be in the right project while the
-  // capture being linked belongs to a different one in the same company --
+  // capture being linked belongs to a different one in the same company;
   // a parent-only check (the test above) doesn't cover this case.
   it('linkCaptureToElement: rejects a same-company capture that belongs to a different project, and writes no link', async () => {
     const insertSpy = jest.fn();

@@ -12,7 +12,7 @@ export class BuildingsService {
   ) {}
 
   async createBuilding(companyId: string, projectId: string, userId: string, dto: { name: string; code?: string; description?: string; totalLevels?: number }) {
-    // withTenant required -- buildings carries the tenant_isolation RLS policy;
+    // withTenant required: buildings carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id.
     const [b] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO buildings (company_id, project_id, name, code, description, total_levels)
@@ -23,13 +23,13 @@ export class BuildingsService {
 
   async updateBuilding(companyId: string, projectId: string, buildingId: string, dto: Partial<{ name: string; code: string; description: string; totalLevels: number; phase: string }>) {
     // H-1 fix (KNOWN_ISSUES_AND_REMEDIATION.md): this previously scoped only
-    // by company_id -- a user authorized for a different project in the
+    // by company_id; a user authorized for a different project in the
     // same company (RequireProjectPermission only checks the URL's
     // :projectId, never that buildingId actually belongs to it) could
     // rename/re-phase any building by guessing its UUID. buildings has its
     // own project_id column, so this is a direct WHERE addition.
     //
-    // withTenant required -- buildings carries the tenant_isolation RLS policy;
+    // withTenant required: buildings carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id.
     const [b] = await this.db.withTenant(companyId, sql => sql`
       UPDATE buildings SET
@@ -46,7 +46,7 @@ export class BuildingsService {
   }
 
   // H-1 fix: buildings is the only table in this hierarchy that carries
-  // project_id directly -- levels only has building_id, and locations only
+  // project_id directly; levels only has building_id, and locations only
   // has level_id (building-hierarchy pins) OR drawing_id (floor-plan pins,
   // see migration 005's comment), neither of which carries project_id
   // either. These three shared helpers resolve "does this
@@ -85,7 +85,7 @@ export class BuildingsService {
 
   async createLevel(companyId: string, projectId: string, buildingId: string, dto: { name: string; elevationM?: number; levelOrder: number }) {
     await this.assertBuildingInProject(companyId, projectId, buildingId);
-    // withTenant required -- levels carries the tenant_isolation RLS policy;
+    // withTenant required: levels carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id.
     const [l] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO levels (company_id, building_id, name, elevation_m, level_order)
@@ -95,7 +95,7 @@ export class BuildingsService {
   }
 
   async getLevels(companyId: string, projectId: string, buildingId: string) {
-    // H-1 fix: joined through to buildings.project_id -- a building in a
+    // H-1 fix: joined through to buildings.project_id; a building in a
     // different project (or one that doesn't exist) now correctly yields
     // an empty list, the same "nothing found" shape this already had for a
     // bogus buildingId, rather than leaking another project's levels.
@@ -109,7 +109,7 @@ export class BuildingsService {
   async createLocation(companyId: string, projectId: string, levelId: string, dto: { name: string; description?: string; coordinatesOnPlan?: { x: number; y: number } }) {
     await this.assertLevelInProject(companyId, projectId, levelId);
     const coords = dto.coordinatesOnPlan ? `(${dto.coordinatesOnPlan.x},${dto.coordinatesOnPlan.y})` : null;
-    // withTenant required -- locations carries the tenant_isolation RLS policy;
+    // withTenant required: locations carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id.
     const [loc] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO locations (company_id, level_id, name, description, coordinates_on_plan)
@@ -135,7 +135,7 @@ export class BuildingsService {
       ORDER BY loc.name`);
   }
 
-  // Rename / re-describe / reposition a location -- covers both
+  // Rename / re-describe / reposition a location; covers both
   // building-hierarchy locations and floor-plan pins (a pin is a location
   // with no level). posXNorm/posYNorm let a pin be moved to a new spot.
   async updateLocation(
@@ -147,12 +147,12 @@ export class BuildingsService {
     await this.getLocationInProject(companyId, projectId, locationId);
     // elementId is distinguished from "not provided" so a pin can be
     // explicitly unlinked from its BIM element (elementId: null), not just
-    // linked -- the other fields here can only ever be set, never cleared.
+    // linked; the other fields here can only ever be set, never cleared.
     const elementIdProvided = Object.prototype.hasOwnProperty.call(dto, 'elementId');
     // H-1 follow-up: a non-null elementId was never checked against this
-    // project -- a user authorized for Project A could link Project B's
+    // project; a user authorized for Project A could link Project B's
     // BIM element to a Project A location pin by supplying its id. The
-    // null case (explicit unlink) is left alone -- there's nothing to
+    // null case (explicit unlink) is left alone; there's nothing to
     // validate when clearing the link.
     if (elementIdProvided && dto.elementId != null) {
       const [row] = await this.db.withTenant(companyId, sql => sql`
@@ -160,7 +160,7 @@ export class BuildingsService {
       `);
       if (!row) throw new NotFoundException('BIM element not found.');
     }
-    // withTenant required -- locations carries the tenant_isolation RLS policy;
+    // withTenant required: locations carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id.
     const [loc] = await this.db.withTenant(companyId, sql => sql`
       UPDATE locations SET
@@ -177,10 +177,10 @@ export class BuildingsService {
 
   // Soft-delete: hides a pin from normal views without destroying it or
   // anything attached to it (photos, videos, notes all survive). Site
-  // photos are often one-of-a-kind -- a real delete is never worth the risk.
+  // photos are often one-of-a-kind; a real delete is never worth the risk.
   async archiveLocation(companyId: string, projectId: string, locationId: string) {
     await this.getLocationInProject(companyId, projectId, locationId);
-    // withTenant required -- locations carries the tenant_isolation RLS policy;
+    // withTenant required: locations carries the tenant_isolation RLS policy;
     // a plain this.db.query() never sets app.current_company_id.
     const [loc] = await this.db.withTenant(companyId, sql => sql`
       UPDATE locations SET archived_at = NOW()
@@ -192,13 +192,13 @@ export class BuildingsService {
 
   // Converts a pin's auto-created Issue into a Snag item. Works identically
   // whether the pin came from a floor-plan drawing (drawings.service.ts
-  // createPin()) or a BIM element (bim.service.ts createPinForElement()) --
+  // createPin()) or a BIM element (bim.service.ts createPinForElement());
   // it's location-based, not drawing/element-based. The new snag item takes
   // over issues.location_id's role via its own location_id; the Issue is
   // then deleted so a pin is never linked to both at once.
   async convertPinToSnag(companyId: string, projectId: string, locationId: string, userId: string, userRole: string) {
     // H-1 fix: projectId was already a parameter here but was never
-    // actually checked against the location -- a user authorized for a
+    // actually checked against the location; a user authorized for a
     // different project in the same company could pass another project's
     // locationId and have its name/description leak into a brand-new snag
     // item created in THIS project (the issue lookup just below happens to
@@ -206,7 +206,7 @@ export class BuildingsService {
     // the location itself was never re-verified).
     const loc = await this.getLocationInProject(companyId, projectId, locationId);
 
-    // withTenant required -- issues carries the tenant_isolation RLS policy.
+    // withTenant required: issues carries the tenant_isolation RLS policy.
     const [issue] = await this.db.withTenant(companyId, sql => sql`
       SELECT id, title, description FROM issues
       WHERE location_id = ${locationId} AND company_id = ${companyId} AND project_id = ${projectId}

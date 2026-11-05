@@ -12,7 +12,7 @@ export class UpdateElementStatusDto {
   @IsOptional() @IsInt() @Min(0) @Max(100)
   completionPct?: number;
 
-  // The capture/photo evidencing this status change -- optional (a status
+  // The capture/photo evidencing this status change; optional (a status
   // can be set from the office without a fresh photo), recorded on the
   // bim_element_status_history row alongside from/to status.
   @IsOptional() @IsUUID()

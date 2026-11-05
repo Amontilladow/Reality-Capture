@@ -9,7 +9,7 @@ import type { SiteDrawingSharePointAdapter } from './adapters/sharepoint-adapter
 type WithTenantCallback = (sql: unknown) => unknown;
 
 // A "step" models one this.db.withTenant(companyId, ...) call, in the exact
-// order the service under test issues them -- single() for a call whose
+// order the service under test issues them; single() for a call whose
 // callback issues exactly one statement (`sql => sql\`...\``), multi() for a
 // call whose async callback issues several in sequence (SELECT, INSERT,
 // conditional UPDATE, final UPDATE, ...). Mirrors DrawingsService's own

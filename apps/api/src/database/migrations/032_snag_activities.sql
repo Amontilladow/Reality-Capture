@@ -1,12 +1,12 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Migration 032 — Snag Activities
+-- Migration 032: Snag Activities
 --
 -- Brings Snagging's backend up to the same workflow richness as Issues: an
 -- activity/comment log, reassignment ("forward"), an admin force-status
 -- override, and file attachments. issue_activities (migration
 -- 001_initial_schema.sql, extended with its attachment_url/attachment_name/
 -- attachment_size_bytes columns in 022_issue_reminders_and_attachments.sql)
--- is the reference shape -- snag_activities mirrors it exactly from day
+-- is the reference shape; snag_activities mirrors it exactly from day
 -- one, just keyed off snag_item_id instead of issue_id.
 --
 -- Purely additive: one new table, one new index. Nothing existing is

@@ -11,7 +11,7 @@ const DEFAULT_RANGE_DAYS = 7;
 // agent already redacts before it even sends the request (see
 // apps/agent/README.md), but the guarantee that a PRIVATE-flagged row
 // never carries a real app name, domain, or raw_metadata is enforced here
-// too, regardless of what any client actually sends -- a buggy or
+// too, regardless of what any client actually sends; a buggy or
 // malicious client must not be able to smuggle real activity details
 // through under this activity_type.
 const PRIVATE_APPLICATION_NAME = 'Private';
@@ -20,7 +20,7 @@ const PRIVATE_APPLICATION_NAME = 'Private';
 export class ActivitiesService {
   constructor(private readonly db: DatabaseService) {}
 
-  // Idempotent, batched ingestion -- the desktop agent's contract (see
+  // Idempotent, batched ingestion; the desktop agent's contract (see
   // docs/workforce-intelligence-api.md). Always writes under the caller's
   // own identity: companyId/userId come from the JWT, never the body, so
   // one enrolled agent cannot post activity for another user.
@@ -39,7 +39,7 @@ export class ActivitiesService {
       const appIdByPattern = new Map(appRows.map(r => [String(r.matchPattern).toLowerCase(), r.id as string]));
 
       // Looked up once per batch (the setting can't change mid-batch),
-      // not per item -- same "one extra query per ingest call, not per
+      // not per item; same "one extra query per ingest call, not per
       // item" shape as appRows above.
       const [privacySettings] = await sql`SELECT window_title_enabled FROM workforce_privacy_settings WHERE company_id = ${companyId}`;
       const windowTitleEnabled = !!privacySettings?.windowTitleEnabled;
@@ -61,7 +61,7 @@ export class ActivitiesService {
 
   // First time this exact app/executable name has been seen for the
   // company, register it as 'unclassified' rather than leaving
-  // application_id null -- this is what surfaces it in the admin's
+  // application_id null; this is what surfaces it in the admin's
   // Application Productivity screen ready to be classified, mirroring how
   // DeskTime auto-discovers new apps/URLs for the admin to triage instead
   // of requiring them pre-populated. `appIdByPattern` is mutated so later
@@ -114,7 +114,7 @@ export class ActivitiesService {
     // 'PRIVATE' never gets an application_id (it's never classified, and
     // must never auto-register a real app name into the company's shared
     // registry), and application_name_raw/domain/raw_metadata are
-    // force-redacted here rather than trusted from the request body -- see
+    // force-redacted here rather than trusted from the request body; see
     // the PRIVATE_APPLICATION_NAME comment above.
     const isPrivate = item.activityType === 'PRIVATE';
     const applicationId = isPrivate

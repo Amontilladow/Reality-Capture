@@ -38,16 +38,16 @@ const PDF_EXTENSION = /\.pdf$/i;
 //   validates every entry's name internally as it decodes the central
 //   directory (the same check its own exported validateFileName()
 //   documents as the correct defense) and emits 'error' before the
-//   'entry' event ever fires for ANY entry if one is unsafe -- there is no
+//   'entry' event ever fires for ANY entry if one is unsafe; there is no
 //   way to selectively accept the rest of an archive that contains one.
 //   Confirmed by hand against a hand-built malicious fixture (yazl, the
 //   paired writer library, refuses to even construct such an entry, so a
 //   well-behaved ZIP writer can never produce one in the first place).
 // - A directory entry is silently skipped (not an error).
-// - A non-.pdf entry is skipped and reported, not rejected -- a ZIP of
+// - A non-.pdf entry is skipped and reported, not rejected; a ZIP of
 //   "mostly drawings" with a stray readme.txt is normal, not malicious.
 // - A single file over the per-file size cap is skipped and reported
-//   (rejectedUnsafe) -- this one IS a per-entry decision (ours, not
+//   (rejectedUnsafe): this one IS a per-entry decision (ours, not
 //   yauzl's), since one oversized file isn't evidence the rest of the
 //   archive is malicious.
 // - The running total entry count and uncompressed size are checked

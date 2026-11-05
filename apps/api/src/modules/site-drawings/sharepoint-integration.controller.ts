@@ -7,7 +7,7 @@ import { SharePointIntegrationService } from './sharepoint-integration.service';
 import { ConnectSharePointDto } from './dto/connect-sharepoint.dto';
 import { MapSharePointProjectSiteDto } from './dto/map-sharepoint-project-site.dto';
 
-// Company-wide (not per-project) SharePoint connection admin -- gated by
+// Company-wide (not per-project) SharePoint connection admin; gated by
 // CompanyRole via RolesGuard, same mechanism ApiKeysController uses for
 // the same reason (this configures how EVERY project in the company can
 // reach SharePoint, not something a single project's own members should

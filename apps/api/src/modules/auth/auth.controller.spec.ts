@@ -1,7 +1,7 @@
 import { AuthController } from './auth.controller';
 
 // @nestjs/throttler doesn't export these two metadata keys from its public
-// entry point (only from an internal dist path) -- their values are part of
+// entry point (only from an internal dist path): their values are part of
 // the library's stable decorator contract (see Throttle()'s implementation
 // in throttler.decorator.js), so they're inlined here rather than reaching
 // into @nestjs/throttler/dist/throttler.constants directly.

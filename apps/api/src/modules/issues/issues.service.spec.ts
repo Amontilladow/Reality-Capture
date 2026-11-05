@@ -72,7 +72,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
       const generateKey = jest.fn().mockReturnValue('company-1/issues/999.png');
       const getUploadUrl = jest.fn().mockResolvedValue({ uploadUrl: 'https://presigned.example/put', storageKey: 'company-1/issues/999.png' });
       // issueRow is repurposed here as whatever row the project-ownership
-      // check's SELECT should find -- makeService()'s withTenant mock
+      // check's SELECT should find; makeService()'s withTenant mock
       // doesn't care about the row's shape, only that it's truthy.
       const svc = makeService({ generateKey, getUploadUrl, issueRow: { id: projectId } });
 
@@ -124,7 +124,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
 
     function makeCreateService(existingCountForDiscipline: number) {
       const { query, calls } = makeQueryMock(existingCountForDiscipline);
-      // generateIssueNumber/create/addActivity all now go through withTenant --
+      // generateIssueNumber/create/addActivity all now go through withTenant;
       // forward its callback to the same query mock so the existing text-keyed
       // responses still apply.
       const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
@@ -169,16 +169,16 @@ describe('IssuesService view-state / screenshot behavior', () => {
 
       const countCall = calls.find(c => c.text.includes('SELECT COUNT(*) AS n FROM issues'));
       expect(countCall).toBeDefined();
-      // values = [projectId, discipline, companyId] -- notably not issueType ('rfi')
+      // values = [projectId, discipline, companyId]; notably not issueType ('rfi')
       expect(countCall!.values).toEqual(['project-1', 'STR', 'company-1']);
     });
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  // Ticket 2b — workflow actions
+  // Ticket 2b: workflow actions
   // ══════════════════════════════════════════════════════════════════════
 
-  // Generic tagged-template mock for this.db.query -- records every call
+  // Generic tagged-template mock for this.db.query; records every call
   // (text + interpolated values) and lets each test supply a responder
   // keyed off substrings of the query text, same style as the discipline-
   // numbering tests above.
@@ -189,7 +189,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
       calls.push({ text, values });
       // assertIssueInProject's ownership check (H-1 fix) runs ahead of
       // addActivity/addCapture/etc. in several flows this shared helper
-      // backs (create/forward/close/forceStatus/attachments) -- default it
+      // backs (create/forward/close/forceStatus/attachments): default it
       // to "found" here so every existing test's own responder doesn't
       // need to know about a query it isn't testing; a test that DOES want
       // to exercise this specific check can still override it by handling
@@ -280,7 +280,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
         return undefined;
       });
       // findOne(), the reassignment UPDATE, and addActivity() all now go through
-      // withTenant -- forward its callback to the same text-keyed query mock.
+      // withTenant; forward its callback to the same text-keyed query mock.
       const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
       const notifications = { create: jest.fn() };
       const svc = new IssuesService(
@@ -484,7 +484,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
       );
 
       // 'site_engineer' alone (no company-wide title) would normally be
-      // rejected -- see the previous test -- but this user is specifically
+      // rejected; see the previous test; but this user is specifically
       // this project's project_lead, confirmed via the project_members
       // lookup above.
       const result = await svc.close('company-1', 'project-1', 'issue-1', 'user-lead', 'site_engineer');
@@ -495,7 +495,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
 
     // RBAC Phase 6: the previous two tests cover the two ALLOW paths
     // (company-role-weight threshold, and project_lead via a real
-    // ProjectAuthorizationService) -- this is the complementary real-world
+    // ProjectAuthorizationService): this is the complementary real-world
     // DENY path with a live ProjectAuthorizationService wired in (not just
     // the "projectAuth is undefined" stand-in the very first close() test
     // above uses): below-threshold company role, not this project's
@@ -591,7 +591,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
         {} as unknown as StorageService,
       );
 
-      // Even a non-approver caller doesn't get a 403 here -- closing an
+      // Even a non-approver caller doesn't get a 403 here; closing an
       // already-closed issue never reaches the authorization/evidence checks.
       const result = await svc.close('company-1', 'project-1', 'issue-1', 'user-bystander', 'site_engineer');
       expect(result.status).toBe('closed');
@@ -609,7 +609,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
         }
         return undefined;
       });
-      // findOne() and the status UPDATE both now go through withTenant -- forward
+      // findOne() and the status UPDATE both now go through withTenant; forward
       // its callback to the same text-keyed query mock.
       const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
       const svc = new IssuesService(
@@ -834,7 +834,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
 
   describe('attachments', () => {
     // Every getAttachmentUploadUrl test needs a project-ownership check to
-    // pass before it can reach the extension/size validation being tested --
+    // pass before it can reach the extension/size validation being tested;
     // this stands in for a project row existing under the caller's company.
     function makeProjectOkDb() {
       return { withTenant: jest.fn().mockResolvedValue([{ id: 'project-1' }]) } as unknown as DatabaseService;
@@ -889,11 +889,11 @@ describe('IssuesService view-state / screenshot behavior', () => {
         }
         return undefined;
       });
-      // addAttachment() now goes through withTenant -- forward its callback to
+      // addAttachment() now goes through withTenant; forward its callback to
       // the same text-keyed query mock.
       const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
       // Real object size (1024) intentionally matches the client-declared
-      // sizeBytes below -- the point of this test isn't that they differ,
+      // sizeBytes below; the point of this test isn't that they differ,
       // it's that the INSERT's persisted value comes from storage, not the DTO
       // (see the next test for the case where they actually diverge).
       const getObjectSize = jest.fn().mockResolvedValue(1024);
@@ -1029,7 +1029,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
   // authorized for Project A could read/write Project B's issue
   // sub-resources by supplying Project B's own issueId while calling the
   // route under /projects/:projectA-id/issues/... . assertIssueInProject
-  // (added above findOne) closes this -- each test below proves both
+  // (added above findOne) closes this; each test below proves both
   // halves: the cross-project call is rejected, and the same call under
   // the resource's real project still succeeds.
   describe('H-1: same-company cross-project access is rejected on sub-resource routes', () => {
@@ -1045,7 +1045,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
         if (text.includes('SELECT 1 FROM issues')) {
           return Promise.resolve(values.includes(REAL_PROJECT) ? [{ '?column?': 1 }] : []);
         }
-        // assertLinkedResourcesInProject's own capture check (addCapture) --
+        // assertLinkedResourcesInProject's own capture check (addCapture);
         // same REAL_PROJECT-gated shape as the issues branch above.
         if (text.includes('FROM captures')) {
           return Promise.resolve(values.includes(REAL_PROJECT) ? [{ '?column?': 1 }] : []);
@@ -1067,7 +1067,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
       );
     }
 
-    // Positive case first in each test: ISSUE_ID genuinely belongs to
+    // Positive case first in each test: ISSUE_ID belongs to
     // REAL_PROJECT (the mock DB only returns a row when the call's
     // projectId argument is REAL_PROJECT), so that call must succeed.
     // Negative case: the identical issueId, requested under OTHER_PROJECT
@@ -1111,7 +1111,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
 
     // H-1 follow-up: the issue itself can be in the right project while the
     // *capture* being attached as evidence belongs to a different one in
-    // the same company -- a parent-only check (the test above) doesn't
+    // the same company; a parent-only check (the test above) doesn't
     // cover this case.
     it('addCapture: rejects a same-company capture that belongs to a different project, and writes no link', async () => {
       const insertSpy = jest.fn();
@@ -1292,7 +1292,7 @@ describe('IssuesService view-state / screenshot behavior', () => {
 
 // H-1 follow-up: create()/update() accept several optional cross-resource
 // references (building/level/location/element/capture/drawing) that were
-// never checked against this project -- a user authorized for Project A
+// never checked against this project; a user authorized for Project A
 // could attach Project B's building/level/location/element/capture/drawing
 // to an issue in Project A by supplying its id, and findOne() would then
 // display that other project's names/IFC metadata on an issue the

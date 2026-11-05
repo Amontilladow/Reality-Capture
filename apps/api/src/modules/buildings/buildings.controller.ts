@@ -12,7 +12,7 @@ import type { AuthenticatedUser } from '@engineeringos/types';
 
 // Phase 6 security fix: every mutating route in this controller previously
 // had no @Roles/@RequireProjectPermission at all, and BuildingsService
-// contained no role/permission/membership check anywhere -- confirmed by
+// contained no role/permission/membership check anywhere; confirmed by
 // the Phase 6 audit (grepped for ForbiddenException/companyRole/
 // hasProjectPermission across buildings.service.ts: zero hits). Any
 // authenticated company user, regardless of project membership, could

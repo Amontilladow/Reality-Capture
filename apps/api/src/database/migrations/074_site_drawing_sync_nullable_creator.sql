@@ -1,11 +1,11 @@
 BEGIN;
 
 -- ══════════════════════════════════════════════════════════════════════════
--- Site Drawing Hub, Phase 2b — sync-job support
+-- Site Drawing Hub, Phase 2b; sync-job support
 --
 -- site_drawings.created_by was NOT NULL (every Phase 1 drawing had a real
 -- uploader). A drawing discovered by the sync job (SiteDrawingSyncService)
--- from an external source has no RealityCapture user behind it at all --
+-- from an external source has no RealityCapture user behind it at all;
 -- forcing a fake user reference here would be dishonest data, not a
 -- workaround worth taking. Nullable now; the local-upload path
 -- (SiteDrawingsService.registerDrawing) keeps setting a real user id, this

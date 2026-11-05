@@ -8,10 +8,10 @@ import type { LinkDocumentDto } from './dto/link-document.dto';
 import type { GenerateDocumentShareDto } from './dto/generate-document-share.dto';
 import type { PaginationQuery } from '@engineeringos/types';
 
-const DOCUMENT_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB -- matches getUploadUrl()'s existing figure
+const DOCUMENT_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB: matches getUploadUrl()'s existing figure
 const DEFAULT_SHARE_EXPIRY_DAYS = 14;
 
-// Mirrors captures.service.ts's ALLOWED_MIME pattern -- without this,
+// Mirrors captures.service.ts's ALLOWED_MIME pattern; without this,
 // contentType was an unconstrained client-supplied string signed straight
 // onto the presigned PUT's Content-Type header, and later served back with
 // that same attacker-chosen value (a stored content-type-confusion risk if
@@ -30,7 +30,7 @@ export class DocumentsService {
 
   // contentType is optional (defaults to 'application/pdf', the prior
   // hardcoded value) so existing callers that don't pass one keep working
-  // unchanged -- but a real content type (e.g. from the browser's
+  // unchanged; but a real content type (e.g. from the browser's
   // file.type) is now threaded through and signed on the S3 PutObjectCommand
   // itself (see StorageService.getUploadUrl()), which a report attachment
   // photo/image upload needs to actually succeed with a correctly-signed
@@ -50,10 +50,10 @@ export class DocumentsService {
     await this.assertProjectBelongsToCompany(companyId, projectId);
 
     // A document is either an internal storage-backed upload (storageKey
-    // set, source 'internal' -- the DB default when source is omitted) or a
+    // set, source 'internal'; the DB default when source is omitted) or a
     // metadata-only reference to an external system (Procore/Aconex/
     // SharePoint/BIM360/a manual link) with no object of ours to verify.
-    // Real size enforcement only makes sense for the former -- an external
+    // Real size enforcement only makes sense for the former; an external
     // document legitimately has no storageKey at all.
     const isInternalUpload = (dto.source ?? 'internal') === 'internal' && Boolean(dto.storageKey);
     if (isInternalUpload) {
@@ -70,7 +70,7 @@ export class DocumentsService {
       }
     }
 
-    // withTenant required -- documents carries the tenant_isolation RLS policy.
+    // withTenant required: documents carries the tenant_isolation RLS policy.
     const [doc] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO documents (
         company_id, project_id, doc_type, title, document_number, revision,
@@ -134,7 +134,7 @@ export class DocumentsService {
   }
 
   // H-1 fix (KNOWN_ISSUES_AND_REMEDIATION.md): previously scoped only by
-  // company_id -- a user authorized for Project A could link an arbitrary
+  // company_id; a user authorized for Project A could link an arbitrary
   // capture/element/location/issue to Project B's document by supplying
   // Project B's own documentId. Mirrors findOne()'s own project_id check.
   async link(companyId: string, projectId: string, documentId: string, userId: string, dto: LinkDocumentDto) {
@@ -148,7 +148,7 @@ export class DocumentsService {
     if (targets.length !== 1) throw new BadRequestException('Exactly one link target must be provided (captureId, elementId, locationId, or issueId).');
 
     // H-1 follow-up: the document's own project was checked above, but the
-    // single supplied target never was -- a user authorized for Project A
+    // single supplied target never was; a user authorized for Project A
     // could link Project B's capture/element/location/issue to a Project A
     // document by supplying its id. Each target carries its own
     // project-resolution path; this.link()'s own findOne()-style NotFound
@@ -183,7 +183,7 @@ export class DocumentsService {
       if (!row) throw new NotFoundException('Issue not found.');
     }
 
-    // withTenant required -- document_links carries the tenant_isolation RLS policy.
+    // withTenant required: document_links carries the tenant_isolation RLS policy.
     const [link] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO document_links (
         company_id, document_id,
@@ -214,7 +214,7 @@ export class DocumentsService {
   // Mirrors progress-reports.service.ts's createShare()/listShares()/
   // revokeShare() and rfi-external-access.service.ts's generate()/list()/
   // revoke() pattern exactly: a random 128-hex-char token (the secret
-  // itself, not hashed -- same category as a password-reset token), never
+  // itself, not hashed; same category as a password-reset token), never
   // re-selected once issued. Lets a project team hand a document to someone
   // outside the company without a Dropbox/WeTransfer-style third party.
 
@@ -224,7 +224,7 @@ export class DocumentsService {
       WHERE id = ${documentId} AND project_id = ${projectId} AND company_id = ${companyId}
     `);
     if (!doc) throw new NotFoundException('Document not found.');
-    // Only an internally-stored upload has a file of ours to hand out --
+    // Only an internally-stored upload has a file of ours to hand out;
     // an external reference (Procore/Aconex/SharePoint/BIM360/a manual
     // link) has no object here to share; the externalUrl itself is already
     // whatever that other system exposes.
@@ -232,7 +232,7 @@ export class DocumentsService {
       throw new BadRequestException('Only an internally-stored document can be shared externally.');
     }
 
-    const token = randomBytes(64).toString('hex'); // 128 hex chars -- exact fit for the token VARCHAR(128) column
+    const token = randomBytes(64).toString('hex'); // 128 hex chars: exact fit for the token VARCHAR(128) column
     const expiresAt = new Date(Date.now() + (dto.expiresInDays ?? DEFAULT_SHARE_EXPIRY_DAYS) * 24 * 60 * 60 * 1000);
 
     const [share] = await this.db.withTenant(companyId, sql => sql`
@@ -249,7 +249,7 @@ export class DocumentsService {
     return { ...share, shareUrl: `${frontendUrl}/documents/external/${token}` };
   }
 
-  // Never selects `token` -- same "don't re-display a bearer credential"
+  // Never selects `token`: same "don't re-display a bearer credential"
   // practice as rfi-external-access.service.ts's list().
   async listShares(companyId: string, projectId: string, documentId: string) {
     return this.db.withTenant(companyId, sql => sql`
@@ -273,11 +273,11 @@ export class DocumentsService {
   }
 
   // ── Public, unauthenticated side ───────────────────────────────────────────
-  // Deliberately global (withSystemBypass, no withTenant) -- the token
+  // Deliberately global (withSystemBypass, no withTenant): the token
   // itself is the only credential; the caller has no session, no company_id.
   // Same bootstrap category as rfi-external-access.service.ts's and
   // progress-reports.service.ts's identical validateToken()/
-  // validateShareToken(). Not single-use -- used_at is "last successful
+  // validateShareToken(). Not single-use; used_at is "last successful
   // view," matching that same precedent.
   private async validateShareToken(token: string): Promise<Record<string, unknown>> {
     const [share] = await this.db.withSystemBypass(sql => sql`
@@ -302,7 +302,7 @@ export class DocumentsService {
     return share;
   }
 
-  // The deliberately narrow read model -- never findOne()'s full shape,
+  // The deliberately narrow read model: never findOne()'s full shape,
   // never the links/full document row, just enough to display and download
   // this one file.
   async getByToken(token: string): Promise<{ title: string; docType: string; documentNumber?: string; revision?: string; downloadUrl: string }> {
@@ -329,7 +329,7 @@ export class DocumentsService {
     });
   }
 
-  // Same rationale as captures.service.ts's assertProjectBelongsToCompany --
+  // Same rationale as captures.service.ts's assertProjectBelongsToCompany;
   // this controller has no @RequireProjectPermission gate either, and
   // getUploadUrl/create both take a client-supplied projectId.
   private async assertProjectBelongsToCompany(companyId: string, projectId: string): Promise<void> {

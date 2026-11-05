@@ -12,7 +12,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireExactRoles } from '../../common/decorators/require-exact-roles.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 
-// Role lists per §2 of the brief -- membership checks (RequireExactRoles),
+// Role lists per §2 of the brief; membership checks (RequireExactRoles),
 // never @Roles()'s weight threshold. See exact-roles.guard.ts's own
 // comment for why: @Roles('qa_qc_manager') would also admit every
 // higher-weight role (construction_manager, project_manager, bim_manager,
@@ -21,35 +21,35 @@ import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 //
 // NCR/SOR and WIR/MIR run issue/respond with the roles SWAPPED (NCR/SOR:
 // QAQC issues, construction responds; WIR/MIR: construction issues, QAQC
-// responds -- a WIR/MIR *is* the construction team's request for an
+// responds; a WIR/MIR *is* the construction team's request for an
 // inspection). That swap can't be expressed as a single static role list
-// per route, since both routes serve all four record types -- so create()
+// per route, since both routes serve all four record types; so create()
 // and respond() each get this broadened guard (the union of both groups,
 // the same set ATTACHMENT_ROLES already was) as a coarse pre-filter, and
 // QaqcService does the exact-for-this-type check once it knows the
 // record's actual record_type (see ISSUE_ROLES_BY_TYPE/RESPOND_ROLES_BY_TYPE
-// there). CONFIRM_ROLES is the one gate that never varies by type --
-// QAQC-in-charge confirms every record type -- so it stays a precise,
+// there). CONFIRM_ROLES is the one gate that never varies by type;
+// QAQC-in-charge confirms every record type; so it stays a precise,
 // unbroadened guard with no service-level check needed.
 // Owner's org-category RBAC sprint ("QAQC Checklists/Inspections" matrix
 // row, confirmed to cover this module too): deliberately NOT gated by the
 // new @RequireCategoryAction()/CategoryActionGuard elsewhere in this
-// sprint -- this module's existing @RequireExactRoles system already
+// sprint; this module's existing @RequireExactRoles system already
 // implements something more precise than the new matrix's flat category
 // grant (the construction<->QAQC role SWAP per record type described
 // above), and layering the new, coarser guard on top would AND against it
 // rather than extend it, risking blocking a role this system already
 // correctly allows for a given record type. 'qaqc_team_member' (this
-// sprint's new, generic QAQC Team individual-contributor placeholder --
+// sprint's new, generic QAQC Team individual-contributor placeholder;
 // see COMPANY_ROLES in user.types.ts) is added to both lists below so it
 // isn't silently excluded from a module its own category is named for;
-// 'engineering_team_member' is deliberately NOT added -- Engineering Team
+// 'engineering_team_member' is deliberately NOT added; Engineering Team
 // holds only 'view' on this module per the matrix, consistent with not
 // being part of either side of this two-party workflow.
 const QAQC_OR_CONSTRUCTION_ROLES = ['qa_qc_manager', 'qaqc_team_member', 'construction_manager', 'project_manager', 'technical_director', 'engineering_manager', 'company_admin', 'super_admin'] as const;
 const CONFIRM_ROLES = ['qa_qc_manager', 'qaqc_team_member', 'company_admin', 'super_admin'] as const;
 // Attachment/photo management is shared by both sides of the workflow,
-// for every record type -- same union as the broadened create/respond guard.
+// for every record type; same union as the broadened create/respond guard.
 const ATTACHMENT_ROLES = QAQC_OR_CONSTRUCTION_ROLES;
 
 @ApiTags('qaqc')
@@ -174,7 +174,7 @@ export class QaqcController {
     return { data: await this.svc.deleteAttachment(u.companyId, pid, id, attachmentId), error: null };
   }
 
-  // ── Quick photo picker ("+Add photo") -- links an already-uploaded
+  // ── Quick photo picker ("+Add photo"): links an already-uploaded
   // Capture, mirroring IssuesController's POST :id/captures. ─────────────
   @Post(':id/captures')
   @RequireExactRoles(...ATTACHMENT_ROLES)

@@ -12,11 +12,11 @@ BEGIN;
 --
 -- Policies use the same two forms every other tenant table ends up with
 -- after migrations 052 and 057:
---   tenant_isolation -- the CASE form from 052 (an empty-string GUC on a
+--   tenant_isolation; the CASE form from 052 (an empty-string GUC on a
 --                       pooled connection must filter rows, not error on
 --                       ''::UUID).
---   system_bypass    -- 057's transaction-scoped app.system_bypass flag,
---                       for genuinely cross-tenant work such as
+--   system_bypass; 057's transaction-scoped app.system_bypass flag,
+--                       for cross-tenant work such as
 --                       IssueScheduledRemindersService's due-reminder scan
 --                       (switched to withSystemBypass() alongside this).
 --
@@ -24,8 +24,8 @@ BEGIN;
 -- still missing it. Migration 052 forced only the tables that had RLS at
 -- the time; the ones created afterwards (api_keys, email_messages,
 -- document_external_shares, ...) were never forced. The runtime role
--- (app_user) isn't their owner, so they were already enforced in practice
--- -- this just keeps RLS holding if ownership ever changes.
+-- (app_user) isn't their owner, so they were already enforced in practice;
+-- this just keeps RLS holding if ownership ever changes.
 -- ══════════════════════════════════════════════════════════════════════════
 
 DO $$

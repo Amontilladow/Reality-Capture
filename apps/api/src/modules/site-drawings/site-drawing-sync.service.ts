@@ -30,11 +30,11 @@ interface SiteDrawingRevisionRow {
 // project mapped to a SharePoint site within it, pulling the adapter's own
 // listDrawings() and reconciling it into the register.
 //
-// Idempotent: re-running against unchanged source data creates nothing new
-// -- reconcileDrawing() only inserts a drawing/revision when the source
-// file or its revision number is genuinely new, and otherwise only
+// Idempotent: re-running against unchanged source data creates nothing new;
+// reconcileDrawing() only inserts a drawing/revision when the source
+// file or its revision number is new, and otherwise only
 // refreshes metadata + last_verified_at. "Retry logic" here is the cron's
-// own next tick, not a per-call backoff loop -- a project whose sync
+// own next tick, not a per-call backoff loop; a project whose sync
 // failed this run is simply tried again next run, with the failure
 // recorded (never silently dropped) in site_drawing_sync_log either way.
 //
@@ -53,7 +53,7 @@ export class SiteDrawingSyncService {
     private readonly adapters: SiteDrawingAdapterRegistry,
   ) {}
 
-  // Every 15 minutes -- frequent enough that a new or changed drawing
+  // Every 15 minutes: frequent enough that a new or changed drawing
   // shows up within one site visit's worth of waiting, not so frequent
   // that it hammers a customer's SharePoint tenant for a register that,
   // in practice, changes a handful of times a day.
@@ -76,7 +76,7 @@ export class SiteDrawingSyncService {
     }
   }
 
-  // Scans across EVERY company -- withSystemBypass is required here (same
+  // Scans across EVERY company: withSystemBypass is required here (same
   // reasoning as IssueWarningService/ScreenshotsService's own retention
   // crons): doc_integrations has a tenant_isolation RLS policy, and there
   // is no single company_id to scope a cron-triggered, cross-tenant sweep
@@ -101,12 +101,12 @@ export class SiteDrawingSyncService {
     return { projectsSynced, projectsFailed };
   }
 
-  // One project's sync run, start to finish -- always writes exactly one
+  // One project's sync run, start to finish; always writes exactly one
   // site_drawing_sync_log row and updates doc_integrations' last-attempted/
   // last-successful facts, whether it succeeds or fails. Never throws past
   // this point without having first recorded the failure (section 6: "a
   // failed synchronization must never falsely report success," which cuts
-  // both ways -- a real failure must also never go unrecorded).
+  // both ways; a real failure must also never go unrecorded).
   async syncProject(companyId: string, projectId: string, provider: SiteDrawingSourceProvider): Promise<SiteDrawingSyncOutcome> {
     const adapter = this.adapters.resolve(provider);
     if (!adapter) throw new Error(`No adapter registered for provider '${provider}'.`);
@@ -128,9 +128,9 @@ export class SiteDrawingSyncService {
         if (reconciled === 'revision_added') revisionsCreated++;
       }
 
-      // Deletion detection (brief section 6) -- only reached after a FULLY
+      // Deletion detection (brief section 6): only reached after a FULLY
       // successful listDrawings() above, never on a partial/failed sweep;
-      // an empty discovered[] from a genuinely empty library still runs
+      // an empty discovered[] from a empty library still runs
       // this (correctly withdraws everything), but a thrown error above
       // skips straight to the catch block below and never reaches here.
       await this.markMissingAsWithdrawn(companyId, projectId, provider, seenSourceFileIds);
@@ -143,17 +143,17 @@ export class SiteDrawingSyncService {
       await this.writeSyncLog(companyId, projectId, provider, startedAt, 'FAILED', drawingsSeen, drawingsCreated, revisionsCreated, errorMessage);
       await this.touchConnectionSyncFacts(companyId, provider, false, errorMessage);
       // Re-thrown so a caller that wants to know (the manual "sync now"
-      // endpoint) sees the real failure -- syncAllActiveConnections() above
+      // endpoint) sees the real failure; syncAllActiveConnections() above
       // is the only caller that deliberately swallows it, to keep sweeping
       // the rest of the connections after one project's failure.
       throw err;
     }
   }
 
-  // Creates a new drawing+revision when the source file is genuinely new,
+  // Creates a new drawing+revision when the source file is new,
   // adds a new (superseding) revision when its revision number has
   // changed, or just refreshes metadata/verification timestamp when
-  // nothing has -- the three cases brief section 10's "prevent duplicate
+  // nothing has; the three cases brief section 10's "prevent duplicate
   // sync jobs ... from creating duplicate records" actually distinguishes.
   private async reconcileDrawing(companyId: string, projectId: string, provider: SiteDrawingSourceProvider, d: DiscoveredDrawing): Promise<'created' | 'revision_added' | 'unchanged'> {
     const adapter = this.adapters.resolve(provider);
@@ -192,7 +192,7 @@ export class SiteDrawingSyncService {
         ? await sql<SiteDrawingRevisionRow[]>`SELECT id, revision_number FROM site_drawing_revisions WHERE id = ${existing.currentRevisionId}`
         : [];
 
-      // Refresh metadata either way -- a drawing's title/discipline/
+      // Refresh metadata either way: a drawing's title/discipline/
       // location/web URL at the source can change without a new revision.
       await sql`
         UPDATE site_drawings SET
@@ -202,7 +202,7 @@ export class SiteDrawingSyncService {
       `;
 
       if (currentRevision && currentRevision.revisionNumber === d.revisionNumber) {
-        // Same revision -- re-verify it, don't create a duplicate.
+        // Same revision: re-verify it, don't create a duplicate.
         await sql`
           UPDATE site_drawing_revisions SET
             workflow_status = ${workflowStatus}, source_status_raw = ${d.sourceStatusRaw ?? null},
@@ -214,7 +214,7 @@ export class SiteDrawingSyncService {
         return 'unchanged' as const;
       }
 
-      // A new revision -- the previous current revision (if any) is
+      // A new revision: the previous current revision (if any) is
       // superseded, never deleted (brief section 5).
       const [newRevision] = await sql<{ id: string }[]>`
         INSERT INTO site_drawing_revisions (
@@ -237,7 +237,7 @@ export class SiteDrawingSyncService {
     });
   }
 
-  // "Deletion detection" (brief section 6) -- a drawing this project
+  // "Deletion detection" (brief section 6): a drawing this project
   // previously knew about from this provider, no longer present in a
   // full, successful listing, is marked WITHDRAWN rather than silently
   // left showing as if still current. Never deleted from the register
@@ -275,7 +275,7 @@ export class SiteDrawingSyncService {
   }
 
   // last_synced_at tracks the last SUCCESSFUL run; last_attempted_sync_at
-  // tracks every attempt, success or failure -- the separation brief
+  // tracks every attempt, success or failure; the separation brief
   // section 6 calls for, finally wired up now that there's a real sync job
   // to drive it (migration 073 added the columns, this is their first
   // writer).

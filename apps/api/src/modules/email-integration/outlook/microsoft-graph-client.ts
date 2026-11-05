@@ -5,23 +5,23 @@ import { firstValueFrom } from 'rxjs';
 import type { InitialProviderTokens, OutgoingMessage, ProviderTokens, SendResult } from '../email-integration.types';
 
 // Thin wrapper over the Microsoft identity platform v2.0 OAuth endpoints and
-// (once sending lands in a later stage) Microsoft Graph's /sendMail --
+// (once sending lands in a later stage) Microsoft Graph's /sendMail;
 // deliberately no MSAL dependency, matching this codebase's existing
 // preference for a raw HTTP client over a vendor SDK (see
 // workforce/calendar-integration/google-calendar-client.ts's own comment on
 // why). Not unit-tested for the same reason that file isn't: this is network
-// glue to a live third-party API this sandbox has no real credentials for --
+// glue to a live third-party API this sandbox has no real credentials for;
 // see outlook-integration.service.spec.ts for what's actually covered (the
 // DB-facing logic, with this client mocked).
 //
 // Scopes requested: `openid email offline_access
-// https://graph.microsoft.com/Mail.Send` -- a *delegated* permission (acts
-// as the signed-in user, never application-wide mailbox access -- see this
+// https://graph.microsoft.com/Mail.Send`; a *delegated* permission (acts
+// as the signed-in user, never application-wide mailbox access; see this
 // phase's own report for why that distinction matters), and the minimum
 // needed for this stage: `openid email` to get the connected mailbox address
 // from the ID token with no extra Graph call, `offline_access` for a refresh
 // token, `Mail.Send` to send as the user in a later stage. No Mail.Read,
-// Mail.ReadWrite, or User.Read requested -- reading messages/replies is a
+// Mail.ReadWrite, or User.Read requested; reading messages/replies is a
 // separate, not-yet-implemented stage (Phase 3H) that will request its own
 // additional scope only when it actually exists.
 const SCOPES = 'openid email offline_access https://graph.microsoft.com/Mail.Send';
@@ -57,7 +57,7 @@ export class MicrosoftGraphClient {
       scope: SCOPES,
       // Forces a fresh consent screen (and therefore a fresh refresh token)
       // every connect, same reasoning as Calendar's Google client using
-      // prompt=consent -- a reconnect after disconnect must not silently
+      // prompt=consent; a reconnect after disconnect must not silently
       // reuse an old grant.
       prompt: 'consent',
       state,
@@ -109,7 +109,7 @@ export class MicrosoftGraphClient {
 
     return {
       accessToken: res.data.access_token,
-      // Microsoft rotates refresh tokens on every use -- the old one is
+      // Microsoft rotates refresh tokens on every use; the old one is
       // invalidated the moment a new one is issued, so this must be
       // persisted, unlike Google's "only on initial grant" behavior.
       refreshToken: res.data.refresh_token,
@@ -118,7 +118,7 @@ export class MicrosoftGraphClient {
     };
   }
 
-  // Create-draft-then-send, not the simpler single-call /me/sendMail --
+  // Create-draft-then-send, not the simpler single-call /me/sendMail;
   // sendMail returns no body at all (202 Accepted, nothing else), so there
   // would be no message/conversation ID to record for Section 8's audit
   // trail or Phase 3H's future reply-threading. Creating the message as a
@@ -147,7 +147,7 @@ export class MicrosoftGraphClient {
 
     // If this second call fails after the draft above was created, the
     // draft is left behind in the user's own Drafts folder rather than
-    // sent -- a minor, self-correcting edge case (visible and deletable by
+    // sent; a minor, self-correcting edge case (visible and deletable by
     // the user in their own mailbox, not a data-safety issue) rather than
     // something worth a compensating-transaction cleanup call here.
     await firstValueFrom(this.http.post(`https://graph.microsoft.com/v1.0/me/messages/${draft.data.id}/send`, {}, { headers }));
@@ -156,8 +156,8 @@ export class MicrosoftGraphClient {
   }
 
   // The ID token is a JWT issued directly by Microsoft's own token endpoint
-  // over TLS in this same request/response -- not something that arrived via
-  // a redirect or any other less-trusted path -- so decoding its payload
+  // over TLS in this same request/response (not something that arrived via
+  // a redirect or any other less-trusted path) so decoding its payload
   // without re-verifying the signature is standard practice here (the same
   // trust boundary already applies to the access/refresh tokens in the same
   // response). Only ever used to read the `email` claim, never passed

@@ -1,16 +1,16 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Migration 056 — Public API keys and outbound webhooks (F3)
+-- Migration 056: Public API keys and outbound webhooks (F3)
 --
 -- api_keys: per-tenant (company_id) credentials for the new Public API.
 -- Looked up by exact hash equality, same pattern as refresh_tokens
--- (auth.service.ts hashToken()) -- SHA-256 of the raw secret, not
+-- (auth.service.ts hashToken()): SHA-256 of the raw secret, not
 -- argon2/bcrypt, because this needs an O(1) indexed lookup against every
 -- inbound request, not a one-row password verify. key_prefix is stored
--- only for display ("rc_live_a1b2c3d4...") -- never used for lookup.
+-- only for display ("rc_live_a1b2c3d4..."): never used for lookup.
 --
 -- webhook_endpoints: a tenant's subscription to outbound event delivery.
 -- `secret` is stored in the clear (unlike api_keys.key_hash) because it
--- must be read back on every delivery to compute an HMAC signature --
+-- must be read back on every delivery to compute an HMAC signature;
 -- hashing it would make it useless for that purpose. This is the same
 -- category of secret as a Stripe/GitHub webhook signing secret.
 --

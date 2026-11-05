@@ -3,14 +3,14 @@ import { registerAs } from '@nestjs/config';
 
 const MIN_SECRET_LENGTH = 32;
 
-// Phase 6 security fix: mirrors jwt.config.ts's requireStrongSecret() --
+// Phase 6 security fix: mirrors jwt.config.ts's requireStrongSecret();
 // fails the process at startup rather than letting CredentialEncryptionService
 // silently fall back to its hardcoded 'dev-only-insecure-placeholder-key'
 // string (committed in common/crypto/credential-encryption.service.ts) when
 // this var is unset. That fallback previously let the app boot fine (just a
 // warning log) while every OAuth token (Outlook/Gmail) and every BYO AI
 // provider API key got encrypted with a key anyone with read access to this
-// repo can derive -- confirmed as a Critical finding by the Phase 6 audit,
+// repo can derive; confirmed as a Critical finding by the Phase 6 audit,
 // independently flagged by two separate reviews. CREDENTIAL_ENCRYPTION_KEY
 // was also missing from .env.example and render.yaml entirely; both are
 // fixed alongside this change.
@@ -35,7 +35,7 @@ export default registerAs('app', () => ({
   internalServiceSecret: process.env.INTERNAL_SERVICE_SECRET ?? '',
   // Used by CredentialEncryptionService (common/crypto/) to derive the
   // AES-256-GCM key for OAuth email-integration tokens and BYO AI provider
-  // credentials. No insecure fallback -- the process refuses to start
+  // credentials. No insecure fallback; the process refuses to start
   // without a real, sufficiently random value set.
   credentialEncryptionKey: requireStrongSecret('CREDENTIAL_ENCRYPTION_KEY'),
 }));

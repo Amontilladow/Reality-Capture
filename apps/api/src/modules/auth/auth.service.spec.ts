@@ -6,7 +6,7 @@ import type { ConfigService } from '@nestjs/config';
 import type { EmailService } from '../email/email.service';
 
 // selfSignup() and forgotPassword()/generatePasswordResetToken() are
-// covered here -- the rest of AuthService (login, refresh,
+// covered here; the rest of AuthService (login, refresh,
 // acceptInvitation, resetPassword) has no prior test coverage either and
 // is out of scope for this change.
 describe('AuthService.selfSignup', () => {

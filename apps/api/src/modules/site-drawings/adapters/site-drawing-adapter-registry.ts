@@ -4,7 +4,7 @@ import { SiteDrawingLocalAdapter } from './local-adapter';
 import { SiteDrawingSharePointAdapter } from './sharepoint-adapter';
 import type { DrawingSourceAdapter } from './drawing-source-adapter.interface';
 
-// Resolves a DrawingSourceAdapter by provider -- the one place
+// Resolves a DrawingSourceAdapter by provider: the one place
 // SiteDrawingsService (and, later, a sync-job scheduler) looks up which
 // adapter to call, instead of each caller hardcoding which concrete
 // adapter class a given provider string maps to. New providers (Aconex,

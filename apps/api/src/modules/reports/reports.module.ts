@@ -17,7 +17,7 @@ import { BimModule } from '../bim/bim.module';
   // imported (not re-implemented) so ReportsService can call the
   // getKpiBreakdown()/getOpenList()-equivalent sibling methods and
   // RiskService's own getExecutiveSummary() directly on the existing
-  // services -- every module already exports what's needed. RiskModule ->
+  // services; every module already exports what's needed. RiskModule ->
   // ReportsModule is a one-way edge (RiskModule itself only imports
   // DatabaseModule/AiClientModule), so no circular-dependency risk.
   // AiClientModule is the same AI reasoning layer RiskModule already uses,

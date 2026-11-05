@@ -4,7 +4,7 @@ import type { DatabaseService } from '../../database/database.service';
 // Spec section 13: a domain-guard-blocked question must never call Redis at
 // all (AiService.ask() returns before checkAndReserve() is reached), so
 // these tests only cover checkAndReserve()/getRemaining()'s own daily and
-// per-minute enforcement -- the "blocked doesn't consume quota" guarantee
+// per-minute enforcement; the "blocked doesn't consume quota" guarantee
 // itself is covered in ai.service.spec.ts, where it's actually observable.
 const incrMock = jest.fn();
 const decrMock = jest.fn();

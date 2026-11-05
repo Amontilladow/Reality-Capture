@@ -1,6 +1,6 @@
 import { createElement as h } from 'react';
 
-// Same brand/font setup as reports-pdf.template.ts / rfi-pdf.template.ts --
+// Same brand/font setup as reports-pdf.template.ts / rfi-pdf.template.ts;
 // a printed Progress Report should read as the same product as every other
 // PDF export in this app, not a one-off design.
 const INK = '#0A141C';
