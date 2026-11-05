@@ -1,6 +1,6 @@
 # EngineeringOS IFC Processing Engine: Release v1.0.0
 
-Status: **RELEASED — FROZEN**. This subsystem is stable. Do not modify
+Status: **RELEASED, FROZEN**. This subsystem is stable. Do not modify
 without a verified bug, security issue, or explicit product requirement.
 
 ---
@@ -10,7 +10,7 @@ without a verified bug, security issue, or explicit product requirement.
 ### Purpose
 Turns an uploaded IFC (BIM) file into structured, queryable data:
 spatial hierarchy, element properties, quantities, materials,
-classifications, and relationships — plus a viewer-ready Fragments
+classifications, and relationships, plus a viewer-ready Fragments
 geometry file and a human-readable import report. This closes the "IFC
 parsing is 0% implemented" gap identified in the original platform
 handover.
@@ -18,8 +18,8 @@ handover.
 ### Scope
 Everything from "user has uploaded an IFC file" to "structured data is
 queryable via the API and a report exists." Does not cover: IFC
-*authoring* (writing IFC back out), clash detection, or viewer UI — all
-explicitly out of scope per the approved architecture proposal.
+*authoring* (writing IFC back out), clash detection, or viewer UI. All are
+out of scope per the approved architecture proposal.
 
 ### Features delivered
 - Full spatial hierarchy extraction (Site → Building → Storey → Space)
@@ -36,7 +36,7 @@ explicitly out of scope per the approved architecture proposal.
 ### Architecture decisions
 
 **Why a standalone service (`apps/ifc-service`), not embedded in `apps/api`:**
-Decided explicitly (not assumed) before implementation began — see
+Decided explicitly (not assumed) before implementation began; see
 `IFC_ARCHITECTURE_PROPOSAL.md`. Three reasons drove it:
 1. **Independent deployability.** IFC parsing is CPU/memory-heavy and
    bursty (a big model can take much longer and much more memory than a
@@ -119,7 +119,7 @@ the same library guarantees producer (`apps/api`) and consumer
    the model `processing`, and runs the pipeline (see "Processing
    Pipeline" below).
 5. Throughout, `apps/ifc-service` writes progress (`processing_stage`,
-   `processing_progress`) directly to `bim_models` — `apps/api`'s status
+   `processing_progress`) directly to `bim_models`. `apps/api`'s status
    endpoint reads this with **no cross-service call**, so status polling
    works even if the worker is temporarily down or busy.
 6. On completion, `apps/ifc-service` writes final counts, timing, memory,
@@ -223,7 +223,7 @@ Job name: `parse-ifc`. Payload (`IfcParseJobData` in
 ```ts
 { modelId: string; companyId: string; projectId: string; storageKey: string }
 ```
-Job id: `${modelId}:${timestamp}` — unique per enqueue (see Release Notes
+Job id: `${modelId}:${timestamp}`, unique per enqueue (see Release Notes
 for why this matters). `defaultJobOptions`: 3 attempts, exponential
 backoff starting at 10s, last 100 completed/failed jobs retained.
 
@@ -274,11 +274,11 @@ pattern (`company_id = current_setting('app.current_company_id')`).
 - `processing_stage` / `processing_progress`: live-updated for polling,
   independent of the resume mechanism.
 - `attempt_count`, `started_at`, `completed_at`, `duration_ms`,
-  `peak_memory_bytes`, `elements_skipped`, `warnings` — observability.
+  `peak_memory_bytes`, `elements_skipped`, `warnings`: observability.
 
 **Important implementation detail:** `stage_completion` keys are read back
 camelCase by the Postgres driver's transform regardless of how they're
-written (a jsonb-value quirk, not a column-naming one) — `isStageComplete()`
+written (a jsonb-value quirk, not a column-naming one), so `isStageComplete()`
 converts the stage name to camelCase before lookup to account for this.
 See Release Notes bug #5 for why this matters and how it was found.
 
@@ -308,27 +308,27 @@ Executed in this exact order by `IfcProcessingProcessor.handle()`:
     walk) plus voids/fills (one more global query), stored by GUID.
 11. **Fragments**: `@thatopen/fragments` converts the file to a compact
     binary, uploaded to storage. **Failure here is a warning, not a job
-    failure** — the structured data is already safely persisted by this
+    failure**: the structured data is already safely persisted by this
     point, and a viewer-convenience file failing shouldn't undo that.
 12. **Report generation**: structured (`bim_import_reports.report_json`)
     and human-readable (`report_text`) versions, in the exact format
     requested, logged and persisted.
 13. **Completion**: `bim_models.status = 'ready'` (or `'failed'`, with
-    `processing_error` set, on any unhandled exception — Bull's
+    `processing_error` set, on any unhandled exception; Bull's
     attempts/backoff then governs automatic retry).
 
 ### Failure handling and resume
 - Any exception outside the per-element `try/catch` in stage 5-8 fails
   the whole job: `status = 'failed'`, error stored, a FAILED report is
   still generated, Bull retries per its backoff policy.
-- A per-element exception during extraction is caught individually — that
+- A per-element exception during extraction is caught individually. That
   element is recorded as **skipped** (counted, logged, included in the
   report's warnings), and the batch continues. One bad element never
   fails the whole model.
 - On any retry (automatic via Bull, or manual via the reprocess endpoint),
   each stage checks `stage_completion` first and **skips stages already
-  committed**, re-running only from the first incomplete stage onward —
-  verified live (see Resilience section).
+  committed**, re-running only from the first incomplete stage onward (
+  verified live; see Resilience section).
 
 ---
 
@@ -339,7 +339,7 @@ server, not reviewed in the abstract.
 
 | Scenario | Verified behavior |
 |---|---|
-| **Malformed IFC** | Clean `status: failed`, readable error, **zero** rows written to any extraction table, empty `stage_completion` — no partial state. |
+| **Malformed IFC** | Clean `status: failed`, readable error, **zero** rows written to any extraction table, empty `stage_completion`, no partial state. |
 | **Empty IFC** | Valid file with only `IfcProject`, no hierarchy/elements → `status: ready`, `element_count: 0`, no crash. |
 | **Duplicate upload** | Same file registered as two separate models → both process independently and identically; no collision (each gets its own unique job id and model id). |
 | **Interrupted processing** | Manually marked a stage complete mid-flight, then triggered reprocess → log-confirmed the stage was **skipped**, remaining stages ran normally, element count stayed correct (no duplication), final `stage_completion` accurately reflects what actually ran. |
@@ -358,9 +358,9 @@ server, not reviewed in the abstract.
 ### Memory strategy
 - Elements are extracted and written in **fixed batches of 200**, so JS
   heap usage for element data is bounded by batch size, not total model
-  size — the batch's arrays are discarded after each batch's DB write.
+  size; the batch's arrays are discarded after each batch's DB write.
 - The one unavoidable exception: `web-ifc` itself opens the entire file
-  into WASM memory to parse it at all — no evaluated library (see
+  into WASM memory to parse it at all, and no evaluated library (see
   architecture proposal) supports true streaming parse of arbitrary IFC.
   This is a real, documented constraint of the chosen technology, not an
   oversight.
@@ -375,12 +375,12 @@ server, not reviewed in the abstract.
 - Designed for models up to the low hundreds of thousands of elements
   without architectural changes, given the batching approach.
 - Multi-GB files: architecturally reasoned about (see proposal), but
-  **not empirically load-tested** — no such fixture was obtainable in
-  this development sandbox. This is the single most important thing to
+  **not empirically load-tested**: no such fixture was obtainable in
+  this development sandbox. This is the most important thing to
   validate before a production launch with real-world large models.
 
 ### Known limits
-- Stage-level (not element-level) resume — a crash mid-stage re-does that
+- Stage-level (not element-level) resume: a crash mid-stage re-does that
   whole stage, not just the unfinished portion of it. Safe (idempotent)
   but not minimal-cost for a very large model's properties stage.
 
@@ -409,12 +409,12 @@ Runs as a standard Node process (`node dist/main.js`) exposing one HTTP
 port (health check only) and consuming from the shared Bull queue.
 Containerize identically to `apps/api` (same Node version, same build
 tooling). No inbound traffic is expected on its HTTP port other than
-health checks — it does not need to be behind the public-facing API
+health checks. It does not need to be behind the public-facing API
 gateway/load balancer's main routing rules, only an internal health-check
 path.
 
 ### Scaling recommendations
-- Horizontal: run multiple instances — Bull distributes jobs across
+- Horizontal: run multiple instances; Bull distributes jobs across
   connected consumers automatically; the job-id scheme (unique per
   enqueue) and stage-level idempotency make concurrent-safe processing
   straightforward.
@@ -425,19 +425,19 @@ path.
 ### Monitoring
 - `GET /health`: liveness/readiness (checks DB connectivity).
 - Structured JSON log lines for `job_start`, `stage_start`, `stage_end`,
-  `element_skipped`, `job_end` — every line includes `modelId`, so logs
+  `element_skipped`, `job_end`. Every line includes `modelId`, so logs
   are filterable per-import in any log aggregator.
 - `bim_models.status = 'failed'` + `processing_error`: the primary
   signal for alerting; consider a poll/alert on failed-status counts.
 
 ### Logging
 All logging goes through NestJS's `Logger` (no raw `console.*` calls
-anywhere in the service — verified via repository-wide search as part of
+anywhere in the service, verified via repository-wide search as part of
 the release audit).
 
 ### Backups
 Standard Postgres backup practice covers all IFC engine tables (no
-special handling needed — they're ordinary tables in the shared
+special handling needed; they're ordinary tables in the shared
 database). Object storage (original files + Fragments) should follow
 whatever backup/versioning policy applies to the rest of the platform's
 uploaded files.
@@ -445,7 +445,7 @@ uploaded files.
 ### Recovery
 A model stuck in `processing` (e.g., after an infrastructure-level
 crash rather than a clean job failure) can be recovered via the
-`reprocess` endpoint — it resets status without touching
+`reprocess` endpoint. It resets status without touching
 `stage_completion`, so already-completed stages are skipped and only the
 remaining work re-runs.
 
@@ -478,7 +478,7 @@ POST /projects/:projectId/bim/models/:modelId/reprocess
 ```
 Safe to call repeatedly; already-completed stages are skipped.
 
-**Recover an interrupted import:** same as reprocess — no special
+**Recover an interrupted import:** same as reprocess, with no special
 procedure needed. `stage_completion` ensures only incomplete work re-runs.
 
 ---
@@ -489,7 +489,7 @@ procedure needed. `stage_completion` ensures only incomplete work re-runs.
 - Stage-level, not element-level, resume granularity.
 - No empirical test against a true multi-GB IFC file.
 - Fragments failures degrade to a warning rather than raising an alert by
-  themselves — a systematically broken Fragments pipeline needs someone
+  themselves. A systematically broken Fragments pipeline needs someone
   to notice via warnings, not an automatic page.
 - Only IFC4 tested directly; IFC2x3 is expected to work (`web-ifc`
   supports both, extraction code doesn't assume schema version) but is
@@ -516,17 +516,17 @@ procedure needed. `stage_completion` ensures only incomplete work re-runs.
 ### Features delivered
 Full IFC parsing pipeline: hierarchy, elements, properties, quantities,
 materials, classifications, relationships, Fragments generation, and
-import reporting — running as an independently deployable service,
+import reporting, running as an independently deployable service,
 orchestrated (not executed) by `apps/api`.
 
 ### Bugs fixed during verification (all found via a failing test, then fixed, then re-verified passing)
 1. Postgres bulk-insert misuse (`SELECT ... FROM ${sql(rows, cols)}` is
-   not valid postgres.js usage) — caused a hard crash on the first batch.
+   not valid postgres.js usage) and caused a hard crash on the first batch.
 2. Missing required `project_id` column in element inserts.
-3. camelCase/snake_case mismatch reading back `RETURNING` results —
+3. camelCase/snake_case mismatch reading back `RETURNING` results, which
    silently dropped quantities/materials/classifications past the first
    element in a batch.
-4. Bull job-id reuse across reprocess attempts — silently no-op'd re-runs
+4. Bull job-id reuse across reprocess attempts, which silently no-op'd re-runs
    of already-completed jobs.
 5. jsonb key-casing on `stage_completion`: resume-skip logic never
    actually triggered until fixed (stages redid unnecessarily, though
@@ -538,7 +538,7 @@ Plus one defect found during the final release audit itself:
    verified `report_json` now contains the full structured report.
 
 Two unused type definitions (`ParsedElementBatch`, `IfcProcessingProgress`)
-were found and removed during the release audit — dead code left over
+were found and removed during the release audit: dead code left over
 from earlier design iterations, confirmed via repository-wide search
 before removal.
 
@@ -549,7 +549,7 @@ reprocessing), all passing against real Postgres, Redis, and a local
 S3-compatible server. Full detail in `MASTER_BACKLOG.md`.
 
 ### Breaking changes
-None — this is new functionality; no existing endpoints or schemas were
+None. This is new functionality; no existing endpoints or schemas were
 altered in an incompatible way (`bim_models` was extended with new
 nullable/defaulted columns only).
 
