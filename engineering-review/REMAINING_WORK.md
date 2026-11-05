@@ -3,7 +3,7 @@
 > **Historical record.** Its "NEXT OBJECTIVE" (Issue Management in the BIM
 > viewer) and the items after it describe a backlog from before Issues,
 > Drawings, RFIs, Submittals, Transmittals, QA, and Snagging existed as
-> real modules — most of that has since shipped in some form. See
+> real modules. Most of that has since shipped in some form. See
 > [`CURRENT_STATUS.md`](CURRENT_STATUS.md) for current module status and
 > [`NEXT_STEPS.md`](NEXT_STEPS.md) for the current prioritized backlog.
 
@@ -23,24 +23,24 @@ Requirements (from the original phase spec, not yet built):
 
 **Dependencies:**
 - Issues backend already exists and is frozen/working (creation,
-  assignment, activity log) — this is additive, not a rebuild.
+  assignment, activity log), so this is additive, not a rebuild.
 - Needs a way to capture the `@thatopen/components` camera state
-  (position/target/zoom) from `BimViewer.tsx` — the component doesn't
+  (position/target/zoom) from `BimViewer.tsx`. The component doesn't
   currently expose this; will need a new imperative method (e.g.
   `getCameraState()`/`setCameraState()`) alongside the existing
   `fitToModel()`/`selectByGuid()`.
 - Screenshot capture: `world.renderer.three.domElement.toDataURL()` (or
-  similar) — needs verification against `@thatopen/components`' actual
+  similar). This needs verification against `@thatopen/components`' actual
   renderer setup; not yet checked.
 - Attachments likely reuse the existing document/capture storage pattern
   (S3-compatible storage, presigned URLs) rather than inventing a new one.
 
 **Risks:**
 - Camera-state serialization format needs to be stable/versioned since
-  it'll be stored in the database and replayed later — get this right
+  it'll be stored in the database and replayed later. Get this right
   the first time rather than needing a migration later.
 - No browser tool available to verify screenshot capture or camera
-  restoration actually work visually — same limitation documented
+  restoration work visually, the same limitation documented
   throughout this handover.
 
 ---
@@ -54,25 +54,25 @@ Closed Issues, Recently Updated Models, Activity Feed.
 
 **Dependencies:**
 - All underlying data already exists (projects, bim_models with status,
-  issues with status, notifications/audit log for activity feed) — this
+  issues with status, notifications/audit log for activity feed), so this
   is primarily aggregation queries + new frontend page, not new backend
   data model work.
 - Currently `/projects` (ProjectList) is the landing page; decide whether
   the dashboard replaces it, precedes it, or is a separate route.
 
-**Risks:** Low — mostly additive UI work over existing data.
+**Risks:** Low. Mostly additive UI work over existing data.
 
 ---
 
 ## 3. ~~Reality Capture (image) processing~~: Shipped
 
 Real thumbnail/rendition pipeline (`sharp` + `exifr`, embedded in
-`apps/api`, not a standalone service — resolves the open architecture
+`apps/api`, not a standalone service; this resolves the open architecture
 question below in favor of the faster-to-ship option) now generates
 thumbnail_sm/thumbnail_lg/preview and validates/extracts EXIF GPS. See
 `apps/api/src/modules/captures/processors/image-processing.processor.ts`
 and its test suite. Video captures still pass straight through with no
-thumbnailing — out of scope (would need ffmpeg).
+thumbnailing; that is out of scope (would need ffmpeg).
 
 ---
 
@@ -82,7 +82,7 @@ thumbnailing — out of scope (would need ffmpeg).
 
 Code exists (`apps/ai-service/app/routers/{search.py,assistant.py}`),
 statically reviewed as sound. Qdrant itself is confirmed reachable in
-this sandbox (downloaded via GitHub release binary — `dl.min.io` is
+this sandbox (downloaded via GitHub release binary; `dl.min.io` is
 blocked but `release-assets.githubusercontent.com` is not). The embedding
 step (`sentence-transformers` → HuggingFace model download) is blocked
 because `huggingface.co` is outside this sandbox's network allowlist.
@@ -90,16 +90,16 @@ because `huggingface.co` is outside this sandbox's network allowlist.
 **Dependencies:** Either a network allowlist change, or a pre-cached
 embedding model bundled into the environment.
 
-**Risks:** None from a code-correctness standpoint — this is purely an
+**Risks:** None from a code-correctness standpoint. This is purely an
 environment/verification gap, not a known defect.
 
 ---
 
 ## 5. Export functionality
 
-**Complexity: Unknown — not yet investigated at all.**
+**Complexity: Unknown; not yet investigated at all.**
 
-**Dependencies:** None known yet — first step is investigation/scoping,
+**Dependencies:** None known yet. The first step is investigation/scoping,
 not implementation.
 
 **Risks:** Unknown until scoped.
@@ -116,16 +116,16 @@ hide/show, transparency, storey/discipline/category filter toggles.
 
 **Dependencies:** Builds directly on the existing `BimViewer.tsx`
 foundation (`@thatopen/components` world/camera/fragments setup already
-in place). Each of these is a real, separately-scoped feature — recommend
+in place). Each of these is a real, separately scoped feature. Recommend
 tackling one at a time with its own verification pass, not as one large
 batch.
 
 **Risks:** `@thatopen/components`' API surface for these features hasn't
-been explored yet in this project — budget time for the same kind of
+been explored yet in this project. Budget time for the same kind of
 empirical API verification (checking installed `.d.ts` files, writing
 small test scripts) that was needed for the core viewer, rather than
 assuming the API matches other ThatOpen tutorials exactly (version drift
-is real — this project is on `3.4.7`/`3.4.6`).
+is real; this project is on `3.4.7`/`3.4.6`).
 
 ---
 
@@ -136,7 +136,7 @@ is real — this project is on `3.4.7`/`3.4.6`).
 Dark/light mode, accessibility pass, mobile layouts, keyboard shortcuts,
 additional empty states, loading skeletons beyond what exists.
 
-**Dependencies:** None blocking — can be done incrementally alongside
+**Dependencies:** None blocking. This can be done incrementally alongside
 other feature work rather than as one big effort.
 
 **Risks:** Low individually; the main risk is scope creep if treated as
@@ -147,11 +147,11 @@ pieces.
 
 ## Cross-cutting: Browser-level verification
 
-**Not a feature — a verification gap that applies to all frontend work
+**Not a feature: a verification gap that applies to all frontend work
 done in this environment.** No browser or screenshot tool is available.
 Every piece of frontend work in this project has been verified via
 typecheck, production build, dev-server module transforms, and live API
-contract checks — but never via actual rendering or interaction. Strongly
+contract checks, but never via actual rendering or interaction. Strongly
 recommend a human or browser-automation pass before/alongside any of the
 above, especially before the BIM viewer is considered fully production-
 verified.
