@@ -1,7 +1,7 @@
 # Graph Report - Reality-Capture  (2026-11-05)
 
 ## Corpus Check
-- 1099 files · ~711,150 words
+- 1099 files · ~709,021 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 34 file(s) not represented in the graph (top: .dxf 13, (none) 11, .example 5)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `5a59b499`
+- Built from commit: `ec287eee`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -388,13 +388,13 @@
 ## Surprising Connections (you probably didn't know these)
 - `MVP / V1 / V2 / Future` --references--> `getWindowTitle()`  [INFERRED]
   docs/workforce-intelligence-implementation-plan.md → apps/agent/src/native.ts
-- `C-5. `CREDENTIAL_ENCRYPTION_KEY` silently fell back to a hardcoded key — FIXED` --references--> `CredentialEncryptionService`  [INFERRED]
+- `C-5. `CREDENTIAL_ENCRYPTION_KEY` silently fell back to a hardcoded key: FIXED` --references--> `CredentialEncryptionService`  [INFERRED]
   docs/KNOWN_ISSUES_AND_REMEDIATION.md → apps/api/src/common/crypto/credential-encryption.service.ts
 - `2. Role × Action matrix` --references--> `SiteRoleRestrictionGuard`  [INFERRED]
   docs/ROLE_PERMISSION_MATRIX.md → apps/api/src/common/guards/site-role-restriction.guard.ts
-- `Privacy settings — `apps/api/src/modules/workforce/privacy`` --references--> `AuditInterceptor`  [INFERRED]
+- `Privacy settings: `apps/api/src/modules/workforce/privacy`` --references--> `AuditInterceptor`  [INFERRED]
   docs/workforce-intelligence-api.md → apps/api/src/common/interceptors/audit.interceptor.ts
-- `11. Logging & monitoring — PARTIAL, one historical incident traced to resolution` --references--> `AiUsageService`  [INFERRED]
+- `11. Logging & monitoring: PARTIAL, one historical incident traced to resolution` --references--> `AiUsageService`  [INFERRED]
   docs/phase2-production-readiness.md → apps/api/src/modules/ai/ai-usage.service.ts
 
 ## Import Cycles
@@ -496,7 +496,7 @@ Nodes (66): dependencies, @aws-sdk/client-s3@^3.577.0, @aws-sdk/s3-request-presi
 
 ### Community 24 - "EmailTokenStore"
 Cohesion: 0.09
-Nodes (12): EmailProviderClient, EmailTokenStore, EmailOAuthStatePayload, connected(), EmailMessageRecord, SendEmailPayload, Phase 3B — Secure backend OAuth infrastructure — VERIFIED COMPLETE, Phase 3C — Microsoft Outlook connection — IMPLEMENTED BUT NOT VERIFIED (code-complete, no real Entra App Registration exists to test against) (+4 more)
+Nodes (12): EmailProviderClient, EmailTokenStore, EmailOAuthStatePayload, connected(), EmailMessageRecord, SendEmailPayload, Phase 3B: Secure backend OAuth infrastructure: VERIFIED COMPLETE, Phase 3C: Microsoft Outlook connection: IMPLEMENTED BUT NOT VERIFIED (code-complete, no real Entra App Registration exists to test against) (+4 more)
 
 ### Community 25 - "mobile/package.json"
 Cohesion: 0.04
@@ -532,7 +532,7 @@ Nodes (4): SetHumanAssessmentDto, RiskController, AuthState, AuthenticatedUser
 
 ### Community 35 - "IssuesService"
 Cohesion: 0.08
-Nodes (7): buildIssueWorkbookBuffer(), IssuesService, makeService(), makeSvc(), Phase 4D — Write + verify highest-priority articles — VERIFIED COMPLETE, Completed, Reality Capture Module feature set (F1-F6) — COMPLETE
+Nodes (7): buildIssueWorkbookBuffer(), IssuesService, makeService(), makeSvc(), Phase 4D: Write + verify highest-priority articles: VERIFIED COMPLETE, Completed, Reality Capture Module feature set (F1-F6): COMPLETE
 
 ### Community 36 - "SnagDetail.tsx"
 Cohesion: 0.06
@@ -652,7 +652,7 @@ Nodes (33): Button(), ButtonProps, styles, variantStyles, styles, TextField(), T
 
 ### Community 67 - "EngineeringOS — Monitoring and Incident Management"
 Cohesion: 0.25
-Nodes (7): 1. Current state: logs exist, but are ephemeral and unaggregated, 4. What alerting exists today: none, 5. Proposed, not built: minimal monitoring additions, 6. Incident severity, escalation, and recovery — process, not code, 7. Monitoring must never record sensitive content, 8. Summary, EngineeringOS — Monitoring and Incident Management
+Nodes (7): 1. Current state: logs exist, but are ephemeral and unaggregated, 4. What alerting exists today: none, 5. Proposed, not built: minimal monitoring additions, 6. Incident severity, escalation, and recovery: process, not code, 7. Monitoring must never record sensitive content, 8. Summary, EngineeringOS: Monitoring and Incident Management
 
 ### Community 68 - "StorageService"
 Cohesion: 0.20
@@ -740,11 +740,11 @@ Nodes (23): ABSENCE_STATUSES, ABSENCE_TYPES, AbsenceStatus, ACTIVITY_SOURCES, AC
 
 ### Community 91 - "ProjectsService"
 Cohesion: 0.05
-Nodes (12): RegisterBimModelDto, isSidewaysOrientation(), ProjectsService, makeOrgService(), makeService(), 8. File / media upload handling — VERIFIED (code-level review), 1. How authorization actually works (ground truth), 2. Partially implemented / notable gaps found in this pass (+4 more)
+Nodes (12): RegisterBimModelDto, isSidewaysOrientation(), ProjectsService, makeOrgService(), makeService(), 8. File / media upload handling: VERIFIED (code-level review), 1. How authorization actually works (ground truth), 2. Partially implemented / notable gaps found in this pass (+4 more)
 
 ### Community 92 - "background.js"
 Cohesion: 0.09
-Nodes (28): Architecture, How this reuses the existing backend unchanged, How this was tested, Known MVP limitations (deliberate, not oversights), Load it (development/testing only — no store listing), What this captures, precisely, Workforce Intelligence — Browser Extension (MVP), createApiClient() (+20 more)
+Nodes (28): Architecture, How this reuses the existing backend unchanged, How this was tested, Known MVP limitations (deliberate, not oversights), Load it (development/testing only, no store listing), What this captures, precisely, Workforce Intelligence browser extension (MVP), createApiClient() (+20 more)
 
 ### Community 93 - "bim-debug/package.json"
 Cohesion: 0.08
@@ -768,7 +768,7 @@ Nodes (66): CheckIcon(), RECIPIENT_TITLE_PRESETS, RecipientTitlePreset, RfiNotic
 
 ### Community 99 - "AIProvider"
 Cohesion: 0.11
-Nodes (11): AiConnectionsService, makeService(), AIProvider, ProviderFactory, 1. Current architecture (verified), 2. Providers implemented today, 3. Switching providers — cost and effort, honestly, 4. Known limitation: streaming is not real yet (+3 more)
+Nodes (11): AiConnectionsService, makeService(), AIProvider, ProviderFactory, 1. Current architecture (verified), 2. Providers implemented today, 3. Switching providers: cost and effort, 4. Known limitation: streaming is not real yet (+3 more)
 
 ### Community 100 - "ifc-service/package.json"
 Cohesion: 0.10
@@ -804,7 +804,7 @@ Nodes (12): ClosedSegment, OpenSegment, IngestResult, UploadUrlResult, flushQueu
 
 ### Community 111 - "MEDIUM"
 Cohesion: 0.09
-Nodes (21): EngineeringOS — Known Issues and Remediation, H-2. Fine-grained project permissions are unreachable for anyone but company_admin — OPEN, H-3. Dependency vulnerabilities — PARTIALLY FIXED (2026-10-29 re-audit), HIGH, L-1. Weak password policy — OPEN, L-2. Weight-based `@Roles()` resolution silently widens access beyond named roles — OPEN, L-3. BYO-AI "test connection" echoes raw vendor error text to the browser — OPEN, L-4. Duplicate migration number `052` — OPEN (+13 more)
+Nodes (21): EngineeringOS: Known Issues and Remediation, H-2. Fine-grained project permissions are unreachable for anyone but company_admin: OPEN, H-3. Dependency vulnerabilities: PARTIALLY FIXED (2026-10-29 re-audit), HIGH, L-1. Weak password policy: OPEN, L-2. Weight-based `@Roles()` resolution silently widens access beyond named roles: OPEN, L-3. BYO-AI "test connection" echoes raw vendor error text to the browser: OPEN, L-4. Duplicate migration number `052`: OPEN (+13 more)
 
 ### Community 112 - "ai.service.spec.ts"
 Cohesion: 0.11
@@ -812,7 +812,7 @@ Nodes (17): AiService, buildContextBlock(), escapeForContext(), GenerateOutcome,
 
 ### Community 113 - "CreateProjectDto"
 Cohesion: 0.12
-Nodes (9): CreateProjectDto, 2. Company settings: a working feature with no UI, 3. Confirmed dead schema: `custom_max_projects`/`custom_max_users`/`custom_feature_flags`, 4. Confirmed dead code path: storage limit enforcement, 6. No full-company data export, 7. Customer support: Help Centre only, 8. Billing/subscription/payment — explicitly not touched, 9. Summary: implemented vs. proposed (+1 more)
+Nodes (9): CreateProjectDto, 2. Company settings: a working feature with no UI, 3. Confirmed dead schema: `custom_max_projects`/`custom_max_users`/`custom_feature_flags`, 4. Confirmed dead code path: storage limit enforcement, 6. No full-company data export, 7. Customer support: Help Centre only, 8. Billing/subscription/payment: explicitly not touched, 9. Summary: implemented vs. proposed (+1 more)
 
 ### Community 114 - "RootNavigator.tsx"
 Cohesion: 0.09
@@ -820,7 +820,7 @@ Nodes (24): App(), styles, logout(), initDatabase(), registerBackgroundSync(), s
 
 ### Community 115 - "Issue 2: Missing/incomplete geometry — FROZEN, NOT RESOLVED"
 Cohesion: 0.08
-Nodes (24): 1. Representation-type failure (SweptSolid/circular-profile, Clipping/boolean CSG), 2. Representation failure specific to Brep welds, 3. Content/scale-dependent trigger, 4. Environment parity (dependency versions), 5. Client-side loading non-determinism (claimed, then retracted), 6. Server-side generation non-determinism (claimed, filed upstream, then corrected), Backend bugs found and fixed as a byproduct of this investigation, BIM Viewer Investigation — Navigation Loss & Missing Geometry (+16 more)
+Nodes (24): 1. Representation-type failure (SweptSolid/circular-profile, Clipping/boolean CSG), 2. Representation failure specific to Brep welds, 3. Content/scale-dependent trigger, 4. Environment parity (dependency versions), 5. Client-side loading non-determinism (claimed, then retracted), 6. Server-side generation non-determinism (claimed, filed upstream, then corrected), Backend bugs found and fixed as a byproduct of this investigation, BIM Viewer Investigation: Navigation Loss & Missing Geometry (+16 more)
 
 ### Community 117 - "CompanyRole"
 Cohesion: 0.04
@@ -888,7 +888,7 @@ Nodes (8): AiConnectionStatus, DecryptedConnection, BYO_AI_PROVIDERS, ByoAiProvi
 
 ### Community 143 - "ai.service.ts"
 Cohesion: 0.14
-Nodes (8): AskAssistantResult, 2. Caching — NOT implemented; guidelines for if it ever is, 3. RAG (retrieval-augmented generation) from authorized documents — NOT implemented; feasibility only, 5. CONFIRMED RISK — automatic fallback to the platform's paid provider, with no approval or spending-limit gate, 6. Configurable budgets and alerts — NOT implemented, 7. Token-cost tracking fix — IMPLEMENTED AND VERIFIED this phase, 9. Summary of new recurring costs introduced by this phase, EngineeringOS — AI Usage and Cost Policy
+Nodes (8): AskAssistantResult, 2. Caching: NOT implemented; guidelines for if it ever is, 3. RAG (retrieval-augmented generation) from authorized documents: NOT implemented; feasibility only, 5. CONFIRMED RISK: automatic fallback to the platform's paid provider, with no approval or spending-limit gate, 6. Configurable budgets and alerts: NOT implemented, 7. Token-cost tracking fix: IMPLEMENTED AND VERIFIED this phase, 9. Summary of new recurring costs introduced by this phase, EngineeringOS: AI Usage and Cost Policy
 
 ### Community 144 - ".generate"
 Cohesion: 0.10
@@ -908,7 +908,7 @@ Nodes (21): SiteRoleService, makeService(), SubcontractorRfiAccessService, IS_PU
 
 ### Community 149 - "AuditInterceptor"
 Cohesion: 0.13
-Nodes (12): AuditInterceptor, 6. Multi-user and multi-tenant readiness — VERIFIED (isolation), PARTIAL (concurrency), 2. Real gaps (verified by grep, not assumed), 3. Design: three layers, reusing what exists, 4. Privacy, data minimization, and retention, 5. What this gives administrators, 6. What this deliberately does NOT do, 7. Implementation status in this engagement (+4 more)
+Nodes (12): AuditInterceptor, 6. Multi-user and multi-tenant readiness: VERIFIED (isolation), PARTIAL (concurrency), 2. Real gaps (verified by grep, not assumed), 3. Design: three layers, reusing what exists, 4. Privacy, data minimization, and retention, 5. What this gives administrators, 6. What this deliberately does NOT do, 7. Implementation status in this engagement (+4 more)
 
 ### Community 150 - "DatabaseService"
 Cohesion: 0.16
@@ -916,11 +916,11 @@ Nodes (3): DatabaseService, describeError(), HealthController
 
 ### Community 151 - "Phase 2 — Production Deployment & Scalability"
 Cohesion: 0.15
-Nodes (12): 10. Backup & recovery — VERIFIED COMPLETE (configuration confirmed, restore test performed and passed), 11. Logging & monitoring — PARTIAL, one historical incident traced to resolution, 12. CI/CD and release management — ONE SAFE ADDITION IMPLEMENTED, 13. Cost identification — PARTIAL (rough estimate, verify against Render's current pricing), 1. Current deployment configuration — VERIFIED (read-only review complete), 2. Production architecture — VERIFIED (not Firebase-based), 3. Environment separation — PARTIAL, 4. Domain & access — BLOCKED, awaiting your decision (+4 more)
+Nodes (12): 10. Backup & recovery: VERIFIED COMPLETE (configuration confirmed, restore test performed and passed), 11. Logging & monitoring: PARTIAL, one historical incident traced to resolution, 12. CI/CD and release management: ONE SAFE ADDITION IMPLEMENTED, 13. Cost identification: PARTIAL (rough estimate, verify against Render's current pricing), 1. Current deployment configuration: VERIFIED (read-only review complete), 2. Production architecture: VERIFIED (not Firebase-based), 3. Environment separation: PARTIAL, 4. Domain & access: BLOCKED, awaiting your decision (+4 more)
 
 ### Community 152 - "BuildingsService"
 Cohesion: 0.06
-Nodes (21): BuildingsService, makeService(), C-1. Privilege escalation via `POST /users/invite` — FIXED, C-2. `PATCH /projects/:id` had no authorization at all — FIXED, C-3. Buildings/Levels/Locations module had zero authorization — FIXED, C-4. Risk module had zero project-scoped authorization — FIXED, C-5. `CREDENTIAL_ENCRYPTION_KEY` silently fell back to a hardcoded key — FIXED, CRITICAL (+13 more)
+Nodes (21): BuildingsService, makeService(), C-1. Privilege escalation via `POST /users/invite`: FIXED, C-2. `PATCH /projects/:id` had no authorization at all: FIXED, C-3. Buildings/Levels/Locations module had zero authorization: FIXED, C-4. Risk module had zero project-scoped authorization: FIXED, C-5. `CREDENTIAL_ENCRYPTION_KEY` silently fell back to a hardcoded key: FIXED, CRITICAL (+13 more)
 
 ### Community 154 - "QaInspectionsPage.tsx"
 Cohesion: 0.18
@@ -1000,7 +1000,7 @@ Nodes (3): RegisterCompanyDto, TenancyController, 1. Onboarding: two real paths,
 
 ### Community 178 - "EngineeringOS — REMAINING_WORK.md"
 Cohesion: 0.22
-Nodes (9): 1. Issue Management integrated into the BIM viewer (NEXT OBJECTIVE), 2. Dashboard KPIs, 3. ~~Reality Capture (image) processing~~ — Shipped, 4. AI search/assistant live verification, 5. Export functionality, 6. Extended BIM viewer features, 7. UX polish, Cross-cutting: Browser-level verification (+1 more)
+Nodes (9): 1. Issue Management integrated into the BIM viewer (NEXT OBJECTIVE), 2. Dashboard KPIs, 3. ~~Reality Capture (image) processing~~: Shipped, 4. AI search/assistant live verification, 5. Export functionality, 6. Extended BIM viewer features, 7. UX polish, Cross-cutting: Browser-level verification (+1 more)
 
 ### Community 179 - "compilerOptions"
 Cohesion: 0.13
@@ -1044,7 +1044,7 @@ Nodes (3): GisPrepService, toJob(), GisPrepJob
 
 ### Community 195 - "EngineeringOS Reality Capture — CURRENT_STATUS.md"
 Cohesion: 0.29
-Nodes (7): 1. Implemented modules, 3. Authentication error disclosure — reviewed, not changed, 5. Migration behavior — documented, 6. Workspace / tooling truth (what the root scripts actually cover), 7. Known operational risks (not fixed this pass), 8. Exact verification commands and results (this sprint), EngineeringOS Reality Capture — CURRENT_STATUS.md
+Nodes (7): 1. Implemented modules, 3. Authentication error disclosure: reviewed, not changed, 5. Migration behavior: documented, 6. Workspace / tooling truth (what the root scripts actually cover), 7. Known operational risks (not fixed this pass), 8. Exact verification commands and results (this sprint), EngineeringOS Reality Capture: CURRENT_STATUS.md
 
 ### Community 196 - "lib/config.ts"
 Cohesion: 0.31
@@ -1068,7 +1068,7 @@ Nodes (13): spec, extracted_on, id, issuer, manifest_revision, manifest_schema, 
 
 ### Community 201 - "DrawingsService"
 Cohesion: 0.14
-Nodes (5): DrawingsService, makeService(), makeSvc(), makeUploadService(), H-1. Same-company cross-project access on issue/drawing sub-resources — FIXED (2026-10-29)
+Nodes (5): DrawingsService, makeService(), makeSvc(), makeUploadService(), H-1. Same-company cross-project access on issue/drawing sub-resources: FIXED (2026-10-29)
 
 ### Community 202 - "zip-extraction.util.ts"
 Cohesion: 0.18
@@ -1104,7 +1104,7 @@ Nodes (5): disconnectGoogleCalendar(), getGoogleCalendarAuthorizeUrl(), getGoogl
 
 ### Community 212 - "Schema"
 Cohesion: 0.15
-Nodes (12): `activities` — raw, immutable, `activity_project_attributions` — which project this activity belongs to, `application_registry`, `devices`, Extensibility decisions (deliberate — brief §10/§11 "do not blindly, `productivity_scores` — derived, versioned, recalculable, Raw telemetry vs. derived intelligence (brief §19), Row-Level Security (+4 more)
+Nodes (12): `activities`: raw, immutable, `activity_project_attributions`: which project this activity belongs to, `application_registry`, `devices`, Extensibility decisions (deliberate; brief §10/§11 "do not blindly, `productivity_scores`: derived, versioned, recalculable, Raw telemetry vs. derived intelligence (brief §19), Row-Level Security (+4 more)
 
 ### Community 213 - "health-check"
 Cohesion: 0.15
@@ -1144,11 +1144,11 @@ Nodes (11): Configuration, Enroll, How this was tested, Known MVP limitations (d
 
 ### Community 224 - "EngineeringOS — 30/60/90-Day Roadmap"
 Cohesion: 0.17
-Nodes (11): EngineeringOS — 30/60/90-Day Roadmap, First 5 actions (do these first), P1-1: Self-service company registration frontend, P1-2: Stand up a staging environment, P1-3: Wire storage-quota enforcement into upload paths, P1-4: RFI aging alerts (construction workflow), P1-5: Versioned AI evaluation dataset + harness, P1 — High-value, measurable (+3 more)
+Nodes (11): EngineeringOS: 30/60/90-Day Roadmap, First 5 actions (do these first), P1-1: Self-service company registration frontend, P1-2: Stand up a staging environment, P1-3: Wire storage-quota enforcement into upload paths, P1-4: RFI aging alerts (construction workflow), P1-5: Versioned AI evaluation dataset + harness, P1: High-value, measurable (+3 more)
 
 ### Community 225 - "Workforce Intelligence™ — Architecture"
 Cohesion: 0.17
-Nodes (11): AI layer, Correcting the premise, Data flow, Desktop Agent — designed, not built, in this pass, Existing modules relevant to "Engineering Output" attribution, Independent-deployability boundary (the "could this be its own SaaS", Module boundary, Proposed Workforce Intelligence architecture (+3 more)
+Nodes (11): AI layer, Correcting the premise, Data flow, Desktop Agent: designed, not built, in this pass, Existing modules relevant to "Engineering Output" attribution, Independent-deployability boundary (the "could this be its own SaaS", Module boundary, Proposed Workforce Intelligence architecture (+3 more)
 
 ### Community 226 - "qaqc-pdf.template.ts"
 Cohesion: 0.18
@@ -1156,7 +1156,7 @@ Nodes (11): @react-pdf/renderer@^4.1.6, QaqcPdfData, RECORD_TYPE_TITLE, register
 
 ### Community 227 - "EngineeringOS v0.1 — Release Candidate Verification Report"
 Cohesion: 0.17
-Nodes (12): Bugs found and fixed during this verification (both real, both required — not speculative), Conclusion, Critical bugs, Critical / Major / Minor Bugs, Technical Debt, Known Limitations, EngineeringOS v0.1 — Release Candidate Verification Report, Known limitations (verified, real, not hidden), Major bugs, Minor bugs (+4 more)
+Nodes (12): Bugs found and fixed during this verification (both real, both required: not speculative), Conclusion, Critical bugs, Critical / Major / Minor Bugs, Technical Debt, Known Limitations, EngineeringOS v0.1: Release Candidate Verification Report, Known limitations (verified, real, not hidden), Major bugs, Minor bugs (+4 more)
 
 ### Community 228 - "ai-service"
 Cohesion: 0.17
@@ -1192,7 +1192,7 @@ Nodes (3): health(), require_service_auth(), startup()
 
 ### Community 237 - "EngineeringOS — TECHNICAL_DECISIONS.md"
 Cohesion: 0.22
-Nodes (8): `apps/web` build config: explicit `commonjsOptions.include` for workspace packages, Architecture: standalone `apps/ifc-service`, not embedded in `apps/api`, `bim_element_relationships` stores GUIDs, not foreign keys, Database: single shared Postgres, row-level security by `company_id`, EngineeringOS — TECHNICAL_DECISIONS.md, Library choice: `web-ifc` + `@thatopen/fragments`, not IfcOpenShell or `ifc-lite-core`, Resumability design: stage-level, not element-level, Testing philosophy: empirical verification over assumption, applied consistently
+Nodes (8): `apps/web` build config: explicit `commonjsOptions.include` for workspace packages, Architecture: standalone `apps/ifc-service`, not embedded in `apps/api`, `bim_element_relationships` stores GUIDs, not foreign keys, Database: single shared Postgres, row-level security by `company_id`, EngineeringOS: TECHNICAL_DECISIONS.md, Library choice: `web-ifc` + `@thatopen/fragments`, not IfcOpenShell or `ifc-lite-core`, Resumability design: stage-level, not element-level, Testing philosophy: empirical verification over assumption, applied consistently
 
 ### Community 238 - "ReportsService"
 Cohesion: 0.15
@@ -1208,11 +1208,11 @@ Nodes (11): 10. Implementation status, 1. Design principles, 2. Proposed data mo
 
 ### Community 241 - "EngineeringOS — ARCHITECTURE_STATE.md"
 Cohesion: 0.18
-Nodes (10): Applications (`apps/*`), `apps/ai-service` (Python FastAPI) — largely untouched this phase, `apps/api` (NestJS, TypeScript), `apps/ifc-service` (NestJS, TypeScript) — standalone, independently deployable, Data flow — the BIM upload-to-viewer path (see `IFC_ENGINE_RELEASE_v1.0.0.md` for full stage-by-stage detail), Database architecture, EngineeringOS — ARCHITECTURE_STATE.md, Frontend structure (+2 more)
+Nodes (10): Applications (`apps/*`), `apps/ai-service` (Python FastAPI): largely untouched this phase, `apps/api` (NestJS, TypeScript), `apps/ifc-service` (NestJS, TypeScript): standalone, independently deployable, Data flow: the BIM upload-to-viewer path (see `IFC_ENGINE_RELEASE_v1.0.0.md` for full stage-by-stage detail), Database architecture, EngineeringOS: ARCHITECTURE_STATE.md, Frontend structure (+2 more)
 
 ### Community 242 - "EngineeringOS Reality Capture — Master Backlog"
 Cohesion: 0.18
-Nodes (11): ADM GIS Preparation (`apps/adm-gis-prep`): ADM QC trial 01, done, BIM Viewer (frontend) — IN PROGRESS, core flow built and verified, Blockers (environmental, not code), Bugs found and fixed during this integration, Completed features (frozen — do not revisit without a real bug/security/, EngineeringOS Reality Capture — Master Backlog, Exact continuation point, Known bugs (+3 more)
+Nodes (11): ADM GIS Preparation (`apps/adm-gis-prep`): ADM QC trial 01, done, BIM Viewer (frontend): IN PROGRESS, core flow built and verified, Blockers (environmental, not code), Bugs found and fixed during this integration, Completed features (frozen: do not revisit without a real bug/security/, EngineeringOS Reality Capture: Master Backlog, Exact continuation point, Known bugs (+3 more)
 
 ### Community 243 - "postgres"
 Cohesion: 0.18
@@ -1240,11 +1240,11 @@ Nodes (4): DiscoveredDrawing, SiteDrawingSharePointAdapter, SharePointGraphClien
 
 ### Community 250 - "Part 2 — Real gaps, in priority order"
 Cohesion: 0.20
-Nodes (9): EngineeringOS — Construction Workflow Improvement Roadmap, Feature 1 (highest priority) — RFI aging and automated response-delay alerts, Feature 2 — Drawing submission and approval cycle analysis, Feature 3 — Recurring coordination problems / repeated-defect detection, Feature 4 — Project-level team workload view, Feature 5 (lower priority, longer-term) — Document revision and approval bottleneck detection, Part 2 — Real gaps, in priority order, Part 3 — What was explicitly NOT recommended, and why (+1 more)
+Nodes (9): EngineeringOS: Construction Workflow Improvement Roadmap, Feature 1 (highest priority): RFI aging and automated response-delay alerts, Feature 2: Drawing submission and approval cycle analysis, Feature 3: Recurring coordination problems / repeated-defect detection, Feature 4: Project-level team workload view, Feature 5 (lower priority, longer-term): Document revision and approval bottleneck detection, Part 2: Real gaps, in priority order, Part 3: What was explicitly NOT recommended, and why (+1 more)
 
 ### Community 251 - "Mobile Store Readiness — Android (Google Play) & iOS (Apple App Store)"
 Cohesion: 0.20
-Nodes (9): 1. App identity, 2. Privacy & permissions, 3. Store assets, 4. Testing, 5. Release operations, Mobile Store Readiness — Android (Google Play) & iOS (Apple App Store), Still requiring owner or external action, Store readiness verdict (+1 more)
+Nodes (9): 1. App identity, 2. Privacy & permissions, 3. Store assets, 4. Testing, 5. Release operations, Mobile Store Readiness: Android (Google Play) & iOS (Apple App Store), Still requiring owner or external action, Store readiness verdict (+1 more)
 
 ### Community 252 - "minio"
 Cohesion: 0.20
@@ -1280,7 +1280,7 @@ Nodes (10): DATE_PATTERNS, DISCIPLINE_LABELS, extractDate(), extractDiscipline()
 
 ### Community 261 - "ScreenshotsService"
 Cohesion: 0.20
-Nodes (6): 1. Data inventory, 2. Missing product controls and user-facing materials, 3. What this document deliberately does NOT do, 4. Counsel-review checklist, 5. If/when a privacy notice or ToS is drafted, EngineeringOS / Reality Capture — Data Inventory & Privacy Readiness Gaps
+Nodes (6): 1. Data inventory, 2. Missing product controls and user-facing materials, 3. What this document deliberately does NOT do, 4. Counsel-review checklist, 5. If/when a privacy notice or ToS is drafted, EngineeringOS / Reality Capture: Data Inventory & Privacy Readiness Gaps
 
 ### Community 262 - "compilerOptions"
 Cohesion: 0.22
@@ -1292,7 +1292,7 @@ Nodes (8): compilerOptions, outDir, resolveJsonModule, skipLibCheck, exclude, ex
 
 ### Community 264 - "RolesGuard"
 Cohesion: 0.09
-Nodes (16): JwtAuthGuard, PendingApprovalGuard, RolesGuard, Activities — `apps/api/src/modules/workforce/activities`, Application registry — `apps/api/src/modules/workforce/applications`, Devices — `apps/api/src/modules/workforce/devices`, Privacy settings — `apps/api/src/modules/workforce/privacy`, Productivity — `apps/api/src/modules/workforce/productivity` (+8 more)
+Nodes (16): JwtAuthGuard, PendingApprovalGuard, RolesGuard, Activities: `apps/api/src/modules/workforce/activities`, Application registry: `apps/api/src/modules/workforce/applications`, Devices: `apps/api/src/modules/workforce/devices`, Privacy settings: `apps/api/src/modules/workforce/privacy`, Productivity: `apps/api/src/modules/workforce/productivity` (+8 more)
 
 ### Community 265 - "compilerOptions"
 Cohesion: 0.22
@@ -1300,15 +1300,15 @@ Nodes (8): compilerOptions, allowSyntheticDefaultImports, composite, module, mod
 
 ### Community 266 - "EngineeringOS — Production Deployment Checklist"
 Cohesion: 0.22
-Nodes (8): Backups, Configuration, EngineeringOS — Production Deployment Checklist, Go-live approvals, Infrastructure, Monitoring, Rollback, Security
+Nodes (8): Backups, Configuration, EngineeringOS: Production Deployment Checklist, Go-live approvals, Infrastructure, Monitoring, Rollback, Security
 
 ### Community 267 - "Lessons Learned — BIM Viewer Investigation"
 Cohesion: 0.22
-Nodes (8): Lessons Learned — BIM Viewer Investigation, Summary checklist for the next hard investigation, The sparse-array gotcha (`getItemsGeometry`), What worked, Which hypotheses were wrong, and why that's the useful part, Why "confirmed" should never be claimed before reproducibility, Why deterministic tests are essential, Why provenance matters, and why hashes should be stored
+Nodes (8): Lessons Learned: BIM Viewer Investigation, Summary checklist for the next hard investigation, The sparse-array gotcha (`getItemsGeometry`), What worked, Which hypotheses were wrong, and why that's the useful part, Why "confirmed" should never be claimed before reproducibility, Why deterministic tests are essential, Why provenance matters, and why hashes should be stored
 
 ### Community 268 - "EngineeringOS — PROJECT_STATUS.md"
 Cohesion: 0.22
-Nodes (9): Completed modules (frozen — do not modify without a verified bug), Current blockers, Current milestone, Current priorities (in order), EngineeringOS — PROJECT_STATUS.md, Independent audit, Modules in progress, Modules not started (+1 more)
+Nodes (9): Completed modules (frozen: do not modify without a verified bug), Current blockers, Current milestone, Current priorities (in order), EngineeringOS: PROJECT_STATUS.md, Independent audit, Modules in progress, Modules not started (+1 more)
 
 ### Community 269 - "Local development setup"
 Cohesion: 0.22
@@ -1356,15 +1356,15 @@ Nodes (7): liquidFragSource, DEFAULT_LIQUID, LiquidLogo(), LiquidParams, RGB, to
 
 ### Community 281 - "EngineeringOS — Release Management and Regression Prevention"
 Cohesion: 0.25
-Nodes (7): 1. Current pipeline — confirmed from the actual config, 2. What this already gets right, 3. Confirmed gaps, 4. Proposed process (not built — process and tooling recommendations only), 5. Feature flags for substantial features — recommendation, 6. Explicit statement per this phase's constraint, EngineeringOS — Release Management and Regression Prevention
+Nodes (7): 1. Current pipeline: confirmed from the actual config, 2. What this already gets right, 3. Confirmed gaps, 4. Proposed process (not built: process and tooling recommendations only), 5. Feature flags for substantial features: recommendation, 6. Explicit statement per this phase's constraint, EngineeringOS: Release Management and Regression Prevention
 
 ### Community 282 - "EngineeringOS — KNOWN_ISSUES.md"
 Cohesion: 0.25
-Nodes (8): Areas requiring attention (not bugs, but worth flagging for whoever continues), Critical, EngineeringOS — KNOWN_ISSUES.md, Future Enhancement, Major, Minor, Missing verification, Technical debt
+Nodes (8): Areas requiring attention (not bugs, but worth flagging for whoever continues), Critical, EngineeringOS: KNOWN_ISSUES.md, Future Enhancement, Major, Minor, Missing verification, Technical debt
 
 ### Community 283 - "EngineeringOS Reality Capture — NEXT_STEPS.md"
 Cohesion: 0.25
-Nodes (8): 1. Product workflow, 2. Reality capture and spatial evidence, 3. Workforce/time attribution, 4. BIM performance and scale, 5. AI and search, 6. Security and compliance, 7. Browser and mobile verification, EngineeringOS Reality Capture — NEXT_STEPS.md
+Nodes (8): 1. Product workflow, 2. Reality capture and spatial evidence, 3. Workforce/time attribution, 4. BIM performance and scale, 5. AI and search, 6. Security and compliance, 7. Browser and mobile verification, EngineeringOS Reality Capture: NEXT_STEPS.md
 
 ### Community 284 - "services"
 Cohesion: 0.25
@@ -1408,7 +1408,7 @@ Nodes (7): filename, dataset_tokens, drawing_types, examples, extension, pattern
 
 ### Community 297 - "SendEmailDto"
 Cohesion: 0.09
-Nodes (12): EmailAttachmentUploadUrlDto, EmailComposerController, EmailComposerService, Findings and fixes, Open items requiring the account owner's action (running list), Phase 3 — Outlook & Gmail Integration, Phase 3E — Reusable email composer — IMPLEMENTED BUT NOT VERIFIED (code-complete; no live backend/DB in this environment to exercise a real send against), Phase 3F — Project-workflow integration — IMPLEMENTED BUT NOT VERIFIED (same no-live-backend caveat as 3E) (+4 more)
+Nodes (12): EmailAttachmentUploadUrlDto, EmailComposerController, EmailComposerService, Findings and fixes, Open items requiring the account owner's action (running list), Phase 3: Outlook & Gmail Integration, Phase 3E: Reusable email composer: IMPLEMENTED BUT NOT VERIFIED (code-complete; no live backend/DB in this environment to exercise a real send against), Phase 3F: Project-workflow integration: IMPLEMENTED BUT NOT VERIFIED (same no-live-backend caveat as 3E) (+4 more)
 
 ### Community 300 - "jest"
 Cohesion: 0.29
@@ -1416,11 +1416,11 @@ Nodes (7): jest, moduleFileExtensions, rootDir, testEnvironment, testRegex, tran
 
 ### Community 301 - "EngineeringOS — Reality Capture Web App"
 Cohesion: 0.29
-Nodes (6): EngineeringOS — Reality Capture Web App, Not yet built (out of scope for this pass), Notes on the API contract, Run locally, Stack, What's implemented
+Nodes (6): EngineeringOS Reality Capture web app, Not yet built (out of scope for this pass), Notes on the API contract, Run locally, Stack, What's implemented
 
 ### Community 302 - "EngineeringOS — COMPLETED_WORK.md"
 Cohesion: 0.29
-Nodes (6): EngineeringOS — COMPLETED_WORK.md, Feature: IFC Processing Engine v1.0.0 (RELEASED, FROZEN), Feature: Notifications (real, replacing an earlier fake stub), Release Candidate Verification (this phase's final activity), Verified, Verified
+Nodes (6): EngineeringOS: COMPLETED_WORK.md, Feature: IFC Processing Engine v1.0.0 (RELEASED, FROZEN), Feature: Notifications (real, replacing an earlier fake stub), Release Candidate Verification (this phase's final activity), Verified, Verified
 
 ### Community 303 - "ai-service"
 Cohesion: 0.29
@@ -1456,7 +1456,7 @@ Nodes (6): scripts, build, dev, start, test, typecheck
 
 ### Community 313 - "OutlookIntegrationService"
 Cohesion: 0.10
-Nodes (8): MicrosoftGraphClient, OutlookIntegrationService, makeService(), 1. Automated baseline (full-suite results), 2. Authentication, authorization, multi-tenancy, 3. Core functional / UAT scenarios (per the brief's required A–K list), 4. Status classification summary (per the brief's required scheme), EngineeringOS — Acceptance Test Matrix
+Nodes (8): MicrosoftGraphClient, OutlookIntegrationService, makeService(), 1. Automated baseline (full-suite results), 2. Authentication, authorization, multi-tenancy, 3. Core functional / UAT scenarios (per the brief's required A–K list), 4. Status classification summary (per the brief's required scheme), EngineeringOS acceptance test matrix
 
 ### Community 315 - "provenance.util.ts"
 Cohesion: 0.06
@@ -1464,7 +1464,7 @@ Nodes (23): MIGRATIONS_DIR, captureGenerationVersions(), digest(), FileDigest, G
 
 ### Community 316 - ".isStageComplete"
 Cohesion: 0.18
-Nodes (10): Packages, `packages/types` (`@engineeringos/types`), Architecture (approved before implementation), Bugs found and fixed during verification (all confirmed via a failing, IFC Processing Engine — COMPLETE ✅, Known limitations (honestly scoped, not silently missing), Reliability/resumability design (documented, not just claimed), Verification performed (all live, against real Postgres + Redis + a (+2 more)
+Nodes (10): Packages, `packages/types` (`@engineeringos/types`), Architecture (approved before implementation), Bugs found and fixed during verification (all confirmed via a failing, IFC Processing Engine: COMPLETE, Known limitations (scoped and stated, not silently missing), Reliability/resumability design (documented, not just claimed), Verification performed (all live, against real Postgres + Redis + a (+2 more)
 
 ### Community 317 - "Deployment Guide"
 Cohesion: 0.33
@@ -1528,7 +1528,7 @@ Nodes (5): _escape_for_context(), explain_risk(), generate_briefing(), RiskBrief
 
 ### Community 356 - "EngineeringOS — Incident and Recovery Runbook"
 Cohesion: 0.22
-Nodes (8): 1. API is unresponsive / 5xx on everything, 2. Database unreachable or connection pool exhausted, 3. A user reports they were just deactivated but can still see data, 4. Suspected credential compromise (API keys, OAuth tokens, BYO AI keys), 5. Suspected unauthorized cross-company or cross-project data access, 6. AI Assistant failures, 7. Escalation, EngineeringOS — Incident and Recovery Runbook
+Nodes (8): 1. API is unresponsive / 5xx on everything, 2. Database unreachable or connection pool exhausted, 3. A user reports they were just deactivated but can still see data, 4. Suspected credential compromise (API keys, OAuth tokens, BYO AI keys), 5. Suspected unauthorized cross-company or cross-project data access, 6. AI Assistant failures, 7. Escalation, EngineeringOS: Incident and Recovery Runbook
 
 ### Community 358 - "rfis.controller.ts"
 Cohesion: 0.06
@@ -1570,7 +1570,7 @@ Nodes (10): argon2@^0.40.0, axios@^1.21.0, dotenv@^16.4.5, @fontsource/ibm-plex-
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Phase 4B/4C — Help Centre navigation/layout + article rendering/search — VERIFIED COMPLETE (framework; see 4D for content coverage)` connect `help/index.ts` to `web/src/lib/projects.api.ts`, `findings`, `convert/__init__.py`, `test_adm_trial_01.py`?**
+- **Why does `Phase 4B/4C: Help Centre navigation/layout + article rendering/search: VERIFIED COMPLETE (framework; see 4D for content coverage)` connect `help/index.ts` to `web/src/lib/projects.api.ts`, `findings`, `convert/__init__.py`, `test_adm_trial_01.py`?**
   _High betweenness centrality (0.148) - this node is a cross-community bridge._
 - **What connects `m4adm`, `../../tsconfig.base.json`, `RFC-2822` to the rest of the system?**
   _10 weakly-connected nodes found - possible documentation gaps or missing edges._
