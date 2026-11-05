@@ -7,7 +7,7 @@ Every finding below was checked directly against the current codebase and, where
 
 ## 1. Background job queues (Bull/Redis)
 
-Three queues exist: `image-processing` (captures), `ifc-processing` (BIM models), `webhook-delivery`. All three retry with exponential backoff (`attempts: 3, backoff: { type: 'exponential', delay: 5000 }`) — confirmed by reading each module's `BullModule.registerQueue()` call.
+Three queues exist: `image-processing` (captures), `ifc-processing` (BIM models), `webhook-delivery`. All three retry with exponential backoff (`attempts: 3, backoff: { type: 'exponential', delay: 5000 }`), confirmed by reading each module's `BullModule.registerQueue()` call.
 
 | Queue | Completed-job cleanup | Failed-job cleanup |
 |---|---|---|
