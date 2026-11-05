@@ -103,7 +103,10 @@ def test_no_official_category_row_is_overcounted_by_unrelated_rules(trial):
     extra = {t for t, _ in our_rows(trial) if t not in official}
     assert extra <= {norm("Missing Value in the Attribute Block Mandatory Filed in Title attribute block "
                           "(not reported by the official QC in trial 01)"),
-                     "Floor exits without corresponding BuildingRoof Polygon"}
+                     "Floor exits without corresponding BuildingRoof Polygon",
+                     # DRM review stage, not the CPDQC tool (Yas Island review, DRM-LOG-22)
+                     *(f"{x} polygon is not in the correct location, it should be adjacent to two spaces or one space "
+                       "and floor outline." for x in ("DOOR", "WINDOW"))}
 
 
 # ------------------------------------------------------------------ corrected conversion: no C-F errors
@@ -118,8 +121,10 @@ FULL = dict(single_unit_number="1", floor_height="3.6", building_number_of_floor
 
 
 def _c_to_f(report: dict) -> list[dict]:
+    """C-F rows, plus the DRM review's door/window location row (Yas Island review, DRM-LOG-22)."""
     rows = report["validation"]["qc_style_summary"]
-    return [g for g in rows if any(g["qc_error"].startswith(p) for p, c in CATEGORY.items() if c in "CDEF")]
+    return [g for g in rows if any(g["qc_error"].startswith(p) for p, c in CATEGORY.items() if c in "CDEF")
+            or "polygon is not in the correct location" in g["qc_error"]]
 
 
 def test_corrected_synthetic_conversion_has_no_c_to_f_errors(tmp_path):

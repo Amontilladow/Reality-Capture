@@ -321,3 +321,15 @@ def test_blocks_use_the_official_template_order_and_the_roof_repeats_the_outline
     assert roof.get_attrib_text("BUILDINGHEIGHT") == "15" and roof.get_attrib_text("BUILDINGNUMBER") == "1"
     roof_feature = next(f for f in res.report["features"] if f["layer"] == "BuildingRoof")
     assert roof_feature["attributes"]["BUILDINGHEIGHT"]["provenance"] == "USER"
+
+
+def test_windows_span_the_wall_to_the_floor_outline(tmp_path):
+    """DRM review (Yas Island): a window must be adjacent to two spaces or to one space and the floor outline."""
+    from shapely.geometry import Polygon
+    res, _ = run(tmp_path)
+    msp = ezdxf.readfile(str(next((res.job_dir / "output").glob("*.dxf")))).modelspace()
+    get = lambda lay: [Polygon([p[:2] for p in e.get_points()]) for e in msp.query(f"LWPOLYLINE[layer=='{lay}']")]
+    spaces, floor = get("Space"), get("Floor")[0]
+    for w in get("Window"):
+        touching = sum(1 for s in spaces if w.distance(s) <= 0.02)
+        assert touching >= 2 or (touching == 1 and w.distance(floor.exterior) <= 0.02)
