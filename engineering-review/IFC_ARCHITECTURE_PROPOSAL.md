@@ -8,14 +8,14 @@ Status: **Awaiting approval. No implementation started.**
 where IFC parsing should happen. This proposal covers: which library
 parses the file, where it runs, and how the results (geometry, object
 properties, quantities) get into Postgres and the AI search index. It does
-**not** cover BIM authoring, clash detection algorithms, or viewer UX —
+**not** cover BIM authoring, clash detection algorithms, or viewer UX;
 those are downstream of this decision, not part of it.
 
 ## Candidates evaluated
 
 ### 1. `web-ifc` (That Open Company, formerly IFC.js)
 
-- **License**: MPL-2.0 — permissive, file-level weak copyleft. Safe for a
+- **License**: MPL-2.0, a permissive, file-level weak copyleft. Safe for a
   closed-source commercial SaaS: you can link it into proprietary code
   without open-sourcing your application; only modifications to
   `web-ifc`'s own files would need to be shared.
@@ -28,7 +28,7 @@ those are downstream of this decision, not part of it.
   memory ceiling, which makes it efficient server-side too (same binary,
   more headroom).
 - **Multi-GB files**: raw `web-ifc` still loads a full model into memory
-  like any IFC parser — it does not itself solve multi-GB streaming. That
+  like any IFC parser, so it does not itself solve multi-GB streaming. That
   Open Company's companion tool, **Fragments**, converts a parsed IFC
   model into a compact streamable binary specifically to solve this
   (typically a large reduction in in-browser memory footprint, loaded
@@ -41,36 +41,36 @@ those are downstream of this decision, not part of it.
   one project view is a straightforward aggregation at the application
   layer (multiple `bim_models` rows already exist in the schema for this).
 - **Stack fit**: pure JS/WASM, runs directly inside a Node/NestJS process
-  — no second runtime, no cross-service RPC, no serialization overhead.
+  with no second runtime, no cross-service RPC, and no serialization overhead.
   Fits directly into a Bull processor the same way
   `image-processing.processor.ts` already works for captures.
 - **Object properties & quantities**: full support for reading
-  `IfcPropertySet` and `IfcElementQuantity` — everything needed for
+  `IfcPropertySet` and `IfcElementQuantity`, which covers everything needed for
   `bim_elements` population and quantity takeoff.
 - **Roadmap / momentum**: actively released through 2026 (latest tag
   `0.77`, March 2026), and the wider That Open ecosystem is visibly
   investing in the web-native/streaming direction industry-wide commentary
   points to (including competitors' own roadmap posts framing this as
   where the field is headed).
-- **Maturity**: production-proven — this is the engine behind most
+- **Maturity**: production-proven. This is the engine behind most
   IFC-in-the-browser tools in the current BIM tooling ecosystem, not an
   experimental library.
 
 ### 2. IfcOpenShell (Python, C++/OpenCascade core)
 
-- **License**: LGPL — also usable in a commercial product (dynamic
+- **License**: LGPL, also usable in a commercial product (dynamic
   linking doesn't require open-sourcing your app), but LGPL obligations
   are more commonly a legal-review trigger than MPL-2.0, and Python
   packaging/redistribution of an LGPL native extension needs more careful
   handling than an MPL WASM module.
 - **Parsing speed**: consistently and substantially slower than
   alternatives on large files in independent benchmarks and the
-  project's own open GitHub issues — file-opening on 200–700MB files
+  project's own open GitHub issues. File-opening on 200–700MB files
   reported taking a large fraction of total processing time, with
   third-party comparisons showing multi-minute opens where competing
   approaches finish in seconds.
-- **Correctness/completeness**: this is IfcOpenShell's real strength — the
-  most complete and battle-tested IFC schema coverage of any open-source
+- **Correctness/completeness**: this is IfcOpenShell's real strength. It has the
+  most complete and most widely used IFC schema coverage of any open-source
   library, including full geometry kernel support (OpenCascade) for
   arbitrary solid operations. If EngineeringOS ever needs full
   boundary-representation geometry export or IFC *authoring* (writing
@@ -78,7 +78,7 @@ those are downstream of this decision, not part of it.
   does that well today.
 - **Stack fit**: Python. The NestJS API would either need to shell out to
   a Python subprocess per file, or route parsing through the existing
-  Python `ai-service` — adding a cross-service call into what is currently
+  Python `ai-service`, adding a cross-service call into what is currently
   a synchronous-feeling BIM registration flow owned entirely by
   `apps/api`. Workable, but it's a second moving part and a second
   deployment/scaling concern for a feature that otherwise has no reason to
@@ -88,7 +88,7 @@ those are downstream of this decision, not part of it.
 
 ### 3. `ifc-lite-core` (Rust → WASM, newer entrant)
 
-- **License**: needs direct confirmation before any commercial use — not
+- **License**: needs direct confirmation before any commercial use; not
   verified in this pass.
 - **Parsing/geometry speed**: the project's own claims are strong (STEP
   tokenization near 1.2 GB/s, full parse near 50 MB/s, native geometry
@@ -101,8 +101,8 @@ those are downstream of this decision, not part of it.
   real risk: fewer eyes have found its edge cases, and its API surface
   could still change.
 - **Recommendation**: not for v1.0. Worth a follow-up evaluation once it
-  has a longer track record — flagged in the backlog as a future
-  enhancement, not discarded.
+  has a longer track record. It is in the backlog as a future
+  option, not discarded.
 
 ### 4. xBIM (.NET)
 
@@ -118,13 +118,13 @@ those are downstream of this decision, not part of it.
 |---|---|---|---|
 | Parsing speed (large files) | Fast (native-speed WASM) | Slow on large files (documented) | Claims fastest, unproven at scale in production |
 | Memory footprint | Good, browser-optimized | Higher, no streaming | Designed for streaming |
-| Multi-GB handling | Via companion Fragments format | Weak — known pain point | Native design goal |
+| Multi-GB handling | Via companion Fragments format | Weak; known pain point | Native design goal |
 | License risk | Low (MPL-2.0) | Medium (LGPL + Python packaging) | Unconfirmed |
-| Stack fit (Node/NestJS) | Native — same runtime | Needs cross-service call | Native (WASM) |
-| Object properties/quantities | Full support | Full support (best schema coverage) | Supported, less battle-tested |
+| Stack fit (Node/NestJS) | Native (same runtime) | Needs cross-service call | Native (WASM) |
+| Object properties/quantities | Full support | Full support (best schema coverage) | Supported, less proven in production |
 | Federated models | App-layer aggregation, straightforward | Same | Same |
-| Maturity/production track record | High | Highest | Low — too new |
-| IFC authoring (write-back) | Limited | Best-in-class | Limited |
+| Maturity/production track record | High | Highest | Low (too new) |
+| IFC authoring (write-back) | Limited | Best | Limited |
 | Cloud deployment | Trivial (WASM in any Node container) | Needs native deps in image | Trivial (WASM) |
 
 ## Recommendation
@@ -145,30 +145,30 @@ Reasoning, in priority order:
 2. **License is the safest of the three or four options** for a
    closed-source commercial SaaS being sold to construction enterprises,
    some of whom will have their own legal review of the vendor's stack.
-3. **Performance is not just adequate but a genuine win** — the exact
+3. **Performance is a clear win, not just adequate.** The exact
    documented weakness of the strongest alternative (IfcOpenShell on large
    files) is `web-ifc`'s strength, and multi-GB/large-model handling is a
    real requirement here given construction BIM models routinely exceed
    several hundred MB.
 4. **It doesn't foreclose IfcOpenShell later.** If a future requirement
    needs full IFC *authoring* (round-tripping edits back into valid IFC,
-   not just reading), that's a genuinely different capability this
-   recommendation doesn't try to solve — and adding IfcOpenShell as a
+   not just reading), that's a different capability this
+   recommendation doesn't try to solve, and adding IfcOpenShell as a
    second, specialized service at that point remains straightforward,
    because nothing here is exclusive.
 5. **`ifc-lite-core` is the one to watch, not adopt yet.** Its numbers are
    compelling but it's too new to bet a v1.0 launch on. Revisit in a
-   future quality/enhancement pass once it has more production mileage.
+   future quality pass once it has more production mileage.
 
 ## What this does NOT decide yet
 
 - Exact Fragments storage format/location (S3 alongside the original IFC,
-  presumably — to be confirmed against the existing capture-rendition
+  presumably; to be confirmed against the existing capture-rendition
   pattern once approved).
 - Whether quantity takeoff results get their own table or extend
-  `bim_elements` — a schema question for the implementation phase, not the
+  `bim_elements`: a schema question for the implementation phase, not the
   library choice.
-- Timeline/effort estimate for implementation — will follow once scope is
+- Timeline/effort estimate for implementation: will follow once scope is
   confirmed.
 
 ## Requesting approval
