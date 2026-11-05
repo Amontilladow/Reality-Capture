@@ -1,15 +1,15 @@
-# EngineeringOS — Reality Capture Web App
+# EngineeringOS Reality Capture web app
 
 React + TypeScript + Vite + Tailwind frontend for the Reality Capture Module.
 
 ## Stack
 - Vite + React 18 + TypeScript (strict)
-- Tailwind CSS — custom "blueprint" design tokens in `tailwind.config.js`
+- Tailwind CSS, with custom "blueprint" design tokens in `tailwind.config.js`
 - React Router v6 for routing, Zustand for auth session state
 - TanStack Query for server state / caching
 - `react-hook-form` for forms, `react-dropzone` for upload UI
 - `three` for the 360° equirectangular viewer, `pdfjs-dist` for floor plan rendering
-- `@engineeringos/types` (workspace package) — single source of truth for API contracts
+- `@engineeringos/types` (workspace package), the single source of truth for API contracts
 
 ## Run locally
 From the monorepo root, with the API already running on `:3000`:
@@ -23,7 +23,7 @@ The dev server runs on `http://localhost:5173` and proxies `/api/*` to
 `http://localhost:3000` (see `vite.config.ts`), so no CORS setup is needed in dev.
 
 ## What's implemented
-- **Auth**: Login, Accept Invitation, Forgot Password, Reset Password — JWT session
+- **Auth**: Login, Accept Invitation, Forgot Password, Reset Password. The JWT session is
   held in Zustand + localStorage, axios interceptor auto-refreshes on 401.
 - **Project browser**: list + create projects, subscription usage panel.
 - **Project detail**: building → level → location hierarchy tree (expand/add nodes inline),
@@ -39,10 +39,10 @@ The dev server runs on `http://localhost:5173` and proxies `/api/*` to
 
 ## Not yet built (out of scope for this pass)
 Issues, BIM viewer, and project timeline have nav placeholders removed until those
-screens are scoped — the API supports them (see `packages/types/src/issue.types.ts`,
+screens are scoped. The API supports them (see `packages/types/src/issue.types.ts`,
 `bim.types.ts`) but no UI was requested for this task.
 
 ## Notes on the API contract
-Every request/response type is imported from `@engineeringos/types` — never redefined
+Every request/response type is imported from `@engineeringos/types` and never redefined
 locally. If you add a new screen that needs a field the API doesn't return yet, add it
 to the shared package first so the backend and frontend stay in sync.

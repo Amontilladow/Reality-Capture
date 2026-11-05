@@ -2,7 +2,7 @@
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
 
-Always use graphify in this repo: the graphify skill lives at `.claude/skills/graphify/SKILL.md` — load it for any codebase, architecture or file-relationship question.
+Always use graphify in this repo. The graphify skill lives at `.claude/skills/graphify/SKILL.md`; load it for any codebase, architecture or file-relationship question.
 
 Rules:
 - If the `graphify` command is missing (fresh cloud container), install it first: `pip install graphifyy`. If graphify-out/graph.json is missing, build it with `graphify update .`.
