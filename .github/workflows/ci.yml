@@ -32,7 +32,7 @@ jobs:
           cache: pnpm
 
       # No production secrets and no live Postgres/Redis/S3/Qdrant/AI
-      # credentials are required for any of the checks below -- every unit
+      # credentials are required for any of the checks below; every unit
       # test in this repo mocks its DB/storage/queue dependencies rather
       # than hitting real infrastructure. See CURRENT_STATUS.md for what
       # that leaves unverified (RLS under a real restricted DB role,
@@ -48,7 +48,7 @@ jobs:
 
       # Recursive across every workspace package that declares a typecheck
       # script: packages/types, apps/api, apps/ifc-service, apps/mobile,
-      # apps/agent. apps/web has no standalone typecheck script -- its
+      # apps/agent. apps/web has no standalone typecheck script; its
       # tsc -b check is folded into the build step below instead.
       # apps/browser-extension and tools/bim-debug have no TypeScript
       # source to typecheck.
@@ -58,10 +58,10 @@ jobs:
       # Recursive across every workspace package that declares a test
       # script: apps/api (Jest), apps/ifc-service (Jest), apps/agent
       # (node:test via tsx), apps/browser-extension (node:test),
-      # tools/bim-debug (Jest -- its one spec self-skips without a real
+      # tools/bim-debug (Jest; its one spec self-skips without a real
       # customer IFC file at BIM_DEBUG_SOURCE_IFC; see the file's own
-      # header comment). apps/web and apps/mobile have no test script yet
-      # -- see CURRENT_STATUS.md's browser-verification-gap note.
+      # header comment). apps/web and apps/mobile have no test script yet;
+      #; see CURRENT_STATUS.md's browser-verification-gap note.
       - name: Test
         run: pnpm test
 
@@ -73,14 +73,14 @@ jobs:
         run: pnpm build
 
       # Recursive across apps/api and apps/web (the only two with a lint
-      # script). Real errors fail this step -- no `|| true`, no
+      # script). Real errors fail this step; no `|| true`, no
       # --max-warnings override. Pre-existing warnings (not errors) in
       # apps/web are left as-is; see CURRENT_STATUS.md.
       - name: Lint
         run: pnpm lint
 
       # Security audit (2026-10-29 pass, H-3 in KNOWN_ISSUES_AND_REMEDIATION.md):
-      # deliberately non-blocking (|| true) for now -- the current baseline
+      # deliberately non-blocking (|| true) for now; the current baseline
       # already has known, triaged findings (sharp/nodemailer/xlsx each need
       # their own dedicated major-version upgrade pass, tracked in that doc)
       # that would turn every unrelated PR's CI red today. This step exists
@@ -104,12 +104,12 @@ jobs:
         with:
           python-version: '3.12'
 
-      # apps/adm-gis-prep only -- its full dependency set installs cleanly
+      # apps/adm-gis-prep only: its full dependency set installs cleanly
       # and pip-audit returned zero findings against it in the 2026-10-29
       # pass. apps/ai-service is deliberately NOT audited here: it pins
       # torch via a separate --extra-index-url (download.pytorch.org),
       # which made full-environment resolution unreliable in the sandbox
-      # this was authored in -- that service's dependency audit (which did
+      # this was authored in; that service's dependency audit (which did
       # surface real findings: Pillow, python-multipart, sentence-
       # transformers) was done manually this pass via an isolated venv with
       # each package installed --no-deps; see H-3 in

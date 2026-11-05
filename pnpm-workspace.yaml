@@ -5,9 +5,9 @@ packages:
 allowBuilds:
   '@nestjs/core': true
   '@swc/core': true
-  active-win: true # apps/agent -- reads the active window's owner name via each OS's native window APIs, no build step beyond its own postinstall
+  active-win: true # apps/agent: reads the active window's owner name via each OS's native window APIs, no build step beyond its own postinstall
   argon2: false # no C++ toolchain on Render's static-site build image; rebuilt explicitly in apps/api's Dockerfile instead
-  desktop-idle: true # apps/agent -- native addon wrapping each OS's idle-time API (e.g. Windows GetLastInputInfo); needed for real idle/active detection, never a keystroke hook
+  desktop-idle: true # apps/agent: native addon wrapping each OS's idle-time API (e.g. Windows GetLastInputInfo); needed for real idle/active detection, never a keystroke hook
   es5-ext: true
   esbuild: true
   msgpackr-extract: true
@@ -19,7 +19,7 @@ minimumReleaseAgeExclude:
 # both direct deps of apps/api) to bump it first. proxy-addr is critical
 # (GHSA: IP spoofing via an IPv4-mapped IPv6 trust subnet) and directly
 # reachable in the deployed API, which runs behind Render's reverse proxy
-# with trust proxy enabled -- a spoofed X-Forwarded-For could defeat the
+# with trust proxy enabled; a spoofed X-Forwarded-For could defeat the
 # per-IP rate limiter (see M-2/M-5 in KNOWN_ISSUES_AND_REMEDIATION.md). A
 # single patch-version bump (2.0.7 -> 2.0.8), not a breaking change.
 overrides:
