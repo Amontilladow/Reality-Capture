@@ -28,7 +28,7 @@ export class CreateIssueDto {
   @IsOptional() @IsUUID()    assignedTo?: string;
   @IsOptional() @IsString()  responsibleCompany?: string;
 
-  // Required on create (API-level only -- the DB column stays nullable
+  // Required on create (API-level only; the DB column stays nullable
   // since existing rows may have no deadline).
   @IsDateString() deadline: string;
   @IsOptional() @IsUUID()    captureId?: string;
@@ -41,7 +41,7 @@ export class CreateIssueDto {
 
   // View state captured from the BIM viewer at the moment "Raise issue" was
   // clicked, so "view in 3D" can restore the exact vantage point instead of
-  // only re-selecting the linked element. All optional -- an issue raised
+  // only re-selecting the linked element. All optional; an issue raised
   // outside the viewer (or before this feature existed) simply has none of
   // these set.
   @IsOptional() @IsUUID()   modelId?: string;

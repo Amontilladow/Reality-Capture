@@ -38,7 +38,7 @@ export default function BuildLensPage() {
   });
 
   // getHierarchy() only returns level-anchored locations (locations.level_id
-  // IS NOT NULL, per projects.service.ts's getHierarchy() query) -- a
+  // IS NOT NULL, per projects.service.ts's getHierarchy() query): a
   // location reached via a floor-plan pin's drawing_id instead never
   // appears here. That's exactly why the "Unassigned" section below exists:
   // any 360° capture whose location doesn't turn up in this tree still gets
@@ -49,7 +49,7 @@ export default function BuildLensPage() {
     enabled: Boolean(projectId),
   });
 
-  // All capture types (360s, standard photos, videos) -- BuildLens shows a
+  // All capture types (360s, standard photos, videos): BuildLens shows a
   // location's full media timeline, not just 360s, per the product decision
   // to make BuildLens the general "watch this location evolve" view rather
   // than a 360-only one.
@@ -60,7 +60,7 @@ export default function BuildLensPage() {
   });
 
   // Per-location capture count/most-recent-date, keyed by locationId.
-  // Deliberately separate from getHierarchy()'s own location.captureCount --
+  // Deliberately separate from getHierarchy()'s own location.captureCount;
   // that field carries no date at all, so it can't drive this page on its
   // own even though it now counts the same thing (every capture type).
   const summaryByLocation = useMemo(() => {

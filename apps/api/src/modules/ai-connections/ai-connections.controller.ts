@@ -5,7 +5,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AiConnectionsService } from './ai-connections.service';
 import { ConnectAiProviderDto } from './dto/connect-ai-provider.dto';
 
-// Spec section 7: Settings > AI > "My AI Provider". Not project-scoped --
+// Spec section 7: Settings > AI > "My AI Provider". Not project-scoped;
 // a personal credential tied to the user's account, same reasoning as
 // Developer Settings' API keys being account/company level, not
 // per-project.

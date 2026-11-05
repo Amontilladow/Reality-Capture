@@ -40,7 +40,7 @@ export default function CaptureSessionScreen({ route, navigation }: Props) {
 
   /**
    * 360° cameras (Ricoh Theta, Insta360, etc.) aren't addressable through Expo's
-   * managed camera API — the standard field workflow is: shoot on the dedicated
+   * managed camera API; the standard field workflow is: shoot on the dedicated
    * camera, sync the equirectangular JPEG to the phone's photo library, then
    * import it here. This is that import path.
    */

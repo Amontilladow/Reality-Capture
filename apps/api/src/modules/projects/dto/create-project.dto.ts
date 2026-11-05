@@ -21,7 +21,7 @@ export class CreateProjectDto {
 
   @IsOptional() @IsDateString() expectedEndDate?: string;
 
-  // Stakeholder directory -- set once per project, pulled automatically
+  // Stakeholder directory: set once per project, pulled automatically
   // onto every RFI PDF instead of being re-typed per document.
   @ApiProperty({ example: 'CSC', required: false })
   @IsOptional() @IsString() orgCode?: string;

@@ -8,7 +8,7 @@ export interface TabItem {
 }
 
 // Accessible tab list (role="tablist"/"tab", roving tabindex, arrow-key
-// navigation) rendering only the strip itself -- the caller still owns
+// navigation) rendering only the strip itself; the caller still owns
 // which panel is shown for `active`, same as every page that already
 // hand-rolls a "Tab" union + button row (IssuesPage, SnaggingPage, etc.)
 // does today. This replaces that button row, not the panel-switching logic.
@@ -67,7 +67,7 @@ export function Tabs({
   );
 }
 
-// Wraps a tab's content with the matching ARIA attributes -- pairs with the
+// Wraps a tab's content with the matching ARIA attributes; pairs with the
 // `id`/`aria-controls` above. Pass through unconditionally (don't unmount
 // inactive panels) when a panel holds state (form input, scroll position)
 // that should survive switching tabs and back.

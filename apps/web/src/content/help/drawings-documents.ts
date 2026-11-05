@@ -1,11 +1,11 @@
 import type { HelpArticle } from './types';
 
 // Covers the brief's "Drawings and Documents" category plus Transmittals
-// and QA Inspections -- three separate, real modules (verified against
+// and QA Inspections; three separate, real modules (verified against
 // documents.controller.ts, transmittals.controller.ts, qa.controller.ts)
 // that don't fit neatly under any other category name in the brief's own
 // list. Floor-plan-specific drawing navigation (opening a plan, zooming,
-// pins) lives in the Floor Plans & Pinpoints category instead -- this one
+// pins) lives in the Floor Plans & Pinpoints category instead; this one
 // covers the underlying files and the separate Documents/Transmittals/QA
 // record types.
 export const drawingsDocumentsArticles: HelpArticle[] = [

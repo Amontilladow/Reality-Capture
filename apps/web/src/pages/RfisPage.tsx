@@ -27,7 +27,7 @@ import { apiErrorMessage } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
 import { Listbox } from '../components/ui/Listbox';
 
-// Warning-colored badge classes for the Cost/Time impact columns -- uses
+// Warning-colored badge classes for the Cost/Time impact columns; uses
 // this codebase's `warn` token, same as RFI_WORKFLOW_STATUS_BADGE_CLASS's
 // own under_review entry (bg-warn/15 text-warn), per the ticket's explicit
 // "warning-colored" call-out.
@@ -71,7 +71,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
 
   // A subcontractor project member gets read-only access to the Main
   // Contractor window and full raise-your-own access to the Subcontractor
-  // window -- SubcontractorRfiAccessGuard enforces this server-side
+  // window; SubcontractorRfiAccessGuard enforces this server-side
   // regardless; this just keeps the UI from offering actions that would
   // 403. Everyone else (including on the Subcontractor window, where any
   // main-contractor staff can still raise one on a subcontractor's behalf)
@@ -110,7 +110,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
   }
 
   // Lets the Drawing/Model Updated status itself be set right from the
-  // list, not just the Applied/Sent-to-Site follow-up toggles -- same PATCH
+  // list, not just the Applied/Sent-to-Site follow-up toggles; same PATCH
   // endpoint the RFI detail form/edit view already uses for this field.
   const updateDrawingLevelMutation = useMutation({
     mutationFn: ({ rfiId, level }: { rfiId: string; level: RfiImpactLevel }) =>
@@ -271,7 +271,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                 {(rfisQuery.data?.data ?? []).map((r) => {
                   const overdue = isRfiOverdue(r.dueDate, r.status);
                   // getDeadlineTimer is typed for IssueStatus, but its only status-aware
-                  // branch is a plain string check against 'closed'/'void' -- both of
+                  // branch is a plain string check against 'closed'/'void'; both of
                   // which are also legal RfiWorkflowStatus values, so this is
                   // functionally correct at runtime; same cast RfiDetailPage already
                   // uses for its own Aging badge.
@@ -307,7 +307,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                       <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-2 flex-wrap">
                           {/* Editable right from the list, not just the RFI
-                              form -- same PATCH the detail page's own edit
+                              form; same PATCH the detail page's own edit
                               view already sends for this field. */}
                           <Listbox aria-label="Drawing impact"
                             value={r.drawingImpactLevel ?? 'no'}

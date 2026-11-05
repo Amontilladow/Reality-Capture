@@ -1,4 +1,4 @@
--- RFI attachments -- supporting drawing PDFs, photos, and calculation
+-- RFI attachments: supporting drawing PDFs, photos, and calculation
 -- files (Excel/Word), same presigned-PUT pattern and allow-list as issue
 -- attachments (see 022_issue_reminders_and_attachments.sql). RFIs have no
 -- activity/comment thread to hang these off like issue_activities does,
@@ -21,9 +21,9 @@ DROP POLICY IF EXISTS tenant_isolation ON rfi_attachments;
 CREATE POLICY tenant_isolation ON rfi_attachments
   USING (company_id = current_setting('app.current_company_id', true)::UUID);
 
--- Per-project branding for RFI PDFs -- one logo + one stamp per project
+-- Per-project branding for RFI PDFs: one logo + one stamp per project
 -- (not per company: different projects can run under different
--- consultant/JV branding). Nullable -- a project's RFI PDFs render fine
+-- consultant/JV branding). Nullable; a project's RFI PDFs render fine
 -- with neither set, per rfi-pdf.template.ts.
 ALTER TABLE projects
   ADD COLUMN IF NOT EXISTS logo_storage_key  VARCHAR(500),

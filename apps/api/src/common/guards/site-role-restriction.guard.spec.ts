@@ -21,7 +21,7 @@ function makeGuard(isPublic: boolean | undefined, isRestricted: boolean) {
 
 const restrictedUser = { companyId: 'company-1', companyRole: 'construction_manager', id: 'user-1' };
 // A project-role-restricted user (site_engineer), with a company role NOT
-// in SITE_RESTRICTED_COMPANY_ROLES -- so the guard's own
+// in SITE_RESTRICTED_COMPANY_ROLES; so the guard's own
 // isCompanyRoleRestricted check (real, not mocked) takes the ProjectRole
 // branch, keeping the full pre-sprint issues/snag-items/drawings allowlist.
 const siteEngineerUser = { companyId: 'company-1', companyRole: 'project_manager', id: 'user-3' };
@@ -61,7 +61,7 @@ describe('SiteRoleRestrictionGuard', () => {
   // company roles) is narrowed to view-only on Drawings, contradicting this
   // guard's pre-sprint full-write allowlist for them specifically. The
   // site_engineer PROJECT role (a separate axis the sprint didn't touch)
-  // keeps its full access -- see the two tests below.
+  // keeps its full access; see the two tests below.
   it('blocks a company-role-restricted user (construction_manager) writing to Drawings now', async () => {
     const { guard } = makeGuard(false, true);
     await expect(

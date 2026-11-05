@@ -14,7 +14,7 @@ export class AiController {
 
   @Post()
   @ApiOperation({ summary: 'Ask the RealityCapture Engineering Assistant a question about this project' })
-  // Own bucket, same pattern as the auth routes' @Throttle override -- an
+  // Own bucket, same pattern as the auth routes' @Throttle override; an
   // LLM call costs real money per request, so the generic 100/min default
   // bucket is far too loose here. This is a coarse abuse backstop on top
   // of (not instead of) AiUsageService's per-role daily/per-minute quotas,

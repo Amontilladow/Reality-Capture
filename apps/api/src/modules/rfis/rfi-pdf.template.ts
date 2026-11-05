@@ -1,15 +1,15 @@
 import { createElement as h } from 'react';
 import { RFI_DOCUMENT_TYPE_LABELS, RFI_IMPACT_LEVEL_LABELS, type RfiDocumentType, type RfiImpactLevel } from '@engineeringos/types';
 
-// question/answer are stored as HTML from the RichTextEditor (Phase 3) --
+// question/answer are stored as HTML from the RichTextEditor (Phase 3);
 // this is a static generated document, not a browser, so there's no HTML
 // renderer to hand it to. Converts Tiptap's StarterKit output (paragraphs,
-// headings, lists, bold/italic marks -- no tables, images, or anything else
+// headings, lists, bold/italic marks; no tables, images, or anything else
 // this editor doesn't produce) to plain text with real line breaks, rather
 // than leaking raw tags like "<p>...</p>" into the PDF. Pre-Phase-3 rows
 // with plain text (no tags at all) pass through unchanged.
 // status/priority arrive as raw lowercase DB enum values ('critical',
-// 'open') -- there's no shared label map for these outside apps/web's own
+// 'open'): there's no shared label map for these outside apps/web's own
 // rfi-constants.ts, so a plain capitalize is used here rather than either
 // importing a frontend-only file into the API or duplicating its full
 // label table for what's purely a display nicety.
@@ -34,31 +34,31 @@ function richTextToPlain(html: string): string {
 
 // @react-pdf/renderer is ESM-only ("type": "module" in its package.json);
 // this API compiles to CommonJS (see apps/api/.swcrc), so it must be loaded
-// via dynamic import() rather than a static import -- a static import would
+// via dynamic import() rather than a static import; a static import would
 // compile to require(), which cannot load an ESM package. Kept as the one
 // place in this module that knows about @react-pdf/renderer at all, so
 // rfis.service.ts / rfis.controller.ts stay free of PDF-library specifics.
 
 // ── Brand ────────────────────────────────────────────────────────────────
 // Mirrors apps/web/tailwind.config.js exactly ("Blueprint-dark technical
-// palette -- surveying/drafting instrument feel") so a printed RFI reads as
+// palette; surveying/drafting instrument feel") so a printed RFI reads as
 // the same product as the live app, not a generic slate-and-blue template.
 // A generated document is printed on white paper, not the app's own dark
 // background, so INK/BASE tones are used here as foreground text/border
-// colors against white rather than as backgrounds -- the palette is the
+// colors against white rather than as backgrounds; the palette is the
 // same, the ground it sits on is just inverted, same as any print
 // letterhead vs. its parent app's on-screen theme.
-const INK = '#0A141C';       // base-950 -- primary body text
-const INK_MUTED = '#4A6178'; // base-500 -- secondary text/labels
-const BORDER = '#B9C6CE';    // a lighter tint of base-500 -- print-legible hairline
-const SECTION_FILL = '#EAF0F4'; // ink-100 -- the app's own light tone, reused as a tint
+const INK = '#0A141C';       // base-950: primary body text
+const INK_MUTED = '#4A6178'; // base-500: secondary text/labels
+const BORDER = '#B9C6CE';    // a lighter tint of base-500: print-legible hairline
+const SECTION_FILL = '#EAF0F4'; // ink-100: the app's own light tone, reused as a tint
 const SIGNAL = '#E56A1F';    // signal, darkened ~15% for print contrast on white
 const BLUEPRINT = '#1E6E93'; // blueprint, darkened for print contrast on white
 
-// Real product fonts (IBM Plex Sans, self-hosted via @fontsource -- same
+// Real product fonts (IBM Plex Sans, self-hosted via @fontsource; same
 // family the live app loads from Google Fonts in index.html) rather than
 // the PDF's own default Helvetica. Registered once per process, not per
-// render -- Font.register on every request would just redundantly re-parse
+// render; Font.register on every request would just redundantly re-parse
 // the same font files.
 let fontsRegistered = false;
 function registerFonts(Font: typeof import('@react-pdf/renderer').Font) {
@@ -72,7 +72,7 @@ function registerFonts(Font: typeof import('@react-pdf/renderer').Font) {
       { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff'), fontWeight: 700 },
     ],
   });
-  // IBM Plex Mono deliberately NOT registered here -- @fontsource's current
+  // IBM Plex Mono deliberately NOT registered here; @fontsource's current
   // "latin" WOFF build of it crashes fontkit's glyph-metrics parser on the
   // plain space character ("Offset is outside the bounds of the DataView"),
   // confirmed by isolating it: IBM Plex Sans (all 3 weights, special
@@ -83,11 +83,11 @@ function registerFonts(Font: typeof import('@react-pdf/renderer').Font) {
   // instead, with weight standing in for the monospace emphasis the live
   // app gives these fields.
   // react-pdf/yoga hyphenates justified text by default using a wordlist
-  // this custom font doesn't need -- disabling avoids odd mid-word breaks.
+  // this custom font doesn't need; disabling avoids odd mid-word breaks.
   Font.registerHyphenationCallback((word) => [word]);
 }
 
-// Phase 5 additions -- the 5 named-organization logos (project_organizations,
+// Phase 5 additions: the 5 named-organization logos (project_organizations,
 // Phase 4), the two upload stamps (query_stamp/answer_stamp, Phase 1), and
 // the query/response attachment lists (rfi_attachments.kind, Phase 2).
 export interface RfiPdfOrgLogo {
@@ -108,10 +108,10 @@ export interface RfiPdfAttachmentItem {
   documentTypeOther?: string;
   // Set only for raster-image attachments (.png/.jpg/.jpeg/.gif/.webp) whose
   // download+resize succeeded server-side (see rfis.service.ts's
-  // generatePdf() -- same storage.download(key).catch(() => undefined)
+  // generatePdf(): same storage.download(key).catch(() => undefined)
   // convention as the logo/stamp/org-logo buffers above). Undefined means
   // either a non-image attachment (pdf/docx/dwg/etc.) or an image whose
-  // fetch failed -- both fall back to the plain text line only.
+  // fetch failed; both fall back to the plain text line only.
   imageBuffer?: Buffer;
 }
 
@@ -173,7 +173,7 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
     headerLeft: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
     logo: { width: 44, height: 44, objectFit: 'contain' },
     stamp: { width: 70, height: 70, objectFit: 'contain', marginBottom: 4 },
-    // Compact "TEST PROJECT"-style eyebrow line -- folds Project Name +
+    // Compact "TEST PROJECT"-style eyebrow line: folds Project Name +
     // Project No. into the header instead of their own standalone section,
     // matching the live page's PageHeader eyebrow placed just above the
     // RFI number heading.
@@ -196,9 +196,9 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
     footerCol: { flex: 1 },
     footerLabel: { fontSize: 8, color: INK_MUTED, marginBottom: 12 },
     signatureLine: { borderTop: `1 solid ${INK_MUTED}`, paddingTop: 3, fontSize: 8.5, width: 160 },
-    // 5-organization header row (Phase 5) -- sits alongside the existing
+    // 5-organization header row (Phase 5): sits alongside the existing
     // single authoring-party logo, not in place of it. Always all 5 slots,
-    // matching the live page's OrganizationSlotRow exactly -- an
+    // matching the live page's OrganizationSlotRow exactly; an
     // unconfigured slot gets the same dashed placeholder box there does.
     orgRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
     orgItem: { alignItems: 'center', width: 60 },
@@ -206,7 +206,7 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
     orgPlaceholder: { width: 34, height: 34, border: `1 dashed ${BORDER}`, borderRadius: 2, marginBottom: 2, alignItems: 'center', justifyContent: 'center' },
     orgPlaceholderText: { fontSize: 5, color: INK_MUTED },
     orgLabel: { fontSize: 6, fontFamily: 'IBM Plex Sans', color: INK_MUTED, textAlign: 'center' },
-    // Upload-stamp panels -- visually distinct bordered/shaded box, tinted
+    // Upload-stamp panels: visually distinct bordered/shaded box, tinted
     // with the app's own light "ink-100" tone rather than a generic gray,
     // so it reads as a stamp, not another content section.
     stampPanel: { border: `1 solid ${SIGNAL}`, borderRadius: 3, backgroundColor: SECTION_FILL, padding: 8, marginBottom: 10 },
@@ -215,23 +215,23 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
     stampCol: { flex: 1 },
     stampLabel: { fontSize: 7, color: INK_MUTED, marginBottom: 1 },
     stampValue: { fontSize: 8.5, fontFamily: 'IBM Plex Sans', fontWeight: 700 },
-    // Query/response attachment lists -- plain text lines, not clickable
+    // Query/response attachment lists: plain text lines, not clickable
     // (this is a static generated document, not the live detail page).
     attachmentsBlock: { marginTop: 4 },
     attachmentsHeading: { fontSize: 7, fontFamily: 'IBM Plex Sans', fontWeight: 700, textTransform: 'uppercase', color: INK_MUTED, marginBottom: 2, letterSpacing: 0.6 },
     attachmentItem: { fontSize: 8.5, fontFamily: 'IBM Plex Sans', marginBottom: 1.5 },
-    // Image-attachment previews -- a small wrapping grid (react-pdf's flex
+    // Image-attachment previews: a small wrapping grid (react-pdf's flex
     // wraps like CSS flex-wrap) rather than one-per-row, so a handful of
     // screenshots don't each eat a full page width. Fixed display box via
     // style (150x110, objectFit 'contain' so pre-resized-by-sharp images
-    // never distort or get cropped) -- the actual byte-size control comes
+    // never distort or get cropped): the actual byte-size control comes
     // from the sharp resize server-side (rfis.service.ts), this is purely
     // the on-page layout box.
     attachmentImageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2, marginBottom: 4 },
     attachmentImageCard: { width: 150, marginBottom: 4 },
     attachmentImage: { width: 150, height: 110, objectFit: 'contain', border: `1 solid ${BORDER}`, borderRadius: 2, backgroundColor: SECTION_FILL },
     attachmentImageCaption: { fontSize: 7, fontFamily: 'IBM Plex Sans', color: INK_MUTED, marginTop: 2 },
-    // Communication/Clarifications + Audit Trail (this section) -- both
+    // Communication/Clarifications + Audit Trail (this section): both
     // shown live on RfiDetailPage but missing from the export until now.
     commentItem: { marginBottom: 6, paddingBottom: 6, borderBottom: `1 solid ${BORDER}` },
     commentMeta: { fontSize: 7.5, color: INK_MUTED, marginBottom: 2 },
@@ -241,7 +241,7 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
     auditUser: { color: INK_MUTED, flex: 1 },
     auditTime: { color: INK_MUTED },
     // No italic registered above (avoids another font-resolution failure
-    // like the Mono/space bug) -- muted color alone carries the "empty
+    // like the Mono/space bug): muted color alone carries the "empty
     // state" distinction instead.
     emptyNote: { fontSize: 8.5, color: INK_MUTED },
   });
@@ -249,15 +249,15 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
   const IMPACT_COLORS: Record<string, string> = { no: INK_MUTED, yes: SIGNAL, potential: '#B8860B', tbd: '#B8860B' };
 
   // Single discipline value (not the old hardcoded 9-item checkbox grid,
-  // which didn't even match the real RFI_DISCIPLINE_LABELS enum) -- mirrors
+  // which didn't even match the real RFI_DISCIPLINE_LABELS enum): mirrors
   // RfiDetailPage's own InfoRow treatment of discipline exactly.
   const disciplineDisplay = data.disciplineLabel === 'Other' && data.disciplineOther
     ? `${data.disciplineLabel} — ${data.disciplineOther}`
     : data.disciplineLabel;
 
-  // Compact "Name · Code" eyebrow, folded into the header -- replaces the
+  // Compact "Name · Code" eyebrow, folded into the header; replaces the
   // old standalone "Project" section (which also carried Location/Date;
-  // both dropped, per the live page never showing either -- Date is
+  // both dropped, per the live page never showing either; Date is
   // already covered by the footer's "Raised by ... createdAt" line).
   const projectEyebrowText = data.projectCode ? `${data.projectName} · ${data.projectCode}` : data.projectName;
 
@@ -305,9 +305,9 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
     return `• ${item.filename}  (${typeLabel}${otherSuffix})`;
   };
 
-  // Image attachments (imageBuffer set) render as a thumbnail card --
+  // Image attachments (imageBuffer set) render as a thumbnail card;
   // picture plus filename/type caption, per the ticket's "label still
-  // visible near the image, not a bare picture" requirement -- instead of
+  // visible near the image, not a bare picture" requirement; instead of
   // the plain text line. Non-image / failed-download attachments keep the
   // original plain-text "• filename (type)" line, unchanged.
   const attachmentsBlock = (heading: string, items?: RfiPdfAttachmentItem[]) => {
@@ -356,7 +356,7 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
             )
           : null,
 
-        // Consolidated RFI Information -- RFI Number, Discipline, Priority,
+        // Consolidated RFI Information: RFI Number, Discipline, Priority,
         // Assigned To, Due Date all in one panel, matching the live page's
         // own RFI Information panel exactly (no more separate Project /
         // Discipline sections splitting these across the document).
@@ -412,7 +412,7 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
           : null,
         // Response attachments/stamp can exist even before the formal answer
         // text is submitted (a reviewer may pre-upload response documents
-        // while still drafting) -- rendered unconditionally here so they
+        // while still drafting): rendered unconditionally here so they
         // aren't hidden behind the data.answer gate above, but only when
         // there's actually something to show.
         !data.answer ? attachmentsBlock('Response Attachments', data.responseAttachments) : null,

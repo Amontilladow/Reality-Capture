@@ -39,12 +39,12 @@ export async function uploadDocumentFile(
   file: File,
   meta: Omit<CreateDocumentPayload, 'storageKey' | 'source'>,
 ): Promise<Document> {
-  // The same content type must be sent to both calls -- the upload-url call
+  // The same content type must be sent to both calls; the upload-url call
   // signs it into the presigned PUT (see StorageService.getUploadUrl()'s
   // ContentType), so the PUT below has to send back exactly what was signed
   // or the request fails/mismatches. A hardcoded 'application/pdf' fallback
   // here previously meant every upload signed as a PDF regardless of the
-  // real file type -- fine for actual PDFs, silently wrong for report-
+  // real file type; fine for actual PDFs, silently wrong for report-
   // attachment photos/images.
   const contentType = file.type || 'application/octet-stream';
   const { uploadUrl, storageKey } = await getDocumentUploadUrl(projectId, file.name, contentType);
@@ -52,7 +52,7 @@ export async function uploadDocumentFile(
   return createDocument(projectId, { ...meta, storageKey, source: 'internal' });
 }
 
-// ── External share links -- send a document outside the company without
+// ── External share links; send a document outside the company without
 // Dropbox/WeTransfer/etc. Mirrors progress-reports.api.ts's own
 // share/public-page split exactly.
 

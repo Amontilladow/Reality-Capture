@@ -1,6 +1,6 @@
 import type { HelpArticle } from './types';
 
-// Each entry uses only slug/category/title/summary -- a glossary term has
+// Each entry uses only slug/category/title/summary; a glossary term has
 // no steps, prerequisites, etc. Terms are the actual vocabulary used in
 // this codebase (RFI_DISCIPLINE_LABELS, ProjectOrganizationSlot, etc.),
 // not generic construction-industry definitions.

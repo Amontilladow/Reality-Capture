@@ -12,7 +12,7 @@ import { LogoMark } from '../components/ui/LogoMark';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 
 // Minimal, branded, full-bleed page for a stakeholder with no EngineeringOS
-// account -- no sidebar, no navigation, nothing else on this app reachable
+// account; no sidebar, no navigation, nothing else on this app reachable
 // from here. The token in the URL is the only credential; see
 // rfi-external-access.controller.ts's public side for the endpoints this calls.
 export default function RfiExternalPage() {
@@ -119,7 +119,7 @@ export default function RfiExternalPage() {
               )}
 
               {/* Same "closed by, as which party, when" summary shown on the
-                  internal detail page -- historical RFIs with all four
+                  internal detail page; historical RFIs with all four
                   fields null render nothing extra here. */}
               {detailQuery.data.status === 'closed' && detailQuery.data.closedAt && (
                 <p className="text-xs text-ink-500 mt-4 pt-4 border-t border-base-600">

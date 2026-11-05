@@ -17,7 +17,7 @@ export class ReportingLinesService {
       ORDER BY u.first_name, u.last_name`);
   }
 
-  // Upsert -- one manager per user (workforce_reporting_lines.user_id is
+  // Upsert: one manager per user (workforce_reporting_lines.user_id is
   // UNIQUE), so setting a new manager for someone who already has one just
   // replaces the row rather than requiring a separate "remove" step first.
   async upsert(companyId: string, adminUserId: string, userId: string, managerId: string) {

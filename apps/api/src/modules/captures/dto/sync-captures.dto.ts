@@ -1,9 +1,9 @@
 import { IsArray, ValidateNested, IsString, IsOptional, IsNumber, IsDateString, IsUUID, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
-// Mobile sync — batch upload from the offline queue
+// Mobile sync: batch upload from the offline queue
 export class SyncCaptureItemDto {
-  @IsString()   idempotencyKey: string;   // client-generated UUID — prevents duplicates on retry
+  @IsString()   idempotencyKey: string;   // client-generated UUID: prevents duplicates on retry
   @IsString()   storageKey: string;
   @IsNumber()   originalSizeBytes: number;
   @IsString()   originalMimeType: string;

@@ -5,18 +5,18 @@ import { resolveVisibleTargetUserId } from '../workforce-visibility.util';
 
 // Engineering-relevant activity types (brief §10's seed taxonomy) used by
 // the v1 formula's "engineering share" factor. Extending this list is a
-// code change here, not a migration -- activity_type stays a plain VARCHAR
+// code change here, not a migration; activity_type stays a plain VARCHAR
 // (see docs/workforce-intelligence-data-model.md).
 const ENGINEERING_ACTIVITY_TYPES = new Set([
   'ENGINEERING', 'DESIGN', 'MODELING', 'DOCUMENTATION', 'REVIEW', 'COORDINATION',
 ]);
 
-// v1 productivity formula -- deliberately simple and fully explainable
+// v1 productivity formula: deliberately simple and fully explainable
 // (brief §14: "explainable, configurable, versioned, auditable,
 // replaceable"). NEVER computed or returned without its `factors`
 // breakdown alongside the score. Utilization and engineering-share are
 // weighted 40/60 because engineering time-on-task matters more to this
-// product's differentiator than raw active-vs-idle time (brief §6) --
+// product's differentiator than raw active-vs-idle time (brief §6);
 // this weighting is the kind of thing product/leadership should be able
 // to tune, which is exactly why it's isolated in one place, versioned,
 // and never hardcoded into the schema.
@@ -47,7 +47,7 @@ export class ProductivityService {
     return this.computeAndPersist(companyId, userId, periodType, start, end);
   }
 
-  // Explicit [from, to) range that doesn't align to a day/week boundary --
+  // Explicit [from, to) range that doesn't align to a day/week boundary;
   // lets a caller (the Workforce page) request the score over the exact
   // same window as another endpoint's own from/to range, instead of the
   // two silently disagreeing (e.g. a trailing-7-days activity summary vs.
@@ -149,7 +149,7 @@ export function computeFactors(rows: ActivityAggregateRow[]): ProductivityFactor
 
   for (const row of rows) {
     const seconds = Number(row.durationSeconds);
-    // Employee-initiated "Private Time" -- counts toward tracked/active
+    // Employee-initiated "Private Time": counts toward tracked/active
     // time (utilization) but there is no app to classify or attribute
     // (ActivitiesService already force-redacts application/domain/
     // metadata for these rows), so it's its own bucket, excluded from the
@@ -162,12 +162,12 @@ export function computeFactors(rows: ActivityAggregateRow[]): ProductivityFactor
       if (isPrivate) {
         privateSeconds += seconds;
       } else {
-        // DeskTime-style productive/unproductive/neutral breakdown -- like
+        // DeskTime-style productive/unproductive/neutral breakdown; like
         // DeskTime, idle time is excluded entirely (it's neither productive
         // nor unproductive, it's just not tracked activity). An app that's
         // never been classified by an admin (including one auto-registered
         // by ingest() moments ago) counts as its own bucket rather than
-        // silently defaulting into "neutral" or "productive" -- an
+        // silently defaulting into "neutral" or "productive"; an
         // unreviewed app should read as unreviewed, not as a productivity
         // verdict nobody actually made.
         switch (row.productivityClassification) {
@@ -205,7 +205,7 @@ export function computeFactors(rows: ActivityAggregateRow[]): ProductivityFactor
     privateSeconds,
     // DeskTime's own headline metric: productive time as a share of all
     // tracked, classifiable (non-idle, non-private) time. Deliberately NOT
-    // blended into `score` -- the v1 formula above is already
+    // blended into `score`: the v1 formula above is already
     // versioned/persisted and changing its weights would silently rewrite
     // the meaning of every already-computed historical score. This is an
     // additional, explainable breakdown alongside it, not a competing

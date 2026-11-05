@@ -1,4 +1,4 @@
-// Deliberately a simple, practical syntax check -- not an attempt at full
+// Deliberately a simple, practical syntax check; not an attempt at full
 // RFC 5322 compliance. The real validation authority for every address
 // rendered by this app is the backend (class-validator's @IsEmail() at
 // write time, when the user/member row was created); this check exists

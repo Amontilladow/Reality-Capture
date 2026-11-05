@@ -1,4 +1,4 @@
--- Submittals -- contractor-submitted product data/shop drawings awaiting
+-- Submittals: contractor-submitted product data/shop drawings awaiting
 -- formal design-team review, distinct from RFIs (a question) and Issues
 -- (a defect).
 CREATE TABLE IF NOT EXISTS submittals (

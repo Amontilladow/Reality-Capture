@@ -1,7 +1,7 @@
 import { stripPdfParseBoilerplate, hasUsableEmbeddedText, MIN_USABLE_TEXT_LENGTH } from './pdf-text-extractor';
 
-// extractEmbeddedText() itself (the pdf-parse call) is not exercised here
-// -- see its own comment in pdf-text-extractor.ts for why (a Jest/ESM
+// extractEmbeddedText() itself (the pdf-parse call) is not exercised here;
+//; see its own comment in pdf-text-extractor.ts for why (a Jest/ESM
 // incompatibility with pdf-parse's internal dynamic import, confirmed by
 // hand against a real pdf-lib fixture under plain Node instead). These
 // tests cover the pure logic this module adds on top of it.

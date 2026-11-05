@@ -30,7 +30,7 @@ export class StorageService {
     });
   }
 
-  // Generate a key for a new object — structured for easy browsing and lifecycle rules
+  // Generate a key for a new object; structured for easy browsing and lifecycle rules
   generateKey(companyId: string, projectId: string, type: 'captures' | 'drawings' | 'documents' | 'avatars' | 'issues' | 'rfi-attachments' | 'qaqc-attachments' | 'branding' | 'snag-items' | 'email-attachments' | 'gis-prep', filename: string): string {
     const ext = filename.split('.').pop()?.toLowerCase() ?? 'bin';
     return `${companyId}/${type}/${projectId}/${randomUUID()}.${ext}`;
@@ -49,7 +49,7 @@ export class StorageService {
   // maximum-allowed size at this point, not the real file size, and since
   // ContentLength is a signed header, presigning it forces the actual PUT's
   // Content-Length to match exactly or the provider rejects it as a
-  // signature mismatch -- breaking every upload that isn't precisely that
+  // signature mismatch; breaking every upload that isn't precisely that
   // many bytes. Real max-size enforcement belongs in a bucket lifecycle
   // rule or a post-upload check, not the signature.
   async getUploadUrl(key: string, contentType: string, _maxSizeBytes?: number): Promise<{ uploadUrl: string; storageKey: string }> {
@@ -89,7 +89,7 @@ export class StorageService {
     await this.s3.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
   }
 
-  // Deletes an object and swallows the error -- used to clean up an object a
+  // Deletes an object and swallows the error; used to clean up an object a
   // client already PUT to storage but that failed a post-upload check (e.g.
   // real size exceeds the declared limit). The upload already happened; a
   // failed cleanup attempt must not be allowed to turn into the caller's own
@@ -103,7 +103,7 @@ export class StorageService {
   }
 
   // The presigned PUT this class hands out (see getUploadUrl's comment) has
-  // no enforced size limit -- a client can declare one size and upload a
+  // no enforced size limit; a client can declare one size and upload a
   // different, larger one. This is the other half of real enforcement: a
   // HEAD request against the actual stored object, checked by the caller
   // against its real limit *before* trusting the upload or queuing it for
@@ -138,7 +138,7 @@ export class StorageService {
     await this.s3.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: body, ContentType: contentType }));
   }
 
-  // Cheap reachability probe for the readiness check -- confirms the bucket
+  // Cheap reachability probe for the readiness check; confirms the bucket
   // is reachable with these credentials, without reading or returning any
   // object data or exposing the endpoint/credentials themselves. Deliberately
   // returns a plain boolean rather than throwing, so a transient provider

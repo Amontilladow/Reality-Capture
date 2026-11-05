@@ -24,7 +24,7 @@ export class CalendarIntegrationController {
     return { data: { url: this.svc.getAuthorizeUrl(u.companyId, u.id) }, error: null };
   }
 
-  // Google redirects the browser here directly -- there is no JWT bearer
+  // Google redirects the browser here directly: there is no JWT bearer
   // token on this request, no request.user, no tenant context. @Public()
   // bypasses JwtAuthGuard/SubscriptionGuard/etc. (see their own isPublic
   // checks) so this route is reachable at all; the actual authorization is

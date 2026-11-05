@@ -13,7 +13,7 @@ import type { AuthenticatedUser } from '@engineeringos/types';
 
 // ── Internal, authenticated side ──────────────────────────────────────────
 // Nested under the same projects/:projectId/rfis/:id prefix RfisController
-// uses, gated the same way as respond/close/reopen -- generating a link
+// uses, gated the same way as respond/close/reopen; generating a link
 // that can answer or close an RFI is exactly that sensitive.
 @ApiTags('rfis')
 @ApiBearerAuth()
@@ -57,7 +57,7 @@ export class RfiExternalAccessController {
 // ── Public, unauthenticated side ──────────────────────────────────────────
 // Prefixed distinctly (public/rfis/external/:token/...) from every
 // @RequireProjectPermission-guarded RFI route above so there's no risk of a
-// routing collision. Every route here is @Public() -- see JwtAuthGuard,
+// routing collision. Every route here is @Public(); see JwtAuthGuard,
 // which skips the bearer-token check entirely for these. The token itself
 // is the only credential; there is no request.user on any of these routes.
 @ApiTags('rfis')

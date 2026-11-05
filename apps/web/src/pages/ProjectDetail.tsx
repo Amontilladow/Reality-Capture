@@ -41,9 +41,9 @@ export default function ProjectDetail() {
   });
 
   // Same ['members', projectId] query AppShell/ProjectContextPanel already
-  // run -- shares their cache entry. This Overview page pulls from several
+  // run; shares their cache entry. This Overview page pulls from several
   // modules (hierarchy, captures) a 'subcontractor' project member has no
-  // access to (SubcontractorRfiAccessGuard) -- they land here the same way
+  // access to (SubcontractorRfiAccessGuard): they land here the same way
   // anyone does (clicking a project card), so this redirects them straight
   // to the one page they actually have, rather than showing an Overview
   // that's mostly 403s. AppShell's own nav never links here for them.
@@ -69,7 +69,7 @@ export default function ProjectDetail() {
   const capturesQuery = useQuery({
     queryKey: ['captures', projectId, selectedLocation?.id],
     queryFn: () => listCaptures(projectId!, { locationId: selectedLocation?.id, perPage: 24 }),
-    // Only fetch once something is actually selected -- there is no
+    // Only fetch once something is actually selected; there is no
     // "browse everything" view here by design; an unfiltered fetch would
     // just be every capture in the project dumped on screen at once.
     enabled: Boolean(projectId) && Boolean(selectedLocation) && !isSubcontractor,
@@ -79,7 +79,7 @@ export default function ProjectDetail() {
     (b.levels ?? []).flatMap((l) => l.locations ?? []),
   );
 
-  // The tree only passes id/name on click -- the note itself lives on the
+  // The tree only passes id/name on click; the note itself lives on the
   // full location record already loaded as part of the hierarchy.
   const selectedLocationDetail = selectedLocation
     ? allLocations.find((l) => l.id === selectedLocation.id)

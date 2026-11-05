@@ -16,11 +16,11 @@ export class SubscriptionService {
     });
   }
 
-  // withTenant required -- company_subscriptions and companies both carry the
+  // withTenant required: company_subscriptions and companies both carry the
   // tenant_isolation RLS policy (subscription_plans does not, since it's a public,
   // non-tenant-scoped catalog). A plain this.db.query() never sets
   // app.current_company_id, so under any DB role that isn't the table owner/a
-  // superuser both SELECTs below see no rows -- the subscription page would 404
+  // superuser both SELECTs below see no rows; the subscription page would 404
   // for every company in production.
   async getSubscription(companyId: string) {
     const { sub, usage } = await this.db.withTenant(companyId, async (sql) => {
@@ -51,7 +51,7 @@ export class SubscriptionService {
 
     if (!sub) throw new NotFoundException('No subscription found.');
 
-    // The SubscriptionPlan fields come back flat from the join — nest them
+    // The SubscriptionPlan fields come back flat from the join; nest them
     // under `plan` to match the CompanySubscription type contract that the
     // frontend actually relies on.
     const {
@@ -84,7 +84,7 @@ export class SubscriptionService {
       ORDER BY price_monthly_usd NULLS LAST`;
   }
 
-  // withTenant required -- company_subscriptions and companies both carry the
+  // withTenant required: company_subscriptions and companies both carry the
   // tenant_isolation RLS policy. A plain this.db.query() never sets
   // app.current_company_id, so under any DB role that isn't the table owner/a
   // superuser this SELECT always sees no rows: checkLimit() is called before every
@@ -174,14 +174,14 @@ export class SubscriptionService {
     if (!secret) return null;
     // This route is @Public(), so the Stripe-Signature HMAC is the only thing
     // proving a payload actually came from Stripe. Verify it before anything
-    // acts on the event -- needs the exact raw bytes (rawBody: true in main.ts).
+    // acts on the event; needs the exact raw bytes (rawBody: true in main.ts).
     let event: Stripe.Event;
     try {
       event = this.stripe.webhooks.constructEvent(rawBody, signature ?? '', secret);
     } catch {
       throw new BadRequestException('Invalid Stripe webhook signature.');
     }
-    // Webhook handler — update company_subscriptions based on Stripe events
+    // Webhook handler: update company_subscriptions based on Stripe events
     // Full implementation in Phase 2 when billing goes live
     return event;
   }

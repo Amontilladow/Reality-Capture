@@ -12,7 +12,7 @@ type WithTenantCallback = (sql: unknown) => unknown;
 
 // sql.json() is the postgres.js helper the processor uses to bind
 // extracted_fields_raw as a real jsonb parameter (see
-// site-drawing-import.processor.ts's own comment on why) -- the mock
+// site-drawing-import.processor.ts's own comment on why): the mock
 // must support it the same way sharepoint-integration.service.spec.ts's
 // DB mock does, or every INSERT silently throws "sql.json is not a
 // function" and gets swallowed by handleImportBatch's own per-file
@@ -110,7 +110,7 @@ describe('SiteDrawingImportProcessor', () => {
     const { processor, aiClient, db } = makeProcessor([
       single(undefined), // markStarted
       single([batchRow]), // getBatch
-      // reconcile: SELECT existing (none), INSERT drawing, INSERT revision, UPDATE --
+      // reconcile: SELECT existing (none), INSERT drawing, INSERT revision, UPDATE;
       // falls back to the filename-derived drawing number since fields stays null.
       multi([[], [{ id: 'drawing-1' }], [{ id: 'revision-1' }], []]),
       single(undefined), // finish

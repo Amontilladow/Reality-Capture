@@ -1,14 +1,14 @@
 import { createElement as h } from 'react';
 
 // @react-pdf/renderer is ESM-only; this API compiles to CommonJS, so it is
-// loaded via dynamic import() inside renderQaqcPdf() -- same convention as
+// loaded via dynamic import() inside renderQaqcPdf(): same convention as
 // rfi-pdf.template.ts, so qaqc.service.ts/qaqc.controller.ts stay free of
 // PDF-library specifics.
 
 // ── Brand ────────────────────────────────────────────────────────────────
 // Identical palette/font-registration to rfi-pdf.template.ts, for visual
 // consistency across every generated PDF in this app (see that file's own
-// comment for the full rationale -- mirrors apps/web/tailwind.config.js's
+// comment for the full rationale; mirrors apps/web/tailwind.config.js's
 // "Blueprint-dark technical palette").
 const INK = '#0A141C';
 const INK_MUTED = '#4A6178';
@@ -29,7 +29,7 @@ function registerFonts(Font: typeof import('@react-pdf/renderer').Font) {
       { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff'), fontWeight: 700 },
     ],
   });
-  // IBM Plex Mono deliberately not registered -- see rfi-pdf.template.ts's
+  // IBM Plex Mono deliberately not registered; see rfi-pdf.template.ts's
   // own comment: its current "latin" WOFF build crashes on a bare space.
   Font.registerHyphenationCallback((word) => [word]);
 }

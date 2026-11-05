@@ -2,7 +2,7 @@ BEGIN;
 
 -- ══════════════════════════════════════════════════════════════════════════
 -- TABLES: chat_dm_channels, chat_messages, chat_reads
--- Live, real-time team chat (Socket.io) — deliberately separate from the
+-- Live, real-time team chat (Socket.io): deliberately separate from the
 -- existing async, threaded/subject-based "messaging" feature
 -- (apps/api/src/modules/messaging/, tables `messages` / `message_recipients`).
 -- This is a running conversation with no subject/thread concept: one

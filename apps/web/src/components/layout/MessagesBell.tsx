@@ -20,8 +20,8 @@ function timeAgo(iso: string): string {
 }
 
 // The header's one messaging icon. It gathers the three ways to talk to
-// someone -- the threaded inbox, live team chat (ChatWidget's panel) and
-// the user's own email app -- so they no longer sit side by side as look-
+// someone; the threaded inbox, live team chat (ChatWidget's panel) and
+// the user's own email app; so they no longer sit side by side as look-
 // alike envelopes and a floating bubble.
 export function MessagesBell() {
   const [open, setOpen] = useState(false);

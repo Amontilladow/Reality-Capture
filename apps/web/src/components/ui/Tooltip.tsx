@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
 import type { ReactNode } from 'react';
 
-// Minimal hover/focus tooltip -- no positioning library, since a simple
+// Minimal hover/focus tooltip: no positioning library, since a simple
 // "always above, centered" placement covers every current use case (an
 // icon-only button's accessible name, a truncated value's full text). If a
 // future caller needs edge-aware flipping, that's the point to reach for a

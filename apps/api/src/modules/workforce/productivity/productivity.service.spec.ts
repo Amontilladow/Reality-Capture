@@ -135,7 +135,7 @@ describe('ProductivityService.getMyScoreForRange', () => {
     const db = { withTenant: jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(sqlMock)) };
     const svc = new ProductivityService(db as unknown as DatabaseService);
 
-    // A window spanning last Thursday-Friday to "now" (Tuesday) -- doesn't
+    // A window spanning last Thursday-Friday to "now" (Tuesday): doesn't
     // align to any ISO week or day boundary, which is exactly the case
     // resolvePeriod()'s day/week shortcuts can't express.
     await svc.getMyScoreForRange('company-1', 'user-1', '2026-01-01T00:00:00.000Z', '2026-01-06T12:00:00.000Z');

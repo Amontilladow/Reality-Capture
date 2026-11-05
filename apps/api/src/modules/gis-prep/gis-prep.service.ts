@@ -17,7 +17,7 @@ export interface GisPrepQueueJob {
 
 // GIS Preparation (apps/adm-gis-prep as a built-in module). Same shape as
 // SiteDrawingImportService: presigned upload, then a job row queued for the
-// GisPrepProcessor -- the request never waits on the drawing run itself.
+// GisPrepProcessor; the request never waits on the drawing run itself.
 @Injectable()
 export class GisPrepService {
   constructor(

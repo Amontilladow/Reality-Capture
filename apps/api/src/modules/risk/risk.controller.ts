@@ -16,12 +16,12 @@ import { SetMatrixOverrideDto } from './dto/set-matrix-override.dto';
 
 // Phase 6 security fix: every mutating route in this controller previously
 // had no @Roles/@RequireProjectPermission, and RiskService scoped only by
-// companyId -- confirmed by the Phase 6 audit (grepped for companyRole/
+// companyId; confirmed by the Phase 6 audit (grepped for companyRole/
 // ForbiddenException/project_members/hasProjectPermission across
 // risk.service.ts: zero hits). Any authenticated company user could
 // recalculate, override scores, set risk status/owner, or clear matrix
 // overrides for any project in the company, not just ones they are
-// permitted to edit. Gated to 'manage_project_records' -- the same
+// permitted to edit. Gated to 'manage_project_records'; the same
 // permission that already governs editing structural project data
 // elsewhere. Reads remain ungated, consistent with this platform's
 // company-wide read-visibility model.
@@ -106,9 +106,9 @@ export class RiskController {
     return { data: await this.risk.generateAiBriefing(u.companyId, pid, u), error: null };
   }
 
-  // Binary-response endpoint -- same StreamableFile + passthrough Response
+  // Binary-response endpoint: same StreamableFile + passthrough Response
   // pattern as reports.controller.ts's own :projectId/reports/pdf route.
-  // POST (not GET) because aiBriefing can run to a few paragraphs -- too
+  // POST (not GET) because aiBriefing can run to a few paragraphs; too
   // long to carry safely in a query string, same reasoning apiDownloadPost()
   // documents on the frontend.
   @Post('pdf')

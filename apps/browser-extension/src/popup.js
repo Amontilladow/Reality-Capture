@@ -1,4 +1,4 @@
-// Popup UI glue -- not unit-tested (DOM + chrome.storage.local, same
+// Popup UI glue: not unit-tested (DOM + chrome.storage.local, same
 // reasoning as background.js). Enrollment reuses the exact same
 // /auth/login + POST /workforce/devices flow apps/agent/src/enroll.ts
 // uses, just via a form instead of an interactive terminal prompt.

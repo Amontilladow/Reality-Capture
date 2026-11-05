@@ -5,12 +5,12 @@ import ms from 'ms';
 
 // M-1 fix (KNOWN_ISSUES_AND_REMEDIATION.md): deactivating a user correctly
 // revoked their refresh tokens, but JwtStrategy.validate() did no DB/cache
-// lookup at all -- an already-issued access token stayed valid for its full
+// lookup at all; an already-issued access token stayed valid for its full
 // remaining access-token lifetime after deactivation, live-reproduced and
 // left OPEN by the 2026-10-09 audit (M-1) as a documented residual-risk
 // trade-off, pending an owner decision on exactly this kind of cheap
 // deny-list check. Mirrors AiUsageService's own Redis client construction
-// (same redis.host/port/password config, same ioredis instance pattern) --
+// (same redis.host/port/password config, same ioredis instance pattern);
 // a short-TTL deny-list entry per deactivated user, checked once per
 // request by JwtStrategy, not a DB round trip on every authenticated
 // request in the app.
@@ -40,7 +40,7 @@ export class SessionRevocationService implements OnModuleDestroy {
   // Called the moment a user is deactivated (UsersService.deactivate()).
   // TTL is the configured access-token lifetime plus a 60s safety margin
   // for clock skew between this process and whichever one verified the
-  // token -- once that window passes, any access token issued before
+  // token; once that window passes, any access token issued before
   // deactivation would have expired under JwtStrategy's own
   // ignoreExpiration: false check anyway, so the deny-list entry never
   // needs to outlive it.
@@ -53,7 +53,7 @@ export class SessionRevocationService implements OnModuleDestroy {
   // closed here would lock every user in the company out of the entire
   // app on a Redis blip, which is a strictly worse outcome than the
   // pre-existing, already-documented 15-minute residual-access window
-  // this check exists to narrow -- it degrades back to that prior
+  // this check exists to narrow; it degrades back to that prior
   // behavior, not to a new failure mode.
   async isDenied(userId: string): Promise<boolean> {
     try {

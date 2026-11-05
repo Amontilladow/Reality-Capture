@@ -17,9 +17,9 @@ router = APIRouter()
 
 # GIS Preparation (apps/adm-gis-prep) hosted inside this service so it costs no
 # extra Render instance (D-034). The engine runs as a SEPARATE process from its
-# own virtualenv (/opt/m4adm, built in the Dockerfile) -- its pinned
+# own virtualenv (/opt/m4adm, built in the Dockerfile): its pinned
 # dependencies (pydantic, numpy, shapely, pyproj) never mix with this
-# service's -- and that process is watched: if its real memory use (RSS) goes
+# service's: and that process is watched: if its real memory use (RSS) goes
 # over gis_prep_memory_limit_mb it is stopped and the job fails with a clear
 # message, instead of pushing this 512 MB container (about 180 MB used by the
 # service itself) into an out-of-memory restart that would also take down the

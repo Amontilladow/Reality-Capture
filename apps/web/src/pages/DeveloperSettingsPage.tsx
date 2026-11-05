@@ -28,7 +28,7 @@ function SecretReveal({ label, secret }: { label: string; secret: string }) {
   );
 }
 
-// Gated server-side to super_admin (see TenancyController) -- the code
+// Gated server-side to super_admin (see TenancyController): the code
 // shown/regenerated here is a credential that lets anyone holding it create
 // an account under this company, so it gets the same sensitivity level as
 // an API key above.
@@ -251,12 +251,12 @@ function WebhooksSection() {
 }
 
 export default function DeveloperSettingsPage() {
-  // Unlike ApiKeysSection/WebhooksSection (both @Roles('company_admin') --
+  // Unlike ApiKeysSection/WebhooksSection (both @Roles('company_admin');
   // company_admin or above), the signup code is gated to super_admin only
   // server-side (TenancyController), same sensitivity level as
   // updateSettings(). This nav item is reachable by any company_admin, so
   // render the section only when the API would actually accept the
-  // request -- a company_admin otherwise sees ApiKeys/Webhooks work fine
+  // request; a company_admin otherwise sees ApiKeys/Webhooks work fine
   // and the signup-code section silently absent, not an error.
   const isSuperAdmin = useAuthStore((s) => s.user?.companyRole === 'super_admin');
 

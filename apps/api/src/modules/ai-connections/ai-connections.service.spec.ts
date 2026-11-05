@@ -61,7 +61,7 @@ describe('AiConnectionsService', () => {
       ).rejects.toBeInstanceOf(BadRequestException);
 
       expect(buildFromCredentials).toHaveBeenCalledWith('openai', 'gpt-4o', 'bad-key', undefined);
-      // Only the SELECT inside getStatus may run via withTenant on failure --
+      // Only the SELECT inside getStatus may run via withTenant on failure;
       // no INSERT ever happens because connect() throws before reaching it.
       expect(withTenant).not.toHaveBeenCalled();
     });

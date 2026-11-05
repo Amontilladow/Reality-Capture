@@ -5,7 +5,7 @@ import type { TenancyService } from '../tenancy/tenancy.service';
 import type { AiClientService } from '../ai-client/ai-client.service';
 import type { Queue } from 'bull';
 
-// syncFromMobile() is the mobile offline-queue's batch upload endpoint --
+// syncFromMobile() is the mobile offline-queue's batch upload endpoint;
 // its whole reason to exist is idempotency (a retried queue item must not
 // create a second capture) and carrying the same fields registerCapture()
 // accepts (description/gpsAccuracyM were added alongside this pass's fix
@@ -104,7 +104,7 @@ describe('CapturesService.syncFromMobile', () => {
 });
 
 // register()'s real body (not mocked out, unlike the syncFromMobile tests
-// above) -- covers the post-upload size-enforcement fix: the presigned PUT
+// above): covers the post-upload size-enforcement fix: the presigned PUT
 // this app hands out has no enforced size limit, so real enforcement has to
 // happen here, against the object actually sitting in storage, not whatever
 // size the client declared. Also covers the project-ownership check added
@@ -187,7 +187,7 @@ describe('CapturesService.register', () => {
       svc.register('company-1', 'project-1', 'user-1', { ...BASE_DTO, originalSizeBytes: 1024 }),
     ).rejects.toThrow(/not found in storage/);
 
-    // Nothing to clean up -- the object never existed.
+    // Nothing to clean up: the object never existed.
     expect(deleteIfExists).not.toHaveBeenCalled();
   });
 
@@ -198,7 +198,7 @@ describe('CapturesService.register', () => {
       svc.register('company-1', 'someone-elses-project', 'user-1', { ...BASE_DTO, originalSizeBytes: 1024 }),
     ).rejects.toThrow(/not found/);
 
-    // Never even gets to checking the upload -- the project check runs first.
+    // Never even gets to checking the upload; the project check runs first.
     expect(getObjectSize).not.toHaveBeenCalled();
   });
 
@@ -230,7 +230,7 @@ describe('CapturesService hotspots project-scoping (H-1)', () => {
 
   function makeService(opts: { wrongProject?: boolean }) {
     // findOne() also resolves rendition/original storage keys to read URLs
-    // after its own SELECT -- a resolveUrls() mock is needed even though
+    // after its own SELECT; a resolveUrls() mock is needed even though
     // these tests don't care about its output, same as the "project exists"
     // row only needing to be truthy enough to satisfy findOne()'s own shape.
     const findOneRow = { id: captureId, projectId, companyId, renditions: [], originalKey: 'key-1' };
@@ -291,7 +291,7 @@ describe('CapturesService hotspots project-scoping (H-1)', () => {
 
   // H-1 follow-up: the source capture can be in the right project while the
   // optional targetCaptureId (the capture a 360 hotspot navigates to)
-  // belongs to a different one in the same company -- the tests above
+  // belongs to a different one in the same company; the tests above
   // (which omit targetCaptureId entirely) don't cover this case.
   describe('optional targetCaptureId', () => {
     it('createHotspot: omitting targetCaptureId skips the ownership check entirely', async () => {
@@ -319,7 +319,7 @@ describe('CapturesService hotspots project-scoping (H-1)', () => {
       await expect(svc.createHotspot(companyId, projectId, captureId, 'user-1', {
         ...hotspotDto, targetCaptureId: 'capture-from-other-project',
       })).rejects.toThrow(/not found/i);
-      expect(withTenant).toHaveBeenCalledTimes(2); // findOne() + the failed capture check -- never reached the INSERT
+      expect(withTenant).toHaveBeenCalledTimes(2); // findOne() + the failed capture check; never reached the INSERT
     });
 
     it('updateHotspot: rejects a targetCaptureId that belongs to a different project, and writes no update', async () => {
@@ -328,13 +328,13 @@ describe('CapturesService hotspots project-scoping (H-1)', () => {
       await expect(svc.updateHotspot(companyId, projectId, captureId, 'hotspot-1', {
         ...hotspotDto, targetCaptureId: 'capture-from-other-project',
       })).rejects.toThrow(/not found/i);
-      expect(withTenant).toHaveBeenCalledTimes(2); // findOne() + the failed capture check -- never reached the UPDATE
+      expect(withTenant).toHaveBeenCalledTimes(2); // findOne() + the failed capture check; never reached the UPDATE
     });
   });
 });
 
 // H-1 follow-up: update() validates locationId against this project the
-// same way register() already does -- a user authorized for Project A
+// same way register() already does; a user authorized for Project A
 // could otherwise re-point a Project A capture's location_id at Project
 // B's location by supplying its id.
 describe('CapturesService.update location project-scoping (H-1)', () => {
@@ -370,6 +370,6 @@ describe('CapturesService.update location project-scoping (H-1)', () => {
     const { svc, withTenant } = makeService({ locationBelongsToProject: false });
     await expect(svc.update(companyId, projectId, captureId, { locationId: 'location-from-other-project' }))
       .rejects.toThrow(/does not belong to this project/);
-    expect(withTenant).toHaveBeenCalledTimes(2); // findOne() + the failed location check -- never reached the UPDATE
+    expect(withTenant).toHaveBeenCalledTimes(2); // findOne() + the failed location check; never reached the UPDATE
   });
 });

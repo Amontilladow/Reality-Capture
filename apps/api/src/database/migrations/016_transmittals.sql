@@ -1,4 +1,4 @@
--- Transmittals -- the formal record of documents/drawings sent to a
+-- Transmittals: the formal record of documents/drawings sent to a
 -- recipient (often an external consultant/contractor, not a system user)
 -- for review, approval, or record. Distinct from RFIs (a question) and
 -- Submittals (contractor-submitted data awaiting review): a transmittal is

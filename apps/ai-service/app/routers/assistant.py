@@ -31,7 +31,7 @@ def _escape_for_context(text: str) -> str:
 class AssistantRequest(BaseModel):
     question: str
     company_id: str
-    # Optional[...] required, not bare `str = None` -- Pydantic v2 rejects an
+    # Optional[...] required, not bare `str = None`: Pydantic v2 rejects an
     # explicit null against a bare type even with that default. Confirmed by
     # hand elsewhere in this service (reports.py, ingest.py had the same bug).
     project_id: Optional[str] = None

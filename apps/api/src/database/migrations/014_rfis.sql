@@ -1,4 +1,4 @@
--- RFIs (Requests for Information) -- a distinct workflow from Issues:
+-- RFIs (Requests for Information): a distinct workflow from Issues:
 -- a question needing a formal answer, not a defect needing a fix.
 CREATE TABLE IF NOT EXISTS rfis (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),

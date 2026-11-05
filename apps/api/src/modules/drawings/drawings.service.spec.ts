@@ -20,7 +20,7 @@ describe('DrawingsService pin page_number', () => {
     // pins SELECT. Distinguish by which opts key the test actually set:
     // a createPin test sets 'drawingRow' (even to undefined, to test the
     // not-found path) and leaves withTenantResult unset; a getPins test is
-    // the opposite -- it never touches drawingRow, so call 1 only needs a
+    // the opposite; it never touches drawingRow, so call 1 only needs a
     // generic truthy row to satisfy the ownership check, and call 2 returns
     // the real withTenantResult.
     const isCreatePinTest = 'drawingRow' in opts;
@@ -275,7 +275,7 @@ describe('DrawingsService upload enforcement', () => {
 
 // H-1 regression (KNOWN_ISSUES_AND_REMEDIATION.md): findOne/linkCapture/
 // unlinkCapture/getPins used to scope their drawing lookup only by
-// company_id -- a user authorized for Project A could fetch Project B's
+// company_id; a user authorized for Project A could fetch Project B's
 // drawing (findOne hands back a live presigned download URL) or mutate its
 // pins by supplying Project B's own drawingId. Each test below proves both
 // halves: the real project succeeds, the wrong one is rejected.
@@ -285,8 +285,8 @@ describe('DrawingsService H-1: same-company cross-project access is rejected', (
   const REAL_PROJECT = 'project-A';
   const OTHER_PROJECT = 'project-B';
 
-  // Only returns a row when the query's bound values include REAL_PROJECT
-  // -- i.e. the drawing genuinely belongs to REAL_PROJECT, so a lookup
+  // Only returns a row when the query's bound values include REAL_PROJECT;
+  //, i.e. the drawing belongs to REAL_PROJECT, so a lookup
   // under OTHER_PROJECT must come back empty.
   function makeProjectScopedDb(extra: (text: string) => unknown[] | undefined = () => undefined) {
     const query = jest.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
@@ -294,7 +294,7 @@ describe('DrawingsService H-1: same-company cross-project access is rejected', (
       if (text.includes('FROM drawings')) {
         return Promise.resolve(values.includes(REAL_PROJECT) ? [{ id: drawingId, projectId: REAL_PROJECT, storageKey: 'key.pdf', captureLinks: [] }] : []);
       }
-      // assertCaptureInProject's own ownership check (linkCapture) -- same
+      // assertCaptureInProject's own ownership check (linkCapture): same
       // REAL_PROJECT-gated shape as the drawings branch above.
       if (text.includes('FROM captures')) {
         return Promise.resolve(values.includes(REAL_PROJECT) ? [{ '?column?': 1 }] : []);
@@ -329,8 +329,8 @@ describe('DrawingsService H-1: same-company cross-project access is rejected', (
   });
 
   // H-1 follow-up: the drawing itself can be in the right project while the
-  // *capture* being linked belongs to a different one in the same company
-  // -- a parent-only check (the test above) doesn't cover this case. This
+  // *capture* being linked belongs to a different one in the same company;
+  // a parent-only check (the test above) doesn't cover this case. This
   // mock, unlike makeProjectScopedDb, keys off the table queried rather
   // than which project id was bound, so it can tell "the drawing is fine"
   // apart from "this particular capture is not."
@@ -353,7 +353,7 @@ describe('DrawingsService H-1: same-company cross-project access is rejected', (
 
   it('unlinkCapture: succeeds under the real project, rejects the same drawingId under another project', async () => {
     const { db } = makeProjectScopedDb((text) => (text.includes('DELETE FROM capture_drawing_links') ? [] as unknown[] : undefined));
-    // The DELETE itself reports a row count, not an array -- stub it directly.
+    // The DELETE itself reports a row count, not an array; stub it directly.
     (db.withTenant as jest.Mock).mockImplementation((_companyId: string, fn: (sql: unknown) => unknown) => {
       const sql = jest.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
         const text = strings.join('?');

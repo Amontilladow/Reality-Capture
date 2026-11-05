@@ -106,7 +106,7 @@ describe('EmailLauncherButton', () => {
     render(<EmailLauncherButton />);
 
     // The main button alone would launch Outlook directly (per the test
-    // above) -- the separate "Change email app" control is what reopens
+    // above): the separate "Change email app" control is what reopens
     // the menu despite a preference already being stored.
     await user.click(screen.getByRole('button', { name: 'Change email app' }));
     expect(screen.getByRole('menu')).toBeInTheDocument();
@@ -163,7 +163,7 @@ describe('EmailLauncherButton', () => {
     });
 
     expect(await screen.findByText(/pop-up/i)).toBeInTheDocument();
-    // The choice is still remembered even though the window couldn't open --
+    // The choice is still remembered even though the window couldn't open;
     // "retry" on a later click should work without going through the menu again.
     expect(localStorage.getItem('rc.emailProvider')).toBe('outlook');
   });

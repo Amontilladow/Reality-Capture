@@ -3,7 +3,7 @@ import { useInsideMobileFold } from './MobileFold';
 
 // Primary section heading for dashboards/reports. Hierarchy comes from the
 // title's weight and size, not decoration: no accent bar, no chip. tone
-// still carries meaning on the eyebrow only -- 'orange' marks AI-generated
+// still carries meaning on the eyebrow only; 'orange' marks AI-generated
 // content (the one place that color appears), 'blueprint' a navigational
 // section, 'teal' (default) a plain data section, rendered in muted ink so
 // ordinary sections stay quiet.

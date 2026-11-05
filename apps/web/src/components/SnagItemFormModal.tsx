@@ -19,7 +19,7 @@ export function SnagItemFormModal({
   hierarchy: ProjectHierarchy[];
   snag?: SnagListItem;
   // Prefill from the AI assistant's createSnagDraft tool (CTO spec sections
-  // 9, 16-21) -- same Edit/Submit pattern as RfiFormModal/IssueFormModal:
+  // 9, 16-21): same Edit/Submit pattern as RfiFormModal/IssueFormModal:
   // the AI never writes directly, it only pre-fills this form for the user
   // to review and submit through the normal, already-authorized endpoint.
   draftValues?: { title?: string; description?: string; trade?: string; priority?: SnagPriority; dueDate?: string };

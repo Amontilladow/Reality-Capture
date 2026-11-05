@@ -2,16 +2,16 @@ import { Injectable } from '@nestjs/common';
 import type { RiskSignalType } from '@engineeringos/types';
 import { DatabaseService } from '../../database/database.service';
 
-// RFI statuses that mean "this RFI is no longer awaiting action" -- everything
+// RFI statuses that mean "this RFI is no longer awaiting action"; everything
 // else (including the legacy 'open' default) counts as still-open for
 // overdue/aging purposes. See architecture assessment: workflow statuses
 // were widened in migration 028 without renaming the legacy ones.
 const CLOSED_RFI_STATUSES = ['answered', 'closed', 'void', 'rejected', 'cancelled'];
 const CLOSED_ISSUE_STATUSES = ['resolved', 'closed', 'void'];
-// Snag two-step closure: 'fixed' means work is done but not yet verified --
+// Snag two-step closure: 'fixed' means work is done but not yet verified;
 // still counted as active for overdue/aging, since it can still slip back.
 const CLOSED_SNAG_STATUSES = ['verified', 'void'];
-// Mirrors submittals.service.ts's own getSummary() "approved" bucket --
+// Mirrors submittals.service.ts's own getSummary() "approved" bucket;
 // 'rejected'/'revise_and_resubmit' are NOT closed: both require real
 // further work (a resubmission), which is exactly what SUBMITTAL_REJECTED
 // below exists to flag.
@@ -26,12 +26,12 @@ const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 
 /**
  * Risk Signal Engine (brief section 9). Every signal type here is backed by
- * a real column or a real join on an existing table -- no signal exists for
+ * a real column or a real join on an existing table; no signal exists for
  * the programme/procurement categories the brief describes, because no
  * programme-activity or material/procurement module exists in this
  * codebase (see architecture assessment). Signals whose condition no
  * longer holds are deleted, not left stale, so a resolved item's risk can
- * genuinely decrease (Scenario E).
+ * decrease (Scenario E).
  */
 @Injectable()
 export class SignalsService {
@@ -308,7 +308,7 @@ export class SignalsService {
         await this.clearSignal(companyId, s.nodeId, 'SUBMITTAL_HIGH_PRIORITY');
       }
 
-      // Not gated on isOpen -- rejected/revise_and_resubmit ARE the open,
+      // Not gated on isOpen: rejected/revise_and_resubmit ARE the open,
       // needs-action states this signal exists to flag (a resubmission
       // cycle is real schedule risk, not something this codebase tracks a
       // count of, so severity reflects the current outcome only).
@@ -321,17 +321,17 @@ export class SignalsService {
   }
 
   // ── QAQC NCR signals (same overdue/approaching-due/high-priority shape
-  // as submittal signals above -- qaqc_records has the same due_date/
+  // as submittal signals above; qaqc_records has the same due_date/
   // priority columns). Only NCR is risk-worthy (see risk.service.ts's
-  // RISK_WORTHY_NODE_TYPES) -- SOR/WIR/MIR are excluded. ───────────────────
+  // RISK_WORTHY_NODE_TYPES): SOR/WIR/MIR are excluded. ───────────────────
 
   // qaqc_records.record_type is a plain VARCHAR(10) (migration 067), while
-  // risk_graph_nodes.node_type is the risk_node_type enum (migration 050) --
+  // risk_graph_nodes.node_type is the risk_node_type enum (migration 050);
   // Postgres has no built-in "=" operator between an enum and a varchar
   // column, so the join below casts explicitly, or it throws "operator does
   // not exist: risk_node_type = character varying" on every single call.
   // Confirmed live: this silently broke risk recalculation for EVERY entity
-  // type project-wide, not just QAQC -- detectSignalsForProject() below runs
+  // type project-wide, not just QAQC; detectSignalsForProject() below runs
   // every detector in one sequence, and this one threw unconditionally,
   // aborting whatever recalculateForEntity()/recalculateForNode() call was
   // in progress for ANY entity type in the project.

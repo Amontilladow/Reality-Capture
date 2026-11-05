@@ -8,7 +8,7 @@ describe('WebhooksService.emitEvent', () => {
     const withTenant = jest.fn(async (companyId: string, fn: (sql: unknown) => unknown) => {
       seenCompanyIds.push(companyId);
       // The SELECT (lookup) call and the INSERT (delivery row) call both
-      // flow through this same mock -- the SELECT needs a row back, the
+      // flow through this same mock; the SELECT needs a row back, the
       // INSERT needs sql.json() to exist and needs to resolve to a row
       // with an id so deliveryQueue.add() has something to enqueue.
       const fakeSql = Object.assign(

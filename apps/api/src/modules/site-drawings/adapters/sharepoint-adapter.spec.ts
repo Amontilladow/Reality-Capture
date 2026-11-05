@@ -79,7 +79,7 @@ describe('SiteDrawingSharePointAdapter', () => {
       expect(result[0].drawingNumber).toBe('A-101');
       expect(result[0].drawingTitle).toBe('A-101');
       expect(result[0].revisionNumber).toBe('2.0'); // real SharePoint version label, not a guess
-      expect(result[0].sourceStatusRaw).toBeUndefined(); // never inferred -- no statusField configured
+      expect(result[0].sourceStatusRaw).toBeUndefined(); // never inferred: no statusField configured
       expect(result[0].contentHash).toBeUndefined(); // never seeded from SharePoint's own hash (see adapter's own comment)
     });
 

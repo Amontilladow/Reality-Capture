@@ -35,7 +35,7 @@ describe('CredentialEncryptionService', () => {
     expect(() => svc.decrypt(tampered)).toThrow();
   });
 
-  // Phase 6 security fix: this used to assert the OPPOSITE -- that the
+  // Phase 6 security fix: this used to assert the OPPOSITE; that the
   // service kept working via a hardcoded 'dev-only-insecure-placeholder-key'
   // fallback when unconfigured. That silently encrypted every OAuth token
   // and BYO AI key with a key visible in this source file whenever an

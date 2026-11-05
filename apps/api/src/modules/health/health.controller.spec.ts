@@ -4,10 +4,10 @@ import type { StorageService } from '../storage/storage.service';
 import type { Queue } from 'bull';
 
 // The readiness check's whole point is to not let one dependency's failure
-// look like the others' -- each of database/redis/objectStorage is checked
+// look like the others'; each of database/redis/objectStorage is checked
 // independently and reported independently, with a top-level "degraded"
 // status when any of them is down. The liveness check (`check()`) stays a
-// plain DB ping, unchanged from before this pass -- it's what render.yaml's
+// plain DB ping, unchanged from before this pass; it's what render.yaml's
 // healthCheckPath actually gates deploys/restarts on, so it deliberately
 // does not depend on Redis/storage (see health.controller.ts's comment).
 describe('HealthController', () => {
@@ -50,7 +50,7 @@ describe('HealthController', () => {
       const result = await controller.check();
       expect(result.status).toBe('degraded');
       expect(result.services).toEqual({ database: 'error' });
-      // Liveness must not touch Redis/storage at all -- confirm the shape has no other keys.
+      // Liveness must not touch Redis/storage at all; confirm the shape has no other keys.
       expect(Object.keys(result.services)).toEqual(['database']);
     });
   });

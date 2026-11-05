@@ -24,7 +24,7 @@ const EMPTY_SITE_FORM: SharePointProjectSiteConfig = {
 
 // Company-admin-only config for the Site Drawing Hub's SharePoint adapter
 // (server-gated by @Roles('company_admin') on
-// SharePointIntegrationController -- this page has no separate
+// SharePointIntegrationController; this page has no separate
 // client-side gate, same convention DeveloperSettingsPage already
 // follows: hidden from the nav for a non-admin, and a 403 from the API
 // either way if they reach it directly).

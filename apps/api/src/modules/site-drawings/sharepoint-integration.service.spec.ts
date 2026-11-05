@@ -6,7 +6,7 @@ import type { SharePointGraphClient } from './adapters/sharepoint-graph-client';
 const companyId = 'company-1';
 const projectId = 'project-1';
 
-// Mirrors site-drawings.service.spec.ts's single()/multi() convention --
+// Mirrors site-drawings.service.spec.ts's single()/multi() convention;
 // one queued result per this.db.withTenant(...) call, in call order. The
 // real driver's sql.json()/sql`` are both just functions here; the mock
 // never inspects what's passed to them, only returns the next queued row.

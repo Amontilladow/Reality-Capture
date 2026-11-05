@@ -7,7 +7,7 @@ import { isPrivateModeOn, setPrivateMode } from './config.js';
 
 test('isPrivateModeOn is false until setPrivateMode(true) creates the marker file, and false again after setPrivateMode(false)', () => {
   const dir = mkdtempSync(join(tmpdir(), 'agent-private-mode-test-'));
-  const markerPath = join(dir, 'nested', 'private-mode'); // nested -- setPrivateMode must create the parent dir itself
+  const markerPath = join(dir, 'nested', 'private-mode'); // nested: setPrivateMode must create the parent dir itself
   try {
     assert.equal(isPrivateModeOn(markerPath), false);
 

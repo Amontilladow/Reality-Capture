@@ -4,12 +4,12 @@ export function slugifySectionTitle(title: string): string {
   return `section-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`;
 }
 
-// Single source of truth for which sections a given article renders --
+// Single source of truth for which sections a given article renders;
 // used both by ArticleView itself and by the right-panel table of
 // contents (HelpPage), so the two can never disagree about what's
 // actually present. Every entry here is conditional on the article
 // actually having that field (brief: "where a field... is not
-// supported... omit it" -- a short FAQ/glossary entry with just a title
+// supported... omit it"; a short FAQ/glossary entry with just a title
 // and summary produces an empty list and renders nothing beyond those).
 export function getArticleSectionTitles(article: HelpArticle): string[] {
   const titles: string[] = [];

@@ -1,6 +1,6 @@
 import { apiGet, apiPost, apiDelete, apiDownload } from './api';
 
-// Internal, authenticated side -- same manage_project_records gate as
+// Internal, authenticated side; same manage_project_records gate as
 // Submittals' review actions. `http` (used under the hood) only attaches a
 // bearer token when one exists in the auth store, so the public helpers
 // below reuse the same client with no separate instance.

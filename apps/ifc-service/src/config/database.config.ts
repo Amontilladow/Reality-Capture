@@ -7,7 +7,7 @@ export default registerAs('database', () => ({
   password: process.env.DB_PASSWORD ?? 'postgres',
   ssl: process.env.DB_SSL ?? 'false',
   // See apps/api/src/config/database.config.ts's identical field for why
-  // this is optional -- Render's managed Postgres cert is already covered
+  // this is optional; Render's managed Postgres cert is already covered
   // by Node's default trust store.
   caCert: process.env.DB_CA_CERT,
 }));

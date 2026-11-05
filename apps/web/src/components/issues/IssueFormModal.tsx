@@ -36,13 +36,13 @@ export function IssueFormModal({
   hierarchy: ProjectHierarchy[];
   issue?: IssueDetailItem;
   // Pre-fills a brand-new (never submitted) issue, e.g. from an AI-generated
-  // draft -- only used when `issue` is absent (create mode); the user still
+  // draft; only used when `issue` is absent (create mode); the user still
   // edits and submits through this exact same form and createIssue() call.
   draftValues?: { title?: string; description?: string; issueType?: IssueType; priority?: IssuePriority; discipline?: IssueDiscipline; deadline?: string };
   defaultElementId?: string;
   defaultElementName?: string;
   // Captured automatically from the BIM viewer when "Raise issue" is
-  // clicked there -- not user-editable, so no corresponding form field.
+  // clicked there; not user-editable, so no corresponding form field.
   viewState?: {
     modelId: string;
     cameraPosition: CameraVector;
@@ -63,7 +63,7 @@ export function IssueFormModal({
   const [place, setPlace] = useState<HierarchySelection>({ buildingId: '', levelId: '', locationId: '' });
   const [deadline, setDeadline] = useState('');
   const [error, setError] = useState('');
-  // Evidence photos picked before the issue exists yet -- uploaded as real
+  // Evidence photos picked before the issue exists yet; uploaded as real
   // captures (so they show up in the Captures tab like any other capture)
   // and linked via issue_captures right after the issue itself is created,
   // same mechanism IssueDetail's "Attach existing capture" already uses,
@@ -141,7 +141,7 @@ export function IssueFormModal({
       });
 
       // Upload each picked photo as a real capture (so it also shows up in
-      // the Captures tab), then link it to the new issue as evidence --
+      // the Captures tab), then link it to the new issue as evidence;
       // sequential, not parallel, so uploadProgress reflects real completion
       // and one failed upload doesn't race the others.
       if (photos.length > 0) {
@@ -292,7 +292,7 @@ export function IssueFormModal({
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                // No `capture` attribute -- that forces mobile browsers
+                // No `capture` attribute: that forces mobile browsers
                 // straight into the camera with no option to pick an
                 // existing photo. Leaving it off is what makes the browser
                 // show its native action sheet (Camera / Photo Library / Files).

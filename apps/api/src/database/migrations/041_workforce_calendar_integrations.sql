@@ -1,13 +1,13 @@
 BEGIN;
 
 -- ══════════════════════════════════════════════════════════════════════════
--- Workforce Intelligence™ — Google Calendar integration
+-- Workforce Intelligence™: Google Calendar integration
 --
 -- DeskTime's own description: "DeskTime can integrate with calendar apps
 -- to help you track offline time." Scoped deliberately narrow for this
 -- pass: OAuth connect/disconnect + a live "today's events" read at request
 -- time. Does NOT write calendar events into `activities` or factor them
--- into productivity scoring -- that would need real idempotency/dedup
+-- into productivity scoring; that would need real idempotency/dedup
 -- design (a re-run must not double-count the same calendar event) and
 -- this integration has never been exercised against a live Google account,
 -- so it stays a read-only, additive view for now. A natural, explicitly
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS workforce_calendar_integrations (
   connected_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
   connected_by      UUID REFERENCES users(id),
   -- Last time this integration successfully round-tripped to Google (an
-  -- events/today read), not a "last full sync" -- there is no sync job.
+  -- events/today read), not a "last full sync"; there is no sync job.
   last_used_at      TIMESTAMPTZ,
   created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
   updated_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),

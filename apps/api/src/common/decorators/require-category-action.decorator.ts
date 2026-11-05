@@ -7,14 +7,14 @@ export interface CategoryActionSpec {
   module: OrgModule;
   action: OrgAction;
   // Pre-existing discretionary ProjectPermission grant(s) that ALSO satisfy
-  // this route (OR, not AND, with the category check) -- preserves every
+  // this route (OR, not AND, with the category check): preserves every
   // admin-granted exception that worked before this sprint. Pass the same
   // permission(s) the route's old @RequireProjectPermission(...) named, if
   // any, so this decorator is a drop-in replacement, not a narrowing.
   fallbackPermissions?: ProjectPermission[];
 }
 
-// Gates a route on CategoryActionGuard -- see that guard and
+// Gates a route on CategoryActionGuard; see that guard and
 // OrgCategoryPermissionService for exactly what satisfies it (super_admin,
 // the project's own project_lead, engineering_manager always, the caller's
 // organizational category per the owner's permission matrix, OR any of

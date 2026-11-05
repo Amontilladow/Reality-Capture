@@ -3,7 +3,7 @@ import { create } from 'zustand';
 export type Theme = 'light' | 'dark';
 
 const STORAGE_KEY = 'rc-theme';
-// Matches index.css's .theme-transition rule -- see its own comment for why
+// Matches index.css's .theme-transition rule; see its own comment for why
 // this is scoped to a brief window around the switch rather than left on.
 const TRANSITION_MS = 200;
 
@@ -13,7 +13,7 @@ function systemTheme(): Theme {
 
 // Mirrors the inline bootstrap script in index.html (which runs before any
 // JS module loads, so the <html data-theme> attribute is already correct
-// before first paint -- see that script's own comment on why) -- this just
+// before first paint; see that script's own comment on why): this just
 // re-derives the same decision so the store's initial state agrees with
 // what's already on the page, instead of disagreeing for one render.
 function readInitialTheme(): Theme {
@@ -21,7 +21,7 @@ function readInitialTheme(): Theme {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored === 'light' || stored === 'dark') return stored;
   } catch {
-    // localStorage unavailable (private browsing, disabled) -- fall through
+    // localStorage unavailable (private browsing, disabled): fall through
   }
   return systemTheme();
 }
@@ -45,7 +45,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   theme: readInitialTheme(),
   setTheme: (theme) => {
     // No animated flash on the very first application (module load, before
-    // any component mounted) -- only an explicit user action should
+    // any component mounted): only an explicit user action should
     // trigger the transition.
     applyTheme(theme, { animate: true });
     try {
@@ -60,12 +60,12 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
 // Keep <html data-theme> in sync with the store's initial value in case
 // index.html's inline bootstrap script didn't run (a stale cached HTML
-// shell, a test harness that renders main.tsx directly) -- a no-op
+// shell, a test harness that renders main.tsx directly): a no-op
 // attribute write when it already matches.
 applyTheme(useThemeStore.getState().theme);
 
 // Live-follow OS theme changes, but only until the user makes an explicit
-// choice of their own -- once setTheme()/toggleTheme() has persisted a
+// choice of their own; once setTheme()/toggleTheme() has persisted a
 // value, readInitialTheme() is never consulted again, so this listener
 // stops affecting the app rather than fighting the user's pick.
 if (typeof window !== 'undefined' && window.matchMedia) {

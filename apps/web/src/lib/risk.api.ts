@@ -35,7 +35,7 @@ export interface Risk {
   recurrence: number;
   confidenceLevel: RiskConfidenceLevel;
   confidenceReason?: string;
-  // Risk Matrix (Probability x Impact, 1-25) -- a separate scoring system
+  // Risk Matrix (Probability x Impact, 1-25): a separate scoring system
   // from automatedScore/score/level above; see risk.service.ts's comment.
   humanProbability?: number;
   humanImpact?: number;
@@ -98,7 +98,7 @@ export interface RiskTrendPoint {
 }
 
 // Risk Movement during a period (brief Phase 3): emerged/worsened/improved/
-// resolved/unresolved, from GET /risk/movement -- see RiskService.
+// resolved/unresolved, from GET /risk/movement; see RiskService.
 // getRiskMovement()'s own comment for exactly how each bucket is derived
 // (real risk_snapshots history, not the live per-risk trend field, which
 // reflects "since last recalculation" rather than "during this window").
@@ -242,13 +242,13 @@ export const getRiskAssessmentHistory = (projectId: string, riskId: string) =>
   apiGet<RiskAssessmentHistoryEntry[]>(`${base(projectId)}/${riskId}/assessment-history`);
 
 // probability/impact are 1-5 each; the server computes the 1-25 score and
-// matrix level -- never computed client-side and sent, so the UI can never
+// matrix level; never computed client-side and sent, so the UI can never
 // disagree with what's actually persisted.
 export const setHumanAssessment = (projectId: string, riskId: string, dto: { probability: number; impact: number; primaryDriver: RiskDriver; secondaryDriver?: RiskDriver | null }) =>
   apiPatch<Risk>(`${base(projectId)}/${riskId}/human-assessment`, dto);
 
 // Resolves an issue/RFI/snag's own entity ID to its Risk (if any has been
-// detected/assessed yet) -- for the inline Human Risk Assessment widget on
+// detected/assessed yet): for the inline Human Risk Assessment widget on
 // those forms. Never creates anything; null means "nothing to show yet".
 export const getRiskByEntity = (projectId: string, nodeType: string, entityId: string) =>
   apiGet<(Risk & { discrepancy: RiskMatrixDiscrepancy | null }) | null>(`${base(projectId)}/by-entity`, { params: { nodeType, entityId } });
@@ -259,7 +259,7 @@ export const setHumanAssessmentByEntity = (projectId: string, nodeType: string, 
   apiPatch<Risk>(`${base(projectId)}/by-entity/human-assessment`, dto, { params: { nodeType, entityId } });
 
 // Resolves a Human-vs-AI Risk Matrix discrepancy. "Update Assessment" is not
-// included here -- it's just a fresh setHumanAssessment() call.
+// included here; it's just a fresh setHumanAssessment() call.
 export const setMatrixOverride = (projectId: string, riskId: string, dto: { decision: 'ACCEPT_AI' | 'KEEP_HUMAN' | 'CUSTOM'; score?: number; level?: RiskMatrixLevel; reason?: string }) =>
   apiPatch<Risk>(`${base(projectId)}/${riskId}/matrix-override`, dto);
 export const clearMatrixOverride = (projectId: string, riskId: string) =>
@@ -286,7 +286,7 @@ export const getAiBriefing = (projectId: string) => apiGet<AiNarrativeResult>(`$
 export const getAiExplanation = (projectId: string, riskId: string) => apiGet<AiNarrativeResult>(`${base(projectId)}/${riskId}/ai-explanation`);
 
 // aiBriefing (optional) is the exact narrative text already shown on screen
-// (from getAiBriefing() above) -- passed through verbatim so the PDF never
+// (from getAiBriefing() above): passed through verbatim so the PDF never
 // shows a different narrative than what the user already read, and never
 // triggers a fresh (possibly slow, possibly unavailable) AI call of its own.
 export const downloadRiskPdf = (projectId: string, filename: string, aiBriefing?: string) =>

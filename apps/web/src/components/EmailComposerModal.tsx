@@ -26,10 +26,10 @@ function newIdempotencyKey(): string {
 }
 
 // Phase 3E: the one reusable compose-and-send surface, used standalone
-// (a general project communication, no record context) today and -- in
-// Phase 3F -- opened with `prefill` from an RFI/Issue/Submittal page so the
+// (a general project communication, no record context) today and (in
+// Phase 3F) opened with `prefill` from an RFI/Issue/Submittal page so the
 // subject/related record are already filled in. Never auto-sends and never
-// changes any workflow record's status as a side effect of sending --
+// changes any workflow record's status as a side effect of sending;
 // composing an email is its own action, independent of the RFI/Issue/
 // Submittal lifecycle it may be about.
 export function EmailComposerModal({
@@ -71,7 +71,7 @@ export function EmailComposerModal({
 
   // Applies the prefill once per open, same "re-apply only when the modal
   // is (re)opened" pattern RfiFormModal already uses for its own
-  // initialValues -- never fights the user's own edits mid-compose.
+  // initialValues; never fights the user's own edits mid-compose.
   useEffect(() => {
     if (!open) return;
     if (prefill?.subject !== undefined) setSubject(prefill.subject);

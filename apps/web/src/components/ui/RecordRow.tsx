@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 // The phone layout for a register of records (issues, risks, ...): one
 // grouped panel with hairline dividers and dense two-line rows, the way
-// field apps list work -- rather than a stack of separate cards, each
+// field apps list work; rather than a stack of separate cards, each
 // repeating every label and badge on its own line.
 //
 // A row reads left to right: a severity marker, the title (what it is),

@@ -12,7 +12,7 @@ interface IntegrationRow {
   tokenExpiresAt: string;
 }
 
-// Raw shape of a SELECT against workforce_calendar_integrations -- both the
+// Raw shape of a SELECT against workforce_calendar_integrations; both the
 // legacy plaintext columns and the newer ciphertext/iv/auth-tag triplets
 // (migration 077) can be present on any given row, since the migration is
 // additive and a row only moves off the plaintext columns the next time it's
@@ -51,7 +51,7 @@ export class CalendarIntegrationService {
   // Verifies `state` (see oauth-state.util.ts's own comment for why this
   // needs no database lookup to identify who initiated the flow), then
   // exchanges the code and stores the resulting tokens. Throws on any
-  // failure -- the controller decides what that means for the redirect the
+  // failure; the controller decides what that means for the redirect the
   // user's browser ends up at, this service only ever deals in success or
   // a thrown error, never a partial/ambiguous state.
   async handleCallback(code: string, state: string): Promise<{ companyId: string }> {
@@ -72,7 +72,7 @@ export class CalendarIntegrationService {
 
     // access_token/refresh_token (the legacy plaintext columns) are
     // deliberately left out of both the INSERT's column list and the
-    // ON CONFLICT UPDATE -- a brand-new connection never writes plaintext,
+    // ON CONFLICT UPDATE; a brand-new connection never writes plaintext,
     // and a reconnect of a previously-plaintext row clears those columns
     // back to NULL (nothing lists them, so Postgres leaves/sets them to
     // their default, NULL) as part of migrating that row onto the
@@ -160,7 +160,7 @@ export class CalendarIntegrationService {
   }
 
   // The ciphertext column's presence IS the legacy-vs-encrypted marker
-  // (see migration 077's own comment) -- no separate version flag needed.
+  // (see migration 077's own comment): no separate version flag needed.
   // Never includes the token value itself in a thrown error, only which
   // slot (access/refresh) was unreadable, consistent with this module's
   // "never log token contents" rule.
@@ -192,7 +192,7 @@ export class CalendarIntegrationService {
     // hold the refresh token's real value regardless of which column it
     // came from (getIntegrationRow already resolved that), so a refresh is
     // also the moment a still-legacy row gets fully moved onto the
-    // encrypted columns -- re-encrypting the refresh token (unchanged by
+    // encrypted columns; re-encrypting the refresh token (unchanged by
     // Google in this flow; see google-calendar-client.ts) and clearing
     // both plaintext columns for this row.
     const refresh = this.encryption.encrypt(integration.refreshToken);

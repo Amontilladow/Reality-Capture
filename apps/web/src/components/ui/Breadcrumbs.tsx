@@ -6,7 +6,7 @@ export interface Crumb {
 }
 
 // `to` omitted on the last crumb marks the current page (not a link,
-// aria-current="page") -- callers don't need to remember to drop the href
+// aria-current="page"): callers don't need to remember to drop the href
 // themselves, same convention PageHeader's eyebrow already implies.
 export function Breadcrumbs({ items, className = '' }: { items: Crumb[]; className?: string }) {
   return (

@@ -4,7 +4,7 @@ import { validate } from 'class-validator';
 import { SendEmailDto } from './send-email.dto';
 
 // Security regression (Phase 3I): GmailClient.buildMimeMessage() hand-builds
-// raw RFC 2822 headers from these fields -- an embedded \r\n would let a
+// raw RFC 2822 headers from these fields; an embedded \r\n would let a
 // subject (or, via SendEmailAttachmentDto, a filename/contentType) smuggle
 // in an extra header, such as a hidden Bcc. These fields must reject line
 // breaks at the validation layer, before any provider client ever sees them.

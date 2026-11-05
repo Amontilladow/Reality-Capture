@@ -1,7 +1,7 @@
 // Client-side storage for explicitly downloaded offline drawing packages
 // (brief section 8). The PDF bytes live here, in the browser's own
 // IndexedDB, never in Postgres (see SiteDrawingOfflinePackage's own
-// comment in site-drawing.types.ts) — this module owns exactly that, plus
+// comment in site-drawing.types.ts): this module owns exactly that, plus
 // the integrity hash used to detect a corrupted/partial download. No new
 // dependency: a single object store doesn't need the `idb` package, just
 // the raw IndexedDB API wrapped in promises.
@@ -34,7 +34,7 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
-// SHA-256 over the downloaded bytes -- compared against the content hash
+// SHA-256 over the downloaded bytes: compared against the content hash
 // the server reports for the revision (when it has one) so a partial or
 // corrupted download is caught before it's ever presented as a complete
 // offline package (brief sections 8/10).
@@ -78,7 +78,7 @@ export async function deleteOfflinePackage(packageId: string): Promise<void> {
   db.close();
 }
 
-// Every locally stored package's id -- used to reconcile against the
+// Every locally stored package's id: used to reconcile against the
 // server's own package list (a package the server no longer knows about,
 // e.g. after a policy change, should be cleared locally too) and for the
 // sign-out clear-all below.
@@ -96,7 +96,7 @@ export async function listStoredPackageIds(): Promise<string[]> {
 
 // Clears every offline package's bytes from this browser (brief section 9:
 // "Clear locally cached protected data when the user signs out"). Called
-// from the auth store's own sign-out path — see auth.store.ts.
+// from the auth store's own sign-out path; see auth.store.ts.
 export async function clearAllOfflinePackages(): Promise<void> {
   const db = await openDb();
   await new Promise<void>((resolve, reject) => {

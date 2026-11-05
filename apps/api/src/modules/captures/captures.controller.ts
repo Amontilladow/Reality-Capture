@@ -107,7 +107,7 @@ export class CapturesController {
   }
 }
 
-// Mobile sync endpoint — separate controller path (not under /projects/:id)
+// Mobile sync endpoint: separate controller path (not under /projects/:id)
 import { Controller as Ctrl2 } from '@nestjs/common';
 
 @ApiTags('captures')

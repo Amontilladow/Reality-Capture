@@ -3,10 +3,10 @@
 # this file used to declare was never created, and the service-level
 # "envVarGroups:" key that referenced it is not valid Blueprint syntax, which
 # made every Blueprint sync fail.
-#   INTERNAL_SERVICE_SECRET -- the same random value on engineeringos-api and
+#   INTERNAL_SERVICE_SECRET; the same random value on engineeringos-api and
 #     engineeringos-ai-service; the API presents it as X-Internal-Service-Secret
 #     on every call and the AI service rejects any request without it.
-#   DB_PASSWORD -- app_user's login password (migration 052), the same value on
+#   DB_PASSWORD; app_user's login password (migration 052), the same value on
 #     engineeringos-api and engineeringos-ifc-service. Deliberately NOT the
 #     database owner's credential (DB_MIGRATOR_* below), which bypasses RLS and
 #     is only used to run migrations.
@@ -37,7 +37,7 @@ services:
     region: oregon
     healthCheckPath: /api/v1/health
     # Runs once per deploy, in the new release's own image/environment,
-    # before it takes traffic -- applies any pending SQL migrations
+    # before it takes traffic; applies any pending SQL migrations
     # (apps/api/src/database/migrations/*.sql, tracked in the _migrations
     # table, safe to re-run). Previously this was a manual step a human had
     # to remember to run via a Render Shell after every deploy that shipped
@@ -67,7 +67,7 @@ services:
         fromDatabase:
           name: engineeringos-db
           property: database
-      # Runtime identity -- a narrowly-privileged, RLS-subject role (migration
+      # Runtime identity: a narrowly-privileged, RLS-subject role (migration
       # 052), NOT the database's owner. DB_PASSWORD (set in the
       # dashboard, see the top of this file) is shared with
       # engineeringos-ifc-service so both connect as the same app_user.
@@ -75,7 +75,7 @@ services:
         value: app_user
       # Owner/superuser credential, used ONLY by preDeployCommand's migration
       # run (run-migrations.ts prefers DB_MIGRATOR_* over DB_USER/DB_PASSWORD
-      # when present) -- never by the running application itself.
+      # when present): never by the running application itself.
       - key: DB_MIGRATOR_USER
         fromDatabase:
           name: engineeringos-db
@@ -91,7 +91,7 @@ services:
       # rejectUnauthorized: true connection with this unset fails pre-deploy
       # migrations with DEPTH_ZERO_SELF_SIGNED_CERT, since there's no public
       # CA to chain to). database.module.ts/run-migrations.ts both already
-      # verify against this when set -- it just needs a real value here.
+      # verify against this when set; it just needs a real value here.
       # To get it: open a Render Shell on this service (it's already inside
       # Render's private network, same as the running app) and run
       #   openssl s_client -starttls postgres -connect "$DB_HOST:$DB_PORT" -showcerts </dev/null 2>/dev/null | openssl x509 -outform PEM
@@ -109,10 +109,10 @@ services:
       - key: JWT_REFRESH_EXPIRES_IN
         value: 30d
       # RealityCapture's own AI provider (Reports/Risk AI briefings, the
-      # Assistant's tool-routing/domain-guard classification -- see
+      # Assistant's tool-routing/domain-guard classification; see
       # modules/ai/providers/provider.factory.ts). Previously no AI_PROVIDER
       # or provider key was declared here at all, so every AI request from
-      # this service failed closed with "No AI provider configured" --
+      # this service failed closed with "No AI provider configured";
       # Reports/Risk briefings always showed "unavailable" in production.
       # custom_openai_compatible points this at a third-party OpenAI-
       # compatible gateway rather than a provider's own API; CUSTOM_OPENAI_*
@@ -128,9 +128,9 @@ services:
       - key: CUSTOM_OPENAI_MODEL
         sync: false
       # Phase 6 security fix: this was previously missing from render.yaml
-      # entirely. CredentialEncryptionService (common/crypto/) -- which
-      # encrypts Outlook/Gmail OAuth tokens and BYO AI provider keys at rest
-      # -- fell back to a hardcoded placeholder passphrase whenever this was
+      # entirely. CredentialEncryptionService (common/crypto/): which
+      # encrypts Outlook/Gmail OAuth tokens and BYO AI provider keys at rest;
+      # fell back to a hardcoded placeholder passphrase whenever this was
       # unset, so every production deployment before this fix was silently
       # encrypting that data with a key visible in the source repo. The app
       # now refuses to boot without a real value here (config/app.config.ts).
@@ -161,11 +161,11 @@ services:
         value: sk_test_placeholder
       - key: STRIPE_WEBHOOK_SECRET
         value: whsec_placeholder
-      # Generic SMTP, not tied to any one provider -- Gmail, SES, a
+      # Generic SMTP, not tied to any one provider; Gmail, SES, a
       # transactional provider's SMTP endpoint, or a regional one all speak
       # plain SMTP, so EmailService never needs to care which is configured.
       # Filled in manually in the Render dashboard once a provider/account is
-      # actually chosen, same as S3_*/STRIPE_* above -- until then,
+      # actually chosen, same as S3_*/STRIPE_* above; until then,
       # EmailService.sendPasswordResetEmail() throws (caught by
       # AuthService.forgotPassword(), which logs it and still returns success
       # to the caller) and "Forgot password" falls back to being delivered
@@ -183,12 +183,12 @@ services:
       - key: AI_SERVICE_URL
         value: http://engineeringos-ai-service:8001
       # GIS Preparation runs inside engineeringos-ai-service (routers/gis_prep.py),
-      # not as its own paid instance -- see apps/adm-gis-prep docs D-034.
+      # not as its own paid instance; see apps/adm-gis-prep docs D-034.
       - key: GIS_PREP_SERVICE_URL
         value: http://engineeringos-ai-service:8001/gis-prep
 
   # ── Vector DB for the AI assistant/search (RAG) ─────────────────────────
-  # Private service ONLY -- never expose this publicly. It has no auth of
+  # Private service ONLY; never expose this publicly. It has no auth of
   # its own; only engineeringos-ai-service should be able to reach it.
   - type: pserv
     name: engineeringos-qdrant
@@ -203,7 +203,7 @@ services:
       sizeGB: 5
 
   # ── AI assistant / RAG service ──────────────────────────────────────────
-  # Private service ONLY -- /assistant, /search, /ingest trust whatever
+  # Private service ONLY; /assistant, /search, /ingest trust whatever
   # company_id/project_id is in the request body with no authentication of
   # their own. engineeringos-api is what enforces "only your own company's
   # data" before ever calling this. A public URL here would let anyone
@@ -231,7 +231,7 @@ services:
         value: ""
       # Switched from anthropic to custom_openai_compatible so the AI
       # Assistant (/assistant, this service) routes through the same
-      # third-party gateway as apps/api's Reports/Risk AI briefings --
+      # third-party gateway as apps/api's Reports/Risk AI briefings;
       # previously ANTHROPIC_API_KEY was never actually set here (see the
       # old comment this replaced), so /assistant had been failing closed
       # in production this whole time, same gap as apps/api.
@@ -283,7 +283,7 @@ services:
         fromDatabase:
           name: engineeringos-db
           property: database
-      # Narrowly-privileged, RLS-subject role (migration 052) -- not the
+      # Narrowly-privileged, RLS-subject role (migration 052): not the
       # database owner. DB_PASSWORD (set in the dashboard) is the
       # same shared value engineeringos-api uses, since this worker
       # never runs migrations itself and doesn't need owner-level access.
@@ -292,7 +292,7 @@ services:
       - key: DB_SSL
         value: "true"
       # Same self-signed-certificate requirement as engineeringos-api's
-      # identical var above -- set it to the same PEM value (see that
+      # identical var above; set it to the same PEM value (see that
       # entry's comment for how to obtain it).
       - key: DB_CA_CERT
         sync: false

@@ -21,7 +21,7 @@ export interface WalkResult {
   // expressID -> nearest ancestor spatial node GUID (site/building/storey/space)
   spatialNodeGuidByElement: Map<number, string>;
   // Leaf (non-spatial) expressIDs to process for properties/materials/quantities,
-  // in tree order — NOT materialized further than the ID + type + name +
+  // in tree order; NOT materialized further than the ID + type + name +
   // parent, so the batch loop can page through them without holding every
   // element's full property data at once.
   elementSkeletons: Array<{ expressId: number; guid: string; ifcType: string; parentElementGuid: string | null }>;
@@ -84,7 +84,7 @@ export class IfcParserService {
 
   // Walks IfcProject's spatial structure tree once. This is the single
   // source of truth for hierarchy (Site→Building→Storey→Space→Elements)
-  // AND for aggregates/contained-in-structure relationships — both are
+  // AND for aggregates/contained-in-structure relationships; both are
   // literally encoded in the same tree, so deriving them from one walk
   // instead of separate raw relationship queries is both simpler and
   // guaranteed consistent with the hierarchy itself.
@@ -108,7 +108,7 @@ export class IfcParserService {
     };
 
     // Recursive walk. IFC spatial trees are shallow (5-6 levels) even for
-    // huge buildings, so recursion depth is never a real concern here —
+    // huge buildings, so recursion depth is never a real concern here;
     // it's the per-node WORK (property/quantity extraction) that has to be
     // batched, which happens later, not during this lightweight tree walk.
     const visit = (node: TreeNode, parentSpatialGuid: string | null, parentElementGuid: string | null) => {
@@ -128,7 +128,7 @@ export class IfcParserService {
           name = (unwrapIfcValue(line.Name) as string) ?? undefined;
           elevation = type === 'IFCBUILDINGSTOREY' ? ((unwrapIfcValue(line.Elevation) as number) ?? undefined) : undefined;
         } catch {
-          // Non-fatal — the node still gets recorded with just its GUID/type.
+          // Non-fatal: the node still gets recorded with just its GUID/type.
         }
         spatialNodes.push({
           ifcGuid: guid,
@@ -167,7 +167,7 @@ export class IfcParserService {
     return { spatialNodes, guidByExpressId, spatialNodeGuidByElement, elementSkeletons, aggregatesRelationships, containedInStructureRelationships };
   }
 
-  // Global (not per-element) queries — both relationship kinds here are
+  // Global (not per-element) queries; both relationship kinds here are
   // typically far fewer rows than the element count, so holding them all
   // in memory at once is bounded and cheap, unlike per-element property
   // data.
@@ -235,7 +235,7 @@ export class IfcParserService {
   }
 
   // Extracts everything for ONE element: basic attrs, property sets,
-  // quantities, and materials. Called per-element inside the batch loop —
+  // quantities, and materials. Called per-element inside the batch loop;
   // never accumulated for the whole model at once.
   async extractElement(
     api: WebIFC.IfcAPI,
@@ -321,7 +321,7 @@ export class IfcParserService {
 
   // World-space AABB for one element, straight from web-ifc's own tessellated
   // geometry (the same source of truth used to generate the viewer's
-  // Fragments file) -- not re-derived from raw profile/placement math, so it
+  // Fragments file): not re-derived from raw profile/placement math, so it
   // matches whatever actually gets rendered. An element can have several
   // placed geometries (e.g. an assembly); the box covers all of them.
   // Vertex buffers are position(3) + normal(3) interleaved, per web-ifc's
@@ -358,7 +358,7 @@ export class IfcParserService {
       return found ? { minX, minY, minZ, maxX, maxY, maxZ } : null;
     } finally {
       // FlatMesh's .d.ts declares delete(), but the installed runtime
-      // doesn't actually implement it -- confirmed directly against this
+      // doesn't actually implement it; confirmed directly against this
       // web-ifc version (throws "flatMesh.delete is not a function"),
       // which was silently discarding every successfully-computed bbox by
       // throwing here, after the real work was already done, right before
@@ -372,8 +372,8 @@ export class IfcParserService {
 }
 
 // IfcRelAssociatesMaterial's RelatingMaterial can be a plain IfcMaterial, an
-// IfcMaterialLayerSet(Usage), an IfcMaterialList, or an IfcMaterialProfileSet
-// — this defensively pulls names out of whichever shape is present.
+// IfcMaterialLayerSet(Usage), an IfcMaterialList, or an IfcMaterialProfileSet;
+// this defensively pulls names out of whichever shape is present.
 function collectMaterialNames(mat: Record<string, unknown>): string[] {
   const names: string[] = [];
   const direct = unwrapIfcValue(mat.Name);

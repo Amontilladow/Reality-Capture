@@ -78,7 +78,7 @@ export function SubmittalDetailModal({
 
         <InlineRiskAssessment projectId={projectId} nodeType="submittal" entityId={submittal.id} />
 
-        {/* Email history -- Phase 3G */}
+        {/* Email history: Phase 3G */}
         <div>
           <div className="field-label mb-2">Email History</div>
           <EmailHistoryList projectId={projectId} relatedRecordType="submittal" relatedRecordId={submittal.id} />

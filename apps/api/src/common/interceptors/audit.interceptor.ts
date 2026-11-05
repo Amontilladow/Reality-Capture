@@ -16,7 +16,7 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   [/\/captures\/[^/]+$/,       'capture.updated',       'capture'],
   [/\/projects\/[^/]+\/issues$/,    'issue.created',    'issue'],
   [/\/issues\/[^/]+$/,         'issue.updated',         'issue'],
-  // Phase 7: RFI lifecycle was previously uncovered entirely -- every RFI
+  // Phase 7: RFI lifecycle was previously uncovered entirely; every RFI
   // create/respond/close fell through to deriveAction()'s generic
   // last-segment fallback, giving unreadable labels (the same gap this
   // file's RBAC-phase comment already called out for a different set of
@@ -26,16 +26,16 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   [/\/rfis\/[^/]+\/close$/,    'rfi.closed',            'rfi'],
   [/\/projects\/[^/]+\/rfis$/, 'rfi.created',           'rfi'],
   [/\/rfis\/[^/]+$/,           'rfi.updated',           'rfi'],
-  // QAQC NCR/SOR/WIR/MIR -- same specific-before-general ordering as RFI
+  // QAQC NCR/SOR/WIR/MIR: same specific-before-general ordering as RFI
   // above. One shared route/table for all four record types (record_type
   // is a body field, not visible in the URL), so the label is generic
-  // "qaqc_record", not type-specific -- resourceLabel (subject) still
+  // "qaqc_record", not type-specific; resourceLabel (subject) still
   // distinguishes rows. Two-step close: respond()/confirm() are each their
   // own audit action, mirroring rfi.responded/rfi.closed above.
   [/\/qaqc\/[^/]+\/respond$/,  'qaqc_record.responded', 'qaqc_record'],
   [/\/qaqc\/[^/]+\/confirm$/,  'qaqc_record.confirmed', 'qaqc_record'],
   [/\/projects\/[^/]+\/qaqc$/, 'qaqc_record.created',   'qaqc_record'],
-  // Snag creation had the same gap -- only snag_item.verified (below) was
+  // Snag creation had the same gap: only snag_item.verified (below) was
   // ever captured, never the initial create.
   [/\/projects\/[^/]+\/snag-items$/, 'snag_item.created', 'snag_item'],
   [/\/projects\/[^/]+\/documents$/, 'document.uploaded','document'],
@@ -46,7 +46,7 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   [/\/projects\/[^/]+$/,       'project.updated',       'project'],
   [/\/projects$/,              'project.created',       'project'],
   [/\/bim\/models$/,           'bim.model_uploaded',    'bim_model'],
-  // Workforce Intelligence -- admin/policy actions only. High-frequency
+  // Workforce Intelligence: admin/policy actions only. High-frequency
   // telemetry (activity ingestion, device heartbeat) is deliberately not
   // audited here to avoid drowning audit_log in routine traffic.
   [/\/workforce\/devices$/,               'workforce.device_enrolled',            'device'],
@@ -55,20 +55,20 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   [/\/workforce\/applications\/[^/]+$/,   'workforce.application_updated',        'application_registry'],
   [/\/workforce\/privacy-settings$/,      'workforce.privacy_settings_updated',   'workforce_privacy_settings'],
   [/\/workforce\/reporting-lines$/,       'workforce.reporting_line_set',         'workforce_reporting_line'],
-  // Matches only the exact /workforce/screenshots path (the "record" POST)
-  // -- not /workforce/screenshots/upload-url (no state change yet) or the
+  // Matches only the exact /workforce/screenshots path (the "record" POST);
+  // not /workforce/screenshots/upload-url (no state change yet) or the
   // GET :userId list (read-only).
   [/\/workforce\/screenshots$/,           'workforce.screenshot_captured',        'workforce_screenshot'],
   [/\/workforce\/scheduling\/shifts$/,    'workforce.shift_assigned',             'workforce_shift_assignment'],
   [/\/workforce\/scheduling\/absences\/[^/]+\/decide$/, 'workforce.absence_decided', 'workforce_absence'],
-  // RBAC Phase 6 -- "who has access to what" is exactly the kind of mutation
+  // RBAC Phase 6: "who has access to what" is exactly the kind of mutation
   // this audit trail exists for, but every one of these fell through to the
   // generic URL-derived fallback below (deriveAction()'s last-segment
   // heuristic), giving unreadable labels like "verify.created" or
   // "members.created" with no indication these are access-control changes.
   // Each pair below is two separate regexes (collection POST vs item-level
   // DELETE), not one pattern relying on the method==='DELETE' auto-rewrite
-  // below -- the two URL shapes differ by a trailing /:id segment, so they
+  // below; the two URL shapes differ by a trailing /:id segment, so they
   // never share a single regex anyway; writing the exact verb directly is
   // clearer than threading them through the created/updated->deleted rewrite.
   [/\/projects\/[^/]+\/members$/,                                  'project_member.added',           'project_member'],
@@ -78,7 +78,7 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   [/\/projects\/[^/]+\/organizations\/[^/]+\/members$/,            'project_organization.member_added',   'project_organization_member'],
   [/\/projects\/[^/]+\/organizations\/members\/[^/]+$/,            'project_organization.member_removed', 'project_organization_member'],
   [/\/snag-items\/[^/]+\/verify$/,                                 'snag_item.verified',             'snag_item'],
-  // Site Drawing Hub -- the workflow-status change is the one document-
+  // Site Drawing Hub: the workflow-status change is the one document-
   // control-sensitive action here (brief section 9: "Add audit events for
   // document access, download, revision changes ... administrative
   // actions"), so it gets its own explicit label rather than falling
@@ -91,7 +91,7 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   [/\/site-drawings\/[^/]+\/revisions$/,                           'site_drawing.revision_added',    'site_drawing_revision'],
   [/\/projects\/[^/]+\/site-drawings\/sync$/,                      'site_drawing.sync_triggered',    'site_drawing_sync_log'],
   [/\/projects\/[^/]+\/site-drawings$/,                            'site_drawing.registered',        'site_drawing'],
-  // Company-admin SharePoint connection config -- PUT and DELETE share the
+  // Company-admin SharePoint connection config: PUT and DELETE share the
   // exact same URL for each of these two routes (unlike project_member
   // above, there's no collection-vs-item URL shape difference to split
   // on), so the action verbs are chosen to read correctly through
@@ -99,7 +99,7 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   // than written as separate PUT/DELETE tuples.
   [/\/site-drawings\/sharepoint-integration\/projects\/[^/]+$/,    'sharepoint_integration.project_site_updated', 'doc_integration'],
   [/\/site-drawings\/sharepoint-integration$/,                     'sharepoint_integration.connection_updated',   'doc_integration'],
-  // Drawing Intelligence & Control (M4 brief) -- bulk ingestion + review
+  // Drawing Intelligence & Control (M4 brief): bulk ingestion + review
   // queue corrections. Specific patterns before the general import-
   // batches collection route, same "specific before general" convention
   // this file already follows throughout.
@@ -135,7 +135,7 @@ export function deriveAction(method: string, url: string): { action: string; res
     }
   }
   // Fallback for any route not explicitly mapped above. A trailing UUID/param
-  // means this is a /resource/:id-style route — the resource name is the
+  // means this is a /resource/:id-style route; the resource name is the
   // segment BEFORE that id. Otherwise (a collection POST like /projects/:id/buildings)
   // the resource name is simply the last segment.
   const segments = url.split('/').filter(Boolean);
@@ -164,14 +164,14 @@ export class AuditInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap({
         next: (responseBody: unknown) => {
-          if (!user?.companyId) return; // unauthenticated mutation — skip (auth failures logged separately)
+          if (!user?.companyId) return; // unauthenticated mutation: skip (auth failures logged separately)
 
           const { action, resourceType } = deriveAction(method, url);
           const resourceId = this.extractResourceId(responseBody);
           const requestId = req.headers['x-request-id'] as string | undefined;
           const source = (req.headers['x-source'] as string | undefined) ?? 'api';
 
-          // Fire-and-forget — never block the response for audit logging
+          // Fire-and-forget: never block the response for audit logging
           this.writeAuditLog({
             companyId: user.companyId,
             projectId: this.extractProjectId(url),
@@ -191,15 +191,15 @@ export class AuditInterceptor implements NestInterceptor {
           }).catch(err => this.logger.error('Failed to write audit log', err));
         },
         error: () => {
-          // Errors are handled by the GlobalExceptionFilter — not logged here to avoid duplication
+          // Errors are handled by the GlobalExceptionFilter; not logged here to avoid duplication
         },
       }),
     );
   }
 
-  // withTenant required -- audit_log carries the tenant_isolation RLS policy. A plain
+  // withTenant required: audit_log carries the tenant_isolation RLS policy. A plain
   // this.db.query() never sets app.current_company_id, so under any DB role that isn't the
-  // table owner/a superuser the implicit WITH CHECK rejects this insert outright -- and since
+  // table owner/a superuser the implicit WITH CHECK rejects this insert outright; and since
   // the caller only logs the failure (never surfaces it), the entire audit trail is silently
   // dark in production.
   private async writeAuditLog(entry: AuditLogEntry): Promise<void> {

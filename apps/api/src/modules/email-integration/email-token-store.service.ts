@@ -22,7 +22,7 @@ interface IntegrationRow {
 
 // Phase 3B's shared piece: every provider-specific *IntegrationService
 // (OutlookIntegrationService / GmailIntegrationService, Phase 3C/3D) composes
-// one of these instead of hand-rolling its own encrypted-storage SQL --
+// one of these instead of hand-rolling its own encrypted-storage SQL;
 // exactly the role CredentialEncryptionService itself plays one level down
 // (this class is its one real caller for email_integrations, same way
 // AiConnectionsService is its caller for user_ai_connections). Keeps the
@@ -68,7 +68,7 @@ export class EmailTokenStore {
         updated_at = NOW()`);
   }
 
-  // Refresh-only update -- a new access token (and, for providers that
+  // Refresh-only update: a new access token (and, for providers that
   // rotate it, a new refresh token), but connected_email/scopes/connected_at
   // are untouched since this isn't a new grant.
   async updateAfterRefresh(companyId: string, userId: string, provider: EmailProvider, tokens: ProviderTokens): Promise<void> {
@@ -90,7 +90,7 @@ export class EmailTokenStore {
       WHERE user_id = ${userId} AND provider = ${provider}`);
   }
 
-  // Called when a refresh or send attempt fails -- e.g. 'invalid_grant'
+  // Called when a refresh or send attempt fails, e.g. 'invalid_grant'
   // (the user revoked consent at the provider). Never store the provider's
   // raw error body here, only a short code: Section 5's "no token values in
   // logs" extends to "no provider error payloads that might themselves
@@ -136,11 +136,11 @@ export class EmailTokenStore {
   }
 
   // 'invalid_grant'/'consent_revoked'-shaped codes mean the user (or an
-  // admin) revoked access at the provider -- no amount of retrying the
+  // admin) revoked access at the provider; no amount of retrying the
   // refresh will fix that, the user must reconnect. Anything else
   // recorded as an error is treated as transient/unknown ('error'), and a
-  // token past its expiry with no recorded error yet is 'connection_expired'
-  // -- a state that should be rare and brief given every read path refreshes
+  // token past its expiry with no recorded error yet is 'connection_expired';
+  // a state that should be rare and brief given every read path refreshes
   // proactively (see calendar-integration's identical ensureFreshAccessToken
   // pattern, reused by each provider's own send/connect logic in 3C/3D).
   private deriveStatus(tokenExpiresAt: string, lastErrorCode: string | null): EmailIntegrationStatus['status'] {

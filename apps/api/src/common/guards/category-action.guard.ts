@@ -25,7 +25,7 @@ export class CategoryActionGuard implements CanActivate {
       context.getClass(),
     ]);
 
-    // No @RequireCategoryAction() -- not a gated route
+    // No @RequireCategoryAction(): not a gated route
     if (!spec) return true;
 
     const request = context.switchToHttp().getRequest();

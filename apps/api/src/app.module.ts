@@ -90,7 +90,7 @@ import gmailConfig from './config/google-gmail.config';
     ]),
     // Registered here rather than in IssuesModule, matching how Bull/Throttler's
     // own forRoot() calls live at the app root rather than in whichever
-    // feature module happens to use them first -- ticket 2b's
+    // feature module happens to use them first; ticket 2b's
     // IssueWarningService (apps/api/src/modules/issues/issue-warning.service.ts)
     // is the first @Cron() consumer, but ScheduleModule itself is a
     // cross-cutting root concern like the other forRoot() modules above it.
@@ -153,10 +153,10 @@ import gmailConfig from './config/google-gmail.config';
     // then JWT auth (populates request.user, honors @Public() routes), then the
     // pending-approval gate (blocks a self-registered-but-unapproved user from
     // everything except @AllowPending() routes), then TenancyGuard (re-checks
-    // companies.is_active on every request, not just login/refresh -- was
+    // companies.is_active on every request, not just login/refresh; was
     // implemented but never wired up, leaving a deactivated company's
-    // already-issued access tokens live until they expire), then role checks
-    // -- pending status is checked before role weight so a blocked user gets
+    // already-issued access tokens live until they expire), then role checks;
+    // pending status is checked before role weight so a blocked user gets
     // a clear PENDING_APPROVAL reason instead of a generic insufficient-role
     // one. ProjectPermissionGuard runs last: it's the most specific check (one
     // project, one named capability) and only matters once the broader
@@ -166,7 +166,7 @@ import gmailConfig from './config/google-gmail.config';
     { provide: APP_GUARD, useClass: PendingApprovalGuard },
     { provide: APP_GUARD, useClass: TenancyGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
-    // Membership-based sibling to RolesGuard's weight threshold -- see
+    // Membership-based sibling to RolesGuard's weight threshold; see
     // ExactRolesGuard/@RequireExactRoles() for why QAQC NCR/SOR create/close
     // needed this instead of @Roles().
     { provide: APP_GUARD, useClass: ExactRolesGuard },
@@ -175,26 +175,26 @@ import gmailConfig from './config/google-gmail.config';
     // above (same metadata-driven, "no decorator = not gated" shape), gated
     // by @RequireCategoryAction() instead of @RequireProjectPermission().
     // Composes the new company-wide category matrix with the pre-existing
-    // discretionary grant system via OR -- see CategoryActionGuard's own
+    // discretionary grant system via OR; see CategoryActionGuard's own
     // header comment. Runs right after ProjectPermissionGuard since it's
     // conceptually an additional grant path alongside it, before the two
     // cross-cutting, never-loosening guards below.
     { provide: APP_GUARD, useClass: CategoryActionGuard },
     // Runs last of all: an additional, cross-cutting restriction for Site
     // Engineer/Construction Manager/Project Engineer (full working access
-    // to Floor Plans/Issues/Snagging, read-only -- no access at all for
-    // project settings/users/billing -- elsewhere), applied on top of
+    // to Floor Plans/Issues/Snagging, read-only (no access at all for
+    // project settings/users/billing) elsewhere), applied on top of
     // whatever the guards above already decided, never loosening it.
     { provide: APP_GUARD, useClass: SiteRoleRestrictionGuard },
     // Also runs last: a 'subcontractor' project member (an outside party,
     // unlike every SiteRoleRestrictionGuard case above) gets access to this
-    // project's RFI module only -- reads included, unlike that guard's
+    // project's RFI module only; reads included, unlike that guard's
     // read-everywhere shape. See the guard's own header comment.
     { provide: APP_GUARD, useClass: SubcontractorRfiAccessGuard },
     // Also runs last: the owner's org-category RBAC sprint, matrix section
-    // 7 -- Chairman/General Manager/Operations Manager get view-only access
+    // 7; Chairman/General Manager/Operations Manager get view-only access
     // to Risk/Reports/Snagging/BuildLens Captures. Independent of (and
-    // unaffected by) the two guards above it -- it only ever narrows what
+    // unaffected by) the two guards above it; it only ever narrows what
     // those 3 specific company roles can do, never widens anything.
     { provide: APP_GUARD, useClass: SectionSevenViewOnlyGuard },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },

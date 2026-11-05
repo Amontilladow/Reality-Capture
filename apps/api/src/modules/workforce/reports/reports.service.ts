@@ -8,7 +8,7 @@ const DEFAULT_RANGE_DAYS = 7;
 export class ReportsService {
   constructor(private readonly db: DatabaseService) {}
 
-  // Company-wide, one row per active user -- DeskTime's own "Reports"
+  // Company-wide, one row per active user; DeskTime's own "Reports"
   // screen (a table of everyone's tracked/productive time for a period),
   // not a per-employee drill-down. Deliberately admin-only rather than
   // reporting-chain-scoped like ActivitiesService/ProductivityService:

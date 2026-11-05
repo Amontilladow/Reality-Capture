@@ -5,7 +5,7 @@ import {
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
-// Drop-in replacement for a native <select> (house rule: never ship one --
+// Drop-in replacement for a native <select> (house rule: never ship one;
 // it draws its own chevron flush against the control edge and can't be
 // themed). Implements the WAI-ARIA "select-only combobox" pattern: a button
 // with role="combobox" keeps focus the whole time and points at the active

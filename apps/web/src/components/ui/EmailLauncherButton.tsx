@@ -12,7 +12,7 @@ const PROVIDER_LABELS: Record<EmailProvider, string> = {
 };
 const PROVIDER_ORDER: EmailProvider[] = ['outlook', 'gmail', 'default'];
 
-// Requirement B/C: "the main email icon" -- opens the user's OWN mailbox
+// Requirement B/C: "the main email icon"; opens the user's OWN mailbox
 // (never a compose window; see EmailLink.tsx for addressing someone
 // else's). A split button: the envelope launches directly once a
 // provider is known (first use shows the menu instead), and the small
@@ -23,7 +23,7 @@ const PROVIDER_ORDER: EmailProvider[] = ['outlook', 'gmail', 'default'];
 // No Graph/Gmail API, no OAuth, no server round-trip: this only reads/
 // writes a per-device localStorage key (lib/emailProvider.ts) and opens a
 // plain web URL or mailto: link in response to the click that's already
-// happening -- never assumes the user is signed in to whichever provider
+// happening; never assumes the user is signed in to whichever provider
 // they picked.
 // variant="row" is the same control laid out as a full-width menu row (used
 // inside the Messages menu, so the header carries one messaging icon); its
@@ -35,7 +35,7 @@ export function EmailLauncherButton({ className = '', variant = 'icon' }: { clas
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Mirrors Listbox.tsx's own outside-click-closes pattern (not extracted
-  // into a shared hook -- this is the only other place that needs it, and
+  // into a shared hook; this is the only other place that needs it, and
   // Listbox's version is itself inline, not a hook).
   useEffect(() => {
     if (!menuOpen) return;
@@ -77,7 +77,7 @@ export function EmailLauncherButton({ className = '', variant = 'icon' }: { clas
     setCurrent(provider);
     setMenuOpen(false);
     launch(provider);
-    // Explained only here, when it actually happened -- not on every
+    // Explained only here, when it actually happened; not on every
     // read, and not pre-emptively before anything has gone wrong.
     if (!persisted) {
       showToast("This browser couldn't remember your email app choice, so you may be asked again next time.", 'info');
@@ -154,7 +154,7 @@ export function EmailLauncherButton({ className = '', variant = 'icon' }: { clas
 }
 
 // Same envelope silhouette AppShell.tsx's own nav IconMail uses, for the
-// same "this reads as an email affordance" reason -- this button lives in
+// same "this reads as an email affordance" reason; this button lives in
 // that same header row.
 function IconMail({ className }: { className?: string }) {
   return (

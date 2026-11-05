@@ -74,7 +74,7 @@ export function IssueDetail({
     queryFn: () => listPendingIssueReminders(projectId, issueId),
   });
 
-  // Photos/videos from the pin this issue was raised from, if any -- same
+  // Photos/videos from the pin this issue was raised from, if any; same
   // captures.location_id relationship PinPanel.tsx's own "History" grid
   // reads, so the two stay in sync automatically (adding a photo from
   // either side shows up in both). Distinct from the "Evidence photos"
@@ -85,7 +85,7 @@ export function IssueDetail({
     enabled: Boolean(issueQuery.data?.locationId),
   });
 
-  // F5: drives the Close button's client-side gating below -- the backend
+  // F5: drives the Close button's client-side gating below; the backend
   // is the real enforcement point (close()/forceStatus()/bulkClose() all
   // reject with no evidence regardless of what this query returns).
   const evidenceQuery = useQuery({
@@ -108,7 +108,7 @@ export function IssueDetail({
 
   // F5: closing an issue now requires (a) at least one evidence capture
   // attached and (b) a permitted-approver role (company admin or
-  // engineering manager) -- "the creator can always close their own work"
+  // engineering manager): "the creator can always close their own work"
   // is gone, enforced server-side by IssuesService.close().
   const closeMutation = useMutation({
     mutationFn: () => closeIssue(projectId, issueId),
@@ -184,7 +184,7 @@ export function IssueDetail({
   // Mirrors the backend's own authorization exactly (IssuesService.close()/
   // forward()). F5: closing requires a permitted-approver role (the old
   // "creator can always close their own issue" bypass is gone) AND at
-  // least one evidence capture attached -- isManager alone decided this
+  // least one evidence capture attached; isManager alone decided this
   // before; now hasEvidence gates it too.
   const isCreator = currentUser?.id === issue.createdBy;
   const isCurrentAssignee = Boolean(currentUser?.id && currentUser.id === issue.assignedTo);
@@ -225,7 +225,7 @@ export function IssueDetail({
         <BackIcon /> Back to issues
       </button>
 
-      {/* Status stepper — 'reopened' is a distinct terminal-ish state, shown
+      {/* Status stepper: 'reopened' is a distinct terminal-ish state, shown
           as its own badge below rather than inserted into this linear flow. */}
       <div className="space-y-2">
         {ISSUE_STATUS_FLOW.includes(issue.status) && (
@@ -298,7 +298,7 @@ export function IssueDetail({
         </div>
         {downloadError && <p className="field-error">{downloadError}</p>}
 
-        {/* Forward form -- only the current assignee (or, if unassigned, the
+        {/* Forward form: only the current assignee (or, if unassigned, the
             creator) or an admin may forward; mirrors IssuesService.forward(). */}
         {canForward && forwardOpen && (
           <div className="pt-4 border-t border-base-600 space-y-2">
@@ -327,7 +327,7 @@ export function IssueDetail({
           </div>
         )}
 
-        {/* Schedule a reminder -- open to anyone who can view the issue
+        {/* Schedule a reminder: open to anyone who can view the issue
             (unlike the admin-only, immediate Reminders tab on the list
             page); always targets the current assignee, so it needs one. */}
         {reminderOpen && (
@@ -383,7 +383,7 @@ export function IssueDetail({
           </div>
         )}
 
-        {/* Status actions -- 'closed' is deliberately not in this generic
+        {/* Status actions: 'closed' is deliberately not in this generic
             map: it's the one transition restricted to the creator (or an
             admin), so it gets its own button below with its own mutation
             and a disabled/tooltip state for everyone else. */}
@@ -503,7 +503,7 @@ export function IssueDetail({
 
       <InlineRiskAssessment projectId={projectId} nodeType="issue" entityId={issueId} />
 
-      {/* Email history -- Phase 3G */}
+      {/* Email history: Phase 3G */}
       <div>
         <div className="field-label mb-2">Email History</div>
         <EmailHistoryList projectId={projectId} relatedRecordType="issue" relatedRecordId={issueId} />
@@ -522,7 +522,7 @@ export function IssueDetail({
         </div>
       )}
 
-      {/* Photos from the pin this issue was raised from -- distinct from
+      {/* Photos from the pin this issue was raised from; distinct from
           Evidence photos below (issue_captures, manually attached). */}
       {issue.locationId && (pinCapturesQuery.data?.data.length ?? 0) > 0 && (
         <div>
@@ -531,7 +531,7 @@ export function IssueDetail({
         </div>
       )}
 
-      {/* Evidence photos -- F5: at least one of these is required before this
+      {/* Evidence photos: F5: at least one of these is required before this
           issue can be closed (enforced server-side; hasEvidence above just
           mirrors it for the Close button's disabled/tooltip state). */}
       <div>
@@ -593,7 +593,7 @@ export function IssueDetail({
                     <span className="underline">{a.attachmentName}</span>
                     {a.attachmentSizeBytes != null && (
                       // BIGINT columns come back as strings over the wire (node-postgres avoids
-                      // precision loss on values outside the JS safe-integer range for BIGINT) —
+                      // precision loss on values outside the JS safe-integer range for BIGINT);
                       // coerce rather than trust the declared `number` type.
                       <span className="text-ink-500">({formatBytes(Number(a.attachmentSizeBytes))})</span>
                     )}
@@ -601,7 +601,7 @@ export function IssueDetail({
                 ) : (
                   // Defensive fallback: attachmentReadUrl absent (shouldn't happen after the
                   // backend fix, but attachmentUrl alone is a raw storage key, not a usable
-                  // link) -- render name+size as plain, non-clickable text instead of a dead link.
+                  // link): render name+size as plain, non-clickable text instead of a dead link.
                   <div className="mt-2 flex items-center gap-2 text-xs text-ink-300 bg-base-700/40 rounded px-2 py-2 w-fit">
                     <PaperclipIcon />
                     <span>{a.attachmentName}</span>

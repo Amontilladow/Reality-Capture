@@ -40,7 +40,7 @@ import { useAuthStore } from '../store/auth.store';
 import { MobileFold } from '../components/ui/MobileFold';
 import { Listbox } from '../components/ui/Listbox';
 
-// Source-status sets mirroring rfis.service.ts's own (server-authoritative --
+// Source-status sets mirroring rfis.service.ts's own (server-authoritative;
 // this only decides which action BUTTONS are worth showing; the backend
 // enforces the real state machine and 400s on an illegal transition either way).
 const CLARIFICATION_SOURCE_STATUSES = new Set(['submitted', 'open', 'under_review']);
@@ -72,15 +72,15 @@ export default function RfiDetailPage() {
   const [commentOrgSlot, setCommentOrgSlot] = useState<ProjectOrganizationSlot | ''>('');
   const [reviewRejectOpen, setReviewRejectOpen] = useState(false);
   const [reviewRejectComment, setReviewRejectComment] = useState('');
-  // Which party is closing this RFI -- shared between the "Close RFI" and
+  // Which party is closing this RFI: shared between the "Close RFI" and
   // review-approve buttons since only one can apply to a given RFI at a
   // time (an RFI is either closed directly or via an approved review, never
   // both). Required by the UI (buttons stay disabled until set) but stays
-  // optional at the API/DTO level -- see CloseRfiDto/DecideReviewDto's own
+  // optional at the API/DTO level; see CloseRfiDto/DecideReviewDto's own
   // comments for why.
   const [closingOrgSlot, setClosingOrgSlot] = useState<ProjectOrganizationSlot | ''>('');
 
-  // External access ("send for external response/review") -- link generation form.
+  // External access ("send for external response/review"): link generation form.
   const [extAction, setExtAction] = useState<RfiExternalAccessAction>('respond');
   const [extSlot, setExtSlot] = useState<ProjectOrganizationSlot>('ldc');
   const [extEmail, setExtEmail] = useState('');
@@ -99,7 +99,7 @@ export default function RfiDetailPage() {
     enabled: Boolean(projectId),
   });
 
-  // Same query keys ManageMembersModal already uses for these two -- an RFI
+  // Same query keys ManageMembersModal already uses for these two; an RFI
   // page opened from a project a user is already a member of very likely
   // hits a warm cache instead of firing new requests.
   const membersQuery = useQuery({
@@ -131,7 +131,7 @@ export default function RfiDetailPage() {
     enabled: Boolean(projectId && rfiId),
   });
 
-  // Same queryKey OrganizationSlotRow uses below -- react-query shares the
+  // Same queryKey OrganizationSlotRow uses below: react-query shares the
   // one cached fetch between the two subscribers, so this doesn't add a
   // second network request. Needed here (not just inside OrganizationSlotRow)
   // so handleDownloadXls can thread the same already-loaded org data into
@@ -143,7 +143,7 @@ export default function RfiDetailPage() {
     retry: false,
   });
 
-  // No dedicated "audit for one resource" endpoint exists -- fetch the
+  // No dedicated "audit for one resource" endpoint exists; fetch the
   // project's audit feed and filter client-side to this RFI, per the ticket.
   // perPage raised well above the project-activity widget's default (10) so
   // an RFI with a long history of transitions isn't silently truncated.
@@ -176,13 +176,13 @@ export default function RfiDetailPage() {
     queryClient.invalidateQueries({ queryKey: ['rfi', projectId, rfiId] });
     queryClient.invalidateQueries({ queryKey: ['rfis', projectId] });
     queryClient.invalidateQueries({ queryKey: ['rfi-summary', projectId] });
-    // Every workflow transition writes an audit_log row -- keep the audit
+    // Every workflow transition writes an audit_log row; keep the audit
     // trail panel in sync without requiring a manual page reload.
     queryClient.invalidateQueries({ queryKey: ['audit-project', projectId, 'rfi-detail'] });
   }
 
-  // Saves the whole editable pre-response record in one PATCH -- question
-  // plus cost/time impact -- rather than a separate mutation per field.
+  // Saves the whole editable pre-response record in one PATCH (question
+  // plus cost/time impact) rather than a separate mutation per field.
   // Triggered from both the RFI Information and Query section "Save"
   // buttons; either one saves everything, since both live under the same
   // canEditQuery gate and there's no reason to force two separate saves
@@ -332,7 +332,7 @@ export default function RfiDetailPage() {
       // rfi-xls.ts's Rfi.status is still the legacy-only vocabulary (see the
       // comment on Rfi.status in packages/types/src/rfi.types.ts). For an RFI
       // in one of the new workflow statuses, its RFI_STATUS_LABELS lookup
-      // still renders blank for that one row -- a known, pre-existing gap,
+      // still renders blank for that one row; a known, pre-existing gap,
       // not fixed here (out of scope: this ticket only threads the Phase 5
       // sections through, it doesn't touch the legacy status-label lookup).
       const extras: RfiWorkbookExtras = {
@@ -388,7 +388,7 @@ export default function RfiDetailPage() {
   }
 
   // ── Client-side permission gating (UX only) ─────────────────────────────
-  // Optimistic/visual only -- the backend's @RequireProjectPermission +
+  // Optimistic/visual only; the backend's @RequireProjectPermission +
   // canManageRfiReview() (rfis.service.ts) are the real enforcement and will
   // 403 on a mistaken client-side allow. Mirrors that same bypass set:
   // super_admin, project_lead, or a 'manage_rfis' grant.
@@ -396,7 +396,7 @@ export default function RfiDetailPage() {
   const myMembership = (membersQuery.data ?? []).find((m) => m.userId === currentUser?.id);
   const isProjectLead = myMembership?.role === 'project_lead';
   // A 'subcontractor' project member's backend access is RFI-only
-  // (SubcontractorRfiAccessGuard) -- email composing/history lives on
+  // (SubcontractorRfiAccessGuard): email composing/history lives on
   // ProjectsController's own /emails route, outside that, so both are
   // hidden here rather than showing a control that would just 403.
   const isSubcontractor = myMembership?.role === 'subcontractor';
@@ -407,7 +407,7 @@ export default function RfiDetailPage() {
   const hasManageTeamGrant = (grantsQuery.data ?? []).some(
     (g) => g.userId === currentUser?.id && g.permission === 'manage_team',
   );
-  // ManageMembersModal's own organizations section requires manage_team --
+  // ManageMembersModal's own organizations section requires manage_team;
   // this inline shortcut also allows anyone who can already manage_rfis on
   // this project (i.e. can already answer/close it), since fixing a wrong
   // logo while working an RFI is a much smaller ask than full org/contact
@@ -417,7 +417,7 @@ export default function RfiDetailPage() {
   const canManageOrganizations = isSuperAdmin || isProjectLead || hasManageTeamGrant || canManageRfis;
   const isCreator = rfi.createdBy === currentUser?.id;
 
-  // Editable regardless of status, per explicit request -- the record (query,
+  // Editable regardless of status, per explicit request; the record (query,
   // cost/time impact) stays editable by its creator or a manage_rfis holder
   // even after it's been answered or closed, not just up to submission.
   const canEditQuery = isCreator || canManageRfis;
@@ -428,7 +428,7 @@ export default function RfiDetailPage() {
   const canReopen = canManageRfis && rfi.status === 'closed';
   const canSubmitForReview = canManageRfis && REVIEW_SOURCE_STATUSES.has(rfi.status);
   const canDecideReview = canManageRfis && rfi.status === 'under_review';
-  // Same manage_rfis gate as respond/close/reopen -- generating a link that
+  // Same manage_rfis gate as respond/close/reopen: generating a link that
   // can answer or close this RFI on someone's behalf is exactly as sensitive.
   const canManageExternalAccess = canManageRfis;
 
@@ -436,7 +436,7 @@ export default function RfiDetailPage() {
   const responseAttachments = (attachmentsQuery.data ?? []).filter((a) => a.kind === 'response');
   const rfiAudit = (auditQuery.data ?? []).filter((a) => a.resourceType === 'rfi' && a.resourceId === rfiId);
   // getDeadlineTimer is typed for IssueStatus, but its only status-aware
-  // branch is a plain string check against 'closed'/'void' -- both of which
+  // branch is a plain string check against 'closed'/'void'; both of which
   // are also legal RfiWorkflowStatus values, so this is functionally correct
   // at runtime; the cast only papers over the two enums not overlapping at
   // the type level. Reused verbatim per the ticket rather than forking a
@@ -492,7 +492,7 @@ export default function RfiDetailPage() {
                 {dueTimer.label}
               </span>
               {/* Drawing/Model Updated never shows any control at all when
-                  status is 'no' -- there is deliberately no third "not
+                  status is 'no'; there is deliberately no third "not
                   applicable" state to render around (see migration 044's
                   own comment). */}
               {(rfi.drawingImpactLevel ?? 'no') !== 'no' && (
@@ -535,9 +535,9 @@ export default function RfiDetailPage() {
             {remindDrawingMutation.isError && <p className="field-error mt-2">{apiErrorMessage(remindDrawingMutation.error)}</p>}
             {markDrawingSentToSiteMutation.isError && <p className="field-error mt-2">{apiErrorMessage(markDrawingSentToSiteMutation.error)}</p>}
             {markDrawingNotSentToSiteMutation.isError && <p className="field-error mt-2">{apiErrorMessage(markDrawingNotSentToSiteMutation.error)}</p>}
-            {/* Who closed it, as which party -- historical RFIs closed before
+            {/* Who closed it, as which party; historical RFIs closed before
                 this shipped have all four fields null and render nothing
-                extra here, no placeholder/error. Additive only -- the
+                extra here, no placeholder/error. Additive only; the
                 audit-events timeline below is untouched. */}
             {rfi.status === 'closed' && rfi.closedAt && (
               <p className="text-xs text-ink-500 mt-2">
@@ -549,12 +549,12 @@ export default function RfiDetailPage() {
           </div>
         </div>
 
-        {/* 5-organization header row -- live since Phase 4 (project_organizations
+        {/* 5-organization header row: live since Phase 4 (project_organizations
             admin endpoints + ManageMembersModal's "Project Organizations"
             section). See OrganizationSlotRow below. */}
         <OrganizationSlotRow projectId={projectId} canEdit={canManageOrganizations} />
 
-        {/* Email history -- Phase 3G. Hidden for a subcontractor (see
+        {/* Email history: Phase 3G. Hidden for a subcontractor (see
             isSubcontractor's own comment) rather than rendering and letting
             its query 403. */}
         {!isSubcontractor && (
@@ -624,7 +624,7 @@ export default function RfiDetailPage() {
                     labels={DRAWING_UPDATE_STATUS_LABELS}
                   />
                   {/* Only meaningfully shown once level isn't 'no', per the
-                      ticket -- defaults to whoever assigned_to is already set
+                      ticket; defaults to whoever assigned_to is already set
                       to the first time impact is raised, editable from there. */}
                   {drawingImpactLevel !== 'no' && (
                     <div className="mt-2">
@@ -712,7 +712,7 @@ export default function RfiDetailPage() {
               title="Query upload stamp"
               uploadedBy={rfi.createdByName}
               // rfis.service.ts's submit() writes query_stamp but there is no
-              // dedicated submittedAt column -- updatedAt is the closest
+              // dedicated submittedAt column; updatedAt is the closest
               // available timestamp for "when the stamp was generated"
               // (submit() is the only thing that updates the row at that
               // point). Judgment call, flagged for review.
@@ -814,9 +814,9 @@ export default function RfiDetailPage() {
           />
         </section>
 
-        {/* External access -- lets a Lead Design Consultant/PMC/Client respond
+        {/* External access: lets a Lead Design Consultant/PMC/Client respond
             to or review this one RFI without an EngineeringOS account. No
-            real email is sent here -- the generated link is shown for
+            real email is sent here; the generated link is shown for
             copy-paste into whatever email/WhatsApp the internal user already
             uses (real transactional delivery is out of scope). */}
         {canManageExternalAccess && (
@@ -1121,13 +1121,13 @@ function ImpactSummary({
   days?: number;
   description?: string;
   // Drawing/Model Updated uses its own field-specific wording (see
-  // DRAWING_UPDATE_STATUS_LABELS) for the same 4-state values -- defaults
+  // DRAWING_UPDATE_STATUS_LABELS) for the same 4-state values; defaults
   // to the shared cost/time label set so those two call sites don't need
   // to pass anything.
   labels?: Record<'no' | 'yes' | 'potential' | 'tbd', string>;
 }) {
   // Falls back to the legacy boolean when the 4-state level field is absent
-  // (RFIs created before this field existed) -- same precedence rfis.service.ts
+  // (RFIs created before this field existed): same precedence rfis.service.ts
   // itself uses server-side.
   const effectiveLevel = level ?? (legacyBool ? 'yes' : 'no');
   const showDetails = effectiveLevel !== 'no';
@@ -1150,7 +1150,7 @@ function ImpactSummary({
 
 // Editable counterpart to ImpactSummary, shown instead of it while
 // canEditQuery is true. Amount/currency (cost) or days (time) plus a
-// description only make sense once the level says there's some impact --
+// description only make sense once the level says there's some impact;
 // same "showDetails" gate ImpactSummary already uses for display.
 function ImpactEditor({
   title, level, onLevelChange, amount, onAmountChange, currency, onCurrencyChange,
@@ -1251,8 +1251,8 @@ function StampPanel({
   );
 }
 
-// Five stakeholder slots, per project -- live since Phase 4. A slot with no
-// configured row (or while the query is loading, or if it errors -- e.g. a
+// Five stakeholder slots, per project; live since Phase 4. A slot with no
+// configured row (or while the query is loading, or if it errors, e.g. a
 // viewer without the 'manage_team' permission this endpoint is gated on)
 // simply renders the same placeholder as before; this never blocks or
 // errors the rest of the page.
@@ -1267,7 +1267,7 @@ function OrganizationSlotRow({ projectId, canEdit }: { projectId: string; canEdi
   const bySlot = new Map((organizationsQuery.data ?? []).map((o) => [o.slot, o]));
 
   // Inline shortcut for the same upload ManageMembersModal's organizations
-  // section offers -- lets whoever is already looking at the RFI header fix a
+  // section offers; lets whoever is already looking at the RFI header fix a
   // missing/wrong logo without leaving the page. Full name/reference/contact
   // editing still lives only in ManageMembersModal.
   const logoMutation = useMutation({

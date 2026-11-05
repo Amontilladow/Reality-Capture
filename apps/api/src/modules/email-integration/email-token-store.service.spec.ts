@@ -24,7 +24,7 @@ describe('EmailTokenStore.upsert', () => {
     const insertQueryText = (sqlMock.mock.calls[0][0] as string[]).join('');
     expect(insertQueryText).toContain('ON CONFLICT (user_id, provider)');
     // The raw plaintext access/refresh tokens must never appear anywhere in
-    // the values bound to the query -- only their encrypted form should.
+    // the values bound to the query; only their encrypted form should.
     const boundValues = sqlMock.mock.calls[0].slice(1).flat();
     expect(boundValues).not.toContain('access-1');
     expect(boundValues).not.toContain('refresh-1');

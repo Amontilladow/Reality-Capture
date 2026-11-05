@@ -7,7 +7,7 @@ import { uploadAndRegisterSiteDrawing, SITE_DRAWING_WORKFLOW_STATUSES, type Site
 import { WORKFLOW_STATUS_LABELS } from './siteDrawingDisplay';
 import { Listbox } from '../ui/Listbox';
 
-// Registers a brand-new drawing from the Local source (brief section 6 --
+// Registers a brand-new drawing from the Local source (brief section 6;
 // the only source this phase has real, credential-free access to). The
 // uploader picks the canonical workflow status directly, since there's no
 // external source status to map yet for an internal upload (never inferred

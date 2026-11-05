@@ -11,7 +11,7 @@ import type { UpsertOrganizationDto } from './dto/upsert-organization.dto';
 import type { PaginationQuery, ProjectPermission, ProjectOrganizationSlot } from '@engineeringos/types';
 import { PROJECT_ORGANIZATION_SLOTS } from '@engineeringos/types';
 
-const BRANDING_MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB -- small letterhead/seal images, not photos
+const BRANDING_MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB: small letterhead/seal images, not photos
 
 @Injectable()
 export class ProjectsService {
@@ -68,7 +68,7 @@ export class ProjectsService {
     if (!project) throw new NotFoundException(`Project ${projectId} not found.`);
 
     // Resolve branding storage keys to live presigned read URLs at read
-    // time -- never persist a URL that can expire, same convention as
+    // time; never persist a URL that can expire, same convention as
     // every other file reference in this codebase.
     const urls = await this.storage.resolveUrls([project.logoStorageKey as string, project.stampStorageKey as string]);
     return {
@@ -84,7 +84,7 @@ export class ProjectsService {
       throw new PaymentRequiredException('projects', limitCheck.reason);
     }
 
-    // withTenant required -- projects and project_members both carry the tenant_isolation
+    // withTenant required: projects and project_members both carry the tenant_isolation
     // RLS policy. A plain this.db.query() never sets app.current_company_id, so under any DB
     // role that isn't the table owner/a superuser the implicit WITH CHECK (mirroring USING,
     // since neither table declares a separate one) rejects both inserts outright with
@@ -120,7 +120,7 @@ export class ProjectsService {
     await this.findOne(companyId, projectId);
 
     // Real post-upload size enforcement for a logo/stamp actually being set
-    // in this request -- getBrandingUploadUrl() below only ever checked the
+    // in this request; getBrandingUploadUrl() below only ever checked the
     // client-declared size, and this generic update() is the one place a
     // logoStorageKey/stampStorageKey value is ever persisted. Only runs when
     // the field is actually present in this PATCH, so an update that leaves
@@ -128,7 +128,7 @@ export class ProjectsService {
     if (dto.logoStorageKey) await this.assertBrandingImageWithinLimit(dto.logoStorageKey);
     if (dto.stampStorageKey) await this.assertBrandingImageWithinLimit(dto.stampStorageKey);
 
-    // withTenant required -- see create() above.
+    // withTenant required; see create() above.
     const [updated] = await this.db.withTenant(companyId, sql => sql`
       UPDATE projects SET
         name              = COALESCE(${dto.name ?? null}, name),
@@ -157,7 +157,7 @@ export class ProjectsService {
     `);
 
     // Resolve immediately so the frontend can show the new thumbnail
-    // without a second round trip -- same as findOne() above.
+    // without a second round trip; same as findOne() above.
     const urls = await this.storage.resolveUrls([updated.logoStorageKey as string, updated.stampStorageKey as string]);
     return {
       ...updated,
@@ -166,13 +166,13 @@ export class ProjectsService {
     };
   }
 
-  // Presigned upload URL for a project's logo/stamp image -- client PUTs the
+  // Presigned upload URL for a project's logo/stamp image; client PUTs the
   // file directly to storage, then PATCHes the project with the resulting
   // storageKey (reusing the same update() path every other project field
   // uses), no separate "register" endpoint needed.
   async getBrandingUploadUrl(companyId: string, projectId: string, filename: string, sizeBytes: number, kind: 'logo' | 'stamp') {
     // getBrandingUploadUrl has no @RequireProjectPermission gate (see
-    // projects.controller.ts) and didn't previously call findOne() either --
+    // projects.controller.ts) and didn't previously call findOne() either;
     // confirm the project is actually this company's before issuing a URL.
     await this.findOne(companyId, projectId);
 
@@ -190,9 +190,9 @@ export class ProjectsService {
 
   // ── Project organizations (Phase 4) ─────────────────────────────────────
   // 5 fixed stakeholder slots per project (client/pmc/ldc/main_contractor/
-  // subcontractor) -- see PROJECT_ORGANIZATION_SLOTS. Rows only exist once
+  // subcontractor); see PROJECT_ORGANIZATION_SLOTS. Rows only exist once
   // someone has configured that slot; unconfigured slots are simply absent
-  // from this list (not padded with empty placeholders -- the caller, e.g.
+  // from this list (not padded with empty placeholders; the caller, e.g.
   // RfiDetailPage's OrganizationSlotRow, renders its own placeholder for a
   // slot with no matching row).
   private assertValidSlot(slot: string): asserts slot is ProjectOrganizationSlot {
@@ -208,7 +208,7 @@ export class ProjectsService {
       WHERE project_id = ${projectId} AND company_id = ${companyId}
       ORDER BY slot
     `);
-    // Resolve storage keys to live presigned read URLs at read time --
+    // Resolve storage keys to live presigned read URLs at read time;
     // never persist a URL that can expire, same convention as everywhere
     // else in this codebase (see getAttachments() in rfis.service.ts).
     const urls = await this.storage.resolveUrls(rows.map(r => r.logoStorageKey as string));
@@ -219,7 +219,7 @@ export class ProjectsService {
     this.assertValidSlot(slot);
     await this.findOne(companyId, projectId);
 
-    // Same rationale as update()'s logo/stamp check -- this is the one place
+    // Same rationale as update()'s logo/stamp check; this is the one place
     // an organization's logoStorageKey value is ever persisted, and only
     // runs when the field is actually present in this request.
     if (dto.logoStorageKey) await this.assertBrandingImageWithinLimit(dto.logoStorageKey);
@@ -241,7 +241,7 @@ export class ProjectsService {
     return { ...row, logoUrl: row.logoStorageKey ? urls.get(row.logoStorageKey as string) : undefined };
   }
 
-  // Mirrors getBrandingUploadUrl() exactly (jpg/jpeg/png only, 2MB max) --
+  // Mirrors getBrandingUploadUrl() exactly (jpg/jpeg/png only, 2MB max);
   // these are the same kind of small letterhead-style logo image, sharing
   // the generic 'branding' storage-key type rather than a new one.
   async getOrganizationLogoUploadUrl(companyId: string, projectId: string, slot: string, filename: string, sizeBytes: number) {
@@ -260,7 +260,7 @@ export class ProjectsService {
 
   // ── Project organization membership (RBAC Phase 4) ──────────────────────
   // Which of the project's 5 stakeholder slots an existing project member
-  // personally belongs to -- distinct from both their own project role
+  // personally belongs to; distinct from both their own project role
   // (project_members.role, their individual capability on the project) and
   // the slot's own branding/contact row (project_organizations above, which
   // has no user link at all). One slot per user per project (see migration
@@ -278,7 +278,7 @@ export class ProjectsService {
     `);
   }
 
-  // The target must already be a project member -- an organization slot
+  // The target must already be a project member; an organization slot
   // describes which stakeholder party an existing project member belongs
   // to, not a separate way onto the project. Reassigning someone already
   // in a different slot just moves them (ON CONFLICT ... DO UPDATE), since
@@ -305,7 +305,7 @@ export class ProjectsService {
   }
 
   async removeOrganizationMember(companyId: string, projectId: string, userId: string) {
-    // Same withTenant requirement as removeMember() below -- without it the
+    // Same withTenant requirement as removeMember() below; without it the
     // DELETE's WHERE-matched rows are invisible under RLS, so it silently
     // deletes 0 rows instead of erroring.
     const result = await this.db.withTenant(companyId, sql => sql`
@@ -333,7 +333,7 @@ export class ProjectsService {
 
   async addMember(companyId: string, projectId: string, invitedBy: string, dto: AddMemberDto) {
     await this.findOne(companyId, projectId);
-    // Must go through withTenant -- project_members has a tenant_isolation RLS
+    // Must go through withTenant: project_members has a tenant_isolation RLS
     // policy keyed on app.current_company_id. A plain this.db.query() never sets
     // that, so under any DB role that isn't the table owner/a superuser, the
     // implicit WITH CHECK (mirroring the USING clause, since none is declared)
@@ -348,7 +348,7 @@ export class ProjectsService {
   }
 
   async removeMember(companyId: string, projectId: string, userId: string) {
-    // Same withTenant requirement as addMember() above -- without it, the
+    // Same withTenant requirement as addMember() above; without it, the
     // DELETE's WHERE-matched rows are invisible under RLS (company_id compared
     // against a NULL current_company_id), so it silently deletes 0 rows instead
     // of erroring. Checking result.count turns that into a real 404 instead of
@@ -365,7 +365,7 @@ export class ProjectsService {
 
   // ── Per-project permission grants ────────────────────────────────────────
   // super_admin has full authority everywhere and project_lead has it on
-  // their own project by default (see ProjectPermissionGuard) -- these
+  // their own project by default (see ProjectPermissionGuard): these
   // grants exist purely to extend a specific company_admin's reach to a
   // specific project without making it company-wide or permanent.
   async getPermissionGrants(companyId: string, projectId: string) {
@@ -385,7 +385,7 @@ export class ProjectsService {
   async grantPermission(companyId: string, projectId: string, grantedBy: string, dto: CreatePermissionGrantDto) {
     await this.findOne(companyId, projectId);
 
-    // Grants exist to extend company_admin's reach -- anyone else either
+    // Grants exist to extend company_admin's reach: anyone else either
     // already has full authority (super_admin) or gets it a different way
     // (project_lead on their own project), so granting to any other role
     // would be meaningless or a way to route around the role system.
@@ -457,10 +457,10 @@ export class ProjectsService {
   }
 
   // Real post-upload size enforcement for a branding image (project logo/
-  // stamp or organization logo) -- getBrandingUploadUrl()/
+  // stamp or organization logo): getBrandingUploadUrl()/
   // getOrganizationLogoUploadUrl() only ever checked the client-declared
   // size. Both branding uploads are a two-step flow with no dedicated
-  // "confirm upload" endpoint of their own -- the client PUTs to storage,
+  // "confirm upload" endpoint of their own; the client PUTs to storage,
   // then PATCHes the storageKey into update()/upsertOrganization(), which
   // reuse the same generic field-update path every other project field
   // uses. Those two call sites *are* the safe, server-controlled completion

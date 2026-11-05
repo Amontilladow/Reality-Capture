@@ -1,7 +1,7 @@
 import { createElement as h } from 'react';
 
 // status/priority/type/discipline/category arrive as raw lowercase DB
-// values -- there's no shared label map for these outside apps/web's own
+// values; there's no shared label map for these outside apps/web's own
 // issue-constants.ts, so a plain capitalize is used here rather than either
 // importing a frontend-only file into the API or duplicating its full label
 // tables for what's purely a display nicety. Caller passes already-resolved
@@ -12,13 +12,13 @@ function capitalize(value: string): string {
 }
 
 // @react-pdf/renderer is ESM-only; this API compiles to CommonJS, so it must
-// be loaded via dynamic import() -- see rfi-pdf.template.ts's identical
+// be loaded via dynamic import(); see rfi-pdf.template.ts's identical
 // comment for the full explanation. Kept as the one place in this module
 // that knows about @react-pdf/renderer at all.
 
 // ── Brand ────────────────────────────────────────────────────────────────
 // Same palette/font choices as rfi-pdf.template.ts (kept as a separate copy
-// rather than a shared module -- this codebase's existing convention is one
+// rather than a shared module; this codebase's existing convention is one
 // private copy per feature, not a cross-module PDF-styling library).
 const INK = '#0A141C';
 const INK_MUTED = '#4A6178';
@@ -39,7 +39,7 @@ function registerFonts(Font: typeof import('@react-pdf/renderer').Font) {
       { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff'), fontWeight: 700 },
     ],
   });
-  // IBM Plex Mono deliberately not registered -- see rfi-pdf.template.ts's
+  // IBM Plex Mono deliberately not registered; see rfi-pdf.template.ts's
   // identical comment (crashes on any string containing a space).
   Font.registerHyphenationCallback((word) => [word]);
 }
@@ -47,7 +47,7 @@ function registerFonts(Font: typeof import('@react-pdf/renderer').Font) {
 export interface IssuePdfAttachmentItem {
   filename: string;
   // Set only for raster-image attachments whose download+resize succeeded
-  // server-side -- undefined means either a non-image attachment or an
+  // server-side; undefined means either a non-image attachment or an
   // image whose fetch failed, both fall back to a plain text line.
   imageBuffer?: Buffer;
 }
@@ -81,7 +81,7 @@ export interface IssuePdfData {
   closedAt?: string;
   attachments?: IssuePdfAttachmentItem[];
   // Photos/videos from the pin (floor-plan location) this issue was
-  // raised from, if any -- a distinct set from `attachments` above (those
+  // raised from, if any; a distinct set from `attachments` above (those
   // come from issue_activities, these from captures.location_id), shown
   // in their own section so the two aren't conflated.
   pinPhotos?: IssuePdfAttachmentItem[];

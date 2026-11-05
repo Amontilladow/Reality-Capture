@@ -10,7 +10,7 @@ const OUTCOMES = new Set(['passed', 'passed_with_exceptions', 'failed']);
 export class QaService {
   constructor(private readonly db: DatabaseService) {}
 
-  // withTenant required for the projects lookup -- projects carries the tenant_isolation
+  // withTenant required for the projects lookup: projects carries the tenant_isolation
   // RLS policy. A plain this.db.query() never sets app.current_company_id, so under any DB
   // role that isn't the table owner/a superuser this SELECT sees no rows and silently falls
   // back to the generic 'PRJ' prefix instead of the real project code.
@@ -75,14 +75,14 @@ export class QaService {
     return inspection;
   }
 
-  // userRole is optional, loosely typed string -- every pre-existing caller
+  // userRole is optional, loosely typed string; every pre-existing caller
   // omits it and is unaffected; only the controller's own PATCH route
   // passes it, to enforce the owner's org-category matrix's one
-  // item-scoped rule for this module ("Construction Team: V,E -- only on
+  // item-scoped rule for this module ("Construction Team: V,E; only on
   // close-out items assigned to them"), which the flat category matrix
   // table alone can't express (it's an ownership/assignment condition, not
   // a module-wide grant). Every other category holding 'edit' here
-  // (QAQC Team, Engineering Manager) is unaffected -- this check only
+  // (QAQC Team, Engineering Manager) is unaffected; this check only
   // narrows Construction Team specifically.
   async update(companyId: string, projectId: string, inspectionId: string, userId: string, dto: UpdateQaInspectionDto, userRole?: string) {
     const existing = await this.findOne(companyId, projectId, inspectionId);

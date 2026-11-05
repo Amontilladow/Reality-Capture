@@ -1,16 +1,16 @@
 BEGIN;
 
 -- ══════════════════════════════════════════════════════════════════════════
--- Phase 3B — secure backend OAuth infrastructure for Outlook/Gmail connect
+-- Phase 3B: secure backend OAuth infrastructure for Outlook/Gmail connect
 --
 -- One shared table for both providers (provider column distinguishes rows),
--- not two parallel tables -- the connect/status/disconnect shape is
+-- not two parallel tables; the connect/status/disconnect shape is
 -- identical between them (EmailTokenStore, email-integration module).
 --
 -- Token storage deliberately does NOT follow workforce_calendar_integrations'
 -- precedent (plaintext access_token/refresh_token columns). That table's own
 -- migration comment already flags this as the thing not to copy forward (see
--- common/crypto/credential-encryption.service.ts's header comment) -- tokens
+-- common/crypto/credential-encryption.service.ts's header comment): tokens
 -- here are stored the same way user_ai_connections' API keys are: AES-256-GCM
 -- ciphertext + IV + auth tag per secret, decryptable only by the API process
 -- holding CREDENTIAL_ENCRYPTION_KEY, never readable as plaintext from SQL
@@ -18,7 +18,7 @@ BEGIN;
 --
 -- connected_email is the actual mailbox address granted (confirmed via the
 -- provider's own "who am I" endpoint after token exchange, not assumed from
--- the login email) -- this is what the brief's "Connected account" UI field
+-- the login email): this is what the brief's "Connected account" UI field
 -- shows, and what the future email composer's "From" must match server-side.
 -- ══════════════════════════════════════════════════════════════════════════
 
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS email_integrations (
   refresh_token_auth_tag      TEXT         NOT NULL,
   token_expires_at            TIMESTAMPTZ  NOT NULL,
   -- Set on a failed refresh/send attempt (e.g. 'invalid_grant' meaning the
-  -- user revoked consent at the provider) and cleared on the next success --
+  -- user revoked consent at the provider) and cleared on the next success;
   -- getStatus() derives 'authorization_required' vs 'error' vs
   -- 'connection_expired' from this plus token_expires_at rather than storing
   -- a separately-maintained status enum that could drift from reality.

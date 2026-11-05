@@ -6,7 +6,7 @@ import type { StorageService } from '../../storage/storage.service';
 
 // Tagged-template mock: `this.db.query\`...\`` just calls query(strings, ...values).
 // A plain jest.fn() works as the tag function directly. All DB access in this processor
-// now goes through withTenant -- forward its callback to the same query mock so every
+// now goes through withTenant; forward its callback to the same query mock so every
 // existing db.query.mock.calls assertion below still sees the same call sequence.
 function makeDb() {
   const query = jest.fn().mockResolvedValue([]);

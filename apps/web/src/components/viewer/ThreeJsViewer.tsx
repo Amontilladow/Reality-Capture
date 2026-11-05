@@ -19,7 +19,7 @@ export function ThreeJsViewer({
   onHotspotClick?: (hotspot: Hotspot) => void;
   // Optional real-world-bearing-continuation yaw (degrees), set by callers
   // (e.g. BuildLens) that track compass-heading continuity across capture
-  // switches. Purely additive/opt-in -- when omitted, behavior is identical
+  // switches. Purely additive/opt-in; when omitted, behavior is identical
   // to before this prop existed (state.current.lon is left untouched).
   initialYaw?: number;
 }) {
@@ -39,7 +39,7 @@ export function ThreeJsViewer({
     const container = containerRef.current;
     if (!container) return;
 
-    // Applied once per imageUrl change, before the first animate() frame --
+    // Applied once per imageUrl change, before the first animate() frame;
     // this is the only place state.current.lon is set from outside the
     // pointer-drag handlers. When initialYaw is undefined (every call site
     // except BuildLens), this is a no-op and state.current.lon keeps

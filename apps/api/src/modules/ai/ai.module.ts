@@ -20,9 +20,9 @@ import { SubmittalsModule } from '../submittals/submittals.module';
 import { TransmittalsModule } from '../transmittals/transmittals.module';
 import { QaModule } from '../qa/qa.module';
 
-// The AI Gateway (spec section 2/28): everything the rebuild brief asks for
-// -- domain guard, project-scoped tools, usage tracking, rate limiting,
-// provider abstraction -- lives here, importing the EXISTING feature
+// The AI Gateway (spec section 2/28): everything the rebuild brief asks for;
+// (domain guard, project-scoped tools, usage tracking, rate limiting,
+// provider abstraction) lives here, importing the EXISTING feature
 // modules' services rather than re-implementing any of their query/
 // authorization logic. AuthorizationModule/DatabaseModule are both
 // @Global(), so they don't need to be listed here.

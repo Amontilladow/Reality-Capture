@@ -53,7 +53,7 @@ export function NotificationBell() {
   // Route per resource type, once we know which project it belongs to.
   // Issue links deep-link straight to the record (?issueId=); the other
   // types don't have an equivalent deep-link target on their list pages
-  // yet, so they land on the list itself -- still a real destination,
+  // yet, so they land on the list itself; still a real destination,
   // just not scrolled-to-and-opened.
   function routeFor(resourceType: string, projectId: string, resourceId: string): string | null {
     switch (resourceType) {
@@ -76,7 +76,7 @@ export function NotificationBell() {
     }
 
     // Notifications created before project_id was added to the table
-    // (migration 019) don't have it -- issue notifications can still
+    // (migration 019) don't have it; issue notifications can still
     // resolve their project via the existing per-issue lookup; the other
     // types have no equivalent lookup, so they just stay marked read.
     if (n.resourceType === 'issue') {
@@ -84,7 +84,7 @@ export function NotificationBell() {
         const issue = await lookupIssueProject(n.resourceId);
         navigate(`/projects/${issue.projectId}/issues?issueId=${n.resourceId}`);
       } catch {
-        // Issue may have been deleted since the notification was created —
+        // Issue may have been deleted since the notification was created;
         // nothing sensible to navigate to.
       }
     }

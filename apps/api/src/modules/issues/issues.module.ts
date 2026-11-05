@@ -14,7 +14,7 @@ import { WebhooksModule } from '../webhooks/webhooks.module';
   controllers: [IssuesController, ElementIssuesController, IssueLookupController],
   // IssueWarningService / IssueScheduledRemindersService: server-side
   // @Cron jobs (auto-warning, and firing due scheduleReminder() rows).
-  // Registered here, not exported -- nothing outside this module needs to
+  // Registered here, not exported; nothing outside this module needs to
   // call them directly, they just need to exist as providers so Nest
   // instantiates them (and their @Cron handlers) at boot. Relies on
   // ScheduleModule.forRoot() being registered globally in app.module.ts,

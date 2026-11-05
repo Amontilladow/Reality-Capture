@@ -5,17 +5,17 @@ import { firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
 
 // Raw HTTP wrapper over Microsoft Graph's app-only (client-credentials)
-// flow for SharePoint -- deliberately no MSAL/Graph SDK dependency, same
+// flow for SharePoint; deliberately no MSAL/Graph SDK dependency, same
 // preference this codebase's other Microsoft Graph client already states
 // (outlook/microsoft-graph-client.ts's own header comment). That client
 // uses a *delegated* (per-user, authorization-code) grant for Outlook;
-// this one is *application* (client-credentials, no signed-in user) --
+// this one is *application* (client-credentials, no signed-in user);
 // the right shape for a server-side sync job that runs with no user
 // present, matching brief section 6's "server-side sync jobs" framing.
 //
 // Reuses this app's ONE existing Entra app registration
-// (MICROSOFT_OAUTH_CLIENT_ID/_SECRET, config/microsoft-graph.config.ts) --
-// not a second, SharePoint-specific registration. What's genuinely
+// (MICROSOFT_OAUTH_CLIENT_ID/_SECRET, config/microsoft-graph.config.ts);
+// not a second, SharePoint-specific registration. What's actually
 // per-company here is only the CUSTOMER'S OWN tenant ID (see
 // SiteDrawingSharePointAdapter's own comment): a client-credentials token
 // request must target a specific tenant, unlike the delegated flow's
@@ -29,7 +29,7 @@ import { AxiosError } from 'axios';
 // 2. For each SharePoint site this adapter should reach, the admin (or
 //    someone with site-owner rights) grants this app `read` (or `write`,
 //    if a future phase needs to write back) access via
-//    `POST /sites/{siteId}/permissions` -- there is no way to do this
+//    `POST /sites/{siteId}/permissions`: there is no way to do this
 //    from inside RealityCapture itself; it's a one-time, per-site grant
 //    the customer's own admin makes directly against Graph.
 // Until both are done for a given tenant/site, every call below fails
@@ -38,7 +38,7 @@ import { AxiosError } from 'axios';
 @Injectable()
 export class SharePointGraphClient {
   private readonly logger = new Logger(SharePointGraphClient.name);
-  // One cached app-only token per customer tenant -- a tenant's token is
+  // One cached app-only token per customer tenant; a tenant's token is
   // never reused for another tenant's data, and never persisted outside
   // process memory (it's a short-lived Graph access token, not a secret
   // worth encrypting at rest; it's gone on process restart, which simply
@@ -53,7 +53,7 @@ export class SharePointGraphClient {
   // Used by SharePointIntegrationService before saving a tenant ID (same
   // "validate before you save" philosophy AiConnectionsService.connect()
   // already follows for a BYO AI provider). Confirms the tenant ID is real
-  // and that Microsoft recognizes this app's registration there -- it does
+  // and that Microsoft recognizes this app's registration there; it does
   // NOT confirm Sites.Selected has actually been granted for any specific
   // site, since a multi-tenant app can obtain a client-credentials token
   // for a tenant it has no application-permission consent in at all. That
@@ -92,10 +92,10 @@ export class SharePointGraphClient {
     return res.data.access_token;
   }
 
-  // Generic authenticated GET -- every read below goes through this so
+  // Generic authenticated GET: every read below goes through this so
   // the 401/403/404 handling (and the "never log a token" rule) lives in
   // one place. Returns null for a 404 (not found/no longer exists, a real
-  // and expected outcome -- e.g. a deleted driveItem), rethrows anything
+  // and expected outcome, e.g. a deleted driveItem), rethrows anything
   // else so the caller can tell "not found" apart from "source
   // unreachable."
   async get<T>(tenantId: string, path: string): Promise<T | null> {
@@ -114,10 +114,10 @@ export class SharePointGraphClient {
 
   // The @microsoft.graph.downloadUrl Graph hands back for a driveItem is a
   // pre-authenticated, time-limited URL the browser can fetch directly
-  // with no Authorization header -- the same shape our own S3 presigned
+  // with no Authorization header; the same shape our own S3 presigned
   // GET URLs already have, which is exactly what getAuthorizedFile() needs
   // to return. Commonly cited as valid for about an hour, though Microsoft
-  // does not document an exact, guaranteed lifetime -- callers should treat
+  // does not document an exact, guaranteed lifetime; callers should treat
   // the reported expiresInSeconds as approximate, not relied upon to the
   // second.
   async getCurrentDownloadUrl(tenantId: string, driveId: string, itemId: string): Promise<string | null> {
@@ -128,12 +128,12 @@ export class SharePointGraphClient {
   }
 
   // A specific historical version has no @microsoft.graph.downloadUrl
-  // field of its own -- Graph instead 302-redirects GET .../content to a
+  // field of its own; Graph instead 302-redirects GET .../content to a
   // time-limited blob URL, the same mechanism the current-version
   // downloadUrl is backed by. Captured here by disabling axios's own
   // redirect-following and reading the Location header, rather than
   // letting axios follow it (which would download the whole file through
-  // this server for no reason -- getAuthorizedFile() only needs the URL
+  // this server for no reason; getAuthorizedFile() only needs the URL
   // itself, handed to the browser to fetch directly).
   async getVersionContentUrl(tenantId: string, driveId: string, itemId: string, versionId: string): Promise<string | null> {
     const token = await this.getAppToken(tenantId);

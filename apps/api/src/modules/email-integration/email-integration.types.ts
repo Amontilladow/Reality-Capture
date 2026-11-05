@@ -1,5 +1,5 @@
-// Internal (not exported from @engineeringos/types) -- these describe the
-// shape every provider client (MicrosoftGraphClient, GmailClient -- Phase
+// Internal (not exported from @engineeringos/types): these describe the
+// shape every provider client (MicrosoftGraphClient, GmailClient; Phase
 // 3C/3D) must implement, and the plaintext token bundle EmailTokenStore
 // encrypts before it ever reaches the database. Nothing here is returned
 // to the frontend.
@@ -8,10 +8,10 @@ export interface ProviderTokens {
   accessToken: string;
   // Absent on a refresh response for some providers (Google only issues a
   // new refresh token on the initial grant, same as the existing Calendar
-  // integration's GoogleTokens) -- only required on the very first connect.
+  // integration's GoogleTokens): only required on the very first connect.
   refreshToken?: string;
   expiresAt: string; // ISO timestamp
-  // Exactly what the provider granted, space-separated -- not what was
+  // Exactly what the provider granted, space-separated; not what was
   // requested. A provider can silently narrow a scope request; storing what
   // was actually granted is what Section 5's "appropriate token expiry
   // handling" and a later composer's "can this connection actually send
@@ -23,10 +23,10 @@ export interface ProviderTokens {
 // actually granted, taken from the OIDC ID token's own email claim
 // (requesting `openid email` alongside the send scope, both providers
 // support this) rather than a second API call against Graph's /me or
-// Google's userinfo endpoint -- one fewer scope to request
+// Google's userinfo endpoint; one fewer scope to request
 // (no User.Read / userinfo.email needed) and one fewer round trip.
 // refreshToken is narrowed to required here (unlike the base type, which
-// leaves it optional for a *refresh* response) -- every concrete client's
+// leaves it optional for a *refresh* response): every concrete client's
 // exchangeCodeForTokens() throws rather than returning if the provider
 // didn't grant one, so by the time this type is constructed it is always
 // present.
@@ -37,7 +37,7 @@ export interface InitialProviderTokens extends ProviderTokens {
 
 // Phase 3E: what the composer hands to a provider client to actually send.
 // `attachments` carries real bytes already fetched from storage and
-// verified against the size/type allow-list by EmailSendingService --
+// verified against the size/type allow-list by EmailSendingService;
 // the client layer never reaches into StorageService itself.
 export interface OutgoingMessage {
   to: string[];

@@ -40,7 +40,7 @@ describe('buildMailtoHref', () => {
     expect(href).not.toBeNull();
     expect(href!.startsWith('mailto:jane.doe@m4contracting.ae?')).toBe(true);
     // Round-trip through URLSearchParams rather than asserting an exact
-    // encoded string -- only the decoded values matter, not which of the
+    // encoded string; only the decoded values matter, not which of the
     // (several, equally valid) encodings was chosen for the space character.
     const query = new URLSearchParams(href!.split('?')[1]);
     expect(query.get('subject')).toBe('Re: RFI 12');

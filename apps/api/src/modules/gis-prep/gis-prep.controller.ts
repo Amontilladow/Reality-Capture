@@ -6,7 +6,7 @@ import { RequireCategoryAction } from '../../common/decorators/require-category-
 import { GisPrepService } from './gis-prep.service';
 import { CreateGisPrepJobDto, GetGisPrepUploadUrlDto, RerunGisPrepJobDto } from './dto/gis-prep.dto';
 
-// GIS Preparation -- same permission convention as the Drawings modules:
+// GIS Preparation: same permission convention as the Drawings modules:
 // reads ungated, mutations gated by the existing 'drawings' category.
 @ApiTags('gis-prep')
 @ApiBearerAuth()

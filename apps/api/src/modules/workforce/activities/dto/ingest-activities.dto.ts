@@ -6,7 +6,7 @@ import { Type } from 'class-transformer';
 import { ACTIVITY_TYPES } from '@engineeringos/types';
 
 // Mirrors the offline-sync pattern already used by the mobile capture
-// upload queue (SyncCapturesDto) -- same idempotency-key-per-item shape,
+// upload queue (SyncCapturesDto): same idempotency-key-per-item shape,
 // since the desktop agent's offline queue has the identical requirement
 // (brief §31: don't lose activity data because of temporary connectivity
 // loss).
@@ -30,7 +30,7 @@ export class IngestActivityItemDto {
 
   // The active window's title bar text. Only ever persisted server-side
   // when the company has workforce_privacy_settings.window_title_enabled
-  // on and this item isn't 'PRIVATE' -- see ActivitiesService.insertOne(),
+  // on and this item isn't 'PRIVATE'; see ActivitiesService.insertOne(),
   // which force-drops this field regardless of what's sent here otherwise.
   @IsOptional() @IsString() @MaxLength(500)
   windowTitle?: string;

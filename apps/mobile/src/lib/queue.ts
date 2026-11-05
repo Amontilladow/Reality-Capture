@@ -17,7 +17,7 @@ async function ensureCapturesDir() {
 /**
  * Moves a file from its (often temporary/cache) source URI into permanent app
  * storage, tags it with GPS, and writes a queue row. The caller gets an
- * immediate, durable local record — upload happens later via the sync engine,
+ * immediate, durable local record; upload happens later via the sync engine,
  * whether the device is online right now or not.
  */
 export async function enqueueCapture(params: {
@@ -69,7 +69,7 @@ export async function enqueueCapture(params: {
 
   insertQueuedCapture(item);
 
-  // Opportunistic immediate attempt — if we're online this uploads right away instead
+  // Opportunistic immediate attempt: if we're online this uploads right away instead
   // of waiting for the next background-fetch window. processQueue() is a no-op if offline.
   processQueue().catch(() => {});
 

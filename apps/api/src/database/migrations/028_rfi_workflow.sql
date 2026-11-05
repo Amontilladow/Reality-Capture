@@ -11,10 +11,10 @@
 -- same multi-statement file, run the same way the migration runner runs it
 -- (postgres.js `sql.unsafe()`, which sends the whole file as one implicit
 -- transaction), applies cleanly as long as the new enum values are not
--- themselves used elsewhere in the same file -- which this migration does
+-- themselves used elsewhere in the same file; which this migration does
 -- not do. No file split was necessary.
 
--- (a) Expand rfi_discipline_enum. One ADD VALUE per statement -- Postgres
+-- (a) Expand rfi_discipline_enum. One ADD VALUE per statement; Postgres
 -- does not allow combining multiple new enum labels into a single
 -- ALTER TYPE ... ADD VALUE statement.
 ALTER TYPE rfi_discipline_enum ADD VALUE IF NOT EXISTS 'general';
@@ -24,12 +24,12 @@ ALTER TYPE rfi_discipline_enum ADD VALUE IF NOT EXISTS 'elv';
 ALTER TYPE rfi_discipline_enum ADD VALUE IF NOT EXISTS 'av';
 
 -- (b) New project-level RBAC capability for reviewing/responding/closing
--- RFIs -- see project_permission_grants (024_project_permission_grants.sql).
+-- RFIs; see project_permission_grants (024_project_permission_grants.sql).
 ALTER TYPE project_permission_enum ADD VALUE IF NOT EXISTS 'manage_rfis';
 
 -- (c) Five named stakeholder organizations per project (client/PMC/LDC/
 -- main contractor/subcontractor), each with its own logo for the RFI PDF
--- header -- distinct from the single project-wide logo/stamp added in
+-- header; distinct from the single project-wide logo/stamp added in
 -- 027_rfi_attachments_and_branding.sql, which is the *authoring party's*
 -- letterhead, not a stakeholder's.
 CREATE TABLE IF NOT EXISTS project_organizations (
@@ -54,7 +54,7 @@ DROP POLICY IF EXISTS tenant_isolation ON project_organizations;
 CREATE POLICY tenant_isolation ON project_organizations
   USING (company_id = current_setting('app.current_company_id', true)::UUID);
 
--- (d) Free-text clarification thread on an RFI -- separate from the formal
+-- (d) Free-text clarification thread on an RFI; separate from the formal
 -- question/answer record. Must exist before the rfi_attachments.comment_id
 -- FK added in (f) below.
 CREATE TABLE IF NOT EXISTS rfi_comments (
@@ -77,10 +77,10 @@ CREATE POLICY tenant_isolation ON rfi_comments
 -- (e) Widen rfis for the new lifecycle + 4-state cost/time impact.
 --
 -- Status: a superset CHECK covering both the legacy vocabulary
--- (open/answered/closed/void -- still the only values any existing row can
+-- (open/answered/closed/void; still the only values any existing row can
 -- have, and still what the current, unmodified-in-this-phase frontend
 -- filters on) and the new workflow vocabulary. The DEFAULT stays 'open' and
--- no existing row's status is rewritten -- 'open'/'answered' are treated as
+-- no existing row's status is rewritten; 'open'/'answered' are treated as
 -- workflow-equivalent to 'submitted'/'responded' at the application layer
 -- (rfis.service.ts state machine), not renamed at the data layer.
 ALTER TABLE rfis DROP CONSTRAINT IF EXISTS chk_rfi_status;
@@ -99,21 +99,21 @@ ALTER TABLE rfis
     CHECK (time_impact_level IN ('no','yes','potential','tbd')),
   ADD COLUMN IF NOT EXISTS time_impact_days         INTEGER,
   ADD COLUMN IF NOT EXISTS time_impact_description  TEXT,
-  -- Upload stamps -- computed once, server-side, at submit/respond time
+  -- Upload stamps: computed once, server-side, at submit/respond time
   -- (see rfis.service.ts submit()/respond()). Never written by a general
   -- UPDATE.
   ADD COLUMN IF NOT EXISTS query_stamp   TEXT,
   ADD COLUMN IF NOT EXISTS answer_stamp  TEXT;
 
 -- Backfill the new level columns from the existing booleans. The booleans
--- themselves are NOT dropped in this migration -- the service layer keeps
+-- themselves are NOT dropped in this migration; the service layer keeps
 -- writing both old and new columns in sync until a later phase retires the
 -- booleans once the frontend has moved off them.
 UPDATE rfis SET
   cost_impact_level = CASE WHEN cost_impact THEN 'yes' ELSE 'no' END,
   time_impact_level = CASE WHEN time_impact THEN 'yes' ELSE 'no' END;
 
--- (f) Attachment split -- query/response/comment kind, document type,
+-- (f) Attachment split; query/response/comment kind, document type,
 -- revision, free description, and an optional link back to the comment it
 -- was attached to (added after rfi_comments above so the FK can resolve).
 -- Existing rows backfill to kind='query', document_type='other' via the

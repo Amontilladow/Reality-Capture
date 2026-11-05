@@ -5,7 +5,7 @@ import { parseLogoImage } from './parse-logo-image';
 // The Reality Capture "ribbon R" rendered as liquid metal, using the shader
 // from paper-design/liquid-logo (see the two ported files beside this one).
 // The WebGL setup follows that repo's canvas.tsx, trimmed to what this app
-// needs: no upload UI, no toast library, and two additions --
+// needs: no upload UI, no toast library, and two additions;
 //  - reduced motion: under prefers-reduced-motion the mark renders a single
 //    still frame instead of flowing;
 //  - fallback: without WebGL2 (or while the texture is being built) the

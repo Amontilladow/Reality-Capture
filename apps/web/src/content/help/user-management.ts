@@ -1,7 +1,7 @@
 import type { HelpArticle } from './types';
 
 // Verified against users.controller.ts/users.service.ts (company-level)
-// and projects.controller.ts (project-level) directly -- these are two
+// and projects.controller.ts (project-level) directly; these are two
 // separate permission layers inside one UI component (ManageMembersModal),
 // and it's easy to conflate them. Company-level user management
 // (inviting, approving/changing a company role, deactivating, resetting

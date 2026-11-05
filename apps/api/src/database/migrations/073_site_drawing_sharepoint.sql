@@ -1,19 +1,19 @@
 BEGIN;
 
 -- ══════════════════════════════════════════════════════════════════════════
--- Site Drawing Hub, Phase 2 — SharePoint adapter support
+-- Site Drawing Hub, Phase 2; SharePoint adapter support
 --
 -- source_revision_id: a provider's own revision/version identifier, for a
 -- provider whose revision history lives on ONE source file (SharePoint's
 -- own version history on a driveItem) rather than as separate standalone
 -- files the way 'internal' revisions each have their own storage_key.
 -- NULL for every existing (internal) row and stays NULL for any future
--- internal revision -- see SiteDrawingRevision's own comment in
+-- internal revision; see SiteDrawingRevision's own comment in
 -- site-drawing.types.ts.
 --
 -- doc_integrations gains last_attempted_sync_at / last_sync_error alongside
 -- the table's existing last_synced_at, so "last successful" and "last
--- attempted" can be tracked separately (brief section 6) -- last_synced_at
+-- attempted" can be tracked separately (brief section 6): last_synced_at
 -- alone can't distinguish "never synced" from "every attempt since has
 -- failed."
 -- ══════════════════════════════════════════════════════════════════════════

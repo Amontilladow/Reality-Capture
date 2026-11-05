@@ -98,7 +98,7 @@ export default function DocumentsPage() {
                     </td>
                     <td className="px-4 py-2 text-ink-500">{(d as unknown as { uploadedByName?: string }).uploadedByName ?? '—'}</td>
                     <td className="px-4 py-2 text-right">
-                      {/* Only an internally-stored upload has a file of ours to hand out --
+                      {/* Only an internally-stored upload has a file of ours to hand out;
                           an external reference (Procore/Aconex/SharePoint/BIM360/a manual
                           link) has no object here to share; see DocumentsService.createShare(). */}
                       {d.source === 'internal' && (

@@ -19,13 +19,13 @@ const QAQC_RECORD_TYPES: QaqcRecordType[] = ['ncr', 'sor', 'wir', 'mir'];
 
 // NCR/SOR and WIR/MIR run the two-step close with the issuer/responder
 // roles SWAPPED, not the same roles for every type:
-//   NCR/SOR -- issued by QAQC-in-charge, responded to by the construction
+//   NCR/SOR; issued by QAQC-in-charge, responded to by the construction
 //              team, confirmed by QAQC-in-charge again (QAQC flags a
 //              problem, construction fixes it, QAQC signs off).
-//   WIR/MIR -- issued by the construction team (a WIR/MIR *is* the
+//   WIR/MIR; issued by the construction team (a WIR/MIR *is* the
 //              construction team's request for QAQC to inspect), responded
 //              to (i.e. the inspection itself is recorded) by QAQC-in-
-//              charge, and ALSO confirmed by QAQC-in-charge -- confirm
+//              charge, and ALSO confirmed by QAQC-in-charge; confirm
 //              never varies by type, unlike issue/respond.
 // The controller's @RequireExactRoles only pre-filters to the union of
 // roles valid for *some* type on create/respond; the actual per-type
@@ -61,7 +61,7 @@ export class QaqcService {
     private readonly db: DatabaseService,
     private readonly notifications: NotificationsService,
     private readonly storage: StorageService,
-    // @Optional(): same rationale as RfisService's own optional RiskService --
+    // @Optional(): same rationale as RfisService's own optional RiskService;
     // QaqcModule registers RiskModule as a real provider in production;
     // this stays optional purely so qaqc.service.spec.ts's existing
     // call sites (constructed with the pre-RiskService arg list) keep
@@ -70,13 +70,13 @@ export class QaqcService {
   ) {}
 
   // Event-driven incremental risk recalculation (mirrors RfisService's
-  // triggerRiskRecalc() one-for-one) -- fired after any write that can
+  // triggerRiskRecalc() one-for-one): fired after any write that can
   // change a record's overdue/priority/open-vs-closed state. Never allowed
   // to fail or slow down the QAQC write it's attached to.
   private async triggerRiskRecalc(companyId: string, projectId: string, nodeType: QaqcRecordType, qaqcId: string): Promise<void> {
     if (!this.risk) return;
-    // Only NCR is risk-worthy (see risk.service.ts's RISK_WORTHY_NODE_TYPES)
-    // -- SOR/WIR/MIR never fed the Risk Engine, so there's nothing to
+    // Only NCR is risk-worthy (see risk.service.ts's RISK_WORTHY_NODE_TYPES);
+    // SOR/WIR/MIR never fed the Risk Engine, so there's nothing to
     // recalculate for them.
     if (nodeType !== 'ncr') return;
     try {
@@ -86,10 +86,10 @@ export class QaqcService {
     }
   }
 
-  // Scoped per (project, record_type) -- each of NCR/SOR/WIR/MIR gets its
+  // Scoped per (project, record_type): each of NCR/SOR/WIR/MIR gets its
   // own independent sequence on a project (NCR-001, SOR-001, WIR-001,
   // MIR-001, ... never sharing a counter). Deliberately simpler than RFI's
-  // {ProjectCode}-{OrgCode}-RFI-{Discipline}-{seq} scheme -- the brief
+  // {ProjectCode}-{OrgCode}-RFI-{Discipline}-{seq} scheme; the brief
   // asked specifically for "NCR-001"-style numbering, not the full RFI
   // reference-document format.
   private async generateRecordNumber(companyId: string, projectId: string, recordType: QaqcRecordType): Promise<string> {
@@ -105,7 +105,7 @@ export class QaqcService {
     if (dto.locationId) await this.assertLocationInProject(companyId, projectId, dto.locationId);
     const recordNumber = await this.generateRecordNumber(companyId, projectId, dto.recordType);
 
-    // withTenant required -- qaqc_records carries the tenant_isolation RLS
+    // withTenant required: qaqc_records carries the tenant_isolation RLS
     // policy (migration 067), same as every other tenant-scoped table.
     const [record] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO qaqc_records (
@@ -193,11 +193,11 @@ export class QaqcService {
 
   // ── Step 1 of the two-step close: respond ──────────────────────────────
   // Moves 'open'/'reopened' -> 'pending_confirmation'. Who's allowed
-  // depends on record_type -- construction team for NCR/SOR, QAQC-in-charge
-  // for WIR/MIR (see RESPOND_ROLES_BY_TYPE) -- so the controller's
+  // depends on record_type; construction team for NCR/SOR, QAQC-in-charge
+  // for WIR/MIR (see RESPOND_ROLES_BY_TYPE): so the controller's
   // @RequireExactRoles only pre-filters to the union of both groups; the
   // exact-for-this-type check happens here, once the record's own type is
-  // known. Deliberately does NOT close the record -- see confirm() for why
+  // known. Deliberately does NOT close the record; see confirm() for why
   // that's a separate, narrower-gated action that never varies by type
   // (mirrors RfisService's submitForReview(), the first half of its own
   // two-step review chain).
@@ -234,13 +234,13 @@ export class QaqcService {
   }
 
   // ── Step 2 of the two-step close: confirm ───────────────────────────────
-  // QAQC-in-charge (or admin) only -- for every record type, NCR/SOR and
+  // QAQC-in-charge (or admin) only; for every record type, NCR/SOR and
   // WIR/MIR alike. Unlike issue/respond, this role set never swaps, so the
   // controller's static @RequireExactRoles(...CONFIRM_ROLES) is the only
   // enforcement needed; no per-type check here. 'confirmed' moves
   // 'pending_confirmation' -> 'closed'
   // (confirmedBy/confirmedAt set, terminal). 'rejected' moves it ->
-  // 'reopened' (mirrors RfisService's decideReview() reject path) --
+  // 'reopened' (mirrors RfisService's decideReview() reject path);
   // functionally like 'open' (can be responded to again) but kept
   // distinct in status/audit history so it's visible this record bounced
   // once already.
@@ -254,10 +254,10 @@ export class QaqcService {
     // Owner's org-category RBAC sprint: segregation of duties for the
     // respond -> confirm sign-off step. For NCR/SOR this was already
     // structurally true (CONFIRM_ROLES is QAQC-only, RESPOND_ROLES_BY_TYPE's
-    // NCR/SOR entry is construction-only -- different people by
+    // NCR/SOR entry is construction-only; different people by
     // construction), but for WIR/MIR the SAME qa_qc_manager who responded
     // (performed the inspection) could also confirm/close their own
-    // response -- nothing checked this until now. Applied uniformly to
+    // response; nothing checked this until now. Applied uniformly to
     // every record type rather than only WIR/MIR, since the segregation
     // principle holds regardless of which side structurally tends to
     // respond.
@@ -312,7 +312,7 @@ export class QaqcService {
   }
 
   // H-1 follow-up: linkCapture() checked the record's own project via
-  // assertQaqcInProject but never the supplied captureId -- a user
+  // assertQaqcInProject but never the supplied captureId; a user
   // authorized for Project A could attach Project B's capture to a Project
   // A QAQC record by supplying its id. captures carries its own project_id
   // directly.
@@ -324,7 +324,7 @@ export class QaqcService {
   }
 
   // H-1 follow-up: create() never checked that an optional locationId
-  // belongs to this project before persisting it -- a location resolves to
+  // belongs to this project before persisting it; a location resolves to
   // a project either via the building hierarchy (level_id) or, for a
   // floor-plan pin, via drawing_id. Mirrors captures.service.ts's own
   // create()-time location check.
@@ -363,7 +363,7 @@ export class QaqcService {
 
   async addAttachment(companyId: string, projectId: string, qaqcId: string, userId: string, dto: AddQaqcAttachmentDto) {
     await this.assertQaqcInProject(companyId, projectId, qaqcId);
-    // Real post-upload size enforcement -- dto.sizeBytes was only checked
+    // Real post-upload size enforcement: dto.sizeBytes was only checked
     // against the limit at upload-url time, never trusted for persistence.
     const actualSizeBytes = await this.storage.getObjectSize(dto.storageKey);
     if (actualSizeBytes === null) {
@@ -408,11 +408,11 @@ export class QaqcService {
     return { message: 'Attachment deleted.' };
   }
 
-  // ── Quick photo picker ("+Add photo") -- links an already-uploaded
+  // ── Quick photo picker ("+Add photo"): links an already-uploaded
   // Capture (captureType: 'photo_standard', uploaded client-side via
   // captures.api.ts's uploadCapture()) to this record, mirroring
   // issues.service.ts's addCapture()/getEvidence() one-for-one. This is
-  // deliberately a different path from addAttachment() above -- the photo
+  // deliberately a different path from addAttachment() above; the photo
   // becomes a real Capture (shows up in the project's Captures grid), not
   // a bare qaqc_attachments row. ─────────────────────────────────────────
   async linkCapture(companyId: string, projectId: string, qaqcId: string, userId: string, dto: AddQaqcCaptureDto) {
@@ -427,7 +427,7 @@ export class QaqcService {
     return link;
   }
 
-  // Resolves thumbnailKey/originalKey into real, usable URLs server-side --
+  // Resolves thumbnailKey/originalKey into real, usable URLs server-side;
   // mirrors issues.service.ts's getEvidence() one-for-one (the raw storage
   // keys are not themselves fetchable by the browser).
   async getLinkedCaptures(companyId: string, projectId: string, qaqcId: string) {
@@ -453,7 +453,7 @@ export class QaqcService {
   }
 
   // ── Reports KPI shape (mirrors issues.service.ts's getSummary()/
-  // getKpiBreakdown()/getOpenList() -- the same three-method shape already
+  // getKpiBreakdown()/getOpenList(): the same three-method shape already
   // reused for RFIs' own Reports integration) ──────────────────────────────
 
   async getSummary(companyId: string, projectId: string) {
@@ -576,7 +576,7 @@ export class QaqcService {
       confirmationComment: record.confirmationComment as string | undefined,
     });
 
-    // Issue-time attachments/photos first, then response-time ones -- same
+    // Issue-time attachments/photos first, then response-time ones; same
     // ordering convention as RFI's query-then-response split. Documents
     // and linked-Capture photos are merged into one ordered list so both
     // kinds of evidence appear as divided pages, per the brief.

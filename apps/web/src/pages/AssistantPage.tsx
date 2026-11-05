@@ -19,7 +19,7 @@ interface ChatMessage extends AssistantMessage {
 export default function AssistantPage() {
   const { projectId } = useParams<{ projectId: string }>();
   // Set when this page is reached from "Ask AI about this" on an
-  // issue/RFI detail view (spec section 18) -- a follow-up like "why is
+  // issue/RFI detail view (spec section 18): a follow-up like "why is
   // this high risk?" then resolves against that specific record instead of
   // the user having to name it.
   const [searchParams] = useSearchParams();

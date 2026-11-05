@@ -7,10 +7,10 @@ import { SiteDrawingImportService } from './site-drawing-import.service';
 import { GetImportBatchUploadUrlDto, CreateImportBatchDto } from './dto/create-import-batch.dto';
 import { ResolveReviewDto } from './dto/resolve-review.dto';
 
-// Bulk ZIP/PDF ingestion (brief Phase 2) -- same permission convention as
+// Bulk ZIP/PDF ingestion (brief Phase 2): same permission convention as
 // SiteDrawingsController: reads ungated, mutations gated by the existing
 // 'drawings' category. A bulk import is, in effect, the same action as
-// registering a drawing one at a time, just batched -- 'create' is the
+// registering a drawing one at a time, just batched; 'create' is the
 // right action for both.
 @ApiTags('site-drawings')
 @ApiBearerAuth()

@@ -11,7 +11,7 @@ import { useElementWidth } from '../../lib/useElementWidth';
 // - Horizontal bars, because category labels here are long ("Waiting for
 //   Information", "Architectural"); nothing is ever rotated.
 // - Every bar is the same muted tint + hairline stroke. At most one focal
-//   bar takes the accent -- editorial emphasis, not a colour per category.
+//   bar takes the accent; editorial emphasis, not a colour per category.
 // - The value axis always starts at zero, and every bar prints its value.
 // - At most 8 bars: a longer tail folds into one "Other" bar, and the
 //   description says what it holds.

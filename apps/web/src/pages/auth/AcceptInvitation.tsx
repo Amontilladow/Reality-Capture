@@ -44,7 +44,7 @@ export default function AcceptInvitation() {
       }),
     onSuccess: (result) => {
       setSession(result.tokens, result.user);
-      // Every self-registration lands pending -- ProtectedRoute would send
+      // Every self-registration lands pending: ProtectedRoute would send
       // them here anyway once it checks pendingApproval, but routing there
       // directly avoids a pointless bounce through /projects first.
       navigate('/pending-approval', { replace: true });

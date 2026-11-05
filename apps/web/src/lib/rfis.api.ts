@@ -5,7 +5,7 @@ import type {
 } from '@engineeringos/types';
 import { apiGet, apiGetWithMeta, apiPost, apiPatch, apiDelete } from './api';
 
-// Rfi.status stays RfiStatus (legacy-only) in the shared types package --
+// Rfi.status stays RfiStatus (legacy-only) in the shared types package;
 // see the comment on Rfi.status in packages/types/src/rfi.types.ts for why.
 // Every endpoint here can hand back a row carrying the wider workflow
 // vocabulary (submit/requestClarification/respond/close/reopen all write
@@ -13,7 +13,7 @@ import { apiGet, apiGetWithMeta, apiPost, apiPatch, apiDelete } from './api';
 // every page that needs to render/compare against the full vocabulary.
 // noticeLetterStatus/noticeLetterSharedAt: two additional fields the list
 // endpoint (GET /projects/:projectId/rfis) carries per the notice-letter
-// backend contract -- both absent/undefined when no letter exists yet for
+// backend contract; both absent/undefined when no letter exists yet for
 // that RFI. Drives the RfisPage "Notice" column without a separate
 // per-row request.
 export type RfiListItem = Omit<Rfi, 'status'> & {
@@ -41,7 +41,7 @@ export interface RfiFilters {
   page?: number;
   perPage?: number;
   // "Main Contractor's RFIs" (everything except subcontractor-raised) vs
-  // "Subcontractor's RFIs" (only subcontractor-raised) -- RfisPage's two
+  // "Subcontractor's RFIs" (only subcontractor-raised): RfisPage's two
   // windows. Omitted = unfiltered, same as before this field existed.
   view?: 'main' | 'subcontractor';
   origin?: string;
@@ -65,7 +65,7 @@ export interface CreateRfiPayload {
   priority?: RfiPriority;
   discipline: RfiDiscipline;
   disciplineOther?: string;
-  // Legacy boolean shape -- still accepted by the backend for compatibility.
+  // Legacy boolean shape: still accepted by the backend for compatibility.
   costImpact?: boolean;
   timeImpact?: boolean;
   // 4-state shape (Phase 1 backend, wired up in this ticket).
@@ -76,20 +76,20 @@ export interface CreateRfiPayload {
   timeImpactLevel?: RfiImpactLevel;
   timeImpactDays?: number;
   timeImpactDescription?: string;
-  // Third impact field -- same 4-state vocabulary, no amount/currency-or-days
+  // Third impact field: same 4-state vocabulary, no amount/currency-or-days
   // companion (see packages/types/src/rfi.types.ts).
   drawingImpactLevel?: RfiImpactLevel;
   drawingImpactDescription?: string;
   drawingUpdateOwnerId?: string;
   assignedTo?: string;
   dueDate?: string;
-  // Which organization is raising this RFI -- the Subcontractor's-RFIs
+  // Which organization is raising this RFI: the Subcontractor's-RFIs
   // window's RfiFormModal sends 'subcontractor' explicitly; everything
   // else omits it (server defaults to 'main_contractor'). The server
   // re-derives and overrides this from the caller's actual project role
-  // regardless of what's sent -- see RfisService.create().
+  // regardless of what's sent; see RfisService.create().
   raisedByOrganizationSlot?: ProjectOrganizationSlot;
-  // Upload-RFI quick-create fields -- a DC backfilling an RFI actually
+  // Upload-RFI quick-create fields: a DC backfilling an RFI actually
   // raised and answered on Aconex/Procore/email. Omitted by the normal
   // "+ New RFI" form.
   origin?: RfiOrigin;
@@ -106,7 +106,7 @@ export interface UpdateRfiPayload {
   subject?: string;
   question?: string;
   answer?: string;
-  // PATCH only ever accepts the legacy status vocabulary -- the widened
+  // PATCH only ever accepts the legacy status vocabulary; the widened
   // workflow statuses are only reachable through the dedicated
   // submit/requestClarification/respond/close/reopen endpoints below (see
   // UpdateRfiDto in apps/api, unchanged in this ticket).
@@ -138,7 +138,7 @@ export function deleteRfi(projectId: string, rfiId: string) {
   return apiDelete<{ message: string }>(`/projects/${projectId}/rfis/${rfiId}`);
 }
 
-// ── Workflow (Phase 3 -- wiring up the Phase 1 backend endpoints) ─────────
+// ── Workflow (Phase 3; wiring up the Phase 1 backend endpoints) ─────────
 export function submitRfi(projectId: string, rfiId: string) {
   return apiPost<RfiListItem>(`/projects/${projectId}/rfis/${rfiId}/submit`);
 }
@@ -268,7 +268,7 @@ export function deleteRfiAttachment(projectId: string, rfiId: string, attachment
 
 // Full client-side flow: request the presigned URL, PUT the file straight
 // to storage, then register it as an rfi_attachments row. `extra` carries
-// the Phase 2 kind/documentType/etc. fields -- optional so this still works
+// the Phase 2 kind/documentType/etc. fields; optional so this still works
 // exactly as before for any caller that doesn't pass them.
 export async function uploadRfiAttachment(
   projectId: string,

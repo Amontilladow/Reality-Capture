@@ -13,7 +13,7 @@ export interface Message {
 
 // Preview row for the inbox/sent list. The documented contract says the
 // backend may send either a pre-truncated `bodySnippet` or the full latest
-// `body` -- both are read defensively here and truncated client-side via
+// `body`: both are read defensively here and truncated client-side via
 // `snippetOf` regardless of which one actually shows up once the backend
 // ticket lands.
 export interface ThreadSummary {

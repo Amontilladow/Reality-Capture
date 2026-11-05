@@ -69,7 +69,7 @@ export function CaptureUploadModal({
           {
             captureType,
             locationId: locationId || undefined,
-            // No title field in this quick-upload flow — default to the
+            // No title field in this quick-upload flow; default to the
             // filename rather than leaving every capture "Untitled".
             title: qf.file.name.replace(/\.[^./]+$/, ''),
             phase: phase || undefined,

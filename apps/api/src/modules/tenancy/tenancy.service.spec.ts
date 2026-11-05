@@ -22,7 +22,7 @@ describe('generateSignupCode', () => {
   });
 });
 
-// Only the new self-signup-code methods are covered here -- the rest of
+// Only the new self-signup-code methods are covered here; the rest of
 // TenancyService has no prior test coverage and is out of scope for this
 // change.
 describe('TenancyService self-signup code', () => {
@@ -53,7 +53,7 @@ describe('TenancyService self-signup code', () => {
   describe('regenerateSignupCode', () => {
     it('writes an UPDATE and returns the shape callers depend on', async () => {
       // The stub sql tag can't echo back the real bound value (no template
-      // binding simulated here) -- generateSignupCode() itself is covered
+      // binding simulated here): generateSignupCode() itself is covered
       // directly above; this only confirms the method runs the write and
       // surfaces whatever the DB returned.
       const svc = makeService(() => [{ signupCode: 'WXYZ6789' }]);

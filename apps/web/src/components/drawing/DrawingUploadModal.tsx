@@ -23,7 +23,7 @@ export function DrawingUploadModal({
   const [title, setTitle] = useState('');
   const [place, setPlace] = useState<HierarchySelection>({ buildingId: '', levelId: '', locationId: '' });
   // No existing fixed vocabulary for drawing type elsewhere in the app
-  // (checked issue-constants.ts) -- free text, same as drawingNumber/revision.
+  // (checked issue-constants.ts): free text, same as drawingNumber/revision.
   const [drawingType, setDrawingType] = useState('');
   const [drawingNumber, setDrawingNumber] = useState('');
   const [revision, setRevision] = useState('');

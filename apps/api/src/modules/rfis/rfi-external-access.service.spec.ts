@@ -6,7 +6,7 @@ import type { StorageService } from '../storage/storage.service';
 import type { RfisService } from './rfis.service';
 
 // Mirrors rfis.service.spec.ts's own makeQuery/withTenant convention, but
-// this service uses BOTH this.db.query (validateToken -- no tenant context
+// this service uses BOTH this.db.query (validateToken; no tenant context
 // yet, same bootstrap category as auth.service.ts) and this.db.withTenant
 // (everything after company_id is known), so each gets its own responder.
 function makeQueryMock(responder: (text: string, values: unknown[]) => unknown[] | undefined) {
@@ -27,7 +27,7 @@ function makeService(
   const { fn: tenantSql, calls: tenantCalls } = makeQueryMock(tenantResponder);
   const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(tenantSql));
   // validateToken() has no tenant context yet (migration 052's withSystemBypass,
-  // same bootstrap category as auth.service.ts) -- forward its callback to the
+  // same bootstrap category as auth.service.ts): forward its callback to the
   // same query mock that used to be this.db.query directly.
   const withSystemBypass = jest.fn((fn: (sql: unknown) => unknown) => fn(query));
   const db = { query, withTenant, withSystemBypass };
@@ -63,7 +63,7 @@ describe('RfiExternalAccessService.generate', () => {
   it('creates a token row and returns the constructed external URL', async () => {
     // The service generates the token itself (randomBytes) and never re-reads
     // it back from the INSERT's RETURNING row for the URL, so the mock's
-    // RETURNING payload deliberately omits `token` -- asserting otherwise
+    // RETURNING payload deliberately omits `token`: asserting otherwise
     // would just be asserting the mock's own echo, not the service's logic.
     const { svc, tenantCalls } = makeService(
       () => undefined,
@@ -190,7 +190,7 @@ describe('RfiExternalAccessService.respondExternal', () => {
       companyId, projectId, rfiId, 'system-user-1', { answer: 'Use 450mm depth' },
       { recipientEmail: 'consultant@example.com', organizationSlot: 'ldc' },
     );
-    // getOrCreateSystemUser found an existing row -- no INSERT attempted.
+    // getOrCreateSystemUser found an existing row: no INSERT attempted.
     expect(tenantCalls.some((c) => c.text.includes('INSERT INTO users'))).toBe(false);
   });
 

@@ -13,7 +13,7 @@ ALTER TABLE bim_models ADD COLUMN IF NOT EXISTS parsed_at            TIMESTAMPTZ
 ALTER TABLE bim_models ADD COLUMN IF NOT EXISTS job_id               VARCHAR(100);
 
 -- ══════════════════════════════════════════════════════════════════════════
--- bim_spatial_nodes — the IFC-native Site → Building → Storey → Space tree.
+-- bim_spatial_nodes: the IFC-native Site → Building → Storey → Space tree.
 -- Kept separate from the existing buildings/levels/locations tables, which
 -- are reality-capture-facing and don't map 1:1 onto arbitrary IFC spatial
 -- hierarchies. bim_elements.spatial_node_id (added below) is the precise
@@ -38,7 +38,7 @@ ALTER TABLE bim_elements ADD COLUMN IF NOT EXISTS spatial_node_id UUID REFERENCE
 CREATE INDEX IF NOT EXISTS idx_bim_elements_spatial_node ON bim_elements(spatial_node_id);
 
 -- ══════════════════════════════════════════════════════════════════════════
--- bim_element_quantities — from IfcElementQuantity (IfcQuantityLength,
+-- bim_element_quantities: from IfcElementQuantity (IfcQuantityLength,
 -- IfcQuantityArea, IfcQuantityVolume, IfcQuantityWeight, IfcQuantityCount).
 -- ══════════════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS bim_element_quantities (
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS bim_element_quantities (
 CREATE INDEX IF NOT EXISTS idx_element_quantities_element ON bim_element_quantities(element_id);
 
 -- ══════════════════════════════════════════════════════════════════════════
--- bim_materials / bim_element_materials — from IfcMaterial /
+-- bim_materials / bim_element_materials: from IfcMaterial /
 -- IfcMaterialLayerSet / IfcRelAssociatesMaterial.
 -- ══════════════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS bim_materials (
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS bim_element_materials (
 );
 
 -- ══════════════════════════════════════════════════════════════════════════
--- bim_element_classifications — from IfcRelAssociatesClassification.
+-- bim_element_classifications: from IfcRelAssociatesClassification.
 -- omniclass_code/uniclass_code/uniformat_code/csi_masterformat already on
 -- bim_elements cover the 4 most common systems as first-class columns for
 -- fast filtering; this table holds the full set (including those 4 again,
@@ -95,11 +95,11 @@ CREATE TABLE IF NOT EXISTS bim_element_classifications (
 CREATE INDEX IF NOT EXISTS idx_element_classifications_element ON bim_element_classifications(element_id);
 
 -- ══════════════════════════════════════════════════════════════════════════
--- bim_element_relationships — generic edge list for IfcRelAggregates,
+-- bim_element_relationships: generic edge list for IfcRelAggregates,
 -- IfcRelContainedInSpatialStructure, IfcRelVoidsElement, IfcRelFillsElement.
 -- Stored by GUID (not FK'd to bim_elements.id) because the related entity
 -- on either side of a relationship can be a spatial node, not always an
--- element — GUIDs are resolved at read time against whichever table has
+-- element; GUIDs are resolved at read time against whichever table has
 -- them.
 -- ══════════════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS bim_element_relationships (

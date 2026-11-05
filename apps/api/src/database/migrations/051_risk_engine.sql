@@ -1,9 +1,9 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Migration 051 — Risk Engine (risks, signals, evidence, snapshots, history)
+-- Migration 051: Risk Engine (risks, signals, evidence, snapshots, history)
 --
 -- Builds the deterministic Risk entity (brief section 16) on top of the
 -- Project Risk Graph added in migration 050. A Risk is always anchored to
--- a real graph node (root_node_id) -- either the single entity it centers
+-- a real graph node (root_node_id): either the single entity it centers
 -- on (an RFI, an Issue) or a location node when the risk represents a
 -- cluster rather than one entity.
 --
@@ -16,7 +16,7 @@
 -- every other table (evidence, snapshots) and the UI can read one column
 -- without re-deriving it, while the automated calculation is never lost.
 --
--- Risk confidence (section 38) is stored separately from risk severity --
+-- Risk confidence (section 38) is stored separately from risk severity;
 -- `confidence_level`/`confidence_reason` say how much the assessment
 -- itself should be trusted (e.g. a risk built mostly from inferred, low-
 -- confidence graph edges), independent of how severe the score says the
@@ -26,14 +26,14 @@
 -- into a risk, `signal_type` is a plain VARCHAR validated against a
 -- constant list in application code (packages/types) rather than a
 -- Postgres enum, since the signal catalog is expected to grow steadily as
--- more real project data sources are connected -- unlike node/relationship
+-- more real project data sources are connected; unlike node/relationship
 -- types, which are structural and rarely change.
 --
 -- risk_evidence is the clickable Risk -> Evidence -> original record path
 -- (section 15): each row points at one risk_graph_nodes row, which in turn
 -- points at one real domain row.
 --
--- risk_snapshots is the historical time-series (section 18) -- one row per
+-- risk_snapshots is the historical time-series (section 18): one row per
 -- meaningful recalculation, read-only after insert, used for trend charts.
 -- Never backfilled with fabricated history: a project's trend chart is
 -- only as long as the snapshots that actually exist.

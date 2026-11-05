@@ -17,7 +17,7 @@ import { SessionRevocationService } from '../auth/session-revocation.service';
 import type { JwtPayload, AuthenticatedUser } from '@engineeringos/types';
 
 // NOTE (scaling): single-instance deployment only. Socket.io rooms live in
-// this process's memory -- there is no Redis (or other) adapter wired in, so
+// this process's memory; there is no Redis (or other) adapter wired in, so
 // this gateway will NOT broadcast across multiple API instances/replicas.
 // Nothing else in this codebase runs horizontally scaled either, so that
 // matches current deployment shape, but if the API is ever scaled out
@@ -33,7 +33,7 @@ function isAllowedOrigin(origin: string | undefined): boolean {
 }
 
 // Stored on client.data alongside the user, so every event can re-check
-// the session -- a socket outlives the access token it connected with.
+// the session; a socket outlives the access token it connected with.
 interface ChatSocketSession {
   user: AuthenticatedUser;
   tokenExpiresAt: number; // epoch seconds, from the JWT's exp claim
@@ -119,7 +119,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleDisconnect(_client: Socket) {
-    // No per-disconnect cleanup needed -- socket.io drops room membership
+    // No per-disconnect cleanup needed: socket.io drops room membership
     // automatically when a socket disconnects.
   }
 
@@ -132,7 +132,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const user = await this.requireUser(client);
     if (!user) return;
 
-    // Verify membership the same way sendMessage() does before joining --
+    // Verify membership the same way sendMessage() does before joining;
     // don't let a client join an arbitrary room just by asking.
     const allowed = await this.chat.canAccessChannel(
       user.companyId,
@@ -165,7 +165,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
 
     const room = `${payload.channelType}:${payload.channelId}`;
-    client.join(room); // idempotent -- covers a DM channel created after this socket's initial connect
+    client.join(room); // idempotent: covers a DM channel created after this socket's initial connect
     this.server.to(room).emit('chat:message', message); // broadcasts to EVERYONE in the room, including the sender
   }
 }

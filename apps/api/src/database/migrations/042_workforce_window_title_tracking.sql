@@ -1,19 +1,19 @@
 BEGIN;
 
 -- ══════════════════════════════════════════════════════════════════════════
--- Workforce Intelligence™ — window title tracking
+-- Workforce Intelligence™: window title tracking
 --
 -- The same DeskTime/Hubstaff/ActivTrak/Time Doctor category feature this
 -- product's own competitive-research doc names: the active window's title
 -- bar text (e.g. "Q3-Budget.xlsx - Excel"), not just the app name. This is
--- meaningfully more revealing than an app name alone -- a title can carry
--- a document name, an email subject line, a browser tab title -- so it
+-- meaningfully more revealing than an app name alone (a title can carry
+-- a document name, an email subject line, a browser tab title) so it
 -- gets the exact same treatment as screenshots (migration 037):
 -- off by default, one company-wide switch, enforced server-side at
 -- ingest regardless of what any client sends, and never captured during
 -- Private Time (migration 040's own 'PRIVATE' activity type already
 -- force-redacts application_name_raw/domain/raw_metadata in
--- ActivitiesService.insertOne() -- window_title joins that same
+-- ActivitiesService.insertOne(): window_title joins that same
 -- redaction, not a separate carve-out).
 -- ══════════════════════════════════════════════════════════════════════════
 

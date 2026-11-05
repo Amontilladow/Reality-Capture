@@ -1,10 +1,10 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Scope the Risk Engine's QAQC coverage down to NCR only -- SOR/WIR/MIR are
+-- Scope the Risk Engine's QAQC coverage down to NCR only; SOR/WIR/MIR are
 -- no longer risk-worthy (see risk.service.ts's RISK_WORTHY_NODE_TYPES).
 --
 -- This is a data cleanup, not a schema change: the risk_node_type enum
 -- (migration 050) still carries 'ncr'/'sor'/'wir'/'mir' as values (Postgres
--- can't cheaply drop enum values, and there's no need to -- the application
+-- can't cheaply drop enum values, and there's no need to; the application
 -- code simply stops creating 'sor'/'wir'/'mir' graph nodes from here on).
 -- This migration only deletes any 'sor'/'wir'/'mir' risk_graph_nodes rows
 -- that were already created while all four QAQC types fed the Risk Engine.

@@ -1,13 +1,13 @@
 version: '3.9'
 
-# EngineeringOS™ Reality Capture — Local Development Stack
+# EngineeringOS™ Reality Capture: Local Development Stack
 # Architecture Specification v1.1
 #
 # Services:
-#   postgres  — primary database (port 5432)
-#   redis     — queues + cache (port 6379)
-#   minio     — S3-compatible storage (port 9000, console 9001)
-#   qdrant    — vector database for AI layer (port 6333)
+#   postgres; primary database (port 5432)
+#   redis; queues + cache (port 6379)
+#   minio; S3-compatible storage (port 9000, console 9001)
+#   qdrant; vector database for AI layer (port 6333)
 #
 # Run: docker compose up -d
 # Stop: docker compose down
@@ -25,7 +25,7 @@ services:
       # Allow the API to set session-level config vars (required for RLS tenant isolation)
       POSTGRES_INITDB_ARGS: '--auth-host=md5'
     ports:
-      # Host 5433, not 5432 -- this machine already has a separate, unrelated
+      # Host 5433, not 5432; this machine already has a separate, unrelated
       # native PostgreSQL install bound to 5432 (used for offline forensic
       # work against restored backups). Remapping here avoids a port
       # conflict rather than touching that unrelated service. Update

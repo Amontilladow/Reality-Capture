@@ -2,7 +2,7 @@ import type { HelpArticle } from './types';
 
 // Section K from the brief, one entry per symptom. Each is a short,
 // standalone article (title = symptom, troubleshootingSteps = what to
-// check) rather than the full 16-field structure -- these are meant to be
+// check) rather than the full 16-field structure; these are meant to be
 // found by symptom, not read end to end.
 export const troubleshootingArticles: HelpArticle[] = [
   {

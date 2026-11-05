@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { listElements, type BimElementDetail } from '../../lib/bim.api';
 
-// A flat, searchable list of every element in a model -- independent of the
+// A flat, searchable list of every element in a model; independent of the
 // spatial tree. Some models (infrastructure/MEP especially) dump everything
 // under a single storey, which makes the tree useless for finding anything;
 // this always works regardless of how (or whether) the model is organized

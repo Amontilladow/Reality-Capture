@@ -21,8 +21,8 @@ function summaryFieldsFor(recordType: QaqcRecordType, summary?: QaqcSummary) {
   };
 }
 
-// The moment someone clicks "QAQC" they get four clearly-labeled options --
-// NCR, SOR, WIR, MIR -- per the brief's §3. Each card navigates into
+// The moment someone clicks "QAQC" they get four clearly-labeled options;
+// NCR, SOR, WIR, MIR; per the brief's §3. Each card navigates into
 // /projects/:projectId/qaqc/{ncr|sor|wir|mir}, a path sub-route (not a
 // query param) so the list for one record type has its own shareable URL
 // and back-button behavior, the same way /rfis and /qa-inspections already do.

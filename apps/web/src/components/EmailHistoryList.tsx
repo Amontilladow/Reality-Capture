@@ -5,12 +5,12 @@ import { listEmailMessages, type EmailRelatedRecordType } from '../lib/email-int
 
 const PROVIDER_LABEL: Record<string, string> = { microsoft: 'Outlook', google: 'Gmail' };
 
-// Phase 3G: a read-only audit trail, metadata only -- there is no message
+// Phase 3G: a read-only audit trail, metadata only; there is no message
 // body to show (migration 066 never stores one; see its own comment), so
 // this renders exactly what the brief's Section 8 field list covers: who
 // sent it, from where, to whom, when, the subject, and whether it
 // succeeded. Visibility is enforced server-side (EmailComposerService.
-// listMessages' own project-membership check) -- this component has no
+// listMessages' own project-membership check): this component has no
 // separate access decision of its own to get wrong.
 export function EmailHistoryList({
   projectId, relatedRecordType, relatedRecordId,

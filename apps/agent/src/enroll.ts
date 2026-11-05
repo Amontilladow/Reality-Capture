@@ -11,11 +11,11 @@ const AGENT_VERSION = '0.1.0';
 const PLATFORM_MAP: Record<string, string> = { win32: 'windows', darwin: 'macos', linux: 'linux' };
 
 // One-time enrollment: log in with the existing auth flow (there is no
-// separate device-token auth yet -- see docs/workforce-intelligence-
+// separate device-token auth yet; see docs/workforce-intelligence-
 // architecture.md's V1 hardening item list), self-enroll a device under
 // that user, and persist the session + deviceId locally. Accepts
 // AGENT_SERVER_URL/AGENT_EMAIL/AGENT_PASSWORD as env vars for scripted
-// setup (recommended -- see README.md); falls back to interactive,
+// setup (recommended; see README.md); falls back to interactive,
 // unmasked prompts otherwise, which is fine for a manually-run local test
 // client but not something to rely on for a real rollout.
 export async function enroll(): Promise<void> {

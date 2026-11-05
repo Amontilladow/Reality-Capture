@@ -52,7 +52,7 @@ export class TenancyController {
   }
 
   // ── Self-signup code ──────────────────────────────────────────────────────
-  // Both gated to super_admin, same as updateSettings() above -- whoever
+  // Both gated to super_admin, same as updateSettings() above; whoever
   // holds this code can create an account under this company, so viewing
   // and regenerating it get the same sensitivity level as any other
   // company-wide security setting.

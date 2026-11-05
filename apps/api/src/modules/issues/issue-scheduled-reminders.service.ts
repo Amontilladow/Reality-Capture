@@ -4,7 +4,7 @@ import { DatabaseService } from '../../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
 // Fires issue_reminders rows (migration 048) whose scheduled_for has
-// passed and that haven't been sent yet -- the counterpart to
+// passed and that haven't been sent yet; the counterpart to
 // IssuesService.scheduleReminder(). Same 5-minute cadence as
 // IssueWarningService's auto-warning cron.
 //

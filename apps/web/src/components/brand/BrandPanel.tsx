@@ -7,7 +7,7 @@ import { LiquidLogo } from './liquid/LiquidLogo';
 // The right-hand visual: the brand artwork on its own black field, full
 // width at its natural aspect (never cropped, so the full wordmark always
 // shows) with its top and bottom edges faded into the field, and chips
-// naming what the product actually does -- no invented meetings or people.
+// naming what the product actually does; no invented meetings or people.
 export function BrandPanel({ className = '', showThemeToggle = true }: { className?: string; showThemeToggle?: boolean }) {
   return (
     <div className={`relative rounded-[2.5rem] overflow-hidden bg-black ${className}`}>

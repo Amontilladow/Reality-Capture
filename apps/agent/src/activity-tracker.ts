@@ -5,7 +5,7 @@ interface OpenSegment {
   applicationNameRaw: string;
   activityType: ActivityType;
   startedAt: string;
-  // Absent, not just undefined -- see sample()'s conditional spread. Never
+  // Absent, not just undefined; see sample()'s conditional spread. Never
   // present at all when window-title capture isn't wired in (every
   // existing call site/test that doesn't pass getWindowTitle keeps
   // producing the exact same segment shape as before this field existed).
@@ -17,7 +17,7 @@ export interface ClosedSegment extends OpenSegment {
 }
 
 // Pure segment-tracking logic, deliberately with zero filesystem/network
-// I/O and zero direct dependency on active-win/desktop-idle -- both are
+// I/O and zero direct dependency on active-win/desktop-idle; both are
 // passed in as plain functions on each sample() call, so this class (the
 // actual "when does a segment start/end" decision) is unit-testable
 // without mocking native modules or touching a real OS idle-time API.
@@ -25,15 +25,15 @@ export interface ClosedSegment extends OpenSegment {
 // Maintains one open "segment" (app name + active/idle state); the moment
 // either changes, the previous segment is closed and returned so the
 // caller can queue it, and a new segment opens starting at that same
-// instant -- no gaps, no overlaps.
+// instant; no gaps, no overlaps.
 export class ActivityTracker {
   private openSegment: OpenSegment | null = null;
 
   constructor(private readonly idleThresholdSeconds: number) {}
 
   // `isPrivate` and `getWindowTitle` are new trailing params (after the
-  // already-defaulted `now`) so every existing call site -- production and
-  // every test in activity-tracker.test.ts -- keeps compiling and
+  // already-defaulted `now`) so every existing call site (production and
+  // every test in activity-tracker.test.ts) keeps compiling and
   // behaving exactly as before without passing them.
   async sample(
     getActiveApplicationName: () => Promise<string | undefined>,
@@ -48,7 +48,7 @@ export class ActivityTracker {
     if (isPrivate()) {
       // Redacted at the source: while Private Time is on, the real active
       // window/title is never even read, let alone queued or sent. Idle
-      // detection is skipped too -- private time counts as tracked time
+      // detection is skipped too; private time counts as tracked time
       // regardless of idle state, matching DeskTime's own behavior.
       applicationNameRaw = PRIVATE_APPLICATION_NAME;
       activityType = 'PRIVATE';
@@ -59,7 +59,7 @@ export class ActivityTracker {
       windowTitle = await getWindowTitle();
     }
     const timestamp = now();
-    // Only ever added to the segment object when actually present --
+    // Only ever added to the segment object when actually present;
     // never a `windowTitle: undefined` key, so a caller that doesn't wire
     // getWindowTitle in at all produces byte-for-byte the same segment
     // shape this class has always produced.
@@ -73,7 +73,7 @@ export class ActivityTracker {
     const unchanged = this.openSegment.applicationNameRaw === applicationNameRaw && this.openSegment.activityType === activityType;
     if (unchanged) {
       // The title can change within the same app/activity segment (e.g. a
-      // different document opened in the same app) without closing it --
+      // different document opened in the same app) without closing it;
       // keep whatever was most recently observed for whenever this
       // segment does eventually close. A momentarily-missing title never
       // erases a previously-known one.
@@ -86,7 +86,7 @@ export class ActivityTracker {
     return closed;
   }
 
-  // Closes whatever segment is currently open without starting a new one --
+  // Closes whatever segment is currently open without starting a new one;
   // called on graceful shutdown (SIGINT/SIGTERM) so the last in-progress
   // segment isn't silently dropped between the last sample and process exit.
   closeCurrent(now: () => string = () => new Date().toISOString()): ClosedSegment | null {

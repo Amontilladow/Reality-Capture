@@ -111,7 +111,7 @@ export function EditProjectModal({
   });
 
   // Uploaded immediately on file pick, independent of the main form's Save
-  // button, so the thumbnail updates right away -- same "avatar upload"
+  // button, so the thumbnail updates right away; same "avatar upload"
   // pattern used elsewhere, not tied into react-hook-form's state.
   const logoMutation = useMutation({
     mutationFn: (file: File) => uploadProjectBranding(project!.id, file, 'logo'),

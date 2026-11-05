@@ -8,7 +8,7 @@
 -- the same transaction that added it. The migration runner
 -- (run-migrations.ts) executes each file's full contents as a single
 -- `sql.unsafe(content)` call, which Postgres treats as one implicit
--- transaction for a multi-statement simple-query string -- same reasoning as
+-- transaction for a multi-statement simple-query string; same reasoning as
 -- 020_issue_status_enum_values.sql's header comment. Keeping this ADD VALUE
 -- isolated in its own file/transaction means any later migration is free to
 -- reference 'report_attachment' immediately.

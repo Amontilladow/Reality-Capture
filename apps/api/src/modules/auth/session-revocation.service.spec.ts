@@ -1,7 +1,7 @@
 import type { ConfigService } from '@nestjs/config';
 
 // Same jest.mock('ioredis', ...) convention as ai-usage.service.spec.ts
-// (this service's own sibling Redis consumer) -- see that file's comment
+// (this service's own sibling Redis consumer); see that file's comment
 // for the full rationale.
 const setMock = jest.fn();
 const existsMock = jest.fn();

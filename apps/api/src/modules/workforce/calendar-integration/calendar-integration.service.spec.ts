@@ -10,8 +10,8 @@ const secret = 'test-jwt-secret';
 const companyId = 'company-1';
 const userId = 'user-1';
 
-// A real CredentialEncryptionService (not a mock) -- these tests need a
-// genuine encrypt/decrypt round trip to verify legacy-vs-encrypted rows are
+// A real CredentialEncryptionService (not a mock): these tests need a
+// real encrypt/decrypt round trip to verify legacy-vs-encrypted rows are
 // actually readable, not just that the right SQL shape was produced. Fixes
 // H-4 (KNOWN_ISSUES_AND_REMEDIATION.md): Google Calendar OAuth tokens were
 // previously stored in plaintext, unlike email_integrations.
@@ -164,7 +164,7 @@ describe('CalendarIntegrationService.getTodayEvents', () => {
 
   // Legacy-row transition: a row written before migration 077 (plaintext
   // columns only) must still be usable for a read that doesn't need a
-  // refresh -- decryptOrLegacy falls back to the plaintext column.
+  // refresh; decryptOrLegacy falls back to the plaintext column.
   it('reads a legacy plaintext-only row correctly when the access token is still valid', async () => {
     const farFuture = new Date(Date.now() + 60 * 60 * 1000).toISOString();
     const sqlMock = jest.fn()
@@ -203,7 +203,7 @@ describe('CalendarIntegrationService.getTodayEvents', () => {
     expect(refreshUpdateQueryText).toContain('access_token_ciphertext');
     expect(refreshUpdateQueryText).toContain('refresh_token_ciphertext');
     // Neither the fresh nor the refresh-flow token value is ever a bound
-    // parameter in plaintext -- only their encrypted ciphertext/iv/tag are.
+    // parameter in plaintext; only their encrypted ciphertext/iv/tag are.
     expect(refreshUpdateValues).not.toContain('fresh-access');
     expect(refreshUpdateValues).not.toContain('refresh-1');
   });
@@ -263,8 +263,8 @@ describe('CalendarIntegrationService.getTodayEvents', () => {
 
 // Key errors: CredentialEncryptionService itself refuses to construct
 // without a real >=32-char CREDENTIAL_ENCRYPTION_KEY (app.config.ts's
-// requireStrongSecret(), exercised by credential-encryption.service.spec.ts)
-// -- the whole process fails to boot before this service could ever be
+// requireStrongSecret(), exercised by credential-encryption.service.spec.ts);
+// the whole process fails to boot before this service could ever be
 // instantiated with a bad key, so there is no separate "key error at
 // runtime" state for this service to handle.
 

@@ -9,9 +9,9 @@ import { apiErrorMessage } from '../lib/api';
 import { Listbox } from '../components/ui/Listbox';
 
 // Spec sections 5-8: Mode A "RealityCapture AI" (platform-provided, the
-// default -- nothing to configure) vs Mode B "Bring Your Own AI" (this
+// default; nothing to configure) vs Mode B "Bring Your Own AI" (this
 // user's own provider credentials, stored encrypted server-side and never
-// re-displayed once submitted -- only a last-4 fingerprint). Connecting
+// re-displayed once submitted; only a last-4 fingerprint). Connecting
 // doesn't change WHAT the assistant can do: it still goes through the same
 // domain guard, tools and project permissions either way, only which model
 // answers and who pays for it changes.

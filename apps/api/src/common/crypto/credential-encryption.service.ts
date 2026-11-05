@@ -9,7 +9,7 @@ export interface EncryptedCredential {
 }
 
 // Standard AES-256-GCM authenticated encryption for a reversible,
-// server-side-only secret -- specifically, a BYO AI provider API key
+// server-side-only secret; specifically, a BYO AI provider API key
 // (apps/api/src/modules/ai-connections/). There was no reusable
 // encryption-at-rest helper anywhere in this codebase before this: the
 // only precedent for a third-party credential (Google Calendar OAuth
@@ -20,7 +20,7 @@ export interface EncryptedCredential {
 //
 // The encryption key is derived (scrypt) from CREDENTIAL_ENCRYPTION_KEY,
 // read via ConfigService the same way every other secret in this app is
-// (e.g. jwt.accessSecret) -- never hard-coded, never logged. A fresh
+// (e.g. jwt.accessSecret): never hard-coded, never logged. A fresh
 // random IV and the GCM auth tag are stored alongside the ciphertext per
 // row (user_ai_connections), not reused across rows.
 @Injectable()
@@ -29,17 +29,17 @@ export class CredentialEncryptionService {
 
   constructor(private readonly config: ConfigService) {
     // app.config.ts's requireStrongSecret() already guarantees this is a
-    // real, >=32-char value -- the process never reaches here otherwise.
+    // real, >=32-char value; the process never reaches here otherwise.
     // Phase 6 security fix: this previously fell back to a hardcoded
     // 'dev-only-insecure-placeholder-key' string (visible to anyone with
     // read access to this source file) whenever the env var was unset, with
-    // only a warning logged -- meaning a deployment could boot and silently
+    // only a warning logged; meaning a deployment could boot and silently
     // encrypt every OAuth token and BYO AI key under a key published in the
     // repo. No fallback remains; a missing/weak key now fails at startup
     // instead, in config/app.config.ts.
     const secret = this.config.get<string>('app.credentialEncryptionKey')!;
     // scrypt turns an arbitrary-length passphrase into exactly 32 bytes
-    // (AES-256's key size), same purpose a KDF always serves -- the raw
+    // (AES-256's key size), same purpose a KDF always serves; the raw
     // env var is never used directly as the AES key.
     this.key = scryptSync(secret, 'rc-credential-encryption', 32);
   }

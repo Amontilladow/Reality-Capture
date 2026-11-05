@@ -10,7 +10,7 @@ import { Listbox } from './ui/Listbox';
 
 // For a DC backfilling an RFI that was actually raised and answered on
 // another platform (Aconex, Procore, email) and just needs recording here
-// for one unified register -- a lighter-weight form than RfiFormModal's
+// for one unified register; a lighter-weight form than RfiFormModal's
 // (no cost/time/drawing-impact fields; this app didn't run that workflow,
 // it's just logging the outcome), plus the one thing RfiFormModal has no
 // use for: an optional response file, attached via the exact same

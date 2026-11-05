@@ -5,7 +5,7 @@
 // danger/warn/ok carry real status meaning and color the number plus a
 // small dot beside the label (status is never color alone: the label names
 // it). teal/orange are accents for a neutral figure. A tile with no tone,
-// or a zero value, stays ink -- a grid of tiles should be quiet until a
+// or a zero value, stays ink; a grid of tiles should be quiet until a
 // number needs attention. No top bar or wash: the figure is the hierarchy.
 export function StatTile({
   label,

@@ -58,7 +58,7 @@ describe('UsersService.adminResetPassword', () => {
 
 // Phase 4F: onboardingCompleted is stored in the existing preferences
 // JSONB column, written through the same self-profile-edit path as
-// firstName/lastName/phone -- these tests cover that it's wired into
+// firstName/lastName/phone; these tests cover that it's wired into
 // update()'s hasUpdates gate and authorization the same way those are,
 // and that the service flattens preferences.onboardingCompleted onto the
 // returned object for the caller's convenience.
@@ -108,7 +108,7 @@ describe('UsersService.update -- onboardingCompleted', () => {
 
     const result = await svc.update('company-1', 'user-2', 'consultant', 'user-2', {});
 
-    // hasUpdates is false for an empty dto -- findOne() still runs (1 call),
+    // hasUpdates is false for an empty dto; findOne() still runs (1 call),
     // the UPDATE never does.
     expect(withTenant).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ id: 'user-2', companyRole: 'consultant', isActive: true, preferences: {} });
@@ -128,7 +128,7 @@ describe('UsersService.update -- onboardingCompleted', () => {
 
 // Phase 6 security fix regression tests: RolesGuard only checks that the
 // CALLER's own weight clears @Roles('company_admin','engineering_manager',
-// 'project_manager')'s minimum (project_manager, weight 60) -- it says
+// 'project_manager')'s minimum (project_manager, weight 60): it says
 // nothing about the weight of the companyRole in the request body. Before
 // this fix, invite() inserted dto.companyRole verbatim, so a project_manager
 // (or bim_manager/technical_director/engineering_manager) could invite a
@@ -137,7 +137,7 @@ describe('UsersService.update -- onboardingCompleted', () => {
 describe('UsersService.invite -- role escalation cap', () => {
   function makeService() {
     // invite() only reaches its first withTenant call (the existing-user
-    // lookup) if the role-weight check passes -- these tests assert the
+    // lookup) if the role-weight check passes; these tests assert the
     // escalation attempts throw before that, so the mock's resolved value
     // is irrelevant for the rejection cases and only exercised by the
     // "allowed" case.
@@ -209,7 +209,7 @@ describe('UsersService.invite -- role escalation cap', () => {
 // revoked refresh tokens, leaving a pre-existing access token usable for
 // its full remaining lifetime despite the response claiming otherwise.
 // denyFutureAccess() (SessionRevocationService, checked by JwtStrategy on
-// every request) closes that gap -- these tests prove it's actually
+// every request) closes that gap; these tests prove it's actually
 // called, with the deactivated user's id, only when the user row was
 // really found and updated.
 describe('UsersService.deactivate', () => {

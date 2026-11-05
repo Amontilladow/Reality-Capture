@@ -1,7 +1,7 @@
 name: Post-deploy health check
 
 # Render auto-deploys on every push to main (see render.yaml) with no
-# staging environment and no deploy/smoke-test step in ci.yml -- a deploy
+# staging environment and no deploy/smoke-test step in ci.yml; a deploy
 # that crashes on boot (this has happened: PR #52's merge took the API
 # down in production with "No AI provider configured" until PR #53's
 # fix, confirmed via Render's own deploy history) previously had no
@@ -32,8 +32,8 @@ jobs:
         run: sleep 90
 
       # /health/ready (not the plain liveness /health Render's own deploy
-      # gate uses) checks database, Redis, and object storage reachability
-      # -- and, deliberately, always returns HTTP 200 even when degraded
+      # gate uses) checks database, Redis, and object storage reachability;
+      # and, deliberately, always returns HTTP 200 even when degraded
       # (see health.controller.ts's own comment on why this isn't wired
       # into Render's restart gate), so the JSON body's status field is
       # what actually has to be checked, not just the HTTP status code.

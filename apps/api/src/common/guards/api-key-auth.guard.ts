@@ -4,7 +4,7 @@ import { DatabaseService } from '../../database/database.service';
 
 // Public API auth: a second, independent credential type alongside the JWT
 // cookie/bearer flow everything else in this app uses. Deliberately NOT
-// wired into the global APP_GUARD chain in app.module.ts -- the public-api
+// wired into the global APP_GUARD chain in app.module.ts; the public-api
 // module's controller is @Public() (so JwtAuthGuard/TenancyGuard/RolesGuard/
 // ProjectPermissionGuard all no-op on it, same as the progress-report share
 // links) and applies this guard itself via @UseGuards(). There's no
@@ -22,11 +22,11 @@ export class ApiKeyAuthGuard implements CanActivate {
     }
 
     // Same SHA-256-of-the-raw-secret lookup as refresh_tokens
-    // (auth.service.ts hashToken()) -- an O(1) indexed equality check, not a
+    // (auth.service.ts hashToken()): an O(1) indexed equality check, not a
     // per-row verify, since this runs on every inbound Public API request.
     const keyHash = createHash('sha256').update(rawKey).digest('hex');
 
-    // withSystemBypass required -- the tenant (company_id) isn't known yet;
+    // withSystemBypass required: the tenant (company_id) isn't known yet;
     // it's exactly what this lookup resolves. Same bootstrap category as
     // auth.service.ts's login-by-email lookup.
     const [key] = await this.db.withSystemBypass(sql => sql`
@@ -37,7 +37,7 @@ export class ApiKeyAuthGuard implements CanActivate {
       throw new UnauthorizedException({ code: 'API_KEY_INVALID', message: 'This API key is invalid or has been revoked.' });
     }
 
-    // Best-effort usage tracking -- never block/fail the request over it.
+    // Best-effort usage tracking: never block/fail the request over it.
     this.db.withTenant(key.companyId as string, sql => sql`
       UPDATE api_keys SET last_used_at = NOW() WHERE id = ${key.id}
     `).catch(() => undefined);

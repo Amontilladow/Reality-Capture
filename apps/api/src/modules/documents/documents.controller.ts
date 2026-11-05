@@ -49,7 +49,7 @@ export class DocumentsController {
   }
 
   // Generating/revoking a public link is gated the same as every other
-  // document mutation (manage_project_records) -- it hands out
+  // document mutation (manage_project_records): it hands out
   // unauthenticated download access to a real file, same sensitivity class
   // as the RFI/progress-report external links it mirrors.
   @Post(':id/shares')

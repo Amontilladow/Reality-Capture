@@ -7,8 +7,8 @@ import { createDocumentShare, listDocumentShares, revokeDocumentShare } from '..
 // Mirrors ProgressReportPage.tsx's own ShareModal pattern exactly: a form to
 // generate a link, a readonly URL + Copy button on success, and a list of
 // previously issued links with revoke. Lets a project team hand a document
-// to someone outside the company -- a client, consultant, or subcontractor
-// with no EngineeringOS account -- without routing through Dropbox/
+// to someone outside the company (a client, consultant, or subcontractor
+// with no EngineeringOS account) without routing through Dropbox/
 // WeTransfer/etc.
 export function DocumentShareModal({
   projectId, documentId, documentTitle, onClose,

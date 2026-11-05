@@ -77,7 +77,7 @@ export function deleteSnagItem(projectId: string, snagId: string) {
 
 // ── Verify (RBAC Phase 3) ────────────────────────────────────────────────
 // Distinct from updateSnagItem({ status: 'verified' }) above, which still
-// works unchanged for anyone holding manage_project_records -- this hits a
+// works unchanged for anyone holding manage_project_records; this hits a
 // dedicated endpoint so someone granted only the narrower
 // verify_snag_items permission (not manage_project_records) can also
 // perform just this one sign-off step. See SnagDetail.tsx's "Verify"
@@ -87,11 +87,11 @@ export function verifySnagItem(projectId: string, snagId: string) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// Detail-view workflow actions — mirrors issues.api.ts's equivalent
+// Detail-view workflow actions: mirrors issues.api.ts's equivalent
 // activities/forward/force-status/attachments functions one-to-one.
 // ══════════════════════════════════════════════════════════════════════
 
-// Mirrors IssueActivity's shape (packages/types/src/issue.types.ts) —
+// Mirrors IssueActivity's shape (packages/types/src/issue.types.ts);
 // snag_activities carries the same columns as issue_activities, scoped to
 // this feature's smaller activity-type set.
 export interface SnagActivity {
@@ -104,7 +104,7 @@ export interface SnagActivity {
   toValue?: string;
   attachmentUrl?: string;
   attachmentName?: string;
-  // BIGINT in Postgres — node-postgres returns BIGINT columns as strings,
+  // BIGINT in Postgres: node-postgres returns BIGINT columns as strings,
   // so this is a string over the wire despite being a byte count.
   attachmentSizeBytes?: number | string;
   performedBy: string;
@@ -132,7 +132,7 @@ export function forwardSnag(projectId: string, snagId: string, payload: { toUser
   return apiPost<SnagItem>(`/projects/${projectId}/snag-items/${snagId}/forward`, payload);
 }
 
-// ── Admin force-status (manager/admin only — gated in the UI via
+// ── Admin force-status (manager/admin only; gated in the UI via
 // isSnagManager(), enforced server-side by @Roles) ─────────────────────
 export function forceSnagStatus(projectId: string, snagId: string, status: SnagStatus) {
   return apiPatch<SnagItem>(`/projects/${projectId}/snag-items/${snagId}/force-status`, { status });

@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Migration 005 — Pin Locations
+-- Migration 005: Pin Locations
 --
 -- Lets a "pin" on a floor plan be a Location that exists on its own,
 -- instead of requiring a capture to exist first. A location can now
@@ -10,7 +10,7 @@
 --
 -- Purely additive / constraint-relaxing:
 --   - 4 new nullable columns on locations
---   - level_id becomes optional (see note below — real drawings in
+--   - level_id becomes optional (see note below; real drawings in
 --     production don't all have a level assigned)
 --   - a new partial index
 --   - one CHECK ensuring a location isn't left with neither a level nor
@@ -18,7 +18,7 @@
 --
 -- Nothing existing is dropped, renamed, or rewritten. The old
 -- capture_drawing_links table and its endpoints are left exactly as they
--- are — new pin creation stops writing to it, but it isn't touched.
+-- are; new pin creation stops writing to it, but it isn't touched.
 --
 -- This migration does NOT run automatically. It is reviewed here first.
 -- ══════════════════════════════════════════════════════════════════════════
@@ -68,5 +68,5 @@ COMMIT;
 --   ALTER TABLE locations DROP COLUMN IF EXISTS pos_y_norm;
 --   ALTER TABLE locations DROP COLUMN IF EXISTS pos_x_norm;
 --   ALTER TABLE locations DROP COLUMN IF EXISTS drawing_id;
---   -- level_id NOT NULL is only safely restorable if no row has it NULL.
+--   level_id NOT NULL is only safely restorable if no row has it NULL.
 -- ══════════════════════════════════════════════════════════════════════════

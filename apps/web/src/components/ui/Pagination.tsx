@@ -1,6 +1,6 @@
 // Numbered pagination for any list backed by DatabaseService.paginate()'s
-// {page, pageSize, total} shape (apps/api/src/database/database.service.ts)
-// -- the API contract already returns exactly this, nothing new needed
+// {page, pageSize, total} shape (apps/api/src/database/database.service.ts);
+// the API contract already returns exactly this, nothing new needed
 // there. Collapses long ranges with an ellipsis rather than rendering every
 // page number, which tables with hundreds of pages would otherwise do.
 export function Pagination({

@@ -6,13 +6,13 @@ export type QaqcRecordType = 'ncr' | 'sor' | 'wir' | 'mir';
 export type QaqcPriority = 'critical' | 'high' | 'medium' | 'low';
 // Two-step close: 'open' (issued, awaiting a response) -> 'pending_confirmation'
 // (responded, awaiting QAQC's confirmation) -> 'closed' (QAQC confirmed,
-// terminal) or 'reopened' (QAQC rejected the response -- can be responded
+// terminal) or 'reopened' (QAQC rejected the response; can be responded
 // to again, functionally like 'open').
 export type QaqcStatus = 'open' | 'pending_confirmation' | 'closed' | 'reopened';
 export type QaqcAttachmentKind = 'issue' | 'response';
 
 // Field set mirrors RfiListItem's own shape (same shared Discipline
-// vocabulary, same assignee/location-name join convention) -- see
+// vocabulary, same assignee/location-name join convention); see
 // qaqc.service.ts's findAll()/findOne() SELECT for the exact source columns.
 export interface QaqcRecord {
   id: string;
@@ -104,7 +104,7 @@ export function createQaqcRecord(projectId: string, payload: CreateQaqcPayload) 
 
 // ── Two-step close ─────────────────────────────────────────────────────────
 // Step 1: construction/PM/director/engineering (or admin) responds. Moves
-// open/reopened -> pending_confirmation. Distinct from closeQaqcRecord --
+// open/reopened -> pending_confirmation. Distinct from closeQaqcRecord;
 // there is no such thing anymore; see confirmQaqcRecord for the step that
 // actually finalizes it.
 export function respondToQaqcRecord(projectId: string, qaqcId: string, response: string) {
@@ -162,7 +162,7 @@ export function deleteQaqcAttachment(projectId: string, qaqcId: string, attachme
 }
 
 // Full client-side flow: request the presigned URL, PUT the file straight
-// to storage, then register it as a qaqc_attachments row -- identical
+// to storage, then register it as a qaqc_attachments row; identical
 // shape to uploadRfiAttachment() in rfis.api.ts.
 export async function uploadQaqcAttachment(
   projectId: string,
@@ -175,7 +175,7 @@ export async function uploadQaqcAttachment(
   return addQaqcAttachment(projectId, qaqcId, { storageKey, filename: file.name, sizeBytes: file.size, ...extra });
 }
 
-// ── Quick photo picker ("+Add photo") -- links an already-uploaded Capture
+// ── Quick photo picker ("+Add photo"): links an already-uploaded Capture
 // (uploaded via captures.api.ts's uploadCapture()), mirroring
 // issues.api.ts's addEvidenceCapture() one-for-one. This is a different
 // path from uploadQaqcAttachment() above: the photo becomes a real

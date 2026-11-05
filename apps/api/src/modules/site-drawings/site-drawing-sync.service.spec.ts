@@ -6,7 +6,7 @@ import type { DrawingSourceAdapter, DiscoveredDrawing } from './adapters/drawing
 type WithTenantCallback = (sql: unknown) => unknown;
 
 // Same call-count-aware convention site-drawings.service.spec.ts already
-// uses -- one step per this.db.withTenant(companyId, ...) call, in the
+// uses; one step per this.db.withTenant(companyId, ...) call, in the
 // exact order the service under test issues them.
 function single(result: unknown) {
   return (callback: WithTenantCallback) => callback(() => Promise.resolve(result));

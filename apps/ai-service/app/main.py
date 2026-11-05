@@ -25,7 +25,7 @@ app.add_middleware(
 )
 
 
-# This service has no identity/tenant checks of its own -- every router trusts
+# This service has no identity/tenant checks of its own; every router trusts
 # whatever company_id/project_id a caller supplies. The only thing standing
 # between that and cross-tenant data access used to be network placement
 # (Render private service, docker-compose internal network), and an audit
@@ -33,7 +33,7 @@ app.add_middleware(
 # (docker-compose.prod.yml published this service's port to the host).
 # This dependency makes apps/api (the only legitimate caller) prove its
 # identity with a shared secret on every request, independent of network
-# topology. An unset secret fails closed -- every request is rejected --
+# topology. An unset secret fails closed; every request is rejected --
 # rather than silently running unauthenticated.
 async def require_service_auth(x_internal_service_secret: str = Header(default="")) -> None:
     expected = settings.internal_service_secret

@@ -10,7 +10,7 @@ export interface GpsTag {
 const EMPTY_TAG: GpsTag = { gpsLat: null, gpsLng: null, gpsAccuracyM: null, compassHeadingDeg: null };
 
 /**
- * Best-effort GPS tag for a capture. Never throws — a capture without GPS is far
+ * Best-effort GPS tag for a capture. Never throws; a capture without GPS is far
  * better than a failed capture, so permission denial or a timeout just yields nulls.
  */
 export async function getCurrentGpsTag(): Promise<GpsTag> {
@@ -32,7 +32,7 @@ export async function getCurrentGpsTag(): Promise<GpsTag> {
         ? headingResult.trueHeading
         : headingResult.magHeading ?? null;
     } catch {
-      // Heading sensor unavailable on this device — GPS position is still useful alone.
+      // Heading sensor unavailable on this device: GPS position is still useful alone.
     }
 
     return {

@@ -1,7 +1,7 @@
 BEGIN;
 
 -- ══════════════════════════════════════════════════════════════════════════
--- Workforce Intelligence™ — MVP schema
+-- Workforce Intelligence™: MVP schema
 -- See docs/workforce-intelligence-data-model.md for full rationale.
 --
 -- activity_type / application_registry.category /
@@ -36,7 +36,7 @@ CREATE INDEX IF NOT EXISTS idx_devices_user ON devices(user_id);
 
 -- ══════════════════════════════════════════════════════════════════════════
 -- TABLE: application_registry
--- Per-company, admin-managed. No global rows -- each company populates
+-- Per-company, admin-managed. No global rows; each company populates
 -- its own (brief: "configurable rather than hard-coded").
 -- ══════════════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS application_registry (
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS application_registry (
 CREATE INDEX IF NOT EXISTS idx_application_registry_company ON application_registry(company_id);
 
 -- ══════════════════════════════════════════════════════════════════════════
--- TABLE: activities  (raw telemetry -- insert-only)
+-- TABLE: activities  (raw telemetry; insert-only)
 -- ══════════════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS activities (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -93,7 +93,7 @@ CREATE INDEX IF NOT EXISTS idx_activities_application ON activities(application_
 
 -- ══════════════════════════════════════════════════════════════════════════
 -- TABLE: activity_project_attributions
--- One current attribution per activity -- revisable without ever mutating
+-- One current attribution per activity; revisable without ever mutating
 -- the immutable activities row it points to.
 -- ══════════════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS activity_project_attributions (
@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS workforce_privacy_settings (
 );
 
 -- ══════════════════════════════════════════════════════════════════════════
--- ROW-LEVEL SECURITY -- identical pattern to migration 001
+-- ROW-LEVEL SECURITY: identical pattern to migration 001
 -- ══════════════════════════════════════════════════════════════════════════
 DO $$
 DECLARE
@@ -169,7 +169,7 @@ BEGIN
 END $$;
 
 -- ══════════════════════════════════════════════════════════════════════════
--- Subscription gating -- additive, matches how 'bim'/'ai' flags were added.
+-- Subscription gating: additive, matches how 'bim'/'ai' flags were added.
 -- Off by default on every existing tier; on for professional/business/
 -- enterprise, matching the tier where 'bim'/'ai' are already enabled.
 -- ══════════════════════════════════════════════════════════════════════════

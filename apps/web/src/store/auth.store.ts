@@ -4,7 +4,7 @@ import type { AuthenticatedUser } from '@engineeringos/types';
 const USER_KEY = 'eos.user';
 
 interface AuthState {
-  // In memory only -- never persisted. The refresh token lives entirely in
+  // In memory only: never persisted. The refresh token lives entirely in
   // an httpOnly cookie the API sets (see apps/api's auth.controller.ts),
   // unreadable by any page-context JavaScript, so a future XSS bug can't
   // exfiltrate it the way it previously could from localStorage. A page

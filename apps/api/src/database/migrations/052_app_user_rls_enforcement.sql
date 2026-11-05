@@ -2,12 +2,12 @@
 -- CLOSE THE RLS-BYPASS-BY-OWNERSHIP GAP
 --
 -- Migration 001's comment claimed "a bug in application code cannot leak
--- cross-tenant data -- even a raw SQL query with no WHERE clause will only
+-- cross-tenant data; even a raw SQL query with no WHERE clause will only
 -- see the current tenant's rows." That was never actually true in
 -- production: every deployment this repo ships (render.yaml, docker-
 -- compose.prod.yml) runs migrations AND the running application as the
 -- exact same DB role, which Postgres therefore makes the OWNER of every
--- table it creates -- and table owners are exempt from their own RLS
+-- table it creates; and table owners are exempt from their own RLS
 -- policies by default, superuser or not. app_user (created by migration
 -- 001 specifically to be the real, RLS-subject runtime role) was never
 -- granted a single privilege, so nothing could actually connect as it.
@@ -18,14 +18,14 @@
 --      still holds even if a future migration accidentally makes app_user
 --      (or any other non-superuser role) an owner of one of these tables.
 --   3. Creates a narrow, explicit bypass role for the handful of
---      genuinely pre-tenant/cross-tenant system operations that cannot be
+--      pre-tenant/cross-tenant system operations that cannot be
 --      scoped to one company_id (login-by-email, password reset by token,
 --      invitation accept by token, company self-registration, the
 --      overdue-issues cron, the screenshot-retention cron, and the RFI
---      external-access token lookup) -- see DatabaseService.withSystemBypass()
+--      external-access token lookup); see DatabaseService.withSystemBypass()
 --      for how application code uses it.
 --
--- None of this changes which role migrations themselves run as -- that
+-- None of this changes which role migrations themselves run as; that
 -- stays whatever DB_MIGRATOR_USER/DB_USER resolves to (see run-migrations.ts),
 -- which must remain the tables' owner (or a superuser) to keep running
 -- future ALTER/CREATE TABLE migrations.
@@ -38,7 +38,7 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO app_user;
 
--- Re-apply migration 001's audit_log restriction -- the blanket GRANT above
+-- Re-apply migration 001's audit_log restriction; the blanket GRANT above
 -- would otherwise silently re-add UPDATE/DELETE that migration 001 revoked.
 REVOKE UPDATE, DELETE ON audit_log FROM app_user;
 
@@ -58,7 +58,7 @@ BEGIN
   END LOOP;
 END $$;
 
--- 3. Narrow escape hatch for genuinely pre-tenant/cross-tenant system reads
+-- 3. Narrow escape hatch for pre-tenant/cross-tenant system reads
 -- and writes. NOLOGIN: nothing can connect directly as this role. app_user
 -- may only assume it for the duration of a single transaction via
 -- `SET LOCAL ROLE app_bypass_rls` (see DatabaseService.withSystemBypass()),
@@ -69,14 +69,14 @@ END $$;
 -- CREATEROLE to the database's own "owner" role, so CREATE ROLE here can
 -- fail with insufficient_privilege even though every other statement in
 -- this migration succeeds. That's a real platform restriction, not a bug
--- in this migration -- failing the whole migration over it would block
+-- in this migration; failing the whole migration over it would block
 -- every other (unrelated, uncontroversial) hardening step above and below
 -- this block. Instead: warn loudly and skip only this role's own setup if
 -- creation fails, so DatabaseService.withSystemBypass() callers get a
 -- real, visible runtime error ("role app_bypass_rls does not exist")
 -- instead of a silently-incomplete deploy. This migration is idempotent
 -- and safe to rerun once the role has been created by hand (whatever
--- elevated-access path the hosting provider offers) -- rerunning it will
+-- elevated-access path the hosting provider offers): rerunning it will
 -- then finish this section's grants on its own. Verified locally against
 -- both a superuser role (happy path, including re-run idempotency) and a
 -- deliberately CREATEROLE-less role (reproduces the exact failure seen
@@ -106,15 +106,15 @@ END $$;
 -- confirmed by hand against a live database while validating this migration:
 -- a custom runtime parameter like app.current_company_id that has never been
 -- read before reports as NULL via current_setting(name, true) (missing_ok),
--- exactly as every policy here already assumes -- but the FIRST time any
+-- exactly as every policy here already assumes; but the FIRST time any
 -- transaction on a pooled connection sets it with set_config(..., true)
 -- (transaction-local), Postgres creates a session-level placeholder for that
 -- GUC. Once that placeholder exists, it no longer reports NULL afterwards;
 -- it reverts to the placeholder's own default, which for a never-otherwise-
 -- set custom string GUC is '' (empty string), not NULL. Every later
--- non-tenant query on that SAME pooled connection -- `this.db.query` or
+-- non-tenant query on that SAME pooled connection (`this.db.query` or
 -- `this.db.withTransaction`, i.e. exactly the operations this migration's
--- app_bypass_rls role exists for -- would then hit `''::UUID`, which errors,
+-- app_bypass_rls role exists for) would then hit `''::UUID`, which errors,
 -- rather than simply filtering out all rows the way a NULL comparison does.
 -- `original_qual <> ''` as an added AND clause does NOT reliably prevent
 -- this: Postgres's planner can split a top-level AND into independently

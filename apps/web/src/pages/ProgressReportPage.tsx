@@ -22,7 +22,7 @@ function isoDateDaysAgo(days: number): string {
 
 // One-line Minto-style lead for the period, so the reader gets the
 // implication before the stat tiles and tables below (Phase 4). Built
-// purely from fields this report already returns -- no new calculation.
+// purely from fields this report already returns; no new calculation.
 function progressConclusion(report: ProgressReport): string {
   const { newIssues, closedIssues, overdueIssues, blockers, captureCount } = report;
   if (blockers.length > 0 || overdueIssues.length > 0) {
@@ -262,7 +262,7 @@ export default function ProgressReportPage() {
 
 // Mirrors the RFI external-access UI pattern (RfiDetailPage.tsx): a form to
 // generate a link, a readonly URL + Copy button on success, a WhatsApp
-// `wa.me` deep link (no WhatsApp Business API -- out of scope per the
+// `wa.me` deep link (no WhatsApp Business API; out of scope per the
 // brief), and a list of previously issued links with revoke.
 function ShareModal({
   projectId, filters, onClose, queryClient,

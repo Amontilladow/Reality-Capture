@@ -10,7 +10,7 @@ import type { GenerateProgressReportShareDto } from './dto/generate-progress-rep
 
 const DEFAULT_EXPIRY_DAYS = 14;
 // A printed/viewed report with hundreds of thumbnails stops being a quick
-// status check -- this caps it to the most recent captures in range while
+// status check; this caps it to the most recent captures in range while
 // still being a real, honest count (reportData.captureCount below carries
 // the true total separately, so "60 of 340" is never silently hidden).
 const MAX_REPORT_CAPTURES = 60;
@@ -62,9 +62,9 @@ export interface ProgressReportData {
 }
 
 /**
- * F1: Automated Progress Report. A report's content is never persisted --
+ * F1: Automated Progress Report. A report's content is never persisted;
  * it's computed live from captures/issues at view time, exactly like the
- * general Reports tab's KPI payload (reports.service.ts) -- so an in-app
+ * general Reports tab's KPI payload (reports.service.ts): so an in-app
  * view, a PDF download, and a public share link all read the same real,
  * current data, never a stale snapshot. Only the SHARE itself (which
  * project/building/level/date-range an opaque token authorizes) is
@@ -95,7 +95,7 @@ export class ProgressReportsService {
     });
     // CapturesService.findAll()'s own row type loses its untyped `c.*`
     // columns on the `...row` spread (an index-signature-into-object-
-    // literal gap, not introduced here) -- cast at this boundary rather
+    // literal gap, not introduced here): cast at this boundary rather
     // than widen that pre-existing, unrelated service's typing.
     const captureRows = capturesResult.data as unknown as Array<{
       id: string; thumbnailUrl?: string; capturedAt: string; title?: string; locationName?: string;
@@ -192,7 +192,7 @@ export class ProgressReportsService {
   // ── Share links (internal, authenticated side) ──────────────────────────
   // Mirrors rfi-external-access.service.ts's generate()/list()/revoke()
   // pattern exactly: a random 128-hex-char token (the secret itself, not
-  // hashed -- same category as a password-reset token), never re-selected
+  // hashed; same category as a password-reset token), never re-selected
   // once issued.
 
   async createShare(companyId: string, projectId: string, userId: string, dto: GenerateProgressReportShareDto) {
@@ -212,7 +212,7 @@ export class ProgressReportsService {
     return { ...share, shareUrl: `${frontendUrl}/progress-report/${token}` };
   }
 
-  // Never selects `token` -- same "don't re-display a bearer credential"
+  // Never selects `token`: same "don't re-display a bearer credential"
   // practice as rfi-external-access.service.ts's list().
   async listShares(companyId: string, projectId: string) {
     return this.db.withTenant(companyId, sql => sql`
@@ -232,10 +232,10 @@ export class ProgressReportsService {
   }
 
   // ── Public, unauthenticated side ────────────────────────────────────────
-  // Deliberately global (withSystemBypass, no withTenant) -- the token
+  // Deliberately global (withSystemBypass, no withTenant): the token
   // itself is the only credential; the caller has no session, no
   // company_id. Same bootstrap category as rfi-external-access.service.ts's
-  // identical validateToken(). Not single-use -- used_at is "last successful
+  // identical validateToken(). Not single-use; used_at is "last successful
   // view," matching that same precedent.
   private async validateShareToken(token: string): Promise<Record<string, unknown>> {
     const [share] = await this.db.withSystemBypass(sql => sql`
@@ -270,7 +270,7 @@ export class ProgressReportsService {
 
   // ── PDF export ───────────────────────────────────────────────────────────
   // aiBriefing-style separation from risk.service.ts's generatePdf() doesn't
-  // apply here (no AI narrative in this report) -- this just reuses the
+  // apply here (no AI narrative in this report): this just reuses the
   // exact same generate() data every other view reads, then downloads each
   // capture's thumbnail into a Buffer (storage.download(), same pattern as
   // rfis.service.ts's attachment-image embedding) since @react-pdf/renderer

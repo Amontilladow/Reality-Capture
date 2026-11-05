@@ -15,7 +15,7 @@ export function login(payload: LoginPayload) {
   return apiPost<LoginResult>('/auth/login', payload);
 }
 
-// No refreshToken to pass -- the API reads it from the httpOnly cookie
+// No refreshToken to pass: the API reads it from the httpOnly cookie
 // (see api.ts's `http` instance, which always sends withCredentials: true).
 export function logout() {
   return apiPost<void>('/auth/logout', {});
@@ -43,7 +43,7 @@ export interface SelfSignupPayload {
   lastName: string;
   email: string;
   password: string;
-  // The external firm this person actually works for (e.g. "AECOM") --
+  // The external firm this person actually works for (e.g. "AECOM");
   // distinct from requestedRole, their internal position.
   organizationName: string;
   requestedRole: CompanyRole;

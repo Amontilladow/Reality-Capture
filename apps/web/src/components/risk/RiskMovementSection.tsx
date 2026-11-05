@@ -50,7 +50,7 @@ function MovementGroup({ title, description, tone, count, rows }: {
 
 // Risk Movement (brief Phase 3): emerged/worsened/improved/unresolved during
 // the selected window, each a real bucket from RiskService.getRiskMovement()
-// (risk_snapshots history + firstDetectedAt/resolvedAt/closedAt) -- nothing
+// (risk_snapshots history + firstDetectedAt/resolvedAt/closedAt): nothing
 // computed here, this only renders what the backend already classified.
 // Placed after the conclusion/KPI/attention panels and before the heatmap/
 // register, per the brief's own prescribed order: conclusion -> critical

@@ -59,7 +59,7 @@ export function PropertyPanel({
   const [showStatusHistory, setShowStatusHistory] = useState(false);
 
   // Reset the status-editing draft and history visibility whenever the
-  // selected element changes -- this component isn't remounted on
+  // selected element changes; this component isn't remounted on
   // selection (same instance, new props), so stale draft state would
   // otherwise leak across elements.
   const [lastElementId, setLastElementId] = useState<string | null>(null);
@@ -148,7 +148,7 @@ export function PropertyPanel({
   // element.properties is normally a plain object (the API decodes the
   // bim_elements.properties JSONB column into one automatically), but a
   // small number of elements have it stored as a JSON-encoded STRING
-  // instead (a data artifact from how/when they were processed -- see
+  // instead (a data artifact from how/when they were processed; see
   // ifc-repository.service.ts's insertElementsBatch). Object.entries() on
   // a raw string walks its characters by index, which renders as garbage
   // numbered rows, so unwrap that case defensively rather than trusting

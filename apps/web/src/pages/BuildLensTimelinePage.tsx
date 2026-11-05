@@ -20,7 +20,7 @@ const BASE_STEP_MS = 2500;
  * `compass_heading_deg` is the real-world bearing the camera faced when a
  * given photo's own equirectangular "yaw 0" reference column was captured.
  * ThreeJsViewer's `lon` is a yaw purely relative to whichever image is
- * currently loaded -- it means nothing across two different photos on its
+ * currently loaded; it means nothing across two different photos on its
  * own, which is exactly the bug this function exists to fix.
  *
  * Derivation: if the viewer is currently at screen-space `currentLon`
@@ -31,7 +31,7 @@ const BASE_STEP_MS = 2500;
  *   realBearing = outgoingHeadingDeg + currentLon
  *
  * (this relies on yaw increasing in the same rotational sense as compass
- * bearing -- i.e. panning right turns you clockwise in the real world,
+ * bearing, i.e. panning right turns you clockwise in the real world,
  * which is the standard, non-mirrored convention for equirectangular
  * panoramas, and is exactly the convention ThreeJsViewer's own theta/target
  * math already uses consistently for every image it loads).
@@ -46,9 +46,9 @@ const BASE_STEP_MS = 2500;
  * Worked check (from the ticket): capture A heading 0°, capture B heading
  * 90°, user at lon=0 on A (i.e. looking at real bearing 0°, "the north
  * wall"). Switching to B: lon' = 0 + (0 - 90) = -90. Real bearing on B at
- * lon'=-90 is 90 + (-90) = 0 -- still the north wall. Correct.
+ * lon'=-90 is 90 + (-90) = 0; still the north wall. Correct.
  * (The naive `lon + (incoming - outgoing)` = 0 + 90 = 90 would put the real
- * bearing at 90 + 90 = 180 -- the wall directly behind the correct one --
+ * bearing at 90 + 90 = 180; the wall directly behind the correct one;
  * so that sign is deliberately NOT used here.)
  */
 function computeContinuationYaw(
@@ -62,7 +62,7 @@ function computeContinuationYaw(
 
 // compass_heading_deg is set client-side for any capture type (whatever the
 // device sensor read at capture time), but it only means anything as a
-// panorama zero-point reference for an actual 360° photo -- a regular
+// panorama zero-point reference for an actual 360° photo; a regular
 // photo's heading (if a client happened to send one) getting fed into
 // computeContinuationYaw would corrupt the running yaw for no reason, since
 // it's never used to orient a flat photo/video the way it is for a 360.
@@ -84,8 +84,8 @@ function toDatetimeLocalValue(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// Renders whatever media a capture actually is -- the panorama viewer for a
-// 360, a plain <img> for a standard photo, a plain <video> for a video --
+// Renders whatever media a capture actually is; the panorama viewer for a
+// 360, a plain <img> for a standard photo, a plain <video> for a video;
 // given an already-resolved image/video URL (this component does no data
 // fetching of its own; the main viewer passes its detail-query-resolved
 // preview + hotspots, CompareView passes its own simpler preview/thumbnail
@@ -180,7 +180,7 @@ export default function BuildLensTimelinePage() {
   // getViewerData() returns every capture type at this location, ordered
   // captured_at DESC. BuildLens's timeline shows the full media mix (360s,
   // standard photos, videos) in one chronological line, oldest-to-newest
-  // left-to-right, so just reverse -- no type filter.
+  // left-to-right, so just reverse; no type filter.
   const captures = useMemo<Capture[]>(() => {
     const all = viewerQuery.data ?? [];
     return all.slice().reverse();
@@ -217,7 +217,7 @@ export default function BuildLensTimelinePage() {
     return undefined;
   }, [hierarchyQuery.data, locationId]);
 
-  // Reset the date-edit buffer whenever the active capture changes -- same
+  // Reset the date-edit buffer whenever the active capture changes; same
   // pattern as CaptureLightbox's title/phase edit buffers.
   useEffect(() => {
     setDateBuffer(active ? toDatetimeLocalValue(active.capturedAt) : '');
@@ -254,14 +254,14 @@ export default function BuildLensTimelinePage() {
   }
 
   // Auto-advance while playing. Re-runs (and reschedules) on every step, on
-  // every speed change, and on pause/resume -- so changing speed mid-play
+  // every speed change, and on pause/resume; so changing speed mid-play
   // takes effect on the very next tick without a stop/restart, and resuming
   // from pause continues from `active`, not from the start.
   useEffect(() => {
     if (!isPlaying || !active || captures.length === 0) return;
     const idx = captures.findIndex((c) => c.id === active.id);
     if (idx < 0 || idx >= captures.length - 1) {
-      setIsPlaying(false); // reached the last capture -- stop rather than loop silently
+      setIsPlaying(false); // reached the last capture: stop rather than loop silently
       return;
     }
     const timer = setTimeout(() => {
@@ -438,7 +438,7 @@ export default function BuildLensTimelinePage() {
 
 // F6: `captures` is already sorted oldest-to-newest (see the `.reverse()` at
 // the top of BuildLensTimelinePage), so each side's position in that array
-// doubles as a 0..n-1 date-slider position -- dragging the slider to index i
+// doubles as a 0..n-1 date-slider position; dragging the slider to index i
 // means "the i-th capture at this location by date," with no separate
 // date-to-index lookup needed.
 function CompareView({

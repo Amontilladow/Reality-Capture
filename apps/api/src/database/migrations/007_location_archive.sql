@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Migration 007 — Location Archive
+-- Migration 007: Location Archive
 --
 -- Lets a pin (a Location) be "deleted" safely: archived_at set = hidden
 -- from normal views, but the row and everything attached to it (photos,

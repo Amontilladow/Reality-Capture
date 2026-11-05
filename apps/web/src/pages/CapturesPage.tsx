@@ -14,7 +14,7 @@ import { Input, SelectField } from '../components/ui/Field';
 // pin tool: upload a floor plan, open it, drop camera-location pins on it,
 // then attach photos/video/360s to a pin via PinPanel (unchanged, already
 // works regardless of a pin's purpose). It used to be a standalone
-// all-captures browse/upload gallery -- that's been dropped from this tab
+// all-captures browse/upload gallery; that's been dropped from this tab
 // entirely in favor of this plan-and-pin workflow; ProjectDetail.tsx still
 // has its own capture grid + upload for browsing/adding captures generally.
 //
@@ -139,7 +139,7 @@ export default function CapturesPage() {
     enabled: Boolean(projectId && activeDrawingId),
   });
 
-  // Only this plan's camera-location pins -- an Issues/Snags pin placed via
+  // Only this plan's camera-location pins: an Issues/Snags pin placed via
   // Floor Plans on this same drawing never shows up here.
   const cameraPins = (pinsQuery.data ?? []).filter((p) => p.purpose === 'camera_location');
   const pinsForCurrentPage = cameraPins.filter((p) => p.pageNumber === currentPage);

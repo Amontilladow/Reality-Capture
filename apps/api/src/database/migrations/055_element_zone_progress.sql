@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Migration 055 — Planned vs Actual Progress by Element/Zone (F2)
+-- Migration 055: Planned vs Actual Progress by Element/Zone (F2)
 --
 -- Adds a completion percentage alongside bim_elements' existing free-text
 -- construction_status, plus a full audit trail for every element status
@@ -8,7 +8,7 @@
 --
 -- "Zone" in the product brief maps directly onto the existing `levels`
 -- table (confirmed: there is no separate zone concept in this schema, and
--- the brief's own acceptance criterion asks for "a summary per level") --
+-- the brief's own acceptance criterion asks for "a summary per level");
 -- so zone_progress is one current-status row per level, with its own
 -- mirrored history table. A building-level summary is a live rollup of its
 -- levels' zone_progress rows, not a separately stored row.

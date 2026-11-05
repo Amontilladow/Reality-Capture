@@ -28,7 +28,7 @@ export class ActivitiesController {
   }
 
   // Declared after 'me' so that literal route keeps matching
-  // /workforce/activities/me -- Nest/Express register routes in class
+  // /workforce/activities/me; Nest/Express register routes in class
   // declaration order, and a ':userId' route declared first would swallow
   // 'me' as if it were a userId.
   @Get(':userId')

@@ -8,7 +8,7 @@ import type { PaginationQuery } from '@engineeringos/types';
 export class TransmittalsService {
   constructor(private readonly db: DatabaseService) {}
 
-  // withTenant required for the projects lookup -- projects carries the tenant_isolation
+  // withTenant required for the projects lookup: projects carries the tenant_isolation
   // RLS policy. A plain this.db.query() never sets app.current_company_id, so under any DB
   // role that isn't the table owner/a superuser this SELECT sees no rows and silently falls
   // back to the generic 'PRJ' prefix instead of the real project code.
@@ -72,7 +72,7 @@ export class TransmittalsService {
 
   async update(companyId: string, projectId: string, transmittalId: string, dto: UpdateTransmittalDto) {
     const existing = await this.findOne(companyId, projectId, transmittalId);
-    // sent_date is set the first time a transmittal moves to 'sent' -- a
+    // sent_date is set the first time a transmittal moves to 'sent'; a
     // re-send (already sent, staying sent) or moving straight to
     // 'acknowledged'/'void' from 'draft' shouldn't overwrite or backfill it.
     const justSent = Boolean(dto.status === 'sent' && existing.status !== 'sent' && !existing.sentDate);

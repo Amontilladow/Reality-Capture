@@ -8,13 +8,13 @@ import type {
 
 // One implementation backs three provider names (OpenAI itself, a
 // self-hosted/enterprise "custom_openai_compatible" endpoint, and Ollama)
-// because all three speak the same Chat Completions API shape -- Ollama
+// because all three speak the same Chat Completions API shape; Ollama
 // exposes an OpenAI-compatible /v1 endpoint, and "custom_openai_compatible"
 // is that shape by definition. Only the base URL and whether an API key is
 // required differ, both passed in by the caller (ProviderFactory for
 // RealityCapture's own OpenAI config, or ai-connections for a user's BYO
 // connection). This keeps CTO spec section 31/32's "self-hosted/enterprise
-// endpoint" and "Ollama" future providers honestly supported today, not
+// endpoint" and "Ollama" future providers supported today, not
 // just structurally possible.
 @Injectable()
 export class OpenAICompatibleProvider implements AIProvider {
@@ -27,7 +27,7 @@ export class OpenAICompatibleProvider implements AIProvider {
     private readonly providerLabel: string,
     baseURL?: string,
   ) {
-    // Ollama commonly needs no API key at all (local, unauthenticated) --
+    // Ollama commonly needs no API key at all (local, unauthenticated);
     // the SDK requires a non-empty string, so this is a harmless placeholder
     // never actually checked by a local Ollama server.
     this.client = new OpenAI({ apiKey: apiKey || 'not-required', baseURL });
@@ -73,7 +73,7 @@ export class OpenAICompatibleProvider implements AIProvider {
   }
 
   // Ollama in particular may be running a model with no tool-calling
-  // support at all -- that surfaces as a plain API error from the SDK,
+  // support at all; that surfaces as a plain API error from the SDK,
   // caught below like any other failure and reported as `failed: true` so
   // AiService falls back to its own keyword router rather than silently
   // answering with no project data.

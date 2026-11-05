@@ -5,7 +5,7 @@ import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { BrandPanel } from '../components/brand/BrandPanel';
 import { DashCard, Glyph, NoirList, RadialGauge } from '../components/dash/Dash';
 
-// Public marketing landing page -- what a signed-out visitor sees at "/"
+// Public marketing landing page: what a signed-out visitor sees at "/"
 // (App.tsx's RootRoute sends signed-in users straight to /projects).
 //
 // Drawn in the platform's dashboard theme, matching the sign-in screen: a
@@ -16,7 +16,7 @@ import { DashCard, Glyph, NoirList, RadialGauge } from '../components/dash/Dash'
 // Every capability named below is real and already shipped (Captures and
 // BuildLens; Issues, Snagging and RFIs on floor plans; the QAQC two-step
 // close; the automated + human-assessed Risk Engine). Card visuals that
-// show values are labelled as illustrative -- nothing here claims a
+// show values are labelled as illustrative; nothing here claims a
 // customer metric or an integration that doesn't exist.
 export default function PublicLandingPage() {
   useDocumentTitle('Reality Capture by EngineeringOS');

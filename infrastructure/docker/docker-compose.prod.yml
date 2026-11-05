@@ -1,6 +1,6 @@
 version: '3.9'
 
-# EngineeringOS™ Reality Capture — Production Stack
+# EngineeringOS™ Reality Capture: Production Stack
 # All services including AI
 
 services:
@@ -9,11 +9,11 @@ services:
     restart: always
     environment:
       POSTGRES_DB: engineeringos
-      # This is the database's owning/superuser credential -- used to create
+      # This is the database's owning/superuser credential; used to create
       # the database and to run migrations (see the `migrate` service below),
       # never by a running application. `api`/`ifc-service` connect at
       # runtime as app_user (DB_USER/DB_PASSWORD below), a separate,
-      # narrowly-privileged role that migration 052 makes genuinely subject
+      # narrowly-privileged role that migration 052 makes subject
       # to row-level security, unlike this one.
       POSTGRES_USER: ${DB_MIGRATOR_USER}
       POSTGRES_PASSWORD: ${DB_MIGRATOR_PASSWORD}
@@ -30,7 +30,7 @@ services:
   # every file in apps/api/src/database/migrations/ (the postgres service
   # above only auto-runs 001_initial_schema.sql via Postgres's own
   # docker-entrypoint-initdb.d, which fires once on first volume
-  # initialization -- this is what applies 002+ and every future migration,
+  # initialization; this is what applies 002+ and every future migration,
   # and what keeps app_user's password (below) in sync). Connects with the
   # owner/superuser credential, exactly like Render's preDeployCommand does.
   migrate:
@@ -88,7 +88,7 @@ services:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: engineeringos
-      # Narrowly-privileged, RLS-subject role (migration 052) -- not the
+      # Narrowly-privileged, RLS-subject role (migration 052): not the
       # database owner (DB_MIGRATOR_USER/PASSWORD, used only by `migrate`
       # above). DB_PASSWORD is app_user's own password, kept in sync by
       # run-migrations.ts each time `migrate` runs.
@@ -104,7 +104,7 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       ALLOWED_ORIGINS: ${FRONTEND_URL}
-      # Internal network hostname -- ai-service has no public port (see below),
+      # Internal network hostname: ai-service has no public port (see below),
       # so it's reachable only from other containers on this compose network.
       AI_SERVICE_URL: http://ai-service:8001
       INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET:?Set INTERNAL_SERVICE_SECRET (>=32 random chars) before deploying}
@@ -120,7 +120,7 @@ services:
       - postgres
       - qdrant
     environment:
-      # Intentionally the owner/migrator credential, not app_user -- this
+      # Intentionally the owner/migrator credential, not app_user; this
       # service's direct Postgres reads (progress/report routers) filter by
       # company_id/project_id in application code rather than setting RLS's
       # session var, so connecting as the RLS-subject app_user would make
@@ -140,8 +140,8 @@ services:
       INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET:?Set INTERNAL_SERVICE_SECRET (>=32 random chars) before deploying}
     # No published host port: this service has no auth beyond the shared
     # secret above and trusts whatever company_id/project_id it's given, so
-    # it must only be reachable from `api` over the internal compose network
-    # -- never from the host/public internet. `expose` documents the port
+    # it must only be reachable from `api` over the internal compose network;
+    # never from the host/public internet. `expose` documents the port
     # without publishing it (other services can already reach it either way).
     expose:
       - '8001'

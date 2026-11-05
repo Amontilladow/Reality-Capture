@@ -19,20 +19,20 @@ let isSyncing = false;
 
 /**
  * Uploads every pending/retryable item in the local queue, one at a time (deliberately
- * serial — construction site connectivity is often thin, and parallel uploads of large
+ * serial; construction site connectivity is often thin, and parallel uploads of large
  * 360°/video files tend to starve each other rather than finish faster).
  */
 export async function processQueue(): Promise<{ processed: number; succeeded: number; failed: number }> {
   if (isSyncing) return { processed: 0, succeeded: 0, failed: 0 };
 
-  // Don't burn retries against a connection that isn't there — the queue stays intact
+  // Don't burn retries against a connection that isn't there; the queue stays intact
   // and background fetch will try again on its own schedule.
   const net = await NetInfo.fetch();
   if (!net.isConnected || net.isInternetReachable === false) {
     return { processed: 0, succeeded: 0, failed: 0 };
   }
 
-  // A signed-out queue can't upload — items wait for the next sign-in.
+  // A signed-out queue can't upload: items wait for the next sign-in.
   if (!useAuthStore.getState().accessToken) {
     return { processed: 0, succeeded: 0, failed: 0 };
   }
@@ -52,14 +52,14 @@ export async function processQueue(): Promise<{ processed: number; succeeded: nu
       try {
         const fileInfo = await FileSystem.getInfoAsync(item.localFileUri);
         if (!fileInfo.exists) {
-          // The local file is gone (app storage cleared, etc.) — nothing to retry.
+          // The local file is gone (app storage cleared, etc.): nothing to retry.
           updateQueueStatus(item.id, 'failed', { lastError: 'Local file no longer exists on device.', incrementAttempts: true });
           failed += 1;
           continue;
         }
 
         const capture = await uploadLocalFile(item.projectId, item.localFileUri, item.mimeType, item.sizeBytes, {
-          // The queue row's own id is the idempotency key -- if this exact
+          // The queue row's own id is the idempotency key; if this exact
           // retry already reached the server once (e.g. the app was killed
           // between the storage PUT and this call completing), the sync
           // endpoint recognizes it and returns the existing capture instead
@@ -125,7 +125,7 @@ export async function registerBackgroundSync() {
   if (already) return true;
 
   await BackgroundFetch.registerTaskAsync(SYNC_TASK_NAME, {
-    minimumInterval: 15 * 60, // seconds — the OS treats this as a floor, not a guarantee
+    minimumInterval: 15 * 60, // seconds: the OS treats this as a floor, not a guarantee
     stopOnTerminate: false,
     startOnBoot: true,
   });

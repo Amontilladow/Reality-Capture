@@ -27,7 +27,7 @@ export class ReportsController {
     return { data: await this.svc.generateAiBriefing(u.companyId, pid, u), error: null };
   }
 
-  // Binary-response endpoint -- same StreamableFile + passthrough Response
+  // Binary-response endpoint: same StreamableFile + passthrough Response
   // pattern as rfis.controller.ts's :id/pdf route.
   @Get('pdf')
   @ApiOperation({ summary: 'Download this project\'s KPI report as a formatted PDF, with report attachments merged in' })

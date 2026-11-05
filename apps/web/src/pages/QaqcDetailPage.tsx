@@ -61,7 +61,7 @@ export default function QaqcDetailPage() {
     queryClient.invalidateQueries({ queryKey: ['qaqc-summary', projectId] });
   }
 
-  // Step 1: respond -- open/reopened -> pending_confirmation. Does NOT
+  // Step 1: respond; open/reopened -> pending_confirmation. Does NOT
   // close the record; see confirmMutation below for the step that does.
   const respondMutation = useMutation({
     mutationFn: () => respondToQaqcRecord(projectId!, id!, responseDraft.trim()),
@@ -71,7 +71,7 @@ export default function QaqcDetailPage() {
     },
   });
 
-  // Step 2: confirm -- QAQC-in-charge only. 'confirmed' -> closed
+  // Step 2: confirm; QAQC-in-charge only. 'confirmed' -> closed
   // (terminal). 'rejected' -> reopened (comment required).
   const confirmMutation = useMutation({
     mutationFn: (decision: 'confirmed' | 'rejected') => confirmQaqcRecord(projectId!, id!, decision, confirmComment.trim() || undefined),
@@ -118,14 +118,14 @@ export default function QaqcDetailPage() {
     );
   }
 
-  // Client-side visual gating only -- QaqcService's per-type role check
+  // Client-side visual gating only: QaqcService's per-type role check
   // (ISSUE_ROLES_BY_TYPE/RESPOND_ROLES_BY_TYPE) is the real enforcement.
-  // NCR/SOR and WIR/MIR swap issuer/responder roles -- construction
+  // NCR/SOR and WIR/MIR swap issuer/responder roles; construction
   // responds to NCR/SOR, QAQC responds to WIR/MIR (a WIR/MIR is the
-  // construction team's own inspection request) -- so this keys off the
+  // construction team's own inspection request): so this keys off the
   // record's own recordType, not a fixed list. Confirm never swaps:
   // QAQC-in-charge confirms every type, a deliberately narrower gate than
-  // respond -- the whole point of the two-step close.
+  // respond; the whole point of the two-step close.
   const canRespond = Boolean(
     (record.status === 'open' || record.status === 'reopened') &&
     currentUser?.companyRole && QAQC_RESPOND_ROLES_BY_TYPE[record.recordType].includes(currentUser.companyRole),
@@ -136,11 +136,11 @@ export default function QaqcDetailPage() {
   );
   // Attaching a missed photo/document is a narrower ask than editing the
   // record's substantive fields, and the backend never gated addAttachment/
-  // linkCapture on status in the first place -- these two stay role-only
+  // linkCapture on status in the first place; these two stay role-only
   // (never status-gated) so the issuer/responder can still attach evidence
   // they forgot, even after the record moved on (including past closed).
   // The confirm step itself, and the response/description text, stay
-  // exactly as status-gated as before -- only "attach what I forgot" opens up.
+  // exactly as status-gated as before; only "attach what I forgot" opens up.
   const canUploadIssueEvidence = Boolean(
     currentUser?.companyRole && QAQC_ISSUE_ROLES_BY_TYPE[record.recordType].includes(currentUser.companyRole),
   );
@@ -210,7 +210,7 @@ export default function QaqcDetailPage() {
         {/* Description + issue-time evidence. The two attachment affordances
             are primarily filled in on the create form (§4), but stay open
             here too (role-gated, not status-gated) so the issuer can still
-            attach something they forgot -- even after the record closed. */}
+            attach something they forgot; even after the record closed. */}
         <section className="panel tick-frame p-6 space-y-4">
           <div className="field-label">Description</div>
           <p className="text-sm text-ink-100 whitespace-pre-wrap">{record.description}</p>
@@ -225,7 +225,7 @@ export default function QaqcDetailPage() {
           />
         </section>
 
-        {/* Response -- step 1 of the two-step close. Both attachment
+        {/* Response: step 1 of the two-step close. Both attachment
             affordances again here, writing kind: 'response', exactly
             mirroring RFI's query-time/response-time attachment split. */}
         <section className="panel tick-frame p-6 space-y-4">
@@ -273,9 +273,9 @@ export default function QaqcDetailPage() {
           />
         </section>
 
-        {/* QAQC Confirmation -- step 2, deliberately separate section with
+        {/* QAQC Confirmation: step 2, deliberately separate section with
             its own, narrower role gate. No attachment affordance of its
-            own (§4) -- just the confirm/reject decision and comment. */}
+            own (§4): just the confirm/reject decision and comment. */}
         {(canConfirm || record.status === 'pending_confirmation') && (
           <section className="panel tick-frame p-6 space-y-4">
             <div className="field-label">QAQC Confirmation</div>
@@ -330,7 +330,7 @@ export default function QaqcDetailPage() {
           </section>
         )}
 
-        {/* Human Risk Assessment -- only NCR feeds the Risk Engine (see
+        {/* Human Risk Assessment: only NCR feeds the Risk Engine (see
             risk.service.ts's RISK_WORTHY_NODE_TYPES); SOR/WIR/MIR never get
             a Risk at all, so this section doesn't apply to them. Lets
             whoever's looking at this NCR set/override the Probability x
@@ -363,8 +363,8 @@ function InfoRow({ label, value, mono }: { label: string; value: string; mono?: 
   );
 }
 
-// "+ Add document" -- generic typed attachment affordance. Distinct from
-// CaptureSection below (the "+ Add photo" affordance) -- per the brief's
+// "+ Add document"; generic typed attachment affordance. Distinct from
+// CaptureSection below (the "+ Add photo" affordance): per the brief's
 // §4, these are two different, already-established patterns in this app,
 // not one generic uploader.
 function AttachmentSection({
@@ -460,7 +460,7 @@ function AttachmentSection({
   );
 }
 
-// "+ Add photo" -- links an already-uploaded Capture, mirroring
+// "+ Add photo"; links an already-uploaded Capture, mirroring
 // IssueFormModal's quick-photo pattern. Distinct from AttachmentSection
 // above.
 function CaptureSection({

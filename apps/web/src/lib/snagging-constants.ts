@@ -44,7 +44,7 @@ export function formatDateTime(iso?: string): string {
   });
 }
 
-// Roles allowed to use the manager-only snagging actions (force-status) —
+// Roles allowed to use the manager-only snagging actions (force-status);
 // mirrors issue-constants.ts's ISSUE_MANAGER_ROLES/isIssueManager, same two
 // roles gated server-side on the equivalent endpoint.
 export const SNAG_MANAGER_ROLES: CompanyRole[] = ['company_admin', 'engineering_manager'];
@@ -71,7 +71,7 @@ export const TIMER_BADGE_CLASS: Record<DeadlineTimerState, string> = {
   closed: 'bg-base-600 text-ink-500',
 };
 
-// "Closed" state for snags = verified (true done) or void (discarded) — the
+// "Closed" state for snags = verified (true done) or void (discarded): the
 // two terminal statuses. open/fixed are still active, matching
 // isSnagOverdue()'s existing ['open','fixed'] logic above.
 export function getSnagDeadlineTimer(dueDate: string | undefined, status: SnagStatus): DeadlineTimer {

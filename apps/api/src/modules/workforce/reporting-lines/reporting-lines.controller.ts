@@ -8,7 +8,7 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import type { AuthenticatedUser } from '@engineeringos/types';
 
 // Assigning who-reports-to-whom is an org-structure decision, not
-// something a manager should self-serve -- gated company_admin+ (unlike
+// something a manager should self-serve; gated company_admin+ (unlike
 // TeamController, which any authenticated user can call for their own
 // downward closure).
 @ApiTags('workforce')

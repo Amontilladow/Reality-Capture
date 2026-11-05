@@ -41,7 +41,7 @@ export class OutlookIntegrationService {
   }
 
   // Re-verifies the connection right now rather than trusting the last
-  // stored status -- refreshes the access token (the same operation sending
+  // stored status; refreshes the access token (the same operation sending
   // mail will need in a later stage) and reports whether that succeeded.
   // Never sends a real email: Section 13's "never send test messages to
   // real external recipients without explicit approval" rules that out for
@@ -57,7 +57,7 @@ export class OutlookIntegrationService {
       return { ok: true };
     } catch {
       // Microsoft's token endpoint returns 400 invalid_grant for a
-      // revoked/expired refresh token -- the HTTP client layer doesn't
+      // revoked/expired refresh token; the HTTP client layer doesn't
       // parse that out today (same simplicity as Calendar's client), so
       // any refresh failure here is recorded as the user needing to
       // reconnect, the safe default interpretation.
@@ -66,7 +66,7 @@ export class OutlookIntegrationService {
     }
   }
 
-  // Used by a later stage (the composer / send-mail path) -- refreshes only
+  // Used by a later stage (the composer / send-mail path): refreshes only
   // when the stored token is actually near expiry, same pattern Calendar's
   // ensureFreshAccessToken already uses (60s safety margin).
   async ensureFreshAccessToken(companyId: string, userId: string): Promise<string | null> {
@@ -90,8 +90,8 @@ export class OutlookIntegrationService {
   // Phase 3E: the one real send path. Returns the connected sender address
   // alongside the provider's result so EmailComposerService doesn't need a
   // second lookup to record who it was actually sent from. Throws (rather
-  // than returning a failure value) on any problem -- not connected, token
-  // refresh failed, or the provider itself rejected the send -- so the
+  // than returning a failure value) on any problem (not connected, token
+  // refresh failed, or the provider itself rejected the send) so the
   // caller's single try/catch around every provider's sendMail() handles
   // all of them identically.
   async sendMail(companyId: string, userId: string, message: OutgoingMessage): Promise<SendResult & { senderEmail: string }> {

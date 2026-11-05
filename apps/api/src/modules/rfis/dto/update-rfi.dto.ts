@@ -5,7 +5,7 @@ export class UpdateRfiDto {
   @IsOptional() @IsString() @MaxLength(500) subject?: string;
   @IsOptional() @IsString() question?: string;
   @IsOptional() @IsString() answer?: string;
-  // Unchanged -- this is the legacy update path (see rfis.service.ts
+  // Unchanged: this is the legacy update path (see rfis.service.ts
   // update()). The new workflow statuses are only reachable through the
   // dedicated submit/request-clarification/respond/close/reopen endpoints.
   @IsOptional() @IsIn(['open', 'answered', 'closed', 'void']) status?: string;
@@ -13,11 +13,11 @@ export class UpdateRfiDto {
   @IsOptional() @IsIn(RFI_DISCIPLINES) discipline?: RfiDiscipline;
   @IsOptional() @IsString() disciplineOther?: string;
 
-  // Legacy boolean shape -- unchanged, kept for backward compatibility.
+  // Legacy boolean shape: unchanged, kept for backward compatibility.
   @IsOptional() @IsBoolean() costImpact?: boolean;
   @IsOptional() @IsBoolean() timeImpact?: boolean;
 
-  // New 4-state shape (Phase 1) -- see CreateRfiDto for the same fields.
+  // New 4-state shape (Phase 1); see CreateRfiDto for the same fields.
   @IsOptional() @IsIn(RFI_IMPACT_LEVELS) costImpactLevel?: RfiImpactLevel;
   @IsOptional() @IsNumber() costImpactAmount?: number;
   @IsOptional() @IsString() @MaxLength(10) costImpactCurrency?: string;
@@ -27,7 +27,7 @@ export class UpdateRfiDto {
   @IsOptional() @IsNumber() timeImpactDays?: number;
   @IsOptional() @IsString() timeImpactDescription?: string;
 
-  // Third impact field -- see CreateRfiDto for the same fields.
+  // Third impact field; see CreateRfiDto for the same fields.
   @IsOptional() @IsIn(RFI_IMPACT_LEVELS) drawingImpactLevel?: RfiImpactLevel;
   @IsOptional() @IsString() drawingImpactDescription?: string;
   @IsOptional() @IsUUID() drawingUpdateOwnerId?: string;
