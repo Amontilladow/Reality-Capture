@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { apiGet, apiGetWithMeta, apiPatch, apiPost } from './api';
+import { apiGet, apiGetWithMeta, apiPatch, apiPost, apiDownload } from './api';
 import type {
   SiteDrawingWithCurrentRevision, SiteDrawingRevision, SiteDrawingWorkflowStatus,
   SiteDrawingOfflinePackage, SiteDrawingOfflinePackageStatus, SiteDrawingSourceHealth,
@@ -63,6 +63,14 @@ export async function uploadAndAddSiteDrawingRevision(projectId: string, drawing
 
 export const listSiteDrawings = (projectId: string, filters: SiteDrawingFilters) =>
   apiGetWithMeta<SiteDrawingWithCurrentRevision[]>(base(projectId), { params: filters });
+
+// Same filters as listSiteDrawings, no pagination -- the server exports
+// every matching drawing, not just whatever page is currently loaded.
+export const exportSiteDrawingRegister = (
+  projectId: string, filters: Omit<SiteDrawingFilters, 'page' | 'perPage'>, filename: string,
+) => apiDownload(`${base(projectId)}/export?${new URLSearchParams(
+  Object.entries(filters).filter(([, v]) => v !== undefined && v !== '') as [string, string][],
+).toString()}`, filename);
 
 export interface SiteDrawingFilterOptions {
   disciplines: string[];

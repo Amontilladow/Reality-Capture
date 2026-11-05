@@ -7,7 +7,8 @@ import { apiErrorMessage } from '../lib/api';
 import { getProject } from '../lib/projects.api';
 import {
   listSiteDrawings, getSiteDrawingFilterOptions, getSiteDrawingSourceHealth, listOfflinePackages,
-  revalidateOfflinePackage, listReviewQueue, type SiteDrawingFilters, type SiteDrawingWorkflowStatus,
+  revalidateOfflinePackage, listReviewQueue, exportSiteDrawingRegister,
+  type SiteDrawingFilters, type SiteDrawingWorkflowStatus,
 } from '../lib/site-drawings.api';
 import {
   WORKFLOW_STATUS_LABELS, WORKFLOW_STATUS_TONE, sourceProviderLabel, formatVerifiedAt, needsApprovalWarning,
@@ -34,6 +35,8 @@ export default function SiteDrawingHubPage() {
   const [activityOpen, setActivityOpen] = useState(false);
   const [activityInitialTab, setActivityInitialTab] = useState<'batches' | 'review'>('batches');
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   // Search is server-side (brief section 10: indexed queries, not a
   // client-side filter over a fully fetched register): debounced so
@@ -87,6 +90,21 @@ export default function SiteDrawingHubPage() {
   const drawings = listQuery.data?.data ?? [];
   const hasActiveFilters = Boolean(filters.search || filters.discipline || filters.buildingOrZone || filters.floorOrLevel || filters.workflowStatus);
 
+  async function handleExport() {
+    if (!projectId) return;
+    setExportBusy(true);
+    setExportError('');
+    const date = new Date().toISOString().slice(0, 10);
+    const projectLabel = (projectQuery.data?.code ?? projectQuery.data?.name ?? 'drawing-register').replace(/[^a-z0-9-]+/gi, '-');
+    try {
+      await exportSiteDrawingRegister(projectId, filters, `${projectLabel}-drawing-register-${date}.xlsx`);
+    } catch (err) {
+      setExportError(apiErrorMessage(err));
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
   if (!projectId) return null;
 
   return (
@@ -104,11 +122,15 @@ export default function SiteDrawingHubPage() {
               Import activity{(reviewQueueQuery.data?.length ?? 0) > 0 ? ` (${reviewQueueQuery.data!.length})` : ''}
             </button>
             <button onClick={() => setImportOpen(true)} className="btn-secondary">Import package</button>
+            <button onClick={handleExport} disabled={exportBusy} className="btn-secondary">
+              {exportBusy ? 'Exporting…' : 'Export to Excel'}
+            </button>
             <button onClick={() => setRegisterOpen(true)} className="btn-primary">Register a drawing</button>
           </div>
         }
       />
       <div className="p-6 space-y-4">
+        {exportError && <p className="field-error">{exportError}</p>}
         {sourceHealthQuery.data && !sourceHealthQuery.data.reachable && (
           <div className="panel p-4 border border-warn/40 bg-warn/5 text-xs text-ink-100">
             {sourceProviderLabel(sourceHealthQuery.data.provider)} source is currently unreachable
