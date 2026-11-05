@@ -44,7 +44,7 @@ Project-level (`/projects/:projectId/...`):
 | `.../risk` | `RiskPage` | Risk |
 | `.../reports` | `ReportsPage` | Project |
 | `.../viewer/:locationId` | `Viewer360` | (full-bleed, linked from floor plan/location, no sidebar entry) |
-| `.../emails` *(Phase 3)* | — (no standalone page; composer/history embedded on RFI/Issue/Submittal/Snag detail pages and `ProjectDetail`) | — |
+| `.../emails` *(Phase 3)* | None (no standalone page; composer/history embedded on RFI/Issue/Submittal/Snag detail pages and `ProjectDetail`) | — |
 
 Public / unauthenticated: `/login`, `/forgot-password`, `/reset-password`,
 `/accept-invitation`, `/signup`, `/rfi/external/:token` (token-only RFI
@@ -54,13 +54,13 @@ pattern for progress reports).
 **Finding, fixed in this stage**: `DocumentsPage.tsx`, `QaInspectionsPage.tsx`,
 and `TransmittalsPage.tsx` existed as complete components (each with its
 own working API client, list view, and create/detail modals) but had
-**no route in `App.tsx` and no nav entry in `AppShell.tsx`** — a user
+**no route in `App.tsx` and no nav entry in `AppShell.tsx`**, so a user
 could not reach any of the three through the UI at all, despite the
 backend (`documents`/`qa`/`transmittals` controllers and services) being
 fully built. Per the account owner's explicit decision, this stage adds:
 - Routes: `/projects/:projectId/documents`, `.../transmittals`, `.../qa-inspections`.
 - Nav entries under the existing "Project" group in `AppShell.tsx`, each
-  with its own icon (`IconFolder`, `IconSend`, `IconChecklist` — added
+  with its own icon (`IconFolder`, `IconSend`, `IconChecklist`, added
   here, matching the file's existing one-icon-per-module style).
 
 With that fix, all three are now real, reachable, operational features
@@ -70,7 +70,7 @@ and are covered in the Help Centre like any other module (Phase 4D).
 
 **This does not match the brief's illustrative role examples** (no
 "BIM Coordinator," "Technical Engineer," "Architect," etc. exist in this
-codebase) — per the brief's own instruction, role-specific guides (Phase
+codebase). Per the brief's own instruction, role-specific guides (Phase
 4E) are built against the roles below, not the brief's examples.
 
 **Company roles** (`CompanyRole`, company-wide, weight-ordered):
@@ -83,7 +83,7 @@ codebase) — per the brief's own instruction, role-specific guides (Phase
 `construction_manager` and `project_engineer` are additionally
 **site-restricted** (`SiteRoleRestrictionGuard`): full working access to
 Floor Plans/Issues/Snagging, read-only everywhere else, no access to
-project settings, user management, or billing — this is a real,
+project settings, user management, or billing. This is a real,
 enforced restriction a role-specific guide must reflect, not an
 illustrative example.
 
@@ -93,13 +93,13 @@ illustrative example.
 every `ProjectPermission` check on that project without needing an
 explicit grant (`ProjectAuthorizationService`'s own bypass order).
 
-**Project permissions** (`ProjectPermission` — independently grantable,
+**Project permissions** (`ProjectPermission`, independently grantable,
 not a hierarchy): `manage_team` · `manage_issues` · `manage_project_records`
 · `manage_rfis` · `approve_rfis` (narrower than `manage_rfis`: only the
 PMC/client review-and-approve step) · `verify_snag_items` (narrower
 sign-off-only grant for the fixed→verified snag step).
 
-**Organization slots** (`ProjectOrganizationSlot`, RFI-routing context —
+**Organization slots** (`ProjectOrganizationSlot`, RFI-routing context,
 the actual implementation of the brief's "organization category" idea,
 under a different name and a different value set): `client` · `pmc` ·
 `ldc` (Lead Design Consultant) · `main_contractor` · `subcontractor`.
@@ -110,7 +110,7 @@ call site, read via direct grep across every controller):
 | Module | Read (list/detail) | Write (create/update) | Narrower grants |
 |---|---|---|---|
 | Captures | open to any project member | `manage_project_records` | — |
-| Floor Plans / Drawings | open | uploading a drawing / creating a pin: `manage_project_records`; renaming, moving, archiving, or converting an *existing* pin to a Snag: open to any project member (no gate at all — a genuine asymmetry in the real code, not an error in this doc) | — |
+| Floor Plans / Drawings | open | uploading a drawing / creating a pin: `manage_project_records`; renaming, moving, archiving, or converting an *existing* pin to a Snag: open to any project member (no gate at all; the asymmetry is in the code, not an error in this doc) | — |
 | BIM Models | open | `manage_project_records` | — |
 | Issues | open | create: open to any project member; update (edit)/delete: `manage_issues`; close: no `ProjectPermission`, but requires company-role weight ≥ `engineering_manager` (i.e. `super_admin`/`company_admin`/`technical_director`/`engineering_manager`) **or** `manage_issues`, **and** at least one evidence capture attached; force-status: `@Roles('company_admin','engineering_manager')`, which `RolesGuard` resolves by weight to the same ≥`engineering_manager` set (no `manage_issues` fallback for this one) | — |
 | RFIs | open | create: open to any project member; update/delete/attachments/notice-letter: `manage_project_records`; submit: no `ProjectPermission` -- service-level check (creator OR `manage_rfis` OR Project Lead OR super_admin); request-clarification/respond/close/reopen/drawing-reminder: `manage_rfis`; submit-for-review/decide-review: `manage_rfis` OR `approve_rfis` | `approve_rfis` (review-only) |
@@ -121,7 +121,7 @@ call site, read via direct grep across every controller):
 | Documents | open | upload/create/link: `manage_project_records` | — |
 | Progress Reports | open -- the report itself is computed live on read, not a stored record | generating/revoking a public share link: `manage_project_records` | — |
 | Team & Permissions (`ManageMembersModal`) | read open to current members; write | `manage_team` | — |
-| Email send/history (Phase 3) | gated by project membership only (no `ProjectPermission` required — any project member may send/view) | same | — |
+| Email send/history (Phase 3) | gated by project membership only (no `ProjectPermission` required; any project member may send/view) | same | — |
 
 **Correction note**: an earlier pass over this table (committed in Phase
 4A) got several of these backwards by grepping for
@@ -151,30 +151,30 @@ Documents · BIM Models · BuildLens (photo-timeline comparison) ·
 Progress Reports · Reports (KPIs, PDF export for both the general
 project report and the risk report, Excel export) · Risk (AI-scored risk
 graph, human risk assessment) · Notifications (bell icon; no manageable
-"preferences" — confirmed, see below) · Messages (project channels +
+"preferences"; confirmed, see below) · Messages (project channels +
 DMs) · AI Assistant (Q&A + RFI/Issue/Snag draft creation, daily quota) ·
-Email Integration (Outlook/Gmail connect, compose/send, history — Phase
+Email Integration (Outlook/Gmail connect, compose/send, history; Phase
 3, already shipped) · Workforce (activity/productivity tracking,
-reporting lines, screenshots — admin + self views) · User management
-(invite, approve, deactivate, role assignment — `ManageMembersModal`) ·
-Developer settings (API keys, webhooks — company_admin/super_admin only).
+reporting lines, screenshots; admin + self views) · User management
+(invite, approve, deactivate, role assignment; `ManageMembersModal`) ·
+Developer settings (API keys, webhooks; company_admin/super_admin only).
 
 ### Confirmed NOT supported (so these are never documented as available)
 
-- **Notification preferences/management** — grepped
+- **Notification preferences/management**: grepped
   `NotificationBell.tsx` for "preferences"/"mute"/"unsubscribe": no
   matches. The bell shows and marks-read; there is no settings surface
   to change what triggers a notification.
-- **A dedicated "Contact Support" or "Report a Problem" feature** — no
+- **A dedicated "Contact Support" or "Report a Problem" feature**: no
   such route, page, or backend endpoint exists anywhere in the app.
   Troubleshooting articles (Phase 4H) will direct users to their company
   admin instead of inventing a support-ticket flow that doesn't exist.
-- **Article/content management UI** — no admin interface for authoring
+- **Article/content management UI**: no admin interface for authoring
   Help Centre content exists yet (this phase builds the user-facing
   Help Centre first, per the brief's own fallback: "implement the
   user-facing Help Centre first and document the recommended
   administration phase separately"; see the Phase 4I report).
-- **Any existing onboarding/tour component** — grepped the whole
+- **Any existing onboarding/tour component**: grepped the whole
   frontend for "onboarding," "tour," "walkthrough": no matches (two
   unrelated false-positive hits in `SnaggingPage.tsx`/the migrations).
   Phase 4F builds this from nothing, not by extending something partial.
@@ -182,7 +182,7 @@ Developer settings (API keys, webhooks — company_admin/super_admin only).
 ### Existing UI/design system confirmed reusable (no new dependency needed)
 
 `Modal`, `Card`, `Alert`, `Input`/`Textarea`/`Select` (`components/ui/Field.tsx`),
-`StatusBadge`, `PageHeader` — all already used consistently across every
+`StatusBadge`, `PageHeader`, all already used consistently across every
 page audited above. The Help Centre and onboarding (4B–4H) are built
 entirely from these; no new UI library is introduced.
 

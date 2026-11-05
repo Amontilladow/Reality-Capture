@@ -2,7 +2,7 @@
 
 Status: Phase 2 (Architect) output for the Workforce Intelligence initiative.
 Written after Phase 1 discovery against this repository as it actually
-exists — not against an assumed "EngineeringOS ecosystem" of separate
+exists, not against an assumed "EngineeringOS ecosystem" of separate
 microservices. See **Correcting the premise** below.
 
 ## Correcting the premise
@@ -15,21 +15,21 @@ repository contains.
 This repo (`engineeringos-reality`, package name in `package.json`) **is**
 one product: the EngineeringOS Reality Capture module. It is a monolith:
 
-- `apps/api` — a single NestJS application that owns **everything**:
+- `apps/api`: a single NestJS application that owns **everything**:
   auth, tenancy, RBAC, billing/subscriptions, projects, BIM orchestration,
   captures, issues, RFIs, submittals, transmittals, QA inspections,
   snagging, documents, drawings, timeline, notifications, internal
   messaging, chat, audit logging. There is no separate "Identity service"
-  or "Projects service" to integrate with — they're TypeScript modules in
+  or "Projects service" to integrate with; they're TypeScript modules in
   one process, sharing one Postgres database.
-- `apps/web` — one React SPA, all modules as routes inside one `AppShell`.
-- `apps/ifc-service` — the one genuinely independent service in the repo
+- `apps/web`: one React SPA, all modules as routes inside one `AppShell`.
+- `apps/ifc-service`: the only independent service in the repo
   (IFC parsing worker, talks to Postgres/S3/Redis directly, zero code
   dependency on `apps/api`). This is the actual precedent for "how do we
   add something that must stay independently deployable."
-- `apps/ai-service` — Python FastAPI, called fire-and-forget from
+- `apps/ai-service`: Python FastAPI, called fire-and-forget from
   `apps/api` for AI ingestion/search.
-- `packages/types` — shared TypeScript types, CJS-compiled, consumed by
+- `packages/types`: shared TypeScript types, CJS-compiled, consumed by
   both `apps/api` and `apps/web` as a workspace package.
 
 Given this, "Workforce Intelligence integrates with Identity/Projects/BIM/
@@ -46,7 +46,7 @@ foreign key.** It does not mean calling out to other deployed services.
 | Frontend | React 18 + TypeScript + Vite, React Router 6, TanStack Query, Zustand (auth store only), Tailwind | One `lib/<domain>.api.ts` per backend domain; `AppShell` layout for chrome'd routes, full-bleed routes for immersive viewers (360°, BIM) |
 | Backend | NestJS (TypeScript), REST, prefix `/api/v1` | One module per domain under `apps/api/src/modules/*`, each with `*.module.ts` / `*.controller.ts` / `*.service.ts` / `dto/` |
 | Database | PostgreSQL, single shared DB | `postgres` (porsager) driver, tagged-template SQL, camelCase row transform. Sequentially numbered raw-SQL migrations in `apps/api/src/database/migrations/`, tracked in `_migrations` |
-| Multi-tenancy | Row-Level Security | Every tenant table has `company_id` + a `tenant_isolation` RLS policy. Enforced by `DatabaseService.withTenant(companyId, fn)`, which does `SET app.current_company_id` inside the transaction. A query run outside `withTenant` (or `withTransaction` for system-level work) sees nothing under RLS, by design — this is a DB-level backstop against an app-level tenancy bug, not just a convention. |
+| Multi-tenancy | Row-Level Security | Every tenant table has `company_id` + a `tenant_isolation` RLS policy. Enforced by `DatabaseService.withTenant(companyId, fn)`, which does `SET app.current_company_id` inside the transaction. A query run outside `withTenant` (or `withTransaction` for system-level work) sees nothing under RLS, by design. This is a DB-level backstop against an app-level tenancy bug, not just a convention. |
 | Auth | JWT (access + refresh), `apps/api/src/modules/auth` | `JwtAuthGuard` populates `request.user: AuthenticatedUser` |
 | RBAC | Weighted company roles + narrow per-project grants | See below |
 | Billing gating | Per-plan `feature_flags` JSONB on `subscription_plans` | `@RequireFeature('bim')` / `@RequireFeature('ai')` today; `SubscriptionGuard` returns 402 if the company's plan lacks the flag |
@@ -80,7 +80,7 @@ and Workforce Intelligence should extend both rather than invent a third:
    data scoped to this one project" (`view_project` from the directive's
    list) without making it a company-wide role change.
 
-Employee self-view (`view_own`) needs no new permission at all — it's just
+Employee self-view (`view_own`) needs no new permission at all. It's just
 "no `@Roles()`/`@RequireProjectPermission()` decorator, service filters by
 `user.id`," the same pattern already used for e.g. an issue's `myIssues`
 filter.
@@ -115,7 +115,7 @@ These are the real, queryable data sources for turning activity into
 
 - `issues` / `issue_activities` (defects, punch items, clashes, safety,
   status transitions, `closed_by`/`closed_at`)
-- `rfis` (with workflow fields — migration `028_rfi_workflow.sql`)
+- `rfis` (with workflow fields, migration `028_rfi_workflow.sql`)
 - `submittals`
 - `qa_inspections`
 - `snag_items` / `snag_activities`
@@ -128,7 +128,7 @@ All of these already carry `created_by` / `assigned_to` / `closed_by` /
 `uploaded_by` user references and `company_id`/`project_id`. Workforce
 Intelligence's "Engineering Output" layer is read-only aggregation queries
 against these existing tables joined by `user_id` + `project_id` + a date
-range — **no schema changes to any existing module are required** to build
+range. **No schema changes to any existing module are required** to build
 the v1 output-attribution view in the MVP/V1 sense (counts of
 created/closed/resolved per user per project per period). Deeper
 attribution (e.g., which specific Revit session produced which drawing
@@ -142,13 +142,13 @@ timeline/BuildLens, hotspots, drawings) is untouched by this work. No
 files under `apps/api/src/modules/captures`, `drawings`, `timeline`, or
 `apps/web/src/pages/{CapturesPage,BuildLens*,Viewer360,FloorPlanViewer}`
 are modified. Workforce Intelligence does not consume or publish Reality
-Capture events in the MVP — there is no concrete use case yet ("an
+Capture events in the MVP; there is no concrete use case yet ("an
 engineer captured 12 photos" is not meaningfully different from "an
 engineer used the Captures app for 40 minutes," which the activity model
 already covers generically). If a future need appears (e.g., attributing
 capture-upload time to a project automatically), it should be a new,
 additive read of the existing `captures` table by `captured_by`/
-`project_id`/`created_at` — never a change to Reality Capture's own code
+`project_id`/`created_at`, never a change to Reality Capture's own code
 path.
 
 ## Proposed Workforce Intelligence architecture
@@ -166,7 +166,7 @@ apps/api/src/modules/workforce/
   privacy/               -- per-company monitoring-level configuration
 ```
 
-One module, several controllers — matching how `apps/api` already groups
+One module, several controllers, matching how `apps/api` already groups
 related sub-resources (e.g. `bim/` holds models + hierarchy + elements
 under one module rather than four).
 
@@ -174,7 +174,7 @@ under one module rather than four).
 test, brief §33)
 
 Workforce Intelligence is designed so the *data model and business logic*
-have no dependency on Reality Capture's domain tables — only on the
+have no dependency on Reality Capture's domain tables, only on the
 platform primitives every module already depends on: `companies`,
 `users`, `projects`, `project_members`. Its foreign keys into
 project-specific "output" tables (`issues`, `rfis`, etc.) are one-directional
@@ -189,7 +189,7 @@ Reality Capture ever reads a workforce table. Concretely:
   feature breaks (there are no inbound foreign keys from `issues`,
   `captures`, etc. into workforce tables).
 
-This mirrors the `apps/ifc-service` precedent — the codebase's own proof
+This mirrors the `apps/ifc-service` precedent, the codebase's own proof
 that "shares the DB and RLS pattern, zero code coupling" is a viable
 extraction boundary here. Workforce Intelligence starts as modules inside
 `apps/api` (fastest to ship, reuses the auth/RBAC/tenancy machinery
@@ -198,7 +198,7 @@ extraction seam `apps/ifc-service` demonstrates available later: its own
 NestJS app, own copy of `DatabaseService`/tenancy, same Postgres, same
 `_migrations` numbering discipline, communicating with `apps/api` only via
 the shared DB (and a queue, once there's an async workload that needs
-one — activity ingestion doesn't, at MVP volumes).
+one; activity ingestion doesn't, at MVP volumes).
 
 **Rejected alternative:** standing up Workforce Intelligence as a separate
 service from day one. Rejected because (a) it would need to reimplement
@@ -206,7 +206,7 @@ auth/JWT verification, tenancy RLS wiring, and RBAC from scratch or call
 back into `apps/api` for every request (network hop for what is currently
 an in-process guard check), and (b) `apps/ifc-service` already shows the
 codebase's chosen pattern for "logically independent, physically
-integrated for now" — there's no reason to invent a second pattern before
+integrated for now". There's no reason to invent a second pattern before
 the first one is proven necessary to break.
 
 ### Data flow
@@ -241,8 +241,8 @@ Building and code-signing an actual Windows/macOS agent is a separate,
 multi-week engineering effort (native packaging, OS-level idle/active-app
 APIs, auto-update, code signing certificates) that cannot be responsibly
 produced or verified inside this repository/session. What *is* delivered
-here is the contract the agent must speak — the ingestion API, the
-activity/device schema, and the offline-queue design below — so that
+here is the contract the agent must speak (the ingestion API, the
+activity/device schema, and the offline-queue design below), so that
 building the agent is a contained, well-specified follow-up (see the
 implementation plan's V1 phase) rather than an open-ended one. This is a
 deliberate MVP boundary, not an oversight: brief §25's own MVP definition
@@ -250,13 +250,13 @@ deliberate MVP boundary, not an oversight: brief §25's own MVP definition
 Basic Productivity Intelligence → Dashboard") only requires *that
 activity data exists and flows through the pipeline*, not that a specific
 client produced it. For MVP, activity rows can come from a seed/demo
-script exercising the same ingestion API a real agent would call —
+script exercising the same ingestion API a real agent would call,
 proving the pipeline end-to-end without shipping unverified endpoint
 software.
 
 Design for the eventual agent:
 
-- **Stack**: TypeScript (Electron or a lighter cross-platform shell) —
+- **Stack**: TypeScript (Electron or a lighter cross-platform shell),
   matches the rest of the org's stack, and Electron's `powerMonitor` +
   active-window libraries cover the Windows/macOS active-app/idle
   signals needed.
@@ -272,7 +272,7 @@ Design for the eventual agent:
   names/email subjects. At explicit later product direction, the actual
   raw title is captured instead (matching what DeskTime/Hubstaff/
   ActivTrak/Time Doctor all disclose doing, per this doc's own
-  competitive research) — gated by its own dedicated, off-by-default
+  competitive research), gated by its own dedicated, off-by-default
   switch (`workforce_privacy_settings.window_title_enabled`, migration
   042), enforced server-side regardless of client, same treatment as
   screenshots, and never captured during Private Time. A title-category
@@ -283,7 +283,7 @@ Design for the eventual agent:
   flat file with OS keychain-backed encryption key), flushed via the
   batched `/activities/ingest` endpoint on a timer + on reconnect.
   Each queued activity carries a client-generated UUID
-  (`clientEventId`) — the server's ingestion endpoint upserts on
+  (`clientEventId`). The server's ingestion endpoint upserts on
   `(deviceId, clientEventId)` so a retried batch after a dropped
   connection is a no-op, not a duplicate (brief §30's "duplicate
   events" test target).
@@ -310,7 +310,7 @@ than inventing a second AI integration path.
 - **Trust/legal risk dominates technical risk.** Employee monitoring
   software has real UAE/GCC and general employment-law disclosure
   requirements this document does not and cannot resolve (brief §17
-  explicitly excludes legal advice) — flagged for the Product
+  explicitly excludes legal advice). It is flagged for the Product
   Owner/legal review before any real device ships activity data for
   real employees, independent of engineering readiness.
 - **Volume growth of `activities`.** Even at MVP scope, one heartbeat +
