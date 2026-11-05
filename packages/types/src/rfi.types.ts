@@ -1,4 +1,4 @@
-// Legacy status vocabulary -- still the only values any RFI created through
+// Legacy status vocabulary: still the only values any RFI created through
 // the old create()/update() methods can carry. Kept as live legal values
 // (both at the DB CHECK constraint and here) since existing rows use them
 // and the current, unmodified-in-Phase-1 frontend filters on them.
@@ -8,7 +8,7 @@ export type RfiPriority = 'critical' | 'high' | 'medium' | 'low';
 
 // Full enterprise workflow vocabulary (Phase 1). 'open' and 'answered' are
 // the legacy names for the same lifecycle positions as 'submitted' and
-// 'responded' respectively -- new workflow endpoints (rfis.service.ts
+// 'responded' respectively; new workflow endpoints (rfis.service.ts
 // submit()/requestClarification()/respond()/close()/reopen()) never WRITE
 // 'open'/'answered', only read/transition-from them for pre-existing rows.
 export const RFI_WORKFLOW_STATUSES = [
@@ -42,8 +42,8 @@ export const RFI_WORKFLOW_STATUS_LABELS: Record<RfiWorkflowStatus, string> = {
 };
 
 // 4-state cost/time impact level, replacing the plain boolean going
-// forward (the boolean columns/DTO fields stay for backward compatibility
-// -- see rfi.types.ts consumers in rfis.service.ts).
+// forward (the boolean columns/DTO fields stay for backward compatibility;
+//; see rfi.types.ts consumers in rfis.service.ts).
 export type RfiImpactLevel = 'no' | 'yes' | 'potential' | 'tbd';
 
 export const RFI_IMPACT_LEVELS: readonly RfiImpactLevel[] = ['no', 'yes', 'potential', 'tbd'] as const;
@@ -56,7 +56,7 @@ export const RFI_IMPACT_LEVEL_LABELS: Record<RfiImpactLevel, string> = {
 };
 
 // Same underlying 4-state values as RfiImpactLevel above (no schema change,
-// no new enum values -- see migration 044/045) but with the field-specific
+// no new enum values; see migration 044/045) but with the field-specific
 // wording requested for "Drawing/Model Updated": 'potential'/'tbd' aren't
 // generic "maybe" states here, they're two distinct reasons a drawing/model
 // update is still undecided. Kept as its own label map rather than
@@ -89,14 +89,14 @@ export const PROJECT_ORGANIZATION_SLOT_LABELS: Record<ProjectOrganizationSlot, s
   subcontractor: 'Subcontractor',
 };
 
-// rfi_attachments.kind -- which side of the record the file belongs to.
+// rfi_attachments.kind; which side of the record the file belongs to.
 export type RfiAttachmentKind = 'query' | 'response' | 'comment';
 
-// Where an RFI's record came from -- 'platform' (the default: raised and
+// Where an RFI's record came from: 'platform' (the default: raised and
 // tracked here end to end) vs. one a DC backfills after it was actually
 // raised/answered on another system entirely (Aconex/Procore/email) and
 // just needs logging here for one unified register. originReference holds
-// that other platform's own reference number, if any -- this app still
+// that other platform's own reference number, if any; this app still
 // assigns its own rfiNumber regardless, so the two can be cross-referenced
 // rather than one replacing the other.
 export const RFI_ORIGINS = ['platform', 'aconex', 'procore', 'email', 'other'] as const;
@@ -202,7 +202,7 @@ export const RFI_DISCIPLINE_CODES: Record<RfiDiscipline, string> = {
   other: 'OTH',
 };
 
-// External stakeholder access -- lets a Lead Design Consultant/PMC/Client
+// External stakeholder access: lets a Lead Design Consultant/PMC/Client
 // respond to or review an RFI via an opaque, expiring, revocable link with
 // no EngineeringOS account (rfi_external_access table, migration 043).
 export const RFI_EXTERNAL_ACCESS_ACTIONS = ['respond', 'review', 'comment_only'] as const;
@@ -215,7 +215,7 @@ export const RFI_EXTERNAL_ACCESS_ACTION_LABELS: Record<RfiExternalAccessAction, 
 };
 
 // One row per generated link. `token` is only ever present in the response
-// to the generate call itself -- list/revoke responses omit it (see
+// to the generate call itself; list/revoke responses omit it (see
 // RfiExternalAccessService), same "don't re-display a bearer secret"
 // practice as this codebase already applies to other credential-shaped
 // values.
@@ -238,7 +238,7 @@ export interface RfiExternalAccess {
 }
 
 // The deliberately narrow read model GET /public/rfis/external/:token
-// returns -- subject/question/discipline/due date, this RFI's own
+// returns; subject/question/discipline/due date, this RFI's own
 // query-kind attachments and comment thread, and which action this
 // specific link authorizes. Never the wider findOne() shape, never
 // anything about other RFIs or the rest of the project.
@@ -253,7 +253,7 @@ export interface RfiExternalDetail {
   answer?: string;
   action: RfiExternalAccessAction;
   organizationSlot: ProjectOrganizationSlot;
-  // "Closed by whom, as which party, when" -- shown to external viewers
+  // "Closed by whom, as which party, when"; shown to external viewers
   // too (not just internal ones), same fields/fallback as Rfi's own
   // closedByName/closedAsOrganizationSlot/closedByExternalEmail/closedAt.
   closedAt?: string;
@@ -279,7 +279,7 @@ export interface Rfi {
   // rows. Left as RfiStatus rather than widened here because rfi-xls.ts
   // indexes RFI_STATUS_LABELS (Record<RfiStatus, string>) with `rfi.status`
   // and is explicitly out of scope for this ticket ("do not touch
-  // rfi-pdf.template.ts or rfi-xls.ts") -- widening this field breaks that
+  // rfi-pdf.template.ts or rfi-xls.ts"): widening this field breaks that
   // file's typecheck. apps/web/src/lib/rfis.api.ts's RfiListItem widens
   // status to RfiWorkflowStatus locally for the pages that need it instead.
   status: RfiStatus;
@@ -288,7 +288,7 @@ export interface Rfi {
   disciplineOther?: string;
   costImpact: boolean;
   timeImpact: boolean;
-  // 4-state impact fields (Phase 1) -- kept in sync with the booleans above
+  // 4-state impact fields (Phase 1): kept in sync with the booleans above
   // by the service layer; see costImpact/timeImpact for the legacy shape.
   costImpactLevel?: RfiImpactLevel;
   costImpactAmount?: number;
@@ -298,7 +298,7 @@ export interface Rfi {
   timeImpactDays?: number;
   timeImpactDescription?: string;
   // Third impact field (migration 044), structurally identical to cost/time
-  // above but with no amount/currency-or-days companion -- just level +
+  // above but with no amount/currency-or-days companion; just level +
   // description. drawingUpdateApplied only means anything once
   // drawingImpactLevel != 'no' (see RfisService's own comment).
   drawingImpactLevel?: RfiImpactLevel;
@@ -322,21 +322,21 @@ export interface Rfi {
   answeredBy?: string;
   // closedAt/closedBy columns have existed since migration 001 but were
   // never written to until close()/decideReview()'s approve branch started
-  // setting them (migration 046) -- a historical RFI closed before that
+  // setting them (migration 046): a historical RFI closed before that
   // shipped has all four of these as undefined, which the UI must render as
   // "nothing extra," not an error or placeholder.
   closedAt?: string;
   closedBy?: string;
-  // Which party closed it (client/pmc/ldc/main_contractor/subcontractor) --
+  // Which party closed it (client/pmc/ldc/main_contractor/subcontractor);
   // same PROJECT_ORGANIZATION_SLOTS vocabulary rfi_comments/
   // rfi_external_access already use, deliberately not a new list.
   closedAsOrganizationSlot?: ProjectOrganizationSlot;
   // Display fallback for when closedBy points at the reserved per-company
   // external-actions system account (see RfiExternalAccessService), which
-  // has no real human name -- snapshotted from the external actor's email
+  // has no real human name; snapshotted from the external actor's email
   // at the moment of closing, not joined back to rfi_external_access later.
   closedByExternalEmail?: string;
-  // Which organization raised this RFI in the first place -- defaults to
+  // Which organization raised this RFI in the first place; defaults to
   // 'main_contractor' for every RFI created before this field existed and
   // for any new one raised normally. Drives the "Main Contractor's RFIs" /
   // "Subcontractor's RFIs" split views (RfisLandingPage/RfisPage's `view`
@@ -355,15 +355,15 @@ export interface Rfi {
   assignedToName?: string;
   closedByName?: string;
   // rfis.service.ts findOne()/getPdfData() already join and return this
-  // (u_ans.first_name || ' ' || u_ans.last_name AS answered_by_name) -- it
+  // (u_ans.first_name || ' ' || u_ans.last_name AS answered_by_name): it
   // was missing from this interface even though the backend has always sent
   // it. Added here rather than worked around with an `as` cast at every
   // call site.
   answeredByName?: string;
-  // Joined name for drawingUpdateOwnerId -- undefined when no owner is set
+  // Joined name for drawingUpdateOwnerId: undefined when no owner is set
   // (the detail/list views show "Unassigned" in that case, same as
   // assignedToName). The assignedTo fallback the reminder endpoint and the
   // Reports not-applied list use only applies at the point of resolving who
-  // to notify -- it's not baked into this field.
+  // to notify; it's not baked into this field.
   drawingUpdateOwnerName?: string;
 }

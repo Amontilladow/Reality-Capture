@@ -73,7 +73,7 @@ async def _custom_openai_compatible(prompt, system, max_tokens):
 
 async def _omniroute(prompt, system, max_tokens):
     # Local dev-only free-tier AI gateway (OpenAI-compatible), not auto-started
-    # and not available outside this machine -- see .env.example. The OpenAI
+    # and not available outside this machine; see .env.example. The OpenAI
     # SDK requires a non-empty api_key even though OmniRoute doesn't check it.
     from openai import AsyncOpenAI
     client = AsyncOpenAI(api_key="omniroute-local", base_url=settings.omniroute_base_url)

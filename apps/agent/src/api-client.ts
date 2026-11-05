@@ -22,7 +22,7 @@ export interface ApiClient {
 }
 
 // Authenticated client for the agent's steady-state loops (post-enrollment).
-// Mirrors apps/web/src/lib/api.ts's single-flight-refresh-on-401 pattern --
+// Mirrors apps/web/src/lib/api.ts's single-flight-refresh-on-401 pattern;
 // the agent needs the identical "don't lose the request, don't refresh
 // twice for two concurrent 401s" behavior a browser client already has,
 // since it runs unattended for hours between token expiries.

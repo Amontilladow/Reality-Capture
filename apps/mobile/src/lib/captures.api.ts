@@ -25,7 +25,7 @@ export function registerCapture(projectId: string, payload: RegisterCaptureDto) 
   return apiPost<Capture>(`/projects/${projectId}/captures`, payload);
 }
 
-// Batch offline-sync endpoint (see captures.service.ts's syncFromMobile()) --
+// Batch offline-sync endpoint (see captures.service.ts's syncFromMobile());
 // takes an idempotencyKey so a retried sync (e.g. the app is killed between
 // the storage PUT succeeding and this call completing) is recognized as the
 // same item server-side instead of creating a duplicate capture.
@@ -36,9 +36,9 @@ function syncCapture(projectId: string, payload: SyncCapturesRequest['captures']
 /**
  * Uploads a file already sitting on local disk (from the offline queue) straight to
  * S3/MinIO via a presigned PUT, then registers the capture via the idempotency-key-
- * aware batch sync endpoint (not the plain single-capture register endpoint --
+ * aware batch sync endpoint (not the plain single-capture register endpoint;
  * a retried queue item must not create a second capture server-side). Used by the
- * background sync engine -- separate from the web client's File-object upload
+ * background sync engine; separate from the web client's File-object upload
  * because React Native only gives us a file:// URI, not a Blob, for camera-captured
  * media.
  */

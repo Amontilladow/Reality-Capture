@@ -1,8 +1,8 @@
 // Thin fetch-based client mirroring apps/agent/src/api-client.ts's
-// single-flight-refresh-on-401 pattern (axios there, native fetch here --
+// single-flight-refresh-on-401 pattern (axios there, native fetch here;
 // no bundler in this package, and fetch is available in a Manifest V3
 // service worker without any extra dependency). Not unit-tested, same as
-// the desktop agent's own api-client.ts wasn't -- this is network glue,
+// the desktop agent's own api-client.ts wasn't; this is network glue,
 // not the segment-tracking decision logic (see tracker.js/tracker.test.js
 // and domain.js/domain.test.js for what actually is unit-tested here).
 
@@ -17,7 +17,7 @@ export async function login(serverUrl, email, password) {
   return body.data.tokens;
 }
 
-// platform: 'web' -- already a valid DEVICE_PLATFORMS value (packages/
+// platform: 'web'; already a valid DEVICE_PLATFORMS value (packages/
 // types/src/workforce.types.ts), anticipated since the MVP schema but
 // never used by a real client until this package.
 export async function enrollDevice(serverUrl, accessToken) {
@@ -33,7 +33,7 @@ export async function enrollDevice(serverUrl, accessToken) {
 
 // `state` supplies serverUrl/accessToken/refreshToken; `onTokensRefreshed`
 // is called with the new pair so the caller can persist them (background.js
-// wires this to saveState()) -- mirrors updateTokens() in the agent.
+// wires this to saveState()): mirrors updateTokens() in the agent.
 export function createApiClient(state, onTokensRefreshed) {
   let accessToken = state.accessToken;
   let refreshToken = state.refreshToken;

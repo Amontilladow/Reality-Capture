@@ -88,7 +88,7 @@ drain();
 const requiredClosureSize = closure.size;
 
 // Now add the prefix: every entity with id <= maxId, plus the closure of
-// EACH of those (so the file stays internally valid -- if a prefix entity
+// EACH of those (so the file stays internally valid; if a prefix entity
 // references something above maxId, pull that in too).
 for (const [id] of entityById) {
   if (id <= maxId) queue.push(id);

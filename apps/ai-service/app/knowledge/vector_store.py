@@ -47,7 +47,7 @@ async def search_vectors(collection, query_vector, company_id, project_id=None, 
     # of returning the list directly. Confirmed by hand: the old .search()
     # call raised AttributeError, which the /assistant endpoint's
     # asyncio.gather(..., return_exceptions=True) silently swallowed per
-    # collection -- surfacing as an empty "no context found" answer instead
+    # collection: surfacing as an empty "no context found" answer instead
     # of a visible error.
     response = await get_client().query_points(
         collection_name=collection,
@@ -61,7 +61,7 @@ async def search_vectors(collection, query_vector, company_id, project_id=None, 
 
 async def delete_by_resource(collection: str, resource_id: str, company_id: str, project_id: str = None):
     # Scoped by company_id (and project_id when given), matching search_vectors'
-    # tenant scoping -- previously this deleted by resource_id alone, so any
+    # tenant scoping: previously this deleted by resource_id alone, so any
     # caller able to reach this service could delete ANY tenant's vector-store
     # entries just by guessing/enumerating a resource_id.
     must = [

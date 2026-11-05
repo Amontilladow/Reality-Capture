@@ -9,8 +9,8 @@ export type AppEnv = 'development' | 'preview' | 'production';
 // Matches an EAS build profile's env var to a known app environment. A
 // release build (eas build --profile preview|production) is expected to set
 // EXPO_PUBLIC_APP_ENV explicitly in that profile's `env` (see eas.json); a
-// release build with no such marker is treated as "production" -- the
-// strictest profile -- rather than silently falling back to a permissive one.
+// release build with no such marker is treated as "production" (the
+// strictest profile) rather than silently falling back to a permissive one.
 export function resolveAppEnv(rawAppEnv: string | undefined, isDevRuntime: boolean): AppEnv {
   if (rawAppEnv === 'development' || rawAppEnv === 'preview' || rawAppEnv === 'production') {
     return rawAppEnv;
@@ -30,7 +30,7 @@ export function isPlaceholderOrLocalUrl(url: string): boolean {
   return PLACEHOLDER_OR_LOCAL_PATTERNS.some((pattern) => pattern.test(url));
 }
 
-// 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 -- private-network ranges that
+// 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16; private-network ranges that
 // have no business being a *public* production API endpoint. Only enforced
 // for "production", not "preview": a staging server reachable over a VPN on
 // a private address is a legitimate, common setup for an internal build.
@@ -40,7 +40,7 @@ const PRIVATE_IP_PATTERN = /^https?:\/\/(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6
  * Throws if `url` is not an acceptable API base URL for `env`.
  *
  * - "development": any non-empty value is accepted (including localhost/LAN
- *   addresses -- that's the point of local development).
+ *   addresses; that's the point of local development).
  * - "preview": must be non-empty and not an obvious placeholder/local
  *   address; HTTP is allowed (an internal staging server may not have TLS).
  * - "production": all of the above, plus must be HTTPS and must not be a

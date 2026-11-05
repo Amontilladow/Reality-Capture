@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { loadState, saveState, readQueue, enqueueActivity, removeFromQueue } from './storage.js';
 
 // A minimal in-memory stand-in for chrome.storage.local's promise-based
-// get/set shape -- real chrome.storage.local is not available under
+// get/set shape; real chrome.storage.local is not available under
 // node --test, so every test here exercises the same interface the real
 // one exposes, backed by a plain object instead.
 function makeFakeStorageArea() {
