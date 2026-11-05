@@ -53,7 +53,7 @@ Specific, not summarized. Organized by feature.
   extraction-input contract shared (as types only) between `apps/api` and
   `apps/ifc-service`.
 - Test fixtures: `apps/ifc-service/test-fixtures/{IfcOpenHouse_IFC4.ifc,
-  IfcOpenHouse_augmented.ifc, empty_model.ifc}` — real IFC files, one
+  IfcOpenHouse_augmented.ifc, empty_model.ifc}`: real IFC files, one
   hand-augmented with valid STEP entities (Pset/Qto/Classification) to
   exercise every extraction code path.
 - Documentation: `engineering-review/IFC_ARCHITECTURE_PROPOSAL.md`
@@ -64,12 +64,12 @@ Specific, not summarized. Organized by feature.
 
 ### Bugs fixed (all found via a failing test first, not assumed)
 1. Postgres bulk-insert misuse (`INSERT ... SELECT ... FROM ${sql(rows,
-   cols)}` is invalid postgres.js usage) — fixed across 5 repository
+   cols)}` is invalid postgres.js usage). Fixed across 5 repository
    methods to use the documented `INSERT INTO table ${sql(rows, cols)}`
    form.
 2. Missing required `project_id` column in `insertElementsBatch`.
 3. camelCase/snake_case mismatch reading `RETURNING` results (`row.ifc_guid`
-   vs. actual `row.ifcGuid` from the `postgres.camel` transform) — silently
+   vs. actual `row.ifcGuid` from the `postgres.camel` transform), which silently
    dropped quantities/materials/classifications past the first element in
    a batch. Fixed in 3 call sites.
 4. Bull job-id reuse (`jobId: modelId`) silently no-op'd reprocess
@@ -89,7 +89,7 @@ Specific, not summarized. Organized by feature.
 ### Verified
 - Full happy-path pipeline, twice (no regression across fixes).
 - 5 resilience scenarios: malformed IFC, empty model, duplicate upload,
-  interrupted/resumed processing, repeated reprocessing — all passing,
+  interrupted/resumed processing, repeated reprocessing. All passing,
   including live log evidence that resume-skip actually skips completed
   stages (not just claims to).
 - All verified against real Postgres, Redis, and a local S3-compatible
@@ -142,14 +142,14 @@ Specific, not summarized. Organized by feature.
 
 ### Bugs fixed
 7. **Vite/Rollup CJS interop gap (pre-existing, not introduced this
-   phase)** — `vite build` failed for the whole app once any file
+   phase)**: `vite build` failed for the whole app once any file
    imported a runtime value from `@engineeringos/types`, because Vite's
    default `commonjsOptions.include` only targets `node_modules/**`,
    excluding workspace-linked packages. Fixed in `apps/web/vite.config.ts`
    by adding `build.commonjsOptions.include: [/node_modules/,
    /packages\/types/]`. **This was blocking any production build of the
    entire web app**, not just BIM code.
-8. **Untyped-null Postgres parameter** in `BimService.getElements()` —
+8. **Untyped-null Postgres parameter** in `BimService.getElements()`:
    bare `${x ?? null} IS NULL` checks with no cast on `modelId`/
    `ifcType`/`levelId`/`constructionStatus`/`search` filters. Postgres
    can't infer a type from `IS NULL` alone, so the query failed at the
@@ -159,7 +159,7 @@ Specific, not summarized. Organized by feature.
   components` re-declares its own `ModelIdMap` type separately from
   `@thatopen/fragments`' (pnpm resolves two physical instances of the
   fragments package, peer-resolved against two different `three`
-  versions) — fixed by never importing `@thatopen/fragments` types
+  versions). Fixed by never importing `@thatopen/fragments` types
   directly in `BimViewer.tsx`, using only `OBC.*` (the components
   package's own re-exports).
 
@@ -190,7 +190,7 @@ Specific, not summarized. Organized by feature.
 ### Completed
 - Migration `002_notifications.sql`: `notifications` table, RLS.
 - `apps/api/src/modules/notifications/{notifications.service.ts,
-  notifications.controller.ts,notifications.module.ts}` — create, list
+  notifications.controller.ts,notifications.module.ts}`: create, list
   (paginated, unread-only filter), unread count, mark-read, mark-all-read.
 - Wired into `IssuesService.create()` and `IssuesService.update()`
   (initial assignment and reassignment both notify).
