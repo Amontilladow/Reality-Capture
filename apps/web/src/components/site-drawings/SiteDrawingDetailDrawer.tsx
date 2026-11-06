@@ -13,7 +13,7 @@ import { SiteDrawingPdfViewer } from './SiteDrawingPdfViewer';
 import { AddRevisionModal } from './AddRevisionModal';
 import {
   WORKFLOW_STATUS_LABELS, WORKFLOW_STATUS_TONE, sourceProviderLabel, formatVerifiedAt, formatDate, formatFileSize,
-  needsApprovalWarning, isConfirmedCurrent, DOCUMENT_CLASSIFICATION_LABELS,
+  needsApprovalWarning, isConfirmedCurrent, DOCUMENT_CLASSIFICATION_LABELS, siteDrawingOverlay,
 } from './siteDrawingDisplay';
 import { useAuthStore } from '../../store/auth.store';
 
@@ -32,6 +32,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
   const [addRevisionOpen, setAddRevisionOpen] = useState(false);
   const [tab, setTab] = useState<'viewer' | 'history'>('viewer');
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const [viewingRevision, setViewingRevision] = useState<SiteDrawingRevision | null>(null);
   const [viewerError, setViewerError] = useState('');
   const [offlineBusy, setOfflineBusy] = useState(false);
   const [offlineError, setOfflineError] = useState('');
@@ -59,6 +60,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
   async function openViewer(rev: SiteDrawingRevision) {
     setViewerError('');
     setViewerUrl(null);
+    setViewingRevision(rev);
     try {
       const { url } = await getSiteDrawingDownloadUrl(projectId, rev.id);
       setViewerUrl(url);
@@ -178,7 +180,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
                 {viewerError && <p className="field-error">{viewerError}</p>}
                 {viewerUrl && (
                   <div className="panel tick-frame" style={{ height: 520 }}>
-                    <SiteDrawingPdfViewer fileUrl={viewerUrl} />
+                    <SiteDrawingPdfViewer fileUrl={viewerUrl} overlay={viewingRevision ? siteDrawingOverlay(viewingRevision) : undefined} />
                   </div>
                 )}
 

@@ -179,6 +179,16 @@ export interface SiteDrawingOfflinePackage {
   updatedAt: string;
 }
 
+// listReviewQueue()'s own return shape -- a bare SiteDrawingRevision has no
+// way to show a reviewer WHICH drawing a flagged revision belongs to, and
+// that's exactly what the review queue exists to show. Joined in at the
+// query (SiteDrawingImportService.listReviewQueue()), not added as a
+// generic field on every revision everywhere else.
+export interface SiteDrawingReviewQueueItem extends SiteDrawingRevision {
+  drawingNumber: string;
+  drawingTitle: string;
+}
+
 // One row per uploaded ZIP/PDF package (brief section 2: "store import
 // batch identifiers, timestamps, source information and the uploading
 // user"). The original archive/file is preserved untouched at storageKey;
