@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsService, toNotificationPriority } from '../notifications/notifications.service';
 import { RiskService } from '../risk/risk.service';
 import type { CreateSubmittalDto } from './dto/create-submittal.dto';
 import type { UpdateSubmittalDto } from './dto/update-submittal.dto';
@@ -74,6 +74,9 @@ export class SubmittalsService {
         projectId,
         resourceId: submittal.id as string,
         createdBy: userId,
+        category: 'submittal',
+        priority: toNotificationPriority(submittal.priority as string | null),
+        actionRequired: true,
       });
     }
 

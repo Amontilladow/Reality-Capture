@@ -14,7 +14,7 @@ export class NotificationsController {
   @ApiOperation({ summary: 'List the current user\u2019s notifications (poll this endpoint)' })
   async findAll(
     @CurrentUser() u: AuthenticatedUser,
-    @Query() query: PaginationQuery & { unreadOnly?: boolean },
+    @Query() query: PaginationQuery & { unreadOnly?: boolean; category?: string; search?: string },
   ) {
     const result = await this.svc.findAll(u.companyId, u.id, query);
     return {
@@ -40,5 +40,11 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Mark all of the current user\u2019s notifications as read' })
   async markAllRead(@CurrentUser() u: AuthenticatedUser) {
     return { data: await this.svc.markAllRead(u.companyId, u.id), error: null };
+  }
+
+  @Patch(':id/acknowledge')
+  @ApiOperation({ summary: 'Acknowledge a notification -- distinct from read: a human confirming they will act on it' })
+  async acknowledge(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
+    return { data: await this.svc.acknowledge(u.companyId, u.id, id), error: null };
   }
 }

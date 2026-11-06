@@ -1,7 +1,7 @@
 import { Injectable, Logger, Optional, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import sharp from 'sharp';
 import { DatabaseService } from '../../database/database.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsService, toNotificationPriority } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
 import { MessagingService } from '../messaging/messaging.service';
 import { RiskService } from '../risk/risk.service';
@@ -184,6 +184,9 @@ export class RfisService {
         projectId,
         resourceId: rfi.id as string,
         createdBy: userId,
+        category: 'rfi',
+        priority: toNotificationPriority(rfi.priority as string | null),
+        actionRequired: true,
       });
     }
 
@@ -910,6 +913,9 @@ export class RfisService {
       projectId,
       resourceId: rfiId,
       createdBy: userId,
+      category: 'deadline',
+      priority: 'high',
+      actionRequired: true,
     });
 
     return { message: 'Reminder sent.' };
@@ -1108,6 +1114,9 @@ export class RfisService {
         projectId,
         resourceId: rfiId,
         createdBy: userId,
+        category: 'rfi',
+        priority: toNotificationPriority(updated.priority as string | null),
+        actionRequired: true,
       });
     }
 
@@ -1145,6 +1154,9 @@ export class RfisService {
         projectId,
         resourceId: rfiId,
         createdBy: userId,
+        category: 'rfi',
+        priority: 'high',
+        actionRequired: true,
       });
     }
 
@@ -1202,6 +1214,9 @@ export class RfisService {
         projectId,
         resourceId: rfiId,
         createdBy: userId,
+        category: 'rfi',
+        priority: toNotificationPriority(updated.priority as string | null),
+        actionRequired: true,
       });
     }
 
@@ -1243,6 +1258,9 @@ export class RfisService {
         projectId,
         resourceId: rfiId,
         createdBy: userId,
+        category: 'approval',
+        priority: 'normal',
+        actionRequired: true,
       });
     }
 
@@ -1318,6 +1336,9 @@ export class RfisService {
         projectId,
         resourceId: rfiId,
         createdBy: userId,
+        category: 'approval',
+        priority: dto.decision === 'approved' ? 'normal' : 'high',
+        actionRequired: dto.decision !== 'approved',
       });
     }
 
@@ -1380,6 +1401,8 @@ export class RfisService {
         projectId,
         resourceId: rfiId,
         createdBy: userId,
+        category: 'rfi',
+        priority: 'normal',
       });
     }
 
@@ -1419,6 +1442,9 @@ export class RfisService {
         projectId,
         resourceId: rfiId,
         createdBy: userId,
+        category: 'rfi',
+        priority: 'high',
+        actionRequired: true,
       });
     }
 
@@ -1461,6 +1487,8 @@ export class RfisService {
         projectId,
         resourceId: rfiId,
         createdBy: userId,
+        category: 'rfi',
+        priority: 'normal',
       });
     }
 

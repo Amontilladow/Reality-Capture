@@ -1,6 +1,13 @@
 import { Injectable, Logger, Optional, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsService, toNotificationPriority, type NotificationCategory } from '../notifications/notifications.service';
+
+// Only 'ncr'/'sor' have a matching notification category today; 'wir'/'mir'
+// notifications are still stored and delivered, just absent from category
+// filtering until those categories exist too.
+function qaqcNotificationCategory(recordType: QaqcRecordType): NotificationCategory | undefined {
+  return recordType === 'ncr' || recordType === 'sor' ? recordType : undefined;
+}
 import { StorageService } from '../storage/storage.service';
 import { RiskService } from '../risk/risk.service';
 import { mergeAttachmentPdfs, type MergeableAttachment } from '../../common/pdf/attachment-pdf-merge.util';
@@ -128,6 +135,9 @@ export class QaqcService {
         resourceId: record.id as string,
         projectId,
         createdBy: userId,
+        category: qaqcNotificationCategory(dto.recordType),
+        priority: toNotificationPriority(record.priority as string | null),
+        actionRequired: true,
       });
     }
 
@@ -226,6 +236,9 @@ export class QaqcService {
         resourceId: qaqcId,
         projectId,
         createdBy: userId,
+        category: qaqcNotificationCategory(updated.recordType as QaqcRecordType),
+        priority: toNotificationPriority(updated.priority as string | null),
+        actionRequired: true,
       });
     }
 
@@ -292,6 +305,9 @@ export class QaqcService {
         resourceId: qaqcId,
         projectId,
         createdBy: userId,
+        category: qaqcNotificationCategory(updated.recordType as QaqcRecordType),
+        priority: dto.decision === 'confirmed' ? 'normal' : toNotificationPriority(updated.priority as string | null),
+        actionRequired: dto.decision !== 'confirmed',
       });
     }
 

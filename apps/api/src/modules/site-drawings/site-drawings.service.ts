@@ -8,7 +8,7 @@ import type {
 import { DatabaseService } from '../../database/database.service';
 import { StorageService } from '../storage/storage.service';
 import { SiteDrawingAdapterRegistry } from './adapters/site-drawing-adapter-registry';
-import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsService, type NotificationPriority } from '../notifications/notifications.service';
 import { AiClientService } from '../ai-client/ai-client.service';
 import { isConfirmedCurrent, workflowStatusLabel } from './site-drawing-workflow';
 import { buildSiteDrawingRegisterWorkbookBuffer, type SiteDrawingRegisterRow } from './site-drawing-register-xls';
@@ -196,6 +196,7 @@ export class SiteDrawingsService {
       title: `New revision ${dto.revisionNumber} for drawing ${result.drawingNumber}: ${result.drawingTitle}`,
       resourceType: 'site_drawing',
       resourceId: drawingId,
+      priority: 'normal',
     });
 
     return result;
@@ -439,6 +440,7 @@ export class SiteDrawingsService {
       title: `Drawing ${drawingNumber ?? drawingId} (${drawingTitle ?? ''}) revision ${revision.revisionNumber} is now ${workflowStatusLabel(status)}`,
       resourceType: 'site_drawing',
       resourceId: drawingId,
+      priority: (['SUPERSEDED', 'REJECTED', 'WITHDRAWN'] as SiteDrawingWorkflowStatus[]).includes(status) ? 'high' : 'normal',
     });
 
     return toSiteDrawingRevision(revision);
@@ -631,7 +633,7 @@ export class SiteDrawingsService {
   // another one.
   private async notifyProjectMembers(
     companyId: string, projectId: string, excludeUserId: string | undefined,
-    input: { type: string; title: string; resourceType: string; resourceId: string },
+    input: { type: string; title: string; resourceType: string; resourceId: string; priority?: NotificationPriority },
   ): Promise<void> {
     const members = await this.db.withTenant(companyId, sql => sql<{ userId: string }[]>`
       SELECT user_id FROM project_members WHERE project_id = ${projectId} AND company_id = ${companyId}
@@ -639,7 +641,7 @@ export class SiteDrawingsService {
     await Promise.all(
       members
         .filter((m) => m.userId !== excludeUserId)
-        .map((m) => this.notifications.create(companyId, { ...input, userId: m.userId, projectId, createdBy: excludeUserId ?? null })),
+        .map((m) => this.notifications.create(companyId, { ...input, category: 'drawing', userId: m.userId, projectId, createdBy: excludeUserId ?? null })),
     );
   }
 }

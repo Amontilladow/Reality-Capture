@@ -70,6 +70,9 @@ export class IssueScheduledRemindersService {
           resourceId: issueId ?? undefined,
           projectId: reminder.projectId as string,
           createdBy: reminder.sentBy as string,
+          category: 'deadline',
+          priority: 'high',
+          actionRequired: true,
         });
       }
       fired++;

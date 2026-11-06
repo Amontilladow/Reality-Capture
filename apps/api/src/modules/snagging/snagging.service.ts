@@ -1,6 +1,6 @@
 import { Injectable, Logger, Optional, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsService, toNotificationPriority } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
 import { RiskService } from '../risk/risk.service';
 import { ProjectAuthorizationService } from '../../common/authorization/project-authorization.service';
@@ -120,6 +120,9 @@ export class SnaggingService {
         projectId,
         resourceId: snag.id as string,
         createdBy: userId,
+        category: 'sor',
+        priority: toNotificationPriority(snag.priority as string | null),
+        actionRequired: true,
       });
     }
 
@@ -367,6 +370,9 @@ export class SnaggingService {
         resourceId: snagId,
         projectId,
         createdBy: userId,
+        category: 'sor',
+        priority: toNotificationPriority(existing.priority as string | null),
+        actionRequired: true,
       });
     }
 
