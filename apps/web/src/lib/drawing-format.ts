@@ -2,7 +2,11 @@
 // code such as "AC1032", a text DXF with a "0 / SECTION" pair, a binary DXF with "AutoCAD Binary DXF".
 export type DrawingFormat = 'DWG' | 'DXF' | 'UNKNOWN';
 
-export const CLOUD_LIMIT_MB = 25;
+// What the cloud server can process. It has 512 MB, about 210 of them used by the service itself; loading a DXF takes
+// roughly 100 MB plus 9 MB per MB of file (measured on the M19B drawings), so DXFs over 18 MB are refused. A DWG
+// becomes a DXF about 5 to 6 times larger, so a DWG over about 3 MB lands past the limit too.
+export const CLOUD_DXF_LIMIT_MB = 18;
+export const CLOUD_DWG_LIMIT_MB = 3;
 
 export function formatFromHead(head: string): DrawingFormat {
   if (/^AC\d/.test(head)) return 'DWG';
@@ -30,21 +34,24 @@ export function drawingNote(name: string, sizeBytes: number, format: DrawingForm
   if (format === 'UNKNOWN') {
     return { tone: 'warn', text: 'This does not look like a DWG or DXF file. Export the drawing from CAD and try again.' };
   }
-  if (mb > CLOUD_LIMIT_MB) {
+  if (format === 'DXF' && mb > CLOUD_DXF_LIMIT_MB) {
     return {
       tone: 'warn',
-      text: `${format} detected, but ${mb.toFixed(0)} MB is over the ${CLOUD_LIMIT_MB} MB cloud limit. ` +
-        (format === 'DXF' ? 'Upload the DWG instead (usually several times smaller), or use the desktop tool.' : 'Use the desktop tool.'),
+      text: `DXF detected, but ${mb.toFixed(0)} MB is more than the cloud server can process (${CLOUD_DXF_LIMIT_MB} MB as DXF). ` +
+        'Use the desktop tool for this drawing.',
+    };
+  }
+  if (format === 'DWG' && mb > CLOUD_DWG_LIMIT_MB) {
+    return {
+      tone: 'warn',
+      text: `DWG detected, ${mb.toFixed(1)} MB. A DWG becomes a DXF about 5 to 6 times larger, so this one will probably be ` +
+        `more than the ${CLOUD_DXF_LIMIT_MB} MB the cloud server can process, and the job will say so. Use the desktop tool for it.`,
     };
   }
   const mismatch = (format === 'DWG' && ext !== 'dwg') || (format === 'DXF' && ext !== 'dxf')
     ? ` The file name says .${ext}, but the content is ${format}; the content is what counts.` : '';
   if (format === 'DWG') {
-    return {
-      tone: 'info',
-      text: 'DWG detected. It is converted to DXF on the server first. Very large drawings can exceed the server memory; ' +
-        'if that happens, use the desktop tool.' + mismatch,
-    };
+    return { tone: 'info', text: 'DWG detected. It is converted to DXF on the server first.' + mismatch };
   }
   return { tone: 'info', text: `DXF detected.${mismatch}` };
 }

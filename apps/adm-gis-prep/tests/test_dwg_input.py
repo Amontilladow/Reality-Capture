@@ -101,3 +101,34 @@ def test_dwg_input_converts_to_a_draft_through_the_converter(tmp_path, monkeypat
     res = convert(dwg, ConversionSettings(), tmp_path / "jobs")
     assert not res.report["blockers"]
     assert res.report["features"] and next((res.job_dir / "output").glob("*.dxf")).exists()
+
+
+# ------------------------------------------------------------------ the server must refuse what it cannot hold
+def test_address_space_ceiling_stops_a_memory_hog_instantly():
+    """The OS refuses the allocation (no polling gap in which a fast allocator could pass the limit)."""
+    import time
+    from m4adm.adapters import run_limited
+    t = time.monotonic()
+    res = run_limited([sys.executable, "-c", "b = bytearray(400 * 1024 * 1024)"], rss_limit_mb=None, timeout_s=30,
+                      address_space_mb=200)
+    assert res.returncode != 0 and "MemoryError" in res.stderr
+    assert time.monotonic() - t < 10
+
+
+def test_oversized_dxf_is_blocked_before_it_is_loaded(dwg_case, tmp_path, monkeypatch):
+    from m4adm.adapters import dxf_size_blocker
+    from m4adm.convert import convert
+    from m4adm.convert.settings import ConversionSettings
+    from m4adm.fixtures import arch_floor
+    dxf = tmp_path / "plan.dxf"
+    arch_floor(shaft=True).saveas(str(dxf))
+    assert dxf_size_blocker(dxf) is None                                  # no limit on the desktop
+    monkeypatch.setenv("M4ADM_MAX_DXF_MB", "0.001")                       # ~1 KB: every real drawing is over it
+    msg = dxf_size_blocker(dxf)
+    assert msg and "as DXF" in msg and "desktop tool" in msg
+    res = convert(dxf, ConversionSettings(), tmp_path / "jobs")
+    assert any("desktop tool" in b for b in res.report["blockers"]) and not res.report["features"]
+    dwg, settings, bm = dwg_case                                          # the check path, via a converted DWG
+    out = prepare(dwg, settings, tmp_path / "jobs2", bm)
+    blocking = [f for f in out.report["findings"] if f["rule_id"] == "M4-IN-001" and f["blocking"]]
+    assert blocking and "desktop tool" in blocking[0]["message"]

@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from m4adm import PROVISIONAL_LABEL, __version__
-from m4adm.adapters import DWGConverter, OfficialQC, OfficialTemplate, STATUS_UNAVAILABLE
+from m4adm.adapters import DWGConverter, OfficialQC, OfficialTemplate, STATUS_UNAVAILABLE, dxf_size_blocker
 from m4adm.audit import AuditLog, utc_now
 from m4adm.classify import classify_layout
 from m4adm.crs import check_crs, extents_of, fit_similarity, georeference_entities, transform_entities
@@ -141,6 +141,11 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
             col.add("M4-IN-001", "Input is not a recognised DXF or DWG file.",
                     "Upload an AutoCAD DXF export of the drawing.", blocking=True)
             readable = None
+    if readable is not None and (too_big := dxf_size_blocker(readable)):
+        col.add("M4-IN-001", too_big, "Use the desktop tool (m4adm ui) for this drawing, or upload a smaller one.",
+                blocking=True)
+        audit.record("dxf_too_large", error=too_big)
+        readable = None
     max_code = manifest.output.get("max_version_code")
     min_code = manifest.output.get("min_version_code")
     if ident.version_code and max_code and ident.version_code > max_code:
