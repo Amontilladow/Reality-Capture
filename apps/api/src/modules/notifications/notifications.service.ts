@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bull';
+import type { Queue } from 'bull';
 import { DatabaseService } from '../../database/database.service';
 import { NotificationsGateway } from './notifications.gateway';
+import { NOTIFICATION_EMAIL_QUEUE, NOTIFICATION_EMAIL_JOB_NAME, type NotificationEmailJobData } from './notification-email.constants';
 import type { PaginationQuery } from '@engineeringos/types';
 
 export const NOTIFICATION_PRIORITIES = ['normal', 'high', 'critical'] as const;
@@ -50,6 +53,7 @@ export class NotificationsService {
   constructor(
     private readonly db: DatabaseService,
     private readonly gateway: NotificationsGateway,
+    @InjectQueue(NOTIFICATION_EMAIL_QUEUE) private readonly emailQueue: Queue<NotificationEmailJobData>,
   ) {}
 
   // Called synchronously from other services (e.g. IssuesService on
@@ -79,7 +83,38 @@ export class NotificationsService {
     } catch (err) {
       this.logger.warn(`Failed to push real-time notification to user ${input.userId}: ${err instanceof Error ? err.message : String(err)}`);
     }
+
+    // Phase 2 of the notification engine (email channel): best-effort,
+    // never allowed to fail or slow down the write above -- identical
+    // contract to the gateway push just above it. Until Phase 4 adds real
+    // per-user/per-category channel preferences, the default rule is the
+    // spec's own escalation signal: anything high/critical priority or
+    // explicitly action-required also goes out by email, since that's
+    // exactly the class of notification a user shouldn't only discover by
+    // having the app open.
+    if (priority !== 'normal' || input.actionRequired) {
+      try {
+        await this.enqueueEmail(companyId, row.id as string, input.userId);
+      } catch (err) {
+        this.logger.warn(`Failed to enqueue notification email for user ${input.userId}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
     return row;
+  }
+
+  private async enqueueEmail(companyId: string, notificationId: string, userId: string): Promise<void> {
+    const [user] = await this.db.withTenant(companyId, sql => sql`
+      SELECT email FROM users WHERE id = ${userId} AND is_active = true
+    `);
+    if (!user?.email) return;
+
+    const [delivery] = await this.db.withTenant(companyId, sql => sql`
+      INSERT INTO notification_email_deliveries (company_id, notification_id, to_email)
+      VALUES (${companyId}, ${notificationId}, ${user.email})
+      RETURNING id
+    `);
+    await this.emailQueue.add(NOTIFICATION_EMAIL_JOB_NAME, { companyId, deliveryId: delivery.id as string });
   }
 
   async findAll(companyId: string, userId: string, query: PaginationQuery & { unreadOnly?: boolean; category?: string; search?: string }) {
