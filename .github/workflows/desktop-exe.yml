@@ -98,6 +98,8 @@ jobs:
             throw "m4adm.exe did not read the DWG through dwg2dxf.exe"
           }
           "m4adm.exe read the DWG through the reader beside it"
+          # m4adm exits non-zero for a blocked draft (the sample has no wall layers); pwsh would pass that code on.
+          exit 0
 
       - name: Assemble the zip
         run: |
