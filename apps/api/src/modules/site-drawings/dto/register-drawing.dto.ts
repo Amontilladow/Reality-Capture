@@ -21,6 +21,16 @@ export class RegisterSiteDrawingDto {
   @IsOptional() @IsString()
   floorOrLevel?: string;
 
+  // Both optional and human-settable; when left blank the service resolves
+  // them from the project's own org-mapping table (master spec section 4),
+  // matched against drawingNumber. An explicit value here always wins over
+  // the mapping.
+  @IsOptional() @IsString()
+  originator?: string;
+
+  @IsOptional() @IsString()
+  responsibleSubcontractor?: string;
+
   @IsString() @IsNotEmpty()
   revisionNumber!: string;
 

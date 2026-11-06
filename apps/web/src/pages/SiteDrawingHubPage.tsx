@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
+import { SectionHeader } from '../components/ui/SectionHeader';
+import { StatTile } from '../components/ui/StatTile';
 import { StatusBadge } from '../components/ui/Badge';
 import { apiErrorMessage } from '../lib/api';
 import { getProject } from '../lib/projects.api';
 import {
-  listSiteDrawings, getSiteDrawingFilterOptions, getSiteDrawingSourceHealth, listOfflinePackages,
+  listSiteDrawings, getSiteDrawingFilterOptions, getSiteDrawingSourceHealth, getSiteDrawingDashboardStats, listOfflinePackages,
   revalidateOfflinePackage, listReviewQueue, exportSiteDrawingRegister,
   type SiteDrawingFilters, type SiteDrawingWorkflowStatus,
 } from '../lib/site-drawings.api';
@@ -16,12 +18,13 @@ import {
 import { RegisterSiteDrawingModal } from '../components/site-drawings/RegisterSiteDrawingModal';
 import { ImportDrawingsModal } from '../components/site-drawings/ImportDrawingsModal';
 import { ImportActivityModal } from '../components/site-drawings/ImportActivityModal';
+import { OrgMappingsModal } from '../components/site-drawings/OrgMappingsModal';
 import { SiteDrawingDetailDrawer } from '../components/site-drawings/SiteDrawingDetailDrawer';
 import { Listbox } from '../components/ui/Listbox';
 
 const PER_PAGE = 25;
 const EMPTY_FILTERS: Omit<SiteDrawingFilters, 'page' | 'perPage'> = {
-  search: '', discipline: '', buildingOrZone: '', floorOrLevel: '', workflowStatus: undefined,
+  search: '', discipline: '', buildingOrZone: '', floorOrLevel: '', responsibleSubcontractor: '', workflowStatus: undefined,
 };
 
 export default function SiteDrawingHubPage() {
@@ -32,6 +35,7 @@ export default function SiteDrawingHubPage() {
   const [page, setPage] = useState(1);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [orgMappingsOpen, setOrgMappingsOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
   const [activityInitialTab, setActivityInitialTab] = useState<'batches' | 'review'>('batches');
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
@@ -48,6 +52,7 @@ export default function SiteDrawingHubPage() {
   useEffect(() => { setPage(1); }, [filters]);
 
   const projectQuery = useQuery({ queryKey: ['project', projectId], queryFn: () => getProject(projectId!), enabled: Boolean(projectId) });
+  const dashboardStatsQuery = useQuery({ queryKey: ['site-drawing-dashboard-stats', projectId], queryFn: () => getSiteDrawingDashboardStats(projectId!), enabled: Boolean(projectId) });
   const filterOptionsQuery = useQuery({ queryKey: ['site-drawing-filter-options', projectId], queryFn: () => getSiteDrawingFilterOptions(projectId!), enabled: Boolean(projectId) });
   const sourceHealthQuery = useQuery({ queryKey: ['site-drawing-source-health', projectId], queryFn: () => getSiteDrawingSourceHealth(projectId!), enabled: Boolean(projectId) });
   const offlinePackagesQuery = useQuery({ queryKey: ['site-drawing-offline-packages', projectId], queryFn: () => listOfflinePackages(projectId!), enabled: Boolean(projectId) });
@@ -88,7 +93,9 @@ export default function SiteDrawingHubPage() {
   const total = listQuery.data?.meta?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
   const drawings = listQuery.data?.data ?? [];
-  const hasActiveFilters = Boolean(filters.search || filters.discipline || filters.buildingOrZone || filters.floorOrLevel || filters.workflowStatus);
+  const hasActiveFilters = Boolean(
+    filters.search || filters.discipline || filters.buildingOrZone || filters.floorOrLevel || filters.responsibleSubcontractor || filters.workflowStatus,
+  );
 
   async function handleExport() {
     if (!projectId) return;
@@ -122,6 +129,7 @@ export default function SiteDrawingHubPage() {
               Import activity{(reviewQueueQuery.data?.length ?? 0) > 0 ? ` (${reviewQueueQuery.data!.length})` : ''}
             </button>
             <button onClick={() => setImportOpen(true)} className="btn-secondary">Import package</button>
+            <button onClick={() => setOrgMappingsOpen(true)} className="btn-secondary">Organizations</button>
             <button onClick={handleExport} disabled={exportBusy} className="btn-secondary">
               {exportBusy ? 'Exporting…' : 'Export to Excel'}
             </button>
@@ -135,6 +143,21 @@ export default function SiteDrawingHubPage() {
           <div className="panel p-4 border border-warn/40 bg-warn/5 text-xs text-ink-100">
             {sourceProviderLabel(sourceHealthQuery.data.provider)} source is currently unreachable
             {sourceHealthQuery.data.detail ? `: ${sourceHealthQuery.data.detail}` : '.'} Drawing data shown below may be out of date.
+          </div>
+        )}
+
+        {dashboardStatsQuery.data && (
+          <div className="space-y-2">
+            <SectionHeader title="Register overview" tone="teal" />
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+              <StatTile label="Total drawings" value={dashboardStatsQuery.data.total} />
+              <StatTile label="Current authorized" value={dashboardStatsQuery.data.currentAuthorized} tone="ok" />
+              <StatTile label="Superseded" value={dashboardStatsQuery.data.superseded} />
+              <StatTile label="Under review" value={dashboardStatsQuery.data.underReview} tone="warn" />
+              <StatTile label="Requiring attention" value={dashboardStatsQuery.data.requiringAttention} tone="danger" />
+              <StatTile label="Newly received (7d)" value={dashboardStatsQuery.data.newlyReceived} tone="teal" />
+              <StatTile label="Revision activity (7d)" value={dashboardStatsQuery.data.recentRevisionActivity} tone="teal" />
+            </div>
           </div>
         )}
 
@@ -155,6 +178,10 @@ export default function SiteDrawingHubPage() {
           <Listbox aria-label="Floor or level" value={filters.floorOrLevel} onChange={(e) => setFilters((f) => ({ ...f, floorOrLevel: e.target.value }))} className="field-input w-auto text-xs !py-2">
             <option value="">All floors / levels</option>
             {(filterOptionsQuery.data?.floorsOrLevels ?? []).map((l) => <option key={l} value={l}>{l}</option>)}
+          </Listbox>
+          <Listbox aria-label="Responsible subcontractor" value={filters.responsibleSubcontractor} onChange={(e) => setFilters((f) => ({ ...f, responsibleSubcontractor: e.target.value }))} className="field-input w-auto text-xs !py-2">
+            <option value="">All subcontractors</option>
+            {(filterOptionsQuery.data?.subcontractors ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
           </Listbox>
           <Listbox aria-label="Workflow status"
             value={filters.workflowStatus ?? ''}
@@ -191,6 +218,8 @@ export default function SiteDrawingHubPage() {
                       <th className="px-4 py-2 font-medium">Drawing No.</th>
                       <th className="px-4 py-2 font-medium">Title</th>
                       <th className="px-4 py-2 font-medium">Discipline</th>
+                      <th className="px-4 py-2 font-medium">Originator</th>
+                      <th className="px-4 py-2 font-medium">Subcontractor</th>
                       <th className="px-4 py-2 font-medium">Rev.</th>
                       <th className="px-4 py-2 font-medium">Status</th>
                       <th className="px-4 py-2 font-medium">Source</th>
@@ -207,6 +236,8 @@ export default function SiteDrawingHubPage() {
                           {d.buildingOrZone && <div className="text-xs text-ink-500 truncate">{d.buildingOrZone}{d.floorOrLevel ? ` · ${d.floorOrLevel}` : ''}</div>}
                         </td>
                         <td className="px-4 py-2 text-ink-300 whitespace-nowrap">{d.discipline ?? '—'}</td>
+                        <td className="px-4 py-2 text-ink-300 whitespace-nowrap">{d.originator ?? '—'}</td>
+                        <td className="px-4 py-2 text-ink-300 whitespace-nowrap">{d.responsibleSubcontractor ?? '—'}</td>
                         <td className="px-4 py-2 text-ink-300 whitespace-nowrap">{d.currentRevision?.revisionNumber ?? '—'}</td>
                         <td className="px-4 py-2">
                           <div className="flex items-center gap-2">
@@ -220,7 +251,7 @@ export default function SiteDrawingHubPage() {
                       </tr>
                     ))}
                     {drawings.length === 0 && (
-                      <tr><td colSpan={8} className="px-4 py-10 text-center text-ink-500">No drawings match the current filters.</td></tr>
+                      <tr><td colSpan={10} className="px-4 py-10 text-center text-ink-500">No drawings match the current filters.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -239,6 +270,7 @@ export default function SiteDrawingHubPage() {
                     <StatusBadge tone={WORKFLOW_STATUS_TONE[d.currentWorkflowStatus]} label={WORKFLOW_STATUS_LABELS[d.currentWorkflowStatus]} dot />
                   </div>
                   <div className="text-sm text-ink-100 font-medium">{d.drawingTitle}</div>
+                  {d.responsibleSubcontractor && <div className="text-xs text-ink-500">{d.responsibleSubcontractor}</div>}
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-ink-500">{sourceProviderLabel(d.sourceProvider)} · Rev {d.currentRevision?.revisionNumber ?? '—'}</span>
                     {offlineDrawingIds.has(d.id) && <StatusBadge tone="info" label="Offline" />}
@@ -273,6 +305,7 @@ export default function SiteDrawingHubPage() {
       {activityOpen && (
         <ImportActivityModal open onClose={() => setActivityOpen(false)} projectId={projectId} initialTab={activityInitialTab} />
       )}
+      {orgMappingsOpen && <OrgMappingsModal open onClose={() => setOrgMappingsOpen(false)} projectId={projectId} />}
       {selectedDrawingId && <SiteDrawingDetailDrawer projectId={projectId} drawingId={selectedDrawingId} onClose={() => setSelectedDrawingId(null)} />}
     </>
   );

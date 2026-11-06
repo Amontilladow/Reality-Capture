@@ -273,4 +273,92 @@ describe('SiteDrawingsService', () => {
       expect(buffer.byteLength).toBeGreaterThan(0); // a real, non-empty .xlsx buffer
     });
   });
+
+  describe('registerDrawing', () => {
+    it('resolves originator/subcontractor from the project\'s org mapping when the caller left them blank', async () => {
+      const { svc, withTenant } = makeService([
+        single([{ id: projectId }]), // assertUploadedSizeWithinLimit -> getObjectSize doesn't call withTenant; this is assertProjectBelongsToCompany
+        multi([
+          [{ pattern: 'A-', organizationName: 'Acme Consultants', role: 'originator' }], // resolveOrgMapping SELECT
+          [{ id: drawingId, drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan' }], // INSERT drawing
+          [{ id: 'revision-1', workflowStatus: 'UNDER_REVIEW' }], // INSERT revision
+          [{ id: drawingId, currentRevisionId: 'revision-1', currentWorkflowStatus: 'UNDER_REVIEW' }], // UPDATE drawing
+        ]),
+      ]);
+
+      await svc.registerDrawing(companyId, projectId, userId, {
+        drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan', revisionNumber: 'A', workflowStatus: 'UNDER_REVIEW', storageKey: 'key.pdf',
+      });
+
+      expect(withTenant).toHaveBeenCalledTimes(2);
+    });
+
+    it('lets an explicit originator/subcontractor on the DTO win over any org mapping', async () => {
+      const { svc, withTenant } = makeService([
+        single([{ id: projectId }]),
+        multi([
+          [{ id: drawingId, drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan' }], // INSERT drawing (no mapping lookup -- both fields were explicit)
+          [{ id: 'revision-1', workflowStatus: 'UNDER_REVIEW' }],
+          [{ id: drawingId, currentRevisionId: 'revision-1', currentWorkflowStatus: 'UNDER_REVIEW' }],
+        ]),
+      ]);
+
+      await svc.registerDrawing(companyId, projectId, userId, {
+        drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan', revisionNumber: 'A', workflowStatus: 'UNDER_REVIEW', storageKey: 'key.pdf',
+        originator: 'Hand-typed Consultant', responsibleSubcontractor: 'Hand-typed Sub',
+      });
+
+      // No resolveOrgMapping SELECT issued -- confirmed by the exact 3-statement multi() above being consumed without a 4th step.
+      expect(withTenant).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('org mappings', () => {
+    it('lists mappings for a project', async () => {
+      const { svc } = makeService([
+        single([{ id: projectId }]),
+        single([{ id: 'map-1', companyId, projectId, pattern: 'S-', organizationName: 'Structural Co', role: 'originator', createdBy: userId, createdAt: '2026-01-01T00:00:00Z' }]),
+      ]);
+      const result = await svc.listOrgMappings(companyId, projectId);
+      expect(result).toHaveLength(1);
+      expect(result[0].organizationName).toBe('Structural Co');
+    });
+
+    it('creates a mapping', async () => {
+      const { svc } = makeService([
+        single([{ id: projectId }]),
+        single([{ id: 'map-1', companyId, projectId, pattern: 'MEP-', organizationName: 'Acme MEP', role: 'subcontractor', createdBy: userId, createdAt: '2026-01-01T00:00:00Z' }]),
+      ]);
+      const result = await svc.createOrgMapping(companyId, projectId, userId, 'MEP-', 'Acme MEP', 'subcontractor');
+      expect(result.pattern).toBe('MEP-');
+      expect(result.role).toBe('subcontractor');
+    });
+
+    it('deletes a mapping', async () => {
+      const { svc, withTenant } = makeService([
+        single([{ id: projectId }]),
+        single([]),
+      ]);
+      await svc.deleteOrgMapping(companyId, projectId, 'map-1');
+      expect(withTenant).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('getDashboardStats', () => {
+    it('returns register summary counts for the Hub landing dashboard', async () => {
+      const { svc } = makeService([
+        single([{ id: projectId }]), // assertProjectBelongsToCompany
+        multi([
+          [{ total: '10', currentAuthorized: '4', superseded: '3', underReview: '2', newlyReceived: '1', requiringAttention: '1' }],
+          [{ recentRevisionActivity: '5' }],
+        ]),
+      ]);
+
+      const stats = await svc.getDashboardStats(companyId, projectId);
+
+      expect(stats).toEqual({
+        total: 10, currentAuthorized: 4, superseded: 3, underReview: 2, newlyReceived: 1, requiringAttention: 1, recentRevisionActivity: 5,
+      });
+    });
+  });
 });

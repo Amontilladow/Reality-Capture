@@ -1,19 +1,19 @@
 import axios from 'axios';
-import { apiGet, apiGetWithMeta, apiPatch, apiPost, apiDownload } from './api';
+import { apiGet, apiGetWithMeta, apiPatch, apiPost, apiDelete, apiDownload } from './api';
 import type {
   SiteDrawingWithCurrentRevision, SiteDrawingRevision, SiteDrawingWorkflowStatus,
   SiteDrawingOfflinePackage, SiteDrawingOfflinePackageStatus, SiteDrawingSourceHealth,
-  SiteDrawingImportBatch, SiteDrawingReviewQueueItem, DocSource,
+  SiteDrawingImportBatch, SiteDrawingReviewQueueItem, DocSource, SiteDrawingOrgMapping, SiteDrawingOrgMappingRole,
 } from '@engineeringos/types';
 export type {
   SiteDrawing, SiteDrawingRevision, SiteDrawingWithCurrentRevision, SiteDrawingWorkflowStatus,
   SiteDrawingOfflinePackage, SiteDrawingOfflinePackageStatus, SiteDrawingSourceHealth, SiteDrawingSourceProvider,
   SiteDrawingDocumentClassification, SiteDrawingExtractionStatus, SiteDrawingImportBatch, SiteDrawingImportBatchStatus,
-  SiteDrawingReviewQueueItem, ExtractedDrawingFields, DocSource,
+  SiteDrawingReviewQueueItem, ExtractedDrawingFields, DocSource, SiteDrawingOrgMapping, SiteDrawingOrgMappingRole,
 } from '@engineeringos/types';
 export {
   SITE_DRAWING_WORKFLOW_STATUSES, VALID_FOR_SITE_USE_STATUSES, SITE_DRAWING_DOCUMENT_CLASSIFICATIONS,
-  SITE_DRAWING_EXTRACTION_STATUSES,
+  SITE_DRAWING_EXTRACTION_STATUSES, SITE_DRAWING_ORG_MAPPING_ROLES,
 } from '@engineeringos/types';
 
 const base = (projectId: string) => `/projects/${projectId}/site-drawings`;
@@ -23,6 +23,7 @@ export interface SiteDrawingFilters {
   discipline?: string;
   buildingOrZone?: string;
   floorOrLevel?: string;
+  responsibleSubcontractor?: string;
   workflowStatus?: SiteDrawingWorkflowStatus;
   page?: number;
   perPage?: number;
@@ -37,6 +38,8 @@ export interface RegisterSiteDrawingInput {
   discipline?: string;
   buildingOrZone?: string;
   floorOrLevel?: string;
+  originator?: string;
+  responsibleSubcontractor?: string;
   revisionNumber: string;
   workflowStatus: SiteDrawingWorkflowStatus;
   issueDate?: string;
@@ -76,9 +79,32 @@ export interface SiteDrawingFilterOptions {
   disciplines: string[];
   buildingsOrZones: string[];
   floorsOrLevels: string[];
+  subcontractors: string[];
 }
 export const getSiteDrawingFilterOptions = (projectId: string) =>
   apiGet<SiteDrawingFilterOptions>(`${base(projectId)}/filter-options`);
+
+export interface SiteDrawingDashboardStats {
+  total: number;
+  currentAuthorized: number;
+  superseded: number;
+  underReview: number;
+  newlyReceived: number;
+  requiringAttention: number;
+  recentRevisionActivity: number;
+}
+export const getSiteDrawingDashboardStats = (projectId: string) =>
+  apiGet<SiteDrawingDashboardStats>(`${base(projectId)}/dashboard-stats`);
+
+// ── Organization mapping (master spec section 4) ────────────────────────
+export const listSiteDrawingOrgMappings = (projectId: string) =>
+  apiGet<SiteDrawingOrgMapping[]>(`${base(projectId)}/org-mappings`);
+
+export const createSiteDrawingOrgMapping = (projectId: string, pattern: string, organizationName: string, role: SiteDrawingOrgMappingRole) =>
+  apiPost<SiteDrawingOrgMapping>(`${base(projectId)}/org-mappings`, { pattern, organizationName, role });
+
+export const deleteSiteDrawingOrgMapping = (projectId: string, mappingId: string) =>
+  apiDelete<{ removed: boolean }>(`${base(projectId)}/org-mappings/${mappingId}`);
 
 export const getSiteDrawingSourceHealth = (projectId: string) =>
   apiGet<SiteDrawingSourceHealth>(`${base(projectId)}/source-health`);

@@ -19,6 +19,8 @@ export interface SiteDrawingRegisterRow {
   discipline?: string;
   buildingOrZone?: string;
   floorOrLevel?: string;
+  originator?: string;
+  responsibleSubcontractor?: string;
   revisionNumber?: string;
   workflowStatus: string;
   documentClassification: string;
@@ -36,6 +38,8 @@ const COLUMNS: { header: string; key: keyof SiteDrawingRegisterRow; width: numbe
   { header: 'Discipline', key: 'discipline', width: 16 },
   { header: 'Building / Zone', key: 'buildingOrZone', width: 18 },
   { header: 'Floor / Level', key: 'floorOrLevel', width: 16 },
+  { header: 'Originator', key: 'originator', width: 18 },
+  { header: 'Responsible Subcontractor', key: 'responsibleSubcontractor', width: 22 },
   { header: 'Revision', key: 'revisionNumber', width: 10 },
   { header: 'Workflow Status', key: 'workflowStatus', width: 22 },
   { header: 'Document Classification', key: 'documentClassification', width: 20 },
