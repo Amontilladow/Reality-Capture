@@ -184,13 +184,17 @@ class DWGConverter:
         if self.kind == "libredwg":
             out = work_dir / f"{Path(dwg).stem}.dxf"
             limit = float(os.environ.get("M4ADM_DWG_MEMORY_MB", "0") or 0) or None
+            # A hosted server (memory limit set) gives up after 10 minutes; on your own computer a large drawing may
+            # legitimately take longer, so the default there is one hour.
+            default_timeout = "600" if limit else "3600"
             try:
                 res = run_limited([str(self.executable), "-y", "-o", str(out), str(dwg)], rss_limit_mb=limit,
-                                  timeout_s=float(os.environ.get("M4ADM_DWG_TIMEOUT_S", "600") or 600),
+                                  timeout_s=float(os.environ.get("M4ADM_DWG_TIMEOUT_S", default_timeout) or default_timeout),
                                   address_space_mb=(limit + 64) if limit else None)
             except ConverterLimitExceeded as exc:
-                raise RuntimeError(f"{self.describe()} {exc}. The drawing is too large to convert here; save it as "
-                                   "DXF in AutoCAD or use the desktop tool.") from exc
+                advice = ("The drawing is too large to convert here; save it as DXF in AutoCAD or use the desktop tool."
+                          if limit else "Save the drawing as DXF in AutoCAD and upload the DXF instead.")
+                raise RuntimeError(f"{self.describe()} {exc}. {advice}") from exc
         else:
             in_dir, out_dir = work_dir / "dwg_in", work_dir / "dxf_out"
             in_dir.mkdir(exist_ok=True)
