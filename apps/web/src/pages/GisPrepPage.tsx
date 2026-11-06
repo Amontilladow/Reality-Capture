@@ -7,6 +7,7 @@ import type { StatusTone } from '../lib/status-tone';
 import { apiErrorMessage } from '../lib/api';
 import { getProject } from '../lib/projects.api';
 import { loadSavedForm, saveForm } from '../lib/saved-form';
+import { detectDrawingFormat, drawingNote, type DrawingFormat } from '../lib/drawing-format';
 import {
   DRAWING_TYPES, UPPERCASE_FACTS, UPPERCASE_META, USAGE_CATEGORY_TYPES, USAGE_TYPES, convertInputProblems,
 } from '../lib/bdms-inputs';
@@ -138,6 +139,7 @@ export default function GisPrepPage() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<FormState>(() => (projectId ? loadSavedForm(formKey(projectId), INITIAL, NEVER_RESTORE) : INITIAL));
   const [file, setFile] = useState<File | null>(null);
+  const [fileFormat, setFileFormat] = useState<DrawingFormat | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   useEffect(() => { if (projectId) saveForm(formKey(projectId), form); }, [projectId, form]);
@@ -205,7 +207,19 @@ export default function GisPrepPage() {
               </label>
             ))}
           </div>}
-          <input type="file" accept=".dxf,.dwg" aria-label="Drawing file (DXF or DWG)" onChange={e => setFile(e.target.files?.[0] ?? null)} className="text-xs text-ink-300" />
+          <input
+            type="file" accept=".dxf,.dwg" aria-label="Drawing file (DXF or DWG)" className="text-xs text-ink-300"
+            onChange={e => {
+              const picked = e.target.files?.[0] ?? null;
+              setFile(picked);
+              setFileFormat(null);
+              if (picked) detectDrawingFormat(picked).then(setFileFormat).catch(() => setFileFormat('UNKNOWN'));
+            }}
+          />
+          {file && fileFormat && (() => {
+            const note = drawingNote(file.name, file.size, fileFormat);
+            return <p className={`text-xs ${note.tone === 'warn' ? 'text-warn' : 'text-ink-500'}`} role="status">{note.text}</p>;
+          })()}
           {form.mode === 'prepare' && form.profile === 'sdd_planning' && (
             <div className="flex flex-wrap gap-4 text-xs text-ink-300">
               {['plot', 'roads', 'services'].map(c => (

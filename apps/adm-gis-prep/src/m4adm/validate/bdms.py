@@ -339,7 +339,7 @@ def opening_adjacent(opening, spaces: list, floors: list, contact: float) -> boo
     """DRM review rule: a door/window is adjacent to two spaces, or to one space and the floor outline.
     `floors` are Floor polygons (not the BuildingOutline: calibrated on the Yas Island review)."""
     touching = sum(1 for s in spaces if opening.distance(s) <= contact)
-    on_floor_edge = any(opening.distance(f.exterior) <= contact for f in floors)
+    on_floor_edge = any(opening.distance(f.boundary) <= contact for f in floors)   # boundary: Polygon or MultiPolygon
     return touching >= 2 or (touching == 1 and on_floor_edge)
 
 

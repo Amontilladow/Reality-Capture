@@ -111,8 +111,12 @@ def _run(source: Path, settings: ConversionSettings, manifest: Manifest, ws: Job
                             "(SAVEAS > AutoCAD 2010 DXF), or install ODA File Converter / LibreDWG.")
             readable = None
         else:
-            readable = conv.to_dxf(copy, ws.dir / "work")
-            audit.record("dwg_converted", converter=conv.describe())
+            try:
+                readable = conv.to_dxf(copy, ws.dir / "work")
+                audit.record("dwg_converted", converter=conv.describe())
+            except RuntimeError as exc:
+                blockers.append(f"The DWG could not be converted to DXF: {exc}")
+                readable = None
     elif not ident.format.startswith("DXF"):
         blockers.append(f"Unsupported input format: {ident.format}. Supported: DXF (any release ezdxf reads), "
                         "DWG through an installed converter.")

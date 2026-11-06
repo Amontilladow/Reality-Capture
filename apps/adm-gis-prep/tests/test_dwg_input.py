@@ -59,3 +59,45 @@ def test_failed_conversion_blocks(dwg_case, tmp_path, monkeypatch):
     f = [f for f in res.report["findings"] if f["rule_id"] == "M4-IN-001"]
     assert f and f[0]["blocking"] and "cannot decode section" in f[0]["message"]
     assert res.report["outputs"] == []
+
+
+# ------------------------------------------------------------------ server guard and the conversion path
+def test_converter_that_runs_too_long_or_grows_too_big_is_stopped():
+    from m4adm.adapters import ConverterLimitExceeded, run_limited
+    with pytest.raises(ConverterLimitExceeded, match="ran longer"):
+        run_limited([sys.executable, "-c", "import time; time.sleep(30)"], rss_limit_mb=None, timeout_s=0.5)
+    hog = "import time; b = bytearray(200 * 1024 * 1024); b[::4096] = b'x' * len(b[::4096]); time.sleep(30)"
+    with pytest.raises(ConverterLimitExceeded, match="more than 60 MB"):
+        run_limited([sys.executable, "-c", hog], rss_limit_mb=60, timeout_s=30)
+    ok = run_limited([sys.executable, "-c", "print('fine')"], rss_limit_mb=500, timeout_s=30)
+    assert ok.returncode == 0 and ok.stdout.strip() == "fine"
+
+
+def test_dwg_too_large_for_the_server_is_reported_not_crashed(dwg_case, tmp_path, monkeypatch):
+    from m4adm.convert import convert
+    from m4adm.convert.settings import ConversionSettings
+    dwg, _, _ = dwg_case
+    monkeypatch.setenv("FAKE_FAIL", "1")
+    res = convert(dwg, ConversionSettings(), tmp_path / "jobs")
+    assert any("could not be converted to DXF" in b and "cannot decode section" in b for b in res.report["blockers"])
+    assert res.report["output"] is None or not res.report["output"].get("path")
+
+
+def test_dwg_input_converts_to_a_draft_through_the_converter(tmp_path, monkeypatch):
+    """A floor plan uploaded as DWG goes through dwg2dxf and then the normal conversion."""
+    from m4adm.convert import convert
+    from m4adm.convert.settings import ConversionSettings
+    from m4adm.fixtures import arch_floor
+    dxf = tmp_path / "plan.dxf"
+    arch_floor(shaft=True).saveas(str(dxf))
+    dwg = tmp_path / "plan.dwg"
+    dwg.write_bytes(b"AC1032" + b"\x00" * 512)
+    conv = tmp_path / "dwg2dxf"
+    conv.write_text(STAND_IN.format(python=sys.executable))
+    conv.chmod(conv.stat().st_mode | stat.S_IEXEC)
+    monkeypatch.setenv("M4ADM_DWG2DXF", str(conv))
+    monkeypatch.setenv("FAKE_DXF", str(dxf))
+    monkeypatch.delenv("M4ADM_ODA_CONVERTER", raising=False)
+    res = convert(dwg, ConversionSettings(), tmp_path / "jobs")
+    assert not res.report["blockers"]
+    assert res.report["features"] and next((res.job_dir / "output").glob("*.dxf")).exists()

@@ -18,6 +18,13 @@ ENV OMP_NUM_THREADS=1 \
 # Build context is the repository root (render.yaml dockerContext "."), so
 # the GIS Preparation engine (apps/adm-gis-prep) can be installed alongside.
 COPY apps/ai-service/requirements.txt .
+# DWG reader for GIS Preparation (LibreDWG's dwg2dxf). Optional on purpose: if the package is unavailable the build
+# goes on, DXF input keeps working and a DWG upload is blocked with a clear message. M4ADM_DWG_MEMORY_MB caps the
+# converter's resident memory (this service shares 512 MB with everything else).
+RUN (apt-get update && apt-get install -y --no-install-recommends libredwg-tools && dwg2dxf --version) \
+    || echo "WARNING: libredwg-tools unavailable; DWG input stays disabled"; \
+    rm -rf /var/lib/apt/lists/*
+ENV M4ADM_DWG_MEMORY_MB=200
 RUN pip install --no-cache-dir -r requirements.txt
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 # GIS Preparation engine in its OWN virtualenv: its pinned dependencies

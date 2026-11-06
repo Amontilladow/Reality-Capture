@@ -35,6 +35,15 @@ def test_opening_that_stops_short_or_lies_along_the_wall_is_rejected():
     assert not opening_adjacent(box(2, 2, 3, 2.2), [a, b], [floor], CONTACT)       # one space, no floor edge
 
 
+def test_multipart_floor_polygon_does_not_crash_the_check():
+    """A Floor made of several parts (MultiPolygon) crashed the first version with AttributeError: exterior."""
+    from shapely.geometry import MultiPolygon
+    a = box(0, 0, 5, 5)
+    floor = MultiPolygon([box(0, 0, 10, 5), box(20, 0, 25, 5)])
+    assert opening_adjacent(box(-0.1, 1, 0.05, 2), [a], [floor], CONTACT)
+    assert not opening_adjacent(box(2, 2, 3, 2.2), [a], [floor], CONTACT)
+
+
 @pytest.mark.skipif(not YAS.exists(), reason="Yas Island review drawings are client data under reference/")
 def test_rule_reproduces_exactly_the_handles_the_drm_review_flagged():
     failing: dict[str, set[str]] = {}
@@ -52,3 +61,51 @@ def test_rule_reproduces_exactly_the_handles_the_drm_review_flagged():
                     failing.setdefault(key, set()).add(h)
     assert total == 294
     assert failing == FLAGGED
+
+
+# ------------------------------------------------------------------ the real DWG files, through the DWG converter
+from m4adm.adapters import STATUS_UNAVAILABLE, DWGConverter  # noqa: E402
+from m4adm.models import JobSettings  # noqa: E402
+from m4adm.pipeline import prepare  # noqa: E402
+from m4adm.rules import load_profile  # noqa: E402
+
+REVIEW = ROOT / "reference" / "DRM_reviews" / "yas_island_2026-11"
+needs_files_and_converter = pytest.mark.skipif(
+    not (REVIEW / "old").exists() or DWGConverter.from_env().status() == STATUS_UNAVAILABLE,
+    reason="Yas Island DWGs (client data under reference/) or a DWG converter (LibreDWG dwg2dxf) not available")
+
+
+def _errors(dwg: Path, tmp_path: Path) -> list[dict]:
+    zone, sector, plot, building, floor = dwg.stem.split("-")
+    s = JobSettings(profile="bdms_building", categories=["building"], units_confirmed_metres=True,
+                    metadata=dict(zone_name=zone, sector_number=sector, plot_number=plot, building_number=building,
+                                  floor_id=floor, contractor_name="M4 Contracting"),
+                    crs=dict(source_crs="EPSG:32640", source_confirmed=True))
+    res = prepare(dwg, s, tmp_path / "jobs", load_profile("bdms_building"))
+    assert res.report["source"]["conversion"], "the DWG must have been converted"
+    return [f for f in res.report["findings"] if f["severity"] == "ERROR"]
+
+
+@needs_files_and_converter
+def test_old_dwgs_through_the_converter_reproduce_the_drm_flagged_handles(tmp_path):
+    """End to end: DWG -> dwg2dxf -> full validation flags exactly the 11 openings the DRM review flagged."""
+    flagged: dict[str, set[str]] = {}
+    for dwg in sorted((REVIEW / "old" / "OUT").glob("*.dwg")):
+        key = dwg.stem.replace("Yas Island-YS1-P10-", "")
+        handles = {f["handle"] for f in _errors(dwg, tmp_path / key) if f["rule_id"] == "DRM-LOG-22"}
+        if handles:
+            flagged[key] = handles
+    assert flagged == FLAGGED
+
+
+@needs_files_and_converter
+def test_rectified_dwgs_have_no_errors_except_two_documented_disagreements(tmp_path):
+    """The rectified set is clean, except ground floor of building 1 (DISCREPANCIES B-24, B-25): a door left 2.3 m
+    from the Floor polygon DRM redrew, and a room outline with a zero-area self-intersection DRM never flagged."""
+    for dwg in sorted((REVIEW / "new" / "OUT").glob("*.dwg")):
+        errs = {(f["rule_id"], f["handle"]) for f in _errors(dwg, tmp_path / dwg.stem)}
+        if dwg.stem.endswith("-1-G"):
+            assert {r for r, _ in errs} == {"DRM-LOG-22", "DRM-GEO-11"}, errs
+            assert ("DRM-LOG-22", "2AC") in errs
+        else:
+            assert errs == set(), (dwg.stem, errs)
