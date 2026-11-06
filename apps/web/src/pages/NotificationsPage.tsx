@@ -3,16 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Listbox } from '../components/ui/Listbox';
+import { useAuthStore } from '../store/auth.store';
 import {
   listNotifications, markNotificationRead, markAllNotificationsRead, acknowledgeNotification,
-  lookupIssueProject, NOTIFICATION_CATEGORIES, type Notification, type NotificationCategory,
+  lookupIssueProject, getNotificationPreferences, updateNotificationPreferences,
+  listEmailDeliveries, listWhatsAppDeliveries,
+  NOTIFICATION_CATEGORIES, type Notification, type NotificationCategory,
 } from '../lib/notifications.api';
 
 const PER_PAGE = 25;
+const ADMIN_LOG_PER_PAGE = 10;
 
 const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   drawing: 'Drawings', issue: 'Issues', ncr: 'NCR', sor: 'SOR', rfi: 'RFIs', submittal: 'Submittals',
   assignment: 'Assignments', approval: 'Approvals', deadline: 'Deadlines', announcement: 'Announcements',
+  escalation: 'Escalations',
 };
 
 const PRIORITY_BADGE: Record<Notification['priority'], string> = {
@@ -37,11 +42,15 @@ function timeAgo(iso: string): string {
 export default function NotificationsPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const currentUser = useAuthStore((s) => s.user);
+  const isCompanyAdmin = currentUser?.companyRole === 'company_admin' || currentUser?.companyRole === 'super_admin';
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [page, setPage] = useState(1);
+  const [showPreferences, setShowPreferences] = useState(false);
+  const [showAdminLogs, setShowAdminLogs] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 300);
@@ -76,6 +85,37 @@ export default function NotificationsPage() {
       queryClient.invalidateQueries({ queryKey: ['notifications-history'] });
       queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] });
     },
+  });
+
+  // Phase 4: per-user channel preferences.
+  const preferencesQuery = useQuery({
+    queryKey: ['notification-preferences'],
+    queryFn: getNotificationPreferences,
+    enabled: showPreferences,
+  });
+  const updatePreferencesMutation = useMutation({
+    mutationFn: updateNotificationPreferences,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notification-preferences'] }),
+  });
+
+  function toggleMutedCategory(c: NotificationCategory) {
+    const current = preferencesQuery.data?.mutedCategories ?? [];
+    const next = current.includes(c) ? current.filter((x) => x !== c) : [...current, c];
+    updatePreferencesMutation.mutate({ mutedCategories: next });
+  }
+
+  // Phase 4 admin console: delivery logs, company_admin only.
+  const [emailLogPage, setEmailLogPage] = useState(1);
+  const [whatsappLogPage, setWhatsappLogPage] = useState(1);
+  const emailDeliveriesQuery = useQuery({
+    queryKey: ['notification-email-deliveries', emailLogPage],
+    queryFn: () => listEmailDeliveries({ page: emailLogPage, perPage: ADMIN_LOG_PER_PAGE }),
+    enabled: showAdminLogs && isCompanyAdmin,
+  });
+  const whatsappDeliveriesQuery = useQuery({
+    queryKey: ['notification-whatsapp-deliveries', whatsappLogPage],
+    queryFn: () => listWhatsAppDeliveries({ page: whatsappLogPage, perPage: ADMIN_LOG_PER_PAGE }),
+    enabled: showAdminLogs && isCompanyAdmin,
   });
 
   // Same resource-type -> route map as the bell dropdown.
@@ -120,12 +160,111 @@ export default function NotificationsPage() {
         title="Notifications"
         subtitle="Everything the platform has notified you about, across every project."
         actions={
-          <button onClick={() => markAllReadMutation.mutate()} disabled={markAllReadMutation.isPending} className="btn-secondary">
-            Mark all read
-          </button>
+          <div className="flex items-center gap-2">
+            {isCompanyAdmin && (
+              <button onClick={() => setShowAdminLogs((v) => !v)} className="btn-secondary">
+                {showAdminLogs ? 'Hide delivery logs' : 'Delivery logs'}
+              </button>
+            )}
+            <button onClick={() => setShowPreferences((v) => !v)} className="btn-secondary">
+              {showPreferences ? 'Hide preferences' : 'Preferences'}
+            </button>
+            <button onClick={() => markAllReadMutation.mutate()} disabled={markAllReadMutation.isPending} className="btn-secondary">
+              Mark all read
+            </button>
+          </div>
         }
       />
       <div className="p-6 space-y-4">
+        {showPreferences && (
+          <div className="panel p-4 space-y-4">
+            <h3 className="text-sm font-medium text-ink-100">Notification preferences</h3>
+            {preferencesQuery.isLoading && <div className="text-xs text-ink-500">Loading…</div>}
+            {preferencesQuery.data && (
+              <>
+                <div className="flex items-center gap-6 flex-wrap">
+                  <label className="flex items-center gap-2 text-xs text-ink-300">
+                    <input
+                      type="checkbox" checked={preferencesQuery.data.emailEnabled}
+                      onChange={(e) => updatePreferencesMutation.mutate({ emailEnabled: e.target.checked })}
+                    />
+                    Email me high-priority and action-required notifications
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-ink-300">
+                    <input
+                      type="checkbox" checked={preferencesQuery.data.whatsappEnabled}
+                      onChange={(e) => updatePreferencesMutation.mutate({ whatsappEnabled: e.target.checked })}
+                    />
+                    WhatsApp me critical notifications (when WhatsApp is enabled for this company)
+                  </label>
+                </div>
+                <div>
+                  <div className="text-xs text-ink-500 mb-2">
+                    Muted categories (critical notifications still come through regardless):
+                  </div>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    {NOTIFICATION_CATEGORIES.filter((c) => c !== 'escalation').map((c) => (
+                      <label key={c} className="flex items-center gap-2 text-xs text-ink-300">
+                        <input
+                          type="checkbox" checked={preferencesQuery.data!.mutedCategories.includes(c)}
+                          onChange={() => toggleMutedCategory(c)}
+                        />
+                        {CATEGORY_LABELS[c]}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {showAdminLogs && isCompanyAdmin && (
+          <div className="panel p-4 space-y-4">
+            <h3 className="text-sm font-medium text-ink-100">Delivery logs</h3>
+            <div>
+              <div className="text-xs text-ink-500 mb-2">Email</div>
+              <div className="divide-y divide-base-700/60 text-xs">
+                {(emailDeliveriesQuery.data?.data ?? []).map((d) => (
+                  <div key={d.id} className="py-2 flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-ink-300">{d.toEmail} · {d.notificationTitle}</span>
+                    <span className={`badge text-xs ${d.status === 'delivered' ? 'bg-ok/15 text-ok' : d.status === 'failed' ? 'bg-danger/15 text-danger' : 'bg-base-700 text-ink-500'}`}>
+                      {d.status}{d.attempts > 1 ? ` (${d.attempts}x)` : ''}
+                    </span>
+                  </div>
+                ))}
+                {emailDeliveriesQuery.data?.data.length === 0 && <div className="py-2 text-ink-500">No email deliveries yet.</div>}
+              </div>
+              {(emailDeliveriesQuery.data?.meta?.totalPages ?? 1) > 1 && (
+                <div className="flex items-center justify-end gap-2 mt-2">
+                  <button onClick={() => setEmailLogPage((p) => Math.max(1, p - 1))} disabled={emailLogPage === 1} className="btn-ghost !px-2 !py-2 text-xs disabled:opacity-40">Previous</button>
+                  <button onClick={() => setEmailLogPage((p) => p + 1)} disabled={emailLogPage >= (emailDeliveriesQuery.data?.meta?.totalPages ?? 1)} className="btn-ghost !px-2 !py-2 text-xs disabled:opacity-40">Next</button>
+                </div>
+              )}
+            </div>
+            <div>
+              <div className="text-xs text-ink-500 mb-2">WhatsApp</div>
+              <div className="divide-y divide-base-700/60 text-xs">
+                {(whatsappDeliveriesQuery.data?.data ?? []).map((d) => (
+                  <div key={d.id} className="py-2 flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-ink-300">{d.toPhone} · {d.notificationTitle}</span>
+                    <span className={`badge text-xs ${d.status === 'delivered' || d.status === 'read' || d.status === 'sent' ? 'bg-ok/15 text-ok' : d.status === 'failed' ? 'bg-danger/15 text-danger' : 'bg-base-700 text-ink-500'}`}>
+                      {d.status}{d.attempts > 1 ? ` (${d.attempts}x)` : ''}
+                    </span>
+                  </div>
+                ))}
+                {whatsappDeliveriesQuery.data?.data.length === 0 && <div className="py-2 text-ink-500">No WhatsApp deliveries yet (channel inactive until Meta credentials are configured).</div>}
+              </div>
+              {(whatsappDeliveriesQuery.data?.meta?.totalPages ?? 1) > 1 && (
+                <div className="flex items-center justify-end gap-2 mt-2">
+                  <button onClick={() => setWhatsappLogPage((p) => Math.max(1, p - 1))} disabled={whatsappLogPage === 1} className="btn-ghost !px-2 !py-2 text-xs disabled:opacity-40">Previous</button>
+                  <button onClick={() => setWhatsappLogPage((p) => p + 1)} disabled={whatsappLogPage >= (whatsappDeliveriesQuery.data?.meta?.totalPages ?? 1)} className="btn-ghost !px-2 !py-2 text-xs disabled:opacity-40">Next</button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="panel p-4 flex items-center gap-2 flex-wrap">
           <input
             type="text" placeholder="Search title or body…" value={searchInput}

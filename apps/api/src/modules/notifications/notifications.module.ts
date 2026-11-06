@@ -6,6 +6,7 @@ import { NotificationsController } from './notifications.controller';
 import { NotificationsGateway } from './notifications.gateway';
 import { NotificationEmailProcessor } from './processors/notification-email.processor';
 import { NotificationWhatsAppProcessor } from './processors/notification-whatsapp.processor';
+import { NotificationEscalationService } from './notification-escalation.service';
 import { NOTIFICATION_EMAIL_QUEUE } from './notification-email.constants';
 import { NOTIFICATION_WHATSAPP_QUEUE } from './notification-whatsapp.constants';
 
@@ -34,7 +35,7 @@ const DELIVERY_QUEUE_JOB_OPTIONS = {
     ),
   ],
   controllers: [NotificationsController],
-  providers: [NotificationsService, NotificationsGateway, NotificationEmailProcessor, NotificationWhatsAppProcessor],
+  providers: [NotificationsService, NotificationsGateway, NotificationEmailProcessor, NotificationWhatsAppProcessor, NotificationEscalationService],
   exports: [NotificationsService],
 })
 export class NotificationsModule {}

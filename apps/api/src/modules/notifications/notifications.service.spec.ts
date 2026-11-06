@@ -43,6 +43,11 @@ describe('NotificationsService', () => {
   }
 
   describe('create', () => {
+    // dispatchChannels always does exactly one recipient lookup (email +
+    // phone + preferences in a single query) regardless of what it then
+    // decides to send -- every scenario below accounts for that call even
+    // when it expects no delivery to follow.
+
     it('inserts with the given category/priority/actionRequired and pushes a real-time event to the recipient', async () => {
       const { svc, withTenant, emitToUser, emailQueue } = makeService();
       const row = { id: 'notif-1', userId, type: 'rfi_overdue', priority: 'high', category: 'rfi', actionRequired: true };
@@ -54,14 +59,13 @@ describe('NotificationsService', () => {
 
       expect(result).toEqual(row);
       expect(emitToUser).toHaveBeenCalledWith(userId, row);
-      // High priority -> also enqueues an email delivery (Phase 2's default
-      // escalation rule, ahead of Phase 4's real per-user preferences).
+      // High priority + default preferences (email enabled) -> email sent.
       expect(emailQueue.add).toHaveBeenCalledWith(NOTIFICATION_EMAIL_JOB_NAME, { companyId, deliveryId: 'delivery-1' });
     });
 
     it('does not enqueue an email for a normal-priority, non-action-required notification', async () => {
       const { svc, withTenant, emailQueue } = makeService();
-      withTenant.mockImplementationOnce(single([{ id: 'notif-low' }]));
+      withTenant.mockImplementation(multi([[{ id: 'notif-low' }], [{ email: 'user1@example.com' }]]));
 
       await svc.create(companyId, { userId, type: 'issue_comment', title: 'New comment', priority: 'normal', actionRequired: false });
 
@@ -77,32 +81,69 @@ describe('NotificationsService', () => {
       expect(emailQueue.add).toHaveBeenCalledWith(NOTIFICATION_EMAIL_JOB_NAME, { companyId, deliveryId: 'delivery-2' });
     });
 
-    it('never fails the write when enqueueing the email throws (e.g. user lookup fails)', async () => {
+    it('respects emailEnabled: false for a non-critical notification', async () => {
       const { svc, withTenant, emailQueue } = makeService();
+      withTenant.mockImplementation(multi([
+        [{ id: 'notif-pref-off' }],
+        [{ email: 'user1@example.com', preferences: { notifications: { emailEnabled: false } } }],
+      ]));
+
+      await svc.create(companyId, { userId, type: 'rfi_overdue', title: 'RFI overdue', priority: 'high' });
+
+      expect(emailQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('bypasses emailEnabled: false and muted categories for critical priority (escalation override)', async () => {
+      const { svc, withTenant, emailQueue } = makeService();
+      withTenant.mockImplementation(multi([
+        [{ id: 'notif-crit-bypass' }],
+        [{ email: 'user1@example.com', preferences: { notifications: { emailEnabled: false, mutedCategories: ['issue'] } } }],
+        [{ id: 'delivery-3' }],
+      ]));
+
+      await svc.create(companyId, { userId, type: 'issue_assigned', title: 'Critical issue', category: 'issue', priority: 'critical' });
+
+      expect(emailQueue.add).toHaveBeenCalledWith(NOTIFICATION_EMAIL_JOB_NAME, { companyId, deliveryId: 'delivery-3' });
+    });
+
+    it('respects a muted category for a non-critical, non-action-required notification', async () => {
+      const { svc, withTenant, emailQueue } = makeService();
+      withTenant.mockImplementation(multi([
+        [{ id: 'notif-muted' }],
+        [{ email: 'user1@example.com', preferences: { notifications: { mutedCategories: ['rfi'] } } }],
+      ]));
+
+      await svc.create(companyId, { userId, type: 'rfi_overdue', title: 'RFI overdue', category: 'rfi', priority: 'high' });
+
+      expect(emailQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('never fails the write when the recipient lookup throws', async () => {
+      const { svc, withTenant, emailQueue, whatsappQueue } = makeService();
       withTenant.mockImplementationOnce(single([{ id: 'notif-fail' }])).mockImplementationOnce(() => { throw new Error('db unavailable'); });
 
       await expect(svc.create(companyId, { userId, type: 'issue_assigned', title: 'Assigned', priority: 'critical' }))
         .resolves.toEqual({ id: 'notif-fail' });
       expect(emailQueue.add).not.toHaveBeenCalled();
+      expect(whatsappQueue.add).not.toHaveBeenCalled();
     });
 
-    it('skips enqueueing when the user has no email on file (e.g. inactive)', async () => {
+    it('skips enqueueing email when the user has no email on file (e.g. inactive)', async () => {
       const { svc, withTenant, emailQueue } = makeService();
-      withTenant.mockImplementation(multi([[{ id: 'notif-inactive' }], []]));
+      withTenant.mockImplementation(multi([[{ id: 'notif-noemail' }], [{ phone: null }]]));
 
       await svc.create(companyId, { userId, type: 'issue_assigned', title: 'Assigned', priority: 'critical' });
 
       expect(emailQueue.add).not.toHaveBeenCalled();
     });
 
-    it('enqueues a WhatsApp delivery for a critical-priority notification when the channel is configured', async () => {
+    it('enqueues a WhatsApp delivery for critical priority when configured and the user opted in', async () => {
       const { svc, withTenant, whatsappQueue } = makeService({ whatsappConfigured: true });
-      // Critical priority also triggers Phase 2's email rule, so the
-      // sequence is: insert, [email] SELECT email + INSERT delivery,
-      // [whatsapp] SELECT phone + INSERT delivery.
       withTenant.mockImplementation(multi([
-        [{ id: 'notif-critical' }], [{ email: 'user1@example.com' }], [{ id: 'email-delivery-x' }],
-        [{ phone: '+1 (555) 123-4567' }], [{ id: 'wa-delivery-1' }],
+        [{ id: 'notif-wa' }],
+        [{ email: 'user1@example.com', phone: '+1 (555) 123-4567', preferences: { notifications: { whatsappEnabled: true } } }],
+        [{ id: 'email-delivery-x' }], // critical bypass also sends email
+        [{ id: 'wa-delivery-1' }],
       ]));
 
       await svc.create(companyId, { userId, type: 'issue_assigned', title: 'Critical issue', priority: 'critical' });
@@ -110,18 +151,39 @@ describe('NotificationsService', () => {
       expect(whatsappQueue.add).toHaveBeenCalledWith(NOTIFICATION_WHATSAPP_JOB_NAME, { companyId, deliveryId: 'wa-delivery-1' });
     });
 
-    it('does not enqueue a WhatsApp delivery when the channel is not configured, even for critical priority', async () => {
-      const { svc, withTenant, whatsappQueue } = makeService({ whatsappConfigured: false });
-      withTenant.mockImplementationOnce(single([{ id: 'notif-critical-2' }]));
+    it('does not enqueue a WhatsApp delivery when the user has not opted in, even if configured and critical', async () => {
+      const { svc, withTenant, whatsappQueue } = makeService({ whatsappConfigured: true });
+      withTenant.mockImplementation(multi([
+        [{ id: 'notif-wa-off' }],
+        [{ email: 'user1@example.com', phone: '+15551234567' }], // no preferences -> whatsappEnabled defaults false
+        [{ id: 'email-delivery-y' }],
+      ]));
 
       await svc.create(companyId, { userId, type: 'issue_assigned', title: 'Critical issue', priority: 'critical' });
 
       expect(whatsappQueue.add).not.toHaveBeenCalled();
     });
 
-    it('does not enqueue a WhatsApp delivery for high priority, even when configured (critical only)', async () => {
+    it('does not enqueue a WhatsApp delivery when the channel is not configured, even if opted in and critical', async () => {
+      const { svc, withTenant, whatsappQueue } = makeService({ whatsappConfigured: false });
+      withTenant.mockImplementation(multi([
+        [{ id: 'notif-wa-noconfig' }],
+        [{ email: 'user1@example.com', phone: '+15551234567', preferences: { notifications: { whatsappEnabled: true } } }],
+        [{ id: 'email-delivery-z' }],
+      ]));
+
+      await svc.create(companyId, { userId, type: 'issue_assigned', title: 'Critical issue', priority: 'critical' });
+
+      expect(whatsappQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('does not enqueue a WhatsApp delivery for high priority, even when opted in and configured (critical only)', async () => {
       const { svc, withTenant, whatsappQueue } = makeService({ whatsappConfigured: true });
-      withTenant.mockImplementationOnce(single([{ id: 'notif-high' }]));
+      withTenant.mockImplementation(multi([
+        [{ id: 'notif-wa-high' }],
+        [{ email: 'user1@example.com', phone: '+15551234567', preferences: { notifications: { whatsappEnabled: true } } }],
+        [{ id: 'email-delivery-w' }],
+      ]));
 
       await svc.create(companyId, { userId, type: 'rfi_overdue', title: 'RFI overdue', priority: 'high' });
 
@@ -131,8 +193,9 @@ describe('NotificationsService', () => {
     it('skips enqueueing the WhatsApp delivery when the user has no usable phone number on file', async () => {
       const { svc, withTenant, whatsappQueue } = makeService({ whatsappConfigured: true });
       withTenant.mockImplementation(multi([
-        [{ id: 'notif-critical-3' }], [{ email: 'user1@example.com' }], [{ id: 'email-delivery-y' }],
-        [{ phone: null }],
+        [{ id: 'notif-wa-nophone' }],
+        [{ email: 'user1@example.com', phone: null, preferences: { notifications: { whatsappEnabled: true } } }],
+        [{ id: 'email-delivery-v' }],
       ]));
 
       await svc.create(companyId, { userId, type: 'issue_assigned', title: 'Critical issue', priority: 'critical' });
@@ -162,6 +225,40 @@ describe('NotificationsService', () => {
       emitToUser.mockImplementationOnce(() => { throw new Error('socket server not ready'); });
 
       await expect(svc.create(companyId, { userId, type: 'issue_assigned', title: 'Assigned' })).resolves.toEqual({ id: 'notif-3' });
+    });
+  });
+
+  describe('preferences', () => {
+    it('getPreferences returns defaults when the user has none stored', async () => {
+      const { svc, withTenant } = makeService();
+      withTenant.mockImplementationOnce(single([{ preferences: null }]));
+
+      const prefs = await svc.getPreferences(companyId, userId);
+      expect(prefs).toEqual({ emailEnabled: true, whatsappEnabled: false, mutedCategories: [] });
+    });
+
+    it('getPreferences returns the stored notifications sub-object, merged over defaults', async () => {
+      const { svc, withTenant } = makeService();
+      withTenant.mockImplementationOnce(single([{ preferences: { notifications: { whatsappEnabled: true } } }]));
+
+      const prefs = await svc.getPreferences(companyId, userId);
+      expect(prefs).toEqual({ emailEnabled: true, whatsappEnabled: true, mutedCategories: [] });
+    });
+
+    it('updatePreferences merges the patch over the current preferences and persists it', async () => {
+      const { svc, withTenant } = makeService();
+      let updateArgs: unknown[] = [];
+      withTenant
+        .mockImplementationOnce(single([{ preferences: { notifications: { emailEnabled: true, whatsappEnabled: false, mutedCategories: ['rfi'] } } }]))
+        .mockImplementationOnce((_companyId: string, callback: WithTenantCallback) => {
+          const sql = Object.assign((...args: unknown[]) => { updateArgs = args; return Promise.resolve([]); }, { json: (v: unknown) => v });
+          return callback(sql);
+        });
+
+      const result = await svc.updatePreferences(companyId, userId, { whatsappEnabled: true });
+
+      expect(result).toEqual({ emailEnabled: true, whatsappEnabled: true, mutedCategories: ['rfi'] });
+      expect(updateArgs[1]).toEqual({ emailEnabled: true, whatsappEnabled: true, mutedCategories: ['rfi'] });
     });
   });
 
