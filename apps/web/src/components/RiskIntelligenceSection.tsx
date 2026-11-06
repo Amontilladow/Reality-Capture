@@ -364,7 +364,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
                   <DashCard
                     title="AI briefing"
                     aside={
-                      <button onClick={() => aiBriefingMutation.mutate()} disabled={aiBriefingMutation.isPending} className="btn-secondary !rounded-full !h-8 text-xs">
+                      <button onClick={() => aiBriefingMutation.mutate()} disabled={aiBriefingMutation.isPending} className="btn-secondary">
                         {aiBriefingMutation.isPending ? 'Generating…' : aiBriefingMutation.data ? 'Regenerate' : 'Generate'}
                       </button>
                     }
@@ -439,7 +439,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
           {(topQuery.data?.length ?? 0) > 0 && (
             <MobileFold title="Top management risks" summary={`${topQuery.data!.length} risks to raise with management`}>
             <div className="space-y-2">
-              <SectionHeader title="Top Management Risks" size="sm" />
+              <SectionHeader title="Top management risks" size="sm" />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {(topQuery.data ?? []).map((r) => (
                   <button key={r.id} onClick={() => openRisk(r.id)} className="panel tick-frame p-4 text-left hover:bg-base-700 transition-colors space-y-2">
@@ -463,7 +463,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
           {(emergingQuery.data?.length ?? 0) > 0 && (
             <MobileFold title="Emerging risks" summary={`${emergingQuery.data!.length} new or rising`}>
             <div className="space-y-2">
-              <SectionHeader title="Emerging Risks" size="sm" />
+              <SectionHeader title="Emerging risks" size="sm" />
               <div className="panel tick-frame divide-y divide-base-700/60">
                 {(emergingQuery.data ?? []).map((r) => (
                   <button key={r.id} onClick={() => openRisk(r.id)} className="w-full flex items-center justify-between px-4 py-4 text-left hover:bg-base-700 transition-colors">
@@ -486,7 +486,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
           {(clustersQuery.data?.length ?? 0) > 0 && (
             <MobileFold title="Risk by location" summary={`${clustersQuery.data!.length} locations`}>
             <div className="space-y-2">
-              <SectionHeader title="Risk Concentration by Location" size="sm" />
+              <SectionHeader title="Risk concentration by location" size="sm" />
               <div className="panel tick-frame divide-y divide-base-700/60">
                 {(clustersQuery.data ?? []).map((c) => (
                   <div key={c.location} className="flex items-center justify-between px-4 py-2 text-sm">
@@ -643,12 +643,12 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
                 <button
                   onClick={() => dueDateMutation.mutate(dueDateInput ? new Date(dueDateInput).toISOString() : null)}
                   disabled={dueDateMutation.isPending}
-                  className="btn-secondary !px-2 !py-2 text-xs shrink-0"
+                  className="btn-secondary !px-2 !py-2 shrink-0"
                 >
                   Save
                 </button>
                 {risk.dueDate && (
-                  <button onClick={() => { setDueDateInput(''); dueDateMutation.mutate(null); }} disabled={dueDateMutation.isPending} className="btn-ghost !px-2 !py-2 text-xs shrink-0">
+                  <button onClick={() => { setDueDateInput(''); dueDateMutation.mutate(null); }} disabled={dueDateMutation.isPending} className="btn-ghost !px-2 !py-2 shrink-0">
                     Clear
                   </button>
                 )}
@@ -667,7 +667,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
           <div>
             <div className="flex items-center justify-between !mb-2">
               <div className="field-label !mb-0">AI explanation</div>
-              <button onClick={() => aiExplanationMutation.mutate()} disabled={aiExplanationMutation.isPending} className="btn-secondary !px-2 !py-2 text-xs">
+              <button onClick={() => aiExplanationMutation.mutate()} disabled={aiExplanationMutation.isPending} className="btn-secondary !px-2 !py-2 ">
                 {aiExplanationMutation.isPending ? 'Generating…' : aiExplanationMutation.data ? 'Regenerate' : 'Generate'}
               </button>
             </div>
@@ -704,7 +704,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
 
           <HumanAssessmentPanel projectId={projectId} risk={risk} onChanged={invalidate} />
 
-          <button onClick={() => onViewGraph(risk.rootNodeId)} className="btn-secondary !px-2 !py-2 text-xs">
+          <button onClick={() => onViewGraph(risk.rootNodeId)} className="btn-secondary !px-2 !py-2 ">
             View in Risk Graph
           </button>
 
@@ -742,7 +742,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
               {(Object.keys(STATUS_LABELS) as RiskStatus[]).map((s) => (
                 <button
                   key={s} onClick={() => statusMutation.mutate(s)} disabled={statusMutation.isPending}
-                  className={`btn-secondary !px-2 !py-2 text-xs ${risk.status === s ? '!bg-blueprint/20 !text-blueprint' : ''}`}
+                  className={`btn-secondary !px-2 !py-2 ${risk.status === s ? '!bg-blueprint/20 !text-blueprint' : ''}`}
                 >
                   {STATUS_LABELS[s]}
                 </button>
@@ -755,7 +755,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
             {risk.overrideScore !== undefined && risk.overrideScore !== null ? (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-ink-500">Override reason: {risk.overrideReason}</span>
-                <button onClick={() => clearOverrideMutation.mutate()} className="btn-secondary !px-2 !py-2 text-xs">Clear override</button>
+                <button onClick={() => clearOverrideMutation.mutate()} className="btn-secondary !px-2 !py-2 ">Clear override</button>
               </div>
             ) : (
               <div className="flex items-center gap-2 flex-wrap">
@@ -764,7 +764,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
                 <button
                   onClick={() => overrideMutation.mutate()}
                   disabled={overrideMutation.isPending || overrideReason.length < 3}
-                  className="btn-secondary !px-2 !py-2 text-xs"
+                  className="btn-secondary !px-2 !py-2 "
                 >
                   Apply override
                 </button>
@@ -867,13 +867,13 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
             {' '}({risk.discrepancy!.levelGap} level{risk.discrepancy!.levelGap === 1 ? '' : 's'} apart).
           </p>
           <div className="flex items-center gap-2 flex-wrap">
-            <button onClick={() => keepHumanMutation.mutate()} disabled={keepHumanMutation.isPending} className="btn-secondary !px-2 !py-2 text-xs">
+            <button onClick={() => keepHumanMutation.mutate()} disabled={keepHumanMutation.isPending} className="btn-secondary !px-2 !py-2 ">
               Keep Human Assessment
             </button>
-            <button onClick={() => acceptAiMutation.mutate()} disabled={acceptAiMutation.isPending} className="btn-secondary !px-2 !py-2 text-xs">
+            <button onClick={() => acceptAiMutation.mutate()} disabled={acceptAiMutation.isPending} className="btn-secondary !px-2 !py-2 ">
               Accept AI Assessment
             </button>
-            <button onClick={() => setExpanded(true)} className="btn-secondary !px-2 !py-2 text-xs">
+            <button onClick={() => setExpanded(true)} className="btn-secondary !px-2 !py-2 ">
               Update Assessment
             </button>
           </div>
@@ -924,7 +924,7 @@ export function HumanAssessmentPanel({ projectId, risk, nodeType, entityId, onCh
             ) : (
               <span className="text-xs text-ink-500">Select probability and impact to see the score.</span>
             )}
-            <button onClick={() => mutation.mutate()} disabled={!canSave || mutation.isPending} className="btn-primary !px-2 !py-2 text-xs ml-auto">
+            <button onClick={() => mutation.mutate()} disabled={!canSave || mutation.isPending} className="btn-primary !px-2 !py-2 ml-auto">
               {mutation.isPending ? 'Saving…' : 'Save assessment'}
             </button>
           </div>

@@ -110,8 +110,8 @@ export default function SiteDrawingHubPage() {
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: 'Projects', to: '/projects' }, { label: projectQuery.data?.name ?? 'Loading…', to: `/projects/${projectId}` }, { label: 'Site Drawings' }]}
-        title="Site Drawing Hub"
+        breadcrumbs={[{ label: 'Projects', to: '/projects' }, { label: projectQuery.data?.name ?? 'Loading…', to: `/projects/${projectId}` }, { label: 'Site drawings' }]}
+        title="Site drawing hub"
         subtitle="Discover, open and verify the latest valid construction drawings."
         actions={
           <div className="flex items-center gap-2">
@@ -165,7 +165,7 @@ export default function SiteDrawingHubPage() {
             {Object.entries(WORKFLOW_STATUS_LABELS).map(([s, label]) => <option key={s} value={s}>{label}</option>)}
           </Listbox>
           {hasActiveFilters && (
-            <button onClick={() => { setSearchInput(''); setFilters(EMPTY_FILTERS); }} className="btn-ghost !px-2 !py-2 text-xs ml-auto">
+            <button onClick={() => { setSearchInput(''); setFilters(EMPTY_FILTERS); }} className="btn-ghost !px-2 !py-2 ml-auto">
               Reset filters
             </button>
           )}
@@ -176,7 +176,7 @@ export default function SiteDrawingHubPage() {
         {listQuery.isError && (
           <div className="panel tick-frame p-10 text-center space-y-2">
             <p className="text-sm text-danger">{apiErrorMessage(listQuery.error)}</p>
-            <button onClick={() => listQuery.refetch()} className="btn-secondary !px-4 !py-2 text-xs">Retry</button>
+            <button onClick={() => listQuery.refetch()} className="btn-secondary !px-4 !py-2 ">Retry</button>
           </div>
         )}
 
@@ -194,7 +194,7 @@ export default function SiteDrawingHubPage() {
                       <th className="px-4 py-2 font-medium">Rev.</th>
                       <th className="px-4 py-2 font-medium">Status</th>
                       <th className="px-4 py-2 font-medium">Source</th>
-                      <th className="px-4 py-2 font-medium">Last Verified</th>
+                      <th className="px-4 py-2 font-medium">Last verified</th>
                       <th className="px-4 py-2 font-medium">Offline</th>
                     </tr>
                   </thead>
@@ -252,8 +252,8 @@ export default function SiteDrawingHubPage() {
               <div className="flex items-center justify-between text-xs text-ink-500 px-2">
                 <span>Page {page} of {totalPages} · {total} drawing{total === 1 ? '' : 's'}</span>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="btn-ghost !px-2 !py-2 text-xs disabled:opacity-40">Previous</button>
-                  <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn-ghost !px-2 !py-2 text-xs disabled:opacity-40">Next</button>
+                  <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="btn-ghost !px-2 !py-2 disabled:opacity-40">Previous</button>
+                  <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn-ghost !px-2 !py-2 disabled:opacity-40">Next</button>
                 </div>
               </div>
             )}

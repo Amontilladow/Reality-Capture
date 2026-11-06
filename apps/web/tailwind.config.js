@@ -97,18 +97,21 @@ export default {
       // arbitrary values across pages (PageHeader's eyebrow, issue numbers);
       // named here so new code reaches for a token instead of another magic number.
       fontSize: {
-        // One modular scale, ratio 1.25 (major third), anchored on 14px body
-        // text (text-sm). Each step is the one below times 1.25:
-        //   xs 11.2 / sm 14 / base 17.5 / xl 21.9 / 2xl 27.3 / 3xl 34.2 /
-        //   4xl 42.7 / 5xl 53.4 / 6xl 66.8 / 7xl 83.4  (px)
-        // lg shares base's step and caption/axis/eyebrow share xs's, so no
-        // size exists off the scale. Line heights land on the 4px half-grid.
-        xs: ['0.7rem', { lineHeight: '1rem' }],
+        // A product UI scale anchored on 14px body text (text-sm), in even
+        // pixel steps so neighbouring sizes stay distinct but never jump:
+        //   xs 12 / sm 14 / base 16 / lg 18 / xl 20 / 2xl 24 / 3xl 30 /
+        //   4xl 36 / 5xl 48 / 6xl 60 / 7xl 72  (px, desktop)
+        // 12px is the floor: the old 1.25 ratio put xs (captions, labels,
+        // chips, nav headings; ~860 call sites) at 11.2px, too small to read
+        // beside 14px controls, and base at 17.5px, too big beside them.
+        // caption/axis/eyebrow share xs's step. Line heights land on the
+        // 4px grid.
+        xs: ['0.75rem', { lineHeight: '1rem' }],
         sm: ['0.875rem', { lineHeight: '1.25rem' }],
-        base: ['1.09375rem', { lineHeight: '1.5rem' }],
-        lg: ['1.09375rem', { lineHeight: '1.5rem' }],
-        xl: ['1.3671875rem', { lineHeight: '1.75rem' }],
-        '2xl': ['1.708984375rem', { lineHeight: '2rem' }],
+        base: ['1rem', { lineHeight: '1.5rem' }],
+        lg: ['1.125rem', { lineHeight: '1.75rem' }],
+        xl: ['1.25rem', { lineHeight: '1.75rem' }],
+        '2xl': ['1.5rem', { lineHeight: '2rem' }],
         // Display sizes resolve through --rc-fs-* (index.css): on a phone
         // each one steps down the same scale (5xl/6xl/7xl by two steps),
         // so a KPI number or hero line never dwarfs the text around it.
@@ -117,10 +120,10 @@ export default {
         '5xl': ['var(--rc-fs-5xl)', { lineHeight: '1' }],
         '6xl': ['var(--rc-fs-6xl)', { lineHeight: '1' }],
         '7xl': ['var(--rc-fs-7xl)', { lineHeight: '1' }],
-        eyebrow: ['0.7rem', { lineHeight: '1rem', letterSpacing: '0.08em' }], // uppercase mono section/page labels
-        kpi: ['1.708984375rem', { lineHeight: '2rem', letterSpacing: '-0.01em' }], // dashboard/report stat-tile numbers (2xl step)
-        caption: ['0.7rem', { lineHeight: '1rem' }], // chart value labels, dense metadata (xs step)
-        axis: ['0.7rem', { lineHeight: '1rem' }], // chart tick labels (xs step)
+        eyebrow: ['0.75rem', { lineHeight: '1rem', letterSpacing: '0.08em' }], // uppercase mono section/page labels
+        kpi: ['1.5rem', { lineHeight: '2rem', letterSpacing: '-0.01em' }], // dashboard/report stat-tile numbers (2xl step)
+        caption: ['0.75rem', { lineHeight: '1rem' }], // chart value labels, dense metadata (xs step)
+        axis: ['0.75rem', { lineHeight: '1rem' }], // chart tick labels (xs step)
       },
       // Shadows are tinted with --rc-shadow (espresso in light, a deep warm
       // brown in dark): never Tailwind's flat black.

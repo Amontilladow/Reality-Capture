@@ -365,7 +365,7 @@ export function ManageMembersModal({
                   </Listbox>
                   <button
                     onClick={() => approveMutation.mutate({ userId: u.id, companyRole: role })}
-                    className="btn-primary !py-2 !px-2 text-xs shrink-0"
+                    className="btn-primary !py-2 !px-2 shrink-0"
                     disabled={approveMutation.isPending}
                   >
                     Approve
@@ -421,7 +421,7 @@ export function ManageMembersModal({
                     {roleChanged && (
                       <button
                         onClick={() => changeRoleMutation.mutate({ userId: u.id, companyRole: role })}
-                        className="btn-primary !py-2 !px-2 text-xs shrink-0"
+                        className="btn-primary !py-2 !px-2 shrink-0"
                         disabled={changeRoleMutation.isPending}
                       >
                         Save
@@ -454,7 +454,7 @@ export function ManageMembersModal({
                     </p>
                     <div className="flex gap-2">
                       <input readOnly className="field-input font-mono text-xs" value={resetResult.resetLink} onClick={(e) => e.currentTarget.select()} />
-                      <button onClick={() => navigator.clipboard.writeText(resetResult.resetLink)} className="btn-secondary shrink-0 !py-2 text-xs">
+                      <button onClick={() => navigator.clipboard.writeText(resetResult.resetLink)} className="btn-secondary shrink-0 !py-2 ">
                         Copy
                       </button>
                     </div>
@@ -512,7 +512,7 @@ export function ManageMembersModal({
         </div>
 
         <div className="pt-2 border-t border-base-600 space-y-4">
-          <div className="field-label">Project Organizations</div>
+          <div className="field-label">Project organizations</div>
           <p className="text-xs text-ink-500">
             Configure the 5 stakeholder slots shown on every RFI’s header and exported PDF: name, reference,
             contact, and logo. Requires the 'Manage team' permission on this project.
@@ -665,7 +665,7 @@ function OrganizationRow({
           <button
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending}
-            className="btn-primary !px-4 !py-2 text-xs shrink-0"
+            className="btn-primary !px-4 !py-2 shrink-0"
           >
             {saveMutation.isPending ? 'Saving…' : 'Save'}
           </button>

@@ -353,7 +353,7 @@ export default function FloorPlanViewer() {
                   </button>
                 </div>
               ) : !placingMode ? (
-                <button onClick={() => setPlacingMode(true)} className="btn-secondary text-xs !py-2">
+                <button onClick={() => setPlacingMode(true)} className="btn-secondary !py-2">
                   + Add pin
                 </button>
               ) : (

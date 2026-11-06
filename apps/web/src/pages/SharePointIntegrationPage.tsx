@@ -73,7 +73,7 @@ export default function SharePointIntegrationPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Admin" title="SharePoint Integration" subtitle="Connect a company's SharePoint tenant and map projects to a document library for the Site Drawing Hub." />
+      <PageHeader eyebrow="Admin" title="SharePoint integration" subtitle="Connect a company's SharePoint tenant and map projects to a document library for the Site Drawing Hub." />
       <div className="p-6 space-y-6 max-w-3xl">
         <div className="panel tick-frame p-6 space-y-4">
           <div>
@@ -110,7 +110,7 @@ export default function SharePointIntegrationPage() {
           )}
 
           {status?.connected && status.isActive && (
-            <button onClick={() => disconnectMutation.mutate()} disabled={disconnectMutation.isPending} className="btn-ghost text-xs text-danger">
+            <button onClick={() => disconnectMutation.mutate()} disabled={disconnectMutation.isPending} className="btn-ghost text-danger">
               {disconnectMutation.isPending ? 'Disconnecting…' : 'Disconnect'}
             </button>
           )}
@@ -130,7 +130,7 @@ export default function SharePointIntegrationPage() {
 
         <div className="panel tick-frame p-6 space-y-4">
           <div>
-            <h2 className="text-sm font-semibold text-ink-100">Project Site Mapping</h2>
+            <h2 className="text-sm font-semibold text-ink-100">Project site mapping</h2>
             <p className="text-xs text-ink-500 mt-2">
               Map a project onto one SharePoint site + document library. The drive is checked for reachability before
               the mapping is saved. Column overrides are optional. Without them, the drawing number/title fall back
@@ -149,10 +149,10 @@ export default function SharePointIntegrationPage() {
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs text-ok">Mapped to drive {existingMapping.driveId}.</p>
                   <div className="flex gap-2">
-                    <button onClick={() => syncMutation.mutate()} disabled={syncMutation.isPending} className="btn-secondary !px-2 !py-2 text-xs">
+                    <button onClick={() => syncMutation.mutate()} disabled={syncMutation.isPending} className="btn-secondary !px-2 !py-2 ">
                       {syncMutation.isPending ? 'Syncing…' : 'Sync now'}
                     </button>
-                    <button onClick={() => unmapMutation.mutate()} disabled={unmapMutation.isPending} className="btn-ghost !px-2 !py-2 text-xs text-danger">
+                    <button onClick={() => unmapMutation.mutate()} disabled={unmapMutation.isPending} className="btn-ghost !px-2 !py-2 text-danger">
                       Unmap
                     </button>
                   </div>

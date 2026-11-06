@@ -27,7 +27,7 @@ export const gettingStartedArticles: HelpArticle[] = [
   {
     slug: 'logging-in',
     category: 'getting-started',
-    title: 'Logging In',
+    title: 'Logging in',
     summary: 'How to sign in to your EngineeringOS account.',
     whatItDoes: 'Signs you in with your email and password.',
     whoCanUse: 'Anyone with an EngineeringOS account at your company.',
@@ -51,7 +51,7 @@ export const gettingStartedArticles: HelpArticle[] = [
   {
     slug: 'resetting-your-password',
     category: 'getting-started',
-    title: 'Resetting Your Password',
+    title: 'Resetting your password',
     summary: 'How to reset your password if you\'ve forgotten it, or get help from your admin.',
     whatItDoes: 'Lets you set a new password yourself by email, or have your company admin generate a reset link for you.',
     whoCanUse: 'Any user, for their own account (self-service). Company admins and super admins can also generate a reset link for someone else from Team & Permissions.',
@@ -72,7 +72,7 @@ export const gettingStartedArticles: HelpArticle[] = [
   {
     slug: 'understanding-your-account',
     category: 'getting-started',
-    title: 'Understanding Your Account',
+    title: 'Understanding your account',
     summary: 'Where to see your own name, email, and how to sign out.',
     whatItDoes: 'The bottom of the left sidebar always shows your name and email, with a "Sign out" button underneath.',
     whoCanUse: 'Every signed-in user.',
@@ -87,7 +87,7 @@ export const gettingStartedArticles: HelpArticle[] = [
   {
     slug: 'understanding-your-organization',
     category: 'getting-started',
-    title: 'Understanding Your Organization',
+    title: 'Understanding your organization',
     summary: 'What your organization slot (Client, PMC, Lead Design Consultant, Main Contractor, Subcontractor) means on a project.',
     whatItDoes: 'On a given project, you may be assigned to one of five organization slots that describe which party you represent: Client, PMC, Lead Design Consultant, Main Contractor, or Subcontractor. This is used for RFI routing and project reporting — it is separate from your company role.',
     whenToUse: 'Relevant whenever you\'re working with RFIs or seeing project participants grouped by organization.',
@@ -102,7 +102,7 @@ export const gettingStartedArticles: HelpArticle[] = [
   {
     slug: 'understanding-your-role',
     category: 'getting-started',
-    title: 'Understanding Your Role',
+    title: 'Understanding your role',
     summary: 'How your company role and project role together decide what you can see and do.',
     whatItDoes: 'Two separate things decide your permissions: your company role (set once, company-wide — e.g. Project Manager, Site Engineer is actually a project role, Consultant, Client Representative) and your project role on each specific project (Project Lead, Site Engineer, Surveyor, Document Controller, Capture Operator, or Viewer, set per project). A project\'s own Project Lead can do almost anything on that project without needing extra permissions; other actions (managing RFIs, approving reviews, verifying snag items, managing the team) require a specific permission grant from an admin.',
     whenToUse: 'Whenever a button or action seems to be missing — this is almost always a role/permission question.',
@@ -121,7 +121,7 @@ export const gettingStartedArticles: HelpArticle[] = [
   {
     slug: 'navigating-the-platform',
     category: 'getting-started',
-    title: 'Navigating the Platform',
+    title: 'Navigating the platform',
     summary: 'How the left sidebar and top header work, on desktop and mobile.',
     whatItDoes: 'The left sidebar is the main way to move around: company-wide sections when you\'re not inside a project, and that project\'s own modules (Captures, Floor Plans, Issues, Snagging, RFIs, Submittals, Transmittals, QA Inspections, Documents, Progress Report, Reports, BIM Models, BuildLens, AI Assistant, Risk) once you are.',
     whoCanUse: 'Every signed-in user — which modules actually appear in a project depends on your access.',
@@ -136,7 +136,7 @@ export const gettingStartedArticles: HelpArticle[] = [
   {
     slug: 'selecting-a-project',
     category: 'getting-started',
-    title: 'Selecting a Project',
+    title: 'Selecting a project',
     summary: 'How to open a project, and switch between projects once inside one.',
     whatItDoes: 'Opens a specific project\'s workspace. Every non-archived project belonging to your company appears in your list and can be opened -- there is no membership restriction on viewing a project\'s own pages and records. What you can change inside it still depends on your role and any permissions granted on that project (see "Understanding Project Access").',
     whoCanUse: 'Any signed-in user in your company.',
@@ -153,7 +153,7 @@ export const gettingStartedArticles: HelpArticle[] = [
   {
     slug: 'understanding-notifications',
     category: 'getting-started',
-    title: 'Understanding Notifications',
+    title: 'Understanding notifications',
     summary: 'What triggers a notification and where to see them.',
     whatItDoes: 'The bell icon at the top of the sidebar shows notifications for things that happen to records you\'re involved in — for example, being assigned to an issue, a new comment on an issue you\'re assigned to, or an issue being forwarded to you. Selecting a notification opens the relevant record.',
     whoCanUse: 'Every signed-in user, for notifications about their own activity.',

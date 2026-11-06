@@ -58,7 +58,7 @@ export default function ProjectList() {
             <div className="enter-stagger grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
               <StatTile size="lg" label="Projects" value={kpis.total} />
               <StatTile size="lg" label="Active" value={kpis.active} />
-              <StatTile size="lg" label="Open Issues" value={kpis.openIssues} tone={kpis.openIssues > 0 ? 'danger' : undefined} />
+              <StatTile size="lg" label="Open issues" value={kpis.openIssues} tone={kpis.openIssues > 0 ? 'danger' : undefined} />
               <StatTile size="lg" label="Captures" value={kpis.captures} />
             </div>
           )}

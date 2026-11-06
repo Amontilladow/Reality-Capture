@@ -7,9 +7,9 @@ export const SUBMITTAL_PRIORITIES: SubmittalPriority[] = ['critical', 'high', 'm
 
 export const SUBMITTAL_STATUS_LABELS: Record<SubmittalStatus, string> = {
   submitted: 'Submitted',
-  under_review: 'Under Review',
+  under_review: 'Under review',
   approved: 'Approved',
-  approved_as_noted: 'Approved as Noted',
+  approved_as_noted: 'Approved as noted',
   revise_and_resubmit: 'Revise & Resubmit',
   rejected: 'Rejected',
   void: 'Void',

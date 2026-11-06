@@ -53,7 +53,7 @@ export default function ProgressReportExternalPage() {
       </div>
       <div className="w-full max-w-3xl">
         <div className="flex items-center gap-2 mb-8 justify-center">
-          <LogoMark className="w-7 h-7" />
+          <LogoMark className="w-9 h-9" />
           <span className="font-semibold tracking-tight text-ink-100">EngineeringOS</span>
         </div>
 
@@ -73,7 +73,7 @@ export default function ProgressReportExternalPage() {
                 {report.building ? ` · ${report.building.name}` : ''}
                 {report.level ? ` · ${report.level.name}` : ''}
               </div>
-              <h1 className="text-xl font-semibold text-ink-100 mt-2">Progress Report</h1>
+              <h1 className="text-xl font-semibold text-ink-100 mt-2">Progress report</h1>
               <div className="text-xs text-ink-500 mt-2">
                 {new Date(report.dateFrom).toLocaleDateString('en-GB')} to {new Date(report.dateTo).toLocaleDateString('en-GB')}
               </div>
@@ -82,8 +82,8 @@ export default function ProgressReportExternalPage() {
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-6">
               {[
                 { label: 'Captures', value: report.captureCount },
-                { label: 'New Issues', value: report.newIssues.length },
-                { label: 'Closed Issues', value: report.closedIssues.length },
+                { label: 'New issues', value: report.newIssues.length },
+                { label: 'Closed issues', value: report.closedIssues.length },
                 { label: 'Overdue', value: report.overdueIssues.length },
                 { label: 'Blockers', value: report.blockers.length },
               ].map((t) => (
@@ -121,9 +121,9 @@ export default function ProgressReportExternalPage() {
               </div>
             )}
 
-            <IssueList title="New Issues" items={report.newIssues} emptyText="No new issues in this date range." />
-            <IssueList title="Closed Issues" items={report.closedIssues} emptyText="No issues closed in this date range." />
-            <IssueList title="Overdue Issues" items={report.overdueIssues} emptyText="No overdue issues." />
+            <IssueList title="New issues" items={report.newIssues} emptyText="No new issues in this date range." />
+            <IssueList title="Closed issues" items={report.closedIssues} emptyText="No issues closed in this date range." />
+            <IssueList title="Overdue issues" items={report.overdueIssues} emptyText="No overdue issues." />
             <IssueList title="Blockers" items={report.blockers} emptyText="No critical/high-priority open issues." />
           </div>
         )}

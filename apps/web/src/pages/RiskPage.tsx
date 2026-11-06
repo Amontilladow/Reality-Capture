@@ -19,8 +19,8 @@ export default function RiskPage() {
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: 'Projects', to: '/projects' }, { label: projectQuery.data?.name ?? 'Loading…', to: `/projects/${projectId}` }, { label: 'Risk Intelligence' }]}
-        title="Risk Intelligence"
+        breadcrumbs={[{ label: 'Projects', to: '/projects' }, { label: projectQuery.data?.name ?? 'Loading…', to: `/projects/${projectId}` }, { label: 'Risk intelligence' }]}
+        title="Risk intelligence"
         subtitle="Project risk exposure, mitigation progress and management actions."
       />
       <DashCanvas>

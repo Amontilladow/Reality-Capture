@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
-import { LogoMark } from '../components/ui/LogoMark';
+import { BrandLockup } from '../components/ui/LogoMark';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { BrandPanel } from '../components/brand/BrandPanel';
 import { DashCard, Glyph, NoirList, RadialGauge } from '../components/dash/Dash';
@@ -42,19 +42,10 @@ const NAV = [
   { href: '#how-it-works', label: 'How it works' },
 ];
 
-function BrandPill() {
-  return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-ink-500/50 pl-2 pr-6 py-2">
-      <LogoMark className="w-8 h-8" />
-      <span className="text-lg font-light tracking-tight">Reality Capture</span>
-    </div>
-  );
-}
-
 function SiteHeader() {
   return (
     <header className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex items-center justify-between gap-4">
-      <BrandPill />
+      <BrandLockup />
       <nav aria-label="Page sections" className="hidden lg:flex items-center gap-2 rounded-full bg-base-800/80 p-2">
         {NAV.map((n) => (
           <a key={n.href} href={n.href} className="px-4 h-9 inline-flex items-center whitespace-nowrap rounded-full text-sm text-ink-300 hover:bg-base-700 hover:text-ink-100 transition-colors">
@@ -204,7 +195,7 @@ function ClosingCta() {
 function SiteFooter() {
   return (
     <footer className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-      <BrandPill />
+      <BrandLockup size="md" />
       <p className="text-xs text-ink-500">&copy; {new Date().getFullYear()} EngineeringOS. All rights reserved.</p>
     </footer>
   );

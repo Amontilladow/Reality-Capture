@@ -170,8 +170,8 @@ export default function GisPrepPage() {
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: 'Projects', to: '/projects' }, { label: projectQuery.data?.name ?? 'Loading…', to: `/projects/${projectId}` }, { label: 'GIS Preparation' }]}
-        title="GIS Preparation"
+        breadcrumbs={[{ label: 'Projects', to: '/projects' }, { label: projectQuery.data?.name ?? 'Loading…', to: `/projects/${projectId}` }, { label: 'GIS preparation' }]}
+        title="GIS preparation"
         subtitle="Prepare DXF/DWG drawings for ADM / DRM GIS submission and run preliminary checks."
       />
       <div className="p-6 space-y-4">
@@ -393,8 +393,8 @@ function JobDetail({ projectId, jobId, onRerun }: { projectId: string; jobId: st
 
       {downloads.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {job.packageUrl && <a className="btn-secondary !px-4 !py-2 text-xs" href={job.packageUrl}>Download full package (.zip)</a>}
-          {downloads.map(o => <a key={o.path} className="btn-ghost !px-4 !py-2 text-xs" href={o.url} target="_blank" rel="noreferrer">{o.path.replace(/^output\//, '')}</a>)}
+          {job.packageUrl && <a className="btn-secondary !px-4 !py-2 " href={job.packageUrl}>Download full package (.zip)</a>}
+          {downloads.map(o => <a key={o.path} className="btn-ghost !px-4 !py-2 " href={o.url} target="_blank" rel="noreferrer">{o.path.replace(/^output\//, '')}</a>)}
         </div>
       )}
 
@@ -434,7 +434,7 @@ function JobDetail({ projectId, jobId, onRerun }: { projectId: string; jobId: st
         </div>
       )}
       {!ACTIVE.includes(job.status) && (
-        <button className="btn-secondary !px-4 !py-2 text-xs" disabled={rerun.isPending} onClick={() => rerun.mutate(job)}>
+        <button className="btn-secondary !px-4 !py-2 " disabled={rerun.isPending} onClick={() => rerun.mutate(job)}>
           {rerun.isPending ? 'Queuing…' : 'Re-run with these decisions'}
         </button>
       )}
@@ -509,8 +509,8 @@ function ConversionDetail({ projectId, job, onRerun }: { projectId: string; job:
         <p className="text-xs text-danger">Blocked until provided (never guessed): {report.identifiers_missing!.join(', ')}</p>
       )}
       <div className="flex flex-wrap gap-2">
-        {job.packageUrl && <a className="btn-secondary !px-4 !py-2 text-xs" href={job.packageUrl}>Download full package (.zip)</a>}
-        {downloads.map(o => <a key={o.path} className="btn-ghost !px-4 !py-2 text-xs" href={o.url} target="_blank" rel="noreferrer">{o.path.replace(/^output\//, '')}</a>)}
+        {job.packageUrl && <a className="btn-secondary !px-4 !py-2 " href={job.packageUrl}>Download full package (.zip)</a>}
+        {downloads.map(o => <a key={o.path} className="btn-ghost !px-4 !py-2 " href={o.url} target="_blank" rel="noreferrer">{o.path.replace(/^output\//, '')}</a>)}
       </div>
       <table className="text-xs">
         <tbody>
@@ -541,7 +541,7 @@ function ConversionDetail({ projectId, job, onRerun }: { projectId: string; job:
               )}
             </div>
           ))}
-          <button className="btn-secondary !px-4 !py-2 text-xs" disabled={rerun.isPending || Object.keys(decisions).length === 0} onClick={() => rerun.mutate()}>
+          <button className="btn-secondary !px-4 !py-2 " disabled={rerun.isPending || Object.keys(decisions).length === 0} onClick={() => rerun.mutate()}>
             {rerun.isPending ? 'Queuing…' : 'Re-run with these decisions'}
           </button>
           {rerun.isError && <p className="text-xs text-danger">{apiErrorMessage(rerun.error)}</p>}

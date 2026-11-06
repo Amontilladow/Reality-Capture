@@ -65,7 +65,7 @@ export default function RfiExternalPage() {
       </div>
       <div className="w-full max-w-2xl">
         <div className="flex items-center gap-2 mb-8 justify-center">
-          <LogoMark className="w-7 h-7" />
+          <LogoMark className="w-9 h-9" />
           <span className="font-semibold tracking-tight text-ink-100">EngineeringOS</span>
         </div>
 

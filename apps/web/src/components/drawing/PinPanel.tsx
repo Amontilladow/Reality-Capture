@@ -218,10 +218,10 @@ export function PinPanel({
                   onChange={(e) => setTitle(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') renameMutation.mutate(); if (e.key === 'Escape') { setTitle(lastSavedTitle.current); setEditingTitle(false); } }}
                 />
-                <button onClick={() => renameMutation.mutate()} disabled={renameMutation.isPending} className="btn-primary !px-4 !py-2 text-xs shrink-0">
+                <button onClick={() => renameMutation.mutate()} disabled={renameMutation.isPending} className="btn-primary !px-4 !py-2 shrink-0">
                   Save
                 </button>
-                <button onClick={() => { setTitle(lastSavedTitle.current); setEditingTitle(false); }} className="btn-ghost !px-2 !py-2 text-xs shrink-0">Cancel</button>
+                <button onClick={() => { setTitle(lastSavedTitle.current); setEditingTitle(false); }} className="btn-ghost !px-2 !py-2 shrink-0">Cancel</button>
               </div>
             ) : (
               <button onClick={() => setEditingTitle(true)} className="flex items-center gap-2 min-w-0 hover:text-blueprint text-left">
@@ -257,7 +257,7 @@ export function PinPanel({
                 <button
                   onClick={() => convertToSnagMutation.mutate()}
                   disabled={convertToSnagMutation.isPending}
-                  className="btn-ghost !px-2 !py-2 text-xs"
+                  className="btn-ghost !px-2 !py-2 "
                 >
                   {convertToSnagMutation.isPending ? 'Converting…' : 'Mark as snag'}
                 </button>
@@ -273,13 +273,13 @@ export function PinPanel({
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <button onClick={() => onMove(pin)} className="btn-ghost !px-2 !py-2 text-xs" title="Move this pin to a new spot on the drawing">
+            <button onClick={() => onMove(pin)} className="btn-ghost !px-2 !py-2 " title="Move this pin to a new spot on the drawing">
               Move
             </button>
             <button
               onClick={handleDelete}
               disabled={archiveMutation.isPending}
-              className="btn-ghost !px-2 !py-2 text-xs text-danger hover:!bg-danger/10"
+              className="btn-ghost !px-2 !py-2 text-danger hover:!bg-danger/10"
             >
               {archiveMutation.isPending ? 'Deleting…' : 'Delete'}
             </button>
@@ -308,10 +308,10 @@ export function PinPanel({
                   onChange={(e) => setNote(e.target.value)}
                 />
                 <div className="flex gap-2">
-                  <button onClick={() => noteMutation.mutate()} disabled={noteMutation.isPending} className="btn-primary !px-4 !py-2 text-xs">
+                  <button onClick={() => noteMutation.mutate()} disabled={noteMutation.isPending} className="btn-primary !px-4 !py-2 ">
                     {noteMutation.isPending ? 'Saving…' : 'Save note'}
                   </button>
-                  <button onClick={() => { setNote(lastSavedNote.current); setEditingNote(false); }} className="btn-ghost !px-2 !py-2 text-xs">Cancel</button>
+                  <button onClick={() => { setNote(lastSavedNote.current); setEditingNote(false); }} className="btn-ghost !px-2 !py-2 ">Cancel</button>
                 </div>
               </div>
             ) : note ? (
@@ -336,7 +336,7 @@ export function PinPanel({
                   className="w-full"
                   onSelect={(el) => elementMutation.mutate(el)}
                 />
-                <button onClick={() => setPickingElement(false)} className="btn-ghost !px-2 !py-2 text-xs">
+                <button onClick={() => setPickingElement(false)} className="btn-ghost !px-2 !py-2 ">
                   Cancel
                 </button>
               </div>
@@ -355,11 +355,11 @@ export function PinPanel({
                       View in 3D
                     </Link>
                   )}
-                  <button onClick={() => setPickingElement(true)} className="btn-ghost !px-2 !py-2 text-xs">Change</button>
+                  <button onClick={() => setPickingElement(true)} className="btn-ghost !px-2 !py-2 ">Change</button>
                   <button
                     onClick={() => elementMutation.mutate(null)}
                     disabled={elementMutation.isPending}
-                    className="btn-ghost !px-2 !py-2 text-xs text-danger hover:!bg-danger/10"
+                    className="btn-ghost !px-2 !py-2 text-danger hover:!bg-danger/10"
                   >
                     Unlink
                   </button>

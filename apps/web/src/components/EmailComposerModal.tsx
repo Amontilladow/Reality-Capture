@@ -130,12 +130,12 @@ export function EmailComposerModal({
   const canSend = !sending && uploadingCount === 0 && connectedProviders.length > 0;
 
   return (
-    <Modal open={open} onClose={() => { reset(); onClose(); }} title="Compose Email" wide>
+    <Modal open={open} onClose={() => { reset(); onClose(); }} title="Compose email" wide>
       <div className="space-y-4">
         {noProvidersConnected && (
           <Alert tone="warning" title="No mailbox connected">
             Connect your Outlook or Gmail account in{' '}
-            <Link to="/projects/email-settings" className="underline">Email Integration settings</Link> before sending.
+            <Link to="/projects/email-settings" className="underline">Email integration settings</Link> before sending.
           </Alert>
         )}
 

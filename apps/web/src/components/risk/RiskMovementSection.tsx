@@ -114,7 +114,7 @@ export function RiskMovementSection({ movement, isLoading, days, onDaysChange, o
                 key={d}
                 onClick={() => onDaysChange(d)}
                 aria-pressed={days === d}
-                className={`btn-secondary !px-2 !py-2 text-xs ${days === d ? '!bg-blueprint-muted !text-blueprint !border-blueprint/40' : ''}`}
+                className={`btn-secondary !px-2 !py-2 ${days === d ? '!bg-blueprint-muted !text-blueprint !border-blueprint/40' : ''}`}
               >
                 {d}d
               </button>

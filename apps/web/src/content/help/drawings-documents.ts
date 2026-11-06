@@ -12,7 +12,7 @@ export const drawingsDocumentsArticles: HelpArticle[] = [
   {
     slug: 'understanding-documents',
     category: 'drawings-documents',
-    title: 'Understanding Documents',
+    title: 'Understanding documents',
     summary: 'A general-purpose library of project files and external links, separate from floor plans, RFI attachments, or capture photos.',
     whatItDoes: 'Documents is its own module for project paperwork: drawings, specifications, method statements, risk assessments, test reports, and more, each with a type, an optional document number and revision, and either an uploaded file or a link to somewhere external.',
     whoCanUse: 'Any project member can view the list. Uploading, linking, and attaching requires "manage_project_records" (or being Project Lead).',
@@ -22,7 +22,7 @@ export const drawingsDocumentsArticles: HelpArticle[] = [
   {
     slug: 'uploading-a-document',
     category: 'drawings-documents',
-    title: 'Uploading Documents',
+    title: 'Uploading documents',
     summary: 'Adding a file, or a link to one, to the Documents library.',
     requiredPermissions: '"manage_project_records" permission, or being that project\'s Project Lead.',
     infoToEnter: ['Title', 'Document type', 'Document number (optional)', 'Revision (optional)', 'Either a file to upload, or an external URL'],
@@ -40,7 +40,7 @@ export const drawingsDocumentsArticles: HelpArticle[] = [
   {
     slug: 'understanding-document-revisions',
     category: 'drawings-documents',
-    title: 'Understanding Revision Information',
+    title: 'Understanding revision information',
     summary: 'The revision field is a free-text label, not an automatic version history.',
     whatItDoes: 'Each document has an optional "revision" text field (e.g. "Rev C") you set yourself when uploading. Uploading a newer version does not automatically supersede an older one -- both exist as separate entries unless you remove the old one.',
     notYetAvailable: true,
@@ -50,7 +50,7 @@ export const drawingsDocumentsArticles: HelpArticle[] = [
   {
     slug: 'understanding-document-permissions',
     category: 'drawings-documents',
-    title: 'Understanding Document Permissions',
+    title: 'Understanding document permissions',
     summary: 'Who can view versus add documents.',
     requiredPermissions: 'Viewing: open to any project member. Adding, linking to another record, or removing: "manage_project_records" (or Project Lead).',
     keywords: ['document permissions'],
@@ -58,7 +58,7 @@ export const drawingsDocumentsArticles: HelpArticle[] = [
   {
     slug: 'troubleshooting-document-uploads',
     category: 'drawings-documents',
-    title: 'Troubleshooting Uploads and Downloads',
+    title: 'Troubleshooting uploads and downloads',
     summary: 'A document upload or download isn\'t working.',
     troubleshootingSteps: [
       { problem: 'Upload fails', likelyCause: 'Unstable connection, or you lack "manage_project_records."', fix: 'Retry on a stable connection; confirm your permission with your project\'s admin if it still fails.' },
@@ -71,7 +71,7 @@ export const drawingsDocumentsArticles: HelpArticle[] = [
   {
     slug: 'understanding-transmittals',
     category: 'drawings-documents',
-    title: 'Understanding Transmittals',
+    title: 'Understanding transmittals',
     summary: 'A formal record of documents sent from one party to another.',
     whatItDoes: 'A Transmittal records that a set of items was sent to a named recipient, for a stated purpose (review, approval, record, construction, or as requested), with a status and optional due date.',
     whoCanUse: 'Any project member can create one. Editing or deleting requires "manage_project_records" (or Project Lead).',
@@ -81,7 +81,7 @@ export const drawingsDocumentsArticles: HelpArticle[] = [
   {
     slug: 'creating-a-transmittal',
     category: 'drawings-documents',
-    title: 'Creating a Transmittal',
+    title: 'Creating a transmittal',
     summary: 'Recording a new transmittal.',
     whoCanUse: 'Any project member.',
     infoToEnter: ['Subject', 'Recipient name', 'Recipient company (optional)', 'Purpose (for review / for approval / for record / for construction / as requested)', 'Items (free text listing what was sent)', 'Notes (optional)', 'Due date (optional)'],
@@ -94,7 +94,7 @@ export const drawingsDocumentsArticles: HelpArticle[] = [
   {
     slug: 'understanding-qa-inspections',
     category: 'drawings-documents',
-    title: 'Understanding QA Inspections',
+    title: 'Understanding QA inspections',
     summary: 'A dedicated record type for quality assurance/control inspections, separate from Issues and Snagging.',
     whatItDoes: 'A QA Inspection records a quality check: a title, an inspection type, a location, a checklist (free text), an assignee, and an inspection date.',
     whoCanUse: 'Any project member can create one. Editing or deleting requires "manage_project_records" (or Project Lead).',
@@ -104,7 +104,7 @@ export const drawingsDocumentsArticles: HelpArticle[] = [
   {
     slug: 'creating-a-qa-inspection',
     category: 'drawings-documents',
-    title: 'Creating a QA Inspection',
+    title: 'Creating a QA inspection',
     summary: 'Recording a new QA/QC inspection.',
     whoCanUse: 'Any project member.',
     infoToEnter: ['Title', 'Inspection type (optional)', 'Location (optional)', 'Checklist (free text)', 'Assignee (optional)', 'Inspection date (optional)'],

@@ -259,8 +259,8 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                   <th className="px-4 py-2 font-medium">Priority</th>
                   <th className="px-4 py-2 font-medium">Cost impact</th>
                   <th className="px-4 py-2 font-medium">Time impact</th>
-                  <th className="px-4 py-2 font-medium">Drawing/Model Updated</th>
-                  <th className="px-4 py-2 font-medium">Sent to Site</th>
+                  <th className="px-4 py-2 font-medium">Drawing/model updated</th>
+                  <th className="px-4 py-2 font-medium">Sent to site</th>
                   <th className="px-4 py-2 font-medium">Assignee</th>
                   <th className="px-4 py-2 font-medium">Due</th>
                   <th className="px-4 py-2 font-medium">Aging</th>

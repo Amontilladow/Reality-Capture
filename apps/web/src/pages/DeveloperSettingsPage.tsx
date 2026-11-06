@@ -22,7 +22,7 @@ function SecretReveal({ label, secret }: { label: string; secret: string }) {
       <p className="text-xs text-danger font-medium">{label}: copy it now, it won’t be shown again.</p>
       <div className="flex items-center gap-2">
         <input readOnly value={secret} className="field-input flex-1 text-xs font-mono" onFocus={(e) => e.target.select()} />
-        <button onClick={handleCopy} className="btn-secondary !px-4 !py-2 text-xs">{copied ? 'Copied!' : 'Copy'}</button>
+        <button onClick={handleCopy} className="btn-secondary !px-4 !py-2 ">{copied ? 'Copied!' : 'Copy'}</button>
       </div>
     </div>
   );
@@ -50,7 +50,7 @@ function SignupCodeSection() {
   return (
     <div className="panel tick-frame p-6 space-y-4">
       <div>
-        <h2 className="text-sm font-semibold text-ink-100">Self-Signup Code</h2>
+        <h2 className="text-sm font-semibold text-ink-100">Self-signup code</h2>
         <p className="text-xs text-ink-500 mt-2">
           Share this code (or the link below) with anyone who needs their own account: clients, PMC,
           consultants, contractors. They pick their own organization and position at signup; every new
@@ -66,7 +66,7 @@ function SignupCodeSection() {
       {code && (
         <div className="flex items-center gap-2">
           <input readOnly value={signupLink ?? ''} className="field-input flex-1 text-xs font-mono" onFocus={(e) => e.target.select()} />
-          <button onClick={copyLink} className="btn-secondary !px-4 !py-2 text-xs">Copy link</button>
+          <button onClick={copyLink} className="btn-secondary !px-4 !py-2 ">Copy link</button>
         </div>
       )}
 
@@ -74,7 +74,7 @@ function SignupCodeSection() {
 
       <button
         onClick={() => regenerateMutation.mutate()}
-        className="btn-secondary text-xs"
+        className="btn-secondary "
         disabled={regenerateMutation.isPending}
       >
         {regenerateMutation.isPending ? 'Generating…' : code ? 'Regenerate code (invalidates the old one)' : 'Generate signup code'}
@@ -100,7 +100,7 @@ function ApiKeysSection() {
   return (
     <div className="panel tick-frame p-6 space-y-4">
       <div>
-        <h2 className="text-sm font-semibold text-ink-100">Public API Keys</h2>
+        <h2 className="text-sm font-semibold text-ink-100">Public API keys</h2>
         <p className="text-xs text-ink-500 mt-2">
           Authenticate read-only requests to projects, captures, issues and progress via the X-API-Key header.
         </p>
@@ -130,7 +130,7 @@ function ApiKeysSection() {
                 {k.revokedAt && <span className="badge bg-base-700 text-ink-500 ml-2">Revoked</span>}
               </div>
               {!k.revokedAt && (
-                <button onClick={() => revokeMutation.mutate(k.id)} disabled={revokeMutation.isPending} className="btn-ghost !px-2 !py-2 text-xs text-danger">
+                <button onClick={() => revokeMutation.mutate(k.id)} disabled={revokeMutation.isPending} className="btn-ghost !px-2 !py-2 text-danger">
                   Revoke
                 </button>
               )}
@@ -262,7 +262,7 @@ export default function DeveloperSettingsPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Company Settings" title="Developer" />
+      <PageHeader eyebrow="Company settings" title="Developer" />
       <div className="p-6 space-y-6 max-w-3xl">
         {isSuperAdmin && <SignupCodeSection />}
         <ApiKeysSection />

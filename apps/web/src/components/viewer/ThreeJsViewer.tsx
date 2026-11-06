@@ -214,7 +214,7 @@ export function ThreeJsViewer({
 
       <button
         onClick={resetView}
-        className="absolute bottom-4 right-4 btn-secondary !py-2 !px-4 text-xs"
+        className="absolute bottom-4 right-4 btn-secondary !py-2 !px-4 "
         title="Reset view"
       >
         Reset view
