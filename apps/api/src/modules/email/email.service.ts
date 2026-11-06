@@ -42,22 +42,33 @@ export class EmailService {
     return this.transporter;
   }
 
-  async sendPasswordResetEmail(to: string, resetLink: string): Promise<void> {
+  // Generic entry point, added for the notification engine's email channel
+  // (NotificationEmailProcessor) so it isn't locked to password-reset
+  // copy; sendPasswordResetEmail below is now just a canned call into this.
+  async send(to: string, subject: string, text: string, html: string): Promise<void> {
     if (!this.isConfigured()) {
-      throw new Error('SMTP is not configured (SMTP_HOST/SMTP_USER/SMTP_PASSWORD/SMTP_FROM) -- cannot send password reset email.');
+      throw new Error('SMTP is not configured (SMTP_HOST/SMTP_USER/SMTP_PASSWORD/SMTP_FROM) -- cannot send email.');
     }
-
     await this.getTransporter().sendMail({
       from: this.config.get<string>('email.smtpFrom'),
       to,
-      subject: 'Reset your RealityCapture password',
-      text: `We received a request to reset your RealityCapture password. Follow this link to choose a new one (it expires in 1 hour):\n\n${resetLink}\n\nIf you didn't request this, you can safely ignore this email.`,
-      html: `
+      subject,
+      text,
+      html,
+    });
+    this.logger.log(`Email "${subject}" sent to ${to}`);
+  }
+
+  async sendPasswordResetEmail(to: string, resetLink: string): Promise<void> {
+    await this.send(
+      to,
+      'Reset your RealityCapture password',
+      `We received a request to reset your RealityCapture password. Follow this link to choose a new one (it expires in 1 hour):\n\n${resetLink}\n\nIf you didn't request this, you can safely ignore this email.`,
+      `
         <p>We received a request to reset your RealityCapture password.</p>
         <p><a href="${resetLink}">Click here to choose a new password</a> (this link expires in 1 hour).</p>
         <p>If you didn't request this, you can safely ignore this email.</p>
       `,
-    });
-    this.logger.log(`Password reset email sent to ${to}`);
+    );
   }
 }
