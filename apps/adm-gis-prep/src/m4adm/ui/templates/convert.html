@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Convert an architectural floor plan to a DRM BDMS draft</h1>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<p class="hint">Detects rooms from the wall linework, names them from the room text, writes the Space / Door / Window / Floor features with their Detail blocks, and checks the result. Whatever the drawing cannot show (units, owners, plot, heights) stays empty and is listed: nothing is guessed. The draft is never an approved submission.</p>
+<form method="post" action="/convert" enctype="multipart/form-data" onsubmit="this.classList.add('busy')">
+  <fieldset><legend>1. Drawing</legend>
+    <label for="drawing">Floor plan (DXF or DWG)</label>
+    <input id="drawing" type="file" name="drawing" accept=".dxf,.dwg">
+    <p class="hint">
+      {% if dwg_ready %}DWG files are read with {{ dwg_reader }}, then converted like a DXF.
+      {% else %}DWG reader not found: save the drawing as DXF in AutoCAD (SAVEAS, AutoCAD 2010 DXF), or put <code>dwg2dxf.exe</code> next to this program.{% endif %}
+      The original is stored read-only and never modified.</p>
+    {% if uploads %}
+    <label for="existing">...or a previously uploaded drawing</label>
+    <select id="existing" name="existing"><option value="">-</option>
+      {% for u in uploads %}<option value="{{ u.id }}">{{ u.name }} ({{ (u.size / 1048576) | round(1) }} MB)</option>{% endfor %}
+    </select>
+    {% endif %}
+    <label for="source_units">Drawing units</label>
+    <select id="source_units" name="source_units"><option value="auto">From the drawing ($INSUNITS)</option><option value="mm">Millimetres</option><option value="cm">Centimetres</option><option value="m">Metres</option></select>
+  </fieldset>
+
+  <fieldset><legend>2. File name: Zone-Sector-Plot-Building-Floor</legend>
+    <div class="row">
+      <div><label for="zone_name">Zone name</label><input id="zone_name" type="text" name="zone_name" placeholder="KHALIFA CITY" oninput="this.value=this.value.toUpperCase()"></div>
+      <div><label for="sector_number">Sector</label><input id="sector_number" type="text" name="sector_number" placeholder="SE45_01" oninput="this.value=this.value.toUpperCase()"></div>
+      <div><label for="plot_number">Plot</label><input id="plot_number" type="text" name="plot_number" placeholder="C8" oninput="this.value=this.value.toUpperCase()"></div>
+      <div><label for="building_number">Building</label><input id="building_number" type="text" name="building_number" placeholder="1" pattern="[1-9][0-9]*"></div>
+      <div><label for="floor_id">Floor</label><input id="floor_id" type="text" name="floor_id" placeholder="G, F1, M1, B1" pattern="G|[FMB][1-9][0-9]*" oninput="this.value=this.value.toUpperCase()"></div>
+      <div><label for="single_unit_number">Unit number (the whole floor is one unit)</label><input id="single_unit_number" type="text" name="single_unit_number" placeholder="1" pattern="[1-9][0-9]*"></div>
+    </div>
+    <p class="hint">No hyphens inside a part (use _ instead). Capitals are applied for you.</p>
+  </fieldset>
+
+  <fieldset><legend>3. Building and floor facts the drawing cannot show</legend>
+    <div class="row">
+      <div><label for="floor_height">Floor height (m)</label><input id="floor_height" type="text" name="floor_height" placeholder="3.6" pattern="[0-9]+(\.[0-9]+)?"></div>
+      <div><label for="building_number_of_floors">Number of floors (= floor files you submit for this building)</label><input id="building_number_of_floors" type="text" name="building_number_of_floors" placeholder="3" pattern="[1-9][0-9]*"></div>
+      <div><label for="building_height">Building height (m, from the roof plan)</label><input id="building_height" type="text" name="building_height" placeholder="15" pattern="[0-9]+(\.[0-9]+)?"></div>
+      <div><label for="building_usage_category">Usage category</label><select id="building_usage_category" name="building_usage_category"><option value="">-</option>{% for v in usage_categories %}<option>{{ v }}</option>{% endfor %}</select></div>
+      <div><label for="building_usage_type">Usage type</label><select id="building_usage_type" name="building_usage_type"><option value="">-</option>{% for v in usage_types %}<option>{{ v }}</option>{% endfor %}</select></div>
+    </div>
+  </fieldset>
+
+  <fieldset><legend>4. Title block</legend>
+    <div class="row">
+      <div><label for="developer_name">Developer name</label><input id="developer_name" type="text" name="developer_name" placeholder="MASDAR CITY"></div>
+      <div><label for="building_name">Building name</label><input id="building_name" type="text" name="building_name"></div>
+      <div><label for="title_drawing_type">Drawing type</label><select id="title_drawing_type" name="title_drawing_type"><option value="">-</option>{% for v in drawing_types %}<option>{{ v }}</option>{% endfor %}</select></div>
+      <div><label for="date_of_drawing">Date of drawing (DD-MON-YYYY)</label><input id="date_of_drawing" type="text" name="date_of_drawing" placeholder="29-OCT-2026" pattern="[0-9]{2}-[A-Za-z]{3}-[0-9]{4}" oninput="this.value=this.value.toUpperCase()"></div>
+    </div>
+  </fieldset>
+
+  <details><summary>Georeference with control points (optional)</summary>
+    <p class="hint">One pair per line: <code>source_x source_y target_E target_N</code> (at least 2 well-spread points). Without them the draft is written in local coordinates and says so.</p>
+    <textarea name="control_points" rows="4" style="width:100%;max-width:640px" placeholder="-87153.5 139276.7 257740.909 2704590.502"></textarea><br>
+    <label class="inline"><input type="checkbox" name="confirm_transformation" value="1"> I confirm the control points and want the drawing georeferenced</label>
+  </details>
+
+  <p><button class="primary" type="submit">Convert to GIS draft</button> <span id="busy" class="muted">Converting - large drawings can take a few minutes. Keep this page open...</span></p>
+</form>
+
+{% if conversions %}
+<h2>Recent conversions</h2>
+<table><tr><th>Job</th><th>Drawing</th><th>Status</th><th>Output</th></tr>
+{% for c in conversions %}<tr><td><a href="/conversions/{{ c.job_id }}">{{ c.job_id }}</a></td><td>{{ c.source }}</td><td>{{ c.status }}</td><td>{{ c.output or "-" }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+{% endblock %}

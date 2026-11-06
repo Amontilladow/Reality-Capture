@@ -117,10 +117,23 @@ class DWGConverter:
         oda = os.environ.get("M4ADM_ODA_CONVERTER") or shutil.which("ODAFileConverter")
         if oda:
             return cls(oda, "oda")
-        lib = os.environ.get("M4ADM_DWG2DXF") or shutil.which("dwg2dxf")
+        lib = os.environ.get("M4ADM_DWG2DXF") or shutil.which("dwg2dxf") or cls._beside_program()
         if lib:
             return cls(lib, "libredwg")
         return cls(None, "oda")
+
+    @staticmethod
+    def _beside_program() -> str | None:
+        """The packaged desktop program ships dwg2dxf(.exe) next to itself; find it there."""
+        import sys
+
+        if not getattr(sys, "frozen", False):
+            return None
+        for folder in (Path(sys.executable).parent, Path(getattr(sys, "_MEIPASS", "."))):
+            for name in ("dwg2dxf.exe", "dwg2dxf"):
+                if (folder / name).is_file():
+                    return str(folder / name)
+        return None
 
     def status(self) -> str:
         if self.executable and Path(self.executable).exists():

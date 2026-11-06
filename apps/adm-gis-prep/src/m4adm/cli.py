@@ -262,14 +262,38 @@ def cmd_attach_qc(a: argparse.Namespace) -> int:
     return 0
 
 
+def _free_port(preferred: int) -> int:
+    """The preferred port when it is free, else any free one (a second copy may already be running)."""
+    import socket
+
+    for port in (preferred, 0):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            try:
+                sock.bind(("127.0.0.1", port))
+            except OSError:
+                continue
+            return sock.getsockname()[1]
+    return preferred
+
+
 def cmd_ui(a: argparse.Namespace) -> int:
+    import threading
+    import webbrowser
+
     import uvicorn
 
     from m4adm.ui import create_app
 
-    app = create_app(Path(a.workspace))
-    print(f"M4 ADM GIS Preparation UI on http://127.0.0.1:{a.port} (local only)")
-    uvicorn.run(app, host="127.0.0.1", port=a.port, log_level="warning")
+    workspace = Path(a.workspace)
+    app = create_app(workspace)
+    port = _free_port(a.port)
+    url = f"http://127.0.0.1:{port}/" + ("convert" if a.open else "")
+    print(f"{PROVISIONAL_LABEL}\nM4 GIS Preparation {__version__}, running on {url} (this computer only)")
+    print(f"Jobs and uploads are kept in {workspace.resolve()}")
+    print("Leave this window open while you work; close it to stop the program.")
+    if a.open:
+        threading.Timer(1.5, webbrowser.open, args=(url,)).start()
+    uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
     return 0
 
 
@@ -374,11 +398,17 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("ui", help="Start the local web UI (127.0.0.1 only)")
     s.add_argument("--workspace", default="workspace")
     s.add_argument("--port", type=int, default=8765)
+    s.add_argument("--open", action="store_true", help="open the conversion page in the browser")
     s.set_defaults(fn=cmd_ui)
     return p
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if not argv and getattr(sys, "frozen", False):
+        # Double-clicked packaged program: no command line, so start the screen and open the browser. Work is kept
+        # in a visible folder in the user's home so it survives and is easy to find.
+        argv = ["ui", "--open", "--workspace", str(Path.home() / "M4-GIS-Prep")]
     args = build_parser().parse_args(argv)
     if getattr(args, "cmd", None) == "inspect" and not args.category:
         args.category = ["building"] if args.profile == "bdms_building" else ["plot", "roads", "services"]
