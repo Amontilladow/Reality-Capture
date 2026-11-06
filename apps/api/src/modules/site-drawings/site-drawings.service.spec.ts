@@ -1,4 +1,4 @@
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { SiteDrawingsService } from './site-drawings.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { StorageService } from '../storage/storage.service';
@@ -67,6 +67,7 @@ describe('SiteDrawingsService', () => {
         single([{ id: projectId }]), // assertProjectBelongsToCompany
         multi([
           [{ id: drawingId, currentRevisionId: previousRevisionId, drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan' }], // SELECT drawing
+          [{ revisionNumber: 'B' }], // SELECT previous revision's number (duplicate check)
           [{ id: newRevisionId, workflowStatus: 'APPROVED_FOR_CONSTRUCTION', isSuperseded: false }], // INSERT revision
           [], // UPDATE previous revision -> superseded
           [{ id: drawingId, currentRevisionId: newRevisionId, currentWorkflowStatus: 'APPROVED_FOR_CONSTRUCTION', currentIsSuperseded: false, drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan' }], // UPDATE drawing
@@ -94,6 +95,20 @@ describe('SiteDrawingsService', () => {
         svc.addRevision(companyId, projectId, drawingId, userId, { revisionNumber: 'C', workflowStatus: 'UNDER_REVIEW', storageKey: 'key.pdf' }),
       ).rejects.toThrow(BadRequestException);
       expect(storage.deleteIfExists).toHaveBeenCalledWith('key.pdf');
+    });
+
+    it('rejects a revision number that matches the drawing\'s current revision, instead of silently superseding it with its own duplicate', async () => {
+      const { svc } = makeService([
+        single([{ id: projectId }]), // assertProjectBelongsToCompany
+        multi([
+          [{ id: drawingId, currentRevisionId: 'revision-old', drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan' }], // SELECT drawing
+          [{ revisionNumber: 'C' }], // SELECT previous revision's number (duplicate check)
+        ]),
+      ]);
+
+      await expect(
+        svc.addRevision(companyId, projectId, drawingId, userId, { revisionNumber: 'c', workflowStatus: 'UNDER_REVIEW', storageKey: 'key.pdf' }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -154,6 +169,31 @@ describe('SiteDrawingsService', () => {
       expect(result.workflowStatus).toBe('APPROVED_FOR_CONSTRUCTION');
       expect(storage.getReadUrl).toHaveBeenCalledWith('key.pdf', 900);
       expect(withTenant).toHaveBeenCalledTimes(3);
+    });
+
+    it('allows "view" on a superseded revision (the viewer must still open it, watermarked)', async () => {
+      const { svc, storage } = makeService([
+        single([{ id: projectId }]),
+        single([{ id: 'revision-1', storageKey: 'key.pdf', workflowStatus: 'SUPERSEDED', isSuperseded: true }]),
+        single([]), // writeAccessAudit
+      ]);
+
+      const result = await svc.getAuthorizedDownloadUrl(companyId, projectId, userId, 'revision-1', 'view');
+
+      expect(result.isSuperseded).toBe(true);
+      expect(storage.getReadUrl).toHaveBeenCalledWith('key.pdf', 900);
+    });
+
+    it('blocks "download" on a superseded revision -- master spec section 8, enforced server-side', async () => {
+      const { svc, storage } = makeService([
+        single([{ id: projectId }]),
+        single([{ id: 'revision-1', storageKey: 'key.pdf', workflowStatus: 'SUPERSEDED', isSuperseded: true }]),
+      ]);
+
+      await expect(
+        svc.getAuthorizedDownloadUrl(companyId, projectId, userId, 'revision-1', 'download'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(storage.getReadUrl).not.toHaveBeenCalled();
     });
   });
 

@@ -117,8 +117,15 @@ export const setSiteDrawingWorkflowStatus = (projectId: string, drawingId: strin
 // A fresh short-lived (15 min) presigned URL; never cached/reused past
 // that window (brief section 9). Callers should fetch this right before
 // opening the viewer or starting an offline download, not store it.
-export const getSiteDrawingDownloadUrl = (projectId: string, revisionId: string) =>
-  apiGet<{ url: string; expiresInSeconds: number; workflowStatus: SiteDrawingWorkflowStatus; isSuperseded: boolean }>(`${base(projectId)}/revisions/${revisionId}/download`);
+//
+// purpose: 'view' (default) backs the in-browser PDF viewer and always
+// works, including on a superseded revision -- viewing it with its
+// watermark is required, not blocked. 'download' backs an explicit
+// save-the-file action and is rejected server-side once the revision is
+// superseded (master spec section 8: enforced on the backend, not by
+// hiding the button).
+export const getSiteDrawingDownloadUrl = (projectId: string, revisionId: string, purpose: 'view' | 'download' = 'view') =>
+  apiGet<{ url: string; expiresInSeconds: number; workflowStatus: SiteDrawingWorkflowStatus; isSuperseded: boolean }>(`${base(projectId)}/revisions/${revisionId}/download`, { params: { purpose } });
 
 export const listOfflinePackages = (projectId: string) =>
   apiGet<SiteDrawingOfflinePackage[]>(`${base(projectId)}/offline-packages`);

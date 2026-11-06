@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   SiteDrawing, SiteDrawingRevision, SiteDrawingWithCurrentRevision, SiteDrawingWorkflowStatus,
   SiteDrawingOfflinePackage, SiteDrawingOfflinePackageStatus, SiteDrawingSourceHealth,
@@ -115,6 +115,19 @@ export class SiteDrawingsService {
       if (!drawing) throw new NotFoundException(`Drawing ${drawingId} not found.`);
 
       const previousRevisionId = drawing.currentRevisionId ?? null;
+      const [previousRevision] = previousRevisionId
+        ? await sql<SiteDrawingRevisionRow[]>`SELECT revision_number FROM site_drawing_revisions WHERE id = ${previousRevisionId}`
+        : [];
+
+      // Same duplicate concept the bulk import path reconciles against
+      // (site-drawing-import.processor.ts's `currentRevision.revisionNumber
+      // === revisionNumber` check) -- a human re-adding the current
+      // revision's own number isn't a new revision; rejecting it here beats
+      // silently creating a second row with the same revision number and
+      // marking the real one superseded by its own duplicate.
+      if (previousRevision && previousRevision.revisionNumber.trim().toLowerCase() === dto.revisionNumber.trim().toLowerCase()) {
+        throw new BadRequestException(`Revision ${previousRevision.revisionNumber} is already the current revision for this drawing. Give the new file its own revision number.`);
+      }
 
       const [revision] = await sql<SiteDrawingRevisionRow[]>`
         INSERT INTO site_drawing_revisions (
@@ -293,23 +306,41 @@ export class SiteDrawingsService {
   // project-membership assertion; possessing a revisionId alone is never
   // sufficient (it's resolved through the project it actually belongs to).
   //
+  // `purpose` splits the one URL this always was into what the spec
+  // actually asks for two different things: 'view' (default) backs the
+  // in-browser PDF viewer, which must keep working on a superseded
+  // revision (section 7/8 require the watermark + history to stay
+  // reachable there); 'download' backs an explicit save-the-file action
+  // (today: "Download for offline") and is the one the spec means by
+  // "no original PDF download through Reality Capture" for a superseded
+  // revision -- enforced here, not by hiding the button, and not
+  // bypassable by reusing a URL minted before the drawing was superseded
+  // (each call re-checks current status; the signed URL itself still
+  // expires on its own short TTL regardless).
+  //
   // Audited explicitly (writeAccessAudit below) rather than relying on
   // AuditInterceptor; this is a GET route (read, by design: issuing a
   // download URL doesn't change anything), and the interceptor only covers
   // mutating methods. Section 9's "audit events for document access,
   // download" needs this logged regardless of HTTP verb.
-  async getAuthorizedDownloadUrl(companyId: string, projectId: string, userId: string, revisionId: string): Promise<{ url: string; expiresInSeconds: number; workflowStatus: SiteDrawingWorkflowStatus; isSuperseded: boolean }> {
+  async getAuthorizedDownloadUrl(
+    companyId: string, projectId: string, userId: string, revisionId: string, purpose: 'view' | 'download' = 'view',
+  ): Promise<{ url: string; expiresInSeconds: number; workflowStatus: SiteDrawingWorkflowStatus; isSuperseded: boolean }> {
     await this.assertProjectBelongsToCompany(companyId, projectId);
     const [revision] = await this.db.withTenant(companyId, sql => sql<SiteDrawingRevisionRow[]>`
       SELECT * FROM site_drawing_revisions WHERE id = ${revisionId} AND project_id = ${projectId}
     `);
     if (!revision) throw new NotFoundException(`Revision ${revisionId} not found.`);
 
+    if (purpose === 'download' && revision.isSuperseded) {
+      throw new ForbiddenException('This revision has been superseded and can no longer be downloaded through Reality Capture. View it in the browser, or open the current revision to download.');
+    }
+
     const { url, expiresInSeconds } = revision.storageKey
       ? { url: await this.storage.getReadUrl(revision.storageKey, 900), expiresInSeconds: 900 }
       : await this.getAuthorizedFileFromSource(companyId, projectId, revision);
 
-    await this.writeAccessAudit(companyId, projectId, userId, 'site_drawing_revision', revision.id, 'site_drawing.downloaded');
+    await this.writeAccessAudit(companyId, projectId, userId, 'site_drawing_revision', revision.id, purpose === 'download' ? 'site_drawing.downloaded' : 'site_drawing.viewed');
     return { url, expiresInSeconds, workflowStatus: revision.workflowStatus, isSuperseded: revision.isSuperseded };
   }
 

@@ -139,9 +139,12 @@ export class SiteDrawingsController {
   }
 
   @Get('revisions/:revisionId/download')
-  @ApiOperation({ summary: "A short-lived, authorized download URL for a revision's stored file" })
-  async getDownloadUrl(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('revisionId') revisionId: string) {
-    return { data: await this.svc.getAuthorizedDownloadUrl(u.companyId, pid, u.id, revisionId), error: null };
+  @ApiOperation({ summary: "A short-lived, authorized URL for a revision's stored file ('view' for the in-browser viewer, always allowed; 'download' for an explicit save, blocked once the revision is superseded)" })
+  async getDownloadUrl(
+    @CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('revisionId') revisionId: string,
+    @Query('purpose') purpose?: 'view' | 'download',
+  ) {
+    return { data: await this.svc.getAuthorizedDownloadUrl(u.companyId, pid, u.id, revisionId, purpose === 'download' ? 'download' : 'view'), error: null };
   }
 
   @Post('offline-packages')

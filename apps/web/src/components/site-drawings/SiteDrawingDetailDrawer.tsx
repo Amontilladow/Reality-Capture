@@ -86,7 +86,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
     });
     if (!pkg) return;
     try {
-      const { url } = await getSiteDrawingDownloadUrl(projectId, revision.id);
+      const { url } = await getSiteDrawingDownloadUrl(projectId, revision.id, 'download');
       const res = await fetch(url);
       if (!res.ok) throw new Error(`Download failed (${res.status})`);
       const blob = await res.blob();
@@ -98,7 +98,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
       await completeOfflinePackage(projectId, pkg.id, 'COMPLETE', contentHash, blob.size);
     } catch (err) {
       await completeOfflinePackage(projectId, pkg.id, 'FAILED').catch(() => {});
-      setOfflineError(err instanceof Error ? err.message : 'Download failed.');
+      setOfflineError(apiErrorMessage(err));
     } finally {
       setOfflineBusy(false);
       queryClient.invalidateQueries({ queryKey: ['site-drawing-offline-packages', projectId] });
