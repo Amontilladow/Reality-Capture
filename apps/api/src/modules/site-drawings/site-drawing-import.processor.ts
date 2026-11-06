@@ -10,6 +10,7 @@ import type { SiteDrawingImportJob } from './site-drawing-import.service';
 import { extractPdfEntriesFromZip, type ExtractedZipEntry } from './extraction/zip-extraction.util';
 import { extractEmbeddedText, hasUsableEmbeddedText } from './extraction/pdf-text-extractor';
 import { extractTitleBlockFields, isConfidentExtraction } from './extraction/title-block-extractor';
+import { resolveOrgMapping } from './extraction/org-mapping-lookup';
 
 type ReconcileOutcome = 'created' | 'revision_added' | 'duplicate_skipped';
 
@@ -162,9 +163,20 @@ export class SiteDrawingImportProcessor {
       `;
 
       if (!existing) {
+        // Master spec section 4: resolve originator/subcontractor from the
+        // project's own org mapping, matched against this drawing's
+        // number; never guessed from title-block text directly.
+        const mapped = await resolveOrgMapping(sql, projectId, drawingNumber);
         const [drawing] = await sql<{ id: string }[]>`
-          INSERT INTO site_drawings (company_id, project_id, drawing_number, drawing_title, discipline, source_provider, source_file_id, current_workflow_status)
-          VALUES (${companyId}, ${projectId}, ${drawingNumber}, ${drawingTitle}, ${fields?.discipline ?? null}, ${batch.sourceSystem}, ${randomUUID()}, 'UNKNOWN')
+          INSERT INTO site_drawings (
+            company_id, project_id, drawing_number, drawing_title, discipline, originator, responsible_subcontractor,
+            source_provider, source_file_id, current_workflow_status
+          )
+          VALUES (
+            ${companyId}, ${projectId}, ${drawingNumber}, ${drawingTitle}, ${fields?.discipline ?? null},
+            ${mapped.originator ?? null}, ${mapped.responsibleSubcontractor ?? null},
+            ${batch.sourceSystem}, ${randomUUID()}, 'UNKNOWN'
+          )
           RETURNING id
         `;
         const [revision] = await sql<{ id: string }[]>`

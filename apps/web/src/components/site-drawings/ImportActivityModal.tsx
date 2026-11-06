@@ -116,6 +116,7 @@ function ReviewQueueRow({ projectId, item }: { projectId: string; item: SiteDraw
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['site-drawing-review-queue', projectId] });
       queryClient.invalidateQueries({ queryKey: ['site-drawings', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-dashboard-stats', projectId] });
     },
   });
 

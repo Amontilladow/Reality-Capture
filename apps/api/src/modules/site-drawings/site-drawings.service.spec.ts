@@ -1,4 +1,4 @@
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { SiteDrawingsService } from './site-drawings.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { StorageService } from '../storage/storage.service';
@@ -67,6 +67,7 @@ describe('SiteDrawingsService', () => {
         single([{ id: projectId }]), // assertProjectBelongsToCompany
         multi([
           [{ id: drawingId, currentRevisionId: previousRevisionId, drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan' }], // SELECT drawing
+          [{ revisionNumber: 'B' }], // SELECT previous revision's number (duplicate check)
           [{ id: newRevisionId, workflowStatus: 'APPROVED_FOR_CONSTRUCTION', isSuperseded: false }], // INSERT revision
           [], // UPDATE previous revision -> superseded
           [{ id: drawingId, currentRevisionId: newRevisionId, currentWorkflowStatus: 'APPROVED_FOR_CONSTRUCTION', currentIsSuperseded: false, drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan' }], // UPDATE drawing
@@ -94,6 +95,20 @@ describe('SiteDrawingsService', () => {
         svc.addRevision(companyId, projectId, drawingId, userId, { revisionNumber: 'C', workflowStatus: 'UNDER_REVIEW', storageKey: 'key.pdf' }),
       ).rejects.toThrow(BadRequestException);
       expect(storage.deleteIfExists).toHaveBeenCalledWith('key.pdf');
+    });
+
+    it('rejects a revision number that matches the drawing\'s current revision, instead of silently superseding it with its own duplicate', async () => {
+      const { svc } = makeService([
+        single([{ id: projectId }]), // assertProjectBelongsToCompany
+        multi([
+          [{ id: drawingId, currentRevisionId: 'revision-old', drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan' }], // SELECT drawing
+          [{ revisionNumber: 'C' }], // SELECT previous revision's number (duplicate check)
+        ]),
+      ]);
+
+      await expect(
+        svc.addRevision(companyId, projectId, drawingId, userId, { revisionNumber: 'c', workflowStatus: 'UNDER_REVIEW', storageKey: 'key.pdf' }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -154,6 +169,31 @@ describe('SiteDrawingsService', () => {
       expect(result.workflowStatus).toBe('APPROVED_FOR_CONSTRUCTION');
       expect(storage.getReadUrl).toHaveBeenCalledWith('key.pdf', 900);
       expect(withTenant).toHaveBeenCalledTimes(3);
+    });
+
+    it('allows "view" on a superseded revision (the viewer must still open it, watermarked)', async () => {
+      const { svc, storage } = makeService([
+        single([{ id: projectId }]),
+        single([{ id: 'revision-1', storageKey: 'key.pdf', workflowStatus: 'SUPERSEDED', isSuperseded: true }]),
+        single([]), // writeAccessAudit
+      ]);
+
+      const result = await svc.getAuthorizedDownloadUrl(companyId, projectId, userId, 'revision-1', 'view');
+
+      expect(result.isSuperseded).toBe(true);
+      expect(storage.getReadUrl).toHaveBeenCalledWith('key.pdf', 900);
+    });
+
+    it('blocks "download" on a superseded revision -- master spec section 8, enforced server-side', async () => {
+      const { svc, storage } = makeService([
+        single([{ id: projectId }]),
+        single([{ id: 'revision-1', storageKey: 'key.pdf', workflowStatus: 'SUPERSEDED', isSuperseded: true }]),
+      ]);
+
+      await expect(
+        svc.getAuthorizedDownloadUrl(companyId, projectId, userId, 'revision-1', 'download'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(storage.getReadUrl).not.toHaveBeenCalled();
     });
   });
 
@@ -231,6 +271,94 @@ describe('SiteDrawingsService', () => {
       expect(filename).toContain('M4T');
       expect(filename.endsWith('.xlsx')).toBe(true);
       expect(buffer.byteLength).toBeGreaterThan(0); // a real, non-empty .xlsx buffer
+    });
+  });
+
+  describe('registerDrawing', () => {
+    it('resolves originator/subcontractor from the project\'s org mapping when the caller left them blank', async () => {
+      const { svc, withTenant } = makeService([
+        single([{ id: projectId }]), // assertUploadedSizeWithinLimit -> getObjectSize doesn't call withTenant; this is assertProjectBelongsToCompany
+        multi([
+          [{ pattern: 'A-', organizationName: 'Acme Consultants', role: 'originator' }], // resolveOrgMapping SELECT
+          [{ id: drawingId, drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan' }], // INSERT drawing
+          [{ id: 'revision-1', workflowStatus: 'UNDER_REVIEW' }], // INSERT revision
+          [{ id: drawingId, currentRevisionId: 'revision-1', currentWorkflowStatus: 'UNDER_REVIEW' }], // UPDATE drawing
+        ]),
+      ]);
+
+      await svc.registerDrawing(companyId, projectId, userId, {
+        drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan', revisionNumber: 'A', workflowStatus: 'UNDER_REVIEW', storageKey: 'key.pdf',
+      });
+
+      expect(withTenant).toHaveBeenCalledTimes(2);
+    });
+
+    it('lets an explicit originator/subcontractor on the DTO win over any org mapping', async () => {
+      const { svc, withTenant } = makeService([
+        single([{ id: projectId }]),
+        multi([
+          [{ id: drawingId, drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan' }], // INSERT drawing (no mapping lookup -- both fields were explicit)
+          [{ id: 'revision-1', workflowStatus: 'UNDER_REVIEW' }],
+          [{ id: drawingId, currentRevisionId: 'revision-1', currentWorkflowStatus: 'UNDER_REVIEW' }],
+        ]),
+      ]);
+
+      await svc.registerDrawing(companyId, projectId, userId, {
+        drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan', revisionNumber: 'A', workflowStatus: 'UNDER_REVIEW', storageKey: 'key.pdf',
+        originator: 'Hand-typed Consultant', responsibleSubcontractor: 'Hand-typed Sub',
+      });
+
+      // No resolveOrgMapping SELECT issued -- confirmed by the exact 3-statement multi() above being consumed without a 4th step.
+      expect(withTenant).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('org mappings', () => {
+    it('lists mappings for a project', async () => {
+      const { svc } = makeService([
+        single([{ id: projectId }]),
+        single([{ id: 'map-1', companyId, projectId, pattern: 'S-', organizationName: 'Structural Co', role: 'originator', createdBy: userId, createdAt: '2026-01-01T00:00:00Z' }]),
+      ]);
+      const result = await svc.listOrgMappings(companyId, projectId);
+      expect(result).toHaveLength(1);
+      expect(result[0].organizationName).toBe('Structural Co');
+    });
+
+    it('creates a mapping', async () => {
+      const { svc } = makeService([
+        single([{ id: projectId }]),
+        single([{ id: 'map-1', companyId, projectId, pattern: 'MEP-', organizationName: 'Acme MEP', role: 'subcontractor', createdBy: userId, createdAt: '2026-01-01T00:00:00Z' }]),
+      ]);
+      const result = await svc.createOrgMapping(companyId, projectId, userId, 'MEP-', 'Acme MEP', 'subcontractor');
+      expect(result.pattern).toBe('MEP-');
+      expect(result.role).toBe('subcontractor');
+    });
+
+    it('deletes a mapping', async () => {
+      const { svc, withTenant } = makeService([
+        single([{ id: projectId }]),
+        single([]),
+      ]);
+      await svc.deleteOrgMapping(companyId, projectId, 'map-1');
+      expect(withTenant).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('getDashboardStats', () => {
+    it('returns register summary counts for the Hub landing dashboard', async () => {
+      const { svc } = makeService([
+        single([{ id: projectId }]), // assertProjectBelongsToCompany
+        multi([
+          [{ total: '10', currentAuthorized: '4', superseded: '3', underReview: '2', newlyReceived: '1', requiringAttention: '1' }],
+          [{ recentRevisionActivity: '5' }],
+        ]),
+      ]);
+
+      const stats = await svc.getDashboardStats(companyId, projectId);
+
+      expect(stats).toEqual({
+        total: 10, currentAuthorized: 4, superseded: 3, underReview: 2, newlyReceived: 1, requiringAttention: 1, recentRevisionActivity: 5,
+      });
     });
   });
 });
