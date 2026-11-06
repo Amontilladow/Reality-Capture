@@ -1,11 +1,16 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   listNotifications, getUnreadCount, markNotificationRead, markAllNotificationsRead,
   lookupIssueProject, type Notification,
 } from '../../lib/notifications.api';
+import { subscribeToNotificationSocket, getNotificationSocketSnapshot } from '../../lib/notification-socket';
 import { BellIcon, HeaderIconButton } from './HeaderIconButton';
+
+const PRIORITY_DOT: Record<Notification['priority'], string> = {
+  critical: 'bg-danger', high: 'bg-warn', normal: 'bg-blueprint',
+};
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -26,7 +31,7 @@ export function NotificationBell() {
   const unreadQuery = useQuery({
     queryKey: ['notifications-unread-count'],
     queryFn: getUnreadCount,
-    refetchInterval: 30_000,
+    refetchInterval: 30_000, // safety net; the socket below pushes immediately when connected
   });
 
   const listQuery = useQuery({
@@ -34,6 +39,21 @@ export function NotificationBell() {
     queryFn: () => listNotifications({ perPage: 10 }),
     enabled: open,
   });
+
+  // Real-time push (master spec section 4: "without requiring a page
+  // refresh"). The 30s poll above stays as the fallback for a dropped/
+  // never-connected socket, so a missed push is only ever a delayed
+  // notification, never a lost one.
+  const socket = useSyncExternalStore(subscribeToNotificationSocket, getNotificationSocketSnapshot);
+  useEffect(() => {
+    if (!socket) return;
+    function onNew() {
+      queryClient.invalidateQueries({ queryKey: ['notifications-unread-count'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications-list'] });
+    }
+    socket.on('notification:new', onNew);
+    return () => { socket.off('notification:new', onNew); };
+  }, [socket, queryClient]);
 
   const markReadMutation = useMutation({
     mutationFn: (id: string) => markNotificationRead(id),
@@ -61,6 +81,9 @@ export function NotificationBell() {
       case 'issue': return `/projects/${projectId}/issues?issueId=${resourceId}`;
       case 'rfi': return `/projects/${projectId}/rfis`;
       case 'snag_item': return `/projects/${projectId}/snagging`;
+      case 'qaqc_record': return `/projects/${projectId}/qaqc`;
+      case 'submittal': return `/projects/${projectId}/submittals`;
+      case 'site_drawing': return `/projects/${projectId}/site-drawings`;
       default: return null;
     }
   }
@@ -133,16 +156,26 @@ export function NotificationBell() {
                   }`}
                 >
                   <div className="flex items-start gap-2">
-                    {!n.readAt && <span className="w-1.5 h-1.5 rounded-full bg-blueprint mt-2 shrink-0" />}
+                    {!n.readAt && <span className={`w-1.5 h-1.5 rounded-full mt-2 shrink-0 ${PRIORITY_DOT[n.priority]}`} />}
                     <div className="min-w-0 flex-1">
                       <div className={`text-sm ${!n.readAt ? 'text-ink-100 font-medium' : 'text-ink-300'}`}>{n.title}</div>
                       {n.body && <div className="text-xs text-ink-500 mt-0">{n.body}</div>}
-                      <div className="text-xs text-ink-500 mt-0">{timeAgo(n.createdAt)}</div>
+                      <div className="flex items-center gap-2 mt-0">
+                        <span className="text-xs text-ink-500">{timeAgo(n.createdAt)}</span>
+                        {n.actionRequired && !n.acknowledgedAt && <span className="badge bg-warn/15 text-warn text-xs">Action required</span>}
+                      </div>
                     </div>
                   </div>
                 </button>
               ))}
             </div>
+            <Link
+              to="/notifications"
+              onClick={() => setOpen(false)}
+              className="block text-center px-4 py-2 text-xs text-blueprint hover:text-blueprint-hover border-t border-base-600 shrink-0"
+            >
+              View all notifications
+            </Link>
           </div>
         </>
       )}

@@ -4,7 +4,7 @@ import JSZip from 'jszip';
 import sharp from 'sharp';
 import { DatabaseService } from '../../database/database.service';
 import { AiClientService } from '../ai-client/ai-client.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationsService, toNotificationPriority } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
 import { RiskService } from '../risk/risk.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
@@ -208,6 +208,9 @@ export class IssuesService {
         resourceId: issue.id as string,
         projectId,
         createdBy: userId,
+        category: 'assignment',
+        priority: toNotificationPriority(issue.priority as string | null),
+        actionRequired: true,
       });
     }
 
@@ -499,6 +502,9 @@ export class IssuesService {
         resourceId: issueId,
         projectId,
         createdBy: userId,
+        category: 'assignment',
+        priority: toNotificationPriority(updated.priority as string | null),
+        actionRequired: true,
       });
     }
 
@@ -640,6 +646,8 @@ export class IssuesService {
         resourceId: issueId,
         projectId: issue.projectId as string,
         createdBy: userId,
+        category: 'issue',
+        priority: 'normal',
       });
     }
 
@@ -882,6 +890,9 @@ export class IssuesService {
         resourceId: issueId,
         projectId,
         createdBy: userId,
+        category: 'assignment',
+        priority: toNotificationPriority(existing.priority as string | null),
+        actionRequired: true,
       });
     }
 

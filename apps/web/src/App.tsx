@@ -43,6 +43,7 @@ import SharePointIntegrationPage from './pages/SharePointIntegrationPage';
 import EmailSettingsPage from './pages/EmailSettingsPage';
 import BuildLensPage from './pages/BuildLensPage';
 import HelpPage from './pages/HelpPage';
+import NotificationsPage from './pages/NotificationsPage';
 
 // These four pull in the heaviest dependencies in the app (Three.js +
 // @thatopen/components + @thatopen/fragments for the two BIM routes,
@@ -147,6 +148,7 @@ export default function App() {
             <Route path="/projects/ai-settings" element={<AiSettingsPage />} />
             <Route path="/projects/email-settings" element={<EmailSettingsPage />} />
             <Route path="/projects/help" element={<HelpPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/projects/:projectId" element={<ProjectDetail />} />
             <Route path="/projects/:projectId/captures" element={<CapturesPage />} />
             <Route path="/projects/:projectId/drawings" element={<FloorPlanViewer />} />
