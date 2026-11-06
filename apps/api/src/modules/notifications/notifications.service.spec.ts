@@ -2,7 +2,9 @@ import { NotFoundException } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { NotificationsGateway } from './notifications.gateway';
+import type { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { NOTIFICATION_EMAIL_JOB_NAME } from './notification-email.constants';
+import { NOTIFICATION_WHATSAPP_JOB_NAME } from './notification-whatsapp.constants';
 
 type WithTenantCallback = (sql: unknown) => unknown;
 
@@ -23,13 +25,21 @@ describe('NotificationsService', () => {
   const companyId = 'company-1';
   const userId = 'user-1';
 
-  function makeService() {
+  function makeService(opts: { whatsappConfigured?: boolean } = {}) {
     const withTenant = jest.fn();
     const db = { withTenant, paginate: jest.fn((rows: unknown[], page: number, perPage: number) => ({ data: rows, page, perPage, total: rows.length, totalPages: 1 })) } as unknown as DatabaseService;
     const emitToUser = jest.fn();
     const gateway = { emitToUser } as unknown as NotificationsGateway;
+    // Defaults to not-configured, same as production until real Meta
+    // credentials exist (master spec section 10's zero-unapproved-cost
+    // requirement) -- tests that need the channel live opt in explicitly.
+    const whatsapp = { isConfigured: jest.fn().mockReturnValue(opts.whatsappConfigured ?? false) } as unknown as WhatsAppService;
     const emailQueue = { add: jest.fn().mockResolvedValue(undefined) };
-    return { svc: new NotificationsService(db, gateway, emailQueue as never), withTenant, emitToUser, emailQueue };
+    const whatsappQueue = { add: jest.fn().mockResolvedValue(undefined) };
+    return {
+      svc: new NotificationsService(db, gateway, whatsapp, emailQueue as never, whatsappQueue as never),
+      withTenant, emitToUser, emailQueue, whatsappQueue,
+    };
   }
 
   describe('create', () => {
@@ -83,6 +93,51 @@ describe('NotificationsService', () => {
       await svc.create(companyId, { userId, type: 'issue_assigned', title: 'Assigned', priority: 'critical' });
 
       expect(emailQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('enqueues a WhatsApp delivery for a critical-priority notification when the channel is configured', async () => {
+      const { svc, withTenant, whatsappQueue } = makeService({ whatsappConfigured: true });
+      // Critical priority also triggers Phase 2's email rule, so the
+      // sequence is: insert, [email] SELECT email + INSERT delivery,
+      // [whatsapp] SELECT phone + INSERT delivery.
+      withTenant.mockImplementation(multi([
+        [{ id: 'notif-critical' }], [{ email: 'user1@example.com' }], [{ id: 'email-delivery-x' }],
+        [{ phone: '+1 (555) 123-4567' }], [{ id: 'wa-delivery-1' }],
+      ]));
+
+      await svc.create(companyId, { userId, type: 'issue_assigned', title: 'Critical issue', priority: 'critical' });
+
+      expect(whatsappQueue.add).toHaveBeenCalledWith(NOTIFICATION_WHATSAPP_JOB_NAME, { companyId, deliveryId: 'wa-delivery-1' });
+    });
+
+    it('does not enqueue a WhatsApp delivery when the channel is not configured, even for critical priority', async () => {
+      const { svc, withTenant, whatsappQueue } = makeService({ whatsappConfigured: false });
+      withTenant.mockImplementationOnce(single([{ id: 'notif-critical-2' }]));
+
+      await svc.create(companyId, { userId, type: 'issue_assigned', title: 'Critical issue', priority: 'critical' });
+
+      expect(whatsappQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('does not enqueue a WhatsApp delivery for high priority, even when configured (critical only)', async () => {
+      const { svc, withTenant, whatsappQueue } = makeService({ whatsappConfigured: true });
+      withTenant.mockImplementationOnce(single([{ id: 'notif-high' }]));
+
+      await svc.create(companyId, { userId, type: 'rfi_overdue', title: 'RFI overdue', priority: 'high' });
+
+      expect(whatsappQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('skips enqueueing the WhatsApp delivery when the user has no usable phone number on file', async () => {
+      const { svc, withTenant, whatsappQueue } = makeService({ whatsappConfigured: true });
+      withTenant.mockImplementation(multi([
+        [{ id: 'notif-critical-3' }], [{ email: 'user1@example.com' }], [{ id: 'email-delivery-y' }],
+        [{ phone: null }],
+      ]));
+
+      await svc.create(companyId, { userId, type: 'issue_assigned', title: 'Critical issue', priority: 'critical' });
+
+      expect(whatsappQueue.add).not.toHaveBeenCalled();
     });
 
     it('defaults priority to normal and actionRequired to false when omitted', async () => {

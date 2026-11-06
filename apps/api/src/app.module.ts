@@ -35,6 +35,7 @@ import { MessagingModule } from './modules/messaging/messaging.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { EmailModule } from './modules/email/email.module';
+import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { WorkforceModule } from './modules/workforce/workforce.module';
@@ -69,6 +70,7 @@ import redisConfig from './config/redis.config';
 import googleCalendarConfig from './config/google-calendar.config';
 import aiConfig from './config/ai.config';
 import emailConfig from './config/email.config';
+import whatsappConfig from './config/whatsapp.config';
 import microsoftGraphConfig from './config/microsoft-graph.config';
 import gmailConfig from './config/google-gmail.config';
 
@@ -76,7 +78,7 @@ import gmailConfig from './config/google-gmail.config';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, jwtConfig, storageConfig, redisConfig, googleCalendarConfig, aiConfig, emailConfig, microsoftGraphConfig, gmailConfig],
+      load: [appConfig, databaseConfig, jwtConfig, storageConfig, redisConfig, googleCalendarConfig, aiConfig, emailConfig, whatsappConfig, microsoftGraphConfig, gmailConfig],
       envFilePath: ['.env.local', '.env'],
     }),
     // A single named throttler on purpose. @nestjs/throttler v5 enforces
@@ -109,6 +111,7 @@ import gmailConfig from './config/google-gmail.config';
     AuthorizationModule,
     StorageModule,
     EmailModule,
+    WhatsAppModule,
     AuditModule,
     HealthModule,
     TenancyModule,

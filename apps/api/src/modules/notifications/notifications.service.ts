@@ -3,8 +3,22 @@ import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import { DatabaseService } from '../../database/database.service';
 import { NotificationsGateway } from './notifications.gateway';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { NOTIFICATION_EMAIL_QUEUE, NOTIFICATION_EMAIL_JOB_NAME, type NotificationEmailJobData } from './notification-email.constants';
+import { NOTIFICATION_WHATSAPP_QUEUE, NOTIFICATION_WHATSAPP_JOB_NAME, type NotificationWhatsAppJobData } from './notification-whatsapp.constants';
 import type { PaginationQuery } from '@engineeringos/types';
+
+// Meta's WhatsApp Cloud API wants plain digits with country code, no
+// leading '+', spaces, or punctuation. users.phone is free-text (whatever
+// format was typed into the profile form), so this is a best-effort
+// normalization, not real E.164 validation; too short after stripping
+// almost certainly means "not actually a usable number" rather than a
+// real international number, so it's treated the same as no number on file.
+function toWhatsAppPhone(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  return digits.length >= 8 ? digits : null;
+}
 
 export const NOTIFICATION_PRIORITIES = ['normal', 'high', 'critical'] as const;
 export type NotificationPriority = typeof NOTIFICATION_PRIORITIES[number];
@@ -53,7 +67,9 @@ export class NotificationsService {
   constructor(
     private readonly db: DatabaseService,
     private readonly gateway: NotificationsGateway,
+    private readonly whatsapp: WhatsAppService,
     @InjectQueue(NOTIFICATION_EMAIL_QUEUE) private readonly emailQueue: Queue<NotificationEmailJobData>,
+    @InjectQueue(NOTIFICATION_WHATSAPP_QUEUE) private readonly whatsappQueue: Queue<NotificationWhatsAppJobData>,
   ) {}
 
   // Called synchronously from other services (e.g. IssuesService on
@@ -100,6 +116,24 @@ export class NotificationsService {
       }
     }
 
+    // Phase 3 (WhatsApp channel): same best-effort contract as email/push
+    // above, plus the master spec's own section 10 zero-unapproved-cost
+    // rule enforced right here -- isConfigured() must be checked before
+    // this ever creates a delivery row or queues a job, not just before
+    // the processor would actually call Meta's API, so a WhatsApp channel
+    // without real credentials costs nothing and leaves no delivery-log
+    // noise. Reserved for 'critical' only (not high/actionRequired, unlike
+    // email): WhatsApp is the most intrusive and the only channel with a
+    // real per-message cost, so it stays the narrowest trigger until Phase
+    // 4's real preferences replace this fixed rule.
+    if (priority === 'critical' && this.whatsapp.isConfigured()) {
+      try {
+        await this.enqueueWhatsApp(companyId, row.id as string, input.userId);
+      } catch (err) {
+        this.logger.warn(`Failed to enqueue notification WhatsApp message for user ${input.userId}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
     return row;
   }
 
@@ -115,6 +149,21 @@ export class NotificationsService {
       RETURNING id
     `);
     await this.emailQueue.add(NOTIFICATION_EMAIL_JOB_NAME, { companyId, deliveryId: delivery.id as string });
+  }
+
+  private async enqueueWhatsApp(companyId: string, notificationId: string, userId: string): Promise<void> {
+    const [user] = await this.db.withTenant(companyId, sql => sql`
+      SELECT phone FROM users WHERE id = ${userId} AND is_active = true
+    `);
+    const toPhone = toWhatsAppPhone(user?.phone as string | null | undefined);
+    if (!toPhone) return;
+
+    const [delivery] = await this.db.withTenant(companyId, sql => sql`
+      INSERT INTO notification_whatsapp_deliveries (company_id, notification_id, to_phone)
+      VALUES (${companyId}, ${notificationId}, ${toPhone})
+      RETURNING id
+    `);
+    await this.whatsappQueue.add(NOTIFICATION_WHATSAPP_JOB_NAME, { companyId, deliveryId: delivery.id as string });
   }
 
   async findAll(companyId: string, userId: string, query: PaginationQuery & { unreadOnly?: boolean; category?: string; search?: string }) {
