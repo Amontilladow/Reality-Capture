@@ -22,7 +22,7 @@ export interface AskAssistantResult {
 // Phase 7 cost-tracking fix: generate()/generateDraft()'s internal return
 // shape additionally carries the provider's own reported token counts
 // (GenerateResponseResult.inputTokens/outputTokens), so ask() can pass them
-// to usage.log() -- see ai_usage_log's input_tokens/output_tokens columns
+// to usage.log(); see ai_usage_log's input_tokens/output_tokens columns
 // (migration 062), which existed from day one but were never actually
 // populated because this data was being discarded here. Deliberately NOT
 // added to the public AskAssistantResult: token counts are an internal
@@ -35,7 +35,7 @@ type GenerateOutcome = Omit<AskAssistantResult, 'remainingQuota'> & {
 // CTO spec sections 16-21: Site Engineer/Construction Manager/Project
 // Engineer have full working access to Issues and Snagging (so AI drafts
 // for those stay enabled), but RFIs sit outside their three allowed
-// modules -- the assistant must decline to draft one for them, with this
+// modules; the assistant must decline to draft one for them, with this
 // exact message, rather than silently producing a draft the create
 // endpoint would reject anyway.
 const RFI_DRAFT_RESTRICTED_MESSAGE = 'Your current RealityCapture role does not have permission to create RFIs. I can help you review the issue or prepare information for an authorized user.';
@@ -46,7 +46,7 @@ export class AssistantQuotaExceededError extends Error {
 
 // Prevents retrieved/stored free-text (an issue description, an RFI
 // question someone typed) from forging a closing </context> tag and
-// injecting fake instructions into the prompt -- same mitigation the
+// injecting fake instructions into the prompt; same mitigation the
 // Python ai-service's old /assistant/ endpoint used, ported here since
 // this Gateway now owns prompt construction. Applied to every string value
 // pulled from a tool result before it's ever concatenated into the prompt.
@@ -67,11 +67,11 @@ function buildContextBlock(results: ToolResult[]): string {
 }
 
 // Every read-tool the model can be offered via native function-calling (see
-// resolveToolNames() below) -- the model picks from this exact list, so a
+// resolveToolNames() below): the model picks from this exact list, so a
 // name here that doesn't exist in runTool()'s switch would silently no-op;
 // KNOWN_TOOL_NAMES guards against that plus any hallucinated name outright.
-// No arguments are declared (see ai-provider.interface.ts's header comment)
-// -- runTool() itself resolves currentResourceId-dependent arguments from
+// No arguments are declared (see ai-provider.interface.ts's header comment);
+// runTool() itself resolves currentResourceId-dependent arguments from
 // AssistantContext, so a "Details" tool is still safe to expose even when
 // nothing is currently being viewed (it falls back to the matching "Open"
 // list tool, exactly like the regex router it replaces).
@@ -101,14 +101,14 @@ const TOOL_CATALOG: ToolDefinition[] = [
 ];
 const KNOWN_TOOL_NAMES = new Set(TOOL_CATALOG.map((t) => t.name));
 
-// Deterministic, zero-cost intent routing -- still the first thing checked,
+// Deterministic, zero-cost intent routing; still the first thing checked,
 // for two jobs native tool-calling must NOT take over:
 //   1. Draft-intent detection, which the role-aware block in ask() (step
 //      1.5) needs BEFORE a provider call is ever made, let alone one that
 //      costs quota.
 //   2. A safety-net list of read-tools, used by resolveToolNames() below
 //      only if the model-driven selection call itself fails outright (no
-//      tool-calling support, network error) -- never because the model
+//      tool-calling support, network error): never because the model
 //      legitimately decided no tool applies.
 // Checked in order; draft intents are checked first since "draft an RFI
 // about this issue" would otherwise also match the plain RFI-lookup pattern
@@ -121,12 +121,12 @@ function routeIntent(question: string, ctx: AssistantContext): Intent {
   const q = question.toLowerCase();
   const wantsDraft = /\b(draft|write|create|raise|log|compose)\b/.test(q);
 
-  // (s)? on every noun below -- a plain \bword\b regex does NOT match the
+  // (s)? on every noun below; a plain \bword\b regex does NOT match the
   // plural ("rfis" has no word boundary between "rfi" and "s"), and a user
   // asking "summarize open RFIs" almost always uses the plural. This was a
   // real, confirmed bug (not a hypothetical): it silently dropped the
   // intended tool call and let the model answer with an empty context
-  // instead, indistinguishable from "this project genuinely has none."
+  // instead, indistinguishable from "this project has none."
   if (wantsDraft && /\brfi(s)?\b/.test(q)) return { kind: 'draft_rfi' };
   if (wantsDraft && /\bsnag/.test(q)) return { kind: 'draft_snag' };
   if (wantsDraft && /\bissue(s)?\b/.test(q)) return { kind: 'draft_issue' };
@@ -169,7 +169,7 @@ export class AiService {
   ) {}
 
   // Spec sections 5-8: a user's own BYO AI connection, when present, answers
-  // in their place -- it never bypasses the domain guard, tools, permissions
+  // in their place; it never bypasses the domain guard, tools, permissions
   // or draft-then-confirm flow above/below it, it only changes which model
   // runs and who pays for it. Falls back to RealityCapture's own provider
   // (ProviderFactory) when the user has no connection configured.
@@ -188,7 +188,7 @@ export class AiService {
 
   // See the 1.6 call site's comment: a cheap LLM classification used only
   // for "weak" domain-guard matches, always on RealityCapture's own
-  // provider. Fails closed -- any error getting or calling the provider is
+  // provider. Fails closed; any error getting or calling the provider is
   // treated as "not in domain" rather than risking a false allow.
   private async classifyBorderline(question: string): Promise<boolean> {
     try {
@@ -210,7 +210,7 @@ export class AiService {
       currentResourceId: dto.context?.currentResourceId,
     };
 
-    // ── 1. Domain guard — runs before anything else costs money or quota ──
+    // ── 1. Domain guard; runs before anything else costs money or quota ──
     // Not treated as an error: it's a normal, successful response that
     // happens to decline the question (spec section 22's "identify when a
     // request is outside the assistant's scope"), so the frontend can
@@ -226,7 +226,7 @@ export class AiService {
       return { answer: DomainGuardService.REJECTION_MESSAGE, blocked: true, toolsUsed: [], remainingQuota: remaining };
     }
 
-    // ── 1.5 Role-aware draft blocking — deterministic, same zero-cost
+    // ── 1.5 Role-aware draft blocking; deterministic, same zero-cost
     // philosophy as the domain guard: a restricted-role user asking for an
     // RFI draft is declined before it ever reaches usage limits or a
     // provider call (CTO spec sections 16-21). Issues and Snagging stay
@@ -241,16 +241,16 @@ export class AiService {
       return { answer: RFI_DRAFT_RESTRICTED_MESSAGE, blocked: true, toolsUsed: [], remainingQuota: remaining };
     }
 
-    // ── 1.6 Second opinion for a "weak" domain match — the regex guard
+    // ── 1.6 Second opinion for a "weak" domain match; the regex guard
     // above matched only a word that's real construction vocabulary but
     // also common in everyday English (see domain-guard.service.ts's
     // header comment), so before spending quota or answering, confirm with
     // one cheap classifyRequest() call. Always runs on RealityCapture's own
-    // provider (never a user's BYO one) -- this is the platform enforcing
+    // provider (never a user's BYO one): this is the platform enforcing
     // its own scope commitment, not a billable part of the answer. Fails
     // closed: if classification itself can't be attempted (no provider
     // configured) or the call errors, the question is blocked rather than
-    // silently let through -- same "ambiguous defaults to blocked"
+    // silently let through; same "ambiguous defaults to blocked"
     // philosophy as the regex guard itself.
     if (guard.strength === 'weak' && !(await this.classifyBorderline(dto.question))) {
       this.usage.log({
@@ -261,7 +261,7 @@ export class AiService {
       return { answer: DomainGuardService.REJECTION_MESSAGE, blocked: true, toolsUsed: [], remainingQuota: remaining };
     }
 
-    // ── 2. Resolve provider BEFORE usage limits — a user with their own
+    // ── 2. Resolve provider BEFORE usage limits; a user with their own
     // connected BYO provider (Mode B) pays and rate-limits on their own
     // account, not RealityCapture's shared one, so they must never be
     // blocked by RealityCapture's quota. Only a request actually running on
@@ -283,7 +283,7 @@ export class AiService {
       }
       reservation = check;
     } else {
-      // BYO — never gated, but still report the user's current
+      // BYO: never gated, but still report the user's current
       // RealityCapture-quota standing so the UI's "X / Y requests today"
       // indicator stays meaningful even though it no longer limits them.
       reservation = await this.usage.getRemaining(user.id, user.companyRole);
@@ -336,12 +336,12 @@ export class AiService {
 
   // Owner request, following the plural-matching bug: "the assistant must
   // understand the full word, part of it, a wrong spelling, like any AI
-  // model." A fixed keyword regex can never fully solve that -- it only
+  // model." A fixed keyword regex can never fully solve that; it only
   // ever recognizes the exact synonyms someone thought to add. Native
   // function-calling hands the decision to the model's own NLU instead: it
   // reads the actual question (typos, partial words, unexpected phrasing
   // and all) and picks which of TOOL_CATALOG apply, the same way "any AI
-  // model" would. `legacyTools` -- routeIntent()'s old regex-derived list --
+  // model" would. `legacyTools`: routeIntent()'s old regex-derived list;
   // is used only if the call to the provider itself fails outright (no
   // tool-calling support, network error); a provider that works but
   // legitimately decides nothing applies returns toolCalls: [] and that
@@ -397,7 +397,7 @@ export class AiService {
   // Draft generation (spec section 9): gathers whatever context tool is
   // relevant (the issue currently being viewed, if any), asks the provider
   // for STRICT JSON matching the draft schema, and returns it as a
-  // structured draft -- never prose, never a direct write. If the model
+  // structured draft; never prose, never a direct write. If the model
   // doesn't return parseable JSON, falls back to a plain-language answer
   // rather than silently fabricating a draft.
   private async generateDraft(

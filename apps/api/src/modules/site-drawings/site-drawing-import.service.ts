@@ -2,13 +2,13 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import type {
-  DocSource, SiteDrawingImportBatch, SiteDrawingImportBatchStatus, SiteDrawingRevision, ExtractedDrawingFields,
+  DocSource, SiteDrawingImportBatch, SiteDrawingImportBatchStatus, SiteDrawingRevision, SiteDrawingReviewQueueItem, ExtractedDrawingFields,
 } from '@engineeringos/types';
 import { DatabaseService } from '../../database/database.service';
 import { StorageService } from '../storage/storage.service';
 import type { ResolveReviewDto } from './dto/resolve-review.dto';
 
-const BATCH_MAX_SIZE_BYTES = 500 * 1024 * 1024; // 500 MB -- "hundreds of PDF drawings" in one archive
+const BATCH_MAX_SIZE_BYTES = 500 * 1024 * 1024; // 500 MB: "hundreds of PDF drawings" in one archive
 const BATCH_ALLOWED_EXTENSIONS = new Set(['zip', 'pdf']);
 
 export interface SiteDrawingImportJob {
@@ -19,7 +19,7 @@ export interface SiteDrawingImportJob {
 
 // Bulk ingestion (brief Phase 2): a ZIP of many drawings, or a single PDF,
 // uploaded the same presigned-URL way every other upload in this app
-// works, then processed asynchronously by SiteDrawingImportProcessor --
+// works, then processed asynchronously by SiteDrawingImportProcessor;
 // this service only creates the batch record and enqueues the job; it
 // never blocks a request on the actual extraction work.
 @Injectable()
@@ -59,7 +59,7 @@ export class SiteDrawingImportService {
       RETURNING *
     `);
 
-    // Queued, never processed inline -- a batch of hundreds of PDFs (each
+    // Queued, never processed inline; a batch of hundreds of PDFs (each
     // needing text extraction, and possibly an OCR round trip) must not
     // block this request (brief section 2: "handle large packages through
     // background processing").
@@ -87,21 +87,25 @@ export class SiteDrawingImportService {
   }
 
   // The review queue (brief section 4: "a review queue for uncertain
-  // records") -- every revision an import flagged as needing a human
-  // look, newest first.
-  async listReviewQueue(companyId: string, projectId: string): Promise<SiteDrawingRevision[]> {
-    const rows = await this.db.withTenant(companyId, sql => sql<RevisionRow[]>`
-      SELECT * FROM site_drawing_revisions
-      WHERE project_id = ${projectId} AND extraction_status IN ('NEEDS_REVIEW', 'CONFLICT')
-      ORDER BY created_at DESC
+  // records"): every revision an import flagged as needing a human
+  // look, newest first. Joined to site_drawings for drawing_number/
+  // drawing_title: a reviewer needs to know WHICH drawing a flagged
+  // revision belongs to, which a bare site_drawing_revisions row can't
+  // say on its own.
+  async listReviewQueue(companyId: string, projectId: string): Promise<SiteDrawingReviewQueueItem[]> {
+    const rows = await this.db.withTenant(companyId, sql => sql<ReviewQueueRow[]>`
+      SELECT r.*, d.drawing_number, d.drawing_title FROM site_drawing_revisions r
+      JOIN site_drawings d ON d.id = r.drawing_id
+      WHERE r.project_id = ${projectId} AND r.extraction_status IN ('NEEDS_REVIEW', 'CONFLICT')
+      ORDER BY r.created_at DESC
     `);
-    return rows.map(toRevision);
+    return rows.map(toReviewQueueItem);
   }
 
   // An authorized user's correction/confirmation (brief section 3: "allow
   // authorized users to correct metadata"). Updates the revision's own
   // fields and, when this is the drawing's CURRENT revision, the
-  // denormalized fields on site_drawings too -- the same "keep current_*
+  // denormalized fields on site_drawings too; the same "keep current_*
   // in sync" discipline SiteDrawingsService's own mutations already
   // follow. Never changes workflowStatus: a reviewer confirming extracted
   // METADATA is not the same action as an approval decision (brief's
@@ -179,4 +183,13 @@ function toRevision(r: RevisionRow): SiteDrawingRevision {
     extractionStatus: r.extractionStatus, extractedFieldsRaw: r.extractedFieldsRaw ?? undefined, importBatchId: r.importBatchId ?? undefined,
     reviewNotes: r.reviewNotes ?? undefined, createdAt: r.createdAt, updatedAt: r.updatedAt,
   };
+}
+
+interface ReviewQueueRow extends RevisionRow {
+  drawingNumber: string;
+  drawingTitle: string;
+}
+
+function toReviewQueueItem(r: ReviewQueueRow): SiteDrawingReviewQueueItem {
+  return { ...toRevision(r), drawingNumber: r.drawingNumber, drawingTitle: r.drawingTitle };
 }

@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Project, ProjectPhase, ProjectStatus } from '@engineeringos/types';
 import { PROJECT_PHASES, PROJECT_PHASE_LABELS } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
 import { updateProject, uploadProjectBranding } from '../lib/projects.api';
 import { apiErrorMessage } from '../lib/api';
+import { Listbox } from './ui/Listbox';
 
 interface EditProjectForm {
   name: string;
@@ -47,6 +48,7 @@ export function EditProjectModal({
   const queryClient = useQueryClient();
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -109,7 +111,7 @@ export function EditProjectModal({
   });
 
   // Uploaded immediately on file pick, independent of the main form's Save
-  // button, so the thumbnail updates right away -- same "avatar upload"
+  // button, so the thumbnail updates right away; same "avatar upload"
   // pattern used elsewhere, not tied into react-hook-form's state.
   const logoMutation = useMutation({
     mutationFn: (file: File) => uploadProjectBranding(project!.id, file, 'logo'),
@@ -131,27 +133,51 @@ export function EditProjectModal({
           {errors.name && <p className="field-error">{errors.name.message}</p>}
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-4">
           <div>
             <label className="field-label" htmlFor="epCode">Project code</label>
             <input id="epCode" className="field-input font-mono" {...register('code')} />
           </div>
           <div>
             <label className="field-label" htmlFor="epStatus">Status</label>
-            <select id="epStatus" className="field-input" {...register('status')}>
-              {STATUSES.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
+            <Controller
+              control={control}
+              name="status"
+              render={({ field }) => (
+                <Listbox
+                  id="epStatus"
+                  ref={field.ref}
+                  value={field.value ?? ''}
+                  onChange={(e) => field.onChange(e.target.value)}
+                  onBlur={field.onBlur}
+                >
+                  {STATUSES.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </Listbox>
+              )}
+            />
           </div>
           <div>
             <label className="field-label" htmlFor="epPhase">Phase</label>
-            <select id="epPhase" className="field-input" {...register('phase')}>
-              <option value="">Unspecified</option>
-              {PROJECT_PHASES.map((p) => (
-                <option key={p} value={p}>{PROJECT_PHASE_LABELS[p]}</option>
-              ))}
-            </select>
+            <Controller
+              control={control}
+              name="phase"
+              render={({ field }) => (
+                <Listbox
+                  id="epPhase"
+                  ref={field.ref}
+                  value={field.value ?? ''}
+                  onChange={(e) => field.onChange(e.target.value)}
+                  onBlur={field.onBlur}
+                >
+                  <option value="">Unspecified</option>
+                  {PROJECT_PHASES.map((p) => (
+                    <option key={p} value={p}>{PROJECT_PHASE_LABELS[p]}</option>
+                  ))}
+                </Listbox>
+              )}
+            />
           </div>
         </div>
 
@@ -160,7 +186,7 @@ export function EditProjectModal({
           <textarea id="epDescription" className="field-input min-h-20 resize-none" {...register('description')} />
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-4">
           <div>
             <label className="field-label" htmlFor="epLocation">Site / address</label>
             <input id="epLocation" className="field-input" {...register('location')} />
@@ -175,7 +201,7 @@ export function EditProjectModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="epStart">Start date</label>
             <input id="epStart" type="date" className="field-input" {...register('startDate')} />
@@ -186,14 +212,14 @@ export function EditProjectModal({
           </div>
         </div>
 
-        <div className="pt-2 border-t border-base-600 space-y-3">
+        <div className="pt-2 border-t border-base-600 space-y-4">
           <div>
             <div className="field-label">Stakeholders</div>
             <p className="text-xs text-ink-500">
-              Set once here — every RFI's exported PDF pulls these in automatically instead of asking again per document.
+              Set once here. Every RFI’s exported PDF pulls these in automatically instead of asking again per document.
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="field-label" htmlFor="epOrgCode">Org code</label>
               <input id="epOrgCode" className="field-input font-mono" placeholder="e.g. CSC" {...register('orgCode')} />
@@ -207,7 +233,7 @@ export function EditProjectModal({
               <input id="epLeadDesigner" className="field-input" {...register('leadDesigner')} />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="field-label" htmlFor="epConsultant">Consultant</label>
               <input id="epConsultant" className="field-input" {...register('consultantName')} />
@@ -221,7 +247,7 @@ export function EditProjectModal({
               <input id="epPmc" className="field-input" {...register('pmcName')} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="field-label" htmlFor="epMainContractor">Main contractor</label>
               <input id="epMainContractor" className="field-input" {...register('mainContractor')} />
@@ -232,14 +258,14 @@ export function EditProjectModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-1">
+          <div className="grid grid-cols-2 gap-4 pt-2">
             <div>
-              <div className="field-label mb-1">Logo</div>
+              <div className="field-label mb-2">Logo</div>
               <div className="flex items-center gap-2">
                 {project.logoUrl && (
                   <img src={project.logoUrl} alt="Project logo" className="w-10 h-10 object-contain rounded border border-base-600 bg-base-950" />
                 )}
-                <label className="btn-secondary !px-3 !py-1.5 text-xs cursor-pointer">
+                <label className="btn-secondary !px-4 !py-2 text-xs cursor-pointer">
                   {logoMutation.isPending ? 'Uploading…' : project.logoUrl ? 'Change logo' : 'Upload logo'}
                   <input
                     type="file"
@@ -254,15 +280,15 @@ export function EditProjectModal({
                   />
                 </label>
               </div>
-              {logoMutation.isError && <p className="field-error mt-1">{apiErrorMessage(logoMutation.error)}</p>}
+              {logoMutation.isError && <p className="field-error mt-2">{apiErrorMessage(logoMutation.error)}</p>}
             </div>
             <div>
-              <div className="field-label mb-1">Stamp</div>
+              <div className="field-label mb-2">Stamp</div>
               <div className="flex items-center gap-2">
                 {project.stampUrl && (
                   <img src={project.stampUrl} alt="Project stamp" className="w-10 h-10 object-contain rounded border border-base-600 bg-base-950" />
                 )}
-                <label className="btn-secondary !px-3 !py-1.5 text-xs cursor-pointer">
+                <label className="btn-secondary !px-4 !py-2 text-xs cursor-pointer">
                   {stampMutation.isPending ? 'Uploading…' : project.stampUrl ? 'Change stamp' : 'Upload stamp'}
                   <input
                     type="file"
@@ -277,13 +303,13 @@ export function EditProjectModal({
                   />
                 </label>
               </div>
-              {stampMutation.isError && <p className="field-error mt-1">{apiErrorMessage(stampMutation.error)}</p>}
+              {stampMutation.isError && <p className="field-error mt-2">{apiErrorMessage(stampMutation.error)}</p>}
             </div>
           </div>
         </div>
 
         {mutation.isError && (
-          <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded px-3 py-2">
+          <div className="text-sm text-danger bg-danger/10 border border-danger/30 rounded px-4 py-2">
             {apiErrorMessage(mutation.error)}
           </div>
         )}

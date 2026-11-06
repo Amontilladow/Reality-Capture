@@ -2,7 +2,7 @@ import { createElement as h } from 'react';
 
 // @react-pdf/renderer is ESM-only ("type": "module" in its package.json);
 // this API compiles to CommonJS (see apps/api/.swcrc), so it must be loaded
-// via dynamic import() rather than a static import -- a static import would
+// via dynamic import() rather than a static import; a static import would
 // compile to require(), which cannot load an ESM package. Same reasoning as
 // rfi-pdf.template.ts's own top-of-file comment; kept as the one place in
 // this module that knows about @react-pdf/renderer at all.
@@ -15,11 +15,11 @@ const INK_MUTED = '#4A6178';
 const SIGNAL = '#E56A1F';
 const BLUEPRINT = '#1E6E93';
 
-// Registered once per process, not per render -- same convention as
+// Registered once per process, not per render; same convention as
 // rfi-pdf.template.ts's own registerFonts(). Deliberately kept as a
 // separate module-local flag (not shared with rfi-pdf.template.ts) since
 // Font.register() is itself idempotent-safe to call again from a second
-// module -- the `fontsRegistered` guard here only avoids this module's own
+// module; the `fontsRegistered` guard here only avoids this module's own
 // redundant re-parsing across repeated calls within one process.
 let fontsRegistered = false;
 function registerFonts(Font: typeof import('@react-pdf/renderer').Font) {
@@ -33,7 +33,7 @@ function registerFonts(Font: typeof import('@react-pdf/renderer').Font) {
       { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff'), fontWeight: 700 },
     ],
   });
-  // IBM Plex Mono deliberately NOT registered here -- see
+  // IBM Plex Mono deliberately NOT registered here; see
   // rfi-pdf.template.ts's registerFonts() comment for the full reasoning
   // (the current @fontsource "latin" WOFF build crashes fontkit on a plain
   // space character).
@@ -44,7 +44,7 @@ export interface NoticeLetterPdfData {
   projectName: string;
   projectCode?: string;
   logoBuffer?: Buffer;
-  body: string; // the letter's full freeform text -- rendered as paragraphs
+  body: string; // the letter's full freeform text: rendered as paragraphs
 }
 
 export async function renderNoticeLetterPdf(data: NoticeLetterPdfData): Promise<Buffer> {
@@ -65,7 +65,7 @@ export async function renderNoticeLetterPdf(data: NoticeLetterPdfData): Promise<
   const projectEyebrowText = data.projectCode ? `${data.projectName} · ${data.projectCode}` : data.projectName;
 
   // react-pdf's <Text> does not auto-preserve raw "\n" characters the way
-  // HTML's white-space:pre-wrap does -- a single <Text> containing embedded
+  // HTML's white-space:pre-wrap does; a single <Text> containing embedded
   // newlines collapses onto one run-on line when rendered. The letter body
   // (per the frontend's default template) mixes short single-line-break
   // structure ("To: ...\nFrom: ...\nDate: ...") with blank-line-separated
@@ -73,7 +73,7 @@ export async function renderNoticeLetterPdf(data: NoticeLetterPdfData): Promise<
   //   1. Split on blank lines ("\n\n", allowing surrounding whitespace) into
   //      paragraphs.
   //   2. Within each paragraph, split on single "\n" and render each line as
-  //      its own <Text> block -- this is what actually keeps "To:", "From:",
+  //      its own <Text> block; this is what actually keeps "To:", "From:",
   //      "Date:" etc. on separate lines instead of collapsing them.
   const paragraphs = data.body
     .replace(/\r\n/g, '\n')

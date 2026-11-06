@@ -13,7 +13,7 @@
 -- later migration (this one's neighbor 021, or a ticket-2b migration)
 -- is free to reference the new values immediately.
 --
--- Ticket 2a does not itself use these two values anywhere yet -- they're
+-- Ticket 2a does not itself use these two values anywhere yet; they're
 -- added now purely so ticket 2b's workflow actions (reopen, etc.) don't
 -- need another ALTER TYPE ADD VALUE transaction-boundary dance later.
 ALTER TYPE issue_status_enum ADD VALUE IF NOT EXISTS 'waiting_for_information';

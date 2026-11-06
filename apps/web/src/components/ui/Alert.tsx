@@ -23,7 +23,7 @@ const TONE_STYLE: Record<AlertTone, { wrap: string; icon: ReactNode }> = {
 
 // Inline banner for a persistent, page-level condition (validation summary,
 // "this project is archived," a feature-degraded notice). For a one-shot
-// reaction to an action the user just took, use the Toast system instead --
+// reaction to an action the user just took, use the Toast system instead;
 // an Alert stays until its cause is resolved or it's dismissed, a Toast
 // times out on its own.
 export function Alert({
@@ -39,12 +39,12 @@ export function Alert({
 }) {
   const style = TONE_STYLE[tone];
   return (
-    <div role={tone === 'danger' || tone === 'warning' ? 'alert' : 'status'} className={`flex items-start gap-3 rounded-md border px-4 py-3 text-sm ${style.wrap}`}>
-      <svg viewBox="0 0 24 24" className="w-4.5 h-4.5 mt-0.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <div role={tone === 'danger' || tone === 'warning' ? 'alert' : 'status'} className={`flex items-start gap-4 rounded-md border px-4 py-4 text-sm ${style.wrap}`}>
+      <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4.5 h-4.5 mt-0 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         {style.icon}
       </svg>
       <div className="flex-1 text-ink-100">
-        {title && <div className="font-medium mb-0.5">{title}</div>}
+        {title && <div className="font-medium mb-0">{title}</div>}
         {children && <div className="text-ink-300">{children}</div>}
       </div>
       {onDismiss && (

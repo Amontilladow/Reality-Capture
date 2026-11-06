@@ -38,7 +38,7 @@ function readInstalledVersion(pkgName: string): string {
 // Reads installed package versions at runtime rather than hardcoding them,
 // so this can never silently drift from what pnpm-lock.yaml actually
 // resolved. RENDER_GIT_COMMIT is the closest available substitute for a
-// Docker image digest from inside the running container -- Render sets it
+// Docker image digest from inside the running container; Render sets it
 // automatically to the commit the current deploy was built from.
 export function captureGenerationVersions(): GenerationVersions {
   return {

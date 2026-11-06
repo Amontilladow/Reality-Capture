@@ -6,6 +6,7 @@ import { PROJECT_PHASES, PROJECT_PHASE_LABELS } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
 import { uploadCapture } from '../lib/captures.api';
 import { apiErrorMessage } from '../lib/api';
+import { Listbox } from './ui/Listbox';
 
 interface QueuedFile {
   id: string;
@@ -68,7 +69,7 @@ export function CaptureUploadModal({
           {
             captureType,
             locationId: locationId || undefined,
-            // No title field in this quick-upload flow — default to the
+            // No title field in this quick-upload flow; default to the
             // filename rather than leaving every capture "Untitled".
             title: qf.file.name.replace(/\.[^./]+$/, ''),
             phase: phase || undefined,
@@ -97,10 +98,10 @@ export function CaptureUploadModal({
   return (
     <Modal open={open} onClose={handleClose} title="Upload captures">
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="captureType">Capture type</label>
-            <select
+            <Listbox
               id="captureType"
               className="field-input"
               value={captureType}
@@ -109,11 +110,11 @@ export function CaptureUploadModal({
               <option value="photo_360">360° photo</option>
               <option value="photo_standard">Standard photo</option>
               <option value="video">Video</option>
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="locationId">Location</label>
-            <select
+            <Listbox
               id="locationId"
               className="field-input"
               value={locationId}
@@ -123,13 +124,13 @@ export function CaptureUploadModal({
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>{l.name}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
         </div>
 
         <div>
           <label className="field-label" htmlFor="phase">Phase</label>
-          <select
+          <Listbox
             id="phase"
             className="field-input"
             value={phase}
@@ -139,7 +140,7 @@ export function CaptureUploadModal({
             {PROJECT_PHASES.map((p) => (
               <option key={p} value={p}>{PROJECT_PHASE_LABELS[p]}</option>
             ))}
-          </select>
+          </Listbox>
         </div>
 
         <div
@@ -151,13 +152,13 @@ export function CaptureUploadModal({
           <input {...getInputProps()} />
           <UploadIcon className="w-6 h-6 mx-auto mb-2 text-ink-500" />
           <p className="text-sm text-ink-300">Drag files here, or click to browse</p>
-          <p className="text-xs text-ink-500 mt-1">Images and video — uploaded directly to storage</p>
+          <p className="text-xs text-ink-500 mt-2">Images and video, uploaded directly to storage</p>
         </div>
 
         {files.length > 0 && (
-          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
             {files.map((f) => (
-              <div key={f.id} className="flex items-center gap-3 text-xs">
+              <div key={f.id} className="flex items-center gap-4 text-xs">
                 <span className="flex-1 truncate">{f.file.name}</span>
                 {f.status === 'queued' && !uploading && (
                   <button onClick={() => removeFile(f.id)} className="text-ink-500 hover:text-danger">
@@ -198,7 +199,7 @@ export function CaptureUploadModal({
 
 function UploadIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M12 16V4M7 9l5-5 5 5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" strokeLinecap="round" />
     </svg>

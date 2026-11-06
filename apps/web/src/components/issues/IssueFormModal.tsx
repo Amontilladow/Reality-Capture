@@ -15,6 +15,7 @@ import {
   PROJECT_ROLE_LABELS,
 } from '../../lib/issue-constants';
 import { apiErrorMessage } from '../../lib/api';
+import { Listbox } from '../ui/Listbox';
 
 export function IssueFormModal({
   open,
@@ -35,13 +36,13 @@ export function IssueFormModal({
   hierarchy: ProjectHierarchy[];
   issue?: IssueDetailItem;
   // Pre-fills a brand-new (never submitted) issue, e.g. from an AI-generated
-  // draft -- only used when `issue` is absent (create mode); the user still
+  // draft; only used when `issue` is absent (create mode); the user still
   // edits and submits through this exact same form and createIssue() call.
   draftValues?: { title?: string; description?: string; issueType?: IssueType; priority?: IssuePriority; discipline?: IssueDiscipline; deadline?: string };
   defaultElementId?: string;
   defaultElementName?: string;
   // Captured automatically from the BIM viewer when "Raise issue" is
-  // clicked there -- not user-editable, so no corresponding form field.
+  // clicked there; not user-editable, so no corresponding form field.
   viewState?: {
     modelId: string;
     cameraPosition: CameraVector;
@@ -62,7 +63,7 @@ export function IssueFormModal({
   const [place, setPlace] = useState<HierarchySelection>({ buildingId: '', levelId: '', locationId: '' });
   const [deadline, setDeadline] = useState('');
   const [error, setError] = useState('');
-  // Evidence photos picked before the issue exists yet -- uploaded as real
+  // Evidence photos picked before the issue exists yet; uploaded as real
   // captures (so they show up in the Captures tab like any other capture)
   // and linked via issue_captures right after the issue itself is created,
   // same mechanism IssueDetail's "Attach existing capture" already uses,
@@ -140,7 +141,7 @@ export function IssueFormModal({
       });
 
       // Upload each picked photo as a real capture (so it also shows up in
-      // the Captures tab), then link it to the new issue as evidence --
+      // the Captures tab), then link it to the new issue as evidence;
       // sequential, not parallel, so uploadProgress reflects real completion
       // and one failed upload doesn't race the others.
       if (photos.length > 0) {
@@ -171,20 +172,20 @@ export function IssueFormModal({
   return (
     <Modal open={open} onClose={onClose} title={isEdit ? 'Edit issue' : 'New issue'} wide>
       <div className="space-y-4">
-        <div className="flex justify-end -mt-1">
+        <div className="flex justify-end -mt-2">
           <HelpLink slug={isEdit ? 'updating-an-issue' : 'creating-an-issue'} label={isEdit ? 'How to update an issue' : 'How to fill out an issue'} />
         </div>
         {error && <p className="field-error">{error}</p>}
 
         {!isEdit && defaultElementId && (
-          <div className="text-xs text-ink-500 bg-base-700/40 rounded px-3 py-2">
+          <div className="text-xs text-ink-500 bg-base-700/40 rounded px-4 py-2">
             BIM element: <span className="text-ink-100">{defaultElementName || defaultElementId}</span>
           </div>
         )}
 
         {!isEdit && viewState && (
-          <div className="text-xs text-ink-500 bg-base-700/40 rounded px-3 py-2">
-            3D view captured{viewState.screenshotStorageKey ? ' with screenshot' : ''} — "view in 3D" will reopen this exact vantage point.
+          <div className="text-xs text-ink-500 bg-base-700/40 rounded px-4 py-2">
+            3D view captured{viewState.screenshotStorageKey ? ' with screenshot' : ''}. “View in 3D” will reopen this exact vantage point.
           </div>
         )}
 
@@ -198,31 +199,31 @@ export function IssueFormModal({
           <textarea id="description" className="field-input min-h-[72px]" value={description} onChange={(e) => setDescription(e.target.value)} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           {!isEdit && (
             <div>
               <label className="field-label" htmlFor="issueType">Type</label>
-              <select id="issueType" className="field-input" value={issueType} onChange={(e) => setIssueType(e.target.value as IssueType)}>
+              <Listbox id="issueType" className="field-input" value={issueType} onChange={(e) => setIssueType(e.target.value as IssueType)}>
                 {ISSUE_TYPES.map((t) => (
                   <option key={t} value={t}>{ISSUE_TYPE_LABELS[t]}</option>
                 ))}
-              </select>
+              </Listbox>
             </div>
           )}
           <div>
             <label className="field-label" htmlFor="priority">Priority</label>
-            <select id="priority" className="field-input" value={priority} onChange={(e) => setPriority(e.target.value as IssuePriority)}>
+            <Listbox id="priority" className="field-input" value={priority} onChange={(e) => setPriority(e.target.value as IssuePriority)}>
               {ISSUE_PRIORITIES.map((p) => (
                 <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="assignedTo">Assignee</label>
-            <select id="assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+            <Listbox id="assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
               <option value="">Unassigned</option>
               {members.map((m) => {
                 const name = [m.firstName, m.lastName].filter(Boolean).join(' ') || m.email;
@@ -231,7 +232,7 @@ export function IssueFormModal({
                   <option key={m.userId} value={m.userId}>{name} ({roleLabel})</option>
                 );
               })}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="deadline">Deadline *</label>
@@ -239,10 +240,10 @@ export function IssueFormModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="discipline">Discipline *</label>
-            <select
+            <Listbox
               id="discipline"
               className="field-input"
               value={discipline}
@@ -252,11 +253,11 @@ export function IssueFormModal({
               {ISSUE_DISCIPLINES.map((d) => (
                 <option key={d} value={d}>{DISCIPLINE_LABELS[d]}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="category">Category</label>
-            <select
+            <Listbox
               id="category"
               className="field-input"
               value={category}
@@ -266,7 +267,7 @@ export function IssueFormModal({
               {ISSUE_CATEGORIES.map((c) => (
                 <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
         </div>
 
@@ -291,7 +292,7 @@ export function IssueFormModal({
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                // No `capture` attribute -- that forces mobile browsers
+                // No `capture` attribute: that forces mobile browsers
                 // straight into the camera with no option to pick an
                 // existing photo. Leaving it off is what makes the browser
                 // show its native action sheet (Camera / Photo Library / Files).
@@ -305,7 +306,7 @@ export function IssueFormModal({
               />
             </div>
             {photos.length === 0 && (
-              <p className="text-xs text-ink-500 mt-1">Optional -- attach photos as evidence. They'll also appear in the project's Captures tab.</p>
+              <p className="text-xs text-ink-500 mt-2">Optional: attach photos as evidence. They’ll also appear in the project’s Captures tab.</p>
             )}
             {photos.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">

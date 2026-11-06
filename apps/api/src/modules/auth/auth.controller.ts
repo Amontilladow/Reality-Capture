@@ -18,7 +18,7 @@ import { AllowPending } from '../../common/decorators/allow-pending.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '@engineeringos/types';
 
-// httpOnly refresh-token cookie for the web SPA -- see auth.store.ts (apps/web)
+// httpOnly refresh-token cookie for the web SPA; see auth.store.ts (apps/web)
 // for why: a refresh token readable by page-context JavaScript (localStorage)
 // is a one-shot account-takeover target for any future XSS bug. Mobile has no
 // cookie jar and keeps sending/receiving refreshToken in the body via
@@ -41,7 +41,7 @@ export class AuthController {
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
       httpOnly: true,
       // SameSite=None requires Secure, and only makes sense once the API is
-      // actually served over HTTPS -- true in every deployed environment,
+      // actually served over HTTPS; true in every deployed environment,
       // false for plain-http local dev (where frontend/backend share a site
       // via Vite's dev proxy, so Lax is both sufficient and functional).
       secure: isProduction,
@@ -56,7 +56,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle({ auth: { limit: 10, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sign in with email and password' })
@@ -67,7 +67,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle({ auth: { limit: 10, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Exchange a refresh token for new tokens' })
@@ -97,6 +97,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('accept-invitation')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Accept an invitation and create account' })
@@ -107,7 +108,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle({ auth: { limit: 10, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('self-signup')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Create an account directly, using a company-issued signup code' })
@@ -118,7 +119,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle({ auth: { limit: 10, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('forgot-password')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Request a password reset email' })
@@ -127,7 +128,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle({ auth: { limit: 10, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('reset-password')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Reset password using a reset token' })

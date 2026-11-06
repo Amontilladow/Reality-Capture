@@ -2,7 +2,7 @@
 -- re-typed on every RFI (client/consultant/contractor names don't change
 -- per document, they're fixed for the life of the project). RFI PDFs pull
 -- these automatically instead of asking for them again on every RFI.
--- All nullable -- a project can exist before its stakeholders are known.
+-- All nullable; a project can exist before its stakeholders are known.
 ALTER TABLE projects
   ADD COLUMN IF NOT EXISTS org_code         VARCHAR(20),
   ADD COLUMN IF NOT EXISTS client_name      VARCHAR(255),

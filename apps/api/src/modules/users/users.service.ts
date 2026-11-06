@@ -5,6 +5,7 @@ import { randomBytes } from 'crypto';
 import { DatabaseService } from '../../database/database.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { AuthService } from '../auth/auth.service';
+import { SessionRevocationService } from '../auth/session-revocation.service';
 import { PaymentRequiredException } from '../../common/exceptions/payment-required.exception';
 import type { InviteUserDto } from './dto/invite-user.dto';
 import type { UpdateUserDto } from './dto/update-user.dto';
@@ -18,6 +19,7 @@ export class UsersService {
     private readonly db: DatabaseService,
     private readonly subscription: SubscriptionService,
     private readonly auth: AuthService,
+    private readonly sessionRevocation: SessionRevocationService,
   ) {}
 
   async findAll(companyId: string, query: PaginationQuery) {
@@ -60,15 +62,15 @@ export class UsersService {
 
   async invite(companyId: string, invitedBy: string, invitedByRole: CompanyRole, dto: InviteUserDto) {
     // Phase 6 security fix: RolesGuard only checks that the CALLER's weight
-    // clears the @Roles() minimum on this route (project_manager, weight 60)
-    // -- it says nothing about the weight of the companyRole the caller is
+    // clears the @Roles() minimum on this route (project_manager, weight 60);
+    // it says nothing about the weight of the companyRole the caller is
     // handing to the DTO. Without this check, any project_manager/
     // bim_manager/technical_director/engineering_manager/company_admin could
     // invite a brand-new user with companyRole: 'super_admin' and the
     // service would insert it verbatim (confirmed live during the Phase 6
     // audit: a project_manager-level account successfully minted a
     // super_admin row this way). Cap the requested role to the inviter's
-    // own weight -- an inviter can never grant a starting role more
+    // own weight; an inviter can never grant a starting role more
     // senior than themselves.
     if (dto.companyRole && COMPANY_ROLE_WEIGHT[dto.companyRole] > COMPANY_ROLE_WEIGHT[invitedByRole]) {
       throw new ForbiddenException(
@@ -76,7 +78,7 @@ export class UsersService {
       );
     }
 
-    // withTenant is required on every statement here -- users has the same
+    // withTenant is required on every statement here; users has the same
     // tenant_isolation RLS policy as project_members (see addMember/removeMember
     // in projects.service.ts). A plain this.db.query() never sets
     // app.current_company_id, so under any DB role that isn't the table
@@ -117,10 +119,10 @@ export class UsersService {
       RETURNING id, email
     `);
 
-    // TODO: send invitation email -- until that exists, the caller (an
+    // TODO: send invitation email; until that exists, the caller (an
     // authenticated admin) gets the raw token back in the response below so
     // they can build/share the accept-invitation link themselves. It must
-    // not also go to the server log -- a bearer credential for completing
+    // not also go to the server log; a bearer credential for completing
     // account setup has no business sitting in plaintext log output.
     this.logger.log(`Invitation created for ${dto.email}`);
 
@@ -130,7 +132,7 @@ export class UsersService {
   async update(companyId: string, requestingUserId: string, requestingUserRole: string, targetUserId: string, dto: UpdateUserDto) {
     const target = await this.findOne(companyId, targetUserId);
 
-    // Only super_admin can change roles or deactivate users -- company_admin
+    // Only super_admin can change roles or deactivate users; company_admin
     // has no authority here by default under the permission model (its only
     // inherent authority is creating projects; anything else needs a
     // super_admin-granted per-project permission, which doesn't apply to
@@ -151,7 +153,7 @@ export class UsersService {
 
     // An admin explicitly setting companyRole here *is* the approval action
     // for a pending self-selected-role request, whether they approve it
-    // as-requested or override it with something else -- either way clears
+    // as-requested or override it with something else; either way clears
     // requested_company_role so PendingApprovalGuard stops blocking them on
     // their next token refresh/login.
     const [updated] = await this.db.withTenant(companyId, sql => sql`
@@ -177,7 +179,7 @@ export class UsersService {
   }
 
   async deactivate(companyId: string, userId: string) {
-    // withTenant required -- same tenant_isolation RLS policy as everywhere
+    // withTenant required: same tenant_isolation RLS policy as everywhere
     // else in this file. Without it this UPDATE silently touches 0 rows under
     // any DB role that isn't the table owner/a superuser: the endpoint still
     // returns 200 "deactivated", but the account stays fully active and the
@@ -192,15 +194,22 @@ export class UsersService {
     }
     // Revoke all sessions
     await this.db.withTenant(companyId, sql => sql`UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ${userId} AND company_id = ${companyId}`);
+    // M-1 fix: this message previously claimed immediate revocation while
+    // an already-issued access token actually stayed valid for its full
+    // remaining lifetime (refresh tokens were the only thing really
+    // revoked here). denyFutureAccess() closes that gap; see
+    // SessionRevocationService's own comment; so the message is now
+    // accurate rather than aspirational.
+    await this.sessionRevocation.denyFutureAccess(userId);
     return { message: 'User deactivated and all sessions revoked.' };
   }
 
-  // Admin-assisted password reset -- the fallback for people who can't
+  // Admin-assisted password reset: the fallback for people who can't
   // reliably rely on email (realistic for site-based engineers/draftsmen).
   // Reuses AuthService.forgotPassword()'s exact token scheme
   // (generatePasswordResetToken/buildPasswordResetLink) so a token
   // generated here and one emailed via forgotPassword() are
-  // indistinguishable to resetPassword() -- same expiry, same single-use
+  // indistinguishable to resetPassword(): same expiry, same single-use
   // consumption. The only difference is delivery: this returns the raw
   // link in the response for the calling admin to copy and hand to the
   // person directly (WhatsApp, in person, printed on-site), the same

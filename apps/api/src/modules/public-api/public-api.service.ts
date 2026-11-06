@@ -8,7 +8,7 @@ import type { PaginationQuery } from '@engineeringos/types';
 const DEFAULT_PROGRESS_WINDOW_DAYS = 30;
 
 // Thin read-only wrappers around the same services the authenticated app
-// uses -- every call still goes through companyId-scoped withTenant() calls
+// uses; every call still goes through companyId-scoped withTenant() calls
 // inside those services, so a projectId belonging to another tenant
 // resolves to an empty/not-found result here exactly as it would for a
 // JWT-authenticated request from the wrong company, never a cross-tenant

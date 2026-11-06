@@ -31,7 +31,7 @@ export class ScreenshotsService {
   }
 
   async record(companyId: string, userId: string, dto: RecordScreenshotDto) {
-    // Defense in depth -- don't trust that getUploadUrl() was actually
+    // Defense in depth: don't trust that getUploadUrl() was actually
     // called first, or that screenshot_enabled hasn't been turned off in
     // between the two calls.
     await this.assertScreenshotsEnabled(companyId);
@@ -39,7 +39,7 @@ export class ScreenshotsService {
     // A client-supplied storageKey with no ownership check would let a
     // caller record (and later have resolveUrls sign a GET for) any key in
     // the bucket, not just one from their own generateWorkforceScreenshotKey()
-    // upload -- including another company's object. Reject anything outside
+    // upload; including another company's object. Reject anything outside
     // this caller's own namespace before it ever reaches the DB row.
     const expectedPrefix = `${companyId}/workforce-screenshots/${userId}/`;
     if (!dto.storageKey.startsWith(expectedPrefix)) {
@@ -47,7 +47,7 @@ export class ScreenshotsService {
     }
 
     // As with every other upload family: never trust that the presigned PUT
-    // actually happened, or trust a client-declared size -- verify the real
+    // actually happened, or trust a client-declared size; verify the real
     // stored object and reject (with cleanup) if it's missing or oversized.
     const actualSizeBytes = await this.storage.getObjectSize(dto.storageKey);
     if (actualSizeBytes === null) {
@@ -68,12 +68,12 @@ export class ScreenshotsService {
   }
 
   // Every caller (self or a manager) hits the same GET /workforce/screenshots/:userId
-  // route -- there's no separate "me" shortcut here the way activities/
+  // route; there's no separate "me" shortcut here the way activities/
   // productivity have, since self is just the userId === callerId case of
   // the identical visibility check every other target-user endpoint uses.
   async listForUser(companyId: string, callerId: string, callerCompanyRole: CompanyRole, targetUserId: string, from?: string, to?: string) {
     // Disabling screenshot_enabled is meant to stop exposure of this data,
-    // not just new capture -- without this call, a manager with legitimate
+    // not just new capture; without this call, a manager with legitimate
     // reporting-line visibility could keep viewing/downloading screenshots
     // captured before the company disabled the feature, for the rest of the
     // retention window (default 90 days).
@@ -115,10 +115,10 @@ export class ScreenshotsService {
   // cluster with every other midnight/3am cron across every deployment
   // that happens to use a round number.
   //
-  // This is cross-company by nature -- it has to look at every company's
-  // own retention_days, not just one caller's -- so it can't use
+  // This is cross-company by nature (it has to look at every company's
+  // own retention_days, not just one caller's) so it can't use
   // withTenant the way every other query in this module does.
-  // withSystemBypass required -- see DatabaseService.withSystemBypass() and
+  // withSystemBypass required; see DatabaseService.withSystemBypass() and
   // migration 052, same mechanism TenancyService.register() and
   // IssueWarningService.checkOverdueIssues() use for the same reason.
   @Cron('17 3 * * *')

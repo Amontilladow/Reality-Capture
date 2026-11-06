@@ -57,7 +57,7 @@ export class UsersController {
   // Deliberately tighter than invite()'s 3 roles: this hands back a live
   // credential (a link that lets anyone holding it set that user's
   // password), and RolesGuard only checks the CALLER's weight, never the
-  // TARGET's -- gating this the same as invite() would let an
+  // TARGET's; gating this the same as invite() would let an
   // engineering_manager or project_manager reset a company_admin's own
   // password and take over their account. company_admin (RolesGuard's
   // minimum-weight check also lets super_admin through) matches how

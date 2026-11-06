@@ -1,7 +1,7 @@
 BEGIN;
 
 -- ══════════════════════════════════════════════════════════════════════════
--- Drawing Intelligence & Control — bulk ZIP/PDF ingestion + metadata
+-- Drawing Intelligence & Control: bulk ZIP/PDF ingestion + metadata
 -- extraction (Phases 2-4 of the M4 brief).
 --
 -- document_classification is a column deliberately SEPARATE from
@@ -9,10 +9,10 @@ BEGIN;
 -- revision currency (is_superseded, already its own column since migration
 -- 072), and document classification (this column) are three different
 -- questions. A FINAL/AS_BUILT drawing can be APPROVED and still not be the
--- current construction drawing -- see isConfirmedCurrent()'s new guard in
+-- current construction drawing; see isConfirmedCurrent()'s new guard in
 -- site-drawing-workflow.ts. Every existing row (and every future row this
 -- migration doesn't touch) defaults to 'CONSTRUCTION', the neutral,
--- no-claim value -- nothing is retroactively classified as FINAL/AS_BUILT
+-- no-claim value; nothing is retroactively classified as FINAL/AS_BUILT
 -- without real evidence.
 --
 -- extraction_status/extracted_fields_raw/import_batch_id support the new
@@ -35,7 +35,7 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 -- extraction attempts disagreed, or this drawing number already exists in
 -- the project under a materially different title (a possible drawing-
 -- number mismatch, per the brief). MANUAL: a human typed the values
--- directly (the existing Local-upload path) -- there was never anything to
+-- directly (the existing Local-upload path): there was never anything to
 -- extract, so this is not a lower-confidence state, just a different origin.
 DO $$ BEGIN
   CREATE TYPE site_drawing_extraction_status_enum AS ENUM ('CONFIRMED', 'NEEDS_REVIEW', 'CONFLICT', 'MANUAL');
@@ -47,7 +47,7 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ══════════════════════════════════════════════════════════════════════════
 -- TABLE: site_drawing_import_batches (one row per uploaded ZIP or single
--- PDF -- brief section 2: "store import batch identifiers, timestamps,
+-- PDF; brief section 2: "store import batch identifiers, timestamps,
 -- source information and the uploading user")
 -- ══════════════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS site_drawing_import_batches (
@@ -56,11 +56,11 @@ CREATE TABLE IF NOT EXISTS site_drawing_import_batches (
   project_id         UUID            NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   -- Which system the consultant-issued files originally came from, per the
   -- brief's own "identify its source, such as Aconex, Procore or another
-  -- source" -- reuses doc_source_enum (documents.source_system's own type),
+  -- source"; reuses doc_source_enum (documents.source_system's own type),
   -- same convention site_drawings.source_provider already follows.
   source_system      doc_source_enum NOT NULL DEFAULT 'manual_link',
   -- The ORIGINAL uploaded archive/file, preserved untouched (brief: "preserve
-  -- the original consultant-issued files") -- never overwritten or
+  -- the original consultant-issued files"): never overwritten or
   -- repacked, even though each extracted PDF also gets its own storage key.
   original_filename  VARCHAR(500)    NOT NULL,
   storage_key        VARCHAR(1000)   NOT NULL,
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS site_drawing_import_batches (
   revision_count     INTEGER         NOT NULL DEFAULT 0,
   skipped_count      INTEGER         NOT NULL DEFAULT 0,
   error_count        INTEGER         NOT NULL DEFAULT 0,
-  -- A human-readable summary only -- never a secret, and never raw document
+  -- A human-readable summary only: never a secret, and never raw document
   -- content, same rule site_drawing_sync_log.error_message already follows.
   error_message      TEXT,
   uploaded_by         UUID            NOT NULL REFERENCES users(id),
@@ -113,7 +113,7 @@ ALTER TABLE site_drawing_revisions ADD COLUMN IF NOT EXISTS extracted_fields_raw
 ALTER TABLE site_drawing_revisions ADD COLUMN IF NOT EXISTS
   import_batch_id UUID REFERENCES site_drawing_import_batches(id);
 -- A human-entered note explaining a CONFLICT/NEEDS_REVIEW flag, or an
--- authorized user's resolution of one -- surfaced in the register's review
+-- authorized user's resolution of one; surfaced in the register's review
 -- queue (brief section 4).
 ALTER TABLE site_drawing_revisions ADD COLUMN IF NOT EXISTS review_notes TEXT;
 

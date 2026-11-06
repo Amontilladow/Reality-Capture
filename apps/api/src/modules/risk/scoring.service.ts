@@ -16,7 +16,7 @@ import {
 import { RiskGraphService } from './risk-graph.service';
 
 // Weight given to each downstream node type when computing graph exposure
-// (brief section 12 — "do NOT simply count nodes, weight node types
+// (brief section 12; "do NOT simply count nodes, weight node types
 // intelligently"). Higher weight = more real-world consequence if this
 // branch of the graph is disrupted. Building/level/location/user/company
 // are structural, not consequential in themselves, so they contribute
@@ -68,7 +68,7 @@ export interface ExposureResult {
 
 /**
  * Deterministic Risk Scoring Engine (brief sections 10-12). Nothing here is
- * an LLM call — every factor is a plain arithmetic function of real signals
+ * an LLM call; every factor is a plain arithmetic function of real signals
  * and real graph structure, and the weights/thresholds are configurable
  * data (packages/types/src/risk.types.ts), not hardcoded inside this
  * service or in any UI component.
@@ -103,7 +103,7 @@ export class ScoringService {
       }
     }
 
-    // Saturating curve: 100 * (1 - e^-(x/K)) — meaningful difference between
+    // Saturating curve: 100 * (1 - e^-(x/K)): meaningful difference between
     // small and large exposure, but no unbounded blow-up for a huge project.
     const exposureScore = 100 * (1 - Math.exp(-weightedNodeCount / EXPOSURE_SATURATION_K));
 
@@ -111,7 +111,7 @@ export class ScoringService {
     // Dependency reflects structural entanglement: how many different kinds
     // of real project entities this risk's neighborhood spans, plus a bump
     // if something downstream is due imminently (the closest real proxy
-    // this codebase has for "affects a critical activity soon" — no
+    // this codebase has for "affects a critical activity soon"; no
     // programme/activity module exists to check true schedule criticality
     // against, which is disclosed via the risk's confidence reasoning).
     const dependencyScore = Math.min(100, distinctNodeTypeCount * 12 + disciplines.size * 8 + (hasImminentDownstreamDueDate ? 20 : 0));
@@ -166,7 +166,7 @@ export class ScoringService {
   computeScore(factors: RiskScoreFactors, weights: RiskScoringWeights = DEFAULT_RISK_SCORING_WEIGHTS): number {
     const weightSum = weights.probability + weights.impact + weights.exposure + weights.dependency + weights.urgency + weights.recurrence;
     // Defensive normalization rather than assuming callers always pass
-    // weights that sum to exactly 1 (brief: "weights must sum to 1 --
+    // weights that sum to exactly 1 (brief: "weights must sum to 1;
     // validated, not assumed").
     const norm = weightSum > 0 ? 1 / weightSum : 0;
     const raw =
@@ -191,8 +191,8 @@ export class ScoringService {
     return computeConfidenceLevel({ directRelationshipCount, inferredRelationshipCount, missingCriticalFields });
   }
 
-  // Rescales a 0-100 engine factor into the Risk Matrix's 1-5 band. Never 0
-  // -- "1 (Rare/Negligible)" is the floor, since the matrix has no "no
+  // Rescales a 0-100 engine factor into the Risk Matrix's 1-5 band. Never 0;
+  // "1 (Rare/Negligible)" is the floor, since the matrix has no "no
   // probability/impact at all" value (brief sections 3-4's own 5-point
   // scales both start at 1). Public so RiskService.getRiskHeatmap() can
   // place an AI-only-assessed risk on the same 5x5 grid as a human-assessed
@@ -206,7 +206,7 @@ export class ScoringService {
    * The AI Score (brief sections 7, 36): the deterministic engine's own
    * probability/impact factors, re-expressed on the Risk Matrix's 1-25/
    * 5-level scale purely so they're directly comparable to a human's
-   * Probability x Impact assessment -- never a second, independent LLM
+   * Probability x Impact assessment; never a second, independent LLM
    * guess, and never computed from anything the engine didn't already
    * compute for automatedScore.
    */

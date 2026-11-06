@@ -5,6 +5,7 @@ import {
   type ProjectRole, type CompanyRole, type ProjectPermission, type ProjectOrganizationSlot,
 } from '@engineeringos/types';
 import { Modal } from './ui/Modal';
+import { EmailLink } from './ui/EmailLink';
 import {
   getMembers, addMember, removeMember, getPermissionGrants, grantPermission, revokePermission,
   getOrganizations, upsertOrganization, uploadOrganizationLogo, type ProjectOrganization,
@@ -14,6 +15,7 @@ import { listUsers, inviteUser, approveUserRole, deactivateUser, adminResetPassw
 import { apiErrorMessage } from '../lib/api';
 import { PROJECT_ROLE_LABELS, COMPANY_ROLE_LABELS, PROJECT_PERMISSION_LABELS } from '../lib/issue-constants';
 import { useAuthStore } from '../store/auth.store';
+import { Listbox } from './ui/Listbox';
 
 export function ManageMembersModal({
   open,
@@ -38,7 +40,7 @@ export function ManageMembersModal({
     enabled: open,
   });
 
-  // Company-wide user directory, not just this project -- addMember() picks
+  // Company-wide user directory, not just this project; addMember() picks
   // from users who aren't members of this specific project yet.
   const usersQuery = useQuery({
     queryKey: ['companyUsers'],
@@ -87,19 +89,19 @@ export function ManageMembersModal({
     },
   });
 
-  // Admin-assisted password reset (fallback for when email isn't practical
-  // -- site-based engineers/draftsmen). Keyed per-user since several rows
+  // Admin-assisted password reset (fallback for when email isn't practical;
+  // site-based engineers/draftsmen). Keyed per-user since several rows
   // could each generate their own link independently.
   const [resetLinks, setResetLinks] = useState<Record<string, AdminResetPasswordResult>>({});
   const resetPasswordMutation = useMutation({
     mutationFn: (userId: string) => adminResetPassword(userId),
     onSuccess: (result, userId) => setResetLinks((prev) => ({ ...prev, [userId]: result })),
   });
-  // Gated the same as the server (company_admin or above) -- purely a UX
+  // Gated the same as the server (company_admin or above): purely a UX
   // nicety to hide a doomed button; the 403 is the real enforcement.
   const canResetPasswords = currentUser?.companyRole === 'company_admin' || currentUser?.companyRole === 'super_admin';
 
-  // Same underlying PATCH /users/:id as approveMutation -- separate mutation
+  // Same underlying PATCH /users/:id as approveMutation; separate mutation
   // instance so its pending/error state doesn't collide with the Approve
   // button, even though they share the overrideRole picker state below.
   const changeRoleMutation = useMutation({
@@ -107,7 +109,7 @@ export function ManageMembersModal({
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['companyUsers'] }),
   });
 
-  // Only company_admin accounts are ever grant targets -- super_admin already
+  // Only company_admin accounts are ever grant targets; super_admin already
   // has every permission everywhere, and every other role gets project-level
   // authority through project_members.role instead, never through a grant.
   const companyAdmins = (usersQuery.data?.data ?? []).filter((u) => u.companyRole === 'company_admin');
@@ -133,7 +135,7 @@ export function ManageMembersModal({
   });
 
   // ── Project organizations (Phase 4) ─────────────────────────────────────
-  // Client-side-only optimistic gate -- mirrors the same bypass set
+  // Client-side-only optimistic gate; mirrors the same bypass set
   // ProjectPermissionGuard enforces server-side for 'manage_team'
   // (super_admin, this project's own project_lead, or an explicit grant).
   // Purely a UX nicety: hides the edit controls (and skips firing a doomed
@@ -155,7 +157,7 @@ export function ManageMembersModal({
   const organizationsBySlot = new Map((organizationsQuery.data ?? []).map((o) => [o.slot, o]));
 
   // Which organization slot (if any) each project member personally belongs
-  // to (RBAC Phase 4) -- distinct from the 5 slots' own branding/contact
+  // to (RBAC Phase 4): distinct from the 5 slots' own branding/contact
   // rows above. Same manage_team gate as those, since assigning membership
   // is the same kind of project-team administration.
   const organizationMembersQuery = useQuery({
@@ -184,15 +186,15 @@ export function ManageMembersModal({
           )}
           {removeMutation.isError && <p className="field-error">{apiErrorMessage(removeMutation.error)}</p>}
           {(membersQuery.data ?? []).map((m) => (
-            <div key={m.userId} className="flex items-center justify-between gap-2 text-sm py-1.5 border-b border-base-700/60 last:border-0">
+            <div key={m.userId} className="flex items-center justify-between gap-2 text-sm py-2 border-b border-base-700/60 last:border-0">
               <div className="min-w-0">
                 <span className="text-ink-100">{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</span>
                 <span className="text-ink-500 ml-2 text-xs">{PROJECT_ROLE_LABELS[m.role as ProjectRole] ?? m.role}</span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {canManageOrganizations && (
-                  <select
-                    className="field-input !py-0.5 !w-auto text-xs"
+                  <Listbox aria-label="Organization slot"
+                    className="field-input !py-0 !w-auto text-xs"
                     value={orgSlotByUserId.get(m.userId) ?? ''}
                     onChange={(e) =>
                       setOrgSlotMutation.mutate({ userId: m.userId, slot: e.target.value as ProjectOrganizationSlot | '' })
@@ -204,7 +206,7 @@ export function ManageMembersModal({
                     {PROJECT_ORGANIZATION_SLOTS.map((slot) => (
                       <option key={slot} value={slot}>{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</option>
                     ))}
-                  </select>
+                  </Listbox>
                 )}
                 <button
                   onClick={() => removeMutation.mutate(m.userId)}
@@ -219,13 +221,13 @@ export function ManageMembersModal({
           {setOrgSlotMutation.isError && <p className="field-error">{apiErrorMessage(setOrgSlotMutation.error)}</p>}
         </div>
 
-        <div className="pt-2 border-t border-base-600 space-y-3">
+        <div className="pt-2 border-t border-base-600 space-y-4">
           <div className="field-label">Add a member</div>
           {deactivateMutation.isError && <p className="field-error">{apiErrorMessage(deactivateMutation.error)}</p>}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <div className="flex items-center gap-1.5">
-                <select
+              <div className="flex items-center gap-2">
+                <Listbox aria-label="User"
                   className="field-input flex-1"
                   value={selectedUserId}
                   onChange={(e) => setSelectedUserId(e.target.value)}
@@ -234,7 +236,7 @@ export function ManageMembersModal({
                   {addableUsers.map((u) => (
                     <option key={u.id} value={u.id}>{[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}</option>
                   ))}
-                </select>
+                </Listbox>
                 <button
                   type="button"
                   onClick={() => selectedUserId && deactivateMutation.mutate(selectedUserId)}
@@ -253,12 +255,12 @@ export function ManageMembersModal({
                 </button>
               </div>
               {usersQuery.isSuccess && addableUsers.length === 0 && (
-                <p className="text-xs text-ink-500 mt-1">
-                  Everyone in the company is already on this project — invite a new person below if you need someone else.
+                <p className="text-xs text-ink-500 mt-2">
+                  Everyone in the company is already on this project. Invite a new person below if you need someone else.
                 </p>
               )}
             </div>
-            <select
+            <Listbox aria-label="Role"
               className="field-input"
               value={selectedRole}
               onChange={(e) => setSelectedRole(e.target.value as ProjectRole)}
@@ -266,7 +268,7 @@ export function ManageMembersModal({
               {PROJECT_ROLES.map((r) => (
                 <option key={r} value={r}>{PROJECT_ROLE_LABELS[r]}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
 
           {addMutation.isError && <p className="field-error">{apiErrorMessage(addMutation.error)}</p>}
@@ -280,7 +282,7 @@ export function ManageMembersModal({
           </button>
         </div>
 
-        <div className="pt-2 border-t border-base-600 space-y-3">
+        <div className="pt-2 border-t border-base-600 space-y-4">
           {!showInvite ? (
             <button onClick={() => setShowInvite(true)} className="text-sm text-blueprint hover:text-blueprint-hover">
               + Invite someone new to the company
@@ -290,7 +292,7 @@ export function ManageMembersModal({
               <div className="field-label">Invite a new person</div>
               <p className="text-xs text-ink-500">
                 They'll pick their own position when they accept, and it stays pending until you approve it below.
-                Email delivery isn't set up yet -- inviting someone gives you a link to copy and send them yourself (WhatsApp, email, however). It won't land in their inbox automatically.
+                Email delivery isn’t set up yet. Inviting someone gives you a link to copy and send them yourself (WhatsApp, email, however). It won't land in their inbox automatically.
               </p>
               <input
                 type="email"
@@ -305,7 +307,7 @@ export function ManageMembersModal({
               {inviteLink ? (
                 <div className="space-y-2">
                   <p className="text-xs text-ink-100">
-                    Invite created for {inviteMutation.data?.email}. Send them this link -- it expires in 7 days:
+                    Invite created for {inviteMutation.data?.email}. Send them this link, which expires in 7 days:
                   </p>
                   <div className="flex gap-2">
                     <input readOnly className="field-input font-mono text-xs" value={inviteLink} onClick={(e) => e.currentTarget.select()} />
@@ -330,10 +332,10 @@ export function ManageMembersModal({
           )}
         </div>
 
-        <div className="pt-2 border-t border-base-600 space-y-3">
+        <div className="pt-2 border-t border-base-600 space-y-4">
           <div className="field-label">Pending approvals</div>
           <p className="text-xs text-ink-500">
-            Company-wide, not specific to this project -- anyone who's accepted an invite but hasn't been approved yet.
+            Company-wide, not specific to this project: anyone who’s accepted an invite but hasn't been approved yet.
           </p>
           {pendingUsers.length === 0 && (
             <p className="text-sm text-ink-500">No one's waiting on approval.</p>
@@ -341,7 +343,7 @@ export function ManageMembersModal({
           {pendingUsers.map((u) => {
             const role = overrideRole[u.id] ?? (u.requestedCompanyRole as CompanyRole);
             return (
-              <div key={u.id} className="flex items-center justify-between gap-3 text-sm py-1.5 border-b border-base-700/60 last:border-0">
+              <div key={u.id} className="flex items-center justify-between gap-4 text-sm py-2 border-b border-base-700/60 last:border-0">
                 <div>
                   <div className="text-ink-100">
                     {[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}
@@ -352,7 +354,7 @@ export function ManageMembersModal({
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <select
+                  <Listbox aria-label="Role"
                     className="field-input !w-auto text-xs"
                     value={role}
                     onChange={(e) => setOverrideRole((prev) => ({ ...prev, [u.id]: e.target.value as CompanyRole }))}
@@ -360,10 +362,10 @@ export function ManageMembersModal({
                     {COMPANY_ROLES.filter((r) => r !== 'super_admin').map((r) => (
                       <option key={r} value={r}>{COMPANY_ROLE_LABELS[r]}</option>
                     ))}
-                  </select>
+                  </Listbox>
                   <button
                     onClick={() => approveMutation.mutate({ userId: u.id, companyRole: role })}
-                    className="btn-primary !py-1 !px-2 text-xs shrink-0"
+                    className="btn-primary !py-2 !px-2 text-xs shrink-0"
                     disabled={approveMutation.isPending}
                   >
                     Approve
@@ -374,11 +376,11 @@ export function ManageMembersModal({
           })}
         </div>
 
-        <div className="pt-2 border-t border-base-600 space-y-3">
+        <div className="pt-2 border-t border-base-600 space-y-4">
           <div className="field-label">Company members</div>
           <p className="text-xs text-ink-500">
             Deactivating someone revokes their access company-wide (not just this project) and frees their seat.
-            This includes people who were invited but never accepted -- deactivate them to cancel a stale invite.
+            This includes people who were invited but never accepted. Deactivate them to cancel a stale invite.
           </p>
           {deactivateMutation.isError && <p className="field-error">{apiErrorMessage(deactivateMutation.error)}</p>}
           {changeRoleMutation.isError && <p className="field-error">{apiErrorMessage(changeRoleMutation.error)}</p>}
@@ -389,37 +391,37 @@ export function ManageMembersModal({
             const roleChanged = role !== u.companyRole;
             const resetResult = resetLinks[u.id];
             return (
-              <div key={u.id} className="py-1.5 border-b border-base-700/60 last:border-0">
-                <div className="flex items-center justify-between gap-3 text-sm">
+              <div key={u.id} className="py-2 border-b border-base-700/60 last:border-0">
+                <div className="flex items-center justify-between gap-4 text-sm">
                   <div>
                     <div className="text-ink-100">
                       {[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}
                       {u.organizationName && <span className="text-ink-500 font-normal"> ({u.organizationName})</span>}
                     </div>
                     <div className="text-ink-500 text-xs">
-                      {u.email}
-                      {!u.firstName && !u.lastName && ' — invited, hasn’t accepted yet'}
+                      <EmailLink email={u.email} className="text-ink-500 hover:text-blueprint-hover" />
+                      {!u.firstName && !u.lastName && ' (invited, hasn’t accepted yet)'}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <select
+                    <Listbox aria-label="Role"
                       className="field-input !w-auto text-xs"
                       value={role}
                       onChange={(e) => setOverrideRole((prev) => ({ ...prev, [u.id]: e.target.value as CompanyRole }))}
                     >
                       {/* Unlike the self-requested-role picker above, super_admin IS a
-                          valid option here -- this is an admin deliberately setting someone
+                          valid option here; this is an admin deliberately setting someone
                           else's role, and excluding it would make an existing super_admin's
                           own row silently misdisplay as company_admin, with a Save button
                           one click away from actually demoting them. */}
                       {COMPANY_ROLES.map((r) => (
                         <option key={r} value={r}>{COMPANY_ROLE_LABELS[r]}</option>
                       ))}
-                    </select>
+                    </Listbox>
                     {roleChanged && (
                       <button
                         onClick={() => changeRoleMutation.mutate({ userId: u.id, companyRole: role })}
-                        className="btn-primary !py-1 !px-2 text-xs shrink-0"
+                        className="btn-primary !py-2 !px-2 text-xs shrink-0"
                         disabled={changeRoleMutation.isPending}
                       >
                         Save
@@ -430,7 +432,7 @@ export function ManageMembersModal({
                         onClick={() => resetPasswordMutation.mutate(u.id)}
                         className="text-xs text-blueprint hover:text-blueprint-hover shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                         disabled={resetPasswordMutation.isPending}
-                        title="Generate a password reset link to copy and send this person yourself -- for when email isn't practical (site-based roles, etc.)"
+                        title="Generate a password reset link to copy and send this person yourself, for when email isn’t practical (site-based roles, etc.)"
                       >
                         Reset password
                       </button>
@@ -446,18 +448,18 @@ export function ManageMembersModal({
                   </div>
                 </div>
                 {resetResult && (
-                  <div className="mt-2 space-y-1">
+                  <div className="mt-2 space-y-2">
                     <p className="text-xs text-ink-100">
-                      Reset link for {[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email} -- expires {new Date(resetResult.expiresAt).toLocaleString()}:
+                      Reset link for {[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}, expires {new Date(resetResult.expiresAt).toLocaleString()}:
                     </p>
                     <div className="flex gap-2">
                       <input readOnly className="field-input font-mono text-xs" value={resetResult.resetLink} onClick={(e) => e.currentTarget.select()} />
-                      <button onClick={() => navigator.clipboard.writeText(resetResult.resetLink)} className="btn-secondary shrink-0 !py-1.5 text-xs">
+                      <button onClick={() => navigator.clipboard.writeText(resetResult.resetLink)} className="btn-secondary shrink-0 !py-2 text-xs">
                         Copy
                       </button>
                     </div>
                     <p className="text-xs text-ink-500">
-                      No email is sent automatically -- copy this link and send it to them yourself (WhatsApp, email, in person).
+                      No email is sent automatically. Copy this link and send it to them yourself (WhatsApp, email, in person).
                     </p>
                   </div>
                 )}
@@ -466,10 +468,10 @@ export function ManageMembersModal({
           })}
         </div>
 
-        <div className="pt-2 border-t border-base-600 space-y-3">
+        <div className="pt-2 border-t border-base-600 space-y-4">
           <div className="field-label">Project permissions</div>
           <p className="text-xs text-ink-500">
-            A Company Admin has no authority on a project by default — grant them specific permissions here,
+            A Company Admin has no authority on a project by default. Grant them specific permissions here,
             scoped to just this project. Only a Super Admin can grant or revoke these.
           </p>
           {(grantMutation.isError) && <p className="field-error">{apiErrorMessage(grantMutation.error)}</p>}
@@ -478,9 +480,9 @@ export function ManageMembersModal({
             <p className="text-sm text-ink-500">No Company Admin accounts to grant permissions to.</p>
           )}
           {companyAdmins.map((u) => (
-            <div key={u.id} className="py-1.5 border-b border-base-700/60 last:border-0">
+            <div key={u.id} className="py-2 border-b border-base-700/60 last:border-0">
               <div className="text-ink-100 text-sm">{[u.firstName, u.lastName].filter(Boolean).join(' ') || u.email}</div>
-              <div className="flex flex-wrap gap-1.5 mt-1">
+              <div className="flex flex-wrap gap-2 mt-2">
                 {PROJECT_PERMISSIONS.map((permission) => {
                   const granted = grantedSet.has(`${u.id}:${permission}`);
                   const pending = grantMutation.isPending || revokeMutation.isPending;
@@ -495,8 +497,8 @@ export function ManageMembersModal({
                       disabled={pending}
                       className={
                         granted
-                          ? 'text-xs px-2 py-1 rounded border border-blueprint bg-blueprint/20 text-blueprint disabled:opacity-40'
-                          : 'text-xs px-2 py-1 rounded border border-base-600 text-ink-500 hover:text-ink-100 disabled:opacity-40'
+                          ? 'text-xs px-2 py-2 rounded border border-blueprint bg-blueprint/20 text-blueprint disabled:opacity-40'
+                          : 'text-xs px-2 py-2 rounded border border-base-600 text-ink-500 hover:text-ink-100 disabled:opacity-40'
                       }
                       title={granted ? `Click to revoke '${permission}'` : `Click to grant '${permission}'`}
                     >
@@ -509,10 +511,10 @@ export function ManageMembersModal({
           ))}
         </div>
 
-        <div className="pt-2 border-t border-base-600 space-y-3">
+        <div className="pt-2 border-t border-base-600 space-y-4">
           <div className="field-label">Project Organizations</div>
           <p className="text-xs text-ink-500">
-            Configure the 5 stakeholder slots shown on every RFI's header and exported PDF -- name, reference,
+            Configure the 5 stakeholder slots shown on every RFI’s header and exported PDF: name, reference,
             contact, and logo. Requires the 'Manage team' permission on this project.
           </p>
           {!canManageOrganizations && (
@@ -540,7 +542,7 @@ export function ManageMembersModal({
 
 // One row per stakeholder slot. Edits are buffered locally and committed
 // with an explicit "Save" button (shown only once a field actually differs
-// from the server value) -- same "dirty -> Save button appears" pattern
+// from the server value): same "dirty -> Save button appears" pattern
 // this file already uses for the company-role picker above, rather than
 // autosaving on blur. The logo, however, uploads immediately on file pick
 // (EditProjectModal's pattern), independent of the row's Save button.
@@ -559,7 +561,7 @@ function OrganizationRow({
   const [contactEmail, setContactEmail] = useState(org?.contactEmail ?? '');
 
   // Re-sync the local buffer whenever the server row changes (e.g. after a
-  // save, or the modal re-fetches) -- same pattern RfiDetailPage uses to
+  // save, or the modal re-fetches): same pattern RfiDetailPage uses to
   // reset its own drafts when the underlying query data changes.
   useEffect(() => {
     setName(org?.name ?? '');
@@ -595,17 +597,17 @@ function OrganizationRow({
 
   return (
     <div className="py-2 border-b border-base-700/60 last:border-0">
-      <div className="flex items-start gap-3">
-        <div className="shrink-0 flex flex-col items-center gap-1 w-16">
+      <div className="flex items-start gap-4">
+        <div className="shrink-0 flex flex-col items-center gap-2 w-16">
           {org?.logoUrl ? (
             <img src={org.logoUrl} alt="" loading="lazy" className="w-10 h-10 object-contain rounded border border-base-600 bg-base-950" />
           ) : (
-            <div className="w-10 h-10 rounded border border-dashed border-base-600 bg-base-900/60 flex items-center justify-center text-ink-500 text-[9px] text-center">
+            <div className="w-10 h-10 rounded border border-dashed border-base-600 bg-base-900/60 flex items-center justify-center text-ink-500 text-xs text-center">
               No logo
             </div>
           )}
           {canEdit && (
-            <label className="text-[10px] text-blueprint hover:text-blueprint-hover cursor-pointer text-center">
+            <label className="text-xs text-blueprint hover:text-blueprint-hover cursor-pointer text-center">
               {logoMutation.isPending ? 'Uploading…' : org?.logoUrl ? 'Change' : 'Upload'}
               <input
                 type="file"
@@ -622,25 +624,25 @@ function OrganizationRow({
           )}
         </div>
 
-        <div className="flex-1 space-y-1.5">
-          <div className="text-xs font-mono uppercase tracking-wide text-ink-500">{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</div>
+        <div className="flex-1 space-y-2">
+          <div className="text-xs text-ink-500 font-medium">{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</div>
           <div className="grid grid-cols-2 gap-2">
             <input
-              className="field-input !py-1 text-xs"
+              className="field-input !py-2 text-xs"
               placeholder="Organization name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={!canEdit}
             />
             <input
-              className="field-input !py-1 text-xs"
+              className="field-input !py-2 text-xs"
               placeholder="Reference"
               value={orgRef}
               onChange={(e) => setOrgRef(e.target.value)}
               disabled={!canEdit}
             />
             <input
-              className="field-input !py-1 text-xs"
+              className="field-input !py-2 text-xs"
               placeholder="Contact name"
               value={contactName}
               onChange={(e) => setContactName(e.target.value)}
@@ -648,7 +650,7 @@ function OrganizationRow({
             />
             <input
               type="email"
-              className="field-input !py-1 text-xs"
+              className="field-input !py-2 text-xs"
               placeholder="Contact email"
               value={contactEmail}
               onChange={(e) => setContactEmail(e.target.value)}
@@ -663,7 +665,7 @@ function OrganizationRow({
           <button
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending}
-            className="btn-primary !px-3 !py-1.5 text-xs shrink-0"
+            className="btn-primary !px-4 !py-2 text-xs shrink-0"
           >
             {saveMutation.isPending ? 'Saving…' : 'Save'}
           </button>

@@ -37,8 +37,10 @@ import { RFI_WORKFLOW_STATUS_TONE, RFI_PRIORITY_TONE } from '../lib/status-tone'
 import { StatusBadge } from '../components/ui/Badge';
 import { apiErrorMessage, apiDownload } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
+import { MobileFold } from '../components/ui/MobileFold';
+import { Listbox } from '../components/ui/Listbox';
 
-// Source-status sets mirroring rfis.service.ts's own (server-authoritative --
+// Source-status sets mirroring rfis.service.ts's own (server-authoritative;
 // this only decides which action BUTTONS are worth showing; the backend
 // enforces the real state machine and 400s on an illegal transition either way).
 const CLARIFICATION_SOURCE_STATUSES = new Set(['submitted', 'open', 'under_review']);
@@ -70,15 +72,15 @@ export default function RfiDetailPage() {
   const [commentOrgSlot, setCommentOrgSlot] = useState<ProjectOrganizationSlot | ''>('');
   const [reviewRejectOpen, setReviewRejectOpen] = useState(false);
   const [reviewRejectComment, setReviewRejectComment] = useState('');
-  // Which party is closing this RFI -- shared between the "Close RFI" and
+  // Which party is closing this RFI: shared between the "Close RFI" and
   // review-approve buttons since only one can apply to a given RFI at a
   // time (an RFI is either closed directly or via an approved review, never
   // both). Required by the UI (buttons stay disabled until set) but stays
-  // optional at the API/DTO level -- see CloseRfiDto/DecideReviewDto's own
+  // optional at the API/DTO level; see CloseRfiDto/DecideReviewDto's own
   // comments for why.
   const [closingOrgSlot, setClosingOrgSlot] = useState<ProjectOrganizationSlot | ''>('');
 
-  // External access ("send for external response/review") -- link generation form.
+  // External access ("send for external response/review"): link generation form.
   const [extAction, setExtAction] = useState<RfiExternalAccessAction>('respond');
   const [extSlot, setExtSlot] = useState<ProjectOrganizationSlot>('ldc');
   const [extEmail, setExtEmail] = useState('');
@@ -97,7 +99,7 @@ export default function RfiDetailPage() {
     enabled: Boolean(projectId),
   });
 
-  // Same query keys ManageMembersModal already uses for these two -- an RFI
+  // Same query keys ManageMembersModal already uses for these two; an RFI
   // page opened from a project a user is already a member of very likely
   // hits a warm cache instead of firing new requests.
   const membersQuery = useQuery({
@@ -129,7 +131,7 @@ export default function RfiDetailPage() {
     enabled: Boolean(projectId && rfiId),
   });
 
-  // Same queryKey OrganizationSlotRow uses below -- react-query shares the
+  // Same queryKey OrganizationSlotRow uses below: react-query shares the
   // one cached fetch between the two subscribers, so this doesn't add a
   // second network request. Needed here (not just inside OrganizationSlotRow)
   // so handleDownloadXls can thread the same already-loaded org data into
@@ -141,7 +143,7 @@ export default function RfiDetailPage() {
     retry: false,
   });
 
-  // No dedicated "audit for one resource" endpoint exists -- fetch the
+  // No dedicated "audit for one resource" endpoint exists; fetch the
   // project's audit feed and filter client-side to this RFI, per the ticket.
   // perPage raised well above the project-activity widget's default (10) so
   // an RFI with a long history of transitions isn't silently truncated.
@@ -174,13 +176,13 @@ export default function RfiDetailPage() {
     queryClient.invalidateQueries({ queryKey: ['rfi', projectId, rfiId] });
     queryClient.invalidateQueries({ queryKey: ['rfis', projectId] });
     queryClient.invalidateQueries({ queryKey: ['rfi-summary', projectId] });
-    // Every workflow transition writes an audit_log row -- keep the audit
+    // Every workflow transition writes an audit_log row; keep the audit
     // trail panel in sync without requiring a manual page reload.
     queryClient.invalidateQueries({ queryKey: ['audit-project', projectId, 'rfi-detail'] });
   }
 
-  // Saves the whole editable pre-response record in one PATCH -- question
-  // plus cost/time impact -- rather than a separate mutation per field.
+  // Saves the whole editable pre-response record in one PATCH (question
+  // plus cost/time impact) rather than a separate mutation per field.
   // Triggered from both the RFI Information and Query section "Save"
   // buttons; either one saves everything, since both live under the same
   // canEditQuery gate and there's no reason to force two separate saves
@@ -330,7 +332,7 @@ export default function RfiDetailPage() {
       // rfi-xls.ts's Rfi.status is still the legacy-only vocabulary (see the
       // comment on Rfi.status in packages/types/src/rfi.types.ts). For an RFI
       // in one of the new workflow statuses, its RFI_STATUS_LABELS lookup
-      // still renders blank for that one row -- a known, pre-existing gap,
+      // still renders blank for that one row; a known, pre-existing gap,
       // not fixed here (out of scope: this ticket only threads the Phase 5
       // sections through, it doesn't touch the legacy status-label lookup).
       const extras: RfiWorkbookExtras = {
@@ -386,7 +388,7 @@ export default function RfiDetailPage() {
   }
 
   // ── Client-side permission gating (UX only) ─────────────────────────────
-  // Optimistic/visual only -- the backend's @RequireProjectPermission +
+  // Optimistic/visual only; the backend's @RequireProjectPermission +
   // canManageRfiReview() (rfis.service.ts) are the real enforcement and will
   // 403 on a mistaken client-side allow. Mirrors that same bypass set:
   // super_admin, project_lead, or a 'manage_rfis' grant.
@@ -394,7 +396,7 @@ export default function RfiDetailPage() {
   const myMembership = (membersQuery.data ?? []).find((m) => m.userId === currentUser?.id);
   const isProjectLead = myMembership?.role === 'project_lead';
   // A 'subcontractor' project member's backend access is RFI-only
-  // (SubcontractorRfiAccessGuard) -- email composing/history lives on
+  // (SubcontractorRfiAccessGuard): email composing/history lives on
   // ProjectsController's own /emails route, outside that, so both are
   // hidden here rather than showing a control that would just 403.
   const isSubcontractor = myMembership?.role === 'subcontractor';
@@ -405,7 +407,7 @@ export default function RfiDetailPage() {
   const hasManageTeamGrant = (grantsQuery.data ?? []).some(
     (g) => g.userId === currentUser?.id && g.permission === 'manage_team',
   );
-  // ManageMembersModal's own organizations section requires manage_team --
+  // ManageMembersModal's own organizations section requires manage_team;
   // this inline shortcut also allows anyone who can already manage_rfis on
   // this project (i.e. can already answer/close it), since fixing a wrong
   // logo while working an RFI is a much smaller ask than full org/contact
@@ -415,7 +417,7 @@ export default function RfiDetailPage() {
   const canManageOrganizations = isSuperAdmin || isProjectLead || hasManageTeamGrant || canManageRfis;
   const isCreator = rfi.createdBy === currentUser?.id;
 
-  // Editable regardless of status, per explicit request -- the record (query,
+  // Editable regardless of status, per explicit request; the record (query,
   // cost/time impact) stays editable by its creator or a manage_rfis holder
   // even after it's been answered or closed, not just up to submission.
   const canEditQuery = isCreator || canManageRfis;
@@ -426,7 +428,7 @@ export default function RfiDetailPage() {
   const canReopen = canManageRfis && rfi.status === 'closed';
   const canSubmitForReview = canManageRfis && REVIEW_SOURCE_STATUSES.has(rfi.status);
   const canDecideReview = canManageRfis && rfi.status === 'under_review';
-  // Same manage_rfis gate as respond/close/reopen -- generating a link that
+  // Same manage_rfis gate as respond/close/reopen: generating a link that
   // can answer or close this RFI on someone's behalf is exactly as sensitive.
   const canManageExternalAccess = canManageRfis;
 
@@ -434,7 +436,7 @@ export default function RfiDetailPage() {
   const responseAttachments = (attachmentsQuery.data ?? []).filter((a) => a.kind === 'response');
   const rfiAudit = (auditQuery.data ?? []).filter((a) => a.resourceType === 'rfi' && a.resourceId === rfiId);
   // getDeadlineTimer is typed for IssueStatus, but its only status-aware
-  // branch is a plain string check against 'closed'/'void' -- both of which
+  // branch is a plain string check against 'closed'/'void'; both of which
   // are also legal RfiWorkflowStatus values, so this is functionally correct
   // at runtime; the cast only papers over the two enums not overlapping at
   // the type level. Reused verbatim per the ticket rather than forking a
@@ -455,7 +457,7 @@ export default function RfiDetailPage() {
             )}
             <Link
               to={`/projects/${projectId}/rfis/${rfi.raisedByOrganizationSlot === 'subcontractor' ? 'subcontractor' : 'main'}`}
-              className="btn-ghost !px-2 !py-1 text-xs"
+              className="btn-ghost !px-2 !py-2 text-xs"
             >
               <BackIcon /> Back to RFIs
             </Link>
@@ -483,14 +485,14 @@ export default function RfiDetailPage() {
               {rfi.discipline && (
                 <span className="badge bg-base-700 text-ink-500">
                   {RFI_DISCIPLINE_LABELS[rfi.discipline]}
-                  {rfi.discipline === 'other' && rfi.disciplineOther ? ` — ${rfi.disciplineOther}` : ''}
+                  {rfi.discipline === 'other' && rfi.disciplineOther ? ` (${rfi.disciplineOther})` : ''}
                 </span>
               )}
               <span className={`badge ${TIMER_BADGE_CLASS[dueTimer.state]}`} title={`Due ${formatDeadline(rfi.dueDate)}`}>
                 {dueTimer.label}
               </span>
               {/* Drawing/Model Updated never shows any control at all when
-                  status is 'no' -- there is deliberately no third "not
+                  status is 'no'; there is deliberately no third "not
                   applicable" state to render around (see migration 044's
                   own comment). */}
               {(rfi.drawingImpactLevel ?? 'no') !== 'no' && (
@@ -530,15 +532,15 @@ export default function RfiDetailPage() {
                 </>
               )}
             </div>
-            {remindDrawingMutation.isError && <p className="field-error mt-1">{apiErrorMessage(remindDrawingMutation.error)}</p>}
-            {markDrawingSentToSiteMutation.isError && <p className="field-error mt-1">{apiErrorMessage(markDrawingSentToSiteMutation.error)}</p>}
-            {markDrawingNotSentToSiteMutation.isError && <p className="field-error mt-1">{apiErrorMessage(markDrawingNotSentToSiteMutation.error)}</p>}
-            {/* Who closed it, as which party -- historical RFIs closed before
+            {remindDrawingMutation.isError && <p className="field-error mt-2">{apiErrorMessage(remindDrawingMutation.error)}</p>}
+            {markDrawingSentToSiteMutation.isError && <p className="field-error mt-2">{apiErrorMessage(markDrawingSentToSiteMutation.error)}</p>}
+            {markDrawingNotSentToSiteMutation.isError && <p className="field-error mt-2">{apiErrorMessage(markDrawingNotSentToSiteMutation.error)}</p>}
+            {/* Who closed it, as which party; historical RFIs closed before
                 this shipped have all four fields null and render nothing
-                extra here, no placeholder/error. Additive only -- the
+                extra here, no placeholder/error. Additive only; the
                 audit-events timeline below is untouched. */}
             {rfi.status === 'closed' && rfi.closedAt && (
-              <p className="text-xs text-ink-500 mt-1">
+              <p className="text-xs text-ink-500 mt-2">
                 Closed by {rfi.closedByName ?? rfi.closedByExternalEmail ?? 'Unknown'}
                 {rfi.closedAsOrganizationSlot ? ` (${PROJECT_ORGANIZATION_SLOT_LABELS[rfi.closedAsOrganizationSlot]})` : ''}
                 {' on '}{formatDateTime(rfi.closedAt)}
@@ -547,36 +549,38 @@ export default function RfiDetailPage() {
           </div>
         </div>
 
-        {/* 5-organization header row -- live since Phase 4 (project_organizations
+        {/* 5-organization header row: live since Phase 4 (project_organizations
             admin endpoints + ManageMembersModal's "Project Organizations"
             section). See OrganizationSlotRow below. */}
         <OrganizationSlotRow projectId={projectId} canEdit={canManageOrganizations} />
 
-        {/* Email history -- Phase 3G. Hidden for a subcontractor (see
+        {/* Email history: Phase 3G. Hidden for a subcontractor (see
             isSubcontractor's own comment) rather than rendering and letting
             its query 403. */}
         {!isSubcontractor && (
-          <section className="panel tick-frame p-5">
-            <div className="field-label mb-3">Email History</div>
+          <MobileFold title="Email history">
+          <section className="panel tick-frame p-6">
+            <div className="field-label mb-4">Email History</div>
             <EmailHistoryList projectId={projectId} relatedRecordType="rfi" relatedRecordId={rfi.id} />
           </section>
+          </MobileFold>
         )}
 
         {/* RFI Information */}
-        <section className="panel tick-frame p-5">
-          <div className="flex items-center justify-between mb-3">
+        <section className="panel tick-frame p-6">
+          <div className="flex items-center justify-between mb-4">
             <div className="field-label !mb-0">RFI Information</div>
             {canEditQuery && (
               <button
                 onClick={() => saveDraftMutation.mutate()}
                 disabled={saveDraftMutation.isPending}
-                className="btn-secondary !px-3 !py-1.5 text-xs"
+                className="btn-secondary !px-4 !py-2 text-xs"
               >
                 {saveDraftMutation.isPending ? 'Saving…' : 'Save'}
               </button>
             )}
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
             <InfoRow label="RFI Number" value={rfi.rfiNumber ?? '—'} mono />
             <InfoRow label="Discipline" value={rfi.discipline ? RFI_DISCIPLINE_LABELS[rfi.discipline] : '—'} />
             <InfoRow label="Priority" value={RFI_PRIORITY_LABELS[rfi.priority]} />
@@ -620,13 +624,13 @@ export default function RfiDetailPage() {
                     labels={DRAWING_UPDATE_STATUS_LABELS}
                   />
                   {/* Only meaningfully shown once level isn't 'no', per the
-                      ticket -- defaults to whoever assigned_to is already set
+                      ticket; defaults to whoever assigned_to is already set
                       to the first time impact is raised, editable from there. */}
                   {drawingImpactLevel !== 'no' && (
                     <div className="mt-2">
-                      <div className="text-xs text-ink-500 mb-1">Drawing update owner</div>
-                      <select
-                        className="field-input !py-1.5 text-xs w-full"
+                      <div className="text-xs text-ink-500 mb-2">Drawing update owner</div>
+                      <Listbox aria-label="Drawing update owner"
+                        className="field-input !py-2 text-xs w-full"
                         value={drawingUpdateOwnerId}
                         onChange={(e) => setDrawingUpdateOwnerId(e.target.value)}
                       >
@@ -634,7 +638,7 @@ export default function RfiDetailPage() {
                         {(membersQuery.data ?? []).map((m) => (
                           <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
                         ))}
-                      </select>
+                      </Listbox>
                     </div>
                   )}
                 </div>
@@ -664,7 +668,7 @@ export default function RfiDetailPage() {
                     labels={DRAWING_UPDATE_STATUS_LABELS}
                   />
                   {(rfi.drawingImpactLevel ?? 'no') !== 'no' && (
-                    <div className="mt-1.5 text-xs text-ink-500">
+                    <div className="mt-2 text-xs text-ink-500">
                       Owner: <span className="text-ink-100">{rfi.drawingUpdateOwnerName ?? rfi.assignedToName ?? 'Unassigned'}</span>
                     </div>
                   )}
@@ -675,19 +679,21 @@ export default function RfiDetailPage() {
         </section>
 
         {/* Human Risk Assessment */}
-        <section className="panel tick-frame p-5">
+        <MobileFold title="Risk assessment" summary="Probability × impact">
+        <section className="panel tick-frame p-6">
           <InlineRiskAssessment projectId={projectId} nodeType="rfi" entityId={rfiId} />
         </section>
+        </MobileFold>
 
         {/* Query */}
-        <section className="panel tick-frame p-5 space-y-3">
+        <section className="panel tick-frame p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="field-label !mb-0">Query</div>
             {canEditQuery && (
               <button
                 onClick={() => saveDraftMutation.mutate()}
                 disabled={saveDraftMutation.isPending}
-                className="btn-secondary !px-3 !py-1.5 text-xs"
+                className="btn-secondary !px-4 !py-2 text-xs"
               >
                 {saveDraftMutation.isPending ? 'Saving…' : 'Save draft'}
               </button>
@@ -706,7 +712,7 @@ export default function RfiDetailPage() {
               title="Query upload stamp"
               uploadedBy={rfi.createdByName}
               // rfis.service.ts's submit() writes query_stamp but there is no
-              // dedicated submittedAt column -- updatedAt is the closest
+              // dedicated submittedAt column; updatedAt is the closest
               // available timestamp for "when the stamp was generated"
               // (submit() is the only thing that updates the row at that
               // point). Judgment call, flagged for review.
@@ -726,12 +732,12 @@ export default function RfiDetailPage() {
         </section>
 
         {/* Communication / Clarifications */}
-        <section className="panel tick-frame p-5 space-y-3">
+        <section className="panel tick-frame p-6 space-y-4">
           <div className="field-label">Communication / Clarifications ({commentsQuery.data?.length ?? 0})</div>
           <div className="space-y-2">
             {(commentsQuery.data ?? []).map((c) => (
-              <div key={c.id} className="bg-base-700/40 rounded px-3 py-2 text-sm">
-                <div className="flex items-center gap-2 text-xs text-ink-500 mb-1">
+              <div key={c.id} className="bg-base-700/40 rounded px-4 py-2 text-sm">
+                <div className="flex items-center gap-2 text-xs text-ink-500 mb-2">
                   <span className="font-medium text-ink-300">{c.userName ?? 'Someone'}</span>
                   {c.organizationSlot && (
                     <span className="badge bg-base-600 text-ink-500">{PROJECT_ORGANIZATION_SLOT_LABELS[c.organizationSlot]}</span>
@@ -746,8 +752,8 @@ export default function RfiDetailPage() {
             )}
           </div>
 
-          <div className="flex gap-2 items-start pt-1">
-            <select
+          <div className="flex gap-2 items-start pt-2">
+            <Listbox aria-label="Comment as organization"
               className="field-input w-auto shrink-0"
               value={commentOrgSlot}
               onChange={(e) => setCommentOrgSlot(e.target.value as ProjectOrganizationSlot | '')}
@@ -757,7 +763,7 @@ export default function RfiDetailPage() {
               {PROJECT_ORGANIZATION_SLOTS.map((slot) => (
                 <option key={slot} value={slot}>{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</option>
               ))}
-            </select>
+            </Listbox>
             <input
               className="field-input"
               placeholder="Add a comment…"
@@ -777,7 +783,7 @@ export default function RfiDetailPage() {
         </section>
 
         {/* Response / Answer */}
-        <section className="panel tick-frame p-5 space-y-3">
+        <section className="panel tick-frame p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="field-label !mb-0">Response</div>
           </div>
@@ -808,13 +814,14 @@ export default function RfiDetailPage() {
           />
         </section>
 
-        {/* External access -- lets a Lead Design Consultant/PMC/Client respond
+        {/* External access: lets a Lead Design Consultant/PMC/Client respond
             to or review this one RFI without an EngineeringOS account. No
-            real email is sent here -- the generated link is shown for
+            real email is sent here; the generated link is shown for
             copy-paste into whatever email/WhatsApp the internal user already
             uses (real transactional delivery is out of scope). */}
         {canManageExternalAccess && (
-          <section className="panel tick-frame p-5 space-y-3">
+          <MobileFold title="External access" summary="Share this RFI with someone outside the platform">
+          <section className="panel tick-frame p-6 space-y-4">
             <div className="field-label !mb-0">External access</div>
             <p className="text-xs text-ink-500">
               Generate a link for a stakeholder with no EngineeringOS account (e.g. the Lead Design
@@ -823,9 +830,9 @@ export default function RfiDetailPage() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
               <div>
-                <div className="text-xs text-ink-500 mb-1">Action</div>
-                <select
-                  className="field-input !py-1.5 text-xs"
+                <div className="text-xs text-ink-500 mb-2">Action</div>
+                <Listbox aria-label="External access action"
+                  className="field-input !py-2 text-xs"
                   value={extAction}
                   onChange={(e) => {
                     const action = e.target.value as RfiExternalAccessAction;
@@ -836,12 +843,12 @@ export default function RfiDetailPage() {
                   {RFI_EXTERNAL_ACCESS_ACTIONS.map((a) => (
                     <option key={a} value={a}>{RFI_EXTERNAL_ACCESS_ACTION_LABELS[a]}</option>
                   ))}
-                </select>
+                </Listbox>
               </div>
               <div>
-                <div className="text-xs text-ink-500 mb-1">Organization</div>
-                <select
-                  className="field-input !py-1.5 text-xs"
+                <div className="text-xs text-ink-500 mb-2">Organization</div>
+                <Listbox aria-label="Organization slot"
+                  className="field-input !py-2 text-xs"
                   value={extSlot}
                   onChange={(e) => {
                     const slot = e.target.value as ProjectOrganizationSlot;
@@ -854,22 +861,22 @@ export default function RfiDetailPage() {
                   {PROJECT_ORGANIZATION_SLOTS.map((slot) => (
                     <option key={slot} value={slot}>{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</option>
                   ))}
-                </select>
+                </Listbox>
               </div>
               <div>
-                <div className="text-xs text-ink-500 mb-1">Recipient email</div>
+                <div className="text-xs text-ink-500 mb-2">Recipient email</div>
                 <input
                   type="email"
-                  className="field-input !py-1.5 text-xs"
+                  className="field-input !py-2 text-xs"
                   placeholder="name@company.com"
                   value={extEmail}
                   onChange={(e) => setExtEmail(e.target.value)}
                 />
               </div>
               <div>
-                <div className="text-xs text-ink-500 mb-1">Recipient name (optional)</div>
+                <div className="text-xs text-ink-500 mb-2">Recipient name (optional)</div>
                 <input
-                  className="field-input !py-1.5 text-xs"
+                  className="field-input !py-2 text-xs"
                   placeholder="Jane Doe"
                   value={extName}
                   onChange={(e) => setExtName(e.target.value)}
@@ -880,7 +887,7 @@ export default function RfiDetailPage() {
             <button
               onClick={() => generateExternalAccessMutation.mutate()}
               disabled={!extEmail.trim() || generateExternalAccessMutation.isPending}
-              className="btn-primary !px-3 !py-1.5 text-xs"
+              className="btn-primary !px-4 !py-2 text-xs"
             >
               {generateExternalAccessMutation.isPending ? 'Generating…' : 'Generate link'}
             </button>
@@ -889,10 +896,10 @@ export default function RfiDetailPage() {
             )}
             {extGeneratedUrl && (
               <div className="flex items-center gap-2">
-                <input readOnly className="field-input !py-1.5 text-xs font-mono" value={extGeneratedUrl} onFocus={(e) => e.target.select()} />
+                <input readOnly className="field-input !py-2 text-xs font-mono" value={extGeneratedUrl} onFocus={(e) => e.target.select()} />
                 <button
                   onClick={() => navigator.clipboard.writeText(extGeneratedUrl)}
-                  className="btn-secondary !px-3 !py-1.5 text-xs shrink-0"
+                  className="btn-secondary !px-4 !py-2 text-xs shrink-0"
                 >
                   Copy
                 </button>
@@ -900,11 +907,11 @@ export default function RfiDetailPage() {
             )}
             {extGeneratedUrl && (
               <p className="text-xs text-ink-500">
-                No email is sent automatically — copy this link and paste it into an email or message to the recipient.
+                No email is sent automatically. Copy this link and paste it into an email or message to the recipient.
               </p>
             )}
 
-            <div className="pt-2 border-t border-base-600 space-y-1.5">
+            <div className="pt-2 border-t border-base-600 space-y-2">
               {(externalAccessQuery.data ?? []).length === 0 && (
                 <p className="text-xs text-ink-500">No external access links generated yet.</p>
               )}
@@ -914,7 +921,7 @@ export default function RfiDetailPage() {
                 const statusLabel = isRevoked ? 'Revoked' : isExpired ? 'Expired' : 'Active';
                 const statusClass = isRevoked || isExpired ? 'bg-base-700 text-ink-500' : 'bg-ok/15 text-ok';
                 return (
-                  <div key={a.id} className="flex items-center gap-2 text-xs flex-wrap bg-base-700/40 rounded px-3 py-2">
+                  <div key={a.id} className="flex items-center gap-2 text-xs flex-wrap bg-base-700/40 rounded px-4 py-2">
                     <span className={`badge ${statusClass}`}>{statusLabel}</span>
                     <span className="badge bg-base-600 text-ink-500">{PROJECT_ORGANIZATION_SLOT_LABELS[a.organizationSlot]}</span>
                     <span className="text-ink-300">{RFI_EXTERNAL_ACCESS_ACTION_LABELS[a.action]}</span>
@@ -935,23 +942,25 @@ export default function RfiDetailPage() {
               {revokeExternalAccessMutation.isError && <p className="field-error">{apiErrorMessage(revokeExternalAccessMutation.error)}</p>}
             </div>
           </section>
+          </MobileFold>
         )}
 
         {/* Audit trail */}
-        <section className="panel tick-frame p-5 space-y-2">
+        <MobileFold title="Audit trail" summary={rfiAudit.length === 0 ? 'No events yet' : `${rfiAudit.length} events`}>
+        <section className="panel tick-frame p-6 space-y-2">
           <div className="field-label">Audit trail</div>
           {rfiAudit.length === 0 && <p className="text-sm text-ink-500">No audit events recorded for this RFI yet.</p>}
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {rfiAudit.map((a) => (
               <div key={a.id} className="flex items-center gap-2 text-xs text-ink-500">
                 <span className="font-mono text-ink-300">{a.action}</span>
-                <span>·</span>
                 <span>{a.userName ?? 'System'}</span>
                 <span className="ml-auto">{formatDateTime(a.occurredAt)}</span>
               </div>
             ))}
           </div>
         </section>
+        </MobileFold>
 
         {downloadError && <p className="field-error">{downloadError}</p>}
         {xlsError && <p className="field-error">{xlsError}</p>}
@@ -960,20 +969,20 @@ export default function RfiDetailPage() {
         {/* Action buttons */}
         <div className="flex flex-wrap gap-2 pt-2 border-t border-base-600">
           {canSubmit && (
-            <button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending} className="btn-primary !px-3 !py-1.5 text-xs">
+            <button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending} className="btn-primary !px-4 !py-2 text-xs">
               {submitMutation.isPending ? 'Submitting…' : 'Submit'}
             </button>
           )}
 
           {canRequestClarification && !clarifyOpen && (
-            <button onClick={() => setClarifyOpen(true)} className="btn-secondary !px-3 !py-1.5 text-xs">
+            <button onClick={() => setClarifyOpen(true)} className="btn-secondary !px-4 !py-2 text-xs">
               Request clarification
             </button>
           )}
           {canRequestClarification && clarifyOpen && (
             <div className="flex items-center gap-2">
               <input
-                className="field-input !py-1.5 text-xs"
+                className="field-input !py-2 text-xs"
                 placeholder="Reason…"
                 value={clarifyReason}
                 onChange={(e) => setClarifyReason(e.target.value)}
@@ -981,11 +990,11 @@ export default function RfiDetailPage() {
               <button
                 onClick={() => clarifyMutation.mutate()}
                 disabled={!clarifyReason.trim() || clarifyMutation.isPending}
-                className="btn-primary !px-3 !py-1.5 text-xs"
+                className="btn-primary !px-4 !py-2 text-xs"
               >
                 Send
               </button>
-              <button onClick={() => setClarifyOpen(false)} className="btn-ghost !px-2 !py-1.5 text-xs">Cancel</button>
+              <button onClick={() => setClarifyOpen(false)} className="btn-ghost !px-2 !py-2 text-xs">Cancel</button>
             </div>
           )}
           {clarifyMutation.isError && <p className="field-error">{apiErrorMessage(clarifyMutation.error)}</p>}
@@ -994,7 +1003,7 @@ export default function RfiDetailPage() {
             <button
               onClick={() => respondMutation.mutate()}
               disabled={isRichTextEmpty(answerDraft) || respondMutation.isPending}
-              className="btn-primary !px-3 !py-1.5 text-xs"
+              className="btn-primary !px-4 !py-2 text-xs"
             >
               {respondMutation.isPending ? 'Submitting…' : 'Respond'}
             </button>
@@ -1003,7 +1012,7 @@ export default function RfiDetailPage() {
             <button
               onClick={() => submitForReviewMutation.mutate()}
               disabled={submitForReviewMutation.isPending}
-              className="btn-secondary !px-3 !py-1.5 text-xs"
+              className="btn-secondary !px-4 !py-2 text-xs"
             >
               {submitForReviewMutation.isPending ? 'Sending…' : 'Submit for review'}
             </button>
@@ -1011,17 +1020,17 @@ export default function RfiDetailPage() {
           {submitForReviewMutation.isError && <p className="field-error">{apiErrorMessage(submitForReviewMutation.error)}</p>}
 
           {(canDecideReview || canClose) && (
-            <select
+            <Listbox aria-label="Closing organization"
               value={closingOrgSlot}
               onChange={(e) => setClosingOrgSlot(e.target.value as ProjectOrganizationSlot | '')}
-              className="field-input w-auto !py-1.5 text-xs"
-              title="Which party is closing this RFI -- required before Close RFI / Approve & close will submit"
+              className="field-input w-auto !py-2 text-xs"
+              title="Which party is closing this RFI, required before Close RFI / Approve & close will submit"
             >
               <option value="">Closing as…</option>
               {PROJECT_ORGANIZATION_SLOTS.map((slot) => (
                 <option key={slot} value={slot}>{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</option>
               ))}
-            </select>
+            </Listbox>
           )}
 
           {canDecideReview && !reviewRejectOpen && (
@@ -1029,11 +1038,11 @@ export default function RfiDetailPage() {
               <button
                 onClick={() => decideReviewMutation.mutate({ decision: 'approved', organizationSlot: closingOrgSlot || undefined })}
                 disabled={!closingOrgSlot || decideReviewMutation.isPending}
-                className="btn-primary !px-3 !py-1.5 text-xs"
+                className="btn-primary !px-4 !py-2 text-xs"
               >
                 Approve &amp; close
               </button>
-              <button onClick={() => setReviewRejectOpen(true)} className="btn-secondary !px-3 !py-1.5 text-xs">
+              <button onClick={() => setReviewRejectOpen(true)} className="btn-secondary !px-4 !py-2 text-xs">
                 Reject
               </button>
             </>
@@ -1041,7 +1050,7 @@ export default function RfiDetailPage() {
           {canDecideReview && reviewRejectOpen && (
             <div className="flex items-center gap-2">
               <input
-                className="field-input !py-1.5 text-xs"
+                className="field-input !py-2 text-xs"
                 placeholder="Reason for rejection…"
                 value={reviewRejectComment}
                 onChange={(e) => setReviewRejectComment(e.target.value)}
@@ -1049,11 +1058,11 @@ export default function RfiDetailPage() {
               <button
                 onClick={() => decideReviewMutation.mutate({ decision: 'rejected', comment: reviewRejectComment.trim() })}
                 disabled={!reviewRejectComment.trim() || decideReviewMutation.isPending}
-                className="btn-primary !px-3 !py-1.5 text-xs"
+                className="btn-primary !px-4 !py-2 text-xs"
               >
                 Send back
               </button>
-              <button onClick={() => setReviewRejectOpen(false)} className="btn-ghost !px-2 !py-1.5 text-xs">Cancel</button>
+              <button onClick={() => setReviewRejectOpen(false)} className="btn-ghost !px-2 !py-2 text-xs">Cancel</button>
             </div>
           )}
           {decideReviewMutation.isError && <p className="field-error">{apiErrorMessage(decideReviewMutation.error)}</p>}
@@ -1062,24 +1071,24 @@ export default function RfiDetailPage() {
             <button
               onClick={() => closeMutation.mutate()}
               disabled={!closingOrgSlot || closeMutation.isPending}
-              className="btn-secondary !px-3 !py-1.5 text-xs"
+              className="btn-secondary !px-4 !py-2 text-xs"
             >
               Close RFI
             </button>
           )}
           {canReopen && (
-            <button onClick={() => reopenMutation.mutate()} disabled={reopenMutation.isPending} className="btn-secondary !px-3 !py-1.5 text-xs">
+            <button onClick={() => reopenMutation.mutate()} disabled={reopenMutation.isPending} className="btn-secondary !px-4 !py-2 text-xs">
               ↩ Reopen
             </button>
           )}
 
-          <button onClick={handleDownloadPdf} disabled={downloading} className="btn-secondary !px-3 !py-1.5 text-xs ml-auto">
+          <button onClick={handleDownloadPdf} disabled={downloading} className="btn-secondary !px-4 !py-2 text-xs ml-auto">
             {downloading ? 'Preparing…' : 'Download PDF'}
           </button>
           <button
             onClick={handleDownloadXls}
             disabled={xlsDownloading}
-            className="btn-secondary !px-3 !py-1.5 text-xs"
+            className="btn-secondary !px-4 !py-2 text-xs"
             title="Editable spreadsheet, formatted to match the PDF"
           >
             {xlsDownloading ? 'Preparing…' : 'Download XLS'}
@@ -1112,24 +1121,24 @@ function ImpactSummary({
   days?: number;
   description?: string;
   // Drawing/Model Updated uses its own field-specific wording (see
-  // DRAWING_UPDATE_STATUS_LABELS) for the same 4-state values -- defaults
+  // DRAWING_UPDATE_STATUS_LABELS) for the same 4-state values; defaults
   // to the shared cost/time label set so those two call sites don't need
   // to pass anything.
   labels?: Record<'no' | 'yes' | 'potential' | 'tbd', string>;
 }) {
   // Falls back to the legacy boolean when the 4-state level field is absent
-  // (RFIs created before this field existed) -- same precedence rfis.service.ts
+  // (RFIs created before this field existed): same precedence rfis.service.ts
   // itself uses server-side.
   const effectiveLevel = level ?? (legacyBool ? 'yes' : 'no');
   const showDetails = effectiveLevel !== 'no';
   return (
     <div>
-      <div className="text-xs text-ink-500 mb-1">{title}</div>
+      <div className="text-xs text-ink-500 mb-2">{title}</div>
       <span className={`badge ${showDetails ? 'bg-warn/15 text-warn' : 'bg-base-600 text-ink-500'}`}>
         {labels[effectiveLevel]}
       </span>
       {showDetails && (
-        <div className="mt-1.5 text-sm text-ink-300 space-y-0.5">
+        <div className="mt-2 text-sm text-ink-300 space-y-0">
           {amount != null && <div>{currency ? `${currency} ` : ''}{amount}</div>}
           {days != null && <div>{days} day{days === 1 ? '' : 's'}</div>}
           {description && <p className="text-xs text-ink-500 whitespace-pre-wrap">{description}</p>}
@@ -1141,7 +1150,7 @@ function ImpactSummary({
 
 // Editable counterpart to ImpactSummary, shown instead of it while
 // canEditQuery is true. Amount/currency (cost) or days (time) plus a
-// description only make sense once the level says there's some impact --
+// description only make sense once the level says there's some impact;
 // same "showDetails" gate ImpactSummary already uses for display.
 function ImpactEditor({
   title, level, onLevelChange, amount, onAmountChange, currency, onCurrencyChange,
@@ -1163,29 +1172,29 @@ function ImpactEditor({
   const showDetails = level !== 'no';
   return (
     <div>
-      <div className="text-xs text-ink-500 mb-1">{title}</div>
-      <select
-        className="field-input !py-1.5 text-xs w-auto"
+      <div className="text-xs text-ink-500 mb-2">{title}</div>
+      <Listbox aria-label="Level"
+        className="field-input !py-2 text-xs w-auto"
         value={level}
         onChange={(e) => onLevelChange(e.target.value as RfiImpactLevel)}
       >
         {RFI_IMPACT_LEVELS.map((l) => (
           <option key={l} value={l}>{labels[l]}</option>
         ))}
-      </select>
+      </Listbox>
       {showDetails && (
-        <div className="mt-2 space-y-1.5">
+        <div className="mt-2 space-y-2">
           {onAmountChange && (
-            <div className="flex gap-1.5">
+            <div className="flex gap-2">
               <input
-                className="field-input !py-1.5 text-xs w-20"
+                className="field-input !py-2 text-xs w-20"
                 placeholder="Currency"
                 value={currency ?? ''}
                 onChange={(e) => onCurrencyChange?.(e.target.value)}
               />
               <input
                 type="number"
-                className="field-input !py-1.5 text-xs flex-1"
+                className="field-input !py-2 text-xs flex-1"
                 placeholder="Estimated amount (optional)"
                 value={amount ?? ''}
                 onChange={(e) => onAmountChange(e.target.value)}
@@ -1195,14 +1204,14 @@ function ImpactEditor({
           {onDaysChange && (
             <input
               type="number"
-              className="field-input !py-1.5 text-xs w-full"
+              className="field-input !py-2 text-xs w-full"
               placeholder="Estimated days (optional)"
               value={days ?? ''}
               onChange={(e) => onDaysChange(e.target.value)}
             />
           )}
           <textarea
-            className="field-input !py-1.5 text-xs w-full min-h-[50px]"
+            className="field-input !py-2 text-xs w-full min-h-[50px]"
             placeholder="Description (optional)"
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
@@ -1222,9 +1231,9 @@ function StampPanel({
   stamp: string;
 }) {
   return (
-    <div className="tick-frame bg-base-900/60 border border-base-600 rounded px-3 py-2.5">
-      <div className="text-[10px] font-mono uppercase tracking-widest text-blueprint mb-1.5">{title}</div>
-      <div className="grid grid-cols-3 gap-3 text-xs">
+    <div className="tick-frame bg-base-900/60 border border-base-600 rounded px-4 py-2">
+      <div className="text-xs text-blueprint mb-2 font-medium">{title}</div>
+      <div className="grid grid-cols-3 gap-4 text-xs">
         <div>
           <div className="text-ink-500">Uploaded by</div>
           <div className="text-ink-100">{uploadedBy ?? '—'}</div>
@@ -1242,8 +1251,8 @@ function StampPanel({
   );
 }
 
-// Five stakeholder slots, per project -- live since Phase 4. A slot with no
-// configured row (or while the query is loading, or if it errors -- e.g. a
+// Five stakeholder slots, per project; live since Phase 4. A slot with no
+// configured row (or while the query is loading, or if it errors, e.g. a
 // viewer without the 'manage_team' permission this endpoint is gated on)
 // simply renders the same placeholder as before; this never blocks or
 // errors the rest of the page.
@@ -1258,7 +1267,7 @@ function OrganizationSlotRow({ projectId, canEdit }: { projectId: string; canEdi
   const bySlot = new Map((organizationsQuery.data ?? []).map((o) => [o.slot, o]));
 
   // Inline shortcut for the same upload ManageMembersModal's organizations
-  // section offers -- lets whoever is already looking at the RFI header fix a
+  // section offers; lets whoever is already looking at the RFI header fix a
   // missing/wrong logo without leaving the page. Full name/reference/contact
   // editing still lives only in ManageMembersModal.
   const logoMutation = useMutation({
@@ -1269,14 +1278,20 @@ function OrganizationSlotRow({ projectId, canEdit }: { projectId: string; canEdi
     },
   });
 
+  // Five "No logo" placeholders tell a reader nothing, so an unconfigured
+  // strip only shows to someone who can fill it in.
+  const configured = PROJECT_ORGANIZATION_SLOTS.some((slot) => bySlot.get(slot)?.logoUrl || bySlot.get(slot)?.name);
+  if (!configured && !canEdit) return null;
+
   return (
+    <MobileFold title="Project organizations" summary={configured ? undefined : 'No logos added yet'}>
     <section className="panel tick-frame p-4">
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-5 gap-4">
         {PROJECT_ORGANIZATION_SLOTS.map((slot) => {
           const org = bySlot.get(slot);
           const isUploading = logoMutation.isPending && logoMutation.variables?.slot === slot;
           return (
-            <div key={slot} className="flex flex-col items-center gap-1.5 text-center">
+            <div key={slot} className="flex flex-col items-center gap-2 text-center">
               {org?.logoUrl ? (
                 <img
                   src={org.logoUrl}
@@ -1285,14 +1300,14 @@ function OrganizationSlotRow({ projectId, canEdit }: { projectId: string; canEdi
                   className="w-14 h-14 object-contain rounded border border-base-600 bg-base-950"
                 />
               ) : (
-                <div className="w-14 h-14 rounded border border-dashed border-base-600 bg-base-900/60 flex items-center justify-center text-ink-500 text-[10px]">
+                <div className="w-14 h-14 rounded border border-dashed border-base-600 bg-base-900/60 flex items-center justify-center text-ink-500 text-xs">
                   No logo
                 </div>
               )}
-              <div className="text-[10px] uppercase tracking-wide text-ink-500 font-mono">{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</div>
+              <div className="text-xs text-ink-500 font-medium">{PROJECT_ORGANIZATION_SLOT_LABELS[slot]}</div>
               {org?.name && <div className="text-xs text-ink-100 truncate max-w-full">{org.name}</div>}
               {canEdit && (
-                <label className="text-[10px] text-blueprint hover:text-blueprint-hover cursor-pointer">
+                <label className="text-xs text-blueprint hover:text-blueprint-hover cursor-pointer">
                   {isUploading ? 'Uploading…' : org?.logoUrl ? 'Change logo' : 'Upload logo'}
                   <input
                     type="file"
@@ -1313,6 +1328,7 @@ function OrganizationSlotRow({ projectId, canEdit }: { projectId: string; canEdi
       </div>
       {logoMutation.isError && <p className="field-error mt-2">{apiErrorMessage(logoMutation.error)}</p>}
     </section>
+    </MobileFold>
   );
 }
 
@@ -1340,25 +1356,25 @@ function AttachmentSection({
 
   return (
     <div>
-      <div className="field-label mb-1.5">{kind === 'query' ? 'Query attachments' : 'Response attachments'}</div>
+      <div className="field-label mb-2">{kind === 'query' ? 'Query attachments' : 'Response attachments'}</div>
       {attachments.length === 0 && <p className="text-xs text-ink-500 mb-2">No files attached yet.</p>}
       {attachments.length > 0 && (
-        <div className="overflow-x-auto mb-2">
+        <div className="overflow-x-auto mb-2" tabIndex={0}>
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-ink-500 border-b border-base-600">
-                <th className="py-1.5 pr-3 font-medium">File</th>
-                <th className="py-1.5 pr-3 font-medium">Document type</th>
-                <th className="py-1.5 pr-3 font-medium">Revision</th>
-                <th className="py-1.5 pr-3 font-medium">Uploaded by</th>
-                <th className="py-1.5 pr-3 font-medium">Date</th>
-                <th className="py-1.5 pr-3 font-medium" />
+                <th className="py-2 pr-4 font-medium">File</th>
+                <th className="py-2 pr-4 font-medium">Document type</th>
+                <th className="py-2 pr-4 font-medium">Revision</th>
+                <th className="py-2 pr-4 font-medium">Uploaded by</th>
+                <th className="py-2 pr-4 font-medium">Date</th>
+                <th className="py-2 pr-4 font-medium" />
               </tr>
             </thead>
             <tbody>
               {attachments.map((a) => (
                 <tr key={a.id} className="border-b border-base-700/60 last:border-0">
-                  <td className="py-1.5 pr-3">
+                  <td className="py-2 pr-4">
                     {a.attachmentReadUrl ? (
                       <a href={a.attachmentReadUrl} target="_blank" rel="noreferrer" className="text-blueprint hover:text-blueprint-hover underline">
                         {a.filename}
@@ -1368,14 +1384,14 @@ function AttachmentSection({
                     )}
                     <span className="text-ink-500"> ({formatBytes(Number(a.sizeBytes))})</span>
                   </td>
-                  <td className="py-1.5 pr-3 text-ink-300">
+                  <td className="py-2 pr-4 text-ink-300">
                     {a.documentType ? RFI_DOCUMENT_TYPE_LABELS[a.documentType] : '—'}
-                    {a.documentType === 'other' && a.documentTypeOther ? ` — ${a.documentTypeOther}` : ''}
+                    {a.documentType === 'other' && a.documentTypeOther ? ` (${a.documentTypeOther})` : ''}
                   </td>
-                  <td className="py-1.5 pr-3 text-ink-300">{a.revision ?? '—'}</td>
-                  <td className="py-1.5 pr-3 text-ink-300">{a.uploadedByName ?? '—'}</td>
-                  <td className="py-1.5 pr-3 text-ink-300">{formatDateTime(a.uploadedAt)}</td>
-                  <td className="py-1.5 text-right">
+                  <td className="py-2 pr-4 text-ink-300">{a.revision ?? '—'}</td>
+                  <td className="py-2 pr-4 text-ink-300">{a.uploadedByName ?? '—'}</td>
+                  <td className="py-2 pr-4 text-ink-300">{formatDateTime(a.uploadedAt)}</td>
+                  <td className="py-2 text-right">
                     {canUpload && (
                       <button onClick={() => deleteMutation.mutate(a.id)} disabled={deleteMutation.isPending} className="text-danger hover:text-danger/80" title="Remove">
                         ✕
@@ -1391,12 +1407,12 @@ function AttachmentSection({
       {uploadMutation.isError && <p className="field-error">{apiErrorMessage(uploadMutation.error)}</p>}
       {canUpload && (
         <div className="flex items-center gap-2">
-          <select className="field-input w-auto !py-1.5 text-xs" value={documentType} onChange={(e) => setDocumentType(e.target.value as RfiDocumentType)}>
+          <Listbox aria-label="Document type" className="field-input w-auto !py-2 text-xs" value={documentType} onChange={(e) => setDocumentType(e.target.value as RfiDocumentType)}>
             {RFI_DOCUMENT_TYPES.map((t) => (
               <option key={t} value={t}>{RFI_DOCUMENT_TYPE_LABELS[t]}</option>
             ))}
-          </select>
-          <label className="btn-secondary !px-3 !py-1.5 text-xs cursor-pointer">
+          </Listbox>
+          <label className="btn-secondary !px-4 !py-2 text-xs cursor-pointer">
             {uploadMutation.isPending ? 'Uploading…' : '+ Upload document'}
             <input
               type="file"
@@ -1423,7 +1439,7 @@ function formatBytes(bytes: number): string {
 
 function BackIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

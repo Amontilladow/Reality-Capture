@@ -1,4 +1,4 @@
-// GIS Preparation (M4 ADM/DRM GIS drawing preparation) -- the platform side
+// GIS Preparation (M4 ADM/DRM GIS drawing preparation): the platform side
 // of apps/adm-gis-prep. Results are PRELIMINARY checks only: the official
 // ADM/DRM QC tool and review decide acceptance, so no status here ever
 // claims compliance or approval.
@@ -41,6 +41,7 @@ export interface GisConvertSettings {
   single_unit_number?: string;
   floor_height?: string;
   building_number_of_floors?: string;
+  building_height?: string;
   building_usage_category?: string;
   building_usage_type?: string;
   title_values?: Record<string, string>;

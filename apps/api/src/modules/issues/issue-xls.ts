@@ -3,7 +3,7 @@ import ExcelJS from 'exceljs';
 // Mirrors apps/web/src/lib/rfi-xls.ts's palette/row-builder conventions
 // exactly, adapted for a much simpler 3-column layout (Issues has no
 // organizations/stamps concept, so no dedicated org-logo columns are
-// needed) -- kept as its own copy since this one runs server-side
+// needed): kept as its own copy since this one runs server-side
 // (apps/api) against real Buffers, not the browser/base64 round trip
 // rfi-xls.ts needs to dodge S3 CORS.
 const INK = 'FF0A141C';
@@ -17,7 +17,7 @@ const thin = { style: 'thin' as const, color: { argb: BORDER } };
 const gridBorder = { top: thin, bottom: thin, left: thin, right: thin };
 
 // 3 columns: A (label), B (value), C (reserved for attachment thumbnails
-// only -- kept separate so an image never overlaps a text value, same
+// only; kept separate so an image never overlaps a text value, same
 // reasoning as rfi-xls.ts's dedicated trailing thumbnail column).
 const FULL_WIDTH_END = 3;
 
@@ -69,7 +69,7 @@ function spacerRow(sheet: ExcelJS.Worksheet) {
   return row;
 }
 
-// Same native-EMU-offset approach as rfi-xls.ts's addPixelImage() -- see
+// Same native-EMU-offset approach as rfi-xls.ts's addPixelImage(); see
 // that file's own long comment for why the fractional {col, row} shorthand
 // is avoided. Ported here since it runs server-side with a real Buffer,
 // not an ArrayBuffer from a base64 round trip.
@@ -86,7 +86,7 @@ function addPixelImage(
   const EMU_PER_PX = 9525;
   // exceljs's own .d.ts pulls in a slightly different Buffer generic than
   // this project's @types/node resolves to (a pnpm multiple-copies-of-
-  // @types/node friction, not a real type mismatch) -- cast at the
+  // @types/node friction, not a real type mismatch): cast at the
   // boundary rather than fighting the version skew.
   const imageId = workbook.addImage({ buffer: buffer as unknown as ExcelJS.Buffer, extension });
   const tl = { nativeCol: col, nativeColOff: padPx * EMU_PER_PX, nativeRow: row, nativeRowOff: padPx * EMU_PER_PX };
@@ -128,7 +128,7 @@ export interface IssueXlsData {
   locationName?: string;
   closedAt?: string;
   attachments?: IssueXlsAttachmentItem[];
-  // Distinct from `attachments` -- see issue-pdf.template.ts's identical
+  // Distinct from `attachments`; see issue-pdf.template.ts's identical
   // field for why these are kept separate rather than merged into one list.
   pinPhotos?: IssueXlsAttachmentItem[];
   comments?: IssueXlsComment[];
@@ -137,7 +137,7 @@ export interface IssueXlsData {
   projectCode?: string;
 }
 
-// Builds one issue's sheet onto an existing workbook -- factored out of
+// Builds one issue's sheet onto an existing workbook; factored out of
 // buildIssueWorkbookBuffer() so the bulk export below can add one sheet
 // per selected issue to a single shared workbook, rather than mirroring
 // this whole function to produce N separate uncombinable buffers.

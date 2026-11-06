@@ -1,6 +1,6 @@
--- Snagging (punch list) -- pre-handover defect items with a two-step
+-- Snagging (punch list): pre-handover defect items with a two-step
 -- closure: the responsible trade marks an item fixed, then a supervisor
--- verifies it before it's truly closed. Distinct from Issues (general,
+-- verifies it before it's fully closed. Distinct from Issues (general,
 -- ongoing defect tracking with a single resolve step) and QA/QC (a
 -- checklist-based pass/fail against a scope of work, not a punch item).
 CREATE TABLE IF NOT EXISTS snag_items (

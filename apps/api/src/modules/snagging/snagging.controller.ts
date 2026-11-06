@@ -20,11 +20,11 @@ import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 export class SnaggingController {
   constructor(private readonly svc: SnaggingService) {}
 
-  // Previously ungated -- the owner's org-category matrix ("Issues/Snags")
+  // Previously ungated: the owner's org-category matrix ("Issues/Snags")
   // scopes creation to Construction Team/QAQC Team (and Engineering
   // Manager, always); Management/Engineering Team/Document Control are now
-  // genuinely restricted here, same new restriction as issues.controller.ts's
-  // own create(). No fallbackPermissions -- no discretionary grant for
+  // restricted here, same new restriction as issues.controller.ts's
+  // own create(). No fallbackPermissions; no discretionary grant for
   // "create a snag item" existed to preserve.
   @Post()
   @RequireCategoryAction('issues_snags', 'create')
@@ -67,14 +67,14 @@ export class SnaggingController {
   }
 
   @Get(':id/activities')
-  async getActivities(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
-    return { data: await this.svc.getActivities(u.companyId, id), error: null };
+  async getActivities(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.getActivities(u.companyId, pid, id), error: null };
   }
 
   @Post(':id/activities')
   @ApiOperation({ summary: 'Add a comment or activity to a snag item' })
-  async addActivity(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: AddSnagActivityDto) {
-    return { data: await this.svc.addActivity(u.companyId, id, u.id, dto), error: null };
+  async addActivity(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: AddSnagActivityDto) {
+    return { data: await this.svc.addActivity(u.companyId, pid, id, u.id, dto), error: null };
   }
 
   @Post(':id/forward')
@@ -89,7 +89,7 @@ export class SnaggingController {
   }
 
   // RBAC Phase 3: either manage_project_records (everyone who could already
-  // verify) OR the narrower verify_snag_items permission -- see
+  // verify) OR the narrower verify_snag_items permission; see
   // SnaggingService.verify()'s own comment for the segregation-of-duties
   // rationale.
   @Post(':id/verify')
@@ -126,9 +126,10 @@ export class SnaggingController {
   @ApiOperation({ summary: 'Register an uploaded file as a snag item activity attachment' })
   async addAttachment(
     @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
     @Param('id') id: string,
     @Body() dto: AddSnagAttachmentDto,
   ) {
-    return { data: await this.svc.addAttachment(u.companyId, id, u.id, dto), error: null };
+    return { data: await this.svc.addAttachment(u.companyId, pid, id, u.id, dto), error: null };
   }
 }

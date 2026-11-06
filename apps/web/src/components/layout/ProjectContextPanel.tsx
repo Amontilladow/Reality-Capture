@@ -6,14 +6,15 @@ import { PROJECT_ORGANIZATION_SLOT_LABELS } from '@engineeringos/types';
 import type { ProjectRole } from '@engineeringos/types';
 import { useAuthStore } from '../../store/auth.store';
 import { Badge, StatusBadge } from '../ui/Badge';
+import { Listbox } from '../ui/Listbox';
 
 // RBAC Phase 5: shows which project you're in, your own role and
-// organization slot on it, and a switcher to jump to another project --
+// organization slot on it, and a switcher to jump to another project;
 // all previously invisible once inside a project (the sidebar only ever
 // showed company-wide nav + the signed-in person's name/email). Every
 // query here hits an already-ungated read (getProject/getMembers/
 // getOrganizationMembers), same endpoints ManageMembersModal already
-// calls -- this doesn't add any new backend surface, just surfaces it.
+// calls; this doesn't add any new backend surface, just surfaces it.
 export function ProjectContextPanel({ projectId }: { projectId: string }) {
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
@@ -33,7 +34,7 @@ export function ProjectContextPanel({ projectId }: { projectId: string }) {
     queryFn: () => getOrganizationMembers(projectId),
   });
 
-  // Every project the signed-in person can see, for the switcher -- same
+  // Every project the signed-in person can see, for the switcher; same
   // list ProjectList.tsx itself renders. 100 is this app's existing
   // "effectively unpaginated" convention (see e.g. getDrawingUpdatesNotApplied).
   const projectsQuery = useQuery({
@@ -46,9 +47,9 @@ export function ProjectContextPanel({ projectId }: { projectId: string }) {
   const projects = projectsQuery.data?.data ?? [];
 
   return (
-    <div className="px-3 py-2.5 border-b border-base-600 space-y-1.5">
-      <select
-        className="field-input !py-1 text-xs w-full"
+    <div className="px-4 py-2 border-b border-base-600 space-y-2">
+      <Listbox
+        className="field-input !py-2 text-xs w-full"
         value={projectId}
         onChange={(e) => {
           if (e.target.value) navigate(`/projects/${e.target.value}`);
@@ -64,9 +65,9 @@ export function ProjectContextPanel({ projectId }: { projectId: string }) {
         {projects.map((p) => (
           <option key={p.id} value={p.id}>{p.name}</option>
         ))}
-      </select>
+      </Listbox>
       {(myMembership || myOrgSlot) && (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-2">
           {myMembership && (
             <Badge>{PROJECT_ROLE_LABELS[myMembership.role as ProjectRole] ?? myMembership.role}</Badge>
           )}

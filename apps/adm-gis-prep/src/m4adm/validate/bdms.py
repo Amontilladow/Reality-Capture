@@ -88,11 +88,13 @@ def run_bdms_checks(records: list[EntityRecord], target: dict[str, str | None], 
     _ids_and_references(records, target, floor_no, col)
     _space_unit(records, target, ctx, tol, col)
     _containment(ctx, tol, col)
+    _opening_adjacency(ctx, tol, col)
     _zero_insertion(records, target, specs, col)
     _code_lists(records, target, manifest, col)
     _one_floor(records, target, ctx, col)
     _blocks_in_polygons(records, target, specs, ctx, col)
     _space_number_entry(records, target, col)
+    _attribute_order(records, target, manifest, col)
     _official_qc_counting(col)
 
 
@@ -144,8 +146,9 @@ def _hierarchy(records, target, ctx: FeatureContext, col: Collector) -> None:
     """QC 4.4 #3, #16-17, #19-20, #23, #26-27: the required polygons of a building floor exist."""
     for layer, detail in REQUIRED:
         if not ctx.features.get(layer):
-            # The official QC did not report the missing BuildingRoof in trial 01 (DISCREPANCIES_BDMS B-19).
-            extra = {"severity": Severity.WARNING} if layer == "BuildingRoof" else {}
+            extra = {}
+            if layer == "BuildingRoof":    # reported once the file name is valid (trial 02, DISCREPANCIES B-19)
+                extra.update(official_qc_error="Floor exits without corresponding BuildingRoof Polygon", qc_layer="")
             if layer == "Plot":
                 extra.update(official_qc_error="No Plot or PlotDetail found", qc_layer="")
             col.add("DRM-LOG-03", f"No {layer} polygon in the drawing.",
@@ -154,6 +157,23 @@ def _hierarchy(records, target, ctx: FeatureContext, col: Collector) -> None:
     if ctx.features.get("Unit") and not ctx.features.get("Space"):
         col.add("DRM-LOG-03", "Unit polygons exist without any Space polygon.", "Draw the spaces of each unit.",
                 layer="Space")
+
+
+def _attribute_order(records, target, manifest: Manifest, col: Collector) -> None:
+    """The official QC reads Detail-block attributes by position: they must be stored in the template order."""
+    wrong: dict[str, list[EntityRecord]] = {}
+    for r in records:
+        spec = manifest.blocks.get(r.block_name or "") if r.dxftype == "INSERT" else None
+        if spec is None or spec.template_order is None or not r.attribs:
+            continue
+        if [t.upper() for t in r.attribs] != [t.upper() for t in spec.template_order]:
+            wrong.setdefault(r.block_name, []).append(r)
+    for name, recs in wrong.items():
+        col.add("DRM-ATT-52", f"{len(recs)} {name} block(s) store their attributes in another order than the official "
+                f"template ({', '.join(manifest.blocks[name].template_order)}); the official QC reads them by "
+                "position, so values land in the wrong fields.",
+                f"Redefine {name} from the official DRM template (or re-insert it) so the attributes are in template "
+                "order.", handle=recs[0].handle, layer=target.get(recs[0].handle), count=len(recs))
 
 
 def _first(records, target, layer) -> EntityRecord | None:
@@ -313,13 +333,31 @@ def _containment(ctx: FeatureContext, tol: Tolerances, col: Collector) -> None:
                         f"Correct the {child} or {parent} boundary so the {child} lies within the {parent}.",
                         handle=f.handle, layer=child, entity_type=f.rec.structure, location=f.rec.location,
                         outside_area=outside)
+
+
+def _opening_adjacency(ctx: FeatureContext, tol: Tolerances, col: Collector) -> None:
+    """DRM review: a door/window must be adjacent to two spaces, or to one space and the floor outline."""
     spaces = [s.area_geom for s in ctx.features.get("Space", []) if s.area_geom is not None]
+    floors = [f.area_geom.exterior for f in ctx.features.get("Floor", []) if f.area_geom is not None]
+    if not spaces:
+        return
     for layer in ("Door", "Window"):
         for f in ctx.features.get(layer, []):
-            if f.area_geom is not None and spaces and min(f.area_geom.distance(s) for s in spaces) > tol.coincidence:
-                col.add("DRM-LOG-21", f"{layer} touches no Space polygon.",
-                        f"Snap the {layer.lower()} to the space it opens into.", handle=f.handle, layer=layer,
-                        entity_type=f.rec.structure, location=f.rec.location)
+            g = f.area_geom
+            if g is None:
+                continue
+            n_spaces = sum(1 for s in spaces if g.distance(s) <= tol.opening_contact)
+            on_floor_outline = any(g.distance(edge) <= tol.opening_contact for edge in floors)
+            if n_spaces >= 2 or (n_spaces == 1 and on_floor_outline):
+                continue
+            reaches = ("no space" if n_spaces == 0 else
+                       "only one space and not the floor outline")
+            col.add("DRM-LOG-22", f"{layer} reaches {reaches}; it must be adjacent to two spaces or to one space and "
+                    "the floor outline.",
+                    f"Draw the {layer.lower()} across the full wall thickness, from the space to the next space or to "
+                    "the floor outline.", handle=f.handle, layer=layer, entity_type=f.rec.structure,
+                    location=f.rec.location, official_qc_error=f"{layer.upper()} polygon is not in the correct "
+                    "location, it should be adjacent to two spaces or one space and floor outline.", qc_unit=f.handle)
 
 
 def _zero_insertion(records, target, specs: dict[str, LayerSpec], col: Collector) -> None:

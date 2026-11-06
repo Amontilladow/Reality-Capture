@@ -29,10 +29,10 @@ import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 export class IssuesController {
   constructor(private readonly svc: IssuesService) {}
 
-  // Previously ungated -- the owner's org-category matrix scopes issue
+  // Previously ungated: the owner's org-category matrix scopes issue
   // creation to Construction Team/Engineering Team/QAQC Team/Subcontractor
   // (and Engineering Manager, always); Management/Document Control are now
-  // genuinely restricted here. No fallbackPermissions -- no discretionary
+  // restricted here. No fallbackPermissions; no discretionary
   // grant for "create an issue" existed to preserve.
   @Post()
   @RequireCategoryAction('issues_snags', 'create')
@@ -73,7 +73,7 @@ export class IssuesController {
     return { data: await this.svc.bulkClose(u.companyId, pid, u.id, u.companyRole, dto), error: null };
   }
 
-  // ── Bulk export -- a ZIP of each selected issue's own PDF/XLS, same
+  // ── Bulk export; a ZIP of each selected issue's own PDF/XLS, same
   // binary-response pattern as :id/pdf and :id/xls above. POST (not GET)
   // since the selection is a list of ids, not a single query param.
   @Post('bulk-export/pdf')
@@ -136,7 +136,7 @@ export class IssuesController {
     return { data: await this.svc.findOne(u.companyId, pid, id, u.id), error: null };
   }
 
-  // The one binary-response pair in this controller -- same StreamableFile +
+  // The one binary-response pair in this controller; same StreamableFile +
   // passthrough Response pattern rfis.controller.ts's :id/pdf uses.
   @Get(':id/pdf')
   @ApiOperation({ summary: 'Download this issue as a formatted PDF, with every attachment printed as appendix pages' })
@@ -175,7 +175,7 @@ export class IssuesController {
 
   // ── Close ─────────────────────────────────────────────────────────────────
   // F5: closing requires (a) at least one evidence capture attached and
-  // (b) a permitted-approver role (company_admin/engineering_manager) --
+  // (b) a permitted-approver role (company_admin/engineering_manager);
   // enforced inside IssuesService.close() itself, same as before, so this
   // stays deliberately NOT gated by @RequireProjectPermission at the
   // controller (which the generic PATCH :id above can no longer do at all
@@ -193,30 +193,31 @@ export class IssuesController {
   }
 
   @Get(':id/activities')
-  async getActivities(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
-    return { data: await this.svc.getActivities(u.companyId, id), error: null };
+  async getActivities(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.getActivities(u.companyId, pid, id), error: null };
   }
 
   @Post(':id/activities')
   @ApiOperation({ summary: 'Add a comment or activity to an issue' })
-  async addActivity(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string, @Body() dto: AddActivityDto) {
-    return { data: await this.svc.addActivity(u.companyId, id, u.id, dto), error: null };
+  async addActivity(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: AddActivityDto) {
+    return { data: await this.svc.addActivity(u.companyId, pid, id, u.id, dto), error: null };
   }
 
   @Post(':id/captures')
   @ApiOperation({ summary: 'Link an existing capture as evidence for this issue' })
   async addCapture(
     @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
     @Param('id') id: string,
     @Body() body: AddCaptureToIssueDto,
   ) {
-    return { data: await this.svc.addCapture(u.companyId, id, u.id, body.captureId, body.isPrimary, body.caption), error: null };
+    return { data: await this.svc.addCapture(u.companyId, pid, id, u.id, body.captureId, body.isPrimary, body.caption), error: null };
   }
 
   @Get(':id/evidence')
   @ApiOperation({ summary: 'List the evidence captures attached to this issue (F5 close-out requires at least one)' })
-  async getEvidence(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
-    return { data: await this.svc.getEvidence(u.companyId, id), error: null };
+  async getEvidence(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.getEvidence(u.companyId, pid, id), error: null };
   }
 
   // ── Forward (ticket 2b) ──────────────────────────────────────────────────
@@ -232,7 +233,7 @@ export class IssuesController {
   }
 
   // ── Scheduled reminders ──────────────────────────────────────────────────
-  // Deliberately ungated (no @RequireProjectPermission/@Roles) -- open to
+  // Deliberately ungated (no @RequireProjectPermission/@Roles): open to
   // anyone who can view the issue, unlike the admin-only, immediate
   // broadcastReminder()/userReminder() above.
   @Post(':id/schedule-reminder')
@@ -294,14 +295,15 @@ export class IssuesController {
   @ApiOperation({ summary: 'Register an uploaded file as an issue activity attachment' })
   async addAttachment(
     @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
     @Param('id') id: string,
     @Body() dto: AddIssueAttachmentDto,
   ) {
-    return { data: await this.svc.addAttachment(u.companyId, id, u.id, dto), error: null };
+    return { data: await this.svc.addAttachment(u.companyId, pid, id, u.id, dto), error: null };
   }
 }
 
-// Element-scoped endpoint — GET /elements/:id/issues
+// Element-scoped endpoint: GET /elements/:id/issues
 import { Controller as Ctrl2 } from '@nestjs/common';
 @ApiTags('issues')
 @ApiBearerAuth()
@@ -316,7 +318,7 @@ export class ElementIssuesController {
   }
 }
 
-// Flat, project-agnostic lookup — GET /issues/:id. Notifications only carry
+// Flat, project-agnostic lookup; GET /issues/:id. Notifications only carry
 // resourceType/resourceId (no projectId), so this is what resolves a
 // notification into a real "/projects/:projectId/issues" link.
 import { Controller as Ctrl3 } from '@nestjs/common';

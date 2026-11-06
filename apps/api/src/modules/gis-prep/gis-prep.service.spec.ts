@@ -1,5 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { GisPrepService } from './gis-prep.service';
+import { GisPrepService, toJob } from './gis-prep.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { StorageService } from '../storage/storage.service';
 
@@ -82,5 +82,14 @@ describe('GisPrepService', () => {
   it('returns 404 for a job outside the project', async () => {
     const { svc } = makeService([[]]);
     await expect(svc.getJob(companyId, projectId, 'nope')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('toJob', () => {
+  it('returns the settings as stored (snake_case keys intact) so a re-run sends them unchanged', () => {
+    const stored = { mode: 'convert', profile: 'bdms_building', metadata: { zone_name: 'KHALIFA CITY' }, single_unit_number: '1' };
+    const job = toJob({ ...(row as never as Parameters<typeof toJob>[0]), settings: { profile: 'bdms_building', metadata: { zoneName: 'KHALIFA CITY' } } as never,
+                        settingsText: JSON.stringify(stored) });
+    expect(job.settings).toEqual(stored);
   });
 });

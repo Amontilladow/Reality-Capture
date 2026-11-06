@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ProjectPhase } from '@engineeringos/types';
 import { PROJECT_PHASES, PROJECT_PHASE_LABELS } from '@engineeringos/types';
+import { Listbox } from './ui/Listbox';
 
 export function PhaseEditor({
   phase,
@@ -16,10 +17,10 @@ export function PhaseEditor({
 
   if (editing) {
     return (
-      <div className="flex items-center gap-1.5">
-        <select
+      <div className="flex items-center gap-2">
+        <Listbox aria-label="Project phase"
           autoFocus
-          className="field-input !py-1 !text-xs w-auto"
+          className="field-input !py-2 !text-xs w-auto"
           value={value}
           onChange={(e) => setValue(e.target.value as ProjectPhase | '')}
         >
@@ -27,15 +28,15 @@ export function PhaseEditor({
           {PROJECT_PHASES.map((p) => (
             <option key={p} value={p}>{PROJECT_PHASE_LABELS[p]}</option>
           ))}
-        </select>
+        </Listbox>
         <button
           onClick={() => { onSave(value); setEditing(false); }}
           disabled={saving}
-          className="btn-primary !px-2 !py-1 text-xs shrink-0"
+          className="btn-primary !px-2 !py-2 text-xs shrink-0"
         >
           Save
         </button>
-        <button onClick={() => { setValue(phase ?? ''); setEditing(false); }} className="btn-ghost !px-1.5 !py-1 text-xs shrink-0">
+        <button onClick={() => { setValue(phase ?? ''); setEditing(false); }} className="btn-ghost !px-2 !py-2 text-xs shrink-0">
           Cancel
         </button>
       </div>
@@ -43,7 +44,7 @@ export function PhaseEditor({
   }
 
   return (
-    <button onClick={() => setEditing(true)} className="flex items-center gap-1 text-xs text-ink-500 hover:text-blueprint">
+    <button onClick={() => setEditing(true)} className="flex items-center gap-2 min-h-6 text-xs text-ink-500 hover:text-blueprint">
       <span>{phase ? PROJECT_PHASE_LABELS[phase] : 'Set phase'}</span>
       <EditIcon className="w-3 h-3" />
     </button>
@@ -52,7 +53,7 @@ export function PhaseEditor({
 
 function EditIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

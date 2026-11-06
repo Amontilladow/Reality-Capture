@@ -24,14 +24,14 @@ export class SnaggingService {
     private readonly storage: StorageService,
     private readonly projectAuth: ProjectAuthorizationService,
     // @Optional(): see RfisService's identical comment on its own
-    // constructor -- keeps the existing snagging.service.spec.ts call sites
+    // constructor; keeps the existing snagging.service.spec.ts call sites
     // (which construct SnaggingService with the pre-existing 3-arg list)
     // working unchanged; SnaggingModule registers RiskModule as a real
     // provider, so production always gets a live instance here.
     @Optional() private readonly risk?: RiskService,
   ) {}
 
-  // Event-driven incremental risk recalculation (brief section 41) -- see
+  // Event-driven incremental risk recalculation (brief section 41); see
   // RfisService.triggerRiskRecalc()'s identical comment for the full
   // rationale.
   private async triggerRiskRecalc(companyId: string, projectId: string, snagId: string): Promise<void> {
@@ -43,7 +43,7 @@ export class SnaggingService {
     }
   }
 
-  // withTenant required for the projects lookup -- projects carries the tenant_isolation
+  // withTenant required for the projects lookup: projects carries the tenant_isolation
   // RLS policy. A plain this.db.query() never sets app.current_company_id, so under any DB
   // role that isn't the table owner/a superuser this SELECT sees no rows and silently falls
   // back to the generic 'PRJ' prefix instead of the real project code.
@@ -57,7 +57,47 @@ export class SnaggingService {
     });
   }
 
+  // H-1 follow-up: create()/update() accept optional building/level/location
+  // references that were never checked against this project; a user
+  // authorized for Project A could attach Project B's building/level/
+  // location to a snag item by supplying its id. findAll()/findOne() both
+  // JOIN buildings/levels for display (building_name/level_name), so an
+  // unchecked cross-project id was a real metadata leak there, not merely
+  // a dangling reference. Mirrors buildings.service.ts's own asserts for
+  // this same building/level/location chain.
+  private async assertLinkedResourcesInProject(companyId: string, projectId: string, refs: {
+    buildingId?: string | null; levelId?: string | null; locationId?: string | null;
+  }): Promise<void> {
+    if (refs.buildingId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT 1 FROM buildings WHERE id = ${refs.buildingId ?? null} AND project_id = ${projectId} AND company_id = ${companyId}
+      `);
+      if (!row) throw new NotFoundException(`Building ${refs.buildingId} not found.`);
+    }
+    if (refs.levelId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT lvl.id FROM levels lvl JOIN buildings b ON b.id = lvl.building_id
+        WHERE lvl.id = ${refs.levelId ?? null} AND b.project_id = ${projectId} AND b.company_id = ${companyId}
+      `);
+      if (!row) throw new NotFoundException(`Level ${refs.levelId} not found.`);
+    }
+    if (refs.locationId) {
+      const [row] = await this.db.withTenant(companyId, sql => sql`
+        SELECT loc.id FROM locations loc
+        LEFT JOIN levels lvl ON lvl.id = loc.level_id
+        LEFT JOIN buildings b ON b.id = lvl.building_id
+        LEFT JOIN drawings d ON d.id = loc.drawing_id
+        WHERE loc.id = ${refs.locationId ?? null} AND loc.company_id = ${companyId}
+          AND COALESCE(b.project_id, d.project_id) = ${projectId}
+      `);
+      if (!row) throw new NotFoundException(`Location ${refs.locationId} not found.`);
+    }
+  }
+
   async create(companyId: string, projectId: string, userId: string, dto: CreateSnagItemDto) {
+    await this.assertLinkedResourcesInProject(companyId, projectId, {
+      buildingId: dto.buildingId, levelId: dto.levelId, locationId: dto.locationId,
+    });
     const snagNumber = await this.generateSnagNumber(companyId, projectId);
     const [snag] = await this.db.query`
       INSERT INTO snag_items (
@@ -136,8 +176,11 @@ export class SnaggingService {
 
   async update(companyId: string, projectId: string, snagId: string, userId: string, dto: UpdateSnagItemDto) {
     const existing = await this.findOne(companyId, projectId, snagId);
+    await this.assertLinkedResourcesInProject(companyId, projectId, {
+      buildingId: dto.buildingId, levelId: dto.levelId, locationId: dto.locationId,
+    });
     // The two-step closure this feature is built around: a trade marks an
-    // item 'fixed', then a supervisor 'verifies' it separately -- each
+    // item 'fixed', then a supervisor 'verifies' it separately; each
     // transition stamps its own timestamp/actor, and only fires once (a
     // status update that doesn't actually cross that specific transition,
     // e.g. re-saving while already 'fixed', must not re-stamp it).
@@ -166,10 +209,10 @@ export class SnaggingService {
       RETURNING *
     `;
 
-    // Log status change activity automatically -- mirrors IssuesService.update()'s
+    // Log status change activity automatically: mirrors IssuesService.update()'s
     // existing behavior for issues, added here now for snag items too.
     if (dto.status && dto.status !== existing.status) {
-      await this.addActivity(companyId, snagId, userId, {
+      await this.addActivity(companyId, projectId, snagId, userId, {
         activityType: 'status_change',
         fromValue: existing.status as string,
         toValue: dto.status,
@@ -200,7 +243,7 @@ export class SnaggingService {
   }
 
   // ── Reports KPI breakdown ────────────────────────────────────────────────
-  // Sibling to getSummary() above -- same reasoning as
+  // Sibling to getSummary() above; same reasoning as
   // IssuesService.getKpiBreakdown(): getSummary()'s shape is left untouched
   // since other pages already depend on it. Same GROUP BY / fold-in-JS
   // pattern, keyed on trade instead of discipline.
@@ -227,7 +270,7 @@ export class SnaggingService {
     return { byStatus, byPriority, byTrade };
   }
 
-  // Mirrors findAll()'s join pattern (assigned_to_name via u_a) -- used by
+  // Mirrors findAll()'s join pattern (assigned_to_name via u_a): used by
   // the Reports KPI dashboard/PDF for its "currently open" table. 'open'/
   // 'fixed' matches this codebase's own definition of "active" snag items
   // (see getSummary()'s overdue filter above).
@@ -248,12 +291,17 @@ export class SnaggingService {
   }
 
   // ══════════════════════════════════════════════════════════════════════
-  // Workflow actions -- mirrors IssuesService's equivalent methods exactly
+  // Workflow actions: mirrors IssuesService's equivalent methods exactly
   // in structure, differing only in table/column names.
   // ══════════════════════════════════════════════════════════════════════
 
   // ── Activities ────────────────────────────────────────────────────────────
-  async getActivities(companyId: string, snagId: string) {
+  async getActivities(companyId: string, projectId: string, snagId: string) {
+    // findOne's own query already enforces snag_item.project_id = projectId
+    // (H-1 fix: this previously scoped only by company_id, letting a user
+    // authorized for a different project in the same company read any
+    // snag item's activity feed by guessing/enumerating its UUID).
+    await this.findOne(companyId, projectId, snagId);
     const activities = await this.db.withTenant(companyId, sql => sql`
       SELECT a.*, u.first_name || ' ' || u.last_name AS performed_by_name, u.avatar_url
       FROM snag_activities a
@@ -263,7 +311,7 @@ export class SnaggingService {
     `);
 
     // attachment_url stores the raw storage key, not a usable link (see
-    // addAttachment() below) -- resolve it to a presigned read URL under a
+    // addAttachment() below): resolve it to a presigned read URL under a
     // *different* field (attachmentReadUrl), same pattern as
     // issues.service.ts's getActivities().
     return Promise.all(activities.map(async (activity) => {
@@ -272,7 +320,9 @@ export class SnaggingService {
     }));
   }
 
-  async addActivity(companyId: string, snagId: string, userId: string, dto: AddSnagActivityDto) {
+  async addActivity(companyId: string, projectId: string, snagId: string, userId: string, dto: AddSnagActivityDto) {
+    // H-1 fix: see getActivities()'s identical comment above.
+    await this.findOne(companyId, projectId, snagId);
     return this.db.withTenant(companyId, async (sql) => {
       const [activity] = await sql`
         INSERT INTO snag_activities (
@@ -301,7 +351,7 @@ export class SnaggingService {
       RETURNING *
     `);
 
-    await this.addActivity(companyId, snagId, userId, {
+    await this.addActivity(companyId, projectId, snagId, userId, {
       activityType: 'forward',
       fromValue: (existing.assignedTo as string | null) ?? undefined,
       toValue: dto.toUserId,
@@ -325,17 +375,17 @@ export class SnaggingService {
 
   // ── Verify ────────────────────────────────────────────────────────────
   // RBAC Phase 3: a dedicated fixed -> verified transition, distinct from
-  // the generic update() path above. update() stays exactly as it was --
+  // the generic update() path above. update() stays exactly as it was;
   // still reachable by anyone holding manage_project_records for every
   // status value including 'verified', so nothing existing loses access.
   // This route exists so an admin can ALSO grant just this one step (via
   // the narrower verify_snag_items permission) to someone who should sign
   // off on a fix without being able to mark their own fix as fixed, edit
-  // the snag, or do anything else manage_project_records covers --
+  // the snag, or do anything else manage_project_records covers;
   // segregation of duties, same rationale as RFI's manage_rfis/approve_rfis
   // split (Phase 2). Gated at the controller with
   // @RequireProjectPermission('manage_project_records', 'verify_snag_items')
-  // (OR, not AND) -- this method itself only re-validates the state
+  // (OR, not AND): this method itself only re-validates the state
   // transition, not authorization, which the guard already covers.
   async verify(companyId: string, projectId: string, snagId: string, userId: string) {
     const existing = await this.findOne(companyId, projectId, snagId);
@@ -343,12 +393,12 @@ export class SnaggingService {
       throw new BadRequestException(`Only a 'fixed' snag item can be verified (current status: '${existing.status as string}').`);
     }
     // Owner's org-category RBAC sprint: segregation of duties for the
-    // fixed -> verified sign-off step -- the same person who marked a snag
+    // fixed -> verified sign-off step; the same person who marked a snag
     // 'fixed' (via update(), manage_project_records) must not also be the
     // one who verifies it (via verify_snag_items/manage_project_records).
     // The doc comment on PROJECT_PERMISSIONS.verify_snag_items already
     // described this as the intent when that permission was added, but
-    // nothing actually checked it until now -- a real gap found while
+    // nothing actually checked it until now; a real gap found while
     // implementing the new matrix's QAQC Team Approve/Close grant for this
     // module.
     if (existing.fixedBy === userId) {
@@ -368,7 +418,7 @@ export class SnaggingService {
       RETURNING *
     `);
 
-    await this.addActivity(companyId, snagId, userId, {
+    await this.addActivity(companyId, projectId, snagId, userId, {
       activityType: 'status_change',
       fromValue: 'fixed',
       toValue: 'verified',
@@ -379,10 +429,10 @@ export class SnaggingService {
   }
 
   // ── Admin force-status ─────────────────────────────────────────────────
-  // Bypasses the normal update() path entirely -- distinct, @Roles-gated
+  // Bypasses the normal update() path entirely; distinct, @Roles-gated
   // path that logs a dedicated 'status_force' activity instead of
   // 'status_change'. Snag items have no closed_at/closed_by columns (see
-  // 018_snag_items.sql) -- but they DO have fixed_at/fixed_by/verified_at/
+  // 018_snag_items.sql): but they DO have fixed_at/fixed_by/verified_at/
   // verified_by, which update() (above) already stamps on the equivalent
   // transitions. Bypassing that bookkeeping here left a real gap: a force-
   // verified snag showed the "Verified" badge with no verified date/actor,
@@ -405,7 +455,7 @@ export class SnaggingService {
       RETURNING *
     `);
 
-    await this.addActivity(companyId, snagId, userId, {
+    await this.addActivity(companyId, projectId, snagId, userId, {
       activityType: 'status_force',
       fromValue: existing.status as string,
       toValue: dto.status,
@@ -439,20 +489,19 @@ export class SnaggingService {
     return { uploadUrl, storageKey: key };
   }
 
-  // Step 2: client already PUT the bytes to `storageKey` from step 1 --
+  // Step 2: client already PUT the bytes to `storageKey` from step 1;
   // this registers it as a new snag_activities row. attachment_url stores
   // the storage key (not a raw presigned URL, which would expire), resolved
   // to a live presigned URL by getActivities() when needed.
-  async addAttachment(companyId: string, snagId: string, userId: string, dto: AddSnagAttachmentDto) {
-    // No projectId is threaded through this route today (see
-    // snagging.controller.ts) -- confirming the snag item itself exists
-    // under this company is the authorization boundary available here.
-    const [snag] = await this.db.withTenant(companyId, sql => sql`
-      SELECT id FROM snag_items WHERE id = ${snagId} AND company_id = ${companyId}
-    `);
-    if (!snag) throw new NotFoundException(`Snag item ${snagId} not found.`);
+  async addAttachment(companyId: string, projectId: string, snagId: string, userId: string, dto: AddSnagAttachmentDto) {
+    // H-1 fix: projectId is now threaded through from the route and
+    // checked via findOne (snag_item.project_id = projectId), not just
+    // company_id; previously a user authorized for a different project
+    // in the same company could attach a file to any snag item by guessing
+    // its UUID.
+    await this.findOne(companyId, projectId, snagId);
 
-    // Real post-upload size enforcement -- dto.sizeBytes was only ever
+    // Real post-upload size enforcement: dto.sizeBytes was only ever
     // checked at upload-url time; it is not trusted for persistence.
     const actualSizeBytes = await this.storage.getObjectSize(dto.storageKey);
     if (actualSizeBytes === null) {
@@ -482,7 +531,7 @@ export class SnaggingService {
     });
   }
 
-  // Same rationale as captures.service.ts's assertProjectBelongsToCompany --
+  // Same rationale as captures.service.ts's assertProjectBelongsToCompany;
   // snagging.controller.ts has no @RequireProjectPermission gate on the
   // attachment-upload-url route, unlike update/delete/forceStatus.
   private async assertProjectBelongsToCompany(companyId: string, projectId: string): Promise<void> {

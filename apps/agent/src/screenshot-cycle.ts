@@ -11,7 +11,7 @@ export interface ScreenshotCycleDeps {
 
 // One screenshot cycle: request permission, capture, upload, record.
 // A 403 (company has screenshots disabled) is an expected, normal outcome
-// for most companies most of the time -- logged quietly and skipped, never
+// for most companies most of the time; logged quietly and skipped, never
 // an aggressive error/alert. Any other failure (network blip, presign
 // expiry) is logged and left for the next scheduled cycle; there is no
 // retry queue for screenshots the way there is for activity segments,

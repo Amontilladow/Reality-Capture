@@ -54,7 +54,7 @@ async function runStart(): Promise<void> {
   const screenshotTimer = setInterval(() => {
     // Private Time is named and documented as pausing monitoring; before this
     // check, it only gated the activity-sampling loop (above) while
-    // screenshots kept firing on schedule regardless -- a silent scope gap
+    // screenshots kept firing on schedule regardless; a silent scope gap
     // between what the feature claims and what it actually did, inconsistent
     // with window-title capture (also suppressed during Private Time).
     if (isPrivateModeOn()) {
@@ -97,7 +97,7 @@ async function main(): Promise<void> {
     await runStart();
     return;
   }
-  // A short-lived one-off, same shape as `enroll` -- not a message sent to
+  // A short-lived one-off, same shape as `enroll`: not a message sent to
   // the long-running `start` process, just a marker file it polls on its
   // own next sample tick (see runStart()'s isPrivateModeOn wiring above).
   // That means it can take up to SAMPLE_INTERVAL_MS to take effect, which

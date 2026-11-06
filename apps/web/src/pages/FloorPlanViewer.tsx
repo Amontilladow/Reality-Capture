@@ -7,8 +7,9 @@ import { DrawingUploadModal } from '../components/drawing/DrawingUploadModal';
 import { PinPanel } from '../components/drawing/PinPanel';
 import { listDrawings, getDrawing, createPin, getPins, type Drawing, type Pin } from '../lib/drawings.api';
 import { getHierarchy, updateLocation, getMembers, type ProjectHierarchy } from '../lib/projects.api';
-import { Input, Select } from '../components/ui/Field';
+import { Input, SelectField } from '../components/ui/Field';
 import { HelpLink } from '../components/help/HelpLink';
+import { Listbox } from '../components/ui/Listbox';
 
 export default function FloorPlanViewer() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -16,8 +17,8 @@ export default function FloorPlanViewer() {
   // Deep-link support (e.g. from IssueDetail.tsx's "view on floor plan"
   // link): /projects/:id/drawings?drawingId=X&pinId=Y. drawingId can be
   // read straight into initial state, same as IssuesPage.tsx's own
-  // ?issueId= pattern; pinId can't resolve until pinsQuery.data loads --
-  // PinPanel needs the full Pin object, not just an id -- so that part is
+  // ?issueId= pattern; pinId can't resolve until pinsQuery.data loads;
+  // PinPanel needs the full Pin object, not just an id; so that part is
   // handled by the effect below instead.
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(searchParams.get('drawingId'));
@@ -27,13 +28,13 @@ export default function FloorPlanViewer() {
   const [openPin, setOpenPin] = useState<Pin | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [numPages, setNumPages] = useState(1);
-  // Who a newly-placed pin's auto-created Issue is assigned to -- lets
+  // Who a newly-placed pin's auto-created Issue is assigned to; lets
   // someone walking a site drop several pins in a row all pre-assigned to
   // the same person, without opening each pin's panel afterward.
   const [newPinAssignee, setNewPinAssignee] = useState('');
 
   // ── Sidebar grouping/filtering (building → level, plus a title search and
-  // an optional drawing-type filter) -- all client-side against the one
+  // an optional drawing-type filter): all client-side against the one
   // full listDrawings() fetch below, never re-fetched per filter change.
   const [buildingFilter, setBuildingFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState('');
@@ -61,7 +62,7 @@ export default function FloorPlanViewer() {
   const hierarchy = useMemo(() => hierarchyQuery.data ?? [], [hierarchyQuery.data]);
 
   // Resolves each drawing's building/level from the hierarchy tree by
-  // matching drawing.levelId against a level nested under some building --
+  // matching drawing.levelId against a level nested under some building;
   // no backend join needed, hierarchy is already fetched on this page.
   // A drawing with no levelId, or one pointing at a level no longer in the
   // tree (deleted level), resolves to {building: undefined, level: undefined}
@@ -108,7 +109,7 @@ export default function FloorPlanViewer() {
   // Grouped for render: buildings in hierarchy order (so it's stable as
   // filters change), levels within each building sorted by levelOrder, and
   // anything that didn't resolve to a building in an "Unassigned" bucket at
-  // the end -- never hidden, per the ask.
+  // the end; never hidden, per the ask.
   const groupedDrawings = useMemo(() => {
     const byBuilding = new Map<string, Map<string, { level?: ProjectHierarchy['levels'][number]; drawings: DrawingWithLocation[] }>>();
     const unassigned: DrawingWithLocation[] = [];
@@ -159,7 +160,7 @@ export default function FloorPlanViewer() {
     enabled: Boolean(projectId && activeDrawingId),
   });
 
-  // Floor Plans is the Issues/Snags pin workflow -- a camera-location pin
+  // Floor Plans is the Issues/Snags pin workflow; a camera-location pin
   // (placed from the separate Buildlense Captures plan page, same drawing
   // backend) never shows up here, so the two pin-creation flows never mix
   // on screen even though they can share the same uploaded plan file.
@@ -171,7 +172,7 @@ export default function FloorPlanViewer() {
   const pinsForCurrentPage = issuePins.filter((p) => p.pageNumber === currentPage);
 
   // Resolves the ?pinId= deep link once this drawing's pins are in, jumps
-  // to that pin's page, and opens its panel -- then strips both params so
+  // to that pin's page, and opens its panel; then strips both params so
   // navigating elsewhere and back via the sidebar doesn't keep re-opening
   // the same pin every time.
   useEffect(() => {
@@ -247,7 +248,7 @@ export default function FloorPlanViewer() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-6">
-        <div className="lg:col-span-1 space-y-3">
+        <div className="lg:col-span-1 space-y-4">
           {drawingsQuery.isLoading && <div className="text-sm text-ink-500">Loading…</div>}
           {drawingsQuery.isSuccess && (drawingsQuery.data ?? []).length === 0 && (
             <div className="tick-frame panel p-6 text-center text-sm text-ink-500">
@@ -256,14 +257,14 @@ export default function FloorPlanViewer() {
           )}
 
           {(drawingsQuery.data ?? []).length > 0 && (
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               <Input
                 label="Search"
                 placeholder="Search by title…"
                 value={titleSearch}
                 onChange={(e) => setTitleSearch(e.target.value)}
               />
-              <Select
+              <SelectField
                 label="Building"
                 value={buildingFilter}
                 onChange={(e) => { setBuildingFilter(e.target.value); setLevelFilter(''); }}
@@ -272,8 +273,8 @@ export default function FloorPlanViewer() {
                 {hierarchy.map((b) => (
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
-              </Select>
-              <Select
+              </SelectField>
+              <SelectField
                 label="Level"
                 value={levelFilter}
                 onChange={(e) => setLevelFilter(e.target.value)}
@@ -283,9 +284,9 @@ export default function FloorPlanViewer() {
                 {levelOptionsForFilter.map((l) => (
                   <option key={l.id} value={l.id}>{l.name}</option>
                 ))}
-              </Select>
+              </SelectField>
               {drawingTypeOptions.length > 0 && (
-                <Select
+                <SelectField
                   label="Drawing type"
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
@@ -294,28 +295,28 @@ export default function FloorPlanViewer() {
                   {drawingTypeOptions.map((t) => (
                     <option key={t} value={t}>{t}</option>
                   ))}
-                </Select>
+                </SelectField>
               )}
             </div>
           )}
 
           {drawingsQuery.isSuccess && (drawingsQuery.data ?? []).length > 0 && filteredDrawings.length === 0 && (
-            <div className="text-xs text-ink-500 px-1">No floor plans match these filters.</div>
+            <div className="text-xs text-ink-500 px-2">No floor plans match these filters.</div>
           )}
 
           <div className="space-y-2">
             {groupedDrawings.buildingGroups.map(({ building, levelGroups }) => (
               <details key={building.id} open>
-                <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-500 px-1 py-1 hover:text-ink-300">
+                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-2 py-2 hover:text-ink-300">
                   {building.name}
                 </summary>
-                <div className="pl-1 space-y-2 mt-1">
+                <div className="pl-2 space-y-2 mt-2">
                   {levelGroups.map(({ level, drawings }) => (
                     <div key={level?.id ?? '__no-level__'}>
-                      <div className="text-[11px] font-medium text-ink-500 px-2 py-1">
+                      <div className="text-xs font-medium text-ink-500 px-2 py-2">
                         {level?.name ?? 'No level'}
                       </div>
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         {drawings.map((d) => (
                           <DrawingRow key={d.id} drawing={d} active={activeDrawingId === d.id} onSelect={selectDrawing} />
                         ))}
@@ -328,10 +329,10 @@ export default function FloorPlanViewer() {
 
             {groupedDrawings.unassigned.length > 0 && (
               <details open>
-                <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-ink-500 px-1 py-1 hover:text-ink-300">
+                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-2 py-2 hover:text-ink-300">
                   Unassigned
                 </summary>
-                <div className="pl-1 space-y-1 mt-1">
+                <div className="pl-2 space-y-2 mt-2">
                   {groupedDrawings.unassigned.map((d) => (
                     <DrawingRow key={d.id} drawing={d} active={activeDrawingId === d.id} onSelect={selectDrawing} />
                   ))}
@@ -341,9 +342,9 @@ export default function FloorPlanViewer() {
           </div>
         </div>
 
-        <div className="lg:col-span-3 space-y-3">
+        <div className="lg:col-span-3 space-y-4">
           {activeDrawingId && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               {movingPin ? (
                 <div className="flex items-center gap-2 text-xs text-signal">
                   <span>Click the drawing to move "{movingPin.name || 'Untitled pin'}"</span>
@@ -352,7 +353,7 @@ export default function FloorPlanViewer() {
                   </button>
                 </div>
               ) : !placingMode ? (
-                <button onClick={() => setPlacingMode(true)} className="btn-secondary text-xs !py-1.5">
+                <button onClick={() => setPlacingMode(true)} className="btn-secondary text-xs !py-2">
                   + Add pin
                 </button>
               ) : (
@@ -364,10 +365,10 @@ export default function FloorPlanViewer() {
                 </div>
               )}
               {!movingPin && (
-                <div className="flex items-center gap-1.5 text-xs">
+                <div className="flex items-center gap-2 text-xs">
                   <span className="text-ink-500">New pins assign to</span>
-                  <select
-                    className="field-input w-auto !py-1 !text-xs"
+                  <Listbox aria-label="Pin assignee"
+                    className="field-input w-auto !py-2 !text-xs"
                     value={newPinAssignee}
                     onChange={(e) => setNewPinAssignee(e.target.value)}
                   >
@@ -375,30 +376,30 @@ export default function FloorPlanViewer() {
                     {(membersQuery.data ?? []).map((m) => (
                       <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
                     ))}
-                  </select>
+                  </Listbox>
                 </div>
               )}
               {numPages > 1 && (
-                <div className="flex items-center gap-1.5 text-xs text-ink-300">
+                <div className="flex items-center gap-2 text-xs text-ink-300">
                   <button
                     onClick={() => goToPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage <= 1}
-                    className="btn-ghost !px-2 !py-1 disabled:opacity-30"
+                    className="btn-ghost !px-2 !py-2 disabled:opacity-30"
                   >
-                    ← Prev
+                    Prev
                   </button>
-                  <span className="font-mono">Page {currentPage} of {numPages}</span>
+                  <span className="tabular-nums">Page {currentPage} of {numPages}</span>
                   <button
                     onClick={() => goToPage(Math.min(numPages, currentPage + 1))}
                     disabled={currentPage >= numPages}
-                    className="btn-ghost !px-2 !py-1 disabled:opacity-30"
+                    className="btn-ghost !px-2 !py-2 disabled:opacity-30"
                   >
-                    Next →
+                    Next
                   </button>
                 </div>
               )}
               {issuePins.length > 0 && (
-                <span className="text-[10px] font-mono text-ink-500 ml-auto">
+                <span className="text-xs text-ink-500 ml-auto">
                   {pinsForCurrentPage.length} pin{pinsForCurrentPage.length === 1 ? '' : 's'}
                   {numPages > 1 ? ` on this page (${issuePins.length} total)` : ''}
                 </span>
@@ -440,15 +441,15 @@ export default function FloorPlanViewer() {
   );
 }
 
-// Same row markup/behavior as the old flat sidebar's inline .map() -- just
+// Same row markup/behavior as the old flat sidebar's inline .map(): just
 // pulled out so it can be reused under every building/level group and the
 // Unassigned bucket without repeating the button/className logic.
 function DrawingRow({ drawing, active, onSelect }: { drawing: Drawing; active: boolean; onSelect: (id: string) => void }) {
   return (
     <button
       onClick={() => onSelect(drawing.id)}
-      className={`w-full text-left px-3 py-2.5 rounded text-sm transition-colors ${
-        active ? 'bg-signal/10 text-signal' : 'text-ink-300 hover:bg-base-800'
+      className={`w-full text-left px-4 py-2 rounded text-sm transition-colors ${
+        active ? 'bg-signal text-base-800' : 'text-ink-300 hover:bg-base-700'
       }`}
     >
       <div className="font-medium truncate">{drawing.title}</div>
@@ -458,7 +459,7 @@ function DrawingRow({ drawing, active, onSelect }: { drawing: Drawing; active: b
 
 function UploadIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 16V4M7 9l5-5 5 5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" strokeLinecap="round" />
     </svg>

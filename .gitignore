@@ -26,3 +26,7 @@ apps/web/public/repro/
 .foreman/
 
 dump.rdb
+
+# ux-ui-agent-skills gate receipts (local measurement logs)
+.ds-receipts/
+graphify-out/cache/

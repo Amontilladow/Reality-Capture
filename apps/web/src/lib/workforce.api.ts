@@ -28,7 +28,7 @@ export function attributeActivity(activityId: string, projectId: string) {
   return apiPost<unknown>(`/workforce/activities/${activityId}/attribute`, { projectId });
 }
 
-// Same targetUserId convention as getMyActivitySummary -- switches to
+// Same targetUserId convention as getMyActivitySummary; switches to
 // GET /workforce/productivity/:userId.
 export function getMyProductivityScore(
   params?: { periodType?: 'day' | 'week'; periodStart?: string; from?: string; to?: string },
@@ -43,7 +43,7 @@ export function getWorkforcePrivacySettings() {
 }
 
 // company_admin+ only (enforced server-side). This is the literal switch
-// that turns real screenshot capture on for the company -- the agent's
+// that turns real screenshot capture on for the company; the agent's
 // upload-url request is rejected with 403 until this sets
 // screenshotEnabled: true.
 export function updateWorkforcePrivacySettings(dto: {
@@ -57,7 +57,7 @@ export function updateWorkforcePrivacySettings(dto: {
 }
 
 // Same targetUserId convention as getMyActivitySummary/getMyProductivityScore,
-// except there is no "me" shortcut route server-side -- self is just the
+// except there is no "me" shortcut route server-side; self is just the
 // userId === caller case of the identical GET /workforce/screenshots/:userId
 // route every viewer (self or manager) uses.
 export function getMyScreenshots(userId: string, params?: { from?: string; to?: string }) {
@@ -79,7 +79,7 @@ export interface ReportingLineRow {
   managerLastName: string;
 }
 
-// company_admin+ only (enforced server-side) -- for the minimal reporting-
+// company_admin+ only (enforced server-side): for the minimal reporting-
 // line admin table in WorkforcePage.
 export function listReportingLines() {
   return apiGet<ReportingLineRow[]>('/workforce/reporting-lines');
@@ -90,7 +90,7 @@ export function setReportingLine(userId: string, managerId: string) {
 }
 
 // company_admin+ only for writes (GET is open to any authenticated
-// company member, enforced server-side) -- the DeskTime-style "which
+// company member, enforced server-side): the DeskTime-style "which
 // apps/executables count as productive" registry behind the productivity
 // breakdown. New apps show up here as 'unclassified' the moment the
 // desktop agent first reports them (see ActivitiesService.ingest()'s
@@ -116,7 +116,7 @@ export interface CompanyReportRow {
   productivityRatio: number;
 }
 
-// company_admin+ only (enforced server-side) -- one row per active company
+// company_admin+ only (enforced server-side): one row per active company
 // user for the given period, company-wide (not reporting-chain-scoped like
 // getMyActivitySummary/getMyProductivityScore). DeskTime's own "Reports"
 // screen.
@@ -126,7 +126,7 @@ export function getCompanyReport(params?: { from?: string; to?: string }) {
 
 // ── Shift scheduling + absence calendar ──
 // DeskTime's own shift-scheduling ("which days/times employees prefer
-// working") + a request/approve absence calendar. Deliberately minimal --
+// working") + a request/approve absence calendar. Deliberately minimal;
 // no leave-balance accrual, this is not an HRIS.
 
 export function setMyShiftPreference(dto: { dayOfWeek: number; preferred?: boolean; startTime?: string; endTime?: string }) {
@@ -142,7 +142,7 @@ export interface CompanyShiftPreferenceRow extends WorkforceShiftPreference {
   lastName: string;
 }
 
-// company_admin+ only (enforced server-side) -- every user's preferences,
+// company_admin+ only (enforced server-side): every user's preferences,
 // for whoever is building the actual schedule.
 export function listCompanyShiftPreferences() {
   return apiGet<CompanyShiftPreferenceRow[]>('/workforce/scheduling/shift-preferences');
@@ -153,7 +153,7 @@ export function assignShift(dto: { userId: string; shiftDate: string; startTime:
   return apiPost<WorkforceShiftAssignment>('/workforce/scheduling/shifts', dto);
 }
 
-// Same targetUserId convention as getMyActivitySummary -- switches to the
+// Same targetUserId convention as getMyActivitySummary; switches to the
 // sibling GET /workforce/scheduling/shifts/:userId route (manager/
 // leadership visibility, enforced server-side). Omit params/targetUserId
 // for "today through two weeks out" for the caller's own shifts.
@@ -167,7 +167,7 @@ export interface CompanyShiftRow extends WorkforceShiftAssignment {
   lastName: string;
 }
 
-// company_admin+ only (enforced server-side) -- the full company schedule
+// company_admin+ only (enforced server-side): the full company schedule
 // for a date range.
 export function getCompanyShifts(params?: { from?: string; to?: string }) {
   return apiGet<CompanyShiftRow[]>('/workforce/scheduling/shifts', { params });
@@ -188,7 +188,7 @@ export interface CompanyAbsenceRow extends WorkforceAbsence {
   lastName: string;
 }
 
-// company_admin+ only (enforced server-side) -- pending only by default.
+// company_admin+ only (enforced server-side): pending only by default.
 export function listCompanyAbsences(includeDecided = false) {
   return apiGet<CompanyAbsenceRow[]>('/workforce/scheduling/absences', { params: { includeDecided: includeDecided ? 'true' : undefined } });
 }
@@ -199,7 +199,7 @@ export function decideAbsence(absenceId: string, status: 'approved' | 'denied') 
 }
 
 // ── Google Calendar integration ──
-// Self-service only -- there is no admin view of another user's calendar
+// Self-service only; there is no admin view of another user's calendar
 // connection. See migration 041's header comment: OAuth connect/disconnect
 // + a live "today's events" read, not persisted or scored.
 

@@ -3,7 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { EXACT_ROLES_KEY } from '../decorators/require-exact-roles.decorator';
 import type { CompanyRole } from '@engineeringos/types';
 
-// Pairs with @RequireExactRoles() -- membership in an explicit list, not a
+// Pairs with @RequireExactRoles(): membership in an explicit list, not a
 // COMPANY_ROLE_WEIGHT threshold (see RolesGuard for that one). Deliberately
 // does NOT bake in an implicit company_admin/super_admin bypass: "exact"
 // means exact. Every call site that wants the standard admin override
@@ -19,7 +19,7 @@ export class ExactRolesGuard implements CanActivate {
       context.getClass(),
     ]);
 
-    // No @RequireExactRoles() decorator -- endpoint is accessible to any authenticated user
+    // No @RequireExactRoles() decorator; endpoint is accessible to any authenticated user
     if (!requiredRoles || requiredRoles.length === 0) return true;
 
     const { user } = context.switchToHttp().getRequest();

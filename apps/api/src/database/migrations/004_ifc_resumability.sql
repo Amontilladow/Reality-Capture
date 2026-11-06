@@ -11,11 +11,11 @@ BEGIN;
 -- the IFC file, never from user edits) and ends by setting
 -- stage_completion->>'<stage>' = 'true' in the SAME transaction. That
 -- makes each stage atomic: either it fully committed (flag included) or
--- it didn't happen at all (flag absent, prior data — if any — untouched
+-- it didn't happen at all (flag absent, prior data (if any) untouched
 -- because the delete+insert is in the same transaction as the flag write).
 -- On retry/resume, the processor reads stage_completion and skips any
 -- stage already marked true, re-running only from the first incomplete
--- stage onward. This is stage-level resume, not element-level resume —
+-- stage onward. This is stage-level resume, not element-level resume;
 -- documented explicitly rather than overclaiming finer granularity.
 -- ══════════════════════════════════════════════════════════════════════════
 ALTER TABLE bim_models ADD COLUMN IF NOT EXISTS stage_completion   JSONB NOT NULL DEFAULT '{}'::jsonb;
@@ -28,7 +28,7 @@ ALTER TABLE bim_models ADD COLUMN IF NOT EXISTS warnings           JSONB NOT NUL
 ALTER TABLE bim_models ADD COLUMN IF NOT EXISTS attempt_count      INTEGER NOT NULL DEFAULT 0;
 
 -- ══════════════════════════════════════════════════════════════════════════
--- bim_import_reports — one row per completed (successful or failed) import
+-- bim_import_reports: one row per completed (successful or failed) import
 -- attempt, holding the human-readable report and its structured form.
 -- ══════════════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS bim_import_reports (

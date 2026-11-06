@@ -8,7 +8,7 @@ export class TeamService {
 
   // Everyone in the caller's downward reporting closure (direct reports and
   // their reports, recursively), for populating a team list in the UI. This
-  // is purely reporting-line based -- it does not also list the whole
+  // is purely reporting-line based; it does not also list the whole
   // company for a weight-based leadership viewer (that override only
   // applies to viewing a specific, already-known user's activity via
   // ActivitiesService/ProductivityService, not to "who is on my team").

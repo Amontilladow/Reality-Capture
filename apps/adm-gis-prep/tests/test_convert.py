@@ -301,3 +301,35 @@ def test_opening_inside_a_room_is_not_written_as_a_sliver():
     assert inside.status == NOT_GENERATED and "leaves no opening" in inside.reasons[-1]
     assert edge.exported and abs(edge.poly.area - 0.2) < 1e-6
     node(feats)        # must not raise on what is left
+
+
+def test_blocks_use_the_official_template_order_and_the_roof_repeats_the_outline(tmp_path):
+    """ADM QC trial 02: the official QC reads attributes by position; accepted floor files carry a BuildingRoof."""
+    from shapely.geometry import Polygon
+    from m4adm.rules import load_profile
+    res, _ = run(tmp_path, building_height="15")
+    manifest = load_profile("bdms_building")
+    msp = ezdxf.readfile(str(next((res.job_dir / "output").glob("*.dxf")))).modelspace()
+    for ins in msp.query("INSERT"):
+        order = manifest.blocks[ins.dxf.name].template_order
+        if order and ins.attribs:
+            assert [a.dxf.tag for a in ins.attribs] == order, ins.dxf.name
+    poly = {lay: Polygon([p[:2] for p in next(iter(msp.query(f"LWPOLYLINE[layer=='{lay}']"))).get_points()])
+            for lay in ("BuildingOutline", "BuildingRoof")}
+    assert poly["BuildingRoof"].equals(poly["BuildingOutline"])
+    roof = next(iter(msp.query("INSERT[layer=='BuildingRoofDetail']")))
+    assert roof.get_attrib_text("BUILDINGHEIGHT") == "15" and roof.get_attrib_text("BUILDINGNUMBER") == "1"
+    roof_feature = next(f for f in res.report["features"] if f["layer"] == "BuildingRoof")
+    assert roof_feature["attributes"]["BUILDINGHEIGHT"]["provenance"] == "USER"
+
+
+def test_windows_span_the_wall_to_the_floor_outline(tmp_path):
+    """DRM review (Yas Island): a window must be adjacent to two spaces or to one space and the floor outline."""
+    from shapely.geometry import Polygon
+    res, _ = run(tmp_path)
+    msp = ezdxf.readfile(str(next((res.job_dir / "output").glob("*.dxf")))).modelspace()
+    get = lambda lay: [Polygon([p[:2] for p in e.get_points()]) for e in msp.query(f"LWPOLYLINE[layer=='{lay}']")]
+    spaces, floor = get("Space"), get("Floor")[0]
+    for w in get("Window"):
+        touching = sum(1 for s in spaces if w.distance(s) <= 0.02)
+        assert touching >= 2 or (touching == 1 and w.distance(floor.exterior) <= 0.02)

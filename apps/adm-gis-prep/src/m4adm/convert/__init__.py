@@ -151,6 +151,7 @@ def _run(source: Path, settings: ConversionSettings, manifest: Manifest, ws: Job
                         "features_snapped": topology.snap_vertices(feats),
                         "openings_clipped": topology.clip_openings(feats),
                         "vertices_merged": topology.cluster_vertices(feats), "vertices_inserted": topology.node(feats)}
+                topology.copy_outline_to_roof(feats)
                 audit.record("topology", **topo)
                 result_rows["Topology (generated geometry only)"] = (
                     f"{topo['windows_extended']} windows extended to the room face, {topo['features_snapped']} "

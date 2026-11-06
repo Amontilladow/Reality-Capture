@@ -2,16 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import type { ProjectPermission, CompanyRole } from '@engineeringos/types';
 
-// Single source of truth for "can this user do X on this project" --
+// Single source of truth for "can this user do X on this project";
 // previously duplicated near-verbatim in three places (ProjectPermissionGuard,
 // RfisService.canManageRfiReview(), and IssuesService.isPermittedApprover(),
 // the last of which didn't even consider project role at all, only company
-// role -- see hasProjectPermission()'s own call sites for how each was fixed
+// role; see hasProjectPermission()'s own call sites for how each was fixed
 // to call through here instead of reimplementing the same three checks).
 //
 // Bypass order, matching what every one of those three call sites already
 // agreed on independently: (1) super_admin always passes, (2) the project's
-// own project_lead always passes -- they run their own project without
+// own project_lead always passes; they run their own project without
 // needing a company-wide title or an explicit grant, same as a real
 // construction project lead would, (3) anyone else needs a matching row in
 // project_permission_grants.
@@ -35,7 +35,7 @@ export class ProjectAuthorizationService {
       if (membership?.role === 'project_lead') return true;
       // Same bypass shape as project_lead above, narrower in scope: the
       // 'subcontractor' project role always holds 'raise_rfis' on its own
-      // project, no explicit project_permission_grants row needed -- lets a
+      // project, no explicit project_permission_grants row needed; lets a
       // DC add a subcontractor member and have them immediately able to
       // attach supporting files to their own RFIs (SubcontractorRfiAccessGuard
       // still enforces the "their own RFI only" ownership check this

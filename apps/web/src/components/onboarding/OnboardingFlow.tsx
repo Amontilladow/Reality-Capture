@@ -7,13 +7,13 @@ import { COMPANY_ROLE_LABELS } from '../../lib/issue-constants';
 
 // Phase 4F: a short, optional first-login tour. Shown whenever the
 // signed-in user's own onboardingCompleted flag (stored in the existing
-// users.preferences JSONB column -- see users.service.ts's update()) is
+// users.preferences JSONB column; see users.service.ts's update()) is
 // not yet true, and dismissed on Skip/Finish/closing it, which marks it
 // complete so it doesn't reappear on the next login. "Restart" (in the
 // Help Centre) just flips the flag back to false, which re-shows this
 // the same way a brand-new account would see it.
 //
-// Every step below describes only verified, real app behavior -- nothing
+// Every step below describes only verified, real app behavior; nothing
 // here claims a button, screen, or permission that doesn't actually
 // exist, and the one "try it" step only asks the user to do something
 // every project member is always authorized to do (view a project's
@@ -26,7 +26,7 @@ export function OnboardingFlow() {
 
   const active = Boolean(user) && !user?.pendingApproval && user?.onboardingCompleted !== true;
   if (!active || !user) return null;
-  // Narrowed reference for the closures below -- TS control-flow narrowing
+  // Narrowed reference for the closures below: TS control-flow narrowing
   // of `user` from the guard above doesn't carry into nested functions.
   const currentUser = user;
 
@@ -36,7 +36,7 @@ export function OnboardingFlow() {
   function finish(goToHelp: boolean) {
     setUser({ ...currentUser, onboardingCompleted: true });
     setOnboardingCompleted(currentUser.id, true).catch(() => {
-      // Best-effort -- the dismissal already took effect locally for this
+      // Best-effort: the dismissal already took effect locally for this
       // session; a failed write just means it may show again next login.
     });
     if (goToHelp) navigate('/projects/help');
@@ -58,13 +58,13 @@ export function OnboardingFlow() {
         <div className="space-y-2">
           <p>
             Your company role is <span className="font-medium text-ink-100">{roleLabel}</span>.
-            It decides what you can do company-wide -- for example, whether you can invite
+            It decides what you can do company-wide. For example, whether you can invite
             teammates. On each project you're part of, you may also have a project role and
             an organization category (Client, PMC, LDC, Main Contractor, or Subcontractor)
             that shape what you see there.
           </p>
           {isSiteRestricted && (
-            <p className="text-xs text-ink-500 bg-base-800 rounded px-3 py-2">
+            <p className="text-xs text-ink-500 bg-base-800 rounded px-4 py-2">
               As a {roleLabel}, you have full access on Floor Plans, Issues, and Snagging,
               and read-only access everywhere else.
             </p>
@@ -95,12 +95,12 @@ export function OnboardingFlow() {
     {
       title: 'Key Modules',
       body: (
-        <ul className="space-y-1.5 list-disc pl-4">
-          <li><span className="font-medium text-ink-100">Floor Plans</span> -- drawings with pinpoints marking locations of issues.</li>
-          <li><span className="font-medium text-ink-100">Issues &amp; Snagging</span> -- defects and punch-list items tracked to closure.</li>
-          <li><span className="font-medium text-ink-100">RFIs</span> -- formal requests for information.</li>
-          <li><span className="font-medium text-ink-100">Documents</span> -- drawings, specifications, and other project files.</li>
-          <li><span className="font-medium text-ink-100">Reports</span> -- project KPIs, risk, and a date-scoped progress report.</li>
+        <ul className="space-y-2 list-disc pl-4">
+          <li><span className="font-medium text-ink-100">Floor Plans</span>: drawings with pinpoints marking locations of issues.</li>
+          <li><span className="font-medium text-ink-100">Issues &amp; Snagging</span>: defects and punch-list items tracked to closure.</li>
+          <li><span className="font-medium text-ink-100">RFIs</span>: formal requests for information.</li>
+          <li><span className="font-medium text-ink-100">Documents</span>: drawings, specifications, and other project files.</li>
+          <li><span className="font-medium text-ink-100">Reports</span>: project KPIs, risk, and a date-scoped progress report.</li>
         </ul>
       ),
     },
@@ -131,8 +131,8 @@ export function OnboardingFlow() {
 
   return (
     <Modal open={active} onClose={() => finish(false)} title={steps[step].title}>
-      <div className="space-y-5">
-        <div className="text-[11px] font-mono uppercase tracking-widest text-ink-500">
+      <div className="space-y-6">
+        <div className="text-xs text-ink-500 font-medium">
           Step {step + 1} of {steps.length}
         </div>
         <div className="text-sm text-ink-300 leading-relaxed">{steps[step].body}</div>

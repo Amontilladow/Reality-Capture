@@ -2,7 +2,7 @@ import { IsIn, IsISO8601, IsNotEmpty, IsOptional, IsString } from 'class-validat
 import { SITE_DRAWING_WORKFLOW_STATUSES, type SiteDrawingWorkflowStatus } from '@engineeringos/types';
 
 // Registers a brand-new drawing (and its first revision) from the Local
-// source -- the uploader picks the canonical workflow status directly
+// source; the uploader picks the canonical workflow status directly
 // (section 5: never inferred from the filename/timestamp), since there is
 // no external source status to map for an internal upload.
 export class RegisterSiteDrawingDto {

@@ -79,7 +79,7 @@ export interface Hotspot {
   createdAt: string;
 }
 
-// Upload flow — client requests a presigned URL, uploads directly to S3,
+// Upload flow: client requests a presigned URL, uploads directly to S3,
 // then calls the register endpoint to create the capture record
 export interface UploadUrlRequest {
   filename: string;
@@ -112,7 +112,7 @@ export interface RegisterCaptureDto {
   compassHeadingDeg?: number;
 }
 
-// Mobile offline-queue batch sync (POST /captures/sync?projectId=...) --
+// Mobile offline-queue batch sync (POST /captures/sync?projectId=...);
 // mirrors RegisterCaptureDto's fields plus idempotencyKey, the client-
 // generated UUID the server uses to recognize a retried item instead of
 // creating a duplicate capture. See captures.service.ts's syncFromMobile().

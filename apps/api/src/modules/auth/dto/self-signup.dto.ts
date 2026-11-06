@@ -20,14 +20,14 @@ export class SelfSignupDto {
   @MinLength(8)
   password: string;
 
-  // The external firm this person actually works for (e.g. "AECOM") --
+  // The external firm this person actually works for (e.g. "AECOM");
   // distinct from requestedRole, which is their internal position.
   @IsString()
   @MinLength(2)
   @MaxLength(255)
   organizationName: string;
 
-  // Self-selected -- super_admin deliberately excluded, stays pending until
+  // Self-selected: super_admin deliberately excluded, stays pending until
   // a company_admin/super_admin approves (or overrides) it. Same convention
   // as AcceptInvitationDto.requestedRole.
   @IsIn(SELF_REQUESTABLE_COMPANY_ROLES)

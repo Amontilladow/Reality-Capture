@@ -12,6 +12,7 @@ import {
   type ProgressReportFilters, type ProgressReportIssueRow, type ProgressReport,
 } from '../lib/progress-reports.api';
 import { apiErrorMessage } from '../lib/api';
+import { Listbox } from '../components/ui/Listbox';
 
 function isoDateDaysAgo(days: number): string {
   const d = new Date();
@@ -21,7 +22,7 @@ function isoDateDaysAgo(days: number): string {
 
 // One-line Minto-style lead for the period, so the reader gets the
 // implication before the stat tiles and tables below (Phase 4). Built
-// purely from fields this report already returns -- no new calculation.
+// purely from fields this report already returns; no new calculation.
 function progressConclusion(report: ProgressReport): string {
   const { newIssues, closedIssues, overdueIssues, blockers, captureCount } = report;
   if (blockers.length > 0 || overdueIssues.length > 0) {
@@ -47,25 +48,25 @@ function ElementProgressSection({ elementProgress }: { elementProgress: Progress
   return (
     <div className="space-y-2">
       <SectionHeader title={`Planned vs Actual Progress (${elementProgress.overallCompletionPct ?? 0}% complete)`} />
-      <div className="panel tick-frame overflow-x-auto">
+      <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-              <th className="px-4 py-2.5 font-medium">Level</th>
-              <th className="px-4 py-2.5 font-medium">Building</th>
-              <th className="px-4 py-2.5 font-medium">Elements</th>
-              <th className="px-4 py-2.5 font-medium">Complete</th>
-              <th className="px-4 py-2.5 font-medium">Zone Status</th>
+              <th className="px-4 py-2 font-medium">Level</th>
+              <th className="px-4 py-2 font-medium">Building</th>
+              <th className="px-4 py-2 font-medium">Elements</th>
+              <th className="px-4 py-2 font-medium">Complete</th>
+              <th className="px-4 py-2 font-medium">Zone Status</th>
             </tr>
           </thead>
           <tbody>
             {elementProgress.byLevel.map((lvl) => (
               <tr key={lvl.levelId} className="border-b border-base-700/60 last:border-0">
-                <td className="px-4 py-2.5">{lvl.levelName}</td>
-                <td className="px-4 py-2.5 text-ink-500">{lvl.buildingName}</td>
-                <td className="px-4 py-2.5 text-ink-300">{lvl.elementComplete}/{lvl.elementTotal}</td>
-                <td className="px-4 py-2.5 text-ink-300">{lvl.elementCompletionPct ?? 0}%</td>
-                <td className="px-4 py-2.5 text-ink-500">{lvl.zoneStatus ?? '—'}</td>
+                <td className="px-4 py-2">{lvl.levelName}</td>
+                <td className="px-4 py-2 text-ink-500">{lvl.buildingName}</td>
+                <td className="px-4 py-2 text-ink-300">{lvl.elementComplete}/{lvl.elementTotal}</td>
+                <td className="px-4 py-2 text-ink-300">{lvl.elementCompletionPct ?? 0}%</td>
+                <td className="px-4 py-2 text-ink-500">{lvl.zoneStatus ?? '—'}</td>
               </tr>
             ))}
           </tbody>
@@ -82,27 +83,27 @@ function IssueSection({ title, items, emptyText }: { title: string; items: Progr
       {items.length === 0 ? (
         <p className="text-sm text-ink-500">{emptyText}</p>
       ) : (
-        <div className="panel tick-frame overflow-x-auto">
+        <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                <th className="px-4 py-2.5 font-medium">Number</th>
-                <th className="px-4 py-2.5 font-medium">Title</th>
-                <th className="px-4 py-2.5 font-medium">Status</th>
-                <th className="px-4 py-2.5 font-medium">Priority</th>
-                <th className="px-4 py-2.5 font-medium">Location</th>
-                <th className="px-4 py-2.5 font-medium">Assigned To</th>
+                <th className="px-4 py-2 font-medium">Number</th>
+                <th className="px-4 py-2 font-medium">Title</th>
+                <th className="px-4 py-2 font-medium">Status</th>
+                <th className="px-4 py-2 font-medium">Priority</th>
+                <th className="px-4 py-2 font-medium">Location</th>
+                <th className="px-4 py-2 font-medium">Assigned To</th>
               </tr>
             </thead>
             <tbody>
               {items.map((item) => (
                 <tr key={item.id} className="border-b border-base-700/60 last:border-0">
-                  <td className="px-4 py-2.5 text-ink-500">{item.issueNumber}</td>
-                  <td className="px-4 py-2.5">{item.title}</td>
-                  <td className="px-4 py-2.5 text-ink-300">{item.status}</td>
-                  <td className="px-4 py-2.5 text-ink-300">{item.priority}</td>
-                  <td className="px-4 py-2.5 text-ink-500">{item.locationName ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-ink-500">{item.assignedToName ?? '—'}</td>
+                  <td className="px-4 py-2 text-ink-500">{item.issueNumber}</td>
+                  <td className="px-4 py-2">{item.title}</td>
+                  <td className="px-4 py-2 text-ink-300">{item.status}</td>
+                  <td className="px-4 py-2 text-ink-300">{item.priority}</td>
+                  <td className="px-4 py-2 text-ink-500">{item.locationName ?? '—'}</td>
+                  <td className="px-4 py-2 text-ink-500">{item.assignedToName ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -179,7 +180,7 @@ export default function ProgressReportPage() {
       <div className="p-6 space-y-6">
         {pdfError && <p className="field-error">{pdfError}</p>}
 
-        <div className="panel p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
+        <div className="panel p-4 grid grid-cols-2 sm:grid-cols-4 gap-4 items-end">
           <div>
             <label className="field-label" htmlFor="pr-from">From</label>
             <input id="pr-from" type="date" className="field-input" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} max={dateTo} />
@@ -190,20 +191,20 @@ export default function ProgressReportPage() {
           </div>
           <div>
             <label className="field-label" htmlFor="pr-building">Building</label>
-            <select
+            <Listbox
               id="pr-building" className="field-input" value={buildingId}
               onChange={(e) => { setBuildingId(e.target.value); setLevelId(''); }}
             >
               <option value="">All buildings</option>
               {(hierarchyQuery.data ?? []).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="pr-level">Level</label>
-            <select id="pr-level" className="field-input" value={levelId} disabled={!buildingId} onChange={(e) => setLevelId(e.target.value)}>
+            <Listbox id="pr-level" className="field-input" value={levelId} disabled={!buildingId} onChange={(e) => setLevelId(e.target.value)}>
               <option value="">{buildingId ? 'All levels' : 'Any level'}</option>
               {levelOptions.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
+            </Listbox>
           </div>
         </div>
 
@@ -229,13 +230,13 @@ export default function ProgressReportPage() {
               {report.captures.length === 0 ? (
                 <p className="text-sm text-ink-500">No captures in this date range.</p>
               ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
                   {report.captures.map((c) => (
-                    <div key={c.id} className="space-y-1">
+                    <div key={c.id} className="space-y-2">
                       {c.thumbnailUrl
                         ? <img src={c.thumbnailUrl} alt="" loading="lazy" className="w-full h-24 object-cover rounded border border-base-600" />
                         : <div className="w-full h-24 rounded bg-base-800 border border-base-600" />}
-                      <div className="text-[10px] text-ink-500 truncate">{c.locationName ?? c.title ?? 'Capture'}</div>
+                      <div className="text-xs text-ink-500 truncate">{c.locationName ?? c.title ?? 'Capture'}</div>
                     </div>
                   ))}
                 </div>
@@ -261,7 +262,7 @@ export default function ProgressReportPage() {
 
 // Mirrors the RFI external-access UI pattern (RfiDetailPage.tsx): a form to
 // generate a link, a readonly URL + Copy button on success, a WhatsApp
-// `wa.me` deep link (no WhatsApp Business API -- out of scope per the
+// `wa.me` deep link (no WhatsApp Business API; out of scope per the
 // brief), and a list of previously issued links with revoke.
 function ShareModal({
   projectId, filters, onClose, queryClient,
@@ -299,7 +300,7 @@ function ShareModal({
       <div className="space-y-4">
         <p className="text-xs text-ink-500">
           Generates a public link for the report with your current filters (date range{filters.buildingId ? ', building' : ''}{filters.levelId ? ', level' : ''}).
-          Anyone with the link can view it, logged out, until it expires or is revoked. No email is sent automatically — copy the link yourself.
+          Anyone with the link can view it, logged out, until it expires or is revoked. No email is sent automatically. Copy the link yourself.
         </p>
 
         <div className="flex items-end gap-2">
@@ -317,16 +318,16 @@ function ShareModal({
         {createMutation.isError && <p className="field-error">{apiErrorMessage(createMutation.error)}</p>}
 
         {createMutation.data && (
-          <div className="panel p-3 space-y-2">
+          <div className="panel p-4 space-y-2">
             <div className="flex items-center gap-2">
               <input readOnly value={createMutation.data.shareUrl} className="field-input flex-1 text-xs" onFocus={(e) => e.target.select()} />
-              <button onClick={() => handleCopy(createMutation.data!.shareUrl)} className="btn-secondary !px-3 !py-1.5 text-xs">
+              <button onClick={() => handleCopy(createMutation.data!.shareUrl)} className="btn-secondary !px-4 !py-2 text-xs">
                 {copied ? 'Copied!' : 'Copy'}
               </button>
               <a
                 href={`https://wa.me/?text=${encodeURIComponent(createMutation.data.shareUrl)}`}
                 target="_blank" rel="noopener noreferrer"
-                className="btn-secondary !px-3 !py-1.5 text-xs"
+                className="btn-secondary !px-4 !py-2 text-xs"
               >
                 Share on WhatsApp
               </a>
@@ -344,15 +345,15 @@ function ShareModal({
                 const expired = new Date(s.expiresAt).getTime() <= now;
                 const status = s.revokedAt ? 'Revoked' : expired ? 'Expired' : 'Active';
                 return (
-                  <div key={s.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                  <div key={s.id} className="flex items-center justify-between px-4 py-2 text-sm">
                     <div>
                       <span className={`badge ${status === 'Active' ? 'bg-ok/15 text-ok' : 'bg-base-700 text-ink-500'}`}>{status}</span>
                       <span className="text-ink-500 ml-2 text-xs">
-                        {new Date(s.dateFrom).toLocaleDateString('en-GB')} – {new Date(s.dateTo).toLocaleDateString('en-GB')} · expires {new Date(s.expiresAt).toLocaleDateString('en-GB')}
+                        {new Date(s.dateFrom).toLocaleDateString('en-GB')} to {new Date(s.dateTo).toLocaleDateString('en-GB')}, expires {new Date(s.expiresAt).toLocaleDateString('en-GB')}
                       </span>
                     </div>
                     {status === 'Active' && (
-                      <button onClick={() => revokeMutation.mutate(s.id)} disabled={revokeMutation.isPending} className="btn-ghost !px-2 !py-1 text-xs text-danger">
+                      <button onClick={() => revokeMutation.mutate(s.id)} disabled={revokeMutation.isPending} className="btn-ghost !px-2 !py-2 text-xs text-danger">
                         Revoke
                       </button>
                     )}

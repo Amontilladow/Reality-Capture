@@ -3,14 +3,14 @@ import { RFI_DISCIPLINES, type RfiDiscipline } from '@engineeringos/types';
 
 // Field set deliberately mirrors CreateRfiDto's "subject/question(->description)/
 // priority/discipline+disciplineOther/assignedTo/dueDate" shape (the brief's
-// own "very similar RFI input criteria") -- RFI's cost/time/drawing-impact
+// own "very similar RFI input criteria"): RFI's cost/time/drawing-impact
 // fields are RFI-specific and have no NCR/SOR/WIR/MIR equivalent; the
 // quality-risk equivalent is priority feeding the Risk Engine (see
 // risk.service.ts's RISK_WORTHY_NODE_TYPES), not a second scoring block on
 // this record.
 //
 // recordType is required here (not inferred from the route) since one
-// shared qaqc_records table serves all four record types -- see migration
+// shared qaqc_records table serves all four record types; see migration
 // 067's own comment for why this is one table with a discriminator, not four.
 export class CreateQaqcRecordDto {
   @IsIn(['ncr', 'sor', 'wir', 'mir']) recordType: 'ncr' | 'sor' | 'wir' | 'mir';
@@ -23,7 +23,7 @@ export class CreateQaqcRecordDto {
 
   @IsOptional() @IsIn(['critical', 'high', 'medium', 'low']) priority?: string;
 
-  // Reuses RFI_DISCIPLINES wholesale -- no QAQC-specific discipline values
+  // Reuses RFI_DISCIPLINES wholesale: no QAQC-specific discipline values
   // were needed (civil/structural/architectural/.../other already covers
   // what an NCR/SOR needs to classify).
   @IsIn(RFI_DISCIPLINES) discipline: RfiDiscipline;

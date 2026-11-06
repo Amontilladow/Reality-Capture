@@ -10,6 +10,7 @@ import {
 import { formatDateTime } from '../lib/issue-constants';
 import { apiErrorMessage, apiDownload } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
+import { Listbox } from './ui/Listbox';
 
 const RECIPIENT_TITLE_PRESETS = ['Cost Controller', 'QS Engineer', 'Project Manager', 'Other'] as const;
 type RecipientTitlePreset = typeof RECIPIENT_TITLE_PRESETS[number];
@@ -41,8 +42,8 @@ export function RfiNoticeLetterModal({
     enabled: open && Boolean(projectId) && Boolean(rfi?.id),
   });
 
-  // Seeds the form from the existing draft/shared letter, or -- only when no
-  // letter exists yet for this RFI -- from the default template. Runs again
+  // Seeds the form from the existing draft/shared letter, or (only when no
+  // letter exists yet for this RFI) from the default template. Runs again
   // whenever a different RFI's letter finishes loading (fresh query result),
   // never overwriting an existing draft's real saved body with the template.
   useEffect(() => {
@@ -124,20 +125,20 @@ export function RfiNoticeLetterModal({
   if (!open || !rfi) return null;
 
   return (
-    <Modal open={open} onClose={onClose} title={`Notice letter — ${rfi.rfiNumber ?? rfi.subject}`} wide>
+    <Modal open={open} onClose={onClose} title={`Notice letter: ${rfi.rfiNumber ?? rfi.subject}`} wide>
       <div className="space-y-4">
         {error && <p className="field-error">{error}</p>}
 
         {isShared && letter?.sharedAt && (
-          <p className="text-xs text-ok flex items-center gap-1.5">
+          <p className="text-xs text-ok flex items-center gap-2">
             <CheckIcon /> Shared {formatDateTime(letter.sharedAt)}
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="letterRecipient">Recipient *</label>
-            <select
+            <Listbox
               id="letterRecipient"
               className="field-input"
               value={recipientUserId}
@@ -147,11 +148,11 @@ export function RfiNoticeLetterModal({
               {members.map((m) => (
                 <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="letterTitle">Title *</label>
-            <select
+            <Listbox
               id="letterTitle"
               className="field-input"
               value={titleOption}
@@ -160,7 +161,7 @@ export function RfiNoticeLetterModal({
               {RECIPIENT_TITLE_PRESETS.map((t) => (
                 <option key={t} value={t}>{t}</option>
               ))}
-            </select>
+            </Listbox>
             {titleOption === 'Other' && (
               <input
                 className="field-input mt-2"
@@ -189,7 +190,7 @@ export function RfiNoticeLetterModal({
             type="button"
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending}
-            className="btn-secondary !px-3 !py-1.5 text-xs"
+            className="btn-secondary !px-4 !py-2 text-xs"
           >
             {saveMutation.isPending ? 'Saving…' : 'Save draft'}
           </button>
@@ -197,7 +198,7 @@ export function RfiNoticeLetterModal({
             type="button"
             onClick={() => shareMutation.mutate()}
             disabled={!letterExists || isShared || shareMutation.isPending}
-            className="btn-primary !px-3 !py-1.5 text-xs"
+            className="btn-primary !px-4 !py-2 text-xs"
             title={!letterExists ? 'Save a draft first' : undefined}
           >
             {shareMutation.isPending ? 'Sharing…' : isShared ? 'Shared' : 'Share'}
@@ -206,7 +207,7 @@ export function RfiNoticeLetterModal({
             type="button"
             onClick={handleDownloadPdf}
             disabled={!letterExists || downloading}
-            className="btn-secondary !px-3 !py-1.5 text-xs ml-auto"
+            className="btn-secondary !px-4 !py-2 text-xs ml-auto"
             title={!letterExists ? 'Save a draft first' : undefined}
           >
             {downloading ? 'Preparing…' : 'Download PDF'}
@@ -219,7 +220,7 @@ export function RfiNoticeLetterModal({
 
 function CheckIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5">
       <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

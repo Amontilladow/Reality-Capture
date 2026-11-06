@@ -11,7 +11,7 @@ export class DatabaseService {
     return this.sql;
   }
 
-  // Tenant-scoped transaction — mirrors apps/api's DatabaseService exactly.
+  // Tenant-scoped transaction: mirrors apps/api's DatabaseService exactly.
   // Every write this service makes goes through this so RLS policies fire
   // the same way they do for user-initiated requests through the API.
   async withTenant<T>(companyId: string, fn: (sql: TransactionSql) => Promise<T>): Promise<T> {

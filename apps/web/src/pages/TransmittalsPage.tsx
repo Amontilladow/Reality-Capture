@@ -10,6 +10,7 @@ import {
   TRANSMITTAL_STATUSES, TRANSMITTAL_STATUS_LABELS, TRANSMITTAL_STATUS_BADGE_CLASS,
   TRANSMITTAL_PURPOSE_LABELS, formatDate,
 } from '../lib/transmittal-constants';
+import { Listbox } from '../components/ui/Listbox';
 
 export default function TransmittalsPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -55,22 +56,19 @@ export default function TransmittalsPage() {
       />
 
       <div className="p-6 space-y-4">
-        <div className="flex items-center gap-3 flex-wrap">
-          <select className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
+        <div className="flex items-center gap-4 flex-wrap">
+          <Listbox aria-label="Status" className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
             {TRANSMITTAL_STATUSES.map((s) => (
               <option key={s} value={s}>{TRANSMITTAL_STATUS_LABELS[s]}</option>
             ))}
-          </select>
+          </Listbox>
 
           {summaryQuery.data && (
-            <div className="flex gap-2 text-[10px] font-mono text-ink-500 ml-auto">
+            <div className="flex gap-4 text-xs tabular-nums text-ink-500 ml-auto">
               <span>{summaryQuery.data.total} total</span>
-              <span>·</span>
               <span>{summaryQuery.data.draft} draft</span>
-              <span>·</span>
               <span>{summaryQuery.data.sent} sent</span>
-              <span>·</span>
               <span>{summaryQuery.data.acknowledged} acknowledged</span>
             </div>
           )}
@@ -85,16 +83,16 @@ export default function TransmittalsPage() {
         )}
 
         {(transmittalsQuery.data?.data.length ?? 0) > 0 && (
-          <div className="panel tick-frame overflow-x-auto">
+          <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                  <th className="px-4 py-2.5 font-medium">Number</th>
-                  <th className="px-4 py-2.5 font-medium">Subject</th>
-                  <th className="px-4 py-2.5 font-medium">Recipient</th>
-                  <th className="px-4 py-2.5 font-medium">Purpose</th>
-                  <th className="px-4 py-2.5 font-medium">Status</th>
-                  <th className="px-4 py-2.5 font-medium">Sent</th>
+                  <th className="px-4 py-2 font-medium">Number</th>
+                  <th className="px-4 py-2 font-medium">Subject</th>
+                  <th className="px-4 py-2 font-medium">Recipient</th>
+                  <th className="px-4 py-2 font-medium">Purpose</th>
+                  <th className="px-4 py-2 font-medium">Status</th>
+                  <th className="px-4 py-2 font-medium">Sent</th>
                 </tr>
               </thead>
               <tbody>
@@ -102,14 +100,14 @@ export default function TransmittalsPage() {
                   <tr
                     key={t.id}
                     onClick={() => setSelectedId(t.id)}
-                    className="border-b border-base-700/60 last:border-0 hover:bg-base-800/40 cursor-pointer"
+                    className="border-b border-base-700/60 last:border-0 hover:bg-base-700 cursor-pointer"
                   >
-                    <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{t.transmittalNumber ?? '—'}</td>
-                    <td className="px-4 py-2.5">{t.subject}</td>
-                    <td className="px-4 py-2.5 text-ink-300">{t.recipientName}{t.recipientCompany ? ` (${t.recipientCompany})` : ''}</td>
-                    <td className="px-4 py-2.5 text-ink-300">{TRANSMITTAL_PURPOSE_LABELS[t.purpose]}</td>
-                    <td className="px-4 py-2.5"><span className={`badge ${TRANSMITTAL_STATUS_BADGE_CLASS[t.status]}`}>{TRANSMITTAL_STATUS_LABELS[t.status]}</span></td>
-                    <td className="px-4 py-2.5 text-ink-300">{formatDate(t.sentDate)}</td>
+                    <td className="px-4 py-2 font-mono text-xs text-ink-500">{t.transmittalNumber ?? '—'}</td>
+                    <td className="px-4 py-2">{t.subject}</td>
+                    <td className="px-4 py-2 text-ink-300">{t.recipientName}{t.recipientCompany ? ` (${t.recipientCompany})` : ''}</td>
+                    <td className="px-4 py-2 text-ink-300">{TRANSMITTAL_PURPOSE_LABELS[t.purpose]}</td>
+                    <td className="px-4 py-2"><span className={`badge ${TRANSMITTAL_STATUS_BADGE_CLASS[t.status]}`}>{TRANSMITTAL_STATUS_LABELS[t.status]}</span></td>
+                    <td className="px-4 py-2 text-ink-300">{formatDate(t.sentDate)}</td>
                   </tr>
                 ))}
               </tbody>

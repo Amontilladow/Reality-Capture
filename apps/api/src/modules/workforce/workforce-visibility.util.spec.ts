@@ -13,7 +13,7 @@ function makeDb(sqlMock: jest.Mock) {
 
 // Simulates the WITH RECURSIVE downline CTE by actually walking the given
 // manager_id -> user_id edge list in JS (BFS from viewerId), rather than
-// returning a canned response -- this is what lets these tests genuinely
+// returning a canned response; this is what lets these tests really
 // exercise multi-level resolution against the acceptance test's
 // A manages B, B manages C chain, without a real Postgres instance
 // available in this sandbox to run the real recursive SQL against.
@@ -77,7 +77,7 @@ describe('canViewUserActivity', () => {
     const sql = makeGraphSql([{ userId: 'B', managerId: 'A' }, { userId: 'C', managerId: 'B' }]);
     const db = makeDb(sql);
     // 'engineering_manager' viewer role but checking against a lower-weight
-    // scenario would short-circuit -- use a role below the override so the
+    // scenario would short-circuit; use a role below the override so the
     // reporting-line path is actually exercised.
     const allowed = await canViewUserActivity(db, companyId, 'A', 'project_manager', 'C');
     expect(allowed).toBe(true);

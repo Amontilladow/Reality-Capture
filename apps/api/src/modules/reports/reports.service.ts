@@ -6,8 +6,9 @@ import { IssuesService } from '../issues/issues.service';
 import { SnaggingService } from '../snagging/snagging.service';
 import { RfisService } from '../rfis/rfis.service';
 import { QaqcService } from '../qaqc/qaqc.service';
-import { RiskService } from '../risk/risk.service';
+import { RiskService, AI_QUOTA_REACHED, type AiQuotaSubject } from '../risk/risk.service';
 import { AiClientService } from '../ai-client/ai-client.service';
+import { AiUsageService } from '../ai/ai-usage.service';
 import { BimService } from '../bim/bim.service';
 import { renderReportsPdf, type ReportsPdfSectionData } from './reports-pdf.template';
 
@@ -23,9 +24,10 @@ export class ReportsService {
     private readonly risk: RiskService,
     private readonly aiClient: AiClientService,
     private readonly bim: BimService,
+    private readonly aiUsage: AiUsageService,
   ) {}
 
-  // withTenant required -- projects carries the tenant_isolation RLS policy,
+  // withTenant required: projects carries the tenant_isolation RLS policy,
   // same reasoning as rfis.service.ts's own project lookups.
   private async getProject(companyId: string, projectId: string) {
     const [project] = await this.db.withTenant(companyId, sql => sql`
@@ -36,9 +38,9 @@ export class ReportsService {
 
   // Combines Issues + Snagging's existing getSummary() with the two new
   // sibling methods (getKpiBreakdown/getOpenList) each service gained for
-  // this feature -- everything fetched in parallel, folded into one JSON
+  // this feature; everything fetched in parallel, folded into one JSON
   // payload for GET /reports/kpis. RFIs join this payload for the first
-  // time here (previously Reports covered only Issues + Snagging) --
+  // time here (previously Reports covered only Issues + Snagging);
   // rfis.summary reuses RfisService.getSummary() completely unchanged
   // (same total/open/answered/overdue shape RfisPage's own stat tiles
   // already depend on), while the new drawing-impact rollup lives in the
@@ -88,7 +90,7 @@ export class ReportsService {
         drawingUpdateStatus: rfisBreakdown.drawingUpdateStatus,
         notAppliedList: rfisNotApplied,
       },
-      // QAQC NCR/SOR -- brief §6. summary/byRecordType split NCR vs SOR
+      // QAQC NCR/SOR: brief §6. summary/byRecordType split NCR vs SOR
       // counts separately (not merged), per the brief's explicit ask.
       qaqc: {
         summary: qaqcSummary,
@@ -103,7 +105,7 @@ export class ReportsService {
   // ── Company-wide executive summary (Phase 4 cross-project view) ────────
   //
   // Reuses the exact same per-project getSummary()/getExecutiveSummary()
-  // methods the single-project Reports/Risk pages already call -- nothing
+  // methods the single-project Reports/Risk pages already call; nothing
   // here is a new calculation. The only new thing is looping those calls
   // over every project in the company (in parallel) instead of one, and
   // returning the lean summary fields each project needs for its
@@ -126,7 +128,7 @@ export class ReportsService {
         this.bim.getModels(companyId, project.id),
       ]);
       // Same signal ExecutiveBriefing.tsx already derives per-project
-      // client-side (filtering listBimModels() by status==='failed') --
+      // client-side (filtering listBimModels() by status==='failed');
       // reused here, not reinvented, so a failed model counts the same way
       // at both scopes.
       const bimFailedCount = (models as unknown as { status: string }[]).filter(m => m.status === 'failed').length;
@@ -156,7 +158,7 @@ export class ReportsService {
   // ── AI reasoning layer (Phase 4 extension of Risk's existing one) ───────
   //
   // Same reasoning as RiskService.generateAiBriefing()'s own comment: the AI
-  // never computes a figure and never sees raw project data -- it only
+  // never computes a figure and never sees raw project data; it only
   // receives a plain-text context string built here from the exact same
   // already-computed KPIs/risk summary the deterministic conclusion panel
   // on this page already shows, and turns it into a short, structured
@@ -164,7 +166,7 @@ export class ReportsService {
   // never a fabricated narrative) if there's nothing to summarize, the AI
   // service is unreachable, or its response doesn't contain a usable
   // conclusion.
-  async generateAiBriefing(companyId: string, projectId: string): Promise<StructuredBriefing | { unavailable: true; reason: string }> {
+  async generateAiBriefing(companyId: string, projectId: string, user: AiQuotaSubject): Promise<StructuredBriefing | { unavailable: true; reason: string }> {
     const [kpis, risk] = await Promise.all([
       this.getKpis(companyId, projectId),
       this.risk.getExecutiveSummary(companyId, projectId).catch(() => null),
@@ -177,6 +179,11 @@ export class ReportsService {
     }
 
     const context = buildReportsBriefingContext(kpis, risk);
+    // Paid LLM call on the shared provider; same per-role quota as the
+    // assistant (see RiskService.generateAiBriefing()).
+    if (!(await this.aiUsage.checkAndReserve(user.id, user.companyRole)).allowed) {
+      return { unavailable: true, reason: AI_QUOTA_REACHED };
+    }
     try {
       const { narrative } = await this.aiClient.generateReportsBriefing(companyId, projectId, context);
       const parsed = parseStructuredBriefing(narrative);
@@ -256,10 +263,10 @@ export class ReportsService {
     });
 
     // Every `documents` row registered as this project's report material
-    // (doc_type = 'report_attachment', migration 033) -- merged in as real
+    // (doc_type = 'report_attachment', migration 033): merged in as real
     // extra pages after the react-pdf summary, exact same algorithm as
     // rfis.service.ts's generatePdf() appendix. Queried directly rather than
-    // through DocumentsService -- DocumentsModule exports only DocumentsService
+    // through DocumentsService; DocumentsModule exports only DocumentsService
     // itself (no dedicated "list by doc_type" method exists there), and this
     // is a simple, tenant-scoped read with no need for findAll()'s pagination/
     // search-vector machinery.
@@ -280,10 +287,10 @@ export class ReportsService {
 
   // ── Attachment merge (private) ───────────────────────────────────────────
   // Adapted from rfis.service.ts's exact same trio
-  // (addAttachmentDividerPage / appendAttachmentPages / mergeAttachmentPdfs)
-  // -- private to this service, not shared/exported, mirroring how RfisService
+  // (addAttachmentDividerPage / appendAttachmentPages / mergeAttachmentPdfs);
+  // private to this service, not shared/exported, mirroring how RfisService
   // keeps them private today. `documents` rows have no dedicated `filename`
-  // column (unlike rfi_attachments) -- `title` stands in as the display
+  // column (unlike rfi_attachments): `title` stands in as the display
   // name, and the file extension is read off `storage_key` instead (see
   // StorageService.generateKey(), which preserves the original extension).
   private static readonly MERGEABLE_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png']);
@@ -314,7 +321,7 @@ export class ReportsService {
 
   // Downloads one report attachment and appends its divider page + real
   // content pages to mainDoc. Deliberately swallows every failure here (bad
-  // storage key, network error, corrupt/encrypted PDF, corrupt image) --
+  // storage key, network error, corrupt/encrypted PDF, corrupt image);
   // console.warn plus a skipped attachment, never a thrown error, same
   // isolation guarantee as rfis.service.ts's appendAttachmentPages().
   private async appendAttachmentPages(mainDoc: PDFDocument, row: Record<string, unknown>, headingFont: PDFFont, bodyFont: PDFFont): Promise<void> {
@@ -323,12 +330,12 @@ export class ReportsService {
     const ext = this.getFileExtension(storageKey ?? title);
     const isPdf = ext === 'pdf';
     const isMergeableImage = ReportsService.MERGEABLE_IMAGE_EXTENSIONS.has(ext);
-    if (!storageKey || (!isPdf && !isMergeableImage)) return; // no reasonable inline treatment -- skipped, not an error
+    if (!storageKey || (!isPdf && !isMergeableImage)) return; // no reasonable inline treatment: skipped, not an error
 
     try {
       const bytes = await this.storage.download(storageKey);
       // Same normalization rfis.service.ts's appendAttachmentPages() applies
-      // and documents in full there -- pdf-lib's embedders assume
+      // and documents in full there; pdf-lib's embedders assume
       // bytes.buffer IS the image, not a slice of a pooled Buffer, which
       // storage.download()'s Buffer.concat() can return unmodified for a
       // single-chunk stream. Uint8Array.from() copies into a fresh,
@@ -336,7 +343,7 @@ export class ReportsService {
       const normalizedBytes = Uint8Array.from(bytes);
 
       // Build the real content FIRST and only add the divider page once
-      // that succeeds -- a failed attachment must never leave an orphan
+      // that succeeds; a failed attachment must never leave an orphan
       // divider page with no content behind it.
       if (isPdf) {
         const attachmentDoc = await PDFDocument.load(normalizedBytes);
@@ -385,7 +392,7 @@ export interface StructuredBriefing {
   evidence: string[];
 }
 
-/** Grounds the Reports AI briefing in the exact same figures the deterministic conclusion panel already shows -- nothing new computed here. */
+/** Grounds the Reports AI briefing in the exact same figures the deterministic conclusion panel already shows; nothing new computed here. */
 export function buildReportsBriefingContext(kpis: Kpis, risk: RiskSummary): string {
   const lines: string[] = [];
   lines.push(`Issues: ${kpis.issues.summary.total} total, ${kpis.issues.summary.critical} critical, ${kpis.issues.summary.overdue} overdue.`);
@@ -407,7 +414,7 @@ const BRIEFING_LABELS = ['CONCLUSION', 'DRIVERS', 'IMPACT', 'ACTION', 'EVIDENCE'
  * text (the exact format reports.py's SYSTEM prompt requires) into a
  * structured object. Tolerant of a missing label (that field comes back
  * empty, never guessed) and of DRIVERS/EVIDENCE not being " | "-separated
- * (falls back to the whole line as a single item) -- a model that drifts
+ * (falls back to the whole line as a single item): a model that drifts
  * from the requested format should degrade gracefully, not crash the request.
  */
 export function parseStructuredBriefing(raw: string): StructuredBriefing {

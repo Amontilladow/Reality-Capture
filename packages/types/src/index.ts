@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════════════════
 // @engineeringos/types
 // Single source of truth for all shared types across API, web, and mobile.
-// NEVER import from individual type files — always import from this index.
+// NEVER import from individual type files; always import from this index.
 // ══════════════════════════════════════════════════════════════════════════
 
 export * from './user.types';

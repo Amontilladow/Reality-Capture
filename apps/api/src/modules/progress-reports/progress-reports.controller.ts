@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Res, StreamableFile } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import type { AuthenticatedUser } from '@engineeringos/types';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -45,7 +46,7 @@ export class ProgressReportsController {
   }
 
   // Generating/revoking a public link is gated the same as managing any
-  // other project record (manage_project_records) -- it hands out
+  // other project record (manage_project_records): it hands out
   // unauthenticated view access to real project data, same sensitivity
   // class as the RFI external-access link it mirrors.
   @Post('shares')
@@ -78,6 +79,8 @@ export class ProgressReportsController {
 // itself is the only credential; there is no request.user on this route.
 @ApiTags('progress-reports')
 @Controller('public/progress-reports/:token')
+// Token-only, unauthenticated: tighter than the 100/min default.
+@Throttle({ default: { limit: 30, ttl: 60_000 } })
 export class ProgressReportsPublicController {
   constructor(private readonly svc: ProgressReportsService) {}
 

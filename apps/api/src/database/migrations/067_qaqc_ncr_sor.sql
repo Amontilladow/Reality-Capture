@@ -1,39 +1,39 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- QAQC NCR/SOR/WIR/MIR -- one shared table with a record_type discriminator
+-- QAQC NCR/SOR/WIR/MIR: one shared table with a record_type discriminator
 -- ('ncr' | 'sor' | 'wir' | 'mir'), mirroring the precedent issues.issue_type
 -- already set (one issues table, several conceptually different issueType
--- values). Deliberately NOT four tables/modules -- see qaqc.service.ts for
+-- values). Deliberately NOT four tables/modules; see qaqc.service.ts for
 -- the shared service.
 --
 -- Distinct from the pre-existing qa_inspections table/module (scheduled
--- pass/fail checklist inspections, "QA Inspections" nav tab) -- that
+-- pass/fail checklist inspections, "QA Inspections" nav tab): that
 -- feature is untouched by this migration and this feature. NCR
 -- (non-conformance report), SOR (site observation report), WIR (work
 -- inspection request), and MIR (material inspection request) are all
 -- RFI-shaped records: issued by a restricted role, responded by one set of
 -- roles and then confirmed by a different, narrower set, with attachments
--- and a PDF export -- not a checklist.
+-- and a PDF export; not a checklist.
 --
 -- record_number mirrors rfis.rfiNumber's generated-sequence idea but
--- scoped per (project, record_type) rather than (project, discipline) --
+-- scoped per (project, record_type) rather than (project, discipline);
 -- each of NCR/SOR/WIR/MIR gets its own independent sequence on a project
 -- (NCR-001, SOR-001, WIR-001, MIR-001, ... never sharing a counter). See
 -- QaqcService.generateRecordNumber().
 --
 -- discipline reuses the existing RFI_DISCIPLINES vocabulary from
--- packages/types (civil/structural/architectural/.../other) -- no new
+-- packages/types (civil/structural/architectural/.../other): no new
 -- discipline values were needed.
 --
 -- status is a two-step close, mirroring RfisService's submitForReview()/
 -- decideReview() 'responded' -> 'under_review' -> 'closed'/back shape, same
 -- pattern with the roles swapped (QAQC opens instead of being the final
 -- approver; QAQC confirms instead of opening):
---   'open'                 -- issued by QAQC, awaiting a response.
---   'pending_confirmation' -- construction/PM/director/engineering has
+--   'open'; issued by QAQC, awaiting a response.
+--   'pending_confirmation'; construction/PM/director/engineering has
 --                             responded and believes it's resolved; waiting
 --                             on QAQC's confirmation.
---   'closed'               -- QAQC confirmed. Terminal.
---   'reopened'              -- QAQC rejected the response and sent it back.
+--   'closed'; QAQC confirmed. Terminal.
+--   'reopened'; QAQC rejected the response and sent it back.
 --                             Functionally equivalent to 'open' (can be
 --                             responded to again) but kept distinct in the
 --                             status/audit history so it's visible that
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS qaqc_attachments (
   kind          VARCHAR(20) NOT NULL DEFAULT 'issue' CHECK (kind IN ('issue', 'response')),
   -- Reuses RFI_DOCUMENT_TYPES' vocabulary (drawing/specification/
   -- method_statement/calculation/schedule/contract/email/site_instruction/
-  -- submittal/other, etc.) -- null/omitted for a quick "+Add photo" pick,
+  -- submittal/other, etc.): null/omitted for a quick "+Add photo" pick,
   -- since those go through qaqc_captures (linked Captures) instead, not
   -- through this generic-document table. See create-qaqc-attachment flow.
   document_type VARCHAR(30),
@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS qaqc_attachments (
 CREATE INDEX IF NOT EXISTS idx_qaqc_attachments_record ON qaqc_attachments(qaqc_id);
 
 -- Links a QAQC record to real Captures, same shape/purpose as issue_captures
--- (migration 001) -- the "+Add photo" quick picker uploads a real Capture
+-- (migration 001): the "+Add photo" quick picker uploads a real Capture
 -- (captureType: 'photo_standard') so it also shows up in the project's
 -- Captures grid, then links it here, rather than storing it as a bare
 -- qaqc_attachments row. kind distinguishes a photo taken when the record
@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS qaqc_captures (
 CREATE INDEX IF NOT EXISTS idx_qaqc_captures_record ON qaqc_captures(qaqc_id);
 
 -- Tenant-isolation RLS, same CASE-guarded shape migration 053 hardened
--- every pre-existing tenant table with (never a plain `AND` -- the planner
+-- every pre-existing tenant table with (never a plain `AND`: the planner
 -- can split/reorder a top-level AND inside USING, so only the CASE
 -- expression reliably avoids casting an empty-string GUC placeholder to
 -- UUID on a pooled connection that previously ran a withSystemBypass/
@@ -132,7 +132,7 @@ BEGIN
 END $$;
 
 -- Risk Engine integration (brief section 6): risk_graph_nodes.node_type is a
--- native Postgres enum (migration 050), not a free-text column -- 'ncr'/
+-- native Postgres enum (migration 050), not a free-text column; 'ncr'/
 -- 'sor'/'wir'/'mir' must be added to it before RiskGraphService/
 -- RelationshipExtractionService can register a node of any of these types.
 -- ADD VALUE IF NOT EXISTS as bare top-level statements (not inside a DO

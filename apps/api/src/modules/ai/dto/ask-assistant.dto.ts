@@ -21,9 +21,9 @@ export class AskAssistantDto {
   @IsString() @MinLength(1) @MaxLength(2000)
   question: string;
 
-  // Bounded (max 6 items -- about 3 turns -- enforced again server-side via
+  // Bounded (max 6 items (about 3 turns) enforced again server-side via
   // ai.maxConversationTurns in ai.service.ts, this is just the hard DTO
-  // ceiling) -- the old DTO let a client send an unbounded array.
+  // ceiling): the old DTO let a client send an unbounded array.
   @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => ConversationMessageDto)
   conversationHistory?: ConversationMessageDto[];
 

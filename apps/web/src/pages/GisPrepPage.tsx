@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -6,14 +6,19 @@ import { StatusBadge } from '../components/ui/Badge';
 import type { StatusTone } from '../lib/status-tone';
 import { apiErrorMessage } from '../lib/api';
 import { getProject } from '../lib/projects.api';
+import { loadSavedForm, saveForm } from '../lib/saved-form';
+import {
+  DRAWING_TYPES, UPPERCASE_FACTS, UPPERCASE_META, USAGE_CATEGORY_TYPES, USAGE_TYPES, convertInputProblems,
+} from '../lib/bdms-inputs';
 import {
   getGisPrepJob, listGisPrepJobs, rerunGisPrepJob, uploadAndCreateGisPrepJob,
   type GisConvertSettings, type GisPrepJob, type GisPrepJobStatus, type GisPrepProfile, type GisPrepSettings,
 } from '../lib/gis-prep.api';
+import { Listbox } from '../components/ui/Listbox';
 
 // GIS Preparation (apps/adm-gis-prep as a built-in module). Every result is a
 // PRELIMINARY check: nothing on this page may say a drawing is ADM/DRM
-// compliant, approved, or passed QC -- only the official QC tool and review
+// compliant, approved, or passed QC; only the official QC tool and review
 // decide that.
 const PROVISIONAL = 'PROVISIONAL: NOT ADM-VALIDATED';
 
@@ -55,10 +60,16 @@ const INITIAL: FormState = {
   categories: ['plot'], meta: {}, controlPoints: '',
 };
 
+// What was typed is kept per project in this browser. Confirmations (coordinate system / transformation, units)
+// are never restored: they must be given each time.
+const formKey = (projectId: string) => `gis-prep-form:${projectId}`;
+const NEVER_RESTORE: Partial<FormState> = { crsConfirmed: false, unitsConfirmed: false };
+
 // Values the drawing cannot provide; sent as conversion settings. Code-listed values (usage, drawing type) are
-// checked against the BDMS code lists by the validator, so a typo shows up in the report rather than here.
+// picked from the BDMS code lists; formats are checked before the job is sent (lib/bdms-inputs).
 const FACT_FIELDS = [
   ['floor_height', 'Floor height (m)', '3.6'], ['building_number_of_floors', 'Number of floors', '2'],
+  ['building_height', 'Building height (m)', '15'],
   ['building_usage_category', 'Usage category (code list)', 'Commercial'],
   ['building_usage_type', 'Usage type (code list)', 'Single-use Commercial'],
 ] as const;
@@ -66,6 +77,11 @@ const TITLE_FIELDS = [
   ['DeveloperName', 'Developer name', 'MASDAR CITY'], ['BuildingName', 'Building name', ''],
   ['DrawingType', 'Drawing type', 'As Built'], ['DateOfDrawing', 'Date of drawing', '14-JAN-2026'],
 ] as const;
+
+const CHOICES: Record<string, readonly string[]> = {
+  building_usage_category: USAGE_CATEGORY_TYPES, building_usage_type: USAGE_TYPES, DrawingType: DRAWING_TYPES,
+};
+const upper = (on: boolean, value: string) => (on ? value.toUpperCase() : value);
 
 const BDMS_FIELDS = [
   ['zone_name', 'Zone name', 'KHALIFA CITY'], ['sector_number', 'Sector', 'SE45_01'], ['plot_number', 'Plot', 'C8'],
@@ -88,14 +104,19 @@ function parseControlPoints(text: string): [[number, number], [number, number]][
 function buildSettings(f: FormState): GisPrepSettings | GisConvertSettings {
   const controlPoints = parseControlPoints(f.controlPoints);
   if (f.mode === 'convert') {
+    const problems = convertInputProblems(f.meta, f.facts, f.unitNumber);
+    if (problems.length) throw new Error(problems.join(' '));
+    const metadata = Object.fromEntries(Object.entries(f.meta).map(([k, v]) => [k, upper(UPPERCASE_META.has(k), v.trim())]));
     return {
-      mode: 'convert', profile: 'bdms_building', metadata: f.meta, source_units: f.units,
+      mode: 'convert', profile: 'bdms_building', metadata, source_units: f.units,
       single_unit_number: f.unitNumber,
       floor_height: f.facts.floor_height ?? '',
       building_number_of_floors: f.facts.building_number_of_floors ?? '',
+      building_height: f.facts.building_height ?? '',
       building_usage_category: f.facts.building_usage_category ?? '',
       building_usage_type: f.facts.building_usage_type ?? '',
-      title_values: Object.fromEntries(TITLE_FIELDS.map(([k]) => [k, f.facts[k] ?? '']).filter(([, v]) => v)),
+      title_values: Object.fromEntries(TITLE_FIELDS.map(([k]) => [k, upper(UPPERCASE_FACTS.has(k), (f.facts[k] ?? '').trim())])
+        .filter(([, v]) => v)),
       crs: { control_points: controlPoints, confirm_transformation: f.crsConfirmed },
     };
   }
@@ -115,10 +136,11 @@ function buildSettings(f: FormState): GisPrepSettings | GisConvertSettings {
 export default function GisPrepPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<FormState>(INITIAL);
+  const [form, setForm] = useState<FormState>(() => (projectId ? loadSavedForm(formKey(projectId), INITIAL, NEVER_RESTORE) : INITIAL));
   const [file, setFile] = useState<File | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useEffect(() => { if (projectId) saveForm(formKey(projectId), form); }, [projectId, form]);
 
   const projectQuery = useQuery({ queryKey: ['project', projectId], queryFn: () => getProject(projectId!), enabled: Boolean(projectId) });
   const jobsQuery = useQuery({
@@ -153,16 +175,16 @@ export default function GisPrepPage() {
         subtitle="Prepare DXF/DWG drawings for ADM / DRM GIS submission and run preliminary checks."
       />
       <div className="p-6 space-y-4">
-        <div className="panel p-3 border border-warn/40 bg-warn/5 text-xs text-ink-100">
+        <div className="panel p-4 border border-warn/40 bg-warn/5 text-xs text-ink-100">
           {PROVISIONAL}. These are preliminary checks only. Acceptance is decided by the official ADM/DRM QC tool and review.
           The original drawing is stored unchanged; every change and open decision is listed in the job report.
         </div>
 
-        <div className="panel tick-frame p-4 space-y-3">
+        <div className="panel tick-frame p-4 space-y-4">
           <div className="text-sm font-medium text-ink-100">New job</div>
           <div className="flex flex-wrap gap-4 text-xs text-ink-300">
             {([['convert', 'Convert architectural floor plan → DRM BDMS draft'], ['prepare', 'Check an existing GIS drawing']] as const).map(([m, label]) => (
-              <label key={m} className="flex items-center gap-1.5 font-medium">
+              <label key={m} className="flex items-center gap-2 font-medium">
                 <input type="radio" checked={form.mode === m} onChange={() => setForm(f => ({ ...f, mode: m, profile: m === 'convert' ? 'bdms_building' : f.profile }))} />
                 {label}
               </label>
@@ -177,17 +199,17 @@ export default function GisPrepPage() {
           )}
           {form.mode === 'prepare' && <div className="flex flex-wrap gap-4 text-xs text-ink-300">
             {(['bdms_building', 'sdd_planning'] as const).map(p => (
-              <label key={p} className="flex items-center gap-1.5">
+              <label key={p} className="flex items-center gap-2">
                 <input type="radio" checked={form.profile === p} onChange={() => setForm(f => ({ ...f, profile: p, meta: {} }))} />
                 {p === 'bdms_building' ? 'DRM BDMS 4.1 building floor' : 'ADM SDD planning v1.18.2'}
               </label>
             ))}
           </div>}
-          <input type="file" accept=".dxf,.dwg" onChange={e => setFile(e.target.files?.[0] ?? null)} className="text-xs text-ink-300" />
+          <input type="file" accept=".dxf,.dwg" aria-label="Drawing file (DXF or DWG)" onChange={e => setFile(e.target.files?.[0] ?? null)} className="text-xs text-ink-300" />
           {form.mode === 'prepare' && form.profile === 'sdd_planning' && (
             <div className="flex flex-wrap gap-4 text-xs text-ink-300">
               {['plot', 'roads', 'services'].map(c => (
-                <label key={c} className="flex items-center gap-1.5">
+                <label key={c} className="flex items-center gap-2">
                   <input
                     type="checkbox" checked={form.categories.includes(c)}
                     onChange={e => setForm(f => ({ ...f, categories: e.target.checked ? [...f.categories, c] : f.categories.filter(x => x !== c) }))}
@@ -199,11 +221,13 @@ export default function GisPrepPage() {
           )}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {fields.map(([key, label, placeholder]) => (
-              <label key={key} className="text-xs text-ink-500 space-y-1">
+              <label key={key} className="text-xs text-ink-500 space-y-2">
                 <span>{label}</span>
                 <input
-                  className="field-input text-xs !py-1.5" placeholder={placeholder} value={form.meta[key] ?? ''}
-                  onChange={e => setForm(f => ({ ...f, meta: { ...f.meta, [key]: e.target.value } }))}
+                  className="field-input text-xs !py-2" placeholder={placeholder} value={form.meta[key] ?? ''}
+                  onChange={e => setForm(f => ({
+                    ...f, meta: { ...f.meta, [key]: upper(f.mode === 'convert' && UPPERCASE_META.has(key), e.target.value) },
+                  }))}
                 />
               </label>
             ))}
@@ -211,57 +235,67 @@ export default function GisPrepPage() {
           {form.mode === 'convert' && (
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
               {[...FACT_FIELDS, ...TITLE_FIELDS].map(([key, label, placeholder]) => (
-                <label key={key} className="text-xs text-ink-500 space-y-1">
+                <label key={key} className="text-xs text-ink-500 space-y-2">
                   <span>{label}</span>
-                  <input
-                    className="field-input text-xs !py-1.5" placeholder={placeholder} value={form.facts[key] ?? ''}
-                    onChange={e => setForm(f => ({ ...f, facts: { ...f.facts, [key]: e.target.value } }))}
-                  />
+                  {CHOICES[key] ? (
+                    <Listbox aria-label={label}
+                      className="field-input text-xs !py-2" value={form.facts[key] ?? ''}
+                      onChange={e => setForm(f => ({ ...f, facts: { ...f.facts, [key]: e.target.value } }))}
+                    >
+                      <option value="">Choose…</option>
+                      {CHOICES[key].map(o => <option key={o} value={o}>{o}</option>)}
+                    </Listbox>
+                  ) : (
+                    <input
+                      className="field-input text-xs !py-2" placeholder={placeholder} value={form.facts[key] ?? ''}
+                      onChange={e => setForm(f => ({ ...f, facts: { ...f.facts, [key]: upper(UPPERCASE_FACTS.has(key), e.target.value) } }))}
+                    />
+                  )}
                 </label>
               ))}
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {form.mode === 'prepare' && <label className="text-xs text-ink-500 space-y-1">
+            {form.mode === 'prepare' && <label className="text-xs text-ink-500 space-y-2">
               <span>Source coordinate system</span>
-              <select className="field-input text-xs !py-1.5" value={form.sourceCrs} onChange={e => setForm(f => ({ ...f, sourceCrs: e.target.value }))}>
+              <Listbox aria-label="Source CRS" className="field-input text-xs !py-2" value={form.sourceCrs} onChange={e => setForm(f => ({ ...f, sourceCrs: e.target.value }))}>
                 {CRS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              </Listbox>
             </label>}
             {form.mode === 'convert' && (
-              <label className="text-xs text-ink-500 space-y-1">
+              <label className="text-xs text-ink-500 space-y-2">
                 <span>Drawing units</span>
-                <select className="field-input text-xs !py-1.5" value={form.units} onChange={e => setForm(f => ({ ...f, units: e.target.value as FormState['units'] }))}>
+                <Listbox aria-label="Units" className="field-input text-xs !py-2" value={form.units} onChange={e => setForm(f => ({ ...f, units: e.target.value as FormState['units'] }))}>
                   <option value="auto">From the drawing ($INSUNITS)</option>
                   <option value="mm">Millimetres</option><option value="cm">Centimetres</option><option value="m">Metres</option>
-                </select>
+                </Listbox>
               </label>
             )}
             {form.mode === 'convert' && (
-              <label className="text-xs text-ink-500 space-y-1">
-                <span>Unit number (whole floor is one unit) — required for the QC links</span>
-                <input className="field-input text-xs !py-1.5" value={form.unitNumber} onChange={e => setForm(f => ({ ...f, unitNumber: e.target.value }))} />
+              <label className="text-xs text-ink-500 space-y-2">
+                <span>Unit number (whole floor is one unit), required for the QC links</span>
+                <input className="field-input text-xs !py-2" value={form.unitNumber} onChange={e => setForm(f => ({ ...f, unitNumber: e.target.value }))} />
               </label>
             )}
-            <label className="text-xs text-ink-500 space-y-1">
+            <label className="text-xs text-ink-500 space-y-2">
               <span>Control points (optional, one per line: x y E N; x y in drawing units)</span>
               <textarea
-                className="field-input text-xs !py-1.5 font-mono" rows={2} value={form.controlPoints}
+                className="field-input text-xs !py-2 font-mono" rows={2} value={form.controlPoints}
                 onChange={e => setForm(f => ({ ...f, controlPoints: e.target.value }))}
               />
             </label>
           </div>
           <div className="flex flex-wrap gap-4 text-xs text-ink-300">
-            <label className="flex items-center gap-1.5">
+            <label className="flex items-center gap-2">
               <input type="checkbox" checked={form.crsConfirmed} onChange={e => setForm(f => ({ ...f, crsConfirmed: e.target.checked }))} />
               {form.mode === 'convert' ? 'I confirm the control-point transformation' : <>I confirm the coordinate system{form.controlPoints.trim() ? ' and the control-point transformation' : ''}</>}
             </label>
             {form.mode === 'prepare' && <>
-              <label className="flex items-center gap-1.5">
+              <label className="flex items-center gap-2">
                 <input type="checkbox" checked={form.unitsConfirmed} onChange={e => setForm(f => ({ ...f, unitsConfirmed: e.target.checked }))} />
                 Units confirmed (metres)
               </label>
-              <label className="flex items-center gap-1.5">
+              <label className="flex items-center gap-2">
                 <input type="checkbox" checked={form.strict} onChange={e => setForm(f => ({ ...f, strict: e.target.checked }))} />
                 Strict mode (any warning or open decision blocks)
               </label>
@@ -275,25 +309,25 @@ export default function GisPrepPage() {
 
         {jobsQuery.isError && <div className="panel p-4 text-sm text-danger">{apiErrorMessage(jobsQuery.error)}</div>}
 
-        <div className="panel tick-frame overflow-x-auto">
+        <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                <th className="px-3 py-2.5 font-medium">Drawing</th>
-                <th className="px-3 py-2.5 font-medium">Profile</th>
-                <th className="px-3 py-2.5 font-medium">Status</th>
-                <th className="px-3 py-2.5 font-medium">Errors / warnings / decisions</th>
-                <th className="px-3 py-2.5 font-medium">Created</th>
+                <th className="px-4 py-2 font-medium">Drawing</th>
+                <th className="px-4 py-2 font-medium">Profile</th>
+                <th className="px-4 py-2 font-medium">Status</th>
+                <th className="px-4 py-2 font-medium">Errors / warnings / decisions</th>
+                <th className="px-4 py-2 font-medium">Created</th>
               </tr>
             </thead>
             <tbody>
               {jobs.map(j => (
-                <tr key={j.id} onClick={() => setSelectedId(j.id)} className={`border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-800/60 ${selectedId === j.id ? 'bg-base-800/60' : ''}`}>
-                  <td className="px-3 py-2.5 text-ink-100">{j.sourceFilename}{j.parentJobId && <span className="text-xs text-ink-500"> · re-run</span>}</td>
-                  <td className="px-3 py-2.5 text-ink-300 whitespace-nowrap">{j.profile}</td>
-                  <td className="px-3 py-2.5"><StatusBadge tone={STATUS_TONE[j.status]} label={STATUS_LABEL[j.status]} dot /></td>
-                  <td className="px-3 py-2.5 text-ink-300 whitespace-nowrap">{j.counts ? `${j.counts.errors} / ${j.counts.warnings} / ${j.counts.openDecisions}` : '—'}</td>
-                  <td className="px-3 py-2.5 text-ink-500 whitespace-nowrap">{new Date(j.createdAt).toLocaleString()}</td>
+                <tr key={j.id} onClick={() => setSelectedId(j.id)} className={`border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-700 ${selectedId === j.id ? 'bg-base-800/60' : ''}`}>
+                  <td className="px-4 py-2 text-ink-100">{j.sourceFilename}{j.parentJobId && <span className="text-xs text-ink-500"> · re-run</span>}</td>
+                  <td className="px-4 py-2 text-ink-300 whitespace-nowrap">{j.profile}</td>
+                  <td className="px-4 py-2"><StatusBadge tone={STATUS_TONE[j.status]} label={STATUS_LABEL[j.status]} dot /></td>
+                  <td className="px-4 py-2 text-ink-300 whitespace-nowrap">{j.counts ? `${j.counts.errors} / ${j.counts.warnings} / ${j.counts.openDecisions}` : '—'}</td>
+                  <td className="px-4 py-2 text-ink-500 whitespace-nowrap">{new Date(j.createdAt).toLocaleString()}</td>
                 </tr>
               ))}
               {!jobsQuery.isLoading && jobs.length === 0 && (
@@ -359,21 +393,21 @@ function JobDetail({ projectId, jobId, onRerun }: { projectId: string; jobId: st
 
       {downloads.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {job.packageUrl && <a className="btn-secondary !px-3 !py-1.5 text-xs" href={job.packageUrl}>Download full package (.zip)</a>}
-          {downloads.map(o => <a key={o.path} className="btn-ghost !px-3 !py-1.5 text-xs" href={o.url} target="_blank" rel="noreferrer">{o.path.replace(/^output\//, '')}</a>)}
+          {job.packageUrl && <a className="btn-secondary !px-4 !py-2 text-xs" href={job.packageUrl}>Download full package (.zip)</a>}
+          {downloads.map(o => <a key={o.path} className="btn-ghost !px-4 !py-2 text-xs" href={o.url} target="_blank" rel="noreferrer">{o.path.replace(/^output\//, '')}</a>)}
         </div>
       )}
 
       {(report?.qc_style_summary ?? []).length > 0 && (
         <div>
-          <div className="text-xs font-medium text-ink-300 mb-1">Summary in official QC terms</div>
+          <div className="text-xs font-medium text-ink-300 mb-2">Summary in official QC terms</div>
           <table className="w-full text-xs">
             <tbody>
               {report!.qc_style_summary!.map(r => (
                 <tr key={r.qc_error} className="border-b border-base-700/60 last:border-0">
-                  <td className="py-1.5 pr-3 text-ink-100">{r.qc_error}</td>
-                  <td className="py-1.5 pr-3 text-ink-300">{r.count}</td>
-                  <td className="py-1.5 text-ink-500">{r.layers.join(', ')}</td>
+                  <td className="py-2 pr-4 text-ink-100">{r.qc_error}</td>
+                  <td className="py-2 pr-4 text-ink-300">{r.count}</td>
+                  <td className="py-2 text-ink-500">{r.layers.join(', ')}</td>
                 </tr>
               ))}
             </tbody>
@@ -389,7 +423,7 @@ function JobDetail({ projectId, jobId, onRerun }: { projectId: string; jobId: st
               <span className="font-mono text-ink-100 w-56 truncate" title={d.source_layer}>{d.source_layer}</span>
               <span className="text-ink-500">{d.entity_count} entities →</span>
               <input
-                className="field-input w-48 text-xs !py-1" list={`sugg-${d.source_layer}`} placeholder="ADM layer or __exclude__"
+                className="field-input w-48 text-xs !py-2" list={`sugg-${d.source_layer}`} placeholder="ADM layer or __exclude__"
                 value={mapping[d.source_layer] ?? ''} onChange={e => setMapping(m => ({ ...m, [d.source_layer]: e.target.value }))}
               />
               <datalist id={`sugg-${d.source_layer}`}>
@@ -400,7 +434,7 @@ function JobDetail({ projectId, jobId, onRerun }: { projectId: string; jobId: st
         </div>
       )}
       {!ACTIVE.includes(job.status) && (
-        <button className="btn-secondary !px-3 !py-1.5 text-xs" disabled={rerun.isPending} onClick={() => rerun.mutate(job)}>
+        <button className="btn-secondary !px-4 !py-2 text-xs" disabled={rerun.isPending} onClick={() => rerun.mutate(job)}>
           {rerun.isPending ? 'Queuing…' : 'Re-run with these decisions'}
         </button>
       )}
@@ -408,10 +442,10 @@ function JobDetail({ projectId, jobId, onRerun }: { projectId: string; jobId: st
 
       {findings.length > 0 && (
         <div>
-          <div className="text-xs font-medium text-ink-300 mb-1">Findings ({findings.length}, blocking first)</div>
-          <ul className="space-y-1 max-h-96 overflow-y-auto text-xs">
+          <div className="text-xs font-medium text-ink-300 mb-2">Findings ({findings.length}, blocking first)</div>
+          <ul className="space-y-2 max-h-96 overflow-y-auto text-xs">
             {findings.slice(0, 300).map((f, i) => (
-              <li key={i} className="border-b border-base-700/60 pb-1">
+              <li key={i} className="border-b border-base-700/60 pb-2">
                 <span className={f.severity === 'ERROR' ? 'text-danger' : 'text-warn'}>{f.severity}</span>{' '}
                 <span className="font-mono text-ink-500">{f.rule_id}</span>{' '}
                 {f.layer && <span className="text-ink-500">{f.layer} </span>}
@@ -421,7 +455,7 @@ function JobDetail({ projectId, jobId, onRerun }: { projectId: string; jobId: st
               </li>
             ))}
           </ul>
-          {findings.length > 300 && <p className="text-xs text-ink-500 mt-1">Showing 300 of {findings.length}; the full list is in qc_report.html.</p>}
+          {findings.length > 300 && <p className="text-xs text-ink-500 mt-2">Showing 300 of {findings.length}; the full list is in qc_report.html.</p>}
         </div>
       )}
     </div>
@@ -475,23 +509,23 @@ function ConversionDetail({ projectId, job, onRerun }: { projectId: string; job:
         <p className="text-xs text-danger">Blocked until provided (never guessed): {report.identifiers_missing!.join(', ')}</p>
       )}
       <div className="flex flex-wrap gap-2">
-        {job.packageUrl && <a className="btn-secondary !px-3 !py-1.5 text-xs" href={job.packageUrl}>Download full package (.zip)</a>}
-        {downloads.map(o => <a key={o.path} className="btn-ghost !px-3 !py-1.5 text-xs" href={o.url} target="_blank" rel="noreferrer">{o.path.replace(/^output\//, '')}</a>)}
+        {job.packageUrl && <a className="btn-secondary !px-4 !py-2 text-xs" href={job.packageUrl}>Download full package (.zip)</a>}
+        {downloads.map(o => <a key={o.path} className="btn-ghost !px-4 !py-2 text-xs" href={o.url} target="_blank" rel="noreferrer">{o.path.replace(/^output\//, '')}</a>)}
       </div>
       <table className="text-xs">
         <tbody>
           {Object.entries(report.result).map(([k, v]) => (
-            <tr key={k} className="border-b border-base-700/60 last:border-0"><td className="py-1 pr-4 text-ink-500 whitespace-pre">{k}</td><td className="py-1 text-ink-100">{String(v)}</td></tr>
+            <tr key={k} className="border-b border-base-700/60 last:border-0"><td className="py-2 pr-4 text-ink-500 whitespace-pre">{k}</td><td className="py-2 text-ink-100">{String(v)}</td></tr>
           ))}
         </tbody>
       </table>
       {preview?.url && <img src={preview.url} alt="Generated features preview" className="w-full bg-white rounded" />}
-      <div className="text-xs text-ink-300">Georeferencing: {report.georeferencing.status} — {report.georeferencing.messages.join(' ')}</div>
+      <div className="text-xs text-ink-300">Georeferencing: {report.georeferencing.status}: {report.georeferencing.messages.join(' ')}</div>
       {review.length > 0 && (
         <div className="space-y-2">
           <div className="text-xs font-medium text-ink-300">Items requiring review ({review.length})</div>
           {review.map(f => (
-            <div key={f.id} className="flex flex-wrap items-start gap-2 text-xs border-b border-base-700/60 pb-1">
+            <div key={f.id} className="flex flex-wrap items-start gap-2 text-xs border-b border-base-700/60 pb-2">
               <StatusBadge tone={FEATURE_TONE[f.status] ?? 'neutral'} label={f.status === 'UNRESOLVED' ? 'Unresolved' : 'Review'} />
               <span className="font-mono text-ink-100">{f.id}</span>
               <span className="text-ink-500">{f.layer}{f.attributes.SPACEUSAGE?.value ? ` · ${f.attributes.SPACEUSAGE.value}` : ''}</span>
@@ -499,7 +533,7 @@ function ConversionDetail({ projectId, job, onRerun }: { projectId: string; job:
               {f.status === 'GENERATED_REQUIRES_REVIEW' && (
                 <span className="flex gap-2">
                   {(['accept', 'reject'] as const).map(a => (
-                    <label key={a} className="flex items-center gap-1">
+                    <label key={a} className="flex items-center gap-2">
                       <input type="radio" name={`dec-${f.id}`} checked={decisions[f.id] === a} onChange={() => setDecisions(d => ({ ...d, [f.id]: a }))} />{a}
                     </label>
                   ))}
@@ -507,7 +541,7 @@ function ConversionDetail({ projectId, job, onRerun }: { projectId: string; job:
               )}
             </div>
           ))}
-          <button className="btn-secondary !px-3 !py-1.5 text-xs" disabled={rerun.isPending || Object.keys(decisions).length === 0} onClick={() => rerun.mutate()}>
+          <button className="btn-secondary !px-4 !py-2 text-xs" disabled={rerun.isPending || Object.keys(decisions).length === 0} onClick={() => rerun.mutate()}>
             {rerun.isPending ? 'Queuing…' : 'Re-run with these decisions'}
           </button>
           {rerun.isError && <p className="text-xs text-danger">{apiErrorMessage(rerun.error)}</p>}
@@ -515,9 +549,9 @@ function ConversionDetail({ projectId, job, onRerun }: { projectId: string; job:
       )}
       {report.missing_mandatory.length > 0 && (
         <div className="text-xs">
-          <div className="font-medium text-ink-300 mb-1">Mandatory values the drawing cannot provide ({report.missing_mandatory.length})</div>
-          <ul className="list-disc pl-5 text-ink-500 max-h-48 overflow-y-auto">
-            {report.missing_mandatory.map((m, i) => <li key={i}>{m.feature}: {m.tag}{m.note ? ` — ${m.note}` : ''}</li>)}
+          <div className="font-medium text-ink-300 mb-2">Mandatory values the drawing cannot provide ({report.missing_mandatory.length})</div>
+          <ul className="list-disc pl-6 text-ink-500 max-h-48 overflow-y-auto">
+            {report.missing_mandatory.map((m, i) => <li key={i}>{m.feature}: {m.tag}{m.note ? `: ${m.note}` : ''}</li>)}
           </ul>
         </div>
       )}

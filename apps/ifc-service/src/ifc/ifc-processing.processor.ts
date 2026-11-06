@@ -16,7 +16,7 @@ import { JobMetrics } from './job-metrics';
 import { digest, captureGenerationVersions, type GenerationVersions } from './provenance.util';
 
 // Elements are extracted and written in fixed-size batches so memory use
-// stays bounded by batch size, not total element count — see
+// stays bounded by batch size, not total element count; see
 // IFC_ARCHITECTURE_PROPOSAL.md and MASTER_BACKLOG.md for why this is the
 // realistic scalability lever available on top of web-ifc's synchronous,
 // whole-file-open API.
@@ -127,7 +127,7 @@ export class IfcProcessingProcessor {
       }
 
       // ── extracting_properties + extracting_quantities + extracting_materials
-      // (combined into one pass over elements — see JobMetrics/repo comments
+      // (combined into one pass over elements; see JobMetrics/repo comments
       // for why: one web-ifc read per element instead of three). ──────────
       const elementIdByGuid = new Map<string, string>();
       const propertiesStagesDone = stageDone('extracting_properties') && stageDone('extracting_quantities') && stageDone('extracting_materials');
@@ -233,7 +233,7 @@ export class IfcProcessingProcessor {
           fragmentsGenerated = true;
           metrics.endStage('uploading_fragments');
         } catch (error) {
-          // Fragments are a viewer convenience, not the source of truth —
+          // Fragments are a viewer convenience, not the source of truth;
           // a failure here is recorded as a warning, not a job failure,
           // since the model's hierarchy/properties/quantities are already
           // safely persisted by this point.

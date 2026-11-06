@@ -39,17 +39,17 @@ export function HierarchyTree({
   }
 
   if (buildings.length === 0) {
-    return <div className="text-sm text-ink-500 px-1 py-4">No buildings added yet.</div>;
+    return <div className="text-sm text-ink-500 px-2 py-4">No buildings added yet.</div>;
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       {buildings.map((building) => (
         <div key={building.id}>
           <div className="flex items-center group">
             <button
               onClick={() => toggleBuilding(building.id)}
-              className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-base-800 text-left min-w-0"
+              className="flex-1 flex items-center gap-2 px-2 py-2 rounded text-sm hover:bg-base-700 text-left min-w-0"
             >
               <Chevron open={openBuildings.has(building.id)} />
               <BuildingIcon className="w-4 h-4 text-blueprint shrink-0" />
@@ -58,7 +58,7 @@ export function HierarchyTree({
             {onAddLevel && (
               <button
                 onClick={() => onAddLevel(building.id)}
-                className="opacity-0 group-hover:opacity-100 text-ink-500 hover:text-blueprint px-1.5 transition-opacity"
+                className="opacity-0 group-hover:opacity-100 text-ink-500 hover:text-blueprint px-2 transition-opacity"
                 title="Add level"
               >
                 <PlusIcon className="w-3.5 h-3.5" />
@@ -67,7 +67,7 @@ export function HierarchyTree({
           </div>
 
           {onSetBuildingPhase && (
-            <div className="ml-6 mb-1">
+            <div className="ml-6 mb-2">
               <PhaseEditor
                 phase={building.phase}
                 onSave={(phase) => onSetBuildingPhase(building.id, phase)}
@@ -77,16 +77,16 @@ export function HierarchyTree({
           )}
 
           {openBuildings.has(building.id) && (
-            <div className="ml-4 pl-3 border-l border-base-600 space-y-1 mt-0.5">
+            <div className="ml-4 pl-4 border-l border-base-600 space-y-2 mt-0">
               {(building.levels ?? []).length === 0 && (
-                <div className="text-xs text-ink-500 px-2 py-1">No levels yet</div>
+                <div className="text-xs text-ink-500 px-2 py-2">No levels yet</div>
               )}
               {(building.levels ?? []).map((level) => (
                 <div key={level.id}>
                   <div className="flex items-center group">
                     <button
                       onClick={() => toggleLevel(level.id)}
-                      className="flex-1 flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-base-800 text-left min-w-0"
+                      className="flex-1 flex items-center gap-2 px-2 py-2 rounded text-sm hover:bg-base-700 text-left min-w-0"
                     >
                       <Chevron open={openLevels.has(level.id)} />
                       <LevelIcon className="w-3.5 h-3.5 text-ink-500 shrink-0" />
@@ -95,7 +95,7 @@ export function HierarchyTree({
                     {onAddLocation && (
                       <button
                         onClick={() => onAddLocation(building.id, level.id)}
-                        className="opacity-0 group-hover:opacity-100 text-ink-500 hover:text-blueprint px-1.5 transition-opacity"
+                        className="opacity-0 group-hover:opacity-100 text-ink-500 hover:text-blueprint px-2 transition-opacity"
                         title="Add location"
                       >
                         <PlusIcon className="w-3.5 h-3.5" />
@@ -104,23 +104,23 @@ export function HierarchyTree({
                   </div>
 
                   {openLevels.has(level.id) && (
-                    <div className="ml-4 pl-3 border-l border-base-600 space-y-0.5 mt-0.5">
+                    <div className="ml-4 pl-4 border-l border-base-600 space-y-0 mt-0">
                       {(level.locations ?? []).length === 0 && (
-                        <div className="text-xs text-ink-500 px-2 py-1">No locations yet</div>
+                        <div className="text-xs text-ink-500 px-2 py-2">No locations yet</div>
                       )}
                       {(level.locations ?? []).map((location) => (
                         <button
                           key={location.id}
                           onClick={() => onSelectLocation(location.id, location.name)}
-                          className={`w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded text-sm text-left transition-colors ${
+                          className={`w-full flex items-center justify-between gap-2 px-2 py-2 rounded text-sm text-left transition-colors ${
                             selectedLocationId === location.id
-                              ? 'bg-signal/10 text-signal'
-                              : 'text-ink-300 hover:bg-base-800 hover:text-ink-100'
+                              ? 'bg-signal text-base-800'
+                              : 'text-ink-300 hover:bg-base-700 hover:text-ink-100'
                           }`}
                         >
                           <span className="truncate">{location.name}</span>
                           {(location.captureCount ?? 0) > 0 && (
-                            <span className="text-[10px] font-mono text-ink-500 shrink-0">
+                            <span className="text-xs font-mono text-ink-500 shrink-0">
                               {location.captureCount}
                             </span>
                           )}
@@ -140,7 +140,7 @@ export function HierarchyTree({
 
 function Chevron({ open }: { open: boolean }) {
   return (
-    <svg
+    <svg aria-hidden="true"
       viewBox="0 0 24 24"
       className={`w-3.5 h-3.5 shrink-0 text-ink-500 transition-transform ${open ? 'rotate-90' : ''}`}
       fill="none"
@@ -153,14 +153,14 @@ function Chevron({ open }: { open: boolean }) {
 }
 function PlusIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 5v14M5 12h14" strokeLinecap="round" />
     </svg>
   );
 }
 function BuildingIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <rect x="4" y="3" width="16" height="18" rx="1" />
       <path d="M8 7h2M14 7h2M8 11h2M14 11h2M8 15h2M14 15h2" strokeLinecap="round" />
     </svg>
@@ -168,7 +168,7 @@ function BuildingIcon({ className }: { className?: string }) {
 }
 function LevelIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
       <path d="M3 12h18M3 12l4-4M3 12l4 4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

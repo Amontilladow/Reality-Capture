@@ -24,11 +24,11 @@ export class RfisController {
   constructor(private readonly svc: RfisService) {}
 
   // Previously ungated (any authenticated project member could create an
-  // RFI) -- the owner's org-category matrix explicitly scopes RFI creation
+  // RFI): the owner's org-category matrix explicitly scopes RFI creation
   // to Construction Team/Document Control/Subcontractor (and Engineering
   // Manager, always), so Management/Engineering Team/QAQC Team members
-  // without one of those categories are now a genuine, new restriction
-  // here. No fallbackPermissions -- there was never a discretionary grant
+  // without one of those categories are now a real, new restriction
+  // here. No fallbackPermissions; there was never a discretionary grant
   // specifically for "create an RFI" to preserve.
   @Post()
   @RequireCategoryAction('rfis', 'create')
@@ -67,7 +67,7 @@ export class RfisController {
     return { data: await this.svc.findOne(u.companyId, pid, id, u.id), error: null };
   }
 
-  // The one binary-response endpoint in this API -- every other controller
+  // The one binary-response endpoint in this API; every other controller
   // returns the standard { data, error } JSON envelope. StreamableFile +
   // a passthrough Response (for the dynamic filename) is NestJS's standard
   // way to do this, not a workaround.
@@ -92,7 +92,7 @@ export class RfisController {
   // project logo/stamp and each of the 5 organization logos as base64 so
   // the browser never has to fetch() an S3 presigned URL directly (which
   // requires bucket CORS headers the browser strictly enforces, unlike
-  // Node's fetch() or a plain <img src>). No @RequireProjectPermission --
+  // Node's fetch() or a plain <img src>). No @RequireProjectPermission;
   // same as :id and :id/pdf above, gated only by the global auth guard +
   // this RFI's own company/project scoping.
   @Get(':id/export-assets')
@@ -115,7 +115,7 @@ export class RfisController {
   }
 
   // ── Attachments ───────────────────────────────────────────────────────────
-  // manage_project_records OR raise_rfis -- the latter is held automatically
+  // manage_project_records OR raise_rfis; the latter is held automatically
   // by the 'subcontractor' project role (see ProjectAuthorizationService),
   // so a subcontractor can attach evidence to their own RFI without the
   // full manage_project_records grant. SubcontractorRfiAccessGuard enforces
@@ -137,16 +137,17 @@ export class RfisController {
   @ApiOperation({ summary: 'Register an uploaded file as an RFI attachment' })
   async addAttachment(
     @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
     @Param('id') id: string,
     @Body() dto: AddRfiAttachmentDto,
   ) {
-    return { data: await this.svc.addAttachment(u.companyId, id, u.id, dto), error: null };
+    return { data: await this.svc.addAttachment(u.companyId, pid, id, u.id, dto), error: null };
   }
 
   @Get(':id/attachments')
   @ApiOperation({ summary: 'List this RFI\'s attachments' })
-  async getAttachments(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
-    return { data: await this.svc.getAttachments(u.companyId, id), error: null };
+  async getAttachments(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.getAttachments(u.companyId, pid, id), error: null };
   }
 
   @Delete(':id/attachments/:attachmentId')
@@ -154,14 +155,15 @@ export class RfisController {
   @HttpCode(HttpStatus.OK)
   async deleteAttachment(
     @CurrentUser() u: AuthenticatedUser,
+    @Param('projectId') pid: string,
     @Param('id') id: string,
     @Param('attachmentId') attachmentId: string,
   ) {
-    return { data: await this.svc.deleteAttachment(u.companyId, id, attachmentId), error: null };
+    return { data: await this.svc.deleteAttachment(u.companyId, pid, id, attachmentId), error: null };
   }
 
   // ── Workflow ─────────────────────────────────────────────────────────────
-  // Deliberately NOT @RequireProjectPermission-gated -- the RFI's own
+  // Deliberately NOT @RequireProjectPermission-gated; the RFI's own
   // creator must be able to submit it even with no grant. Authorization
   // (creator OR manage_rfis OR project_lead OR super_admin) happens inside
   // RfisService.submit() itself, which the route-level guard can't express.
@@ -198,7 +200,7 @@ export class RfisController {
     return { data: await this.svc.respond(u.companyId, pid, id, u.id, dto), error: null };
   }
 
-  // Phase 2 RBAC: gated on manage_rfis OR the narrower approve_rfis -- the
+  // Phase 2 RBAC: gated on manage_rfis OR the narrower approve_rfis; the
   // PMC/client reviewer doing sign-off doesn't need the full manage_rfis
   // grant (which also lets its holder answer/close RFIs directly); either
   // permission is accepted so nothing already holding manage_rfis loses
@@ -211,7 +213,7 @@ export class RfisController {
     return { data: await this.svc.submitForReview(u.companyId, pid, id, u.id), error: null };
   }
 
-  // Same manage_rfis OR approve_rfis gate as submit-for-review above -- this
+  // Same manage_rfis OR approve_rfis gate as submit-for-review above; this
   // is the actual approve/reject decision of that same PMC/client review.
   @Post(':id/decide-review')
   @RequireCategoryAction('rfis', 'approve', 'manage_rfis', 'approve_rfis')
@@ -226,7 +228,7 @@ export class RfisController {
     return { data: await this.svc.decideReview(u.companyId, pid, id, u.id, dto), error: null };
   }
 
-  // 'close' action -- owner's RFI matrix row doesn't list an explicit action
+  // 'close' action; owner's RFI matrix row doesn't list an explicit action
   // for Document Control, but their own worked lifecycle example in the same
   // message ("Document Control logs and routes... Document Control closes
   // (X)") explicitly assigns this to them; see CATEGORY_PERMISSION_MATRIX's
@@ -245,7 +247,7 @@ export class RfisController {
   }
 
   // ── Drawing impact follow-up ─────────────────────────────────────────────
-  // Same gate as the general RFI field edits (@Patch(':id') above) -- see
+  // Same gate as the general RFI field edits (@Patch(':id') above); see
   // RfisService.markDrawingApplied()'s own comment for why this is a
   // records-update action rather than an RFI-workflow transition.
   @Post(':id/drawing-update/mark-applied')
@@ -280,7 +282,7 @@ export class RfisController {
     return { data: await this.svc.markDrawingNotSentToSite(u.companyId, pid, id, u.id), error: null };
   }
 
-  // manage_rfis, not manage_project_records -- see RfisService.remindDrawingUpdate()'s
+  // manage_rfis, not manage_project_records; see RfisService.remindDrawingUpdate()'s
   // own comment for why this gate diverges from the two routes above.
   @Post(':id/remind-drawing-update')
   @RequireProjectPermission('manage_rfis')
@@ -312,12 +314,12 @@ export class RfisController {
 
   @Get(':id/comments')
   @ApiOperation({ summary: "List this RFI's clarification comments" })
-  async getComments(@CurrentUser() u: AuthenticatedUser, @Param('id') id: string) {
-    return { data: await this.svc.getComments(u.companyId, id), error: null };
+  async getComments(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.getComments(u.companyId, pid, id), error: null };
   }
 
   // ── Notice Letters ───────────────────────────────────────────────────────
-  // Ungated read, same as :id/:id/pdf above -- company/project scoping via
+  // Ungated read, same as :id/:id/pdf above; company/project scoping via
   // the query itself is the only check.
   @Get(':id/letter')
   @ApiOperation({ summary: 'Get this RFI\'s notice letter draft, if any' })

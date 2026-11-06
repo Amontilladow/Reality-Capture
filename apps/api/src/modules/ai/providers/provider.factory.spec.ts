@@ -45,7 +45,7 @@ describe('ProviderFactory.resolve (RealityCapture\'s own provider, auto mode)', 
   it('onModuleInit does not throw when unconfigured -- the rest of the app must still boot', () => {
     const factory = new ProviderFactory(makeConfig({ 'ai.provider': 'auto' }));
     expect(() => factory.onModuleInit()).not.toThrow();
-    // Still fails closed, just lazily -- the first real AI request surfaces the error.
+    // Still fails closed, just lazily; the first real AI request surfaces the error.
     expect(() => factory.getProvider()).toThrow(/No AI provider configured/);
   });
 
@@ -66,6 +66,46 @@ describe('ProviderFactory.resolve (RealityCapture\'s own provider, auto mode)', 
   it('rejects an unknown AI_PROVIDER value', () => {
     const factory = new ProviderFactory(makeConfig({ 'ai.provider': 'not-a-real-provider' }));
     expect(() => factory.getProvider()).toThrow(/Unknown AI_PROVIDER/);
+  });
+
+  // A third-party OpenAI-compatible gateway, forced explicitly (never part
+  // of auto-detection, same as the BYO-only providers) since it needs both
+  // a key and a base URL, not just a key.
+  describe('AI_PROVIDER=custom_openai_compatible', () => {
+    it('builds a provider pointed at the configured gateway, not api.openai.com', () => {
+      const factory = new ProviderFactory(makeConfig({
+        'ai.provider': 'custom_openai_compatible',
+        'ai.customOpenAICompatible.apiKey': 'gateway-key',
+        'ai.customOpenAICompatible.baseUrl': 'https://api.example-gateway.com/v1',
+        'ai.customOpenAICompatible.model': 'gpt-6-luna',
+      }));
+      expect(factory.getProvider().getModelInfo()).toEqual({ provider: 'custom_openai_compatible', model: 'gpt-6-luna' });
+    });
+
+    it('fails closed when the API key is missing', () => {
+      const factory = new ProviderFactory(makeConfig({
+        'ai.provider': 'custom_openai_compatible',
+        'ai.customOpenAICompatible.baseUrl': 'https://api.example-gateway.com/v1',
+      }));
+      expect(() => factory.getProvider()).toThrow(/CUSTOM_OPENAI_API_KEY is not set/);
+    });
+
+    it('fails closed when the base URL is missing -- a key alone would silently hit api.openai.com instead', () => {
+      const factory = new ProviderFactory(makeConfig({
+        'ai.provider': 'custom_openai_compatible',
+        'ai.customOpenAICompatible.apiKey': 'gateway-key',
+      }));
+      expect(() => factory.getProvider()).toThrow(/CUSTOM_OPENAI_BASE_URL is not set/);
+    });
+
+    it('is never selected by auto-detection, only by an explicit AI_PROVIDER', () => {
+      const factory = new ProviderFactory(makeConfig({
+        'ai.provider': 'auto',
+        'ai.customOpenAICompatible.apiKey': 'gateway-key',
+        'ai.customOpenAICompatible.baseUrl': 'https://api.example-gateway.com/v1',
+      }));
+      expect(() => factory.getProvider()).toThrow(/No AI provider configured/);
+    });
   });
 
   it('caches the resolved provider -- resolve only runs once', () => {
@@ -103,7 +143,7 @@ describe('ProviderFactory.buildFromCredentials (BYO AI, Mode B)', () => {
 // demand" error in production (the third Gemini model tier to do so in one
 // day). RealityCapture's own Gemini provider now retries against
 // ai.gemini.fallbackModels before failing; a BYO user's own Gemini
-// connection deliberately does not get this -- they configured one
+// connection deliberately does not get this; they configured one
 // specific model and should get exactly that, or a clear failure.
 describe('ProviderFactory.buildGemini -- model fallback wiring', () => {
   beforeEach(() => {

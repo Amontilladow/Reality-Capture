@@ -10,7 +10,7 @@ import type {
 export class GeminiProvider implements AIProvider {
   private readonly logger = new Logger(GeminiProvider.name);
   private readonly client: GoogleGenerativeAI;
-  // [primary, ...fallbacks], deduped -- see ai.config.ts's fallbackModels
+  // [primary, ...fallbacks], deduped; see ai.config.ts's fallbackModels
   // comment for why this exists (gemini-3.5-flash-lite itself hit a 503
   // "experiencing high demand" in production, the third model tier to do so
   // in one day).
@@ -23,8 +23,8 @@ export class GeminiProvider implements AIProvider {
 
   // "Experiencing high demand" / overloaded / a transient 5xx is worth
   // retrying against a different model (a different one is very likely a
-  // different capacity pool). Anything else -- a bad API key, a malformed
-  // request, a genuinely retired/unknown model name -- would fail on every
+  // different capacity pool). Anything else (a bad API key, a malformed
+  // request, a retired/unknown model name) would fail on every
   // model in the chain identically, so there's no point burning the extra
   // round trips; fail immediately instead.
   private isRetriableError(err: unknown): boolean {
@@ -34,9 +34,9 @@ export class GeminiProvider implements AIProvider {
 
   // Tries each model in modelChain, in order, until one succeeds. Only
   // advances to the next model on a retriable error (see
-  // isRetriableError) -- any other error is rethrown immediately. If every
+  // isRetriableError): any other error is rethrown immediately. If every
   // model in the chain fails, rethrows the last error, same as a single-
-  // model call would have -- callers (AiService) don't need to know
+  // model call would have; callers (AiService) don't need to know
   // fallback happened at all, only whether it ultimately worked.
   private async withModelFallback<T>(attempt: (modelName: string) => Promise<T>): Promise<T> {
     let lastErr: unknown;
@@ -61,7 +61,7 @@ export class GeminiProvider implements AIProvider {
       const model = this.client.getGenerativeModel({ model: modelName, systemInstruction: systemPrompt });
       // Gemini's chat history excludes the final turn (it's the prompt
       // passed to sendMessage), and requires the history to start with a
-      // 'user' turn -- true here since the domain guard only ever lets a
+      // 'user' turn; true here since the domain guard only ever lets a
       // user-initiated question through.
       const history = messages.slice(0, -1).map((m) => ({
         role: m.role === 'assistant' ? 'model' : 'user',

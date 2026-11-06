@@ -61,13 +61,13 @@ while (queue.length) {
 console.log(`Closure of target entity: ${closure.size} entities.`);
 
 // Pull in a minimal, single-chain spatial hierarchy so this opens as a
-// well-formed project, not a floating product -- deliberately walking only
+// well-formed project, not a floating product; deliberately walking only
 // direct parents (not sibling related-objects lists), to keep the MRE tiny.
 //
-// IfcRelContainedInSpatialStructure: (guid,hist,name,desc,RelatedElements,RelatingStructure)
-// -- RelatingStructure is the single trailing reference.
-// IfcRelAggregates: (guid,hist,name,desc,RelatingObject,RelatedObjects)
-// -- RelatingObject is the single reference immediately before the list.
+// IfcRelContainedInSpatialStructure: (guid,hist,name,desc,RelatedElements,RelatingStructure);
+// RelatingStructure is the single trailing reference.
+// IfcRelAggregates: (guid,hist,name,desc,RelatingObject,RelatedObjects);
+// RelatingObject is the single reference immediately before the list.
 function addEntity(id) {
   if (closure.has(id)) return;
   const line = entityById.get(id);
@@ -109,7 +109,7 @@ while (current !== null) {
   current = parentId;
 }
 
-// Also make sure IFCPROJECT itself (and anything it directly references --
+// Also make sure IFCPROJECT itself (and anything it directly references;
 // units, representation contexts) is included even if the aggregation walk
 // above didn't reach it for some reason.
 for (const [id, line] of entityById) {

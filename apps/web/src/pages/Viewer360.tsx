@@ -7,6 +7,7 @@ import { getViewerData, getCapture } from '../lib/captures.api';
 import { getHierarchy } from '../lib/projects.api';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
+import { Listbox } from '../components/ui/Listbox';
 
 export default function Viewer360() {
   const { projectId, locationId } = useParams<{ projectId: string; locationId: string }>();
@@ -48,7 +49,7 @@ export default function Viewer360() {
     return null;
   }, [hierarchyQuery.data, locationId]);
 
-  useDocumentTitle(active?.title ? `360° Viewer — ${active.title}` : undefined);
+  useDocumentTitle(active?.title ? `360° Viewer: ${active.title}` : undefined);
 
   function handleHotspotClick(h: Hotspot) {
     if (h.hotspotType === 'navigation' && h.targetCaptureId) {
@@ -56,7 +57,7 @@ export default function Viewer360() {
       if (target) {
         setActiveCaptureId(target.id);
       } else {
-        // Target capture lives at a different location — fetch it to resolve where.
+        // Target capture lives at a different location; fetch it to resolve where.
         getCapture(projectId!, h.targetCaptureId).then((c) => {
           if (c.locationId) navigate(`/projects/${projectId}/viewer/${c.locationId}`);
         });
@@ -69,8 +70,8 @@ export default function Viewer360() {
   return (
     <div className="h-screen flex flex-col">
       <div className="h-14 border-b border-base-600 bg-base-900/80 backdrop-blur px-4 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <button onClick={() => navigate(`/projects/${projectId}`)} className="text-ink-500 hover:text-ink-100 shrink-0">
+        <div className="flex items-center gap-4 min-w-0">
+          <button onClick={() => navigate(`/projects/${projectId}`)} aria-label="Back to project" className="text-ink-500 hover:text-ink-100 shrink-0">
             <BackIcon />
           </button>
           <div className="min-w-0">
@@ -81,7 +82,7 @@ export default function Viewer360() {
 
         <div className="flex items-center gap-2 shrink-0">
           {captures.length > 1 && (
-            <select
+            <Listbox aria-label="Capture"
               className="field-input w-auto text-xs"
               value={active?.id ?? ''}
               onChange={(e) => setActiveCaptureId(e.target.value)}
@@ -91,7 +92,7 @@ export default function Viewer360() {
                   {c.title ?? new Date(c.capturedAt).toLocaleDateString()}
                 </option>
               ))}
-            </select>
+            </Listbox>
           )}
           <ThemeToggle />
         </div>
@@ -118,7 +119,7 @@ export default function Viewer360() {
 
 function BackIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M19 12H5M11 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );

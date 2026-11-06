@@ -14,7 +14,7 @@ export class RegisterSiteDrawingRevisionDto {
   @IsString() @IsNotEmpty()
   storageKey!: string;
 
-  // Defaults true server-side when omitted -- see
+  // Defaults true server-side when omitted; see
   // SiteDrawingsService.addRevision()'s own comment on why false must be
   // explicit rather than implied by a missing field.
   @IsOptional() @IsBoolean()

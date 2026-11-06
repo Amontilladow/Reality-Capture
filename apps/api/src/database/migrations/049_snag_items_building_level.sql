@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Migration 049 — Snag Items Building/Level
+-- Migration 049: Snag Items Building/Level
 --
 -- Snag items today only carry a free-text `location` string and, since
 -- migration 031, an optional `location_id` FK back to a pin/room. Neither

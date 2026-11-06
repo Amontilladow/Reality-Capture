@@ -55,7 +55,7 @@ export class SchedulingController {
   }
 
   // Declared after 'me' so the literal route keeps matching
-  // /workforce/scheduling/shifts/me -- same ordering reason as
+  // /workforce/scheduling/shifts/me; same ordering reason as
   // ActivitiesController.
   @Get('shifts/:userId')
   @ApiOperation({ summary: 'Get another user\'s assigned shifts (manager/leadership visibility only)' })

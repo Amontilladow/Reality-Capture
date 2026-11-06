@@ -17,12 +17,12 @@ const jobId = 'job-1';
 const jobRow = { id: jobId, sourceFilename: 'A-F1.dxf', sourceStorageKey: 'company-1/gis-prep/project-1/x.dxf', settings: { profile: 'bdms_building' } };
 const report = { source: { sha256_before: 'abc' }, status: { counts: { ERROR: 0, WARNING: 2, INFO: 1, unresolved_layers: 1, open_fix_proposals: 0 } } };
 
-function makeProcessor() {
+function makeProcessor(row: Record<string, unknown> = jobRow) {
   const statements: { text: string; values: unknown[] }[] = [];
   const sql = withJson((strings: unknown, ...values: unknown[]) => {
     const text = (strings as string[]).join('?');
     statements.push({ text, values });
-    return Promise.resolve(text.includes('RETURNING') ? [jobRow] : []);
+    return Promise.resolve(text.includes('RETURNING') ? [row] : []);
   });
   const db = { withTenant: jest.fn((_c: string, cb: WithTenantCallback) => cb(sql)) } as unknown as DatabaseService;
   const storage = {
@@ -44,6 +44,20 @@ async function packageZip() {
 describe('GisPrepProcessor', () => {
   const realFetch = global.fetch;
   afterEach(() => { global.fetch = realFetch; jest.clearAllMocks(); });
+
+  it('sends the settings exactly as stored, not the camelCased copy the db client returns', async () => {
+    // ADM QC trial 02: postgres.camel turned zone_name into zoneName etc. and the engine dropped every value.
+    const stored = { mode: 'convert', profile: 'bdms_building', metadata: { zone_name: 'KHALIFA CITY', floor_id: 'F1' },
+                     single_unit_number: '1', title_values: { DeveloperName: 'M4' }, feature_decisions: { UNIT_1: { action: 'accept' } } };
+    const camel = { mode: 'convert', profile: 'bdms_building', metadata: { zoneName: 'KHALIFA CITY', floorId: 'F1' }, singleUnitNumber: '1' };
+    global.fetch = jest.fn().mockResolvedValue(new Response(await packageZip(), { status: 200 })) as never;
+    const { processor } = makeProcessor({ ...jobRow, settings: camel, settingsText: JSON.stringify(stored) });
+
+    await processor.handle({ data: { jobId, companyId, projectId } } as never);
+
+    const form = (global.fetch as jest.Mock).mock.calls[0][1].body as FormData;
+    expect(JSON.parse(form.get('settings') as string)).toEqual(stored);
+  });
 
   it('stores the returned package under the job prefix and records the tool status', async () => {
     const body = await packageZip();

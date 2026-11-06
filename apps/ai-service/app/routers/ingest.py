@@ -8,11 +8,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Every optional field here MUST be Optional[str] (or Optional[list]), not a
-# bare `str = None` -- Pydantic v2 validates the declared type even when the
+# bare `str = None`: Pydantic v2 validates the declared type even when the
 # default is None, so a bare `str` field rejects an explicit null with a 422.
 # Confirmed by hand: apps/api's AiClientService always sends these fields as
 # `value ?? null` (never omits the key), so this bug fired on essentially
-# every real capture/issue that had any optional field left blank -- silently,
+# every real capture/issue that had any optional field left blank; silently,
 # since ingestion calls are fire-and-forget and only logged as a warning.
 class IngestCaptureReq(BaseModel):
     id: str; company_id: str; project_id: str

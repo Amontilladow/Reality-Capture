@@ -1,4 +1,4 @@
--- QA/QC inspections -- a formal quality check against a scope of work
+-- QA/QC inspections: a formal quality check against a scope of work
 -- (a checklist + findings), distinct from Issues (a specific defect) and
 -- Submittals (contractor data awaiting review): an inspection records
 -- whether a scope of work passes quality standards, not a question or a

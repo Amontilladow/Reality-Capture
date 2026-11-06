@@ -1,4 +1,4 @@
-// BuildLens-specific helpers. Deliberately thin -- everything here is a
+// BuildLens-specific helpers. Deliberately thin; everything here is a
 // thin composition of listCaptures()/getViewerData()/getCapture() from
 // captures.api.ts, no new backend endpoints. See BuildLensPage.tsx and
 // BuildLensTimelinePage.tsx for how these are used.
@@ -10,18 +10,18 @@ import { listCaptures } from './captures.api';
  * across however many pages the API returns them in.
  *
  * There is intentionally no backend "locations summary" endpoint for
- * BuildLens's landing page -- listCaptures() already returns everything a
+ * BuildLens's landing page; listCaptures() already returns everything a
  * per-location grouping needs (locationId/locationName/buildingName/
  * levelName/capturedAt on each row), so we group client-side instead of
  * adding a new API surface. listCaptures() caps `perPage` at 100 server-side
  * (see captures.service.ts's findAll()), so a project with more than 100
- * matching captures needs more than one request -- this loops pages until
+ * matching captures needs more than one request; this loops pages until
  * `meta.totalPages` is exhausted. This is a deliberate, if slightly
  * inefficient, choice: a real project's capture count is expected to stay
  * in the hundreds at most, so a handful of sequential requests here is an
  * acceptable trade against introducing a new backend aggregation route.
  *
- * `captureType` omitted (undefined) fetches every capture type -- BuildLens
+ * `captureType` omitted (undefined) fetches every capture type; BuildLens
  * now shows a location's full media timeline (360s, standard photos, and
  * videos together), not just 360s.
  */

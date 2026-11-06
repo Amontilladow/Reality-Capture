@@ -9,6 +9,7 @@ import { getProject, getMembers } from '../lib/projects.api';
 import {
   QA_STATUSES, QA_STATUS_LABELS, QA_STATUS_BADGE_CLASS, formatDate,
 } from '../lib/qa-constants';
+import { Listbox } from '../components/ui/Listbox';
 
 export default function QaInspectionsPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -60,22 +61,19 @@ export default function QaInspectionsPage() {
       />
 
       <div className="p-6 space-y-4">
-        <div className="flex items-center gap-3 flex-wrap">
-          <select className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
+        <div className="flex items-center gap-4 flex-wrap">
+          <Listbox aria-label="Status" className="field-input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">All statuses</option>
             {QA_STATUSES.map((s) => (
               <option key={s} value={s}>{QA_STATUS_LABELS[s]}</option>
             ))}
-          </select>
+          </Listbox>
 
           {summaryQuery.data && (
-            <div className="flex gap-2 text-[10px] font-mono text-ink-500 ml-auto">
+            <div className="flex gap-4 text-xs tabular-nums text-ink-500 ml-auto">
               <span>{summaryQuery.data.total} total</span>
-              <span>·</span>
               <span>{summaryQuery.data.pending} pending</span>
-              <span>·</span>
               <span>{summaryQuery.data.passed} passed</span>
-              <span>·</span>
               <span className={summaryQuery.data.failed > 0 ? 'text-danger' : ''}>{summaryQuery.data.failed} failed</span>
             </div>
           )}
@@ -90,17 +88,17 @@ export default function QaInspectionsPage() {
         )}
 
         {(inspectionsQuery.data?.data.length ?? 0) > 0 && (
-          <div className="panel tick-frame overflow-x-auto">
+          <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-ink-500 border-b border-base-600">
-                  <th className="px-4 py-2.5 font-medium">Number</th>
-                  <th className="px-4 py-2.5 font-medium">Title</th>
-                  <th className="px-4 py-2.5 font-medium">Type</th>
-                  <th className="px-4 py-2.5 font-medium">Location</th>
-                  <th className="px-4 py-2.5 font-medium">Status</th>
-                  <th className="px-4 py-2.5 font-medium">Inspector</th>
-                  <th className="px-4 py-2.5 font-medium">Date</th>
+                  <th className="px-4 py-2 font-medium">Number</th>
+                  <th className="px-4 py-2 font-medium">Title</th>
+                  <th className="px-4 py-2 font-medium">Type</th>
+                  <th className="px-4 py-2 font-medium">Location</th>
+                  <th className="px-4 py-2 font-medium">Status</th>
+                  <th className="px-4 py-2 font-medium">Inspector</th>
+                  <th className="px-4 py-2 font-medium">Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -108,15 +106,15 @@ export default function QaInspectionsPage() {
                   <tr
                     key={i.id}
                     onClick={() => setSelectedId(i.id)}
-                    className="border-b border-base-700/60 last:border-0 hover:bg-base-800/40 cursor-pointer"
+                    className="border-b border-base-700/60 last:border-0 hover:bg-base-700 cursor-pointer"
                   >
-                    <td className="px-4 py-2.5 font-mono text-xs text-ink-500">{i.inspectionNumber ?? '—'}</td>
-                    <td className="px-4 py-2.5">{i.title}</td>
-                    <td className="px-4 py-2.5 text-ink-300">{i.inspectionType ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-ink-300">{i.location ?? '—'}</td>
-                    <td className="px-4 py-2.5"><span className={`badge ${QA_STATUS_BADGE_CLASS[i.status]}`}>{QA_STATUS_LABELS[i.status]}</span></td>
-                    <td className="px-4 py-2.5 text-ink-300">{i.assignedToName ?? 'Unassigned'}</td>
-                    <td className="px-4 py-2.5 text-ink-300">{formatDate(i.inspectionDate)}</td>
+                    <td className="px-4 py-2 font-mono text-xs text-ink-500">{i.inspectionNumber ?? '—'}</td>
+                    <td className="px-4 py-2">{i.title}</td>
+                    <td className="px-4 py-2 text-ink-300">{i.inspectionType ?? '—'}</td>
+                    <td className="px-4 py-2 text-ink-300">{i.location ?? '—'}</td>
+                    <td className="px-4 py-2"><span className={`badge ${QA_STATUS_BADGE_CLASS[i.status]}`}>{QA_STATUS_LABELS[i.status]}</span></td>
+                    <td className="px-4 py-2 text-ink-300">{i.assignedToName ?? 'Unassigned'}</td>
+                    <td className="px-4 py-2 text-ink-300">{formatDate(i.inspectionDate)}</td>
                   </tr>
                 ))}
               </tbody>

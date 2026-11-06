@@ -2,7 +2,7 @@ import type { CompanyRole, ProjectRole } from '@engineeringos/types';
 
 // Phase 4: Help Centre content model. Deliberately static, versioned
 // TypeScript data (reviewed through the normal PR process) rather than a
-// new database table + admin-authoring API -- see docs/phase4-help-centre.md
+// new database table + admin-authoring API; see docs/phase4-help-centre.md
 // Phase 4I's "Administrative capabilities" section for why, and what the
 // recommended next phase looks like if non-engineers need to self-edit
 // content later. This keeps the brief's own fallback ("implement the
@@ -12,7 +12,7 @@ import type { CompanyRole, ProjectRole } from '@engineeringos/types';
 // editing that the brief explicitly warns against.
 //
 // Every field below is optional except the five that make an entry
-// findable and openable (slug/category/title/summary/kind) -- per the
+// findable and openable (slug/category/title/summary/kind): per the
 // brief's own rule ("where a field... is not supported by the actual
 // implementation, omit it"), an article for a feature with no
 // attachments, no notification, or no review step just leaves those
@@ -54,8 +54,8 @@ export const HELP_CATEGORY_LABELS: Record<HelpCategoryKey, string> = {
 
 // Which roles a guide is written for. Omitted entirely = relevant to
 // everyone regardless of role (most "how do I use this feature"
-// articles). Only role-specific guides (Phase 4E) set this -- it never
-// hides a feature a role genuinely can't use, it only lets the Help
+// articles). Only role-specific guides (Phase 4E) set this; it never
+// hides a feature a role can't use, it only lets the Help
 // Centre's "For your role" view surface the subset most relevant to a
 // given role without duplicating content per role.
 export interface HelpArticleRoles {
@@ -100,7 +100,7 @@ export interface HelpArticle {
   keywords?: string[];
   roles?: HelpArticleRoles;
 
-  // Explicitly marks a described capability that does not exist yet --
+  // Explicitly marks a described capability that does not exist yet;
   // rendered as a visible "Not Yet Available" notice rather than silently
   // included as if operational (brief: "label it clearly... or keep it
   // out of the published Help Centre"). Used sparingly, only where the

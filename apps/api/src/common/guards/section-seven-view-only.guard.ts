@@ -6,20 +6,20 @@ import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 // Owner's org-category RBAC sprint, matrix section 7: Chairman/General
 // Manager/Operations Manager get View-only access to the Risk Register,
 // Reports, Snagging (reads), BuildLens/BuildLens Captures, and the AI
-// Assistant -- Engineering Manager keeps full access (no gating needed:
+// Assistant; Engineering Manager keeps full access (no gating needed:
 // nothing in this guard ever restricts it), and every other category's
 // existing, unchanged behavior on these modules (today: open to any
-// authenticated project member -- see each controller's own "deliberately
+// authenticated project member; see each controller's own "deliberately
 // ungated" comments, an audited, deliberate choice per risk.controller.ts)
 // is untouched. Deliberately NOT named/exported from
-// SECTION_7_VIEW_ONLY_COMPANY_ROLES's own OrgCategory ('management') --
+// SECTION_7_VIEW_ONLY_COMPANY_ROLES's own OrgCategory ('management');
 // company_admin/technical_director/commercial_manager/consultant, though
 // also 'management' category, keep their existing unrestricted access to
 // this module set; only these 3 specific titles are named by the owner's
 // own matrix.
 //
 // AI Assistant (ai.controller.ts's `ask`) is deliberately NOT gated here
-// despite being POST -- it's a question/query action with nothing to
+// despite being POST; it's a question/query action with nothing to
 // "view" vs. "do" (no project data is created/edited by asking it a
 // question), so a View-only restriction has no meaningful write to block;
 // gating it would just deny these 3 roles AI Assistant use entirely, which
@@ -42,7 +42,7 @@ export class SectionSevenViewOnlyGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-    if (!user) return true; // no authenticated user -- not this guard's concern
+    if (!user) return true; // no authenticated user: not this guard's concern
 
     if (!WRITE_METHODS.has(request.method)) return true; // reads are never restricted here
 

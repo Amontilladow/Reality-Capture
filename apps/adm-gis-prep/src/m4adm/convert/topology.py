@@ -27,8 +27,40 @@ def _rooms(feats: list[Feature]) -> list[Feature]:
     return [f for f in feats if f.layer == "Space" and f.exported]
 
 
+def _extend_to(poly: Polygon, ring, max_extend: float) -> Polygon | None:
+    """Move the two vertices of a rectangle's edge nearest `ring` straight onto `ring` (perpendicular to that edge).
+    None when the rectangle is not a 4-gon, the edge does not face the ring, or the ring is out of reach."""
+    gap = poly.distance(ring)
+    c = list(poly.exterior.coords)[:-1]
+    if len(c) != 4:
+        return None
+    order = sorted(range(4), key=lambda i: ring.distance(Point(c[i])))
+    i, j = sorted(order[:2])
+    if (j - i) % 4 not in (1, 3):
+        return None
+    ex, ey = c[j][0] - c[i][0], c[j][1] - c[i][1]
+    el = math.hypot(ex, ey)
+    nx, ny = -ey / el, ex / el
+    mid = ((c[i][0] + c[j][0]) / 2, (c[i][1] + c[j][1]) / 2)
+    if ring.distance(Point(mid[0] + nx * gap, mid[1] + ny * gap)) > ring.distance(Point(mid[0] - nx * gap, mid[1] - ny * gap)):
+        nx, ny = -nx, -ny
+    new = list(c)
+    for k in (i, j):
+        ray = LineString([c[k], (c[k][0] + nx * (max_extend + 0.05), c[k][1] + ny * (max_extend + 0.05))])
+        hit = ray.intersection(ring)
+        if hit.is_empty:
+            return None
+        p = nearest_points(Point(c[k]), hit)[1]
+        new[k] = (p.x, p.y)
+    out = Polygon(new)
+    return out if out.is_valid and out.area > 0 else None
+
+
 def extend_windows(feats: list[Feature], max_extend: float = 0.6) -> int:
+    """A window spans the wall: from its room's face to the floor outline (DRM review: a window must be adjacent
+    to two spaces or to one space and the floor outline)."""
     rooms = _rooms(feats)
+    floor = next((f for f in feats if f.layer == "Floor" and f.exported), None)
     done = 0
     for f in feats:
         if f.layer != "Window" or not f.exported:
@@ -38,40 +70,27 @@ def extend_windows(feats: list[Feature], max_extend: float = 0.6) -> int:
             f.reasons.append(f"no room boundary within {max_extend} m: the window touches no space - review")
             continue
         room = min(near, key=lambda r: r.poly.distance(f.poly))
+        changed = False
         gap = room.poly.distance(f.poly)
-        if gap < 1e-6:
-            continue
-        c = list(f.poly.exterior.coords)[:4]
-        # the two vertices nearest the room form the room-side edge
-        order = sorted(range(4), key=lambda i: room.poly.exterior.distance(Point(c[i])))
-        i, j = sorted(order[:2])
-        if (j - i) % 4 not in (1, 3):
-            continue
-        ex, ey = c[j][0] - c[i][0], c[j][1] - c[i][1]
-        el = math.hypot(ex, ey)
-        nx, ny = -ey / el, ex / el
-        mid = ((c[i][0] + c[j][0]) / 2, (c[i][1] + c[j][1]) / 2)
-        if room.poly.exterior.distance(Point(mid[0] + nx * gap, mid[1] + ny * gap)) > \
-                room.poly.exterior.distance(Point(mid[0] - nx * gap, mid[1] - ny * gap)):
-            nx, ny = -nx, -ny
-        new = list(c)
-        ok = True
-        for k in (i, j):
-            ray = LineString([c[k], (c[k][0] + nx * (max_extend + 0.05), c[k][1] + ny * (max_extend + 0.05))])
-            hit = ray.intersection(room.poly.exterior)
-            if hit.is_empty:
-                ok = False
-                break
-            p = nearest_points(Point(c[k]), hit)[1]
-            new[k] = (p.x, p.y)
-        if not ok:
-            f.reasons.append("room-side edge could not be extended to the room boundary - review")
-            continue
-        poly = Polygon(new)
-        if poly.is_valid and poly.area > 0:
+        if gap >= 1e-6:
+            poly = _extend_to(f.poly, room.poly.exterior, max_extend)
+            if poly is None:
+                f.reasons.append("room-side edge could not be extended to the room boundary - review")
+                continue
             f.poly = poly
             f.reasons.append(f"extended {gap:.3f} m to the boundary of {room.id} so it touches the space")
-            done += 1
+            changed = True
+        if floor is not None:
+            out_gap = floor.poly.exterior.distance(f.poly)
+            if 1e-6 <= out_gap <= max_extend and len([r for r in rooms if r.poly.distance(f.poly) < 1e-6]) < 2:
+                poly = _extend_to(f.poly, floor.poly.exterior, max_extend)
+                if poly is not None and not any(poly.intersection(r.poly).area > 1e-6 for r in rooms):
+                    f.poly = poly
+                    f.reasons.append(f"extended {out_gap:.3f} m to the floor outline so it spans the wall")
+                    changed = True
+                elif poly is None:
+                    f.reasons.append("outer edge could not be extended to the floor outline - review")
+        done += changed
     return done
 
 
@@ -187,6 +206,14 @@ def node(feats: list[Feature], tol: float = 1e-4) -> int:
         if len(out) >= 3 and (poly := Polygon(out)).is_valid:
             f.poly = poly
     return added
+
+
+def copy_outline_to_roof(feats: list[Feature]) -> None:
+    """The BuildingRoof repeats the BuildingOutline exactly, including vertices inserted by noding."""
+    outline = next((f for f in feats if f.layer == "BuildingOutline" and f.exported), None)
+    for f in feats:
+        if f.layer == "BuildingRoof" and f.exported and outline is not None:
+            f.poly = outline.poly
 
 
 def clip_openings(feats: list[Feature]) -> int:

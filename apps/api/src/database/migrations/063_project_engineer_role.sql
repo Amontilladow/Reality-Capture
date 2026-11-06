@@ -1,14 +1,14 @@
 -- CTO spec: adds a new restricted, site-facing company role.
 --
 -- Standalone migration, deliberately not combined with anything that
--- references the new value -- Postgres forbids using a newly-added enum
+-- references the new value; Postgres forbids using a newly-added enum
 -- value in the same transaction that adds it (ALTER TYPE ... ADD VALUE
 -- commits its own implicit transaction boundary). Same pattern already
 -- used by 028_rfi_workflow.sql, 058_rfi_approve_permission.sql,
 -- 059_snag_verify_permission.sql for other enums.
 --
 -- 'construction_manager' already exists in this enum (since 001) as a
--- normal, unrestricted company role -- it is being deliberately redefined
+-- normal, unrestricted company role; it is being deliberately redefined
 -- (restricted) in application code as part of this same change, not
 -- renamed here, per explicit product decision. No enum change needed for
 -- it. 'site_engineer' is NOT added here either: the restricted "Site

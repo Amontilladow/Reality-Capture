@@ -5,7 +5,7 @@ import { firstValueFrom } from 'rxjs';
 
 export interface GoogleTokens {
   accessToken: string;
-  refreshToken?: string; // absent on a refresh response -- Google only issues a new refresh token on the initial grant
+  refreshToken?: string; // absent on a refresh response: Google only issues a new refresh token on the initial grant
   expiresAt: string;
 }
 
@@ -16,12 +16,12 @@ export interface CalendarEventSummary {
   endTime: string;
 }
 
-// Thin wrapper over Google's OAuth token endpoint and Calendar API v3 --
+// Thin wrapper over Google's OAuth token endpoint and Calendar API v3;
 // deliberately no `googleapis` SDK dependency, same "raw HTTP client over a
 // heavy vendor SDK" preference this codebase already applies elsewhere
 // (the desktop agent's api-client.ts, apps/browser-extension). Not
 // unit-tested: this is network glue talking to a live third-party API this
-// sandbox has no real credentials or network access to verify against --
+// sandbox has no real credentials or network access to verify against;
 // see calendar-integration.service.ts's own tests for what actually is
 // covered (the DB-facing logic, with this client mocked).
 @Injectable()
@@ -38,7 +38,7 @@ export class GoogleCalendarClient {
       client_id: clientId ?? '',
       redirect_uri: redirectUri ?? '',
       response_type: 'code',
-      // Read-only -- this integration only ever reads events, never
+      // Read-only: this integration only ever reads events, never
       // creates/modifies/deletes anything on the user's calendar.
       scope: 'https://www.googleapis.com/auth/calendar.readonly',
       access_type: 'offline', // required to receive a refresh_token
@@ -88,7 +88,7 @@ export class GoogleCalendarClient {
 
     const items = (res.data.items ?? []) as Array<{ id: string; summary?: string; start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string } }>;
     return items
-      .filter((item) => item.start?.dateTime && item.end?.dateTime) // skip all-day events -- they have `date`, not `dateTime`, and no meaningful start/end time to track
+      .filter((item) => item.start?.dateTime && item.end?.dateTime) // skip all-day events: they have `date`, not `dateTime`, and no meaningful start/end time to track
       .map((item) => ({
         id: item.id,
         title: item.summary ?? '(No title)',

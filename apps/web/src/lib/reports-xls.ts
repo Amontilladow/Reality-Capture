@@ -4,7 +4,7 @@ import { SNAG_STATUS_LABELS, SNAG_PRIORITY_LABELS, formatDate } from './snagging
 import type { ReportKpis } from './reports.api';
 
 // Mirrors rfi-xls.ts's palette/helper conventions exactly (same "Blueprint-
-// dark technical palette" ARGB constants, same sectionRow/fieldRow shape) --
+// dark technical palette" ARGB constants, same sectionRow/fieldRow shape);
 // deliberately without that file's image-embedding machinery (addPixelImage,
 // fetchExportAssets), since a Reports export has no per-row images, just two
 // sheets of breakdown counts + open-item tables.
@@ -93,10 +93,10 @@ function buildIssuesSheet(workbook: ExcelJS.Workbook, kpis: ReportKpis) {
   breakdownTable(sheet, 'BY PRIORITY', kpis.issues.byPriority, priorityLabel);
   breakdownTable(sheet, 'BY DISCIPLINE', kpis.issues.byDiscipline, disciplineLabel);
 
-  // Open issues list — wider sheet section, 7 columns.
+  // Open issues list: wider sheet section, 7 columns.
   sectionRow(sheet, 'OPEN ISSUES', 2);
   const listColumns = ['Number', 'Title', 'Status', 'Priority', 'Discipline', 'Deadline', 'Assigned To'];
-  // Re-declare the columns for this wider table -- exceljs columns are
+  // Re-declare the columns for this wider table; exceljs columns are
   // sheet-wide, so widen the sheet to fit this section (matches rfi-xls.ts's
   // approach of one fixed set of column widths sized for the widest section).
   sheet.getColumn(1).width = 14;

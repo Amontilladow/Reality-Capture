@@ -78,6 +78,7 @@ class ConversionSettings(BaseModel):
     # Floor-level facts the drawing cannot provide. Left empty -> reported as missing, never guessed.
     floor_height: str = ""
     building_number_of_floors: str = ""
+    building_height: str = ""            # BuildingRoofDetail.BuildingHeight (m)
     building_usage_category: str = ""
     building_usage_type: str = ""
     # When the engineer declares the whole floor is one unit, a Unit feature is drawn on the floor outline

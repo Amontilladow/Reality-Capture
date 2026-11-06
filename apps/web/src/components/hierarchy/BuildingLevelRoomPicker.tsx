@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ProjectHierarchy } from '../../lib/projects.api';
 import { createBuilding, createLevel, createLocation } from '../../lib/projects.api';
 import { apiErrorMessage } from '../../lib/api';
+import { Listbox } from '../ui/Listbox';
 
 export interface HierarchySelection {
   buildingId: string;
@@ -56,7 +57,7 @@ export function BuildingLevelRoomPicker({
   });
 
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-3 gap-4">
       <PickOrCreate
         label="Building"
         placeholder="Unassigned"
@@ -128,7 +129,7 @@ function PickOrCreate({
     <div>
       <label className="field-label">{label}</label>
       {adding ? (
-        <div className="flex gap-1.5">
+        <div className="flex gap-2">
           <input
             autoFocus
             className="field-input"
@@ -137,14 +138,14 @@ function PickOrCreate({
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') setAdding(false); }}
           />
-          <button type="button" onClick={submit} disabled={!name.trim() || creating} className="btn-primary !px-2.5 shrink-0">
+          <button type="button" onClick={submit} disabled={!name.trim() || creating} className="btn-primary !px-2 shrink-0">
             {creating ? '…' : 'Add'}
           </button>
           <button type="button" onClick={() => setAdding(false)} className="btn-ghost !px-2 shrink-0">✕</button>
         </div>
       ) : (
-        <div className="flex gap-1.5">
-          <select
+        <div className="flex gap-2">
+          <Listbox aria-label="Room"
             className="field-input"
             disabled={disabled}
             value={value}
@@ -154,12 +155,12 @@ function PickOrCreate({
             {options.map((o) => (
               <option key={o.id} value={o.id}>{o.name}</option>
             ))}
-          </select>
+          </Listbox>
           <button
             type="button"
             onClick={() => setAdding(true)}
             disabled={disabled}
-            className="btn-secondary !px-2.5 shrink-0"
+            className="btn-secondary !px-2 shrink-0"
             title={`New ${label.toLowerCase()}`}
             aria-label={`New ${label.toLowerCase()}`}
           >

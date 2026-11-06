@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { RfiExternalAccessService } from './rfi-external-access.service';
 import { GenerateExternalAccessDto } from './dto/generate-external-access.dto';
 import { RespondToRfiDto } from './dto/respond-to-rfi.dto';
@@ -12,7 +13,7 @@ import type { AuthenticatedUser } from '@engineeringos/types';
 
 // ── Internal, authenticated side ──────────────────────────────────────────
 // Nested under the same projects/:projectId/rfis/:id prefix RfisController
-// uses, gated the same way as respond/close/reopen -- generating a link
+// uses, gated the same way as respond/close/reopen; generating a link
 // that can answer or close an RFI is exactly that sensitive.
 @ApiTags('rfis')
 @ApiBearerAuth()
@@ -56,11 +57,13 @@ export class RfiExternalAccessController {
 // ── Public, unauthenticated side ──────────────────────────────────────────
 // Prefixed distinctly (public/rfis/external/:token/...) from every
 // @RequireProjectPermission-guarded RFI route above so there's no risk of a
-// routing collision. Every route here is @Public() -- see JwtAuthGuard,
+// routing collision. Every route here is @Public(); see JwtAuthGuard,
 // which skips the bearer-token check entirely for these. The token itself
 // is the only credential; there is no request.user on any of these routes.
 @ApiTags('rfis')
 @Controller('public/rfis/external/:token')
+// Token-only, unauthenticated: tighter than the 100/min default.
+@Throttle({ default: { limit: 30, ttl: 60_000 } })
 export class RfiExternalAccessPublicController {
   constructor(private readonly svc: RfiExternalAccessService) {}
 

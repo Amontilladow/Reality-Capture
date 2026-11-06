@@ -14,11 +14,11 @@ import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 export class SubmittalsController {
   constructor(private readonly svc: SubmittalsService) {}
 
-  // Previously ungated -- the owner's org-category matrix ("Document
+  // Previously ungated: the owner's org-category matrix ("Document
   // Approvals") scopes submittal creation to Construction Team/Document
   // Control/Subcontractor (and Engineering Manager, always); Management/
-  // Engineering Team/QAQC Team are now genuinely restricted here (they hold
-  // view/approve, not create). No fallbackPermissions -- no discretionary
+  // Engineering Team/QAQC Team are now restricted here (they hold
+  // view/approve, not create). No fallbackPermissions; no discretionary
   // grant for "create a submittal" existed to preserve.
   @Post()
   @RequireCategoryAction('document_approvals', 'create')
@@ -49,10 +49,10 @@ export class SubmittalsController {
     return { data: await this.svc.findOne(u.companyId, pid, id, u.id), error: null };
   }
 
-  // 'edit' -- the owner's matrix gives Document Control C,V,E,X here;
+  // 'edit'; the owner's matrix gives Document Control C,V,E,X here;
   // Management/Engineering Team hold 'approve' instead, which this generic
   // field-edit PATCH doesn't represent (this module has no distinct
-  // review/approve workflow endpoint to gate that action on -- flagged in
+  // review/approve workflow endpoint to gate that action on; flagged in
   // this sprint's own report as a gap relative to the matrix's intent).
   @Patch(':id')
   @RequireCategoryAction('document_approvals', 'edit', 'manage_project_records')

@@ -75,7 +75,7 @@ export interface CreateIssuePayload {
   elementId?: string;
   assignedTo?: string;
   responsibleCompany?: string;
-  // Required on create — matches CreateIssueDto.deadline (API-level only;
+  // Required on create: matches CreateIssueDto.deadline (API-level only;
   // the DB column stays nullable for pre-existing rows).
   deadline: string;
   drawingId?: string;
@@ -104,7 +104,7 @@ export function getIssueScreenshotUploadUrl(projectId: string) {
 
 // Uploads a data URL (from BimViewerHandle.getScreenshotDataUrl()) as a
 // view-state screenshot and returns its storage key, ready to pass as
-// CreateIssuePayload.screenshotStorageKey. Returns null on any failure --
+// CreateIssuePayload.screenshotStorageKey. Returns null on any failure;
 // a screenshot is a nice-to-have, never worth blocking issue creation over.
 export async function uploadIssueScreenshot(projectId: string, dataUrl: string): Promise<string | null> {
   try {
@@ -143,7 +143,7 @@ export function deleteIssue(projectId: string, issueId: string) {
   return apiDelete<{ message: string }>(`/projects/${projectId}/issues/${issueId}`);
 }
 
-// Only the issue's creator (or an admin) may call this -- see
+// Only the issue's creator (or an admin) may call this; see
 // IssuesService.close() on the backend. The generic updateIssue() above can
 // no longer transition an issue to 'closed' at all.
 export function closeIssue(projectId: string, issueId: string) {
@@ -160,7 +160,7 @@ export function downloadIssueXls(projectId: string, issueId: string, filename: s
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// Ticket 2b — workflow actions
+// Ticket 2b: workflow actions
 // ══════════════════════════════════════════════════════════════════════
 
 // ── Forward (reassign) ──────────────────────────────────────────────────
@@ -168,7 +168,7 @@ export function forwardIssue(projectId: string, issueId: string, payload: { toUs
   return apiPost<Issue>(`/projects/${projectId}/issues/${issueId}/forward`, payload);
 }
 
-// ── Admin force-status (manager/admin only — gated in the UI via
+// ── Admin force-status (manager/admin only; gated in the UI via
 // isIssueManager(), enforced server-side by @Roles) ─────────────────────
 export function forceIssueStatus(projectId: string, issueId: string, status: IssueStatus) {
   return apiPatch<Issue>(`/projects/${projectId}/issues/${issueId}/force-status`, { status });
@@ -176,7 +176,7 @@ export function forceIssueStatus(projectId: string, issueId: string, status: Iss
 
 // ── Bulk close ────────────────────────────────────────────────────────
 // Only closes the issues in the selection the caller created (or, for an
-// admin, all of them) -- `skipped` counts the rest of the selection so the
+// admin, all of them): `skipped` counts the rest of the selection so the
 // UI can tell the user some of their picks weren't theirs to close.
 export interface BulkCloseResult {
   closed: number;
@@ -188,7 +188,7 @@ export function bulkCloseIssues(projectId: string, issueIds: string[]) {
   return apiPost<BulkCloseResult>(`/projects/${projectId}/issues/bulk-close`, { issueIds });
 }
 
-// ── Bulk export -- one combined file for every selected issue (a single
+// ── Bulk export; one combined file for every selected issue (a single
 // merged PDF, or a single workbook with one sheet per issue), same
 // per-issue content as downloadIssuePdf()/downloadIssueXls() above.
 export function bulkDownloadIssuesPdf(projectId: string, issueIds: string[], filename: string) {
@@ -212,7 +212,7 @@ export function listReminders(projectId: string, query?: { page?: number; perPag
 }
 
 // ── Scheduled reminders (per-issue, open to anyone who can view the
-// issue -- unlike the admin-only, immediate reminders above) ────────────
+// issue; unlike the admin-only, immediate reminders above) ────────────
 export interface PendingIssueReminder {
   id: string;
   message: string;
@@ -306,7 +306,7 @@ export interface IssueEvidence {
 }
 
 // F5: the evidence list IssueDetail.tsx reads to gate the Close button
-// client-side -- close()/forceStatus()/bulkClose() enforce the real
+// client-side; close()/forceStatus()/bulkClose() enforce the real
 // requirement server-side regardless of what this shows.
 export function getIssueEvidence(projectId: string, issueId: string) {
   return apiGet<IssueEvidence[]>(`/projects/${projectId}/issues/${issueId}/evidence`);

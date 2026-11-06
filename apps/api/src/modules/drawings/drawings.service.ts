@@ -8,7 +8,7 @@ import type { CreatePinDto } from './dto/create-pin.dto';
 
 const DRAWING_MAX_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
 
-// Mirrors bim.service.ts's BIM_MODEL_ALLOWED_EXTENSIONS pattern -- the
+// Mirrors bim.service.ts's BIM_MODEL_ALLOWED_EXTENSIONS pattern; the
 // signed Content-Type here is hardcoded to 'application/pdf' regardless of
 // the actual file, so without an extension check a non-PDF file could be
 // uploaded and registered as a drawing with no validation at all.
@@ -24,7 +24,7 @@ export class DrawingsService {
 
   // All pins across every drawing in a project, for linking FROM the BIM
   // viewer side (pick an existing pin to attach to the element you're
-  // looking at) -- the mirror image of ElementSearch, which lets you pick
+  // looking at): the mirror image of ElementSearch, which lets you pick
   // an element from the pin side. getPins() is deliberately per-drawing;
   // this is project-wide since you don't know which drawing a pin lives on
   // when you're starting from an element instead.
@@ -54,7 +54,7 @@ export class DrawingsService {
   async create(companyId: string, projectId: string, userId: string, dto: CreateDrawingDto) {
     await this.assertProjectBelongsToCompany(companyId, projectId);
 
-    // Real post-upload size enforcement -- this endpoint never had a
+    // Real post-upload size enforcement: this endpoint never had a
     // client-declared size to check in the first place (getUploadUrl()
     // above only takes a filename). This HEAD-based check against the
     // actual stored object is the only enforcement that exists.
@@ -70,7 +70,7 @@ export class DrawingsService {
       );
     }
 
-    // withTenant required -- drawings carries the tenant_isolation RLS policy.
+    // withTenant required: drawings carries the tenant_isolation RLS policy.
     const [drawing] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO drawings (
         company_id, project_id, level_id, location_id, title, drawing_number, revision,
@@ -88,12 +88,12 @@ export class DrawingsService {
   }
 
   async findAll(companyId: string, projectId: string, levelId?: string) {
-    // Phase 7: this query had no bound at all -- a project with an unusually
+    // Phase 7: this query had no bound at all; a project with an unusually
     // large current-drawing set returned every row in one response. A real
     // paginated contract would mean changing this method's return shape and
     // every frontend caller, which is more than a safe/low-risk fix; a
     // generous LIMIT with no response-shape change is the bounded-risk
-    // version -- 500 current drawings in one project/level is already far
+    // version; 500 current drawings in one project/level is already far
     // beyond any realistic usage seen in this codebase's other list sizes.
     const rows = await this.db.withTenant(companyId, sql => sql`
       SELECT d.*, u.first_name || ' ' || u.last_name AS uploaded_by_name,
@@ -113,7 +113,12 @@ export class DrawingsService {
     return rows;
   }
 
-  async findOne(companyId: string, drawingId: string) {
+  // H-1 fix (KNOWN_ISSUES_AND_REMEDIATION.md): previously scoped only by
+  // company_id, so a user authorized for Project A could fetch Project B's
+  // drawing (including the live presigned download URL this method
+  // hands back below) by guessing/enumerating a drawingId. Now matches
+  // findAll()'s own project_id scoping.
+  async findOne(companyId: string, projectId: string, drawingId: string) {
     const [drawing] = await this.db.withTenant(companyId, sql => sql`
       SELECT d.*,
         COALESCE(json_agg(DISTINCT jsonb_build_object(
@@ -125,7 +130,7 @@ export class DrawingsService {
       FROM drawings d
       LEFT JOIN capture_drawing_links cdl ON cdl.drawing_id = d.id
       LEFT JOIN captures c ON c.id = cdl.capture_id AND c.status = 'ready'
-      WHERE d.id = ${drawingId} AND d.company_id = ${companyId}
+      WHERE d.id = ${drawingId} AND d.project_id = ${projectId} AND d.company_id = ${companyId}
       GROUP BY d.id
     `);
     if (!drawing) throw new NotFoundException('Drawing not found.');
@@ -134,8 +139,10 @@ export class DrawingsService {
     return { ...drawing, downloadUrl: url };
   }
 
-  async linkCapture(companyId: string, drawingId: string, userId: string, dto: LinkCaptureToDrawingDto) {
-    // withTenant required -- capture_drawing_links carries the tenant_isolation RLS policy.
+  async linkCapture(companyId: string, projectId: string, drawingId: string, userId: string, dto: LinkCaptureToDrawingDto) {
+    await this.assertDrawingInProject(companyId, projectId, drawingId);
+    await this.assertCaptureInProject(companyId, projectId, dto.captureId);
+    // withTenant required: capture_drawing_links carries the tenant_isolation RLS policy.
     const [link] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO capture_drawing_links (capture_id, drawing_id, company_id, pos_x_norm, pos_y_norm, linked_by)
       VALUES (${dto.captureId}, ${drawingId}, ${companyId}, ${dto.posXNorm}, ${dto.posYNorm}, ${userId})
@@ -145,8 +152,9 @@ export class DrawingsService {
     return link;
   }
 
-  async unlinkCapture(companyId: string, drawingId: string, captureId: string) {
-    // withTenant required -- capture_drawing_links carries the tenant_isolation RLS policy;
+  async unlinkCapture(companyId: string, projectId: string, drawingId: string, captureId: string) {
+    await this.assertDrawingInProject(companyId, projectId, drawingId);
+    // withTenant required: capture_drawing_links carries the tenant_isolation RLS policy;
     // without it this DELETE silently matches zero rows instead of failing.
     const result = await this.db.withTenant(companyId, sql => sql`
       DELETE FROM capture_drawing_links
@@ -158,9 +166,9 @@ export class DrawingsService {
     return { message: 'Capture unlinked from drawing.' };
   }
 
-  // Return all capture pins for a floor plan — used by the web viewer
-  async getFloorPlanData(companyId: string, drawingId: string) {
-    const drawing = await this.findOne(companyId, drawingId);
+  // Return all capture pins for a floor plan; used by the web viewer
+  async getFloorPlanData(companyId: string, projectId: string, drawingId: string) {
+    const drawing = await this.findOne(companyId, projectId, drawingId);
     const pins = await this.db.withTenant(companyId, sql => sql`
       SELECT cdl.pos_x_norm, cdl.pos_y_norm,
              c.id AS capture_id, c.location_id, c.capture_type, c.captured_at, c.phase,
@@ -185,18 +193,18 @@ export class DrawingsService {
     };
   }
 
-  // ── Pins (place-first model — a pin is a Location that can exist before ──
+  // ── Pins (place-first model; a pin is a Location that can exist before ──
   // any capture does; captures attach to it afterward via captures.location_id)
 
-  async createPin(companyId: string, drawingId: string, userId: string, dto: CreatePinDto) {
+  async createPin(companyId: string, projectId: string, drawingId: string, userId: string, dto: CreatePinDto) {
     const [drawing] = await this.db.withTenant(companyId, sql => sql`
-      SELECT id, level_id, project_id FROM drawings WHERE id = ${drawingId} AND company_id = ${companyId}
+      SELECT id, level_id, project_id FROM drawings WHERE id = ${drawingId} AND project_id = ${projectId} AND company_id = ${companyId}
     `);
     if (!drawing) throw new NotFoundException('Drawing not found.');
 
     const purpose = dto.purpose ?? 'issue';
 
-    // withTenant required -- locations carries the tenant_isolation RLS policy.
+    // withTenant required: locations carries the tenant_isolation RLS policy.
     const [pin] = await this.db.withTenant(companyId, sql => sql`
       INSERT INTO locations (company_id, level_id, name, drawing_id, pos_x_norm, pos_y_norm, page_number, created_via, pin_purpose)
       VALUES (
@@ -206,10 +214,10 @@ export class DrawingsService {
       RETURNING *
     `);
 
-    // A 'camera_location' pin is a pure BuildLens/Captures marker -- no
+    // A 'camera_location' pin is a pure BuildLens/Captures marker; no
     // Issue, no 14-day deadline, no entry in the Issues list/KPIs. Every
     // other pin keeps the original behavior: an auto-created matching
-    // Issue, linked via the existing issues.location_id relationship -- an
+    // Issue, linked via the existing issues.location_id relationship; an
     // Issue with location_id = a pin's location id is that pin's issue.
     // See createPinForElement()'s equivalent in bim.service.ts for the
     // BIM-viewer side of this (untouched, out of scope here).
@@ -247,9 +255,10 @@ export class DrawingsService {
     };
   }
 
-  // Pins for a drawing — one marker per place, not per photo. A place with
+  // Pins for a drawing: one marker per place, not per photo. A place with
   // several photos attached still shows as a single pin with a capture count.
-  async getPins(companyId: string, drawingId: string) {
+  async getPins(companyId: string, projectId: string, drawingId: string) {
+    await this.assertDrawingInProject(companyId, projectId, drawingId);
     const pins = await this.db.withTenant(companyId, sql => sql`
       SELECT
         loc.id AS location_id, loc.name, loc.description, loc.pos_x_norm, loc.pos_y_norm,
@@ -287,14 +296,37 @@ export class DrawingsService {
         : p.linkedSnagId
           ? { type: 'snag', id: p.linkedSnagId }
           : null,
-      // Same "issue takes precedence over snag" pairing as linkedRecord above
-      // -- a pin converted to a snag no longer has a live issue assignee to
+      // Same "issue takes precedence over snag" pairing as linkedRecord above;
+      // a pin converted to a snag no longer has a live issue assignee to
       // prefer instead.
       assignedTo: p.linkedIssueId ? p.linkedIssueAssignedTo : p.linkedSnagAssignedTo,
     }));
   }
 
-  // Same rationale as captures.service.ts's assertProjectBelongsToCompany --
+  // H-1 fix: lightweight ownership check for mutation routes
+  // (linkCapture/unlinkCapture/getPins) that don't otherwise read the
+  // drawing row; mirrors issues.service.ts's assertIssueInProject.
+  private async assertDrawingInProject(companyId: string, projectId: string, drawingId: string): Promise<void> {
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      SELECT 1 FROM drawings WHERE id = ${drawingId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!row) throw new NotFoundException('Drawing not found.');
+  }
+
+  // H-1 follow-up: linkCapture() checked the drawing's own project via
+  // assertDrawingInProject but never the supplied captureId; a user
+  // authorized for Project A could pin Project B's capture onto a Project A
+  // drawing by supplying its id. captures carries its own project_id
+  // directly (same table/column captures.service.ts's own findOne()
+  // checks).
+  private async assertCaptureInProject(companyId: string, projectId: string, captureId: string): Promise<void> {
+    const [row] = await this.db.withTenant(companyId, sql => sql`
+      SELECT 1 FROM captures WHERE id = ${captureId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (!row) throw new NotFoundException('Capture not found.');
+  }
+
+  // Same rationale as captures.service.ts's assertProjectBelongsToCompany;
   // this controller has no @RequireProjectPermission gate either, and
   // getUploadUrl/create both take a client-supplied projectId.
   private async assertProjectBelongsToCompany(companyId: string, projectId: string): Promise<void> {

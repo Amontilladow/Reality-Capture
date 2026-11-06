@@ -25,15 +25,17 @@ export default function ProjectList() {
   const projects = projectsQuery.data?.data ?? [];
 
   // Every KPI below is a sum over fields listProjects() already returns per
-  // project (openIssueCount/captureCount/memberCount) -- no new endpoint,
+  // project (openIssueCount/captureCount/memberCount): no new endpoint,
   // no per-project fan-out queries. memberCount double-counts anyone on
   // multiple projects, so this reads "Project Memberships," not "People,"
   // to not imply a unique headcount the data doesn't actually give us.
   const kpis = {
     total: projects.length,
     active: projects.filter((p) => p.status === 'active').length,
-    openIssues: projects.reduce((sum, p) => sum + (p.openIssueCount ?? 0), 0),
-    captures: projects.reduce((sum, p) => sum + (p.captureCount ?? 0), 0),
+    // Number(): the API serializes these counts from Postgres bigint as
+    // strings, so a bare `+` concatenated them ("0" + "8" -> "08").
+    openIssues: projects.reduce((sum, p) => sum + Number(p.openIssueCount ?? 0), 0),
+    captures: projects.reduce((sum, p) => sum + Number(p.captureCount ?? 0), 0),
   };
 
   return (
@@ -75,8 +77,8 @@ export default function ProjectList() {
 
           {projectsQuery.isSuccess && projects.length === 0 && (
             <div className="tick-frame panel p-12 text-center">
-              <div className="text-sm font-medium mb-1">No projects yet</div>
-              <p className="text-sm text-ink-500 mb-5">
+              <div className="text-sm font-medium mb-2">No projects yet</div>
+              <p className="text-sm text-ink-500 mb-6">
                 Create your first project to start registering reality captures against a building
                 hierarchy.
               </p>
@@ -107,7 +109,7 @@ export default function ProjectList() {
 
 function PlusIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 5v14M5 12h14" strokeLinecap="round" />
     </svg>
   );

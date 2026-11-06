@@ -6,7 +6,7 @@ import { fetchMe, logout as apiLogout } from '../lib/auth.api';
 import { useAuthStore } from '../store/auth.store';
 import { COMPANY_ROLE_LABELS } from '../lib/issue-constants';
 
-// The only screen a pending-approval user can ever reach -- the backend's
+// The only screen a pending-approval user can ever reach; the backend's
 // PendingApprovalGuard blocks everything except GET /auth/me and
 // POST /auth/logout regardless of what route the frontend tries to render,
 // so this is the real, enforced dead end, not just a UI convenience.
@@ -20,7 +20,7 @@ export default function PendingApproval() {
     try {
       await apiLogout();
     } catch {
-      // best-effort — clear local session regardless
+      // best-effort: clear local session regardless
     }
     clear();
     navigate('/login', { replace: true });
@@ -40,7 +40,7 @@ export default function PendingApproval() {
           </p>
         )}
         <p className="text-xs text-ink-500">
-          There's nothing to do here -- check back later, or contact whoever invited you.
+          There’s nothing to do here. Check back later, or contact whoever invited you.
         </p>
         <button onClick={handleLogout} className="btn-secondary w-full">
           Sign out

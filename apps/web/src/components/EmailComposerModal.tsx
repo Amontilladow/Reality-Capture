@@ -13,6 +13,7 @@ import {
   sendEmail, uploadEmailAttachment,
   type EmailAttachmentInput, type EmailRelatedRecordType,
 } from '../lib/email-integration.api';
+import { Listbox } from './ui/Listbox';
 
 const PROVIDER_LABEL: Record<EmailProvider, string> = { microsoft: 'Outlook', google: 'Gmail' };
 
@@ -25,10 +26,10 @@ function newIdempotencyKey(): string {
 }
 
 // Phase 3E: the one reusable compose-and-send surface, used standalone
-// (a general project communication, no record context) today and -- in
-// Phase 3F -- opened with `prefill` from an RFI/Issue/Submittal page so the
+// (a general project communication, no record context) today and (in
+// Phase 3F) opened with `prefill` from an RFI/Issue/Submittal page so the
 // subject/related record are already filled in. Never auto-sends and never
-// changes any workflow record's status as a side effect of sending --
+// changes any workflow record's status as a side effect of sending;
 // composing an email is its own action, independent of the RFI/Issue/
 // Submittal lifecycle it may be about.
 export function EmailComposerModal({
@@ -70,7 +71,7 @@ export function EmailComposerModal({
 
   // Applies the prefill once per open, same "re-apply only when the modal
   // is (re)opened" pattern RfiFormModal already uses for its own
-  // initialValues -- never fights the user's own edits mid-compose.
+  // initialValues; never fights the user's own edits mid-compose.
   useEffect(() => {
     if (!open) return;
     if (prefill?.subject !== undefined) setSubject(prefill.subject);
@@ -141,9 +142,9 @@ export function EmailComposerModal({
         {connectedProviders.length > 1 && (
           <div>
             <label className="field-label">Send from</label>
-            <select className="field-input" value={provider} onChange={(e) => setProvider(e.target.value as EmailProvider)}>
+            <Listbox aria-label="Provider" className="field-input" value={provider} onChange={(e) => setProvider(e.target.value as EmailProvider)}>
               {connectedProviders.map((p) => <option key={p} value={p}>{PROVIDER_LABEL[p]}</option>)}
-            </select>
+            </Listbox>
           </div>
         )}
         {connectedProviders.length === 1 && (
@@ -158,7 +159,7 @@ export function EmailComposerModal({
           </button>
         )}
         {showCcBcc && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <Input label="CC" requirement="optional" value={cc} onChange={(e) => setCc(e.target.value)} />
             <Input label="BCC" requirement="optional" value={bcc} onChange={(e) => setBcc(e.target.value)} />
           </div>
@@ -170,9 +171,9 @@ export function EmailComposerModal({
         <div>
           <label className="field-label">Attachments (optional)</label>
           <input ref={fileInputRef} type="file" multiple onChange={(e) => handleFilesSelected(e.target.files)} className="text-xs text-ink-300" />
-          {uploadingCount > 0 && <p className="text-xs text-ink-500 mt-1">Uploading {uploadingCount} file(s)…</p>}
+          {uploadingCount > 0 && <p className="text-xs text-ink-500 mt-2">Uploading {uploadingCount} file(s)…</p>}
           {attachments.length > 0 && (
-            <ul className="mt-2 space-y-1">
+            <ul className="mt-2 space-y-2">
               {attachments.map((a, i) => (
                 <li key={a.storageKey} className="flex items-center justify-between text-xs text-ink-300">
                   <span>{a.filename}</span>

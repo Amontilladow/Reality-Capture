@@ -5,12 +5,12 @@ import { getProject, getMembers } from '../lib/projects.api';
 import { getRfiSummary } from '../lib/rfis.api';
 import { useAuthStore } from '../store/auth.store';
 
-// The moment someone clicks "RFIs" they get two clearly-labeled windows --
-// Main Contractor's RFIs and Subcontractor's RFIs -- each its own shareable
+// The moment someone clicks "RFIs" they get two clearly-labeled windows;
+// Main Contractor's RFIs and Subcontractor's RFIs; each its own shareable
 // sub-route (/rfis/main, /rfis/subcontractor), same pattern QaqcLandingPage
 // already uses for its four record types. A subcontractor project member
 // still sees both cards (they have read-only access to the main register,
-// per spec) -- SubcontractorRfiAccessGuard and RfisPage's own role check
+// per spec): SubcontractorRfiAccessGuard and RfisPage's own role check
 // handle the actual read/write restriction once inside a window, not this
 // page.
 export default function RfisLandingPage() {
@@ -54,7 +54,7 @@ export default function RfisLandingPage() {
         <p className="text-sm text-ink-500 mb-6">
           {isSubcontractor
             ? "Raise and track your own RFIs, and read (but not action) the main contractor's register."
-            : "Your own RFI register, and the subcontractors' -- they raise their own, you respond."}
+            : "Your own RFI register, plus the subcontractors’: they raise their own, you respond."}
         </p>
 
         <div className="enter-stagger grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -63,18 +63,17 @@ export default function RfisLandingPage() {
             onClick={() => navigate(`/projects/${projectId}/rfis/main`)}
             className="panel tick-frame panel-interactive p-6 text-left"
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-semibold">Main Contractor's RFIs</h3>
               {(mainSummaryQuery.data?.open ?? 0) > 0 && (
                 <span className="badge bg-danger/15 text-danger">{mainSummaryQuery.data?.open} open</span>
               )}
             </div>
-            <p className="text-sm text-ink-500 mb-3">
-              {isSubcontractor ? 'Read-only.' : 'Raise, respond to, and track your own RFIs -- unchanged from before.'}
+            <p className="text-sm text-ink-500 mb-4">
+              {isSubcontractor ? 'Read-only.' : 'Raise, respond to, and track your own RFIs, unchanged from before.'}
             </p>
-            <div className="flex gap-3 text-xs text-ink-500 font-mono">
+            <div className="flex gap-4 text-xs tabular-nums text-ink-500">
               <span>{mainSummaryQuery.data?.total ?? 0} total</span>
-              <span>·</span>
               <span>{mainSummaryQuery.data?.overdue ?? 0} overdue</span>
             </div>
           </button>
@@ -84,18 +83,17 @@ export default function RfisLandingPage() {
             onClick={() => navigate(`/projects/${projectId}/rfis/subcontractor`)}
             className="panel tick-frame panel-interactive p-6 text-left"
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-semibold">Subcontractor's RFIs</h3>
               {(subSummaryQuery.data?.open ?? 0) > 0 && (
                 <span className="badge bg-danger/15 text-danger">{subSummaryQuery.data?.open} open</span>
               )}
             </div>
-            <p className="text-sm text-ink-500 mb-3">
-              RFIs raised by subcontractors with platform access. You respond -- they can't close or review their own.
+            <p className="text-sm text-ink-500 mb-4">
+              RFIs raised by subcontractors with platform access. You respond. They can’t close or review their own.
             </p>
-            <div className="flex gap-3 text-xs text-ink-500 font-mono">
+            <div className="flex gap-4 text-xs tabular-nums text-ink-500">
               <span>{subSummaryQuery.data?.total ?? 0} total</span>
-              <span>·</span>
               <span>{subSummaryQuery.data?.overdue ?? 0} overdue</span>
             </div>
           </button>

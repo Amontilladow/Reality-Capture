@@ -12,7 +12,7 @@ describe('IssueWarningService.checkOverdueIssues', () => {
       return Promise.resolve(responder(text, values) ?? []);
     });
     // The per-issue recent-warning check and auto_warning insert now go through withTenant
-    // (company_id is known at that point) -- forward its callback to the same text-keyed
+    // (company_id is known at that point): forward its callback to the same text-keyed
     // query mock. The outer overdue scan now uses withSystemBypass (migration 052;
     // it's a cross-company scan, so plain query would be RLS-blocked by app_user).
     const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
@@ -26,7 +26,7 @@ describe('IssueWarningService.checkOverdueIssues', () => {
         return [{ id: 'issue-1', companyId: 'company-1', createdBy: 'user-1', deadline: yesterday }];
       }
       if (text.includes('activity_type = \'auto_warning\'')) {
-        return []; // no recent warning -- not deduped
+        return []; // no recent warning: not deduped
       }
       return undefined;
     });

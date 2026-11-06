@@ -19,7 +19,7 @@ export function ThreeJsViewer({
   onHotspotClick?: (hotspot: Hotspot) => void;
   // Optional real-world-bearing-continuation yaw (degrees), set by callers
   // (e.g. BuildLens) that track compass-heading continuity across capture
-  // switches. Purely additive/opt-in -- when omitted, behavior is identical
+  // switches. Purely additive/opt-in; when omitted, behavior is identical
   // to before this prop existed (state.current.lon is left untouched).
   initialYaw?: number;
 }) {
@@ -39,7 +39,7 @@ export function ThreeJsViewer({
     const container = containerRef.current;
     if (!container) return;
 
-    // Applied once per imageUrl change, before the first animate() frame --
+    // Applied once per imageUrl change, before the first animate() frame;
     // this is the only place state.current.lon is set from outside the
     // pointer-drag handlers. When initialYaw is undefined (every call site
     // except BuildLens), this is a no-op and state.current.lon keeps
@@ -184,7 +184,7 @@ export function ThreeJsViewer({
         <button
           key={h.id}
           onClick={() => onHotspotClick?.(h)}
-          className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 group"
+          className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 group"
           style={{ left: h.screenX, top: h.screenY }}
         >
           <span
@@ -197,7 +197,7 @@ export function ThreeJsViewer({
             }`}
           >
             {h.hotspotType === 'navigation' ? (
-              <svg viewBox="0 0 24 24" className="w-4 h-4 text-base-950" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4 text-base-950" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M12 19V5M5 12l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             ) : (
@@ -205,7 +205,7 @@ export function ThreeJsViewer({
             )}
           </span>
           {h.label && (
-            <span className="text-[10px] font-mono bg-base-950/90 text-ink-100 px-1.5 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="text-xs font-mono bg-base-950/90 text-ink-100 px-2 py-0 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
               {h.label}
             </span>
           )}
@@ -214,7 +214,7 @@ export function ThreeJsViewer({
 
       <button
         onClick={resetView}
-        className="absolute bottom-4 right-4 btn-secondary !py-1.5 !px-3 text-xs"
+        className="absolute bottom-4 right-4 btn-secondary !py-2 !px-4 text-xs"
         title="Reset view"
       >
         Reset view

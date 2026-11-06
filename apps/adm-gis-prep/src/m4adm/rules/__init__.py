@@ -116,6 +116,24 @@ class AttributeSpec(BaseModel):
 class BlockSpec(BaseModel):
     ref: Ref
     attributes: list[AttributeSpec]
+    # Attribute order of the official template block, as stored in the DRM-accepted drawings. The official QC
+    # reads attributes by position, so a block written in another order is read wrongly (ADM QC trial 02).
+    template_order: list[str] | None = None
+
+    @model_validator(mode="after")
+    def _order_covers_attributes(self) -> "BlockSpec":
+        if self.template_order is not None and \
+                sorted(t.upper() for t in self.template_order) != sorted(a.tag.upper() for a in self.attributes):
+            raise ValueError(f"template_order {self.template_order} does not list exactly the block's attributes")
+        return self
+
+    @property
+    def insert_order(self) -> list[str]:
+        """Attribute tags in the order a block must store them: the template order when known."""
+        if self.template_order is None:
+            return [a.tag for a in self.attributes]
+        by_upper = {a.tag.upper(): a.tag for a in self.attributes}
+        return [by_upper[t.upper()] for t in self.template_order]
 
 
 class RuleSpec(BaseModel):

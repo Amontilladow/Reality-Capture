@@ -30,7 +30,7 @@ export default function BimModelsPage() {
     queryFn: () => listBimModels(projectId!),
     enabled: Boolean(projectId),
     // Poll while anything is still pending/processing so progress bars and
-    // status badges update without a manual refresh — stops polling once
+    // status badges update without a manual refresh; stops polling once
     // every model has settled into ready/failed.
     refetchInterval: (query) => {
       const models = query.state.data ?? [];
@@ -72,13 +72,13 @@ export default function BimModelsPage() {
           </div>
         )}
 
-        <ul className="space-y-3">
+        <ul className="space-y-4">
           {(modelsQuery.data ?? []).map((model) => (
             <li key={model.id} className="flex items-center justify-between rounded-lg border border-base-600 p-4">
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{model.name}</span>
-                  <span className={`rounded px-2 py-0.5 text-xs ${STATUS_COLOR[model.status]}`}>
+                  <span className={`rounded px-2 py-0 text-xs ${STATUS_COLOR[model.status]}`}>
                     {STATUS_LABEL[model.status]}
                   </span>
                 </div>
@@ -86,20 +86,20 @@ export default function BimModelsPage() {
                   <div className="mt-2 w-64">
                     <div className="h-1.5 w-full rounded-full bg-base-700">
                       <div
-                        className="h-1.5 rounded-full bg-blueprint transition-all"
+                        className="h-1.5 rounded-full bg-blueprint"
                         style={{ width: `${model.processingProgress}%` }}
                       />
                     </div>
-                    <p className="mt-1 text-xs text-ink-500">
+                    <p className="mt-2 text-xs text-ink-500">
                       {model.processingStage ?? 'Starting…'} · {model.processingProgress}%
                     </p>
                   </div>
                 )}
                 {model.status === 'failed' && (
-                  <p className="mt-1 text-xs text-danger">{model.processingError}</p>
+                  <p className="mt-2 text-xs text-danger">{model.processingError}</p>
                 )}
                 {model.status === 'ready' && (
-                  <p className="mt-1 text-xs text-ink-500">{model.elementCount} elements</p>
+                  <p className="mt-2 text-xs text-ink-500">{model.elementCount} elements</p>
                 )}
               </div>
               <div className="flex items-center gap-2">

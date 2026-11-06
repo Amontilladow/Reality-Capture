@@ -1,6 +1,6 @@
 import { IsIn, IsString, MinLength, ValidateIf } from 'class-validator';
 
-// Body for POST :id/confirm -- step 2 of the two-step close, QAQC-in-charge
+// Body for POST :id/confirm; step 2 of the two-step close, QAQC-in-charge
 // only. 'confirmed' moves 'pending_confirmation' -> 'closed' (confirmedBy/
 // confirmedAt set). 'rejected' moves it -> 'reopened' and requires a
 // comment, mirroring RFI's DecideReviewDto (a rejection is "send it back

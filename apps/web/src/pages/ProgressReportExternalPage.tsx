@@ -9,13 +9,13 @@ import { ThemeToggle } from '../components/ui/ThemeToggle';
 function IssueList({ title, items, emptyText }: { title: string; items: ProgressReportIssueRow[]; emptyText: string }) {
   return (
     <div className="mb-6">
-      <h3 className="text-sm font-semibold text-ink-100 uppercase tracking-wide mb-2">{title} ({items.length})</h3>
+      <h3 className="text-sm font-semibold text-ink-100 mb-2">{title} ({items.length})</h3>
       {items.length === 0 ? (
         <p className="text-sm text-ink-500">{emptyText}</p>
       ) : (
-        <div className="space-y-1">
+        <div className="space-y-2">
           {items.map((item) => (
-            <div key={item.id} className="flex items-center justify-between text-sm panel px-3 py-2">
+            <div key={item.id} className="flex items-center justify-between text-sm panel px-4 py-2">
               <div>
                 <span className="text-ink-500 text-xs mr-2">{item.issueNumber}</span>
                 <span className="text-ink-100">{item.title}</span>
@@ -29,9 +29,9 @@ function IssueList({ title, items, emptyText }: { title: string; items: Progress
   );
 }
 
-// No EngineeringOS account, no session -- the opaque token in the URL is the
+// No EngineeringOS account, no session (the opaque token in the URL is the
 // only credential. Deliberately outside ProtectedRoute/AppShell, same as
-// RfiExternalPage -- nothing else in the app is reachable from here.
+// RfiExternalPage) nothing else in the app is reachable from here.
 export default function ProgressReportExternalPage() {
   const { token } = useParams<{ token: string }>();
 
@@ -44,10 +44,10 @@ export default function ProgressReportExternalPage() {
 
   const report = reportQuery.data;
 
-  useDocumentTitle(report ? `Progress Report — ${report.project.name}` : undefined);
+  useDocumentTitle(report ? `Progress Report: ${report.project.name}` : undefined);
 
   return (
-    <div className="min-h-screen bg-base-950 flex flex-col items-center px-4 py-10">
+    <div className="min-h-screen flex flex-col items-center px-4 py-10">
       <div className="fixed top-4 right-4 z-10">
         <ThemeToggle />
       </div>
@@ -68,14 +68,14 @@ export default function ProgressReportExternalPage() {
         {report && (
           <div className="panel tick-frame p-6">
             <div className="mb-6">
-              <div className="text-xs text-ink-500 uppercase tracking-wide">
+              <div className="text-xs text-ink-500 font-medium">
                 {report.project.code ? `${report.project.name} · ${report.project.code}` : report.project.name}
                 {report.building ? ` · ${report.building.name}` : ''}
                 {report.level ? ` · ${report.level.name}` : ''}
               </div>
-              <h1 className="text-xl font-semibold text-ink-100 mt-1">Progress Report</h1>
-              <div className="text-xs text-ink-500 mt-1">
-                {new Date(report.dateFrom).toLocaleDateString('en-GB')} – {new Date(report.dateTo).toLocaleDateString('en-GB')}
+              <h1 className="text-xl font-semibold text-ink-100 mt-2">Progress Report</h1>
+              <div className="text-xs text-ink-500 mt-2">
+                {new Date(report.dateFrom).toLocaleDateString('en-GB')} to {new Date(report.dateTo).toLocaleDateString('en-GB')}
               </div>
             </div>
 
@@ -87,16 +87,16 @@ export default function ProgressReportExternalPage() {
                 { label: 'Overdue', value: report.overdueIssues.length },
                 { label: 'Blockers', value: report.blockers.length },
               ].map((t) => (
-                <div key={t.label} className="panel p-3 text-center">
+                <div key={t.label} className="panel p-4 text-center">
                   <div className="text-lg font-semibold text-ink-100 tabular-nums">{t.value}</div>
-                  <div className="text-[10px] uppercase text-ink-500">{t.label}</div>
+                  <div className="text-xs text-ink-500 font-medium">{t.label}</div>
                 </div>
               ))}
             </div>
 
             {report.captures.length > 0 && (
               <div className="mb-6">
-                <h3 className="text-sm font-semibold text-ink-100 uppercase tracking-wide mb-2">Captures</h3>
+                <h3 className="text-sm font-semibold text-ink-100 mb-2">Captures</h3>
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                   {report.captures.map((c, i) => (
                     <img key={c.id} src={c.thumbnailUrl} alt={`Site capture ${i + 1} of ${report.captures.length}`} loading="lazy" className="w-full h-20 object-cover rounded border border-base-600" />
@@ -107,12 +107,12 @@ export default function ProgressReportExternalPage() {
 
             {report.elementProgress && report.elementProgress.byLevel.length > 0 && (
               <div className="mb-6">
-                <h3 className="text-sm font-semibold text-ink-100 uppercase tracking-wide mb-2">
+                <h3 className="text-sm font-semibold text-ink-100 mb-2">
                   Planned vs Actual Progress ({report.elementProgress.overallCompletionPct ?? 0}% complete)
                 </h3>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {report.elementProgress.byLevel.map((lvl) => (
-                    <div key={lvl.levelId} className="flex items-center justify-between text-sm panel px-3 py-2">
+                    <div key={lvl.levelId} className="flex items-center justify-between text-sm panel px-4 py-2">
                       <span className="text-ink-100">{lvl.levelName} <span className="text-ink-500 text-xs">· {lvl.buildingName}</span></span>
                       <span className="text-xs text-ink-500">{lvl.elementComplete}/{lvl.elementTotal} ({lvl.elementCompletionPct ?? 0}%)</span>
                     </div>

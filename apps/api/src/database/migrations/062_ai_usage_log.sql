@@ -1,6 +1,6 @@
 -- AI Assistant rebuild: usage/telemetry log for the new AI Gateway.
 --
--- Deliberately a separate table from audit_log, not a reuse of it --
+-- Deliberately a separate table from audit_log, not a reuse of it;
 -- audit_log (001_initial_schema.sql) is "who changed what resource" (one
 -- row per mutation, resource_type/resource_id-shaped), while this is LLM
 -- telemetry (one row per assistant request, allowed or blocked, with
@@ -19,12 +19,12 @@ CREATE TABLE IF NOT EXISTS ai_usage_log (
   project_id    UUID         REFERENCES projects(id),
   user_id       UUID         NOT NULL REFERENCES users(id),
   user_role     VARCHAR(30)  NOT NULL,
-  -- 'allowed' | 'blocked' | 'error' -- blocked = domain guard rejected the
+  -- 'allowed' | 'blocked' | 'error'; blocked = domain guard rejected the
   -- question before any provider call was made (never counts against the
-  -- role's daily/per-minute quota -- see AiUsageService.recordAndCheck()).
+  -- role's daily/per-minute quota; see AiUsageService.recordAndCheck()).
   status        VARCHAR(10)  NOT NULL CHECK (status IN ('allowed', 'blocked', 'error')),
   -- Coarse bucket for the usage dashboard's "Top Functions" breakdown
-  -- (RFIs/Issues/Risk/Progress/Documents/general) -- derived from which
+  -- (RFIs/Issues/Risk/Progress/Documents/general): derived from which
   -- tool(s) the gateway actually invoked for this request, not free text.
   category      VARCHAR(30),
   provider      VARCHAR(20),
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS ai_usage_log (
   output_tokens INT,
   latency_ms    INT,
   -- Set only on status='blocked' (why the domain guard rejected it) or
-  -- status='error' (what failed) -- never populated for 'allowed'.
+  -- status='error' (what failed): never populated for 'allowed'.
   block_reason  TEXT,
   error_message TEXT,
   created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()

@@ -49,14 +49,14 @@ function makeService(opts: {
   const provider = {
     generateResponse: jest.fn().mockResolvedValue({ text: 'Here is the answer.', inputTokens: 10, outputTokens: 5 }),
     getModelInfo: jest.fn().mockReturnValue({ provider: 'anthropic', model: 'claude-sonnet-4-6' }),
-    // Only reached for a "weak" domain-guard match (see domain-guard.service.ts) --
+    // Only reached for a "weak" domain-guard match (see domain-guard.service.ts);
     // every existing test question here matches a "strong" pattern, so this
     // default is never exercised by them; defaults to true (not the
     // fail-closed path) so a test can opt into the "weak" scenario cleanly.
     classifyRequest: jest.fn().mockResolvedValue({ inDomain: true }),
     // Defaults to "failed" so every existing test above (written against
     // the old pure-keyword router) falls back to routeIntent()'s regex list
-    // unchanged -- see the "native tool-calling" describe block below for
+    // unchanged; see the "native tool-calling" describe block below for
     // tests of the function-calling path itself and its fallback behavior.
     selectTools: jest.fn().mockResolvedValue({ toolCalls: [], failed: true }),
   };
@@ -98,8 +98,8 @@ describe('AiService.ask', () => {
   });
 
   // Real bug (owner-reported, reproduced via production screenshots): a
-  // plain \brfi\b regex never matches the plural "RFIs" -- no word boundary
-  // between "rfi" and "s" -- so a natural "summarize open RFIs" silently
+  // plain \brfi\b regex never matches the plural "RFIs" (no word boundary
+  // between "rfi" and "s") so a natural "summarize open RFIs" silently
   // skipped getOpenRfis entirely and the model answered from empty context,
   // indistinguishable from "this project has none." Same bug existed for
   // risk(s) and issue(s).
@@ -123,7 +123,7 @@ describe('AiService.ask', () => {
     expect(result.answer).toBe('Here is the answer.');
     expect(provider.generateResponse).toHaveBeenCalledTimes(1);
     // Project isolation: every tool call receives companyId from the JWT
-    // (not anything client-supplied -- AskAssistantDto has no companyId
+    // (not anything client-supplied; AskAssistantDto has no companyId
     // field at all) and projectId from the route param.
     expect(tools.getProjectSummary).toHaveBeenCalledWith(
       expect.objectContaining({ companyId: 'company-1', projectId: 'project-1' }),
@@ -131,7 +131,7 @@ describe('AiService.ask', () => {
   });
 
   // Phase 7: input_tokens/output_tokens in ai_usage_log were NULL for every
-  // row -- generate() discarded GenerateResponseResult's token counts before
+  // row; generate() discarded GenerateResponseResult's token counts before
   // they reached usage.log(), even though the provider mock above (and every
   // real adapter) already returns them. Locks in that the counts now flow
   // through end to end.
@@ -209,7 +209,7 @@ describe('AiService.ask', () => {
     const otherCompanyUser = { ...user, companyId: 'company-1' }; // companyId always comes from the authenticated user
     await svc.ask(otherCompanyUser, 'project-1', {
       question: 'Summarize the current project.',
-      // AskAssistantDto's context only carries currentResourceType/Id, never a companyId --
+      // AskAssistantDto's context only carries currentResourceType/Id, never a companyId;
       // this call shape is the only one the DTO's class-validator whitelist allows through.
       context: { currentResourceType: 'issue', currentResourceId: '11111111-1111-1111-1111-111111111111' },
     });
@@ -218,7 +218,7 @@ describe('AiService.ask', () => {
   });
 
   // CRITICAL regression: AssistantContext.userId must be populated from the
-  // authenticated user on every call, not left undefined -- it's what lets
+  // authenticated user on every call, not left undefined; it's what lets
   // getOpenRfis/getRfiDetails/getIssueDetails/getOpenIssues/getOpenSubmittals
   // (ai-tools.service.ts) pass it through as the viewer for
   // RfisService/IssuesService/SubmittalsService's own subcontractor-isolation
@@ -252,7 +252,7 @@ describe('AiService — weak domain-guard matches get a second opinion', () => {
 
     expect(result.blocked).toBe(true);
     expect(provider.generateResponse).not.toHaveBeenCalled();
-    expect(usage.checkAndReserve).not.toHaveBeenCalled(); // never reaches quota -- blocked before it
+    expect(usage.checkAndReserve).not.toHaveBeenCalled(); // never reaches quota: blocked before it
     expect(usage.log).toHaveBeenCalledWith(expect.objectContaining({ status: 'blocked', blockReason: 'weak_match_failed_classification' }));
   });
 
@@ -321,7 +321,7 @@ describe('AiService — BYO AI (Mode B)', () => {
 
   // Owner request: a user who has exceeded RealityCapture's own shared
   // daily/per-minute quota must still be able to keep using the assistant
-  // by connecting their own paid provider -- their own account pays and
+  // by connecting their own paid provider; their own account pays and
   // rate-limits the call, not RealityCapture's. Previously this was broken:
   // usage.checkAndReserve() ran BEFORE the BYO check, so a BYO user was
   // blocked by RealityCapture's quota exactly like a non-BYO user.
@@ -350,14 +350,14 @@ describe('AiService — BYO AI (Mode B)', () => {
 
 // Owner request, following the plural-matching bug fix: "the assistant must
 // understand the full word, part of it, a wrong spelling, like any AI
-// model." A fixed keyword regex can never generalize to that -- so tool
+// model." A fixed keyword regex can never generalize to that; so tool
 // selection now goes through the provider's native function-calling
 // (selectTools()) first, with the old regex router (routeIntent()) kept
 // only as a fallback for when that call itself fails outright.
 describe('AiService — native tool-calling (function calling) drives tool selection', () => {
   it("uses the model's own tool selection instead of the keyword router when it succeeds", async () => {
     const { svc, tools, provider } = makeService();
-    // A phrasing with no "rfi"/"submittal" substring at all -- the old
+    // A phrasing with no "rfi"/"submittal" substring at all; the old
     // regex router would've fallen through to the generic getProjectSummary
     // default. Only a real model, not a keyword list, could map this to
     // the right tools; mocking the provider's decision here stands in for
@@ -390,7 +390,7 @@ describe('AiService — native tool-calling (function calling) drives tool selec
 
   it('respects a genuine "no tool applies" decision from the model rather than forcing a fallback', async () => {
     const { svc, tools, provider } = makeService();
-    provider.selectTools.mockResolvedValue({ toolCalls: [] }); // not failed -- a real decision
+    provider.selectTools.mockResolvedValue({ toolCalls: [] }); // not failed: a real decision
     provider.generateResponse.mockResolvedValue({ text: 'General answer with no project-specific data needed.' });
 
     const result = await svc.ask(user, 'project-1', { question: 'What does RFI stand for?' });

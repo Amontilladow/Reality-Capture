@@ -29,7 +29,7 @@ export class SendEmailDto {
   bcc?: string[];
 
   // No CR/LF allowed: GmailClient hand-builds raw RFC 2822 headers from this
-  // value (see its own buildMimeMessage() comment) -- an embedded \r\n
+  // value (see its own buildMimeMessage() comment): an embedded \r\n
   // would let a subject smuggle in extra headers (a hidden Bcc, a second
   // To, a Content-Type override) into that raw message. Rejected here,
   // once, for every provider, rather than each client having to sanitize
@@ -46,7 +46,7 @@ export class SendEmailDto {
   attachments?: SendEmailAttachmentDto[];
 
   // Explicit override for the brief's "auto-match by reference number"
-  // design -- when the sender already knows which record this is about
+  // design; when the sender already knows which record this is about
   // (the common case: they clicked "Send Email" from an RFI's own page),
   // the composer passes it directly instead of leaving EmailComposerService
   // to guess from the subject text.
@@ -57,7 +57,7 @@ export class SendEmailDto {
   relatedRecordId?: string;
 
   // Client-generated once per compose-and-send attempt and resent unchanged
-  // on a retry of that same attempt -- see email_messages' own UNIQUE
+  // on a retry of that same attempt; see email_messages' own UNIQUE
   // constraint comment (migration 066).
   @IsString() @MinLength(1) @MaxLength(100)
   idempotencyKey: string;

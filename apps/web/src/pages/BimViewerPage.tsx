@@ -41,7 +41,7 @@ export default function BimViewerPage() {
     enabled: Boolean(projectId),
   });
   const modelName = modelsQuery.data?.find((m) => m.id === modelId)?.name;
-  useDocumentTitle(modelName ? `BIM Viewer — ${modelName}` : undefined);
+  useDocumentTitle(modelName ? `BIM Viewer: ${modelName}` : undefined);
 
   const viewerDataQuery = useQuery({
     queryKey: ['bim-viewer-data', projectId, modelId],
@@ -159,7 +159,7 @@ export default function BimViewerPage() {
       return;
     }
     const screenshotDataUrl = viewerRef.current?.getScreenshotDataUrl() ?? null;
-    // Open immediately with position/target -- don't make the user wait on
+    // Open immediately with position/target: don't make the user wait on
     // the screenshot upload before they can start filling out the form.
     // The upload result attaches itself once it resolves.
     setCapturedView({
@@ -196,14 +196,14 @@ export default function BimViewerPage() {
   return (
     <div className="flex h-screen flex-col">
       <div className="flex items-center justify-between border-b border-base-600 bg-base-950 px-4 py-2 text-ink-100">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <Link to={`/projects/${projectId}/bim`} className="text-sm text-ink-500 hover:text-ink-100">
-            ← Models
+            Back to models
           </Link>
           <h1 className="font-medium text-base">{modelName ?? 'Model'}</h1>
         </div>
         {viewerDataQuery.data?.status === 'ready' && viewerDataQuery.data.fragmentsUrl && (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <ElementSearch projectId={projectId} modelId={modelId} onSelect={handleSelectFromSearch} />
             <button
               className={showStatusOverlay ? 'btn-primary' : 'btn-secondary'}
@@ -226,21 +226,21 @@ export default function BimViewerPage() {
             <button
               type="button"
               onClick={() => setSidebarTab('tree')}
-              className={`flex-1 px-3 py-2 ${sidebarTab === 'tree' ? 'border-b-2 border-blueprint text-blueprint' : 'text-ink-500 hover:text-ink-100'}`}
+              className={`flex-1 px-4 py-2 ${sidebarTab === 'tree' ? 'border-b-2 border-blueprint text-blueprint' : 'text-ink-500 hover:text-ink-100'}`}
             >
               Spatial tree
             </button>
             <button
               type="button"
               onClick={() => setSidebarTab('list')}
-              className={`flex-1 px-3 py-2 ${sidebarTab === 'list' ? 'border-b-2 border-blueprint text-blueprint' : 'text-ink-500 hover:text-ink-100'}`}
+              className={`flex-1 px-4 py-2 ${sidebarTab === 'list' ? 'border-b-2 border-blueprint text-blueprint' : 'text-ink-500 hover:text-ink-100'}`}
             >
               All elements
             </button>
             <button
               type="button"
               onClick={() => setSidebarTab('progress')}
-              className={`flex-1 px-3 py-2 ${sidebarTab === 'progress' ? 'border-b-2 border-blueprint text-blueprint' : 'text-ink-500 hover:text-ink-100'}`}
+              className={`flex-1 px-4 py-2 ${sidebarTab === 'progress' ? 'border-b-2 border-blueprint text-blueprint' : 'text-ink-500 hover:text-ink-100'}`}
             >
               Progress
             </button>
@@ -248,7 +248,7 @@ export default function BimViewerPage() {
           <div className="flex-1 overflow-hidden">
             {sidebarTab === 'tree' ? (
               <div className="h-full overflow-y-auto">
-                {hierarchyQuery.isLoading && <p className="p-3 text-sm text-ink-500">Loading hierarchy…</p>}
+                {hierarchyQuery.isLoading && <p className="p-4 text-sm text-ink-500">Loading hierarchy…</p>}
                 {hierarchyQuery.data && (
                   <SpatialTree
                     nodes={hierarchyQuery.data}

@@ -37,7 +37,7 @@ export function DrawingViewer({
   // fileUrl is a presigned URL: its signature and expiry change on every
   // query refetch even when the underlying file hasn't. Re-running this
   // effect on every such refetch (e.g. React Query's refetch-on-window-
-  // focus) would restart the PDF/image render from scratch each time --
+  // focus) would restart the PDF/image render from scratch each time;
   // if a refetch lands mid-render, the render never gets a chance to
   // finish. Key the effect on the stable part of the URL (path, no query
   // string) instead, and read the always-current fileUrl via a ref.
@@ -47,7 +47,7 @@ export function DrawingViewer({
 
   // PDF document loading is split from page rendering: loading is expensive
   // (fetch + parse the whole file) and should happen once per drawing, not
-  // once per page flip. It's also stateful on pdf.js's side -- a loaded
+  // once per page flip. It's also stateful on pdf.js's side; a loaded
   // PDFDocumentProxy owns a worker-side resource that MUST be released via
   // destroy() when done with it, or replaced with a fresh one, before
   // starting a new load against the same shared worker. Confirmed by hand:
@@ -83,7 +83,7 @@ export function DrawingViewer({
   useEffect(() => {
     let cancelled = false;
     // Holds this invocation's in-flight pdf.js render task so cleanup can
-    // actually cancel it -- setting the `cancelled` flag alone stops this
+    // actually cancel it; setting the `cancelled` flag alone stops this
     // invocation's OWN subsequent awaits from acting on a stale result,
     // but does nothing to stop the real, already-started render() call
     // against the canvas. Deliberately a plain local variable (like
@@ -92,7 +92,7 @@ export function DrawingViewer({
     // (React StrictMode's dev-mode double-invoke, or fast repeated page
     // navigation queuing up quicker than each render finishes), the
     // second invocation's task can silently overwrite the first's in a
-    // shared ref -- the first task then never gets cancelled at all.
+    // shared ref; the first task then never gets cancelled at all.
     // Confirmed by hand: that exact bug (an earlier, ref-based version of
     // this fix) still reproduced "Cannot use the same canvas during
     // multiple render() operations" on repeated back-and-forth page
@@ -105,7 +105,7 @@ export function DrawingViewer({
     // settle in time (having cancelled it), or rethrows on a real error.
     // A fresh call here (new getPage(), new render()) reliably completes in
     // single-digit milliseconds even when a prior in-flight attempt against
-    // the same canvas never settled on its own -- confirmed by hand, live,
+    // the same canvas never settled on its own; confirmed by hand, live,
     // repeatedly: an already-stuck invocation's renderTask.promise never
     // resolves no matter how long you wait, but issuing a brand-new
     // getPage()+render() call right afterward (same canvas, same document)
@@ -120,7 +120,7 @@ export function DrawingViewer({
       const ctx = canvas.getContext('2d');
       if (!ctx) return 'done';
       // Setting canvas.width/height only clears the canvas when the value
-      // actually changes -- if a retry re-renders at the same pixel size as
+      // actually changes; if a retry re-renders at the same pixel size as
       // the attempt it's replacing, that implicit clear never happens and
       // the new pixels would composite on top of whatever the abandoned
       // attempt already painted. Clear explicitly on every attempt.
@@ -159,7 +159,7 @@ export function DrawingViewer({
           canvas.height = viewport.height;
           // Some CAD-exported PDFs (many hundreds of content streams / form
           // XObjects for a single page) take pdf.js's canvas renderer an
-          // impractically long time to rasterize -- confirmed against a real
+          // impractically long time to rasterize; confirmed against a real
           // file that hadn't finished after 60+ seconds. Rather than hang
           // silently forever, give it a short window, and if that's not
           // enough, retry once with a fresh render task before falling back
@@ -197,8 +197,8 @@ export function DrawingViewer({
         }
       } catch (err) {
         // A cancelled render rejects renderTask.promise with a
-        // RenderingCancelledException. This is expected, not a failure --
-        // it fires whenever a newer render supersedes an older one -- so
+        // RenderingCancelledException. This is expected, not a failure;
+        // it fires whenever a newer render supersedes an older one; so
         // it's checked by name/constructor here rather than relying only
         // on the `cancelled` flag: pdf.js's own cancellation is
         // asynchronous internally, so a render started just before
@@ -210,7 +210,7 @@ export function DrawingViewer({
         // most-recent render succeeded fine right after.
         const isCancellation = err instanceof Error && err.name === 'RenderingCancelledException';
         if (!cancelled && !isCancellation) {
-          // Log the real cause -- this catch previously swallowed it
+          // Log the real cause: this catch previously swallowed it
           // entirely, which is exactly why the underlying render-task-
           // cancellation bug (see above) took hands-on live debugging to
           // even find, instead of a two-second console check.
@@ -226,7 +226,7 @@ export function DrawingViewer({
     render();
     return () => {
       cancelled = true;
-      // Actually stop any in-flight render() against the canvas -- not
+      // Actually stop any in-flight render() against the canvas; not
       // just flagging it stale (see currentRenderTask comment above).
       currentRenderTask?.cancel();
     };
@@ -249,9 +249,9 @@ export function DrawingViewer({
         onClick={handleClick}
         style={size ? { width: size.width, height: size.height } : undefined}
       >
-        <canvas ref={canvasRef} className="block" />
+        <canvas role="img" aria-label="Floor plan drawing" ref={canvasRef} className="block" />
         {size && (
-          <svg className="absolute inset-0 pointer-events-none" width={size.width} height={size.height}>
+          <svg aria-hidden="true" className="absolute inset-0 pointer-events-none" width={size.width} height={size.height}>
             {pins.map((pin) => (
               <g
                 key={pin.locationId}
@@ -265,14 +265,14 @@ export function DrawingViewer({
                 {pin.captureCount > 0 ? (
                   <circle r="9" className="fill-signal stroke-signal-hover" strokeWidth="2" />
                 ) : (
-                  // No media yet -- a hollow marker so an empty, just-created
+                  // No media yet: a hollow marker so an empty, just-created
                   // pin reads visually differently from one with a history.
                   <circle r="9" className="fill-base-950/60 stroke-signal" strokeWidth="2" strokeDasharray="2.5 2" />
                 )}
                 {pin.purpose === 'camera_location' ? (
                   // Camera-location pins (Buildlense Captures) get a camera
                   // glyph instead of the plain dot, so they read differently
-                  // from an Issues/Snags pin at a glance -- this component is
+                  // from an Issues/Snags pin at a glance; this component is
                   // shared with FloorPlanViewer, but a pin with this purpose
                   // never reaches it there (filtered out before it renders).
                   <g className={pin.captureCount > 0 ? 'fill-base-950' : 'fill-signal'}>

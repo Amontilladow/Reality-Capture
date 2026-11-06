@@ -5,7 +5,7 @@
 //     (IFCLENGTHMEASURE, IFCAREAMEASURE, etc.)
 //   - an array, for list-valued attributes
 // This unwraps any of those into a plain JS value, recursively for arrays.
-// Never throws — malformed/unexpected shapes resolve to null rather than
+// Never throws; malformed/unexpected shapes resolve to null rather than
 // crashing a batch over one bad attribute.
 export function unwrapIfcValue(raw: unknown): unknown {
   if (raw === null || raw === undefined) return null;

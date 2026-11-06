@@ -1,6 +1,6 @@
 import { createElement as h } from 'react';
 
-// Same brand tokens as reports-pdf.template.ts -- kept as its own copy here
+// Same brand tokens as reports-pdf.template.ts; kept as its own copy here
 // rather than shared/exported, same convention that file's own header
 // documents for its relationship to rfi-pdf.template.ts: RiskModule has no
 // dependency on ReportsModule, and this is a small, self-contained
@@ -79,11 +79,11 @@ export interface RiskPdfData {
   topRisks: RiskPdfTopRisk[];
   register: RiskPdfTopRisk[];
   // Verbatim text of the AI briefing the user already generated on the
-  // Risk tab (never re-generated here) -- omitted entirely, not replaced
+  // Risk tab (never re-generated here): omitted entirely, not replaced
   // with a placeholder, when no briefing was ever generated.
   aiBriefing?: string;
   // Honest per-source availability, straight from
-  // RiskService.getDataAvailability() -- never summarized or reworded, so
+  // RiskService.getDataAvailability(): never summarized or reworded, so
   // an unconnected module (Programme, Procurement) reads exactly as
   // "Not connected" here too, never omitted or implied to exist.
   dataAvailabilityNotes: string[];

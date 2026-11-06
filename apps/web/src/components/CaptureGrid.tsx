@@ -19,8 +19,8 @@ const STATUS_STYLES: Record<string, string> = {
 
 // Clamp bounds for card aspect ratio (width / height). A raw ratio outside
 // this range (an ultra-tall portrait phone photo, or an ultra-wide stitched
-// panorama) would blow out the masonry layout -- one column item towering
-// over or dwarfing its neighbors -- so we cap the *box shape* here. The
+// panorama) would blow out the masonry layout (one column item towering
+// over or dwarfing its neighbors) so we cap the *box shape* here. The
 // image itself is never cropped to fit the cap: CaptureCardBody renders it
 // with object-contain, so a capture whose real ratio falls outside these
 // bounds just letterboxes within the (still reasonably-shaped) box instead
@@ -38,7 +38,7 @@ function getAspectRatio(c: Capture): number {
   if (typeof w === 'number' && typeof h === 'number' && Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
     return Math.min(MAX_ASPECT_RATIO, Math.max(MIN_ASPECT_RATIO, w / h));
   }
-  // Missing/invalid dimensions -- older captures, or an in-flight
+  // Missing/invalid dimensions: older captures, or an in-flight
   // upload/processing job that hasn't produced dimensions yet.
   return DEFAULT_ASPECT_RATIO;
 }
@@ -75,7 +75,7 @@ function dateRangeLabel(captures: Capture[]): string {
   if (times.length === 0) return '';
   const earliest = new Date(Math.min(...times)).toLocaleDateString();
   const latest = new Date(Math.max(...times)).toLocaleDateString();
-  return earliest === latest ? earliest : `${earliest} – ${latest}`;
+  return earliest === latest ? earliest : `${earliest} to ${latest}`;
 }
 
 export function CaptureGrid({
@@ -96,8 +96,8 @@ export function CaptureGrid({
   hasActiveFilters?: boolean;
   // Opt-in: render a section heading (location name, count, date range) per
   // distinct locationId instead of a flat masonry grid. Off by default so
-  // ProjectDetail.tsx and PinPanel.tsx -- which already scope their capture
-  // set to a single location -- render exactly as before, just with the new
+  // ProjectDetail.tsx and PinPanel.tsx (which already scope their capture
+  // set to a single location) render exactly as before, just with the new
   // masonry/aspect-ratio card layout. Only CapturesPage.tsx opts in.
   groupByLocation?: boolean;
 }) {
@@ -108,12 +108,12 @@ export function CaptureGrid({
       <div className="tick-frame panel p-12 text-center">
         {hasActiveFilters ? (
           <>
-            <div className="text-sm font-medium mb-1">No captures match these filters</div>
+            <div className="text-sm font-medium mb-2">No captures match these filters</div>
             <p className="text-sm text-ink-500">Try clearing a filter or your search to see more captures.</p>
           </>
         ) : (
           <>
-            <div className="text-sm font-medium mb-1">No captures here yet</div>
+            <div className="text-sm font-medium mb-2">No captures here yet</div>
             <p className="text-sm text-ink-500">Upload a 360° photo, standard photo, or video to get started.</p>
           </>
         )}
@@ -121,7 +121,7 @@ export function CaptureGrid({
     );
   }
 
-  // 360° photos already assigned to a location go to the immersive viewer —
+  // 360° photos already assigned to a location go to the immersive viewer;
   // everything else (standard photos, video, or a 360° photo with nowhere
   // to view it in context) opens in the lightbox instead of going nowhere.
   const goesToViewer = (c: Capture) => c.captureType === 'photo_360' && c.locationId;
@@ -129,7 +129,7 @@ export function CaptureGrid({
   const renderCard = (c: Capture) => {
     // Multi-column masonry needs a block-level, full-width item for
     // break-inside-avoid to actually keep each card in one column segment
-    // instead of splitting across a column break -- Link renders an <a>
+    // instead of splitting across a column break; Link renders an <a>
     // (inline by default) and button is inline-block, so both need an
     // explicit block + w-full here.
     const className = `tick-frame panel overflow-hidden group block w-full break-inside-avoid mb-4 text-left${
@@ -152,9 +152,9 @@ export function CaptureGrid({
         <div className="space-y-8">
           {groupByLocationId(captures).map((group) => (
             <section key={group.key}>
-              <div className="flex items-baseline gap-2 mb-3">
+              <div className="flex items-baseline gap-2 mb-4">
                 <h3 className="text-sm font-medium">{group.locationName}</h3>
-                <span className="text-xs font-mono text-ink-500">
+                <span className="text-xs text-ink-500">
                   {group.captures.length} capture{group.captures.length === 1 ? '' : 's'} · {dateRangeLabel(group.captures)}
                 </span>
               </div>
@@ -203,9 +203,9 @@ function CaptureCardBody({ c }: { c: Capture }) {
           {CAPTURE_STATUS_LABELS[c.status] ?? c.status}
         </span>
       </div>
-      <div className="p-3">
+      <div className="p-4">
         <div className="text-xs font-medium truncate">{c.title ?? 'Untitled capture'}</div>
-        <div className="text-[10px] font-mono text-ink-500 mt-0.5">
+        <div className="text-xs font-mono text-ink-500 mt-0">
           {new Date(c.capturedAt).toLocaleDateString()} {c.phase ? `· ${c.phase.replace(/_/g, ' ')}` : ''}
         </div>
       </div>
@@ -215,7 +215,7 @@ function CaptureCardBody({ c }: { c: Capture }) {
 
 function CameraIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.4">
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.4">
       <path d="M4 8h3l2-2h6l2 2h3v11H4z" strokeLinejoin="round" /><circle cx="12" cy="13.5" r="3.2" />
     </svg>
   );

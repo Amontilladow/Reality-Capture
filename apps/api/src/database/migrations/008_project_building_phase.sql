@@ -1,11 +1,11 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Migration 008 — Project / Building Phase
+-- Migration 008: Project / Building Phase
 --
--- Moves "phase" from a per-pin concept (which caused real confusion --
+-- Moves "phase" from a per-pin concept (which caused real confusion;
 -- see conversation history) to what it actually is: a property of the
 -- project overall, optionally refined per building. A pin can still
 -- accumulate photos from different phases over its lifetime (phase stays
--- on each capture too, unchanged) -- this is a separate, coarser-grained
+-- on each capture too, unchanged): this is a separate, coarser-grained
 -- classification for "what phase is this project/building in right now."
 --
 -- Purely additive: two nullable enum columns, reusing the existing

@@ -40,8 +40,8 @@ export class BimController {
 
   @Get('models/:modelId/status')
   @ApiOperation({ summary: 'Poll IFC processing status/progress for a model' })
-  async getModelStatus(@CurrentUser() u: AuthenticatedUser, @Param('modelId') modelId: string) {
-    return { data: await this.svc.getModelStatus(u.companyId, modelId), error: null };
+  async getModelStatus(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('modelId') modelId: string) {
+    return { data: await this.svc.getModelStatus(u.companyId, pid, modelId), error: null };
   }
 
   @Post('models/:modelId/reprocess')
@@ -53,32 +53,32 @@ export class BimController {
 
   @Get('models/:modelId/viewer-data')
   @ApiOperation({ summary: 'Get a presigned Fragments URL + status for opening the model in the viewer' })
-  async getModelViewerData(@CurrentUser() u: AuthenticatedUser, @Param('modelId') modelId: string) {
-    return { data: await this.svc.getModelViewerData(u.companyId, modelId), error: null };
+  async getModelViewerData(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('modelId') modelId: string) {
+    return { data: await this.svc.getModelViewerData(u.companyId, pid, modelId), error: null };
   }
 
   @Get('models/:modelId/provenance')
   @ApiOperation({ summary: 'Get provenance metadata (checksums, generation environment) for a model\'s artifacts -- diagnostic use, never returns file bytes or storage URLs' })
-  async getModelProvenance(@CurrentUser() u: AuthenticatedUser, @Param('modelId') modelId: string) {
-    return { data: await this.svc.getModelProvenance(u.companyId, modelId), error: null };
+  async getModelProvenance(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('modelId') modelId: string) {
+    return { data: await this.svc.getModelProvenance(u.companyId, pid, modelId), error: null };
   }
 
   @Get('models/:modelId/hierarchy')
   @ApiOperation({ summary: 'Get the IFC-native spatial tree (Site/Building/Storey/Space) for a model' })
-  async getHierarchy(@CurrentUser() u: AuthenticatedUser, @Param('modelId') modelId: string) {
-    return { data: await this.svc.getHierarchy(u.companyId, modelId), error: null };
+  async getHierarchy(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('modelId') modelId: string) {
+    return { data: await this.svc.getHierarchy(u.companyId, pid, modelId), error: null };
   }
 
   @Get('models/:modelId/elements/status-map')
   @ApiOperation({ summary: 'Get a flat {guid, status, completionPct} list for every element in a model, for the viewer\'s colour-coded overlay' })
-  async getElementStatusMap(@CurrentUser() u: AuthenticatedUser, @Param('modelId') modelId: string) {
-    return { data: await this.svc.getElementStatusMap(u.companyId, modelId), error: null };
+  async getElementStatusMap(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('modelId') modelId: string) {
+    return { data: await this.svc.getElementStatusMap(u.companyId, pid, modelId), error: null };
   }
 
   @Get('models/:modelId/elements/by-guid/:guid')
   @ApiOperation({ summary: 'Look up a BIM element by its IFC GUID (for viewer selection)' })
-  async getElementByGuid(@CurrentUser() u: AuthenticatedUser, @Param('modelId') modelId: string, @Param('guid') guid: string) {
-    return { data: await this.svc.getElementByGuid(u.companyId, modelId, guid), error: null };
+  async getElementByGuid(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('modelId') modelId: string, @Param('guid') guid: string) {
+    return { data: await this.svc.getElementByGuid(u.companyId, pid, modelId, guid), error: null };
   }
 
   @Get('elements')
@@ -93,8 +93,8 @@ export class BimController {
   }
 
   @Get('elements/:eid')
-  async getElement(@CurrentUser() u: AuthenticatedUser, @Param('eid') eid: string) {
-    return { data: await this.svc.getElement(u.companyId, eid), error: null };
+  async getElement(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('eid') eid: string) {
+    return { data: await this.svc.getElement(u.companyId, pid, eid), error: null };
   }
 
   @Patch('elements/:eid/status')
@@ -106,20 +106,20 @@ export class BimController {
 
   @Get('elements/:eid/status-history')
   @ApiOperation({ summary: 'Get the full status-change audit trail for a BIM element' })
-  async getElementStatusHistory(@CurrentUser() u: AuthenticatedUser, @Param('eid') eid: string) {
-    return { data: await this.svc.getElementStatusHistory(u.companyId, eid), error: null };
+  async getElementStatusHistory(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('eid') eid: string) {
+    return { data: await this.svc.getElementStatusHistory(u.companyId, pid, eid), error: null };
   }
 
   @Post('elements/:eid/captures')
   @RequireCategoryAction('bim', 'edit', 'manage_project_records')
   @ApiOperation({ summary: 'Link a capture to a BIM element' })
-  async linkCapture(@CurrentUser() u: AuthenticatedUser, @Param('eid') eid: string, @Body() body: LinkCaptureToElementDto) {
-    return { data: await this.svc.linkCaptureToElement(u.companyId, body.captureId, eid, u.id, body.linkType), error: null };
+  async linkCapture(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('eid') eid: string, @Body() body: LinkCaptureToElementDto) {
+    return { data: await this.svc.linkCaptureToElement(u.companyId, pid, body.captureId, eid, u.id, body.linkType), error: null };
   }
 
   @Get('elements/:eid/captures')
-  async getCapturesForElement(@CurrentUser() u: AuthenticatedUser, @Param('eid') eid: string) {
-    return { data: await this.svc.getCapturesForElement(u.companyId, eid), error: null };
+  async getCapturesForElement(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('eid') eid: string) {
+    return { data: await this.svc.getCapturesForElement(u.companyId, pid, eid), error: null };
   }
 
   @Post('elements/:eid/pins')
@@ -150,7 +150,7 @@ export class BimController {
 
   @Get('zones/:levelId/progress-history')
   @ApiOperation({ summary: 'Get the full status-change audit trail for a level/zone' })
-  async getZoneProgressHistory(@CurrentUser() u: AuthenticatedUser, @Param('levelId') levelId: string) {
-    return { data: await this.svc.getZoneProgressHistory(u.companyId, levelId), error: null };
+  async getZoneProgressHistory(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('levelId') levelId: string) {
+    return { data: await this.svc.getZoneProgressHistory(u.companyId, pid, levelId), error: null };
   }
 }

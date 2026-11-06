@@ -1,24 +1,24 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 // Google's OAuth redirect callback (GET .../callback?code=...&state=...) is
-// a browser redirect, not an authenticated API request -- there is no JWT
+// a browser redirect, not an authenticated API request; there is no JWT
 // bearer token, no request.user, no tenant context. Rather than storing
 // pending-connection state server-side keyed by an opaque `state` value
 // (which the callback would then need to look up via a pre-tenant,
-// cross-company query -- the same production RLS-bootstrap-role gap
+// cross-company query; the same production RLS-bootstrap-role gap
 // already documented for TenancyService.register() and the screenshot
 // retention cron), the state parameter itself carries a signed,
 // self-describing payload: which company and user initiated this, and
-// when. The callback verifies the signature and expiry and is done --
+// when. The callback verifies the signature and expiry and is done;
 // no database lookup needed at all, and no new instance of that shared gap.
 //
 // Signed with the same JWT_ACCESS_SECRET this app already has (see
-// config/jwt.config.ts) rather than a new required env var -- this is not
+// config/jwt.config.ts) rather than a new required env var; this is not
 // a JWT (no need for the full library/format), just an HMAC-authenticated
 // payload with the same "don't invent a second secret for a similar job"
 // reasoning.
 
-const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes -- long enough for a real Google consent flow, short enough that a stale/leaked state URL is only a brief liability.
+const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes: long enough for a real Google consent flow, short enough that a stale/leaked state URL is only a brief liability.
 
 export interface OAuthStatePayload {
   companyId: string;
@@ -41,7 +41,7 @@ export function verifyOAuthState(secret: string, state: string): OAuthStatePaylo
   const expectedSignature = createHmac('sha256', secret).update(payloadB64).digest('base64url');
   const signatureBuf = Buffer.from(signature);
   const expectedBuf = Buffer.from(expectedSignature);
-  // Length check before timingSafeEqual -- it throws on mismatched lengths
+  // Length check before timingSafeEqual: it throws on mismatched lengths
   // rather than returning false, and the length check itself leaks no more
   // than the signature's own fixed length already would.
   if (signatureBuf.length !== expectedBuf.length || !timingSafeEqual(signatureBuf, expectedBuf)) {

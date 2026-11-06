@@ -43,13 +43,13 @@ export class ProjectsController {
   }
 
   // Phase 6 security fix: this route previously had no @Roles/
-  // @RequireProjectPermission at all -- ProjectsService.update() only
+  // @RequireProjectPermission at all; ProjectsService.update() only
   // scoped by company_id, so any authenticated company user (down to the
   // lowest-weight role) could rename/re-phase/rewrite any project in the
   // company. Confirmed live during the Phase 6 audit. Gated on
   // 'manage_project_records' to match every other structural-data edit
   // (Documents/Drawings/Captures/BIM models all require this same
-  // permission to create/update) -- super_admin and this project's
+  // permission to create/update): super_admin and this project's
   // project_lead still pass via ProjectAuthorizationService's bypasses.
   @Patch(':id')
   @RequireProjectPermission('manage_project_records')
@@ -58,7 +58,7 @@ export class ProjectsController {
     return { data: await this.projects.update(u.companyId, id, dto), error: null };
   }
 
-  // Same gap and same fix as update() above -- issuing a presigned upload
+  // Same gap and same fix as update() above; issuing a presigned upload
   // URL for the project's logo/stamp is itself a low-severity action, but
   // nothing should write project branding without at least the same
   // permission required to edit the project's other fields.
@@ -70,11 +70,11 @@ export class ProjectsController {
   }
 
   // ── Project organizations (Phase 4) ─────────────────────────────────────
-  // Writes are gated on 'manage_team' -- there's no dedicated "manage
+  // Writes are gated on 'manage_team'; there's no dedicated "manage
   // project settings" permission; this is the closest existing semantic
   // fit for project-level administrative configuration, and matches
   // ManageMembersModal already being where manage_team grant-holders
-  // configure the team. The read below is deliberately NOT gated -- same
+  // configure the team. The read below is deliberately NOT gated; same
   // convention as RFI attachments' GET :id/attachments: displaying
   // already-configured branding is not a sensitive action, and every
   // project member viewing an RFI needs to see its organization header,
@@ -112,7 +112,7 @@ export class ProjectsController {
 
   // ── Project organization membership (RBAC Phase 4) ──────────────────────
   // Which stakeholder party (client/pmc/ldc/main_contractor/subcontractor)
-  // an existing project member personally belongs to -- gated the same as
+  // an existing project member personally belongs to; gated the same as
   // every other project-organization write above ('manage_team'). The read
   // is deliberately NOT gated, same rationale as getOrganizations() above:
   // every project member needs to see who's on which stakeholder party,

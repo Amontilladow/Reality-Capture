@@ -3,17 +3,17 @@ import type { OrgCategory } from './user.types';
 // Declarative module x category permission matrix implementing the owner's
 // RBAC sprint spec (sections 1-6 of their permission matrix). Checked by
 // OrgCategoryPermissionService (apps/api/src/common/authorization/
-// org-category-permission.service.ts) -- this file is pure data/types, kept
+// org-category-permission.service.ts): this file is pure data/types, kept
 // in the shared package so both API and web can read it without duplicating
 // the table.
 //
 // Section 7 (Risk Register/Reports/Snagging-reads/BuildLens/BuildLens
-// Captures/AI Assistant) is NOT part of this matrix -- it isn't a C/V/E/A/X
+// Captures/AI Assistant) is NOT part of this matrix; it isn't a C/V/E/A/X
 // grant table, it's a single narrower restriction (3 specific company-wide
 // titles get view-only, everyone else keeps today's existing, unchanged
-// access) -- see SECTION_7_VIEW_ONLY_COMPANY_ROLES in user.types.ts instead.
+// access); see SECTION_7_VIEW_ONLY_COMPANY_ROLES in user.types.ts instead.
 //
-// Subcontractor/"External" is also NOT a column here -- it's project-scoped,
+// Subcontractor/"External" is also NOT a column here; it's project-scoped,
 // not company-wide (see OrgCategory's own header comment), and every module
 // that grants it anything also requires an ownership check (their own
 // company's/their own created records only) that a flat category table can't
@@ -21,12 +21,12 @@ import type { OrgCategory } from './user.types';
 export const ORG_MODULES = [
   'rfis',
   'drawings',
-  // Issues + Snagging share one line in the owner's matrix ("Issues/Snags")
-  // -- both apps/api/src/modules/issues and apps/api/src/modules/snagging
+  // Issues + Snagging share one line in the owner's matrix ("Issues/Snags");
+  // both apps/api/src/modules/issues and apps/api/src/modules/snagging
   // are checked against this one module key.
   'issues_snags',
   'bim',
-  // "QAQC Checklists / Inspections" -- confirmed with the owner to cover
+  // "QAQC Checklists / Inspections"; confirmed with the owner to cover
   // both apps/api/src/modules/qa (qa_inspections, literally "inspections")
   // and apps/api/src/modules/qaqc (NCR/SOR/WIR/MIR records), since both are
   // QAQC-domain record types distinct from the issues_snags module above.
@@ -52,13 +52,13 @@ type ModuleCategoryMatrix = Record<OrgModule, Record<OrgCategory, readonly OrgAc
 //     narrative is more specific than the summary table, so 'close' is
 //     included here for document_control on rfis; flagged for the owner to
 //     correct if the table was in fact authoritative.
-//  2. Document Approvals: Management's row reads only "A -- final sign-off
+//  2. Document Approvals: Management's row reads only "A; final sign-off
 //     where required" with no explicit 'view'. Approving something you
 //     cannot view isn't meaningful, so 'view' is included alongside
 //     'approve' for management on document_approvals.
 //
 // engineering_manager holds every action on every module (the owner's
-// explicit, named exception) -- OrgCategoryPermissionService actually
+// explicit, named exception): OrgCategoryPermissionService actually
 // bypasses the matrix lookup entirely for this category (so a future edit
 // to this table can never accidentally narrow Engineering Manager's access),
 // but the full row is still spelled out here so the table reads correctly
@@ -78,9 +78,9 @@ export const CATEGORY_PERMISSION_MATRIX: ModuleCategoryMatrix = {
     engineering_manager: ['create', 'view', 'edit', 'approve', 'close'],
     // Owner's conflict resolution: the new matrix wins over the pre-existing
     // SiteRoleRestrictionGuard full-access allowlist for construction_manager/
-    // project_engineer company roles -- those two are narrowed to view-only
+    // project_engineer company roles; those two are narrowed to view-only
     // here. site_engineer (a ProjectRole, a separate axis) keeps its
-    // existing Drawings access unchanged -- see drawings.controller.ts.
+    // existing Drawings access unchanged; see drawings.controller.ts.
     construction_team: ['view'],
     engineering_team: ['create', 'view', 'edit', 'approve'],
     qaqc_team: ['view'],
@@ -109,7 +109,7 @@ export const CATEGORY_PERMISSION_MATRIX: ModuleCategoryMatrix = {
     management: ['view'],
     engineering_manager: ['create', 'view', 'edit', 'approve', 'close'],
     // "only on close-out items assigned to them" is an item-level ownership
-    // condition this flat category table can't express -- enforced as an
+    // condition this flat category table can't express; enforced as an
     // additional assigned-to check in qa.service.ts/qaqc.service.ts on top
     // of this category grant, not here.
     construction_team: ['view', 'edit'],

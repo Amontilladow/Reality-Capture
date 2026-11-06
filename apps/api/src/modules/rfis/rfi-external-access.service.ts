@@ -25,12 +25,12 @@ export class RfiExternalAccessService {
 
   // ── Internal, authenticated side (generate/list/revoke) ───────────────────
   // Route-gated with @RequireProjectPermission('manage_rfis'), same as
-  // respond/close/reopen -- generating a link that can answer or close an
+  // respond/close/reopen; generating a link that can answer or close an
   // RFI is exactly that sensitive.
   async generate(companyId: string, projectId: string, rfiId: string, userId: string, dto: GenerateExternalAccessDto) {
     await this.rfis.findOne(companyId, projectId, rfiId); // 404s if the RFI doesn't belong to this project/company
 
-    const token = randomBytes(64).toString('hex'); // 128 hex chars -- exact fit for the token VARCHAR(128) column
+    const token = randomBytes(64).toString('hex'); // 128 hex chars: exact fit for the token VARCHAR(128) column
     const expiresAt = new Date(Date.now() + (dto.expiresInDays ?? DEFAULT_EXPIRY_DAYS) * 24 * 60 * 60 * 1000);
 
     const [access] = await this.db.withTenant(companyId, sql => sql`
@@ -48,7 +48,7 @@ export class RfiExternalAccessService {
     return { ...access, externalUrl: `${frontendUrl}/rfi/external/${token}` };
   }
 
-  // Never selects `token` -- once issued, a link's secret is only ever
+  // Never selects `token`: once issued, a link's secret is only ever
   // shown in the generate() response above, matching the "don't re-display
   // a bearer credential" practice already applied elsewhere in this app
   // (e.g. presigned upload URLs are never persisted, only issued fresh).
@@ -75,7 +75,7 @@ export class RfiExternalAccessService {
   }
 
   // ── Public, unauthenticated side ───────────────────────────────────────────
-  // Deliberately global (withSystemBypass, no withTenant) -- the token itself
+  // Deliberately global (withSystemBypass, no withTenant): the token itself
   // is the globally-unique secret; the caller has no session, no
   // company_id, nothing else to identify itself with. Same bootstrap
   // category as auth.service.ts's forgotPassword()/resetPassword(). See
@@ -106,10 +106,10 @@ export class RfiExternalAccessService {
       });
     }
 
-    // withTenant required from here on -- company_id is now known, and
+    // withTenant required from here on: company_id is now known, and
     // rfi_external_access carries the same tenant_isolation RLS policy as
-    // every other table. Not single-use -- see migration 043's own
-    // comment -- so this is "last successful use," not a consumption lock.
+    // every other table. Not single-use; see migration 043's own
+    // comment; so this is "last successful use," not a consumption lock.
     await this.db.withTenant(access.companyId as string, sql => sql`
       UPDATE rfi_external_access SET used_at = NOW() WHERE id = ${access.id} AND company_id = ${access.companyId}
     `);
@@ -124,7 +124,7 @@ export class RfiExternalAccessService {
   // First time this company has ever generated an external-access link,
   // create its one reserved, non-login placeholder account so audit_log
   // rows for an action an external token holder takes still attribute to
-  // a valid, joinable user_id -- see migration 043's comment for why this
+  // a valid, joinable user_id; see migration 043's comment for why this
   // is one row per company rather than a single platform-wide row (RLS).
   // ON CONFLICT + re-select mirrors ActivitiesService.
   // resolveOrRegisterApplicationId()'s identical race-safe pattern.
@@ -170,7 +170,7 @@ export class RfiExternalAccessService {
     );
   }
 
-  // Valid for any action value ('respond'|'review'|'comment_only') -- a
+  // Valid for any action value ('respond'|'review'|'comment_only'): a
   // comment is always allowed, whatever this specific link authorizes
   // beyond that.
   async commentExternal(token: string, dto: ExternalCommentDto) {
@@ -183,7 +183,7 @@ export class RfiExternalAccessService {
     );
   }
 
-  // The deliberately narrow read model -- never findOne()'s full shape,
+  // The deliberately narrow read model: never findOne()'s full shape,
   // never anything about other RFIs or the wider project.
   private async buildExternalDetail(access: Record<string, unknown>): Promise<RfiExternalDetail> {
     const companyId = access.companyId as string;

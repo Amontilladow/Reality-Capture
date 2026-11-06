@@ -8,7 +8,7 @@ import type { CreateQaqcRecordDto } from './dto/create-qaqc-record.dto';
 
 // Same generic tagged-template mock convention as rfis.service.spec.ts's
 // own makeQuery/makeService (see that file's comment for the full
-// rationale) -- QaqcService never calls this.db.query() directly, only
+// rationale): QaqcService never calls this.db.query() directly, only
 // this.db.withTenant(), so one shared query mock forwarded through
 // withTenant covers every method under test here.
 function makeQuery(responder: (text: string, values: unknown[]) => unknown[] | undefined) {
@@ -16,7 +16,19 @@ function makeQuery(responder: (text: string, values: unknown[]) => unknown[] | u
   const query = jest.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
     const text = strings.join('?');
     calls.push({ text, values });
-    return Promise.resolve(responder(text, values) ?? []);
+    // assertQaqcInProject's ownership check (H-1 fix) runs ahead of every
+    // attachment/capture method below; default it to "found" so each
+    // test's own responder doesn't need to know about a query it isn't
+    // testing; a test can still override by handling this text itself.
+    // assertCaptureInProject (H-1 follow-up, linkCapture) and
+    // assertLocationInProject (H-1 follow-up, create) get the same
+    // "found" default for the same reason.
+    const defaulted =
+      text.includes('SELECT 1 FROM qaqc_records') ? [{ '?column?': 1 }] :
+      text.includes('FROM captures') ? [{ '?column?': 1 }] :
+      text.includes('FROM locations') ? [{ id: 'location-1' }] :
+      [];
+    return Promise.resolve(responder(text, values) ?? defaulted);
   });
   return { query: query as unknown as DatabaseService['query'], calls };
 }
@@ -59,7 +71,7 @@ describe('QaqcService', () => {
     it("formats the record number as {TYPE}-{seq}, zero-padded to 3 digits, scoped per (project, record_type)", async () => {
       const { svc } = makeService((text, values) => {
         if (text.includes('SELECT COUNT(*) AS n FROM qaqc_records')) {
-          // values: [projectId, recordType] -- confirm the count query is scoped by both.
+          // values: [projectId, recordType]; confirm the count query is scoped by both.
           expect(values).toEqual([projectId, 'ncr']);
           return [{ n: '4' }];
         }
@@ -141,7 +153,7 @@ describe('QaqcService', () => {
       expect(risk.recalculateForEntity).toHaveBeenCalledWith(companyId, projectId, 'ncr', 'qaqc-new');
     });
 
-    // Only NCR is risk-worthy (risk.service.ts's RISK_WORTHY_NODE_TYPES) --
+    // Only NCR is risk-worthy (risk.service.ts's RISK_WORTHY_NODE_TYPES);
     // SOR/WIR/MIR must never reach the Risk Engine at all.
     it.each(['sor', 'wir', 'mir'] as const)(
       'does NOT trigger risk recalculation for a new %s',
@@ -388,7 +400,7 @@ describe('QaqcService', () => {
     });
 
     it('a record can be responded to again after being reopened', async () => {
-      // Confirms the reopened status isn't a dead end -- respond() accepts
+      // Confirms the reopened status isn't a dead end; respond() accepts
       // 'open' or 'reopened' as its source statuses (see the respond()
       // describe block above for the full assertion of that behavior).
       const { svc } = makeService((text) => {
@@ -410,7 +422,7 @@ describe('QaqcService', () => {
     });
 
     // Owner's org-category RBAC sprint, segregation-of-duties fix: the same
-    // user who responded cannot also confirm their own response -- applies
+    // user who responded cannot also confirm their own response; applies
     // to every record type, not just WIR/MIR (see this check's own comment
     // in qaqc.service.ts for why).
     it('rejects self-confirmation -- the same user who responded cannot also confirm it', async () => {
@@ -422,7 +434,7 @@ describe('QaqcService', () => {
       });
       await expect(svc.confirm(companyId, projectId, qaqcId, 'user-2', { decision: 'confirmed' }))
         .rejects.toBeInstanceOf(ForbiddenException);
-      // Only findOne()'s own withTenant call happened -- no UPDATE was attempted.
+      // Only findOne()'s own withTenant call happened; no UPDATE was attempted.
       expect(db.withTenant).toHaveBeenCalledTimes(1);
     });
 
@@ -483,7 +495,7 @@ describe('QaqcService', () => {
       });
       storage.getObjectSize.mockResolvedValue(1000);
 
-      const result = await svc.addAttachment(companyId, qaqcId, 'user-1', {
+      const result = await svc.addAttachment(companyId, projectId, qaqcId, 'user-1', {
         storageKey: 'k1', filename: 'photo.jpg', sizeBytes: 1, // deliberately wrong declared size
       });
       expect((result as Record<string, unknown>).sizeBytes).toBe(1000);
@@ -493,7 +505,7 @@ describe('QaqcService', () => {
       const { svc, storage } = makeService(() => undefined);
       storage.getObjectSize.mockResolvedValue(999_999_999);
 
-      await expect(svc.addAttachment(companyId, qaqcId, 'user-1', { storageKey: 'k1', filename: 'photo.jpg', sizeBytes: 1 }))
+      await expect(svc.addAttachment(companyId, projectId, qaqcId, 'user-1', { storageKey: 'k1', filename: 'photo.jpg', sizeBytes: 1 }))
         .rejects.toBeInstanceOf(BadRequestException);
       expect(storage.deleteIfExists).toHaveBeenCalledWith('k1');
     });
@@ -502,7 +514,7 @@ describe('QaqcService', () => {
       const { svc, storage } = makeService(() => undefined);
       storage.getObjectSize.mockResolvedValue(null);
 
-      await expect(svc.addAttachment(companyId, qaqcId, 'user-1', { storageKey: 'k1', filename: 'photo.jpg', sizeBytes: 1 }))
+      await expect(svc.addAttachment(companyId, projectId, qaqcId, 'user-1', { storageKey: 'k1', filename: 'photo.jpg', sizeBytes: 1 }))
         .rejects.toBeInstanceOf(BadRequestException);
     });
 
@@ -516,7 +528,7 @@ describe('QaqcService', () => {
         }
         return undefined;
       });
-      await svc.addAttachment(companyId, qaqcId, 'user-1', { storageKey: 'k1', filename: 'photo.jpg', sizeBytes: 1000 });
+      await svc.addAttachment(companyId, projectId, qaqcId, 'user-1', { storageKey: 'k1', filename: 'photo.jpg', sizeBytes: 1000 });
     });
 
     it('stores an explicit documentType when given', async () => {
@@ -527,14 +539,14 @@ describe('QaqcService', () => {
         }
         return undefined;
       });
-      await svc.addAttachment(companyId, qaqcId, 'user-1', {
+      await svc.addAttachment(companyId, projectId, qaqcId, 'user-1', {
         storageKey: 'k1', filename: 'ms.pdf', sizeBytes: 1000, documentType: 'method_statement',
       });
     });
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  // Quick photo picker -- links a Capture (mirrors issue_captures)
+  // Quick photo picker: links a Capture (mirrors issue_captures)
   // ══════════════════════════════════════════════════════════════════════
   describe('linkCapture', () => {
     it('links an already-uploaded capture with kind defaulted to "issue"', async () => {
@@ -546,7 +558,7 @@ describe('QaqcService', () => {
         return undefined;
       });
 
-      const result = await svc.linkCapture(companyId, qaqcId, 'user-1', { captureId: 'capture-1' });
+      const result = await svc.linkCapture(companyId, projectId, qaqcId, 'user-1', { captureId: 'capture-1' });
       expect((result as Record<string, unknown>).kind).toBe('issue');
     });
 
@@ -558,7 +570,7 @@ describe('QaqcService', () => {
         return undefined;
       });
 
-      const result = await svc.linkCapture(companyId, qaqcId, 'user-2', { captureId: 'capture-2', kind: 'response' });
+      const result = await svc.linkCapture(companyId, projectId, qaqcId, 'user-2', { captureId: 'capture-2', kind: 'response' });
       expect((result as Record<string, unknown>).kind).toBe('response');
     });
   });
@@ -598,6 +610,111 @@ describe('QaqcService', () => {
 
       const result = await svc.getOpenList(companyId, projectId);
       expect(result).toHaveLength(2);
+    });
+  });
+
+  // H-1 regression (KNOWN_ISSUES_AND_REMEDIATION.md): addAttachment/
+  // getAttachments/deleteAttachment/linkCapture/getLinkedCaptures used to
+  // scope their record lookup only by company_id; a user authorized for
+  // Project A could read/write Project B's QAQC record sub-resources by
+  // supplying Project B's own qaqcId. Each test proves both halves: the
+  // real project succeeds, the wrong one is rejected.
+  describe('H-1: same-company cross-project access is rejected on sub-resource routes', () => {
+    const REAL_PROJECT = 'project-A';
+    const OTHER_PROJECT = 'project-B';
+
+    function makeScopedService(extra: (text: string) => unknown[] | undefined = () => undefined) {
+      return makeService((text, values) => {
+        if (text.includes('SELECT 1 FROM qaqc_records')) {
+          return values.includes(REAL_PROJECT) ? [{ '?column?': 1 }] : [];
+        }
+        return extra(text);
+      });
+    }
+
+    it('addAttachment: succeeds under the real project, rejects the same qaqcId under another project', async () => {
+      const { svc, storage } = makeScopedService((text) => (text.includes('INSERT INTO qaqc_attachments') ? [{ id: 'att-1' }] : undefined));
+      storage.getObjectSize.mockResolvedValue(1000);
+      const dto = { storageKey: 'k1', filename: 'photo.jpg', sizeBytes: 1000 };
+
+      await expect(svc.addAttachment(companyId, REAL_PROJECT, qaqcId, 'user-1', dto)).resolves.toBeDefined();
+      await expect(svc.addAttachment(companyId, OTHER_PROJECT, qaqcId, 'user-1', dto)).rejects.toThrow(NotFoundException);
+    });
+
+    it('getAttachments: succeeds under the real project, rejects the same qaqcId under another project', async () => {
+      const { svc } = makeScopedService();
+
+      await expect(svc.getAttachments(companyId, REAL_PROJECT, qaqcId)).resolves.toEqual([]);
+      await expect(svc.getAttachments(companyId, OTHER_PROJECT, qaqcId)).rejects.toThrow(NotFoundException);
+    });
+
+    it('deleteAttachment: succeeds under the real project, rejects the same qaqcId under another project', async () => {
+      const { svc, db } = makeScopedService();
+      // DELETE reports a row count, not an array; stub the DELETE
+      // specifically so the "real project" case succeeds.
+      const originalWithTenant = db.withTenant as jest.Mock;
+      originalWithTenant.mockImplementation((_companyId: string, fn: (sql: unknown) => unknown) => {
+        const sql = jest.fn((strings: TemplateStringsArray, ...values: unknown[]) => {
+          const text = strings.join('?');
+          if (text.includes('SELECT 1 FROM qaqc_records')) return Promise.resolve(values.includes(REAL_PROJECT) ? [{ '?column?': 1 }] : []);
+          if (text.includes('DELETE FROM qaqc_attachments')) return Promise.resolve({ count: 1 });
+          return Promise.resolve([]);
+        });
+        return fn(sql);
+      });
+
+      await expect(svc.deleteAttachment(companyId, REAL_PROJECT, qaqcId, 'att-1')).resolves.toBeDefined();
+      await expect(svc.deleteAttachment(companyId, OTHER_PROJECT, qaqcId, 'att-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('linkCapture: succeeds under the real project, rejects the same qaqcId under another project', async () => {
+      const { svc } = makeScopedService((text) => (text.includes('INSERT INTO qaqc_captures') ? [{ id: 'link-1' }] : undefined));
+      const dto = { captureId: 'capture-1' };
+
+      await expect(svc.linkCapture(companyId, REAL_PROJECT, qaqcId, 'user-1', dto)).resolves.toBeDefined();
+      await expect(svc.linkCapture(companyId, OTHER_PROJECT, qaqcId, 'user-1', dto)).rejects.toThrow(NotFoundException);
+    });
+
+    it('getLinkedCaptures: succeeds under the real project, rejects the same qaqcId under another project', async () => {
+      const { svc } = makeScopedService();
+
+      await expect(svc.getLinkedCaptures(companyId, REAL_PROJECT, qaqcId)).resolves.toEqual([]);
+      await expect(svc.getLinkedCaptures(companyId, OTHER_PROJECT, qaqcId)).rejects.toThrow(NotFoundException);
+    });
+
+    // H-1 follow-up: the QAQC record itself can be in the right project
+    // while the *capture* being linked belongs to a different one in the
+    // same company; a parent-only check (the test above) doesn't cover
+    // this case.
+    it('linkCapture: rejects a same-company capture that belongs to a different project, and writes no link', async () => {
+      const insertSpy = jest.fn();
+      const { svc } = makeService((text, values) => {
+        if (text.includes('SELECT 1 FROM qaqc_records')) return values.includes(REAL_PROJECT) ? [{ '?column?': 1 }] : [];
+        if (text.includes('FROM captures')) return []; // capture exists, but not in this project
+        if (text.includes('INSERT INTO qaqc_captures')) { insertSpy(); return [{ id: 'link-1' }]; }
+        return undefined;
+      });
+
+      await expect(svc.linkCapture(companyId, REAL_PROJECT, qaqcId, 'user-1', { captureId: 'capture-from-other-project' })).rejects.toThrow(NotFoundException);
+      expect(insertSpy).not.toHaveBeenCalled();
+    });
+
+    // H-1 follow-up: create() never checked that an optional locationId
+    // belongs to this project before persisting it.
+    it('create: rejects a same-company location that belongs to a different project, and writes no record', async () => {
+      const insertSpy = jest.fn();
+      const { svc } = makeService((text) => {
+        if (text.includes('FROM locations')) return []; // location exists, but not in this project
+        if (text.includes('INSERT INTO qaqc_records')) { insertSpy(); return [{ id: 'qaqc-new' }]; }
+        return undefined;
+      });
+      const dto = {
+        recordType: 'ncr', subject: 'Subject', description: 'Desc',
+        discipline: 'structural', locationId: 'location-from-other-project',
+      } as CreateQaqcRecordDto;
+
+      await expect(svc.create(companyId, projectId, 'user-1', 'qa_qc_manager', dto)).rejects.toThrow(NotFoundException);
+      expect(insertSpy).not.toHaveBeenCalled();
     });
   });
 });

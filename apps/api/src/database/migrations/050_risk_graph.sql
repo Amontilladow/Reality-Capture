@@ -1,9 +1,9 @@
 -- ══════════════════════════════════════════════════════════════════════════
--- Migration 050 — Project Risk Graph (nodes + edges)
+-- Migration 050: Project Risk Graph (nodes + edges)
 --
 -- Foundation table pair for the new Project Risk Intelligence feature. This
 -- is deliberately a *generic* graph layer sitting alongside the existing
--- domain tables (rfis, issues, snag_items, bim_elements, drawings, ...) --
+-- domain tables (rfis, issues, snag_items, bim_elements, drawings, ...);
 -- it does not replace or duplicate any of them. A graph node is a pointer
 -- to one real row in one real existing table (company_id/node_type/
 -- entity_id uniquely identifies it); a graph edge is a typed, sourced,
@@ -11,14 +11,14 @@
 --
 -- No cross-entity link table existed anywhere in this schema before this
 -- migration (document_links is document-specific and only supports
--- capture/element/location/issue targets) -- this is genuinely new
+-- capture/element/location/issue targets): this is new
 -- relationship modeling, not a reuse of prior work.
 --
 -- Node types cover every entity that is real and populated today
 -- (rfi, issue, snag_item, qa_inspection, drawing, document, submittal,
 -- transmittal, bim_model, bim_element, building, level, location, capture,
 -- project, user, company) plus two that the schema supports but this
--- codebase has no backing module for yet (programme_activity, material) --
+-- codebase has no backing module for yet (programme_activity, material);
 -- these exist in the enum so the graph/risk engine can represent them
 -- later without another migration, but nothing in this feature will ever
 -- create a node of those two types today. The `risk` node type lets a
@@ -80,12 +80,12 @@ CREATE TABLE IF NOT EXISTS risk_graph_nodes (
   project_id    UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   node_type     risk_node_type NOT NULL,
   entity_id     UUID NOT NULL,           -- the real row's id in its own table
-  entity_table  VARCHAR(64) NOT NULL,    -- e.g. 'rfis' -- for traceability/debugging only, never used to build SQL dynamically
+  entity_table  VARCHAR(64) NOT NULL,    -- e.g. 'rfis'; for traceability/debugging only, never used to build SQL dynamically
   label         VARCHAR(500) NOT NULL,   -- cached display name (rfi_number, issue title, drawing number, ...)
   -- Cached, cheap-to-filter-on fields copied from the source row so the
   -- signal/scoring engine and the graph UI don't have to re-join back to
   -- 8 different domain tables on every read. This is a read cache, never
-  -- the source of truth -- re-extraction refreshes it from the real row.
+  -- the source of truth; re-extraction refreshes it from the real row.
   discipline    VARCHAR(64),
   status        VARCHAR(64),
   priority      VARCHAR(20),

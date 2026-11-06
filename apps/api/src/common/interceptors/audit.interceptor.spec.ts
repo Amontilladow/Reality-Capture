@@ -3,7 +3,7 @@ import { deriveAction } from './audit.interceptor';
 // RBAC Phase 6: the access-control mutations added across Phases 1-5
 // (project membership, permission grants, organization-slot membership,
 // snag verification) all previously fell through to deriveAction()'s
-// generic last-segment fallback -- which for these exact routes produced
+// generic last-segment fallback; which for these exact routes produced
 // unreadable labels like "verify.created" or "members.created", not
 // obviously distinguishable from a routine resource create. These tests
 // lock in the explicit, semantic ROUTE_MAP entries added for them.
@@ -44,7 +44,7 @@ describe('deriveAction', () => {
   });
 
   // Phase 7: RFI lifecycle and snag creation were previously uncovered
-  // entirely -- these fell through to the generic fallback, same gap as
+  // entirely; these fell through to the generic fallback, same gap as
   // the access-control routes above before RBAC Phase 6 fixed those.
   it('labels creating an RFI', () => {
     expect(deriveAction('POST', '/api/v1/projects/project-1/rfis'))
@@ -71,7 +71,7 @@ describe('deriveAction', () => {
       .toEqual({ action: 'snag_item.created', resourceType: 'snag_item' });
   });
 
-  // Sanity check against a pre-existing, unrelated ROUTE_MAP entry -- confirms
+  // Sanity check against a pre-existing, unrelated ROUTE_MAP entry; confirms
   // the new access-control entries were appended, not inserted somewhere that
   // shadows an earlier match.
   it('still labels an unrelated existing route unchanged', () => {

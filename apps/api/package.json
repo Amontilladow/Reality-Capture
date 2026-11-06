@@ -38,7 +38,7 @@
     "@nestjs/websockets": "^10.3.0",
     "@react-pdf/renderer": "^4.1.6",
     "argon2": "^0.40.0",
-    "axios": "^1.7.7",
+    "axios": "^1.21.0",
     "bull": "^4.12.6",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",

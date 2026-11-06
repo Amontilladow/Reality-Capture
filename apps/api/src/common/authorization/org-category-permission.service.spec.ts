@@ -38,7 +38,7 @@ describe('OrgCategoryPermissionService.canPerformAction', () => {
       if (text.includes('SELECT role FROM project_members')) return [{ role: 'project_lead' }];
       return undefined;
     });
-    // client_representative -> 'view_only' category, which has no 'edit' --
+    // client_representative -> 'view_only' category, which has no 'edit';
     // project_lead still bypasses it.
     const user = { companyId, companyRole: 'client_representative' as const, id: userId };
     await expect(svc.canPerformAction(user, projectId, 'rfis', 'edit')).resolves.toBe(true);

@@ -19,6 +19,12 @@ async def llm_complete(prompt: str, system: str = "You are a helpful constructio
         except Exception as e:
             logger.warning(f"LLM provider 'openai' failed, falling back: {e}")
             last_error = e
+    elif p == "custom_openai_compatible" and settings.custom_openai_compatible_api_key:
+        try:
+            return await _custom_openai_compatible(prompt, system, max_tokens)
+        except Exception as e:
+            logger.warning(f"LLM provider 'custom_openai_compatible' failed, falling back: {e}")
+            last_error = e
 
     try:
         return await _omniroute(prompt, system, max_tokens)
@@ -52,9 +58,22 @@ async def _openai(prompt, system, max_tokens):
     )
     return resp.choices[0].message.content or ""
 
+async def _custom_openai_compatible(prompt, system, max_tokens):
+    from openai import AsyncOpenAI
+    client = AsyncOpenAI(
+        api_key=settings.custom_openai_compatible_api_key,
+        base_url=settings.custom_openai_compatible_base_url or None,
+    )
+    resp = await client.chat.completions.create(
+        model=settings.custom_openai_compatible_model or "gpt-4o",
+        max_tokens=max_tokens,
+        messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+    )
+    return resp.choices[0].message.content or ""
+
 async def _omniroute(prompt, system, max_tokens):
     # Local dev-only free-tier AI gateway (OpenAI-compatible), not auto-started
-    # and not available outside this machine -- see .env.example. The OpenAI
+    # and not available outside this machine; see .env.example. The OpenAI
     # SDK requires a non-empty api_key even though OmniRoute doesn't check it.
     from openai import AsyncOpenAI
     client = AsyncOpenAI(api_key="omniroute-local", base_url=settings.omniroute_base_url)

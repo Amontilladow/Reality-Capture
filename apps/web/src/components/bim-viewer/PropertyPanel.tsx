@@ -11,6 +11,7 @@ import type { ProjectPinResult } from '../../lib/drawings.api';
 import { PinSearch } from './PinSearch';
 import { STATUS_LABELS, STATUS_BADGE_CLASS, PRIORITY_LABELS, PRIORITY_BADGE_CLASS, formatDateTime } from '../../lib/issue-constants';
 import type { IssueStatus, IssuePriority } from '@engineeringos/types';
+import { Listbox } from '../ui/Listbox';
 
 function statusBadgeClass(status: string | null): string {
   switch (status) {
@@ -23,8 +24,8 @@ function statusBadgeClass(status: string | null): string {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="border-b border-base-600 py-3">
-      <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">{title}</h4>
+    <div className="border-b border-base-600 py-4">
+      <h4 className="mb-2 text-xs font-semibold text-ink-500">{title}</h4>
       {children}
     </div>
   );
@@ -32,7 +33,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function KeyValueRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex justify-between gap-2 py-0.5 text-sm">
+    <div className="flex justify-between gap-2 py-0 text-sm">
       <span className="text-ink-500">{label}</span>
       <span className="text-right text-ink-100">{value}</span>
     </div>
@@ -58,7 +59,7 @@ export function PropertyPanel({
   const [showStatusHistory, setShowStatusHistory] = useState(false);
 
   // Reset the status-editing draft and history visibility whenever the
-  // selected element changes -- this component isn't remounted on
+  // selected element changes; this component isn't remounted on
   // selection (same instance, new props), so stale draft state would
   // otherwise leak across elements.
   const [lastElementId, setLastElementId] = useState<string | null>(null);
@@ -138,16 +139,16 @@ export function PropertyPanel({
   });
 
   if (loading) {
-    return <p className="p-3 text-sm text-ink-500">Loading properties…</p>;
+    return <p className="p-4 text-sm text-ink-500">Loading properties…</p>;
   }
   if (!element) {
-    return <p className="p-3 text-sm text-ink-500">Select an element in the viewer or spatial tree to inspect it.</p>;
+    return <p className="p-4 text-sm text-ink-500">Select an element in the viewer or spatial tree to inspect it.</p>;
   }
 
   // element.properties is normally a plain object (the API decodes the
   // bim_elements.properties JSONB column into one automatically), but a
   // small number of elements have it stored as a JSON-encoded STRING
-  // instead (a data artifact from how/when they were processed -- see
+  // instead (a data artifact from how/when they were processed; see
   // ifc-repository.service.ts's insertElementsBatch). Object.entries() on
   // a raw string walks its characters by index, which renders as garbage
   // numbered rows, so unwrap that case defensively rather than trusting
@@ -164,8 +165,8 @@ export function PropertyPanel({
     .filter(([, v]) => v !== null && v !== undefined);
 
   return (
-    <div className="overflow-y-auto p-3">
-      <div className="space-y-2 pb-3">
+    <div className="overflow-y-auto p-4">
+      <div className="space-y-2 pb-4">
         <button onClick={onRaiseIssue} className="btn-primary w-full text-sm">
           + Raise an issue here
         </button>
@@ -182,7 +183,7 @@ export function PropertyPanel({
             </button>
           </div>
         ) : element.linkedPin ? (
-          <div className="space-y-1.5 rounded border border-base-600 px-3 py-2">
+          <div className="space-y-2 rounded border border-base-600 px-4 py-2">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0 text-sm">
                 <span className="text-ink-500">Linked pin: </span>
@@ -203,9 +204,9 @@ export function PropertyPanel({
               </div>
             </div>
             {element.linkedPin.linkedRecord?.type === 'issue' && (
-              <div className="flex items-center gap-3 text-xs">
+              <div className="flex items-center gap-4 text-xs">
                 <Link to={`/projects/${projectId}/issues?issueId=${element.linkedPin.linkedRecord.id}`} className="text-blueprint hover:text-blueprint">
-                  View in Issues →
+                  View in Issues
                 </Link>
                 <button
                   type="button"
@@ -220,7 +221,7 @@ export function PropertyPanel({
             {element.linkedPin.linkedRecord?.type === 'snag' && (
               <div className="text-xs">
                 <Link to={`/projects/${projectId}/snagging?snagId=${element.linkedPin.linkedRecord.id}`} className="text-blueprint hover:text-blueprint">
-                  View in Snagging →
+                  View in Snagging
                 </Link>
               </div>
             )}
@@ -256,7 +257,7 @@ export function PropertyPanel({
               </button>
             </div>
             <p className="text-xs text-ink-500">
-              Creates the pin here, with no floor-plan position yet -- place it on a drawing later from the Floor Plans page.
+              Creates the pin here, with no floor-plan position yet. Place it on a drawing later from the Floor Plans page.
             </p>
           </div>
         ) : (
@@ -285,7 +286,7 @@ export function PropertyPanel({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${statusBadgeClass(element.constructionStatus)}`}>
+                <span className={`rounded px-2 py-0 text-xs font-medium ${statusBadgeClass(element.constructionStatus)}`}>
                   {CONSTRUCTION_STATUS_OPTIONS.find((o) => o.value === element.constructionStatus)?.label ?? 'Not started'}
                 </span>
                 {element.completionPct !== null && <span className="text-xs text-ink-500">{element.completionPct}%</span>}
@@ -306,14 +307,14 @@ export function PropertyPanel({
               {showStatusHistory ? 'Hide history' : 'Show history'}
             </button>
             {showStatusHistory && (
-              <div className="space-y-1.5 pt-1">
+              <div className="space-y-2 pt-2">
                 {statusHistoryQuery.isLoading && <p className="text-xs text-ink-500">Loading…</p>}
                 {statusHistoryQuery.data?.length === 0 && <p className="text-xs text-ink-500">No status changes recorded yet.</p>}
                 {statusHistoryQuery.data?.map((h) => (
                   <div key={h.id} className="text-xs text-ink-300">
                     <span className="font-medium text-ink-100">{h.toStatus.replace('_', ' ')}</span>
                     {h.completionPct !== null && ` (${h.completionPct}%)`}
-                    {' — '}{h.performedByName}, {formatDateTime(h.createdAt)}
+                    {', '}{h.performedByName}, {formatDateTime(h.createdAt)}
                     {h.captureTitle && <span className="text-ink-500"> · evidence: {h.captureTitle}</span>}
                   </div>
                 ))}
@@ -324,12 +325,12 @@ export function PropertyPanel({
           <div className="space-y-2">
             <div>
               <label className="field-label text-xs" htmlFor="pp-status">Status</label>
-              <select
+              <Listbox
                 id="pp-status" className="field-input text-sm" value={statusDraft.status}
                 onChange={(e) => setStatusDraft({ ...statusDraft, status: e.target.value })}
               >
                 {CONSTRUCTION_STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
+              </Listbox>
             </div>
             <div>
               <label className="field-label text-xs" htmlFor="pp-pct">Completion %</label>
@@ -341,7 +342,7 @@ export function PropertyPanel({
             </div>
             <div>
               <label className="field-label text-xs" htmlFor="pp-evidence">Evidence photo (optional)</label>
-              <select
+              <Listbox
                 id="pp-evidence" className="field-input text-sm" value={statusDraft.captureId}
                 onChange={(e) => setStatusDraft({ ...statusDraft, captureId: e.target.value })}
               >
@@ -349,7 +350,7 @@ export function PropertyPanel({
                 {(capturesQuery.data ?? []).map((c) => (
                   <option key={c.id} value={c.id}>{c.title || formatDateTime(c.capturedAt)}</option>
                 ))}
-              </select>
+              </Listbox>
             </div>
             {statusMutation.isError && <p className="text-xs text-danger">Failed to update status. Try again.</p>}
             <div className="flex gap-2">
@@ -378,11 +379,11 @@ export function PropertyPanel({
               <li key={issue.id} className="text-sm">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono text-xs text-ink-500">{issue.issueNumber}</span>
-                  <div className="flex gap-1">
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE_CLASS[issue.status as IssueStatus] ?? 'bg-base-800 text-ink-300'}`}>
+                  <div className="flex gap-2">
+                    <span className={`rounded px-2 py-0 text-xs font-medium ${STATUS_BADGE_CLASS[issue.status as IssueStatus] ?? 'bg-base-800 text-ink-300'}`}>
                       {STATUS_LABELS[issue.status as IssueStatus] ?? issue.status}
                     </span>
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${PRIORITY_BADGE_CLASS[issue.priority as IssuePriority] ?? 'bg-base-800 text-ink-300'}`}>
+                    <span className={`rounded px-2 py-0 text-xs font-medium ${PRIORITY_BADGE_CLASS[issue.priority as IssuePriority] ?? 'bg-base-800 text-ink-300'}`}>
                       {PRIORITY_LABELS[issue.priority as IssuePriority] ?? issue.priority}
                     </span>
                   </div>
@@ -446,7 +447,7 @@ export function PropertyPanel({
       {element.classifications.length > 0 && (
         <Section title="Classifications">
           {element.classifications.map((c, i) => (
-            <KeyValueRow key={i} label={c.system} value={[c.code, c.name].filter(Boolean).join(' — ') || '—'} />
+            <KeyValueRow key={i} label={c.system} value={[c.code, c.name].filter(Boolean).join(', ') || 'None'} />
           ))}
         </Section>
       )}

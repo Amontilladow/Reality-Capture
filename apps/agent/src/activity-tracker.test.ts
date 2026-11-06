@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ActivityTracker } from './activity-tracker.js';
 
-// getActiveApplicationName/getIdleSeconds are injected fakes throughout --
+// getActiveApplicationName/getIdleSeconds are injected fakes throughout;
 // this exercises the segment-open/close decision logic without active-win
 // or desktop-idle (or any real display/OS idle-time API) present, which
 // this sandbox does not have. See README.md's testing notes.
@@ -60,9 +60,9 @@ test('when isPrivate() is true, redacts the app name at the source instead of re
 test('private mode ignores idle state -- private time is tracked regardless of idle seconds', async () => {
   const tracker = new ActivityTracker(120);
   await tracker.sample(async () => 'Revit', () => 0, () => 't0', () => true);
-  // Idle seconds well past the threshold -- still stays PRIVATE, not IDLE.
+  // Idle seconds well past the threshold: still stays PRIVATE, not IDLE.
   const closed = await tracker.sample(async () => 'Revit', () => 999, () => 't1', () => true);
-  assert.equal(closed, null); // unchanged segment (still PRIVATE) -- nothing closes
+  assert.equal(closed, null); // unchanged segment (still PRIVATE): nothing closes
 });
 
 test('leaving private mode closes the private segment and opens a normal one', async () => {
@@ -82,7 +82,7 @@ test('closeCurrent() closes the open segment on demand (graceful shutdown) and r
   assert.equal(tracker.closeCurrent(() => 't3'), null); // nothing open anymore
 });
 
-// Window title capture -- getWindowTitle is the new 5th param (after the
+// Window title capture: getWindowTitle is the new 5th param (after the
 // already-defaulted now/isPrivate), so every test above that never passes
 // it exercises the exact same "no windowTitle key at all" segment shape
 // this class has always produced.
@@ -105,7 +105,7 @@ test('captures the window title alongside the app name when getWindowTitle is wi
 test('updates the stored title within the same open segment when the title changes but the app/activity type does not', async () => {
   const tracker = new ActivityTracker(120);
   await tracker.sample(async () => 'Excel', () => 0, () => 't0', () => false, async () => 'Q3-Budget.xlsx - Excel');
-  await tracker.sample(async () => 'Excel', () => 0, () => 't1', () => false, async () => 'Q4-Forecast.xlsx - Excel'); // same app -- segment stays open, title updates
+  await tracker.sample(async () => 'Excel', () => 0, () => 't1', () => false, async () => 'Q4-Forecast.xlsx - Excel'); // same app: segment stays open, title updates
   const closed = await tracker.sample(async () => 'Outlook', () => 0, () => 't2', () => false, async () => undefined);
   assert.deepEqual(closed, { applicationNameRaw: 'Excel', activityType: 'ACTIVE', startedAt: 't0', endedAt: 't2', windowTitle: 'Q4-Forecast.xlsx - Excel' });
 });

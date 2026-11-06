@@ -1,4 +1,7 @@
-import type { SiteDrawingSourceProvider, SiteDrawingWorkflowStatus, SiteDrawingDocumentClassification, SiteDrawingExtractionStatus } from '../../lib/site-drawings.api';
+import type {
+  SiteDrawingSourceProvider, SiteDrawingWorkflowStatus, SiteDrawingDocumentClassification, SiteDrawingExtractionStatus,
+  SiteDrawingImportBatchStatus,
+} from '../../lib/site-drawings.api';
 import { VALID_FOR_SITE_USE_STATUSES } from '../../lib/site-drawings.api';
 import type { StatusTone } from '../../lib/status-tone';
 
@@ -13,7 +16,7 @@ export const WORKFLOW_STATUS_LABELS: Record<SiteDrawingWorkflowStatus, string> =
 };
 
 // One shared tone vocabulary (status-tone.ts), same as every other module
-// in this app -- a drawing's workflow status is a status badge like any
+// in this app; a drawing's workflow status is a status badge like any
 // other, not a bespoke color scheme.
 export const WORKFLOW_STATUS_TONE: Record<SiteDrawingWorkflowStatus, StatusTone> = {
   UNDER_REVIEW: 'progress',
@@ -29,7 +32,7 @@ export function isValidForSiteUse(status: SiteDrawingWorkflowStatus): boolean {
   return (VALID_FOR_SITE_USE_STATUSES as readonly SiteDrawingWorkflowStatus[]).includes(status);
 }
 
-// documentClassification defaults to 'CONSTRUCTION' -- same backward-
+// documentClassification defaults to 'CONSTRUCTION'; same backward-
 // compatible default the API's own isConfirmedCurrent() uses, so a caller
 // that hasn't been updated to pass it yet keeps its exact prior behavior.
 export function isConfirmedCurrent(status: SiteDrawingWorkflowStatus, isSuperseded: boolean, documentClassification: SiteDrawingDocumentClassification = 'CONSTRUCTION'): boolean {
@@ -49,8 +52,65 @@ export const EXTRACTION_STATUS_LABELS: Record<SiteDrawingExtractionStatus, strin
   MANUAL: 'Manual Entry',
 };
 
+export const EXTRACTION_STATUS_TONE: Record<SiteDrawingExtractionStatus, StatusTone> = {
+  CONFIRMED: 'success',
+  NEEDS_REVIEW: 'warning',
+  CONFLICT: 'danger',
+  MANUAL: 'neutral',
+};
+
+export const IMPORT_BATCH_STATUS_LABELS: Record<SiteDrawingImportBatchStatus, string> = {
+  PENDING: 'Pending',
+  PROCESSING: 'Processing',
+  COMPLETED: 'Completed',
+  PARTIAL: 'Completed with errors',
+  FAILED: 'Failed',
+};
+
+export const IMPORT_BATCH_STATUS_TONE: Record<SiteDrawingImportBatchStatus, StatusTone> = {
+  PENDING: 'neutral',
+  PROCESSING: 'progress',
+  COMPLETED: 'success',
+  PARTIAL: 'warning',
+  FAILED: 'danger',
+};
+
+export function isImportBatchInProgress(status: SiteDrawingImportBatchStatus): boolean {
+  return status === 'PENDING' || status === 'PROCESSING';
+}
+
 export function needsApprovalWarning(status: SiteDrawingWorkflowStatus): boolean {
   return status === 'UNKNOWN' || status === 'UNDER_REVIEW';
+}
+
+export interface SiteDrawingOverlay {
+  label: string;
+  color: string; // a real hex/rgb value, not a Tailwind class -- drawn directly on a canvas 2D context, which can't read CSS classes
+}
+
+// A visual stamp composited on top of the rendered PDF page -- never
+// written back to the uploaded file (SiteDrawingPdfViewer draws it fresh
+// on every render; the original bytes in storage are never touched).
+// Checked in order of severity/certainty, most definitive first: currency
+// (superseded) and withdrawal/rejection outrank everything else, document
+// classification (FINAL/AS_BUILT) is informational but still overrides a
+// plain approval label, and only what's left maps to the brief's own
+// GOOD FOR CONSTRUCTION / APPROVED — NOT FOR CONSTRUCTION / UNDER REVIEW /
+// STATUS UNVERIFIED vocabulary.
+export function siteDrawingOverlay(revision: {
+  workflowStatus: SiteDrawingWorkflowStatus; isSuperseded: boolean; documentClassification: SiteDrawingDocumentClassification;
+}): SiteDrawingOverlay {
+  const { workflowStatus, isSuperseded, documentClassification } = revision;
+
+  if (isSuperseded) return { label: 'SUPERSEDED — DO NOT USE FOR CONSTRUCTION', color: '#dc2626' };
+  if (workflowStatus === 'WITHDRAWN') return { label: 'WITHDRAWN — DO NOT USE', color: '#dc2626' };
+  if (workflowStatus === 'REJECTED') return { label: 'REJECTED — DO NOT USE', color: '#dc2626' };
+  if (documentClassification === 'AS_BUILT') return { label: 'AS-BUILT', color: '#2563eb' };
+  if (documentClassification === 'FINAL') return { label: 'FINAL', color: '#2563eb' };
+  if (workflowStatus === 'APPROVED_FOR_CONSTRUCTION') return { label: 'GOOD FOR CONSTRUCTION', color: '#16a34a' };
+  if (workflowStatus === 'APPROVED') return { label: 'APPROVED — NOT FOR CONSTRUCTION', color: '#d97706' };
+  if (workflowStatus === 'UNDER_REVIEW') return { label: 'UNDER REVIEW', color: '#d97706' };
+  return { label: 'STATUS UNVERIFIED', color: '#d97706' }; // UNKNOWN
 }
 
 export const SOURCE_PROVIDER_LABELS: Record<SiteDrawingSourceProvider, string> = {

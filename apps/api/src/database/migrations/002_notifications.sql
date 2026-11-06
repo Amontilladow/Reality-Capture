@@ -4,7 +4,7 @@ BEGIN;
 -- TABLE: notifications
 -- Replaces the "notification queued (Phase 2)" log-only stub in
 -- IssuesService with a real, polled, in-app notification. Delivery is
--- honestly scoped to in-app/polling only — email/push are not wired to a
+-- scoped to in-app/polling only; email/push are not wired to a
 -- provider yet and are not faked here.
 -- ══════════════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS notifications (

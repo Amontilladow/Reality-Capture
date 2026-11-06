@@ -20,7 +20,7 @@ export const PROJECT_ROLE_LABELS: Record<ProjectRole, string> = {
   capture_operator: 'Capture Operator',
   viewer: 'Viewer',
   // Outside subcontractor-company login, restricted to this project's RFI
-  // module only -- see SubcontractorRfiAccessGuard.
+  // module only; see SubcontractorRfiAccessGuard.
   subcontractor: 'Subcontractor',
 };
 
@@ -36,11 +36,11 @@ export const COMPANY_ROLE_LABELS: Record<CompanyRole, string> = {
   commercial_manager: 'Commercial Manager',
   consultant: 'Consultant',
   client_representative: 'Client Representative',
-  // CTO spec: restricted, site-facing role -- full working access to Floor
+  // CTO spec: restricted, site-facing role; full working access to Floor
   // Plans/Issues/Snagging only (SiteRoleRestrictionGuard), everywhere else
   // read-only.
   project_engineer: 'Project Engineer',
-  // Org-category sprint additions -- see ORG_CATEGORIES/getOrgCategory in
+  // Org-category sprint additions; see ORG_CATEGORIES/getOrgCategory in
   // @engineeringos/types for what each maps to.
   chairman: 'Chairman',
   general_manager: 'General Manager',
@@ -116,7 +116,7 @@ export const DISCIPLINE_LABELS: Record<IssueDiscipline, string> = {
   OTHER: 'Other',
 };
 
-// ── Category (issue_category_enum, migration 021) — distinct axis from
+// ── Category (issue_category_enum, migration 021): distinct axis from
 // IssueType above; both fields coexist on an issue. ───────────────────────
 export const ISSUE_CATEGORIES: IssueCategory[] = [
   'design_issue', 'bim_modeling_issue', 'coordination_issue', 'clash_detection',
@@ -138,22 +138,22 @@ export const CATEGORY_LABELS: Record<IssueCategory, string> = {
   other: 'Other',
 };
 
-// Statuses a user can hand-pick from a "move to next stage" perspective —
+// Statuses a user can hand-pick from a "move to next stage" perspective;
 // void is an admin/system state, not something surfaced as a normal action.
 // Mirrors the reference tracker's linear progression; 'reopened' is
 // deliberately excluded (it's a distinct terminal-ish state shown as its
-// own badge, not a stepper stage — see IssueDetail.tsx).
+// own badge, not a stepper stage; see IssueDetail.tsx).
 export const ISSUE_STATUS_FLOW: IssueStatus[] = [
   'open', 'under_review', 'assigned', 'in_progress', 'waiting_for_information', 'resolved', 'closed',
 ];
 
 // Roles allowed to use the manager-only issue-tracker actions (dashboard,
-// reminders, force-status, F5 close-out sign-off) — mirrors the backend's
+// reminders, force-status, F5 close-out sign-off): mirrors the backend's
 // @Roles('company_admin', 'engineering_manager') gate on those same
 // endpoints (issues.controller.ts). That decorator is enforced by
 // RolesGuard via a WEIGHT comparison (roles.guard.ts), not a literal list
 // membership check, so it actually also passes technical_director (80)
-// and super_admin (100) -- both outrank engineering_manager (70) already.
+// and super_admin (100): both outrank engineering_manager (70) already.
 // A plain `=== 'company_admin' || === 'engineering_manager'` list here
 // would silently disagree with the backend for those two roles (exactly
 // the gap IssuesService.isPermittedApprover() was introduced to close on

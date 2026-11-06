@@ -6,11 +6,12 @@ import {
   BYO_AI_PROVIDERS, BYO_AI_PROVIDER_LABELS, type ByoAiProvider,
 } from '../lib/ai-connections.api';
 import { apiErrorMessage } from '../lib/api';
+import { Listbox } from '../components/ui/Listbox';
 
 // Spec sections 5-8: Mode A "RealityCapture AI" (platform-provided, the
-// default -- nothing to configure) vs Mode B "Bring Your Own AI" (this
+// default; nothing to configure) vs Mode B "Bring Your Own AI" (this
 // user's own provider credentials, stored encrypted server-side and never
-// re-displayed once submitted -- only a last-4 fingerprint). Connecting
+// re-displayed once submitted; only a last-4 fingerprint). Connecting
 // doesn't change WHAT the assistant can do: it still goes through the same
 // domain guard, tools and project permissions either way, only which model
 // answers and who pays for it changes.
@@ -69,11 +70,11 @@ export default function AiSettingsPage() {
     <>
       <PageHeader eyebrow="Account Settings" title="AI Provider" />
       <div className="p-6 space-y-6 max-w-3xl">
-        <div className="panel tick-frame p-5 space-y-4">
+        <div className="panel tick-frame p-6 space-y-4">
           <div>
-            <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">AI Mode</h2>
-            <p className="text-xs text-ink-500 mt-1">
-              By default, the AI Assistant runs on RealityCapture's own AI provider -- nothing to set up.
+            <h2 className="text-sm font-semibold text-ink-100">AI Mode</h2>
+            <p className="text-xs text-ink-500 mt-2">
+              By default, the AI Assistant runs on RealityCapture’s own AI provider, nothing to set up.
               Connect your own provider below to run the assistant on your account instead. Either way, the
               assistant only answers within RealityCapture's own rules: the same domain guard, tools, and
               project permissions apply regardless of which provider answers.
@@ -83,7 +84,7 @@ export default function AiSettingsPage() {
           {statusQuery.isLoading && <p className="text-sm text-ink-500">Loading…</p>}
 
           {!statusQuery.isLoading && (
-            <div className="flex items-center justify-between rounded border border-base-700/60 px-3 py-2.5">
+            <div className="flex items-center justify-between rounded border border-base-700/60 px-4 py-2">
               <div className="text-sm">
                 <span className="text-ink-100 font-medium">
                   {connected ? 'My AI Provider' : 'RealityCapture AI'}
@@ -138,21 +139,21 @@ export default function AiSettingsPage() {
           {testMutation.isError && <p className="field-error">{apiErrorMessage(testMutation.error)}</p>}
         </div>
 
-        <div className="panel tick-frame p-5 space-y-4">
+        <div className="panel tick-frame p-6 space-y-4">
           <div>
-            <h2 className="text-sm font-semibold text-ink-100 uppercase tracking-wide">
+            <h2 className="text-sm font-semibold text-ink-100">
               {connected ? 'Replace Connection' : 'Connect My AI Provider'}
             </h2>
-            <p className="text-xs text-ink-500 mt-1">
-              Credentials are encrypted at rest and never shown again after you submit them -- only a last-4
+            <p className="text-xs text-ink-500 mt-2">
+              Credentials are encrypted at rest and never shown again after you submit them. Only a last-4
               fingerprint is kept. We test the connection before saving it.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="field-label" htmlFor="ai-provider">Provider</label>
-              <select
+              <Listbox
                 id="ai-provider"
                 className="field-input"
                 value={provider}
@@ -161,7 +162,7 @@ export default function AiSettingsPage() {
                 {BYO_AI_PROVIDERS.map((p) => (
                   <option key={p} value={p}>{BYO_AI_PROVIDER_LABELS[p]}</option>
                 ))}
-              </select>
+              </Listbox>
             </div>
             <div>
               <label className="field-label" htmlFor="ai-model">Model</label>

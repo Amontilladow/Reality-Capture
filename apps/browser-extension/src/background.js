@@ -1,9 +1,9 @@
-// Manifest V3 background service worker -- wires chrome.tabs/windows/idle/
+// Manifest V3 background service worker: wires chrome.tabs/windows/idle/
 // alarms/storage to the pure tracker.js/domain.js/storage.js logic. This
 // file itself is NOT unit-tested: chrome.* APIs don't exist under
 // node --test and this sandbox has no real browser to load the extension
 // into (see README.md's "How this was tested"). Keep this file as thin as
-// possible -- every actual decision (open/close a segment, resolve a
+// possible; every actual decision (open/close a segment, resolve a
 // trackable domain, merge queue state) belongs in the tested modules it
 // calls, not here.
 import { DomainTracker, PRIVATE_DOMAIN_NAME } from './tracker.js';
@@ -19,7 +19,7 @@ const tracker = new DomainTracker();
 let trackerRestored = false;
 
 // The service worker can be suspended and woken at any time between
-// events (unlike the desktop agent's single long-lived process) -- restore
+// events (unlike the desktop agent's single long-lived process): restore
 // whatever segment was open before this instance existed, once, lazily,
 // rather than on every single event.
 async function ensureTrackerRestored() {
@@ -30,7 +30,7 @@ async function ensureTrackerRestored() {
 }
 
 function toIngestItem(closedSegment, deviceId) {
-  // Domain doubles as applicationNameRaw -- deliberate, not a shortcut: a
+  // Domain doubles as applicationNameRaw: deliberate, not a shortcut: a
   // domain then flows through the exact same application_registry auto-
   // registration/classification pipeline the desktop agent's app names
   // already use (see apps/api/.../activities/activities.service.ts), so
@@ -57,7 +57,7 @@ async function recordAndQueue(domain, activityType, deviceId) {
 
 async function handleStateChange() {
   const state = await loadState(chrome.storage.local);
-  if (!state.deviceId) return; // not enrolled yet -- nothing to record against
+  if (!state.deviceId) return; // not enrolled yet: nothing to record against
 
   if (state.privateMode) {
     await recordAndQueue(PRIVATE_DOMAIN_NAME, 'PRIVATE', state.deviceId);
@@ -72,7 +72,7 @@ async function handleStateChange() {
 
   const focused = await chrome.windows.getLastFocused();
   if (focused && focused.focused === false) {
-    // The browser itself isn't the OS-focused app -- there's no other
+    // The browser itself isn't the OS-focused app; there's no other
     // app-level signal available from an extension, so this is treated
     // like idle rather than guessed at.
     await recordAndQueue('idle', 'IDLE', state.deviceId);
@@ -83,7 +83,7 @@ async function handleStateChange() {
   const domain = resolveTrackableDomain(tab?.url);
   if (!domain) {
     // Internal browser page (chrome://, the extension's own popup, etc.)
-    // or a tab with no readable URL -- nothing to classify. Treated like
+    // or a tab with no readable URL; nothing to classify. Treated like
     // idle rather than left open indefinitely under whatever domain was
     // previously active.
     await recordAndQueue('idle', 'IDLE', state.deviceId);

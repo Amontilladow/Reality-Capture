@@ -6,6 +6,7 @@ import { createSubmittal } from '../lib/submittals.api';
 import type { ProjectMember } from '../lib/projects.api';
 import { SUBMITTAL_PRIORITIES, SUBMITTAL_PRIORITY_LABELS } from '../lib/submittal-constants';
 import { apiErrorMessage } from '../lib/api';
+import { Listbox } from './ui/Listbox';
 
 export function SubmittalFormModal({
   open, onClose, projectId, members,
@@ -74,7 +75,7 @@ export function SubmittalFormModal({
           <textarea id="description" className="field-input min-h-[72px]" value={description} onChange={(e) => setDescription(e.target.value)} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="specSection">Spec section</label>
             <input id="specSection" className="field-input" value={specSection} onChange={(e) => setSpecSection(e.target.value)} placeholder="08 44 00" />
@@ -85,14 +86,14 @@ export function SubmittalFormModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="priority">Priority</label>
-            <select id="priority" className="field-input" value={priority} onChange={(e) => setPriority(e.target.value as SubmittalPriority)}>
+            <Listbox id="priority" className="field-input" value={priority} onChange={(e) => setPriority(e.target.value as SubmittalPriority)}>
               {SUBMITTAL_PRIORITIES.map((p) => (
                 <option key={p} value={p}>{SUBMITTAL_PRIORITY_LABELS[p]}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="dueDate">Due date</label>
@@ -100,15 +101,15 @@ export function SubmittalFormModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="assignedTo">Reviewer</label>
-            <select id="assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+            <Listbox id="assignedTo" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
               <option value="">Unassigned</option>
               {members.map((m) => (
                 <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
               ))}
-            </select>
+            </Listbox>
           </div>
           <div>
             <label className="field-label" htmlFor="discipline">Discipline</label>

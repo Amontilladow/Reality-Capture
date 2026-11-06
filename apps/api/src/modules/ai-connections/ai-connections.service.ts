@@ -25,7 +25,7 @@ interface DecryptedConnection {
 // Spec sections 5-8, 23: a user's OWN AI provider connection ("My AI
 // Provider" / Mode B). Stores credentials encrypted at rest
 // (CredentialEncryptionService) and never returns the plaintext key again
-// after it's first submitted -- only a last-4 fingerprint, same convention
+// after it's first submitted; only a last-4 fingerprint, same convention
 // the existing Public API Keys feature uses for its own secret.
 //
 // One connection per user (not per company), matching the spec's framing
@@ -56,7 +56,7 @@ export class AiConnectionsService {
   }
 
   // Upserts the user's connection, validating the credentials against the
-  // real provider BEFORE storing anything -- a connection that was never
+  // real provider BEFORE storing anything; a connection that was never
   // tested isn't saved as "connected" with no way to tell the user it
   // doesn't actually work.
   async connect(companyId: string, userId: string, dto: ConnectAiProviderDto): Promise<AiConnectionStatus> {
@@ -112,7 +112,7 @@ export class AiConnectionsService {
 
   // Used by AiService (modules/ai) to resolve which provider actually
   // answers a given request. Returns null when the user has no connection
-  // (or hasn't turned BYO mode on) -- AiService falls back to
+  // (or hasn't turned BYO mode on): AiService falls back to
   // ProviderFactory.getProvider() (RealityCapture's own) in that case.
   async getProviderForUser(companyId: string, userId: string): Promise<AIProvider | null> {
     const connection = await this.getDecrypted(companyId, userId);

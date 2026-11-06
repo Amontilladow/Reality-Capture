@@ -2,7 +2,7 @@ import type { HelpArticle } from './types';
 
 // Email integration content verified against the actual Phase 3
 // implementation (EmailSettingsPage.tsx, EmailComposerModal.tsx,
-// EmailHistoryList.tsx, outlook/gmail integration services) -- not
+// EmailHistoryList.tsx, outlook/gmail integration services): not
 // assumed. Notification content verified against NotificationBell.tsx
 // (no preferences UI exists there).
 export const notificationsEmailArticles: HelpArticle[] = [

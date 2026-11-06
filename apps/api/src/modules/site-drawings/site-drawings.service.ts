@@ -7,12 +7,14 @@ import type {
 import { DatabaseService } from '../../database/database.service';
 import { StorageService } from '../storage/storage.service';
 import { SiteDrawingAdapterRegistry } from './adapters/site-drawing-adapter-registry';
-import { isConfirmedCurrent } from './site-drawing-workflow';
+import { NotificationsService } from '../notifications/notifications.service';
+import { isConfirmedCurrent, workflowStatusLabel } from './site-drawing-workflow';
+import { buildSiteDrawingRegisterWorkbookBuffer, type SiteDrawingRegisterRow } from './site-drawing-register-xls';
 import type { RegisterSiteDrawingDto } from './dto/register-drawing.dto';
 import type { RegisterSiteDrawingRevisionDto } from './dto/register-revision.dto';
 import type { CompleteOfflinePackageDto } from './dto/offline-package.dto';
 
-const DRAWING_MAX_SIZE_BYTES = 200 * 1024 * 1024; // 200 MB -- larger than the floor-plan drawings cap; real IFC/architectural PDF sets run bigger
+const DRAWING_MAX_SIZE_BYTES = 200 * 1024 * 1024; // 200 MB: larger than the floor-plan drawings cap; real IFC/architectural PDF sets run bigger
 const DRAWING_ALLOWED_EXTENSIONS = new Set(['pdf']);
 
 export interface SiteDrawingFilters {
@@ -31,9 +33,10 @@ export class SiteDrawingsService {
     private readonly db: DatabaseService,
     private readonly storage: StorageService,
     private readonly adapters: SiteDrawingAdapterRegistry,
+    private readonly notifications: NotificationsService,
   ) {}
 
-  // ── Upload / registration (Local/internal source — brief section 6's
+  // ── Upload / registration (Local/internal source; brief section 6's
   // "first source for which valid API access and administrator
   // authorization are available": our own platform needs neither, unlike
   // SharePoint/Aconex/Procore, which all require admin-provisioned
@@ -99,7 +102,7 @@ export class SiteDrawingsService {
   }
 
   // Adds a new revision to an existing drawing. The previous current
-  // revision (if any) is marked superseded — section 5's "latest revision
+  // revision (if any) is marked superseded; section 5's "latest revision
   // known to the system" moves forward, but the old file stays in the
   // register, clearly labeled, not deleted (section 5: "Keep historical
   // revisions accessible ... label superseded revisions clearly").
@@ -107,7 +110,7 @@ export class SiteDrawingsService {
     await this.assertProjectBelongsToCompany(companyId, projectId);
     const fileSizeBytes = await this.assertUploadedSizeWithinLimit(dto.storageKey);
 
-    return this.db.withTenant(companyId, async (sql) => {
+    const result = await this.db.withTenant(companyId, async (sql) => {
       const [drawing] = await sql<SiteDrawingRow[]>`SELECT * FROM site_drawings WHERE id = ${drawingId} AND project_id = ${projectId}`;
       if (!drawing) throw new NotFoundException(`Drawing ${drawingId} not found.`);
 
@@ -137,6 +140,20 @@ export class SiteDrawingsService {
 
       return { ...toSiteDrawing(updated), currentRevision: toSiteDrawingRevision(revision) };
     });
+
+    // Brief section 5: "Notify relevant users" when a new revision becomes
+    // current. Every project member, same as the brief's own wording (no
+    // narrower "watchers" concept exists on this register yet); called
+    // after the transaction commits, never nested inside it (notifications
+    // writes through its own withTenant call, a separate connection).
+    await this.notifyProjectMembers(companyId, projectId, userId, {
+      type: 'site_drawing_revision_added',
+      title: `New revision ${dto.revisionNumber} for drawing ${result.drawingNumber}: ${result.drawingTitle}`,
+      resourceType: 'site_drawing',
+      resourceId: drawingId,
+    });
+
+    return result;
   }
 
   // ── Register: search, filter, list ──────────────────────────────────────
@@ -179,7 +196,7 @@ export class SiteDrawingsService {
   }
 
   // Distinct discipline/building/floor values actually present, for filter
-  // dropdowns -- never a hardcoded list, since every project's own taxonomy
+  // dropdowns; never a hardcoded list, since every project's own taxonomy
   // differs.
   async getFilterOptions(companyId: string, projectId: string) {
     await this.assertProjectBelongsToCompany(companyId, projectId);
@@ -190,6 +207,64 @@ export class SiteDrawingsService {
       buildingsOrZones: Array.from(new Set(rows.map(r => r.buildingOrZone).filter((v): v is string => Boolean(v)))).sort(),
       floorsOrLevels: Array.from(new Set(rows.map(r => r.floorOrLevel).filter((v): v is string => Boolean(v)))).sort(),
     }));
+  }
+
+  // Brief section 3: Excel export of the register. Same WHERE clause as
+  // listDrawings() (every filter the Hub's search/filter bar supports
+  // applies here too), but every matching row, never just the current
+  // page; the register is a persistent record, and a document controller
+  // exporting it for a client/consultant needs the whole filtered set,
+  // not whatever happened to be on screen.
+  async exportRegister(companyId: string, projectId: string, filters: Omit<SiteDrawingFilters, 'page' | 'perPage'>): Promise<{ buffer: Buffer; filename: string }> {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+
+    const [project, rows] = await this.db.withTenant(companyId, async (sql) => {
+      const [projectRow] = await sql<{ name: string; code: string | null }[]>`
+        SELECT name, code FROM projects WHERE id = ${projectId} AND company_id = ${companyId}
+      `;
+      const drawingRows = await sql<(SiteDrawingRow & SiteDrawingRevisionJoinRow)[]>`
+        SELECT d.*, r.id AS revision_id, r.revision_number, r.workflow_status AS revision_workflow_status,
+               r.source_status_raw, r.issue_date, r.source_modified_at, r.last_verified_at, r.content_hash,
+               r.storage_key, r.source_revision_id, r.source_web_url AS revision_source_web_url, r.file_size_bytes,
+               r.supersedes_revision_id, r.is_superseded, r.offline_eligibility, r.synchronization_status,
+               r.uploaded_by, r.document_classification, r.suitability_code, r.extraction_status,
+               r.extracted_fields_raw, r.import_batch_id, r.review_notes,
+               r.created_at AS revision_created_at, r.updated_at AS revision_updated_at
+        FROM site_drawings d
+        LEFT JOIN site_drawing_revisions r ON r.id = d.current_revision_id
+        WHERE d.project_id = ${projectId}
+          AND (${filters.search ?? null}::text IS NULL OR d.search_vector @@ plainto_tsquery('english', ${filters.search ?? ''}))
+          AND (${filters.discipline ?? null}::text IS NULL OR d.discipline = ${filters.discipline ?? null})
+          AND (${filters.buildingOrZone ?? null}::text IS NULL OR d.building_or_zone = ${filters.buildingOrZone ?? null})
+          AND (${filters.floorOrLevel ?? null}::text IS NULL OR d.floor_or_level = ${filters.floorOrLevel ?? null})
+          AND (${filters.workflowStatus ?? null}::text IS NULL OR d.current_workflow_status = ${filters.workflowStatus ?? null})
+        ORDER BY d.drawing_number ASC
+      `;
+      return [projectRow, drawingRows] as const;
+    });
+
+    const registerRows: SiteDrawingRegisterRow[] = rows.map((row) => ({
+      drawingNumber: row.drawingNumber,
+      drawingTitle: row.drawingTitle,
+      discipline: row.discipline ?? undefined,
+      buildingOrZone: row.buildingOrZone ?? undefined,
+      floorOrLevel: row.floorOrLevel ?? undefined,
+      revisionNumber: row.revisionId ? row.revisionNumber : undefined,
+      workflowStatus: row.currentWorkflowStatus,
+      documentClassification: row.revisionId ? row.documentClassification : 'CONSTRUCTION',
+      isSuperseded: row.currentIsSuperseded,
+      sourceProvider: row.sourceProvider,
+      issueDate: row.issueDate ?? undefined,
+      lastVerifiedAt: row.lastVerifiedAt ?? undefined,
+      extractionStatus: row.revisionId ? row.extractionStatus : undefined,
+      importBatchId: row.importBatchId ?? undefined,
+    }));
+
+    const projectLabel = project ? (project.code ? `${project.name} (${project.code})` : project.name) : 'Project';
+    const buffer = await buildSiteDrawingRegisterWorkbookBuffer(registerRows, projectLabel);
+    const date = new Date().toISOString().slice(0, 10);
+    const filename = `${(project?.code ?? 'drawing-register').replace(/[^a-z0-9-]+/gi, '-')}-drawing-register-${date}.xlsx`;
+    return { buffer: Buffer.from(buffer), filename };
   }
 
   async getDrawing(companyId: string, projectId: string, drawingId: string): Promise<SiteDrawingWithCurrentRevision> {
@@ -219,7 +294,7 @@ export class SiteDrawingsService {
   // sufficient (it's resolved through the project it actually belongs to).
   //
   // Audited explicitly (writeAccessAudit below) rather than relying on
-  // AuditInterceptor -- this is a GET route (read, by design: issuing a
+  // AuditInterceptor; this is a GET route (read, by design: issuing a
   // download URL doesn't change anything), and the interceptor only covers
   // mutating methods. Section 9's "audit events for document access,
   // download" needs this logged regardless of HTTP verb.
@@ -238,11 +313,11 @@ export class SiteDrawingsService {
     return { url, expiresInSeconds, workflowStatus: revision.workflowStatus, isSuperseded: revision.isSuperseded };
   }
 
-  // The "not stored locally" branch above -- resolves the revision's own
+  // The "not stored locally" branch above: resolves the revision's own
   // drawing (for its sourceProvider + sourceFileId) and asks that
   // provider's adapter for a short-lived URL to the file itself
   // (revision.sourceRevisionId, when set, asks for that specific
-  // historical version rather than the current one -- see
+  // historical version rather than the current one; see
   // DrawingSourceAdapter's own comment).
   private async getAuthorizedFileFromSource(companyId: string, projectId: string, revision: SiteDrawingRevisionRow): Promise<{ url: string; expiresInSeconds: number }> {
     const [drawing] = await this.db.withTenant(companyId, sql => sql<SiteDrawingRow[]>`
@@ -258,7 +333,7 @@ export class SiteDrawingsService {
   }
 
   // Supplements, does not replace, AuditInterceptor's generic coverage of
-  // mutating routes -- mirrors RfisService.writeRfiAudit()'s own pattern
+  // mutating routes; mirrors RfisService.writeRfiAudit()'s own pattern
   // for the same reason (a GET-based access the interceptor can't see).
   private async writeAccessAudit(companyId: string, projectId: string, userId: string, resourceType: string, resourceId: string, action: string): Promise<void> {
     await this.db.withTenant(companyId, sql => sql`
@@ -267,24 +342,38 @@ export class SiteDrawingsService {
     `);
   }
 
-  // ── Workflow status (document-control decisions — gated by the
+  // ── Workflow status (document-control decisions; gated by the
   // 'approve' category action in the controller, stricter than 'edit') ────
 
-  async setWorkflowStatus(companyId: string, projectId: string, drawingId: string, revisionId: string, status: SiteDrawingWorkflowStatus): Promise<SiteDrawingRevision> {
+  async setWorkflowStatus(companyId: string, projectId: string, drawingId: string, revisionId: string, status: SiteDrawingWorkflowStatus, userId?: string): Promise<SiteDrawingRevision> {
     await this.assertProjectBelongsToCompany(companyId, projectId);
-    return this.db.withTenant(companyId, async (sql) => {
-      const [revision] = await sql<SiteDrawingRevisionRow[]>`
+    const { revision, drawingNumber, drawingTitle } = await this.db.withTenant(companyId, async (sql) => {
+      const [updatedRevision] = await sql<SiteDrawingRevisionRow[]>`
         UPDATE site_drawing_revisions SET workflow_status = ${status}, updated_at = now()
         WHERE id = ${revisionId} AND drawing_id = ${drawingId} AND project_id = ${projectId} RETURNING *
       `;
-      if (!revision) throw new NotFoundException(`Revision ${revisionId} not found on drawing ${drawingId}.`);
+      if (!updatedRevision) throw new NotFoundException(`Revision ${revisionId} not found on drawing ${drawingId}.`);
 
-      const [drawing] = await sql<SiteDrawingRow[]>`SELECT current_revision_id FROM site_drawings WHERE id = ${drawingId}`;
+      const [drawing] = await sql<{ currentRevisionId: string | null; drawingNumber: string; drawingTitle: string }[]>`
+        SELECT current_revision_id, drawing_number, drawing_title FROM site_drawings WHERE id = ${drawingId}
+      `;
       if (drawing?.currentRevisionId === revisionId) {
         await sql`UPDATE site_drawings SET current_workflow_status = ${status} WHERE id = ${drawingId}`;
       }
-      return toSiteDrawingRevision(revision);
+      return { revision: updatedRevision, drawingNumber: drawing?.drawingNumber, drawingTitle: drawing?.drawingTitle };
     });
+
+    // Brief section 5: "Notify relevant users" on every status change --
+    // an approval, a rejection, a withdrawal are all decisions the rest of
+    // the project needs to know about, not just the person who made them.
+    await this.notifyProjectMembers(companyId, projectId, userId, {
+      type: 'site_drawing_status_changed',
+      title: `Drawing ${drawingNumber ?? drawingId} (${drawingTitle ?? ''}) revision ${revision.revisionNumber} is now ${workflowStatusLabel(status)}`,
+      resourceType: 'site_drawing',
+      resourceId: drawingId,
+    });
+
+    return toSiteDrawingRevision(revision);
   }
 
   async getSourceHealth(companyId: string, projectId: string): Promise<SiteDrawingSourceHealth> {
@@ -304,7 +393,7 @@ export class SiteDrawingsService {
     };
   }
 
-  // ── Offline packages (brief section 8 — metadata only; the PDF bytes
+  // ── Offline packages (brief section 8; metadata only; the PDF bytes
   // live in the client's own IndexedDB, never in Postgres) ───────────────
 
   async startOfflinePackage(companyId: string, userId: string, projectId: string, revisionId: string): Promise<SiteDrawingOfflinePackage> {
@@ -324,7 +413,7 @@ export class SiteDrawingsService {
     });
   }
 
-  // The client reports what actually happened to the download -- a
+  // The client reports what actually happened to the download; a
   // 'FAILED' report here is exactly how section 8/10's "a partial or
   // corrupted download is never presented as a complete package" is
   // enforced: the server trusts the client's own integrity check, not a
@@ -382,7 +471,7 @@ export class SiteDrawingsService {
   // Clears every offline-package record for a user in this company (section
   // 9: "Clear locally cached protected data when the user signs out or
   // access policy requires it"). Only clears the server-side *record* of
-  // what's cached -- the client is responsible for actually deleting the
+  // what's cached; the client is responsible for actually deleting the
   // IndexedDB bytes on sign-out; see the web app's offline store for that
   // half.
   async clearAllOfflinePackagesForUser(companyId: string, userId: string): Promise<number> {
@@ -398,6 +487,27 @@ export class SiteDrawingsService {
       SELECT id FROM projects WHERE id = ${projectId} AND company_id = ${companyId}
     `);
     if (!project) throw new NotFoundException(`Project ${projectId} not found.`);
+  }
+
+  // "Every project member" (brief section 5), not a narrower watchers/
+  // subscribers list -- this register has no such concept yet. Excludes
+  // the actor who made the change: a user doesn't need to be told about
+  // their own action. Runs after the triggering write's own withTenant
+  // call has already resolved -- each notification is its own separate
+  // withTenant call (NotificationsService.create()), never nested inside
+  // another one.
+  private async notifyProjectMembers(
+    companyId: string, projectId: string, excludeUserId: string | undefined,
+    input: { type: string; title: string; resourceType: string; resourceId: string },
+  ): Promise<void> {
+    const members = await this.db.withTenant(companyId, sql => sql<{ userId: string }[]>`
+      SELECT user_id FROM project_members WHERE project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    await Promise.all(
+      members
+        .filter((m) => m.userId !== excludeUserId)
+        .map((m) => this.notifications.create(companyId, { ...input, userId: m.userId, projectId, createdBy: excludeUserId ?? null })),
+    );
   }
 }
 

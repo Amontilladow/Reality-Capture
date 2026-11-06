@@ -4,11 +4,11 @@ import type { ExtractedDrawingFields } from '@engineeringos/types';
 // common drawing-number, title, revision and date patterns... do not
 // assume all consultants use the same title-block layout"). Deliberately
 // NOT a per-project configurable layout editor in this first release
-// (Decision 3) -- these are the patterns that show up across most
+// (Decision 3): these are the patterns that show up across most
 // consultant-issued construction drawings regardless of discipline.
 //
 // Every pattern here is matched against the WHOLE page's extracted text
-// (embedded or OCR'd), not a cropped title-block region -- this release
+// (embedded or OCR'd), not a cropped title-block region; this release
 // has no layout-position awareness, so a drawing number/revision that
 // appears only in a different context (e.g. referenced in a general note)
 // could occasionally be picked up. That risk is exactly why extraction
@@ -22,7 +22,7 @@ interface FieldMatch {
 }
 
 // Drawing numbers in construction practice are short, structured codes:
-// discipline letter(s), separators, a sheet number -- e.g. "A-101",
+// discipline letter(s), separators, a sheet number, e.g. "A-101",
 // "S-2.03", "M4-C-0012", "ARC-00-101". Anchored to an explicit label when
 // one is present (higher confidence); a bare pattern anywhere in the text
 // scores lower, since it's more likely to be a false positive.
@@ -73,12 +73,12 @@ function extractDate(text: string): string | undefined {
 // A confidence threshold decision, not a hardcoded magic number scattered
 // across call sites (Decision 1: "use confidence thresholds to flag
 // uncertain metadata for human review"). Below this, the drawing number
-// itself -- the one field everything else is keyed on -- is treated as
+// itself (the one field everything else is keyed on) is treated as
 // not found at all, same as an unrecognized layout.
 const DRAWING_NUMBER_CONFIDENCE_THRESHOLD = 0.5;
 
 // Returns null when the text doesn't contain anything recognizable as a
-// drawing number at all -- an "unknown layout" (Decision 3: "flag unknown
+// drawing number at all; an "unknown layout" (Decision 3: "flag unknown
 // layouts... for review"), never a guess. A non-null result can still be
 // low-confidence; the caller (the import processor) is the one that
 // decides CONFIRMED vs. NEEDS_REVIEW from the reported confidence.
@@ -90,7 +90,7 @@ export function extractTitleBlockFields(text: string, source: 'embedded_text' | 
   const titleMatch = matchLabeled(text, TITLE_LABELED, 0.7);
   const issueDate = extractDate(text);
 
-  // Overall confidence is the weakest link, not an average -- a confident
+  // Overall confidence is the weakest link, not an average; a confident
   // drawing-number match next to a missing revision is still an uncertain
   // record overall (there's nothing to compare a re-import's revision
   // against without one).
@@ -109,7 +109,7 @@ export function extractTitleBlockFields(text: string, source: 'embedded_text' | 
 }
 
 // The line between "trust this extraction enough to show it as confirmed"
-// and "a human needs to look at this" -- one place, so the import
+// and "a human needs to look at this"; one place, so the import
 // processor and any future caller agree on exactly the same cutoff.
 export const EXTRACTION_CONFIDENCE_CONFIRMED_THRESHOLD = 0.7;
 

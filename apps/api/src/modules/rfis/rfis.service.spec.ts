@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { RfisService } from './rfis.service';
 import { ProjectAuthorizationService } from '../../common/authorization/project-authorization.service';
 import type { DatabaseService } from '../../database/database.service';
@@ -7,7 +7,7 @@ import type { StorageService } from '../storage/storage.service';
 import type { MessagingService } from '../messaging/messaging.service';
 import type { CreateRfiDto } from './dto/create-rfi.dto';
 
-// Generic tagged-template mock for this.db.withTenant's `sql` callback --
+// Generic tagged-template mock for this.db.withTenant's `sql` callback;
 // records every call (reconstructed text + interpolated values) and lets
 // each test supply a responder keyed off substrings of the query text.
 // Mirrors issues.service.spec.ts's own makeQuery/withTenant convention
@@ -28,7 +28,7 @@ function makeQuery(responder: (text: string, values: unknown[]) => unknown[] | u
 function makeService(responder: (text: string, values: unknown[]) => unknown[] | undefined) {
   const { query, calls } = makeQuery(responder);
   const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
-  // paginate() is plain synchronous JS, not a DB call -- stub it with the
+  // paginate() is plain synchronous JS, not a DB call; stub it with the
   // same shape DatabaseService.paginate returns.
   const paginate = jest.fn((rows: unknown[], page: number, perPage: number) => ({
     data: rows, total: rows.length, page, perPage, totalPages: Math.ceil(rows.length / perPage) || 1,
@@ -37,7 +37,7 @@ function makeService(responder: (text: string, values: unknown[]) => unknown[] |
   const notifications = { create: jest.fn() };
   const storage = {};
   const messaging = { create: jest.fn() };
-  // A real ProjectAuthorizationService wrapping the same mock db -- its own
+  // A real ProjectAuthorizationService wrapping the same mock db; its own
   // queries (project_members role lookup, project_permission_grants lookup)
   // are the exact same two queries canManageRfiReview() used to run inline,
   // so they're still intercepted transparently by each test's own
@@ -106,7 +106,7 @@ describe('RfisService', () => {
 
       const insertCall = calls.find((c) => c.text.includes('INSERT INTO rfis'));
       // status is now a bound parameter (dto.initialStatus ?? 'open'), not a
-      // literal in the query text -- see the Upload-RFI quick-create path
+      // literal in the query text; see the Upload-RFI quick-create path
       // in RfisService.create(). values[22] = status (company_id, project_id,
       // rfi_number, subject, question, priority, discipline, discipline_other,
       // cost_impact, time_impact, cost_impact_level/amount/currency/description,
@@ -158,7 +158,7 @@ describe('RfisService', () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  // findAll — new filter params
+  // findAll: new filter params
   // ══════════════════════════════════════════════════════════════════════
   describe('findAll', () => {
     function findAllRows() {
@@ -216,8 +216,8 @@ describe('RfisService', () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  // Subcontractor cross-company isolation (owner's RBAC sprint, "critical")
-  // — one subcontractor account must never read another's RFIs, even on the
+  // Subcontractor cross-company isolation (owner's RBAC sprint, "critical");
+  // one subcontractor account must never read another's RFIs, even on the
   // same project. findAll()/getSummary() narrow to viewer-owned rows when
   // the viewer is themselves a subcontractor project member; a
   // non-subcontractor viewer (any company role) is completely unaffected.
@@ -231,7 +231,7 @@ describe('RfisService', () => {
       });
       await svc.findAll(companyId, projectId, {}, 'viewer-1');
       const listCall = calls.find((c) => c.text.includes('FROM rfis r'));
-      // isolateToViewer resolves false -- the clause is present but inert
+      // isolateToViewer resolves false: the clause is present but inert
       // (its OR branch never excludes a row with a non-matching created_by).
       expect(listCall!.values).toContain(false);
     });
@@ -306,7 +306,7 @@ describe('RfisService', () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  // submit() — draft -> submitted
+  // submit(): draft -> submitted
   // ══════════════════════════════════════════════════════════════════════
   describe('submit', () => {
     it("the creator, with no permission grant at all, can submit their own draft RFI", async () => {
@@ -486,11 +486,11 @@ describe('RfisService', () => {
     // stage... never that a later stage can be performed before the stages
     // that must precede it." OrgCategoryPermissionService/CategoryActionGuard
     // only decide whether the ROUTE may be called at all (and bypass
-    // unconditionally for engineering_manager) -- close()'s own status
+    // unconditionally for engineering_manager): close()'s own status
     // precondition below is enforced entirely inside the service method,
     // which has no role/category parameter whatsoever to special-case. The
     // same terminal-status rejection above therefore applies identically no
-    // matter who calls it, Engineering Manager included -- there is no code
+    // matter who calls it, Engineering Manager included; there is no code
     // path by which a role could skip it.
     it('no caller, including Engineering Manager, can close an already-closed RFI -- the status check has no role to special-case', async () => {
       const { svc } = makeService((text) => {
@@ -499,7 +499,7 @@ describe('RfisService', () => {
         }
         return undefined;
       });
-      // close() takes no companyRole/category argument -- an Engineering
+      // close() takes no companyRole/category argument; an Engineering
       // Manager calling it hits the exact same code path as anyone else.
       await expect(svc.close(companyId, projectId, rfiId, 'engineering-manager-user')).rejects.toThrow(BadRequestException);
     });
@@ -597,7 +597,7 @@ describe('RfisService', () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  // submitForReview() -- new: the previously-missing "PMC/client reviews
+  // submitForReview(): new: the previously-missing "PMC/client reviews
   // the answer" transition into 'under_review'.
   // ══════════════════════════════════════════════════════════════════════
   describe('submitForReview', () => {
@@ -647,7 +647,7 @@ describe('RfisService', () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  // decideReview() -- new: approve closes the RFI, reject sends it back to
+  // decideReview(): new: approve closes the RFI, reject sends it back to
   // 'awaiting_clarification' (see the service's own comment for why).
   // ══════════════════════════════════════════════════════════════════════
   describe('decideReview', () => {
@@ -736,7 +736,7 @@ describe('RfisService', () => {
       });
 
       // A malicious/mistaken external request body claims 'ldc', but the
-      // link was actually issued for 'pmc' -- the token's own attribution
+      // link was actually issued for 'pmc'; the token's own attribution
       // must win.
       await svc.decideReview(
         companyId, projectId, rfiId, 'system-user-1',
@@ -751,7 +751,7 @@ describe('RfisService', () => {
   });
 
   // ══════════════════════════════════════════════════════════════════════
-  // Drawing impact -- new: a third impact field (structurally identical to
+  // Drawing impact: new: a third impact field (structurally identical to
   // cost/time impact) plus follow-up tracking (owner, applied/not-applied)
   // and the Reports rollup that surfaces it.
   // ══════════════════════════════════════════════════════════════════════
@@ -1004,16 +1004,29 @@ describe('RfisService', () => {
   });
 
   // The presigned PUT getAttachmentUploadUrl() hands out has no enforced
-  // size limit -- dto.sizeBytes there is only ever a declared value. Real
+  // size limit; dto.sizeBytes there is only ever a declared value. Real
   // enforcement is this HEAD-based check against the object actually
   // sitting in storage, run here in addAttachment() before it's persisted.
-  // (Project authorization for this route is already enforced by
-  // @RequireProjectPermission('manage_project_records') at the controller,
-  // so no project-ownership check is duplicated here -- see rfis.controller.ts.)
+  //
+  // H-1 fix (KNOWN_ISSUES_AND_REMEDIATION.md): addAttachment(), getAttachments(),
+  // deleteAttachment(), and getComments() previously scoped only by
+  // company_id; @RequireProjectPermission at the controller confirms the
+  // caller has the permission on the URL's :projectId, but never that rfiId
+  // actually belongs to that project, so a user authorized for a different
+  // project in the same company could reach any RFI's attachments/comments
+  // by guessing its UUID. All four now call findOne() first (project_id =
+  // projectId AND company_id = companyId), the same boundary addComment()
+  // already used correctly.
   describe('addAttachment', () => {
-    function makeAttachmentService(opts: { actualSizeBytes: number | null }) {
+    // findOne()'s SELECT is query call #0 (truthy row = project check
+    // passes); the real INSERT is query call #1; the size-enforcement
+    // tests below index into calls[1], not calls[0], for that reason.
+    function makeAttachmentService(opts: { actualSizeBytes: number | null; wrongProject?: boolean }) {
+      const findOneRow = { id: rfiId, projectId, companyId, raisedByOrganizationSlot: null, createdBy: null };
       const insertedRow = { id: 'attachment-1' };
-      const query = jest.fn().mockResolvedValue([insertedRow]);
+      const query = jest.fn()
+        .mockResolvedValueOnce(opts.wrongProject ? [] : [findOneRow]) // findOne()
+        .mockResolvedValue([insertedRow]); // every subsequent call (the INSERT)
       const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
       const getObjectSize = jest.fn().mockResolvedValue(opts.actualSizeBytes);
       const deleteIfExists = jest.fn().mockResolvedValue(undefined);
@@ -1024,7 +1037,7 @@ describe('RfisService', () => {
         {} as unknown as NotificationsService,
         storage as unknown as StorageService,
         {} as unknown as MessagingService,
-        {} as unknown as ProjectAuthorizationService, // unused -- addAttachment() has no project-ownership check of its own
+        {} as unknown as ProjectAuthorizationService,
       );
       return { svc, query, getObjectSize, deleteIfExists };
     }
@@ -1032,19 +1045,19 @@ describe('RfisService', () => {
     it('registers an attachment whose real uploaded size is within the 5MB limit', async () => {
       const { svc, query } = makeAttachmentService({ actualSizeBytes: 1024 });
 
-      await svc.addAttachment(companyId, rfiId, 'user-1', {
+      await svc.addAttachment(companyId, projectId, rfiId, 'user-1', {
         storageKey: 'key-1', filename: 'spec.pdf', sizeBytes: 1,
       });
 
       // values = [rfiId, companyId, storageKey, filename, sizeBytes, userId, kind, documentType, ...]
-      expect(query.mock.calls[0]).toContain(1024); // the verified size, not the declared 1
-      expect(query.mock.calls[0]).not.toContain(1);
+      expect(query.mock.calls[1]).toContain(1024); // the verified size, not the declared 1
+      expect(query.mock.calls[1]).not.toContain(1);
     });
 
     it('rejects and cleans up an attachment whose real size exceeds the 5MB limit, regardless of the declared size', async () => {
       const { svc, deleteIfExists } = makeAttachmentService({ actualSizeBytes: 6 * 1024 * 1024 });
 
-      await expect(svc.addAttachment(companyId, rfiId, 'user-1', {
+      await expect(svc.addAttachment(companyId, projectId, rfiId, 'user-1', {
         storageKey: 'key-1', filename: 'spec.pdf', sizeBytes: 1,
       })).rejects.toThrow(BadRequestException);
 
@@ -1054,11 +1067,76 @@ describe('RfisService', () => {
     it('rejects registration when the declared storage key was never actually uploaded', async () => {
       const { svc, deleteIfExists } = makeAttachmentService({ actualSizeBytes: null });
 
-      await expect(svc.addAttachment(companyId, rfiId, 'user-1', {
+      await expect(svc.addAttachment(companyId, projectId, rfiId, 'user-1', {
         storageKey: 'key-1', filename: 'spec.pdf', sizeBytes: 1024,
       })).rejects.toThrow(BadRequestException);
 
       expect(deleteIfExists).not.toHaveBeenCalled();
+    });
+
+    it("rejects an attachment for an RFI that belongs to a different project in the caller's company (H-1)", async () => {
+      const { svc, getObjectSize } = makeAttachmentService({ actualSizeBytes: 1024, wrongProject: true });
+
+      await expect(svc.addAttachment(companyId, projectId, 'other-projects-rfi', 'user-1', {
+        storageKey: 'key-1', filename: 'spec.pdf', sizeBytes: 1,
+      })).rejects.toThrow(NotFoundException);
+
+      expect(getObjectSize).not.toHaveBeenCalled(); // never reached past the project check
+    });
+  });
+
+  describe('getAttachments / deleteAttachment / getComments project-scoping (H-1)', () => {
+    function makeService(opts: { wrongProject?: boolean }) {
+      const findOneRow = { id: rfiId, projectId, companyId, raisedByOrganizationSlot: null, createdBy: null };
+      const query = jest.fn().mockResolvedValueOnce(opts.wrongProject ? [] : [findOneRow]); // findOne()
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      const db = { withTenant };
+      const resolveUrls = jest.fn().mockResolvedValue(new Map());
+      const storage = { resolveUrls };
+      const svc = new RfisService(
+        db as unknown as DatabaseService,
+        {} as unknown as NotificationsService,
+        storage as unknown as StorageService,
+        {} as unknown as MessagingService,
+        {} as unknown as ProjectAuthorizationService,
+      );
+      return { svc, query };
+    }
+
+    it('rejects listing attachments for an RFI in a different project', async () => {
+      const { svc } = makeService({ wrongProject: true });
+      await expect(svc.getAttachments(companyId, projectId, 'other-projects-rfi')).rejects.toThrow(NotFoundException);
+    });
+
+    it('lists attachments for an RFI that really is in this project', async () => {
+      const { svc, query } = makeService({});
+      query.mockResolvedValueOnce([]); // the attachments SELECT, after findOne()
+      const result = await svc.getAttachments(companyId, projectId, rfiId);
+      expect(result).toEqual([]);
+    });
+
+    it('rejects deleting an attachment for an RFI in a different project', async () => {
+      const { svc } = makeService({ wrongProject: true });
+      await expect(svc.deleteAttachment(companyId, projectId, 'other-projects-rfi', 'attachment-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('deletes an attachment for an RFI that really is in this project', async () => {
+      const { svc, query } = makeService({});
+      query.mockResolvedValueOnce({ count: 1 }); // the DELETE, after findOne()
+      const result = await svc.deleteAttachment(companyId, projectId, rfiId, 'attachment-1');
+      expect(result).toEqual({ message: 'Attachment deleted.' });
+    });
+
+    it('rejects listing comments for an RFI in a different project', async () => {
+      const { svc } = makeService({ wrongProject: true });
+      await expect(svc.getComments(companyId, projectId, 'other-projects-rfi')).rejects.toThrow(NotFoundException);
+    });
+
+    it('lists comments for an RFI that really is in this project', async () => {
+      const { svc, query } = makeService({});
+      query.mockResolvedValueOnce([{ id: 'comment-1' }]); // the comments SELECT, after findOne()
+      const result = await svc.getComments(companyId, projectId, rfiId);
+      expect(result).toEqual([{ id: 'comment-1' }]);
     });
   });
 });
