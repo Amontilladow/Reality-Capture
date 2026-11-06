@@ -33,12 +33,13 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install
-        run: pip install -r requirements.txt . pyinstaller==6.16.0
+        run: pip install -r requirements.txt . pyinstaller==6.16.0 pywebview==5.4.0
       - name: Build m4adm.exe
         run: pyinstaller packaging/m4adm.spec --noconfirm --log-level WARN
       - name: Test m4adm.exe (version, then a real conversion with the packaged program)
         run: |
           ./dist/m4adm.exe --version
+          ./dist/m4adm.exe ui --check-window
           python -c "from m4adm.fixtures import arch_floor; arch_floor(shaft=True).saveas('plan.dxf')"
           ./dist/m4adm.exe convert plan.dxf --zone "SYNTH ZONE" --sector SE01_01 --plot C1 --building 1 --floor F1 \
             --unit-number 1 --jobs smoke-jobs

@@ -4,7 +4,9 @@ only the official ADM / DRM QC tool and review do that.
 
 START
   1. Unzip this folder anywhere (for example C:\M4-GIS-Prep).
-  2. Double-click m4adm.exe. A black window opens, then your browser opens on the conversion page.
+  2. Double-click m4adm.exe. The program opens in its own window on the conversion page. (A black messages window
+     also opens and minimizes itself; leave it alone. If Windows has no built-in web view the page opens in your
+     browser instead.)
      The first start takes up to a minute while Windows unpacks the program. If Windows SmartScreen
      warns about an unknown publisher, choose More info > Run anyway (the program is not code-signed).
   3. Leave the black window open while you work. Close it to stop the program.

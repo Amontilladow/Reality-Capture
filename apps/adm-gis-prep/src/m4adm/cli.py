@@ -276,20 +276,79 @@ def _free_port(preferred: int) -> int:
     return preferred
 
 
+def _open_window(url: str, title: str) -> bool:
+    """Show the screen in a program window of its own (the system's built-in web view, no browser tabs).
+    Blocks until the window is closed; returns False when a window cannot be opened here."""
+    try:
+        import webview            # pywebview: Edge WebView2 on Windows
+    except Exception as exc:      # not installed in this build
+        print(f"No program window available ({exc}); opening the browser instead.")
+        return False
+    try:
+        webview.settings["ALLOW_DOWNLOADS"] = True       # the draft files are downloads
+        webview.create_window(f"M4 GIS Preparation - {PROVISIONAL_LABEL}", url, width=1360, height=900,
+                              min_size=(900, 600))
+        webview.start()
+    except Exception as exc:
+        print(f"The program window could not be opened ({exc}); opening the browser instead.")
+        return False
+    return True
+
+
+def _minimize_console() -> None:
+    """Keep the black messages window out of the way (Windows); it stays on the taskbar for problems."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        if hwnd:
+            ctypes.windll.user32.ShowWindow(hwnd, 6)      # SW_MINIMIZE
+    except Exception:
+        pass
+
+
 def cmd_ui(a: argparse.Namespace) -> int:
     import threading
+    import time
     import webbrowser
 
     import uvicorn
 
     from m4adm.ui import create_app
 
+    if getattr(a, "check_window", False):
+        try:
+            import webview
+            print(f"program window support: yes (pywebview {getattr(webview, '__version__', '?')})")
+            return 0
+        except Exception as exc:
+            print(f"program window support: no ({exc})")
+            return 1
+
     workspace = Path(a.workspace)
     app = create_app(workspace)
     port = _free_port(a.port)
-    url = f"http://127.0.0.1:{port}/" + ("convert" if a.open else "")
+    url = f"http://127.0.0.1:{port}/" + ("convert" if (a.open or a.window) else "")
     print(f"{PROVISIONAL_LABEL}\nM4 GIS Preparation {__version__}, running on {url} (this computer only)")
     print(f"Jobs and uploads are kept in {workspace.resolve()}")
+    if a.window:
+        server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
+        thread = threading.Thread(target=server.run, daemon=True)
+        thread.start()
+        deadline = time.monotonic() + 30
+        while not server.started and thread.is_alive() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        _minimize_console()
+        if _open_window(url, "M4 GIS Preparation"):
+            server.should_exit = True                    # window closed: stop the program
+            thread.join(timeout=5)
+            return 0
+        print("Leave this window open while you work; close it to stop the program.")
+        webbrowser.open(url)
+        thread.join()
+        return 0
     print("Leave this window open while you work; close it to stop the program.")
     if a.open:
         threading.Timer(1.5, webbrowser.open, args=(url,)).start()
@@ -399,6 +458,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--workspace", default="workspace")
     s.add_argument("--port", type=int, default=8765)
     s.add_argument("--open", action="store_true", help="open the conversion page in the browser")
+    s.add_argument("--window", action="store_true",
+                   help="show the screen in a program window of its own instead of a browser tab (desktop program)")
+    s.add_argument("--check-window", action="store_true", help="only report whether program windows are available")
     s.set_defaults(fn=cmd_ui)
     return p
 
@@ -406,9 +468,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if not argv and getattr(sys, "frozen", False):
-        # Double-clicked packaged program: no command line, so start the screen and open the browser. Work is kept
+        # Double-clicked packaged program: no command line, so start the screen in a program window
+        # (it falls back to the browser when the system has no web view). Work is kept
         # in a visible folder in the user's home so it survives and is easy to find.
-        argv = ["ui", "--open", "--workspace", str(Path.home() / "M4-GIS-Prep")]
+        argv = ["ui", "--window", "--workspace", str(Path.home() / "M4-GIS-Prep")]
     args = build_parser().parse_args(argv)
     if getattr(args, "cmd", None) == "inspect" and not args.category:
         args.category = ["building"] if args.profile == "bdms_building" else ["plot", "roads", "services"]
