@@ -52,7 +52,7 @@ class Tolerances(BaseModel):
     overlap_area: float = 0.0001
     arc_sagitta: float = 0.01
     attribute_vertex: float = 0.001
-    opening_contact: float = 0.02   # a door/window this close to a space / floor outline counts as adjacent to it
+    opening_contact: float = 0.015  # a door/window this close to a space / floor outline counts as adjacent to it
 
     @field_validator("*")
     @classmethod
