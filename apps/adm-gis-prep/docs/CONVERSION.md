@@ -182,3 +182,13 @@ Preliminary QC of the generated draft, against the raw source (87 errors / 304 w
 - **Proposals:** space numbering and door/window SpaceNumber links are proposals.
 - **Blocks:** without the official DRM template (DWG only), Detail blocks are built from the BDMS 4.1 attribute tables and the report says so.
 - **Scope:** one building floor per drawing; multi-building drawings are not split.
+
+## DWG input
+
+A `.dwg` can be uploaded instead of a `.dxf`. The web form recognises the file by its first bytes (a DWG starts with a version code such as `AC1032`), not by its name, and says so next to the file picker.
+
+- **On the server:** the DWG is converted to DXF first with LibreDWG's `dwg2dxf`, then converted as usual. The conversion is recorded in the job's audit trail, and the original DWG is stored unchanged.
+- **Safety limits** (the service shares 512 MB with other work): `M4ADM_DWG_MEMORY_MB` (the image sets 200) stops the converter if its resident memory passes that figure, and `M4ADM_DWG_TIMEOUT_S` (default 600) stops one that runs too long. Either gives a BLOCKED job that says the drawing is too large to convert here.
+- **If the converter is missing** (an install that failed, or the desktop tool without one): the job is BLOCKED with a message to save the drawing as DXF.
+- **Size:** the 25 MB cloud limit applies to the uploaded file, so a DWG gets past it where its DXF would not. The converted DXF must still fit in the server's memory; for very large drawings use the desktop tool.
+

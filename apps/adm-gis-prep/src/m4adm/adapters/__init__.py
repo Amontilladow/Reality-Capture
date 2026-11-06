@@ -31,6 +31,49 @@ STATUS_PENDING = "PENDING_OFFICIAL_FILE"
 STATUS_LOADED = "LOADED"
 
 
+
+def _rss_mb(pid: int) -> float:
+    """Resident memory of a process in MB (Linux /proc); 0.0 where it cannot be read."""
+    try:
+        with open(f"/proc/{pid}/status", encoding="ascii") as fh:
+            for line in fh:
+                if line.startswith("VmRSS:"):
+                    return int(line.split()[1]) / 1024
+    except (OSError, ValueError):
+        pass
+    return 0.0
+
+
+class ConverterLimitExceeded(RuntimeError):
+    """The DWG converter was stopped for using too much memory or time."""
+
+
+def run_limited(cmd: list[str], *, rss_limit_mb: float | None, timeout_s: float, poll_s: float = 0.2
+                ) -> subprocess.CompletedProcess:
+    """Run `cmd`, killing it when its resident memory passes `rss_limit_mb` or it runs past `timeout_s`.
+    The service that hosts the engine shares its memory with other work, so a converter must never be left to
+    grow until the whole container is killed."""
+    import time
+
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    start, peak, reason = time.monotonic(), 0.0, None
+    while proc.poll() is None:
+        rss = _rss_mb(proc.pid)
+        peak = max(peak, rss)
+        if rss_limit_mb and rss > rss_limit_mb:
+            reason = f"used more than {rss_limit_mb:.0f} MB of memory"
+        elif time.monotonic() - start > timeout_s:
+            reason = f"ran longer than {timeout_s:.0f} s"
+        if reason:
+            proc.kill()
+            break
+        time.sleep(poll_s)
+    out, err = proc.communicate()
+    if reason:
+        raise ConverterLimitExceeded(f"stopped: it {reason} (peak {peak:.0f} MB)")
+    return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
+
+
 # --------------------------------------------------------------------------- DWG conversion
 @dataclass
 class DWGConverter:
@@ -88,8 +131,13 @@ class DWGConverter:
         work_dir = Path(work_dir)
         if self.kind == "libredwg":
             out = work_dir / f"{Path(dwg).stem}.dxf"
-            res = subprocess.run([str(self.executable), "-y", "-o", str(out), str(dwg)], capture_output=True,
-                                 text=True, timeout=600, check=False)
+            limit = float(os.environ.get("M4ADM_DWG_MEMORY_MB", "0") or 0) or None
+            try:
+                res = run_limited([str(self.executable), "-y", "-o", str(out), str(dwg)], rss_limit_mb=limit,
+                                  timeout_s=float(os.environ.get("M4ADM_DWG_TIMEOUT_S", "600") or 600))
+            except ConverterLimitExceeded as exc:
+                raise RuntimeError(f"{self.describe()} {exc}. The drawing is too large to convert here; save it as "
+                                   "DXF in AutoCAD or use the desktop tool.") from exc
         else:
             in_dir, out_dir = work_dir / "dwg_in", work_dir / "dxf_out"
             in_dir.mkdir(exist_ok=True)

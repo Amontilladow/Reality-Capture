@@ -70,8 +70,11 @@ from collections import Counter  # noqa: E402
 
 from m4adm.adapters import STATUS_UNAVAILABLE, DWGConverter  # noqa: E402
 
-APPROVED_DWG = sorted({*(REF / "GIS Drawings" / "dwg").glob("*.dwg"),
-                       *(REF / "GIS Drawings" / "dwg_only").glob("*.dwg")}) if REF.exists() else []
+# The Yas Island files in dwg_only are the OLD submission: the official QC passed them, the DRM review later rejected
+# them (docs/DRM_REVIEW_YAS_ISLAND.md). They are tested against the review's findings in tests/test_yas_review.py.
+APPROVED_DWG = sorted(p for p in {*(REF / "GIS Drawings" / "dwg").glob("*.dwg"),
+                                  *(REF / "GIS Drawings" / "dwg_only").glob("*.dwg")}
+                      if not p.name.startswith("Yas Island")) if REF.exists() else []
 needs_converter = pytest.mark.skipif(DWGConverter.from_env().status() == STATUS_UNAVAILABLE,
                                      reason="no DWG converter installed (ODA File Converter or LibreDWG dwg2dxf)")
 

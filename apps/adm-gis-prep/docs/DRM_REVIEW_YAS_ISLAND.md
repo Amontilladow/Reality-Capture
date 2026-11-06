@@ -36,3 +36,18 @@ All 294 doors and windows of the old files were measured against the 11 flagged 
 | BuildingOutline | any | 10 to 11 of 11 | 10 to 12 |
 
 So the outline is the **Floor** polygon, and the tolerance has to lie between 5 mm and 1.99 cm. It is set to **1.5 cm**, which also accepts the 1.09 cm gap in the DRM-accepted KHALIFA CITY G drawing. `tests/test_yas_review.py` reproduces exactly the 11 flagged handles from the extracted geometry (skipped when `reference/` is absent).
+
+## Reading the DWG files
+
+The ten DWG files (R2018, `AC1032`) were first read with a WebAssembly build of LibreDWG, then converted with the native LibreDWG `dwg2dxf` (the same program the cloud service now installs for DWG uploads).
+
+| Check | Result |
+|---|---|
+| Native `dwg2dxf` vs the WASM reader, per handle (attributes, block positions, polygon vertices) | 0 mismatches on all 5 rectified files (480+ entities) |
+| `dwg2dxf` DXF vs AutoCAD's own DXF of the same drawing (`test_dwg_conversion_matches_autocad_dxf`, KHALIFA CITY F1) | identical layers, entity counts and attributes: passes |
+| Time and memory of `dwg2dxf` on these 60 to 100 KB DWGs | well under 1 s, about 11 MB |
+| Full validation of the old DWGs through the converter | flags exactly the 11 handles DRM flagged |
+| Full validation of the rectified DWGs through the converter | clean, except two documented disagreements on 1-G: DISCREPANCIES B-24 (door `2AC`) and B-25 (Space `26D`) |
+
+The memory figure is for small drawings. A large DWG (an 8 MB file that becomes a 35 MB DXF) has not been measured yet.
+
