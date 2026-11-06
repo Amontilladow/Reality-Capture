@@ -37,7 +37,7 @@ SAFE_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
 _one_at_a_time = asyncio.Semaphore(1)
 
 
-RSS_POLL_S = 0.2
+RSS_POLL_S = 0.1
 TOO_BIG = ("The drawing needs more memory than this server allows. "
            "Run it with the desktop tool (m4adm ui) instead.")
 

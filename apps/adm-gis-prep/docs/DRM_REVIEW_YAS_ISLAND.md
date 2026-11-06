@@ -49,5 +49,5 @@ The ten DWG files (R2018, `AC1032`) were first read with a WebAssembly build of 
 | Full validation of the old DWGs through the converter | flags exactly the 11 handles DRM flagged |
 | Full validation of the rectified DWGs through the converter | clean, except two documented disagreements on 1-G: DISCREPANCIES B-24 (door `2AC`) and B-25 (Space `26D`) |
 
-The memory figure is for small drawings. A large DWG (an 8 MB file that becomes a 35 MB DXF) has not been measured yet.
+Large drawings were measured afterwards on the M19B files: see `docs/CONVERSION.md`, section "DWG input".
 

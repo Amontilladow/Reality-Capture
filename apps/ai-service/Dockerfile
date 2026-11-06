@@ -43,7 +43,11 @@ COPY apps/ai-service/requirements.txt .
 # not build it, /out is empty, DXF input keeps working and a DWG upload is blocked with a clear message.
 # M4ADM_DWG_MEMORY_MB caps the converter's resident memory (this service shares 512 MB with everything else).
 COPY --from=dwgbuild /out/ /usr/local/bin/
-ENV M4ADM_DWG_MEMORY_MB=200
+# Measured on the M19B drawings: dwg2dxf needs ~25x the DWG size (6 MB DWG: 146 MB), and loading a DXF needs ~100 MB plus
+# ~9 MB per MB of file. The service itself uses ~210 of the 512 MB, so: converter at most 150 MB (the OS refuses more),
+# and a DXF larger than 18 MB (about a 3 MB DWG) is refused with a clear message instead of killing the service.
+ENV M4ADM_DWG_MEMORY_MB=150 \
+    M4ADM_MAX_DXF_MB=18
 RUN pip install --no-cache-dir -r requirements.txt
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 # GIS Preparation engine in its OWN virtualenv: its pinned dependencies

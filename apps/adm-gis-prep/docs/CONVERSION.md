@@ -185,10 +185,21 @@ Preliminary QC of the generated draft, against the raw source (87 errors / 304 w
 
 ## DWG input
 
-A `.dwg` can be uploaded instead of a `.dxf`. The web form recognises the file by its first bytes (a DWG starts with a version code such as `AC1032`), not by its name, and says so next to the file picker.
+A `.dwg` can be uploaded instead of a `.dxf`. The web form recognises the file by its first bytes (a DWG starts with a version code such as `AC1032`), not by its name, and says so next to the file picker. On the server the DWG is converted to DXF first with LibreDWG's `dwg2dxf`, then converted as usual; the conversion is recorded in the audit trail and the original DWG is stored unchanged.
 
-- **On the server:** the DWG is converted to DXF first with LibreDWG's `dwg2dxf`, then converted as usual. The conversion is recorded in the job's audit trail, and the original DWG is stored unchanged.
-- **Safety limits** (the service shares 512 MB with other work): `M4ADM_DWG_MEMORY_MB` (the image sets 200) stops the converter if its resident memory passes that figure, and `M4ADM_DWG_TIMEOUT_S` (default 600) stops one that runs too long. Either gives a BLOCKED job that says the drawing is too large to convert here.
-- **If the converter is missing** (an install that failed, or the desktop tool without one): the job is BLOCKED with a message to save the drawing as DXF.
-- **Size:** the 25 MB cloud limit applies to the uploaded file, so a DWG gets past it where its DXF would not. The converted DXF must still fit in the server's memory; for very large drawings use the desktop tool.
+**What the cloud server can hold.** It has 512 MB and uses about 210 MB itself. Measured on the M19B drawings with the real converter:
 
+| Drawing | DWG | DXF | `dwg2dxf` time / memory | Loading the DXF in the engine |
+|---|---|---|---|---|
+| First floor | 2.4 MB | 13.2 MB | 0.4 s / 54 MB | about 190 MB: fits |
+| Ground floor | 6.0 MB | 36.9 MB | 1.6 s / 146 MB | about 420 MB (about 670 MB to check): does not fit |
+
+A DXF takes roughly 100 MB plus 9 MB per MB of file to load, and a DWG becomes a DXF 5 to 6 times larger. Memory exhaustion does not only fail the job: the operating system kills the whole service (seen on 2026-11-06, a DWG whose DXF was about 35 MB). Hence these limits, set in the image (`apps/ai-service/Dockerfile`):
+
+- `M4ADM_DWG_MEMORY_MB=150`: the converter may use at most 150 MB. The operating system refuses it more (an address-space ceiling, so a fast allocation cannot slip past a polling interval), and its memory is also checked every 0.1 s.
+- `M4ADM_MAX_DXF_MB=18`: a DXF larger than this, uploaded or converted from a DWG, is refused before it is loaded, with a BLOCKED job that says to use the desktop tool. This is a DWG of about 3 MB.
+- The engine process is stopped at 270 MB, checked every 0.1 s; `M4ADM_DWG_TIMEOUT_S` (default 600) stops a converter that runs too long.
+
+On the desktop tool none of these variables is set, so there is no limit. If the converter is missing the job is BLOCKED with a message to save the drawing as DXF.
+
+**To run larger drawings in the cloud** the service needs more memory (a bigger plan), or the engine needs to load less of the DXF (not done yet).

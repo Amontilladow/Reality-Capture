@@ -26,7 +26,7 @@ from pathlib import Path
 from shapely.affinity import affine_transform
 
 from m4adm import PROVISIONAL_LABEL, __version__
-from m4adm.adapters import STATUS_UNAVAILABLE, DWGConverter
+from m4adm.adapters import STATUS_UNAVAILABLE, DWGConverter, dxf_size_blocker
 from m4adm.audit import AuditLog, utc_now
 from m4adm.convert import georef as georef_mod
 from m4adm.convert import topology
@@ -120,6 +120,10 @@ def _run(source: Path, settings: ConversionSettings, manifest: Manifest, ws: Job
     elif not ident.format.startswith("DXF"):
         blockers.append(f"Unsupported input format: {ident.format}. Supported: DXF (any release ezdxf reads), "
                         "DWG through an installed converter.")
+        readable = None
+
+    if readable is not None and (too_big := dxf_size_blocker(readable)):
+        blockers.append(too_big)
         readable = None
 
     det = None

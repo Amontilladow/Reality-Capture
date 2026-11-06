@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     # GIS Preparation (routers/gis_prep.py): the engine's own interpreter and
     # the limits that keep one drawing from exhausting this container.
     gis_prep_python: str = "/opt/m4adm/bin/python"
-    gis_prep_memory_limit_mb: int = 300           # real memory (RSS) of the engine process
+    gis_prep_memory_limit_mb: int = 270           # real memory (RSS) of the engine process (the service itself uses ~210 of 512 MB)
     gis_prep_address_space_limit_mb: int = 1536   # loose backstop only, see routers/gis_prep.py
     gis_prep_max_upload_mb: int = 25
     gis_prep_timeout_s: int = 840

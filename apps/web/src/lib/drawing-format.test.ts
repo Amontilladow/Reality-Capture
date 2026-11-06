@@ -20,15 +20,23 @@ describe('drawing format', () => {
   });
 
   it('explains a DWG, and says when the name and the content disagree', () => {
-    expect(drawingNote('plan.dwg', 8 * MB, 'DWG').text).toMatch(/converted to DXF on the server/);
-    const renamed = drawingNote('plan.dxf', 8 * MB, 'DWG');
+    expect(drawingNote('plan.dwg', 2 * MB, 'DWG').text).toMatch(/converted to DXF on the server/);
+    const renamed = drawingNote('plan.dxf', 2 * MB, 'DWG');
     expect(renamed.text).toMatch(/name says \.dxf, but the content is DWG/);
   });
 
-  it('points a too-big DXF to its DWG, and warns about unknown files', () => {
-    const big = drawingNote('plan.dxf', 35 * MB, 'DXF');
-    expect(big.tone).toBe('warn');
-    expect(big.text).toMatch(/Upload the DWG instead/);
+  it('warns about drawings the cloud server cannot hold, by the size that matters (the DXF)', () => {
+    const bigDxf = drawingNote('plan.dxf', 35 * MB, 'DXF');
+    expect(bigDxf.tone).toBe('warn');
+    expect(bigDxf.text).toMatch(/18 MB as DXF/);
+    expect(drawingNote('plan.dxf', 12 * MB, 'DXF').tone).toBe('info');
+    const bigDwg = drawingNote('plan.dwg', 8 * MB, 'DWG');       // the 8 MB drawing that becomes a 35 MB DXF
+    expect(bigDwg.tone).toBe('warn');
+    expect(bigDwg.text).toMatch(/5 to 6 times larger/);
+    expect(drawingNote('plan.dwg', 2.4 * MB, 'DWG').tone).toBe('info');
+  });
+
+  it('warns about files that are neither', () => {
     expect(drawingNote('x.dwg', 8 * MB, 'UNKNOWN').tone).toBe('warn');
   });
 });
