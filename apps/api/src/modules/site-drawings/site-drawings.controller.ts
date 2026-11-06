@@ -7,6 +7,7 @@ import { RequireCategoryAction } from '../../common/decorators/require-category-
 import { SiteDrawingsService } from './site-drawings.service';
 import { SiteDrawingSyncService } from './site-drawing-sync.service';
 import { GetSiteDrawingUploadUrlDto } from './dto/get-upload-url.dto';
+import { ExtractSiteDrawingFieldsDto } from './dto/extract-fields.dto';
 import { RegisterSiteDrawingDto } from './dto/register-drawing.dto';
 import { RegisterSiteDrawingRevisionDto } from './dto/register-revision.dto';
 import { SetSiteDrawingWorkflowStatusDto } from './dto/set-workflow-status.dto';
@@ -50,6 +51,19 @@ export class SiteDrawingsController {
   @ApiOperation({ summary: 'Register a new drawing with its first revision' })
   async register(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: RegisterSiteDrawingDto) {
     return { data: await this.svc.registerDrawing(u.companyId, pid, u.id, dto), error: null };
+  }
+
+  // Same embedded-text/OCR pipeline the bulk import path uses, run against
+  // a single already-uploaded file -- lets "Register a drawing" pre-fill
+  // its form instead of asking for everything typed by hand. Returns null
+  // (not an error) when nothing could be confidently read; the caller
+  // still submits through register() above, so nothing here writes
+  // anything.
+  @Post('extract-fields')
+  @RequireCategoryAction('drawings', 'create', 'manage_project_records')
+  @ApiOperation({ summary: 'Extract drawing number/title/revision/date/discipline from an already-uploaded PDF, to pre-fill the registration form' })
+  async extractFields(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: ExtractSiteDrawingFieldsDto) {
+    return { data: await this.svc.extractFields(u.companyId, pid, dto.storageKey), error: null };
   }
 
   @Get()

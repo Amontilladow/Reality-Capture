@@ -8,8 +8,8 @@ import { StorageService } from '../storage/storage.service';
 import { AiClientService } from '../ai-client/ai-client.service';
 import type { SiteDrawingImportJob } from './site-drawing-import.service';
 import { extractPdfEntriesFromZip, type ExtractedZipEntry } from './extraction/zip-extraction.util';
-import { extractEmbeddedText, hasUsableEmbeddedText } from './extraction/pdf-text-extractor';
-import { extractTitleBlockFields, isConfidentExtraction } from './extraction/title-block-extractor';
+import { isConfidentExtraction } from './extraction/title-block-extractor';
+import { extractDrawingFields } from './extraction/extract-drawing-fields';
 
 type ReconcileOutcome = 'created' | 'revision_added' | 'duplicate_skipped';
 
@@ -109,35 +109,15 @@ export class SiteDrawingImportProcessor {
     const storageKey = this.storage.generateKey(companyId, projectId, 'documents', entry.filename);
     await this.storage.upload(storageKey, entry.buffer, 'application/pdf');
 
-    let fields: ExtractedDrawingFields | null = null;
-    let hasUsableText = false;
-    try {
-      const { text } = await extractEmbeddedText(entry.buffer);
-      hasUsableText = hasUsableEmbeddedText(text);
-      if (hasUsableText) fields = extractTitleBlockFields(text, 'embedded_text');
-    } catch (err) {
-      this.logger.warn(`Embedded-text extraction failed for "${entry.filename}": ${this.describeError(err)}`);
-    }
-
-    // OCR fallback (Decision 1 step 2): only when the embedded layer had
-    // nothing usable at all, never as a second opinion on top of a real
-    // text layer. An AI-service outage/timeout here degrades to
-    // NEEDS_REVIEW (fields stays null), exactly like a failed embedded-text
-    // extraction above; never allowed to fail the whole file, let alone
-    // the batch (brief: "if existing infrastructure cannot support
-    // reliable processing, report the limitation"; this file's own
+    // Embedded-text-first, OCR-fallback (Decision 1 steps 1-2): shared with
+    // SiteDrawingsService.extractFields() (the single manual-upload path)
+    // via extractDrawingFields() -- same pipeline either way. An
+    // AI-service outage/timeout degrades to NEEDS_REVIEW (fields stays
+    // null), never allowed to fail the whole file, let alone the batch
+    // (brief: "if existing infrastructure cannot support reliable
+    // processing, report the limitation"; this file's own
     // extraction_status is that report, not a thrown error).
-    if (!hasUsableText) {
-      try {
-        const readUrl = await this.storage.getReadUrl(storageKey, 300);
-        const ocrResult = await this.aiClient.ocrExtractText(companyId, projectId, readUrl, 1);
-        fields = extractTitleBlockFields(ocrResult.text, 'ocr');
-      } catch (err) {
-        this.logger.warn(`OCR fallback failed for "${entry.filename}": ${this.describeError(err)}`);
-      }
-    }
-    // today rather than silently guessed at. Tracked as a follow-up, not
-    // claimed as done.
+    const fields = await extractDrawingFields(this.storage, this.aiClient, companyId, projectId, storageKey, entry.buffer, entry.filename);
 
     return this.reconcile(companyId, projectId, batch, entry.filename, storageKey, entry.buffer.length, fields);
   }

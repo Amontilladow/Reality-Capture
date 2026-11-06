@@ -2,14 +2,16 @@ import { randomUUID } from 'crypto';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   SiteDrawing, SiteDrawingRevision, SiteDrawingWithCurrentRevision, SiteDrawingWorkflowStatus,
-  SiteDrawingOfflinePackage, SiteDrawingOfflinePackageStatus, SiteDrawingSourceHealth,
+  SiteDrawingOfflinePackage, SiteDrawingOfflinePackageStatus, SiteDrawingSourceHealth, ExtractedDrawingFields,
 } from '@engineeringos/types';
 import { DatabaseService } from '../../database/database.service';
 import { StorageService } from '../storage/storage.service';
 import { SiteDrawingAdapterRegistry } from './adapters/site-drawing-adapter-registry';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AiClientService } from '../ai-client/ai-client.service';
 import { isConfirmedCurrent, workflowStatusLabel } from './site-drawing-workflow';
 import { buildSiteDrawingRegisterWorkbookBuffer, type SiteDrawingRegisterRow } from './site-drawing-register-xls';
+import { extractDrawingFields } from './extraction/extract-drawing-fields';
 import type { RegisterSiteDrawingDto } from './dto/register-drawing.dto';
 import type { RegisterSiteDrawingRevisionDto } from './dto/register-revision.dto';
 import type { CompleteOfflinePackageDto } from './dto/offline-package.dto';
@@ -34,6 +36,7 @@ export class SiteDrawingsService {
     private readonly storage: StorageService,
     private readonly adapters: SiteDrawingAdapterRegistry,
     private readonly notifications: NotificationsService,
+    private readonly aiClient: AiClientService,
   ) {}
 
   // ── Upload / registration (Local/internal source; brief section 6's
@@ -65,6 +68,22 @@ export class SiteDrawingsService {
       );
     }
     return actualSizeBytes;
+  }
+
+  // Lets "Register a drawing" (a single manual upload) auto-fill from the
+  // same embedded-text/OCR pipeline the bulk import path already uses,
+  // instead of asking the uploader to type everything from a blank form.
+  // Read-only: never writes a drawing/revision row itself -- the caller
+  // still submits the (possibly corrected) fields through registerDrawing()
+  // afterward, same "never invent, always let a human confirm" rule the
+  // import pipeline already follows. Returns null (not a thrown error) when
+  // nothing could be confidently read; the form just stays blank for manual
+  // entry, exactly like today.
+  async extractFields(companyId: string, projectId: string, storageKey: string): Promise<ExtractedDrawingFields | null> {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+    await this.assertUploadedSizeWithinLimit(storageKey);
+    const buffer = await this.storage.download(storageKey);
+    return extractDrawingFields(this.storage, this.aiClient, companyId, projectId, storageKey, buffer, storageKey);
   }
 
   async registerDrawing(companyId: string, projectId: string, userId: string, dto: RegisterSiteDrawingDto): Promise<SiteDrawingWithCurrentRevision> {
