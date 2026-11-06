@@ -354,11 +354,11 @@ export default function ReportsPage() {
               <div className="panel p-6 md:col-span-1 xl:col-span-2">
                 <div className="!mb-2">
                   <SectionHeader
-                    title="AI Report Briefing"
+                    title="AI report briefing"
                     tone="orange"
                     size="sm"
                     actions={
-                      <button onClick={() => aiBriefingMutation.mutate()} disabled={aiBriefingMutation.isPending} className="btn-secondary !px-2 !py-2 text-xs">
+                      <button onClick={() => aiBriefingMutation.mutate()} disabled={aiBriefingMutation.isPending} className="btn-secondary !px-2 !py-2 ">
                         {aiBriefingMutation.isPending ? 'Generating…' : aiBriefingMutation.data ? 'Regenerate' : 'Generate'}
                       </button>
                     }
@@ -400,13 +400,13 @@ export default function ReportsPage() {
               title="Risk"
               actions={
                 <>
-                  <Link to={`/projects/${projectId}/risk`} className="btn-secondary !px-4 !py-2 text-xs">
+                  <Link to={`/projects/${projectId}/risk`} className="btn-secondary !px-4 !py-2 ">
                     View full Risk Intelligence
                   </Link>
                   <button
                     onClick={handleDownloadRiskPdf}
                     disabled={riskPdfDownloading || riskSummaryQuery.data.totalOpenRisks === 0}
-                    className="btn-secondary !px-4 !py-2 text-xs"
+                    className="btn-secondary !px-4 !py-2 "
                   >
                     {riskPdfDownloading ? 'Preparing…' : 'Download Risk Report'}
                   </button>
@@ -416,7 +416,7 @@ export default function ReportsPage() {
             {riskPdfError && <p className="field-error">{riskPdfError}</p>}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <div className="panel p-4">
-                <div className="text-xs text-ink-500 mb-0 font-medium">Project Risk Index</div>
+                <div className="text-xs text-ink-500 mb-0 font-medium">Project risk index</div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-xl font-semibold tabular-nums" style={{ color: RISK_LEVEL_COLORS[riskSummaryQuery.data.overallLevel] }}>
                     {riskSummaryQuery.data.overallScore}
@@ -424,10 +424,10 @@ export default function ReportsPage() {
                   <span className="text-xs text-ink-500">/ 100 · {riskSummaryQuery.data.overallLevel}</span>
                 </div>
               </div>
-              <StatTile label="Critical Risks" value={riskSummaryQuery.data.criticalCount} tone="danger" />
-              <StatTile label="Overdue Items" value={riskSummaryQuery.data.overdueCount} tone="danger" />
-              <StatTile label="Open Discrepancies" value={riskSummaryQuery.data.openDiscrepancyCount} />
-              <StatTile label="Total Open Risks" value={riskSummaryQuery.data.totalOpenRisks} />
+              <StatTile label="Critical risks" value={riskSummaryQuery.data.criticalCount} tone="danger" />
+              <StatTile label="Overdue items" value={riskSummaryQuery.data.overdueCount} tone="danger" />
+              <StatTile label="Open discrepancies" value={riskSummaryQuery.data.openDiscrepancyCount} />
+              <StatTile label="Total open risks" value={riskSummaryQuery.data.totalOpenRisks} />
             </div>
             {(topRisksQuery.data?.length ?? 0) > 0 && (
               <div className="panel tick-frame divide-y divide-base-700/60">
@@ -462,7 +462,7 @@ export default function ReportsPage() {
               <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
                 <StatTile label="Total" value={kpis.issues.summary.total} />
                 <StatTile label="Open" value={kpis.issues.summary.open} />
-                <StatTile label="In Progress" value={kpis.issues.summary.inProgress} />
+                <StatTile label="In progress" value={kpis.issues.summary.inProgress} />
                 <StatTile label="Resolved" value={kpis.issues.summary.resolved} />
                 <StatTile label="Closed" value={kpis.issues.summary.closed} />
                 <StatTile label="Critical" value={kpis.issues.summary.critical} tone="danger" />
@@ -617,7 +617,7 @@ export default function ReportsPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <ChartCard title="By Drawing/Model Updated status">
+                  <ChartCard title="By drawing/model updated status">
                     <BarChart
                       title="RFIs by drawing/model updated status"
                       unit="RFIs"
@@ -671,7 +671,7 @@ export default function ReportsPage() {
                                   type="button"
                                   onClick={() => remindMutation.mutate(item.id)}
                                   disabled={isSending}
-                                  className="btn-secondary !px-2 !py-2 text-xs"
+                                  className="btn-secondary !px-2 !py-2 "
                                 >
                                   {isSending ? 'Sending…' : wasSent ? 'Sent' : 'Send reminder'}
                                 </button>
@@ -700,7 +700,7 @@ export default function ReportsPage() {
               </p>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <StatTile label="Pending Confirmation" value={kpis.qaqc.summary.pendingConfirmation} />
+                <StatTile label="Pending confirmation" value={kpis.qaqc.summary.pendingConfirmation} />
                 <StatTile label="Critical" value={kpis.qaqc.summary.critical} tone="danger" />
                 <StatTile label="Overdue" value={kpis.qaqc.summary.overdue} tone="danger" />
                 <StatTile label="Total" value={kpis.qaqc.summary.total} />
@@ -772,7 +772,7 @@ export default function ReportsPage() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadMutation.isPending}
-                  className="btn-secondary !px-4 !py-2 text-xs"
+                  className="btn-secondary !px-4 !py-2 "
                 >
                   {uploadMutation.isPending ? 'Uploading…' : '+ Upload attachment'}
                 </button>

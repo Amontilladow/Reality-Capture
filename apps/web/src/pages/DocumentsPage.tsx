@@ -102,7 +102,7 @@ export default function DocumentsPage() {
                           an external reference (Procore/Aconex/SharePoint/BIM360/a manual
                           link) has no object here to share; see DocumentsService.createShare(). */}
                       {d.source === 'internal' && (
-                        <button onClick={() => setShareTarget({ id: d.id, title: d.title })} className="btn-ghost !px-2 !py-2 text-xs">
+                        <button onClick={() => setShareTarget({ id: d.id, title: d.title })} className="btn-ghost !px-2 !py-2 ">
                           Share
                         </button>
                       )}

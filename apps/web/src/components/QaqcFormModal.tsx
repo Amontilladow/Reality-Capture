@@ -254,7 +254,7 @@ export function QaqcFormModal({
             </Listbox>
             <button
               type="button"
-              className="btn-secondary !px-4 !py-2 text-xs"
+              className="btn-secondary !px-4 !py-2 "
               onClick={() => documentInputRef.current?.click()}
               disabled={mutation.isPending}
             >

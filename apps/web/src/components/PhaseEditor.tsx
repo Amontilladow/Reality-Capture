@@ -32,11 +32,11 @@ export function PhaseEditor({
         <button
           onClick={() => { onSave(value); setEditing(false); }}
           disabled={saving}
-          className="btn-primary !px-2 !py-2 text-xs shrink-0"
+          className="btn-primary !px-2 !py-2 shrink-0"
         >
           Save
         </button>
-        <button onClick={() => { setValue(phase ?? ''); setEditing(false); }} className="btn-ghost !px-2 !py-2 text-xs shrink-0">
+        <button onClick={() => { setValue(phase ?? ''); setEditing(false); }} className="btn-ghost !px-2 !py-2 shrink-0">
           Cancel
         </button>
       </div>

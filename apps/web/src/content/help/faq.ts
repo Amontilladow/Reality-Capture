@@ -31,7 +31,7 @@ export const faqArticles: HelpArticle[] = [
   {
     slug: 'faq-what-is-ai-assistant',
     category: 'faq',
-    title: 'What can the AI Assistant actually do?',
+    title: 'What can the AI assistant actually do?',
     summary: 'It answers questions about your project\'s RFIs, issues, snagging, risk, progress, and documents, and can draft (not submit) an RFI, issue, or snag item for you to review. It has a daily usage limit shown at the top of the Assistant page.',
     relatedSlugs: ['understanding-supported-ai-capabilities'],
     keywords: ['ai assistant', 'chatbot'],
@@ -47,7 +47,7 @@ export const faqArticles: HelpArticle[] = [
   {
     slug: 'faq-what-is-a-transmittal',
     category: 'faq',
-    title: 'What is a Transmittal?',
+    title: 'What is a transmittal?',
     summary: 'A formal record that a set of items was sent to a named recipient, for a stated purpose (review, approval, record, construction, or as requested). Any project member can create one.',
     relatedSlugs: ['understanding-transmittals'],
     keywords: ['transmittal'],

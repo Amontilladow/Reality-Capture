@@ -176,7 +176,7 @@ export function RfiFormModal({
               ))}
             </ul>
           )}
-          <label className="btn-secondary !px-4 !py-2 text-xs cursor-pointer inline-block">
+          <label className="btn-secondary !px-4 !py-2 cursor-pointer inline-block">
             + Add attachment
             <input
               type="file"
@@ -316,7 +316,7 @@ export function RfiFormModal({
             description + a drawing-update owner (only meaningfully shown
             once status isn't 'no'). */}
         <div className="space-y-2">
-          <label className="field-label" htmlFor="drawingImpactLevel">Drawing/Model Updated</label>
+          <label className="field-label" htmlFor="drawingImpactLevel">Drawing/model updated</label>
           <Listbox
             id="drawingImpactLevel"
             className="field-input"

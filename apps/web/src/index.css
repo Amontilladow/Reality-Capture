@@ -97,13 +97,14 @@
   --rc-shadow: 42 36 31; /* shadow tint: espresso, never flat black */
   --rc-measure: 48ch; /* longest comfortable line of running text */
 
-  /* Display type sizes (tailwind text-3xl..7xl), all steps of the 1.25
-     scale. Phones take smaller steps; md and up restores the full ones. */
-  --rc-fs-3xl: 1.708984375rem; /* 27.3px */
-  --rc-fs-4xl: 2.13623046875rem; /* 34.2px */
-  --rc-fs-5xl: 2.13623046875rem; /* 34.2px */
-  --rc-fs-6xl: 2.6702880859375rem; /* 42.7px */
-  --rc-fs-7xl: 3.337860107421875rem; /* 53.4px */
+  /* Display type sizes (tailwind text-3xl..7xl), all steps of the
+     tailwind.config.js scale. Phones take smaller steps; md and up
+     restores the full ones. */
+  --rc-fs-3xl: 1.5rem; /* 24px */
+  --rc-fs-4xl: 1.875rem; /* 30px */
+  --rc-fs-5xl: 2.25rem; /* 36px */
+  --rc-fs-6xl: 2.25rem; /* 36px */
+  --rc-fs-7xl: 3rem; /* 48px */
   --rc-noir-hover: 70 61 53;
   --rc-on-noir: 232 221 207;
   --rc-dash-from: 255 248 237;
@@ -241,11 +242,11 @@
 
 @media (min-width: 768px) {
   :root {
-    --rc-fs-3xl: 2.13623046875rem; /* 34.2px */
-    --rc-fs-4xl: 2.6702880859375rem; /* 42.7px */
-    --rc-fs-5xl: 3.337860107421875rem; /* 53.4px */
-    --rc-fs-6xl: 4.172325134277344rem; /* 66.8px */
-    --rc-fs-7xl: 5.21540641784668rem; /* 83.4px */
+    --rc-fs-3xl: 1.875rem; /* 30px */
+    --rc-fs-4xl: 2.25rem; /* 36px */
+    --rc-fs-5xl: 3rem; /* 48px */
+    --rc-fs-6xl: 3.75rem; /* 60px */
+    --rc-fs-7xl: 4.5rem; /* 72px */
   }
 }
 

@@ -63,7 +63,7 @@ function LevelRow({ projectId, level }: { projectId: string; level: BimLevelProg
             value={draft.completionPct} onChange={(e) => setDraft({ ...draft, completionPct: e.target.value })}
           />
           {mutation.isError && <p className="text-xs text-danger">Failed to save. Try again.</p>}
-          <button type="button" onClick={() => mutation.mutate()} disabled={mutation.isPending} className="btn-primary w-full text-xs">
+          <button type="button" onClick={() => mutation.mutate()} disabled={mutation.isPending} className="btn-primary w-full ">
             {mutation.isPending ? 'Saving…' : 'Save'}
           </button>
         </div>

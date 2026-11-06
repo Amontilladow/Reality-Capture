@@ -19,10 +19,10 @@ import type { EmailIntegrationStatus, EmailIntegrationStatusValue } from '@engin
 // (see outlook-integration.controller.ts / gmail-integration.controller.ts).
 
 const STATUS_LABEL: Record<EmailIntegrationStatusValue, string> = {
-  not_connected: 'Not Connected',
+  not_connected: 'Not connected',
   connected: 'Connected',
-  connection_expired: 'Connection Expired',
-  authorization_required: 'Authorization Required',
+  connection_expired: 'Connection expired',
+  authorization_required: 'Authorization required',
   error: 'Error',
 };
 
@@ -74,17 +74,17 @@ function ProviderCard({
       {!isLoading && (
         <div className="flex gap-2">
           {!connected && (
-            <button onClick={onConnect} disabled={connectPending} className="btn-primary text-xs">
+            <button onClick={onConnect} disabled={connectPending} className="btn-primary ">
               {connectPending ? 'Connecting…' : `Connect ${name}`}
             </button>
           )}
           {connected && (
-            <button onClick={onTest} disabled={testPending} className="btn-secondary text-xs">
+            <button onClick={onTest} disabled={testPending} className="btn-secondary ">
               {testPending ? 'Testing…' : 'Test connection'}
             </button>
           )}
           {connected && (
-            <button onClick={onDisconnect} disabled={disconnectPending} className="btn-ghost text-xs text-danger">
+            <button onClick={onDisconnect} disabled={disconnectPending} className="btn-ghost text-danger">
               {disconnectPending ? 'Disconnecting…' : 'Disconnect'}
             </button>
           )}
@@ -161,8 +161,8 @@ export default function EmailSettingsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Account Settings"
-        title="Email Integration"
+        eyebrow="Account settings"
+        title="Email integration"
         actions={<HelpLink slug="connecting-outlook" label="How email integration works" />}
       />
       <div className="p-6 space-y-6 max-w-3xl">

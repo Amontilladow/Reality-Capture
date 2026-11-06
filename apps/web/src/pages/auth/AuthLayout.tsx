@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useDocumentTitle } from '../../lib/useDocumentTitle';
-import { LogoMark } from '../../components/ui/LogoMark';
+import { BrandLockup } from '../../components/ui/LogoMark';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import { BrandPanel } from '../../components/brand/BrandPanel';
 
@@ -17,10 +17,7 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
     <div className="min-h-screen p-4 sm:p-6 lg:grid lg:grid-cols-2 lg:gap-6">
       <div className="min-h-[calc(100vh-1.5rem)] sm:min-h-[calc(100vh-2.5rem)] flex flex-col px-4 py-4 sm:px-8 sm:py-6">
         <div className="flex items-center justify-between">
-          <div className="inline-flex items-center gap-2 rounded-full border border-ink-500/50 pl-2 pr-6 py-2">
-            <LogoMark className="w-8 h-8" />
-            <span className="text-lg font-light tracking-tight text-ink-100">Reality Capture</span>
-          </div>
+          <BrandLockup />
           <ThemeToggle className="lg:hidden" />
         </div>
 

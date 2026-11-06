@@ -60,7 +60,7 @@ export default function HelpPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Workspace" title="Help & Training" />
+      <PageHeader eyebrow="Workspace" title="Help & training" />
 
       <div className="p-6 space-y-4 max-w-6xl">
         <div className="relative max-w-md">

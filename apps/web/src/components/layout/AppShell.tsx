@@ -20,6 +20,8 @@ interface NavItem {
   end?: boolean;
 }
 interface NavGroup {
+  // Stable key for the group's remembered expanded/collapsed state.
+  id: string;
   heading?: string;
   items: NavItem[];
 }
@@ -29,6 +31,7 @@ interface NavGroup {
 // item here is a route that already exists; nothing added for show.
 const NAV_GROUPS: NavGroup[] = [
   {
+    id: 'workspace',
     items: [
       { to: '', label: 'Projects', icon: IconGrid, end: true },
       { to: 'messages', label: 'Messages', icon: IconMail },
@@ -41,11 +44,12 @@ const NAV_GROUPS: NavGroup[] = [
   // DEVELOPER_NAV_GROUP below. Merged from four one-item groups whose
   // headings only repeated the item's own name.
   {
+    id: 'account',
     heading: 'Account',
     items: [
-      { to: 'ai-settings', label: 'AI Provider', icon: IconSpark },
-      { to: 'email-settings', label: 'Email Integration', icon: IconMail },
-      { to: 'help', label: 'Help & Training', icon: IconHelp },
+      { to: 'ai-settings', label: 'AI provider', icon: IconSpark },
+      { to: 'email-settings', label: 'Email integration', icon: IconMail },
+      { to: 'help', label: 'Help & training', icon: IconHelp },
     ],
   },
 ];
@@ -55,49 +59,66 @@ const NAV_GROUPS: NavGroup[] = [
 // groups, not under PROJECT_NAV_GROUPS. Same role check WorkforcePage.tsx
 // uses for its own admin-only sections.
 const DEVELOPER_NAV_GROUP: NavGroup = {
+  id: 'admin',
   heading: 'Admin',
   items: [
     { to: 'developer', label: 'Developer', icon: IconKey, end: false },
-    { to: 'sharepoint-integration', label: 'SharePoint Integration', icon: IconDrawingStack, end: false },
+    { to: 'sharepoint-integration', label: 'SharePoint integration', icon: IconDrawingStack, end: false },
   ],
 };
 
+// Sections ordered by how a project team works: the day-to-day records
+// first, then reporting, then the capture and engineering tools. Every
+// item is an existing route (App.tsx); this only groups and orders them.
+// Submittals/Transmittals/QA Inspections/Documents stay hidden from nav
+// per request, backend modules/routes untouched; still reachable by
+// direct URL, just not linked from the sidebar.
 const PROJECT_NAV_GROUPS: NavGroup[] = [
-  { items: [{ to: '', label: 'Overview', icon: IconLayers, end: true }] },
   {
+    id: 'project',
     heading: 'Project',
     items: [
-      { to: 'captures', label: 'Buildlense Captures', icon: IconCamera },
-      { to: 'drawings', label: 'Floor Plans', icon: IconMap },
-      { to: 'site-drawings', label: 'Site Drawings', icon: IconDrawingStack },
+      { to: '', label: 'Overview', icon: IconLayers, end: true },
+      { to: 'site-drawings', label: 'Site drawings', icon: IconDrawingStack },
+      { to: 'drawings', label: 'Floor plans', icon: IconMap },
       { to: 'issues', label: 'Issues', icon: IconFlag },
-      { to: 'snagging', label: 'Snagging', icon: IconTag },
+      { to: 'qaqc', label: 'QA/QC', icon: IconQaqc },
       { to: 'rfis', label: 'RFIs', icon: IconQuestion },
-      // Submittals/Transmittals/QA Inspections/Documents: hidden from nav
-      // per request, backend modules/routes left untouched; still
-      // reachable by direct URL, just not linked from the sidebar.
-      { to: 'qaqc', label: 'QAQC', icon: IconQaqc },
-      { to: 'progress-report', label: 'Progress Report', icon: IconTrending },
+      { to: 'snagging', label: 'Snagging', icon: IconTag },
+    ],
+  },
+  {
+    id: 'reporting',
+    heading: 'Reporting & insights',
+    items: [
+      { to: 'progress-report', label: 'Progress report', icon: IconTrending },
       { to: 'reports', label: 'Reports', icon: IconReport },
-    ],
-  },
-  {
-    // BIM Models already existed as a route (linked only from a button on
-    // ProjectDetail's header) with no sidebar entry at all; surfacing an
-    // existing module here, not adding a new one.
-    heading: 'Engineering',
-    items: [
-      { to: 'bim', label: 'BIM Models', icon: IconBim },
-      { to: 'buildlens', label: 'BuildLens', icon: IconTimeline },
-      { to: 'gis-prep', label: 'GIS Preparation', icon: IconMap },
-    ],
-  },
-  {
-    heading: 'Insights',
-    items: [
-      { to: 'assistant', label: 'AI Assistant', icon: IconSpark },
       { to: 'risk', label: 'Risk', icon: IconShield },
     ],
+  },
+  {
+    // Two distinct BuildLens tools, both kept: "captures" is the
+    // plan-and-pin tool (camera-location pins on an uploaded plan, media
+    // attached per pin; CapturesPage.tsx), "buildlens" plays back each
+    // location's captures over time (BuildLensPage/BuildLensTimelinePage).
+    // Only the nav label of the latter gained "timeline" to tell them apart.
+    id: 'reality-capture',
+    heading: 'Reality capture',
+    items: [
+      { to: 'bim', label: 'BIM models', icon: IconBim },
+      { to: 'captures', label: 'BuildLens captures', icon: IconCamera },
+      { to: 'buildlens', label: 'BuildLens timeline', icon: IconTimeline },
+    ],
+  },
+  {
+    id: 'engineering-tools',
+    heading: 'Engineering tools',
+    items: [{ to: 'gis-prep', label: 'GIS preparation', icon: IconGlobe }],
+  },
+  {
+    id: 'intelligence',
+    heading: 'Intelligence',
+    items: [{ to: 'assistant', label: 'AI assistant', icon: IconSpark }],
   },
 ];
 
@@ -109,7 +130,7 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
 // project's landing page for this role; see RootRoute-style redirect in
 // ProjectDetail.tsx for what happens if they land on /projects/:id anyway.
 const SUBCONTRACTOR_NAV_GROUPS: NavGroup[] = [
-  { items: [{ to: 'rfis', label: 'RFIs', icon: IconQuestion }] },
+  { id: 'subcontractor', items: [{ to: 'rfis', label: 'RFIs', icon: IconQuestion }] },
 ];
 
 export function AppShell() {
@@ -169,8 +190,8 @@ export function AppShell() {
         >
           <IconMenu className="w-5 h-5" />
         </button>
-        <LogoMark className="w-6 h-6" />
-        <div className="text-sm font-semibold tracking-tight flex-1 truncate">Reality Capture</div>
+        <LogoMark className="w-8 h-8" />
+        <div className="text-base font-semibold tracking-tight flex-1 truncate">Reality Capture</div>
         <NotificationBell />
         <MessagesBell />
         <ThemeToggle />
@@ -185,7 +206,7 @@ export function AppShell() {
       )}
 
       <aside
-        className={`w-64 shrink-0 border-r border-base-600/70 bg-base-900 md:bg-transparent flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-200 md:static md:translate-x-0 ${
+        className={`w-72 shrink-0 border-r border-base-600/70 bg-base-900 md:bg-transparent flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-200 md:static md:translate-x-0 ${
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -193,10 +214,10 @@ export function AppShell() {
             Messages menu (inbox, team chat, email app); the theme toggle
             moved to the account footer, where it no longer squeezes the
             product name into a three-line wrap. */}
-        <div className="h-14 flex items-center gap-2 pl-4 pr-2 border-b border-base-600">
-          <LogoMark className="w-6 h-6 shrink-0" />
+        <div className="h-16 flex items-center gap-2 pl-4 pr-2 border-b border-base-600">
+          <LogoMark className="w-10 h-10 shrink-0" />
           <div className="leading-tight flex-1 min-w-0">
-            <div className="text-sm font-semibold tracking-tight truncate">Reality Capture</div>
+            <div className="text-base font-semibold tracking-tight truncate">Reality Capture</div>
             <div className="text-xs text-ink-500 truncate">EngineeringOS</div>
           </div>
           {/* Phones get the bells in the top bar instead. */}
@@ -220,7 +241,8 @@ export function AppShell() {
             <>
               <NavLink
                 to="/projects"
-                className="flex items-center gap-2 px-4 py-2 mb-2 text-xs text-ink-500 hover:text-ink-100"
+                end
+                className="flex items-center gap-2 px-4 py-2 mb-2 text-sm text-ink-500 hover:text-ink-100"
               >
                 <IconArrowLeft className="w-3.5 h-3.5" /> All projects
               </NavLink>
@@ -234,19 +256,19 @@ export function AppShell() {
 
         <div className="border-t border-base-600 p-4">
           <div className="flex items-center gap-2 px-2 py-2">
-            <div className="w-7 h-7 rounded-full bg-base-700 border border-base-600 flex items-center justify-center text-xs font-semibold text-ink-300 shrink-0">
+            <div className="w-8 h-8 rounded-full bg-base-700 border border-base-600 flex items-center justify-center text-xs font-semibold text-ink-300 shrink-0">
               {(user?.firstName?.[0] ?? '') + (user?.lastName?.[0] ?? '')}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-medium truncate">
+              <div className="text-sm font-medium truncate">
                 {user?.firstName} {user?.lastName}
               </div>
               <div className="text-xs text-ink-500 truncate">{user?.email}</div>
             </div>
           </div>
           <div className="flex items-center gap-2 mt-2">
-            <button onClick={handleLogout} className="btn-ghost flex-1 justify-start text-xs px-2 h-8">
-              <IconLogout className="w-3.5 h-3.5" /> Sign out
+            <button onClick={handleLogout} className="btn-ghost flex-1 justify-start px-2 h-9">
+              <IconLogout className="w-4 h-4" /> Sign out
             </button>
             <ThemeToggle />
           </div>
@@ -310,34 +332,119 @@ function PhoneTabBar({ projectId, subcontractor, onMore }: { projectId?: string;
   );
 }
 
+const COLLAPSED_KEY = 'rc.nav.collapsed';
+
+function readCollapsed(): Set<string> {
+  try {
+    const raw = localStorage.getItem(COLLAPSED_KEY);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function isItemActive(pathname: string, basePath: string, item: NavItem): boolean {
+  const target = item.to ? `${basePath}/${item.to}` : basePath;
+  const path = pathname.replace(/\/+$/, '');
+  return item.end ? path === target : path === target || path.startsWith(`${target}/`);
+}
+
+// Headed sections collapse and expand; which ones are collapsed is kept in
+// localStorage so the sidebar opens the way it was left. A section that
+// holds the page being navigated to always reopens, so the active item is
+// never hidden behind a collapsed heading.
 function NavGroupList({ groups, basePath }: { groups: NavGroup[]; basePath: string }) {
+  const { pathname } = useLocation();
+  const [collapsed, setCollapsed] = useState<Set<string>>(readCollapsed);
+
+  function persist(next: Set<string>) {
+    setCollapsed(next);
+    try {
+      localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...next]));
+    } catch {
+      // Storage unavailable (private browsing): state just isn't remembered.
+    }
+  }
+
+  useEffect(() => {
+    const activeGroup = groups.find((g) => g.items.some((item) => isItemActive(pathname, basePath, item)));
+    if (activeGroup && collapsed.has(activeGroup.id)) {
+      const next = new Set(collapsed);
+      next.delete(activeGroup.id);
+      persist(next);
+    }
+    // Only a route change should reopen a section, not the collapse itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, basePath]);
+
+  function toggle(id: string) {
+    const next = new Set(collapsed);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    persist(next);
+  }
+
   return (
     <div className="space-y-4">
-      {groups.map((group, i) => (
-        <div key={group.heading ?? i} className="space-y-0">
-          {group.heading && (
-            <div className="px-4 mb-2 text-xs font-medium text-ink-500">{group.heading}</div>
-          )}
-          {group.items.map((item) => (
-            <NavLink
-              key={item.label}
-              to={`${basePath}/${item.to}`}
-              end={item.end}
-              className={({ isActive }) =>
-                `flex items-center gap-2 px-4 h-9 rounded-full text-sm transition-colors ${
-                  isActive
-                    ? 'bg-signal text-base-800 font-medium'
-                    : 'text-ink-300 hover:bg-base-800/70 hover:text-ink-100'
-                }`
-              }
-            >
-              <item.icon className="w-4 h-4 shrink-0" />
-              {item.label}
-            </NavLink>
-          ))}
-        </div>
-      ))}
+      {groups.map((group) => {
+        const open = !group.heading || !collapsed.has(group.id);
+        const listId = `nav-section-${group.id}`;
+        return (
+          <div key={group.id}>
+            {group.heading && (
+              <button
+                type="button"
+                onClick={() => toggle(group.id)}
+                aria-expanded={open}
+                aria-controls={listId}
+                className="group w-full flex items-center justify-between h-7 px-4 rounded-full text-eyebrow font-medium uppercase text-ink-500 hover:text-ink-300 transition-colors"
+              >
+                {group.heading}
+                <IconChevron className={`w-3.5 h-3.5 md:opacity-0 md:group-hover:opacity-100 group-focus-visible:opacity-100 transition-transform duration-150 motion-reduce:transition-none ${open ? '' : '-rotate-90 !opacity-100'}`} />
+              </button>
+            )}
+            {open && (
+              <div id={listId} className="space-y-0">
+                {group.items.map((item) => (
+                  <NavLink
+                    key={item.label}
+                    to={item.to ? `${basePath}/${item.to}` : basePath}
+                    end={item.end}
+                    className={({ isActive }) =>
+                      `flex items-center gap-2 px-4 h-8 rounded-full text-sm transition-colors ${
+                        isActive
+                          ? 'bg-signal text-base-800 font-medium'
+                          : 'text-ink-300 hover:bg-base-800/70 hover:text-ink-100'
+                      }`
+                    }
+                  >
+                    <item.icon className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
+  );
+}
+
+function IconChevron({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+// GIS preparation: a globe, so it no longer shares Floor plans' map icon.
+function IconGlobe({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z" strokeLinejoin="round" />
+    </svg>
   );
 }
 

@@ -64,9 +64,9 @@ export const ISSUE_TYPES: IssueType[] = [
 export const STATUS_LABELS: Record<IssueStatus, string> = {
   open: 'Open',
   assigned: 'Assigned',
-  in_progress: 'In Progress',
-  under_review: 'Under Review',
-  waiting_for_information: 'Waiting for Information',
+  in_progress: 'In progress',
+  under_review: 'Under review',
+  waiting_for_information: 'Waiting for information',
   resolved: 'Resolved',
   closed: 'Closed',
   reopened: 'Reopened',
@@ -93,12 +93,12 @@ export const PRIORITY_BADGE_CLASS: Record<IssuePriority, string> = Object.fromEn
 
 export const ISSUE_TYPE_LABELS: Record<IssueType, string> = {
   defect: 'Defect',
-  punch_item: 'Punch Item',
+  punch_item: 'Punch item',
   rfi: 'RFI',
-  coordination_clash: 'Coordination Clash',
-  safety_observation: 'Safety Observation',
-  quality_hold: 'Quality Hold',
-  inspection_point: 'Inspection Point',
+  coordination_clash: 'Coordination clash',
+  safety_observation: 'Safety observation',
+  quality_hold: 'Quality hold',
+  inspection_point: 'Inspection point',
   general: 'General',
 };
 
@@ -125,16 +125,16 @@ export const ISSUE_CATEGORIES: IssueCategory[] = [
 ];
 
 export const CATEGORY_LABELS: Record<IssueCategory, string> = {
-  design_issue: 'Design Issue',
+  design_issue: 'Design issue',
   bim_modeling_issue: 'BIM Modeling Issue',
-  coordination_issue: 'Coordination Issue',
-  clash_detection: 'Clash Detection',
-  constructability_issue: 'Constructability Issue',
-  shop_drawing_issue: 'Shop Drawing Issue',
-  site_issue: 'Site Issue',
+  coordination_issue: 'Coordination issue',
+  clash_detection: 'Clash detection',
+  constructability_issue: 'Constructability issue',
+  shop_drawing_issue: 'Shop drawing issue',
+  site_issue: 'Site issue',
   rfi: 'RFI',
-  client_comment: 'Client Comment',
-  consultant_comment: 'Consultant Comment',
+  client_comment: 'Client comment',
+  consultant_comment: 'Consultant comment',
   other: 'Other',
 };
 

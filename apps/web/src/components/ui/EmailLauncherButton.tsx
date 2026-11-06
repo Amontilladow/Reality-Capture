@@ -8,7 +8,7 @@ import {
 const PROVIDER_LABELS: Record<EmailProvider, string> = {
   outlook: 'Outlook',
   gmail: 'Gmail',
-  default: 'Default Email App',
+  default: 'Default email app',
 };
 const PROVIDER_ORDER: EmailProvider[] = ['outlook', 'gmail', 'default'];
 

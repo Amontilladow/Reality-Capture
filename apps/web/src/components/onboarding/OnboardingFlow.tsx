@@ -53,7 +53,7 @@ export function OnboardingFlow() {
       ),
     },
     {
-      title: 'Your Role and Organization',
+      title: 'Your role and organization',
       body: (
         <div className="space-y-2">
           <p>
@@ -73,7 +73,7 @@ export function OnboardingFlow() {
       ),
     },
     {
-      title: 'Your Projects Page',
+      title: 'Your projects page',
       body: (
         <p>
           The Projects page lists every active project at your company, with a few
@@ -83,7 +83,7 @@ export function OnboardingFlow() {
       ),
     },
     {
-      title: 'Finding a Project',
+      title: 'Finding a project',
       body: (
         <p>
           Select a project card to open its workspace. Once inside, use the project
@@ -93,10 +93,10 @@ export function OnboardingFlow() {
       ),
     },
     {
-      title: 'Key Modules',
+      title: 'Key modules',
       body: (
         <ul className="space-y-2 list-disc pl-4">
-          <li><span className="font-medium text-ink-100">Floor Plans</span>: drawings with pinpoints marking locations of issues.</li>
+          <li><span className="font-medium text-ink-100">Floor plans</span>: drawings with pinpoints marking locations of issues.</li>
           <li><span className="font-medium text-ink-100">Issues &amp; Snagging</span>: defects and punch-list items tracked to closure.</li>
           <li><span className="font-medium text-ink-100">RFIs</span>: formal requests for information.</li>
           <li><span className="font-medium text-ink-100">Documents</span>: drawings, specifications, and other project files.</li>
@@ -105,7 +105,7 @@ export function OnboardingFlow() {
       ),
     },
     {
-      title: 'Try It',
+      title: 'Try it',
       body: (
         <p>
           Open any project, then select <span className="font-medium text-ink-100">Issues</span> in
@@ -115,7 +115,7 @@ export function OnboardingFlow() {
       ),
     },
     {
-      title: 'Help Whenever You Need It',
+      title: 'Help whenever you need it',
       body: (
         <p>
           The Help Centre has step-by-step articles for every module, a search box, and
@@ -138,21 +138,21 @@ export function OnboardingFlow() {
         <div className="text-sm text-ink-300 leading-relaxed">{steps[step].body}</div>
 
         <div className="flex items-center justify-between pt-2">
-          <button onClick={() => finish(false)} className="btn-ghost text-xs">
+          <button onClick={() => finish(false)} className="btn-ghost ">
             Skip
           </button>
           <div className="flex items-center gap-2">
             {!isFirst && (
-              <button onClick={() => setStep((s) => s - 1)} className="btn-secondary text-xs">
+              <button onClick={() => setStep((s) => s - 1)} className="btn-secondary ">
                 Back
               </button>
             )}
             {!isLast ? (
-              <button onClick={() => setStep((s) => s + 1)} className="btn-primary text-xs">
+              <button onClick={() => setStep((s) => s + 1)} className="btn-primary ">
                 Next
               </button>
             ) : (
-              <button onClick={() => finish(true)} className="btn-primary text-xs">
+              <button onClick={() => finish(true)} className="btn-primary ">
                 Finish &amp; Open Help Centre
               </button>
             )}

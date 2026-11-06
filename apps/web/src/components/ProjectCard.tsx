@@ -7,7 +7,7 @@ import { formatDeadline } from '../lib/issue-constants';
 
 const STATUS_LABELS: Record<Project['status'], string> = {
   active: 'Active',
-  on_hold: 'On Hold',
+  on_hold: 'On hold',
   completed: 'Completed',
   archived: 'Archived',
 };

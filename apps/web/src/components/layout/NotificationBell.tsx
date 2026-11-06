@@ -5,6 +5,7 @@ import {
   listNotifications, getUnreadCount, markNotificationRead, markAllNotificationsRead,
   lookupIssueProject, type Notification,
 } from '../../lib/notifications.api';
+import { BellIcon, HeaderIconButton } from './HeaderIconButton';
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -94,25 +95,20 @@ export function NotificationBell() {
 
   return (
     <div className="relative">
-      <button
+      <HeaderIconButton
         onClick={() => setOpen((v) => !v)}
-        className="relative flex items-center justify-center w-8 h-8 rounded text-ink-300 hover:bg-base-700 hover:text-ink-100 transition-colors"
-        aria-label="Notifications"
-      >
-        <BellIcon className="w-[18px] h-[18px]" />
-        {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 min-w-[16px] h-4 px-2 rounded-full bg-signal text-base-950 text-xs font-mono font-bold flex items-center justify-center">
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </span>
-        )}
-      </button>
+        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+        aria-expanded={open}
+        icon={<BellIcon className="w-5 h-5" />}
+        count={unreadCount}
+      />
 
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="fixed md:absolute top-16 md:top-full inset-x-4 md:inset-x-auto md:mt-2 md:left-0 z-50 md:w-80 max-h-96 tick-frame panel !bg-base-800 overflow-hidden flex flex-col shadow-xl">
             <div className="flex items-center justify-between px-4 py-2 border-b border-base-600 shrink-0">
-              <span className="text-xs text-ink-500 font-medium">Notifications</span>
+              <span className="text-sm font-semibold text-ink-100">Notifications</span>
               {unreadCount > 0 && (
                 <button
                   onClick={() => markAllReadMutation.mutate()}
@@ -132,16 +128,16 @@ export function NotificationBell() {
                 <button
                   key={n.id}
                   onClick={() => handleClick(n)}
-                  className={`block w-full text-left px-4 py-2 border-b border-base-600 last:border-b-0 hover:bg-base-700 transition-colors ${
+                  className={`block w-full text-left px-4 py-4 border-b border-base-600 last:border-b-0 hover:bg-base-700 transition-colors ${
                     !n.readAt ? 'bg-blueprint/5' : ''
                   }`}
                 >
                   <div className="flex items-start gap-2">
                     {!n.readAt && <span className="w-1.5 h-1.5 rounded-full bg-blueprint mt-2 shrink-0" />}
                     <div className="min-w-0 flex-1">
-                      <div className={`text-xs ${!n.readAt ? 'text-ink-100' : 'text-ink-300'}`}>{n.title}</div>
+                      <div className={`text-sm ${!n.readAt ? 'text-ink-100 font-medium' : 'text-ink-300'}`}>{n.title}</div>
                       {n.body && <div className="text-xs text-ink-500 mt-0">{n.body}</div>}
-                      <div className="text-xs font-mono text-ink-500 mt-0">{timeAgo(n.createdAt)}</div>
+                      <div className="text-xs text-ink-500 mt-0">{timeAgo(n.createdAt)}</div>
                     </div>
                   </div>
                 </button>
@@ -154,11 +150,3 @@ export function NotificationBell() {
   );
 }
 
-function BellIcon({ className }: { className?: string }) {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M13.73 21a2 2 0 01-3.46 0" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}

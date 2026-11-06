@@ -9,7 +9,7 @@ export const notificationsEmailArticles: HelpArticle[] = [
   {
     slug: 'opening-a-notification',
     category: 'notifications-email',
-    title: 'Opening a Notification',
+    title: 'Opening a notification',
     summary: 'Viewing and jumping to a notification\'s record.',
     whoCanUse: 'Any signed-in user, for their own notifications.',
     steps: ['Select the bell icon in the sidebar.', 'Select a notification to open the record it relates to.'],
@@ -19,7 +19,7 @@ export const notificationsEmailArticles: HelpArticle[] = [
   {
     slug: 'managing-notification-preferences',
     category: 'notifications-email',
-    title: 'Managing Notification Preferences',
+    title: 'Managing notification preferences',
     summary: 'There is currently no settings page for notification preferences.',
     whatItDoes: 'Every user receives the same set of notification types (assignment, reassignment, new comment on an assigned record, forwarding) -- there is no per-user setting to mute or customize them.',
     notYetAvailable: true,
@@ -66,7 +66,7 @@ export const notificationsEmailArticles: HelpArticle[] = [
   {
     slug: 'sending-project-emails',
     category: 'notifications-email',
-    title: 'Sending Project Emails',
+    title: 'Sending project emails',
     summary: 'Composing and sending email from your connected mailbox, linked to a project record.',
     whatItDoes: 'Opens a compose window to send email from your connected Outlook or Gmail account. Recipients, subject, message, and attachments are all entered by you -- nothing is sent automatically. If you open it from an RFI, Issue, Submittal, or Snag page, the subject is pre-filled with that record\'s reference and the sent email is automatically associated with it; sending never changes that record\'s own status.',
     whenToUse: 'Whenever you need to email someone outside EngineeringOS about a specific project record, and want a record of it kept against that record.',
@@ -88,7 +88,7 @@ export const notificationsEmailArticles: HelpArticle[] = [
   {
     slug: 'understanding-email-history',
     category: 'notifications-email',
-    title: 'Understanding Email History',
+    title: 'Understanding email history',
     summary: 'A metadata-only audit trail of emails sent through EngineeringOS.',
     whatItDoes: 'Shows who sent an email, from which address, to whom, when, the subject, and whether it succeeded -- never the message body, which is never stored. Visible both as a project-wide log and, filtered to just that record, on the RFI/Issue/Submittal/Snag page it was sent about.',
     whoCanUse: 'Any member of the project the email was sent on behalf of.',
@@ -99,7 +99,7 @@ export const notificationsEmailArticles: HelpArticle[] = [
   {
     slug: 'disconnecting-an-email-account',
     category: 'notifications-email',
-    title: 'Disconnecting an Email Account',
+    title: 'Disconnecting an email account',
     summary: 'Revoking EngineeringOS\'s access to your mailbox.',
     whoCanUse: 'Any signed-in user, for their own connected mailbox.',
     steps: ['Open "Email Integration," find the connected provider, and select "Disconnect."'],
@@ -110,7 +110,7 @@ export const notificationsEmailArticles: HelpArticle[] = [
   {
     slug: 'troubleshooting-email-authorization',
     category: 'notifications-email',
-    title: 'Troubleshooting Email Authorization',
+    title: 'Troubleshooting email authorization',
     summary: 'Connecting Outlook or Gmail fails or shows an error.',
     troubleshootingSteps: [
       { problem: 'Connection fails or shows "failed" after the consent screen', likelyCause: 'A required permission was declined, or a transient provider error.', fix: 'Try connecting again from Email Integration settings and accept every permission requested.' },

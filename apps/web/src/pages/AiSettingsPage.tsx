@@ -68,11 +68,11 @@ export default function AiSettingsPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Account Settings" title="AI Provider" />
+      <PageHeader eyebrow="Account settings" title="AI provider" />
       <div className="p-6 space-y-6 max-w-3xl">
         <div className="panel tick-frame p-6 space-y-4">
           <div>
-            <h2 className="text-sm font-semibold text-ink-100">AI Mode</h2>
+            <h2 className="text-sm font-semibold text-ink-100">AI mode</h2>
             <p className="text-xs text-ink-500 mt-2">
               By default, the AI Assistant runs on RealityCapture’s own AI provider, nothing to set up.
               Connect your own provider below to run the assistant on your account instead. Either way, the
@@ -118,14 +118,14 @@ export default function AiSettingsPage() {
               <button
                 onClick={() => testMutation.mutate()}
                 disabled={testMutation.isPending}
-                className="btn-secondary text-xs"
+                className="btn-secondary "
               >
                 {testMutation.isPending ? 'Testing…' : 'Test Connection'}
               </button>
               <button
                 onClick={() => disconnectMutation.mutate()}
                 disabled={disconnectMutation.isPending}
-                className="btn-ghost text-xs text-danger"
+                className="btn-ghost text-danger"
               >
                 {disconnectMutation.isPending ? 'Disconnecting…' : 'Disconnect'}
               </button>
@@ -185,7 +185,7 @@ export default function AiSettingsPage() {
 
           {!NEEDS_NO_API_KEY.has(provider) && (
             <div>
-              <label className="field-label" htmlFor="ai-api-key">API Key</label>
+              <label className="field-label" htmlFor="ai-api-key">API key</label>
               <input id="ai-api-key" type="password" className="field-input" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="sk-…" />
             </div>
           )}
