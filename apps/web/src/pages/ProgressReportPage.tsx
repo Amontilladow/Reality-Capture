@@ -56,7 +56,7 @@ function ElementProgressSection({ elementProgress }: { elementProgress: Progress
               <th className="px-4 py-2 font-medium">Building</th>
               <th className="px-4 py-2 font-medium">Elements</th>
               <th className="px-4 py-2 font-medium">Complete</th>
-              <th className="px-4 py-2 font-medium">Zone Status</th>
+              <th className="px-4 py-2 font-medium">Zone status</th>
             </tr>
           </thead>
           <tbody>
@@ -92,7 +92,7 @@ function IssueSection({ title, items, emptyText }: { title: string; items: Progr
                 <th className="px-4 py-2 font-medium">Status</th>
                 <th className="px-4 py-2 font-medium">Priority</th>
                 <th className="px-4 py-2 font-medium">Location</th>
-                <th className="px-4 py-2 font-medium">Assigned To</th>
+                <th className="px-4 py-2 font-medium">Assigned to</th>
               </tr>
             </thead>
             <tbody>
@@ -166,7 +166,7 @@ export default function ProgressReportPage() {
     <>
       <PageHeader
         eyebrow={projectQuery.data?.name ?? 'Project'}
-        title="Progress Report"
+        title="Progress report"
         actions={
           <div className="flex items-center gap-2">
             <button onClick={handleDownloadPdf} disabled={!report || pdfDownloading} className="btn-secondary">
@@ -219,9 +219,9 @@ export default function ProgressReportPage() {
 
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <StatTile label="Captures" value={report.captureCount} />
-              <StatTile label="New Issues" value={report.newIssues.length} />
-              <StatTile label="Closed Issues" value={report.closedIssues.length} />
-              <StatTile label="Overdue Issues" value={report.overdueIssues.length} tone="danger" />
+              <StatTile label="New issues" value={report.newIssues.length} />
+              <StatTile label="Closed issues" value={report.closedIssues.length} />
+              <StatTile label="Overdue issues" value={report.overdueIssues.length} tone="danger" />
               <StatTile label="Blockers" value={report.blockers.length} tone="danger" />
             </div>
 
@@ -245,9 +245,9 @@ export default function ProgressReportPage() {
 
             <ElementProgressSection elementProgress={report.elementProgress} />
 
-            <IssueSection title="New Issues" items={report.newIssues} emptyText="No new issues in this date range." />
-            <IssueSection title="Closed Issues" items={report.closedIssues} emptyText="No issues closed in this date range." />
-            <IssueSection title="Overdue Issues" items={report.overdueIssues} emptyText="No overdue issues." />
+            <IssueSection title="New issues" items={report.newIssues} emptyText="No new issues in this date range." />
+            <IssueSection title="Closed issues" items={report.closedIssues} emptyText="No issues closed in this date range." />
+            <IssueSection title="Overdue issues" items={report.overdueIssues} emptyText="No overdue issues." />
             <IssueSection title="Blockers" items={report.blockers} emptyText="No critical/high-priority open issues." />
           </>
         )}
@@ -296,7 +296,7 @@ function ShareModal({
   const now = Date.now();
 
   return (
-    <Modal open onClose={onClose} title="Share Progress Report" wide>
+    <Modal open onClose={onClose} title="Share progress report" wide>
       <div className="space-y-4">
         <p className="text-xs text-ink-500">
           Generates a public link for the report with your current filters (date range{filters.buildingId ? ', building' : ''}{filters.levelId ? ', level' : ''}).
@@ -321,13 +321,13 @@ function ShareModal({
           <div className="panel p-4 space-y-2">
             <div className="flex items-center gap-2">
               <input readOnly value={createMutation.data.shareUrl} className="field-input flex-1 text-xs" onFocus={(e) => e.target.select()} />
-              <button onClick={() => handleCopy(createMutation.data!.shareUrl)} className="btn-secondary !px-4 !py-2 text-xs">
+              <button onClick={() => handleCopy(createMutation.data!.shareUrl)} className="btn-secondary !px-4 !py-2 ">
                 {copied ? 'Copied!' : 'Copy'}
               </button>
               <a
                 href={`https://wa.me/?text=${encodeURIComponent(createMutation.data.shareUrl)}`}
                 target="_blank" rel="noopener noreferrer"
-                className="btn-secondary !px-4 !py-2 text-xs"
+                className="btn-secondary !px-4 !py-2 "
               >
                 Share on WhatsApp
               </a>
@@ -353,7 +353,7 @@ function ShareModal({
                       </span>
                     </div>
                     {status === 'Active' && (
-                      <button onClick={() => revokeMutation.mutate(s.id)} disabled={revokeMutation.isPending} className="btn-ghost !px-2 !py-2 text-xs text-danger">
+                      <button onClick={() => revokeMutation.mutate(s.id)} disabled={revokeMutation.isPending} className="btn-ghost !px-2 !py-2 text-danger">
                         Revoke
                       </button>
                     )}

@@ -34,6 +34,8 @@ export function RegisterSiteDrawingModal({ open, onClose, projectId }: { open: b
   const [discipline, setDiscipline] = useState('');
   const [buildingOrZone, setBuildingOrZone] = useState('');
   const [floorOrLevel, setFloorOrLevel] = useState('');
+  const [originator, setOriginator] = useState('');
+  const [responsibleSubcontractor, setResponsibleSubcontractor] = useState('');
   const [revisionNumber, setRevisionNumber] = useState('');
   const [workflowStatus, setWorkflowStatus] = useState<SiteDrawingWorkflowStatus>('UNDER_REVIEW');
   const [issueDate, setIssueDate] = useState('');
@@ -74,19 +76,26 @@ export function RegisterSiteDrawingModal({ open, onClose, projectId }: { open: b
   function reset() {
     setFile(null); setStorageKey(null); setExtractState('idle');
     setDrawingNumber(''); setDrawingTitle(''); setDiscipline(''); setBuildingOrZone('');
-    setFloorOrLevel(''); setRevisionNumber(''); setWorkflowStatus('UNDER_REVIEW'); setIssueDate('');
+    setFloorOrLevel(''); setOriginator(''); setResponsibleSubcontractor('');
+    setRevisionNumber(''); setWorkflowStatus('UNDER_REVIEW'); setIssueDate('');
   }
 
   const mutation = useMutation({
     mutationFn: () =>
       registerSiteDrawing(projectId, {
         drawingNumber, drawingTitle, discipline: discipline || undefined, buildingOrZone: buildingOrZone || undefined,
-        floorOrLevel: floorOrLevel || undefined, revisionNumber, workflowStatus, issueDate: issueDate || undefined,
+        floorOrLevel: floorOrLevel || undefined,
+        // Left undefined (not empty string) when blank, so the backend
+        // resolves it from the project's own org mapping (master spec
+        // section 4) instead of overwriting a real mapping match with "".
+        originator: originator || undefined, responsibleSubcontractor: responsibleSubcontractor || undefined,
+        revisionNumber, workflowStatus, issueDate: issueDate || undefined,
         storageKey: storageKey!,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['site-drawings', projectId] });
       queryClient.invalidateQueries({ queryKey: ['site-drawing-filter-options', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-dashboard-stats', projectId] });
       reset();
       onClose();
     },
@@ -144,6 +153,14 @@ export function RegisterSiteDrawingModal({ open, onClose, projectId }: { open: b
           <div>
             <label className="field-label" htmlFor="sd-floor">Floor / level</label>
             <input id="sd-floor" className="field-input" value={floorOrLevel} onChange={(e) => setFloorOrLevel(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="sd-originator">Originator</label>
+            <input id="sd-originator" className="field-input" value={originator} onChange={(e) => setOriginator(e.target.value)} placeholder="Leave blank to use the drawing number's mapping" />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="sd-subcontractor">Responsible subcontractor</label>
+            <input id="sd-subcontractor" className="field-input" value={responsibleSubcontractor} onChange={(e) => setResponsibleSubcontractor(e.target.value)} placeholder="Leave blank to use the drawing number's mapping" />
           </div>
           <div>
             <label className="field-label" htmlFor="sd-issue-date">Issue date</label>

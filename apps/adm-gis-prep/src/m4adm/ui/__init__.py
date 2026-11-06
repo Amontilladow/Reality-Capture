@@ -10,13 +10,17 @@ from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from m4adm import PROVISIONAL_LABEL, __version__
+from m4adm.adapters import STATUS_UNAVAILABLE, DWGConverter
 from m4adm.audit import AuditLog
+from m4adm.convert import convert
+from m4adm.convert.settings import ConversionSettings
 from m4adm.io import sha256_file
-from m4adm.jobs import attach_official_qc, export_package, job_dir, list_jobs, load_report, official_qc_status
+from m4adm.jobs import JOB_ID_RE, attach_official_qc, export_package, job_dir, list_jobs, load_report, official_qc_status
 from m4adm.mapping import EXCLUDE
 from m4adm.models import JobSettings
 from m4adm.pipeline import prepare
@@ -58,6 +62,26 @@ def create_app(workspace: Path) -> FastAPI:
         if not p.is_relative_to(uploads.resolve()) or not p.is_file():
             raise HTTPException(404, "uploaded file not found")
         return p
+
+    async def store_source(drawing: UploadFile | None, existing: str) -> Path | str:
+        """The path of the drawing to process (an upload is stored read-only, once per content), or an error message."""
+        if drawing is not None and drawing.filename:
+            data = await drawing.read()
+            if len(data) > MAX_UPLOAD:
+                return "File is larger than 500 MB. Split the drawing or purge it in CAD first."
+            name = SAFE_NAME.sub("_", Path(drawing.filename).name) or "drawing.dxf"
+            d = uploads / hashlib.sha256(data).hexdigest()[:16]
+            d.mkdir(exist_ok=True)
+            source = d / name
+            if not source.exists():
+                tmp = d / f".{name}.part"
+                tmp.write_bytes(data)
+                os.replace(tmp, source)
+                os.chmod(source, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+            return source
+        if existing:
+            return resolve_upload(existing)
+        return "Select a drawing: upload a DXF or choose a previously uploaded file."
 
     def get_job(job_id: str) -> Path:
         try:
@@ -106,37 +130,14 @@ def create_app(workspace: Path) -> FastAPI:
             return _back(f"Unknown profile {profile!r}.")
         if profile == "bdms_building":
             category = ["building"]
-        if drawing is not None and drawing.filename:
-            data = await drawing.read()
-            if len(data) > MAX_UPLOAD:
-                return _back("File is larger than 500 MB. Split the drawing or purge it in CAD first.")
-            name = SAFE_NAME.sub("_", Path(drawing.filename).name) or "drawing.dxf"
-            d = uploads / hashlib.sha256(data).hexdigest()[:16]
-            d.mkdir(exist_ok=True)
-            source = d / name
-            if not source.exists():
-                tmp = d / f".{name}.part"
-                tmp.write_bytes(data)
-                os.replace(tmp, source)
-                os.chmod(source, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
-        elif existing:
-            source = resolve_upload(existing)
-        else:
-            return _back("Select a drawing: upload a DXF or choose a previously uploaded file.")
+        source = await store_source(drawing, existing)
+        if isinstance(source, str):
+            return _back(source)
         if not category:
             return _back("Select at least one category (Plot, Roads, Services).")
-        pairs = []
-        for n, line in enumerate(control_points.splitlines(), 1):
-            line = line.split("#", 1)[0].strip()
-            if not line:
-                continue
-            try:
-                vals = [float(v) for v in line.replace(",", " ").split()]
-            except ValueError:
-                vals = []
-            if len(vals) != 4:
-                return _back(f"Control point line {n} needs 4 numbers: source_x source_y target_E target_N.")
-            pairs.append(((vals[0], vals[1]), (vals[2], vals[3])))
+        pairs = parse_control_points(control_points)
+        if isinstance(pairs, str):
+            return _back(pairs)
         tol = None
         overrides = {k: v.strip() for k, v in (("coincidence", tol_coincidence), ("snap_search", tol_snap_search),
                                                ("arc_sagitta", tol_arc_sagitta)) if v and v.strip()}
@@ -237,6 +238,98 @@ def create_app(workspace: Path) -> FastAPI:
         media = "text/html" if p.suffix == ".html" else None
         return FileResponse(p, media_type=media, filename=None if media else p.name)
 
+
+    # ------------------------------------------------------------------ floor plan -> DRM BDMS draft (conversion)
+    def conversion_dir(job_id: str) -> Path:
+        if not JOB_ID_RE.fullmatch(job_id) or not (jobs_root / job_id / "conversion_report.json").exists():
+            raise HTTPException(404, f"conversion {job_id} not found or not complete")
+        return jobs_root / job_id
+
+    def list_conversions(limit: int = 15) -> list[dict]:
+        out = []
+        for d in sorted((p for p in jobs_root.iterdir() if JOB_ID_RE.fullmatch(p.name)), reverse=True):
+            f = d / "conversion_report.json"
+            if f.exists():
+                r = json.loads(f.read_text(encoding="utf-8"))
+                out.append({"job_id": d.name, "status": r["status"], "source": r["source"]["name"],
+                            "output": (r.get("output") or {}).get("path")})
+                if len(out) >= limit:
+                    break
+        return out
+
+    bdms = manifests["bdms_building"]
+
+    @app.get("/convert", response_class=HTMLResponse)
+    def convert_form(request: Request, error: str | None = None):
+        dwg = DWGConverter.from_env()
+        return TEMPLATES.TemplateResponse(request, "convert.html", ctx(
+            request, error=error, uploads=uploaded_files(), conversions=list_conversions(),
+            usage_categories=bdms.domains["usage_category_type"], usage_types=bdms.domains["usage_type"],
+            drawing_types=bdms.domains["drawing_type"], dwg_ready=dwg.status() != STATUS_UNAVAILABLE,
+            dwg_reader=dwg.describe() if dwg.executable else None))
+
+    @app.post("/convert")
+    async def do_convert(
+        drawing: UploadFile | None = File(None),
+        existing: str = Form(""),
+        zone_name: str = Form(""), sector_number: str = Form(""), plot_number: str = Form(""),
+        building_number: str = Form(""), floor_id: str = Form(""),
+        single_unit_number: str = Form(""),
+        floor_height: str = Form(""), building_number_of_floors: str = Form(""), building_height: str = Form(""),
+        building_usage_category: str = Form(""), building_usage_type: str = Form(""),
+        developer_name: str = Form(""), building_name: str = Form(""),
+        title_drawing_type: str = Form(""), date_of_drawing: str = Form(""),
+        source_units: str = Form("auto"),
+        control_points: str = Form(""), confirm_transformation: str = Form(""),
+    ):
+        def back(message: str) -> RedirectResponse:
+            return RedirectResponse(f"/convert?error={quote(message)}", status_code=303)
+
+        source = await store_source(drawing, existing)
+        if isinstance(source, str):
+            return back(source)
+        pairs = parse_control_points(control_points)
+        if isinstance(pairs, str):
+            return back(pairs)
+        up = lambda v: v.strip().upper()          # file-name parts and the date are written in capitals
+        titles = {"DeveloperName": developer_name.strip(), "BuildingName": building_name.strip(),
+                  "DrawingType": title_drawing_type.strip(), "DateOfDrawing": up(date_of_drawing)}
+        try:
+            settings = ConversionSettings(
+                metadata={"zone_name": up(zone_name), "sector_number": up(sector_number), "plot_number": up(plot_number),
+                          "building_number": building_number.strip(), "floor_id": up(floor_id)},
+                source_units=source_units, single_unit_number=single_unit_number.strip(),
+                floor_height=floor_height.strip(), building_number_of_floors=building_number_of_floors.strip(),
+                building_height=building_height.strip(), building_usage_category=building_usage_category.strip(),
+                building_usage_type=building_usage_type.strip(),
+                title_values={k: v for k, v in titles.items() if v},
+                crs={"control_points": pairs, "confirm_transformation": bool(confirm_transformation)})
+        except ValueError as exc:
+            return back(f"Settings are invalid: {exc}")
+        try:
+            res = await run_in_threadpool(convert, source, settings, jobs_root)
+        except Exception as exc:
+            return back(f"The conversion failed ({type(exc).__name__}: {exc}). The failed job folder is kept for diagnosis.")
+        return RedirectResponse(f"/conversions/{res.job_id}", status_code=303)
+
+    @app.get("/conversions/{job_id}", response_class=HTMLResponse)
+    def show_conversion(request: Request, job_id: str):
+        d = conversion_dir(job_id)
+        r = json.loads((d / "conversion_report.json").read_text(encoding="utf-8"))
+        outputs = sorted(p.name for p in (d / "output").glob("*")) if (d / "output").exists() else []
+        return TEMPLATES.TemplateResponse(request, "conversion.html", ctx(
+            request, r=r, job_id=job_id, outputs=outputs, has_preview=(d / "preview.svg").exists(),
+            qc=(r.get("validation") or {}).get("qc_style_summary") or []))
+
+    @app.get("/conversions/{job_id}/files/{path:path}")
+    def conversion_file(job_id: str, path: str):
+        d = conversion_dir(job_id).resolve()
+        p = (d / path).resolve()
+        if not p.is_relative_to(d) or not p.is_file():
+            raise HTTPException(404, "file not found")
+        media = {".html": "text/html", ".svg": "image/svg+xml"}.get(p.suffix)
+        return FileResponse(p, media_type=media, filename=None if media else p.name)
+
     @app.get("/rules", response_class=HTMLResponse)
     def rules(request: Request, profile: str = "sdd_planning"):
         if profile not in manifests:
@@ -253,6 +346,23 @@ def create_app(workspace: Path) -> FastAPI:
         return json.loads((get_job(job_id) / "qc_report.json").read_text(encoding="utf-8"))
 
     return app
+
+
+def parse_control_points(text: str) -> list | str:
+    """Pairs ((source_x, source_y), (target_E, target_N)) from one 'x y E N' line each, or an error message."""
+    pairs = []
+    for n, line in enumerate(text.splitlines(), 1):
+        line = line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        try:
+            vals = [float(v) for v in line.replace(",", " ").split()]
+        except ValueError:
+            vals = []
+        if len(vals) != 4:
+            return f"Control point line {n} needs 4 numbers: source_x source_y target_E target_N."
+        pairs.append(((vals[0], vals[1]), (vals[2], vals[3])))
+    return pairs
 
 
 def _back(message: str) -> RedirectResponse:

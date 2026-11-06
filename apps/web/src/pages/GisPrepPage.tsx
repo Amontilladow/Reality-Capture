@@ -7,6 +7,7 @@ import type { StatusTone } from '../lib/status-tone';
 import { apiErrorMessage } from '../lib/api';
 import { getProject } from '../lib/projects.api';
 import { loadSavedForm, saveForm } from '../lib/saved-form';
+import { detectDrawingFormat, drawingNote, type DrawingFormat } from '../lib/drawing-format';
 import {
   DRAWING_TYPES, UPPERCASE_FACTS, UPPERCASE_META, USAGE_CATEGORY_TYPES, USAGE_TYPES, convertInputProblems,
 } from '../lib/bdms-inputs';
@@ -68,7 +69,7 @@ const NEVER_RESTORE: Partial<FormState> = { crsConfirmed: false, unitsConfirmed:
 // Values the drawing cannot provide; sent as conversion settings. Code-listed values (usage, drawing type) are
 // picked from the BDMS code lists; formats are checked before the job is sent (lib/bdms-inputs).
 const FACT_FIELDS = [
-  ['floor_height', 'Floor height (m)', '3.6'], ['building_number_of_floors', 'Number of floors', '2'],
+  ['floor_height', 'Floor height (m)', '3.6'], ['building_number_of_floors', 'Number of floors (= floor files you submit for this building)', '3'],
   ['building_height', 'Building height (m)', '15'],
   ['building_usage_category', 'Usage category (code list)', 'Commercial'],
   ['building_usage_type', 'Usage type (code list)', 'Single-use Commercial'],
@@ -138,6 +139,7 @@ export default function GisPrepPage() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<FormState>(() => (projectId ? loadSavedForm(formKey(projectId), INITIAL, NEVER_RESTORE) : INITIAL));
   const [file, setFile] = useState<File | null>(null);
+  const [fileFormat, setFileFormat] = useState<DrawingFormat | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   useEffect(() => { if (projectId) saveForm(formKey(projectId), form); }, [projectId, form]);
@@ -170,8 +172,8 @@ export default function GisPrepPage() {
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: 'Projects', to: '/projects' }, { label: projectQuery.data?.name ?? 'Loading…', to: `/projects/${projectId}` }, { label: 'GIS Preparation' }]}
-        title="GIS Preparation"
+        breadcrumbs={[{ label: 'Projects', to: '/projects' }, { label: projectQuery.data?.name ?? 'Loading…', to: `/projects/${projectId}` }, { label: 'GIS preparation' }]}
+        title="GIS preparation"
         subtitle="Prepare DXF/DWG drawings for ADM / DRM GIS submission and run preliminary checks."
       />
       <div className="p-6 space-y-4">
@@ -205,7 +207,19 @@ export default function GisPrepPage() {
               </label>
             ))}
           </div>}
-          <input type="file" accept=".dxf,.dwg" aria-label="Drawing file (DXF or DWG)" onChange={e => setFile(e.target.files?.[0] ?? null)} className="text-xs text-ink-300" />
+          <input
+            type="file" accept=".dxf,.dwg" aria-label="Drawing file (DXF or DWG)" className="text-xs text-ink-300"
+            onChange={e => {
+              const picked = e.target.files?.[0] ?? null;
+              setFile(picked);
+              setFileFormat(null);
+              if (picked) detectDrawingFormat(picked).then(setFileFormat).catch(() => setFileFormat('UNKNOWN'));
+            }}
+          />
+          {file && fileFormat && (() => {
+            const note = drawingNote(file.name, file.size, fileFormat);
+            return <p className={`text-xs ${note.tone === 'warn' ? 'text-warn' : 'text-ink-500'}`} role="status">{note.text}</p>;
+          })()}
           {form.mode === 'prepare' && form.profile === 'sdd_planning' && (
             <div className="flex flex-wrap gap-4 text-xs text-ink-300">
               {['plot', 'roads', 'services'].map(c => (
@@ -393,8 +407,8 @@ function JobDetail({ projectId, jobId, onRerun }: { projectId: string; jobId: st
 
       {downloads.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {job.packageUrl && <a className="btn-secondary !px-4 !py-2 text-xs" href={job.packageUrl}>Download full package (.zip)</a>}
-          {downloads.map(o => <a key={o.path} className="btn-ghost !px-4 !py-2 text-xs" href={o.url} target="_blank" rel="noreferrer">{o.path.replace(/^output\//, '')}</a>)}
+          {job.packageUrl && <a className="btn-secondary !px-4 !py-2 " href={job.packageUrl}>Download full package (.zip)</a>}
+          {downloads.map(o => <a key={o.path} className="btn-ghost !px-4 !py-2 " href={o.url} target="_blank" rel="noreferrer">{o.path.replace(/^output\//, '')}</a>)}
         </div>
       )}
 
@@ -434,7 +448,7 @@ function JobDetail({ projectId, jobId, onRerun }: { projectId: string; jobId: st
         </div>
       )}
       {!ACTIVE.includes(job.status) && (
-        <button className="btn-secondary !px-4 !py-2 text-xs" disabled={rerun.isPending} onClick={() => rerun.mutate(job)}>
+        <button className="btn-secondary !px-4 !py-2 " disabled={rerun.isPending} onClick={() => rerun.mutate(job)}>
           {rerun.isPending ? 'Queuing…' : 'Re-run with these decisions'}
         </button>
       )}
@@ -509,8 +523,8 @@ function ConversionDetail({ projectId, job, onRerun }: { projectId: string; job:
         <p className="text-xs text-danger">Blocked until provided (never guessed): {report.identifiers_missing!.join(', ')}</p>
       )}
       <div className="flex flex-wrap gap-2">
-        {job.packageUrl && <a className="btn-secondary !px-4 !py-2 text-xs" href={job.packageUrl}>Download full package (.zip)</a>}
-        {downloads.map(o => <a key={o.path} className="btn-ghost !px-4 !py-2 text-xs" href={o.url} target="_blank" rel="noreferrer">{o.path.replace(/^output\//, '')}</a>)}
+        {job.packageUrl && <a className="btn-secondary !px-4 !py-2 " href={job.packageUrl}>Download full package (.zip)</a>}
+        {downloads.map(o => <a key={o.path} className="btn-ghost !px-4 !py-2 " href={o.url} target="_blank" rel="noreferrer">{o.path.replace(/^output\//, '')}</a>)}
       </div>
       <table className="text-xs">
         <tbody>
@@ -541,7 +555,7 @@ function ConversionDetail({ projectId, job, onRerun }: { projectId: string; job:
               )}
             </div>
           ))}
-          <button className="btn-secondary !px-4 !py-2 text-xs" disabled={rerun.isPending || Object.keys(decisions).length === 0} onClick={() => rerun.mutate()}>
+          <button className="btn-secondary !px-4 !py-2 " disabled={rerun.isPending || Object.keys(decisions).length === 0} onClick={() => rerun.mutate()}>
             {rerun.isPending ? 'Queuing…' : 'Re-run with these decisions'}
           </button>
           {rerun.isError && <p className="text-xs text-danger">{apiErrorMessage(rerun.error)}</p>}

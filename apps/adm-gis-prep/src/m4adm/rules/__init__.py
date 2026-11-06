@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import sys
 from functools import cached_property
 from pathlib import Path
 from typing import Any
@@ -29,6 +30,8 @@ def rules_dir() -> Path:
     env = os.environ.get("M4ADM_RULES_DIR")
     if env:
         return Path(env)
+    if getattr(sys, "frozen", False):                      # packaged desktop program: data is unpacked beside the code
+        return Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent)) / "rules"
     # src/m4adm/rules/__init__.py -> apps/adm-gis-prep/rules
     return Path(__file__).resolve().parents[3] / "rules"
 

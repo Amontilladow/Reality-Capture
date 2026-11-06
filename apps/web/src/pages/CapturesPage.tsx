@@ -307,7 +307,7 @@ export default function CapturesPage() {
                   </button>
                 </div>
               ) : !placingMode ? (
-                <button onClick={() => setPlacingMode(true)} className="btn-secondary text-xs !py-2">
+                <button onClick={() => setPlacingMode(true)} className="btn-secondary !py-2">
                   Assign camera location
                 </button>
               ) : (

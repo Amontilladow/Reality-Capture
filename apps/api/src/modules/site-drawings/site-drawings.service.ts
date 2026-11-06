@@ -1,8 +1,9 @@
 import { randomUUID } from 'crypto';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   SiteDrawing, SiteDrawingRevision, SiteDrawingWithCurrentRevision, SiteDrawingWorkflowStatus,
   SiteDrawingOfflinePackage, SiteDrawingOfflinePackageStatus, SiteDrawingSourceHealth, ExtractedDrawingFields,
+  SiteDrawingOrgMapping, SiteDrawingOrgMappingRole,
 } from '@engineeringos/types';
 import { DatabaseService } from '../../database/database.service';
 import { StorageService } from '../storage/storage.service';
@@ -12,6 +13,7 @@ import { AiClientService } from '../ai-client/ai-client.service';
 import { isConfirmedCurrent, workflowStatusLabel } from './site-drawing-workflow';
 import { buildSiteDrawingRegisterWorkbookBuffer, type SiteDrawingRegisterRow } from './site-drawing-register-xls';
 import { extractDrawingFields } from './extraction/extract-drawing-fields';
+import { resolveOrgMapping } from './extraction/org-mapping-lookup';
 import type { RegisterSiteDrawingDto } from './dto/register-drawing.dto';
 import type { RegisterSiteDrawingRevisionDto } from './dto/register-revision.dto';
 import type { CompleteOfflinePackageDto } from './dto/offline-package.dto';
@@ -24,6 +26,7 @@ export interface SiteDrawingFilters {
   discipline?: string;
   buildingOrZone?: string;
   floorOrLevel?: string;
+  responsibleSubcontractor?: string;
   workflowStatus?: SiteDrawingWorkflowStatus;
   page?: number;
   perPage?: number;
@@ -91,13 +94,23 @@ export class SiteDrawingsService {
     const fileSizeBytes = await this.assertUploadedSizeWithinLimit(dto.storageKey);
 
     return this.db.withTenant(companyId, async (sql) => {
+      // An explicit value on the DTO always wins; only resolved from the
+      // project's own org mapping (master spec section 4) when the human
+      // left a field blank.
+      const mapped = (dto.originator === undefined || dto.responsibleSubcontractor === undefined)
+        ? await resolveOrgMapping(sql, projectId, dto.drawingNumber)
+        : { originator: undefined, responsibleSubcontractor: undefined };
+      const originator = dto.originator ?? mapped.originator ?? null;
+      const responsibleSubcontractor = dto.responsibleSubcontractor ?? mapped.responsibleSubcontractor ?? null;
+
       const [drawing] = await sql<SiteDrawingRow[]>`
         INSERT INTO site_drawings (
           company_id, project_id, drawing_number, drawing_title, discipline, building_or_zone, floor_or_level,
-          source_provider, source_file_id, created_by, current_workflow_status
+          originator, responsible_subcontractor, source_provider, source_file_id, created_by, current_workflow_status
         ) VALUES (
           ${companyId}, ${projectId}, ${dto.drawingNumber}, ${dto.drawingTitle}, ${dto.discipline ?? null},
-          ${dto.buildingOrZone ?? null}, ${dto.floorOrLevel ?? null}, 'internal', ${randomUUID()}, ${userId}, ${dto.workflowStatus}
+          ${dto.buildingOrZone ?? null}, ${dto.floorOrLevel ?? null}, ${originator}, ${responsibleSubcontractor},
+          'internal', ${randomUUID()}, ${userId}, ${dto.workflowStatus}
         ) RETURNING *
       `;
 
@@ -134,6 +147,19 @@ export class SiteDrawingsService {
       if (!drawing) throw new NotFoundException(`Drawing ${drawingId} not found.`);
 
       const previousRevisionId = drawing.currentRevisionId ?? null;
+      const [previousRevision] = previousRevisionId
+        ? await sql<SiteDrawingRevisionRow[]>`SELECT revision_number FROM site_drawing_revisions WHERE id = ${previousRevisionId}`
+        : [];
+
+      // Same duplicate concept the bulk import path reconciles against
+      // (site-drawing-import.processor.ts's `currentRevision.revisionNumber
+      // === revisionNumber` check) -- a human re-adding the current
+      // revision's own number isn't a new revision; rejecting it here beats
+      // silently creating a second row with the same revision number and
+      // marking the real one superseded by its own duplicate.
+      if (previousRevision && previousRevision.revisionNumber.trim().toLowerCase() === dto.revisionNumber.trim().toLowerCase()) {
+        throw new BadRequestException(`Revision ${previousRevision.revisionNumber} is already the current revision for this drawing. Give the new file its own revision number.`);
+      }
 
       const [revision] = await sql<SiteDrawingRevisionRow[]>`
         INSERT INTO site_drawing_revisions (
@@ -200,6 +226,7 @@ export class SiteDrawingsService {
           AND (${filters.discipline ?? null}::text IS NULL OR d.discipline = ${filters.discipline ?? null})
           AND (${filters.buildingOrZone ?? null}::text IS NULL OR d.building_or_zone = ${filters.buildingOrZone ?? null})
           AND (${filters.floorOrLevel ?? null}::text IS NULL OR d.floor_or_level = ${filters.floorOrLevel ?? null})
+          AND (${filters.responsibleSubcontractor ?? null}::text IS NULL OR d.responsible_subcontractor = ${filters.responsibleSubcontractor ?? null})
           AND (${filters.workflowStatus ?? null}::text IS NULL OR d.current_workflow_status = ${filters.workflowStatus ?? null})
         ORDER BY d.drawing_number ASC
         LIMIT ${perPage} OFFSET ${offset}
@@ -219,12 +246,13 @@ export class SiteDrawingsService {
   // differs.
   async getFilterOptions(companyId: string, projectId: string) {
     await this.assertProjectBelongsToCompany(companyId, projectId);
-    return this.db.withTenant(companyId, sql => sql<{ discipline: string | null; buildingOrZone: string | null; floorOrLevel: string | null }[]>`
-      SELECT DISTINCT discipline, building_or_zone, floor_or_level FROM site_drawings WHERE project_id = ${projectId}
+    return this.db.withTenant(companyId, sql => sql<{ discipline: string | null; buildingOrZone: string | null; floorOrLevel: string | null; responsibleSubcontractor: string | null }[]>`
+      SELECT DISTINCT discipline, building_or_zone, floor_or_level, responsible_subcontractor FROM site_drawings WHERE project_id = ${projectId}
     `).then((rows) => ({
       disciplines: Array.from(new Set(rows.map(r => r.discipline).filter((v): v is string => Boolean(v)))).sort(),
       buildingsOrZones: Array.from(new Set(rows.map(r => r.buildingOrZone).filter((v): v is string => Boolean(v)))).sort(),
       floorsOrLevels: Array.from(new Set(rows.map(r => r.floorOrLevel).filter((v): v is string => Boolean(v)))).sort(),
+      subcontractors: Array.from(new Set(rows.map(r => r.responsibleSubcontractor).filter((v): v is string => Boolean(v)))).sort(),
     }));
   }
 
@@ -256,6 +284,7 @@ export class SiteDrawingsService {
           AND (${filters.discipline ?? null}::text IS NULL OR d.discipline = ${filters.discipline ?? null})
           AND (${filters.buildingOrZone ?? null}::text IS NULL OR d.building_or_zone = ${filters.buildingOrZone ?? null})
           AND (${filters.floorOrLevel ?? null}::text IS NULL OR d.floor_or_level = ${filters.floorOrLevel ?? null})
+          AND (${filters.responsibleSubcontractor ?? null}::text IS NULL OR d.responsible_subcontractor = ${filters.responsibleSubcontractor ?? null})
           AND (${filters.workflowStatus ?? null}::text IS NULL OR d.current_workflow_status = ${filters.workflowStatus ?? null})
         ORDER BY d.drawing_number ASC
       `;
@@ -268,6 +297,8 @@ export class SiteDrawingsService {
       discipline: row.discipline ?? undefined,
       buildingOrZone: row.buildingOrZone ?? undefined,
       floorOrLevel: row.floorOrLevel ?? undefined,
+      originator: row.originator ?? undefined,
+      responsibleSubcontractor: row.responsibleSubcontractor ?? undefined,
       revisionNumber: row.revisionId ? row.revisionNumber : undefined,
       workflowStatus: row.currentWorkflowStatus,
       documentClassification: row.revisionId ? row.documentClassification : 'CONSTRUCTION',
@@ -312,23 +343,41 @@ export class SiteDrawingsService {
   // project-membership assertion; possessing a revisionId alone is never
   // sufficient (it's resolved through the project it actually belongs to).
   //
+  // `purpose` splits the one URL this always was into what the spec
+  // actually asks for two different things: 'view' (default) backs the
+  // in-browser PDF viewer, which must keep working on a superseded
+  // revision (section 7/8 require the watermark + history to stay
+  // reachable there); 'download' backs an explicit save-the-file action
+  // (today: "Download for offline") and is the one the spec means by
+  // "no original PDF download through Reality Capture" for a superseded
+  // revision -- enforced here, not by hiding the button, and not
+  // bypassable by reusing a URL minted before the drawing was superseded
+  // (each call re-checks current status; the signed URL itself still
+  // expires on its own short TTL regardless).
+  //
   // Audited explicitly (writeAccessAudit below) rather than relying on
   // AuditInterceptor; this is a GET route (read, by design: issuing a
   // download URL doesn't change anything), and the interceptor only covers
   // mutating methods. Section 9's "audit events for document access,
   // download" needs this logged regardless of HTTP verb.
-  async getAuthorizedDownloadUrl(companyId: string, projectId: string, userId: string, revisionId: string): Promise<{ url: string; expiresInSeconds: number; workflowStatus: SiteDrawingWorkflowStatus; isSuperseded: boolean }> {
+  async getAuthorizedDownloadUrl(
+    companyId: string, projectId: string, userId: string, revisionId: string, purpose: 'view' | 'download' = 'view',
+  ): Promise<{ url: string; expiresInSeconds: number; workflowStatus: SiteDrawingWorkflowStatus; isSuperseded: boolean }> {
     await this.assertProjectBelongsToCompany(companyId, projectId);
     const [revision] = await this.db.withTenant(companyId, sql => sql<SiteDrawingRevisionRow[]>`
       SELECT * FROM site_drawing_revisions WHERE id = ${revisionId} AND project_id = ${projectId}
     `);
     if (!revision) throw new NotFoundException(`Revision ${revisionId} not found.`);
 
+    if (purpose === 'download' && revision.isSuperseded) {
+      throw new ForbiddenException('This revision has been superseded and can no longer be downloaded through Reality Capture. View it in the browser, or open the current revision to download.');
+    }
+
     const { url, expiresInSeconds } = revision.storageKey
       ? { url: await this.storage.getReadUrl(revision.storageKey, 900), expiresInSeconds: 900 }
       : await this.getAuthorizedFileFromSource(companyId, projectId, revision);
 
-    await this.writeAccessAudit(companyId, projectId, userId, 'site_drawing_revision', revision.id, 'site_drawing.downloaded');
+    await this.writeAccessAudit(companyId, projectId, userId, 'site_drawing_revision', revision.id, purpose === 'download' ? 'site_drawing.downloaded' : 'site_drawing.viewed');
     return { url, expiresInSeconds, workflowStatus: revision.workflowStatus, isSuperseded: revision.isSuperseded };
   }
 
@@ -501,6 +550,71 @@ export class SiteDrawingsService {
     return rows.length;
   }
 
+  // ── Organization mapping (master spec section 4) ────────────────────────
+
+  async listOrgMappings(companyId: string, projectId: string): Promise<SiteDrawingOrgMapping[]> {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+    const rows = await this.db.withTenant(companyId, sql => sql<SiteDrawingOrgMappingRow[]>`
+      SELECT * FROM site_drawing_org_mappings WHERE project_id = ${projectId} ORDER BY pattern ASC
+    `);
+    return rows.map(toOrgMapping);
+  }
+
+  async createOrgMapping(
+    companyId: string, projectId: string, userId: string, pattern: string, organizationName: string, role: SiteDrawingOrgMappingRole,
+  ): Promise<SiteDrawingOrgMapping> {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+    const [row] = await this.db.withTenant(companyId, sql => sql<SiteDrawingOrgMappingRow[]>`
+      INSERT INTO site_drawing_org_mappings (company_id, project_id, pattern, organization_name, role, created_by)
+      VALUES (${companyId}, ${projectId}, ${pattern}, ${organizationName}, ${role}, ${userId})
+      ON CONFLICT (project_id, pattern, role) DO UPDATE SET organization_name = EXCLUDED.organization_name
+      RETURNING *
+    `);
+    return toOrgMapping(row);
+  }
+
+  async deleteOrgMapping(companyId: string, projectId: string, mappingId: string): Promise<void> {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+    await this.db.withTenant(companyId, sql => sql`
+      DELETE FROM site_drawing_org_mappings WHERE id = ${mappingId} AND project_id = ${projectId}
+    `);
+  }
+
+  // ── Landing dashboard stats (master spec section 10) ────────────────────
+  // One pass over the register's status columns, server-side -- the Hub
+  // page needs this on first load alongside the filtered list, not a
+  // second full client-side scan of whatever page happens to be loaded.
+  async getDashboardStats(companyId: string, projectId: string): Promise<{
+    total: number; currentAuthorized: number; superseded: number; underReview: number;
+    newlyReceived: number; requiringAttention: number; recentRevisionActivity: number;
+  }> {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+    return this.db.withTenant(companyId, async (sql) => {
+      const [counts] = await sql<{
+        total: string; currentAuthorized: string; superseded: string; underReview: string;
+        newlyReceived: string; requiringAttention: string;
+      }[]>`
+        SELECT
+          count(*) AS total,
+          count(*) FILTER (WHERE current_workflow_status IN ('APPROVED', 'APPROVED_FOR_CONSTRUCTION') AND NOT current_is_superseded) AS "currentAuthorized",
+          count(*) FILTER (WHERE current_is_superseded) AS superseded,
+          count(*) FILTER (WHERE current_workflow_status = 'UNDER_REVIEW') AS "underReview",
+          count(*) FILTER (WHERE created_at > now() - interval '7 days') AS "newlyReceived",
+          count(*) FILTER (WHERE current_workflow_status IN ('UNKNOWN', 'REJECTED', 'WITHDRAWN')) AS "requiringAttention"
+        FROM site_drawings WHERE project_id = ${projectId}
+      `;
+      const [{ recentRevisionActivity }] = await sql<{ recentRevisionActivity: string }[]>`
+        SELECT count(*) AS "recentRevisionActivity" FROM site_drawing_revisions
+        WHERE project_id = ${projectId} AND created_at > now() - interval '7 days'
+      `;
+      return {
+        total: Number(counts.total), currentAuthorized: Number(counts.currentAuthorized), superseded: Number(counts.superseded),
+        underReview: Number(counts.underReview), newlyReceived: Number(counts.newlyReceived),
+        requiringAttention: Number(counts.requiringAttention), recentRevisionActivity: Number(recentRevisionActivity),
+      };
+    });
+  }
+
   private async assertProjectBelongsToCompany(companyId: string, projectId: string): Promise<void> {
     const [project] = await this.db.withTenant(companyId, sql => sql`
       SELECT id FROM projects WHERE id = ${projectId} AND company_id = ${companyId}
@@ -535,6 +649,7 @@ export class SiteDrawingsService {
 interface SiteDrawingRow {
   id: string; companyId: string; projectId: string; drawingNumber: string; drawingTitle: string;
   discipline: string | null; buildingOrZone: string | null; floorOrLevel: string | null;
+  originator: string | null; responsibleSubcontractor: string | null;
   sourceProvider: SiteDrawing['sourceProvider']; sourceFileId: string; sourceWebUrl: string | null;
   currentRevisionId: string | null; currentWorkflowStatus: SiteDrawingWorkflowStatus; currentIsSuperseded: boolean;
   createdBy: string | null; createdAt: string; updatedAt: string;
@@ -571,11 +686,25 @@ interface SiteDrawingOfflinePackageRow {
   downloadedAt: string | null; lastVerifiedAt: string; createdAt: string; updatedAt: string;
 }
 
+interface SiteDrawingOrgMappingRow {
+  id: string; companyId: string; projectId: string; pattern: string; organizationName: string;
+  role: SiteDrawingOrgMappingRole; createdBy: string; createdAt: string;
+}
+
+function toOrgMapping(row: SiteDrawingOrgMappingRow): SiteDrawingOrgMapping {
+  return {
+    id: row.id, companyId: row.companyId, projectId: row.projectId, pattern: row.pattern,
+    organizationName: row.organizationName, role: row.role, createdBy: row.createdBy, createdAt: row.createdAt,
+  };
+}
+
 function toSiteDrawing(row: SiteDrawingRow): SiteDrawing {
   return {
     id: row.id, companyId: row.companyId, projectId: row.projectId, drawingNumber: row.drawingNumber,
     drawingTitle: row.drawingTitle, discipline: row.discipline ?? undefined, buildingOrZone: row.buildingOrZone ?? undefined,
-    floorOrLevel: row.floorOrLevel ?? undefined, sourceProvider: row.sourceProvider, sourceFileId: row.sourceFileId,
+    floorOrLevel: row.floorOrLevel ?? undefined, originator: row.originator ?? undefined,
+    responsibleSubcontractor: row.responsibleSubcontractor ?? undefined,
+    sourceProvider: row.sourceProvider, sourceFileId: row.sourceFileId,
     sourceWebUrl: row.sourceWebUrl ?? undefined, currentRevisionId: row.currentRevisionId ?? undefined,
     currentWorkflowStatus: row.currentWorkflowStatus, currentIsSuperseded: row.currentIsSuperseded,
     createdBy: row.createdBy ?? undefined, createdAt: row.createdAt, updatedAt: row.updatedAt,

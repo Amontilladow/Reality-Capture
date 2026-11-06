@@ -207,11 +207,11 @@ export function RiskGraphView({ projectId, initialRootNodeId, onClose }: { proje
   }, [nodes, edges, themeColors]);
 
   return (
-    <Modal open onClose={onClose} title="Project Risk Graph" wide>
+    <Modal open onClose={onClose} title="Project risk graph" wide>
       <div className="space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           {focusNodeId && (
-            <button onClick={() => setFocusNodeId(undefined)} className="btn-secondary !px-2 !py-2 text-xs">
+            <button onClick={() => setFocusNodeId(undefined)} className="btn-secondary !px-2 !py-2 ">
               Show full graph
             </button>
           )}
@@ -281,7 +281,7 @@ function GraphNodeDetailPanel({ projectId, nodeId, onClose, onFocus }: { project
 
           {detail.risk && (
             <div className="panel p-4">
-              <div className="text-xs text-ink-500 mb-2 font-medium">Associated Risk</div>
+              <div className="text-xs text-ink-500 mb-2 font-medium">Associated risk</div>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-semibold tabular-nums" style={{ color: RISK_LEVEL_COLORS[detail.risk.level] }}>{detail.risk.score}</span>
                 <span className="text-sm text-ink-300">{detail.risk.title}</span>
@@ -303,7 +303,7 @@ function GraphNodeDetailPanel({ projectId, nodeId, onClose, onFocus }: { project
             </div>
           )}
 
-          <button onClick={() => onFocus(nodeId)} className="btn-secondary !px-4 !py-2 text-xs">
+          <button onClick={() => onFocus(nodeId)} className="btn-secondary !px-4 !py-2 ">
             Focus graph on this node
           </button>
         </div>

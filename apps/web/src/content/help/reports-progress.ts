@@ -6,7 +6,7 @@ export const reportsProgressArticles: HelpArticle[] = [
   {
     slug: 'opening-reports',
     category: 'reports-progress',
-    title: 'Opening Reports',
+    title: 'Opening reports',
     summary: 'Where to find a project\'s KPIs, risk summary, and exports.',
     whatItDoes: 'The Reports page shows a project\'s key metrics (issue/RFI/snag/submittal counts and statuses, overdue items), a risk summary with links to the top risks, a list of RFIs whose drawing update hasn\'t been applied yet (with a one-click reminder), and report attachments.',
     whoCanUse: 'Any project member.',
@@ -17,7 +17,7 @@ export const reportsProgressArticles: HelpArticle[] = [
   {
     slug: 'understanding-available-kpis',
     category: 'reports-progress',
-    title: 'Understanding Available KPIs',
+    title: 'Understanding available KPIs',
     summary: 'What the Reports page\'s numbers actually measure.',
     whatItDoes: 'KPI tiles summarize counts and statuses across issues, RFIs, snagging, and submittals for the current project, plus a headline risk score and the project\'s top risks (with a link through to the full Risk page for detail).',
     relatedSlugs: ['opening-reports', 'interpreting-issue-and-snagging-statistics'],
@@ -26,7 +26,7 @@ export const reportsProgressArticles: HelpArticle[] = [
   {
     slug: 'filtering-reports',
     category: 'reports-progress',
-    title: 'Filtering Reports',
+    title: 'Filtering reports',
     summary: 'The Reports page itself shows project-wide totals; use the Progress Report for a date/location-scoped view.',
     whatItDoes: 'Reports\' KPI tiles are not individually filterable by date or location -- for a scoped view (a specific building/level, or a date range), use the separate Progress Report page instead.',
     relatedSlugs: ['opening-reports'],
@@ -35,7 +35,7 @@ export const reportsProgressArticles: HelpArticle[] = [
   {
     slug: 'understanding-reports-charts',
     category: 'reports-progress',
-    title: 'Understanding Charts',
+    title: 'Understanding charts',
     summary: 'What the visual breakdowns on Reports and Risk represent.',
     whatItDoes: 'Charts on the Reports and Risk pages break down counts by status and priority, and show the risk graph\'s contributing factors -- they reflect the same underlying numbers as the KPI tiles, just visualized.',
     relatedSlugs: ['understanding-available-kpis'],
@@ -44,7 +44,7 @@ export const reportsProgressArticles: HelpArticle[] = [
   {
     slug: 'exporting-reports',
     category: 'reports-progress',
-    title: 'Exporting Reports',
+    title: 'Exporting reports',
     summary: 'Downloading the project report or risk report as a file.',
     whatItDoes: 'Reports can be downloaded as a formatted PDF (the general project report, and separately the risk report) or as an Excel workbook of the KPI data. The Progress Report has its own PDF export and a revocable public share link.',
     whoCanUse: 'Any project member for the PDF/Excel exports. Generating or revoking a Progress Report share link requires "manage_project_records" (or Project Lead).',
@@ -54,7 +54,7 @@ export const reportsProgressArticles: HelpArticle[] = [
   {
     slug: 'interpreting-issue-and-snagging-statistics',
     category: 'reports-progress',
-    title: 'Interpreting Issue and Snagging Statistics',
+    title: 'Interpreting issue and snagging statistics',
     summary: 'What the open/overdue counts actually count.',
     whatItDoes: 'Open counts include every issue/snag not yet in a closed/verified/void state; overdue counts are those past their deadline/due date and still open.',
     keywords: ['issue statistics', 'overdue'],
@@ -62,7 +62,7 @@ export const reportsProgressArticles: HelpArticle[] = [
   {
     slug: 'understanding-data-freshness',
     category: 'reports-progress',
-    title: 'Understanding Data Freshness and Limitations',
+    title: 'Understanding data freshness and limitations',
     summary: 'Reports and the Progress Report are computed live, not on a schedule.',
     whatItDoes: 'There is no overnight batch job or cached snapshot -- opening Reports or the Progress Report always queries current data. There is no historical "report as of last month" view beyond what the Progress Report\'s own date-range filter can reconstruct from still-existing records.',
     keywords: ['data freshness', 'real-time'],
@@ -70,7 +70,7 @@ export const reportsProgressArticles: HelpArticle[] = [
   {
     slug: 'opening-the-progress-report',
     category: 'reports-progress',
-    title: 'Opening the Automated Progress Report',
+    title: 'Opening the automated progress report',
     summary: 'A date- and location-scoped view of project progress.',
     whatItDoes: 'Computes progress for a chosen date range, optionally scoped to a specific building or level.',
     whoCanUse: 'Any project member.',
@@ -84,7 +84,7 @@ export const reportsProgressArticles: HelpArticle[] = [
   {
     slug: 'sharing-a-progress-report',
     category: 'reports-progress',
-    title: 'Sharing a Progress Report',
+    title: 'Sharing a progress report',
     summary: 'Creating a public, expiring link to a Progress Report.',
     whatItDoes: 'Generates a link that opens the Progress Report without requiring the recipient to have an EngineeringOS account -- the same sensitivity class as an RFI external-access link, since it exposes real project data to anyone holding the link.',
     requiredPermissions: '"manage_project_records" permission, or being that project\'s Project Lead.',

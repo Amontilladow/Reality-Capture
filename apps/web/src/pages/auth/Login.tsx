@@ -38,7 +38,7 @@ export default function Login() {
   });
 
   return (
-    <AuthLayout title="Sign in" subtitle="Access your company’s reality capture workspace.">
+    <AuthLayout title="Sign in" subtitle="Access your company’s Reality Capture workspace.">
       <form
         onSubmit={handleSubmit((values) => {
           setServerError(null);

@@ -54,6 +54,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
       queryClient.invalidateQueries({ queryKey: ['site-drawing', projectId, drawingId] });
       queryClient.invalidateQueries({ queryKey: ['site-drawing-revisions', projectId, drawingId] });
       queryClient.invalidateQueries({ queryKey: ['site-drawings', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-dashboard-stats', projectId] });
     },
   });
 
@@ -86,7 +87,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
     });
     if (!pkg) return;
     try {
-      const { url } = await getSiteDrawingDownloadUrl(projectId, revision.id);
+      const { url } = await getSiteDrawingDownloadUrl(projectId, revision.id, 'download');
       const res = await fetch(url);
       if (!res.ok) throw new Error(`Download failed (${res.status})`);
       const blob = await res.blob();
@@ -98,7 +99,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
       await completeOfflinePackage(projectId, pkg.id, 'COMPLETE', contentHash, blob.size);
     } catch (err) {
       await completeOfflinePackage(projectId, pkg.id, 'FAILED').catch(() => {});
-      setOfflineError(err instanceof Error ? err.message : 'Download failed.');
+      setOfflineError(apiErrorMessage(err));
     } finally {
       setOfflineBusy(false);
       queryClient.invalidateQueries({ queryKey: ['site-drawing-offline-packages', projectId] });
@@ -151,7 +152,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
                 {SITE_DRAWING_WORKFLOW_STATUSES.map((s) => (
                   <button
                     key={s} onClick={() => statusMutation.mutate(s)} disabled={statusMutation.isPending}
-                    className={`btn-secondary !px-2 !py-2 text-xs ${revision.workflowStatus === s ? '!bg-blueprint/20 !text-blueprint' : ''}`}
+                    className={`btn-secondary !px-2 !py-2 ${revision.workflowStatus === s ? '!bg-blueprint/20 !text-blueprint' : ''}`}
                   >
                     {WORKFLOW_STATUS_LABELS[s]}
                   </button>
@@ -162,10 +163,10 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
 
             <div className="flex items-center gap-2 border-b border-base-600">
               <button onClick={() => setTab('viewer')} className={`px-4 py-2 text-sm ${tab === 'viewer' ? 'border-b-2 border-blueprint text-blueprint' : 'text-ink-500 hover:text-ink-100'}`}>Viewer</button>
-              <button onClick={() => setTab('history')} className={`px-4 py-2 text-sm ${tab === 'history' ? 'border-b-2 border-blueprint text-blueprint' : 'text-ink-500 hover:text-ink-100'}`}>Revision History</button>
+              <button onClick={() => setTab('history')} className={`px-4 py-2 text-sm ${tab === 'history' ? 'border-b-2 border-blueprint text-blueprint' : 'text-ink-500 hover:text-ink-100'}`}>Revision history</button>
               <div className="ml-auto flex items-center gap-2 py-2">
                 {revision && (
-                  <button onClick={() => setAddRevisionOpen(true)} className="btn-secondary !px-2 !py-2 text-xs">Add revision</button>
+                  <button onClick={() => setAddRevisionOpen(true)} className="btn-secondary !px-2 !py-2 ">Add revision</button>
                 )}
               </div>
             </div>
@@ -190,13 +191,13 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
                     <div className="text-xs text-ink-500">
                       {offlinePackage?.status === 'COMPLETE' && (
                         <span className="inline-flex items-center gap-2">
-                          <span className="badge bg-ok/15 text-ok">OFFLINE AVAILABLE</span>
+                          <span className="badge bg-ok/15 text-ok">Available offline</span>
                           {formatVerifiedAt(offlinePackage.lastVerifiedAt)} · {formatFileSize(offlinePackage.fileSizeBytes)}
                         </span>
                       )}
                       {offlinePackage?.status === 'STALE' && (
                         <span className="inline-flex items-center gap-2">
-                          <span className="badge bg-warn/15 text-warn">OFFLINE COPY OUTDATED</span>
+                          <span className="badge bg-warn/15 text-warn">Offline copy outdated</span>
                           A newer revision exists. Remove and re-download.
                         </span>
                       )}
@@ -205,10 +206,10 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
                     </div>
                     <div className="flex items-center gap-2">
                       {offlinePackage && offlinePackage.status !== 'REMOVED' ? (
-                        <button onClick={removeOffline} disabled={offlineBusy} className="btn-ghost !px-2 !py-2 text-xs">Remove offline copy</button>
+                        <button onClick={removeOffline} disabled={offlineBusy} className="btn-ghost !px-2 !py-2 ">Remove offline copy</button>
                       ) : (
                         revision.offlineEligibility && user && (
-                          <button onClick={downloadForOffline} disabled={offlineBusy} className="btn-secondary !px-2 !py-2 text-xs">
+                          <button onClick={downloadForOffline} disabled={offlineBusy} className="btn-secondary !px-2 !py-2 ">
                             {offlineBusy ? 'Downloading…' : 'Download for offline'}
                           </button>
                         )
@@ -237,7 +238,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
                     </div>
                     <div className="flex items-center gap-2">
                       <StatusBadge tone={WORKFLOW_STATUS_TONE[r.workflowStatus]} label={WORKFLOW_STATUS_LABELS[r.workflowStatus]} dot />
-                      <button onClick={() => { setTab('viewer'); openViewer(r); }} className="btn-ghost !px-2 !py-2 text-xs">View</button>
+                      <button onClick={() => { setTab('viewer'); openViewer(r); }} className="btn-ghost !px-2 !py-2 ">View</button>
                     </div>
                   </div>
                 ))}

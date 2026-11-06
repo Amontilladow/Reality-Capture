@@ -11,7 +11,7 @@ export const issuesSnaggingArticles: HelpArticle[] = [
   {
     slug: 'understanding-issues',
     category: 'issues-snagging',
-    title: 'Understanding Issues',
+    title: 'Understanding issues',
     summary: 'What an Issue is and how its status moves from open to closed.',
     whatItDoes: 'An Issue records a problem on a project -- a defect, a safety concern, a punch-list item, or anything else worth tracking to resolution. It can be placed at a specific floor-plan location (see "Understanding Pinpoints") or raised without one.',
     whenToUse: 'For most problems found on a project. Use Snagging instead when the problem specifically needs an independent fixed→verified sign-off step.',
@@ -22,7 +22,7 @@ export const issuesSnaggingArticles: HelpArticle[] = [
   {
     slug: 'creating-an-issue',
     category: 'issues-snagging',
-    title: 'Creating an Issue',
+    title: 'Creating an issue',
     summary: 'How to raise a new issue.',
     whatItDoes: 'Creates a new issue against the current project.',
     whoCanUse: 'Any project member.',
@@ -41,7 +41,7 @@ export const issuesSnaggingArticles: HelpArticle[] = [
   {
     slug: 'completing-required-issue-fields',
     category: 'issues-snagging',
-    title: 'Completing Required Fields',
+    title: 'Completing required fields',
     summary: 'What each field on the issue form means.',
     infoToEnter: [
       'Title -- a short, specific description.',
@@ -59,7 +59,7 @@ export const issuesSnaggingArticles: HelpArticle[] = [
   {
     slug: 'assigning-issue-responsibility',
     category: 'issues-snagging',
-    title: 'Assigning Responsibility',
+    title: 'Assigning responsibility',
     summary: 'Setting or changing who an issue is assigned to.',
     whatItDoes: 'Sets the project member responsible for resolving the issue. The assignee must already be a member of the project.',
     whoCanUse: 'Requires the "manage_issues" permission (or being Project Lead) to change on an existing issue; any project member can set it when first creating the issue.',
@@ -70,7 +70,7 @@ export const issuesSnaggingArticles: HelpArticle[] = [
   {
     slug: 'setting-issue-priority',
     category: 'issues-snagging',
-    title: 'Setting Priority',
+    title: 'Setting priority',
     summary: 'Marking an issue as critical, high, medium, or low priority.',
     whoCanUse: 'Set at creation by any project member; changed afterward by anyone with "manage_issues."',
     keywords: ['issue priority'],
@@ -78,7 +78,7 @@ export const issuesSnaggingArticles: HelpArticle[] = [
   {
     slug: 'adding-photographs-to-an-issue',
     category: 'issues-snagging',
-    title: 'Adding Photographs',
+    title: 'Adding photographs',
     summary: 'Attaching a photo as evidence on an issue.',
     whatItDoes: 'Attaches a file to the issue as evidence. At least one such attachment is required before the issue can be closed (see "Reviewing and Closing an Issue").',
     whoCanUse: 'Any project member who can view the issue.',
@@ -89,7 +89,7 @@ export const issuesSnaggingArticles: HelpArticle[] = [
   {
     slug: 'adding-comments-to-an-issue',
     category: 'issues-snagging',
-    title: 'Adding Comments',
+    title: 'Adding comments',
     summary: 'Leaving a comment on an issue\'s activity log.',
     whoCanUse: 'Any project member who can view the issue.',
     steps: ['Open the issue, type into the comment box, and select "Send."'],
@@ -99,7 +99,7 @@ export const issuesSnaggingArticles: HelpArticle[] = [
   {
     slug: 'updating-an-issue',
     category: 'issues-snagging',
-    title: 'Updating an Issue',
+    title: 'Updating an issue',
     summary: 'Editing an existing issue\'s fields.',
     whatItDoes: 'Changes an issue\'s title, description, priority, discipline, category, location, assignee, or deadline.',
     requiredPermissions: '"manage_issues" permission, or being that project\'s Project Lead.',
@@ -112,7 +112,7 @@ export const issuesSnaggingArticles: HelpArticle[] = [
   {
     slug: 'tracking-an-issue',
     category: 'issues-snagging',
-    title: 'Tracking an Issue',
+    title: 'Tracking an issue',
     summary: 'Following an issue\'s status and activity over time.',
     howToTrackProgress: 'An issue\'s status badge (open/in review/closed/reopened, or your company\'s equivalent naming) and its activity log (comments, status changes, forwards) on the issue\'s own detail page show its full history.',
     keywords: ['track issue', 'issue status'],
@@ -120,7 +120,7 @@ export const issuesSnaggingArticles: HelpArticle[] = [
   {
     slug: 'reviewing-and-closing-an-issue',
     category: 'issues-snagging',
-    title: 'Reviewing and Closing an Issue',
+    title: 'Reviewing and closing an issue',
     summary: 'Closing an issue requires evidence and a sufficiently senior role (or a specific project permission).',
     whatItDoes: 'Permanently closes an issue.',
     requiredPermissions: 'Company role Super Admin, Company Admin, Technical Director, or Engineering Manager -- or, for anyone else, the "manage_issues" project permission. A Project Lead who doesn\'t hold one of those roles or that permission cannot close an issue just by being Project Lead.',
@@ -134,7 +134,7 @@ export const issuesSnaggingArticles: HelpArticle[] = [
   {
     slug: 'understanding-the-difference-between-issues-and-snagging',
     category: 'issues-snagging',
-    title: 'Understanding the Difference Between Issues and Snagging',
+    title: 'Understanding the difference between issues and snagging',
     summary: 'Issues close in one step; Snags close in two.',
     whatItDoes: 'An Issue moves through its status and closes once (by a sufficiently senior role, or someone granted "manage_issues", with evidence attached). A Snag additionally separates "marked as fixed" from "verified" -- two different actions, which can be done by two different people, so the person who fixed something isn\'t the one confirming their own fix.',
     relatedSlugs: ['understanding-issues', 'understanding-snagging'],
@@ -143,7 +143,7 @@ export const issuesSnaggingArticles: HelpArticle[] = [
   {
     slug: 'common-issue-reporting-mistakes',
     category: 'issues-snagging',
-    title: 'Common Issue Reporting Mistakes',
+    title: 'Common issue reporting mistakes',
     summary: 'Frequent mistakes when raising or managing issues.',
     commonMistakes: [
       'Not attaching a photo early -- it\'s required before the issue can ever be closed, so attaching it when you first raise the issue avoids a delay later.',
@@ -155,7 +155,7 @@ export const issuesSnaggingArticles: HelpArticle[] = [
   {
     slug: 'understanding-snagging',
     category: 'issues-snagging',
-    title: 'Understanding Snagging',
+    title: 'Understanding snagging',
     summary: 'What a Snag is and its fixed → verified workflow.',
     whatItDoes: 'A Snag is a defect-tracking record with a two-step closure: whoever corrects the defect marks it "fixed"; someone with sign-off authority then marks it "verified." It can also be "voided" if it turns out not to be a real defect.',
     whoCanUse: 'Creating a snag is open to any project member. Editing, marking fixed/void, and most other actions require "manage_project_records" (or Project Lead). Verifying requires "manage_project_records" OR the narrower "verify_snag_items" permission.',
@@ -165,7 +165,7 @@ export const issuesSnaggingArticles: HelpArticle[] = [
   {
     slug: 'creating-a-snag',
     category: 'issues-snagging',
-    title: 'Creating a Snag',
+    title: 'Creating a snag',
     summary: 'Raising a new snag item.',
     whoCanUse: 'Any project member.',
     infoToEnter: ['Title', 'Description', 'Priority', 'Trade', 'Location (free text)', 'Assignee', 'Due date'],
@@ -180,7 +180,7 @@ export const issuesSnaggingArticles: HelpArticle[] = [
   {
     slug: 'marking-a-snag-fixed',
     category: 'issues-snagging',
-    title: 'Marking a Snag as Fixed',
+    title: 'Marking a snag as fixed',
     summary: 'The first of the two closure steps.',
     requiredPermissions: '"manage_project_records" permission, or Project Lead.',
     steps: ['Open the snag item and select "Mark as fixed."'],
@@ -191,7 +191,7 @@ export const issuesSnaggingArticles: HelpArticle[] = [
   {
     slug: 'verifying-a-snag',
     category: 'issues-snagging',
-    title: 'Verifying a Snag',
+    title: 'Verifying a snag',
     summary: 'The second closure step -- independent sign-off that the fix is real.',
     requiredPermissions: '"manage_project_records" OR the narrower "verify_snag_items" permission.',
     steps: ['Open a "fixed" snag item and select "Verify."'],

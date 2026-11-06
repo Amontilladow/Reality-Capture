@@ -59,3 +59,84 @@ def test_failed_conversion_blocks(dwg_case, tmp_path, monkeypatch):
     f = [f for f in res.report["findings"] if f["rule_id"] == "M4-IN-001"]
     assert f and f[0]["blocking"] and "cannot decode section" in f[0]["message"]
     assert res.report["outputs"] == []
+
+
+# ------------------------------------------------------------------ server guard and the conversion path
+def test_converter_that_runs_too_long_or_grows_too_big_is_stopped():
+    from m4adm.adapters import ConverterLimitExceeded, run_limited
+    with pytest.raises(ConverterLimitExceeded, match="ran longer"):
+        run_limited([sys.executable, "-c", "import time; time.sleep(30)"], rss_limit_mb=None, timeout_s=0.5)
+    hog = "import time; b = bytearray(200 * 1024 * 1024); b[::4096] = b'x' * len(b[::4096]); time.sleep(30)"
+    with pytest.raises(ConverterLimitExceeded, match="more than 60 MB"):
+        run_limited([sys.executable, "-c", hog], rss_limit_mb=60, timeout_s=30)
+    ok = run_limited([sys.executable, "-c", "print('fine')"], rss_limit_mb=500, timeout_s=30)
+    assert ok.returncode == 0 and ok.stdout.strip() == "fine"
+
+
+def test_dwg_too_large_for_the_server_is_reported_not_crashed(dwg_case, tmp_path, monkeypatch):
+    from m4adm.convert import convert
+    from m4adm.convert.settings import ConversionSettings
+    dwg, _, _ = dwg_case
+    monkeypatch.setenv("FAKE_FAIL", "1")
+    res = convert(dwg, ConversionSettings(), tmp_path / "jobs")
+    assert any("could not be converted to DXF" in b and "cannot decode section" in b for b in res.report["blockers"])
+    assert res.report["output"] is None or not res.report["output"].get("path")
+
+
+def test_dwg_input_converts_to_a_draft_through_the_converter(tmp_path, monkeypatch):
+    """A floor plan uploaded as DWG goes through dwg2dxf and then the normal conversion."""
+    from m4adm.convert import convert
+    from m4adm.convert.settings import ConversionSettings
+    from m4adm.fixtures import arch_floor
+    dxf = tmp_path / "plan.dxf"
+    arch_floor(shaft=True).saveas(str(dxf))
+    dwg = tmp_path / "plan.dwg"
+    dwg.write_bytes(b"AC1032" + b"\x00" * 512)
+    conv = tmp_path / "dwg2dxf"
+    conv.write_text(STAND_IN.format(python=sys.executable))
+    conv.chmod(conv.stat().st_mode | stat.S_IEXEC)
+    monkeypatch.setenv("M4ADM_DWG2DXF", str(conv))
+    monkeypatch.setenv("FAKE_DXF", str(dxf))
+    monkeypatch.delenv("M4ADM_ODA_CONVERTER", raising=False)
+    res = convert(dwg, ConversionSettings(), tmp_path / "jobs")
+    assert not res.report["blockers"]
+    assert res.report["features"] and next((res.job_dir / "output").glob("*.dxf")).exists()
+
+
+# ------------------------------------------------------------------ the server must refuse what it cannot hold
+def test_address_space_ceiling_stops_a_memory_hog_instantly():
+    """The OS refuses the allocation (no polling gap in which a fast allocator could pass the limit)."""
+    import time
+    from m4adm.adapters import run_limited
+    t = time.monotonic()
+    res = run_limited([sys.executable, "-c", "b = bytearray(400 * 1024 * 1024)"], rss_limit_mb=None, timeout_s=30,
+                      address_space_mb=200)
+    assert res.returncode != 0 and "MemoryError" in res.stderr
+    assert time.monotonic() - t < 10
+
+
+def test_oversized_dxf_is_blocked_before_it_is_loaded(dwg_case, tmp_path, monkeypatch):
+    from m4adm.adapters import dxf_size_blocker
+    from m4adm.convert import convert
+    from m4adm.convert.settings import ConversionSettings
+    from m4adm.fixtures import arch_floor
+    dxf = tmp_path / "plan.dxf"
+    arch_floor(shaft=True).saveas(str(dxf))
+    assert dxf_size_blocker(dxf) is None                                  # no limit on the desktop
+    monkeypatch.setenv("M4ADM_MAX_DXF_MB", "0.001")                       # ~1 KB: every real drawing is over it
+    msg = dxf_size_blocker(dxf)
+    assert msg and "as DXF" in msg and "desktop tool" in msg
+    res = convert(dxf, ConversionSettings(), tmp_path / "jobs")
+    assert any("desktop tool" in b for b in res.report["blockers"]) and not res.report["features"]
+    dwg, settings, bm = dwg_case                                          # the check path, via a converted DWG
+    out = prepare(dwg, settings, tmp_path / "jobs2", bm)
+    blocking = [f for f in out.report["findings"] if f["rule_id"] == "M4-IN-001" and f["blocking"]]
+    assert blocking and "desktop tool" in blocking[0]["message"]
+
+
+def test_a_missing_library_is_explained_in_plain_words():
+    """Windows 'libiconv-2.dll not found': the converter exits with STATUS_DLL_NOT_FOUND."""
+    from m4adm.adapters import exit_hint
+    for code in (0xC0000135, -1073741515):
+        assert "library file" in exit_hint(code) and "next to m4adm.exe" in exit_hint(code)
+    assert exit_hint(0) == "" and "crashed" in exit_hint(-1073741819)

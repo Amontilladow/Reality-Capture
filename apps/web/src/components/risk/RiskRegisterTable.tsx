@@ -63,7 +63,7 @@ export function RiskRegisterTable({ risks, members, ownerNames, filters, onFilte
     <div className="space-y-2">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-baseline gap-2">
-          <div className="field-label !mb-0">Risk Register</div>
+          <div className="field-label !mb-0">Risk register</div>
           <span className="text-xs text-ink-500">{filtered.length} risk{filtered.length === 1 ? '' : 's'}</span>
         </div>
       </div>
@@ -126,7 +126,7 @@ export function RiskRegisterTable({ risks, members, ownerNames, filters, onFilte
           Overdue only
         </label>
         {hasActiveFilters(filters) && (
-          <button onClick={() => onFiltersChange(DEFAULT_REGISTER_FILTERS)} className="btn-ghost !px-2 !py-2 text-xs ml-auto">
+          <button onClick={() => onFiltersChange(DEFAULT_REGISTER_FILTERS)} className="btn-ghost !px-2 !py-2 ml-auto">
             Reset filters
           </button>
         )}
@@ -146,7 +146,7 @@ export function RiskRegisterTable({ risks, members, ownerNames, filters, onFilte
                 <SortableHeader label="Score" field="score" active={sortField} dir={sortDir} onClick={toggleSort} align="right" />
                 <SortableHeader label="Severity" field="severity" active={sortField} dir={sortDir} onClick={toggleSort} />
                 <th className="px-4 py-2 font-medium">Owner</th>
-                <th className="px-4 py-2 font-medium">Next Action</th>
+                <th className="px-4 py-2 font-medium">Next action</th>
                 <SortableHeader label="Due" field="dueDate" active={sortField} dir={sortDir} onClick={toggleSort} />
                 <th className="px-4 py-2 font-medium">Status</th>
               </tr>
@@ -230,10 +230,10 @@ export function RiskRegisterTable({ risks, members, ownerNames, filters, onFilte
         <div className="flex items-center justify-between text-xs text-ink-500 px-2">
           <span>Page {pageSafe} of {totalPages}</span>
           <div className="flex items-center gap-2">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pageSafe === 1} className="btn-ghost !px-2 !py-2 text-xs disabled:opacity-40">
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pageSafe === 1} className="btn-ghost !px-2 !py-2 disabled:opacity-40">
               Previous
             </button>
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={pageSafe === totalPages} className="btn-ghost !px-2 !py-2 text-xs disabled:opacity-40">
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={pageSafe === totalPages} className="btn-ghost !px-2 !py-2 disabled:opacity-40">
               Next
             </button>
           </div>

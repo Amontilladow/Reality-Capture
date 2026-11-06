@@ -60,7 +60,7 @@ export default function SelfSignup() {
   });
 
   return (
-    <AuthLayout title="Create your account" subtitle="Join your company’s reality capture workspace.">
+    <AuthLayout title="Create your account" subtitle="Join your company’s Reality Capture workspace.">
       <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-4">
         <Input
           label="Company signup code"

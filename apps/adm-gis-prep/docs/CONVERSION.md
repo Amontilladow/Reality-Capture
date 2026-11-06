@@ -182,3 +182,34 @@ Preliminary QC of the generated draft, against the raw source (87 errors / 304 w
 - **Proposals:** space numbering and door/window SpaceNumber links are proposals.
 - **Blocks:** without the official DRM template (DWG only), Detail blocks are built from the BDMS 4.1 attribute tables and the report says so.
 - **Scope:** one building floor per drawing; multi-building drawings are not split.
+
+## DWG input
+
+A `.dwg` can be uploaded instead of a `.dxf`. The web form recognises the file by its first bytes (a DWG starts with a version code such as `AC1032`), not by its name, and says so next to the file picker. On the server the DWG is converted to DXF first with LibreDWG's `dwg2dxf`, then converted as usual; the conversion is recorded in the audit trail and the original DWG is stored unchanged.
+
+**What the cloud server can hold.** It has 512 MB and uses about 210 MB itself. Measured on the M19B drawings with the real converter:
+
+| Drawing | DWG | DXF | `dwg2dxf` time / memory | Loading the DXF in the engine |
+|---|---|---|---|---|
+| First floor | 2.4 MB | 13.2 MB | 0.4 s / 54 MB | about 190 MB: fits |
+| Ground floor | 6.0 MB | 36.9 MB | 1.6 s / 146 MB | about 420 MB (about 670 MB to check): does not fit |
+
+A DXF takes roughly 100 MB plus 9 MB per MB of file to load, and a DWG becomes a DXF 5 to 6 times larger. Memory exhaustion does not only fail the job: the operating system kills the whole service (seen on 2026-11-06, a DWG whose DXF was about 35 MB). Hence these limits, set in the image (`apps/ai-service/Dockerfile`):
+
+- `M4ADM_DWG_MEMORY_MB=150`: the converter may use at most 150 MB. The operating system refuses it more (an address-space ceiling, so a fast allocation cannot slip past a polling interval), and its memory is also checked every 0.1 s.
+- `M4ADM_MAX_DXF_MB=18`: a DXF larger than this, uploaded or converted from a DWG, is refused before it is loaded, with a BLOCKED job that says to use the desktop tool. This is a DWG of about 3 MB.
+- The engine process is stopped at 270 MB, checked every 0.1 s; `M4ADM_DWG_TIMEOUT_S` (default 600) stops a converter that runs too long.
+
+On the desktop tool none of these variables is set, so there is no limit. If the converter is missing the job is BLOCKED with a message to save the drawing as DXF.
+
+**To run larger drawings in the cloud** the service needs more memory (a bigger plan), or the engine needs to load less of the DXF (not done yet).
+
+## On your own computer (Windows desktop program)
+
+`m4adm.exe` is the whole tool in one file. Double-click it: the program opens in its own window (the system web view; the browser is only a fallback) on the **Convert a floor plan** page, which has the same fields as the web form (identifiers, unit number, floor and building facts, title block, optional control points). Nothing leaves the computer, and none of the cloud server's size limits apply (a large drawing only needs enough free memory: about 100 MB plus 9 MB per MB of DXF).
+
+- **Build:** the workflow `.github/workflows/desktop-exe.yml` builds it on a Windows machine, runs a real conversion with the packaged program, and publishes `M4-GIS-Prep-windows.zip` as the pre-release **desktop-latest**. Run it from the Actions tab (Run workflow) or push a tag `desktop-v*`. The recipe is `packaging/m4adm.spec`; a Linux build of the same recipe was tested here, including a real DWG through the bundled reader.
+- **DWG:** `dwg2dxf.exe` (LibreDWG, the same pinned commit as the cloud image) is placed beside `m4adm.exe` when the build could make it; the program finds it there. Without it, save the drawing as DXF first.
+- **Where the work is kept:** `C:\Users\<you>\M4-GIS-Prep\uploads` (originals, never modified) and `\jobs` (one folder per conversion).
+- **Not code-signed:** Windows SmartScreen shows an "unknown publisher" warning the first time; choose More info, then Run anyway.
+

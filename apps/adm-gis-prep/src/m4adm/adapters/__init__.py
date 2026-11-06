@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -29,6 +30,87 @@ STATUS_UNAVAILABLE = "UNAVAILABLE"
 STATUS_AVAILABLE_UNTESTED = "AVAILABLE_UNTESTED"
 STATUS_PENDING = "PENDING_OFFICIAL_FILE"
 STATUS_LOADED = "LOADED"
+
+
+
+def _rss_mb(pid: int) -> float:
+    """Resident memory of a process in MB (Linux /proc); 0.0 where it cannot be read."""
+    try:
+        with open(f"/proc/{pid}/status", encoding="ascii") as fh:
+            for line in fh:
+                if line.startswith("VmRSS:"):
+                    return int(line.split()[1]) / 1024
+    except (OSError, ValueError):
+        pass
+    return 0.0
+
+
+def exit_hint(returncode: int) -> str:
+    """Plain words for converter exit codes that mean something specific."""
+    if returncode in (0xC0000135, -1073741515):       # STATUS_DLL_NOT_FOUND
+        return (" The converter could not start because a library file it needs (a .dll) is missing. Keep every file "
+                "that came in the zip together in one folder, next to m4adm.exe.")
+    if returncode in (0xC0000005, -1073741819):       # access violation
+        return " The converter crashed while reading this drawing."
+    return ""
+
+
+def dxf_size_blocker(path: Path) -> str | None:
+    """A message when the DXF is larger than this installation can hold in memory (env M4ADM_MAX_DXF_MB, unset on the
+    desktop). Loading a DXF takes roughly 100 MB plus 9 MB per MB of file, measured on the M19B drawings, and the
+    cloud service has to leave room for itself; a drawing past the limit would be killed by the memory limit and take
+    the whole service with it, so it is refused up front instead."""
+    limit = float(os.environ.get("M4ADM_MAX_DXF_MB", "0") or 0)
+    if not limit:
+        return None
+    mb = Path(path).stat().st_size / (1024 * 1024)
+    if mb <= limit:
+        return None
+    return (f"The drawing is {mb:.0f} MB as DXF; this server processes drawings up to {limit:.0f} MB. "
+            "Use the desktop tool (m4adm ui) for this drawing.")
+
+
+class ConverterLimitExceeded(RuntimeError):
+    """The DWG converter was stopped for using too much memory or time."""
+
+
+def run_limited(cmd: list[str], *, rss_limit_mb: float | None, timeout_s: float, poll_s: float = 0.1,
+                address_space_mb: float | None = None) -> subprocess.CompletedProcess:
+    """Run `cmd`, killing it when its resident memory passes `rss_limit_mb` or it runs past `timeout_s`.
+    The service that hosts the engine shares its memory with other work, so a converter must never be left to
+    grow until the whole container is killed."""
+    import time
+
+    if sys.platform == "win32":
+        import ctypes
+
+        # SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX, inherited by the converter: a missing library or a crash then
+        # makes it exit with an error code instead of opening a modal "System Error" box that waits for a click.
+        ctypes.windll.kernel32.SetErrorMode(0x0001 | 0x0002)
+
+    def _ceiling() -> None:     # runs in the child before exec: from here malloc beyond the ceiling just fails
+        import resource
+        limit = int(address_space_mb * 1024 * 1024)
+        resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
+
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                            preexec_fn=_ceiling if address_space_mb else None)
+    start, peak, reason = time.monotonic(), 0.0, None
+    while proc.poll() is None:
+        rss = _rss_mb(proc.pid)
+        peak = max(peak, rss)
+        if rss_limit_mb and rss > rss_limit_mb:
+            reason = f"used more than {rss_limit_mb:.0f} MB of memory"
+        elif time.monotonic() - start > timeout_s:
+            reason = f"ran longer than {timeout_s:.0f} s"
+        if reason:
+            proc.kill()
+            break
+        time.sleep(poll_s)
+    out, err = proc.communicate()
+    if reason:
+        raise ConverterLimitExceeded(f"stopped: it {reason} (peak {peak:.0f} MB)")
+    return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
 
 
 # --------------------------------------------------------------------------- DWG conversion
@@ -53,10 +135,23 @@ class DWGConverter:
         oda = os.environ.get("M4ADM_ODA_CONVERTER") or shutil.which("ODAFileConverter")
         if oda:
             return cls(oda, "oda")
-        lib = os.environ.get("M4ADM_DWG2DXF") or shutil.which("dwg2dxf")
+        lib = os.environ.get("M4ADM_DWG2DXF") or shutil.which("dwg2dxf") or cls._beside_program()
         if lib:
             return cls(lib, "libredwg")
         return cls(None, "oda")
+
+    @staticmethod
+    def _beside_program() -> str | None:
+        """The packaged desktop program ships dwg2dxf(.exe) next to itself; find it there."""
+        import sys
+
+        if not getattr(sys, "frozen", False):
+            return None
+        for folder in (Path(sys.executable).parent, Path(getattr(sys, "_MEIPASS", "."))):
+            for name in ("dwg2dxf.exe", "dwg2dxf"):
+                if (folder / name).is_file():
+                    return str(folder / name)
+        return None
 
     def status(self) -> str:
         if self.executable and Path(self.executable).exists():
@@ -88,8 +183,18 @@ class DWGConverter:
         work_dir = Path(work_dir)
         if self.kind == "libredwg":
             out = work_dir / f"{Path(dwg).stem}.dxf"
-            res = subprocess.run([str(self.executable), "-y", "-o", str(out), str(dwg)], capture_output=True,
-                                 text=True, timeout=600, check=False)
+            limit = float(os.environ.get("M4ADM_DWG_MEMORY_MB", "0") or 0) or None
+            # A hosted server (memory limit set) gives up after 10 minutes; on your own computer a large drawing may
+            # legitimately take longer, so the default there is one hour.
+            default_timeout = "600" if limit else "3600"
+            try:
+                res = run_limited([str(self.executable), "-y", "-o", str(out), str(dwg)], rss_limit_mb=limit,
+                                  timeout_s=float(os.environ.get("M4ADM_DWG_TIMEOUT_S", default_timeout) or default_timeout),
+                                  address_space_mb=(limit + 64) if limit else None)
+            except ConverterLimitExceeded as exc:
+                advice = ("The drawing is too large to convert here; save it as DXF in AutoCAD or use the desktop tool."
+                          if limit else "Save the drawing as DXF in AutoCAD and upload the DXF instead.")
+                raise RuntimeError(f"{self.describe()} {exc}. {advice}") from exc
         else:
             in_dir, out_dir = work_dir / "dwg_in", work_dir / "dxf_out"
             in_dir.mkdir(exist_ok=True)
@@ -99,8 +204,10 @@ class DWGConverter:
                                  text=True, timeout=600, check=False)
             out = out_dir / f"{Path(dwg).stem}.dxf"
         if not out.exists() or out.stat().st_size == 0:
+            hint = (" It may have run out of the memory this server allows: the drawing is probably too large to "
+                    "convert here; use the desktop tool." if os.environ.get("M4ADM_DWG_MEMORY_MB") else "")
             raise RuntimeError(f"{self.describe()} produced no DXF (exit {res.returncode}): "
-                               f"{(res.stderr or res.stdout or '').strip()[:500]}")
+                               f"{(res.stderr or res.stdout or '').strip()[-300:]}.{hint}{exit_hint(res.returncode)}")
         return out
 
 

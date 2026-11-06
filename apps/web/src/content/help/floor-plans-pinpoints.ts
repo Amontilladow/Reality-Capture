@@ -21,7 +21,7 @@ export const floorPlansArticles: HelpArticle[] = [
   {
     slug: 'opening-a-floor-plan',
     category: 'floor-plans-pinpoints',
-    title: 'Opening a Floor Plan',
+    title: 'Opening a floor plan',
     summary: 'How to open a project\'s floor plans.',
     whatItDoes: 'Shows the list of uploaded floor plan PDFs for a project, grouped by building/level where assigned, and opens the one you select for viewing.',
     whoCanUse: 'Any project member.',
@@ -35,7 +35,7 @@ export const floorPlansArticles: HelpArticle[] = [
   {
     slug: 'navigating-a-floor-plan',
     category: 'floor-plans-pinpoints',
-    title: 'Navigating a Floor Plan',
+    title: 'Navigating a floor plan',
     summary: 'Moving between pages of a multi-page floor plan PDF.',
     whatItDoes: 'A floor plan can have multiple pages; the viewer shows "Prev"/"Next" controls when there\'s more than one.',
     whoCanUse: 'Any project member.',
@@ -46,7 +46,7 @@ export const floorPlansArticles: HelpArticle[] = [
   {
     slug: 'zooming-and-panning',
     category: 'floor-plans-pinpoints',
-    title: 'Zooming and Panning',
+    title: 'Zooming and panning',
     summary: 'Getting a closer look at part of a floor plan.',
     whatItDoes: 'The floor plan viewer supports standard zoom and pan/drag to inspect detail.',
     whoCanUse: 'Any project member.',
@@ -55,7 +55,7 @@ export const floorPlansArticles: HelpArticle[] = [
   {
     slug: 'understanding-pinpoints',
     category: 'floor-plans-pinpoints',
-    title: 'Understanding Pinpoints',
+    title: 'Understanding pinpoints',
     summary: 'What a pin on a floor plan actually is.',
     whatItDoes: 'A pin marks a specific location on a floor plan. Dropping a pin automatically creates an Issue at that location — there is no separate "pinpoint" record. Opening a pin shows a quick-edit panel for that linked Issue (or Snag, if converted): rename, add a note, assign, attach photos or a 360° capture, link a BIM element, and convert it between an Issue and a Snag.',
     whenToUse: 'Whenever you need to mark exactly where on site something is, rather than just describing it in text.',
@@ -66,7 +66,7 @@ export const floorPlansArticles: HelpArticle[] = [
   {
     slug: 'creating-a-pinpoint',
     category: 'floor-plans-pinpoints',
-    title: 'Creating a Pinpoint',
+    title: 'Creating a pinpoint',
     summary: 'How to drop a new pin on a floor plan.',
     whatItDoes: 'Drops a pin at a specific point on the open floor plan page, auto-creating an Issue there.',
     requiredPermissions: '"manage_project_records" permission, or being that project\'s Project Lead.',
@@ -85,7 +85,7 @@ export const floorPlansArticles: HelpArticle[] = [
   {
     slug: 'attaching-photographs-to-a-pinpoint',
     category: 'floor-plans-pinpoints',
-    title: 'Attaching Photographs',
+    title: 'Attaching photographs',
     summary: 'Adding site photos to a pin.',
     whatItDoes: 'Lets you upload a photo or 360° capture directly against a pin\'s location from its quick-edit panel.',
     requiredPermissions: '"manage_project_records" permission, or being that project\'s Project Lead -- the same requirement as uploading any other capture.',
@@ -100,7 +100,7 @@ export const floorPlansArticles: HelpArticle[] = [
   {
     slug: 'linking-a-pinpoint-to-an-issue',
     category: 'floor-plans-pinpoints',
-    title: 'Converting a Pinpoint Between Issue and Snag',
+    title: 'Converting a pinpoint between issue and snag',
     summary: 'A pin\'s auto-created record can be converted from an Issue to a Snag (or back).',
     whatItDoes: 'Every pin starts with an auto-created Issue. If what you actually found needs the fixed/verified two-step Snagging workflow instead, you can convert the pin\'s record to a Snag from its panel.',
     whoCanUse: 'Any project member -- converting a pin has no narrower permission requirement.',
@@ -112,7 +112,7 @@ export const floorPlansArticles: HelpArticle[] = [
   {
     slug: 'viewing-pinpoint-details',
     category: 'floor-plans-pinpoints',
-    title: 'Viewing Pinpoint Details',
+    title: 'Viewing pinpoint details',
     summary: 'Opening a pin to see or edit its linked record.',
     whatItDoes: 'Selecting a pin opens its quick-edit panel: title, note, assignee, linked BIM element (if any), and attached photos/captures.',
     whoCanUse: 'Any project member.',
@@ -123,7 +123,7 @@ export const floorPlansArticles: HelpArticle[] = [
   {
     slug: 'filtering-pinpoints',
     category: 'floor-plans-pinpoints',
-    title: 'Filtering Pinpoints',
+    title: 'Filtering pinpoints',
     summary: 'There is currently no dedicated filter for which pins show on a floor plan — all pins on the current page are shown.',
     whatItDoes: 'All pins placed on the currently open floor plan page are always visible together.',
     notYetAvailable: true,
@@ -133,7 +133,7 @@ export const floorPlansArticles: HelpArticle[] = [
   {
     slug: 'troubleshooting-floor-plan-display',
     category: 'floor-plans-pinpoints',
-    title: 'Troubleshooting Floor Plan Display',
+    title: 'Troubleshooting floor plan display',
     summary: 'A floor plan won\'t open or display correctly.',
     troubleshootingSteps: [
       { problem: 'Floor plan stays blank or shows an error', likelyCause: 'The PDF failed to process on upload, or a network issue.', fix: 'Reload the page. If it still fails, confirm with whoever uploaded it that the file was a valid PDF, or re-upload it.' },

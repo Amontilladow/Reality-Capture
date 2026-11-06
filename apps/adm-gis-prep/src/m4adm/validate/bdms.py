@@ -335,23 +335,27 @@ def _containment(ctx: FeatureContext, tol: Tolerances, col: Collector) -> None:
                         outside_area=outside)
 
 
+def opening_adjacent(opening, spaces: list, floors: list, contact: float) -> bool:
+    """DRM review rule: a door/window is adjacent to two spaces, or to one space and the floor outline.
+    `floors` are Floor polygons (not the BuildingOutline: calibrated on the Yas Island review)."""
+    touching = sum(1 for s in spaces if opening.distance(s) <= contact)
+    on_floor_edge = any(opening.distance(f.boundary) <= contact for f in floors)   # boundary: Polygon or MultiPolygon
+    return touching >= 2 or (touching == 1 and on_floor_edge)
+
+
 def _opening_adjacency(ctx: FeatureContext, tol: Tolerances, col: Collector) -> None:
     """DRM review: a door/window must be adjacent to two spaces, or to one space and the floor outline."""
     spaces = [s.area_geom for s in ctx.features.get("Space", []) if s.area_geom is not None]
-    floors = [f.area_geom.exterior for f in ctx.features.get("Floor", []) if f.area_geom is not None]
+    floors = [f.area_geom for f in ctx.features.get("Floor", []) if f.area_geom is not None]
     if not spaces:
         return
     for layer in ("Door", "Window"):
         for f in ctx.features.get(layer, []):
             g = f.area_geom
-            if g is None:
+            if g is None or opening_adjacent(g, spaces, floors, tol.opening_contact):
                 continue
             n_spaces = sum(1 for s in spaces if g.distance(s) <= tol.opening_contact)
-            on_floor_outline = any(g.distance(edge) <= tol.opening_contact for edge in floors)
-            if n_spaces >= 2 or (n_spaces == 1 and on_floor_outline):
-                continue
-            reaches = ("no space" if n_spaces == 0 else
-                       "only one space and not the floor outline")
+            reaches = "no space" if n_spaces == 0 else "only one space and not the floor outline"
             col.add("DRM-LOG-22", f"{layer} reaches {reaches}; it must be adjacent to two spaces or to one space and "
                     "the floor outline.",
                     f"Draw the {layer.lower()} across the full wall thickness, from the space to the next space or to "

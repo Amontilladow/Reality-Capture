@@ -13,7 +13,7 @@ export const userManagementArticles: HelpArticle[] = [
   {
     slug: 'understanding-user-permissions',
     category: 'user-management',
-    title: 'Understanding User Permissions',
+    title: 'Understanding user permissions',
     summary: 'Two separate layers: company role, and project-level permissions.',
     whatItDoes: 'Your company role (set once, company-wide) decides company-level authority like inviting users. Separately, on each project, your project role and any permission grants decide what you can do on that specific project -- see "Understanding Your Role" in Getting Started for the full picture.',
     relatedSlugs: ['understanding-your-role', 'understanding-organization-access', 'understanding-project-access'],
@@ -22,7 +22,7 @@ export const userManagementArticles: HelpArticle[] = [
   {
     slug: 'understanding-organization-access',
     category: 'user-management',
-    title: 'Understanding Organization Access',
+    title: 'Understanding organization access',
     summary: 'Company-wide user management: inviting, approving roles, deactivating.',
     whatItDoes: 'Inviting a new user requires a company role at or above Project Manager\'s seniority -- in practice: Super Admin, Company Admin, Technical Director, Engineering Manager, BIM Manager, or Project Manager. Changing an existing user\'s company role, or deactivating their account, requires Super Admin specifically -- no other role, however senior, can do either.',
     requiredPermissions: 'Invite: Super Admin, Company Admin, Technical Director, Engineering Manager, BIM Manager, or Project Manager. Change role / deactivate: Super Admin only.',
@@ -32,7 +32,7 @@ export const userManagementArticles: HelpArticle[] = [
   {
     slug: 'understanding-project-access',
     category: 'user-management',
-    title: 'Understanding Project Access',
+    title: 'Understanding project access',
     summary: 'Viewing a project\'s records is open company-wide; changing its team is not.',
     whatItDoes: 'Any signed-in user in your company can open any of your company\'s non-archived projects and view its issues, RFIs, snagging, drawings, and documents -- there is no membership restriction on reading a project\'s own records. What differs by membership is formal standing on that project: adding someone as a project member, changing their project role, assigning their organization slot, or granting a narrower permission (like approve_rfis or verify_snag_items) all require the "manage_team" permission on that project (or being its Project Lead).',
     requiredPermissions: 'Viewing: any company user. Adding/changing a project member or their role: "manage_team" project permission, or Project Lead.',
@@ -42,7 +42,7 @@ export const userManagementArticles: HelpArticle[] = [
   {
     slug: 'inviting-users',
     category: 'user-management',
-    title: 'Inviting Users',
+    title: 'Inviting users',
     summary: 'Bringing a new person into your company account.',
     requiredPermissions: 'Super Admin, Company Admin, Technical Director, Engineering Manager, BIM Manager, or Project Manager.',
     steps: [
@@ -58,7 +58,7 @@ export const userManagementArticles: HelpArticle[] = [
   {
     slug: 'managing-user-roles',
     category: 'user-management',
-    title: 'Managing User Roles',
+    title: 'Managing user roles',
     summary: 'Approving or changing a user\'s company role.',
     requiredPermissions: 'Super Admin only.',
     whatItDoes: 'Sets or changes a user\'s company role. For a self-registered user awaiting approval, setting their role also clears the "pending approval" state, letting them into the app.',
@@ -70,7 +70,7 @@ export const userManagementArticles: HelpArticle[] = [
   {
     slug: 'understanding-site-role-restrictions',
     category: 'user-management',
-    title: 'Understanding Site Role Restrictions',
+    title: 'Understanding site role restrictions',
     summary: 'Construction Manager and Project Engineer have full access only on Floor Plans, Issues, and Snagging.',
     whatItDoes: 'These two roles are deliberately restricted, site-facing roles: full working access (create, edit) on Floor Plans/Pinpoints, Issues, and Snagging, but read-only everywhere else -- no access to project settings, user management, or billing, regardless of any other permission that might otherwise apply.',
     whoCanUse: 'Describes Construction Manager and Project Engineer specifically.',
@@ -82,7 +82,7 @@ export const userManagementArticles: HelpArticle[] = [
   {
     slug: 'reporting-unauthorized-access',
     category: 'user-management',
-    title: 'Reporting Unauthorized Access',
+    title: 'Reporting unauthorized access',
     summary: 'There is no in-app report-abuse flow -- raise it directly with your company admin.',
     whatItDoes: 'If you believe someone has access they shouldn\'t, there is no dedicated in-app reporting form -- contact your company\'s Super Admin or Company Admin directly so they can review and adjust access.',
     notYetAvailable: true,
@@ -91,7 +91,7 @@ export const userManagementArticles: HelpArticle[] = [
   {
     slug: 'account-security-best-practices',
     category: 'user-management',
-    title: 'Account Security Best Practices',
+    title: 'Account security best practices',
     summary: 'Basic precautions every user should take.',
     whatItDoes: 'Use a password you don\'t reuse elsewhere, and report a suspected compromised account to your company admin immediately -- they can deactivate the account and generate a reset link.',
     relatedSlugs: ['resetting-your-password'],

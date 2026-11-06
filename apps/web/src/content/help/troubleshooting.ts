@@ -8,7 +8,7 @@ export const troubleshootingArticles: HelpArticle[] = [
   {
     slug: 'trouble-unable-to-log-in',
     category: 'troubleshooting',
-    title: 'Unable to Log In',
+    title: 'Unable to log in',
     summary: 'Your email or password is rejected, or you can\'t reach the app at all.',
     troubleshootingSteps: [
       { problem: 'Email/password rejected', likelyCause: 'Wrong credentials, or your account was deactivated.', fix: 'Re-check your email and password (case-sensitive). If still blocked, ask your company admin to confirm your account is active.' },
@@ -21,7 +21,7 @@ export const troubleshootingArticles: HelpArticle[] = [
   {
     slug: 'trouble-project-not-visible',
     category: 'troubleshooting',
-    title: 'Project Not Visible',
+    title: 'Project not visible',
     summary: 'A project you expect to access doesn\'t appear in your project list.',
     troubleshootingSteps: [
       { problem: 'Project missing from the list', likelyCause: 'Every non-archived company project appears to every company user -- this isn\'t a membership issue. The project has most likely been archived.', fix: 'Ask your company admin to confirm the project\'s status, or check with whoever administers your company account.' },
@@ -32,7 +32,7 @@ export const troubleshootingArticles: HelpArticle[] = [
   {
     slug: 'trouble-access-denied',
     category: 'troubleshooting',
-    title: 'Access Denied',
+    title: 'Access denied',
     summary: 'You get a permission error trying to create, edit, or view something.',
     troubleshootingSteps: [
       { problem: 'A create action is blocked', likelyCause: 'Creating an Issue, RFI, Snag, Submittal, Transmittal, or QA Inspection is open to any project member -- if this is blocked, it\'s more likely a different field validation error. Uploading a Document, Capture, Floor Plan, or BIM Model does require "manage_project_records" (or Project Lead), though.', fix: 'Check for a validation message first; if creating a Document/Capture/Floor Plan/BIM Model specifically, ask for "manage_project_records".' },
@@ -45,7 +45,7 @@ export const troubleshootingArticles: HelpArticle[] = [
   {
     slug: 'trouble-missing-records',
     category: 'troubleshooting',
-    title: 'Missing Records',
+    title: 'Missing records',
     summary: 'An RFI, issue, snag, submittal, transmittal, or inspection you expect to see isn\'t in the list.',
     troubleshootingSteps: [
       { problem: 'A record doesn\'t appear', likelyCause: 'A status or priority filter on the list page is hiding it, or it was created on a different project.', fix: 'Clear any active filters on the list page. Confirm you\'re on the correct project.' },
@@ -55,7 +55,7 @@ export const troubleshootingArticles: HelpArticle[] = [
   {
     slug: 'trouble-floor-plan-not-loading',
     category: 'troubleshooting',
-    title: 'Floor Plan Not Loading',
+    title: 'Floor plan not loading',
     summary: 'A floor plan PDF won\'t open or display.',
     troubleshootingSteps: [
       { problem: 'Floor plan stays blank or shows an error', likelyCause: 'The underlying file failed to upload or process, or a slow/unstable network connection.', fix: 'Try reloading the page. If it still fails, check with whoever uploaded the floor plan that the file was a valid PDF, or try re-uploading it.' },
@@ -65,7 +65,7 @@ export const troubleshootingArticles: HelpArticle[] = [
   {
     slug: 'trouble-upload-failed',
     category: 'troubleshooting',
-    title: 'Upload Failed',
+    title: 'Upload failed',
     summary: 'A photo, document, or attachment fails to upload.',
     troubleshootingSteps: [
       { problem: 'Upload fails or hangs', likelyCause: 'The file exceeds the size limit, is an unsupported type, or the connection dropped mid-upload.', fix: 'Confirm the file type and size are within what the upload form accepts, then retry. On an unstable connection, try again on a more stable one.' },
@@ -75,7 +75,7 @@ export const troubleshootingArticles: HelpArticle[] = [
   {
     slug: 'trouble-attachment-not-opening',
     category: 'troubleshooting',
-    title: 'Attachment Not Opening',
+    title: 'Attachment not opening',
     summary: 'A previously uploaded attachment won\'t open or download.',
     troubleshootingSteps: [
       { problem: 'Clicking the attachment does nothing or errors', likelyCause: 'The download link has expired (links are time-limited for security) or the file was removed.', fix: 'Reload the page to get a fresh link, then try again.' },
@@ -85,7 +85,7 @@ export const troubleshootingArticles: HelpArticle[] = [
   {
     slug: 'trouble-changes-not-saving',
     category: 'troubleshooting',
-    title: 'Changes Not Saving',
+    title: 'Changes not saving',
     summary: 'An edit you made doesn\'t stick after saving.',
     troubleshootingSteps: [
       { problem: 'Save appears to succeed but the change reverts', likelyCause: 'A validation error was silently missed, or a permission check rejected the specific field you changed.', fix: 'Look for an error message near the field you edited. If none is visible, reload the page and check whether the change actually applied before retrying.' },
@@ -95,7 +95,7 @@ export const troubleshootingArticles: HelpArticle[] = [
   {
     slug: 'trouble-notification-not-received',
     category: 'troubleshooting',
-    title: 'Notification Not Received',
+    title: 'Notification not received',
     summary: 'You expected a notification (e.g. for an assignment or comment) and didn\'t get one.',
     troubleshootingSteps: [
       { problem: 'No notification appears for an action you expected to trigger one', likelyCause: 'Not every action generates a notification — only specific events (assignment, reassignment, new comment on a record assigned to you, forwarding) do.', fix: 'Check the record directly for the update. If you believe a genuine assignment or comment notification is missing, report it to your company admin.' },
@@ -106,7 +106,7 @@ export const troubleshootingArticles: HelpArticle[] = [
   {
     slug: 'trouble-email-connection-failed',
     category: 'troubleshooting',
-    title: 'Email Connection Failed',
+    title: 'Email connection failed',
     summary: 'Connecting your Outlook or Gmail account fails or shows an error.',
     troubleshootingSteps: [
       { problem: 'Connection fails or shows "failed" after the provider consent screen', likelyCause: 'You declined a permission the connection needs, or a transient error during the provider handshake.', fix: 'Try connecting again from Email Integration settings and accept every permission requested. If it keeps failing, contact your company admin.' },
@@ -117,7 +117,7 @@ export const troubleshootingArticles: HelpArticle[] = [
   {
     slug: 'trouble-ai-assistant-not-responding',
     category: 'troubleshooting',
-    title: 'AI Assistant Not Responding',
+    title: 'AI assistant not responding',
     summary: 'The AI Assistant doesn\'t answer, or shows a blocked/limit message.',
     troubleshootingSteps: [
       { problem: 'A warning banner appears instead of an answer', likelyCause: 'Your question was blocked as off-topic (the assistant only answers questions about this project\'s own data), or you\'ve reached your daily request limit, shown at the top of the Assistant page.', fix: 'Rephrase the question to be about this specific project\'s RFIs, issues, snagging, risk, progress, or documents. If you\'ve hit the daily limit, try again the next day.' },
@@ -151,7 +151,7 @@ export const troubleshootingArticles: HelpArticle[] = [
   {
     slug: 'trouble-unexpected-error',
     category: 'troubleshooting',
-    title: 'Unexpected Error',
+    title: 'Unexpected error',
     summary: 'You see a generic error message not covered by the other troubleshooting articles.',
     troubleshootingSteps: [
       { problem: 'A generic error banner or page appears', likelyCause: 'A temporary network or server issue.', fix: 'Reload the page and try again. If the error persists, note what you were doing when it happened and report it to your company admin.' },

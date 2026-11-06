@@ -1,0 +1,146 @@
+name: Desktop program (Windows .exe)
+
+# Builds the single-file desktop program of the GIS Preparation tool on a Windows machine, tests it, and (on request
+# or on a desktop-v* tag) publishes the zip as a GitHub pre-release called "desktop-latest" for download.
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish the zip as the desktop-latest pre-release"
+        type: boolean
+        default: true
+  push:
+    tags: ["desktop-v*"]
+  pull_request:
+    paths: ["apps/adm-gis-prep/packaging/**", ".github/workflows/desktop-exe.yml"]
+
+permissions:
+  contents: read
+
+env:
+  LIBREDWG_COMMIT: b2a8b7ff1dcc6558acea290d54c90e0c3236e219   # the commit tested against AutoCAD's own DXF
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: apps/adm-gis-prep
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -r requirements.txt . pyinstaller==6.16.0 pywebview==5.4.0
+      - name: Build m4adm.exe
+        run: pyinstaller packaging/m4adm.spec --noconfirm --log-level WARN
+      - name: Test m4adm.exe (version, then a real conversion with the packaged program)
+        run: |
+          ./dist/m4adm.exe --version
+          ./dist/m4adm.exe ui --check-window
+          python -c "from m4adm.fixtures import arch_floor; arch_floor(shaft=True).saveas('plan.dxf')"
+          ./dist/m4adm.exe convert plan.dxf --zone "SYNTH ZONE" --sector SE01_01 --plot C1 --building 1 --floor F1 \
+            --unit-number 1 --jobs smoke-jobs
+          ls smoke-jobs/*/output/
+          test -f "$(ls smoke-jobs/*/output/*.dxf | head -1)"
+
+      # The DWG reader is optional: if it cannot be built here, the program is still published and works on DXF.
+      - uses: msys2/setup-msys2@v2
+        id: msys
+        continue-on-error: true
+        with:
+          msystem: MINGW64
+          update: false
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja git
+      - name: Build dwg2dxf.exe (LibreDWG, pinned commit) and collect the libraries it needs
+        id: dwg
+        continue-on-error: true
+        shell: msys2 {0}
+        run: |
+          set -e
+          cd "$GITHUB_WORKSPACE"
+          git init -q libredwg && cd libredwg
+          git remote add origin https://github.com/LibreDWG/libredwg
+          git fetch -q --depth 1 origin "$LIBREDWG_COMMIT"
+          git checkout -q FETCH_HEAD
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLIBREDWG_DISABLE_JSON=ON -DBUILD_SHARED_LIBS=OFF \
+                -DENABLE_LTO=OFF -DDISABLE_WERROR=ON -DCMAKE_EXE_LINKER_FLAGS="-static"
+          cmake --build build --target dwg2dxf
+          # The program is not fully static (it needs libiconv-2.dll): ship every MinGW library it loads beside it.
+          mkdir -p "$GITHUB_WORKSPACE/dwg-out"
+          cp build/dwg2dxf.exe "$GITHUB_WORKSPACE/dwg-out/"
+          ldd build/dwg2dxf.exe | awk '/\/mingw64\/bin\//{print $3}' | while read -r dll; do cp "$dll" "$GITHUB_WORKSPACE/dwg-out/"; done
+          ls -la "$GITHUB_WORKSPACE/dwg-out"
+      - name: Verify the DWG reader from a clean folder (only what goes in the zip, nothing from this machine)
+        id: dwgverify
+        if: steps.dwg.outcome == 'success'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          # An earlier version passed here because the build machine has the MinGW libraries installed; a clean PATH
+          # and a fresh folder make this test fail the same way a laptop would.
+          $tmp = Join-Path $env:RUNNER_TEMP "dwgcheck"
+          Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory $tmp | Out-Null
+          Copy-Item "$env:GITHUB_WORKSPACE\dwg-out\*" $tmp
+          Copy-Item "$env:GITHUB_WORKSPACE\apps\adm-gis-prep\dist\m4adm.exe" $tmp
+          Copy-Item "$env:GITHUB_WORKSPACE\libredwg\test\test-data\example_2018.dwg" "$tmp\sample.dwg"
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+          & "$tmp\dwg2dxf.exe" --version
+          if ($LASTEXITCODE -ne 0) { throw "dwg2dxf.exe did not start (exit $LASTEXITCODE)" }
+          & "$tmp\dwg2dxf.exe" -y -o "$tmp\sample.dxf" "$tmp\sample.dwg" 2>&1 | Out-Null
+          if (-not (Test-Path "$tmp\sample.dxf") -or (Get-Item "$tmp\sample.dxf").Length -lt 100000) { throw "dwg2dxf.exe produced no DXF" }
+          "dwg2dxf.exe converted a real DWG to a $((Get-Item "$tmp\sample.dxf").Length) byte DXF"
+          # and the packaged program finds the reader beside itself
+          & "$tmp\m4adm.exe" convert "$tmp\sample.dwg" --jobs "$tmp\jobs" 2>&1 | Out-Host
+          if (-not (Select-String -Path "$tmp\jobs\*\audit.jsonl" -Pattern "dwg_converted" -Quiet)) {
+            throw "m4adm.exe did not read the DWG through dwg2dxf.exe"
+          }
+          "m4adm.exe read the DWG through the reader beside it"
+          # m4adm exits non-zero for a blocked draft (the sample has no wall layers); pwsh would pass that code on.
+          exit 0
+
+      - name: Assemble the zip
+        run: |
+          mkdir -p stage/M4-GIS-Prep
+          cp dist/m4adm.exe packaging/README-WINDOWS.txt stage/M4-GIS-Prep/
+          if [ "${{ steps.dwgverify.outcome }}" = "success" ]; then
+            cp "$GITHUB_WORKSPACE"/dwg-out/* stage/M4-GIS-Prep/
+            echo "DWG reader: included and verified from a clean folder" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "DWG reader: NOT included (it could not be built or did not pass the clean-folder test); the program works on DXF files" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          ls -la stage/M4-GIS-Prep
+          (cd stage && powershell -NoProfile -Command "Compress-Archive -Path M4-GIS-Prep -DestinationPath ../M4-GIS-Prep-windows.zip -Force")
+          ls -la M4-GIS-Prep-windows.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: M4-GIS-Prep-windows
+          path: apps/adm-gis-prep/M4-GIS-Prep-windows.zip
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: M4-GIS-Prep-windows
+      - name: Publish the pre-release desktop-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          notes="Windows desktop program of the GIS Preparation tool. Unzip, double-click m4adm.exe. PROVISIONAL: NOT ADM-VALIDATED. Built from ${GITHUB_SHA::7}."
+          if gh release view desktop-latest >/dev/null 2>&1; then
+            gh release upload desktop-latest M4-GIS-Prep-windows.zip --clobber
+            gh release edit desktop-latest --notes "$notes"
+          else
+            gh release create desktop-latest M4-GIS-Prep-windows.zip --prerelease --target "$GITHUB_SHA" \
+              --title "M4 GIS Preparation - Windows desktop program" --notes "$notes"
+          fi

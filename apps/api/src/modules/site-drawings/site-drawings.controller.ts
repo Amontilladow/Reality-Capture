@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Res, StreamableFile } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res, StreamableFile } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import type { Response } from 'express';
 import type { AuthenticatedUser, SiteDrawingWorkflowStatus } from '@engineeringos/types';
@@ -9,6 +9,7 @@ import { SiteDrawingSyncService } from './site-drawing-sync.service';
 import { GetSiteDrawingUploadUrlDto } from './dto/get-upload-url.dto';
 import { ExtractSiteDrawingFieldsDto } from './dto/extract-fields.dto';
 import { RegisterSiteDrawingDto } from './dto/register-drawing.dto';
+import { CreateSiteDrawingOrgMappingDto } from './dto/org-mapping.dto';
 import { RegisterSiteDrawingRevisionDto } from './dto/register-revision.dto';
 import { SetSiteDrawingWorkflowStatusDto } from './dto/set-workflow-status.dto';
 import { StartOfflinePackageDto, CompleteOfflinePackageDto } from './dto/offline-package.dto';
@@ -72,10 +73,11 @@ export class SiteDrawingsController {
     @CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string,
     @Query('search') search?: string, @Query('discipline') discipline?: string,
     @Query('buildingOrZone') buildingOrZone?: string, @Query('floorOrLevel') floorOrLevel?: string,
+    @Query('responsibleSubcontractor') responsibleSubcontractor?: string,
     @Query('workflowStatus') workflowStatus?: string, @Query('page') page?: string, @Query('perPage') perPage?: string,
   ) {
     const result = await this.svc.listDrawings(u.companyId, pid, {
-      search, discipline, buildingOrZone, floorOrLevel,
+      search, discipline, buildingOrZone, floorOrLevel, responsibleSubcontractor,
       workflowStatus: workflowStatus as SiteDrawingWorkflowStatus | undefined,
       page: page ? Number(page) : undefined, perPage: perPage ? Number(perPage) : undefined,
     });
@@ -83,9 +85,36 @@ export class SiteDrawingsController {
   }
 
   @Get('filter-options')
-  @ApiOperation({ summary: 'Distinct discipline/building/floor values present in this project\'s register' })
+  @ApiOperation({ summary: 'Distinct discipline/building/floor/subcontractor values present in this project\'s register' })
   async getFilterOptions(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
     return { data: await this.svc.getFilterOptions(u.companyId, pid), error: null };
+  }
+
+  @Get('dashboard-stats')
+  @ApiOperation({ summary: 'Register summary counts for the Hub landing dashboard' })
+  async getDashboardStats(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
+    return { data: await this.svc.getDashboardStats(u.companyId, pid), error: null };
+  }
+
+  @Get('org-mappings')
+  @ApiOperation({ summary: 'Project-specific drawing-number-prefix -> organization mappings' })
+  async listOrgMappings(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string) {
+    return { data: await this.svc.listOrgMappings(u.companyId, pid), error: null };
+  }
+
+  @Post('org-mappings')
+  @RequireCategoryAction('drawings', 'edit', 'manage_project_records')
+  @ApiOperation({ summary: 'Create or update an organization mapping (same pattern + role replaces the existing one)' })
+  async createOrgMapping(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: CreateSiteDrawingOrgMappingDto) {
+    return { data: await this.svc.createOrgMapping(u.companyId, pid, u.id, dto.pattern, dto.organizationName, dto.role), error: null };
+  }
+
+  @Delete('org-mappings/:mappingId')
+  @RequireCategoryAction('drawings', 'edit', 'manage_project_records')
+  @ApiOperation({ summary: 'Remove an organization mapping' })
+  async deleteOrgMapping(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('mappingId') mappingId: string) {
+    await this.svc.deleteOrgMapping(u.companyId, pid, mappingId);
+    return { data: { removed: true }, error: null };
   }
 
   // Same filters as list() above, no pagination -- every matching drawing,
@@ -96,10 +125,12 @@ export class SiteDrawingsController {
     @CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Res({ passthrough: true }) res: Response,
     @Query('search') search?: string, @Query('discipline') discipline?: string,
     @Query('buildingOrZone') buildingOrZone?: string, @Query('floorOrLevel') floorOrLevel?: string,
+    @Query('responsibleSubcontractor') responsibleSubcontractor?: string,
     @Query('workflowStatus') workflowStatus?: string,
   ) {
     const { buffer, filename } = await this.svc.exportRegister(u.companyId, pid, {
-      search, discipline, buildingOrZone, floorOrLevel, workflowStatus: workflowStatus as SiteDrawingWorkflowStatus | undefined,
+      search, discipline, buildingOrZone, floorOrLevel, responsibleSubcontractor,
+      workflowStatus: workflowStatus as SiteDrawingWorkflowStatus | undefined,
     });
     res.set({
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -153,9 +184,12 @@ export class SiteDrawingsController {
   }
 
   @Get('revisions/:revisionId/download')
-  @ApiOperation({ summary: "A short-lived, authorized download URL for a revision's stored file" })
-  async getDownloadUrl(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('revisionId') revisionId: string) {
-    return { data: await this.svc.getAuthorizedDownloadUrl(u.companyId, pid, u.id, revisionId), error: null };
+  @ApiOperation({ summary: "A short-lived, authorized URL for a revision's stored file ('view' for the in-browser viewer, always allowed; 'download' for an explicit save, blocked once the revision is superseded)" })
+  async getDownloadUrl(
+    @CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('revisionId') revisionId: string,
+    @Query('purpose') purpose?: 'view' | 'download',
+  ) {
+    return { data: await this.svc.getAuthorizedDownloadUrl(u.companyId, pid, u.id, revisionId, purpose === 'download' ? 'download' : 'view'), error: null };
   }
 
   @Post('offline-packages')

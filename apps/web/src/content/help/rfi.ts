@@ -43,7 +43,7 @@ export const rfiArticles: HelpArticle[] = [
   {
     slug: 'writing-a-clear-rfi-description',
     category: 'rfi',
-    title: 'Writing a Clear RFI Description',
+    title: 'Writing a clear RFI description',
     summary: 'Tips for a question that gets answered quickly.',
     commonMistakes: [
       'Asking multiple unrelated questions in one RFI -- split them so each can be answered and closed independently.',
@@ -55,7 +55,7 @@ export const rfiArticles: HelpArticle[] = [
   {
     slug: 'attaching-supporting-documents-to-rfi',
     category: 'rfi',
-    title: 'Attaching Supporting Documents',
+    title: 'Attaching supporting documents',
     summary: 'Adding drawings, photos, or calculation sheets to an RFI.',
     requiredPermissions: '"manage_project_records" permission, or being that project\'s Project Lead.',
     steps: ['Open the RFI and use its attachment upload control.'],
@@ -90,7 +90,7 @@ export const rfiArticles: HelpArticle[] = [
   {
     slug: 'tracking-rfi-status',
     category: 'rfi',
-    title: 'Tracking RFI Status',
+    title: 'Tracking RFI status',
     summary: 'Following an RFI through its workflow.',
     howToTrackProgress: 'The RFI list shows each RFI\'s current status (draft/submitted/responded/under review/closed/etc.) and priority; the RFI\'s own detail page shows its full stamp history (query/answer) and, if drawing impact applies, whether the drawing update has been applied and sent to site.',
     relatedSlugs: ['understanding-rfi'],
@@ -99,7 +99,7 @@ export const rfiArticles: HelpArticle[] = [
   {
     slug: 'understanding-rfi-closure',
     category: 'rfi',
-    title: 'Understanding RFI Closure',
+    title: 'Understanding RFI closure',
     summary: 'How an RFI gets closed, with or without a review step.',
     whatItDoes: 'An RFI can be closed directly (requires "manage_rfis") once responded, or routed through a review step first: sent to a stakeholder (e.g. PMC or client) for sign-off, who then approves it (which closes it) or rejects it (which sends it back for clarification).',
     requiredPermissions: 'Direct close: "manage_rfis". Submit-for-review and decide-review: "manage_rfis" OR the narrower "approve_rfis".',
@@ -110,7 +110,7 @@ export const rfiArticles: HelpArticle[] = [
   {
     slug: 'common-rfi-mistakes',
     category: 'rfi',
-    title: 'Common RFI Mistakes',
+    title: 'Common RFI mistakes',
     summary: 'Frequent mistakes when raising or managing RFIs.',
     commonMistakes: [
       'Forgetting to submit a drafted RFI -- it stays invisible to anyone expecting to respond until submitted.',

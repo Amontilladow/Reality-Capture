@@ -231,10 +231,11 @@ tolerances:
   overlap_area: 0.0001
   arc_sagitta: 0.01
   attribute_vertex: 0.0001
-  # DRM review (Yas Island, Nov 2026): a door/window must be adjacent to two spaces or one space and the floor
-  # outline. The DRM-accepted KHALIFA CITY G file has doors 5-11 mm short of their second space, so "adjacent"
-  # tolerates a small gap; 2 cm passes all four accepted drawings.
-  opening_contact: 0.02
+  # DRM review (Yas Island, Nov 2026): a door/window must be adjacent to two spaces or one space and the Floor
+  # polygon. Calibrated on all 294 openings of the 5 old Yas files against the 11 handles DRM flagged: 1.5 cm
+  # catches all 11 with no false alarm (a 2 cm gap, door 291, was flagged; gaps <= 5 mm were accepted), and still
+  # accepts the 1.09 cm gap in the DRM-accepted KHALIFA CITY G file.
+  opening_contact: 0.015
 
 # Generic checks are written once and emit generic rule ids; this profile maps them onto its own rules.
 # null = not applicable in this profile (listed in every report as "checks not applicable").
@@ -678,7 +679,7 @@ rules:
     severity: ERROR
     check: bdms.opening_adjacency
     implementation: IMPLEMENTED
-    limitation: "Adjacent = within tolerances.opening_contact (2 cm) of the space, or overlapping it; calibrated on the four DRM-accepted KHALIFA CITY drawings (gaps up to 11 mm accepted, doors lying inside a roof-level space accepted). The review report gives no tolerance."
+    limitation: "Adjacent = within tolerances.opening_contact (1.5 cm) of the space, or overlapping it; the floor outline is the Floor polygon, not the BuildingOutline. Calibrated on the 294 openings of the old Yas Island files against the 11 handles DRM flagged (11/11 caught, 0 false alarms; a 1.99 cm gap was flagged, gaps of 5 mm or less were accepted) and on the accepted KHALIFA CITY drawings (a 1.09 cm gap accepted). The review report itself gives no tolerance."
   - id: DRM-SNAP-01
     title: Where geometries of BuildingOutline, Floor, Space, Unit, Window and Door meet, a vertex lying on another geometry's edge has a matching vertex there
     qc_error: Snapping errors found between layers BuildingOutLine, Floor, Space, Unit, Window, and Door

@@ -451,13 +451,13 @@ export default function RfiDetailPage() {
         actions={
           <>
             {!isSubcontractor && (
-              <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary text-xs">
+              <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary ">
                 Email
               </button>
             )}
             <Link
               to={`/projects/${projectId}/rfis/${rfi.raisedByOrganizationSlot === 'subcontractor' ? 'subcontractor' : 'main'}`}
-              className="btn-ghost !px-2 !py-2 text-xs"
+              className="btn-ghost !px-2 !py-2 "
             >
               <BackIcon /> Back to RFIs
             </Link>
@@ -560,7 +560,7 @@ export default function RfiDetailPage() {
         {!isSubcontractor && (
           <MobileFold title="Email history">
           <section className="panel tick-frame p-6">
-            <div className="field-label mb-4">Email History</div>
+            <div className="field-label mb-4">Email history</div>
             <EmailHistoryList projectId={projectId} relatedRecordType="rfi" relatedRecordId={rfi.id} />
           </section>
           </MobileFold>
@@ -569,19 +569,19 @@ export default function RfiDetailPage() {
         {/* RFI Information */}
         <section className="panel tick-frame p-6">
           <div className="flex items-center justify-between mb-4">
-            <div className="field-label !mb-0">RFI Information</div>
+            <div className="field-label !mb-0">RFI information</div>
             {canEditQuery && (
               <button
                 onClick={() => saveDraftMutation.mutate()}
                 disabled={saveDraftMutation.isPending}
-                className="btn-secondary !px-4 !py-2 text-xs"
+                className="btn-secondary !px-4 !py-2 "
               >
                 {saveDraftMutation.isPending ? 'Saving…' : 'Save'}
               </button>
             )}
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
-            <InfoRow label="RFI Number" value={rfi.rfiNumber ?? '—'} mono />
+            <InfoRow label="RFI number" value={rfi.rfiNumber ?? '—'} mono />
             <InfoRow label="Discipline" value={rfi.discipline ? RFI_DISCIPLINE_LABELS[rfi.discipline] : '—'} />
             <InfoRow label="Priority" value={RFI_PRIORITY_LABELS[rfi.priority]} />
             <InfoRow label="Raised by" value={rfi.createdByName ?? '—'} />
@@ -616,7 +616,7 @@ export default function RfiDetailPage() {
                 />
                 <div>
                   <ImpactEditor
-                    title="Drawing/Model Updated"
+                    title="Drawing/model updated"
                     level={drawingImpactLevel}
                     onLevelChange={setDrawingImpactLevel}
                     description={drawingImpactDescription}
@@ -662,7 +662,7 @@ export default function RfiDetailPage() {
                 />
                 <div>
                   <ImpactSummary
-                    title="Drawing/Model Updated"
+                    title="Drawing/model updated"
                     level={rfi.drawingImpactLevel}
                     description={rfi.drawingImpactDescription}
                     labels={DRAWING_UPDATE_STATUS_LABELS}
@@ -693,7 +693,7 @@ export default function RfiDetailPage() {
               <button
                 onClick={() => saveDraftMutation.mutate()}
                 disabled={saveDraftMutation.isPending}
-                className="btn-secondary !px-4 !py-2 text-xs"
+                className="btn-secondary !px-4 !py-2 "
               >
                 {saveDraftMutation.isPending ? 'Saving…' : 'Save draft'}
               </button>
@@ -887,7 +887,7 @@ export default function RfiDetailPage() {
             <button
               onClick={() => generateExternalAccessMutation.mutate()}
               disabled={!extEmail.trim() || generateExternalAccessMutation.isPending}
-              className="btn-primary !px-4 !py-2 text-xs"
+              className="btn-primary !px-4 !py-2 "
             >
               {generateExternalAccessMutation.isPending ? 'Generating…' : 'Generate link'}
             </button>
@@ -899,7 +899,7 @@ export default function RfiDetailPage() {
                 <input readOnly className="field-input !py-2 text-xs font-mono" value={extGeneratedUrl} onFocus={(e) => e.target.select()} />
                 <button
                   onClick={() => navigator.clipboard.writeText(extGeneratedUrl)}
-                  className="btn-secondary !px-4 !py-2 text-xs shrink-0"
+                  className="btn-secondary !px-4 !py-2 shrink-0"
                 >
                   Copy
                 </button>
@@ -969,13 +969,13 @@ export default function RfiDetailPage() {
         {/* Action buttons */}
         <div className="flex flex-wrap gap-2 pt-2 border-t border-base-600">
           {canSubmit && (
-            <button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending} className="btn-primary !px-4 !py-2 text-xs">
+            <button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending} className="btn-primary !px-4 !py-2 ">
               {submitMutation.isPending ? 'Submitting…' : 'Submit'}
             </button>
           )}
 
           {canRequestClarification && !clarifyOpen && (
-            <button onClick={() => setClarifyOpen(true)} className="btn-secondary !px-4 !py-2 text-xs">
+            <button onClick={() => setClarifyOpen(true)} className="btn-secondary !px-4 !py-2 ">
               Request clarification
             </button>
           )}
@@ -990,11 +990,11 @@ export default function RfiDetailPage() {
               <button
                 onClick={() => clarifyMutation.mutate()}
                 disabled={!clarifyReason.trim() || clarifyMutation.isPending}
-                className="btn-primary !px-4 !py-2 text-xs"
+                className="btn-primary !px-4 !py-2 "
               >
                 Send
               </button>
-              <button onClick={() => setClarifyOpen(false)} className="btn-ghost !px-2 !py-2 text-xs">Cancel</button>
+              <button onClick={() => setClarifyOpen(false)} className="btn-ghost !px-2 !py-2 ">Cancel</button>
             </div>
           )}
           {clarifyMutation.isError && <p className="field-error">{apiErrorMessage(clarifyMutation.error)}</p>}
@@ -1003,7 +1003,7 @@ export default function RfiDetailPage() {
             <button
               onClick={() => respondMutation.mutate()}
               disabled={isRichTextEmpty(answerDraft) || respondMutation.isPending}
-              className="btn-primary !px-4 !py-2 text-xs"
+              className="btn-primary !px-4 !py-2 "
             >
               {respondMutation.isPending ? 'Submitting…' : 'Respond'}
             </button>
@@ -1012,7 +1012,7 @@ export default function RfiDetailPage() {
             <button
               onClick={() => submitForReviewMutation.mutate()}
               disabled={submitForReviewMutation.isPending}
-              className="btn-secondary !px-4 !py-2 text-xs"
+              className="btn-secondary !px-4 !py-2 "
             >
               {submitForReviewMutation.isPending ? 'Sending…' : 'Submit for review'}
             </button>
@@ -1038,11 +1038,11 @@ export default function RfiDetailPage() {
               <button
                 onClick={() => decideReviewMutation.mutate({ decision: 'approved', organizationSlot: closingOrgSlot || undefined })}
                 disabled={!closingOrgSlot || decideReviewMutation.isPending}
-                className="btn-primary !px-4 !py-2 text-xs"
+                className="btn-primary !px-4 !py-2 "
               >
                 Approve &amp; close
               </button>
-              <button onClick={() => setReviewRejectOpen(true)} className="btn-secondary !px-4 !py-2 text-xs">
+              <button onClick={() => setReviewRejectOpen(true)} className="btn-secondary !px-4 !py-2 ">
                 Reject
               </button>
             </>
@@ -1058,11 +1058,11 @@ export default function RfiDetailPage() {
               <button
                 onClick={() => decideReviewMutation.mutate({ decision: 'rejected', comment: reviewRejectComment.trim() })}
                 disabled={!reviewRejectComment.trim() || decideReviewMutation.isPending}
-                className="btn-primary !px-4 !py-2 text-xs"
+                className="btn-primary !px-4 !py-2 "
               >
                 Send back
               </button>
-              <button onClick={() => setReviewRejectOpen(false)} className="btn-ghost !px-2 !py-2 text-xs">Cancel</button>
+              <button onClick={() => setReviewRejectOpen(false)} className="btn-ghost !px-2 !py-2 ">Cancel</button>
             </div>
           )}
           {decideReviewMutation.isError && <p className="field-error">{apiErrorMessage(decideReviewMutation.error)}</p>}
@@ -1071,24 +1071,24 @@ export default function RfiDetailPage() {
             <button
               onClick={() => closeMutation.mutate()}
               disabled={!closingOrgSlot || closeMutation.isPending}
-              className="btn-secondary !px-4 !py-2 text-xs"
+              className="btn-secondary !px-4 !py-2 "
             >
               Close RFI
             </button>
           )}
           {canReopen && (
-            <button onClick={() => reopenMutation.mutate()} disabled={reopenMutation.isPending} className="btn-secondary !px-4 !py-2 text-xs">
+            <button onClick={() => reopenMutation.mutate()} disabled={reopenMutation.isPending} className="btn-secondary !px-4 !py-2 ">
               ↩ Reopen
             </button>
           )}
 
-          <button onClick={handleDownloadPdf} disabled={downloading} className="btn-secondary !px-4 !py-2 text-xs ml-auto">
+          <button onClick={handleDownloadPdf} disabled={downloading} className="btn-secondary !px-4 !py-2 ml-auto">
             {downloading ? 'Preparing…' : 'Download PDF'}
           </button>
           <button
             onClick={handleDownloadXls}
             disabled={xlsDownloading}
-            className="btn-secondary !px-4 !py-2 text-xs"
+            className="btn-secondary !px-4 !py-2 "
             title="Editable spreadsheet, formatted to match the PDF"
           >
             {xlsDownloading ? 'Preparing…' : 'Download XLS'}
@@ -1412,7 +1412,7 @@ function AttachmentSection({
               <option key={t} value={t}>{RFI_DOCUMENT_TYPE_LABELS[t]}</option>
             ))}
           </Listbox>
-          <label className="btn-secondary !px-4 !py-2 text-xs cursor-pointer">
+          <label className="btn-secondary !px-4 !py-2 cursor-pointer">
             {uploadMutation.isPending ? 'Uploading…' : '+ Upload document'}
             <input
               type="file"

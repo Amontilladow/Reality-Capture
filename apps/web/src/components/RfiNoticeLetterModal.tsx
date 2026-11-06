@@ -190,7 +190,7 @@ export function RfiNoticeLetterModal({
             type="button"
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending}
-            className="btn-secondary !px-4 !py-2 text-xs"
+            className="btn-secondary !px-4 !py-2 "
           >
             {saveMutation.isPending ? 'Saving…' : 'Save draft'}
           </button>
@@ -198,7 +198,7 @@ export function RfiNoticeLetterModal({
             type="button"
             onClick={() => shareMutation.mutate()}
             disabled={!letterExists || isShared || shareMutation.isPending}
-            className="btn-primary !px-4 !py-2 text-xs"
+            className="btn-primary !px-4 !py-2 "
             title={!letterExists ? 'Save a draft first' : undefined}
           >
             {shareMutation.isPending ? 'Sharing…' : isShared ? 'Shared' : 'Share'}
@@ -207,7 +207,7 @@ export function RfiNoticeLetterModal({
             type="button"
             onClick={handleDownloadPdf}
             disabled={!letterExists || downloading}
-            className="btn-secondary !px-4 !py-2 text-xs ml-auto"
+            className="btn-secondary !px-4 !py-2 ml-auto"
             title={!letterExists ? 'Save a draft first' : undefined}
           >
             {downloading ? 'Preparing…' : 'Download PDF'}

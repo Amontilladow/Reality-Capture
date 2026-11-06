@@ -1,19 +1,20 @@
 import axios from 'axios';
-import { apiGet, apiGetWithMeta, apiPatch, apiPost, apiDownload } from './api';
+import { apiGet, apiGetWithMeta, apiPatch, apiPost, apiDelete, apiDownload } from './api';
 import type {
   SiteDrawingWithCurrentRevision, SiteDrawingRevision, SiteDrawingWorkflowStatus,
   SiteDrawingOfflinePackage, SiteDrawingOfflinePackageStatus, SiteDrawingSourceHealth,
   SiteDrawingImportBatch, SiteDrawingReviewQueueItem, DocSource, ExtractedDrawingFields,
+  SiteDrawingOrgMapping, SiteDrawingOrgMappingRole,
 } from '@engineeringos/types';
 export type {
   SiteDrawing, SiteDrawingRevision, SiteDrawingWithCurrentRevision, SiteDrawingWorkflowStatus,
   SiteDrawingOfflinePackage, SiteDrawingOfflinePackageStatus, SiteDrawingSourceHealth, SiteDrawingSourceProvider,
   SiteDrawingDocumentClassification, SiteDrawingExtractionStatus, SiteDrawingImportBatch, SiteDrawingImportBatchStatus,
-  SiteDrawingReviewQueueItem, ExtractedDrawingFields, DocSource,
+  SiteDrawingReviewQueueItem, ExtractedDrawingFields, DocSource, SiteDrawingOrgMapping, SiteDrawingOrgMappingRole,
 } from '@engineeringos/types';
 export {
   SITE_DRAWING_WORKFLOW_STATUSES, VALID_FOR_SITE_USE_STATUSES, SITE_DRAWING_DOCUMENT_CLASSIFICATIONS,
-  SITE_DRAWING_EXTRACTION_STATUSES,
+  SITE_DRAWING_EXTRACTION_STATUSES, SITE_DRAWING_ORG_MAPPING_ROLES,
 } from '@engineeringos/types';
 
 const base = (projectId: string) => `/projects/${projectId}/site-drawings`;
@@ -23,6 +24,7 @@ export interface SiteDrawingFilters {
   discipline?: string;
   buildingOrZone?: string;
   floorOrLevel?: string;
+  responsibleSubcontractor?: string;
   workflowStatus?: SiteDrawingWorkflowStatus;
   page?: number;
   perPage?: number;
@@ -37,6 +39,8 @@ export interface RegisterSiteDrawingInput {
   discipline?: string;
   buildingOrZone?: string;
   floorOrLevel?: string;
+  originator?: string;
+  responsibleSubcontractor?: string;
   revisionNumber: string;
   workflowStatus: SiteDrawingWorkflowStatus;
   issueDate?: string;
@@ -93,9 +97,32 @@ export interface SiteDrawingFilterOptions {
   disciplines: string[];
   buildingsOrZones: string[];
   floorsOrLevels: string[];
+  subcontractors: string[];
 }
 export const getSiteDrawingFilterOptions = (projectId: string) =>
   apiGet<SiteDrawingFilterOptions>(`${base(projectId)}/filter-options`);
+
+export interface SiteDrawingDashboardStats {
+  total: number;
+  currentAuthorized: number;
+  superseded: number;
+  underReview: number;
+  newlyReceived: number;
+  requiringAttention: number;
+  recentRevisionActivity: number;
+}
+export const getSiteDrawingDashboardStats = (projectId: string) =>
+  apiGet<SiteDrawingDashboardStats>(`${base(projectId)}/dashboard-stats`);
+
+// ── Organization mapping (master spec section 4) ────────────────────────
+export const listSiteDrawingOrgMappings = (projectId: string) =>
+  apiGet<SiteDrawingOrgMapping[]>(`${base(projectId)}/org-mappings`);
+
+export const createSiteDrawingOrgMapping = (projectId: string, pattern: string, organizationName: string, role: SiteDrawingOrgMappingRole) =>
+  apiPost<SiteDrawingOrgMapping>(`${base(projectId)}/org-mappings`, { pattern, organizationName, role });
+
+export const deleteSiteDrawingOrgMapping = (projectId: string, mappingId: string) =>
+  apiDelete<{ removed: boolean }>(`${base(projectId)}/org-mappings/${mappingId}`);
 
 export const getSiteDrawingSourceHealth = (projectId: string) =>
   apiGet<SiteDrawingSourceHealth>(`${base(projectId)}/source-health`);
@@ -134,8 +161,15 @@ export const setSiteDrawingWorkflowStatus = (projectId: string, drawingId: strin
 // A fresh short-lived (15 min) presigned URL; never cached/reused past
 // that window (brief section 9). Callers should fetch this right before
 // opening the viewer or starting an offline download, not store it.
-export const getSiteDrawingDownloadUrl = (projectId: string, revisionId: string) =>
-  apiGet<{ url: string; expiresInSeconds: number; workflowStatus: SiteDrawingWorkflowStatus; isSuperseded: boolean }>(`${base(projectId)}/revisions/${revisionId}/download`);
+//
+// purpose: 'view' (default) backs the in-browser PDF viewer and always
+// works, including on a superseded revision -- viewing it with its
+// watermark is required, not blocked. 'download' backs an explicit
+// save-the-file action and is rejected server-side once the revision is
+// superseded (master spec section 8: enforced on the backend, not by
+// hiding the button).
+export const getSiteDrawingDownloadUrl = (projectId: string, revisionId: string, purpose: 'view' | 'download' = 'view') =>
+  apiGet<{ url: string; expiresInSeconds: number; workflowStatus: SiteDrawingWorkflowStatus; isSuperseded: boolean }>(`${base(projectId)}/revisions/${revisionId}/download`, { params: { purpose } });
 
 export const listOfflinePackages = (projectId: string) =>
   apiGet<SiteDrawingOfflinePackage[]>(`${base(projectId)}/offline-packages`);

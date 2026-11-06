@@ -73,7 +73,7 @@ describe('SiteDrawingImportProcessor', () => {
       single([batchRow]), // getBatch
       // reconcile() is ONE withTenant call with 4 sequential statements:
       // SELECT existing (none), INSERT drawing, INSERT revision, UPDATE current_revision_id
-      multi([[], [{ id: 'drawing-1' }], [{ id: 'revision-1' }], []]),
+      multi([[], [], [{ id: 'drawing-1' }], [{ id: 'revision-1' }], []]),
       single(undefined), // finish
     ]);
 
@@ -91,7 +91,7 @@ describe('SiteDrawingImportProcessor', () => {
     const { processor, aiClient, storage } = makeProcessor([
       single(undefined), // markStarted
       single([batchRow]), // getBatch
-      multi([[], [{ id: 'drawing-1' }], [{ id: 'revision-1' }], []]), // reconcile: SELECT existing (none), INSERT drawing, INSERT revision, UPDATE
+      multi([[], [], [{ id: 'drawing-1' }], [{ id: 'revision-1' }], []]), // reconcile: SELECT existing (none), INSERT drawing, INSERT revision, UPDATE
       single(undefined), // finish
     ]);
     (aiClient.ocrExtractText as jest.Mock).mockResolvedValue({ text: 'DRAWING NO: M-301\nREV: A', confidence: 0.9 });
@@ -112,7 +112,7 @@ describe('SiteDrawingImportProcessor', () => {
       single([batchRow]), // getBatch
       // reconcile: SELECT existing (none), INSERT drawing, INSERT revision, UPDATE;
       // falls back to the filename-derived drawing number since fields stays null.
-      multi([[], [{ id: 'drawing-1' }], [{ id: 'revision-1' }], []]),
+      multi([[], [], [{ id: 'drawing-1' }], [{ id: 'revision-1' }], []]),
       single(undefined), // finish
     ]);
     (aiClient.ocrExtractText as jest.Mock).mockRejectedValue(new Error('ai-service down'));

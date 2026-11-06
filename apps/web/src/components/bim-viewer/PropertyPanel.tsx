@@ -244,14 +244,14 @@ export function PropertyPanel({
                 type="button"
                 onClick={() => createPinMutation.mutate()}
                 disabled={createPinMutation.isPending}
-                className="btn-primary flex-1 text-xs"
+                className="btn-primary flex-1 "
               >
                 {createPinMutation.isPending ? 'Creating…' : 'Create pin'}
               </button>
               <button
                 type="button"
                 onClick={() => { setCreatingPin(false); setNewPinName(''); }}
-                className="btn-ghost flex-1 text-xs"
+                className="btn-ghost flex-1 "
               >
                 Cancel
               </button>
@@ -356,11 +356,11 @@ export function PropertyPanel({
             <div className="flex gap-2">
               <button
                 type="button" onClick={() => statusMutation.mutate()} disabled={statusMutation.isPending}
-                className="btn-primary flex-1 text-xs"
+                className="btn-primary flex-1 "
               >
                 {statusMutation.isPending ? 'Saving…' : 'Save'}
               </button>
-              <button type="button" onClick={() => setStatusDraft(null)} className="btn-ghost flex-1 text-xs">
+              <button type="button" onClick={() => setStatusDraft(null)} className="btn-ghost flex-1 ">
                 Cancel
               </button>
             </div>

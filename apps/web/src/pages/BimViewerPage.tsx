@@ -206,9 +206,7 @@ export default function BimViewerPage() {
           <div className="flex items-center gap-4">
             <ElementSearch projectId={projectId} modelId={modelId} onSelect={handleSelectFromSearch} />
             <button
-              className={showStatusOverlay ? 'btn-primary' : 'btn-secondary'}
-              onClick={() => setShowStatusOverlay((v) => !v)}
-              title="Colour-code every element by construction status"
+              className={showStatusOverlay ? 'btn-primary' : 'btn-secondary'} onClick={() => setShowStatusOverlay((v) => !v)} title="Colour-code every element by construction status"
             >
               {showStatusOverlay ? 'Hide progress overlay' : 'Show progress overlay'}
             </button>

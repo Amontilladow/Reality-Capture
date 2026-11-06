@@ -104,7 +104,7 @@ export default function MessagesPage() {
           eyebrow="Messages"
           title={messages[0]?.subject ?? 'Thread'}
           actions={
-            <button onClick={closeThread} className="btn-ghost text-xs">
+            <button onClick={closeThread} className="btn-ghost ">
               Back to inbox
             </button>
           }

@@ -66,6 +66,13 @@ export interface ExtractedDrawingFields {
   revisionNumber?: string;
   issueDate?: string;
   discipline?: string;
+  // Resolved from the project's own site_drawing_org_mappings (a
+  // drawing-number-prefix lookup an authorized user maintains), matched
+  // against this drawingNumber -- never guessed from title-block text
+  // directly; see migration 080's own comment on why the mapping stays a
+  // literal prefix match rather than an inference engine.
+  originator?: string;
+  responsibleSubcontractor?: string;
   source: 'embedded_text' | 'ocr';
   // A rough 0-1 confidence the extractor itself reports; never treated as
   // a guarantee, only a threshold for CONFIRMED vs. NEEDS_REVIEW.
@@ -124,6 +131,14 @@ export interface SiteDrawing {
   discipline?: string;
   buildingOrZone?: string;
   floorOrLevel?: string;
+  // The consultant/originator who issued the drawing, and the
+  // subcontractor responsible for the work it describes -- two distinct
+  // roles (master spec section 4: "do not confuse the drawing originator
+  // with the subcontractor responsible for executing the work"). Either
+  // may come from extraction (an org-mapping match) or be set/corrected
+  // by a human; neither is ever inferred from a filename alone.
+  originator?: string;
+  responsibleSubcontractor?: string;
   sourceProvider: SiteDrawingSourceProvider;
   // Stable provider identity: always set, including a generated UUID for
   // 'internal' drawings (see migration 072's own comment on why this is
@@ -177,6 +192,25 @@ export interface SiteDrawingOfflinePackage {
   lastVerifiedAt: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export const SITE_DRAWING_ORG_MAPPING_ROLES = ['originator', 'subcontractor'] as const;
+export type SiteDrawingOrgMappingRole = typeof SITE_DRAWING_ORG_MAPPING_ROLES[number];
+
+// A project-specific "drawing numbers starting with X belong to
+// organization Y" rule an authorized user maintains (master spec section
+// 4); extraction consults these before falling back to any generic
+// heuristic, and reuses a confirmed mapping on every later upload instead
+// of asking again.
+export interface SiteDrawingOrgMapping {
+  id: string;
+  companyId: string;
+  projectId: string;
+  pattern: string;
+  organizationName: string;
+  role: SiteDrawingOrgMappingRole;
+  createdBy: string;
+  createdAt: string;
 }
 
 // listReviewQueue()'s own return shape -- a bare SiteDrawingRevision has no
