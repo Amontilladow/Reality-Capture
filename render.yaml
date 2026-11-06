@@ -180,6 +180,26 @@ services:
         sync: false
       - key: SMTP_FROM
         sync: false
+      # WhatsApp Business Cloud API (Meta) -- the notification engine's
+      # Phase 3 channel. Scaffolded (queue, templates, delivery log, webhook
+      # receiver) but inert: WhatsAppService.isConfigured() gates every
+      # send on all of these being set, so nothing is attempted and nothing
+      # costs anything until an operator has completed Meta Business
+      # verification and filled these in by hand here, same as SMTP_* above.
+      - key: WHATSAPP_BUSINESS_ACCOUNT_ID
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: WHATSAPP_APP_SECRET
+        sync: false
+      - key: WHATSAPP_WEBHOOK_VERIFY_TOKEN
+        sync: false
+      - key: WHATSAPP_TEMPLATE_NAME
+        sync: false
+      - key: WHATSAPP_TEMPLATE_LANGUAGE
+        value: en_US
       - key: AI_SERVICE_URL
         value: http://engineeringos-ai-service:8001
       # GIS Preparation runs inside engineeringos-ai-service (routers/gis_prep.py),
