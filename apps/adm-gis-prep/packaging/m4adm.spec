@@ -14,6 +14,12 @@ datas = [
 datas += collect_data_files("pyproj")                                                # PROJ coordinate databases
 hiddenimports = (collect_submodules("uvicorn") + collect_submodules("m4adm") + ["multipart", "python_multipart"])
 
+try:                                    # program window (pywebview, Windows); the browser is the fallback without it
+    hiddenimports += collect_submodules("webview")
+    datas += collect_data_files("webview")
+except Exception:
+    pass
+
 a = Analysis(
     [os.path.join(SPECPATH, "m4adm_entry.py")],
     pathex=[os.path.join(root, "src")],

@@ -97,12 +97,12 @@ def test_packaged_program_finds_dwg2dxf_beside_itself(monkeypatch, tmp_path):
     assert found.kind == "libredwg" and Path(found.executable) == exe
 
 
-def test_double_click_starts_the_screen_and_opens_the_browser(monkeypatch):
+def test_double_click_starts_the_screen_in_its_own_window(monkeypatch):
     seen = {}
-    monkeypatch.setattr(cli, "cmd_ui", lambda a: seen.update(open=a.open, workspace=a.workspace) or 0)
+    monkeypatch.setattr(cli, "cmd_ui", lambda a: seen.update(window=a.window, workspace=a.workspace) or 0)
     monkeypatch.setattr(sys, "frozen", True, raising=False)
     assert cli.main([]) == 0
-    assert seen["open"] is True and Path(seen["workspace"]).name == "M4-GIS-Prep"
+    assert seen["window"] is True and Path(seen["workspace"]).name == "M4-GIS-Prep"
     monkeypatch.setattr(sys, "frozen", False, raising=False)
     with pytest.raises(SystemExit):                                       # from source, a command is still required
         cli.main([])
@@ -114,3 +114,31 @@ def test_a_busy_port_falls_back_to_a_free_one():
         taken = busy.getsockname()[1]
         assert cli._free_port(taken) not in (taken, 0)
     assert cli._free_port(0) > 0
+
+
+def test_window_check_and_fallback_without_a_web_view(monkeypatch, capsys):
+    """Without a web view library the program says so and the caller falls back to the browser."""
+    monkeypatch.setitem(sys.modules, "webview", None)                    # makes `import webview` fail
+    assert cli.main(["ui", "--check-window"]) == 1
+    assert "program window support: no" in capsys.readouterr().out
+    assert cli._open_window("http://127.0.0.1:1/", "x") is False
+
+
+def test_window_opens_and_download_setting_is_on(monkeypatch):
+    class FakeWebview:
+        settings: dict = {}
+        created: list = []
+        started = False
+
+        @classmethod
+        def create_window(cls, title, url, **kw):
+            cls.created.append((title, url, kw))
+
+        @classmethod
+        def start(cls):
+            cls.started = True
+
+    monkeypatch.setitem(sys.modules, "webview", FakeWebview)
+    assert cli._open_window("http://127.0.0.1:9/convert", "x") is True
+    assert FakeWebview.started and FakeWebview.settings["ALLOW_DOWNLOADS"] is True
+    assert FakeWebview.created[0][1] == "http://127.0.0.1:9/convert"
