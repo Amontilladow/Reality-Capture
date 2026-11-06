@@ -1,3 +1,24 @@
+# ---- Stage 1: LibreDWG's dwg2dxf, built from a pinned commit (libredwg-tools is not packaged for this Debian
+# release). JSON import is switched off (it needs a bundled library the commit fetch does not include) and the
+# result is one static program, so it runs in the final image unchanged. Tested on this exact commit against
+# AutoCAD's own DXF of the same drawing (apps/adm-gis-prep tests/test_reference_drm.py). A failed build leaves /out
+# empty and the image still builds.
+FROM python:3.12-slim AS dwgbuild
+ARG LIBREDWG_COMMIT=b2a8b7ff1dcc6558acea290d54c90e0c3236e219
+RUN mkdir -p /out \
+    && ( apt-get update \
+         && apt-get install -y --no-install-recommends git cmake build-essential ca-certificates \
+         && git init -q /src \
+         && git -C /src remote add origin https://github.com/LibreDWG/libredwg \
+         && git -C /src fetch -q --depth 1 origin "$LIBREDWG_COMMIT" \
+         && git -C /src checkout -q FETCH_HEAD \
+         && cmake -S /src -B /build -DCMAKE_BUILD_TYPE=Release -DLIBREDWG_DISABLE_JSON=ON -DBUILD_SHARED_LIBS=OFF \
+                  -DENABLE_LTO=OFF -DDISABLE_WERROR=ON \
+         && cmake --build /build --target dwg2dxf -j2 \
+         && cp /build/dwg2dxf /out/dwg2dxf ) \
+    || echo "WARNING: dwg2dxf could not be built; DWG input stays disabled"
+
+# ---- Stage 2: the service
 FROM python:3.12-slim
 WORKDIR /app
 # poppler-utils backs pdf2image's PDF-to-image rasterization for the OCR
@@ -18,12 +39,10 @@ ENV OMP_NUM_THREADS=1 \
 # Build context is the repository root (render.yaml dockerContext "."), so
 # the GIS Preparation engine (apps/adm-gis-prep) can be installed alongside.
 COPY apps/ai-service/requirements.txt .
-# DWG reader for GIS Preparation (LibreDWG's dwg2dxf). Optional on purpose: if the package is unavailable the build
-# goes on, DXF input keeps working and a DWG upload is blocked with a clear message. M4ADM_DWG_MEMORY_MB caps the
-# converter's resident memory (this service shares 512 MB with everything else).
-RUN (apt-get update && apt-get install -y --no-install-recommends libredwg-tools && dwg2dxf --version) \
-    || echo "WARNING: libredwg-tools unavailable; DWG input stays disabled"; \
-    rm -rf /var/lib/apt/lists/*
+# DWG reader for GIS Preparation: LibreDWG's dwg2dxf, built in the stage above. Optional on purpose: if that stage could
+# not build it, /out is empty, DXF input keeps working and a DWG upload is blocked with a clear message.
+# M4ADM_DWG_MEMORY_MB caps the converter's resident memory (this service shares 512 MB with everything else).
+COPY --from=dwgbuild /out/ /usr/local/bin/
 ENV M4ADM_DWG_MEMORY_MB=200
 RUN pip install --no-cache-dir -r requirements.txt
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
