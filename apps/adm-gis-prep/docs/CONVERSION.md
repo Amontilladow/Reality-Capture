@@ -203,3 +203,13 @@ A DXF takes roughly 100 MB plus 9 MB per MB of file to load, and a DWG becomes a
 On the desktop tool none of these variables is set, so there is no limit. If the converter is missing the job is BLOCKED with a message to save the drawing as DXF.
 
 **To run larger drawings in the cloud** the service needs more memory (a bigger plan), or the engine needs to load less of the DXF (not done yet).
+
+## On your own computer (Windows desktop program)
+
+`m4adm.exe` is the whole tool in one file. Double-click it: a window opens, then the browser opens on the **Convert a floor plan** page, which has the same fields as the web form (identifiers, unit number, floor and building facts, title block, optional control points). Nothing leaves the computer, and none of the cloud server's size limits apply (a large drawing only needs enough free memory: about 100 MB plus 9 MB per MB of DXF).
+
+- **Build:** the workflow `.github/workflows/desktop-exe.yml` builds it on a Windows machine, runs a real conversion with the packaged program, and publishes `M4-GIS-Prep-windows.zip` as the pre-release **desktop-latest**. Run it from the Actions tab (Run workflow) or push a tag `desktop-v*`. The recipe is `packaging/m4adm.spec`; a Linux build of the same recipe was tested here, including a real DWG through the bundled reader.
+- **DWG:** `dwg2dxf.exe` (LibreDWG, the same pinned commit as the cloud image) is placed beside `m4adm.exe` when the build could make it; the program finds it there. Without it, save the drawing as DXF first.
+- **Where the work is kept:** `C:\Users\<you>\M4-GIS-Prep\uploads` (originals, never modified) and `\jobs` (one folder per conversion).
+- **Not code-signed:** Windows SmartScreen shows an "unknown publisher" warning the first time; choose More info, then Run anyway.
+

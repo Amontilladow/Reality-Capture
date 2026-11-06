@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Conversion {{ job_id }}</h1>
+{% set blocked = 'BLOCKED' in r.status or r.blockers %}
+<p><span class="badge {{ 'b-blocked' if blocked else 'b-warn' }}">{{ r.status }}</span>
+  <span class="muted">&middot; {{ r.source.name }} &middot; original unchanged (SHA-256 verified): {{ 'yes' if r.source.unchanged else 'NO - check the job' }}</span></p>
+
+{% if r.blockers %}<h2>Blocked</h2><ul>{% for b in r.blockers %}<li class="error">{{ b }}</li>{% endfor %}</ul>{% endif %}
+{% if r.identifiers_missing %}<h2>Still to enter (the draft is blocked until these are filled)</h2>
+<ul>{% for m in r.identifiers_missing %}<li class="error">{{ m }}</li>{% endfor %}</ul>
+<p><a class="btn secondary" href="/convert">Back to the form</a></p>{% endif %}
+
+<h2>Downloads</h2>
+<p>{% for o in outputs %}<a class="btn" href="/conversions/{{ job_id }}/files/output/{{ o }}">{{ o }}</a> {% endfor %}
+  <a class="btn secondary" href="/conversions/{{ job_id }}/files/conversion_report.html" target="_blank">Full conversion report</a>
+  <a class="btn secondary" href="/conversions/{{ job_id }}/files/features.json">features.json</a></p>
+{% if r.output and r.output.block_source %}<p class="hint">Detail blocks: {{ r.output.block_source }}. Georeferenced: {{ 'yes' if r.output.georeferenced else 'NO - local coordinates' }}.</p>{% endif %}
+
+{% if qc %}<h2>Preliminary check of the draft, in the official QC's terms</h2>
+<p class="hint">Our own check, not the official ADM/DRM QC. Counts are per block / polygon / file, the way the official report counts them.</p>
+<div class="scroll"><table><tr><th>Official error text</th><th>Layer</th><th>Count</th></tr>
+{% for g in qc %}<tr><td>{{ g.qc_error }}</td><td>{{ g.layers | join(", ") }}</td><td>{{ g.count }}</td></tr>{% endfor %}</table></div>{% endif %}
+
+<h2>What was done</h2>
+<div class="scroll"><table>{% for k, v in r.result.items() %}<tr><th>{{ k }}</th><td>{{ v }}</td></tr>{% endfor %}</table></div>
+
+{% if has_preview %}<h2>Preview</h2><p class="hint">Generated geometry only, for orientation.</p>
+<img src="/conversions/{{ job_id }}/files/preview.svg" alt="Preview of the generated features" style="max-width:100%;border:1px solid var(--line)">{% endif %}
+
+<p style="margin-top:20px"><a class="btn" href="/convert">Convert another drawing</a></p>
+{% endblock %}
