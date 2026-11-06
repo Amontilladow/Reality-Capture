@@ -68,7 +68,7 @@ const NEVER_RESTORE: Partial<FormState> = { crsConfirmed: false, unitsConfirmed:
 // Values the drawing cannot provide; sent as conversion settings. Code-listed values (usage, drawing type) are
 // picked from the BDMS code lists; formats are checked before the job is sent (lib/bdms-inputs).
 const FACT_FIELDS = [
-  ['floor_height', 'Floor height (m)', '3.6'], ['building_number_of_floors', 'Number of floors', '2'],
+  ['floor_height', 'Floor height (m)', '3.6'], ['building_number_of_floors', 'Number of floors (= floor files you submit for this building)', '3'],
   ['building_height', 'Building height (m)', '15'],
   ['building_usage_category', 'Usage category (code list)', 'Commercial'],
   ['building_usage_type', 'Usage type (code list)', 'Single-use Commercial'],
