@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -44,6 +45,16 @@ def _rss_mb(pid: int) -> float:
     return 0.0
 
 
+def exit_hint(returncode: int) -> str:
+    """Plain words for converter exit codes that mean something specific."""
+    if returncode in (0xC0000135, -1073741515):       # STATUS_DLL_NOT_FOUND
+        return (" The converter could not start because a library file it needs (a .dll) is missing. Keep every file "
+                "that came in the zip together in one folder, next to m4adm.exe.")
+    if returncode in (0xC0000005, -1073741819):       # access violation
+        return " The converter crashed while reading this drawing."
+    return ""
+
+
 def dxf_size_blocker(path: Path) -> str | None:
     """A message when the DXF is larger than this installation can hold in memory (env M4ADM_MAX_DXF_MB, unset on the
     desktop). Loading a DXF takes roughly 100 MB plus 9 MB per MB of file, measured on the M19B drawings, and the
@@ -69,6 +80,13 @@ def run_limited(cmd: list[str], *, rss_limit_mb: float | None, timeout_s: float,
     The service that hosts the engine shares its memory with other work, so a converter must never be left to
     grow until the whole container is killed."""
     import time
+
+    if sys.platform == "win32":
+        import ctypes
+
+        # SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX, inherited by the converter: a missing library or a crash then
+        # makes it exit with an error code instead of opening a modal "System Error" box that waits for a click.
+        ctypes.windll.kernel32.SetErrorMode(0x0001 | 0x0002)
 
     def _ceiling() -> None:     # runs in the child before exec: from here malloc beyond the ceiling just fails
         import resource
@@ -185,7 +203,7 @@ class DWGConverter:
             hint = (" It may have run out of the memory this server allows: the drawing is probably too large to "
                     "convert here; use the desktop tool." if os.environ.get("M4ADM_DWG_MEMORY_MB") else "")
             raise RuntimeError(f"{self.describe()} produced no DXF (exit {res.returncode}): "
-                               f"{(res.stderr or res.stdout or '').strip()[-300:]}.{hint}")
+                               f"{(res.stderr or res.stdout or '').strip()[-300:]}.{hint}{exit_hint(res.returncode)}")
         return out
 
 

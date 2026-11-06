@@ -132,3 +132,11 @@ def test_oversized_dxf_is_blocked_before_it_is_loaded(dwg_case, tmp_path, monkey
     out = prepare(dwg, settings, tmp_path / "jobs2", bm)
     blocking = [f for f in out.report["findings"] if f["rule_id"] == "M4-IN-001" and f["blocking"]]
     assert blocking and "desktop tool" in blocking[0]["message"]
+
+
+def test_a_missing_library_is_explained_in_plain_words():
+    """Windows 'libiconv-2.dll not found': the converter exits with STATUS_DLL_NOT_FOUND."""
+    from m4adm.adapters import exit_hint
+    for code in (0xC0000135, -1073741515):
+        assert "library file" in exit_hint(code) and "next to m4adm.exe" in exit_hint(code)
+    assert exit_hint(0) == "" and "crashed" in exit_hint(-1073741819)

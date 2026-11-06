@@ -22,7 +22,7 @@ WHERE YOUR WORK IS KEPT
   C:\Users\<you>\M4-GIS-Prep\jobs      one folder per conversion: draft, report, audit trail
 
 DWG FILES
-  If dwg2dxf.exe is next to m4adm.exe, DWG drawings open directly. Without it, save the drawing as DXF
+  If dwg2dxf.exe (and the .dll files beside it) are next to m4adm.exe, DWG drawings open directly. Without them, save the drawing as DXF
   in AutoCAD first (SAVEAS, AutoCAD 2010 DXF).
 
 SIZE

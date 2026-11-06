@@ -53,7 +53,7 @@ jobs:
           msystem: MINGW64
           update: false
           install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja git
-      - name: Build dwg2dxf.exe (LibreDWG, pinned commit, static)
+      - name: Build dwg2dxf.exe (LibreDWG, pinned commit) and collect the libraries it needs
         id: dwg
         continue-on-error: true
         shell: msys2 {0}
@@ -67,21 +67,49 @@ jobs:
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLIBREDWG_DISABLE_JSON=ON -DBUILD_SHARED_LIBS=OFF \
                 -DENABLE_LTO=OFF -DDISABLE_WERROR=ON -DCMAKE_EXE_LINKER_FLAGS="-static"
           cmake --build build --target dwg2dxf
-          ./build/dwg2dxf.exe --version
-          cp build/dwg2dxf.exe "$GITHUB_WORKSPACE/apps/adm-gis-prep/dist/dwg2dxf.exe"
-      - name: Test DWG reading with the packaged program
+          # The program is not fully static (it needs libiconv-2.dll): ship every MinGW library it loads beside it.
+          mkdir -p "$GITHUB_WORKSPACE/dwg-out"
+          cp build/dwg2dxf.exe "$GITHUB_WORKSPACE/dwg-out/"
+          ldd build/dwg2dxf.exe | awk '/\/mingw64\/bin\//{print $3}' | while read -r dll; do cp "$dll" "$GITHUB_WORKSPACE/dwg-out/"; done
+          ls -la "$GITHUB_WORKSPACE/dwg-out"
+      - name: Verify the DWG reader from a clean folder (only what goes in the zip, nothing from this machine)
+        id: dwgverify
         if: steps.dwg.outcome == 'success'
         continue-on-error: true
+        shell: pwsh
         run: |
-          # a DWG written by AutoCAD is not available here; at least make sure the reader runs and is found
-          ./dist/dwg2dxf.exe --version
+          # An earlier version passed here because the build machine has the MinGW libraries installed; a clean PATH
+          # and a fresh folder make this test fail the same way a laptop would.
+          $tmp = Join-Path $env:RUNNER_TEMP "dwgcheck"
+          Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory $tmp | Out-Null
+          Copy-Item "$env:GITHUB_WORKSPACE\dwg-out\*" $tmp
+          Copy-Item "$env:GITHUB_WORKSPACE\apps\adm-gis-prep\dist\m4adm.exe" $tmp
+          Copy-Item "$env:GITHUB_WORKSPACE\libredwg\test\test-data\example_2018.dwg" "$tmp\sample.dwg"
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+          & "$tmp\dwg2dxf.exe" --version
+          if ($LASTEXITCODE -ne 0) { throw "dwg2dxf.exe did not start (exit $LASTEXITCODE)" }
+          & "$tmp\dwg2dxf.exe" -y -o "$tmp\sample.dxf" "$tmp\sample.dwg" 2>&1 | Out-Null
+          if (-not (Test-Path "$tmp\sample.dxf") -or (Get-Item "$tmp\sample.dxf").Length -lt 100000) { throw "dwg2dxf.exe produced no DXF" }
+          "dwg2dxf.exe converted a real DWG to a $((Get-Item "$tmp\sample.dxf").Length) byte DXF"
+          # and the packaged program finds the reader beside itself
+          & "$tmp\m4adm.exe" convert "$tmp\sample.dwg" --jobs "$tmp\jobs" 2>&1 | Out-Host
+          if (-not (Select-String -Path "$tmp\jobs\*\audit.jsonl" -Pattern "dwg_converted" -Quiet)) {
+            throw "m4adm.exe did not read the DWG through dwg2dxf.exe"
+          }
+          "m4adm.exe read the DWG through the reader beside it"
 
       - name: Assemble the zip
         run: |
           mkdir -p stage/M4-GIS-Prep
           cp dist/m4adm.exe packaging/README-WINDOWS.txt stage/M4-GIS-Prep/
-          if [ -f dist/dwg2dxf.exe ]; then cp dist/dwg2dxf.exe stage/M4-GIS-Prep/; echo "DWG reader: included" >> "$GITHUB_STEP_SUMMARY"; \
-          else echo "DWG reader: NOT included (could not be built); the program works on DXF files" >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ "${{ steps.dwgverify.outcome }}" = "success" ]; then
+            cp "$GITHUB_WORKSPACE"/dwg-out/* stage/M4-GIS-Prep/
+            echo "DWG reader: included and verified from a clean folder" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "DWG reader: NOT included (it could not be built or did not pass the clean-folder test); the program works on DXF files" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          ls -la stage/M4-GIS-Prep
           (cd stage && powershell -NoProfile -Command "Compress-Archive -Path M4-GIS-Prep -DestinationPath ../M4-GIS-Prep-windows.zip -Force")
           ls -la M4-GIS-Prep-windows.zip
       - uses: actions/upload-artifact@v4
