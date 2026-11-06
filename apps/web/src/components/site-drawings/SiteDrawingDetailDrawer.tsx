@@ -54,6 +54,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
       queryClient.invalidateQueries({ queryKey: ['site-drawing', projectId, drawingId] });
       queryClient.invalidateQueries({ queryKey: ['site-drawing-revisions', projectId, drawingId] });
       queryClient.invalidateQueries({ queryKey: ['site-drawings', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-dashboard-stats', projectId] });
     },
   });
 
