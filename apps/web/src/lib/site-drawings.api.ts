@@ -3,7 +3,8 @@ import { apiGet, apiGetWithMeta, apiPatch, apiPost, apiDelete, apiDownload } fro
 import type {
   SiteDrawingWithCurrentRevision, SiteDrawingRevision, SiteDrawingWorkflowStatus,
   SiteDrawingOfflinePackage, SiteDrawingOfflinePackageStatus, SiteDrawingSourceHealth,
-  SiteDrawingImportBatch, SiteDrawingReviewQueueItem, DocSource, SiteDrawingOrgMapping, SiteDrawingOrgMappingRole,
+  SiteDrawingImportBatch, SiteDrawingReviewQueueItem, DocSource, ExtractedDrawingFields,
+  SiteDrawingOrgMapping, SiteDrawingOrgMappingRole,
 } from '@engineeringos/types';
 export type {
   SiteDrawing, SiteDrawingRevision, SiteDrawingWithCurrentRevision, SiteDrawingWorkflowStatus,
@@ -48,13 +49,30 @@ export interface RegisterSiteDrawingInput {
 export const registerSiteDrawing = (projectId: string, input: RegisterSiteDrawingInput) =>
   apiPost<SiteDrawingWithCurrentRevision>(base(projectId), input);
 
+// Just the upload half (presigned URL, then PUT straight to storage) --
+// split out from uploadAndRegisterSiteDrawing below so the registration
+// modal can upload a dropped file immediately, run extraction against the
+// result, and only call registerSiteDrawing() once the uploader has
+// reviewed/corrected the pre-filled fields.
+export async function uploadSiteDrawingFile(projectId: string, file: File): Promise<{ storageKey: string }> {
+  const { uploadUrl, storageKey } = await getSiteDrawingUploadUrl(projectId, file.name);
+  await axios.put(uploadUrl, file, { headers: { 'Content-Type': 'application/pdf' } });
+  return { storageKey };
+}
+
+// The same embedded-text/OCR pipeline the bulk import pipeline already
+// uses, run against this one already-uploaded file. Returns null (not an
+// error) when nothing could be confidently read -- the caller's form just
+// stays blank for manual entry, same as before this existed.
+export const extractSiteDrawingFields = (projectId: string, storageKey: string) =>
+  apiPost<ExtractedDrawingFields | null>(`${base(projectId)}/extract-fields`, { storageKey });
+
 // The 3-step upload flow every other upload in this app uses (get a
 // presigned URL, PUT the file straight to storage, then register the
 // metadata); see drawings.api.ts's uploadDrawing() for the pattern this
 // mirrors.
 export async function uploadAndRegisterSiteDrawing(projectId: string, file: File, meta: Omit<RegisterSiteDrawingInput, 'storageKey'>): Promise<SiteDrawingWithCurrentRevision> {
-  const { uploadUrl, storageKey } = await getSiteDrawingUploadUrl(projectId, file.name);
-  await axios.put(uploadUrl, file, { headers: { 'Content-Type': 'application/pdf' } });
+  const { storageKey } = await uploadSiteDrawingFile(projectId, file);
   return registerSiteDrawing(projectId, { ...meta, storageKey });
 }
 

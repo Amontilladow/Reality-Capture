@@ -6,6 +6,7 @@ import { SiteDrawingLocalAdapter } from './adapters/local-adapter';
 import { SiteDrawingAdapterRegistry } from './adapters/site-drawing-adapter-registry';
 import type { SiteDrawingSharePointAdapter } from './adapters/sharepoint-adapter';
 import type { NotificationsService } from '../notifications/notifications.service';
+import type { AiClientService } from '../ai-client/ai-client.service';
 
 type WithTenantCallback = (sql: unknown) => unknown;
 
@@ -49,13 +50,19 @@ describe('SiteDrawingsService', () => {
       getReadUrl: jest.fn().mockResolvedValue('https://signed.example/file.pdf'),
       generateKey: jest.fn().mockReturnValue('company-1/documents/project-1/abc.pdf'),
       getUploadUrl: jest.fn().mockResolvedValue({ uploadUrl: 'https://upload.example', storageKey: 'key' }),
+      download: jest.fn().mockResolvedValue(Buffer.from('')),
     } as unknown as StorageService;
     const localAdapter = new SiteDrawingLocalAdapter();
     const sharePointAdapter = { provider: 'sharepoint' } as unknown as SiteDrawingSharePointAdapter; // unused by any test here; satisfies the registry's constructor only
     const adapters = new SiteDrawingAdapterRegistry(localAdapter, sharePointAdapter);
     const create = jest.fn().mockResolvedValue(undefined);
     const notifications = { create } as unknown as NotificationsService;
-    return { svc: new SiteDrawingsService(db, storage, adapters, notifications), withTenant, storage, notificationsCreate: create };
+    const ocrExtractText = jest.fn().mockResolvedValue({ text: '', confidence: 0 });
+    const aiClient = { ocrExtractText } as unknown as AiClientService;
+    return {
+      svc: new SiteDrawingsService(db, storage, adapters, notifications, aiClient),
+      withTenant, storage, notificationsCreate: create, ocrExtractText,
+    };
   }
 
   describe('addRevision', () => {
@@ -237,6 +244,36 @@ describe('SiteDrawingsService', () => {
 
       const result = await svc.revalidateOfflinePackage(companyId, userId, 'pkg-1');
       expect(result.isStale).toBe(false);
+    });
+  });
+
+  describe('extractFields', () => {
+    it('rejects a project that does not belong to the caller\'s company', async () => {
+      const { svc } = makeService([single([])]);
+      await expect(svc.extractFields(companyId, 'someone-elses-project', 'key.pdf')).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects when the declared storage key was never actually uploaded', async () => {
+      const { svc, storage } = makeService([single([{ id: projectId }])]);
+      (storage.getObjectSize as jest.Mock).mockResolvedValue(null);
+      await expect(svc.extractFields(companyId, projectId, 'key.pdf')).rejects.toThrow(BadRequestException);
+    });
+
+    it('returns null (not an error) when neither embedded text nor OCR can read anything -- manual entry stays the fallback', async () => {
+      const { svc } = makeService([single([{ id: projectId }])]);
+      const fields = await svc.extractFields(companyId, projectId, 'key.pdf');
+      expect(fields).toBeNull();
+    });
+
+    it('falls back to OCR when the (empty, unparsable) buffer has no usable embedded text, and extracts real fields from it', async () => {
+      const { svc, ocrExtractText } = makeService([single([{ id: projectId }])]);
+      ocrExtractText.mockResolvedValue({ text: 'DRAWING NO: A-101\nREV: B', confidence: 0.9 });
+
+      const fields = await svc.extractFields(companyId, projectId, 'key.pdf');
+
+      expect(fields?.drawingNumber).toBe('A-101');
+      expect(fields?.revisionNumber).toBe('B');
+      expect(fields?.source).toBe('ocr');
     });
   });
 
