@@ -549,7 +549,7 @@ function MyScheduling() {
               onChange={(e) => setAbsenceForm({ ...absenceForm, reason: e.target.value })} />
           </label>
           <button
-            className="btn-secondary !py-2 !px-4 !text-xs"
+            className="btn-secondary !py-2 !px-4 "
             disabled={!absenceForm.startDate || !absenceForm.endDate || absenceMutation.isPending}
             onClick={() => {
               absenceMutation.mutate(
@@ -633,7 +633,7 @@ function CalendarIntegrationPanel() {
       {disconnectMutation.isError && <p className="field-error">{apiErrorMessage(disconnectMutation.error)}</p>}
 
       {statusQuery.data && !statusQuery.data.connected && (
-        <button className="btn-secondary !py-2 !px-4 !text-xs" disabled={connectMutation.isPending} onClick={() => connectMutation.mutate()}>
+        <button className="btn-secondary !py-2 !px-4 " disabled={connectMutation.isPending} onClick={() => connectMutation.mutate()}>
           Connect Google Calendar
         </button>
       )}
@@ -645,7 +645,7 @@ function CalendarIntegrationPanel() {
               Connected {statusQuery.data.connectedAt ? new Date(statusQuery.data.connectedAt).toLocaleDateString() : ''}, read-only access
               to event times, never edited or shared beyond this view.
             </p>
-            <button className="btn-secondary !py-2 !px-2 !text-xs" disabled={disconnectMutation.isPending} onClick={() => disconnectMutation.mutate()}>
+            <button className="btn-secondary !py-2 !px-2 " disabled={disconnectMutation.isPending} onClick={() => disconnectMutation.mutate()}>
               Disconnect
             </button>
           </div>
@@ -875,7 +875,7 @@ function CompanyReportAdmin({ from, to }: { from: string; to: string }) {
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-ink-100">Company report (admin)</h2>
         {rows.length > 0 && (
-          <button className="btn-secondary !py-2 !px-4 !text-xs" onClick={() => downloadCompanyReportCsv(rows, from, to)}>
+          <button className="btn-secondary !py-2 !px-4 " onClick={() => downloadCompanyReportCsv(rows, from, to)}>
             Export CSV
           </button>
         )}
@@ -961,7 +961,7 @@ function ShiftSchedulingAdmin() {
           <input type="time" className="field-input !py-2 !text-xs block" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
         </label>
         <button
-          className="btn-secondary !py-2 !px-4 !text-xs"
+          className="btn-secondary !py-2 !px-4 "
           disabled={!form.userId || !form.shiftDate || !form.startTime || !form.endTime || assignMutation.isPending}
           onClick={() => assignMutation.mutate(form)}
         >
@@ -1040,14 +1040,14 @@ function AbsenceRequestsAdmin() {
                   <td className="px-4 py-2">
                     <div className="flex gap-2">
                       <button
-                        className="btn-secondary !py-2 !px-2 !text-xs text-ok"
+                        className="btn-secondary !py-2 !px-2 text-ok"
                         disabled={decideMutation.isPending}
                         onClick={() => decideMutation.mutate({ absenceId: a.id, status: 'approved' })}
                       >
                         Approve
                       </button>
                       <button
-                        className="btn-secondary !py-2 !px-2 !text-xs text-danger"
+                        className="btn-secondary !py-2 !px-2 text-danger"
                         disabled={decideMutation.isPending}
                         onClick={() => decideMutation.mutate({ absenceId: a.id, status: 'denied' })}
                       >

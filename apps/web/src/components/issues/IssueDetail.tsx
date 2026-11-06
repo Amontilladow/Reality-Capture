@@ -221,7 +221,7 @@ export function IssueDetail({
 
   return (
     <div className="p-6 max-w-3xl space-y-6">
-      <button onClick={onBack} className="btn-ghost !px-2 !py-2 text-xs">
+      <button onClick={onBack} className="btn-ghost !px-2 !py-2 ">
         <BackIcon /> Back to issues
       </button>
 
@@ -268,29 +268,29 @@ export function IssueDetail({
           <div className="flex flex-col gap-2 items-end">
             <Link
               to={`/projects/${projectId}/assistant?resourceType=issue&resourceId=${issue.id}`}
-              className="btn-secondary !px-4 !py-2 text-xs"
+              className="btn-secondary !px-4 !py-2 "
             >
               Ask AI about this
             </Link>
-            <button onClick={() => onEdit(issue)} className="btn-secondary !px-4 !py-2 text-xs">Edit</button>
-            <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary !px-4 !py-2 text-xs">Email</button>
+            <button onClick={() => onEdit(issue)} className="btn-secondary !px-4 !py-2 ">Edit</button>
+            <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary !px-4 !py-2 ">Email</button>
             {canForward && (
-              <button onClick={() => setForwardOpen((v) => !v)} className="btn-secondary !px-4 !py-2 text-xs">
+              <button onClick={() => setForwardOpen((v) => !v)} className="btn-secondary !px-4 !py-2 ">
                 {forwardOpen ? 'Cancel forward' : 'Forward'}
               </button>
             )}
-            <button onClick={() => setReminderOpen((v) => !v)} className="btn-secondary !px-4 !py-2 text-xs">
+            <button onClick={() => setReminderOpen((v) => !v)} className="btn-secondary !px-4 !py-2 ">
               {reminderOpen ? 'Cancel reminder' : 'Remind…'}
             </button>
-            <button onClick={handleDownloadPdf} disabled={downloading === 'pdf'} className="btn-secondary !px-4 !py-2 text-xs">
+            <button onClick={handleDownloadPdf} disabled={downloading === 'pdf'} className="btn-secondary !px-4 !py-2 ">
               {downloading === 'pdf' ? 'Preparing…' : 'Download PDF'}
             </button>
-            <button onClick={handleDownloadXls} disabled={downloading === 'xls'} className="btn-secondary !px-4 !py-2 text-xs">
+            <button onClick={handleDownloadXls} disabled={downloading === 'xls'} className="btn-secondary !px-4 !py-2 ">
               {downloading === 'xls' ? 'Preparing…' : 'Download XLS'}
             </button>
             <button
               onClick={() => { if (confirm('Delete this issue? This cannot be undone.')) deleteMutation.mutate(); }}
-              className="btn-danger !px-4 !py-2 text-xs"
+              className="btn-danger !px-4 !py-2 "
             >
               Delete
             </button>
@@ -319,7 +319,7 @@ export function IssueDetail({
             <button
               onClick={() => forwardMutation.mutate()}
               disabled={!forwardTo || forwardMutation.isPending}
-              className="btn-primary !px-4 !py-2 text-xs"
+              className="btn-primary !px-4 !py-2 "
             >
               {forwardMutation.isPending ? 'Forwarding…' : 'Send forward'}
             </button>
@@ -353,7 +353,7 @@ export function IssueDetail({
                 <button
                   onClick={() => scheduleReminderMutation.mutate()}
                   disabled={!reminderWhen || !reminderMessage.trim() || scheduleReminderMutation.isPending}
-                  className="btn-primary !px-4 !py-2 text-xs"
+                  className="btn-primary !px-4 !py-2 "
                 >
                   {scheduleReminderMutation.isPending ? 'Scheduling…' : 'Schedule reminder'}
                 </button>
@@ -374,7 +374,7 @@ export function IssueDetail({
                 <button
                   onClick={() => cancelReminderMutation.mutate(r.id)}
                   disabled={cancelReminderMutation.isPending}
-                  className="btn-ghost !px-2 !py-0 text-xs ml-auto"
+                  className="btn-ghost !px-2 !py-0 ml-auto"
                 >
                   Cancel
                 </button>
@@ -393,7 +393,7 @@ export function IssueDetail({
               key={s}
               onClick={() => statusMutation.mutate(s)}
               disabled={statusMutation.isPending}
-              className="btn-secondary !px-4 !py-2 text-xs"
+              className="btn-secondary !px-4 !py-2 "
             >
               Move to {STATUS_LABELS[s]}
             </button>
@@ -407,13 +407,13 @@ export function IssueDetail({
                 : !isManager ? 'Closing requires sign-off from a permitted role (an engineering manager or company admin).'
                 : 'Attach at least one evidence photo before closing.'
               }
-              className="btn-secondary !px-4 !py-2 text-xs"
+              className="btn-secondary !px-4 !py-2 "
             >
               {closeMutation.isPending ? 'Closing…' : `Move to ${STATUS_LABELS.closed}`}
             </button>
           )}
           {(issue.status === 'closed' || issue.status === 'resolved') && (
-            <button onClick={() => statusMutation.mutate('reopened')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 text-xs">
+            <button onClick={() => statusMutation.mutate('reopened')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 ">
               ↩ Reopen
             </button>
           )}
@@ -437,7 +437,7 @@ export function IssueDetail({
             <button
               onClick={() => forceStatusMutation.mutate()}
               disabled={!forceStatusValue || forceStatusMutation.isPending}
-              className="btn-danger !px-4 !py-2 text-xs"
+              className="btn-danger !px-4 !py-2 "
             >
               {forceStatusMutation.isPending ? 'Forcing…' : 'Force'}
             </button>
@@ -505,7 +505,7 @@ export function IssueDetail({
 
       {/* Email history: Phase 3G */}
       <div>
-        <div className="field-label mb-2">Email History</div>
+        <div className="field-label mb-2">Email history</div>
         <EmailHistoryList projectId={projectId} relatedRecordType="issue" relatedRecordId={issueId} />
       </div>
 
@@ -539,7 +539,7 @@ export function IssueDetail({
           <div className="field-label !mb-0">
             Evidence photos {evidenceQuery.data ? `(${evidenceQuery.data.length})` : ''}
           </div>
-          <button onClick={() => setPickerOpen((v) => !v)} className="btn-ghost !px-2 !py-2 text-xs">
+          <button onClick={() => setPickerOpen((v) => !v)} className="btn-ghost !px-2 !py-2 ">
             {pickerOpen ? 'Cancel' : '+ Attach existing capture'}
           </button>
         </div>
@@ -638,7 +638,7 @@ export function IssueDetail({
             value={attachComment}
             onChange={(e) => setAttachComment(e.target.value)}
           />
-          <label className="btn-secondary !px-4 !py-2 text-xs cursor-pointer shrink-0">
+          <label className="btn-secondary !px-4 !py-2 cursor-pointer shrink-0">
             {attachMutation.isPending ? 'Uploading…' : 'Attach file'}
             <input
               type="file"

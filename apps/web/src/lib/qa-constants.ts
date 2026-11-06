@@ -6,9 +6,9 @@ export const QA_STATUSES: QaInspectionStatus[] = [
 
 export const QA_STATUS_LABELS: Record<QaInspectionStatus, string> = {
   scheduled: 'Scheduled',
-  in_progress: 'In Progress',
+  in_progress: 'In progress',
   passed: 'Passed',
-  passed_with_exceptions: 'Passed with Exceptions',
+  passed_with_exceptions: 'Passed with exceptions',
   failed: 'Failed',
   void: 'Void',
 };

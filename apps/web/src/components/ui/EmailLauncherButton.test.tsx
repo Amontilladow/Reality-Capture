@@ -28,7 +28,7 @@ describe('EmailLauncherButton', () => {
     const menu = screen.getByRole('menu', { name: 'Choose email app' });
     expect(within(menu).getByRole('menuitemradio', { name: /Outlook/ })).toBeInTheDocument();
     expect(within(menu).getByRole('menuitemradio', { name: /Gmail/ })).toBeInTheDocument();
-    expect(within(menu).getByRole('menuitemradio', { name: /Default Email App/ })).toBeInTheDocument();
+    expect(within(menu).getByRole('menuitemradio', { name: /Default email app/ })).toBeInTheDocument();
   });
 
   it('selecting Outlook opens the Outlook web mailbox and remembers the choice', async () => {
@@ -55,14 +55,14 @@ describe('EmailLauncherButton', () => {
     expect(localStorage.getItem('rc.emailProvider')).toBe('gmail');
   });
 
-  it('selecting Default Email App invokes the default mail handler, not a provider URL', async () => {
+  it('selecting Default email app invokes the default mail handler, not a provider URL', async () => {
     const openSpy = vi.spyOn(window, 'open');
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     const user = userEvent.setup();
     render(<EmailLauncherButton />);
 
     await user.click(screen.getByRole('button', { name: 'Open email' }));
-    await user.click(screen.getByRole('menuitemradio', { name: /Default Email App/ }));
+    await user.click(screen.getByRole('menuitemradio', { name: /Default email app/ }));
 
     expect(openSpy).not.toHaveBeenCalled();
     expect(clickSpy).toHaveBeenCalledTimes(1);

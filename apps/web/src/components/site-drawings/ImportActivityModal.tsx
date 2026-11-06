@@ -174,7 +174,7 @@ function ReviewQueueRow({ projectId, item }: { projectId: string; item: SiteDraw
         <button
           onClick={() => mutation.mutate()}
           disabled={!reviewNotes.trim() || !drawingNumber.trim() || !drawingTitle.trim() || !revisionNumber.trim() || mutation.isPending}
-          className="btn-primary !px-4 !py-2 text-xs"
+          className="btn-primary !px-4 !py-2 "
         >
           {mutation.isPending ? 'Confirming…' : 'Confirm'}
         </button>

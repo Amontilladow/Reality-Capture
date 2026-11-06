@@ -20,7 +20,7 @@ export const dashboardProjectsArticles: HelpArticle[] = [
   {
     slug: 'understanding-the-projects-page',
     category: 'dashboard-projects',
-    title: 'Understanding the Projects Page',
+    title: 'Understanding the projects page',
     summary: 'The company-wide landing page listing every project.',
     whatItDoes: 'Opening the app takes you to "Projects" -- a company-wide list, not scoped to a single project. It shows four summary tiles (total projects, active projects, open issues, and captures across all of them), a card for each project, and your subscription usage.',
     whoCanUse: 'Any signed-in user. Every non-archived project in your company appears here for every user -- there is no "only my projects" filter, and viewing a project\'s own records once opened is not restricted by membership either. Formal project membership instead controls who can be assigned a project role, organization slot, or narrower permission grant -- see "Understanding Project Access."',
@@ -31,7 +31,7 @@ export const dashboardProjectsArticles: HelpArticle[] = [
   {
     slug: 'understanding-the-project-dashboard',
     category: 'dashboard-projects',
-    title: 'Understanding the Project Dashboard',
+    title: 'Understanding the project dashboard',
     summary: 'The overview shown when you open a specific project.',
     whatItDoes: 'Opening a project shows its own dashboard: issue counts (open, critical, overdue, and closed this week), BIM model processing status (ready/processing/pending/failed), and a recent-activity feed from that project\'s audit log.',
     whoCanUse: 'Any member of that project.',
@@ -42,7 +42,7 @@ export const dashboardProjectsArticles: HelpArticle[] = [
   {
     slug: 'creating-a-project',
     category: 'dashboard-projects',
-    title: 'Creating a Project',
+    title: 'Creating a project',
     summary: 'Starting a new project for your company.',
     whenToUse: 'When your company is beginning a new project that needs its own issues, RFIs, drawings, and team.',
     whoCanUse: 'Company Admin or Super Admin only.',
@@ -66,7 +66,7 @@ export const dashboardProjectsArticles: HelpArticle[] = [
   {
     slug: 'switching-between-projects',
     category: 'dashboard-projects',
-    title: 'Switching Between Projects',
+    title: 'Switching between projects',
     summary: 'Moving to a different project without returning to the Projects page.',
     whatItDoes: 'While inside a project, the sidebar\'s project panel includes a dropdown listing every company project (the same list the Projects page shows) -- selecting one navigates straight there. It also shows your own role and organization badge for the current project.',
     whoCanUse: 'Any signed-in user.',
@@ -77,7 +77,7 @@ export const dashboardProjectsArticles: HelpArticle[] = [
   {
     slug: 'editing-project-details',
     category: 'dashboard-projects',
-    title: 'Editing Project Details',
+    title: 'Editing project details',
     summary: 'Changing a project\'s name, dates, status, or stakeholder information.',
     whatItDoes: 'Edits the project\'s name, code, status (Active/On Hold/Completed/Archived), phase, description, location, start/end dates, free-text stakeholder fields (client, lead designer, consultant, technical advisor, PMC, main contractor, subcontractor -- used to populate RFI documents), and branding images.',
     whoCanUse: 'Any signed-in member of your company. This is not restricted to a specific role or project permission.',
@@ -91,7 +91,7 @@ export const dashboardProjectsArticles: HelpArticle[] = [
   {
     slug: 'archiving-a-project',
     category: 'dashboard-projects',
-    title: 'Archiving a Project',
+    title: 'Archiving a project',
     summary: 'Setting a project\'s status to Archived.',
     whatItDoes: 'There is no separate "archive" action or "delete project" feature -- archiving is simply setting the project\'s status to "Archived" through the same Edit form used for any other detail. An archived project no longer appears in the Projects list.',
     whoCanUse: 'Any signed-in member of your company, the same as any other project edit.',
@@ -103,7 +103,7 @@ export const dashboardProjectsArticles: HelpArticle[] = [
   {
     slug: 'understanding-organization-slots',
     category: 'dashboard-projects',
-    title: 'Understanding Organization Slots',
+    title: 'Understanding organization slots',
     summary: 'Assigning Client/PMC/LDC/Main Contractor/Subcontractor roles on a project -- separate from project creation.',
     whatItDoes: 'Organization slots (Client, PMC, LDC, Main Contractor, Subcontractor) are a structured, separate layer from the project\'s free-text stakeholder fields: each slot can be configured with an organization name/logo, and existing project members can be assigned into a slot. This drives organization-based permissions elsewhere in the app, not just display text.',
     whenToUse: 'After a project is created and its team is being set up, to formally assign which company fills each organizational role.',

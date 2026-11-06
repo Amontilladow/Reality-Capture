@@ -18,11 +18,11 @@ export const TRANSMITTAL_STATUS_BADGE_CLASS: Record<TransmittalStatus, string> =
 };
 
 export const TRANSMITTAL_PURPOSE_LABELS: Record<TransmittalPurpose, string> = {
-  for_review: 'For Review',
-  for_approval: 'For Approval',
-  for_record: 'For Record',
-  for_construction: 'For Construction',
-  as_requested: 'As Requested',
+  for_review: 'For review',
+  for_approval: 'For approval',
+  for_record: 'For record',
+  for_construction: 'For construction',
+  as_requested: 'As requested',
 };
 
 export function formatDate(iso?: string): string {

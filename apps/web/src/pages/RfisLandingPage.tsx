@@ -64,7 +64,7 @@ export default function RfisLandingPage() {
             className="panel tick-frame panel-interactive p-6 text-left"
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold">Main Contractor's RFIs</h3>
+              <h3 className="text-base font-semibold">Main contractor's RFIs</h3>
               {(mainSummaryQuery.data?.open ?? 0) > 0 && (
                 <span className="badge bg-danger/15 text-danger">{mainSummaryQuery.data?.open} open</span>
               )}

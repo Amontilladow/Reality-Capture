@@ -6,13 +6,13 @@ import { VALID_FOR_SITE_USE_STATUSES } from '../../lib/site-drawings.api';
 import type { StatusTone } from '../../lib/status-tone';
 
 export const WORKFLOW_STATUS_LABELS: Record<SiteDrawingWorkflowStatus, string> = {
-  UNDER_REVIEW: 'Under Review',
+  UNDER_REVIEW: 'Under review',
   APPROVED: 'Approved',
-  APPROVED_FOR_CONSTRUCTION: 'Approved for Construction',
+  APPROVED_FOR_CONSTRUCTION: 'Approved for construction',
   REJECTED: 'Rejected',
   SUPERSEDED: 'Superseded',
   WITHDRAWN: 'Withdrawn',
-  UNKNOWN: 'Status Unknown',
+  UNKNOWN: 'Status unknown',
 };
 
 // One shared tone vocabulary (status-tone.ts), same as every other module
@@ -47,9 +47,9 @@ export const DOCUMENT_CLASSIFICATION_LABELS: Record<SiteDrawingDocumentClassific
 
 export const EXTRACTION_STATUS_LABELS: Record<SiteDrawingExtractionStatus, string> = {
   CONFIRMED: 'Confirmed',
-  NEEDS_REVIEW: 'Needs Review',
+  NEEDS_REVIEW: 'Needs review',
   CONFLICT: 'Conflict',
-  MANUAL: 'Manual Entry',
+  MANUAL: 'Manual entry',
 };
 
 export const EXTRACTION_STATUS_TONE: Record<SiteDrawingExtractionStatus, StatusTone> = {
@@ -115,7 +115,7 @@ export function siteDrawingOverlay(revision: {
 
 export const SOURCE_PROVIDER_LABELS: Record<SiteDrawingSourceProvider, string> = {
   internal: 'Local',
-  manual_link: 'Manual Link',
+  manual_link: 'Manual link',
   sharepoint: 'SharePoint',
   aconex: 'Aconex',
   procore: 'Procore',

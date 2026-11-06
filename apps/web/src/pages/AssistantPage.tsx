@@ -103,7 +103,7 @@ export default function AssistantPage() {
     <>
       <PageHeader
         eyebrow={projectQuery.data?.name ?? 'Project'}
-        title="AI Assistant"
+        title="AI assistant"
         actions={quota && (
           <span className="text-xs text-ink-500 font-mono">
             {quota.dailyUsed} / {quota.dailyLimit} requests today
@@ -132,7 +132,7 @@ export default function AssistantPage() {
                 <div className={`max-w-[75%] rounded-md px-4 py-2 text-sm ${m.role === 'user' ? 'bg-signal text-base-950' : 'panel'}`}>
                   <p className="whitespace-pre-wrap">{m.content}</p>
                   {m.draft && (
-                    <button onClick={() => openDraft(m.draft)} className="btn-secondary !text-xs mt-2">
+                    <button onClick={() => openDraft(m.draft)} className="btn-secondary mt-2">
                       Review draft {m.draft.type === 'rfi' ? 'RFI' : m.draft.type === 'issue' ? 'issue' : 'snag item'}
                     </button>
                   )}

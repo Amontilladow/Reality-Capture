@@ -132,7 +132,7 @@ export function SnagDetail({
 
   return (
     <div className="p-6 max-w-3xl space-y-6">
-      <button onClick={onBack} className="btn-ghost !px-2 !py-2 text-xs">
+      <button onClick={onBack} className="btn-ghost !px-2 !py-2 ">
         <BackIcon /> Back to snagging
       </button>
 
@@ -153,14 +153,14 @@ export function SnagDetail({
             </div>
           </div>
           <div className="flex flex-col gap-2 items-end">
-            <button onClick={() => onEdit(snag)} className="btn-secondary !px-4 !py-2 text-xs">Edit</button>
-            <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary !px-4 !py-2 text-xs">Email</button>
-            <button onClick={() => setForwardOpen((v) => !v)} className="btn-secondary !px-4 !py-2 text-xs">
+            <button onClick={() => onEdit(snag)} className="btn-secondary !px-4 !py-2 ">Edit</button>
+            <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary !px-4 !py-2 ">Email</button>
+            <button onClick={() => setForwardOpen((v) => !v)} className="btn-secondary !px-4 !py-2 ">
               {forwardOpen ? 'Cancel forward' : 'Forward'}
             </button>
             <button
               onClick={() => { if (confirm('Delete this snag item? This cannot be undone.')) deleteMutation.mutate(); }}
-              className="btn-danger !px-4 !py-2 text-xs"
+              className="btn-danger !px-4 !py-2 "
             >
               Delete
             </button>
@@ -187,7 +187,7 @@ export function SnagDetail({
             <button
               onClick={() => forwardMutation.mutate()}
               disabled={!forwardTo || forwardMutation.isPending}
-              className="btn-primary !px-4 !py-2 text-xs"
+              className="btn-primary !px-4 !py-2 "
             >
               {forwardMutation.isPending ? 'Forwarding…' : 'Send forward'}
             </button>
@@ -201,17 +201,17 @@ export function SnagDetail({
             a full stepper. */}
         <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-base-600">
           {snag.status === 'open' && (
-            <button onClick={() => statusMutation.mutate('fixed')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 text-xs">
+            <button onClick={() => statusMutation.mutate('fixed')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 ">
               Mark as fixed
             </button>
           )}
           {snag.status === 'fixed' && (
-            <button onClick={() => verifyMutation.mutate()} disabled={verifyMutation.isPending} className="btn-secondary !px-4 !py-2 text-xs">
+            <button onClick={() => verifyMutation.mutate()} disabled={verifyMutation.isPending} className="btn-secondary !px-4 !py-2 ">
               Verify
             </button>
           )}
           {snag.status !== 'void' && (
-            <button onClick={() => statusMutation.mutate('void')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 text-xs">
+            <button onClick={() => statusMutation.mutate('void')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 ">
               Void
             </button>
           )}
@@ -236,7 +236,7 @@ export function SnagDetail({
             <button
               onClick={() => forceStatusMutation.mutate()}
               disabled={!forceStatusValue || forceStatusMutation.isPending}
-              className="btn-danger !px-4 !py-2 text-xs"
+              className="btn-danger !px-4 !py-2 "
             >
               {forceStatusMutation.isPending ? 'Forcing…' : 'Force'}
             </button>
@@ -267,7 +267,7 @@ export function SnagDetail({
 
       {/* Email history: Phase 3G */}
       <div>
-        <div className="field-label mb-2">Email History</div>
+        <div className="field-label mb-2">Email history</div>
         <EmailHistoryList projectId={projectId} relatedRecordType="snag_item" relatedRecordId={snagId} />
       </div>
 
@@ -334,7 +334,7 @@ export function SnagDetail({
             value={attachComment}
             onChange={(e) => setAttachComment(e.target.value)}
           />
-          <label className="btn-secondary !px-4 !py-2 text-xs cursor-pointer shrink-0">
+          <label className="btn-secondary !px-4 !py-2 cursor-pointer shrink-0">
             {attachMutation.isPending ? 'Uploading…' : 'Attach file'}
             <input
               type="file"

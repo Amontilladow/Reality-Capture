@@ -290,11 +290,10 @@ export default function BuildLensTimelinePage() {
         title="Timeline"
         actions={
           <>
-            <Link to={`/projects/${projectId}/buildlens`} className="btn-ghost text-xs">
+            <Link to={`/projects/${projectId}/buildlens`} className="btn-ghost ">
               <BackIcon className="w-3.5 h-3.5" /> All locations
             </Link>
-            <button onClick={() => setCompareMode((v) => !v)} className={compareMode ? 'btn-primary' : 'btn-secondary'}>
-              <CompareIcon className="w-4 h-4" /> Compare
+            <button onClick={() => setCompareMode((v) => !v)} className={compareMode ? 'btn-primary' : 'btn-secondary'}> <CompareIcon className="w-4 h-4" /> Compare
             </button>
             <button onClick={() => setUploadOpen(true)} className="btn-primary">
               <UploadIcon className="w-4 h-4" /> Upload capture
@@ -370,12 +369,12 @@ export default function BuildLensTimelinePage() {
                         value={dateBuffer}
                         onChange={(e) => setDateBuffer(e.target.value)}
                       />
-                      <button onClick={() => dateMutation.mutate()} disabled={dateMutation.isPending} className="btn-primary !px-2 !py-2 text-xs shrink-0">
+                      <button onClick={() => dateMutation.mutate()} disabled={dateMutation.isPending} className="btn-primary !px-2 !py-2 shrink-0">
                         Save
                       </button>
                       <button
                         onClick={() => { setDateBuffer(toDatetimeLocalValue(active.capturedAt)); setEditingDate(false); }}
-                        className="btn-ghost !px-2 !py-2 text-xs shrink-0"
+                        className="btn-ghost !px-2 !py-2 shrink-0"
                       >
                         Cancel
                       </button>

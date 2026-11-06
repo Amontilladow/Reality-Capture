@@ -6,7 +6,7 @@ import { join, relative } from 'node:path';
 // can't quietly drift off them:
 //  - spacing (padding, margin, gap, space-*) sits on the 8px grid: Tailwind
 //    units are 4px, so only even units (and 0 / px) are allowed;
-//  - font sizes come from the 1.25 modular scale in tailwind.config.js, never
+//  - font sizes come from the type scale in tailwind.config.js, never
 //    an arbitrary text-[Npx];
 //  - shadows come from the tinted boxShadow scale, never an arbitrary
 //    shadow-[...] or a flat-black rgba(0,0,0,...).

@@ -93,7 +93,7 @@ export function ExecutiveBriefing({ projectId }: { projectId: string }) {
         <div className="panel tick-frame divide-y divide-base-700/60">
           <div className="px-4 py-2">
             <SectionHeader
-              title="Priority Actions"
+              title="Priority actions"
               size="sm"
               actions={signals.length > COLLAPSED_COUNT && (
                 <button onClick={() => setExpanded((e) => !e)} className="text-xs text-blueprint hover:text-blueprint-hover">

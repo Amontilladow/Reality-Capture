@@ -159,7 +159,7 @@ export default function QaqcDetailPage() {
         eyebrow={projectQuery.data?.name ?? 'Project'}
         title={record.recordNumber ?? shortLabel}
         actions={
-          <Link to={`/projects/${projectId}/qaqc/${recordType}`} className="btn-ghost !px-2 !py-2 text-xs">
+          <Link to={`/projects/${projectId}/qaqc/${recordType}`} className="btn-ghost !px-2 !py-2 ">
             Back to {shortLabel}s
           </Link>
         }
@@ -245,7 +245,7 @@ export default function QaqcDetailPage() {
               <button
                 onClick={() => respondMutation.mutate()}
                 disabled={!responseDraft.trim() || respondMutation.isPending}
-                className="btn-primary !px-4 !py-2 text-xs"
+                className="btn-primary !px-4 !py-2 "
               >
                 {respondMutation.isPending ? 'Submitting…' : 'Submit response'}
               </button>
@@ -278,7 +278,7 @@ export default function QaqcDetailPage() {
             own (§4): just the confirm/reject decision and comment. */}
         {(canConfirm || record.status === 'pending_confirmation') && (
           <section className="panel tick-frame p-6 space-y-4">
-            <div className="field-label">QAQC Confirmation</div>
+            <div className="field-label">QAQC confirmation</div>
             {canConfirm ? (
               <>
                 <p className="text-xs text-ink-500">
@@ -299,11 +299,11 @@ export default function QaqcDetailPage() {
                       <button
                         onClick={() => confirmMutation.mutate('confirmed')}
                         disabled={confirmMutation.isPending}
-                        className="btn-primary !px-4 !py-2 text-xs"
+                        className="btn-primary !px-4 !py-2 "
                       >
                         {confirmMutation.isPending ? 'Confirming…' : `Confirm & close ${shortLabel}`}
                       </button>
-                      <button onClick={() => setRejecting(true)} className="btn-secondary !px-4 !py-2 text-xs">
+                      <button onClick={() => setRejecting(true)} className="btn-secondary !px-4 !py-2 ">
                         Reject
                       </button>
                     </>
@@ -313,11 +313,11 @@ export default function QaqcDetailPage() {
                       <button
                         onClick={() => confirmMutation.mutate('rejected')}
                         disabled={!confirmComment.trim() || confirmMutation.isPending}
-                        className="btn-primary !px-4 !py-2 text-xs"
+                        className="btn-primary !px-4 !py-2 "
                       >
                         {confirmMutation.isPending ? 'Sending back…' : 'Send back (reopen)'}
                       </button>
-                      <button onClick={() => { setRejecting(false); setConfirmComment(''); }} className="btn-ghost !px-2 !py-2 text-xs">
+                      <button onClick={() => { setRejecting(false); setConfirmComment(''); }} className="btn-ghost !px-2 !py-2 ">
                         Cancel
                       </button>
                     </>
@@ -345,7 +345,7 @@ export default function QaqcDetailPage() {
         {downloadError && <p className="field-error">{downloadError}</p>}
 
         <div className="flex flex-wrap gap-2 pt-2 border-t border-base-600">
-          <button onClick={handleDownloadPdf} disabled={downloading} className="btn-secondary !px-4 !py-2 text-xs ml-auto">
+          <button onClick={handleDownloadPdf} disabled={downloading} className="btn-secondary !px-4 !py-2 ml-auto">
             {downloading ? 'Preparing…' : 'Download PDF'}
           </button>
         </div>
@@ -442,7 +442,7 @@ function AttachmentSection({
               <option key={t} value={t}>{RFI_DOCUMENT_TYPE_LABELS[t]}</option>
             ))}
           </Listbox>
-          <label className="btn-secondary !px-4 !py-2 text-xs cursor-pointer inline-block">
+          <label className="btn-secondary !px-4 !py-2 cursor-pointer inline-block">
             + Add document
             <input
               type="file"
@@ -500,7 +500,7 @@ function CaptureSection({
       )}
       {uploadMutation.isError && <p className="field-error">{apiErrorMessage(uploadMutation.error)}</p>}
       {canUpload && (
-        <label className="btn-secondary !px-4 !py-2 text-xs cursor-pointer inline-block">
+        <label className="btn-secondary !px-4 !py-2 cursor-pointer inline-block">
           + Add photo
           <input
             type="file"

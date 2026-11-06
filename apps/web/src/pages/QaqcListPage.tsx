@@ -69,7 +69,7 @@ export default function QaqcListPage() {
         title={shortLabel}
         actions={
           <>
-            <Link to={`/projects/${projectId}/qaqc`} className="btn-ghost !px-2 !py-2 text-xs">
+            <Link to={`/projects/${projectId}/qaqc`} className="btn-ghost !px-2 !py-2 ">
               Back to QAQC
             </Link>
             {canCreate && (

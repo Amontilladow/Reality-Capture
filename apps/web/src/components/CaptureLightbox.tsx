@@ -78,10 +78,10 @@ export function CaptureLightbox({
                 onChange={(e) => setTitle(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') renameMutation.mutate(); }}
               />
-              <button onClick={() => renameMutation.mutate()} disabled={renameMutation.isPending} className="btn-primary !px-4 !py-2 text-xs shrink-0">
+              <button onClick={() => renameMutation.mutate()} disabled={renameMutation.isPending} className="btn-primary !px-4 !py-2 shrink-0">
                 Save
               </button>
-              <button onClick={() => setEditingTitle(false)} className="btn-ghost !px-2 !py-2 text-xs shrink-0">Cancel</button>
+              <button onClick={() => setEditingTitle(false)} className="btn-ghost !px-2 !py-2 shrink-0">Cancel</button>
             </div>
           ) : (
             <button onClick={() => setEditingTitle(true)} className="text-sm font-medium truncate hover:text-blueprint text-left flex items-center gap-2 min-w-0">
@@ -128,10 +128,10 @@ export function CaptureLightbox({
                   <option key={p} value={p}>{PROJECT_PHASE_LABELS[p]}</option>
                 ))}
               </Listbox>
-              <button onClick={() => phaseMutation.mutate()} disabled={phaseMutation.isPending} className="btn-primary !px-2 !py-2 text-xs shrink-0">
+              <button onClick={() => phaseMutation.mutate()} disabled={phaseMutation.isPending} className="btn-primary !px-2 !py-2 shrink-0">
                 Save
               </button>
-              <button onClick={() => { setPhase((capture.phase as ProjectPhase) ?? ''); setEditingPhase(false); }} className="btn-ghost !px-2 !py-2 text-xs shrink-0">
+              <button onClick={() => { setPhase((capture.phase as ProjectPhase) ?? ''); setEditingPhase(false); }} className="btn-ghost !px-2 !py-2 shrink-0">
                 Cancel
               </button>
             </div>

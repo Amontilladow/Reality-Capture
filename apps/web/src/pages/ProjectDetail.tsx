@@ -216,7 +216,7 @@ export default function ProjectDetail() {
 
 const STATUS_LABELS: Record<string, string> = {
   active: 'Active',
-  on_hold: 'On Hold',
+  on_hold: 'On hold',
   completed: 'Completed',
   archived: 'Archived',
 };

@@ -301,7 +301,7 @@ export default function IssuesPage() {
           {s && (
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               <StatTile label="Open" value={s.open} onClick={() => { setStatus('open'); setQuickFilter('all'); }} />
-              <StatTile label="In Progress" value={s.inProgress} onClick={() => { setStatus(''); setQuickFilter('all'); }} />
+              <StatTile label="In progress" value={s.inProgress} onClick={() => { setStatus(''); setQuickFilter('all'); }} />
               <StatTile label="Resolved" value={s.resolved} onClick={() => { setStatus('resolved'); setQuickFilter('all'); }} />
               <StatTile label="Overdue" value={s.overdue} tone="danger" onClick={() => { setStatus(''); setQuickFilter('overdue'); }} />
               <StatTile label="Critical" value={s.critical} tone="danger" onClick={() => { setStatus(''); setQuickFilter('critical'); }} />
@@ -330,7 +330,7 @@ export default function IssuesPage() {
                 type="button"
                 aria-expanded={filtersOpen}
                 onClick={() => setFiltersOpen((v) => !v)}
-                className="btn-secondary !px-4 !py-2 text-xs"
+                className="btn-secondary !px-4 !py-2 "
               >
                 Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
               </button>
@@ -372,7 +372,7 @@ export default function IssuesPage() {
             </Listbox>
             <button
               onClick={() => setAdvancedOpen((v) => !v)}
-              className={`btn-secondary !px-4 !py-2 text-xs md:order-last ${advancedActive ? '!border-signal !text-signal' : ''}`}
+              className={`btn-secondary !px-4 !py-2 md:order-last ${advancedActive ? '!border-signal !text-signal' : ''}`}
             >
               Advanced{advancedActive ? ' •' : ''}
             </button>
@@ -409,7 +409,7 @@ export default function IssuesPage() {
                   <input id="fDateTo" type="date" className="field-input" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
                 </div>
                 {advancedActive && (
-                  <button onClick={clearAdvanced} className="btn-ghost !px-2 text-xs shrink-0" title="Clear advanced filters">
+                  <button onClick={clearAdvanced} className="btn-ghost !px-2 shrink-0" title="Clear advanced filters">
                     Clear
                   </button>
                 )}
@@ -430,7 +430,7 @@ export default function IssuesPage() {
                   <button
                     onClick={handleBulkDownloadPdf}
                     disabled={bulkDownloading === 'pdf'}
-                    className="btn-secondary !px-4 !py-2 text-xs"
+                    className="btn-secondary !px-4 !py-2 "
                     title="A ZIP with each selected issue as its own PDF"
                   >
                     {bulkDownloading === 'pdf' ? 'Preparing…' : 'Download PDF'}
@@ -438,7 +438,7 @@ export default function IssuesPage() {
                   <button
                     onClick={handleBulkDownloadXls}
                     disabled={bulkDownloading === 'xls'}
-                    className="btn-secondary !px-4 !py-2 text-xs"
+                    className="btn-secondary !px-4 !py-2 "
                     title="A ZIP with each selected issue as its own Excel file"
                   >
                     {bulkDownloading === 'xls' ? 'Preparing…' : 'Download XLS'}
@@ -446,7 +446,7 @@ export default function IssuesPage() {
                   <button
                     onClick={() => { if (confirm(`Close ${selectedIds.size} issue(s)?`)) bulkCloseMutation.mutate(); }}
                     disabled={bulkCloseMutation.isPending}
-                    className="btn-secondary !px-4 !py-2 text-xs"
+                    className="btn-secondary !px-4 !py-2 "
                   >
                     {bulkCloseMutation.isPending ? 'Closing…' : 'Bulk close'}
                   </button>
@@ -673,7 +673,7 @@ function IssueDashboard({
         <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
           <StatTile label="Critical" value={summary.critical} tone="danger" onClick={() => {}} />
           <StatTile label="Open" value={summary.open} onClick={() => {}} />
-          <StatTile label="In Progress" value={summary.inProgress} onClick={() => {}} />
+          <StatTile label="In progress" value={summary.inProgress} onClick={() => {}} />
           <StatTile label="Resolved" value={summary.resolved} onClick={() => {}} />
           <StatTile label="Overdue" value={summary.overdue} tone="danger" onClick={() => {}} />
           <StatTile label="Closed" value={summary.closed} onClick={() => {}} />
@@ -693,7 +693,7 @@ function IssueDashboard({
                 <th className="p-2">User</th>
                 <th className="p-2 text-right">Raised</th>
                 <th className="p-2 text-right">Open</th>
-                <th className="p-2 text-right">In Progress</th>
+                <th className="p-2 text-right">In progress</th>
                 <th className="p-2 text-right">Resolved</th>
                 <th className="p-2 text-right">Closed</th>
                 <th className="p-2 text-right">Overdue</th>
@@ -720,7 +720,7 @@ function IssueDashboard({
                     ) : (
                       <button
                         onClick={() => warnMutation.mutate(k.userId)}
-                        className="btn-secondary !py-2 !px-2 text-xs"
+                        className="btn-secondary !py-2 !px-2 "
                         disabled={k.overdue === 0 || (warnMutation.isPending && warnedUserId === k.userId)}
                         title={k.overdue === 0 ? "No overdue issues to warn about" : undefined}
                       >
@@ -828,7 +828,7 @@ function RemindersPanel({
             <button
               onClick={() => broadcastMutation.mutate()}
               disabled={!broadcastMessage.trim() || broadcastMutation.isPending}
-              className="btn-primary !px-4 !py-2 text-xs"
+              className="btn-primary !px-4 !py-2 "
             >
               {broadcastMutation.isPending ? 'Sending…' : 'Send broadcast'}
             </button>
@@ -854,7 +854,7 @@ function RemindersPanel({
             <button
               onClick={() => userReminderMutation.mutate()}
               disabled={!userReminderTarget || !userReminderMessage.trim() || userReminderMutation.isPending}
-              className="btn-primary !px-4 !py-2 text-xs"
+              className="btn-primary !px-4 !py-2 "
             >
               {userReminderMutation.isPending ? 'Sending…' : 'Send reminder'}
             </button>
@@ -915,7 +915,7 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-2 rounded-full text-xs border transition-colors ${
+      className={`h-9 px-4 inline-flex items-center rounded-full text-sm border transition-colors ${
         active ? 'bg-signal text-base-950 border-signal font-medium' : 'border-base-600 text-ink-300 hover:border-base-500'
       }`}
     >

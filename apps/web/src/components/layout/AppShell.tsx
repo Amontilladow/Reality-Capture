@@ -43,9 +43,9 @@ const NAV_GROUPS: NavGroup[] = [
   {
     heading: 'Account',
     items: [
-      { to: 'ai-settings', label: 'AI Provider', icon: IconSpark },
-      { to: 'email-settings', label: 'Email Integration', icon: IconMail },
-      { to: 'help', label: 'Help & Training', icon: IconHelp },
+      { to: 'ai-settings', label: 'AI provider', icon: IconSpark },
+      { to: 'email-settings', label: 'Email integration', icon: IconMail },
+      { to: 'help', label: 'Help & training', icon: IconHelp },
     ],
   },
 ];
@@ -58,7 +58,7 @@ const DEVELOPER_NAV_GROUP: NavGroup = {
   heading: 'Admin',
   items: [
     { to: 'developer', label: 'Developer', icon: IconKey, end: false },
-    { to: 'sharepoint-integration', label: 'SharePoint Integration', icon: IconDrawingStack, end: false },
+    { to: 'sharepoint-integration', label: 'SharePoint integration', icon: IconDrawingStack, end: false },
   ],
 };
 
@@ -67,9 +67,9 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
   {
     heading: 'Project',
     items: [
-      { to: 'captures', label: 'Buildlense Captures', icon: IconCamera },
-      { to: 'drawings', label: 'Floor Plans', icon: IconMap },
-      { to: 'site-drawings', label: 'Site Drawings', icon: IconDrawingStack },
+      { to: 'captures', label: 'BuildLens captures', icon: IconCamera },
+      { to: 'drawings', label: 'Floor plans', icon: IconMap },
+      { to: 'site-drawings', label: 'Site drawings', icon: IconDrawingStack },
       { to: 'issues', label: 'Issues', icon: IconFlag },
       { to: 'snagging', label: 'Snagging', icon: IconTag },
       { to: 'rfis', label: 'RFIs', icon: IconQuestion },
@@ -77,7 +77,7 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
       // per request, backend modules/routes left untouched; still
       // reachable by direct URL, just not linked from the sidebar.
       { to: 'qaqc', label: 'QAQC', icon: IconQaqc },
-      { to: 'progress-report', label: 'Progress Report', icon: IconTrending },
+      { to: 'progress-report', label: 'Progress report', icon: IconTrending },
       { to: 'reports', label: 'Reports', icon: IconReport },
     ],
   },
@@ -87,15 +87,15 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
     // existing module here, not adding a new one.
     heading: 'Engineering',
     items: [
-      { to: 'bim', label: 'BIM Models', icon: IconBim },
+      { to: 'bim', label: 'BIM models', icon: IconBim },
       { to: 'buildlens', label: 'BuildLens', icon: IconTimeline },
-      { to: 'gis-prep', label: 'GIS Preparation', icon: IconMap },
+      { to: 'gis-prep', label: 'GIS preparation', icon: IconMap },
     ],
   },
   {
     heading: 'Insights',
     items: [
-      { to: 'assistant', label: 'AI Assistant', icon: IconSpark },
+      { to: 'assistant', label: 'AI assistant', icon: IconSpark },
       { to: 'risk', label: 'Risk', icon: IconShield },
     ],
   },
@@ -169,8 +169,8 @@ export function AppShell() {
         >
           <IconMenu className="w-5 h-5" />
         </button>
-        <LogoMark className="w-6 h-6" />
-        <div className="text-sm font-semibold tracking-tight flex-1 truncate">Reality Capture</div>
+        <LogoMark className="w-8 h-8" />
+        <div className="text-base font-semibold tracking-tight flex-1 truncate">Reality Capture</div>
         <NotificationBell />
         <MessagesBell />
         <ThemeToggle />
@@ -185,7 +185,7 @@ export function AppShell() {
       )}
 
       <aside
-        className={`w-64 shrink-0 border-r border-base-600/70 bg-base-900 md:bg-transparent flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-200 md:static md:translate-x-0 ${
+        className={`w-72 shrink-0 border-r border-base-600/70 bg-base-900 md:bg-transparent flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-200 md:static md:translate-x-0 ${
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -193,10 +193,10 @@ export function AppShell() {
             Messages menu (inbox, team chat, email app); the theme toggle
             moved to the account footer, where it no longer squeezes the
             product name into a three-line wrap. */}
-        <div className="h-14 flex items-center gap-2 pl-4 pr-2 border-b border-base-600">
-          <LogoMark className="w-6 h-6 shrink-0" />
+        <div className="h-16 flex items-center gap-2 pl-4 pr-2 border-b border-base-600">
+          <LogoMark className="w-10 h-10 shrink-0" />
           <div className="leading-tight flex-1 min-w-0">
-            <div className="text-sm font-semibold tracking-tight truncate">Reality Capture</div>
+            <div className="text-base font-semibold tracking-tight truncate">Reality Capture</div>
             <div className="text-xs text-ink-500 truncate">EngineeringOS</div>
           </div>
           {/* Phones get the bells in the top bar instead. */}
@@ -220,7 +220,7 @@ export function AppShell() {
             <>
               <NavLink
                 to="/projects"
-                className="flex items-center gap-2 px-4 py-2 mb-2 text-xs text-ink-500 hover:text-ink-100"
+                className="flex items-center gap-2 px-4 py-2 mb-2 text-sm text-ink-500 hover:text-ink-100"
               >
                 <IconArrowLeft className="w-3.5 h-3.5" /> All projects
               </NavLink>
@@ -234,19 +234,19 @@ export function AppShell() {
 
         <div className="border-t border-base-600 p-4">
           <div className="flex items-center gap-2 px-2 py-2">
-            <div className="w-7 h-7 rounded-full bg-base-700 border border-base-600 flex items-center justify-center text-xs font-semibold text-ink-300 shrink-0">
+            <div className="w-8 h-8 rounded-full bg-base-700 border border-base-600 flex items-center justify-center text-xs font-semibold text-ink-300 shrink-0">
               {(user?.firstName?.[0] ?? '') + (user?.lastName?.[0] ?? '')}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-medium truncate">
+              <div className="text-sm font-medium truncate">
                 {user?.firstName} {user?.lastName}
               </div>
               <div className="text-xs text-ink-500 truncate">{user?.email}</div>
             </div>
           </div>
           <div className="flex items-center gap-2 mt-2">
-            <button onClick={handleLogout} className="btn-ghost flex-1 justify-start text-xs px-2 h-8">
-              <IconLogout className="w-3.5 h-3.5" /> Sign out
+            <button onClick={handleLogout} className="btn-ghost flex-1 justify-start px-2 h-9">
+              <IconLogout className="w-4 h-4" /> Sign out
             </button>
             <ThemeToggle />
           </div>

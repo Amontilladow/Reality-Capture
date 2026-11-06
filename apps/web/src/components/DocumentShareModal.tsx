@@ -79,7 +79,7 @@ export function DocumentShareModal({
           <div className="panel p-4 space-y-2">
             <div className="flex items-center gap-2">
               <input readOnly value={createMutation.data.shareUrl} className="field-input flex-1 text-xs" onFocus={(e) => e.target.select()} />
-              <button onClick={() => handleCopy(createMutation.data!.shareUrl)} className="btn-secondary !px-4 !py-2 text-xs">
+              <button onClick={() => handleCopy(createMutation.data!.shareUrl)} className="btn-secondary !px-4 !py-2 ">
                 {copied ? 'Copied!' : 'Copy'}
               </button>
             </div>
@@ -104,7 +104,7 @@ export function DocumentShareModal({
                       </span>
                     </div>
                     {status === 'Active' && (
-                      <button onClick={() => revokeMutation.mutate(s.id)} disabled={revokeMutation.isPending} className="btn-ghost !px-2 !py-2 text-xs text-danger">
+                      <button onClick={() => revokeMutation.mutate(s.id)} disabled={revokeMutation.isPending} className="btn-ghost !px-2 !py-2 text-danger">
                         Revoke
                       </button>
                     )}

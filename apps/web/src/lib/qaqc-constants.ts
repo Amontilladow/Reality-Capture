@@ -16,7 +16,7 @@ export const QAQC_PRIORITY_TONE: Record<QaqcPriority, StatusTone> = PRIORITY_TON
 
 export const QAQC_STATUS_LABELS: Record<QaqcStatus, string> = {
   open: 'Open',
-  pending_confirmation: 'Pending Confirmation',
+  pending_confirmation: 'Pending confirmation',
   closed: 'Closed',
   reopened: 'Reopened',
 };
