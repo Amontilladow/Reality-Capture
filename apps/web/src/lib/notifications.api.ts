@@ -1,7 +1,7 @@
 import { apiGet, apiGetWithMeta, apiPatch } from './api';
 
 export const NOTIFICATION_CATEGORIES = [
-  'drawing', 'issue', 'ncr', 'sor', 'rfi', 'submittal', 'assignment', 'approval', 'deadline', 'announcement',
+  'drawing', 'issue', 'ncr', 'sor', 'rfi', 'submittal', 'assignment', 'approval', 'deadline', 'announcement', 'escalation',
 ] as const;
 export type NotificationCategory = typeof NOTIFICATION_CATEGORIES[number];
 
@@ -48,4 +48,56 @@ export function acknowledgeNotification(id: string) {
 
 export function lookupIssueProject(issueId: string) {
   return apiGet<{ id: string; projectId: string; issueNumber: string }>(`/issues/${issueId}`);
+}
+
+// Phase 4: per-user email/WhatsApp channel preferences, stored server-side
+// on the user's own profile (no company-wide default to fetch separately).
+export interface NotificationPreferences {
+  emailEnabled: boolean;
+  whatsappEnabled: boolean;
+  mutedCategories: NotificationCategory[];
+}
+
+export function getNotificationPreferences() {
+  return apiGet<NotificationPreferences>('/notifications/preferences');
+}
+
+export function updateNotificationPreferences(patch: Partial<NotificationPreferences>) {
+  return apiPatch<NotificationPreferences>('/notifications/preferences', patch);
+}
+
+// Phase 4 admin console: delivery logs, company_admin only (the backend
+// 403s for anyone else -- these calls simply aren't surfaced in the UI
+// for a non-admin).
+export interface EmailDelivery {
+  id: string;
+  toEmail: string;
+  status: 'pending' | 'delivered' | 'failed';
+  attempts: number;
+  lastAttemptedAt?: string;
+  lastError?: string;
+  createdAt: string;
+  notificationType: string;
+  notificationTitle: string;
+}
+
+export interface WhatsAppDelivery {
+  id: string;
+  toPhone: string;
+  status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed' | 'skipped_not_configured';
+  providerMessageId?: string;
+  attempts: number;
+  lastAttemptedAt?: string;
+  lastError?: string;
+  createdAt: string;
+  notificationType: string;
+  notificationTitle: string;
+}
+
+export function listEmailDeliveries(query?: { page?: number; perPage?: number }) {
+  return apiGetWithMeta<EmailDelivery[]>('/notifications/admin/email-deliveries', { params: query });
+}
+
+export function listWhatsAppDeliveries(query?: { page?: number; perPage?: number }) {
+  return apiGetWithMeta<WhatsAppDelivery[]>('/notifications/admin/whatsapp-deliveries', { params: query });
 }

@@ -32,8 +32,43 @@ export type NotificationPriority = typeof NOTIFICATION_PRIORITIES[number];
 // from shipping while its category gets sorted out.
 export const NOTIFICATION_CATEGORIES = [
   'drawing', 'issue', 'ncr', 'sor', 'rfi', 'submittal', 'assignment', 'approval', 'deadline', 'announcement',
+  // Phase 4: NotificationEscalationService's own category, for the
+  // unacknowledged-critical-item notification it creates for a manager --
+  // never set by any other caller.
+  'escalation',
 ] as const;
 export type NotificationCategory = typeof NOTIFICATION_CATEGORIES[number];
+
+// Phase 4 of the notification engine: per-user channel preferences,
+// stored in the existing users.preferences JSONB column under a
+// 'notifications' sub-key -- same reuse-not-new-column pattern as
+// UsersService.update()'s onboardingCompleted. Defaults are deliberately
+// asymmetric: email defaults ON (matches Phase 2's original fixed rule,
+// so nobody's email notifications silently stop the day this ships) while
+// WhatsApp defaults OFF (explicit opt-in required even once Meta
+// credentials exist, since it's the one channel with a real per-message
+// cost -- master spec section 10's zero-unapproved-cost requirement,
+// applied per-user this time rather than per-deployment).
+export interface NotificationPreferences {
+  emailEnabled: boolean;
+  whatsappEnabled: boolean;
+  mutedCategories: NotificationCategory[];
+}
+
+const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+  emailEnabled: true,
+  whatsappEnabled: false,
+  mutedCategories: [],
+};
+
+function parsePreferences(raw: unknown): NotificationPreferences {
+  const stored = (raw as { notifications?: Partial<NotificationPreferences> } | null)?.notifications ?? {};
+  return {
+    emailEnabled: stored.emailEnabled ?? DEFAULT_NOTIFICATION_PREFERENCES.emailEnabled,
+    whatsappEnabled: stored.whatsappEnabled ?? DEFAULT_NOTIFICATION_PREFERENCES.whatsappEnabled,
+    mutedCategories: stored.mutedCategories ?? DEFAULT_NOTIFICATION_PREFERENCES.mutedCategories,
+  };
+}
 
 // Shared by every module whose own record carries a critical/high/medium/low
 // (issues, qaqc_records) or critical/high/normal/low severity: 'critical'
@@ -100,70 +135,97 @@ export class NotificationsService {
       this.logger.warn(`Failed to push real-time notification to user ${input.userId}: ${err instanceof Error ? err.message : String(err)}`);
     }
 
-    // Phase 2 of the notification engine (email channel): best-effort,
-    // never allowed to fail or slow down the write above -- identical
-    // contract to the gateway push just above it. Until Phase 4 adds real
-    // per-user/per-category channel preferences, the default rule is the
-    // spec's own escalation signal: anything high/critical priority or
-    // explicitly action-required also goes out by email, since that's
-    // exactly the class of notification a user shouldn't only discover by
-    // having the app open.
-    if (priority !== 'normal' || input.actionRequired) {
-      try {
-        await this.enqueueEmail(companyId, row.id as string, input.userId);
-      } catch (err) {
-        this.logger.warn(`Failed to enqueue notification email for user ${input.userId}: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
-
-    // Phase 3 (WhatsApp channel): same best-effort contract as email/push
-    // above, plus the master spec's own section 10 zero-unapproved-cost
-    // rule enforced right here -- isConfigured() must be checked before
-    // this ever creates a delivery row or queues a job, not just before
-    // the processor would actually call Meta's API, so a WhatsApp channel
-    // without real credentials costs nothing and leaves no delivery-log
-    // noise. Reserved for 'critical' only (not high/actionRequired, unlike
-    // email): WhatsApp is the most intrusive and the only channel with a
-    // real per-message cost, so it stays the narrowest trigger until Phase
-    // 4's real preferences replace this fixed rule.
-    if (priority === 'critical' && this.whatsapp.isConfigured()) {
-      try {
-        await this.enqueueWhatsApp(companyId, row.id as string, input.userId);
-      } catch (err) {
-        this.logger.warn(`Failed to enqueue notification WhatsApp message for user ${input.userId}: ${err instanceof Error ? err.message : String(err)}`);
-      }
+    // Phases 2/3 (email + WhatsApp channels): best-effort, never allowed to
+    // fail or slow down the write above -- identical contract to the
+    // gateway push. Phase 4 replaces Phases 2/3's original fixed
+    // high/critical/actionRequired rules with the user's own preferences,
+    // with one deliberate override: 'critical' priority always reaches
+    // email regardless of emailEnabled/mutedCategories (an incident a
+    // human marked critical should not be silently muted), the same
+    // escalation-overrides-preference principle NotificationEscalationService
+    // applies on its own timer for unacknowledged items. WhatsApp never
+    // gets that override -- see whatsappEnabled's own comment above.
+    try {
+      await this.dispatchChannels(companyId, row.id as string, input.userId, priority, input.actionRequired ?? false, input.category ?? null);
+    } catch (err) {
+      this.logger.warn(`Failed to dispatch channel notifications for user ${input.userId}: ${err instanceof Error ? err.message : String(err)}`);
     }
 
     return row;
   }
 
-  private async enqueueEmail(companyId: string, notificationId: string, userId: string): Promise<void> {
+  async getPreferences(companyId: string, userId: string): Promise<NotificationPreferences> {
     const [user] = await this.db.withTenant(companyId, sql => sql`
-      SELECT email FROM users WHERE id = ${userId} AND is_active = true
+      SELECT preferences FROM users WHERE id = ${userId} AND company_id = ${companyId}
     `);
-    if (!user?.email) return;
-
-    const [delivery] = await this.db.withTenant(companyId, sql => sql`
-      INSERT INTO notification_email_deliveries (company_id, notification_id, to_email)
-      VALUES (${companyId}, ${notificationId}, ${user.email})
-      RETURNING id
-    `);
-    await this.emailQueue.add(NOTIFICATION_EMAIL_JOB_NAME, { companyId, deliveryId: delivery.id as string });
+    return parsePreferences(user?.preferences);
   }
 
-  private async enqueueWhatsApp(companyId: string, notificationId: string, userId: string): Promise<void> {
-    const [user] = await this.db.withTenant(companyId, sql => sql`
-      SELECT phone FROM users WHERE id = ${userId} AND is_active = true
-    `);
-    const toPhone = toWhatsAppPhone(user?.phone as string | null | undefined);
-    if (!toPhone) return;
+  async updatePreferences(companyId: string, userId: string, patch: Partial<NotificationPreferences>): Promise<NotificationPreferences> {
+    const current = await this.getPreferences(companyId, userId);
+    const merged: NotificationPreferences = {
+      emailEnabled: patch.emailEnabled ?? current.emailEnabled,
+      whatsappEnabled: patch.whatsappEnabled ?? current.whatsappEnabled,
+      mutedCategories: patch.mutedCategories ?? current.mutedCategories,
+    };
+    await this.db.withTenant(companyId, (sql) => {
+      // sql.json(), not JSON.stringify() -- see webhooks.service.ts's
+      // emitEvent() for the exact double-encoding failure mode this avoids.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const json = sql.json(merged as any);
+      return sql`
+        UPDATE users SET preferences = jsonb_set(COALESCE(preferences, '{}'::jsonb), '{notifications}', ${json})
+        WHERE id = ${userId} AND company_id = ${companyId}
+      `;
+    });
+    return merged;
+  }
 
-    const [delivery] = await this.db.withTenant(companyId, sql => sql`
-      INSERT INTO notification_whatsapp_deliveries (company_id, notification_id, to_phone)
-      VALUES (${companyId}, ${notificationId}, ${toPhone})
-      RETURNING id
+  private async dispatchChannels(
+    companyId: string, notificationId: string, userId: string,
+    priority: NotificationPriority, actionRequired: boolean, category: NotificationCategory | null,
+  ): Promise<void> {
+    const [recipient] = await this.db.withTenant(companyId, sql => sql`
+      SELECT email, phone, preferences FROM users WHERE id = ${userId} AND is_active = true
     `);
-    await this.whatsappQueue.add(NOTIFICATION_WHATSAPP_JOB_NAME, { companyId, deliveryId: delivery.id as string });
+    if (!recipient) return;
+    const prefs = parsePreferences(recipient.preferences);
+    const categoryMuted = category !== null && prefs.mutedCategories.includes(category);
+
+    const shouldEmail = (priority !== 'normal' || actionRequired)
+      && (priority === 'critical' || (prefs.emailEnabled && !categoryMuted));
+    if (shouldEmail && recipient.email) {
+      try {
+        const [delivery] = await this.db.withTenant(companyId, sql => sql`
+          INSERT INTO notification_email_deliveries (company_id, notification_id, to_email)
+          VALUES (${companyId}, ${notificationId}, ${recipient.email})
+          RETURNING id
+        `);
+        await this.emailQueue.add(NOTIFICATION_EMAIL_JOB_NAME, { companyId, deliveryId: delivery.id as string });
+      } catch (err) {
+        this.logger.warn(`Failed to enqueue notification email for user ${userId}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    // isConfigured() must be checked before this ever creates a delivery
+    // row or queues a job, not just before the processor would actually
+    // call Meta's API, so a WhatsApp channel without real credentials (or
+    // a user who hasn't opted in) costs nothing and leaves no delivery-log
+    // noise -- master spec section 10's zero-unapproved-cost requirement.
+    const shouldWhatsApp = priority === 'critical' && prefs.whatsappEnabled && this.whatsapp.isConfigured();
+    const toPhone = shouldWhatsApp ? toWhatsAppPhone(recipient.phone as string | null) : null;
+    if (toPhone) {
+      try {
+        const [delivery] = await this.db.withTenant(companyId, sql => sql`
+          INSERT INTO notification_whatsapp_deliveries (company_id, notification_id, to_phone)
+          VALUES (${companyId}, ${notificationId}, ${toPhone})
+          RETURNING id
+        `);
+        await this.whatsappQueue.add(NOTIFICATION_WHATSAPP_JOB_NAME, { companyId, deliveryId: delivery.id as string });
+      } catch (err) {
+        this.logger.warn(`Failed to enqueue notification WhatsApp message for user ${userId}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
   }
 
   async findAll(companyId: string, userId: string, query: PaginationQuery & { unreadOnly?: boolean; category?: string; search?: string }) {
@@ -252,5 +314,44 @@ export class NotificationsService {
     `);
     if (!row) throw new NotFoundException(`Notification ${id} not found.`);
     return row;
+  }
+
+  // Admin console (master spec section 8): company_admin-gated in the
+  // controller via @Roles(), not here -- same split as every other
+  // company_admin-only service method in this codebase (e.g.
+  // ReportingLinesService.upsert(), which also trusts its controller's
+  // @Roles() rather than re-checking the caller's role itself).
+  async listEmailDeliveries(companyId: string, query: PaginationQuery) {
+    const page    = query.page ?? 1;
+    const perPage = Math.min(query.perPage ?? 20, 100);
+    const offset  = (page - 1) * perPage;
+    const rows = await this.db.withTenant(companyId, sql => sql`
+      SELECT d.id, d.to_email, d.status, d.attempts, d.last_attempted_at, d.last_error, d.created_at,
+             n.type AS notification_type, n.title AS notification_title,
+             COUNT(*) OVER() AS full_count
+      FROM notification_email_deliveries d
+      JOIN notifications n ON n.id = d.notification_id
+      WHERE d.company_id = ${companyId}
+      ORDER BY d.created_at DESC
+      LIMIT ${perPage} OFFSET ${offset}
+    `);
+    return this.db.paginate(rows, page, perPage);
+  }
+
+  async listWhatsAppDeliveries(companyId: string, query: PaginationQuery) {
+    const page    = query.page ?? 1;
+    const perPage = Math.min(query.perPage ?? 20, 100);
+    const offset  = (page - 1) * perPage;
+    const rows = await this.db.withTenant(companyId, sql => sql`
+      SELECT d.id, d.to_phone, d.status, d.provider_message_id, d.attempts, d.last_attempted_at, d.last_error, d.created_at,
+             n.type AS notification_type, n.title AS notification_title,
+             COUNT(*) OVER() AS full_count
+      FROM notification_whatsapp_deliveries d
+      JOIN notifications n ON n.id = d.notification_id
+      WHERE d.company_id = ${companyId}
+      ORDER BY d.created_at DESC
+      LIMIT ${perPage} OFFSET ${offset}
+    `);
+    return this.db.paginate(rows, page, perPage);
   }
 }
