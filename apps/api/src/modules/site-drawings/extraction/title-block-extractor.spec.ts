@@ -45,6 +45,28 @@ describe('extractTitleBlockFields', () => {
     expect(ocr.confidence).toBeLessThan(embedded.confidence);
   });
 
+  it('finds a labeled title with no colon/dash separator, printed on the line below its label', () => {
+    // A real, common CAD title-block layout: "Drawing Title" as its own
+    // label line, the actual title directly below it, no punctuation
+    // between them at all.
+    const text = 'Drawing No: M19-M4C-C0-PW-AX-SD-05713\nDrawing Title\nGROUND FLOOR STEEL DOOR KEY PLAN\nRevision: 00';
+    const result = extractTitleBlockFields(text, 'embedded_text');
+    expect(result?.drawingTitle).toBe('GROUND FLOOR STEEL DOOR KEY PLAN');
+  });
+
+  it('rejects an implausible labeled drawing-number match (no digits) and falls back to a bare multi-segment code', () => {
+    // Reproduces the real failure: embedded-text extraction order doesn't
+    // have to match the title block's visual layout, so the token right
+    // after a "Drawing No:" label can turn out to be an unrelated word
+    // from a completely different field ("Checked", from "Checked By:").
+    // A real drawing number always has a digit somewhere in it; this one
+    // doesn't, so it's rejected and the real multi-segment code elsewhere
+    // in the text is found instead, at the bare pattern's lower confidence.
+    const text = 'Drawing No: Checked\nsome other text\nM19-M4C-C0-PW-AX-SD-05713\nmore text';
+    const result = extractTitleBlockFields(text, 'embedded_text');
+    expect(result?.drawingNumber).toBe('M19-M4C-C0-PW-AX-SD-05713');
+  });
+
   it('isConfidentExtraction requires both a high confidence score AND a revision number', () => {
     expect(isConfidentExtraction({ drawingNumber: 'A-1', source: 'embedded_text', confidence: EXTRACTION_CONFIDENCE_CONFIRMED_THRESHOLD, revisionNumber: 'A' })).toBe(true);
     expect(isConfidentExtraction({ drawingNumber: 'A-1', source: 'embedded_text', confidence: EXTRACTION_CONFIDENCE_CONFIRMED_THRESHOLD })).toBe(false); // no revision
