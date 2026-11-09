@@ -204,8 +204,34 @@ export class SiteDrawingsService {
 
   // ── Register: search, filter, list ──────────────────────────────────────
 
-  async listDrawings(companyId: string, projectId: string, filters: SiteDrawingFilters): Promise<{ data: SiteDrawingWithCurrentRevision[]; total: number }> {
+  // The Hub's filter bar (SiteDrawingHubPage.tsx) keeps every unset filter
+  // as '' rather than undefined (a controlled-input/Listbox convention --
+  // "All disciplines" etc. is represented as the empty string), and sends
+  // it straight through as a query param. Each filter clause below only
+  // skips itself on NULL (`${x ?? null}::text IS NULL`), so an empty
+  // string was falling through to an actual equality/tsquery check against
+  // '' -- which matches nothing -- silently filtering out every drawing on
+  // first load. Normalizing '' (and whitespace-only) to undefined here,
+  // once, is the fix: it matches exportSiteDrawingRegister()'s own
+  // existing (client-side only) empty-string stripping, but makes it a
+  // real contract of this method instead of something only one caller
+  // happened to do correctly.
+  private normalizeFilters<T extends SiteDrawingFilters>(filters: T): T {
+    const clean = (v: string | undefined) => (v && v.trim() !== '' ? v : undefined);
+    return {
+      ...filters,
+      search: clean(filters.search),
+      discipline: clean(filters.discipline),
+      buildingOrZone: clean(filters.buildingOrZone),
+      floorOrLevel: clean(filters.floorOrLevel),
+      responsibleSubcontractor: clean(filters.responsibleSubcontractor),
+      workflowStatus: filters.workflowStatus ? filters.workflowStatus : undefined,
+    };
+  }
+
+  async listDrawings(companyId: string, projectId: string, rawFilters: SiteDrawingFilters): Promise<{ data: SiteDrawingWithCurrentRevision[]; total: number }> {
     await this.assertProjectBelongsToCompany(companyId, projectId);
+    const filters = this.normalizeFilters(rawFilters);
     const page = Math.max(1, filters.page ?? 1);
     const perPage = Math.min(200, Math.max(1, filters.perPage ?? 50));
     const offset = (page - 1) * perPage;
@@ -263,8 +289,9 @@ export class SiteDrawingsService {
   // page; the register is a persistent record, and a document controller
   // exporting it for a client/consultant needs the whole filtered set,
   // not whatever happened to be on screen.
-  async exportRegister(companyId: string, projectId: string, filters: Omit<SiteDrawingFilters, 'page' | 'perPage'>): Promise<{ buffer: Buffer; filename: string }> {
+  async exportRegister(companyId: string, projectId: string, rawFilters: Omit<SiteDrawingFilters, 'page' | 'perPage'>): Promise<{ buffer: Buffer; filename: string }> {
     await this.assertProjectBelongsToCompany(companyId, projectId);
+    const filters = this.normalizeFilters(rawFilters);
 
     const [project, rows] = await this.db.withTenant(companyId, async (sql) => {
       const [projectRow] = await sql<{ name: string; code: string | null }[]>`
