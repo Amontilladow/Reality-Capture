@@ -84,6 +84,10 @@ class ConversionSettings(BaseModel):
     # When the engineer declares the whole floor is one unit, a Unit feature is drawn on the floor outline
     # (status GENERATED_REQUIRES_REVIEW). Otherwise units are not generated: they cannot be derived from walls.
     single_unit_number: str = ""
+    # UnitDetail values the drawing cannot provide (UnitType, UnitClassification, UnitCategory, UnitNumBedroom,
+    # UnitNumBathroom, UnitBalconiesArea, UnitUsageType, UnitOwnerName, UnitOwnerNatioanlity, UnitOwnerPassport):
+    # tag -> value as entered by the engineer for the declared unit. Empty -> reported as missing, never guessed.
+    unit_values: dict[str, str] = Field(default_factory=dict)
     # Title block values the drawing cannot provide (DeveloperName, PropertyName, BuildingName, DrawingType,
     # DateOfDrawing, DrawingScale ...): tag -> value, recorded as entered by the engineer.
     title_values: dict[str, str] = Field(default_factory=dict)

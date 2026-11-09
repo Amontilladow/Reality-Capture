@@ -159,7 +159,11 @@ def build_features(model: SourceModel, det: Detection, manifest: Manifest, setti
     if unit_no:
         u_attrs = _blank(manifest, "UnitDetail")
         common(u_attrs)
-        if env is not None:
+        entered = {k.upper(): v.strip() for k, v in settings.unit_values.items() if v and v.strip()}
+        for tag, value in entered.items():
+            if tag in u_attrs and tag not in ("UNITNUMBER", "FLOORNUMBER"):
+                _user(u_attrs, tag, value, "entered for the declared unit")
+        if env is not None and "UNITAREA" not in entered:
             u_attrs["UNITAREA"] = AttrValue(f"{env.area:.0f}", DERIVED, "area of the generated unit polygon, m2")
         feats.append(Feature("UNIT_1", "Unit", REVIEW if env is not None else UNRESOLVED,
                              ["single-unit floor declared by the engineer: the unit is drawn on the floor outline"],

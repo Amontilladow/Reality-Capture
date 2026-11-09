@@ -43,6 +43,22 @@
     </div>
   </fieldset>
 
+  <fieldset><legend>3b. Unit details (the unit number above; the drawing cannot show these)</legend>
+    <div class="row">
+      <div><label for="unit_type">Unit type</label><select id="unit_type" name="unit_type"><option value="">-</option>{% for v in unit_types %}<option>{{ v }}</option>{% endfor %}</select></div>
+      <div><label for="unit_classification">Unit classification</label><input id="unit_classification" type="text" name="unit_classification" list="unit_classifications" placeholder="Apartment"><datalist id="unit_classifications">{% for v in unit_classifications %}<option value="{{ v }}">{% endfor %}</datalist></div>
+      <div><label for="unit_usage_type">Unit usage type</label><select id="unit_usage_type" name="unit_usage_type"><option value="">-</option>{% for v in usage_types %}<option>{{ v }}</option>{% endfor %}</select></div>
+      <div><label for="unit_category">Unit category (optional)</label><input id="unit_category" type="text" name="unit_category" maxlength="25"></div>
+      <div><label for="unit_num_bedroom">Bedrooms</label><input id="unit_num_bedroom" type="text" name="unit_num_bedroom" placeholder="2" pattern="[0-9]+"></div>
+      <div><label for="unit_num_bathroom">Bathrooms</label><input id="unit_num_bathroom" type="text" name="unit_num_bathroom" placeholder="2" pattern="[0-9]+"></div>
+      <div><label for="unit_balconies_area">Balconies area (m2, optional)</label><input id="unit_balconies_area" type="text" name="unit_balconies_area" pattern="[0-9]+(\.[0-9]+)?"></div>
+      <div><label for="unit_owner_name">Owner name</label><input id="unit_owner_name" type="text" name="unit_owner_name" maxlength="50"></div>
+      <div><label for="unit_owner_nationality">Owner nationality</label><input id="unit_owner_nationality" type="text" name="unit_owner_nationality" maxlength="50"></div>
+      <div><label for="unit_owner_passport">Owner passport</label><input id="unit_owner_passport" type="text" name="unit_owner_passport" maxlength="25"></div>
+    </div>
+    <p class="hint">The unit area is taken from the drawing (the floor outline). Leave a field empty if you do not have it: the draft then lists it as missing and is not marked complete.</p>
+  </fieldset>
+
   <fieldset><legend>4. Title block</legend>
     <div class="row">
       <div><label for="developer_name">Developer name</label><input id="developer_name" type="text" name="developer_name" placeholder="MASDAR CITY"></div>

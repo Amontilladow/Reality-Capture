@@ -18,6 +18,8 @@ export const USAGE_TYPES = [
   'Abbatoir', 'Ranch', 'Other',
 ] as const;
 
+export const UNIT_TYPES = USAGE_TYPES;   // QCM Appendix 1 list 3 is the same list as UsageType
+
 export const DRAWING_TYPES = ['As Planned', 'As Built', 'Modification'] as const;
 
 const FLOOR_ID = /^(G|[FMB][1-9][0-9]*)$/;
@@ -57,8 +59,13 @@ export function convertInputProblems(meta: Record<string, string>, facts: Record
   for (const [key, label] of [['floor_height', 'Floor height'], ['building_height', 'Building height']] as const) {
     if (v(facts[key]) && !NUMBER.test(v(facts[key]))) problems.push(`${label}: a number in metres, e.g. 3.6.`);
   }
+  for (const [key, label] of [['unit_num_bedroom', 'Bedrooms'], ['unit_num_bathroom', 'Bathrooms']] as const) {
+    if (v(facts[key]) && !/^[0-9]+$/.test(v(facts[key]))) problems.push(`${label}: a whole number.`);
+  }
+  if (v(facts.unit_balconies_area) && !NUMBER.test(v(facts.unit_balconies_area))) problems.push('Balconies area: a number in m2.');
   const lists = [['building_usage_category', 'Usage category', USAGE_CATEGORY_TYPES],
-    ['building_usage_type', 'Usage type', USAGE_TYPES], ['DrawingType', 'Drawing type', DRAWING_TYPES]] as const;
+    ['building_usage_type', 'Usage type', USAGE_TYPES], ['unit_type', 'Unit type', UNIT_TYPES],
+    ['unit_usage_type', 'Unit usage type', USAGE_TYPES], ['DrawingType', 'Drawing type', DRAWING_TYPES]] as const;
   for (const [key, label, list] of lists) {
     if (v(facts[key]) && !(list as readonly string[]).includes(v(facts[key]))) problems.push(`${label}: choose a value from the list.`);
   }

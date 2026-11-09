@@ -105,7 +105,7 @@ jobs:
       - name: Assemble the zip
         run: |
           mkdir -p stage/M4-GIS-Prep
-          cp dist/m4adm.exe packaging/README-WINDOWS.txt stage/M4-GIS-Prep/
+          cp dist/m4adm.exe packaging/README-WINDOWS.txt packaging/Start-M4.bat stage/M4-GIS-Prep/
           if [ "${{ steps.dwgverify.outcome }}" = "success" ]; then
             cp "$GITHUB_WORKSPACE"/dwg-out/* stage/M4-GIS-Prep/
             echo "DWG reader: included and verified from a clean folder" >> "$GITHUB_STEP_SUMMARY"

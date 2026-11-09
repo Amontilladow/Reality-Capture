@@ -265,6 +265,7 @@ def create_app(workspace: Path) -> FastAPI:
         return TEMPLATES.TemplateResponse(request, "convert.html", ctx(
             request, error=error, uploads=uploaded_files(), conversions=list_conversions(),
             usage_categories=bdms.domains["usage_category_type"], usage_types=bdms.domains["usage_type"],
+            unit_types=bdms.domains["unit_type"], unit_classifications=bdms.domains["unit_classification_suggested"],
             drawing_types=bdms.domains["drawing_type"], dwg_ready=dwg.status() != STATUS_UNAVAILABLE,
             dwg_reader=dwg.describe() if dwg.executable else None))
 
@@ -277,6 +278,10 @@ def create_app(workspace: Path) -> FastAPI:
         single_unit_number: str = Form(""),
         floor_height: str = Form(""), building_number_of_floors: str = Form(""), building_height: str = Form(""),
         building_usage_category: str = Form(""), building_usage_type: str = Form(""),
+        unit_type: str = Form(""), unit_classification: str = Form(""), unit_category: str = Form(""),
+        unit_num_bedroom: str = Form(""), unit_num_bathroom: str = Form(""), unit_balconies_area: str = Form(""),
+        unit_usage_type: str = Form(""), unit_owner_name: str = Form(""), unit_owner_nationality: str = Form(""),
+        unit_owner_passport: str = Form(""),
         developer_name: str = Form(""), building_name: str = Form(""),
         title_drawing_type: str = Form(""), date_of_drawing: str = Form(""),
         source_units: str = Form("auto"),
@@ -294,6 +299,11 @@ def create_app(workspace: Path) -> FastAPI:
         up = lambda v: v.strip().upper()          # file-name parts and the date are written in capitals
         titles = {"DeveloperName": developer_name.strip(), "BuildingName": building_name.strip(),
                   "DrawingType": title_drawing_type.strip(), "DateOfDrawing": up(date_of_drawing)}
+        units = {"UnitType": unit_type, "UnitClassification": unit_classification, "UnitCategory": unit_category,
+                 "UnitNumBedroom": unit_num_bedroom, "UnitNumBathroom": unit_num_bathroom,
+                 "UnitBalconiesArea": unit_balconies_area, "UnitUsageType": unit_usage_type,
+                 "UnitOwnerName": unit_owner_name, "UnitOwnerNatioanlity": unit_owner_nationality,   # spelled as in the spec
+                 "UnitOwnerPassport": unit_owner_passport}
         try:
             settings = ConversionSettings(
                 metadata={"zone_name": up(zone_name), "sector_number": up(sector_number), "plot_number": up(plot_number),
@@ -303,6 +313,7 @@ def create_app(workspace: Path) -> FastAPI:
                 building_height=building_height.strip(), building_usage_category=building_usage_category.strip(),
                 building_usage_type=building_usage_type.strip(),
                 title_values={k: v for k, v in titles.items() if v},
+                unit_values={k: v.strip() for k, v in units.items() if v.strip()},
                 crs={"control_points": pairs, "confirm_transformation": bool(confirm_transformation)})
         except ValueError as exc:
             return back(f"Settings are invalid: {exc}")

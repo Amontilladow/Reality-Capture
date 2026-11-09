@@ -9,7 +9,7 @@ import { getProject } from '../lib/projects.api';
 import { loadSavedForm, saveForm } from '../lib/saved-form';
 import { detectDrawingFormat, drawingNote, type DrawingFormat } from '../lib/drawing-format';
 import {
-  DRAWING_TYPES, UPPERCASE_FACTS, UPPERCASE_META, USAGE_CATEGORY_TYPES, USAGE_TYPES, convertInputProblems,
+  DRAWING_TYPES, UNIT_TYPES, UPPERCASE_FACTS, UPPERCASE_META, USAGE_CATEGORY_TYPES, USAGE_TYPES, convertInputProblems,
 } from '../lib/bdms-inputs';
 import {
   getGisPrepJob, listGisPrepJobs, rerunGisPrepJob, uploadAndCreateGisPrepJob,
@@ -74,13 +74,25 @@ const FACT_FIELDS = [
   ['building_usage_category', 'Usage category (code list)', 'Commercial'],
   ['building_usage_type', 'Usage type (code list)', 'Single-use Commercial'],
 ] as const;
+// Per-unit values for the unit number given above (UnitDetail); settings key = the spec's attribute name.
+const UNIT_FIELDS = [
+  ['unit_type', 'Unit type (code list)', 'Residential', 'UnitType'],
+  ['unit_classification', 'Unit classification', 'Apartment', 'UnitClassification'],
+  ['unit_usage_type', 'Unit usage type (code list)', 'Residential', 'UnitUsageType'],
+  ['unit_category', 'Unit category (optional)', '', 'UnitCategory'],
+  ['unit_num_bedroom', 'Bedrooms', '2', 'UnitNumBedroom'], ['unit_num_bathroom', 'Bathrooms', '2', 'UnitNumBathroom'],
+  ['unit_balconies_area', 'Balconies area, m2 (optional)', '', 'UnitBalconiesArea'],
+  ['unit_owner_name', 'Owner name', '', 'UnitOwnerName'], ['unit_owner_nationality', 'Owner nationality', '', 'UnitOwnerNatioanlity'],
+  ['unit_owner_passport', 'Owner passport', '', 'UnitOwnerPassport'],
+] as const;
 const TITLE_FIELDS = [
   ['DeveloperName', 'Developer name', 'MASDAR CITY'], ['BuildingName', 'Building name', ''],
   ['DrawingType', 'Drawing type', 'As Built'], ['DateOfDrawing', 'Date of drawing', '14-JAN-2026'],
 ] as const;
 
 const CHOICES: Record<string, readonly string[]> = {
-  building_usage_category: USAGE_CATEGORY_TYPES, building_usage_type: USAGE_TYPES, DrawingType: DRAWING_TYPES,
+  building_usage_category: USAGE_CATEGORY_TYPES, building_usage_type: USAGE_TYPES,
+  unit_type: UNIT_TYPES, unit_usage_type: USAGE_TYPES, DrawingType: DRAWING_TYPES,
 };
 const upper = (on: boolean, value: string) => (on ? value.toUpperCase() : value);
 
@@ -116,6 +128,7 @@ function buildSettings(f: FormState): GisPrepSettings | GisConvertSettings {
       building_height: f.facts.building_height ?? '',
       building_usage_category: f.facts.building_usage_category ?? '',
       building_usage_type: f.facts.building_usage_type ?? '',
+      unit_values: Object.fromEntries(UNIT_FIELDS.map(([k, , , tag]) => [tag, (f.facts[k] ?? '').trim()]).filter(([, v]) => v)),
       title_values: Object.fromEntries(TITLE_FIELDS.map(([k]) => [k, upper(UPPERCASE_FACTS.has(k), (f.facts[k] ?? '').trim())])
         .filter(([, v]) => v)),
       crs: { control_points: controlPoints, confirm_transformation: f.crsConfirmed },
@@ -248,7 +261,7 @@ export default function GisPrepPage() {
           </div>
           {form.mode === 'convert' && (
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-              {[...FACT_FIELDS, ...TITLE_FIELDS].map(([key, label, placeholder]) => (
+              {[...FACT_FIELDS, ...UNIT_FIELDS, ...TITLE_FIELDS].map(([key, label, placeholder]) => (
                 <label key={key} className="text-xs text-ink-500 space-y-2">
                   <span>{label}</span>
                   {CHOICES[key] ? (
