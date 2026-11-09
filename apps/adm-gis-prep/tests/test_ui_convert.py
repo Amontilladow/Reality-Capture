@@ -142,3 +142,22 @@ def test_window_opens_and_download_setting_is_on(monkeypatch):
     assert cli._open_window("http://127.0.0.1:9/convert", "x") is True
     assert FakeWebview.started and FakeWebview.settings["ALLOW_DOWNLOADS"] is True
     assert FakeWebview.created[0][1] == "http://127.0.0.1:9/convert"
+
+
+def test_unit_details_entered_in_the_form_reach_the_draft(tmp_path):
+    """UnitDetail values typed for the declared unit are written as USER values; the area still comes from the drawing."""
+    import json
+    client = TestClient(create_app(tmp_path / "ws"))
+    page = client.get("/convert").text
+    assert 'name="unit_type"' in page and 'name="unit_owner_passport"' in page and "Studio Flat" in page
+    arch_floor().saveas(tmp_path / "plan.dxf")
+    res = client.post("/convert", files={"drawing": ("plan.dxf", (tmp_path / "plan.dxf").read_bytes())}, data={
+        "zone_name": "KHALIFA CITY", "sector_number": "SE45_01", "plot_number": "C8", "building_number": "1",
+        "floor_id": "F1", "single_unit_number": "1", "unit_type": "Residential", "unit_classification": "Apartment",
+        "unit_num_bedroom": "2", "unit_owner_name": "A Owner"}, follow_redirects=False)
+    assert res.status_code == 303
+    job = res.headers["location"].rsplit("/", 1)[1]
+    report = (tmp_path / "ws").rglob(f"{job}/conversion_report.json")
+    r = json.loads(next(report).read_text(encoding="utf-8"))
+    text = json.dumps(r)
+    assert "Apartment" in text and "A Owner" in text

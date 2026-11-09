@@ -45,6 +45,7 @@ export interface GisConvertSettings {
   building_usage_category?: string;
   building_usage_type?: string;
   title_values?: Record<string, string>;
+  unit_values?: Record<string, string>;
   crs?: {
     target_crs?: string;
     control_points?: [[number, number], [number, number]][];

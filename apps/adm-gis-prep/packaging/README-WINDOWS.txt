@@ -9,6 +9,8 @@ START
      browser instead.)
      The first start takes up to a minute while Windows unpacks the program. If Windows SmartScreen
      warns about an unknown publisher, choose More info > Run anyway (the program is not code-signed).
+  2b. If double-clicking m4adm.exe shows "Windows cannot access the specified device, path, or file", double-click
+     Start-M4.bat instead. It clears Windows' "downloaded from the internet" mark on these files and starts the program.
   3. Leave the black window open while you work. Close it to stop the program.
 
 CONVERT A FLOOR PLAN
