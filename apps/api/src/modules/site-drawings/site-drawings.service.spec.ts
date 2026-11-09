@@ -277,6 +277,70 @@ describe('SiteDrawingsService', () => {
     });
   });
 
+  describe('listDrawings', () => {
+    // Bug: SiteDrawingHubPage.tsx's filter bar represents "no filter" as
+    // '' (a controlled Listbox/search-input convention), not undefined,
+    // and sends it straight through as a query param. Each WHERE clause
+    // only skipped itself on NULL, so '' fell through to a real
+    // comparison/tsquery match against '' -- which matches nothing --
+    // silently hiding every drawing in the project on first load, while
+    // exportRegister()'s own (then client-side-only) empty-string
+    // stripping kept the Excel export working. normalizeFilters() fixes
+    // this at the one place both callers go through.
+    it('treats every empty-string filter as "no filter", not a literal empty match', async () => {
+      let capturedArgs: unknown[] = [];
+      const captureMainQuery = (callback: WithTenantCallback) => {
+        const sql = Object.assign(
+          (...args: unknown[]) => { capturedArgs = args; return Promise.resolve([]); },
+          { json: (v: unknown) => v },
+        );
+        return callback(sql);
+      };
+      const { svc } = makeService([
+        single([{ id: projectId }]), // assertProjectBelongsToCompany
+        captureMainQuery,
+      ]);
+
+      await svc.listDrawings(companyId, projectId, {
+        search: '', discipline: '  ', buildingOrZone: '', floorOrLevel: '', responsibleSubcontractor: '', workflowStatus: undefined,
+      });
+
+      // Tagged-template call shape: [strings, projectId, search(IS NULL check),
+      // search(tsquery fallback, unused once IS NULL is true), discipline(IS NULL),
+      // discipline(compare), buildingOrZone(IS NULL), buildingOrZone(compare),
+      // floorOrLevel(IS NULL), floorOrLevel(compare), responsibleSubcontractor(IS NULL),
+      // responsibleSubcontractor(compare), workflowStatus(IS NULL), workflowStatus(compare),
+      // perPage, offset]
+      expect(capturedArgs[2]).toBeNull(); // search IS NULL check
+      expect(capturedArgs[4]).toBeNull(); // discipline IS NULL check (whitespace-only also normalized)
+      expect(capturedArgs[5]).toBeNull(); // discipline compare
+      expect(capturedArgs[6]).toBeNull(); // buildingOrZone IS NULL check
+      expect(capturedArgs[8]).toBeNull(); // floorOrLevel IS NULL check
+      expect(capturedArgs[10]).toBeNull(); // responsibleSubcontractor IS NULL check
+      expect(capturedArgs[12]).toBeNull(); // workflowStatus IS NULL check
+    });
+
+    it('still applies a real, non-empty filter value', async () => {
+      let capturedArgs: unknown[] = [];
+      const captureMainQuery = (callback: WithTenantCallback) => {
+        const sql = Object.assign(
+          (...args: unknown[]) => { capturedArgs = args; return Promise.resolve([]); },
+          { json: (v: unknown) => v },
+        );
+        return callback(sql);
+      };
+      const { svc } = makeService([
+        single([{ id: projectId }]),
+        captureMainQuery,
+      ]);
+
+      await svc.listDrawings(companyId, projectId, { discipline: 'Structural' });
+
+      expect(capturedArgs[4]).toBe('Structural'); // discipline IS NULL check -- not null, so the real comparison runs
+      expect(capturedArgs[5]).toBe('Structural'); // discipline compare value
+    });
+  });
+
   describe('exportRegister', () => {
     it('rejects a project that does not belong to the caller\'s company', async () => {
       const { svc } = makeService([single([])]);
