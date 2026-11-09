@@ -27,11 +27,24 @@ interface FieldMatch {
 // one is present (higher confidence); a bare pattern anywhere in the text
 // scores lower, since it's more likely to be a false positive.
 const DRAWING_NUMBER_LABELED = /(?:drawing|dwg|sheet)\s*(?:no\.?|number|#)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-./]{2,19})/i;
-const DRAWING_NUMBER_BARE = /\b([A-Z]{1,4}-\d{1,4}(?:\.\d{1,2})?)\b/;
+// Two shapes, tried in order: the short "LETTERS-DIGITS" code
+// (`A-101`, `S-2.03`) common on simpler consultant title blocks, and a
+// longer multi-segment code (`M19-M4C-C0-PW-AX-SD-05713`) common on
+// larger CAD-template-driven projects -- at least 3 dash-separated
+// segments total, so an incidental two-word hyphenated phrase elsewhere
+// on the page ("AS-BUILT") doesn't false-positive as a drawing number.
+const DRAWING_NUMBER_BARE = /\b([A-Z]{1,4}-\d{1,4}(?:\.\d{1,2})?|[A-Z0-9]{1,8}(?:-[A-Z0-9]{1,8}){2,8})\b/i;
 
 const REVISION_LABELED = /\brev(?:ision)?\.?\s*(?:no\.?)?\s*[:\-]?\s*([A-Z0-9]{1,3})\b/i;
 
-const TITLE_LABELED = /(?:drawing\s*)?title\s*[:\-]\s*([^\n\r]{3,120})/i;
+// Separator kept optional (`[:\-]?`, not `[:\-]`): a common CAD
+// title-block layout prints "Drawing Title" as its own label line with
+// the actual title directly below it on the next line, no colon or dash
+// at all. `\s*` already spans the newline between them (JS `\s` matches
+// `\n`), so this one change is enough to capture that layout -- the
+// mandatory separator was the entire reason it previously returned
+// nothing for an unmistakably present, clearly labeled title.
+const TITLE_LABELED = /(?:drawing\s*)?title\s*[:\-]?\s*([^\n\r]{3,120})/i;
 
 // Common construction date formats: 12/03/2025, 12-03-2025, 2025-03-12,
 // 12 Mar 2025, March 12, 2025.
@@ -52,8 +65,25 @@ function matchLabeled(text: string, pattern: RegExp, confidence: number): FieldM
   return match ? { value: match[1].trim(), confidence } : null;
 }
 
+// A real drawing number always contains at least one digit (a sheet
+// number, revision index, or project code segment). Embedded-text
+// extraction order isn't guaranteed to match the title block's visual
+// layout (confirmed by hand against a CAD-style fixture whose label and
+// value text runs are written to the PDF content stream in two separate
+// passes): the token immediately following a "Drawing No:" label can
+// turn out to be an unrelated all-letters word from a totally different
+// field ("Checked", "Approved") that happened to land next to the label
+// once stream order and visual order diverge. Rejecting a labeled match
+// with no digits at all and falling through to the bare pattern catches
+// exactly that failure mode without needing real layout/position data.
+function isPlausibleDrawingNumber(value: string): boolean {
+  return /\d/.test(value);
+}
+
 function extractDrawingNumber(text: string): FieldMatch | null {
-  return matchLabeled(text, DRAWING_NUMBER_LABELED, 0.85) ?? matchLabeled(text, DRAWING_NUMBER_BARE, 0.55);
+  const labeled = matchLabeled(text, DRAWING_NUMBER_LABELED, 0.85);
+  if (labeled && isPlausibleDrawingNumber(labeled.value)) return labeled;
+  return matchLabeled(text, DRAWING_NUMBER_BARE, 0.55);
 }
 
 function extractDiscipline(drawingNumber: string | undefined): string | undefined {
