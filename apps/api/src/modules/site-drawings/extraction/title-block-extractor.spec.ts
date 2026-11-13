@@ -72,6 +72,27 @@ describe('extractTitleBlockFields', () => {
     expect(result?.drawingNumber).toBe('M19-M4C-C0-PW-AX-SD-05713');
   });
 
+  it('rejects a date-shaped but calendar-invalid match instead of returning it (would crash the DB insert otherwise)', () => {
+    // issue_date is a SQL DATE column; a string like "60/90/2025" is
+    // date-SHAPED (matches the slash/dash pattern) but isn't a real date
+    // under either DD/MM or MM/DD reading. Returning it as-is previously
+    // reached the `postgres` driver's date serialization and threw
+    // `RangeError: Invalid time value`, aborting the whole file's import --
+    // reproduced against production logs for a recurring set of files.
+    const text = 'Drawing No: S-101\nDate: 60/90/2025';
+    const result = extractTitleBlockFields(text, 'embedded_text');
+    expect(result?.issueDate).toBeUndefined();
+  });
+
+  it('accepts a numeric date under either DD/MM or MM/DD reading', () => {
+    // "31/12/2025" is only valid as DD/MM (December 31st); MM/DD would
+    // require a 31st month, so this also proves the fix doesn't require
+    // BOTH readings to be valid, just one.
+    const text = 'Drawing No: S-101\nDate: 31/12/2025';
+    const result = extractTitleBlockFields(text, 'embedded_text');
+    expect(result?.issueDate).toBe('31/12/2025');
+  });
+
   it('isConfidentExtraction requires both a high confidence score AND a revision number', () => {
     expect(isConfidentExtraction({ drawingNumber: 'A-1', source: 'embedded_text', confidence: EXTRACTION_CONFIDENCE_CONFIRMED_THRESHOLD, revisionNumber: 'A' })).toBe(true);
     expect(isConfidentExtraction({ drawingNumber: 'A-1', source: 'embedded_text', confidence: EXTRACTION_CONFIDENCE_CONFIRMED_THRESHOLD })).toBe(false); // no revision

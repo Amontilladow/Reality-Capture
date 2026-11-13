@@ -105,10 +105,49 @@ function extractDiscipline(drawingNumber: string | undefined): string | undefine
   return prefix ? DISCIPLINE_LABELS[prefix] : undefined;
 }
 
+// `issue_date` is a SQL DATE column (migration 072); the `postgres` driver
+// serializes a matched string via `new Date(value).toISOString()`, which
+// THROWS `RangeError: Invalid time value` for a string that is date-SHAPED
+// but not a real calendar date (day/month out of range) -- confirmed by
+// hand against production: the same "Invalid time value" crash recurred
+// deterministically for the same handful of files across every reimport,
+// aborting that file's entire import (never reaching the Review Queue at
+// all, unlike every other uncertain-field case, which degrades to
+// NEEDS_REVIEW instead of throwing). A bad date must fail the SAME way an
+// implausible drawing number does: rejected here and treated as "no date
+// found", never propagated to crash the file's own DB insert.
+function isValidCalendarDate(year: number, month: number, day: number): boolean {
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const date = new Date(year, month - 1, day);
+  // Rolls over out-of-range days (e.g. Feb 30 -> Mar 2) instead of
+  // throwing; comparing the components back out catches that roll-over.
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
+// The numeric slash/dash pattern doesn't know if it's DD/MM or MM/DD
+// (both appear on consultant-issued drawings internationally), so a match
+// is accepted as long as EITHER reading is a real date -- only rejecting a
+// value where NEITHER order could possibly be valid.
+function isValidExtractedDate(value: string): boolean {
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (iso) return isValidCalendarDate(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+
+  const numeric = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(value);
+  if (numeric) {
+    const [, a, b, year] = numeric;
+    return isValidCalendarDate(Number(year), Number(a), Number(b)) || isValidCalendarDate(Number(year), Number(b), Number(a));
+  }
+
+  // The remaining two patterns are English month-name forms ("12 Mar
+  // 2025", "March 12, 2025"), which JS's Date constructor parses
+  // reliably; no day/month ambiguity to resolve since the month is named.
+  return !isNaN(new Date(value).getTime());
+}
+
 function extractDate(text: string): string | undefined {
   for (const pattern of DATE_PATTERNS) {
     const match = pattern.exec(text);
-    if (match) return match[1];
+    if (match && isValidExtractedDate(match[1])) return match[1];
   }
   return undefined;
 }
