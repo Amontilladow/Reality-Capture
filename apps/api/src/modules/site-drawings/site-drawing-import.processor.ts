@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { Process, Processor } from '@nestjs/bull';
 import type { Job } from 'bull';
 import { Logger } from '@nestjs/common';
@@ -6,6 +6,7 @@ import type { DocSource, ExtractedDrawingFields, SiteDrawingWorkflowStatus } fro
 import { DatabaseService } from '../../database/database.service';
 import { StorageService } from '../storage/storage.service';
 import { AiClientService } from '../ai-client/ai-client.service';
+import { SiteDrawingsService } from './site-drawings.service';
 import type { SiteDrawingImportJob } from './site-drawing-import.service';
 import { extractPdfEntriesFromZip, type ExtractedZipEntry } from './extraction/zip-extraction.util';
 import { isConfidentExtraction } from './extraction/title-block-extractor';
@@ -31,7 +32,11 @@ interface ExistingDrawingRow {
 interface CurrentRevisionRow {
   id: string;
   revisionNumber: string;
+  contentHash: string | null;
 }
+
+type ImportBatchStatus = 'COMPLETED' | 'PARTIAL' | 'FAILED';
+interface ImportBatchCounts { fileCount: number; createdCount: number; revisionCount: number; skippedCount: number; errorCount: number }
 
 // Runs in a Bull worker, same pattern as ImageProcessingProcessor/
 // WebhookDeliveryProcessor; never blocks the request that uploaded the
@@ -53,6 +58,7 @@ export class SiteDrawingImportProcessor {
     private readonly db: DatabaseService,
     private readonly storage: StorageService,
     private readonly aiClient: AiClientService,
+    private readonly siteDrawings: SiteDrawingsService,
   ) {}
 
   @Process('process-import-batch')
@@ -78,7 +84,10 @@ export class SiteDrawingImportProcessor {
       // The archive itself is unsafe/corrupt/unreadable; never a partial
       // success for something this fundamentally wrong (brief section 10:
       // "never silently fall back to a potentially stale/incomplete state").
-      await this.finish(companyId, batchId, 'FAILED', { fileCount: 0, createdCount: 0, revisionCount: 0, skippedCount: 0, errorCount: 0 }, this.describeError(err));
+      const counts: ImportBatchCounts = { fileCount: 0, createdCount: 0, revisionCount: 0, skippedCount: 0, errorCount: 0 };
+      const errorMessage = this.describeError(err);
+      await this.finish(companyId, batchId, 'FAILED', counts, errorMessage);
+      await this.notifyBatchComplete(companyId, projectId, batch, 'FAILED', counts, errorMessage);
       throw err;
     }
 
@@ -95,12 +104,39 @@ export class SiteDrawingImportProcessor {
       }
     }
 
-    const counts = { fileCount: entries.length, createdCount, revisionCount, skippedCount, errorCount };
+    const counts: ImportBatchCounts = { fileCount: entries.length, createdCount, revisionCount, skippedCount, errorCount };
     // COMPLETED only once every file succeeded; PARTIAL when some did and
     // some didn't (never silently reported as a plain success); FAILED
     // only when literally nothing could be processed.
-    const status = errorCount === 0 ? 'COMPLETED' : createdCount + revisionCount + skippedCount > 0 ? 'PARTIAL' : 'FAILED';
-    await this.finish(companyId, batchId, status, counts, errorCount > 0 ? `${errorCount} of ${entries.length} file(s) could not be processed.` : null);
+    const status: ImportBatchStatus = errorCount === 0 ? 'COMPLETED' : createdCount + revisionCount + skippedCount > 0 ? 'PARTIAL' : 'FAILED';
+    const errorMessage = errorCount > 0 ? `${errorCount} of ${entries.length} file(s) could not be processed.` : null;
+    await this.finish(companyId, batchId, status, counts, errorMessage);
+
+    // Brief section 5: "Notify relevant users" -- the same expectation
+    // SiteDrawingsService's own manual-upload and workflow-status paths
+    // already meet, just never wired into this bulk path before. One
+    // notification per BATCH, not per file: a 200-file import firing 200
+    // separate notifications at every project member would be noise, not
+    // a feature.
+    await this.notifyBatchComplete(companyId, projectId, batch, status, counts, errorMessage);
+  }
+
+  private async notifyBatchComplete(
+    companyId: string, projectId: string, batch: ImportBatchDbRow, status: ImportBatchStatus, counts: ImportBatchCounts, errorMessage: string | null,
+  ): Promise<void> {
+    const title = status === 'FAILED' && counts.fileCount === 0
+      ? `Import of "${batch.originalFilename}" failed: ${errorMessage ?? 'the archive could not be processed.'}`
+      : `Import of "${batch.originalFilename}" ${status === 'COMPLETED' ? 'completed' : 'completed with errors'}: `
+        + `${counts.createdCount} new, ${counts.revisionCount} revision(s), ${counts.skippedCount} duplicate(s) skipped`
+        + `${counts.errorCount > 0 ? `, ${counts.errorCount} error(s)` : ''}.`;
+
+    await this.siteDrawings.notifyProjectMembers(companyId, projectId, batch.uploadedBy, {
+      type: 'site_drawing_import_completed',
+      title,
+      resourceType: 'site_drawing_import_batch',
+      resourceId: batch.id,
+      priority: status === 'COMPLETED' ? 'normal' : 'high',
+    });
   }
 
   private async processOneFile(companyId: string, projectId: string, batch: ImportBatchDbRow, entry: ExtractedZipEntry): Promise<ReconcileOutcome> {
@@ -120,11 +156,18 @@ export class SiteDrawingImportProcessor {
     // extraction_status is that report, not a thrown error).
     const fields = await extractDrawingFields(this.storage, this.aiClient, companyId, projectId, storageKey, entry.buffer, entry.filename);
 
-    return this.reconcile(companyId, projectId, batch, entry.filename, storageKey, entry.buffer.length, fields);
+    // The file's own byte-for-byte identity, independent of anything
+    // extraction found (or failed to find) -- see reconcile()'s own
+    // comment on why this, not the extracted revision number, is what
+    // decides whether a reimport is a duplicate.
+    const contentHash = createHash('sha256').update(entry.buffer).digest('hex');
+
+    return this.reconcile(companyId, projectId, batch, entry.filename, storageKey, entry.buffer.length, contentHash, fields);
   }
 
   private async reconcile(
-    companyId: string, projectId: string, batch: ImportBatchDbRow, filename: string, storageKey: string, fileSizeBytes: number, fields: ExtractedDrawingFields | null,
+    companyId: string, projectId: string, batch: ImportBatchDbRow, filename: string, storageKey: string, fileSizeBytes: number,
+    contentHash: string, fields: ExtractedDrawingFields | null,
   ): Promise<ReconcileOutcome> {
     const filenameWithoutExtension = filename.replace(/\.pdf$/i, '');
     const drawingNumber = fields?.drawingNumber ?? filenameWithoutExtension;
@@ -162,10 +205,10 @@ export class SiteDrawingImportProcessor {
         const [revision] = await sql<{ id: string }[]>`
           INSERT INTO site_drawing_revisions (
             company_id, project_id, drawing_id, revision_number, workflow_status, issue_date, storage_key, file_size_bytes,
-            synchronization_status, extraction_status, extracted_fields_raw, import_batch_id, uploaded_by
+            content_hash, synchronization_status, extraction_status, extracted_fields_raw, import_batch_id, uploaded_by
           ) VALUES (
             ${companyId}, ${projectId}, ${drawing.id}, ${revisionNumber}, 'UNKNOWN', ${fields?.issueDate ?? null}, ${storageKey}, ${fileSizeBytes},
-            'NOT_APPLICABLE', ${baseExtractionStatus}, ${sql.json(toJsonSafe(fields))}, ${batch.id}, ${batch.uploadedBy ?? null}
+            ${contentHash}, 'NOT_APPLICABLE', ${baseExtractionStatus}, ${sql.json(toJsonSafe(fields))}, ${batch.id}, ${batch.uploadedBy ?? null}
           ) RETURNING id
         `;
         await sql`UPDATE site_drawings SET current_revision_id = ${revision.id} WHERE id = ${drawing.id}`;
@@ -178,35 +221,62 @@ export class SiteDrawingImportProcessor {
       // unlike SiteDrawingSyncService's SharePoint path (which trusts its
       // source), extracted metadata here is uncertain by construction.
       const titleConflict = Boolean(fields?.drawingTitle) && !titlesCompatible(existing.drawingTitle, drawingTitle);
-      const extractionStatus = titleConflict ? 'CONFLICT' : baseExtractionStatus;
-      const reviewNotes = titleConflict
-        ? `Drawing ${drawingNumber} already exists with title "${existing.drawingTitle}" -- this import's extracted title ("${drawingTitle}") does not match. Possible drawing-number collision between two different drawings -- please verify.`
-        : null;
 
       const [currentRevision] = existing.currentRevisionId
-        ? await sql<CurrentRevisionRow[]>`SELECT id, revision_number FROM site_drawing_revisions WHERE id = ${existing.currentRevisionId}`
+        ? await sql<CurrentRevisionRow[]>`SELECT id, revision_number, content_hash FROM site_drawing_revisions WHERE id = ${existing.currentRevisionId}`
         : [];
 
       // "Repeated packages containing previously imported drawings" (brief
-      // section 2): the SAME revision number re-imported is a duplicate,
-      // not a new revision (brief section 2: "prevent... duplicate
-      // processing"). The already-uploaded file for this revision is left
-      // alone; this one is simply not attached as a new revision. Its
-      // freshly-uploaded (now orphaned) storage object is removed rather
-      // than left as a stray billable object with nothing pointing to it.
-      if (currentRevision && currentRevision.revisionNumber === revisionNumber && !titleConflict) {
+      // section 2): a re-import of the EXACT SAME FILE is the duplicate
+      // brief section 2 asks to prevent -- detected by the file's own
+      // content, never by the extracted revision label alone. A failed/
+      // defaulted revision number (this function's own fallback to '1'
+      // above) must never be mistaken for proof two files are the same
+      // revision: confirmed by hand against production, every reimport of
+      // a file whose revision couldn't be extracted was silently skipped
+      // as a "duplicate" of revision "1", even when the file's actual
+      // content -- a real new revision -- had changed. The already-
+      // uploaded file for this revision is left alone; this one is simply
+      // not attached as a new revision, and its freshly-uploaded (now
+      // orphaned) storage object is removed rather than left as a stray
+      // billable object with nothing pointing to it.
+      if (currentRevision && currentRevision.contentHash === contentHash) {
         await this.storage.deleteIfExists(storageKey);
         return 'duplicate_skipped';
       }
 
+      // Content differs -- a genuine new revision -- but extraction
+      // couldn't tell its real revision number apart from the current
+      // one's (both landed on the same label, often both on the '1'
+      // fallback). site_drawing_revisions' UNIQUE(drawing_id,
+      // revision_number) would otherwise reject this insert outright.
+      // Disambiguated with a running count rather than dropped, and
+      // always routed to CONFLICT/review -- the same treatment a title
+      // mismatch already gets below -- since a human needs to correct the
+      // real revision label, not have this import silently fail.
+      let revisionNumberCollision = false;
+      let effectiveRevisionNumber = revisionNumber;
+      if (currentRevision && currentRevision.revisionNumber === revisionNumber) {
+        revisionNumberCollision = true;
+        const [{ count }] = await sql<{ count: string }[]>`SELECT COUNT(*)::text AS count FROM site_drawing_revisions WHERE drawing_id = ${existing.id}`;
+        effectiveRevisionNumber = `${revisionNumber}-v${Number(count) + 1}`;
+      }
+
+      const extractionStatus = titleConflict || revisionNumberCollision ? 'CONFLICT' : baseExtractionStatus;
+      const reviewNotes = titleConflict
+        ? `Drawing ${drawingNumber} already exists with title "${existing.drawingTitle}" -- this import's extracted title ("${drawingTitle}") does not match. Possible drawing-number collision between two different drawings -- please verify.`
+        : revisionNumberCollision
+        ? `This file's content differs from the current revision, but its extracted revision number ("${revisionNumber}") matches the current revision's -- the real revision label could not be determined. Stored as "${effectiveRevisionNumber}"; please correct it to the drawing's actual revision.`
+        : null;
+
       const [newRevision] = await sql<{ id: string }[]>`
         INSERT INTO site_drawing_revisions (
           company_id, project_id, drawing_id, revision_number, workflow_status, issue_date, storage_key, file_size_bytes,
-          supersedes_revision_id, synchronization_status, extraction_status, extracted_fields_raw, import_batch_id,
+          content_hash, supersedes_revision_id, synchronization_status, extraction_status, extracted_fields_raw, import_batch_id,
           review_notes, uploaded_by
         ) VALUES (
-          ${companyId}, ${projectId}, ${existing.id}, ${revisionNumber}, 'UNKNOWN', ${fields?.issueDate ?? null}, ${storageKey}, ${fileSizeBytes},
-          ${currentRevision?.id ?? null}, 'NOT_APPLICABLE', ${extractionStatus}, ${sql.json(toJsonSafe(fields))}, ${batch.id},
+          ${companyId}, ${projectId}, ${existing.id}, ${effectiveRevisionNumber}, 'UNKNOWN', ${fields?.issueDate ?? null}, ${storageKey}, ${fileSizeBytes},
+          ${contentHash}, ${currentRevision?.id ?? null}, 'NOT_APPLICABLE', ${extractionStatus}, ${sql.json(toJsonSafe(fields))}, ${batch.id},
           ${reviewNotes}, ${batch.uploadedBy ?? null}
         ) RETURNING id
       `;
@@ -240,9 +310,7 @@ export class SiteDrawingImportProcessor {
   }
 
   private async finish(
-    companyId: string, batchId: string, status: 'COMPLETED' | 'PARTIAL' | 'FAILED',
-    counts: { fileCount: number; createdCount: number; revisionCount: number; skippedCount: number; errorCount: number },
-    errorMessage: string | null,
+    companyId: string, batchId: string, status: ImportBatchStatus, counts: ImportBatchCounts, errorMessage: string | null,
   ): Promise<void> {
     await this.db.withTenant(companyId, sql => sql`
       UPDATE site_drawing_import_batches SET
