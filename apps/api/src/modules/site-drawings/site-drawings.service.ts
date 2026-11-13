@@ -658,7 +658,12 @@ export class SiteDrawingsService {
   // call has already resolved -- each notification is its own separate
   // withTenant call (NotificationsService.create()), never nested inside
   // another one.
-  private async notifyProjectMembers(
+  //
+  // Public (not private) so SiteDrawingImportProcessor can reuse the exact
+  // same fan-out for its own batch-completion notification, rather than
+  // duplicating this query: the bulk ZIP/PDF import path previously sent
+  // no notification at all, unlike every other write in this module.
+  async notifyProjectMembers(
     companyId: string, projectId: string, excludeUserId: string | undefined,
     input: { type: string; title: string; resourceType: string; resourceId: string; priority?: NotificationPriority },
   ): Promise<void> {

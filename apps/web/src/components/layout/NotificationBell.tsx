@@ -84,6 +84,7 @@ export function NotificationBell() {
       case 'qaqc_record': return `/projects/${projectId}/qaqc`;
       case 'submittal': return `/projects/${projectId}/submittals`;
       case 'site_drawing': return `/projects/${projectId}/site-drawings`;
+      case 'site_drawing_import_batch': return `/projects/${projectId}/site-drawings`;
       default: return null;
     }
   }
