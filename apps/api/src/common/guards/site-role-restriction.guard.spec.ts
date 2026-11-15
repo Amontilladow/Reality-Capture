@@ -88,6 +88,15 @@ describe('SiteRoleRestrictionGuard', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it("lets a restricted user manage their own personal workspace (/me), and nothing that merely looks like it", async () => {
+    const { guard } = makeGuard(false, true);
+    for (const [method, path] of [['POST', '/api/v1/me/tasks'], ['PATCH', '/api/v1/me/tasks/t1'], ['DELETE', '/api/v1/me/saved/issue/i1'], ['PATCH', '/api/v1/me/preferences']]) {
+      await expect(guard.canActivate(makeContext({ user: restrictedUser, method, path }))).resolves.toBe(true);
+    }
+    await expect(guard.canActivate(makeContext({ user: restrictedUser, method: 'POST', path: '/api/v1/messages' }))).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(guard.canActivate(makeContext({ user: restrictedUser, method: 'POST', path: '/api/v1/projects/me/rfis', params: { projectId: 'me' } }))).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it('blocks a restricted user writing to RFIs (outside the three allowed modules)', async () => {
     const { guard } = makeGuard(false, true);
     await expect(
