@@ -1,4 +1,5 @@
 import { createElement as h } from 'react';
+import { INK, INK_MUTED, SIGNAL, BLUEPRINT, registerBrandFonts } from '../../common/pdf/brand';
 
 // @react-pdf/renderer is ESM-only ("type": "module" in its package.json);
 // this API compiles to CommonJS (see apps/api/.swcrc), so it must be loaded
@@ -7,38 +8,8 @@ import { createElement as h } from 'react';
 // rfi-pdf.template.ts's own top-of-file comment; kept as the one place in
 // this module that knows about @react-pdf/renderer at all.
 
-// ── Brand ────────────────────────────────────────────────────────────────
-// Reused verbatim from rfi-pdf.template.ts so a notice letter reads as the
-// same product as the RFI PDF export, not a differently-branded document.
-const INK = '#0A141C';
-const INK_MUTED = '#4A6178';
-const SIGNAL = '#E56A1F';
-const BLUEPRINT = '#1E6E93';
-
-// Registered once per process, not per render; same convention as
-// rfi-pdf.template.ts's own registerFonts(). Deliberately kept as a
-// separate module-local flag (not shared with rfi-pdf.template.ts) since
-// Font.register() is itself idempotent-safe to call again from a second
-// module; the `fontsRegistered` guard here only avoids this module's own
-// redundant re-parsing across repeated calls within one process.
-let fontsRegistered = false;
-function registerFonts(Font: typeof import('@react-pdf/renderer').Font) {
-  if (fontsRegistered) return;
-  fontsRegistered = true;
-  Font.register({
-    family: 'IBM Plex Sans',
-    fonts: [
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff'), fontWeight: 400 },
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-600-normal.woff'), fontWeight: 600 },
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff'), fontWeight: 700 },
-    ],
-  });
-  // IBM Plex Mono deliberately NOT registered here; see
-  // rfi-pdf.template.ts's registerFonts() comment for the full reasoning
-  // (the current @fontsource "latin" WOFF build crashes fontkit on a plain
-  // space character).
-  Font.registerHyphenationCallback((word) => [word]);
-}
+// Brand colors and font registration: see common/pdf/brand.ts, the single
+// source of truth every PDF template in this app shares.
 
 export interface NoticeLetterPdfData {
   projectName: string;
@@ -49,17 +20,17 @@ export interface NoticeLetterPdfData {
 
 export async function renderNoticeLetterPdf(data: NoticeLetterPdfData): Promise<Buffer> {
   const { Document, Page, View, Text, Image, StyleSheet, Font, renderToBuffer } = await import('@react-pdf/renderer');
-  registerFonts(Font);
+  registerBrandFonts(Font);
 
   const styles = StyleSheet.create({
-    page: { padding: 40, fontSize: 10, fontFamily: 'IBM Plex Sans', color: INK },
+    page: { padding: 40, fontSize: 10, fontFamily: 'Outfit', color: INK },
     headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 14, paddingBottom: 10, borderBottom: `2 solid ${SIGNAL}` },
     logo: { width: 44, height: 44, objectFit: 'contain' },
-    projectEyebrow: { fontSize: 8, fontFamily: 'IBM Plex Sans', fontWeight: 600, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
-    title: { fontSize: 15, fontFamily: 'IBM Plex Sans', fontWeight: 700, letterSpacing: 0.3, color: BLUEPRINT },
+    projectEyebrow: { fontSize: 8, fontFamily: 'Outfit', fontWeight: 600, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
+    title: { fontSize: 15, fontFamily: 'Outfit', fontWeight: 700, letterSpacing: 0.3, color: BLUEPRINT },
     bodyWrap: { marginTop: 4 },
     paragraph: { marginBottom: 10 },
-    line: { fontSize: 10, lineHeight: 1.5, fontFamily: 'IBM Plex Sans' },
+    line: { fontSize: 10, lineHeight: 1.5, fontFamily: 'Outfit' },
   });
 
   const projectEyebrowText = data.projectCode ? `${data.projectName} · ${data.projectCode}` : data.projectName;

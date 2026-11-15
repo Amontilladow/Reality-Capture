@@ -1,5 +1,6 @@
 import { createElement as h } from 'react';
 import { RFI_DOCUMENT_TYPE_LABELS, RFI_IMPACT_LEVEL_LABELS, type RfiDocumentType, type RfiImpactLevel } from '@engineeringos/types';
+import { INK, INK_MUTED, BORDER, SECTION_FILL, SIGNAL, BLUEPRINT, registerBrandFonts } from '../../common/pdf/brand';
 
 // question/answer are stored as HTML from the RichTextEditor (Phase 3);
 // this is a static generated document, not a browser, so there's no HTML
@@ -39,53 +40,8 @@ function richTextToPlain(html: string): string {
 // place in this module that knows about @react-pdf/renderer at all, so
 // rfis.service.ts / rfis.controller.ts stay free of PDF-library specifics.
 
-// ── Brand ────────────────────────────────────────────────────────────────
-// Mirrors apps/web/tailwind.config.js exactly ("Blueprint-dark technical
-// palette; surveying/drafting instrument feel") so a printed RFI reads as
-// the same product as the live app, not a generic slate-and-blue template.
-// A generated document is printed on white paper, not the app's own dark
-// background, so INK/BASE tones are used here as foreground text/border
-// colors against white rather than as backgrounds; the palette is the
-// same, the ground it sits on is just inverted, same as any print
-// letterhead vs. its parent app's on-screen theme.
-const INK = '#0A141C';       // base-950: primary body text
-const INK_MUTED = '#4A6178'; // base-500: secondary text/labels
-const BORDER = '#B9C6CE';    // a lighter tint of base-500: print-legible hairline
-const SECTION_FILL = '#EAF0F4'; // ink-100: the app's own light tone, reused as a tint
-const SIGNAL = '#E56A1F';    // signal, darkened ~15% for print contrast on white
-const BLUEPRINT = '#1E6E93'; // blueprint, darkened for print contrast on white
-
-// Real product fonts (IBM Plex Sans, self-hosted via @fontsource; same
-// family the live app loads from Google Fonts in index.html) rather than
-// the PDF's own default Helvetica. Registered once per process, not per
-// render; Font.register on every request would just redundantly re-parse
-// the same font files.
-let fontsRegistered = false;
-function registerFonts(Font: typeof import('@react-pdf/renderer').Font) {
-  if (fontsRegistered) return;
-  fontsRegistered = true;
-  Font.register({
-    family: 'IBM Plex Sans',
-    fonts: [
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff'), fontWeight: 400 },
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-600-normal.woff'), fontWeight: 600 },
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff'), fontWeight: 700 },
-    ],
-  });
-  // IBM Plex Mono deliberately NOT registered here; @fontsource's current
-  // "latin" WOFF build of it crashes fontkit's glyph-metrics parser on the
-  // plain space character ("Offset is outside the bounds of the DataView"),
-  // confirmed by isolating it: IBM Plex Sans (all 3 weights, special
-  // characters, real content) renders cleanly, the exact same test with
-  // Mono fails on any string containing a space. Since every real value
-  // here (RFI numbers, stamps, filenames) contains spaces or is adjacent to
-  // text that does, Mono is unusable as shipped. Sans is used everywhere
-  // instead, with weight standing in for the monospace emphasis the live
-  // app gives these fields.
-  // react-pdf/yoga hyphenates justified text by default using a wordlist
-  // this custom font doesn't need; disabling avoids odd mid-word breaks.
-  Font.registerHyphenationCallback((word) => [word]);
-}
+// Brand colors and font registration: see common/pdf/brand.ts, the single
+// source of truth every PDF template in this app shares.
 
 // Phase 5 additions: the 5 named-organization logos (project_organizations,
 // Phase 4), the two upload stamps (query_stamp/answer_stamp, Phase 1), and
@@ -165,10 +121,10 @@ export interface RfiPdfData {
 
 export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
   const { Document, Page, View, Text, Image, StyleSheet, Font, renderToBuffer } = await import('@react-pdf/renderer');
-  registerFonts(Font);
+  registerBrandFonts(Font);
 
   const styles = StyleSheet.create({
-    page: { padding: 32, fontSize: 9, fontFamily: 'IBM Plex Sans', color: INK },
+    page: { padding: 32, fontSize: 9, fontFamily: 'Outfit', color: INK },
     headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, paddingBottom: 10, borderBottom: `2 solid ${SIGNAL}` },
     headerLeft: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
     logo: { width: 44, height: 44, objectFit: 'contain' },
@@ -177,19 +133,19 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
     // Project No. into the header instead of their own standalone section,
     // matching the live page's PageHeader eyebrow placed just above the
     // RFI number heading.
-    projectEyebrow: { fontSize: 7.5, fontFamily: 'IBM Plex Sans', fontWeight: 600, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
-    title: { fontSize: 15, fontFamily: 'IBM Plex Sans', fontWeight: 700, letterSpacing: 0.3 },
-    rfiNumber: { fontSize: 12, fontFamily: 'IBM Plex Sans', fontWeight: 700, color: SIGNAL, marginTop: 3, letterSpacing: 0.2 },
-    badge: { fontSize: 8, fontFamily: 'IBM Plex Sans', fontWeight: 700, padding: '3 8', borderRadius: 2, backgroundColor: SECTION_FILL, color: BLUEPRINT, textTransform: 'uppercase', letterSpacing: 0.4 },
+    projectEyebrow: { fontSize: 7.5, fontFamily: 'Outfit', fontWeight: 600, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+    title: { fontSize: 15, fontFamily: 'Outfit', fontWeight: 700, letterSpacing: 0.3 },
+    rfiNumber: { fontSize: 12, fontFamily: 'Outfit', fontWeight: 700, color: SIGNAL, marginTop: 3, letterSpacing: 0.2 },
+    badge: { fontSize: 8, fontFamily: 'Outfit', fontWeight: 700, padding: '3 8', borderRadius: 2, backgroundColor: SECTION_FILL, color: BLUEPRINT, textTransform: 'uppercase', letterSpacing: 0.4 },
     section: { border: `1 solid ${BORDER}`, borderRadius: 3, padding: 10, marginBottom: 10 },
-    sectionTitle: { fontSize: 8, fontFamily: 'IBM Plex Sans', fontWeight: 700, textTransform: 'uppercase', color: BLUEPRINT, marginBottom: 6, letterSpacing: 0.6 },
+    sectionTitle: { fontSize: 8, fontFamily: 'Outfit', fontWeight: 700, textTransform: 'uppercase', color: BLUEPRINT, marginBottom: 6, letterSpacing: 0.6 },
     row: { flexDirection: 'row', marginBottom: 4 },
     col: { flex: 1, paddingRight: 8 },
     label: { fontSize: 8, color: INK_MUTED, marginBottom: 1 },
     value: { fontSize: 9.5 },
     impactRow: { flexDirection: 'row', gap: 24 },
     impactCol: { flex: 1 },
-    impactLevelBadge: { fontSize: 7.5, fontFamily: 'IBM Plex Sans', fontWeight: 700, padding: '2 6', borderRadius: 2, alignSelf: 'flex-start', marginBottom: 3 },
+    impactLevelBadge: { fontSize: 7.5, fontFamily: 'Outfit', fontWeight: 700, padding: '2 6', borderRadius: 2, alignSelf: 'flex-start', marginBottom: 3 },
     impactDetail: { fontSize: 8.5, color: INK_MUTED, marginBottom: 1 },
     bodyText: { fontSize: 9.5, lineHeight: 1.5 },
     footerRow: { flexDirection: 'row', marginTop: 16, paddingTop: 10, borderTop: `1 solid ${BORDER}` },
@@ -205,21 +161,21 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
     orgLogo: { width: 34, height: 34, objectFit: 'contain', marginBottom: 2 },
     orgPlaceholder: { width: 34, height: 34, border: `1 dashed ${BORDER}`, borderRadius: 2, marginBottom: 2, alignItems: 'center', justifyContent: 'center' },
     orgPlaceholderText: { fontSize: 5, color: INK_MUTED },
-    orgLabel: { fontSize: 6, fontFamily: 'IBM Plex Sans', color: INK_MUTED, textAlign: 'center' },
+    orgLabel: { fontSize: 6, fontFamily: 'Outfit', color: INK_MUTED, textAlign: 'center' },
     // Upload-stamp panels: visually distinct bordered/shaded box, tinted
     // with the app's own light "ink-100" tone rather than a generic gray,
     // so it reads as a stamp, not another content section.
     stampPanel: { border: `1 solid ${SIGNAL}`, borderRadius: 3, backgroundColor: SECTION_FILL, padding: 8, marginBottom: 10 },
-    stampTitle: { fontSize: 7, fontFamily: 'IBM Plex Sans', fontWeight: 700, textTransform: 'uppercase', color: SIGNAL, marginBottom: 4, letterSpacing: 0.6 },
+    stampTitle: { fontSize: 7, fontFamily: 'Outfit', fontWeight: 700, textTransform: 'uppercase', color: SIGNAL, marginBottom: 4, letterSpacing: 0.6 },
     stampRow: { flexDirection: 'row', gap: 16 },
     stampCol: { flex: 1 },
     stampLabel: { fontSize: 7, color: INK_MUTED, marginBottom: 1 },
-    stampValue: { fontSize: 8.5, fontFamily: 'IBM Plex Sans', fontWeight: 700 },
+    stampValue: { fontSize: 8.5, fontFamily: 'Outfit', fontWeight: 700 },
     // Query/response attachment lists: plain text lines, not clickable
     // (this is a static generated document, not the live detail page).
     attachmentsBlock: { marginTop: 4 },
-    attachmentsHeading: { fontSize: 7, fontFamily: 'IBM Plex Sans', fontWeight: 700, textTransform: 'uppercase', color: INK_MUTED, marginBottom: 2, letterSpacing: 0.6 },
-    attachmentItem: { fontSize: 8.5, fontFamily: 'IBM Plex Sans', marginBottom: 1.5 },
+    attachmentsHeading: { fontSize: 7, fontFamily: 'Outfit', fontWeight: 700, textTransform: 'uppercase', color: INK_MUTED, marginBottom: 2, letterSpacing: 0.6 },
+    attachmentItem: { fontSize: 8.5, fontFamily: 'Outfit', marginBottom: 1.5 },
     // Image-attachment previews: a small wrapping grid (react-pdf's flex
     // wraps like CSS flex-wrap) rather than one-per-row, so a handful of
     // screenshots don't each eat a full page width. Fixed display box via
@@ -230,14 +186,14 @@ export async function renderRfiPdf(data: RfiPdfData): Promise<Buffer> {
     attachmentImageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2, marginBottom: 4 },
     attachmentImageCard: { width: 150, marginBottom: 4 },
     attachmentImage: { width: 150, height: 110, objectFit: 'contain', border: `1 solid ${BORDER}`, borderRadius: 2, backgroundColor: SECTION_FILL },
-    attachmentImageCaption: { fontSize: 7, fontFamily: 'IBM Plex Sans', color: INK_MUTED, marginTop: 2 },
+    attachmentImageCaption: { fontSize: 7, fontFamily: 'Outfit', color: INK_MUTED, marginTop: 2 },
     // Communication/Clarifications + Audit Trail (this section): both
     // shown live on RfiDetailPage but missing from the export until now.
     commentItem: { marginBottom: 6, paddingBottom: 6, borderBottom: `1 solid ${BORDER}` },
     commentMeta: { fontSize: 7.5, color: INK_MUTED, marginBottom: 2 },
     commentBody: { fontSize: 9, lineHeight: 1.4 },
     auditRow: { flexDirection: 'row', fontSize: 8, marginBottom: 3, gap: 8 },
-    auditAction: { fontFamily: 'IBM Plex Sans', fontWeight: 600, color: INK, width: 160 },
+    auditAction: { fontFamily: 'Outfit', fontWeight: 600, color: INK, width: 160 },
     auditUser: { color: INK_MUTED, flex: 1 },
     auditTime: { color: INK_MUTED },
     // No italic registered above (avoids another font-resolution failure

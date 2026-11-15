@@ -1,38 +1,13 @@
 import { createElement as h } from 'react';
+import { INK, INK_MUTED, BORDER, SECTION_FILL, SIGNAL, BLUEPRINT, OK, registerBrandFonts } from '../../common/pdf/brand';
 
 // @react-pdf/renderer is ESM-only; this API compiles to CommonJS, so it is
 // loaded via dynamic import() inside renderQaqcPdf(): same convention as
 // rfi-pdf.template.ts, so qaqc.service.ts/qaqc.controller.ts stay free of
 // PDF-library specifics.
 
-// ── Brand ────────────────────────────────────────────────────────────────
-// Identical palette/font-registration to rfi-pdf.template.ts, for visual
-// consistency across every generated PDF in this app (see that file's own
-// comment for the full rationale; mirrors apps/web/tailwind.config.js's
-// "Blueprint-dark technical palette").
-const INK = '#0A141C';
-const INK_MUTED = '#4A6178';
-const BORDER = '#B9C6CE';
-const SECTION_FILL = '#EAF0F4';
-const SIGNAL = '#E56A1F';
-const BLUEPRINT = '#1E6E93';
-
-let fontsRegistered = false;
-function registerFonts(Font: typeof import('@react-pdf/renderer').Font) {
-  if (fontsRegistered) return;
-  fontsRegistered = true;
-  Font.register({
-    family: 'IBM Plex Sans',
-    fonts: [
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff'), fontWeight: 400 },
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-600-normal.woff'), fontWeight: 600 },
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff'), fontWeight: 700 },
-    ],
-  });
-  // IBM Plex Mono deliberately not registered; see rfi-pdf.template.ts's
-  // own comment: its current "latin" WOFF build crashes on a bare space.
-  Font.registerHyphenationCallback((word) => [word]);
-}
+// Brand colors and font registration: see common/pdf/brand.ts, the single
+// source of truth every PDF template in this app shares.
 
 const RECORD_TYPE_TITLE: Record<'ncr' | 'sor' | 'wir' | 'mir', string> = {
   ncr: 'NON-CONFORMANCE REPORT',
@@ -44,7 +19,7 @@ const RECORD_TYPE_TITLE: Record<'ncr' | 'sor' | 'wir' | 'mir', string> = {
 const STATUS_COLOR: Record<string, string> = {
   open: SIGNAL,
   pending_confirmation: BLUEPRINT,
-  closed: '#3A7D44',
+  closed: OK,
   reopened: SIGNAL,
 };
 
@@ -80,17 +55,17 @@ export interface QaqcPdfData {
 
 export async function renderQaqcPdf(data: QaqcPdfData): Promise<Buffer> {
   const { Document, Page, View, Text, StyleSheet, Font, renderToBuffer } = await import('@react-pdf/renderer');
-  registerFonts(Font);
+  registerBrandFonts(Font);
 
   const styles = StyleSheet.create({
-    page: { padding: 32, fontSize: 9, fontFamily: 'IBM Plex Sans', color: INK },
+    page: { padding: 32, fontSize: 9, fontFamily: 'Outfit', color: INK },
     headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, paddingBottom: 10, borderBottom: `2 solid ${SIGNAL}` },
-    projectEyebrow: { fontSize: 7.5, fontFamily: 'IBM Plex Sans', fontWeight: 600, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
-    title: { fontSize: 15, fontFamily: 'IBM Plex Sans', fontWeight: 700, letterSpacing: 0.3 },
-    recordNumber: { fontSize: 12, fontFamily: 'IBM Plex Sans', fontWeight: 700, color: SIGNAL, marginTop: 3, letterSpacing: 0.2 },
-    badge: { fontSize: 8, fontFamily: 'IBM Plex Sans', fontWeight: 700, padding: '3 8', borderRadius: 2, backgroundColor: SECTION_FILL, textTransform: 'uppercase', letterSpacing: 0.4 },
+    projectEyebrow: { fontSize: 7.5, fontFamily: 'Outfit', fontWeight: 600, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+    title: { fontSize: 15, fontFamily: 'Outfit', fontWeight: 700, letterSpacing: 0.3 },
+    recordNumber: { fontSize: 12, fontFamily: 'Outfit', fontWeight: 700, color: SIGNAL, marginTop: 3, letterSpacing: 0.2 },
+    badge: { fontSize: 8, fontFamily: 'Outfit', fontWeight: 700, padding: '3 8', borderRadius: 2, backgroundColor: SECTION_FILL, textTransform: 'uppercase', letterSpacing: 0.4 },
     section: { border: `1 solid ${BORDER}`, borderRadius: 3, padding: 10, marginBottom: 10 },
-    sectionTitle: { fontSize: 8, fontFamily: 'IBM Plex Sans', fontWeight: 700, textTransform: 'uppercase', color: BLUEPRINT, marginBottom: 6, letterSpacing: 0.6 },
+    sectionTitle: { fontSize: 8, fontFamily: 'Outfit', fontWeight: 700, textTransform: 'uppercase', color: BLUEPRINT, marginBottom: 6, letterSpacing: 0.6 },
     row: { flexDirection: 'row', marginBottom: 4 },
     col: { flex: 1, paddingRight: 8 },
     label: { fontSize: 8, color: INK_MUTED, marginBottom: 1 },
@@ -99,7 +74,7 @@ export async function renderQaqcPdf(data: QaqcPdfData): Promise<Buffer> {
     footerRow: { flexDirection: 'row', marginTop: 16, paddingTop: 10, borderTop: `1 solid ${BORDER}` },
     footerCol: { flex: 1 },
     footerLabel: { fontSize: 8, color: INK_MUTED, marginBottom: 2 },
-    footerValue: { fontSize: 9, fontFamily: 'IBM Plex Sans', fontWeight: 600 },
+    footerValue: { fontSize: 9, fontFamily: 'Outfit', fontWeight: 600 },
   });
 
   const field = (label: string, value?: string) =>

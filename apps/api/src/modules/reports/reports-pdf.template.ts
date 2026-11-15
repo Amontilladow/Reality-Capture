@@ -1,4 +1,5 @@
 import { createElement as h } from 'react';
+import { INK, INK_MUTED, BORDER, SECTION_FILL, SIGNAL, BLUEPRINT, CHART_PALETTE, registerBrandFonts } from '../../common/pdf/brand';
 
 // status/priority/discipline/trade arrive as raw lowercase DB enum values
 // ('critical', 'in_progress'): same reasoning as rfi-pdf.template.ts's own
@@ -14,40 +15,12 @@ function capitalize(value: string): string {
 // compile to require(), which cannot load an ESM package. Mirrors
 // rfi-pdf.template.ts's own dynamic-import structure exactly.
 
-// ── Brand ────────────────────────────────────────────────────────────────
-// Reused verbatim from rfi-pdf.template.ts so a printed Reports PDF reads as
-// the same product as the RFI PDF, not a different-looking export.
-const INK = '#0A141C';
-const INK_MUTED = '#4A6178';
-const BORDER = '#B9C6CE';
-const SECTION_FILL = '#EAF0F4';
-const SIGNAL = '#E56A1F';
-const BLUEPRINT = '#1E6E93';
-
-// Small fixed palette for chart categories: SIGNAL/BLUEPRINT (the two
-// brand accents) plus three more tones chosen to stay legible in a legend
-// printed on white paper. Cycled by index, not semantically bound to any
-// particular status/priority value (categories are open-ended enum values
-// across two different tables, so a fixed status->color map isn't practical
-// here the way rfi-pdf.template.ts's IMPACT_COLORS is for its 4-value enum).
-const CHART_PALETTE = [SIGNAL, BLUEPRINT, '#2E8540', '#B8860B', '#8B3A62', INK_MUTED];
-
-let fontsRegistered = false;
-function registerFonts(Font: typeof import('@react-pdf/renderer').Font) {
-  if (fontsRegistered) return;
-  fontsRegistered = true;
-  Font.register({
-    family: 'IBM Plex Sans',
-    fonts: [
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff'), fontWeight: 400 },
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-600-normal.woff'), fontWeight: 600 },
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff'), fontWeight: 700 },
-    ],
-  });
-  // IBM Plex Mono deliberately NOT registered; see rfi-pdf.template.ts's
-  // comment on this exact same line for the fontkit crash this avoids.
-  Font.registerHyphenationCallback((word) => [word]);
-}
+// Brand colors, chart palette and font registration: see common/pdf/brand.ts,
+// the single source of truth every PDF template in this app shares. The
+// chart palette is cycled by index, not semantically bound to any particular
+// status/priority value (categories are open-ended enum values across two
+// different tables, so a fixed status->color map isn't practical here the
+// way rfi-pdf.template.ts's IMPACT_COLORS is for its 4-value enum).
 
 // ── Chart geometry (pie) ─────────────────────────────────────────────────
 function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
@@ -92,25 +65,25 @@ export interface ReportsPdfData {
 
 export async function renderReportsPdf(data: ReportsPdfData): Promise<Buffer> {
   const { Document, Page, View, Text, Svg, Path, Rect, Circle, StyleSheet, Font, renderToBuffer } = await import('@react-pdf/renderer');
-  registerFonts(Font);
+  registerBrandFonts(Font);
 
   const styles = StyleSheet.create({
-    page: { padding: 32, fontSize: 9, fontFamily: 'IBM Plex Sans', color: INK },
+    page: { padding: 32, fontSize: 9, fontFamily: 'Outfit', color: INK },
     headerRow: { marginBottom: 14, paddingBottom: 10, borderBottom: `2 solid ${SIGNAL}` },
-    projectEyebrow: { fontSize: 7.5, fontFamily: 'IBM Plex Sans', fontWeight: 600, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
-    title: { fontSize: 16, fontFamily: 'IBM Plex Sans', fontWeight: 700, letterSpacing: 0.3 },
+    projectEyebrow: { fontSize: 7.5, fontFamily: 'Outfit', fontWeight: 600, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+    title: { fontSize: 16, fontFamily: 'Outfit', fontWeight: 700, letterSpacing: 0.3 },
     generatedAt: { fontSize: 8, color: INK_MUTED, marginTop: 3 },
 
-    sectionHeading: { fontSize: 12, fontFamily: 'IBM Plex Sans', fontWeight: 700, color: BLUEPRINT, marginBottom: 8, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+    sectionHeading: { fontSize: 12, fontFamily: 'Outfit', fontWeight: 700, color: BLUEPRINT, marginBottom: 8, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
 
     tileRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
     tile: { border: `1 solid ${BORDER}`, borderRadius: 3, backgroundColor: SECTION_FILL, padding: '6 10', minWidth: 68 },
-    tileValue: { fontSize: 15, fontFamily: 'IBM Plex Sans', fontWeight: 700, color: INK },
+    tileValue: { fontSize: 15, fontFamily: 'Outfit', fontWeight: 700, color: INK },
     tileLabel: { fontSize: 7, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 2 },
 
     chartsRow: { flexDirection: 'row', gap: 14, marginBottom: 12 },
     chartCard: { flex: 1, border: `1 solid ${BORDER}`, borderRadius: 3, padding: 8 },
-    chartTitle: { fontSize: 8, fontFamily: 'IBM Plex Sans', fontWeight: 700, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 },
+    chartTitle: { fontSize: 8, fontFamily: 'Outfit', fontWeight: 700, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 },
     pieRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     legendCol: { flex: 1 },
     legendRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
@@ -127,7 +100,7 @@ export async function renderReportsPdf(data: ReportsPdfData): Promise<Buffer> {
     table: { marginTop: 4, marginBottom: 14 },
     tableHeaderRow: { flexDirection: 'row', backgroundColor: SECTION_FILL, borderBottom: `1 solid ${BORDER}`, paddingVertical: 3 },
     tableRow: { flexDirection: 'row', borderBottom: `1 solid ${BORDER}`, paddingVertical: 3 },
-    tableHeaderCell: { fontSize: 7, fontFamily: 'IBM Plex Sans', fontWeight: 700, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.3, paddingHorizontal: 3 },
+    tableHeaderCell: { fontSize: 7, fontFamily: 'Outfit', fontWeight: 700, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.3, paddingHorizontal: 3 },
     tableCell: { fontSize: 7.5, paddingHorizontal: 3 },
     colNumber: { width: '14%' },
     colTitle: { width: '30%' },

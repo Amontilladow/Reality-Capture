@@ -1,14 +1,10 @@
 import ExcelJS from 'exceljs';
+import { INK_ARGB as INK, MUTED_ARGB as MUTED, BORDER_ARGB as BORDER, SECTION_FILL_ARGB as HEADER_FILL, BLUEPRINT_ARGB as BLUEPRINT, XLS_FONT as FONT } from '../../common/pdf/brand';
 
 // Brief section 3: "Excel export" of the drawing register. A flat,
 // one-row-per-drawing listing (unlike issue-xls.ts's one-sheet-per-record
 // detail export): this is the register itself, not a per-record dossier.
-const INK = 'FF0A141C';
-const MUTED = 'FF4A6178';
-const BORDER = 'FFB9C6CE';
-const HEADER_FILL = 'FFEAF0F4';
-const BLUEPRINT = 'FF1E6E93';
-const FONT = 'IBM Plex Sans';
+// Colors/font: common/pdf/brand.ts.
 
 const thin = { style: 'thin' as const, color: { argb: BORDER } };
 const gridBorder = { top: thin, bottom: thin, left: thin, right: thin };
