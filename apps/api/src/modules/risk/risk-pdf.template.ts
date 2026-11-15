@@ -1,23 +1,11 @@
 import { createElement as h } from 'react';
+import { INK, INK_MUTED, BORDER, SECTION_FILL, SIGNAL, BLUEPRINT, AI_FILL, OK, WARN, DANGER, HIGH, CHART_PALETTE, registerBrandFonts } from '../../common/pdf/brand';
 
-// Same brand tokens as reports-pdf.template.ts; kept as its own copy here
-// rather than shared/exported, same convention that file's own header
-// documents for its relationship to rfi-pdf.template.ts: RiskModule has no
-// dependency on ReportsModule, and this is a small, self-contained
-// renderer, not a shared component library.
-const INK = '#0A141C';
-const INK_MUTED = '#4A6178';
-const BORDER = '#B9C6CE';
-const SECTION_FILL = '#EAF0F4';
-const SIGNAL = '#E56A1F';
-const BLUEPRINT = '#1E6E93';
-const AI_FILL = '#EEF3F8';
-
+// Brand colors, chart palette and font registration: see common/pdf/brand.ts,
+// the single source of truth every PDF template in this app shares.
 const LEVEL_COLORS: Record<string, string> = {
-  LOW: '#2E8540', MODERATE: '#B8860B', HIGH: SIGNAL, CRITICAL: '#B3261E',
+  LOW: OK, MODERATE: WARN, HIGH, CRITICAL: DANGER,
 };
-
-const CHART_PALETTE = [SIGNAL, BLUEPRINT, '#2E8540', '#B8860B', '#8B3A62', INK_MUTED];
 
 function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1).replace(/_/g, ' ');
@@ -26,20 +14,6 @@ function capitalize(value: string): string {
 // @react-pdf/renderer is ESM-only; dynamic import() mirrors
 // reports-pdf.template.ts's own reasoning exactly (this compiles to
 // CommonJS via apps/api/.swcrc).
-let fontsRegistered = false;
-function registerFonts(Font: typeof import('@react-pdf/renderer').Font) {
-  if (fontsRegistered) return;
-  fontsRegistered = true;
-  Font.register({
-    family: 'IBM Plex Sans',
-    fonts: [
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff'), fontWeight: 400 },
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-600-normal.woff'), fontWeight: 600 },
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff'), fontWeight: 700 },
-    ],
-  });
-  Font.registerHyphenationCallback((word) => [word]);
-}
 
 export interface RiskPdfTopRisk {
   title: string;
@@ -91,29 +65,29 @@ export interface RiskPdfData {
 
 export async function renderRiskPdf(data: RiskPdfData): Promise<Buffer> {
   const { Document, Page, View, Text, Svg, Rect, StyleSheet, Font, renderToBuffer } = await import('@react-pdf/renderer');
-  registerFonts(Font);
+  registerBrandFonts(Font);
 
   const styles = StyleSheet.create({
-    page: { padding: 32, fontSize: 9, fontFamily: 'IBM Plex Sans', color: INK },
+    page: { padding: 32, fontSize: 9, fontFamily: 'Outfit', color: INK },
     headerRow: { marginBottom: 14, paddingBottom: 10, borderBottom: `2 solid ${SIGNAL}` },
-    projectEyebrow: { fontSize: 7.5, fontFamily: 'IBM Plex Sans', fontWeight: 600, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
-    title: { fontSize: 16, fontFamily: 'IBM Plex Sans', fontWeight: 700, letterSpacing: 0.3 },
+    projectEyebrow: { fontSize: 7.5, fontFamily: 'Outfit', fontWeight: 600, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+    title: { fontSize: 16, fontFamily: 'Outfit', fontWeight: 700, letterSpacing: 0.3 },
     generatedAt: { fontSize: 8, color: INK_MUTED, marginTop: 3 },
 
-    sectionHeading: { fontSize: 12, fontFamily: 'IBM Plex Sans', fontWeight: 700, color: BLUEPRINT, marginBottom: 8, marginTop: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+    sectionHeading: { fontSize: 12, fontFamily: 'Outfit', fontWeight: 700, color: BLUEPRINT, marginBottom: 8, marginTop: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
 
     tileRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 6 },
     tile: { border: `1 solid ${BORDER}`, borderRadius: 3, backgroundColor: SECTION_FILL, padding: '6 10', minWidth: 74 },
-    tileValue: { fontSize: 15, fontFamily: 'IBM Plex Sans', fontWeight: 700, color: INK },
+    tileValue: { fontSize: 15, fontFamily: 'Outfit', fontWeight: 700, color: INK },
     tileLabel: { fontSize: 7, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 2 },
 
     aiCard: { border: `1 solid ${BLUEPRINT}`, borderRadius: 3, backgroundColor: AI_FILL, padding: 10, marginBottom: 4 },
-    aiCardLabel: { fontSize: 7, fontFamily: 'IBM Plex Sans', fontWeight: 700, color: BLUEPRINT, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
+    aiCardLabel: { fontSize: 7, fontFamily: 'Outfit', fontWeight: 700, color: BLUEPRINT, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
     aiCardDisclaimer: { fontSize: 6.5, color: INK_MUTED, marginBottom: 6 },
     aiCardBody: { fontSize: 8.5, lineHeight: 1.4 },
 
     chartCard: { border: `1 solid ${BORDER}`, borderRadius: 3, padding: 8, marginBottom: 4 },
-    chartTitle: { fontSize: 8, fontFamily: 'IBM Plex Sans', fontWeight: 700, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 },
+    chartTitle: { fontSize: 8, fontFamily: 'Outfit', fontWeight: 700, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 },
     barValuesRow: { flexDirection: 'row' },
     barValueCell: { textAlign: 'center', fontSize: 6.5, color: INK },
     barLabelsRow: { flexDirection: 'row', marginTop: 2 },
@@ -124,7 +98,7 @@ export async function renderRiskPdf(data: RiskPdfData): Promise<Buffer> {
     table: { marginTop: 4, marginBottom: 8 },
     tableHeaderRow: { flexDirection: 'row', backgroundColor: SECTION_FILL, borderBottom: `1 solid ${BORDER}`, paddingVertical: 3 },
     tableRow: { flexDirection: 'row', borderBottom: `1 solid ${BORDER}`, paddingVertical: 3 },
-    tableHeaderCell: { fontSize: 7, fontFamily: 'IBM Plex Sans', fontWeight: 700, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.3, paddingHorizontal: 3 },
+    tableHeaderCell: { fontSize: 7, fontFamily: 'Outfit', fontWeight: 700, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.3, paddingHorizontal: 3 },
     tableCell: { fontSize: 7.5, paddingHorizontal: 3 },
     colTitle: { width: '34%' },
     colCategory: { width: '20%' },
@@ -190,7 +164,7 @@ export async function renderRiskPdf(data: RiskPdfData): Promise<Buffer> {
         h(Text, { style: [styles.tableCell, styles.colTitle] }, r.title),
         h(Text, { style: [styles.tableCell, styles.colCategory] }, r.discipline ? `${r.category} (${r.discipline})` : r.category),
         h(Text, { style: [styles.tableCell, styles.colScore] }, String(r.score)),
-        h(Text, { style: [styles.tableCell, styles.colLevel, { color: LEVEL_COLORS[r.level] ?? INK, fontFamily: 'IBM Plex Sans', fontWeight: 700 }] }, capitalize(r.level)),
+        h(Text, { style: [styles.tableCell, styles.colLevel, { color: LEVEL_COLORS[r.level] ?? INK, fontFamily: 'Outfit', fontWeight: 700 }] }, capitalize(r.level)),
         h(Text, { style: [styles.tableCell, styles.colStatus] }, capitalize(r.status)),
         h(Text, { style: [styles.tableCell, styles.colTrend] }, capitalize(r.trend)),
       )),
@@ -214,7 +188,7 @@ export async function renderRiskPdf(data: RiskPdfData): Promise<Buffer> {
   };
 
   const trendTile = data.overallScoreTrendPct !== null
-    ? { label: '7-Day Trend', value: `${data.overallScoreTrendPct > 0 ? '+' : ''}${data.overallScoreTrendPct}%`, color: data.overallScoreTrendPct > 0 ? SIGNAL : '#2E8540' }
+    ? { label: '7-Day Trend', value: `${data.overallScoreTrendPct > 0 ? '+' : ''}${data.overallScoreTrendPct}%`, color: data.overallScoreTrendPct > 0 ? SIGNAL : OK }
     : { label: '7-Day Trend', value: 'N/A' };
 
   const projectEyebrowText = data.projectCode ? `${data.projectName} · ${data.projectCode}` : data.projectName;

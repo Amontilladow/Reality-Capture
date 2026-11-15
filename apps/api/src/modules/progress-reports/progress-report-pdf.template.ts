@@ -1,33 +1,11 @@
 import { createElement as h } from 'react';
+import { INK, INK_MUTED, BORDER, SECTION_FILL, SIGNAL, BLUEPRINT, DANGER, registerBrandFonts } from '../../common/pdf/brand';
 
-// Same brand/font setup as reports-pdf.template.ts / rfi-pdf.template.ts;
-// a printed Progress Report should read as the same product as every other
-// PDF export in this app, not a one-off design.
-const INK = '#0A141C';
-const INK_MUTED = '#4A6178';
-const BORDER = '#B9C6CE';
-const SECTION_FILL = '#EAF0F4';
-const SIGNAL = '#E56A1F';
-const BLUEPRINT = '#1E6E93';
-const DANGER = '#C0392B';
+// Brand colors and font registration: see common/pdf/brand.ts, the single
+// source of truth every PDF template in this app shares.
 
 function capitalize(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1).replace(/_/g, ' ');
-}
-
-let fontsRegistered = false;
-function registerFonts(Font: typeof import('@react-pdf/renderer').Font) {
-  if (fontsRegistered) return;
-  fontsRegistered = true;
-  Font.register({
-    family: 'IBM Plex Sans',
-    fonts: [
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff'), fontWeight: 400 },
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-600-normal.woff'), fontWeight: 600 },
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff'), fontWeight: 700 },
-    ],
-  });
-  Font.registerHyphenationCallback((word) => [word]);
 }
 
 export interface ProgressReportPdfIssueRow {
@@ -74,10 +52,10 @@ export interface ProgressReportPdfData {
 
 export async function renderProgressReportPdf(data: ProgressReportPdfData): Promise<Buffer> {
   const { Document, Page, View, Text, Image, StyleSheet, Font, renderToBuffer } = await import('@react-pdf/renderer');
-  registerFonts(Font);
+  registerBrandFonts(Font);
 
   const styles = StyleSheet.create({
-    page: { padding: 32, fontSize: 9, fontFamily: 'IBM Plex Sans', color: INK },
+    page: { padding: 32, fontSize: 9, fontFamily: 'Outfit', color: INK },
     headerRow: { marginBottom: 14, paddingBottom: 10, borderBottom: `2 solid ${SIGNAL}` },
     projectEyebrow: { fontSize: 7.5, fontWeight: 600, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
     title: { fontSize: 16, fontWeight: 700, letterSpacing: 0.3 },

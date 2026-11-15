@@ -2,18 +2,13 @@ import ExcelJS from 'exceljs';
 import { STATUS_LABELS, PRIORITY_LABELS, DISCIPLINE_LABELS, formatDeadline } from './issue-constants';
 import { SNAG_STATUS_LABELS, SNAG_PRIORITY_LABELS, formatDate } from './snagging-constants';
 import type { ReportKpis } from './reports.api';
+import { INK, MUTED, BORDER, SECTION_FILL, BLUEPRINT, FONT } from './xls-brand';
 
-// Mirrors rfi-xls.ts's palette/helper conventions exactly (same "Blueprint-
-// dark technical palette" ARGB constants, same sectionRow/fieldRow shape);
-// deliberately without that file's image-embedding machinery (addPixelImage,
-// fetchExportAssets), since a Reports export has no per-row images, just two
-// sheets of breakdown counts + open-item tables.
-const INK = 'FF0A141C';          // base-950
-const MUTED = 'FF4A6178';        // base-500
-const BORDER = 'FFB9C6CE';       // lighter tint of base-500, print-legible
-const SECTION_FILL = 'FFEAF0F4'; // ink-100, reused as a light section tint
-const BLUEPRINT = 'FF1E6E93';    // blueprint, darkened for contrast on white
-const FONT = 'IBM Plex Sans';    // matches index.html's Google Fonts load
+// Mirrors rfi-xls.ts's helper conventions exactly (same xls-brand.ts
+// colors/font, same sectionRow/fieldRow shape); deliberately without that
+// file's image-embedding machinery (addPixelImage, fetchExportAssets),
+// since a Reports export has no per-row images, just two sheets of
+// breakdown counts + open-item tables.
 
 const thin = { style: 'thin' as const, color: { argb: BORDER } };
 const gridBorder = { top: thin, bottom: thin, left: thin, right: thin };
