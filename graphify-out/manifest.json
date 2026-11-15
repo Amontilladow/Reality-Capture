@@ -4386,9 +4386,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/ui/LogoMark.tsx": {
-    "mtime": 1793935356.2311833,
-    "seen": 1793942412.6017623,
-    "ast_hash": "695e70c3c15ba79f3c8ac7312417c5cf",
+    "mtime": 1794763824.8488033,
+    "seen": 1794764035.8525782,
+    "ast_hash": "04e69ee418de7a5050d6f16fc458c8a6",
     "semantic_hash": ""
   },
   "apps/web/src/components/ui/Modal.test.tsx": {
@@ -5994,33 +5994,33 @@
     "semantic_hash": ""
   },
   "apps/web/public/apple-touch-icon.png": {
-    "mtime": 1793934302.6711738,
-    "seen": 1793942412.60213,
-    "ast_hash": "e17c5da82ad35a70a94999b7ed7a54ed",
+    "mtime": 1794763815.4048028,
+    "seen": 1794764035.8591607,
+    "ast_hash": "99dd642349384de8117e63dee3e7a6f4",
     "semantic_hash": ""
   },
   "apps/web/public/branding/reality-capture-hero.webp": {
-    "mtime": 1793252811.5493548,
-    "seen": 1793942412.6021328,
-    "ast_hash": "65e90ec9c6969f6ce12ef7e732c19de1",
+    "mtime": 1794763815.544803,
+    "seen": 1794764035.8591669,
+    "ast_hash": "73b1104226f3c1376b567919ca117592",
     "semantic_hash": ""
   },
   "apps/web/public/favicon.png": {
-    "mtime": 1793934302.6711738,
-    "seen": 1793942412.6021338,
-    "ast_hash": "850d100fd9da2c9d9811dc68fcc17b4b",
+    "mtime": 1794763815.4113731,
+    "seen": 1794764035.8591695,
+    "ast_hash": "bc0007c8003528742eb34dc1e55bbcf3",
     "semantic_hash": ""
   },
   "apps/web/public/logo-mark.png": {
-    "mtime": 1793934302.6711738,
-    "seen": 1793942412.6021352,
-    "ast_hash": "392044db405016b1fa839e72beb7242d",
+    "mtime": 1794763815.336803,
+    "seen": 1794764035.8591726,
+    "ast_hash": "ed95c39f76562b51286df3f37dc0ebdc",
     "semantic_hash": ""
   },
   "apps/web/public/og-image.png": {
-    "mtime": 1793252811.5493548,
-    "seen": 1793942412.602142,
-    "ast_hash": "5cfbadff479231bf0613e002bc75830c",
+    "mtime": 1794763817.2728028,
+    "seen": 1794764035.859176,
+    "ast_hash": "08c20b5acdb2a53c0a7e3a3d777f2267",
     "semantic_hash": ""
   },
   ".claude/hooks/graphify-guard.sh": {
@@ -6108,9 +6108,9 @@
     "semantic_hash": ""
   },
   "apps/web/public/branding/logo-r-mask.png": {
-    "mtime": 1793934302.6711738,
-    "seen": 1793942412.6021311,
-    "ast_hash": "c4828389c1960230ed8f2f5ba1708322",
+    "mtime": 1794763817.300803,
+    "seen": 1794764035.8591642,
+    "ast_hash": "03de736b0f3c2356f5ce9687176c6330",
     "semantic_hash": ""
   },
   "apps/api/src/modules/documents/dto/generate-document-share.dto.ts": {

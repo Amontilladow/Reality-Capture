@@ -1,9 +1,10 @@
-/** The app's icon mark (public/logo-mark.png): the rose-gold "ribbon R",
- * a still frame of the liquid-metal logo (components/brand/liquid) on an
- * espresso tile. Rendered as an iOS-style squircle (30% corner radius).
- * favicon.png and apple-touch-icon.png are the same tile at their sizes.
- * A faint ring keeps the espresso tile's edge visible on the dark theme's
- * espresso canvas, where it would otherwise dissolve into the page. */
+/** The app's icon mark (public/logo-mark.png): the official silver ribbon
+ * R over its planet horizon, cropped from the brand artwork
+ * (public/branding/reality-capture-hero.webp) with the horizon lit in
+ * Cherry Red on a Jet Black tile. Rendered as an iOS-style squircle (30%
+ * corner radius). favicon.png and apple-touch-icon.png are the same tile at
+ * their sizes. A faint ring keeps the Jet Black tile's edge visible on the
+ * dark theme's Jet Black canvas, where it would otherwise dissolve. */
 export function LogoMark({ className = 'w-6 h-6' }: { className?: string }) {
   return (
     <img
