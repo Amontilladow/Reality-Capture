@@ -4,16 +4,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Project, ProjectPhase } from '@engineeringos/types';
 import { PROJECT_PHASE_LABELS } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
-import { MobileFold } from '../components/ui/MobileFold';
+import { Menu } from '../components/ui/Menu';
+import { Collapsible } from '../components/ui/Collapsible';
 import { HierarchyTree } from '../components/HierarchyTree';
 import { AddHierarchyNodeModal } from '../components/AddHierarchyNodeModal';
 import { CaptureGrid } from '../components/CaptureGrid';
 import { EditProjectModal } from '../components/EditProjectModal';
 import { ManageMembersModal } from '../components/ManageMembersModal';
 import { EmailComposerModal } from '../components/EmailComposerModal';
-import { ProjectDashboard } from '../components/ProjectDashboard';
-import { ExecutiveBriefing } from '../components/ExecutiveBriefing';
+import { OverviewKpis, RecentActivityList, BimProcessing } from '../components/ProjectDashboard';
+import { BriefingBanner, NeedsAttention, RiskIndexCard } from '../components/ExecutiveBriefing';
+import { useProjectBriefing } from '../components/overview/useProjectBriefing';
+import { useRecentActivity, bimSummary } from '../components/overview/overview-data';
 import { getProject, getHierarchy, getMembers, updateBuilding } from '../lib/projects.api';
+import { getIssueSummary } from '../lib/issues.api';
 import { listCaptures } from '../lib/captures.api';
 import { useAuthStore } from '../store/auth.store';
 
@@ -54,6 +58,18 @@ export default function ProjectDetail() {
   });
   const isSubcontractor = (membersQuery.data ?? []).some((m) => m.userId === currentUser?.id && m.role === 'subcontractor');
 
+  // The Overview reads conclusion-first: a banner, four key numbers, what
+  // needs attention and the risk index; everything else (activity, BIM,
+  // buildings and captures, project details) sits in collapsible sections.
+  const overviewEnabled = Boolean(projectId) && membersQuery.isSuccess && !isSubcontractor;
+  const brief = useProjectBriefing(projectId!, overviewEnabled);
+  const activity = useRecentActivity(projectId!, overviewEnabled);
+  const issueSummaryQuery = useQuery({
+    queryKey: ['issue-summary', projectId],
+    queryFn: () => getIssueSummary(projectId!),
+    enabled: overviewEnabled,
+  });
+
   const buildingPhaseMutation = useMutation({
     mutationFn: ({ buildingId, phase }: { buildingId: string; phase: ProjectPhase | '' }) =>
       updateBuilding(projectId!, buildingId, { phase: phase || undefined }),
@@ -89,104 +105,131 @@ export default function ProjectDetail() {
   if (membersQuery.isLoading) return null;
   if (isSubcontractor) return <Navigate to={`/projects/${projectId}/rfis`} replace />;
 
+  const project = projectQuery.data;
+  const subtitle = project
+    ? [STATUS_LABELS[project.status] ?? project.status, project.phase && PROJECT_PHASE_LABELS[project.phase], project.code, [project.city, project.country].filter(Boolean).join(', ')]
+        .filter(Boolean)
+        .join(' · ')
+    : undefined;
+
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: 'Projects', to: '/projects' }, { label: projectQuery.data?.name ?? 'Loading…' }]}
-        eyebrow={projectQuery.data?.code ?? 'Project'}
-        title={projectQuery.data?.name ?? 'Loading…'}
+        breadcrumbs={[{ label: 'Projects', to: '/projects' }, { label: project?.name ?? 'Loading…' }]}
+        title={project?.name ?? 'Loading…'}
+        subtitle={subtitle}
         actions={
           <>
-            <button onClick={() => setEditOpen(true)} className="btn-secondary">
-              <EditIcon /> Edit
-            </button>
-            <button onClick={() => setMembersOpen(true)} className="btn-secondary">
-              <TeamIcon /> Team
-            </button>
-            <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary">
-              <MailIcon /> Email
-            </button>
+            <Menu
+              label="More project actions"
+              buttonContent={<>More <ChevronDownIcon /></>}
+              sections={[
+                {
+                  items: [
+                    { label: 'Edit project', icon: <EditIcon />, onSelect: () => setEditOpen(true) },
+                    { label: 'Team & roles', icon: <TeamIcon />, onSelect: () => setMembersOpen(true) },
+                    { label: 'Email project team', icon: <MailIcon />, onSelect: () => setComposeEmailOpen(true) },
+                  ],
+                },
+              ]}
+            />
+            <Link to={`/projects/${projectId}/issues?new=1`} className="btn-primary">
+              <PlusIcon /> New issue
+            </Link>
           </>
         }
       />
 
-      {projectQuery.data && <ProjectDetailsPanel project={projectQuery.data} />}
-
-      <ExecutiveBriefing projectId={projectId} />
-
-      <ProjectDashboard projectId={projectId} />
-
-      <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-1">
-          <MobileFold
-            title="Buildings & locations"
-            summary={hierarchyQuery.data ? hierarchySummary(hierarchyQuery.data) : undefined}
-          >
-          <div className="tick-frame panel p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xs text-ink-500 font-medium">Hierarchy</h2>
-              <button
-                onClick={() => setNodeModal({ kind: 'building' })}
-                className="w-8 h-8 -mr-2 flex items-center justify-center rounded text-ink-500 hover:text-blueprint hover:bg-base-700"
-                title="Add building"
-                aria-label="Add building"
-              >
-                <PlusIcon />
-              </button>
-            </div>
-            {hierarchyQuery.isLoading && <div className="text-sm text-ink-500 py-4">Loading…</div>}
-            {hierarchyQuery.data && (
-              <HierarchyTree
-                buildings={hierarchyQuery.data}
-                selectedLocationId={selectedLocation?.id}
-                onSelectLocation={(id, name) => setSelectedLocation({ id, name })}
-                onAddLevel={(buildingId) => setNodeModal({ kind: 'level', buildingId })}
-                onAddLocation={(buildingId, levelId) => setNodeModal({ kind: 'location', buildingId, levelId })}
-                onSetBuildingPhase={(buildingId, phase) => buildingPhaseMutation.mutate({ buildingId, phase })}
-                buildingPhaseSaving={buildingPhaseMutation.isPending}
-              />
-            )}
-          </div>
-          </MobileFold>
+      <div className="p-4 sm:p-6 space-y-6">
+        <BriefingBanner brief={brief} />
+        <OverviewKpis projectId={projectId} issues={issueSummaryQuery.data} brief={brief} />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="lg:col-span-2"><NeedsAttention brief={brief} /></div>
+          <RiskIndexCard projectId={projectId} brief={brief} closedThisWeek={issueSummaryQuery.data?.closedThisWeek} />
         </div>
 
-        <div className="lg:col-span-3 space-y-4">
-          {selectedLocation ? (
-            <>
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold">Captures: {selectedLocation.name}</h2>
-                <div className="flex items-center gap-4">
-                  <Link to={`/projects/${projectId}/viewer/${selectedLocation.id}`} className="text-xs text-blueprint hover:text-blueprint-hover">
-                    Open 360° viewer
-                  </Link>
-                  <button onClick={() => setSelectedLocation(null)} className="text-xs text-ink-500 hover:text-ink-100">
-                    Clear filter
+        <div className="space-y-4">
+          <h2 className="text-eyebrow font-medium uppercase text-ink-500">More about this project</h2>
+          <Collapsible title="Recent activity" count={activity.entries.length || undefined} summary="Who changed what, latest first" defaultOpen>
+            <RecentActivityList activity={activity} />
+          </Collapsible>
+          <Collapsible title="BIM models" count={brief.bimModels?.length} summary={bimSummary(brief)}>
+            <BimProcessing projectId={projectId} brief={brief} />
+          </Collapsible>
+          <Collapsible
+            title="Buildings & captures"
+            summary={hierarchyQuery.data ? `${hierarchySummary(hierarchyQuery.data)} · pick a location to see its captures` : undefined}
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-1">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs text-ink-500 font-medium">Hierarchy</h3>
+                  <button
+                    onClick={() => setNodeModal({ kind: 'building' })}
+                    className="w-8 h-8 -mr-2 flex items-center justify-center rounded text-ink-500 hover:text-blueprint hover:bg-base-700"
+                    title="Add building"
+                    aria-label="Add building"
+                  >
+                    <PlusIcon />
                   </button>
                 </div>
+                {hierarchyQuery.isLoading && <div className="text-sm text-ink-500 py-4">Loading…</div>}
+                {hierarchyQuery.data && (
+                  <HierarchyTree
+                    buildings={hierarchyQuery.data}
+                    selectedLocationId={selectedLocation?.id}
+                    onSelectLocation={(id, name) => setSelectedLocation({ id, name })}
+                    onAddLevel={(buildingId) => setNodeModal({ kind: 'level', buildingId })}
+                    onAddLocation={(buildingId, levelId) => setNodeModal({ kind: 'location', buildingId, levelId })}
+                    onSetBuildingPhase={(buildingId, phase) => buildingPhaseMutation.mutate({ buildingId, phase })}
+                    buildingPhaseSaving={buildingPhaseMutation.isPending}
+                  />
+                )}
               </div>
 
-              {selectedLocationDetail?.description && (
-                <div className="panel p-4 text-sm text-ink-100">
-                  <div className="text-xs text-ink-500 mb-2 font-medium">Note</div>
-                  {selectedLocationDetail.description}
-                </div>
-              )}
+              <div className="lg:col-span-3 space-y-4">
+                {selectedLocation ? (
+                  <>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold">Captures: {selectedLocation.name}</h3>
+                      <div className="flex items-center gap-4">
+                        <Link to={`/projects/${projectId}/viewer/${selectedLocation.id}`} className="text-xs text-blueprint hover:text-blueprint-hover">
+                          Open 360° viewer
+                        </Link>
+                        <button onClick={() => setSelectedLocation(null)} className="text-xs text-ink-500 hover:text-ink-100">
+                          Clear filter
+                        </button>
+                      </div>
+                    </div>
 
-              {capturesQuery.isLoading && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="aspect-video panel animate-pulse bg-base-700/40" />
-                  ))}
-                </div>
-              )}
-              {capturesQuery.data && <CaptureGrid projectId={projectId} captures={capturesQuery.data.data} />}
-            </>
-          ) : (
-            // Phones stack the tree above, so the hint (and its empty panel)
-            // only shows where there is a "left".
-            <div className="hidden lg:block tick-frame panel p-12 text-center text-sm text-ink-500">
-              Select a location on the left to see what's there.
+                    {selectedLocationDetail?.description && (
+                      <div className="rounded-lg border border-ink-100/10 p-4 text-sm text-ink-100">
+                        <div className="text-xs text-ink-500 mb-2 font-medium">Note</div>
+                        {selectedLocationDetail.description}
+                      </div>
+                    )}
+
+                    {capturesQuery.isLoading && (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {Array.from({ length: 8 }).map((_, i) => (
+                          <div key={i} className="aspect-video panel animate-pulse bg-base-700/40" />
+                        ))}
+                      </div>
+                    )}
+                    {capturesQuery.data && <CaptureGrid projectId={projectId} captures={capturesQuery.data.data} />}
+                  </>
+                ) : (
+                  <div className="hidden lg:block rounded-lg border border-dashed border-ink-100/10 p-12 text-center text-sm text-ink-500">
+                    Select a location on the left to see what's there.
+                  </div>
+                )}
+              </div>
             </div>
+          </Collapsible>
+          {project && (
+            <Collapsible title="Project details" summary={subtitle}>
+              <ProjectDetailsPanel project={project} />
+            </Collapsible>
           )}
         </div>
       </div>
@@ -233,20 +276,18 @@ function ProjectDetailsPanel({ project }: { project: Project }) {
   if (project.expectedEndDate) fields.push({ label: 'Expected end', value: new Date(project.expectedEndDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) });
 
   return (
-    <div className="px-6 pt-4">
-      <div className="panel p-4 space-y-4">
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
-          {fields.map((f) => (
-            <div key={f.label} className="text-xs">
-              <div className="text-ink-500 mb-0 font-medium">{f.label}</div>
-              <div className="text-ink-100">{f.value}</div>
-            </div>
-          ))}
-        </div>
-        {project.description && (
-          <div className="text-sm text-ink-300 pt-2 border-t border-base-600">{project.description}</div>
-        )}
-      </div>
+    <div className="space-y-4">
+      <dl className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        {fields.map((f) => (
+          <div key={f.label}>
+            <dt className="text-xs text-ink-500 font-medium">{f.label}</dt>
+            <dd className="text-sm text-ink-100">{f.value}</dd>
+          </div>
+        ))}
+      </dl>
+      {project.description && (
+        <p className="text-sm text-ink-300 pt-4 border-t border-ink-100/10">{project.description}</p>
+      )}
     </div>
   );
 }
@@ -272,6 +313,13 @@ function TeamIcon() {
       <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function ChevronDownIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

@@ -5,7 +5,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { IssueFormModal } from '../components/issues/IssueFormModal';
 import { IssueDetail } from '../components/issues/IssueDetail';
 import {
-  listIssues, getIssueSummary, bulkCloseIssues, bulkDownloadIssuesPdf, bulkDownloadIssuesXls,
+  listIssues, getIssueSummary, bulkCloseIssues, bulkDownloadIssuesPdf, bulkDownloadIssuesXls, downloadIssuePdf, downloadIssueXls,
   listReminders, broadcastReminder, sendUserReminder, warnUser,
   type IssueListItem, type IssueDetailItem,
 } from '../lib/issues.api';
@@ -13,8 +13,8 @@ import { getMembers, getHierarchy, type ProjectHierarchy } from '../lib/projects
 import { useAuthStore } from '../store/auth.store';
 import {
   STATUS_LABELS, PRIORITY_LABELS,
-  ISSUE_STATUSES, ISSUE_TYPE_LABELS, DISCIPLINE_LABELS, CATEGORY_LABELS,
-  isOverdue, formatDeadline, formatDateTime, getDeadlineTimer, TIMER_BADGE_CLASS, isIssueManager,
+  ISSUE_STATUSES, ISSUE_PRIORITIES, ISSUE_TYPE_LABELS, DISCIPLINE_LABELS, CATEGORY_LABELS,
+  isOverdue, formatDeadline, formatDateTime, getDeadlineTimer, isIssueManager,
 } from '../lib/issue-constants';
 import { ISSUE_STATUS_TONE, ISSUE_PRIORITY_TONE } from '../lib/status-tone';
 import { StatusBadge } from '../components/ui/Badge';
@@ -22,8 +22,10 @@ import { apiErrorMessage } from '../lib/api';
 import { Listbox } from '../components/ui/Listbox';
 import { DESKTOP_QUERY, useMediaQuery } from '../lib/useMediaQuery';
 import { RecordList, RecordRow } from '../components/ui/RecordRow';
+import { Menu } from '../components/ui/Menu';
 
 type QuickFilter = 'all' | 'overdue' | 'critical' | 'mine';
+type View = QuickFilter | 'resolved';
 type Tab = 'issues' | 'dashboard' | 'reminders';
 
 export default function IssuesPage() {
@@ -35,6 +37,7 @@ export default function IssuesPage() {
 
   const [tab, setTab] = useState<Tab>('issues');
   const [status, setStatus] = useState('');
+  const [priority, setPriority] = useState('');
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
   const [search, setSearch] = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -44,7 +47,7 @@ export default function IssuesPage() {
   const [discipline, setDiscipline] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(searchParams.get('new') === '1');
   const [editIssue, setEditIssue] = useState<IssueDetailItem | null>(null);
   const [viewIssueId, setViewIssueId] = useState<string | null>(searchParams.get('issueId'));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -77,12 +80,12 @@ export default function IssuesPage() {
   });
 
   const issuesQuery = useQuery({
-    queryKey: ['issues', projectId, status, quickFilter, search, assignedTo, discipline, dateFrom, dateTo],
+    queryKey: ['issues', projectId, status, priority, quickFilter, search, assignedTo, discipline, dateFrom, dateTo],
     queryFn: () =>
       listIssues(projectId!, {
         perPage: 100,
         status: status || undefined,
-        priority: quickFilter === 'critical' ? 'critical' : undefined,
+        priority: priority || (quickFilter === 'critical' ? 'critical' : undefined),
         overdue: quickFilter === 'overdue' ? true : undefined,
         myIssues: quickFilter === 'mine' ? true : undefined,
         search: search || undefined,
@@ -217,10 +220,10 @@ export default function IssuesPage() {
     }
   }
 
-  const advancedActive = Boolean(assignedTo || discipline || dateFrom || dateTo);
-  const activeFilterCount = [buildingFilter, levelFilter, status].filter(Boolean).length + (advancedActive ? 1 : 0);
+  // Assignee has its own dropdown; "More filters" holds the rest.
+  const advancedActive = Boolean(discipline || dateFrom || dateTo);
+  const activeFilterCount = [buildingFilter, levelFilter, status, priority, assignedTo].filter(Boolean).length + (advancedActive ? 1 : 0);
   function clearAdvanced() {
-    setAssignedTo('');
     setDiscipline('');
     setDateFrom('');
     setDateTo('');
@@ -247,7 +250,7 @@ export default function IssuesPage() {
   if (viewIssueId) {
     return (
       <>
-        <PageHeader eyebrow="Project" title="Issue detail" />
+        {/* No separate page header: the issue's own title is the heading. */}
         <IssueDetail
           projectId={projectId}
           issueId={viewIssueId}
@@ -272,20 +275,57 @@ export default function IssuesPage() {
   const rows = issuesQuery.data?.data ?? [];
   const allSelected = filteredIssues.length > 0 && selectedIds.size === filteredIssues.length;
 
+  // Views: one row of quick views with their counts, replacing the six
+  // stat tiles and the separate quick-filter chips (Open, In progress and
+  // Closed remain in the Status filter).
+  const activeView: View | null = quickFilter !== 'all' ? quickFilter : status === 'resolved' ? 'resolved' : status ? null : 'all';
+  const views: { key: View; label: string; count?: number }[] = [
+    { key: 'all', label: 'All', count: s?.total },
+    { key: 'mine', label: 'My issues' },
+    { key: 'overdue', label: 'Overdue', count: s?.overdue },
+    { key: 'critical', label: 'Critical', count: s?.critical },
+    { key: 'resolved', label: 'Resolved', count: s?.resolved },
+  ];
+  function selectView(view: View) {
+    if (view === 'resolved') {
+      setQuickFilter('all');
+      setStatus('resolved');
+    } else {
+      setQuickFilter(view);
+      setStatus('');
+    }
+  }
+
+  // Sections of the list: building and level, "No location" last; the
+  // header is left out when everything sits in a single location-less group.
+  const sections = [
+    ...groupedIssues.buildingGroups.flatMap(({ building, levelGroups }) =>
+      levelGroups.map(({ level, issues }) => ({
+        key: `${building.id}:${level?.id ?? '__no-level__'}`,
+        label: `${building.name} · ${level?.name ?? 'No level'}`,
+        issues,
+      })),
+    ),
+    ...(groupedIssues.unassigned.length > 0 ? [{ key: '__none__', label: 'No location', issues: groupedIssues.unassigned }] : []),
+  ];
+  const showSectionHeaders = !(sections.length === 1 && sections[0].key === '__none__');
+  const members = membersQuery.data ?? [];
+
   return (
     <>
       <PageHeader
         eyebrow="Project"
         title="Issues"
+        subtitle={s ? `${s.total} issues · ${s.open} open · ${s.overdue} overdue` : undefined}
         actions={
-          <div className="flex items-center gap-2">
+          <>
             <button onClick={handleExport} disabled={filteredIssues.length === 0} className="btn-secondary">
               <ExportIcon /> Export to Excel
             </button>
             <button onClick={() => setCreateOpen(true)} className="btn-primary">
               <PlusIcon /> New issue
             </button>
-          </div>
+          </>
         }
       />
 
@@ -297,99 +337,105 @@ export default function IssuesPage() {
 
       {tab === 'issues' && (
         <div className="p-6 space-y-4">
-          {/* Stat tiles */}
-          {s && (
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-              <StatTile label="Open" value={s.open} onClick={() => { setStatus('open'); setQuickFilter('all'); }} />
-              <StatTile label="In progress" value={s.inProgress} onClick={() => { setStatus(''); setQuickFilter('all'); }} />
-              <StatTile label="Resolved" value={s.resolved} onClick={() => { setStatus('resolved'); setQuickFilter('all'); }} />
-              <StatTile label="Overdue" value={s.overdue} tone="danger" onClick={() => { setStatus(''); setQuickFilter('overdue'); }} />
-              <StatTile label="Critical" value={s.critical} tone="danger" onClick={() => { setStatus(''); setQuickFilter('critical'); }} />
-              <StatTile label="Closed" value={s.closed} onClick={() => { setStatus('closed'); setQuickFilter('all'); }} />
-            </div>
-          )}
+          <div role="group" aria-label="Issue views" className="flex flex-wrap items-center gap-2">
+            {views.map((v) => (
+              <button
+                key={v.key}
+                type="button"
+                aria-pressed={activeView === v.key}
+                onClick={() => selectView(v.key)}
+                className={`h-10 px-4 rounded-xl text-sm inline-flex items-center gap-2 transition-colors ${
+                  activeView === v.key ? 'bg-ink-100 text-base-950 font-semibold' : 'text-ink-300 hover:bg-ink-100/5 hover:text-ink-100'
+                }`}
+              >
+                {v.label}
+                {v.count !== undefined && (
+                  <span className={`text-xs tabular-nums ${activeView === v.key ? 'text-base-950/60' : 'text-ink-500'}`}>{v.count}</span>
+                )}
+              </button>
+            ))}
+          </div>
 
-          {/* Filters */}
+          {/* Filters: search, then one dropdown per filter; the rarer ones
+              (discipline, dates) sit behind "More filters". Phones get one
+              Filters button instead of a row of dropdowns. */}
           <div className="flex items-center gap-2 flex-wrap">
-            <FilterChip active={quickFilter === 'all' && !status} onClick={() => { setQuickFilter('all'); setStatus(''); }}>All</FilterChip>
-            <FilterChip active={quickFilter === 'mine'} onClick={() => { setQuickFilter('mine'); setStatus(''); }}>My issues</FilterChip>
-            <FilterChip active={quickFilter === 'overdue'} onClick={() => { setQuickFilter('overdue'); setStatus(''); }}>Overdue</FilterChip>
-            <FilterChip active={quickFilter === 'critical'} onClick={() => { setQuickFilter('critical'); setStatus(''); }}>Critical</FilterChip>
-
-            <input
-              className="field-input w-full md:w-48 md:order-last"
-              placeholder="Search issues…"
-              aria-label="Search issues"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            {/* Phones: the location/status filters sit behind one button
-                instead of stacking three dropdowns above the list. */}
+            <div className="relative w-full md:w-72">
+              <SearchIcon />
+              <input
+                className="field-input !h-10 !pl-12"
+                placeholder="Search issues"
+                aria-label="Search issues"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
             {!desktop && (
               <button
                 type="button"
                 aria-expanded={filtersOpen}
                 onClick={() => setFiltersOpen((v) => !v)}
-                className="btn-secondary !px-4 !py-2 "
+                className="btn-secondary"
               >
                 Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
               </button>
             )}
             <div className={desktop ? 'contents' : filtersOpen ? 'w-full grid grid-cols-1 gap-2' : 'hidden'}>
-            <Listbox
-              className="field-input w-full md:w-auto md:ml-auto"
-              aria-label="Filter by building"
-              value={buildingFilter}
-              onChange={(e) => { setBuildingFilter(e.target.value); setLevelFilter(''); }}
-            >
-              <option value="">All buildings</option>
-              {hierarchy.map((b) => (
-                <option key={b.id} value={b.id}>{b.name}</option>
-              ))}
-            </Listbox>
-            <Listbox
-              className="field-input w-full md:w-auto"
-              aria-label="Filter by level"
-              value={levelFilter}
-              onChange={(e) => setLevelFilter(e.target.value)}
-              disabled={!buildingFilter}
-            >
-              <option value="">{buildingFilter ? 'All levels' : 'Pick a building first'}</option>
-              {levelOptionsForFilter.map((l) => (
-                <option key={l.id} value={l.id}>{l.name}</option>
-              ))}
-            </Listbox>
-            <Listbox
-              className="field-input w-full md:w-auto"
-              aria-label="Filter by status"
-              value={status}
-              onChange={(e) => { setStatus(e.target.value); setQuickFilter('all'); }}
-            >
-              <option value="">All statuses</option>
-              {ISSUE_STATUSES.map((st) => (
-                <option key={st} value={st}>{STATUS_LABELS[st]}</option>
-              ))}
-            </Listbox>
-            <button
-              onClick={() => setAdvancedOpen((v) => !v)}
-              className={`btn-secondary !px-4 !py-2 md:order-last ${advancedActive ? '!border-signal !text-blueprint' : ''}`}
-            >
-              Advanced{advancedActive ? ' •' : ''}
-            </button>
+              <Listbox
+                className={filterClass(status)}
+                aria-label="Filter by status"
+                value={status}
+                onChange={(e) => { setStatus(e.target.value); setQuickFilter('all'); }}
+              >
+                <option value="">Status: all</option>
+                {ISSUE_STATUSES.map((st) => (
+                  <option key={st} value={st}>{STATUS_LABELS[st]}</option>
+                ))}
+              </Listbox>
+              <Listbox className={filterClass(priority)} aria-label="Filter by priority" value={priority} onChange={(e) => setPriority(e.target.value)}>
+                <option value="">Priority: all</option>
+                {ISSUE_PRIORITIES.map((p) => (
+                  <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
+                ))}
+              </Listbox>
+              <Listbox
+                className={filterClass(buildingFilter)}
+                aria-label="Filter by building"
+                value={buildingFilter}
+                onChange={(e) => { setBuildingFilter(e.target.value); setLevelFilter(''); }}
+              >
+                <option value="">Building: all</option>
+                {hierarchy.map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </Listbox>
+              {buildingFilter && (
+                <Listbox className={filterClass(levelFilter)} aria-label="Filter by level" value={levelFilter} onChange={(e) => setLevelFilter(e.target.value)}>
+                  <option value="">Level: all</option>
+                  {levelOptionsForFilter.map((l) => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+                </Listbox>
+              )}
+              <Listbox className={filterClass(assignedTo)} aria-label="Filter by assignee" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
+                <option value="">Assignee: anyone</option>
+                {members.map((m) => (
+                  <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
+                ))}
+              </Listbox>
+              <button
+                type="button"
+                aria-expanded={advancedOpen}
+                onClick={() => setAdvancedOpen((v) => !v)}
+                className={`btn-secondary !h-10 ${advancedActive ? '!border-blueprint/70 !text-ink-100' : ''}`}
+              >
+                <FiltersIcon /> More filters{advancedActive ? ' •' : ''}
+              </button>
             </div>
           </div>
 
           {advancedOpen && (
-            <div className="panel p-4 grid grid-cols-2 sm:grid-cols-4 gap-4 items-end">
-              <div>
-                <label className="field-label" htmlFor="fAssignee">Assignee</label>
-                <Listbox id="fAssignee" className="field-input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
-                  <option value="">Anyone</option>
-                  {(membersQuery.data ?? []).map((m) => (
-                    <option key={m.userId} value={m.userId}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
-                  ))}
-                </Listbox>
-              </div>
+            <div className="panel p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
               <div>
                 <label className="field-label" htmlFor="fDiscipline">Discipline</label>
                 <Listbox id="fDiscipline" className="field-input" value={discipline} onChange={(e) => setDiscipline(e.target.value)}>
@@ -409,7 +455,7 @@ export default function IssuesPage() {
                   <input id="fDateTo" type="date" className="field-input" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
                 </div>
                 {advancedActive && (
-                  <button onClick={clearAdvanced} className="btn-ghost !px-2 shrink-0" title="Clear advanced filters">
+                  <button onClick={clearAdvanced} className="btn-ghost !px-2 shrink-0" title="Clear these filters">
                     Clear
                   </button>
                 )}
@@ -417,41 +463,34 @@ export default function IssuesPage() {
             </div>
           )}
 
-          {/* Bulk-select action bar (desktop: phones list without checkboxes) */}
-          {desktop && filteredIssues.length > 0 && (
-            <div className="flex items-center gap-4 text-xs">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
-                Select all ({filteredIssues.length})
-              </label>
-              {selectedIds.size > 0 && (
-                <div className="flex items-center gap-2 ml-auto panel !py-2 !px-4">
-                  <span className="text-ink-300">{selectedIds.size} selected</span>
-                  <button
-                    onClick={handleBulkDownloadPdf}
-                    disabled={bulkDownloading === 'pdf'}
-                    className="btn-secondary !px-4 !py-2 "
-                    title="A ZIP with each selected issue as its own PDF"
-                  >
-                    {bulkDownloading === 'pdf' ? 'Preparing…' : 'Download PDF'}
-                  </button>
-                  <button
-                    onClick={handleBulkDownloadXls}
-                    disabled={bulkDownloading === 'xls'}
-                    className="btn-secondary !px-4 !py-2 "
-                    title="A ZIP with each selected issue as its own Excel file"
-                  >
-                    {bulkDownloading === 'xls' ? 'Preparing…' : 'Download XLS'}
-                  </button>
-                  <button
-                    onClick={() => { if (confirm(`Close ${selectedIds.size} issue(s)?`)) bulkCloseMutation.mutate(); }}
-                    disabled={bulkCloseMutation.isPending}
-                    className="btn-secondary !px-4 !py-2 "
-                  >
-                    {bulkCloseMutation.isPending ? 'Closing…' : 'Bulk close'}
-                  </button>
-                </div>
-              )}
+          {/* Bulk actions appear only once something is selected. */}
+          {desktop && selectedIds.size > 0 && (
+            <div className="panel flex flex-wrap items-center gap-2 px-4 py-2">
+              <span className="text-sm font-medium text-ink-100 mr-2">{selectedIds.size} selected</span>
+              <button
+                onClick={handleBulkDownloadPdf}
+                disabled={bulkDownloading === 'pdf'}
+                className="btn-secondary"
+                title="A ZIP with each selected issue as its own PDF"
+              >
+                {bulkDownloading === 'pdf' ? 'Preparing…' : 'Download PDFs'}
+              </button>
+              <button
+                onClick={handleBulkDownloadXls}
+                disabled={bulkDownloading === 'xls'}
+                className="btn-secondary"
+                title="A ZIP with each selected issue as its own Excel file"
+              >
+                {bulkDownloading === 'xls' ? 'Preparing…' : 'Download Excel files'}
+              </button>
+              <button
+                onClick={() => { if (confirm(`Close ${selectedIds.size} issue(s)?`)) bulkCloseMutation.mutate(); }}
+                disabled={bulkCloseMutation.isPending}
+                className="btn-secondary"
+              >
+                {bulkCloseMutation.isPending ? 'Closing…' : 'Close issues'}
+              </button>
+              <button onClick={() => setSelectedIds(new Set())} className="btn-ghost ml-auto">Clear selection</button>
             </div>
           )}
           {bulkDownloadError && <p className="field-error">{bulkDownloadError}</p>}
@@ -465,61 +504,60 @@ export default function IssuesPage() {
             </p>
           )}
 
-          {/* List, grouped by building -> level (same treatment as the Floor
-              plans sidebar): levels sorted by levelOrder, an "Unassigned"
-              group last for issues with no building or a deleted one. */}
           {issuesQuery.isLoading && <p className="text-sm text-ink-500">Loading issues…</p>}
           {issuesQuery.isSuccess && rows.length === 0 && (
-            <div className="panel p-10 text-center text-sm text-ink-500">No issues match this filter.</div>
+            <div className="panel p-10 text-center text-sm text-ink-500">No issues match this view.</div>
           )}
           {issuesQuery.isSuccess && rows.length > 0 && filteredIssues.length === 0 && (
             <div className="panel p-10 text-center text-sm text-ink-500">No issues match these filters.</div>
           )}
 
-          <div className="space-y-4">
-            {groupedIssues.buildingGroups.map(({ building, levelGroups }) => (
-              <details key={building.id} open>
-                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-2 py-2 hover:text-ink-300">
-                  {building.name}
-                </summary>
-                <div className="pl-2 space-y-4 mt-2">
-                  {levelGroups.map(({ level, issues }) => (
-                    <div key={level?.id ?? '__no-level__'}>
-                      <div className="text-xs font-medium text-ink-500 px-2 py-2">
-                        {level?.name ?? 'No level'}
-                      </div>
-                      <IssueList
-                        compact={!desktop}
-                        label={`${building.name}, ${level?.name ?? 'No level'}`}
-                        issues={issues}
-                        selectedIds={selectedIds}
-                        onToggleSelect={toggleSelect}
-                        onOpen={setViewIssueId}
-                      />
+          {/* The list: one table-like panel on desktop, grouped by
+              building and level (levels in levelOrder), "No location" last;
+              phones get the compact two-line register. */}
+          {filteredIssues.length > 0 && (desktop ? (
+            <div className="panel overflow-hidden" role="table" aria-label="Issues">
+              <div role="row" className="flex items-center gap-4 pl-6 pr-2 h-11 border-b border-ink-100/10 text-eyebrow font-medium uppercase text-ink-500">
+                <span role="columnheader" className="w-5">
+                  <input type="checkbox" aria-label={`Select all ${filteredIssues.length} issues`} checked={allSelected} onChange={toggleSelectAll} />
+                </span>
+                <span role="columnheader" className="flex-1">Issue</span>
+                <span role="columnheader" className="w-28">Priority</span>
+                <span role="columnheader" className="w-40">Status</span>
+                <span role="columnheader" className="w-44">Assignee</span>
+                <span role="columnheader" className="w-36">Due</span>
+                <span role="columnheader" className="w-10"><span className="sr-only">Actions</span></span>
+              </div>
+              {sections.map((section) => (
+                <div key={section.key} role="rowgroup">
+                  {showSectionHeaders && (
+                    <div className="px-6 py-2 bg-ink-100/[0.03] border-b border-ink-100/10 text-xs font-semibold text-ink-300">
+                      {section.label} <span className="ml-2 font-normal text-ink-500">{section.issues.length}</span>
                     </div>
+                  )}
+                  {section.issues.map((issue) => (
+                    <IssueRow
+                      key={issue.id}
+                      projectId={projectId}
+                      issue={issue}
+                      selected={selectedIds.has(issue.id)}
+                      onToggleSelect={() => toggleSelect(issue.id)}
+                      onOpen={() => setViewIssueId(issue.id)}
+                    />
                   ))}
                 </div>
-              </details>
-            ))}
-
-            {groupedIssues.unassigned.length > 0 && (
-              <details open>
-                <summary className="cursor-pointer select-none text-xs font-semibold text-ink-500 px-2 py-2 hover:text-ink-300">
-                  Unassigned
-                </summary>
-                <div className="pl-2 mt-2">
-                  <IssueList
-                    compact={!desktop}
-                    label="Issues with no location"
-                    issues={groupedIssues.unassigned}
-                    selectedIds={selectedIds}
-                    onToggleSelect={toggleSelect}
-                    onOpen={setViewIssueId}
-                  />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {sections.map((section) => (
+                <div key={section.key}>
+                  {showSectionHeaders && <div className="text-xs font-semibold text-ink-300 px-2 py-2">{section.label}</div>}
+                  <IssueRecordList label={section.label} issues={section.issues} onOpen={setViewIssueId} />
                 </div>
-              </details>
-            )}
-          </div>
+              ))}
+            </div>
+          ))}
         </div>
       )}
 
@@ -900,6 +938,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   );
 }
 
+// The manager Dashboard tab's stat tiles.
 function StatTile({ label, value, onClick, tone, suffix }: { label: string; value: number; onClick: () => void; tone?: 'danger'; suffix?: string }) {
   return (
     <button onClick={onClick} className="panel p-4 text-left hover:border-blueprint transition-colors">
@@ -911,75 +950,44 @@ function StatTile({ label, value, onClick, tone, suffix }: { label: string; valu
   );
 }
 
-function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+// A filter dropdown as a rounded button; it takes the accent edge while a
+// value is chosen, so active filters are visible at a glance.
+function filterClass(value: string) {
+  return `field-input !h-10 !w-full md:!w-auto !rounded-full !px-4 ${value ? '!border-blueprint/70 !text-ink-100' : ''}`;
+}
+
+// Phones: the compact two-line register (see RecordRow).
+function IssueRecordList({ label, issues, onOpen }: { label: string; issues: IssueListItem[]; onOpen: (id: string) => void }) {
   return (
-    <button
-      onClick={onClick}
-      className={`h-9 px-4 inline-flex items-center rounded-full text-sm border transition-colors ${
-        active ? 'bg-signal text-on-signal border-signal font-medium' : 'border-base-600 text-ink-300 hover:border-base-500'
-      }`}
-    >
-      {children}
-    </button>
+    <RecordList label={label}>
+      {issues.map((issue) => {
+        const timer = getDeadlineTimer(issue.deadline, issue.status);
+        const where = issue.locationName && issue.locationName.trim().toLowerCase() !== issue.title.trim().toLowerCase() ? issue.locationName : undefined;
+        return (
+          <RecordRow
+            key={issue.id}
+            marker={PRIORITY_MARKER[issue.priority]}
+            title={issue.title}
+            meta={[
+              issue.issueNumber ?? issue.id.slice(0, 8),
+              issue.status === 'open' ? undefined : STATUS_LABELS[issue.status],
+              PRIORITY_LABELS[issue.priority],
+              issue.discipline ? DISCIPLINE_LABELS[issue.discipline] : undefined,
+              where,
+            ].filter(Boolean).join(' · ')}
+            due={timer.label}
+            dueTone={timer.state === 'overdue' ? 'danger' : timer.state === 'warn' ? 'warn' : 'muted'}
+            owner={issue.assignedToName ?? undefined}
+            onClick={() => onOpen(issue.id)}
+          />
+        );
+      })}
+    </RecordList>
   );
 }
 
-// Desktop keeps the full card per issue (with its bulk-select box); a
-// phone gets the register layout (one grouped panel of two-line rows,
-// see RecordRow) and no per-row checkbox (bulk actions are a desk job).
-function IssueList({ compact, label, issues, selectedIds, onToggleSelect, onOpen }: {
-  compact: boolean;
-  label: string;
-  issues: IssueListItem[];
-  selectedIds: Set<string>;
-  onToggleSelect: (id: string) => void;
-  onOpen: (id: string) => void;
-}) {
-  if (compact) {
-    return (
-      <RecordList label={label}>
-        {issues.map((issue) => {
-          const timer = getDeadlineTimer(issue.deadline, issue.status);
-          const where = issue.locationName && issue.locationName.trim().toLowerCase() !== issue.title.trim().toLowerCase() ? issue.locationName : undefined;
-          return (
-            <RecordRow
-              key={issue.id}
-              marker={PRIORITY_MARKER[issue.priority]}
-              title={issue.title}
-              meta={[
-                issue.issueNumber ?? issue.id.slice(0, 8),
-                issue.status === 'open' ? undefined : STATUS_LABELS[issue.status],
-                PRIORITY_LABELS[issue.priority],
-                issue.discipline ? DISCIPLINE_LABELS[issue.discipline] : undefined,
-                where,
-              ].filter(Boolean).join(' · ')}
-              due={timer.label}
-              dueTone={timer.state === 'overdue' ? 'danger' : timer.state === 'warn' ? 'warn' : 'muted'}
-              owner={issue.assignedToName ?? undefined}
-              onClick={() => onOpen(issue.id)}
-            />
-          );
-        })}
-      </RecordList>
-    );
-  }
-  return (
-    <div className="space-y-2">
-      {issues.map((issue) => (
-        <IssueRow
-          key={issue.id}
-          issue={issue}
-          selected={selectedIds.has(issue.id)}
-          onToggleSelect={() => onToggleSelect(issue.id)}
-          onClick={() => onOpen(issue.id)}
-        />
-      ))}
-    </div>
-  );
-}
-
-// Severity bar colour per priority; the priority is also named in the
-// row's text, so colour is never the only signal.
+// Severity bar colour per priority; the priority is also named in its own
+// column, so colour is never the only signal.
 const PRIORITY_MARKER: Record<IssueListItem['priority'], string> = {
   critical: 'bg-danger',
   high: 'bg-high',
@@ -987,73 +995,136 @@ const PRIORITY_MARKER: Record<IssueListItem['priority'], string> = {
   low: 'bg-base-600',
 };
 
+const DUE_TONE: Record<string, string> = {
+  overdue: 'text-danger',
+  warn: 'text-warn',
+  ok: 'text-ink-300',
+  closed: 'text-ink-500',
+};
+
+// "Building · Level · Location", without repeating a location that just
+// restates the title.
+function issueWhere(issue: IssueListItem): string {
+  const location = issue.locationName && issue.locationName.trim().toLowerCase() !== issue.title.trim().toLowerCase() ? issue.locationName : undefined;
+  return [issue.buildingName, issue.levelName, location].filter(Boolean).join(' · ');
+}
+
+// One issue: the title reads first (up to two lines), with its number,
+// location and discipline under it; then priority, status, assignee and
+// due date in their own columns, and a ⋯ menu for quick actions.
 function IssueRow({
-  issue, selected, onToggleSelect, onClick,
+  projectId, issue, selected, onToggleSelect, onOpen,
 }: {
+  projectId: string;
   issue: IssueListItem;
   selected: boolean;
   onToggleSelect: () => void;
-  onClick: () => void;
+  onOpen: () => void;
 }) {
   const timer = getDeadlineTimer(issue.deadline, issue.status);
+  const where = issueWhere(issue);
+  const number = issue.issueNumber ?? issue.id.slice(0, 8);
+  const [downloadError, setDownloadError] = useState('');
+
+  async function download(kind: 'pdf' | 'xls') {
+    setDownloadError('');
+    try {
+      if (kind === 'pdf') await downloadIssuePdf(projectId, issue.id, `${number}.pdf`);
+      else await downloadIssueXls(projectId, issue.id, `${number}.xlsx`);
+    } catch (err) {
+      setDownloadError(apiErrorMessage(err));
+    }
+  }
+
   return (
-    <div className="panel panel-interactive w-full p-4 flex items-start gap-4">
-      <input
-        type="checkbox"
-        className="mt-2 shrink-0"
-        aria-label={`Select issue ${issue.issueNumber ?? issue.title}`}
-        checked={selected}
-        onClick={(e) => e.stopPropagation()}
-        onChange={onToggleSelect}
-      />
-      <button onClick={onClick} className="flex-1 text-left min-w-0">
-        {/* Row 1: identifying tags, with the due date pulled out to its own
-            corner so it doesn't compete with the badges below. */}
-        <div className="flex items-start justify-between gap-4 mb-2">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <span className="text-xs font-mono text-ink-500 shrink-0">{issue.issueNumber ?? issue.id.slice(0, 8)}</span>
-            {issue.locationName && <span className="badge bg-base-700 text-ink-500">{issue.locationName}</span>}
-            {issue.discipline && <span className="badge bg-base-700 text-ink-500">{DISCIPLINE_LABELS[issue.discipline]}</span>}
-            {issue.category && <span className="badge bg-base-700 text-ink-500">{CATEGORY_LABELS[issue.category]}</span>}
-          </div>
-          <span className="text-xs text-ink-500 shrink-0">Due {formatDeadline(issue.deadline)}</span>
-        </div>
-
-        {/* Row 2: title; the only thing with real visual weight. */}
-        <div className="font-medium text-sm mb-2">{issue.title}</div>
-
-        {/* Row 3: state badges on the left, assignee called out clearly on
-            the right; previously an unlabeled gray span buried in this
-            same badge row, easy to miss when following up on who owns
-            what. */}
-        <div className="flex items-center gap-2 flex-wrap text-xs">
-          <StatusBadge tone={ISSUE_STATUS_TONE[issue.status]} label={STATUS_LABELS[issue.status]} />
-          <StatusBadge tone={ISSUE_PRIORITY_TONE[issue.priority]} label={PRIORITY_LABELS[issue.priority]} />
-          <span className={`badge ${TIMER_BADGE_CLASS[timer.state]}`}>{timer.label}</span>
-          <AssigneeTag name={issue.assignedToName} className="ml-auto" />
-        </div>
+    <div role="row" className={`relative flex items-center gap-4 pl-6 pr-2 py-4 border-b border-ink-100/10 last:border-b-0 transition-colors hover:bg-ink-100/[0.03] ${selected ? 'bg-blueprint/5' : ''}`}>
+      <span aria-hidden="true" className={`absolute left-0 top-4 bottom-4 w-1 rounded-r-full ${PRIORITY_MARKER[issue.priority]}`} />
+      <span role="cell" className="w-5 shrink-0">
+        <input type="checkbox" aria-label={`Select issue ${number}`} checked={selected} onChange={onToggleSelect} />
+      </span>
+      <button role="cell" type="button" onClick={onOpen} className="flex-1 min-w-0 text-left">
+        <span className="block text-sm font-semibold text-ink-100 line-clamp-2">{issue.title}</span>
+        <span className="mt-0 flex items-center gap-2 text-xs text-ink-500 min-w-0">
+          <span className="font-mono text-ink-300 shrink-0">{number}</span>
+          {issue.discipline && DISCIPLINE_LABELS[issue.discipline] && (<><span aria-hidden="true">·</span><span className="shrink-0">{DISCIPLINE_LABELS[issue.discipline]}</span></>)}
+          {/* Location last, so it is what shortens when space runs out. */}
+          {where && (<><span aria-hidden="true">·</span><PinIcon /><span className="truncate">{where}</span></>)}
+        </span>
+        {downloadError && <span className="block mt-0 text-xs text-danger">{downloadError}</span>}
       </button>
+      <span role="cell" className="w-28 shrink-0"><StatusBadge tone={ISSUE_PRIORITY_TONE[issue.priority]} label={PRIORITY_LABELS[issue.priority]} /></span>
+      <span role="cell" className="w-40 shrink-0"><StatusBadge tone={ISSUE_STATUS_TONE[issue.status]} label={STATUS_LABELS[issue.status]} /></span>
+      <span role="cell" className="w-44 shrink-0"><Assignee name={issue.assignedToName} /></span>
+      <span role="cell" className="w-36 shrink-0">
+        <span className={`block text-xs font-medium ${DUE_TONE[timer.state] ?? 'text-ink-300'}`}>{timer.state === 'overdue' ? timer.label : formatDeadline(issue.deadline)}</span>
+        {timer.state !== 'overdue' && timer.state !== 'closed' && issue.deadline && <span className="block text-xs text-ink-500">{timer.label} left</span>}
+      </span>
+      <span role="cell" className="w-10 shrink-0">
+        <Menu
+          label={`Actions for ${number}`}
+          buttonClassName="w-10 h-10 rounded-lg grid place-items-center text-ink-300 hover:bg-ink-100/5 hover:text-ink-100"
+          buttonContent={<DotsIcon />}
+          sections={[
+            { items: [{ label: 'Open issue', icon: <OpenIcon />, onSelect: onOpen }] },
+            {
+              heading: 'Download',
+              items: [
+                { label: 'PDF report', icon: <ExportIcon />, onSelect: () => download('pdf') },
+                { label: 'Excel (XLS)', icon: <ExportIcon />, onSelect: () => download('xls') },
+              ],
+            },
+          ]}
+        />
+      </span>
     </div>
   );
 }
 
-// A small colored-initial "avatar" plus a labeled name, so the assignee
-// reads as a distinct, glanceable fact rather than one more gray badge;
-// no dependency on assignedToAvatar actually resolving to a loadable image
-// (nothing else in the issues UI renders that field yet either).
-function AssigneeTag({ name, className = '' }: { name?: string; className?: string }) {
-  if (!name) {
-    return <span className={`text-ink-500 italic ${className}`}>Unassigned</span>;
-  }
+// An initial "avatar" and the name, or a muted "Unassigned".
+function Assignee({ name }: { name?: string }) {
+  if (!name) return <span className="text-xs text-ink-500">Unassigned</span>;
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join('');
   return (
-    <span className={`flex items-center gap-2 ${className}`}>
-      <span className="w-5 h-5 rounded-full bg-blueprint/20 text-blueprint text-xs font-semibold flex items-center justify-center shrink-0">
-        {initials}
-      </span>
-      <span className="text-ink-500">Assigned to</span>
-      <span className="text-ink-100 font-medium">{name}</span>
+    <span className="flex items-center gap-2 min-w-0">
+      <span className="w-8 h-8 rounded-full grid place-items-center shrink-0 bg-ink-100/10 ring-1 ring-ink-100/15 text-eyebrow font-semibold text-ink-100">{initials}</span>
+      <span className="text-xs text-ink-300 truncate">{name}</span>
     </span>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-ink-500 pointer-events-none" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+function FiltersIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M4 6h16M7 12h10M10 18h4" strokeLinecap="round" />
+    </svg>
+  );
+}
+function PinIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M12 21s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z" strokeLinejoin="round" /><circle cx="12" cy="9" r="2.5" />
+    </svg>
+  );
+}
+function DotsIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
+      <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
+    </svg>
+  );
+}
+function OpenIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 

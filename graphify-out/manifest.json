@@ -630,9 +630,9 @@
     "semantic_hash": ""
   },
   "apps/api/package.json": {
-    "mtime": 1793934302.587174,
-    "seen": 1793942412.6008332,
-    "ast_hash": "658bd1e6284ff7ffed122fb701f74653",
+    "mtime": 1794774282.3974364,
+    "seen": 1794775944.8792796,
+    "ast_hash": "8ebea033ca9975063dc26c2d25461942",
     "semantic_hash": ""
   },
   "apps/api/src/app.module.ts": {
@@ -1920,9 +1920,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/issues/issue-pdf.template.ts": {
-    "mtime": 1793934302.6311738,
-    "seen": 1793942412.6011798,
-    "ast_hash": "10257c7e49e0672898d652cbcddf7d9e",
+    "mtime": 1794774282.3974364,
+    "seen": 1794775944.8858576,
+    "ast_hash": "8b11a2ebcb572c2808802f80a6ce5770",
     "semantic_hash": ""
   },
   "apps/api/src/modules/issues/issue-scheduled-reminders.service.spec.ts": {
@@ -1950,9 +1950,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/issues/issue-xls.ts": {
-    "mtime": 1793934302.6311738,
-    "seen": 1793942412.6011872,
-    "ast_hash": "bf34e58fc18618cf2a651b9b011f5503",
+    "mtime": 1794774282.3974364,
+    "seen": 1794775944.885976,
+    "ast_hash": "fbbfe8548c222abbc2e054e4675936c9",
     "semantic_hash": ""
   },
   "apps/api/src/modules/issues/issues.controller.ts": {
@@ -2034,9 +2034,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/progress-reports/progress-report-pdf.template.ts": {
-    "mtime": 1793934302.6351738,
-    "seen": 1793942412.6012065,
-    "ast_hash": "a9786190e90782e6e539c0bc12b2bc63",
+    "mtime": 1794774282.3974364,
+    "seen": 1794775944.8867538,
+    "ast_hash": "a53b16ce982ddea552d0fd1c5757aeb8",
     "semantic_hash": ""
   },
   "apps/api/src/modules/progress-reports/progress-reports.controller.ts": {
@@ -2220,9 +2220,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/qaqc/qaqc-pdf.template.ts": {
-    "mtime": 1793934302.6391737,
-    "seen": 1793942412.601249,
-    "ast_hash": "582393984fd9d4b37c77e7ff716c2dfe",
+    "mtime": 1794774282.3974364,
+    "seen": 1794775944.8876038,
+    "ast_hash": "dd8603dc508dadf66e40af8f48c45c1f",
     "semantic_hash": ""
   },
   "apps/api/src/modules/qaqc/qaqc.controller.ts": {
@@ -2262,9 +2262,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/reports/reports-pdf.template.ts": {
-    "mtime": 1793934302.6391737,
-    "seen": 1793942412.6012597,
-    "ast_hash": "aef71525fd98a4ec83fcc314c0ae3773",
+    "mtime": 1794774282.3974364,
+    "seen": 1794775944.887914,
+    "ast_hash": "266a539f379d84ff2be290ddb92bc1b5",
     "semantic_hash": ""
   },
   "apps/api/src/modules/reports/reports.controller.ts": {
@@ -2376,15 +2376,15 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/rfis/rfi-notice-letter-pdf.template.ts": {
-    "mtime": 1793934302.643174,
-    "seen": 1793942412.6012871,
-    "ast_hash": "bdc094755c4c46bf2d1d358a9733a11b",
+    "mtime": 1794774282.3974364,
+    "seen": 1794775944.888428,
+    "ast_hash": "77786b8f88363b217fb96cd6e043c4af",
     "semantic_hash": ""
   },
   "apps/api/src/modules/rfis/rfi-pdf.template.ts": {
-    "mtime": 1793934302.643174,
-    "seen": 1793942412.6012888,
-    "ast_hash": "d1121fcada13d06902624e6011476ec7",
+    "mtime": 1794774282.3974364,
+    "seen": 1794775944.8884308,
+    "ast_hash": "fbc90d76ab008641b54e3fa7590cf15e",
     "semantic_hash": ""
   },
   "apps/api/src/modules/rfis/rfis.controller.ts": {
@@ -2502,9 +2502,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/risk/risk-pdf.template.ts": {
-    "mtime": 1793934302.647174,
-    "seen": 1793942412.6013207,
-    "ast_hash": "6d5ee2b69796c183800a74ad5eaf909f",
+    "mtime": 1794774282.3974364,
+    "seen": 1794775944.8890378,
+    "ast_hash": "1484144ad2b728412d2ba456858951f3",
     "semantic_hash": ""
   },
   "apps/api/src/modules/risk/risk.controller.ts": {
@@ -3966,9 +3966,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/ExecutiveBriefing.tsx": {
-    "mtime": 1793934841.7476666,
-    "seen": 1793942412.6016238,
-    "ast_hash": "38311c1116276f699e2232c68a6f5029",
+    "mtime": 1794775835.6999648,
+    "seen": 1794775944.896554,
+    "ast_hash": "dcdfa67f9118085c862880386052b077",
     "semantic_hash": ""
   },
   "apps/web/src/components/HierarchyTree.tsx": {
@@ -3996,9 +3996,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/ProjectDashboard.tsx": {
-    "mtime": 1793934302.6751738,
-    "seen": 1793942412.6016295,
-    "ast_hash": "c17d83f8cd534efba2dee84ebd7f3d54",
+    "mtime": 1794775674.8437243,
+    "seen": 1794775944.8966568,
+    "ast_hash": "eb9460b61879a2bb8c9c3ac3161a6c85",
     "semantic_hash": ""
   },
   "apps/web/src/components/ProtectedRoute.tsx": {
@@ -4206,9 +4206,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/issues/IssueDetail.tsx": {
-    "mtime": 1794759790.469985,
-    "seen": 1794760228.9813974,
-    "ast_hash": "7741a8722b8bb479c5d411f3e9d89531",
+    "mtime": 1794775739.0690944,
+    "seen": 1794775944.897849,
+    "ast_hash": "f2a9727e6f120d644f111a00aa6dbd3a",
     "semantic_hash": ""
   },
   "apps/web/src/components/issues/IssueFormModal.tsx": {
@@ -4218,9 +4218,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/AppShell.tsx": {
-    "mtime": 1794760101.1572483,
-    "seen": 1794760228.981424,
-    "ast_hash": "9e00a206f370b8116f451af728a0ef8a",
+    "mtime": 1794774841.9922614,
+    "seen": 1794775944.897916,
+    "ast_hash": "1f4deb6fc6422204fc49bc063832e3b2",
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/MessagesBell.tsx": {
@@ -4236,9 +4236,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/PageHeader.tsx": {
-    "mtime": 1793934302.6832442,
-    "seen": 1793942412.6017227,
-    "ast_hash": "38d87de629d73636cd0026dab9fe4575",
+    "mtime": 1794774965.0114756,
+    "seen": 1794775944.8980176,
+    "ast_hash": "aa3d811e6b190f374c56705c97e5afc5",
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/ProjectContextPanel.tsx": {
@@ -4782,9 +4782,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/lib/reports-xls.ts": {
-    "mtime": 1793934302.700675,
-    "seen": 1793942412.6018534,
-    "ast_hash": "546b4339f9d6b623b58dd7011d3f46cc",
+    "mtime": 1794774282.3974364,
+    "seen": 1794775944.9010687,
+    "ast_hash": "57ebfc5a97f6070d344dfc218fdc18fa",
     "semantic_hash": ""
   },
   "apps/web/src/lib/reports.api.ts": {
@@ -4812,9 +4812,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/lib/rfi-xls.ts": {
-    "mtime": 1793934302.7031739,
-    "seen": 1793942412.60186,
-    "ast_hash": "72f04c8f70316919ff5922c80615c283",
+    "mtime": 1794774282.3974364,
+    "seen": 1794775944.9011726,
+    "ast_hash": "ce80d4912cdb1a2d487c286db3ffcf98",
     "semantic_hash": ""
   },
   "apps/web/src/lib/rfis.api.ts": {
@@ -5034,9 +5034,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/IssuesPage.tsx": {
-    "mtime": 1794759790.4716752,
-    "seen": 1794760228.9843905,
-    "ast_hash": "a5f8a6ee114fbd72fabe6e5f71aeb2e7",
+    "mtime": 1794775835.7029605,
+    "seen": 1794775944.9022307,
+    "ast_hash": "9f7ea699d2df777e9bea79156afe03d6",
     "semantic_hash": ""
   },
   "apps/web/src/pages/MessagesPage.tsx": {
@@ -5064,9 +5064,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/ProjectDetail.tsx": {
-    "mtime": 1793934841.8291104,
-    "seen": 1793942412.6019144,
-    "ast_hash": "4f1bdb81aff05f5bfaeb46f3b1868437",
+    "mtime": 1794775730.5537195,
+    "seen": 1794775944.9023561,
+    "ast_hash": "72952ddc1befadc2ef30f5b38e0da8b4",
     "semantic_hash": ""
   },
   "apps/web/src/pages/ProjectList.tsx": {
@@ -5256,9 +5256,9 @@
     "semantic_hash": ""
   },
   "apps/web/tailwind.config.js": {
-    "mtime": 1794759790.472451,
-    "seen": 1794760228.9850657,
-    "ast_hash": "e60470e967aee45527e8920c11f92607",
+    "mtime": 1794774822.0278268,
+    "seen": 1794775944.9032586,
+    "ast_hash": "2865ced3e4e0ff522c71723b77655c30",
     "semantic_hash": ""
   },
   "apps/web/tsconfig.json": {
@@ -6294,15 +6294,15 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/site-drawings/site-drawing-register-xls.ts": {
-    "mtime": 1794755957.5745516,
-    "seen": 1794760228.975814,
-    "ast_hash": "9a8d3420629a50f9bffa5becf065596f",
+    "mtime": 1794774282.3974364,
+    "seen": 1794775944.8902957,
+    "ast_hash": "2c4d7e04ebaa5b754933f13511a559d7",
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/HeaderIconButton.tsx": {
-    "mtime": 1794759935.0082211,
-    "seen": 1794760228.9814298,
-    "ast_hash": "d265a25836c1d28379b35307400aef00",
+    "mtime": 1794774834.6649735,
+    "seen": 1794775944.8979473,
+    "ast_hash": "27d1b21a4361ae4751d0301bc28d2512",
     "semantic_hash": ""
   },
   "apps/web/src/components/site-drawings/ImportActivityModal.tsx": {
@@ -6659,10 +6659,52 @@
     "ast_hash": "dd95c9677ede85dafab20d4285eecc89",
     "semantic_hash": ""
   },
+  "apps/api/src/common/pdf/brand.ts": {
+    "mtime": 1794774282.3974364,
+    "seen": 1794775944.8807306,
+    "ast_hash": "42a86533e8f4525507f6aed56566407a",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/overview/overview-data.ts": {
+    "mtime": 1794775730.5529377,
+    "seen": 1794775944.8981383,
+    "ast_hash": "93f519c2dc807fe56a3bafa7ae3729a6",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/overview/useProjectBriefing.ts": {
+    "mtime": 1794775730.5522902,
+    "seen": 1794775944.8981414,
+    "ast_hash": "806129c302b3c16bea6d67dc07d4b19d",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/ui/Collapsible.tsx": {
+    "mtime": 1794775540.0364096,
+    "seen": 1794775944.898751,
+    "ast_hash": "160c48010132cc35acebbae2ab205806",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/ui/Menu.test.tsx": {
+    "mtime": 1794775050.5394807,
+    "seen": 1794775944.898978,
+    "ast_hash": "627de20e7ac03ffd0bca601b1152ddc0",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/ui/Menu.tsx": {
+    "mtime": 1794775441.6008415,
+    "seen": 1794775944.8989801,
+    "ast_hash": "bb3f6dd73a97d59b44513d2fdba480af",
+    "semantic_hash": ""
+  },
+  "apps/web/src/lib/xls-brand.ts": {
+    "mtime": 1794774282.3974364,
+    "seen": 1794775944.9018273,
+    "ast_hash": "5ed02ef31b19df65f99732e5e92a7a65",
+    "semantic_hash": ""
+  },
   "pnpm-lock.yaml": {
-    "mtime": 1793934303.2431738,
-    "seen": 1793942412.6021438,
-    "ast_hash": "7e6ae9ca215b4558a6c8c8753b561921",
+    "mtime": 1794774282.399435,
+    "seen": 1794775944.90704,
+    "ast_hash": "4d958d5e5f1f25d6615223551883621e",
     "semantic_hash": ""
   }
 }

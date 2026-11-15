@@ -106,13 +106,13 @@
   --rc-edge: 11 11 12;
   --rc-edge-a: 0.3;
 
-  /* Display type sizes (tailwind text-3xl..7xl), all steps of the
-     tailwind.config.js scale. Phones take smaller steps; md and up
+  /* Display type sizes (tailwind text-3xl..7xl), continuing the scale
+     above the 32px page title. Phones take smaller steps; md and up
      restores the full ones. */
-  --rc-fs-3xl: 1.5rem; /* 24px */
-  --rc-fs-4xl: 1.875rem; /* 30px */
-  --rc-fs-5xl: 2.25rem; /* 36px */
-  --rc-fs-6xl: 2.25rem; /* 36px */
+  --rc-fs-3xl: 2rem; /* 32px */
+  --rc-fs-4xl: 2.25rem; /* 36px */
+  --rc-fs-5xl: 2.5rem; /* 40px */
+  --rc-fs-6xl: 3rem; /* 48px */
   --rc-fs-7xl: 3rem; /* 48px */
   --rc-noir-hover: 40 40 44;
   --rc-on-noir: 244 244 245;
@@ -262,10 +262,10 @@
 
 @media (min-width: 768px) {
   :root {
-    --rc-fs-3xl: 1.875rem; /* 30px */
-    --rc-fs-4xl: 2.25rem; /* 36px */
-    --rc-fs-5xl: 3rem; /* 48px */
-    --rc-fs-6xl: 3.75rem; /* 60px */
+    --rc-fs-3xl: 2.5rem; /* 40px */
+    --rc-fs-4xl: 3rem; /* 48px */
+    --rc-fs-5xl: 3.75rem; /* 60px */
+    --rc-fs-6xl: 4rem; /* 64px */
     --rc-fs-7xl: 4.5rem; /* 72px */
   }
 }
@@ -407,7 +407,7 @@
   /* Status/tag chips: sentence case, sans, pill-shaped. The old mono +
      uppercase + wide tracking pill shouted on every row of every list. */
   .badge {
-    @apply inline-flex items-center gap-2 px-2 py-0 rounded-full text-xs leading-4 font-medium whitespace-nowrap;
+    @apply inline-flex items-center gap-2 px-2 py-0 rounded-full text-xs leading-5 font-medium whitespace-nowrap;
   }
 
 
@@ -527,7 +527,7 @@
     background: linear-gradient(90deg, rgb(var(--rc-ink-100) / 0.22), transparent);
   }
   .nav-row {
-    @apply w-full flex items-center gap-4 h-10 px-2 rounded-xl text-base text-left text-ink-300 transition-colors duration-150;
+    @apply w-full flex items-center gap-4 h-10 px-2 rounded-xl text-sm text-left text-ink-300 transition-colors duration-150;
   }
   .nav-row:hover {
     @apply text-ink-100;
