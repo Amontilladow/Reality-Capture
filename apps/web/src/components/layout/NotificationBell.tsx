@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -7,6 +7,8 @@ import {
 } from '../../lib/notifications.api';
 import { subscribeToNotificationSocket, getNotificationSocketSnapshot } from '../../lib/notification-socket';
 import { BellIcon, HeaderIconButton } from './HeaderIconButton';
+import { useMenuPosition } from './useMenuPosition';
+import { createPortal } from 'react-dom';
 
 const PRIORITY_DOT: Record<Notification['priority'], string> = {
   critical: 'bg-danger', high: 'bg-warn', normal: 'bg-blueprint',
@@ -23,8 +25,11 @@ function timeAgo(iso: string): string {
   return `${days}d ago`;
 }
 
-export function NotificationBell() {
+/** buttonClassName restyles the icon button for where it sits (the sidebar's glass tiles). */
+export function NotificationBell({ buttonClassName = '' }: { buttonClassName?: string }) {
   const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuStyle = useMenuPosition(buttonRef, open);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -120,6 +125,8 @@ export function NotificationBell() {
   return (
     <div className="relative">
       <HeaderIconButton
+        ref={buttonRef}
+        className={buttonClassName}
         onClick={() => setOpen((v) => !v)}
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
         aria-expanded={open}
@@ -127,10 +134,10 @@ export function NotificationBell() {
         count={unreadCount}
       />
 
-      {open && (
+      {open && createPortal(
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="fixed md:absolute top-16 md:top-full inset-x-4 md:inset-x-auto md:mt-2 md:left-0 z-50 md:w-80 max-h-96 tick-frame panel !bg-base-800 overflow-hidden flex flex-col shadow-xl">
+          <div style={menuStyle} className="fixed top-16 inset-x-4 md:inset-x-auto z-50 md:w-80 max-h-96 tick-frame panel !bg-base-800 overflow-hidden flex flex-col shadow-xl">
             <div className="flex items-center justify-between px-4 py-2 border-b border-base-600 shrink-0">
               <span className="text-sm font-semibold text-ink-100">Notifications</span>
               {unreadCount > 0 && (
@@ -178,7 +185,8 @@ export function NotificationBell() {
               View all notifications
             </Link>
           </div>
-        </>
+        </>,
+        document.body,
       )}
     </div>
   );

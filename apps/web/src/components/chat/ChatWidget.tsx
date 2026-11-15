@@ -359,7 +359,7 @@ export function ChatWidget() {
                   <button
                     onClick={handleSend}
                     disabled={!draft.trim() || !connected || messagesLoading}
-                    className="shrink-0 px-2 py-2 rounded bg-signal text-base-950 text-xs font-semibold disabled:opacity-40"
+                    className="shrink-0 px-2 py-2 rounded bg-signal text-on-signal text-xs font-semibold disabled:opacity-40"
                   >
                     Send
                   </button>

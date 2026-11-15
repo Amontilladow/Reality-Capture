@@ -372,7 +372,7 @@ export default function IssuesPage() {
             </Listbox>
             <button
               onClick={() => setAdvancedOpen((v) => !v)}
-              className={`btn-secondary !px-4 !py-2 md:order-last ${advancedActive ? '!border-signal !text-signal' : ''}`}
+              className={`btn-secondary !px-4 !py-2 md:order-last ${advancedActive ? '!border-signal !text-blueprint' : ''}`}
             >
               Advanced{advancedActive ? ' •' : ''}
             </button>
@@ -892,7 +892,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
     <button
       onClick={onClick}
       className={`px-4 py-2 text-sm border-b-2 transition-colors -mb-px ${
-        active ? 'border-signal text-signal font-medium' : 'border-transparent text-ink-500 hover:text-ink-100'
+        active ? 'border-signal text-blueprint font-medium' : 'border-transparent text-ink-500 hover:text-ink-100'
       }`}
     >
       {children}
@@ -916,7 +916,7 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
     <button
       onClick={onClick}
       className={`h-9 px-4 inline-flex items-center rounded-full text-sm border transition-colors ${
-        active ? 'bg-signal text-base-950 border-signal font-medium' : 'border-base-600 text-ink-300 hover:border-base-500'
+        active ? 'bg-signal text-on-signal border-signal font-medium' : 'border-base-600 text-ink-300 hover:border-base-500'
       }`}
     >
       {children}

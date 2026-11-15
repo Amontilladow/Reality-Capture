@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { create } from 'zustand';
 import { useAuthStore } from '../../store/auth.store';
 import { logout as apiLogout } from '../../lib/auth.api';
 import { getMembers } from '../../lib/projects.api';
+import { COMPANY_ROLE_LABELS } from '../../lib/issue-constants';
 import { NotificationBell } from './NotificationBell';
 import { MessagesBell } from './MessagesBell';
-import { ProjectContextPanel } from './ProjectContextPanel';
+import { ProjectSwitcher } from './ProjectContextPanel';
+import { useProjectContext } from './useProjectContext';
+import { CurvedGlassPanel } from './CurvedGlassPanel';
+import { AppBackdrop } from './AppBackdrop';
 import { ChatWidget } from '../chat/ChatWidget';
 import { OnboardingFlow } from '../onboarding/OnboardingFlow';
 import { LogoMark } from '../ui/LogoMark';
@@ -19,16 +24,19 @@ interface NavItem {
   icon: (props: { className?: string }) => JSX.Element;
   end?: boolean;
 }
+// A group with a heading is a section: one row (its icon and heading) that
+// opens to show its pages on a tree line. A group without one lists its
+// items as top-level rows.
 interface NavGroup {
-  // Stable key for the group's remembered expanded/collapsed state.
+  // Stable key for the section's remembered open/closed state.
   id: string;
   heading?: string;
+  icon?: (props: { className?: string }) => JSX.Element;
   items: NavItem[];
 }
 
-// Grouped so the list reads as sections (brief: "the navigation must be
-// scalable as more modules are added") instead of one flat column; every
-// item here is a route that already exists; nothing added for show.
+// Company-level destinations, outside any project. Every item here is a
+// route that already exists; nothing added for show.
 const NAV_GROUPS: NavGroup[] = [
   {
     id: 'workspace',
@@ -38,47 +46,38 @@ const NAV_GROUPS: NavGroup[] = [
       { to: 'workforce', label: 'Workforce', icon: IconGauge },
     ],
   },
-  // Personal, account-level settings; every user connects their own AI
-  // provider (spec section 7) and their own mailbox (Phase 3: "a user can
-  // connect only their authorized mailbox"), so neither is gated like
-  // DEVELOPER_NAV_GROUP below. Merged from four one-item groups whose
-  // headings only repeated the item's own name.
-  {
-    id: 'account',
-    heading: 'Account',
-    items: [
-      { to: 'ai-settings', label: 'AI provider', icon: IconSpark },
-      { to: 'email-settings', label: 'Email integration', icon: IconMail },
-      { to: 'help', label: 'Help & training', icon: IconHelp },
-    ],
-  },
 ];
 
+// Personal, account-level settings, pinned to the bottom of the sidebar so
+// they're reachable from inside a project too. Every user connects their
+// own AI provider (spec section 7) and their own mailbox (Phase 3: "a
+// user can connect only their authorized mailbox"), so neither is gated.
+const SETTINGS_ITEMS: NavItem[] = [
+  { to: 'ai-settings', label: 'AI provider', icon: IconSpark },
+  { to: 'email-settings', label: 'Email integration', icon: IconMail },
+];
 // Company-admin-only: API keys and webhooks are per-tenant (company_id),
-// not per-project, so this lives alongside the other company-level nav
-// groups, not under PROJECT_NAV_GROUPS. Same role check WorkforcePage.tsx
-// uses for its own admin-only sections.
-const DEVELOPER_NAV_GROUP: NavGroup = {
-  id: 'admin',
-  heading: 'Admin',
-  items: [
-    { to: 'developer', label: 'Developer', icon: IconKey, end: false },
-    { to: 'sharepoint-integration', label: 'SharePoint integration', icon: IconDrawingStack, end: false },
-  ],
-};
+// not per-project. Same role check WorkforcePage.tsx uses for its own
+// admin-only sections.
+const ADMIN_SETTINGS_ITEMS: NavItem[] = [
+  { to: 'developer', label: 'Developer', icon: IconKey, end: false },
+  { to: 'sharepoint-integration', label: 'SharePoint integration', icon: IconDrawingStack, end: false },
+];
+const HELP_ITEM: NavItem = { to: 'help', label: 'Help & training', icon: IconHelp };
 
-// Sections ordered by how a project team works: the day-to-day records
-// first, then reporting, then the capture and engineering tools. Every
-// item is an existing route (App.tsx); this only groups and orders them.
+// Ordered by how a project team works: the day-to-day records first, then
+// reporting, then the capture and engineering tools. Every item is an
+// existing route (App.tsx); this only groups and orders them.
 // Submittals/Transmittals/QA Inspections/Documents stay hidden from nav
 // per request, backend modules/routes untouched; still reachable by
 // direct URL, just not linked from the sidebar.
 const PROJECT_NAV_GROUPS: NavGroup[] = [
+  { id: 'overview', items: [{ to: '', label: 'Overview', icon: IconLayers, end: true }] },
   {
     id: 'project',
     heading: 'Project',
+    icon: IconGrid,
     items: [
-      { to: '', label: 'Overview', icon: IconLayers, end: true },
       { to: 'site-drawings', label: 'Site drawings', icon: IconDrawingStack },
       { to: 'drawings', label: 'Floor plans', icon: IconMap },
       { to: 'issues', label: 'Issues', icon: IconFlag },
@@ -90,6 +89,7 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
   {
     id: 'reporting',
     heading: 'Reporting & insights',
+    icon: IconTrending,
     items: [
       { to: 'progress-report', label: 'Progress report', icon: IconTrending },
       { to: 'reports', label: 'Reports', icon: IconReport },
@@ -104,6 +104,7 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
     // Only the nav label of the latter gained "timeline" to tell them apart.
     id: 'reality-capture',
     heading: 'Reality capture',
+    icon: IconCamera,
     items: [
       { to: 'bim', label: 'BIM models', icon: IconBim },
       { to: 'captures', label: 'BuildLens captures', icon: IconCamera },
@@ -113,13 +114,10 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
   {
     id: 'engineering-tools',
     heading: 'Engineering tools',
+    icon: IconGlobe,
     items: [{ to: 'gis-prep', label: 'GIS preparation', icon: IconGlobe }],
   },
-  {
-    id: 'intelligence',
-    heading: 'Intelligence',
-    items: [{ to: 'assistant', label: 'AI assistant', icon: IconSpark }],
-  },
+  { id: 'intelligence', items: [{ to: 'assistant', label: 'AI assistant', icon: IconSpark }] },
 ];
 
 // A 'subcontractor' project member (SubcontractorRfiAccessGuard) has
@@ -132,6 +130,9 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
 const SUBCONTRACTOR_NAV_GROUPS: NavGroup[] = [
   { id: 'subcontractor', items: [{ to: 'rfis', label: 'RFIs', icon: IconQuestion }] },
 ];
+
+// Glass-tile look for the header's bell and messages buttons.
+const HEADER_TILE = '!w-8 !h-8 !rounded-lg nav-tile';
 
 export function AppShell() {
   const user = useAuthStore((s) => s.user);
@@ -164,9 +165,14 @@ export function AppShell() {
 
   const inProject = Boolean(params.projectId);
   const isCompanyAdmin = user?.companyRole === 'company_admin' || user?.companyRole === 'super_admin';
-  const navGroups = isCompanyAdmin ? [...NAV_GROUPS, DEVELOPER_NAV_GROUP] : NAV_GROUPS;
+  const settingsGroup: NavGroup = {
+    id: 'settings',
+    heading: 'Settings',
+    icon: IconCog,
+    items: isCompanyAdmin ? [...SETTINGS_ITEMS, ...ADMIN_SETTINGS_ITEMS] : SETTINGS_ITEMS,
+  };
 
-  // Same query ProjectContextPanel already makes (shares its cache entry,
+  // Same query useProjectContext already makes (shares its cache entry,
   // no extra request): read here too so the nav itself can collapse down
   // to RFIs-only for a subcontractor project member, rather than showing
   // every link and letting each one 403 when clicked.
@@ -179,9 +185,11 @@ export function AppShell() {
   const effectiveProjectNavGroups = isSubcontractor ? SUBCONTRACTOR_NAV_GROUPS : PROJECT_NAV_GROUPS;
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
+    <div className="relative isolate min-h-screen flex flex-col md:flex-row">
+      <AppBackdrop />
+
       {/* Solid and layered above the page (no backdrop-blur: a filter would
-          trap the bells' fixed-position menus inside this 56px bar). */}
+          trap fixed-position descendants inside this 56px bar). */}
       <div className="relative z-30 h-14 flex md:hidden items-center gap-2 px-4 border-b border-base-600/70 bg-base-950 shrink-0">
         <button
           onClick={() => setMobileNavOpen(true)}
@@ -205,74 +213,67 @@ export function AppShell() {
         />
       )}
 
+      {/* The curved glass sidebar: a drawer on phones, and pinned beside
+          the page (sticky, full height) from tablet up. */}
       <aside
-        className={`w-72 shrink-0 border-r border-base-600/70 bg-base-900 md:bg-transparent flex flex-col fixed inset-y-0 left-0 z-50 transition-transform duration-200 md:static md:translate-x-0 ${
+        className={`w-80 max-w-[calc(100vw-2rem)] shrink-0 fixed inset-y-0 left-0 z-50 p-2 transition-transform duration-200 md:sticky md:top-0 md:h-screen md:p-4 md:pr-0 md:translate-x-0 ${
           mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Brand on one line with the notifications bell and the single
-            Messages menu (inbox, team chat, email app); the theme toggle
-            moved to the account footer, where it no longer squeezes the
-            product name into a three-line wrap. */}
-        <div className="h-16 flex items-center gap-2 pl-4 pr-2 border-b border-base-600">
-          <LogoMark className="w-10 h-10 shrink-0" />
-          <div className="leading-tight flex-1 min-w-0">
-            <div className="text-base font-semibold tracking-tight truncate">Reality Capture</div>
-            <div className="text-xs text-ink-500 truncate">EngineeringOS</div>
-          </div>
-          {/* Phones get the bells in the top bar instead. */}
-          <div className="hidden md:flex items-center">
-            <NotificationBell />
-            <MessagesBell />
-          </div>
-          <button
-            onClick={() => setMobileNavOpen(false)}
-            aria-label="Close navigation menu"
-            className="md:hidden p-2 text-ink-300 hover:text-ink-100"
-          >
-            <IconClose className="w-4 h-4" />
-          </button>
-        </div>
-
-        <nav className="flex-1 px-4 py-4 overflow-y-auto">
-          {!inProject && <NavGroupList groups={navGroups} basePath="/projects" />}
-
-          {inProject && params.projectId && (
-            <>
-              <NavLink
-                to="/projects"
-                end
-                className="flex items-center gap-2 px-4 py-2 mb-2 text-sm text-ink-500 hover:text-ink-100"
+        <CurvedGlassPanel className="h-full">
+          <div className="h-full flex flex-col px-6 pt-6 pb-4">
+            <div className="flex items-center gap-2">
+              <LogoMark className="w-8 h-8" />
+              <div className="flex-1 min-w-0 text-xs font-medium uppercase tracking-[0.16em] whitespace-nowrap truncate">
+                Reality Capture
+              </div>
+              {/* Phones get the bells in the top bar instead. */}
+              <div className="hidden md:flex items-center gap-2">
+                <NotificationBell buttonClassName={HEADER_TILE} />
+                <MessagesBell buttonClassName={HEADER_TILE} />
+              </div>
+              <button
+                onClick={() => setMobileNavOpen(false)}
+                aria-label="Close navigation menu"
+                className="md:hidden nav-tile hover:text-ink-100"
               >
+                <IconClose className="w-4 h-4" />
+              </button>
+            </div>
+
+            <SidebarProfile projectId={inProject ? params.projectId : undefined} />
+
+            <div className="h-px my-4 bg-gradient-to-r from-transparent via-ink-100/25 to-transparent" />
+
+            {inProject && (
+              <NavLink to="/projects" end className="flex items-center gap-2 pl-2 mb-4 text-sm text-ink-500 hover:text-ink-100 transition-colors">
                 <IconArrowLeft className="w-3.5 h-3.5" /> All projects
               </NavLink>
-              <ProjectContextPanel projectId={params.projectId} />
-              <div className="mt-4">
-                <NavGroupList groups={effectiveProjectNavGroups} basePath={`/projects/${params.projectId}`} />
-              </div>
-            </>
-          )}
-        </nav>
+            )}
+            <div className="nav-label">Menu</div>
 
-        <div className="border-t border-base-600 p-4">
-          <div className="flex items-center gap-2 px-2 py-2">
-            <div className="w-8 h-8 rounded-full bg-base-700 border border-base-600 flex items-center justify-center text-xs font-semibold text-ink-300 shrink-0">
-              {(user?.firstName?.[0] ?? '') + (user?.lastName?.[0] ?? '')}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium truncate">
-                {user?.firstName} {user?.lastName}
+            <nav aria-label="Main" className="nav-scroll flex-1 min-h-0 overflow-y-auto -mx-2 px-2 pb-4">
+              {inProject && params.projectId ? (
+                <NavTree groups={effectiveProjectNavGroups} basePath={`/projects/${params.projectId}`} />
+              ) : (
+                <NavTree groups={NAV_GROUPS} basePath="/projects" />
+              )}
+            </nav>
+
+            <NoticeCard />
+
+            <div className="pt-2">
+              <NavTree groups={[settingsGroup, { id: 'help', items: [HELP_ITEM] }]} basePath="/projects" />
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={handleLogout} className="nav-row flex-1">
+                  <span className="nav-tile"><IconLogout className="w-4 h-4" /></span>
+                  Log out
+                </button>
+                <ThemeToggle />
               </div>
-              <div className="text-xs text-ink-500 truncate">{user?.email}</div>
             </div>
           </div>
-          <div className="flex items-center gap-2 mt-2">
-            <button onClick={handleLogout} className="btn-ghost flex-1 justify-start px-2 h-9">
-              <IconLogout className="w-4 h-4" /> Sign out
-            </button>
-            <ThemeToggle />
-          </div>
-        </div>
+        </CurvedGlassPanel>
       </aside>
 
       {/* pb-16 keeps the last row of a page clear of the phone tab bar. */}
@@ -289,6 +290,83 @@ export function AppShell() {
       <ChatWidget />
       <OnboardingFlow />
     </div>
+  );
+}
+
+// The signed-in person: avatar with an online dot, name and role badge,
+// then (inside a project) the project switcher, or their email outside one.
+function SidebarProfile({ projectId }: { projectId?: string }) {
+  const user = useAuthStore((s) => s.user);
+  const initials = (user?.firstName?.[0] ?? '') + (user?.lastName?.[0] ?? '');
+  const isCompanyAdmin = user?.companyRole === 'company_admin' || user?.companyRole === 'super_admin';
+  const companyRoleLabel = isCompanyAdmin ? 'Admin' : user?.companyRole ? COMPANY_ROLE_LABELS[user.companyRole] : undefined;
+
+  return (
+    <div className="flex items-center gap-4 mt-6">
+      <div className="relative w-14 h-14 shrink-0 rounded-full grid place-items-center text-lg font-semibold text-on-noir bg-noir ring-2 ring-ink-100/50 shadow-lg">
+        {initials}
+        <span aria-label="Signed in" role="img" className="absolute right-0 bottom-0 w-3.5 h-3.5 rounded-full bg-ok ring-2 ring-base-950" />
+      </div>
+      <div className="min-w-0 flex-1">
+        {projectId ? (
+          <ProjectProfileLines projectId={projectId} name={`${user?.firstName ?? ''} ${user?.lastName ?? ''}`} fallbackRole={companyRoleLabel} />
+        ) : (
+          <>
+            <ProfileName name={`${user?.firstName ?? ''} ${user?.lastName ?? ''}`} role={companyRoleLabel} />
+            <div className="text-sm text-ink-500 truncate">{user?.email}</div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProjectProfileLines({ projectId, name, fallbackRole }: { projectId: string; name: string; fallbackRole?: string }) {
+  const { roleLabel, orgSlotLabel } = useProjectContext(projectId);
+  return (
+    <>
+      <ProfileName name={name} role={roleLabel ?? fallbackRole} />
+      <ProjectSwitcher projectId={projectId} />
+      {orgSlotLabel && <div className="text-xs text-ink-500 truncate">{orgSlotLabel}</div>}
+    </>
+  );
+}
+
+function ProfileName({ name, role }: { name: string; role?: string }) {
+  return (
+    // The badge sits beside the name when both fit, and wraps under it when
+    // a long role ("Project lead") would otherwise squeeze the name.
+    <div className="flex flex-wrap items-center gap-x-2 min-w-0">
+      <span className="max-w-full text-lg font-semibold text-ink-100 truncate">{name}</span>
+      {role && (
+        <span className="shrink-0 px-2 rounded-md bg-signal text-on-signal text-xs leading-5 font-semibold uppercase tracking-wider">
+          {role}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// A small "notice board" card above the account rows, pointing at Help &
+// training. Tall windows only (1080px+), so it never squeezes the menu.
+function NoticeCard() {
+  return (
+    <Link
+      to="/projects/help"
+      className="hidden [@media(min-height:1080px)]:flex relative h-32 shrink-0 mt-2 mb-2 rounded-2xl overflow-hidden border border-ink-100/40 shadow-lg"
+    >
+      <div className="relative z-10 w-1/2 bg-[#efede8] text-noir pl-4 pt-4 [clip-path:ellipse(100%_140%_at_0%_50%)]">
+        <div className="text-xs font-semibold tracking-[0.2em] text-noir/60">BULLETIN</div>
+        <div className="mt-2 text-2xl font-bold leading-none tracking-tight text-signal">NOTICE</div>
+        <div className="mt-2 text-xs font-semibold tracking-[0.12em] whitespace-nowrap text-noir/60">GUIDES</div>
+      </div>
+      <div
+        aria-hidden="true"
+        className="absolute right-0 inset-y-0 w-3/5 bg-black bg-no-repeat"
+        style={{ backgroundImage: "url('/branding/reality-capture-hero.webp')", backgroundSize: '360%', backgroundPosition: '50% 20%' }}
+      />
+      <span className="absolute z-10 right-4 bottom-2 text-xs font-semibold tracking-[0.2em] text-white/85">READ MORE ›</span>
+    </Link>
   );
 }
 
@@ -332,16 +410,34 @@ function PhoneTabBar({ projectId, subcontractor, onMore }: { projectId?: string;
   );
 }
 
-const COLLAPSED_KEY = 'rc.nav.collapsed';
+const OPEN_KEY = 'rc.nav.open';
 
-function readCollapsed(): Set<string> {
+function readOpen(): Set<string> {
   try {
-    const raw = localStorage.getItem(COLLAPSED_KEY);
+    const raw = localStorage.getItem(OPEN_KEY);
     return new Set(raw ? (JSON.parse(raw) as string[]) : []);
   } catch {
     return new Set();
   }
 }
+
+// Which sections are open, shared by the main menu and the Settings
+// section at the bottom, and kept in localStorage so the sidebar opens the
+// way it was left.
+const useNavOpenStore = create<{ open: Set<string>; set: (id: string, isOpen: boolean) => void }>((set, get) => ({
+  open: readOpen(),
+  set: (id, isOpen) => {
+    const next = new Set(get().open);
+    if (isOpen) next.add(id);
+    else next.delete(id);
+    try {
+      localStorage.setItem(OPEN_KEY, JSON.stringify([...next]));
+    } catch {
+      // Storage unavailable (private browsing): state just isn't remembered.
+    }
+    set({ open: next });
+  },
+}));
 
 function isItemActive(pathname: string, basePath: string, item: NavItem): boolean {
   const target = item.to ? `${basePath}/${item.to}` : basePath;
@@ -349,76 +445,67 @@ function isItemActive(pathname: string, basePath: string, item: NavItem): boolea
   return item.end ? path === target : path === target || path.startsWith(`${target}/`);
 }
 
-// Headed sections collapse and expand; which ones are collapsed is kept in
-// localStorage so the sidebar opens the way it was left. A section that
-// holds the page being navigated to always reopens, so the active item is
-// never hidden behind a collapsed heading.
-function NavGroupList({ groups, basePath }: { groups: NavGroup[]; basePath: string }) {
+// Top-level rows put their icon in a glass tile; a section is a row that
+// opens to show its pages on a tree line. The current page is a glossy
+// accent pill. Navigating to a page opens its section, so the current page
+// is never hidden; otherwise sections stay as the person left them.
+function NavTree({ groups, basePath }: { groups: NavGroup[]; basePath: string }) {
   const { pathname } = useLocation();
-  const [collapsed, setCollapsed] = useState<Set<string>>(readCollapsed);
-
-  function persist(next: Set<string>) {
-    setCollapsed(next);
-    try {
-      localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...next]));
-    } catch {
-      // Storage unavailable (private browsing): state just isn't remembered.
-    }
-  }
+  const open = useNavOpenStore((s) => s.open);
+  const setOpen = useNavOpenStore((s) => s.set);
 
   useEffect(() => {
-    const activeGroup = groups.find((g) => g.items.some((item) => isItemActive(pathname, basePath, item)));
-    if (activeGroup && collapsed.has(activeGroup.id)) {
-      const next = new Set(collapsed);
-      next.delete(activeGroup.id);
-      persist(next);
-    }
-    // Only a route change should reopen a section, not the collapse itself.
+    const activeGroup = groups.find((g) => g.heading && g.items.some((item) => isItemActive(pathname, basePath, item)));
+    if (activeGroup && !useNavOpenStore.getState().open.has(activeGroup.id)) setOpen(activeGroup.id, true);
+    // Only a route change should open a section, not a manual close.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, basePath]);
 
-  function toggle(id: string) {
-    const next = new Set(collapsed);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    persist(next);
-  }
+  const href = (item: NavItem) => (item.to ? `${basePath}/${item.to}` : basePath);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-0">
       {groups.map((group) => {
-        const open = !group.heading || !collapsed.has(group.id);
+        if (!group.heading) {
+          return group.items.map((item) => (
+            <NavLink
+              key={item.label}
+              to={href(item)}
+              end={item.end}
+              className={({ isActive }) => `nav-row ${isActive ? 'nav-pill-active' : ''}`}
+            >
+              <span className="nav-tile"><item.icon className="w-4 h-4" /></span>
+              <span className="truncate">{item.label}</span>
+            </NavLink>
+          ));
+        }
+        const Icon = group.icon ?? IconLayers;
+        const isOpen = open.has(group.id);
+        const holdsCurrent = group.items.some((item) => isItemActive(pathname, basePath, item));
         const listId = `nav-section-${group.id}`;
         return (
           <div key={group.id}>
-            {group.heading && (
-              <button
-                type="button"
-                onClick={() => toggle(group.id)}
-                aria-expanded={open}
-                aria-controls={listId}
-                className="group w-full flex items-center justify-between h-7 px-4 rounded-full text-eyebrow font-medium uppercase text-ink-500 hover:text-ink-300 transition-colors"
-              >
-                {group.heading}
-                <IconChevron className={`w-3.5 h-3.5 md:opacity-0 md:group-hover:opacity-100 group-focus-visible:opacity-100 transition-transform duration-150 motion-reduce:transition-none ${open ? '' : '-rotate-90 !opacity-100'}`} />
-              </button>
-            )}
-            {open && (
-              <div id={listId} className="space-y-0">
+            <button
+              type="button"
+              onClick={() => setOpen(group.id, !isOpen)}
+              aria-expanded={isOpen}
+              aria-controls={listId}
+              className={`nav-row ${holdsCurrent ? 'nav-row-current' : ''}`}
+            >
+              <span className="nav-tile"><Icon className="w-4 h-4" /></span>
+              <span className="flex-1 truncate">{group.heading}</span>
+              <IconChevron className={`w-3.5 h-3.5 opacity-60 transition-transform duration-150 motion-reduce:transition-none ${isOpen ? '' : '-rotate-90'}`} />
+            </button>
+            {isOpen && (
+              <div id={listId} className="nav-tree">
                 {group.items.map((item) => (
                   <NavLink
                     key={item.label}
-                    to={item.to ? `${basePath}/${item.to}` : basePath}
+                    to={href(item)}
                     end={item.end}
-                    className={({ isActive }) =>
-                      `flex items-center gap-2 px-4 h-8 rounded-full text-sm transition-colors ${
-                        isActive
-                          ? 'bg-signal text-base-800 font-medium'
-                          : 'text-ink-300 hover:bg-base-800/70 hover:text-ink-100'
-                      }`
-                    }
+                    className={({ isActive }) => `nav-child ${isActive ? 'nav-pill-active' : ''}`}
                   >
-                    <item.icon className="w-4 h-4 shrink-0" />
+                    <span aria-hidden="true" className="nav-dot" />
                     <span className="truncate">{item.label}</span>
                   </NavLink>
                 ))}
@@ -428,6 +515,15 @@ function NavGroupList({ groups, basePath }: { groups: NavGroup[]; basePath: stri
         );
       })}
     </div>
+  );
+}
+
+function IconCog({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" strokeLinejoin="round" />
+    </svg>
   );
 }
 

@@ -43,6 +43,8 @@ export default {
           hover: 'rgb(var(--rc-signal-hover) / <alpha-value>)',
           muted: 'rgb(var(--rc-signal-muted) / <alpha-value>)',
         },
+        // Text on a signal fill (white on Cherry Red, both themes).
+        'on-signal': 'rgb(var(--rc-on-signal) / <alpha-value>)',
         blueprint: {
           // the interactive/info accent (links, active states, info badges):
           // deep amber in light mode, the sun yellow in dark mode; see

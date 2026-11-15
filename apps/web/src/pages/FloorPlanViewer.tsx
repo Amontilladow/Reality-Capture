@@ -346,7 +346,7 @@ export default function FloorPlanViewer() {
           {activeDrawingId && (
             <div className="flex items-center gap-4">
               {movingPin ? (
-                <div className="flex items-center gap-2 text-xs text-signal">
+                <div className="flex items-center gap-2 text-xs text-blueprint">
                   <span>Click the drawing to move "{movingPin.name || 'Untitled pin'}"</span>
                   <button onClick={() => setMovingPin(null)} className="text-ink-500 hover:text-ink-100">
                     Cancel
@@ -357,7 +357,7 @@ export default function FloorPlanViewer() {
                   + Add pin
                 </button>
               ) : (
-                <div className="flex items-center gap-2 text-xs text-signal">
+                <div className="flex items-center gap-2 text-xs text-blueprint">
                   <span>Click on the drawing to drop a pin</span>
                   <button onClick={() => setPlacingMode(false)} className="text-ink-500 hover:text-ink-100">
                     Cancel
@@ -449,7 +449,7 @@ function DrawingRow({ drawing, active, onSelect }: { drawing: Drawing; active: b
     <button
       onClick={() => onSelect(drawing.id)}
       className={`w-full text-left px-4 py-2 rounded text-sm transition-colors ${
-        active ? 'bg-signal text-base-800' : 'text-ink-300 hover:bg-base-700'
+        active ? 'bg-signal text-on-signal' : 'text-ink-300 hover:bg-base-700'
       }`}
     >
       <div className="font-medium truncate">{drawing.title}</div>
