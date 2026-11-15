@@ -1,7 +1,7 @@
 # Graph Report - Reality-Capture  (2026-11-15)
 
 ## Corpus Check
-- 1170 files · ~800,712 words
+- 1170 files · ~800,723 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 38 file(s) not represented in the graph (top: .dxf 13, (none) 12, .example 5)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `12e7e8c7`
+- Built from commit: `34430610`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -434,16 +434,16 @@
 10. `IssuesService` - 82 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Correcting the premise` --references--> `AppShell()`  [INFERRED]
-  docs/workforce-intelligence-architecture.md → apps/web/src/components/layout/AppShell.tsx
-- `Frontend structure` --references--> `AppShell()`  [INFERRED]
-  engineering-review/ARCHITECTURE_STATE.md → apps/web/src/components/layout/AppShell.tsx
 - `C-4. Risk module had zero project-scoped authorization: FIXED` --references--> `RiskService`  [INFERRED]
   docs/KNOWN_ISSUES_AND_REMEDIATION.md → apps/api/src/modules/risk/risk.service.ts
 - `4.4 CRITICAL: Risk module has zero project-scoped authorization (CODE-VERIFIED)` --references--> `RiskService`  [INFERRED]
   docs/ROLE_PERMISSION_MATRIX.md → apps/api/src/modules/risk/risk.service.ts
 - `1. Current architecture (verified)` --references--> `AiService`  [INFERRED]
   docs/AI_PROVIDER_STRATEGY.md → apps/api/src/modules/ai/ai.service.ts
+- `5. Not yet verified (time-budget limited, explicitly flagged rather than assumed clean)` --references--> `AiUsageService`  [INFERRED]
+  docs/ROLE_PERMISSION_MATRIX.md → apps/api/src/modules/ai/ai-usage.service.ts
+- `C-5. `CREDENTIAL_ENCRYPTION_KEY` silently fell back to a hardcoded key: FIXED` --references--> `CredentialEncryptionService`  [INFERRED]
+  docs/KNOWN_ISSUES_AND_REMEDIATION.md → apps/api/src/common/crypto/credential-encryption.service.ts
 
 ## Import Cycles
 - None detected.
@@ -1719,24 +1719,24 @@ Cohesion: 0.60
 Nodes (5): CountBarChart(), EmptyChart(), seriesPalette(), StatusPieChart(), tooltipStyle()
 
 ## Knowledge Gaps
-- **10 isolated node(s):** `RFC-2822`, `RFC-2822`, `RFC-2822`, `../../tsconfig.base.json`, `../../tsconfig.base.json` (+5 more)
+- **10 isolated node(s):** `RFC-2822`, `../../tsconfig.base.json`, `RFC-2822`, `RFC-2822`, `../../tsconfig.base.json` (+5 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 3695 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **112 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Phase 4B/4C: Help Centre navigation/layout + article rendering/search: VERIFIED COMPLETE (framework; see 4D for content coverage)` connect `help/index.ts` to `test_convert.py`, `PageHeader`, `findings`, `convert/__init__.py`?**
-  _High betweenness centrality (0.124) - this node is a cross-community bridge._
-- **What connects `RFC-2822`, `RFC-2822`, `RFC-2822` to the rest of the system?**
+- **Why does `AuthenticatedUser` connect `CurrentUser` to `.findAll`, `ref_nestjs_common`, `UsersController`, `GisPrepController`, `ApiKeysController`, `DatabaseService`, `SubmittalsController`, `snagging.service.ts`, `src/App.tsx`, `.generate`, `.upsert`, `SubscriptionController`, `TransmittalsController`, `user.types.ts`, `ref_crypto`, `help/index.ts`, `captures.service.ts`, `AiConnectionsController`, `BimController`, `QaqcController`, `AuthenticatedUser`, `ScreenshotsController`, `CompanyRole`, `AiController`, `SendEmailDto`, `ChatController`, `GmailIntegrationController`, `OutlookIntegrationController`, `TenancyController`, `RequireCategoryAction`, `AuthService`, `SharePointIntegrationController`, `CalendarIntegrationController`, `MessagingService`, `ReportsController`, `SnaggingController`, `qaqc.service.ts`, `ApplicationsController`, `CaptureSessionScreen.tsx`, `timeline.controller.ts`, `AiUsageService`, `risk.service.ts`, `ActivitiesController`, `class-validator`, `drawings.controller.ts`, `CapturesController`, `RequireProjectPermission`, `.getScoreForUser`, `GenerateProgressReportShareDto`, `QaController`, `SiteDrawingImportController`, `SchedulingService`, `rfis.service.ts`, `WebhooksController`, `AIProvider`, `EngineeringOS — Incident and Recovery Runbook`, `DevicesController`, `gis-prep.service.ts`, `ReportsService`, `ai.service.spec.ts`, `Public`, `DocumentsController`, `drawings.controller.ts`?**
+  _High betweenness centrality (0.119) - this node is a cross-community bridge._
+- **What connects `RFC-2822`, `../../tsconfig.base.json`, `RFC-2822` to the rest of the system?**
   _10 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `pipeline.py` be split into smaller, more focused modules?**
   _Cohesion score 0.05832467982000692 - nodes in this community are weakly interconnected._
-- **Why does `ProjectDetail()` connect `PageHeader` to `apiErrorMessage`, `RfiDetailPage.tsx`, `CAD-to-GIS conversion (architectural floor plan → DRM BDMS 4.1 building-floor draft)`, `apiPost`, `IssueDetail.tsx`, `Phase 3E: Reusable email composer: IMPLEMENTED BUT NOT VERIFIED (code-complete; no live backend/DB in this environment to exercise a real send against)`, `SendEmailDto`, `src/App.tsx`, `EngineeringOS — ARCHITECTURE_STATE.md`, `EngineeringOS Reality Capture — Master Backlog`, `ReportsPage.tsx`, `help/index.ts`, `User guide for M4 engineers`?**
-  _High betweenness centrality (0.090) - this node is a cross-community bridge._
+- **Why does `Phase 4B/4C: Help Centre navigation/layout + article rendering/search: VERIFIED COMPLETE (framework; see 4D for content coverage)` connect `help/index.ts` to `test_convert.py`, `PageHeader`, `findings`, `convert/__init__.py`?**
+  _High betweenness centrality (0.115) - this node is a cross-community bridge._
 - **Should `ref_nestjs_common` be split into smaller, more focused modules?**
   _Cohesion score 0.033368247792907375 - nodes in this community are weakly interconnected._
-- **Why does `AuthenticatedUser` connect `CurrentUser` to `.findAll`, `ref_nestjs_common`, `UsersController`, `GisPrepController`, `ApiKeysController`, `DatabaseService`, `SubmittalsController`, `snagging.service.ts`, `src/App.tsx`, `.generate`, `.upsert`, `SubscriptionController`, `TransmittalsController`, `user.types.ts`, `ref_crypto`, `help/index.ts`, `captures.service.ts`, `AiConnectionsController`, `BimController`, `QaqcController`, `AuthenticatedUser`, `ScreenshotsController`, `CompanyRole`, `AiController`, `SendEmailDto`, `ChatController`, `GmailIntegrationController`, `OutlookIntegrationController`, `TenancyController`, `RequireCategoryAction`, `AuthService`, `SharePointIntegrationController`, `CalendarIntegrationController`, `MessagingService`, `ReportsController`, `SnaggingController`, `qaqc.service.ts`, `ApplicationsController`, `CaptureSessionScreen.tsx`, `timeline.controller.ts`, `AiUsageService`, `risk.service.ts`, `ActivitiesController`, `class-validator`, `drawings.controller.ts`, `CapturesController`, `RequireProjectPermission`, `.getScoreForUser`, `GenerateProgressReportShareDto`, `QaController`, `SiteDrawingImportController`, `SchedulingService`, `rfis.service.ts`, `WebhooksController`, `AIProvider`, `EngineeringOS — Incident and Recovery Runbook`, `DevicesController`, `gis-prep.service.ts`, `ReportsService`, `ai.service.spec.ts`, `Public`, `DocumentsController`, `drawings.controller.ts`?**
-  _High betweenness centrality (0.089) - this node is a cross-community bridge._
+- **Why does `ProjectDetail()` connect `PageHeader` to `apiErrorMessage`, `RfiDetailPage.tsx`, `CAD-to-GIS conversion (architectural floor plan → DRM BDMS 4.1 building-floor draft)`, `apiPost`, `IssueDetail.tsx`, `Phase 3E: Reusable email composer: IMPLEMENTED BUT NOT VERIFIED (code-complete; no live backend/DB in this environment to exercise a real send against)`, `SendEmailDto`, `src/App.tsx`, `EngineeringOS — ARCHITECTURE_STATE.md`, `EngineeringOS Reality Capture — Master Backlog`, `ReportsPage.tsx`, `help/index.ts`, `User guide for M4 engineers`?**
+  _High betweenness centrality (0.074) - this node is a cross-community bridge._
 - **Should `apiErrorMessage` be split into smaller, more focused modules?**
   _Cohesion score 0.03145865434001027 - nodes in this community are weakly interconnected._
