@@ -72,7 +72,7 @@ function Hero() {
           issue, and inspection tied to the exact building, level, and location it belongs to.
         </p>
         <div className="flex flex-wrap items-center gap-4 mt-8">
-          <Link to="/login" className="btn h-12 px-8 bg-sun text-noir text-base hover:brightness-95">Sign in</Link>
+          <Link to="/login" className="btn h-12 px-8 bg-signal text-on-signal text-base hover:bg-signal-hover">Sign in</Link>
           <Link to="/signup" className="btn-secondary !h-12 !px-8 text-base">Create an account</Link>
         </div>
         <p className="text-sm text-ink-500 mt-4">Creating an account needs your company’s signup code.</p>
@@ -185,7 +185,7 @@ function ClosingCta() {
         </p>
       </div>
       <div className="flex flex-wrap gap-4">
-        <Link to="/login" className="btn h-12 px-8 bg-sun text-noir text-base hover:brightness-95">Sign in</Link>
+        <Link to="/login" className="btn h-12 px-8 bg-signal text-on-signal text-base hover:bg-signal-hover">Sign in</Link>
         <Link to="/signup" className="btn h-12 px-8 border border-on-noir/40 text-on-noir text-base hover:bg-noir-hover">Create an account</Link>
       </div>
     </section>

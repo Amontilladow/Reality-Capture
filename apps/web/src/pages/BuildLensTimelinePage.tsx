@@ -344,7 +344,7 @@ export default function BuildLensTimelinePage() {
                         key={s}
                         onClick={() => setSpeed(s)}
                         className={`px-2 py-2 rounded text-xs font-mono transition-colors ${
-                          speed === s ? 'bg-signal text-base-800' : 'text-ink-500 hover:text-ink-100 hover:bg-base-700'
+                          speed === s ? 'bg-signal text-on-signal' : 'text-ink-500 hover:text-ink-100 hover:bg-base-700'
                         }`}
                       >
                         {s}×
@@ -398,10 +398,10 @@ export default function BuildLensTimelinePage() {
                         <CaptureTypeIcon
                           captureType={c.captureType}
                           className={`w-3.5 h-3.5 rounded-full border p-0 transition-colors ${
-                            isActive ? 'bg-signal/20 border-signal text-signal' : 'bg-base-900 border-base-500 text-ink-500 group-hover:border-blueprint group-hover:text-blueprint'
+                            isActive ? 'bg-signal/20 border-signal text-blueprint' : 'bg-base-900 border-base-500 text-ink-500 group-hover:border-blueprint group-hover:text-blueprint'
                           }`}
                         />
-                        <span className={`text-xs font-mono whitespace-nowrap ${isActive ? 'text-signal' : 'text-ink-500'}`}>
+                        <span className={`text-xs font-mono whitespace-nowrap ${isActive ? 'text-blueprint' : 'text-ink-500'}`}>
                           {formatDate(c.capturedAt)}
                         </span>
                       </button>

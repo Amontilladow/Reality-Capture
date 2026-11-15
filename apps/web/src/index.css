@@ -39,63 +39,72 @@
    bootstrap script, which normally beats this by setting the attribute
    before first paint). */
 :root {
-  /* Palette (light): #2A241F espresso ink, #6F6257 warm taupe, #B8AA9B soft
-     mushroom, #E8DDCF linen beige, #FFF8ED ivory cream. An ivory-to-linen
-     canvas with ivory panels; espresso text, taupe secondary text, and
-     every text tone chosen to clear WCAG AA on both canvas and panel. */
-  --rc-base-950: 245 238 227; /* page background (canvas) */
-  --rc-base-900: 240 232 220; /* chrome bars / secondary surface / input fill */
-  --rc-base-800: 255 250 243; /* panel surface */
-  --rc-base-700: 236 227 214; /* raised surface / hover (field) */
-  --rc-base-600: 210 198 184; /* borders (hairline) */
-  --rc-base-500: 224 214 201; /* muted borders / dividers (hairline-soft) */
+  /* Palette (light): the brand's Jet Black #0B0B0C, Smoke Grey #8A8D93 and
+     Cherry Red #C8102E, set on a near-white canvas with white panels. Dark
+     (below) is the default; this is the opt-in light version of the same
+     three colours, every text tone chosen to clear WCAG AA on canvas and
+     panel. */
+  --rc-base-950: 244 244 245; /* page background (canvas) */
+  --rc-base-900: 236 236 238; /* chrome bars / secondary surface / input fill */
+  --rc-base-800: 255 255 255; /* panel surface */
+  --rc-base-700: 231 231 234; /* raised surface / hover (field) */
+  --rc-base-600: 205 206 210; /* borders (hairline) */
+  --rc-base-500: 222 223 226; /* muted borders / dividers (hairline-soft) */
 
-  --rc-ink-100: 42 36 31; /* primary text (off-black, never #000) */
-  --rc-ink-300: 80 70 62; /* secondary text */
-  --rc-ink-500: 104 92 81; /* muted / captions -- AA (4.8:1) even over the darkest end of the page gradient */
+  --rc-ink-100: 11 11 12; /* primary text (off-black, never #000) */
+  --rc-ink-300: 58 60 66; /* secondary text */
+  --rc-ink-500: 96 99 106; /* muted / captions -- AA (5.6:1) on the canvas */
 
-  --rc-signal: 42 36 31; /* primary action fill -- mirrors ink-100 */
-  --rc-signal-hover: 70 61 53;
-  --rc-signal-muted: 104 92 81;
+  --rc-signal: 200 16 46; /* primary action fill: Cherry Red */
+  --rc-signal-hover: 168 12 38;
+  --rc-signal-muted: 96 99 106;
+  --rc-on-signal: 255 255 255; /* text on a signal fill (5.9:1 on Cherry Red) */
 
-  /* One accent across the platform: warm taupe. "blueprint" (links,
-     active, info) and "teal" (data accent) share it; soft mushroom ("sun",
-     below) is kept for fills, since it's too light to read as text. */
-  --rc-blueprint: 104 92 81;
-  --rc-blueprint-hover: 42 36 31;
-  --rc-blueprint-muted: 240 232 220;
+  /* One accent across the platform: Cherry Red. "blueprint" (links,
+     active, info) and "teal" (data accent) share it, a step deeper so it
+     reads as small text on white; Smoke Grey ("sun", below) is the
+     secondary fill. */
+  --rc-blueprint: 176 14 40;
+  --rc-blueprint-hover: 140 10 30;
+  --rc-blueprint-muted: 252 232 235;
 
-  /* Status: green and red keep their meaning (success, critical); the
-     warning tone takes warm taupe from the palette instead of amber. All clear
-     4.5:1 as badge text on their own 15% tint. */
-  --rc-ok: 22 101 52;
-  --rc-warn: 92 80 70;
-  --rc-danger: 160 22 22;
-  --rc-high: 150 50 30; /* "High" risk: rust, between the taupe warning and critical red */
+  /* Status: green, amber and red keep their meaning (success, warning,
+     critical). All clear 4.5:1 as badge text on their own 15% tint. */
+  --rc-ok: 22 120 60;
+  --rc-warn: 138 92 10;
+  --rc-danger: 185 28 28;
+  --rc-high: 170 64 20; /* "High" risk: rust, between the amber warning and critical red */
 
-  /* Teal keeps its role (data accent) with the shared taupe; "orange"
-     keeps its role (AI-generated content) as a deep taupe. */
-  --rc-teal: 104 92 81;
-  --rc-teal-hover: 42 36 31;
-  --rc-teal-muted: 240 232 220;
+  /* Teal keeps its role (data accent) with the shared red; "orange"
+     keeps its role (AI-generated content) as a graphite grey. */
+  --rc-teal: 176 14 40;
+  --rc-teal-hover: 140 10 30;
+  --rc-teal-muted: 252 232 235;
 
-  --rc-orange: 70 61 53;
-  --rc-orange-hover: 42 36 31;
-  --rc-orange-muted: 240 232 220;
+  --rc-orange: 58 60 66;
+  --rc-orange-hover: 11 11 12;
+  --rc-orange-muted: 236 236 238;
 
   --rc-grid-line: rgba(20, 20, 20, 0.04);
 
-  /* Dashboard theme: the soft-mushroom fill accent ("sun"), the espresso
-     card ("noir"), and the two ends of the ivory-to-linen page gradient. */
-  --rc-focus: 42 36 31; /* espresso ring: mushroom would be too faint on ivory */
-  /* Liquid-metal logo tones (LiquidLogo shader): rose gold -- a blush
-     highlight over a deep rose shadow (around classic rose gold #B76E79). */
-  --rc-metal-hi: 247 217 207;
-  --rc-metal-lo: 140 79 85; /* deep rose: dark enough for depth, still visible on the black panel */
-  --rc-sun: 184 170 155;
-  --rc-noir: 42 36 31;
-  --rc-shadow: 42 36 31; /* shadow tint: espresso, never flat black */
+  /* Dashboard theme: the Smoke Grey fill accent ("sun"), the Jet Black
+     card ("noir"), and the two ends of the page gradient. */
+  --rc-focus: 200 16 46; /* Cherry Red ring */
+  /* Liquid-metal logo tones (LiquidLogo shader): brushed silver, matching
+     the silver R of the brand artwork. */
+  --rc-metal-hi: 240 240 244;
+  --rc-metal-lo: 110 112 118;
+  --rc-sun: 138 141 147; /* Smoke Grey: Jet Black text on it clears 6.4:1 */
+  --rc-noir: 11 11 12;
+  --rc-shadow: 11 11 12; /* shadow tint: Jet Black, never flat #000 */
   --rc-measure: 48ch; /* longest comfortable line of running text */
+  /* Curved glass sidebar (CurvedGlassPanel): the glass tint and its
+     strength, and the edge-light colour and strength. Light theme: near
+     opaque white glass with a dark hairline edge. */
+  --rc-glass: 255 255 255;
+  --rc-glass-a: 0.85;
+  --rc-edge: 11 11 12;
+  --rc-edge-a: 0.3;
 
   /* Display type sizes (tailwind text-3xl..7xl), all steps of the
      tailwind.config.js scale. Phones take smaller steps; md and up
@@ -105,10 +114,10 @@
   --rc-fs-5xl: 2.25rem; /* 36px */
   --rc-fs-6xl: 2.25rem; /* 36px */
   --rc-fs-7xl: 3rem; /* 48px */
-  --rc-noir-hover: 70 61 53;
-  --rc-on-noir: 232 221 207;
-  --rc-dash-from: 255 248 237;
-  --rc-dash-to: 232 221 207;
+  --rc-noir-hover: 40 40 44;
+  --rc-on-noir: 244 244 245;
+  --rc-dash-from: 250 250 251;
+  --rc-dash-to: 232 232 235;
 
   --rc-radius-sm: 6px;
   --rc-radius-md: 8px;
@@ -119,103 +128,114 @@
   --rc-stripe-light: rgb(255 255 255 / 0.22); /* hatch lines on a dark field */
 }
 
-/* Palette (dark): espresso-ink canvas, warmer raised surfaces, ivory and
-   linen text, soft-mushroom accents. A clear 4-step elevation ladder
-   (950 -> 900 -> 800 -> 700, darkest to lightest) keeps cards, sidebars and
-   hover states the same "fill + hairline" hierarchy the light theme uses. */
+/* Palette (dark, the default): a Jet Black canvas, graphite raised
+   surfaces, near-white text with Smoke Grey for muted text, Cherry Red for
+   actions. A clear 4-step elevation ladder (950 -> 900 -> 800 -> 700,
+   darkest to lightest) keeps cards, sidebars and hover states the same
+   "fill + hairline" hierarchy the light theme uses. */
 :root[data-theme='dark'] {
-  --rc-focus: 232 221 207; /* linen ring on espresso */
-  --rc-base-950: 42 36 31; /* page background (canvas) */
-  --rc-base-900: 50 43 37; /* chrome bars / secondary surface */
-  --rc-base-800: 58 50 43; /* panel surface (elevated cards) */
-  --rc-base-700: 64 55 48; /* raised surface / hover / selected */
-  --rc-base-600: 111 98 87; /* borders (hairline) */
-  --rc-base-500: 64 55 48; /* muted borders / dividers -- closer to panel fill than base-600, so it reads as softer, same relative relationship as the light theme's 500 vs 600 */
+  --rc-on-signal: 255 255 255;
+  --rc-metal-hi: 240 240 244;
+  --rc-metal-lo: 110 112 118;
+  --rc-focus: 240 74 92; /* the lifted red, so the ring shows on black */
+  --rc-base-950: 11 11 12; /* page background (canvas) */
+  --rc-base-900: 17 17 19; /* chrome bars / secondary surface */
+  --rc-base-800: 24 24 27; /* panel surface (elevated cards) */
+  --rc-base-700: 33 33 37; /* raised surface / hover / selected */
+  --rc-base-600: 54 55 60; /* borders (hairline) */
+  --rc-base-500: 38 38 42; /* muted borders / dividers -- closer to panel fill than base-600, so it reads as softer, same relative relationship as the light theme's 500 vs 600 */
 
-  --rc-ink-100: 255 248 237; /* primary text */
-  --rc-ink-300: 232 221 207; /* secondary text */
-  --rc-ink-500: 184 170 155; /* muted / placeholder */
+  --rc-ink-100: 244 244 245; /* primary text */
+  --rc-ink-300: 200 202 206; /* secondary text */
+  --rc-ink-500: 138 141 147; /* muted / placeholder: Smoke Grey, 5.9:1 on the canvas */
 
-  --rc-signal: 232 221 207; /* primary action fill -- mirrors ink-100, same as light mode's relationship, just inverted (linen button on espresso) */
-  --rc-signal-hover: 255 248 237;
-  --rc-signal-muted: 184 170 155;
+  --rc-signal: 200 16 46; /* primary action fill: Cherry Red, white text on it */
+  --rc-signal-hover: 222 30 62;
+  --rc-signal-muted: 138 141 147;
 
-  /* The accent becomes soft mushroom here so it reads as text on espresso. */
-  --rc-blueprint: 184 170 155;
-  --rc-blueprint-hover: 232 221 207;
-  --rc-blueprint-muted: 72 63 55;
+  /* Cherry Red is too dark to read as small text on black (3.3:1), so the
+     text accent is a lifted red (5.5:1); fills keep Cherry Red itself. */
+  --rc-blueprint: 240 74 92;
+  --rc-blueprint-hover: 255 110 125;
+  --rc-blueprint-muted: 45 18 22;
 
-  /* Success and danger lifted so they stay legible on espresso; warning
-     uses the palette's soft mushroom. */
+  /* Status tones lifted so they stay legible on black. */
   --rc-ok: 74 222 128;
-  --rc-warn: 232 221 207;
-  --rc-danger: 254 180 180;
-  --rc-high: 244 170 140;
+  --rc-warn: 230 200 120;
+  --rc-danger: 255 120 130;
+  --rc-high: 255 160 110;
 
   /* Data accent and AI tone, lifted for the dark surface. */
-  --rc-teal: 184 170 155;
-  --rc-teal-hover: 232 221 207;
-  --rc-teal-muted: 72 63 55;
+  --rc-teal: 240 74 92;
+  --rc-teal-hover: 255 110 125;
+  --rc-teal-muted: 45 18 22;
 
-  --rc-orange: 232 221 207;
-  --rc-orange-hover: 255 248 237;
-  --rc-orange-muted: 72 63 55;
+  --rc-orange: 200 202 206;
+  --rc-orange-hover: 244 244 245;
+  --rc-orange-muted: 33 33 37;
 
   --rc-grid-line: rgba(255, 255, 255, 0.05);
 
-  --rc-sun: 184 170 155;
-  --rc-noir: 30 26 22;
-  --rc-shadow: 18 15 12; /* shadow tint: a deep warm brown, never flat black */
-  --rc-noir-hover: 72 63 55;
-  --rc-on-noir: 232 221 207;
-  --rc-dash-from: 42 36 31;
-  --rc-dash-to: 72 63 55;
+  --rc-sun: 138 141 147;
+  --rc-noir: 6 6 7;
+  --rc-shadow: 3 3 5; /* shadow tint: a cool near-black, never flat #000 */
+  /* Smoky glass over the dark canvas, with a bright white edge light. */
+  --rc-glass-a: 0.17;
+  --rc-edge: 255 255 255;
+  --rc-edge-a: 1;
+  --rc-noir-hover: 33 33 37;
+  --rc-on-noir: 244 244 245;
+  --rc-dash-from: 11 11 12;
+  --rc-dash-to: 26 26 29;
 }
 
-/* Covers the gap between first paint and index.html's inline bootstrap
-   script/theme.store.ts running -- in practice that script runs before
-   anything is visible, so this mainly guards environments where it was
-   stripped (e.g. a view-source-style static render). Never overrides an
-   explicit choice: :root[data-theme="light"] (user picked light while
-   their OS is in dark mode) is deliberately excluded from this selector's
-   match, so it always wins over the OS preference below. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --rc-focus: 232 221 207;
-    --rc-base-950: 42 36 31;
-    --rc-base-900: 50 43 37;
-    --rc-base-800: 58 50 43;
-    --rc-base-700: 64 55 48;
-    --rc-base-600: 111 98 87;
-    --rc-base-500: 64 55 48;
-    --rc-ink-100: 255 248 237;
-    --rc-ink-300: 232 221 207;
-    --rc-ink-500: 184 170 155;
-    --rc-signal: 232 221 207;
-    --rc-signal-hover: 255 248 237;
-    --rc-signal-muted: 184 170 155;
-    --rc-blueprint: 184 170 155;
-    --rc-blueprint-hover: 232 221 207;
-    --rc-blueprint-muted: 72 63 55;
-    --rc-ok: 74 222 128;
-    --rc-warn: 232 221 207;
-    --rc-danger: 254 180 180;
-    --rc-high: 244 170 140;
-    --rc-teal: 184 170 155;
-    --rc-teal-hover: 232 221 207;
-    --rc-teal-muted: 72 63 55;
-    --rc-orange: 232 221 207;
-    --rc-orange-hover: 255 248 237;
-    --rc-orange-muted: 72 63 55;
-    --rc-grid-line: rgba(255, 255, 255, 0.05);
-    --rc-sun: 184 170 155;
-    --rc-noir: 30 26 22;
-    --rc-shadow: 18 15 12;
-    --rc-noir-hover: 72 63 55;
-    --rc-on-noir: 232 221 207;
-    --rc-dash-from: 42 36 31;
-    --rc-dash-to: 72 63 55;
-  }
+/* Dark is the default theme. This covers the gap before index.html's
+   inline bootstrap script/theme.store.ts set data-theme -- in practice
+   that script runs before anything is visible, so this mainly guards
+   environments where it was stripped (e.g. a view-source-style static
+   render). Never overrides an explicit choice: :root[data-theme="light"]
+   is excluded from this selector's match. */
+:root:not([data-theme='light']) {
+  --rc-on-signal: 255 255 255;
+  --rc-metal-hi: 240 240 244;
+  --rc-metal-lo: 110 112 118;
+  --rc-focus: 240 74 92;
+  --rc-base-950: 11 11 12;
+  --rc-base-900: 17 17 19;
+  --rc-base-800: 24 24 27;
+  --rc-base-700: 33 33 37;
+  --rc-base-600: 54 55 60;
+  --rc-base-500: 38 38 42;
+  --rc-ink-100: 244 244 245;
+  --rc-ink-300: 200 202 206;
+  --rc-ink-500: 138 141 147;
+  --rc-signal: 200 16 46;
+  --rc-signal-hover: 222 30 62;
+  --rc-signal-muted: 138 141 147;
+  --rc-blueprint: 240 74 92;
+  --rc-blueprint-hover: 255 110 125;
+  --rc-blueprint-muted: 45 18 22;
+  --rc-ok: 74 222 128;
+  --rc-warn: 230 200 120;
+  --rc-danger: 255 120 130;
+  --rc-high: 255 160 110;
+  --rc-teal: 240 74 92;
+  --rc-teal-hover: 255 110 125;
+  --rc-teal-muted: 45 18 22;
+  --rc-orange: 200 202 206;
+  --rc-orange-hover: 244 244 245;
+  --rc-orange-muted: 33 33 37;
+  --rc-grid-line: rgba(255, 255, 255, 0.05);
+  --rc-sun: 138 141 147;
+  --rc-noir: 6 6 7;
+  --rc-shadow: 3 3 5;
+  --rc-glass-a: 0.17;
+  --rc-edge: 255 255 255;
+  --rc-edge-a: 1;
+  --rc-noir-hover: 33 33 37;
+  --rc-on-noir: 244 244 245;
+  --rc-dash-from: 11 11 12;
+  --rc-dash-to: 26 26 29;
 }
 
 /* Restrained theme-switch transition (owner request: "a subtle transition
@@ -254,7 +274,7 @@
   * {
     @apply border-base-600;
   }
-  /* Every screen sits on the soft ivory-to-linen gradient of the dashboard
+  /* Every screen sits on the soft canvas gradient of the dashboard
      theme; fixed so long pages don't stretch it into a flat band. */
   body {
     @apply bg-base-950 text-ink-100 font-sans antialiased;
@@ -327,7 +347,7 @@
     cursor: not-allowed;
   }
   .btn-primary {
-    @apply btn bg-signal text-base-800 hover:bg-signal-hover;
+    @apply btn bg-signal text-on-signal hover:bg-signal-hover;
   }
   .btn-secondary {
     @apply btn bg-base-800 text-ink-100 border border-base-600 hover:bg-base-700 hover:border-ink-500/40;
@@ -353,7 +373,9 @@
      the gradient canvas, no shadow -- the dashboard theme's card. Overlays
      (Modal) stay opaque so they read above the page. */
   .panel {
-    @apply rounded-card border border-base-800/60;
+    @apply rounded-card border;
+    /* A faint ink hairline: visible on both the black and the white canvas. */
+    border-color: rgb(var(--rc-ink-100) / 0.08);
     background-color: rgb(var(--rc-base-800) / 0.78);
   }
   /* An open MobileFold already draws the card and names the section, so a
@@ -392,8 +414,8 @@
   /* Dashboard pieces: the off-black card and the hatch pattern. */
   .dash-card-noir {
     @apply rounded-card bg-noir text-on-noir;
-    /* The page's espresso ring would vanish on this espresso card (1:1), so
-       controls inside it ring in the linen on-noir tone instead. */
+    /* The page's focus ring can vanish on this near-black card, so
+       controls inside it ring in the light on-noir tone instead. */
     --rc-focus: var(--rc-on-noir);
   }
   /* Diagonal hatch for the "in progress" segment of a pill bar. */
@@ -402,7 +424,7 @@
   }
 
   /* Auth screens (AuthLayout): soft pill inputs with indented labels and a
-     mushroom submit button, after the dashboard theme's sign-up reference. */
+     Cherry Red submit button, after the dashboard theme's sign-up reference. */
   .auth-form .field-label {
     @apply pl-6 font-normal text-ink-500;
   }
@@ -415,7 +437,7 @@
     @apply h-11;
   }
   .auth-form .btn-primary {
-    @apply h-12 bg-sun text-noir text-base font-normal hover:bg-sun hover:brightness-95;
+    @apply h-12 bg-signal text-on-signal text-base font-normal hover:bg-signal-hover;
   }
   /* The same hatch as .dash-stripes, in light lines for a dark field. */
   .dash-stripes-light {
@@ -479,6 +501,120 @@
     .hero-reveal {
       animation: none;
     }
+  }
+
+  /* Curved glass sidebar (AppShell + CurvedGlassPanel). The panel is
+     tinted glass over the page backdrop; rows put their icon in a small
+     glass tile; the current page is a glossy Cherry Red pill; a section's
+     pages hang off a thin tree line with a dot each. */
+  .glass-panel {
+    background: linear-gradient(
+      180deg,
+      rgb(var(--rc-glass) / var(--rc-glass-a)) 0%,
+      rgb(var(--rc-glass) / calc(var(--rc-glass-a) * 0.38)) 28%,
+      rgb(var(--rc-glass) / calc(var(--rc-glass-a) * 0.3)) 70%,
+      rgb(var(--rc-glass) / calc(var(--rc-glass-a) * 0.7)) 100%
+    );
+    backdrop-filter: blur(20px) saturate(1.2);
+  }
+  .nav-label {
+    @apply flex items-center gap-4 pl-2 mb-2 text-eyebrow font-medium uppercase tracking-[0.3em] text-ink-500;
+  }
+  .nav-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgb(var(--rc-ink-100) / 0.22), transparent);
+  }
+  .nav-row {
+    @apply w-full flex items-center gap-4 h-10 px-2 rounded-xl text-base text-left text-ink-300 transition-colors duration-150;
+  }
+  .nav-row:hover {
+    @apply text-ink-100;
+    background-color: rgb(var(--rc-ink-100) / 0.06);
+  }
+  .nav-tile {
+    @apply w-8 h-8 rounded-lg grid place-items-center shrink-0 text-ink-100 border;
+    background-color: rgb(var(--rc-ink-100) / 0.08);
+    border-color: rgb(var(--rc-ink-100) / 0.16);
+    box-shadow: inset 0 1px 0 rgb(var(--rc-ink-100) / 0.12);
+  }
+  /* A section holding the current page: bright label, inverted tile. */
+  .nav-row-current {
+    @apply text-ink-100 font-medium;
+  }
+  .nav-row-current .nav-tile {
+    @apply bg-ink-100 text-base-950 border-ink-100 shadow-md;
+  }
+  /* Glossy raised accent pill: the current page. */
+  .nav-pill-active {
+    @apply text-on-signal font-medium;
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.18), transparent 60%), rgb(var(--rc-signal));
+    border: 1px solid rgb(var(--rc-blueprint-hover) / 0.6);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45), 0 10px 22px -8px rgb(var(--rc-signal) / 0.6);
+  }
+  .nav-row.nav-pill-active:hover {
+    @apply text-on-signal;
+  }
+  .nav-row.nav-pill-active .nav-tile {
+    @apply text-on-signal;
+    background-color: rgb(255 255 255 / 0.18);
+    border-color: rgb(255 255 255 / 0.3);
+  }
+  .nav-tree {
+    @apply relative ml-6 mb-2;
+  }
+  .nav-tree::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 4px;
+    bottom: 16px;
+    width: 1.5px;
+    background: linear-gradient(180deg, rgb(var(--rc-ink-100) / 0.4), rgb(var(--rc-ink-100) / 0.2));
+  }
+  .nav-child {
+    @apply relative isolate flex items-center gap-2 h-9 pl-6 pr-4 text-sm text-ink-300 transition-colors;
+  }
+  .nav-child:hover {
+    @apply text-ink-100;
+  }
+  .nav-dot {
+    @apply absolute w-1.5 h-1.5 rounded-full;
+    left: -2.25px;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgb(var(--rc-ink-100) / 0.5);
+  }
+  .nav-child.nav-pill-active,
+  .nav-child.nav-pill-active:hover {
+    @apply text-on-signal;
+  }
+  .nav-child.nav-pill-active {
+    background: none;
+    border: 0;
+    box-shadow: none;
+  }
+  /* The child pill starts just right of the tree line, so its dot stays on the line. */
+  .nav-child.nav-pill-active::before {
+    content: '';
+    position: absolute;
+    inset: 2px 0 2px 12px;
+    z-index: -1;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.18), transparent 60%), rgb(var(--rc-signal));
+    border: 1px solid rgb(var(--rc-blueprint-hover) / 0.6);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45), 0 10px 22px -8px rgb(var(--rc-signal) / 0.6);
+  }
+  .nav-child.nav-pill-active .nav-dot {
+    background-color: rgb(var(--rc-blueprint));
+    box-shadow: 0 0 0 3px rgb(var(--rc-ink-100) / 0.15), 0 0 10px rgb(var(--rc-blueprint));
+  }
+  /* The list scrolls when the window is short; it fades out at the bottom
+     instead of cutting off under the fixed rows. */
+  .nav-scroll {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
   }
 
   /* Tiptap ProseMirror content area (RichTextEditor.tsx) -- matches

@@ -7,10 +7,6 @@ const STORAGE_KEY = 'rc-theme';
 // this is scoped to a brief window around the switch rather than left on.
 const TRANSITION_MS = 200;
 
-function systemTheme(): Theme {
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
 // Mirrors the inline bootstrap script in index.html (which runs before any
 // JS module loads, so the <html data-theme> attribute is already correct
 // before first paint; see that script's own comment on why): this just
@@ -23,7 +19,9 @@ function readInitialTheme(): Theme {
   } catch {
     // localStorage unavailable (private browsing, disabled): fall through
   }
-  return systemTheme();
+  // Dark is the default look (Jet Black / Smoke Grey / Cherry Red); light
+  // is an explicit opt-in from the theme toggle.
+  return 'dark';
 }
 
 function applyTheme(theme: Theme, { animate = false }: { animate?: boolean } = {}) {
@@ -63,20 +61,3 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 // shell, a test harness that renders main.tsx directly): a no-op
 // attribute write when it already matches.
 applyTheme(useThemeStore.getState().theme);
-
-// Live-follow OS theme changes, but only until the user makes an explicit
-// choice of their own; once setTheme()/toggleTheme() has persisted a
-// value, readInitialTheme() is never consulted again, so this listener
-// stops affecting the app rather than fighting the user's pick.
-if (typeof window !== 'undefined' && window.matchMedia) {
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-    try {
-      if (localStorage.getItem(STORAGE_KEY)) return; // explicit choice already made
-    } catch {
-      return;
-    }
-    const theme: Theme = e.matches ? 'dark' : 'light';
-    applyTheme(theme, { animate: true });
-    useThemeStore.setState({ theme });
-  });
-}

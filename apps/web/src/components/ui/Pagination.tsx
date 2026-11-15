@@ -37,7 +37,7 @@ export function Pagination({
               onClick={() => onPageChange(p)}
               aria-current={p === page ? 'page' : undefined}
               className={`w-8 h-8 rounded text-sm transition-colors ${
-                p === page ? 'bg-signal text-base-950 font-medium' : 'text-ink-300 hover:bg-base-700'
+                p === page ? 'bg-signal text-on-signal font-medium' : 'text-ink-300 hover:bg-base-700'
               }`}
             >
               {p}

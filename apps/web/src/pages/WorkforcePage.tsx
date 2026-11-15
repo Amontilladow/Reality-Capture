@@ -150,7 +150,7 @@ export default function WorkforcePage() {
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setSelectedUserId(null)}
-                className={`px-4 py-2 rounded text-xs border ${isSelf ? 'border-signal text-signal bg-signal/10' : 'border-base-600 text-ink-300 hover:bg-base-700'}`}
+                className={`px-4 py-2 rounded text-xs border ${isSelf ? 'border-signal text-blueprint bg-signal/10' : 'border-base-600 text-ink-300 hover:bg-base-700'}`}
               >
                 Me
               </button>
@@ -158,7 +158,7 @@ export default function WorkforcePage() {
                 <button
                   key={member.userId}
                   onClick={() => setSelectedUserId(member.userId)}
-                  className={`px-4 py-2 rounded text-xs border ${selectedUserId === member.userId ? 'border-signal text-signal bg-signal/10' : 'border-base-600 text-ink-300 hover:bg-base-700'}`}
+                  className={`px-4 py-2 rounded text-xs border ${selectedUserId === member.userId ? 'border-signal text-blueprint bg-signal/10' : 'border-base-600 text-ink-300 hover:bg-base-700'}`}
                 >
                   {member.name} <span className="text-ink-500">· {member.companyRole}</span>
                 </button>
@@ -829,7 +829,7 @@ function ReportingLinesAdmin() {
 }
 
 const STAT_TILE_TONE_CLASS: Record<string, string> = {
-  signal: 'text-signal',
+  signal: 'text-blueprint',
   ok: 'text-ok',
   danger: 'text-danger',
   warn: 'text-warn',

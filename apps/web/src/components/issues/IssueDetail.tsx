@@ -234,7 +234,7 @@ export function IssueDetail({
               <span key={s} className="flex items-center gap-2">
                 <span
                   className={`px-2 py-2 rounded-sm ${
-                    i === currentStepIdx ? 'bg-signal text-base-950 font-semibold' : i < currentStepIdx ? 'bg-ok/15 text-ok' : 'bg-base-700 text-ink-500'
+                    i === currentStepIdx ? 'bg-signal text-on-signal font-semibold' : i < currentStepIdx ? 'bg-ok/15 text-ok' : 'bg-base-700 text-ink-500'
                   }`}
                 >
                   {STATUS_LABELS[s]}

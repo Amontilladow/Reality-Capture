@@ -129,7 +129,7 @@ export default function AssistantPage() {
                   <Alert tone="warning">{m.content}</Alert>
                 </div>
               ) : (
-                <div className={`max-w-[75%] rounded-md px-4 py-2 text-sm ${m.role === 'user' ? 'bg-signal text-base-950' : 'panel'}`}>
+                <div className={`max-w-[75%] rounded-md px-4 py-2 text-sm ${m.role === 'user' ? 'bg-signal text-on-signal' : 'panel'}`}>
                   <p className="whitespace-pre-wrap">{m.content}</p>
                   {m.draft && (
                     <button onClick={() => openDraft(m.draft)} className="btn-secondary mt-2">

@@ -78,9 +78,9 @@
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/adapters/__init__.py": {
-    "mtime": 1793252811.4629953,
-    "seen": 1793942412.6005402,
-    "ast_hash": "7cbdca8ee24eb2b32edccc2385e20de8",
+    "mtime": 1794755957.5665665,
+    "seen": 1794760228.9658794,
+    "ast_hash": "7700127bf7413a60aa490a37c38e971c",
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/audit/__init__.py": {
@@ -96,15 +96,15 @@
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/cli.py": {
-    "mtime": 1793252811.4629953,
-    "seen": 1793942412.600545,
-    "ast_hash": "45fd8a02f14026b92cb5d262af62f637",
+    "mtime": 1794755957.5671043,
+    "seen": 1794760228.9659383,
+    "ast_hash": "06ab6db6d308502f29c767338613e14f",
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/convert/__init__.py": {
-    "mtime": 1793934302.5791738,
-    "seen": 1793942412.6005466,
-    "ast_hash": "2138b3eb5a48643f2f85fe8f8f9854f4",
+    "mtime": 1794755957.5671043,
+    "seen": 1794760228.9659402,
+    "ast_hash": "76691630341b146a42a9f019597b2619",
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/convert/compare.py": {
@@ -114,9 +114,9 @@
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/convert/features.py": {
-    "mtime": 1793934302.5791738,
-    "seen": 1793942412.6005497,
-    "ast_hash": "480e2467865954c844deba6727c5e1bb",
+    "mtime": 1794755957.5671043,
+    "seen": 1794760228.9659681,
+    "ast_hash": "9e12fe16523ea8d02a072e6960acba79",
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/convert/georef.py": {
@@ -138,9 +138,9 @@
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/convert/settings.py": {
-    "mtime": 1793934302.5791738,
-    "seen": 1793942412.6005557,
-    "ast_hash": "d12cff910eff4eb3426e94313f6088c3",
+    "mtime": 1794755957.5671043,
+    "seen": 1794760228.9660392,
+    "ast_hash": "fcf0f2d3654e65ec4104079bb5101ea8",
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/convert/source.py": {
@@ -228,9 +228,9 @@
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/pipeline.py": {
-    "mtime": 1793252811.4659631,
-    "seen": 1793942412.6005774,
-    "ast_hash": "c234d15c111b3727a8806f6d33e59fdc",
+    "mtime": 1794755957.5671043,
+    "seen": 1794760228.9663532,
+    "ast_hash": "3f8ca9dfcba174642b41bd1ecf47e2cf",
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/report/__init__.py": {
@@ -240,9 +240,9 @@
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/rules/__init__.py": {
-    "mtime": 1793934302.5791738,
-    "seen": 1793942412.6005797,
-    "ast_hash": "a2d48fa687a8b20c2d17762487fd0698",
+    "mtime": 1794755957.5671043,
+    "seen": 1794760228.966377,
+    "ast_hash": "96991fc82adbcc39a8c22000b9436b25",
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/service.py": {
@@ -252,9 +252,9 @@
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/ui/__init__.py": {
-    "mtime": 1793252811.4669147,
-    "seen": 1793942412.6005824,
-    "ast_hash": "3ad9f10068b081c6a6240d45a8caf4e3",
+    "mtime": 1794755957.5671043,
+    "seen": 1794760228.9663994,
+    "ast_hash": "2a39426a211a12ff8bfb002110396d5f",
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/validate/__init__.py": {
@@ -264,9 +264,9 @@
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/validate/bdms.py": {
-    "mtime": 1793942384.1502595,
-    "seen": 1793942412.6005845,
-    "ast_hash": "ae19123eb54e9770a0d128491afbf705",
+    "mtime": 1794755957.568663,
+    "seen": 1794760228.966425,
+    "ast_hash": "2d9b4f2cd2c8357ce8518b936fdb7982",
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/validate/drawing.py": {
@@ -336,9 +336,9 @@
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/tests/test_dwg_input.py": {
-    "mtime": 1793252811.468793,
-    "seen": 1793942412.6007354,
-    "ast_hash": "8bcbecff7951f3fcd1932f5a1afb5170",
+    "mtime": 1794755957.568663,
+    "seen": 1794760228.9667087,
+    "ast_hash": "eaef443ae382428ba3de60222bd8a26d",
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/tests/test_filename.py": {
@@ -372,9 +372,9 @@
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/tests/test_reference_drm.py": {
-    "mtime": 1793252811.468793,
-    "seen": 1793942412.600751,
-    "ast_hash": "95236f92cce6e8acbb8a5acc87cfb1a7",
+    "mtime": 1794755957.5696924,
+    "seen": 1794760228.9668126,
+    "ast_hash": "b82cc4d27b9eb8e303d92cae084dee29",
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/tests/test_service.py": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "apps/ai-service/app/config.py": {
-    "mtime": 1793934302.587174,
-    "seen": 1793942412.6008017,
-    "ast_hash": "4ef23802520878bb2fef831099875f5d",
+    "mtime": 1794755957.5700402,
+    "seen": 1794760228.9673042,
+    "ast_hash": "d0737f4bc62d9d0a8cc3cf003197f4e7",
     "semantic_hash": ""
   },
   "apps/ai-service/app/knowledge/__init__.py": {
@@ -576,9 +576,9 @@
     "semantic_hash": ""
   },
   "apps/ai-service/app/routers/gis_prep.py": {
-    "mtime": 1793934302.587174,
-    "seen": 1793942412.6008203,
-    "ast_hash": "2d9d6be37434a0aeb4b92ffe59cf76fd",
+    "mtime": 1794755957.5700402,
+    "seen": 1794760228.96752,
+    "ast_hash": "1693baa17731363f82fdb9de61cb4d8c",
     "semantic_hash": ""
   },
   "apps/ai-service/app/routers/ingest.py": {
@@ -636,9 +636,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/app.module.ts": {
-    "mtime": 1793934302.587174,
-    "seen": 1793942412.6008346,
-    "ast_hash": "22f2394e4b13cf52866223fc4be74b76",
+    "mtime": 1794755957.570749,
+    "seen": 1794760228.9677055,
+    "ast_hash": "218c43b05736df53e4ae28cc6ffc2cf9",
     "semantic_hash": ""
   },
   "apps/api/src/common/authorization/authorization.module.ts": {
@@ -1770,9 +1770,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/email/email.service.ts": {
-    "mtime": 1793934302.6293855,
-    "seen": 1793942412.601131,
-    "ast_hash": "cb88f28ec9663567632324733a5d1521",
+    "mtime": 1794755957.570749,
+    "seen": 1794760228.9722538,
+    "ast_hash": "2e57d9ab88cb7958a247ccdeda4e3412",
     "semantic_hash": ""
   },
   "apps/api/src/modules/gis-prep/dto/gis-prep.dto.ts": {
@@ -1932,9 +1932,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/issues/issue-scheduled-reminders.service.ts": {
-    "mtime": 1793934302.6311738,
-    "seen": 1793942412.601183,
-    "ast_hash": "b2e6a5f3c82352e41c0d406b2e24695c",
+    "mtime": 1794755957.570749,
+    "seen": 1794760228.9728699,
+    "ast_hash": "1f05a119f0a6a48b343e744829930554",
     "semantic_hash": ""
   },
   "apps/api/src/modules/issues/issue-warning.service.spec.ts": {
@@ -1974,9 +1974,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/issues/issues.service.ts": {
-    "mtime": 1793934302.6311738,
-    "seen": 1793942412.6011927,
-    "ast_hash": "2153a6811bb2548d956aad6515e02572",
+    "mtime": 1794755957.570749,
+    "seen": 1794760228.973008,
+    "ast_hash": "6665f08ca53e0751ce546197608b81d8",
     "semantic_hash": ""
   },
   "apps/api/src/modules/messaging/dto/create-message.dto.ts": {
@@ -2010,21 +2010,21 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/notifications/notifications.controller.ts": {
-    "mtime": 1793252811.5029898,
-    "seen": 1793942412.6012013,
-    "ast_hash": "a2644989db64807d8d352a208eff1271",
+    "mtime": 1794755957.570749,
+    "seen": 1794760228.973137,
+    "ast_hash": "3d9a00bfa7bedf91ef368d0bd710ac72",
     "semantic_hash": ""
   },
   "apps/api/src/modules/notifications/notifications.module.ts": {
-    "mtime": 1793252811.5036695,
-    "seen": 1793942412.6012025,
-    "ast_hash": "f0e5844564f88c2e27c10a8af0e6d2e2",
+    "mtime": 1794755957.572573,
+    "seen": 1794760228.9731407,
+    "ast_hash": "ce76831c3a04c36cd86c987b56c220ef",
     "semantic_hash": ""
   },
   "apps/api/src/modules/notifications/notifications.service.ts": {
-    "mtime": 1793934302.6351738,
-    "seen": 1793942412.601204,
-    "ast_hash": "33e7e5499d78d7c6c9bcf5b330e249cf",
+    "mtime": 1794755957.5726628,
+    "seen": 1794760228.9731433,
+    "ast_hash": "2fde86a3ea12beb3f4e1a525a9b1f49e",
     "semantic_hash": ""
   },
   "apps/api/src/modules/progress-reports/dto/generate-progress-report-share.dto.ts": {
@@ -2244,9 +2244,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/qaqc/qaqc.service.ts": {
-    "mtime": 1793934302.6391737,
-    "seen": 1793942412.601254,
-    "ast_hash": "d621c85b6ff6703973ceedcdb5fef778",
+    "mtime": 1794755957.5730174,
+    "seen": 1794760228.973994,
+    "ast_hash": "1d7d5a175c30287a93f705f669f7a5be",
     "semantic_hash": ""
   },
   "apps/api/src/modules/reports/company-reports.controller.ts": {
@@ -2406,9 +2406,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/rfis/rfis.service.ts": {
-    "mtime": 1793934302.643174,
-    "seen": 1793942412.6012948,
-    "ast_hash": "51e231ec83bc7f90e36fc637243c3e79",
+    "mtime": 1794755957.5730174,
+    "seen": 1794760228.9746304,
+    "ast_hash": "46aace3690a281905a64aa431c02cd11",
     "semantic_hash": ""
   },
   "apps/api/src/modules/risk/dto/assign-risk-owner.dto.ts": {
@@ -2622,9 +2622,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/site-drawings/dto/register-drawing.dto.ts": {
-    "mtime": 1793934302.6511738,
-    "seen": 1793942412.6013477,
-    "ast_hash": "2ce5411237cf83f149b6f9197ada33a4",
+    "mtime": 1794755957.5730174,
+    "seen": 1794760228.9755037,
+    "ast_hash": "e1937ca9160a058383b264c59ff64262",
     "semantic_hash": ""
   },
   "apps/api/src/modules/site-drawings/dto/register-revision.dto.ts": {
@@ -2658,21 +2658,21 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/site-drawings/extraction/pdf-text-extractor.ts": {
-    "mtime": 1793934302.6511738,
-    "seen": 1793942412.6013556,
-    "ast_hash": "cdab4837f8b059df965b1252fb67c730",
+    "mtime": 1794755957.5745516,
+    "seen": 1794760228.9756274,
+    "ast_hash": "804189d1b2efec7c33868b7be92b9b06",
     "semantic_hash": ""
   },
   "apps/api/src/modules/site-drawings/extraction/title-block-extractor.spec.ts": {
-    "mtime": 1793252811.522839,
-    "seen": 1793942412.6013567,
-    "ast_hash": "fdd9d9ae77bba4049bd012d82fec3b44",
+    "mtime": 1794755957.5745516,
+    "seen": 1794760228.9756293,
+    "ast_hash": "1a45e840277d29b1bcb78d681d2bf204",
     "semantic_hash": ""
   },
   "apps/api/src/modules/site-drawings/extraction/title-block-extractor.ts": {
-    "mtime": 1793934302.6533203,
-    "seen": 1793942412.601358,
-    "ast_hash": "7ed3ad4626a51a91e850fc2d41659f3b",
+    "mtime": 1794755957.5745516,
+    "seen": 1794760228.975631,
+    "ast_hash": "68c5ae40bdaf6641ec716c3cc33c6363",
     "semantic_hash": ""
   },
   "apps/api/src/modules/site-drawings/extraction/zip-extraction.util.spec.ts": {
@@ -2712,15 +2712,15 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/site-drawings/site-drawing-import.processor.spec.ts": {
-    "mtime": 1793934302.6533203,
-    "seen": 1793942412.601365,
-    "ast_hash": "97948eeae8cdcb9f0c33753307681236",
+    "mtime": 1794755957.5745516,
+    "seen": 1794760228.9757676,
+    "ast_hash": "25b1ea35064646209909f969b063bf99",
     "semantic_hash": ""
   },
   "apps/api/src/modules/site-drawings/site-drawing-import.processor.ts": {
-    "mtime": 1793934302.6533203,
-    "seen": 1793942412.601366,
-    "ast_hash": "a8450c02532b5933665bdf3bebc846ed",
+    "mtime": 1794755957.5745516,
+    "seen": 1794760228.9757693,
+    "ast_hash": "cd88387da22847253d6b2bbd1989dc64",
     "semantic_hash": ""
   },
   "apps/api/src/modules/site-drawings/site-drawing-import.service.ts": {
@@ -2754,27 +2754,27 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/site-drawings/site-drawings.controller.ts": {
-    "mtime": 1793934302.6562493,
-    "seen": 1793942412.6013768,
-    "ast_hash": "4925160341cd80aca514994ce1b59f59",
+    "mtime": 1794755957.5745516,
+    "seen": 1794760228.9759283,
+    "ast_hash": "664ea02312d60c6ecb5bcf3e92a188a4",
     "semantic_hash": ""
   },
   "apps/api/src/modules/site-drawings/site-drawings.module.ts": {
-    "mtime": 1793934302.6562493,
-    "seen": 1793942412.6013777,
-    "ast_hash": "6d743f954bc5f5f14df4a29e48fab242",
+    "mtime": 1794755957.5745516,
+    "seen": 1794760228.9759316,
+    "ast_hash": "253f868c8ebdc1e193c5566f998b1d71",
     "semantic_hash": ""
   },
   "apps/api/src/modules/site-drawings/site-drawings.service.spec.ts": {
-    "mtime": 1793934302.6562493,
-    "seen": 1793942412.6013792,
-    "ast_hash": "caaf6e0bf2e232c7b39ff8a7f24a0d6d",
+    "mtime": 1794755957.576663,
+    "seen": 1794760228.975933,
+    "ast_hash": "81ac62e52e496c97a9dab8e13a09c231",
     "semantic_hash": ""
   },
   "apps/api/src/modules/site-drawings/site-drawings.service.ts": {
-    "mtime": 1793934302.6562493,
-    "seen": 1793942412.60138,
-    "ast_hash": "6e12a9c1e80b6217eac07ad17623c56f",
+    "mtime": 1794755957.576663,
+    "seen": 1794760228.9759352,
+    "ast_hash": "71e8bfaaaa1bb13b3f0455404aa42186",
     "semantic_hash": ""
   },
   "apps/api/src/modules/snagging/dto/add-snag-activity.dto.ts": {
@@ -2838,9 +2838,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/snagging/snagging.service.ts": {
-    "mtime": 1793934302.6562493,
-    "seen": 1793942412.601394,
-    "ast_hash": "0298aa883df09ecc0a9335a89e8de549",
+    "mtime": 1794755957.576663,
+    "seen": 1794760228.9761732,
+    "ast_hash": "1e9bb4ea0e2d08a6434234a49a83d1dc",
     "semantic_hash": ""
   },
   "apps/api/src/modules/storage/storage.module.ts": {
@@ -2886,9 +2886,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/submittals/submittals.service.ts": {
-    "mtime": 1793934302.6562493,
-    "seen": 1793942412.601404,
-    "ast_hash": "3893292c0e6ef6405a636dcaf3f77bd5",
+    "mtime": 1794755957.576663,
+    "seen": 1794760228.9763339,
+    "ast_hash": "6545e31e2a1b05ad607f237479e4b2e8",
     "semantic_hash": ""
   },
   "apps/api/src/modules/subscription/dto/checkout.dto.ts": {
@@ -3894,9 +3894,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/App.tsx": {
-    "mtime": 1793934302.6711738,
-    "seen": 1793942412.6016073,
-    "ast_hash": "7deccdde81eb989447ca55642296706d",
+    "mtime": 1794755957.578256,
+    "seen": 1794760228.9802055,
+    "ast_hash": "2d76cd94b26da4bcb2647e16ddadb12f",
     "semantic_hash": ""
   },
   "apps/web/src/components/AddHierarchyNodeModal.tsx": {
@@ -3942,9 +3942,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/DocumentUploadModal.tsx": {
-    "mtime": 1793934302.6711738,
-    "seen": 1793942412.601619,
-    "ast_hash": "924f24fb2b96189d60ace1cb6d45ae7b",
+    "mtime": 1794759790.469529,
+    "seen": 1794760228.9803755,
+    "ast_hash": "d9c72a72c3f9dc4354fc5f35b4e37a53",
     "semantic_hash": ""
   },
   "apps/web/src/components/EditProjectModal.tsx": {
@@ -3972,9 +3972,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/HierarchyTree.tsx": {
-    "mtime": 1793934302.6751738,
-    "seen": 1793942412.6016247,
-    "ast_hash": "7591dba66bc6553b323244acbefc0630",
+    "mtime": 1794759790.469529,
+    "seen": 1794760228.980458,
+    "ast_hash": "5634ee0739dc4ae27be5e74c83bc3074",
     "semantic_hash": ""
   },
   "apps/web/src/components/ManageMembersModal.tsx": {
@@ -4158,9 +4158,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/chat/ChatWidget.tsx": {
-    "mtime": 1793934302.6830745,
-    "seen": 1793942412.6016974,
-    "ast_hash": "db918a2da847c55130cd133ecf0c519a",
+    "mtime": 1794759790.469529,
+    "seen": 1794760228.9812105,
+    "ast_hash": "ca493c54d20f8eb950322cf6e9b39a4f",
     "semantic_hash": ""
   },
   "apps/web/src/components/drawing/DrawingUploadModal.tsx": {
@@ -4188,9 +4188,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/help/HelpLink.tsx": {
-    "mtime": 1793934302.6832442,
-    "seen": 1793942412.6017077,
-    "ast_hash": "7c0bd440675ab7b1945eafd80c7d29a7",
+    "mtime": 1794759790.469529,
+    "seen": 1794760228.9813476,
+    "ast_hash": "9659c0387fcf8cb813eab043ffb2eb0d",
     "semantic_hash": ""
   },
   "apps/web/src/components/help/article-sections.ts": {
@@ -4206,9 +4206,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/issues/IssueDetail.tsx": {
-    "mtime": 1793935145.9780693,
-    "seen": 1793942412.6017115,
-    "ast_hash": "70a6f3c9e6aa7410c6c6b84ba165dfb1",
+    "mtime": 1794759790.469985,
+    "seen": 1794760228.9813974,
+    "ast_hash": "7741a8722b8bb479c5d411f3e9d89531",
     "semantic_hash": ""
   },
   "apps/web/src/components/issues/IssueFormModal.tsx": {
@@ -4218,21 +4218,21 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/AppShell.tsx": {
-    "mtime": 1793936521.2011583,
-    "seen": 1793942412.6017146,
-    "ast_hash": "b5f7e6732dd3ff910e7321ce3b09f34d",
+    "mtime": 1794760101.1572483,
+    "seen": 1794760228.981424,
+    "ast_hash": "9e00a206f370b8116f451af728a0ef8a",
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/MessagesBell.tsx": {
-    "mtime": 1793935581.9202383,
-    "seen": 1793942412.6017191,
-    "ast_hash": "768ea818c45215716846051974ee3950",
+    "mtime": 1794759790.4702027,
+    "seen": 1794760228.981432,
+    "ast_hash": "b2385e9a255c8a4282cc07f7c91a40d5",
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/NotificationBell.tsx": {
-    "mtime": 1793935581.9196577,
-    "seen": 1793942412.601721,
-    "ast_hash": "d91101562c7033f06bfb19f52c94137d",
+    "mtime": 1794759790.4702027,
+    "seen": 1794760228.9814346,
+    "ast_hash": "9a654a142fa1769c2fb742e62c1c846a",
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/PageHeader.tsx": {
@@ -4242,9 +4242,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/ProjectContextPanel.tsx": {
-    "mtime": 1793934302.6871738,
-    "seen": 1793942412.6017246,
-    "ast_hash": "98bf63dbb6b1abac78aaf6fc9bc94630",
+    "mtime": 1794759797.4862263,
+    "seen": 1794760228.9814622,
+    "ast_hash": "31505a3d84d702611ba8f342ffbc7fee",
     "semantic_hash": ""
   },
   "apps/web/src/components/onboarding/OnboardingFlow.tsx": {
@@ -4284,21 +4284,21 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/site-drawings/AddRevisionModal.tsx": {
-    "mtime": 1793934302.6871738,
-    "seen": 1793942412.6017349,
-    "ast_hash": "42d85544d321d7cf91d1f680fe54e357",
+    "mtime": 1794755957.578256,
+    "seen": 1794760228.9816053,
+    "ast_hash": "eab915ff20a0d6616ccf41a4c9a5b2dc",
     "semantic_hash": ""
   },
   "apps/web/src/components/site-drawings/RegisterSiteDrawingModal.tsx": {
-    "mtime": 1793934302.6871738,
-    "seen": 1793942412.6017392,
-    "ast_hash": "3a9e705e2d729092d2b69fbf882e6d29",
+    "mtime": 1794755957.5794582,
+    "seen": 1794760228.981637,
+    "ast_hash": "30c025627ad2a9a2260cf8f1f6ab3de8",
     "semantic_hash": ""
   },
   "apps/web/src/components/site-drawings/SiteDrawingDetailDrawer.tsx": {
-    "mtime": 1793935145.981856,
-    "seen": 1793942412.6017406,
-    "ast_hash": "f0fe599b50b64b8869e5ffb2731d9803",
+    "mtime": 1794755957.5794582,
+    "seen": 1794760228.9816403,
+    "ast_hash": "0470b9c2b3ff859332aa78a080670044",
     "semantic_hash": ""
   },
   "apps/web/src/components/site-drawings/SiteDrawingPdfViewer.tsx": {
@@ -4404,15 +4404,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/ui/Pagination.tsx": {
-    "mtime": 1793934302.6911738,
-    "seen": 1793942412.6017704,
-    "ast_hash": "7254555f2f11fa3c55236453166e4397",
+    "mtime": 1794759790.470493,
+    "seen": 1794760228.982107,
+    "ast_hash": "4f578767af8fae4f8a6b5b24bc2e3a52",
     "semantic_hash": ""
   },
   "apps/web/src/components/ui/RichTextEditor.tsx": {
-    "mtime": 1793934302.6911738,
-    "seen": 1793942412.6017761,
-    "ast_hash": "9a2b249758257eb3014f6747a6b6dacb",
+    "mtime": 1794759790.470669,
+    "seen": 1794760228.9821553,
+    "ast_hash": "aec5ab0e197a67b17876797994611b0d",
     "semantic_hash": ""
   },
   "apps/web/src/components/ui/SectionHeader.tsx": {
@@ -4602,9 +4602,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/lib/bdms-inputs.ts": {
-    "mtime": 1793934302.6951737,
-    "seen": 1793942412.6018164,
-    "ast_hash": "8bd5a07da3b2bdf820399ef6ea258c8f",
+    "mtime": 1794755957.5794582,
+    "seen": 1794760228.9829621,
+    "ast_hash": "a78f967c30974e757dbd517fdb7fb4ee",
     "semantic_hash": ""
   },
   "apps/web/src/lib/bim.api.ts": {
@@ -4734,9 +4734,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/lib/notifications.api.ts": {
-    "mtime": 1793252811.5699034,
-    "seen": 1793942412.601844,
-    "ast_hash": "e890ee0ef5791efbb0bb7c974229a1a4",
+    "mtime": 1794755957.5794582,
+    "seen": 1794760228.983422,
+    "ast_hash": "1ca91db1e67ff0ebe0ed86b8a2775f5c",
     "semantic_hash": ""
   },
   "apps/web/src/lib/progress-reports.api.ts": {
@@ -4854,9 +4854,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/lib/site-drawings.api.ts": {
-    "mtime": 1793934302.7031739,
-    "seen": 1793942412.6018705,
-    "ast_hash": "45dd11d1a9f9f8431e780becd2e42faa",
+    "mtime": 1794755957.580663,
+    "seen": 1794760228.9838705,
+    "ast_hash": "0600f08f540b5c957b72ff1e751bdb78",
     "semantic_hash": ""
   },
   "apps/web/src/lib/snagging-constants.ts": {
@@ -4962,9 +4962,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/AssistantPage.tsx": {
-    "mtime": 1793935145.9865403,
-    "seen": 1793942412.6018927,
-    "ast_hash": "ee75a61e4c8d50fb78ba2d40b1a02375",
+    "mtime": 1794759790.470952,
+    "seen": 1794760228.9842563,
+    "ast_hash": "4bb9761095422c71c4716a357df6514d",
     "semantic_hash": ""
   },
   "apps/web/src/pages/BimModelsPage.tsx": {
@@ -4980,21 +4980,21 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/BuildLensPage.tsx": {
-    "mtime": 1793934302.7074273,
-    "seen": 1793942412.601896,
-    "ast_hash": "3bd9ba708f1daab4d24d2d75ce1417d6",
+    "mtime": 1794759790.471042,
+    "seen": 1794760228.984299,
+    "ast_hash": "2c39c9c798810a083d2721c0672466bd",
     "semantic_hash": ""
   },
   "apps/web/src/pages/BuildLensTimelinePage.tsx": {
-    "mtime": 1793935145.984387,
-    "seen": 1793942412.6018975,
-    "ast_hash": "a8c2e7221083fd4717c88843c014374a",
+    "mtime": 1794759790.4711697,
+    "seen": 1794760228.9843009,
+    "ast_hash": "bef9f5e2bb0718025a630758eb5a5322",
     "semantic_hash": ""
   },
   "apps/web/src/pages/CapturesPage.tsx": {
-    "mtime": 1793935145.9964588,
-    "seen": 1793942412.6018984,
-    "ast_hash": "1f21d69acf90a5b4f636ab54bb4b8836",
+    "mtime": 1794759790.4713306,
+    "seen": 1794760228.9843028,
+    "ast_hash": "12938fe35a02d410c86c42a5e53385f6",
     "semantic_hash": ""
   },
   "apps/web/src/pages/DeveloperSettingsPage.tsx": {
@@ -5016,33 +5016,33 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/FloorPlanViewer.tsx": {
-    "mtime": 1793935145.9882698,
-    "seen": 1793942412.6019044,
-    "ast_hash": "95765fdb2df0cd3d7a967e944bb41b8f",
+    "mtime": 1794759790.471445,
+    "seen": 1794760228.9843845,
+    "ast_hash": "bd691efd6299b31156c798b682c1411f",
     "semantic_hash": ""
   },
   "apps/web/src/pages/GisPrepPage.tsx": {
-    "mtime": 1793942384.1513278,
-    "seen": 1793942412.6019058,
-    "ast_hash": "ecd1af93ab7e003f4c464bd4941712b0",
+    "mtime": 1794755957.580663,
+    "seen": 1794760228.9843864,
+    "ast_hash": "b09c418adcf97e77f2d3600b2a17dc24",
     "semantic_hash": ""
   },
   "apps/web/src/pages/HelpPage.tsx": {
-    "mtime": 1793934841.8186367,
-    "seen": 1793942412.6019073,
-    "ast_hash": "1eccf04524e253f30e80946db0e3d0be",
+    "mtime": 1794759790.4715567,
+    "seen": 1794760228.9843879,
+    "ast_hash": "634ff476bd93dd2b6ffd1582eda47190",
     "semantic_hash": ""
   },
   "apps/web/src/pages/IssuesPage.tsx": {
-    "mtime": 1793935145.995224,
-    "seen": 1793942412.6019084,
-    "ast_hash": "8202a8ddd41e617038e1d33dc66f6f83",
+    "mtime": 1794759790.4716752,
+    "seen": 1794760228.9843905,
+    "ast_hash": "a5f8a6ee114fbd72fabe6e5f71aeb2e7",
     "semantic_hash": ""
   },
   "apps/web/src/pages/MessagesPage.tsx": {
-    "mtime": 1793935145.9856012,
-    "seen": 1793942412.6019099,
-    "ast_hash": "dd77769ee36e179c0e70703ddcef6279",
+    "mtime": 1794759790.4719136,
+    "seen": 1794760228.9843924,
+    "ast_hash": "ca18457625df23a678424ce401042370",
     "semantic_hash": ""
   },
   "apps/web/src/pages/PendingApproval.tsx": {
@@ -5076,9 +5076,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/PublicLandingPage.tsx": {
-    "mtime": 1793934926.7142618,
-    "seen": 1793942412.6019168,
-    "ast_hash": "61e491b98337313b62f7bfbfa3f3c3a7",
+    "mtime": 1794759790.4720116,
+    "seen": 1794760228.9845002,
+    "ast_hash": "ecbc4407326561724d82191e0c5c7c74",
     "semantic_hash": ""
   },
   "apps/web/src/pages/QaInspectionsPage.tsx": {
@@ -5148,9 +5148,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/SiteDrawingHubPage.tsx": {
-    "mtime": 1793935145.9930055,
-    "seen": 1793942412.601932,
-    "ast_hash": "879223265010fc21609ffab2e23a59f7",
+    "mtime": 1794755957.5817652,
+    "seen": 1794760228.9847202,
+    "ast_hash": "569596ef5d3ac0cbc6706f74bc2d982d",
     "semantic_hash": ""
   },
   "apps/web/src/pages/SnaggingPage.tsx": {
@@ -5178,9 +5178,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/WorkforcePage.tsx": {
-    "mtime": 1793935145.9892495,
-    "seen": 1793942412.6019378,
-    "ast_hash": "25882abd0a55258626d84db19aa33f1d",
+    "mtime": 1794759790.4721372,
+    "seen": 1794760228.984802,
+    "ast_hash": "a9d591018453c8b3b3dae6f8e4b14417",
     "semantic_hash": ""
   },
   "apps/web/src/pages/auth/AcceptInvitation.tsx": {
@@ -5232,9 +5232,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/store/theme.store.ts": {
-    "mtime": 1793934302.715174,
-    "seen": 1793942412.6019495,
-    "ast_hash": "1d48a339586faf9904beccf4f677b00c",
+    "mtime": 1794759790.4721372,
+    "seen": 1794760228.9850023,
+    "ast_hash": "ea807bf8516c1359cede4aff27646434",
     "semantic_hash": ""
   },
   "apps/web/src/store/toast.store.ts": {
@@ -5256,9 +5256,9 @@
     "semantic_hash": ""
   },
   "apps/web/tailwind.config.js": {
-    "mtime": 1793934720.2271986,
-    "seen": 1793942412.6019542,
-    "ast_hash": "47aa575650dbf021b79691238f25f956",
+    "mtime": 1794759790.472451,
+    "seen": 1794760228.9850657,
+    "ast_hash": "e60470e967aee45527e8920c11f92607",
     "semantic_hash": ""
   },
   "apps/web/tsconfig.json": {
@@ -5346,9 +5346,9 @@
     "semantic_hash": ""
   },
   "packages/types/src/gis-prep.types.ts": {
-    "mtime": 1793934303.2361832,
-    "seen": 1793942412.6019726,
-    "ast_hash": "ab06eb0610638b5a1f37118e0af27f22",
+    "mtime": 1794755957.5817652,
+    "seen": 1794760228.9853346,
+    "ast_hash": "97ccf94bfd430ba263c635eb744becdd",
     "semantic_hash": ""
   },
   "packages/types/src/ifc-processing.types.ts": {
@@ -5400,9 +5400,9 @@
     "semantic_hash": ""
   },
   "packages/types/src/site-drawing.types.ts": {
-    "mtime": 1793934303.2361832,
-    "seen": 1793942412.6019835,
-    "ast_hash": "39177f6267c257b7b39be2a72fb63c63",
+    "mtime": 1794755957.5817652,
+    "seen": 1794760228.9854848,
+    "ast_hash": "6d8ee6fd05bd0720fdff039bba354f09",
     "semantic_hash": ""
   },
   "packages/types/src/snag-item.types.ts": {
@@ -5454,9 +5454,9 @@
     "semantic_hash": ""
   },
   "render.yaml": {
-    "mtime": 1793934303.2471738,
-    "seen": 1793942412.6019952,
-    "ast_hash": "5898f43a81af5116bcc5214c8adef46e",
+    "mtime": 1794755957.5817652,
+    "seen": 1794760228.9856403,
+    "ast_hash": "5556e26c063b16ae17fe2ef96f120776",
     "semantic_hash": ""
   },
   "tools/bim-debug/extract-minimal-repro.cjs": {
@@ -5574,15 +5574,15 @@
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/docs/COMPLIANCE_MATRIX_BDMS.md": {
-    "mtime": 1793942384.1502595,
-    "seen": 1793942412.6020396,
-    "ast_hash": "75e4ae3003d55a3e4873aa38757ef490",
+    "mtime": 1794755957.564663,
+    "seen": 1794760228.9863443,
+    "ast_hash": "b7ff7e350e4f6714b7b7364c83803043",
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/docs/CONVERSION.md": {
-    "mtime": 1793252811.4547613,
-    "seen": 1793942412.6020412,
-    "ast_hash": "2624499cb4e0382824fd328bae625336",
+    "mtime": 1794755957.564663,
+    "seen": 1794760228.986347,
+    "ast_hash": "ac144b7fd065a0accfc7939a7fc617c4",
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/docs/DECISIONS.md": {
@@ -5598,9 +5598,9 @@
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/docs/DISCREPANCIES_BDMS.md": {
-    "mtime": 1793942384.1502595,
-    "seen": 1793942412.6020448,
-    "ast_hash": "5c4122a642030bba1c6fd3053b06d090",
+    "mtime": 1794755957.564663,
+    "seen": 1794760228.9863884,
+    "ast_hash": "8b10c64ed8a5249f98a8866b794b3439",
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/docs/INTEGRATION_PLAN.md": {
@@ -5658,9 +5658,9 @@
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/ui/templates/base.html": {
-    "mtime": 1793252811.467524,
-    "seen": 1793942412.6020586,
-    "ast_hash": "1fa27a8734844deb1424085777b9121d",
+    "mtime": 1794755957.568663,
+    "seen": 1794760228.98658,
+    "ast_hash": "2ef7dfd6e7a073dd5f76bc9912bf6b5c",
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/src/m4adm/ui/templates/index.html": {
@@ -5718,9 +5718,9 @@
     "semantic_hash": ""
   },
   "apps/web/index.html": {
-    "mtime": 1793934302.6711738,
-    "seen": 1793942412.602071,
-    "ast_hash": "b3db953066c786621262018feb075c84",
+    "mtime": 1794759790.4673777,
+    "seen": 1794760228.986835,
+    "ast_hash": "f98c2d40d968cea1a030abacc7ebd2e9",
     "semantic_hash": ""
   },
   "apps/web/public/robots.txt": {
@@ -6060,8 +6060,8 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/brand/BrandPanel.tsx": {
-    "mtime": 1793934302.679174,
-    "seen": 1793942412.60166,
+    "mtime": 1794757451.6752558,
+    "seen": 1794760228.981065,
     "ast_hash": "d60602998a82a31aec3d8dc29101ee2b",
     "semantic_hash": ""
   },
@@ -6282,9 +6282,9 @@
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/tests/test_yas_review.py": {
-    "mtime": 1793942384.1502595,
-    "seen": 1793942412.600762,
-    "ast_hash": "b0c5d7c5dfed8c88f7e55eda2ee3c13c",
+    "mtime": 1794755957.5696924,
+    "seen": 1794760228.966906,
+    "ast_hash": "66a67d24e184c2c9323d382116f269fa",
     "semantic_hash": ""
   },
   "apps/api/src/modules/site-drawings/site-drawing-import.service.spec.ts": {
@@ -6294,21 +6294,21 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/site-drawings/site-drawing-register-xls.ts": {
-    "mtime": 1793934302.6548257,
-    "seen": 1793942412.6013696,
-    "ast_hash": "c7158972faf2bef2f4a5c1253eba060b",
+    "mtime": 1794755957.5745516,
+    "seen": 1794760228.975814,
+    "ast_hash": "9a8d3420629a50f9bffa5becf065596f",
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/HeaderIconButton.tsx": {
-    "mtime": 1793934895.0388985,
-    "seen": 1793942412.601717,
-    "ast_hash": "127bbf0e618be506fa7488b763117f4a",
+    "mtime": 1794759935.0082211,
+    "seen": 1794760228.9814298,
+    "ast_hash": "d265a25836c1d28379b35307400aef00",
     "semantic_hash": ""
   },
   "apps/web/src/components/site-drawings/ImportActivityModal.tsx": {
-    "mtime": 1793935145.982518,
-    "seen": 1793942412.6017358,
-    "ast_hash": "ec81c021bbbd9a625a7c16c2e99f19d6",
+    "mtime": 1794755957.5794582,
+    "seen": 1794760228.9816072,
+    "ast_hash": "42946486aa9c15f733d6e9ad37245232",
     "semantic_hash": ""
   },
   "apps/web/src/components/site-drawings/ImportDrawingsModal.tsx": {
@@ -6414,9 +6414,249 @@
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/docs/DRM_REVIEW_YAS_ISLAND.md": {
-    "mtime": 1793942384.1502595,
-    "seen": 1793942412.6020463,
-    "ast_hash": "108be5bfbc5439a5de14b3f60a910b44",
+    "mtime": 1794755957.564663,
+    "seen": 1794760228.9863906,
+    "ast_hash": "3fc1f77b014a96f938c73ed2aacdff2f",
+    "semantic_hash": ""
+  },
+  ".github/workflows/desktop-exe.yml": {
+    "mtime": 1794755957.564663,
+    "seen": 1794760228.9656596,
+    "ast_hash": "0782983382cc24a80790e485b7727fac",
+    "semantic_hash": ""
+  },
+  "apps/adm-gis-prep/packaging/m4adm_entry.py": {
+    "mtime": 1794755957.5665665,
+    "seen": 1794760228.9656847,
+    "ast_hash": "f6f961c03dd65f95a81248f9c4fa966b",
+    "semantic_hash": ""
+  },
+  "apps/adm-gis-prep/tests/test_ui_convert.py": {
+    "mtime": 1794755957.5696924,
+    "seen": 1794760228.9668777,
+    "ast_hash": "f42885ac4aeb95cab70717d2c6a37b40",
+    "semantic_hash": ""
+  },
+  "apps/api/src/config/whatsapp.config.ts": {
+    "mtime": 1794755957.570749,
+    "seen": 1794760228.9690661,
+    "ast_hash": "1460de4884232d0a7b28cab5ff2a13c3",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/notifications/dto/update-notification-preferences.dto.ts": {
+    "mtime": 1794755957.570749,
+    "seen": 1794760228.9731257,
+    "ast_hash": "3b7718a667da722de64b26e833da46dc",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/notifications/notification-email-templates.ts": {
+    "mtime": 1794755957.570749,
+    "seen": 1794760228.9731271,
+    "ast_hash": "560b66c9a7140ee56d0243beb1a4fd49",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/notifications/notification-email.constants.ts": {
+    "mtime": 1794755957.570749,
+    "seen": 1794760228.973129,
+    "ast_hash": "35b4b4c08a9876e1c223aa2cdae85853",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/notifications/notification-engine.integration.spec.ts": {
+    "mtime": 1794755957.570749,
+    "seen": 1794760228.9731305,
+    "ast_hash": "2f67f077f9f20f338ef49e3c2687fc36",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/notifications/notification-escalation.service.spec.ts": {
+    "mtime": 1794755957.570749,
+    "seen": 1794760228.9731324,
+    "ast_hash": "a795530927151db3f3137bdd7b4f4d9d",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/notifications/notification-escalation.service.ts": {
+    "mtime": 1794755957.570749,
+    "seen": 1794760228.973134,
+    "ast_hash": "0d269e9f3e160ea849c29055a8cc6073",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/notifications/notification-whatsapp.constants.ts": {
+    "mtime": 1794755957.570749,
+    "seen": 1794760228.9731355,
+    "ast_hash": "a957d09926db525975f61d25d6396e83",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/notifications/notifications.gateway.ts": {
+    "mtime": 1794755957.570749,
+    "seen": 1794760228.9731386,
+    "ast_hash": "6ffc9f3575c205184ffab8a8cff70be0",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/notifications/notifications.service.spec.ts": {
+    "mtime": 1794755957.572573,
+    "seen": 1794760228.9731417,
+    "ast_hash": "8964d99931f56bb31385914d51818aa3",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/notifications/processors/notification-email.processor.spec.ts": {
+    "mtime": 1794755957.5726628,
+    "seen": 1794760228.9731443,
+    "ast_hash": "5e12bf9af32b1c453dd6f181b83651e2",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/notifications/processors/notification-email.processor.ts": {
+    "mtime": 1794755957.5729795,
+    "seen": 1794760228.9731455,
+    "ast_hash": "15f26db78d21db0e23e9764da8b74a56",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/notifications/processors/notification-whatsapp.processor.spec.ts": {
+    "mtime": 1794755957.5730174,
+    "seen": 1794760228.973147,
+    "ast_hash": "f62acab7d71cb0c9fb2f3dc972b53f69",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/notifications/processors/notification-whatsapp.processor.ts": {
+    "mtime": 1794755957.5730174,
+    "seen": 1794760228.9731483,
+    "ast_hash": "eb620ba36796cca6980c2ad0c7e37955",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/site-drawings/dto/extract-fields.dto.ts": {
+    "mtime": 1794755957.5730174,
+    "seen": 1794760228.9754307,
+    "ast_hash": "c324c12032ebc40510381cee13b798e3",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/site-drawings/dto/org-mapping.dto.ts": {
+    "mtime": 1794755957.5730174,
+    "seen": 1794760228.9755013,
+    "ast_hash": "b838f891afb5b0cfac2da5bd967006b3",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/site-drawings/extraction/extract-drawing-fields.ts": {
+    "mtime": 1794755957.5745516,
+    "seen": 1794760228.975598,
+    "ast_hash": "5e7ddb0c0509f19613a8e1872b6e4029",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/site-drawings/extraction/org-mapping-lookup.spec.ts": {
+    "mtime": 1794755957.5745516,
+    "seen": 1794760228.9755993,
+    "ast_hash": "baa4dc2257b446814b7fade8bdc68683",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/site-drawings/extraction/org-mapping-lookup.ts": {
+    "mtime": 1794755957.5745516,
+    "seen": 1794760228.9756014,
+    "ast_hash": "30c39a84520b19b75f9f57d341827195",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/site-drawings/site-drawings.module.spec.ts": {
+    "mtime": 1794755957.5745516,
+    "seen": 1794760228.9759297,
+    "ast_hash": "ba28aa30ab57ab3a89e979ebf4482646",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/whatsapp/whatsapp-webhook.controller.spec.ts": {
+    "mtime": 1794755957.576663,
+    "seen": 1794760228.977139,
+    "ast_hash": "f6dad34c1d8e30acb70f5fb0d3150531",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/whatsapp/whatsapp-webhook.controller.ts": {
+    "mtime": 1794755957.578256,
+    "seen": 1794760228.9771411,
+    "ast_hash": "6187ff1afe1659bbac4250d0dc3049f2",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/whatsapp/whatsapp.module.ts": {
+    "mtime": 1794755957.578256,
+    "seen": 1794760228.9771428,
+    "ast_hash": "fe7aac7d2931bac2c8551d4f551f7115",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/whatsapp/whatsapp.service.spec.ts": {
+    "mtime": 1794755957.578256,
+    "seen": 1794760228.9771442,
+    "ast_hash": "b46b2b355c744978b0244793bdf3b1aa",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/whatsapp/whatsapp.service.ts": {
+    "mtime": 1794755957.578256,
+    "seen": 1794760228.9771457,
+    "ast_hash": "19fc37a3d2169ff534ee0f7eaf94cc4d",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/layout/AppBackdrop.tsx": {
+    "mtime": 1794759589.3600013,
+    "seen": 1794760228.9814215,
+    "ast_hash": "4cc525383e8b3c4b0f8377bf7cf4ba05",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/layout/CurvedGlassPanel.tsx": {
+    "mtime": 1794759758.7595253,
+    "seen": 1794760228.9814262,
+    "ast_hash": "648fce5a0e1c1072a81ac29bbc388a9c",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/layout/useMenuPosition.ts": {
+    "mtime": 1794759758.7602246,
+    "seen": 1794760228.981464,
+    "ast_hash": "50190d9bcc619610d04ad37abce60369",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/layout/useProjectContext.ts": {
+    "mtime": 1794759797.4861205,
+    "seen": 1794760228.9814658,
+    "ast_hash": "42b6762a55cf5932d47ce1bfc203383c",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/site-drawings/OrgMappingsModal.tsx": {
+    "mtime": 1794755957.5794582,
+    "seen": 1794760228.981635,
+    "ast_hash": "ba997ff6989dd5fc9d9d4f698b736fe9",
+    "semantic_hash": ""
+  },
+  "apps/web/src/lib/drawing-format.test.ts": {
+    "mtime": 1794755957.5794582,
+    "seen": 1794760228.9831553,
+    "ast_hash": "4ae6b34f5d0fe46c481a87fa8d487a89",
+    "semantic_hash": ""
+  },
+  "apps/web/src/lib/drawing-format.ts": {
+    "mtime": 1794755957.5794582,
+    "seen": 1794760228.9831567,
+    "ast_hash": "0fa6bc2f81016688d73683149d9ab820",
+    "semantic_hash": ""
+  },
+  "apps/web/src/lib/notification-socket.ts": {
+    "mtime": 1794755957.5794582,
+    "seen": 1794760228.9834204,
+    "ast_hash": "88b4ccb38bf5c721ec1a977da40b4d36",
+    "semantic_hash": ""
+  },
+  "apps/web/src/pages/NotificationsPage.tsx": {
+    "mtime": 1794755957.5817652,
+    "seen": 1794760228.984394,
+    "ast_hash": "080f24248644d961addec39a04cf5b87",
+    "semantic_hash": ""
+  },
+  "apps/adm-gis-prep/packaging/README-WINDOWS.txt": {
+    "mtime": 1794755957.564663,
+    "seen": 1794760228.9865086,
+    "ast_hash": "0a2e8b9e829202c32f6a9b192673a555",
+    "semantic_hash": ""
+  },
+  "apps/adm-gis-prep/src/m4adm/ui/templates/conversion.html": {
+    "mtime": 1794755957.568663,
+    "seen": 1794760228.9865818,
+    "ast_hash": "28d861078d6499947d487c5434a87048",
+    "semantic_hash": ""
+  },
+  "apps/adm-gis-prep/src/m4adm/ui/templates/convert.html": {
+    "mtime": 1794755957.568663,
+    "seen": 1794760228.9865832,
+    "ast_hash": "dd95c9677ede85dafab20d4285eecc89",
     "semantic_hash": ""
   },
   "pnpm-lock.yaml": {

@@ -67,14 +67,14 @@ export function DocumentUploadModal({
           <button
             type="button"
             onClick={() => setMode('file')}
-            className={`flex-1 px-4 py-2 rounded border ${mode === 'file' ? 'border-signal text-signal bg-signal/10' : 'border-base-600 text-ink-500'}`}
+            className={`flex-1 px-4 py-2 rounded border ${mode === 'file' ? 'border-signal text-blueprint bg-signal/10' : 'border-base-600 text-ink-500'}`}
           >
             Upload a file
           </button>
           <button
             type="button"
             onClick={() => setMode('link')}
-            className={`flex-1 px-4 py-2 rounded border ${mode === 'link' ? 'border-signal text-signal bg-signal/10' : 'border-base-600 text-ink-500'}`}
+            className={`flex-1 px-4 py-2 rounded border ${mode === 'link' ? 'border-signal text-blueprint bg-signal/10' : 'border-base-600 text-ink-500'}`}
           >
             Link an external doc
           </button>

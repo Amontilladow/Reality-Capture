@@ -108,7 +108,7 @@ function ToolbarButton({
       title={title}
       onClick={onClick}
       className={`w-7 h-7 rounded text-xs font-mono flex items-center justify-center transition-colors ${
-        active ? 'bg-signal text-base-950' : 'text-ink-300 hover:bg-base-700 hover:text-ink-100'
+        active ? 'bg-signal text-on-signal' : 'text-ink-300 hover:bg-base-700 hover:text-ink-100'
       } ${bold ? 'font-bold' : ''} ${italic ? 'italic' : ''}`}
     >
       {label}

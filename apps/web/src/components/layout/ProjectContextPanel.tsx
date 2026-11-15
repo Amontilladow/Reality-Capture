@@ -1,81 +1,30 @@
-import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { listProjects, getProject, getMembers, getOrganizationMembers } from '../../lib/projects.api';
-import { PROJECT_ROLE_LABELS } from '../../lib/issue-constants';
-import { PROJECT_ORGANIZATION_SLOT_LABELS } from '@engineeringos/types';
-import type { ProjectRole } from '@engineeringos/types';
-import { useAuthStore } from '../../store/auth.store';
-import { Badge, StatusBadge } from '../ui/Badge';
 import { Listbox } from '../ui/Listbox';
+import { useProjectContext } from './useProjectContext';
 
-// RBAC Phase 5: shows which project you're in, your own role and
-// organization slot on it, and a switcher to jump to another project;
-// all previously invisible once inside a project (the sidebar only ever
-// showed company-wide nav + the signed-in person's name/email). Every
-// query here hits an already-ungated read (getProject/getMembers/
-// getOrganizationMembers), same endpoints ManageMembersModal already
-// calls; this doesn't add any new backend surface, just surfaces it.
-export function ProjectContextPanel({ projectId }: { projectId: string }) {
+/** The current project's name as a quiet dropdown that jumps to another project. */
+export function ProjectSwitcher({ projectId }: { projectId: string }) {
   const navigate = useNavigate();
-  const currentUser = useAuthStore((s) => s.user);
-
-  const projectQuery = useQuery({
-    queryKey: ['project', projectId],
-    queryFn: () => getProject(projectId),
-  });
-
-  const membersQuery = useQuery({
-    queryKey: ['members', projectId],
-    queryFn: () => getMembers(projectId),
-  });
-
-  const organizationMembersQuery = useQuery({
-    queryKey: ['organizationMembers', projectId],
-    queryFn: () => getOrganizationMembers(projectId),
-  });
-
-  // Every project the signed-in person can see, for the switcher; same
-  // list ProjectList.tsx itself renders. 100 is this app's existing
-  // "effectively unpaginated" convention (see e.g. getDrawingUpdatesNotApplied).
-  const projectsQuery = useQuery({
-    queryKey: ['projects-switcher'],
-    queryFn: () => listProjects({ perPage: 100 }),
-  });
-
-  const myMembership = (membersQuery.data ?? []).find((m) => m.userId === currentUser?.id);
-  const myOrgSlot = (organizationMembersQuery.data ?? []).find((m) => m.userId === currentUser?.id);
-  const projects = projectsQuery.data?.data ?? [];
+  const { project, projects } = useProjectContext(projectId);
 
   return (
-    <div className="px-4 py-2 border-b border-base-600 space-y-2">
-      <Listbox
-        className="field-input !py-2 text-xs w-full"
-        value={projectId}
-        onChange={(e) => {
-          if (e.target.value) navigate(`/projects/${e.target.value}`);
-        }}
-        aria-label="Switch project"
-      >
-        {/* Keeps the current project selected even before the switcher's own
-            list has loaded, by falling back to the one we already know from
-            the project-detail query. */}
-        {!projects.some((p) => p.id === projectId) && (
-          <option value={projectId}>{projectQuery.data?.name ?? 'Loading…'}</option>
-        )}
-        {projects.map((p) => (
-          <option key={p.id} value={p.id}>{p.name}</option>
-        ))}
-      </Listbox>
-      {(myMembership || myOrgSlot) && (
-        <div className="flex flex-wrap gap-2">
-          {myMembership && (
-            <Badge>{PROJECT_ROLE_LABELS[myMembership.role as ProjectRole] ?? myMembership.role}</Badge>
-          )}
-          {myOrgSlot && (
-            <StatusBadge tone="info" label={PROJECT_ORGANIZATION_SLOT_LABELS[myOrgSlot.slot]} />
-          )}
-        </div>
+    <Listbox
+      className="max-w-full bg-transparent border-0 p-0 rounded-md text-sm text-ink-500 hover:text-ink-100 transition-colors"
+      value={projectId}
+      onChange={(e) => {
+        if (e.target.value) navigate(`/projects/${e.target.value}`);
+      }}
+      aria-label="Switch project"
+    >
+      {/* Keeps the current project selected even before the switcher's own
+          list has loaded, by falling back to the one we already know from
+          the project-detail query. */}
+      {!projects.some((p) => p.id === projectId) && (
+        <option value={projectId}>{project?.name ?? 'Loading…'}</option>
       )}
-    </div>
+      {projects.map((p) => (
+        <option key={p.id} value={p.id}>{p.name}</option>
+      ))}
+    </Listbox>
   );
 }
