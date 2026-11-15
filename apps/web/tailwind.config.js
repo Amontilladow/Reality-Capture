@@ -88,44 +88,35 @@ export default {
         sans: ['"Outfit"', 'system-ui', 'sans-serif'],
         mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
-      // Type scale. Tailwind's own text-xs/sm/base/lg/xl cover the vast
-      // majority of the app already and are used as-is; the convention is:
-      //   text-xs  + text-ink-500   captions, table cells, metadata, field hints
-      //   text-sm                   body copy, labels, buttons, most headings (font-semibold)
-      //   text-base + font-semibold page/section titles (PageHeader, Card title)
-      //   text-lg+                  rare, a dashboard/report's single dominant number
-      // The two tokens below are the only sizes that weren't already on
-      // Tailwind's scale and had drifted into one-off text-[10px]/text-[11px]
-      // arbitrary values across pages (PageHeader's eyebrow, issue numbers);
-      // named here so new code reaches for a token instead of another magic number.
+      // Type scale: a 16px body stepping up by about 1.25 and rounded to the
+      // 4px grid (16 / 20 / 24 / 32), with line heights of 1.4-1.5x:
+      //   text-xs  14/20  secondary text: metadata, table cells, hints, chips
+      //   text-sm  16/24  body: copy, labels, buttons, inputs, nav rows
+      //   text-base/lg 20/28  card and section titles
+      //   text-xl  24/34  sub-page titles
+      //   text-2xl 32/44  page titles (PageHeader), KPI numbers
+      //   eyebrow/caption/axis 12/18  small uppercase labels and chart ticks
+      //   text-3xl+  display sizes (landing hero, auth titles)
+      // The class names kept their roles while the sizes moved up a step
+      // (body was 14px), so every existing call site follows the new scale.
       fontSize: {
-        // A product UI scale anchored on 14px body text (text-sm), in even
-        // pixel steps so neighbouring sizes stay distinct but never jump:
-        //   xs 12 / sm 14 / base 16 / lg 18 / xl 20 / 2xl 24 / 3xl 30 /
-        //   4xl 36 / 5xl 48 / 6xl 60 / 7xl 72  (px, desktop)
-        // 12px is the floor: the old 1.25 ratio put xs (captions, labels,
-        // chips, nav headings; ~860 call sites) at 11.2px, too small to read
-        // beside 14px controls, and base at 17.5px, too big beside them.
-        // caption/axis/eyebrow share xs's step. Line heights land on the
-        // 4px grid.
-        xs: ['0.75rem', { lineHeight: '1rem' }],
-        sm: ['0.875rem', { lineHeight: '1.25rem' }],
-        base: ['1rem', { lineHeight: '1.5rem' }],
-        lg: ['1.125rem', { lineHeight: '1.75rem' }],
-        xl: ['1.25rem', { lineHeight: '1.75rem' }],
-        '2xl': ['1.5rem', { lineHeight: '2rem' }],
+        xs: ['0.875rem', { lineHeight: '1.25rem' }],
+        sm: ['1rem', { lineHeight: '1.5rem' }],
+        base: ['1.25rem', { lineHeight: '1.75rem' }],
+        lg: ['1.25rem', { lineHeight: '1.75rem' }],
+        xl: ['1.5rem', { lineHeight: '2.125rem' }],
+        '2xl': ['2rem', { lineHeight: '2.75rem' }],
         // Display sizes resolve through --rc-fs-* (index.css): on a phone
-        // each one steps down the same scale (5xl/6xl/7xl by two steps),
-        // so a KPI number or hero line never dwarfs the text around it.
+        // each one steps down, so a hero line never dwarfs the text around it.
         '3xl': ['var(--rc-fs-3xl)', { lineHeight: '1.2' }],
         '4xl': ['var(--rc-fs-4xl)', { lineHeight: '1.15' }],
         '5xl': ['var(--rc-fs-5xl)', { lineHeight: '1' }],
         '6xl': ['var(--rc-fs-6xl)', { lineHeight: '1' }],
         '7xl': ['var(--rc-fs-7xl)', { lineHeight: '1' }],
-        eyebrow: ['0.75rem', { lineHeight: '1rem', letterSpacing: '0.08em' }], // uppercase mono section/page labels
-        kpi: ['1.5rem', { lineHeight: '2rem', letterSpacing: '-0.01em' }], // dashboard/report stat-tile numbers (2xl step)
-        caption: ['0.75rem', { lineHeight: '1rem' }], // chart value labels, dense metadata (xs step)
-        axis: ['0.75rem', { lineHeight: '1rem' }], // chart tick labels (xs step)
+        eyebrow: ['0.75rem', { lineHeight: '1.125rem', letterSpacing: '0.08em' }], // small uppercase section labels
+        kpi: ['2rem', { lineHeight: '2.75rem', letterSpacing: '-0.01em' }], // dashboard/report stat-tile numbers (2xl step)
+        caption: ['0.75rem', { lineHeight: '1.125rem' }], // chart value labels
+        axis: ['0.75rem', { lineHeight: '1.125rem' }], // chart tick labels
       },
       // Shadows are tinted with --rc-shadow (espresso in light, a deep warm
       // brown in dark): never Tailwind's flat black.

@@ -25,7 +25,7 @@ export const HeaderIconButton = forwardRef<HTMLButtonElement, Props>(function He
       {count > 0 && (
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute -top-1 -right-1 min-w-5 h-5 px-0 rounded-full bg-danger text-base-950 ring-2 ring-base-950 text-xs leading-none font-semibold tabular-nums tracking-tight flex items-center justify-center"
+          className="pointer-events-none absolute -top-1 -right-1 min-w-5 h-5 px-0 rounded-full bg-danger text-base-950 ring-2 ring-base-950 text-caption leading-none font-semibold tabular-nums tracking-tight flex items-center justify-center"
         >
           {count > 99 ? '99+' : count}
         </span>

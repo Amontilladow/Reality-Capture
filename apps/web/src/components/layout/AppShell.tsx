@@ -224,7 +224,7 @@ export function AppShell() {
           <div className="h-full flex flex-col px-6 pt-6 pb-4">
             <div className="flex items-center gap-2">
               <LogoMark className="w-8 h-8" />
-              <div className="flex-1 min-w-0 text-xs font-medium uppercase tracking-[0.16em] whitespace-nowrap truncate">
+              <div className="flex-1 min-w-0 text-eyebrow font-medium uppercase tracking-[0.16em] whitespace-nowrap truncate">
                 Reality Capture
               </div>
               {/* Phones get the bells in the top bar instead. */}
@@ -339,7 +339,7 @@ function ProfileName({ name, role }: { name: string; role?: string }) {
     <div className="flex flex-wrap items-center gap-x-2 min-w-0">
       <span className="max-w-full text-lg font-semibold text-ink-100 truncate">{name}</span>
       {role && (
-        <span className="shrink-0 px-2 rounded-md bg-signal text-on-signal text-xs leading-5 font-semibold uppercase tracking-wider">
+        <span className="shrink-0 px-2 rounded-md bg-signal text-on-signal text-eyebrow leading-5 font-semibold uppercase tracking-wider">
           {role}
         </span>
       )}
@@ -356,16 +356,16 @@ function NoticeCard() {
       className="hidden [@media(min-height:1080px)]:flex relative h-32 shrink-0 mt-2 mb-2 rounded-2xl overflow-hidden border border-ink-100/40 shadow-lg"
     >
       <div className="relative z-10 w-1/2 bg-[#efede8] text-noir pl-4 pt-4 [clip-path:ellipse(100%_140%_at_0%_50%)]">
-        <div className="text-xs font-semibold tracking-[0.2em] text-noir/60">BULLETIN</div>
+        <div className="text-eyebrow font-semibold tracking-[0.2em] text-noir/60">BULLETIN</div>
         <div className="mt-2 text-2xl font-bold leading-none tracking-tight text-signal">NOTICE</div>
-        <div className="mt-2 text-xs font-semibold tracking-[0.12em] whitespace-nowrap text-noir/60">GUIDES</div>
+        <div className="mt-2 text-eyebrow font-semibold tracking-[0.12em] whitespace-nowrap text-noir/60">GUIDES</div>
       </div>
       <div
         aria-hidden="true"
         className="absolute right-0 inset-y-0 w-3/5 bg-black bg-no-repeat"
         style={{ backgroundImage: "url('/branding/reality-capture-hero.webp')", backgroundSize: '360%', backgroundPosition: '50% 20%' }}
       />
-      <span className="absolute z-10 right-4 bottom-2 text-xs font-semibold tracking-[0.2em] text-white/85">READ MORE ›</span>
+      <span className="absolute z-10 right-4 bottom-2 text-eyebrow font-semibold tracking-[0.2em] text-white/85">READ MORE ›</span>
     </Link>
   );
 }
