@@ -4218,9 +4218,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/AppShell.tsx": {
-    "mtime": 1794800218.7893064,
-    "seen": 1794800292.7843432,
-    "ast_hash": "08d9835818539d9cb64fddca2e780ffb",
+    "mtime": 1794816169.06694,
+    "seen": 1794816226.2525394,
+    "ast_hash": "5fdaebddc075d9719e7a8eb2860ec5c1",
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/MessagesBell.tsx": {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { GlobalSearch } from '../workspace/GlobalSearch';
 import { useQuery } from '@tanstack/react-query';
 import { create } from 'zustand';
@@ -79,7 +79,6 @@ const ADMIN_SETTINGS_ITEMS: NavItem[] = [
   { to: 'developer', label: 'Developer', icon: IconKey, end: false },
   { to: 'sharepoint-integration', label: 'SharePoint integration', icon: IconDrawingStack, end: false },
 ];
-const HELP_ITEM: NavItem = { to: 'help', label: 'Help & training', icon: IconHelp };
 
 // Ordered by how a project team works: the day-to-day records first, then
 // reporting, then the capture and engineering tools. Every item is an
@@ -282,10 +281,10 @@ export function AppShell() {
               )}
             </nav>
 
-            <NoticeCard />
+            <HelpCard />
 
             <div className="pt-2">
-              <NavTree groups={[settingsGroup, { id: 'help', items: [HELP_ITEM] }]} basePath="/projects" />
+              <NavTree groups={[settingsGroup]} basePath="/projects" />
               <div className="flex items-center gap-2">
                 <button type="button" onClick={handleLogout} className="nav-row flex-1">
                   <span className="nav-tile"><IconLogout className="w-4 h-4" /></span>
@@ -370,29 +369,30 @@ function ProfileName({ name, role }: { name: string; role?: string }) {
   );
 }
 
-// A small shortcut card above the account rows, pointing at Help &
-// training -- worded as a plain nav shortcut, not an announcement/alert
-// (the earlier "BULLETIN / NOTICE" copy read like a pop-up ad or a system
-// notice about something happening, not a link to the help pages it
-// actually is). Tall windows only (1080px+), so it never squeezes the menu.
-function NoticeCard() {
+// Help & training, as one clear shortcut above the account rows: the
+// sidebar's own glass row style with a red icon tile, a title and a
+// one-line hint, so it reads as a link to the help pages. (It replaces an
+// image-and-panel "notice" card that read like a rendering glitch, and the
+// plain Help row it duplicated.)
+function HelpCard() {
   return (
-    <Link
+    <NavLink
       to="/projects/help"
-      className="hidden [@media(min-height:1080px)]:flex relative h-32 shrink-0 mt-2 mb-2 rounded-2xl overflow-hidden border border-ink-100/40 shadow-lg"
+      className={({ isActive }) =>
+        `group flex items-center gap-4 shrink-0 mt-2 mb-2 p-2 pr-4 rounded-2xl border transition-colors ${
+          isActive ? 'border-signal/60 bg-signal/10' : 'border-ink-100/15 bg-ink-100/5 hover:bg-ink-100/10'
+        }`
+      }
     >
-      <div className="relative z-10 w-1/2 bg-[#efede8] text-noir pl-4 pt-4 [clip-path:ellipse(100%_140%_at_0%_50%)]">
-        <div className="text-eyebrow font-semibold tracking-[0.2em] text-noir/60">RESOURCES</div>
-        <div className="mt-2 text-2xl font-bold leading-none tracking-tight text-signal">HELP</div>
-        <div className="mt-2 text-eyebrow font-semibold tracking-[0.12em] whitespace-nowrap text-noir/60">&amp; TRAINING</div>
-      </div>
-      <div
-        aria-hidden="true"
-        className="absolute right-0 inset-y-0 w-3/5 bg-black bg-no-repeat"
-        style={{ backgroundImage: "url('/branding/reality-capture-hero.webp')", backgroundSize: '360%', backgroundPosition: '50% 20%' }}
-      />
-      <span className="absolute z-10 right-4 bottom-2 text-eyebrow font-semibold tracking-[0.2em] text-white/85">View guides ›</span>
-    </Link>
+      <span className="w-10 h-10 shrink-0 rounded-xl grid place-items-center bg-signal text-on-signal">
+        <IconHelp className="w-5 h-5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-ink-100 truncate">Help &amp; training</span>
+        <span className="block text-xs text-ink-500 truncate">Guides and videos</span>
+      </span>
+      <IconChevron className="w-4 h-4 -rotate-90 text-ink-500 group-hover:text-ink-100 transition-colors" />
+    </NavLink>
   );
 }
 
