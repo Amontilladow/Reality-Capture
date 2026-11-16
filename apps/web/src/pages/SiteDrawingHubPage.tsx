@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { SectionHeader } from '../components/ui/SectionHeader';
@@ -33,7 +33,9 @@ export default function SiteDrawingHubPage() {
   const [searchInput, setSearchInput] = useState('');
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
-  const [registerOpen, setRegisterOpen] = useState(false);
+  // ?new=1 (the Overview's quick actions) opens the form straight away.
+  const [newParams] = useSearchParams();
+  const [registerOpen, setRegisterOpen] = useState(newParams.get('new') === '1');
   const [importOpen, setImportOpen] = useState(false);
   const [orgMappingsOpen, setOrgMappingsOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);

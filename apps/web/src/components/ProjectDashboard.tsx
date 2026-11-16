@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import type { IssueSummary } from '../lib/issues.api';
 import { StatTile } from './ui/StatTile';
+import { recordHref } from '../lib/record-links';
 import type { ProjectBriefing } from './overview/useProjectBriefing';
 import { PROCESSING_STATUS_LABELS, type RecentActivity } from './overview/overview-data';
 
@@ -19,48 +19,31 @@ function timeAgo(iso: string): string {
   return `${days}d ago`;
 }
 
-function KpiCard({ to, label, value, note, tone }: { to: string; label: string; value?: number; note?: string; tone?: 'danger' }) {
-  return (
-    <Link to={to} className="panel panel-interactive p-6 flex flex-col gap-2 min-w-0">
-      <span className="flex items-center justify-between gap-2 text-xs text-ink-300">
-        <span className="truncate">{label}</span>
-        <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4 shrink-0 opacity-60" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-      </span>
-      <span className={`text-2xl font-semibold tabular-nums ${tone === 'danger' && (value ?? 0) > 0 ? 'text-danger' : 'text-ink-100'}`}>{value ?? '–'}</span>
-      {note && <span className="text-xs text-ink-500 truncate">{note}</span>}
-    </Link>
-  );
-}
+const ACTIVITY_RECORD: Record<string, string> = {
+  issue: 'issue', issues: 'issue', rfi: 'rfi', rfis: 'rfi', snag_item: 'snag', snag_items: 'snag', snags: 'snag',
+  qaqc_record: 'qaqc', qaqc: 'qaqc', site_drawing: 'drawing', site_drawings: 'drawing', submittal: 'submittal', submittals: 'submittal',
+};
 
-export function OverviewKpis({ projectId, issues, brief }: { projectId: string; issues?: IssueSummary; brief: ProjectBriefing }) {
-  const rfis = brief.kpis?.rfis.summary;
-  const snags = brief.kpis?.snagging.summary;
-  const base = `/projects/${projectId}`;
-  return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <KpiCard to={`${base}/issues`} label="Open issues" value={issues?.open} note={issues ? `${issues.createdThisWeek} new this week` : undefined} />
-      <KpiCard to={`${base}/issues`} label="Overdue issues" value={issues?.overdue} tone="danger" note={issues ? `${issues.critical} critical` : undefined} />
-      <KpiCard to={`${base}/rfis`} label="Open RFIs" value={rfis?.open} note={rfis ? `${rfis.overdue} overdue` : undefined} />
-      <KpiCard to={`${base}/snagging`} label="Open snags" value={snags?.open} note={snags ? `${snags.verified} verified` : undefined} />
-    </div>
-  );
-}
-
-export function RecentActivityList({ activity }: { activity: RecentActivity }) {
+export function RecentActivityList({ activity, projectId }: { activity: RecentActivity; projectId: string }) {
   if (activity.isLoading) return <p className="text-sm text-ink-500">Loading…</p>;
   if (activity.isLoaded && activity.entries.length === 0) return <p className="text-sm text-ink-500">Nothing recorded yet.</p>;
   return (
-    <div className="divide-y divide-ink-100/10">
-      {activity.entries.slice(0, 8).map((entry) => (
-        <div key={entry.id} className="py-2 flex items-start justify-between gap-4 text-sm">
-          <div className="min-w-0 line-clamp-2">
-            <span className="text-ink-100 font-medium">{entry.userName ?? 'Someone'}</span>{' '}
-            <span className="text-ink-300">{entry.text}</span>
-          </div>
-          <span className="text-xs text-ink-500 shrink-0 tabular-nums">{timeAgo(entry.occurredAt)}</span>
-        </div>
-      ))}
-    </div>
+    <ol className="relative border-l border-ink-100/15 ml-2">
+      {activity.entries.slice(0, 10).map((entry) => {
+        const type = ACTIVITY_RECORD[entry.resourceType];
+        const href = entry.count === 1 && type && entry.resourceId ? recordHref(type, projectId, entry.resourceId) : null;
+        return (
+          <li key={entry.id} className="relative pl-6 py-2 flex items-start justify-between gap-4 text-sm">
+            <span aria-hidden="true" className="absolute -left-1 top-4 w-2 h-2 rounded-full bg-ink-300" />
+            <div className="min-w-0 line-clamp-2">
+              <span className="text-ink-100 font-medium">{entry.userName ?? 'Someone'}</span>{' '}
+              {href ? <Link to={href} className="text-ink-300 hover:text-blueprint">{entry.text}</Link> : <span className="text-ink-300">{entry.text}</span>}
+            </div>
+            <time dateTime={entry.occurredAt} title={new Date(entry.occurredAt).toLocaleString()} className="text-xs text-ink-500 shrink-0 tabular-nums">{timeAgo(entry.occurredAt)}</time>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

@@ -68,3 +68,11 @@ describe('buildConclusion', () => {
     expect(text).toMatch(/not enough activity/i);
   });
 });
+
+describe('buildSignals with counts serialised as strings', () => {
+  it('still says "1 critical issue is open", not "1 critical issues are open"', () => {
+    const signals = buildSignals('/projects/p', { issues: { critical: '1', overdue: '0' } as unknown as { critical: number; overdue: number } });
+    expect(signals).toHaveLength(1);
+    expect(signals[0].explanation).toBe('1 critical issue is open');
+  });
+});

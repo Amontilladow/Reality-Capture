@@ -69,8 +69,11 @@ export interface SignalInputs {
 // basePath is the project-scoped route prefix (`/projects/${projectId}`)
 // every generated signal's `to` link is built from; the one thing that
 // differs between the per-project and cross-project callers.
-export function buildSignals(basePath: string, input: SignalInputs): PrioritySignal[] {
+export function buildSignals(basePath: string, raw: SignalInputs): PrioritySignal[] {
   const signals: PrioritySignal[] = [];
+  // Counts can arrive as strings (Postgres COUNT is a bigint, serialised as
+  // text), which would make "=== 1" false and print "1 issues are open".
+  const input = toNumbers(raw);
 
   if (input.risk) {
     const { criticalCount, overdueCount } = input.risk;
@@ -168,4 +171,18 @@ export function buildConclusion(status: OverallStatus, signals: PrioritySignal[]
   if (status === 'critical') return `Engineering delivery is at risk ${scopeLabel} because ${top.explanation}${topRef}.`;
   if (status === 'at_risk') return `${scopeLabel === 'on this project' ? 'The project' : 'Delivery'} is largely on track, but ${top.explanation}${topRef} and needs attention.`;
   return `Status is stable ${scopeLabel}. ${signals.length} routine item${signals.length === 1 ? '' : 's'} may be worth a look.`;
+}
+
+function toNumbers(input: SignalInputs): SignalInputs {
+  const num = <T extends object | undefined>(o: T): T =>
+    (o ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, Number(v ?? 0)])) : o) as T;
+  return {
+    ...input,
+    risk: num(input.risk),
+    issues: num(input.issues),
+    rfis: num(input.rfis),
+    qaqc: num(input.qaqc),
+    snagging: num(input.snagging),
+    bimFailedCount: Number(input.bimFailedCount ?? 0),
+  };
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Project, ProjectPhase } from '@engineeringos/types';
@@ -12,8 +12,19 @@ import { CaptureGrid } from '../components/CaptureGrid';
 import { EditProjectModal } from '../components/EditProjectModal';
 import { ManageMembersModal } from '../components/ManageMembersModal';
 import { EmailComposerModal } from '../components/EmailComposerModal';
-import { OverviewKpis, RecentActivityList, BimProcessing } from '../components/ProjectDashboard';
-import { BriefingBanner, NeedsAttention, RiskIndexCard } from '../components/ExecutiveBriefing';
+import { RecentActivityList, BimProcessing } from '../components/ProjectDashboard';
+import { BriefingBanner, RiskIndexCard } from '../components/ExecutiveBriefing';
+import { WelcomePanel } from '../components/command-center/WelcomePanel';
+import { TodaysPriorities } from '../components/command-center/TodaysPriorities';
+import { KpiSnapshot } from '../components/command-center/KpiSnapshot';
+import { AttentionCenter, type AttentionFilter } from '../components/command-center/AttentionCenter';
+import { MyWorkspacePanel } from '../components/command-center/MyWorkspacePanel';
+import { QuickActions } from '../components/command-center/QuickActions';
+import { PerspectiveSwitch } from '../components/command-center/PerspectiveSwitch';
+import { TaskFormModal } from '../components/workspace/TaskFormModal';
+import { usePreferences } from '../components/command-center/hooks';
+import { getCommandCenter } from '../lib/workspace.api';
+import { openGlobalSearch } from '../lib/global-search';
 import { useProjectBriefing } from '../components/overview/useProjectBriefing';
 import { useRecentActivity, bimSummary } from '../components/overview/overview-data';
 import { getProject, getHierarchy, getMembers, updateBuilding } from '../lib/projects.api';
@@ -37,6 +48,14 @@ export default function ProjectDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [composeEmailOpen, setComposeEmailOpen] = useState(false);
+  const [taskModal, setTaskModal] = useState<{ kind: 'task' | 'reminder' } | null>(null);
+  const [attentionFilter, setAttentionFilter] = useState<AttentionFilter>('all');
+  const attentionRef = useRef<HTMLElement>(null);
+  const { perspective, hour12, update: updatePrefs } = usePreferences();
+  const showAttention = (f: 'all' | 'overdue') => {
+    setAttentionFilter(f);
+    attentionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const projectQuery = useQuery({
     queryKey: ['project', projectId],
@@ -57,6 +76,7 @@ export default function ProjectDetail() {
     enabled: Boolean(projectId),
   });
   const isSubcontractor = (membersQuery.data ?? []).some((m) => m.userId === currentUser?.id && m.role === 'subcontractor');
+  const myProjectRole = (membersQuery.data ?? []).find((m) => m.userId === currentUser?.id)?.role;
 
   // The Overview reads conclusion-first: a banner, four key numbers, what
   // needs attention and the risk index; everything else (activity, BIM,
@@ -64,6 +84,12 @@ export default function ProjectDetail() {
   const overviewEnabled = Boolean(projectId) && membersQuery.isSuccess && !isSubcontractor;
   const brief = useProjectBriefing(projectId!, overviewEnabled);
   const activity = useRecentActivity(projectId!, overviewEnabled);
+  // KPI snapshot + attention center: one server-side aggregation.
+  const cc = useQuery({
+    queryKey: ['command-center', projectId],
+    queryFn: () => getCommandCenter(projectId!),
+    enabled: overviewEnabled,
+  });
   const issueSummaryQuery = useQuery({
     queryKey: ['issue-summary', projectId],
     queryFn: () => getIssueSummary(projectId!),
@@ -111,15 +137,22 @@ export default function ProjectDetail() {
         .filter(Boolean)
         .join(' · ')
     : undefined;
+  const updatedAt = cc.data?.project.lastUpdatedAt;
+  const headerSubtitle = [subtitle, updatedAt && `Updated ${new Date(updatedAt).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}`]
+    .filter(Boolean).join(' · ') || undefined;
 
   return (
     <>
       <PageHeader
         breadcrumbs={[{ label: 'Projects', to: '/projects' }, { label: project?.name ?? 'Loading…' }]}
         title={project?.name ?? 'Loading…'}
-        subtitle={subtitle}
+        subtitle={headerSubtitle}
         actions={
           <>
+            <button type="button" onClick={openGlobalSearch} className="btn-secondary" aria-label="Search everything (Ctrl+K)">
+              <SearchIcon /> <span className="hidden sm:inline">Search</span>
+              <kbd className="hidden lg:inline text-xs text-ink-500 font-sans">Ctrl K</kbd>
+            </button>
             <Menu
               label="More project actions"
               buttonContent={<>More <ChevronDownIcon /></>}
@@ -141,18 +174,63 @@ export default function ProjectDetail() {
       />
 
       <div className="p-4 sm:p-6 space-y-6">
-        <BriefingBanner brief={brief} />
-        <OverviewKpis projectId={projectId} issues={issueSummaryQuery.data} brief={brief} />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          <div className="lg:col-span-2"><NeedsAttention brief={brief} /></div>
-          <RiskIndexCard projectId={projectId} brief={brief} closedThisWeek={issueSummaryQuery.data?.closedThisWeek} />
+        <WelcomePanel
+          projectId={projectId}
+          subtitle={perspective === 'management' ? `Here's where ${project?.name ?? 'the project'} stands today.` : "Here's your engineering overview for today."}
+          onAddTask={() => setTaskModal({ kind: 'task' })}
+        />
+
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <QuickActions
+            projectId={projectId}
+            projectRole={myProjectRole}
+            onNewTask={() => setTaskModal({ kind: 'task' })}
+            onNewReminder={() => setTaskModal({ kind: 'reminder' })}
+          />
+          <PerspectiveSwitch value={perspective} onChange={(p) => updatePrefs({ perspective: p })} />
         </div>
+
+        {/* Same sections for everyone; the perspective only changes their
+            order and emphasis. What anyone can see is decided by the API. */}
+        {perspective === 'engineer' ? (
+          <>
+            <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 items-start">
+              <div className="xl:col-span-3"><TodaysPriorities projectId={projectId} hour12={hour12} /></div>
+              <div className="xl:col-span-2"><MyWorkspacePanel projectId={projectId} hour12={hour12} /></div>
+            </div>
+            <KpiSnapshot projectId={projectId} data={cc.data} isLoading={cc.isLoading} isError={cc.isError} onShowAttention={showAttention} />
+            <AttentionCenter ref={attentionRef} projectId={projectId} data={cc.data} isLoading={cc.isLoading} isError={cc.isError} filter={attentionFilter} onFilter={setAttentionFilter} />
+          </>
+        ) : (
+          <>
+            <BriefingBanner brief={brief} />
+            <KpiSnapshot projectId={projectId} data={cc.data} isLoading={cc.isLoading} isError={cc.isError} onShowAttention={showAttention} />
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+              <div className="xl:col-span-2">
+                <AttentionCenter ref={attentionRef} projectId={projectId} data={cc.data} isLoading={cc.isLoading} isError={cc.isError} filter={attentionFilter} onFilter={setAttentionFilter} />
+              </div>
+              <RiskIndexCard projectId={projectId} brief={brief} closedThisWeek={issueSummaryQuery.data?.closedThisWeek} />
+            </div>
+            <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 items-start">
+              <div className="xl:col-span-3"><TodaysPriorities projectId={projectId} hour12={hour12} /></div>
+              <div className="xl:col-span-2"><MyWorkspacePanel projectId={projectId} hour12={hour12} /></div>
+            </div>
+          </>
+        )}
 
         <div className="space-y-4">
           <h2 className="text-eyebrow font-medium uppercase text-ink-500">More about this project</h2>
           <Collapsible title="Recent activity" count={activity.entries.length || undefined} summary="Who changed what, latest first" defaultOpen>
-            <RecentActivityList activity={activity} />
+            <RecentActivityList activity={activity} projectId={projectId} />
           </Collapsible>
+          {perspective === 'engineer' && (
+            <Collapsible title="Project health" summary={brief.conclusion || undefined}>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                <BriefingBanner brief={brief} />
+                <RiskIndexCard projectId={projectId} brief={brief} closedThisWeek={issueSummaryQuery.data?.closedThisWeek} />
+              </div>
+            </Collapsible>
+          )}
           <Collapsible title="BIM models" count={brief.bimModels?.length} summary={bimSummary(brief)}>
             <BimProcessing projectId={projectId} brief={brief} />
           </Collapsible>
@@ -245,6 +323,8 @@ export default function ProjectDetail() {
         />
       )}
 
+      <TaskFormModal open={Boolean(taskModal)} onClose={() => setTaskModal(null)} defaults={{ kind: taskModal?.kind ?? 'task', projectId }} />
+
       <EditProjectModal open={editOpen} onClose={() => setEditOpen(false)} project={projectQuery.data} />
 
       {projectId && (
@@ -313,6 +393,13 @@ function TeamIcon() {
       <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function SearchIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" strokeLinecap="round" />
     </svg>
   );
 }

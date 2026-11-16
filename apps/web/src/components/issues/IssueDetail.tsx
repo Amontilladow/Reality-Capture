@@ -25,6 +25,7 @@ import { apiErrorMessage } from '../../lib/api';
 import type { IssueStatus } from '@engineeringos/types';
 import { Listbox } from '../ui/Listbox';
 import { Collapsible } from '../ui/Collapsible';
+import { SaveButton } from '../workspace/SaveButton';
 import { Menu, type MenuSection } from '../ui/Menu';
 
 export function IssueDetail({
@@ -327,6 +328,7 @@ export function IssueDetail({
                 {closeMutation.isPending ? 'Closing…' : 'Close issue'}
               </button>
             ) : null}
+            <SaveButton itemType="issue" itemId={issue.id} />
             <Menu
               label="More actions"
               buttonClassName="btn-secondary !w-9 !px-0"

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   RFI_DISCIPLINES, RFI_DISCIPLINE_LABELS, RFI_IMPACT_LEVELS, RFI_IMPACT_LEVEL_LABELS, DRAWING_UPDATE_STATUS_LABELS,
@@ -53,7 +53,9 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [origin, setOrigin] = useState('');
-  const [createOpen, setCreateOpen] = useState(false);
+  // ?new=1 (the Overview's quick actions) opens the form straight away.
+  const [newParams] = useSearchParams();
+  const [createOpen, setCreateOpen] = useState(newParams.get('new') === '1');
   const [uploadOpen, setUploadOpen] = useState(false);
   const [letterRfi, setLetterRfi] = useState<RfiListItem | null>(null);
 

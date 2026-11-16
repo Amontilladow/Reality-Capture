@@ -20,14 +20,21 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 
 const STATE_TTL_MS = 10 * 60 * 1000; // 10 minutes: long enough for a real Google consent flow, short enough that a stale/leaked state URL is only a brief liability.
 
+// Where the browser should land after the provider's consent screen: the
+// Workforce page (the original flow) or the personal calendar (Command
+// Center). Signed with the rest of the state, so it can't be tampered with
+// into an open redirect; only these two values are ever honoured.
+export type OAuthReturnTo = 'workforce' | 'calendar';
+
 export interface OAuthStatePayload {
   companyId: string;
   userId: string;
   issuedAt: number;
+  returnTo?: OAuthReturnTo;
 }
 
-export function signOAuthState(secret: string, companyId: string, userId: string): string {
-  const payload: OAuthStatePayload = { companyId, userId, issuedAt: Date.now() };
+export function signOAuthState(secret: string, companyId: string, userId: string, returnTo?: OAuthReturnTo): string {
+  const payload: OAuthStatePayload = { companyId, userId, issuedAt: Date.now(), ...(returnTo ? { returnTo } : {}) };
   const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const signature = createHmac('sha256', secret).update(payloadB64).digest('base64url');
   return `${payloadB64}.${signature}`;
