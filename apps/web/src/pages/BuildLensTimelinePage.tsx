@@ -5,7 +5,8 @@ import type { Capture, Hotspot, Location } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { ThreeJsViewer } from '../components/viewer/ThreeJsViewer';
 import { CaptureUploadModal } from '../components/CaptureUploadModal';
-import { getViewerData, getCapture, updateCapture } from '../lib/captures.api';
+import { getViewerData, getCapture, updateCapture, deleteCapture, bulkDeleteCaptures } from '../lib/captures.api';
+import { apiErrorMessage } from '../lib/api';
 import { getHierarchy } from '../lib/projects.api';
 
 const SPEEDS = [0.5, 1, 2, 4, 8] as const;
@@ -164,6 +165,8 @@ export default function BuildLensTimelinePage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [editingDate, setEditingDate] = useState(false);
   const [dateBuffer, setDateBuffer] = useState('');
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const viewerQuery = useQuery({
     queryKey: ['viewer', projectId, locationId],
@@ -281,6 +284,32 @@ export default function BuildLensTimelinePage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteCapture(projectId!, active!.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['viewer', projectId, locationId] });
+      setActiveCaptureId(null);
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () => bulkDeleteCaptures(projectId!, [...selectedIds]),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['viewer', projectId, locationId] });
+      setSelectedIds(new Set());
+      setSelecting(false);
+      setActiveCaptureId(null);
+    },
+  });
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
   if (!projectId || !locationId) return null;
 
   return (
@@ -295,6 +324,14 @@ export default function BuildLensTimelinePage() {
             </Link>
             <button onClick={() => setCompareMode((v) => !v)} className={compareMode ? 'btn-primary' : 'btn-secondary'}> <CompareIcon className="w-4 h-4" /> Compare
             </button>
+            {!compareMode && (
+              <button
+                onClick={() => { setSelecting((v) => !v); setSelectedIds(new Set()); }}
+                className={selecting ? 'btn-primary' : 'btn-secondary'}
+              >
+                {selecting ? 'Cancel' : 'Select'}
+              </button>
+            )}
             <button onClick={() => setUploadOpen(true)} className="btn-primary">
               <UploadIcon className="w-4 h-4" /> Upload capture
             </button>
@@ -360,6 +397,16 @@ export default function BuildLensTimelinePage() {
                       <EditIcon className="w-3.5 h-3.5" />
                     </button>
                   )}
+                  {active && !editingDate && (
+                    <button
+                      onClick={() => { if (confirm('Delete this capture and all its renditions? This cannot be undone.')) deleteMutation.mutate(); }}
+                      disabled={deleteMutation.isPending}
+                      className="text-ink-500 hover:text-danger"
+                      title="Delete this capture"
+                    >
+                      <TrashIcon className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   {active && editingDate && (
                     <div className="flex items-center gap-2">
                       <input
@@ -383,24 +430,56 @@ export default function BuildLensTimelinePage() {
                 </div>
               </div>
 
+              {deleteMutation.isError && <p className="field-error">{apiErrorMessage(deleteMutation.error)}</p>}
+
+              {selecting && selectedIds.size > 0 && (
+                <div className="flex items-center gap-2 tick-frame panel px-4 py-2">
+                  <span className="text-sm font-medium">{selectedIds.size} selected</span>
+                  <button
+                    onClick={() => { if (confirm(`Delete ${selectedIds.size} capture(s) and all their renditions? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
+                    disabled={bulkDeleteMutation.isPending}
+                    className="btn-danger !px-4 !py-2 text-sm ml-auto"
+                  >
+                    {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
+                  </button>
+                  {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
+                </div>
+              )}
+
               <div className="flex items-center gap-0 overflow-x-auto pb-2">
                 <div className="relative flex items-center min-w-full" style={{ minWidth: `${Math.max(captures.length * 90, 100)}px` }}>
                   <div className="absolute left-0 right-0 top-1/2 h-px bg-base-600 -translate-y-1/2" />
                   {captures.map((c) => {
                     const isActive = c.id === active?.id;
+                    const isSelected = selectedIds.has(c.id);
                     return (
                       <button
                         key={c.id}
-                        onClick={() => goTo(c)}
+                        onClick={() => (selecting ? toggleSelected(c.id) : goTo(c))}
                         className="relative flex flex-col items-center gap-2 flex-1 min-w-[80px] group"
                         title={c.captureType === 'photo_360' ? '360° photo' : c.captureType === 'video' ? 'Video' : 'Photo'}
                       >
-                        <CaptureTypeIcon
-                          captureType={c.captureType}
-                          className={`w-3.5 h-3.5 rounded-full border p-0 transition-colors ${
-                            isActive ? 'bg-signal/20 border-signal text-blueprint' : 'bg-base-900 border-base-500 text-ink-500 group-hover:border-blueprint group-hover:text-blueprint'
-                          }`}
-                        />
+                        {selecting ? (
+                          <span
+                            aria-hidden="true"
+                            className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                              isSelected ? 'bg-blueprint border-blueprint' : 'bg-base-900 border-base-500'
+                            }`}
+                          >
+                            {isSelected && (
+                              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="3">
+                                <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            )}
+                          </span>
+                        ) : (
+                          <CaptureTypeIcon
+                            captureType={c.captureType}
+                            className={`w-3.5 h-3.5 rounded-full border p-0 transition-colors ${
+                              isActive ? 'bg-signal/20 border-signal text-blueprint' : 'bg-base-900 border-base-500 text-ink-500 group-hover:border-blueprint group-hover:text-blueprint'
+                            }`}
+                          />
+                        )}
                         <span className={`text-xs font-mono whitespace-nowrap ${isActive ? 'text-blueprint' : 'text-ink-500'}`}>
                           {formatDate(c.capturedAt)}
                         </span>
@@ -545,6 +624,14 @@ function EditIcon({ className }: { className?: string }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
