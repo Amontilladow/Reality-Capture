@@ -508,12 +508,12 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
           {/* Risk Register: the primary working area (brief section 4E) */}
           <div ref={registerRef}>
             {selectedRiskIds.size > 0 && (
-              <div className="flex items-center gap-3 tick-frame panel px-4 py-3 mb-4">
+              <div className="flex items-center gap-2 tick-frame panel px-4 py-2 mb-4">
                 <span className="text-sm font-medium">{selectedRiskIds.size} selected</span>
                 <button
                   onClick={() => { if (confirm(`Delete ${selectedRiskIds.size} risk(s) and their entire graph/evidence trails? This cannot be undone.`)) bulkDeleteRisksMutation.mutate(); }}
                   disabled={bulkDeleteRisksMutation.isPending}
-                  className="btn-danger !px-3 !py-1.5 text-sm ml-auto"
+                  className="btn-danger !px-4 !py-2 text-sm ml-auto"
                 >
                   {bulkDeleteRisksMutation.isPending ? 'Deleting…' : 'Delete selected'}
                 </button>
@@ -811,7 +811,7 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
             <button
               onClick={() => { if (confirm('Delete this risk and its entire graph/evidence trail? This cannot be undone.')) deleteMutation.mutate(); }}
               disabled={deleteMutation.isPending}
-              className="btn-danger !px-3 !py-2 text-sm"
+              className="btn-danger !px-4 !py-2 text-sm"
             >
               {deleteMutation.isPending ? 'Deleting…' : 'Delete risk'}
             </button>

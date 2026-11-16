@@ -222,12 +222,12 @@ export function CaptureGrid({
       )}
 
       {selecting && selectedIds.size > 0 && (
-        <div className="sticky bottom-4 mt-4 flex items-center gap-3 tick-frame panel px-4 py-3">
+        <div className="sticky bottom-4 mt-4 flex items-center gap-2 tick-frame panel px-4 py-2">
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
           <button
             onClick={() => { if (confirm(`Delete ${selectedIds.size} capture(s) and all their renditions? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
             disabled={bulkDeleteMutation.isPending}
-            className="btn-danger !px-3 !py-1.5 text-sm ml-auto"
+            className="btn-danger !px-4 !py-2 text-sm ml-auto"
           >
             {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
           </button>

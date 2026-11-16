@@ -156,14 +156,14 @@ export function CaptureLightbox({
           <button
             onClick={() => { if (confirm('Delete this capture and all its renditions? This cannot be undone.')) deleteMutation.mutate(); }}
             disabled={deleteMutation.isPending}
-            className="ml-auto flex items-center gap-1.5 text-danger hover:text-danger"
+            className="ml-auto flex items-center gap-2 text-danger hover:text-danger"
           >
             <TrashIcon className="w-3.5 h-3.5" />
             {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
           </button>
         </div>
         {deleteMutation.isError && (
-          <div className="px-4 pb-3 -mt-2 text-xs text-danger shrink-0">{apiErrorMessage(deleteMutation.error)}</div>
+          <div className="px-4 pb-2 -mt-2 text-xs text-danger shrink-0">{apiErrorMessage(deleteMutation.error)}</div>
         )}
       </div>
     </div>

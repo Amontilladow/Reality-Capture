@@ -91,12 +91,12 @@ export default function SubmittalsPage() {
         </div>
 
         {selectedIds.size > 0 && (
-          <div className="flex items-center gap-3 tick-frame panel px-4 py-3">
+          <div className="flex items-center gap-2 tick-frame panel px-4 py-2">
             <span className="text-sm font-medium">{selectedIds.size} selected</span>
             <button
               onClick={() => { if (confirm(`Delete ${selectedIds.size} submittal(s)? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
               disabled={bulkDeleteMutation.isPending}
-              className="btn-danger !px-3 !py-1.5 text-sm ml-auto"
+              className="btn-danger !px-4 !py-2 text-sm ml-auto"
             >
               {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
             </button>

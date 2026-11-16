@@ -240,7 +240,7 @@ export default function SnaggingPage() {
         )}
 
         {selectedIds.size > 0 && (
-          <div className="flex items-center gap-3 tick-frame panel px-4 py-3">
+          <div className="flex items-center gap-2 tick-frame panel px-4 py-2">
             <span className="text-sm font-medium">{selectedIds.size} selected</span>
             <label className="flex items-center gap-2 text-xs text-ink-500">
               <input type="checkbox" checked={allSelected} onChange={() => setSelectedIds(allSelected ? new Set() : new Set(allFilteredIds))} />
@@ -249,7 +249,7 @@ export default function SnaggingPage() {
             <button
               onClick={() => { if (confirm(`Delete ${selectedIds.size} snag item(s)? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
               disabled={bulkDeleteMutation.isPending}
-              className="btn-danger !px-3 !py-1.5 text-sm ml-auto"
+              className="btn-danger !px-4 !py-2 text-sm ml-auto"
             >
               {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
             </button>
