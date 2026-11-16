@@ -56,8 +56,8 @@ export default function MyCalendarPage() {
   return (
     <>
       <PageHeader
-        breadcrumbs={projectId ? [{ label: 'Projects', to: '/projects' }, { label: 'Overview', to: `/projects/${projectId}` }, { label: 'My calendar' }] : undefined}
-        title="My calendar"
+        breadcrumbs={projectId ? [{ label: 'Projects', to: '/projects' }, { label: 'Overview', to: `/projects/${projectId}` }, { label: 'Calendar' }] : undefined}
+        title={projectId ? 'Calendar' : 'My calendar'}
         subtitle={`Your deadlines, inspections and reminders${projectId ? ', plus this project\'s deadlines' : ''} · ${timeZone ?? 'device time'}`}
         actions={
           <>

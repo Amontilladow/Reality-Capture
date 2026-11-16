@@ -1,7 +1,7 @@
 # Graph Report - Reality-Capture  (2026-11-16)
 
 ## Corpus Check
-- 1212 files · ~827,820 words
+- 1212 files · ~827,874 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 38 file(s) not represented in the graph (top: .dxf 13, (none) 12, .example 5)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `1a9cc798`
+- Built from commit: `9193e0e6`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -423,10 +423,10 @@
 10. `Listbox` - 120 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Permissions verified (against a real Postgres + API)` --references--> `SiteRoleRestrictionGuard`  [INFERRED]
-  docs/command-center-plan.md → apps/api/src/common/guards/site-role-restriction.guard.ts
-- `Fixed along the way` --references--> `buildSignals()`  [INFERRED]
-  docs/command-center-plan.md → apps/web/src/lib/executive-signals.ts
+- `Correcting the premise` --references--> `AppShell()`  [INFERRED]
+  docs/workforce-intelligence-architecture.md → apps/web/src/components/layout/AppShell.tsx
+- `Frontend structure` --references--> `AppShell()`  [INFERRED]
+  engineering-review/ARCHITECTURE_STATE.md → apps/web/src/components/layout/AppShell.tsx
 - `C-4. Risk module had zero project-scoped authorization: FIXED` --references--> `RiskService`  [INFERRED]
   docs/KNOWN_ISSUES_AND_REMEDIATION.md → apps/api/src/modules/risk/risk.service.ts
 - `4.4 CRITICAL: Risk module has zero project-scoped authorization (CODE-VERIFIED)` --references--> `RiskService`  [INFERRED]
@@ -1760,16 +1760,16 @@ Nodes (4): Packages, `packages/types` (`@engineeringos/types`), Bugs found and f
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Phase 4B/4C: Help Centre navigation/layout + article rendering/search: VERIFIED COMPLETE (framework; see 4D for content coverage)` connect `HelpPage.tsx` to `convert/__init__.py`, `ProjectDetail.tsx`, `findings`, `test_adm_trial_01.py`, `help/index.ts`?**
-  _High betweenness centrality (0.141) - this node is a cross-community bridge._
+  _High betweenness centrality (0.123) - this node is a cross-community bridge._
 - **What connects `RFC-2822`, `RFC-2822`, `../../tsconfig.base.json` to the rest of the system?**
   _10 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `pipeline.py` be split into smaller, more focused modules?**
   _Cohesion score 0.027809698919788555 - nodes in this community are weakly interconnected._
-- **Why does `ProjectDetail()` connect `ProjectDetail.tsx` to `HelpPage.tsx`, `CAD-to-GIS conversion (architectural floor plan → DRM BDMS 4.1 building-floor draft)`, `apiPost`, `IssueDetail.tsx`, `web/src/lib/captures.api.ts`, `MyCalendarPage.tsx`, `@tanstack/react-query`, `EmailSettingsPage.tsx`, `SendEmailDto`, `EngineeringOS — ARCHITECTURE_STATE.md`, `EngineeringOS Reality Capture — Master Backlog`, `CompanyExecutiveBriefing.tsx`, `useProjectBriefing.ts`, `gmail-client.ts`, `MyTasksPage.tsx`, `PageHeader`, `User guide for M4 engineers`, `TaskFormModal.tsx`?**
-  _High betweenness centrality (0.093) - this node is a cross-community bridge._
+- **Why does `AuthenticatedUser` connect `CurrentUser` to `.findAll`, `types/src/index.ts`, `UsersController`, `ApiKeysController`, `SubmittalsController`, `SnaggingController`, `@tanstack/react-query`, `RfiExternalAccessService`, `.upsert`, `risk.controller.ts`, `SubscriptionController`, `TransmittalsController`, `AiConnectionsController`, `BimController`, `QaqcController`, `AuthenticatedUser`, `ScreenshotsController`, `CompanyRole`, `AiController`, `notifications.service.ts`, `SendEmailDto`, `.getCompanySummary`, `CompanyRole`, `GmailIntegrationController`, `OutlookIntegrationController`, `TenancyController`, `RequireCategoryAction`, `AuthService`, `.sync`, `SharePointIntegrationController`, `.paginate`, `ReportsController`, `ApplicationsController`, `mobile/src/lib/api.ts`, `HelpPage.tsx`, `timeline.controller.ts`, `calendar-integration.service.ts`, `.ask`, `ActivitiesService`, `BuildingsController`, `CapturesController`, `RequireProjectPermission`, `SiteDrawingImportController`, `ProgressReportsService`, `QaController`, `GisPrepController`, `SchedulingService`, `WebhooksController`, `AIProvider`, `productivity.service.ts`, `ReportsService`, `ai.service.spec.ts`, `RootNavigator.tsx`, `audit.interceptor.ts`, `Public`, `UpdatePrivacySettingsDto`, `DocumentsController`, `TeamController`, `drawings.controller.ts`?**
+  _High betweenness centrality (0.110) - this node is a cross-community bridge._
 - **Should `types/src/index.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.02290217552168122 - nodes in this community are weakly interconnected._
-- **Why does `AuthenticatedUser` connect `CurrentUser` to `.findAll`, `types/src/index.ts`, `UsersController`, `ApiKeysController`, `SubmittalsController`, `SnaggingController`, `@tanstack/react-query`, `RfiExternalAccessService`, `.upsert`, `risk.controller.ts`, `SubscriptionController`, `TransmittalsController`, `AiConnectionsController`, `BimController`, `QaqcController`, `AuthenticatedUser`, `ScreenshotsController`, `CompanyRole`, `AiController`, `notifications.service.ts`, `SendEmailDto`, `.getCompanySummary`, `CompanyRole`, `GmailIntegrationController`, `OutlookIntegrationController`, `TenancyController`, `RequireCategoryAction`, `AuthService`, `.sync`, `SharePointIntegrationController`, `.paginate`, `ReportsController`, `ApplicationsController`, `mobile/src/lib/api.ts`, `HelpPage.tsx`, `timeline.controller.ts`, `calendar-integration.service.ts`, `.ask`, `ActivitiesService`, `BuildingsController`, `CapturesController`, `RequireProjectPermission`, `SiteDrawingImportController`, `ProgressReportsService`, `QaController`, `GisPrepController`, `SchedulingService`, `WebhooksController`, `AIProvider`, `productivity.service.ts`, `ReportsService`, `ai.service.spec.ts`, `RootNavigator.tsx`, `audit.interceptor.ts`, `Public`, `UpdatePrivacySettingsDto`, `DocumentsController`, `TeamController`, `drawings.controller.ts`?**
-  _High betweenness centrality (0.077) - this node is a cross-community bridge._
+- **Why does `ProjectDetail()` connect `ProjectDetail.tsx` to `HelpPage.tsx`, `CAD-to-GIS conversion (architectural floor plan → DRM BDMS 4.1 building-floor draft)`, `apiPost`, `IssueDetail.tsx`, `web/src/lib/captures.api.ts`, `MyCalendarPage.tsx`, `@tanstack/react-query`, `EmailSettingsPage.tsx`, `SendEmailDto`, `EngineeringOS — ARCHITECTURE_STATE.md`, `EngineeringOS Reality Capture — Master Backlog`, `CompanyExecutiveBriefing.tsx`, `useProjectBriefing.ts`, `gmail-client.ts`, `MyTasksPage.tsx`, `PageHeader`, `User guide for M4 engineers`, `TaskFormModal.tsx`?**
+  _High betweenness centrality (0.085) - this node is a cross-community bridge._
 - **Should `bim.api.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.04369538077403246 - nodes in this community are weakly interconnected._

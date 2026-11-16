@@ -110,6 +110,10 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
       { to: 'progress-report', label: 'Progress report', icon: IconTrending },
       { to: 'reports', label: 'Reports', icon: IconReport },
       { to: 'risk', label: 'Risk', icon: IconShield },
+      // The project calendar: deadlines, inspections, reminders and (if
+      // connected) the user's meetings. Same page as My workspace's
+      // calendar outside a project.
+      { to: 'my-calendar', label: 'Calendar', icon: IconCheckList },
     ],
   },
   {
@@ -134,7 +138,8 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
     items: [{ to: 'gis-prep', label: 'GIS preparation', icon: IconGlobe }],
   },
   { id: 'intelligence', items: [{ to: 'assistant', label: 'AI assistant', icon: IconSpark }] },
-  MY_WORKSPACE_GROUP,
+  // Inside a project the calendar lives under Reporting & insights.
+  { ...MY_WORKSPACE_GROUP, items: MY_WORKSPACE_GROUP.items.filter((i) => i.to !== 'my-calendar') },
 ];
 
 // A 'subcontractor' project member (SubcontractorRfiAccessGuard) has

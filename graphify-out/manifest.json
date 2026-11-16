@@ -4218,9 +4218,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/AppShell.tsx": {
-    "mtime": 1794779615.3461225,
-    "seen": 1794799073.2428234,
-    "ast_hash": "16c24aaef1ef3c0339d6d810bc4a2ebf",
+    "mtime": 1794800218.7893064,
+    "seen": 1794800292.7843432,
+    "ast_hash": "08d9835818539d9cb64fddca2e780ffb",
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/MessagesBell.tsx": {
@@ -6852,9 +6852,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/MyCalendarPage.tsx": {
-    "mtime": 1794799788.8391309,
-    "seen": 1794799980.6251655,
-    "ast_hash": "eb16f42b10fd429d5212406152f0b1ba",
+    "mtime": 1794800225.5597541,
+    "seen": 1794800292.7882288,
+    "ast_hash": "089297dcf2a39e355790bb66f3f97833",
     "semantic_hash": ""
   },
   "apps/web/src/pages/MyTasksPage.tsx": {
