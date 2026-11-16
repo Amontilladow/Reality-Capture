@@ -984,9 +984,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/config/microsoft-graph.config.ts": {
-    "mtime": 1793934302.5951738,
-    "seen": 1793942412.6009405,
-    "ast_hash": "de557c326555e43e23cd78d0dfb9766a",
+    "mtime": 1794799582.7827573,
+    "seen": 1794799980.6079752,
+    "ast_hash": "dedb83b630dc81de9524e94fad85ce2a",
     "semantic_hash": ""
   },
   "apps/api/src/config/redis.config.ts": {
@@ -3156,9 +3156,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/workforce/calendar-integration/calendar-integration.controller.ts": {
-    "mtime": 1793934302.659174,
-    "seen": 1793942412.6014574,
-    "ast_hash": "8b6dcade8aa81b4256820e58a0b85a07",
+    "mtime": 1794799630.4975781,
+    "seen": 1794799980.617058,
+    "ast_hash": "c514b4f2b4bba1f2d9340a28dfc889b1",
     "semantic_hash": ""
   },
   "apps/api/src/modules/workforce/calendar-integration/calendar-integration.service.spec.ts": {
@@ -3168,9 +3168,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/workforce/calendar-integration/calendar-integration.service.ts": {
-    "mtime": 1793934302.659174,
-    "seen": 1793942412.6014597,
-    "ast_hash": "25b5b313f34d2bb3aa5d88424401f26a",
+    "mtime": 1794799728.3710656,
+    "seen": 1794799980.6170864,
+    "ast_hash": "79057c90ebab3d3e4ec54a09aa62e337",
     "semantic_hash": ""
   },
   "apps/api/src/modules/workforce/calendar-integration/dto/oauth-callback-query.dto.ts": {
@@ -3180,9 +3180,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/workforce/calendar-integration/google-calendar-client.ts": {
-    "mtime": 1793934302.659174,
-    "seen": 1793942412.6014621,
-    "ast_hash": "414d5b23ecc1ab2778100cd832ae9c78",
+    "mtime": 1794799578.3132787,
+    "seen": 1794799980.6171129,
+    "ast_hash": "2c850434224bc7c67dd72ed0e3875cef",
     "semantic_hash": ""
   },
   "apps/api/src/modules/workforce/calendar-integration/oauth-state.util.spec.ts": {
@@ -3192,9 +3192,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/workforce/calendar-integration/oauth-state.util.ts": {
-    "mtime": 1793934302.663174,
-    "seen": 1793942412.6014647,
-    "ast_hash": "015bf9f4f7e89873d71fb8a6e09c8bf1",
+    "mtime": 1794799578.3009458,
+    "seen": 1794799980.6171384,
+    "ast_hash": "2c04efd8b6585d730b2d9f7efcf75532",
     "semantic_hash": ""
   },
   "apps/api/src/modules/workforce/devices/devices.controller.ts": {
@@ -3426,9 +3426,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/workforce/workforce.module.ts": {
-    "mtime": 1793934302.663174,
-    "seen": 1793942412.6015127,
-    "ast_hash": "6559a2c302b413cf6232ebbdf5e5d569",
+    "mtime": 1794799630.497922,
+    "seen": 1794799980.6180427,
+    "ast_hash": "dc7205709b4fc623b151e55c0538c7f1",
     "semantic_hash": ""
   },
   "apps/api/tsconfig.json": {
@@ -6720,33 +6720,33 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/workspace/priority-rules.ts": {
-    "mtime": 1794778856.6642587,
-    "seen": 1794799073.2396362,
-    "ast_hash": "3deddd5cdfcd2d679ede74bd7f53c6ac",
+    "mtime": 1794799657.9840918,
+    "seen": 1794799980.6181118,
+    "ast_hash": "4cb1e7d4e5e8632adfa3f7f5e3c84905",
     "semantic_hash": ""
   },
   "apps/api/src/modules/workspace/workspace.controller.ts": {
-    "mtime": 1794778811.4516134,
-    "seen": 1794799073.239638,
-    "ast_hash": "eebbc5f4ec429aa5205a47f428c3da08",
+    "mtime": 1794799683.5948906,
+    "seen": 1794799980.618114,
+    "ast_hash": "d534a78877efeb7736a0efb8f5fb3604",
     "semantic_hash": ""
   },
   "apps/api/src/modules/workspace/workspace.module.ts": {
-    "mtime": 1794778811.4543908,
-    "seen": 1794799073.239639,
-    "ast_hash": "fb5ce569835b0c5752d87f487fc2f8f7",
+    "mtime": 1794799683.595259,
+    "seen": 1794799980.6181157,
+    "ast_hash": "5340cf694133e83930031d02cf94722e",
     "semantic_hash": ""
   },
   "apps/api/src/modules/workspace/workspace.service.ts": {
-    "mtime": 1794779093.0479069,
-    "seen": 1794799073.2396402,
-    "ast_hash": "787405dd172a8e2e62f4ce0ff28bd87b",
+    "mtime": 1794799669.3232095,
+    "seen": 1794799980.618117,
+    "ast_hash": "6deb4f28080aa846531a770799e06593",
     "semantic_hash": ""
   },
   "apps/web/src/components/command-center/AgendaList.tsx": {
-    "mtime": 1794798600.7698572,
-    "seen": 1794799073.2425106,
-    "ast_hash": "f8fdbb85b742de7df6419aead15d3d41",
+    "mtime": 1794799788.8381772,
+    "seen": 1794799980.62087,
+    "ast_hash": "eaa9b3e027736bc4c0a9a96dbd5c015d",
     "semantic_hash": ""
   },
   "apps/web/src/components/command-center/AttentionCenter.tsx": {
@@ -6792,9 +6792,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/command-center/WelcomePanel.tsx": {
-    "mtime": 1794798580.2206218,
-    "seen": 1794799073.2425244,
-    "ast_hash": "0b113fdf6281c60cc1ef870f72d050b9",
+    "mtime": 1794799788.8400211,
+    "seen": 1794799980.621024,
+    "ast_hash": "641eedf88e07688882fabd00ab4c3ecf",
     "semantic_hash": ""
   },
   "apps/web/src/components/command-center/command-center.test.tsx": {
@@ -6840,21 +6840,21 @@
     "semantic_hash": ""
   },
   "apps/web/src/lib/record-links.ts": {
-    "mtime": 1794779258.4417048,
-    "seen": 1794799073.245636,
-    "ast_hash": "1a3d0ec8880c7dde7fa2bcb5a5f391b3",
+    "mtime": 1794799768.0336807,
+    "seen": 1794799980.6241465,
+    "ast_hash": "554df8f676280f4d376d343214c63ef2",
     "semantic_hash": ""
   },
   "apps/web/src/lib/workspace.api.ts": {
-    "mtime": 1794779242.971609,
-    "seen": 1794799073.2462757,
-    "ast_hash": "01e331fc87d739f1bc2d41d380ee01a6",
+    "mtime": 1794799768.0334249,
+    "seen": 1794799980.6247983,
+    "ast_hash": "39b595f37b3763f1dd0fcd651d120c77",
     "semantic_hash": ""
   },
   "apps/web/src/pages/MyCalendarPage.tsx": {
-    "mtime": 1794798378.8758285,
-    "seen": 1794799073.2466786,
-    "ast_hash": "2242612f07363f446b0d00f2b832289b",
+    "mtime": 1794799788.8391309,
+    "seen": 1794799980.6251655,
+    "ast_hash": "eb16f42b10fd429d5212406152f0b1ba",
     "semantic_hash": ""
   },
   "apps/web/src/pages/MyTasksPage.tsx": {
@@ -6870,9 +6870,39 @@
     "semantic_hash": ""
   },
   "docs/command-center-plan.md": {
-    "mtime": 1794799056.0646198,
-    "seen": 1794799073.249693,
-    "ast_hash": "f8d51269ab6569269d33a9f7a2c49f73",
+    "mtime": 1794799966.4540162,
+    "seen": 1794799980.6282122,
+    "ast_hash": "910c66803d1fe8efe9dad94754b868f2",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/workforce/calendar-integration/calendar-connections.spec.ts": {
+    "mtime": 1794799721.5893505,
+    "seen": 1794799980.6170557,
+    "ast_hash": "1f563f9c7518f0a1b9ff425fd340f706",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/workforce/calendar-integration/outlook-calendar-client.ts": {
+    "mtime": 1794799578.3037062,
+    "seen": 1794799980.61714,
+    "ast_hash": "b3aae26ca7b86475fa43fc4e6ebc8d7a",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/workspace/ConnectCalendar.test.tsx": {
+    "mtime": 1794799951.7521024,
+    "seen": 1794799980.6227484,
+    "ast_hash": "9e5e861c36cf8e5333082285158ff077",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/workspace/ConnectCalendar.tsx": {
+    "mtime": 1794799914.309504,
+    "seen": 1794799980.6227503,
+    "ast_hash": "d0e03ea203170bd8ef5e77b18ecd7526",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/workspace/useCalendarReturnToast.ts": {
+    "mtime": 1794799788.8462303,
+    "seen": 1794799980.6228182,
+    "ast_hash": "ce09b16eb315aa57a1cc84c34906e828",
     "semantic_hash": ""
   },
   "pnpm-lock.yaml": {

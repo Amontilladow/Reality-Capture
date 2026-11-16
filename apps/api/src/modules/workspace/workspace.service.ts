@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, Optional } from '@nestjs/common';
 import type { TransactionSql } from 'postgres';
 import { DatabaseService } from '../../database/database.service';
-import { rankItems, localNow, isValidTimeZone, dayDiff, type WorkItem, type Priority } from './priority-rules';
+import { rankItems, localNow, isValidTimeZone, dayDiff, zonedMidnightUtc, type WorkItem, type Priority } from './priority-rules';
+import { CalendarIntegrationService, CALENDAR_PROVIDERS, type CalendarProvider } from '../workforce/calendar-integration/calendar-integration.service';
 import type { CreateUserTaskDto, UpdateUserTaskDto, SaveItemDto, UpdatePreferencesDto } from './dto/workspace.dto';
 
 // The user's own workspace: personal tasks and reminders, saved items, a
@@ -29,13 +30,18 @@ const MANAGEMENT_ROLES = new Set([
   'engineering_manager', 'project_manager', 'commercial_manager', 'client_representative',
 ]);
 
-export type AgendaCategory = 'my_tasks' | 'project_deadlines' | 'inspections' | 'reminders';
+export type AgendaCategory = 'my_tasks' | 'project_deadlines' | 'inspections' | 'reminders' | 'meetings';
 
 export interface AgendaItem {
   key: string;
-  source: WorkItem['source'];
+  source: WorkItem['source'] | 'event';
   id: string;
   category: AgendaCategory;
+  /** Connected-calendar events only: which calendar, and a link to the event there. */
+  provider?: CalendarProvider;
+  url?: string | null;
+  endTime?: string | null;
+  location?: string | null;
   title: string;
   reference: string | null;
   date: string;
@@ -65,7 +71,79 @@ function toPriority(p: unknown): Priority | null {
 
 @Injectable()
 export class WorkspaceService {
-  constructor(private readonly db: DatabaseService) {}
+  private readonly logger = new Logger(WorkspaceService.name);
+
+  constructor(
+    private readonly db: DatabaseService,
+    @Optional() private readonly calendars?: CalendarIntegrationService,
+  ) {}
+
+  // ── Connected calendars (Google / Outlook) ───────────────────────────────
+
+  async calendarConnections(companyId: string, userId: string) {
+    if (!this.calendars) return [];
+    const configured = this.calendars.configuredProviders();
+    return Promise.all(CALENDAR_PROVIDERS.map(async (provider) => ({
+      provider,
+      configured: configured[provider],
+      ...(await this.calendars!.getStatus(companyId, userId, provider)),
+    })));
+  }
+
+  /**
+   * The caller's connected-calendar events for [from, to] in their zone,
+   * read live (never stored). A provider that fails is reported, not
+   * thrown: the rest of the calendar still loads.
+   */
+  private async externalEvents(companyId: string, userId: string, from: string, to: string, tz: string) {
+    const items: AgendaItem[] = [];
+    const sources: { provider: CalendarProvider; ok: boolean }[] = [];
+    if (!this.calendars) return { items, sources };
+    const timeMin = zonedMidnightUtc(from, tz).toISOString();
+    const timeMax = zonedMidnightUtc(addDay(to), tz).toISOString();
+    const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+    const local = (iso: string) => {
+      const p = Object.fromEntries(fmt.formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
+      return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}` };
+    };
+    for (const provider of CALENDAR_PROVIDERS) {
+      const status = await this.calendars.getStatus(companyId, userId, provider);
+      if (!status.connected) continue;
+      try {
+        const events = await this.calendars.listEvents(companyId, userId, provider, timeMin, timeMax);
+        sources.push({ provider, ok: true });
+        for (const e of events) {
+          const start = e.allDay ? { date: e.start.slice(0, 10), time: null as string | null } : local(e.start);
+          if (start.date < from || start.date > to) continue;
+          items.push({
+            key: `event:${provider}:${e.id}`,
+            source: 'event',
+            id: e.id,
+            category: 'meetings',
+            provider,
+            title: e.title,
+            reference: null,
+            date: start.date,
+            time: start.time,
+            endTime: !e.allDay && e.end ? local(e.end).time : null,
+            location: e.location,
+            url: e.url,
+            status: 'scheduled',
+            priority: null,
+            done: false,
+            mine: true,
+            projectId: null,
+            projectName: null,
+          });
+        }
+      } catch (err) {
+        // Never log token contents; the provider and the failure are enough.
+        this.logger.warn(`Calendar ${provider} read failed for a user: ${(err as Error).message}`);
+        sources.push({ provider, ok: false });
+      }
+    }
+    return { items, sources };
+  }
 
   // ── Preferences ──────────────────────────────────────────────────────────
 
@@ -403,7 +481,10 @@ export class WorkspaceService {
     if (span < 0 || span > 62) throw new BadRequestException('The range must be 0 to 62 days');
     const tz = await this.resolveTimeZone(companyId, userId, q.tz);
     const pid = q.projectId ?? null;
-    return this.db.withTenant(companyId, async (sql) => {
+    // Provider calls run alongside, outside the transaction, so no database
+    // connection is held while Google or Microsoft answer.
+    const externalP = this.externalEvents(companyId, userId, q.from, q.to, tz);
+    const base = await this.db.withTenant(companyId, async (sql) => {
       const sub = await this.subcontractorProjects(sql, userId);
       // The caller's own items across projects, plus (for the one project in
       // view) everyone's deadlines on it. A record's own dates are the only
@@ -491,11 +572,14 @@ export class WorkspaceService {
           projectName: t.projectId ? names.get(t.projectId as string) ?? null : null,
         });
       }
-      items.sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? '99').localeCompare(b.time ?? '99'));
-      // No meeting records exist anywhere in the system yet, so the
-      // calendar says so instead of inventing any.
-      return { timezone: tz, from: q.from, to: q.to, meetingsAvailable: false, items };
+      return items;
     });
+    // Meetings come only from a calendar the user connected themselves;
+    // RealityCapture has no meeting records of its own to invent from.
+    const external = await externalP;
+    const items = [...base, ...external.items]
+      .sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? '99').localeCompare(b.time ?? '99'));
+    return { timezone: tz, from: q.from, to: q.to, meetingsAvailable: external.sources.length > 0, calendars: external.sources, items };
   }
 
   // ── Search ───────────────────────────────────────────────────────────────
@@ -547,4 +631,8 @@ export class WorkspaceService {
       return { query: q, results: rows.map((r) => ({ ...r, projectName: r.projectId ? names.get(r.projectId as string) ?? null : null })) };
     });
   }
+}
+
+function addDay(date: string): string {
+  return new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
 }

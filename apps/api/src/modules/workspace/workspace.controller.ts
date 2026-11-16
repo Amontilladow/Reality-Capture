@@ -1,4 +1,7 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, ParseUUIDPipe, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, ParseUUIDPipe, BadRequestException, HttpStatus, Redirect } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Public } from '../../common/decorators/public.decorator';
+import { CalendarIntegrationService, type CalendarProvider } from '../workforce/calendar-integration/calendar-integration.service';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '@engineeringos/types';
@@ -82,6 +85,64 @@ export class WorkspaceController {
   @Get('search')
   async search(@CurrentUser() u: AuthenticatedUser, @Query('q') q = '') {
     return { data: await this.svc.search(u.companyId, u.id, q.slice(0, 100)), error: null };
+  }
+}
+
+// Connect the user's own Google or Outlook calendar (read-only), so their
+// meetings show on My calendar. Tokens are stored encrypted, per user, in
+// the same table the Workforce Google connection uses.
+const PROVIDER_BY_SLUG: Record<string, CalendarProvider> = { google: 'google_calendar', outlook: 'outlook_calendar' };
+function providerOf(slug: string): CalendarProvider {
+  const p = PROVIDER_BY_SLUG[slug];
+  if (!p) throw new BadRequestException('Unknown calendar provider');
+  return p;
+}
+
+@ApiTags('workspace')
+@ApiBearerAuth()
+@Controller('me/calendar-connections')
+export class CalendarConnectionsController {
+  constructor(
+    private readonly workspace: WorkspaceService,
+    private readonly calendars: CalendarIntegrationService,
+    private readonly config: ConfigService,
+  ) {}
+
+  @Get()
+  @ApiOperation({ summary: "The caller's calendar connections, and which providers this deployment offers" })
+  async list(@CurrentUser() u: AuthenticatedUser) {
+    return { data: await this.workspace.calendarConnections(u.companyId, u.id), error: null };
+  }
+
+  @Get(':provider/authorize-url')
+  async authorizeUrl(@CurrentUser() u: AuthenticatedUser, @Param('provider') slug: string) {
+    return { data: { url: this.calendars.getAuthorizeUrl(u.companyId, u.id, providerOf(slug), 'calendar') }, error: null };
+  }
+
+  @Delete(':provider')
+  async disconnect(@CurrentUser() u: AuthenticatedUser, @Param('provider') slug: string) {
+    await this.calendars.disconnect(u.companyId, u.id, providerOf(slug));
+    return { data: { disconnected: true }, error: null };
+  }
+
+  // Microsoft redirects the browser here (no JWT); the signed state is the
+  // authorization, exactly as in the Workforce Google callback. Google
+  // connections come back through that existing callback instead.
+  @Public()
+  @Get('outlook/callback')
+  @Redirect()
+  @ApiOperation({ summary: 'Microsoft OAuth callback -- not called directly by API clients' })
+  async outlookCallback(@Query('code') code?: string, @Query('state') state?: string, @Query('error') error?: string) {
+    const frontendUrl = this.config.get<string>('app.frontendUrl');
+    const to = (outcome: 'connected' | 'declined' | 'failed') =>
+      ({ url: `${frontendUrl}/projects/my-calendar?calendar=${outcome}&provider=outlook_calendar`, statusCode: HttpStatus.FOUND });
+    if (error || !code || !state) return to(error === 'access_denied' ? 'declined' : 'failed');
+    try {
+      await this.calendars.handleCallback(code, state, 'outlook_calendar');
+      return to('connected');
+    } catch {
+      return to('failed');
+    }
   }
 }
 

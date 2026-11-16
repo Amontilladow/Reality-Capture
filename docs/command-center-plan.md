@@ -107,10 +107,30 @@ The user's saved IANA zone (`preferences.timezone`) wins, else the browser's zon
 
 ## Limitations
 
-- **Meetings** do not exist in RealityCapture; the calendar says so instead of inventing any. External calendar sync stays a future capability (only Workforce has one).
+- **Meetings** do not exist in RealityCapture; they appear only once a user connects their own calendar (below). Without one, the calendar says so instead of inventing any.
 - **Drawings awaiting review** are project-wide: site drawings have no reviewer or due-date column, so they can't be "awaiting *my* review" or overdue.
 - **Revision conflicts** have no data model, so they aren't shown.
 - **Personal tasks can't be shared** yet (private by default, with no share option).
 - **Reminders don't send notifications** yet; they appear in the calendar, priorities and workspace.
 - **Package progress** isn't included for management; no package-level data exists.
 - Submittals and QA inspections link to their module lists, since those pages have no per-record URL.
+
+## Connect calendar (Google / Outlook), optional
+
+- **+ Connect calendar** on My calendar and the Overview's calendar card offers Google Calendar and Outlook Calendar. It is read-only: RealityCapture never creates or changes events there.
+- **Reuses** the Workforce Google connection: the same encrypted token table (`workforce_calendar_integrations`, one row per user and provider), the same Google OAuth client and callback, and the same HMAC-signed state. The state now also carries where to return (`workforce` or `calendar`), signed, so it can't become an open redirect. Outlook uses the Outlook-email Entra app registration with its own callback and the `Calendars.Read` scope. No schema change.
+- **Events are read live** for the range on screen and shown as **Meetings**. They are never stored. Provider calls run outside the database transaction. If a provider fails, the rest of the calendar still loads with a "couldn't reach" note.
+- **Routes**: `GET /me/calendar-connections`, `GET /me/calendar-connections/:google|outlook/authorize-url`, `DELETE /me/calendar-connections/:provider`, `GET /me/calendar-connections/outlook/callback` (public; the signed state is the authorization).
+- **Setup needed per deployment**:
+  - **Google**: the existing `GOOGLE_OAUTH_*` variables, with the calendar.readonly scope on the consent screen.
+  - **Outlook**: `MICROSOFT_OAUTH_CLIENT_ID/SECRET/TENANT` (already used for Outlook email), plus `MICROSOFT_CALENDAR_REDIRECT_URI` registered on the Entra app, with the delegated `Calendars.Read` permission.
+  - A provider that isn't set up is shown, disabled, as "not set up yet".
+- **Tested**:
+  - unit tests for the Outlook provider path, rotated refresh tokens, the signed return-to (forged and missing state) and DST-safe local midnight
+  - live API checks of the consent URL (read-only scope), the declined, failed and forged callbacks (nothing stored), an unknown provider, an unconfigured provider, and agenda behaviour when a provider is unreachable
+  - web tests for the connect menu
+- **Not verified here**: a real sign-in and event read against Google or Microsoft, since this sandbox has no credentials for either. That needs one check on staging once the credentials are set.
+- **Limitations**:
+  - the primary calendar only
+  - a multi-day all-day event shows on its first day
+  - personal Microsoft accounts are excluded while `MICROSOFT_OAUTH_TENANT=organizations` (the existing default)

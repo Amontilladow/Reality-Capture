@@ -5,6 +5,7 @@ import { useNow, zonedParts, greetingFor, monthRange, fmt } from './time';
 import { usePreferences, useAgenda, dayMarks } from './hooks';
 import { MiniCalendar } from './MiniCalendar';
 import { AgendaList } from './AgendaList';
+import { ConnectCalendar } from '../workspace/ConnectCalendar';
 
 // The top of the Command Center: who you are, what time it is where you
 // are, and what's on which day. Greeting and clock follow the user's
@@ -101,6 +102,10 @@ export function WelcomePanel({ projectId, subtitle, onAddTask }: { projectId?: s
           <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-ink-300" />Due</span>
           <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-danger" />Overdue</span>
           <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-ok" />All done</span>
+        </div>
+        <div className="mt-4 pt-4 border-t border-ink-100/10 flex items-center justify-between gap-2">
+          <span className="text-xs text-ink-500">{agenda.data?.meetingsAvailable ? 'Your meetings are included.' : 'See your meetings here too.'}</span>
+          <ConnectCalendar compact />
         </div>
       </div>
     </section>

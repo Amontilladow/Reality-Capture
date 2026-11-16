@@ -112,10 +112,16 @@ export interface WorkspaceResponse {
 export const getWorkspace = (projectId?: string) =>
   apiGet<WorkspaceResponse>('/me/workspace', { params: { projectId, tz: browserTimeZone() } });
 
-export type AgendaCategory = 'my_tasks' | 'project_deadlines' | 'inspections' | 'reminders';
+export type AgendaCategory = 'my_tasks' | 'project_deadlines' | 'inspections' | 'reminders' | 'meetings';
+export type CalendarProvider = 'google_calendar' | 'outlook_calendar';
 export interface AgendaItem {
   key: string;
-  source: WorkSource;
+  source: WorkSource | 'event';
+  /** Events from a connected Google/Outlook calendar (read-only). */
+  provider?: CalendarProvider;
+  url?: string | null;
+  endTime?: string | null;
+  location?: string | null;
   id: string;
   category: AgendaCategory;
   title: string;
@@ -130,7 +136,25 @@ export interface AgendaItem {
   projectName: string | null;
   recordType?: string | null;
 }
-export interface AgendaResponse { timezone: string; from: string; to: string; meetingsAvailable: boolean; items: AgendaItem[] }
+export interface AgendaResponse {
+  timezone: string; from: string; to: string; meetingsAvailable: boolean;
+  /** Connected calendars read for this range, and whether each read worked. */
+  calendars?: { provider: CalendarProvider; ok: boolean }[];
+  items: AgendaItem[];
+}
+
+export interface CalendarConnection {
+  provider: CalendarProvider;
+  configured: boolean;
+  connected: boolean;
+  connectedAt: string | null;
+  lastUsedAt: string | null;
+}
+const SLUG: Record<CalendarProvider, string> = { google_calendar: 'google', outlook_calendar: 'outlook' };
+export const CALENDAR_PROVIDER_LABEL: Record<CalendarProvider, string> = { google_calendar: 'Google Calendar', outlook_calendar: 'Outlook Calendar' };
+export const listCalendarConnections = () => apiGet<CalendarConnection[]>('/me/calendar-connections');
+export const getCalendarAuthorizeUrl = (p: CalendarProvider) => apiGet<{ url: string }>(`/me/calendar-connections/${SLUG[p]}/authorize-url`);
+export const disconnectCalendar = (p: CalendarProvider) => apiDelete(`/me/calendar-connections/${SLUG[p]}`);
 export const getAgenda = (from: string, to: string, projectId?: string) =>
   apiGet<AgendaResponse>('/me/agenda', { params: { from, to, projectId, tz: browserTimeZone() } });
 

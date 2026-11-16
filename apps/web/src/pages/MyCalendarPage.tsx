@@ -6,7 +6,9 @@ import { AgendaList } from '../components/command-center/AgendaList';
 import { TaskFormModal } from '../components/workspace/TaskFormModal';
 import { usePreferences, useToday, useAgenda, dayMarks } from '../components/command-center/hooks';
 import { addDays, monthRange, weekOf, fmt } from '../components/command-center/time';
-import type { AgendaCategory, AgendaItem } from '../lib/workspace.api';
+import { CALENDAR_PROVIDER_LABEL, type AgendaCategory, type AgendaItem } from '../lib/workspace.api';
+import { ConnectCalendar } from '../components/workspace/ConnectCalendar';
+import { useCalendarReturnToast } from '../components/workspace/useCalendarReturnToast';
 
 type View = 'month' | 'week' | 'day';
 const FILTERS: { key: AgendaCategory; label: string; dot: string }[] = [
@@ -14,6 +16,7 @@ const FILTERS: { key: AgendaCategory; label: string; dot: string }[] = [
   { key: 'project_deadlines', label: 'Project deadlines', dot: 'bg-ink-300' },
   { key: 'inspections', label: 'Inspections', dot: 'bg-warn' },
   { key: 'reminders', label: 'Personal reminders', dot: 'bg-ink-100' },
+  { key: 'meetings', label: 'Meetings', dot: 'bg-high' },
 ];
 
 // The calendar reads dates straight from the records themselves (issue
@@ -31,6 +34,7 @@ export default function MyCalendarPage() {
   const [cursor, setCursor] = useState<string>(params.get('date') ?? today);
   const [hidden, setHidden] = useState<Set<AgendaCategory>>(new Set());
   const [creating, setCreating] = useState(false);
+  useCalendarReturnToast();
 
   const range = view === 'month' ? monthRange(cursor) : view === 'week' ? { from: weekOf(cursor)[0], to: weekOf(cursor)[6] } : { from: cursor, to: cursor };
   const agenda = useAgenda(range.from, range.to, projectId);
@@ -55,7 +59,12 @@ export default function MyCalendarPage() {
         breadcrumbs={projectId ? [{ label: 'Projects', to: '/projects' }, { label: 'Overview', to: `/projects/${projectId}` }, { label: 'My calendar' }] : undefined}
         title="My calendar"
         subtitle={`Your deadlines, inspections and reminders${projectId ? ', plus this project\'s deadlines' : ''} · ${timeZone ?? 'device time'}`}
-        actions={<button type="button" onClick={() => setCreating(true)} className="btn-primary">Add reminder</button>}
+        actions={
+          <>
+            <ConnectCalendar />
+            <button type="button" onClick={() => setCreating(true)} className="btn-primary">Add reminder</button>
+          </>
+        }
       />
       <div className="p-4 sm:p-6 grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
         <section className="xl:col-span-2 panel p-6 space-y-4">
@@ -67,18 +76,25 @@ export default function MyCalendarPage() {
               ))}
             </div>
             <div className="flex flex-wrap gap-2" aria-label="Show">
-              {FILTERS.map((f) => (
+              {FILTERS.filter((f) => f.key !== 'meetings' || agenda.data?.meetingsAvailable).map((f) => (
                 <button key={f.key} type="button" aria-pressed={!hidden.has(f.key)} onClick={() => toggleFilter(f.key)}
                   className={`h-8 px-4 rounded-full text-xs font-medium border flex items-center gap-2 ${hidden.has(f.key) ? 'border-ink-100/10 text-ink-500 line-through' : 'border-ink-100/20 text-ink-100'}`}>
                   <span className={`w-2 h-2 rounded-full ${f.dot}`} />{f.label}
                 </button>
               ))}
-              <span className="h-8 px-4 rounded-full text-xs border border-dashed border-ink-100/15 text-ink-500 flex items-center" title="No meeting records exist in RealityCapture yet">
-                Meetings: not tracked yet
-              </span>
+              {agenda.data && !agenda.data.meetingsAvailable && (
+                <span className="h-8 px-4 rounded-full text-xs border border-dashed border-ink-100/15 text-ink-500 flex items-center">
+                  Meetings: connect a calendar to see them
+                </span>
+              )}
             </div>
           </div>
 
+          {agenda.data?.calendars?.some((c) => !c.ok) && (
+            <p role="status" className="text-xs text-warn">
+              Couldn't reach {agenda.data.calendars.filter((c) => !c.ok).map((c) => CALENDAR_PROVIDER_LABEL[c.provider]).join(' and ')} just now; showing everything else.
+            </p>
+          )}
           {view === 'month' && (
             <MiniCalendar today={today} selected={selected} month={cursor} marks={marks} onSelect={setSelected} onMonthChange={setCursor} />
           )}

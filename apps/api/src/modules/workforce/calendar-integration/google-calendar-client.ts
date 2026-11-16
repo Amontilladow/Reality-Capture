@@ -16,6 +16,19 @@ export interface CalendarEventSummary {
   endTime: string;
 }
 
+// An event from the user's own external calendar, for the personal
+// calendar view: an all-day event carries a YYYY-MM-DD start; a timed one
+// an ISO instant.
+export interface ExternalCalendarEvent {
+  id: string;
+  title: string;
+  allDay: boolean;
+  start: string;
+  end: string | null;
+  url: string | null;
+  location: string | null;
+}
+
 // Thin wrapper over Google's OAuth token endpoint and Calendar API v3;
 // deliberately no `googleapis` SDK dependency, same "raw HTTP client over a
 // heavy vendor SDK" preference this codebase already applies elsewhere
@@ -30,6 +43,10 @@ export class GoogleCalendarClient {
     private readonly http: HttpService,
     private readonly config: ConfigService,
   ) {}
+
+  isConfigured(): boolean {
+    return Boolean(this.config.get<string>('googleCalendar.clientId') && this.config.get<string>('googleCalendar.redirectUri'));
+  }
 
   buildAuthorizeUrl(state: string): string {
     const clientId = this.config.get<string>('googleCalendar.clientId');
@@ -94,6 +111,29 @@ export class GoogleCalendarClient {
         title: item.summary ?? '(No title)',
         startTime: item.start!.dateTime!,
         endTime: item.end!.dateTime!,
+      }));
+  }
+
+  /** Every event (all-day included) overlapping [timeMin, timeMax). */
+  async listEventsInRange(accessToken: string, timeMin: string, timeMax: string): Promise<ExternalCalendarEvent[]> {
+    const params = new URLSearchParams({ timeMin, timeMax, singleEvents: 'true', orderBy: 'startTime', maxResults: '250' });
+    const res = await firstValueFrom(this.http.get(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }));
+    const items = (res.data.items ?? []) as Array<{
+      id: string; summary?: string; status?: string; htmlLink?: string; location?: string;
+      start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string };
+    }>;
+    return items
+      .filter((e) => e.status !== 'cancelled' && (e.start?.dateTime || e.start?.date))
+      .map((e) => ({
+        id: e.id,
+        title: e.summary ?? '(No title)',
+        allDay: !e.start?.dateTime,
+        start: e.start?.dateTime ?? e.start!.date!,
+        end: e.end?.dateTime ?? e.end?.date ?? null,
+        url: e.htmlLink ?? null,
+        location: e.location ?? null,
       }));
   }
 

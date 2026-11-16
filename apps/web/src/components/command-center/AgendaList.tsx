@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { showToast } from '../../store/toast.store';
-import { updateMyTask, type AgendaItem } from '../../lib/workspace.api';
+import { updateMyTask, CALENDAR_PROVIDER_LABEL, type AgendaItem } from '../../lib/workspace.api';
 import { recordHref, RECORD_LABEL, formatTime } from '../../lib/record-links';
 import { useInvalidateWorkspace } from './hooks';
 
@@ -11,6 +11,7 @@ const CATEGORY_DOT: Record<AgendaItem['category'], string> = {
   project_deadlines: 'bg-ink-300',
   inspections: 'bg-warn',
   reminders: 'bg-ink-100',
+  meetings: 'bg-high',
 };
 
 // One day's (or one range's) calendar items. A personal task or reminder
@@ -60,7 +61,13 @@ export function AgendaList({ items, today, hour12, empty = 'Nothing scheduled.',
               <span aria-hidden="true" className={`w-2 h-2 mx-2 shrink-0 rounded-full ${CATEGORY_DOT[it.category]}`} />
             )}
             <div className="min-w-0 flex-1">
-              {href ? (
+              {it.source === 'event' ? (
+                it.url ? (
+                  <a href={it.url} target="_blank" rel="noopener noreferrer" className="block text-sm font-medium truncate text-ink-100 hover:text-blueprint">
+                    {it.title}<span className="sr-only"> (opens your calendar in a new tab)</span>
+                  </a>
+                ) : <span className="block text-sm font-medium truncate text-ink-100">{it.title}</span>
+              ) : href ? (
                 <Link to={href} className={`block text-sm font-medium truncate hover:text-blueprint ${it.done ? 'line-through text-ink-500' : 'text-ink-100'}`}>
                   {it.reference ? `${it.reference} · ` : ''}{it.title}
                 </Link>
@@ -68,15 +75,16 @@ export function AgendaList({ items, today, hour12, empty = 'Nothing scheduled.',
                 <span className={`block text-sm font-medium truncate ${it.done ? 'line-through text-ink-500' : 'text-ink-100'}`}>{it.title}</span>
               )}
               <span className="block text-xs text-ink-500 truncate">
-                {RECORD_LABEL[it.source]}
+                {it.source === 'event' && it.provider ? `Meeting · ${CALENDAR_PROVIDER_LABEL[it.provider]}` : RECORD_LABEL[it.source]}
                 {showDate && ` · ${new Date(`${it.date}T12:00:00Z`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })}`}
-                {it.time && ` · ${formatTime(it.time, hour12)}`}
+                {it.time ? ` · ${formatTime(it.time, hour12)}${it.endTime ? `–${formatTime(it.endTime, hour12)}` : ''}` : it.source === 'event' ? ' · All day' : ''}
+                {it.location && ` · ${it.location}`}
                 {it.projectName && ` · ${it.projectName}`}
               </span>
             </div>
             {it.done ? (
               <span className="text-xs font-medium text-ok shrink-0">Done</span>
-            ) : overdue ? (
+            ) : overdue && it.source !== 'event' ? (
               <span className="text-xs font-medium text-danger shrink-0">Overdue</span>
             ) : null}
           </li>

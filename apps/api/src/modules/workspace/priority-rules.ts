@@ -164,3 +164,20 @@ export function localNow(tz: string, now: Date = new Date()): { today: string; t
   );
   return { today: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
 }
+
+/** The UTC instant of local midnight at the start of `date` (YYYY-MM-DD) in `tz`; DST-safe. */
+export function zonedMidnightUtc(date: string, tz: string): Date {
+  const [y, m, d] = date.split('-').map(Number);
+  const target = Date.UTC(y, m - 1, d, 0, 0);
+  let guess = target;
+  // Two passes settle any offset, including a DST change on that day.
+  for (let i = 0; i < 2; i++) {
+    const p = Object.fromEntries(
+      new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+        .formatToParts(new Date(guess)).map((x) => [x.type, x.value]),
+    );
+    const asLocal = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute));
+    guess += target - asLocal;
+  }
+  return new Date(guess);
+}

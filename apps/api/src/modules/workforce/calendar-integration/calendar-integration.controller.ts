@@ -35,8 +35,15 @@ export class CalendarIntegrationController {
   @ApiOperation({ summary: 'Google OAuth callback -- not called directly by API clients' })
   async callback(@Query() query: OAuthCallbackQueryDto) {
     const frontendUrl = this.config.get<string>('app.frontendUrl');
-    const redirectTo = (outcome: 'connected' | 'declined' | 'failed') =>
-      ({ url: `${frontendUrl}/workforce?calendar=${outcome}`, statusCode: HttpStatus.FOUND });
+    // The same Google client serves the personal calendar too; its signed
+    // state says which page started the flow.
+    const returnTo = this.svc.returnToFromState(query.state);
+    const redirectTo = (outcome: 'connected' | 'declined' | 'failed') => ({
+      url: returnTo === 'calendar'
+        ? `${frontendUrl}/projects/my-calendar?calendar=${outcome}&provider=google_calendar`
+        : `${frontendUrl}/workforce?calendar=${outcome}`,
+      statusCode: HttpStatus.FOUND,
+    });
 
     if (query.error || !query.code || !query.state) {
       return redirectTo(query.error === 'access_denied' ? 'declined' : 'failed');

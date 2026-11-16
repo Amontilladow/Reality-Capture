@@ -21,7 +21,7 @@ export function recordHref(type: string, projectId: string | null | undefined, i
 
 export const RECORD_LABEL: Record<string, string> = {
   task: 'My task', reminder: 'Reminder', issue: 'Issue', rfi: 'RFI', snag: 'Snag', qaqc: 'QA/QC', submittal: 'Submittal',
-  inspection: 'Inspection', drawing: 'Drawing', project: 'Project', user: 'Person', saved: 'Saved',
+  inspection: 'Inspection', drawing: 'Drawing', project: 'Project', user: 'Person', saved: 'Saved', event: 'Meeting',
 };
 
 /** "Today, 3:00 PM", "Tomorrow", "Overdue by 2 days", "Fri 21 Nov". */
