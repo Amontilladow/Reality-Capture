@@ -256,14 +256,6 @@ export function IssueDetail({
         { label: downloading === 'xls' ? 'Preparing Excel…' : 'Excel (XLS)', icon: <DownloadIcon />, onSelect: handleDownloadXls, disabled: downloading === 'xls' },
       ],
     },
-    {
-      items: [{
-        label: 'Delete issue',
-        icon: <TrashIcon />,
-        danger: true,
-        onSelect: () => { if (confirm('Delete this issue? This cannot be undone.')) deleteMutation.mutate(); },
-      }],
-    },
   ];
 
   const statusSections: MenuSection[] = [
@@ -329,6 +321,13 @@ export function IssueDetail({
               </button>
             ) : null}
             <SaveButton itemType="issue" itemId={issue.id} />
+            <button
+              onClick={() => { if (confirm('Delete this issue? This cannot be undone.')) deleteMutation.mutate(); }}
+              disabled={deleteMutation.isPending}
+              className="btn-secondary !text-danger"
+            >
+              <TrashIcon /> {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+            </button>
             <Menu
               label="More actions"
               buttonClassName="btn-secondary !w-9 !px-0"
@@ -337,6 +336,7 @@ export function IssueDetail({
             />
           </div>
         </div>
+        {deleteMutation.isError && <p className="field-error">{apiErrorMessage(deleteMutation.error)}</p>}
 
         {/* Where the issue is in its workflow. */}
         {ISSUE_STATUS_FLOW.includes(issue.status) && (

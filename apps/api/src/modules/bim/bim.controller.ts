@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { BimService } from './bim.service';
 import { GetModelUploadUrlDto } from './dto/get-model-upload-url.dto';
@@ -6,9 +6,11 @@ import { RegisterBimModelDto } from './dto/register-bim-model.dto';
 import { UpdateElementStatusDto } from './dto/update-element-status.dto';
 import { LinkCaptureToElementDto } from './dto/link-capture-to-element.dto';
 import { CreatePinForElementDto } from './dto/create-pin-for-element.dto';
+import { BulkDeleteDto } from '../../common/dto/bulk-delete.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireFeature } from '../../common/decorators/require-feature.decorator';
 import { RequireCategoryAction } from '../../common/decorators/require-category-action.decorator';
+import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
 
 @ApiTags('bim')
@@ -42,6 +44,23 @@ export class BimController {
   @ApiOperation({ summary: 'Poll IFC processing status/progress for a model' })
   async getModelStatus(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('modelId') modelId: string) {
     return { data: await this.svc.getModelStatus(u.companyId, pid, modelId), error: null };
+  }
+
+  @Delete('models/:modelId')
+  @RequireProjectPermission('manage_project_records')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete a BIM model and every element extracted from it' })
+  async deleteModel(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('modelId') modelId: string) {
+    await this.svc.deleteModel(u.companyId, pid, modelId);
+    return { data: { message: 'BIM model deleted.' }, error: null };
+  }
+
+  @Post('models/bulk-delete')
+  @RequireProjectPermission('manage_project_records')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete multiple BIM models at once' })
+  async bulkDeleteModels(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: BulkDeleteDto) {
+    return { data: await this.svc.bulkDeleteModels(u.companyId, pid, dto.ids), error: null };
   }
 
   @Post('models/:modelId/reprocess')
