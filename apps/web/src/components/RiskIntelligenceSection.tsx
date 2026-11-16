@@ -23,7 +23,7 @@ import {
   getRiskClusters, getRiskDataAvailability, listRisks, getRisk, getRiskChain, getRiskEvidence, getRiskHistory,
   overrideRisk, clearRiskOverride, setRiskStatus, getAiBriefing, getAiExplanation, downloadRiskPdf,
   setHumanAssessment, setHumanAssessmentByEntity, setMatrixOverride, getRiskByEntity, assignRiskOwner, setRiskDueDate,
-  getMatrixDiscrepancies, getRiskHeatmap, getRiskMovement, RISK_DRIVERS, RISK_DRIVER_LABELS,
+  getMatrixDiscrepancies, getRiskHeatmap, getRiskMovement, RISK_DRIVERS, RISK_DRIVER_LABELS, deleteRisk, bulkDeleteRisks,
   type Risk, type RiskLevel, type RiskStatus, type RiskMatrixLevel, type RiskDriver, type RiskMatrixDiscrepancy,
 } from '../lib/risk.api';
 import { Listbox } from './ui/Listbox';
@@ -114,12 +114,18 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
   const [graphFocusNodeId, setGraphFocusNodeId] = useState<string | undefined>(undefined);
   const [filters, setFilters] = useState<RegisterFilters>(DEFAULT_REGISTER_FILTERS);
   const [movementDays, setMovementDays] = useState<7 | 14 | 30>(7);
+  const [selectedRiskIds, setSelectedRiskIds] = useState<Set<string>>(new Set());
   const registerRef = useRef<HTMLDivElement>(null);
 
   const invalidateAll = () => {
     ['risk-summary', 'risk-top', 'risk-emerging', 'risk-by-discipline', 'risk-clusters', 'risk-data-availability', 'risk-register', 'risk-discrepancies', 'risk-heatmap', 'risk-movement']
       .forEach((key) => queryClient.invalidateQueries({ queryKey: [key, projectId] }));
   };
+
+  const bulkDeleteRisksMutation = useMutation({
+    mutationFn: () => bulkDeleteRisks(projectId, [...selectedRiskIds]),
+    onSuccess: () => { invalidateAll(); setSelectedRiskIds(new Set()); },
+  });
 
   const summaryQuery = useQuery({ queryKey: ['risk-summary', projectId], queryFn: () => getRiskSummary(projectId) });
   const topQuery = useQuery({ queryKey: ['risk-top', projectId], queryFn: () => getTopRisks(projectId, 5) });
@@ -501,6 +507,19 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
 
           {/* Risk Register: the primary working area (brief section 4E) */}
           <div ref={registerRef}>
+            {selectedRiskIds.size > 0 && (
+              <div className="flex items-center gap-3 tick-frame panel px-4 py-3 mb-4">
+                <span className="text-sm font-medium">{selectedRiskIds.size} selected</span>
+                <button
+                  onClick={() => { if (confirm(`Delete ${selectedRiskIds.size} risk(s) and their entire graph/evidence trails? This cannot be undone.`)) bulkDeleteRisksMutation.mutate(); }}
+                  disabled={bulkDeleteRisksMutation.isPending}
+                  className="btn-danger !px-3 !py-1.5 text-sm ml-auto"
+                >
+                  {bulkDeleteRisksMutation.isPending ? 'Deleting…' : 'Delete selected'}
+                </button>
+                {bulkDeleteRisksMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteRisksMutation.error)}</span>}
+              </div>
+            )}
             <RiskRegisterTable
               risks={allRisks}
               members={members}
@@ -508,6 +527,17 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
               filters={filters}
               onFiltersChange={setFilters}
               onSelectRisk={openRisk}
+              selectedIds={selectedRiskIds}
+              onToggleSelect={(id) => setSelectedRiskIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(id)) next.delete(id); else next.add(id);
+                return next;
+              })}
+              onToggleSelectAll={(ids) => setSelectedRiskIds((prev) => {
+                const allIn = ids.every((id) => prev.has(id));
+                if (allIn) return new Set([...prev].filter((id) => !ids.includes(id)));
+                return new Set([...prev, ...ids]);
+              })}
             />
           </div>
         </>
@@ -583,6 +613,10 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
   const aiExplanationMutation = useMutation({ mutationFn: () => getAiExplanation(projectId, riskId) });
   const ownerMutation = useMutation({ mutationFn: (ownerId: string | null) => assignRiskOwner(projectId, riskId, ownerId), onSuccess: invalidate });
   const dueDateMutation = useMutation({ mutationFn: (dueDate: string | null) => setRiskDueDate(projectId, riskId, dueDate), onSuccess: invalidate });
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteRisk(projectId, riskId),
+    onSuccess: () => { onChanged(); onClose(); },
+  });
 
   const risk = riskQuery.data;
   const tone = risk ? dueDateTone(risk) : 'none';
@@ -770,6 +804,18 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
                 </button>
               </div>
             )}
+          </div>
+
+          <div>
+            <div className="field-label !mb-2 !text-danger">Danger zone</div>
+            <button
+              onClick={() => { if (confirm('Delete this risk and its entire graph/evidence trail? This cannot be undone.')) deleteMutation.mutate(); }}
+              disabled={deleteMutation.isPending}
+              className="btn-danger !px-3 !py-2 text-sm"
+            >
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete risk'}
+            </button>
+            {deleteMutation.isError && <p className="field-error mt-2">{apiErrorMessage(deleteMutation.error)}</p>}
           </div>
 
           {(historyQuery.data?.length ?? 0) > 1 && (

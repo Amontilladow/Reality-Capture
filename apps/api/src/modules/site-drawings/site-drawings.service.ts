@@ -357,6 +357,48 @@ export class SiteDrawingsService {
     });
   }
 
+  // Deletes the drawing itself, not just a revision -- the register entry
+  // and its ENTIRE revision history, for cleanup of test data, unlike
+  // addRevision()'s supersede-don't-delete model for ordinary use.
+  // site_drawing_revisions.drawing_id -> site_drawings(id) ON DELETE
+  // CASCADE (migration 072) removes every revision and, in turn, every
+  // site_drawing_offline_package referencing them, in the same statement;
+  // site_drawings.current_revision_id -> site_drawing_revisions(id) is NO
+  // ACTION but never blocks this, since the row carrying that column is
+  // itself being deleted, not surviving with a dangling pointer. Only the
+  // S3 objects behind each revision's storage_key need separate cleanup
+  // (an external-provider revision has none, hence deleteIfExists).
+  async delete(companyId: string, projectId: string, drawingId: string): Promise<void> {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+    const result = await this.db.withTenant(companyId, async (sql) => {
+      const revisions = await sql<{ storageKey: string | null }[]>`
+        SELECT storage_key FROM site_drawing_revisions WHERE drawing_id = ${drawingId} AND project_id = ${projectId}
+      `;
+      const deleteResult = await sql`
+        DELETE FROM site_drawings WHERE id = ${drawingId} AND project_id = ${projectId} AND company_id = ${companyId}
+      `;
+      return { revisions, deleteResult };
+    });
+    if (result.deleteResult.count === 0) throw new NotFoundException(`Drawing ${drawingId} not found.`);
+
+    const keys = result.revisions.map(r => r.storageKey).filter((k): k is string => Boolean(k));
+    Promise.allSettled(keys.map(k => this.storage.deleteIfExists(k))).catch(() => {});
+  }
+
+  async bulkDelete(companyId: string, projectId: string, drawingIds: string[]): Promise<{ deleted: number; failed: number }> {
+    let deleted = 0;
+    let failed = 0;
+    for (const id of drawingIds) {
+      try {
+        await this.delete(companyId, projectId, id);
+        deleted++;
+      } catch {
+        failed++;
+      }
+    }
+    return { deleted, failed };
+  }
+
   async listRevisions(companyId: string, projectId: string, drawingId: string): Promise<SiteDrawingRevision[]> {
     await this.assertProjectBelongsToCompany(companyId, projectId);
     const rows = await this.db.withTenant(companyId, sql => sql<SiteDrawingRevisionRow[]>`

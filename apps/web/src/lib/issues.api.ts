@@ -188,6 +188,10 @@ export function bulkCloseIssues(projectId: string, issueIds: string[]) {
   return apiPost<BulkCloseResult>(`/projects/${projectId}/issues/bulk-close`, { issueIds });
 }
 
+export function bulkDeleteIssues(projectId: string, issueIds: string[]) {
+  return apiPost<{ deleted: number; failed: number }>(`/projects/${projectId}/issues/bulk-delete`, { ids: issueIds });
+}
+
 // ── Bulk export; one combined file for every selected issue (a single
 // merged PDF, or a single workbook with one sheet per issue), same
 // per-issue content as downloadIssuePdf()/downloadIssueXls() above.

@@ -583,6 +583,24 @@ export class IssuesService {
     return { message: `Issue ${issue.issueNumber as string} deleted.` };
   }
 
+  // Loops the single-item delete() above so its creator-or-admin check
+  // runs per issue; one the caller isn't allowed to delete (or that's
+  // already gone) is skipped rather than failing the whole batch, same
+  // "don't let one bad item block the rest" shape bulkClose() already has.
+  async bulkDelete(companyId: string, projectId: string, issueIds: string[], userId: string, userRole: string) {
+    let deleted = 0;
+    let failed = 0;
+    for (const id of issueIds) {
+      try {
+        await this.delete(companyId, projectId, id, userId, userRole);
+        deleted++;
+      } catch {
+        failed++;
+      }
+    }
+    return { deleted, failed };
+  }
+
   // ── Activities ────────────────────────────────────────────────────────────
   async getActivities(companyId: string, projectId: string, issueId: string) {
     await this.assertIssueInProject(companyId, projectId, issueId);

@@ -5,7 +5,7 @@ import { StatusBadge } from '../ui/Badge';
 import { apiErrorMessage } from '../../lib/api';
 import {
   getSiteDrawing, listSiteDrawingRevisions, getSiteDrawingDownloadUrl, setSiteDrawingWorkflowStatus,
-  startOfflinePackage, completeOfflinePackage, removeOfflinePackage, listOfflinePackages,
+  startOfflinePackage, completeOfflinePackage, removeOfflinePackage, listOfflinePackages, deleteSiteDrawing,
   SITE_DRAWING_WORKFLOW_STATUSES, type SiteDrawingWorkflowStatus, type SiteDrawingRevision,
 } from '../../lib/site-drawings.api';
 import { computeContentHash, saveOfflinePackage, deleteOfflinePackage } from '../../lib/site-drawings-offline';
@@ -55,6 +55,15 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
       queryClient.invalidateQueries({ queryKey: ['site-drawing-revisions', projectId, drawingId] });
       queryClient.invalidateQueries({ queryKey: ['site-drawings', projectId] });
       queryClient.invalidateQueries({ queryKey: ['site-drawing-dashboard-stats', projectId] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteSiteDrawing(projectId, drawingId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['site-drawings', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-dashboard-stats', projectId] });
+      onClose();
     },
   });
 
@@ -133,7 +142,15 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
               <div><span className="text-xs text-ink-500 block">Source</span>{sourceProviderLabel(drawing.sourceProvider)}</div>
               <div><span className="text-xs text-ink-500 block">Last verified</span>{revision ? formatVerifiedAt(revision.lastVerifiedAt) : '—'}</div>
               {revision?.isSuperseded && <StatusBadge tone="neutral" label="Superseded" />}
+              <button
+                onClick={() => { if (confirm('Delete this drawing and its entire revision history? This cannot be undone.')) deleteMutation.mutate(); }}
+                disabled={deleteMutation.isPending}
+                className="btn-secondary !text-danger ml-auto"
+              >
+                {deleteMutation.isPending ? 'Deleting…' : 'Delete drawing'}
+              </button>
             </div>
+            {deleteMutation.isError && <p className="field-error">{apiErrorMessage(deleteMutation.error)}</p>}
 
             {revision && needsApprovalWarning(revision.workflowStatus) && (
               <div className="panel p-4 border border-warn/40 bg-warn/5 text-xs text-ink-100">

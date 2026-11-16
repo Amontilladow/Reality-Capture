@@ -1,22 +1,25 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { TransmittalFormModal } from '../components/TransmittalFormModal';
 import { TransmittalDetailModal } from '../components/TransmittalDetailModal';
-import { listTransmittals, getTransmittalSummary } from '../lib/transmittals.api';
+import { listTransmittals, getTransmittalSummary, bulkDeleteTransmittals } from '../lib/transmittals.api';
 import { getProject } from '../lib/projects.api';
 import {
   TRANSMITTAL_STATUSES, TRANSMITTAL_STATUS_LABELS, TRANSMITTAL_STATUS_BADGE_CLASS,
   TRANSMITTAL_PURPOSE_LABELS, formatDate,
 } from '../lib/transmittal-constants';
+import { apiErrorMessage } from '../lib/api';
 import { Listbox } from '../components/ui/Listbox';
 
 export default function TransmittalsPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const projectQuery = useQuery({
     queryKey: ['project', projectId],
@@ -41,7 +44,19 @@ export default function TransmittalsPage() {
   // stale data until it's closed and reopened.
   const selected = selectedId ? (transmittalsQuery.data?.data ?? []).find((t) => t.id === selectedId) ?? null : null;
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () => bulkDeleteTransmittals(projectId!, [...selectedIds]),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transmittals', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['transmittal-summary', projectId] });
+      setSelectedIds(new Set());
+    },
+  });
+
   if (!projectId) return null;
+
+  const transmittalRows = transmittalsQuery.data?.data ?? [];
+  const allSelected = transmittalRows.length > 0 && selectedIds.size === transmittalRows.length;
 
   return (
     <>
@@ -74,6 +89,20 @@ export default function TransmittalsPage() {
           )}
         </div>
 
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-3 tick-frame panel px-4 py-3">
+            <span className="text-sm font-medium">{selectedIds.size} selected</span>
+            <button
+              onClick={() => { if (confirm(`Delete ${selectedIds.size} transmittal(s)? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
+              disabled={bulkDeleteMutation.isPending}
+              className="btn-danger !px-3 !py-1.5 text-sm ml-auto"
+            >
+              {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
+            </button>
+            {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
+          </div>
+        )}
+
         {transmittalsQuery.isLoading && <div className="text-sm text-ink-500">Loading…</div>}
 
         {transmittalsQuery.data?.data.length === 0 && (
@@ -87,6 +116,13 @@ export default function TransmittalsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-ink-500 border-b border-base-600">
+                  <th className="px-4 py-2 font-medium w-8">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={() => setSelectedIds(allSelected ? new Set() : new Set(transmittalRows.map((t) => t.id)))}
+                    />
+                  </th>
                   <th className="px-4 py-2 font-medium">Number</th>
                   <th className="px-4 py-2 font-medium">Subject</th>
                   <th className="px-4 py-2 font-medium">Recipient</th>
@@ -96,12 +132,23 @@ export default function TransmittalsPage() {
                 </tr>
               </thead>
               <tbody>
-                {(transmittalsQuery.data?.data ?? []).map((t) => (
+                {transmittalRows.map((t) => (
                   <tr
                     key={t.id}
                     onClick={() => setSelectedId(t.id)}
                     className="border-b border-base-700/60 last:border-0 hover:bg-base-700 cursor-pointer"
                   >
+                    <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(t.id)}
+                        onChange={() => setSelectedIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(t.id)) next.delete(t.id); else next.add(t.id);
+                          return next;
+                        })}
+                      />
+                    </td>
                     <td className="px-4 py-2 font-mono text-xs text-ink-500">{t.transmittalNumber ?? '—'}</td>
                     <td className="px-4 py-2">{t.subject}</td>
                     <td className="px-4 py-2 text-ink-300">{t.recipientName}{t.recipientCompany ? ` (${t.recipientCompany})` : ''}</td>

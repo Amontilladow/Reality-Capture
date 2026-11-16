@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { QaService } from './qa.service';
 import { CreateQaInspectionDto } from './dto/create-qa-inspection.dto';
 import { UpdateQaInspectionDto } from './dto/update-qa-inspection.dto';
+import { BulkDeleteDto } from '../../common/dto/bulk-delete.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
 import { RequireCategoryAction } from '../../common/decorators/require-category-action.decorator';
@@ -59,5 +60,12 @@ export class QaController {
   @HttpCode(HttpStatus.OK)
   async delete(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
     return { data: await this.svc.delete(u.companyId, pid, id), error: null };
+  }
+
+  @Post('bulk-delete')
+  @RequireProjectPermission('manage_project_records')
+  @HttpCode(HttpStatus.OK)
+  async bulkDelete(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: BulkDeleteDto) {
+    return { data: await this.svc.bulkDelete(u.companyId, pid, dto.ids), error: null };
   }
 }

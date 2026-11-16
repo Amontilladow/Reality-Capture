@@ -170,6 +170,13 @@ export class SubmittalsService {
     return { message: 'Submittal deleted.' };
   }
 
+  async bulkDelete(companyId: string, projectId: string, submittalIds: string[]) {
+    const result = await this.db.query`
+      DELETE FROM submittals WHERE id = ANY(${submittalIds}::uuid[]) AND project_id = ${projectId} AND company_id = ${companyId}
+    `;
+    return { deleted: result.count, failed: submittalIds.length - result.count };
+  }
+
   async getSummary(companyId: string, projectId: string, viewerId?: string) {
     const isolateToViewer = await this.isViewerSubcontractor(companyId, projectId, viewerId);
     const [summary] = await this.db.withTenant(companyId, sql => sql`

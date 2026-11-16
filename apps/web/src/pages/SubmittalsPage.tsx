@@ -1,23 +1,26 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { SubmittalFormModal } from '../components/SubmittalFormModal';
 import { SubmittalDetailModal } from '../components/SubmittalDetailModal';
-import { listSubmittals, getSubmittalSummary, type SubmittalListItem } from '../lib/submittals.api';
+import { listSubmittals, getSubmittalSummary, bulkDeleteSubmittals, type SubmittalListItem } from '../lib/submittals.api';
 import { getProject, getMembers } from '../lib/projects.api';
 import {
   SUBMITTAL_STATUSES, SUBMITTAL_STATUS_LABELS, SUBMITTAL_STATUS_BADGE_CLASS,
   SUBMITTAL_PRIORITY_LABELS, SUBMITTAL_PRIORITY_BADGE_CLASS,
   isSubmittalOverdue, formatDate,
 } from '../lib/submittal-constants';
+import { apiErrorMessage } from '../lib/api';
 import { Listbox } from '../components/ui/Listbox';
 
 export default function SubmittalsPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [selected, setSelected] = useState<SubmittalListItem | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const projectQuery = useQuery({
     queryKey: ['project', projectId],
@@ -43,7 +46,19 @@ export default function SubmittalsPage() {
     enabled: Boolean(projectId),
   });
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () => bulkDeleteSubmittals(projectId!, [...selectedIds]),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['submittals', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['submittal-summary', projectId] });
+      setSelectedIds(new Set());
+    },
+  });
+
   if (!projectId) return null;
+
+  const submittalRows = submittalsQuery.data?.data ?? [];
+  const allSelected = submittalRows.length > 0 && selectedIds.size === submittalRows.length;
 
   return (
     <>
@@ -75,6 +90,20 @@ export default function SubmittalsPage() {
           )}
         </div>
 
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-3 tick-frame panel px-4 py-3">
+            <span className="text-sm font-medium">{selectedIds.size} selected</span>
+            <button
+              onClick={() => { if (confirm(`Delete ${selectedIds.size} submittal(s)? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
+              disabled={bulkDeleteMutation.isPending}
+              className="btn-danger !px-3 !py-1.5 text-sm ml-auto"
+            >
+              {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
+            </button>
+            {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
+          </div>
+        )}
+
         {submittalsQuery.isLoading && <div className="text-sm text-ink-500">Loading…</div>}
 
         {submittalsQuery.data?.data.length === 0 && (
@@ -88,6 +117,13 @@ export default function SubmittalsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-ink-500 border-b border-base-600">
+                  <th className="px-4 py-2 font-medium w-8">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={() => setSelectedIds(allSelected ? new Set() : new Set(submittalRows.map((s) => s.id)))}
+                    />
+                  </th>
                   <th className="px-4 py-2 font-medium">Number</th>
                   <th className="px-4 py-2 font-medium">Title</th>
                   <th className="px-4 py-2 font-medium">Spec</th>
@@ -98,7 +134,7 @@ export default function SubmittalsPage() {
                 </tr>
               </thead>
               <tbody>
-                {(submittalsQuery.data?.data ?? []).map((s) => {
+                {submittalRows.map((s) => {
                   const overdue = isSubmittalOverdue(s.dueDate, s.status);
                   return (
                     <tr
@@ -106,6 +142,17 @@ export default function SubmittalsPage() {
                       onClick={() => setSelected(s)}
                       className="border-b border-base-700/60 last:border-0 hover:bg-base-700 cursor-pointer"
                     >
+                      <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(s.id)}
+                          onChange={() => setSelectedIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(s.id)) next.delete(s.id); else next.add(s.id);
+                            return next;
+                          })}
+                        />
+                      </td>
                       <td className="px-4 py-2 font-mono text-xs text-ink-500">{s.submittalNumber ?? '—'}</td>
                       <td className="px-4 py-2">{s.title}</td>
                       <td className="px-4 py-2 text-ink-300">{s.specSection ?? '—'}</td>

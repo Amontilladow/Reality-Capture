@@ -138,6 +138,10 @@ export function deleteRfi(projectId: string, rfiId: string) {
   return apiDelete<{ message: string }>(`/projects/${projectId}/rfis/${rfiId}`);
 }
 
+export function bulkDeleteRfis(projectId: string, rfiIds: string[]) {
+  return apiPost<{ deleted: number; failed: number }>(`/projects/${projectId}/rfis/bulk-delete`, { ids: rfiIds });
+}
+
 // ── Workflow (Phase 3; wiring up the Phase 1 backend endpoints) ─────────
 export function submitRfi(projectId: string, rfiId: string) {
   return apiPost<RfiListItem>(`/projects/${projectId}/rfis/${rfiId}/submit`);

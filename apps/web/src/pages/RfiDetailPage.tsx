@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   RFI_DISCIPLINE_LABELS, RFI_IMPACT_LEVELS, RFI_IMPACT_LEVEL_LABELS, DRAWING_UPDATE_STATUS_LABELS,
@@ -20,7 +20,7 @@ import {
   submitRfiForReview, decideRfiReview,
   markRfiDrawingApplied, markRfiDrawingNotApplied, markRfiDrawingSentToSite, markRfiDrawingNotSentToSite,
   remindRfiDrawingUpdate,
-  getRfiComments, addRfiComment, getRfiAttachments, uploadRfiAttachment, deleteRfiAttachment,
+  getRfiComments, addRfiComment, getRfiAttachments, uploadRfiAttachment, deleteRfiAttachment, deleteRfi,
   type RfiAttachment,
 } from '../lib/rfis.api';
 import {
@@ -51,6 +51,7 @@ const TERMINAL_STATUSES = new Set(['closed', 'rejected', 'cancelled', 'void']);
 
 export default function RfiDetailPage() {
   const { projectId, rfiId } = useParams<{ projectId: string; rfiId: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((s) => s.user);
 
@@ -306,6 +307,13 @@ export default function RfiDetailPage() {
     },
   });
 
+  const deleteRfiMutation = useMutation({
+    mutationFn: () => deleteRfi(projectId!, rfiId!),
+    onSuccess: () => {
+      navigate(`/projects/${projectId}/rfis/${rfi?.raisedByOrganizationSlot === 'subcontractor' ? 'subcontractor' : 'main'}`);
+    },
+  });
+
   const [downloadError, setDownloadError] = useState('');
   const [downloading, setDownloading] = useState(false);
   async function handleDownloadPdf() {
@@ -405,6 +413,12 @@ export default function RfiDetailPage() {
     (g) => g.userId === currentUser?.id && g.permission === 'manage_rfis',
   );
   const canManageRfis = isSuperAdmin || isProjectLead || hasManageRfisGrant;
+  // The delete route is gated server-side on 'manage_project_records', a
+  // broader/separate grant from 'manage_rfis' above; only super_admin and
+  // project_lead hold it by default, so the button is restricted to those
+  // rather than canManageRfis, which would show it to a manage_rfis-only
+  // holder and then 403.
+  const canDeleteRfi = isSuperAdmin || isProjectLead;
   const hasManageTeamGrant = (grantsQuery.data ?? []).some(
     (g) => g.userId === currentUser?.id && g.permission === 'manage_team',
   );
@@ -457,6 +471,15 @@ export default function RfiDetailPage() {
                 Email
               </button>
             )}
+            {canDeleteRfi && (
+              <button
+                onClick={() => { if (confirm('Delete this RFI? This cannot be undone.')) deleteRfiMutation.mutate(); }}
+                disabled={deleteRfiMutation.isPending}
+                className="btn-secondary !text-danger"
+              >
+                {deleteRfiMutation.isPending ? 'Deleting…' : 'Delete'}
+              </button>
+            )}
             <Link
               to={`/projects/${projectId}/rfis/${rfi.raisedByOrganizationSlot === 'subcontractor' ? 'subcontractor' : 'main'}`}
               className="btn-ghost !px-2 !py-2 "
@@ -466,6 +489,9 @@ export default function RfiDetailPage() {
           </>
         }
       />
+      {deleteRfiMutation.isError && (
+        <div className="px-6 pt-4 text-xs text-danger">{apiErrorMessage(deleteRfiMutation.error)}</div>
+      )}
 
       {projectId && (
         <EmailComposerModal

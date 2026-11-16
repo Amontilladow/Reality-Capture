@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RFI_DISCIPLINES, RFI_DISCIPLINE_LABELS } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { QaqcFormModal } from '../components/QaqcFormModal';
-import { listQaqcRecords, type QaqcRecordType } from '../lib/qaqc.api';
+import { listQaqcRecords, bulkDeleteQaqcRecords, type QaqcRecordType } from '../lib/qaqc.api';
 import { getProject, getMembers } from '../lib/projects.api';
 import {
   QAQC_PRIORITIES, QAQC_PRIORITY_LABELS, QAQC_STATUS_LABELS, QAQC_RECORD_TYPE_SHORT_LABELS,
   isQaqcOverdue, formatDate, QAQC_ISSUE_ROLES_BY_TYPE, QAQC_STATUS_TONE, QAQC_PRIORITY_TONE,
 } from '../lib/qaqc-constants';
 import { StatusBadge } from '../components/ui/Badge';
+import { apiErrorMessage } from '../lib/api';
 import { useAuthStore } from '../store/auth.store';
 import { Listbox } from '../components/ui/Listbox';
 
@@ -21,6 +22,7 @@ import { Listbox } from '../components/ui/Listbox';
 export default function QaqcListPage() {
   const { projectId, recordType } = useParams<{ projectId: string; recordType: QaqcRecordType }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const currentUser = useAuthStore((s) => s.user);
   const [status, setStatus] = useState('');
   const [priority, setPriority] = useState('');
@@ -28,6 +30,7 @@ export default function QaqcListPage() {
   // ?new=1 (the Overview's quick actions) opens the form straight away.
   const [newParams] = useSearchParams();
   const [createOpen, setCreateOpen] = useState(newParams.get('new') === '1');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const projectQuery = useQuery({
     queryKey: ['project', projectId],
@@ -53,9 +56,22 @@ export default function QaqcListPage() {
     enabled: Boolean(projectId && recordType),
   });
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () => bulkDeleteQaqcRecords(projectId!, [...selectedIds]),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qaqc-records', projectId, recordType] });
+      setSelectedIds(new Set());
+    },
+  });
+
   if (!projectId || !recordType) return null;
 
   const shortLabel = QAQC_RECORD_TYPE_SHORT_LABELS[recordType];
+  // Mirrors the backend's DELETE_ROLES (qaqc.controller.ts): only an admin
+  // can delete records, unlike the issue/respond/confirm workflow.
+  const canDelete = currentUser?.companyRole === 'company_admin' || currentUser?.companyRole === 'super_admin';
+  const recordRows = recordsQuery.data?.data ?? [];
+  const allSelected = recordRows.length > 0 && selectedIds.size === recordRows.length;
 
   // Client-side visual gating only: QaqcService's per-type role check is
   // the real enforcement (see qaqc.service.ts's ISSUE_ROLES_BY_TYPE). Hides
@@ -107,6 +123,20 @@ export default function QaqcListPage() {
           </Listbox>
         </div>
 
+        {canDelete && selectedIds.size > 0 && (
+          <div className="flex items-center gap-3 tick-frame panel px-4 py-3">
+            <span className="text-sm font-medium">{selectedIds.size} selected</span>
+            <button
+              onClick={() => { if (confirm(`Delete ${selectedIds.size} ${shortLabel}(s)? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
+              disabled={bulkDeleteMutation.isPending}
+              className="btn-danger !px-3 !py-1.5 text-sm ml-auto"
+            >
+              {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
+            </button>
+            {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
+          </div>
+        )}
+
         {recordsQuery.isLoading && <div className="text-sm text-ink-500">Loading…</div>}
 
         {recordsQuery.data?.data.length === 0 && (
@@ -120,6 +150,15 @@ export default function QaqcListPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-ink-500 border-b border-base-600">
+                  {canDelete && (
+                    <th className="px-4 py-2 font-medium w-8">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={() => setSelectedIds(allSelected ? new Set() : new Set(recordRows.map((r) => r.id)))}
+                      />
+                    </th>
+                  )}
                   <th className="px-4 py-2 font-medium">Number</th>
                   <th className="px-4 py-2 font-medium">Subject</th>
                   <th className="px-4 py-2 font-medium">Discipline</th>
@@ -130,7 +169,7 @@ export default function QaqcListPage() {
                 </tr>
               </thead>
               <tbody>
-                {(recordsQuery.data?.data ?? []).map((r) => {
+                {recordRows.map((r) => {
                   const overdue = isQaqcOverdue(r.dueDate, r.status);
                   return (
                     <tr
@@ -138,6 +177,19 @@ export default function QaqcListPage() {
                       onClick={() => navigate(`/projects/${projectId}/qaqc/${recordType}/${r.id}`)}
                       className="border-b border-base-700/60 last:border-0 hover:bg-base-700 cursor-pointer"
                     >
+                      {canDelete && (
+                        <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(r.id)}
+                            onChange={() => setSelectedIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(r.id)) next.delete(r.id); else next.add(r.id);
+                              return next;
+                            })}
+                          />
+                        </td>
+                      )}
                       <td className="px-4 py-2 font-mono text-xs text-ink-500">{r.recordNumber ?? '—'}</td>
                       <td className="px-4 py-2">{r.subject}</td>
                       <td className="px-4 py-2 text-ink-300">{r.discipline ? RFI_DISCIPLINE_LABELS[r.discipline] : '—'}</td>

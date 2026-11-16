@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import type { Capture } from '@engineeringos/types';
 import { Link } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CaptureLightbox } from './CaptureLightbox';
 import { CAPTURE_STATUS_LABELS } from '../lib/capture-constants';
+import { bulkDeleteCaptures } from '../lib/captures.api';
+import { apiErrorMessage } from '../lib/api';
 
 const TYPE_LABEL: Record<string, string> = {
   photo_360: '360°',
@@ -102,6 +105,26 @@ export function CaptureGrid({
   groupByLocation?: boolean;
 }) {
   const [lightboxCapture, setLightboxCapture] = useState<Capture | null>(null);
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const queryClient = useQueryClient();
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () => bulkDeleteCaptures(projectId, [...selectedIds]),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['captures', projectId] });
+      setSelectedIds(new Set());
+      setSelecting(false);
+    },
+  });
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   if (captures.length === 0) {
     return (
@@ -132,15 +155,36 @@ export function CaptureGrid({
     // instead of splitting across a column break; Link renders an <a>
     // (inline by default) and button is inline-block, so both need an
     // explicit block + w-full here.
-    const className = `tick-frame panel overflow-hidden group block w-full break-inside-avoid mb-4 text-left${
+    const className = `tick-frame panel overflow-hidden group block w-full break-inside-avoid mb-4 text-left relative${
       c.captureType === 'photo_360' ? ' ring-2 ring-blueprint/40' : ''
     }`;
+    const checkbox = selecting && (
+      <span
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleSelected(c.id); }}
+        className={`absolute top-2 left-2 z-10 w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer ${
+          selectedIds.has(c.id) ? 'bg-blueprint border-blueprint' : 'bg-base-950/70 border-ink-100/60'
+        }`}
+      >
+        {selectedIds.has(c.id) && (
+          <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="3">
+            <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </span>
+    );
     return goesToViewer(c) ? (
-      <Link key={c.id} to={`/projects/${projectId}/viewer/${c.locationId}`} className={className}>
+      <Link
+        key={c.id}
+        to={`/projects/${projectId}/viewer/${c.locationId}`}
+        className={className}
+        onClick={(e) => { if (selecting) { e.preventDefault(); toggleSelected(c.id); } }}
+      >
+        {checkbox}
         <CaptureCardBody c={c} />
       </Link>
     ) : (
-      <button key={c.id} onClick={() => setLightboxCapture(c)} className={className}>
+      <button key={c.id} onClick={() => (selecting ? toggleSelected(c.id) : setLightboxCapture(c))} className={className}>
+        {checkbox}
         <CaptureCardBody c={c} />
       </button>
     );
@@ -148,6 +192,15 @@ export function CaptureGrid({
 
   return (
     <>
+      <div className="flex items-center justify-end mb-4">
+        <button
+          onClick={() => { setSelecting((s) => !s); setSelectedIds(new Set()); }}
+          className="text-xs font-medium text-ink-500 hover:text-ink-100"
+        >
+          {selecting ? 'Cancel' : 'Select'}
+        </button>
+      </div>
+
       {groupByLocation ? (
         <div className="space-y-8">
           {groupByLocationId(captures).map((group) => (
@@ -166,6 +219,20 @@ export function CaptureGrid({
         </div>
       ) : (
         <div className="columns-2 sm:columns-3 xl:columns-4 gap-4">{captures.map((c) => renderCard(c))}</div>
+      )}
+
+      {selecting && selectedIds.size > 0 && (
+        <div className="sticky bottom-4 mt-4 flex items-center gap-3 tick-frame panel px-4 py-3">
+          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <button
+            onClick={() => { if (confirm(`Delete ${selectedIds.size} capture(s) and all their renditions? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
+            disabled={bulkDeleteMutation.isPending}
+            className="btn-danger !px-3 !py-1.5 text-sm ml-auto"
+          >
+            {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
+          </button>
+          {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
+        </div>
       )}
 
       <CaptureLightbox projectId={projectId} projectName={projectName} capture={lightboxCapture} onClose={() => setLightboxCapture(null)} />

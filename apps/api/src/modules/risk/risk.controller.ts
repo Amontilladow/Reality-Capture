@@ -13,6 +13,7 @@ import { SetRiskDueDateDto } from './dto/set-risk-due-date.dto';
 import { GenerateRiskPdfDto } from './dto/generate-risk-pdf.dto';
 import { SetHumanAssessmentDto } from './dto/set-human-assessment.dto';
 import { SetMatrixOverrideDto } from './dto/set-matrix-override.dto';
+import { BulkDeleteDto } from '../../common/dto/bulk-delete.dto';
 
 // Phase 6 security fix: every mutating route in this controller previously
 // had no @Roles/@RequireProjectPermission, and RiskService scoped only by
@@ -202,6 +203,23 @@ export class RiskController {
   @Get(':riskId')
   async getOne(@CurrentUser() u: AuthenticatedUser, @Param('riskId') riskId: string) {
     return { data: await this.risk.getRiskWithDiscrepancy(u.companyId, riskId), error: null };
+  }
+
+  @Delete(':riskId')
+  @RequireProjectPermission('manage_project_records')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Delete a risk and its entire graph/evidence trail' })
+  async deleteRisk(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('riskId') riskId: string) {
+    await this.risk.delete(u.companyId, pid, riskId);
+    return { data: { message: 'Risk deleted.' }, error: null };
+  }
+
+  @Post('bulk-delete')
+  @RequireProjectPermission('manage_project_records')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Delete multiple risks (and their graph/evidence trails) at once' })
+  async bulkDeleteRisks(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: BulkDeleteDto) {
+    return { data: await this.risk.bulkDelete(u.companyId, pid, dto.ids), error: null };
   }
 
   @Get(':riskId/chain')

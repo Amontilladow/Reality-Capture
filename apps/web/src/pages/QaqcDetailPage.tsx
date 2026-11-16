@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RFI_DISCIPLINE_LABELS, RFI_DOCUMENT_TYPES, RFI_DOCUMENT_TYPE_LABELS, type RfiDocumentType } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -7,7 +7,7 @@ import { SaveButton } from '../components/workspace/SaveButton';
 import { InlineRiskAssessment } from '../components/RiskIntelligenceSection';
 import {
   getQaqcRecord, respondToQaqcRecord, confirmQaqcRecord,
-  getQaqcAttachments, uploadQaqcAttachment, deleteQaqcAttachment,
+  getQaqcAttachments, uploadQaqcAttachment, deleteQaqcAttachment, deleteQaqcRecord,
   getQaqcCaptures, linkQaqcCapture,
   type QaqcAttachment, type QaqcAttachmentKind, type QaqcRecordType, type QaqcLinkedCapture,
 } from '../lib/qaqc.api';
@@ -24,8 +24,12 @@ import { Listbox } from '../components/ui/Listbox';
 
 export default function QaqcDetailPage() {
   const { projectId, recordType, id } = useParams<{ projectId: string; recordType: QaqcRecordType; id: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((s) => s.user);
+  // Mirrors the backend's DELETE_ROLES (qaqc.controller.ts): only an admin
+  // can delete the record itself, unlike the issue/respond/confirm workflow.
+  const canDelete = currentUser?.companyRole === 'company_admin' || currentUser?.companyRole === 'super_admin';
   const [responseDraft, setResponseDraft] = useState('');
   const [confirmComment, setConfirmComment] = useState('');
   const [rejecting, setRejecting] = useState(false);
@@ -81,6 +85,11 @@ export default function QaqcDetailPage() {
       setRejecting(false);
       invalidateAll();
     },
+  });
+
+  const deleteRecordMutation = useMutation({
+    mutationFn: () => deleteQaqcRecord(projectId!, id!),
+    onSuccess: () => navigate(`/projects/${projectId}/qaqc/${recordType}`),
   });
 
   async function handleDownloadPdf() {
@@ -162,12 +171,24 @@ export default function QaqcDetailPage() {
         actions={
           <>
             <SaveButton itemType="qaqc" itemId={record.id} />
+            {canDelete && (
+              <button
+                onClick={() => { if (confirm(`Delete this ${shortLabel}? This cannot be undone.`)) deleteRecordMutation.mutate(); }}
+                disabled={deleteRecordMutation.isPending}
+                className="btn-secondary !text-danger"
+              >
+                {deleteRecordMutation.isPending ? 'Deleting…' : 'Delete'}
+              </button>
+            )}
             <Link to={`/projects/${projectId}/qaqc/${recordType}`} className="btn-ghost !px-2 !py-2 ">
               Back to {shortLabel}s
             </Link>
           </>
         }
       />
+      {deleteRecordMutation.isError && (
+        <div className="px-6 pt-4 text-xs text-danger">{apiErrorMessage(deleteRecordMutation.error)}</div>
+      )}
 
       <div className="p-6 max-w-5xl mx-auto space-y-6">
         <div>

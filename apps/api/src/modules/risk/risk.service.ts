@@ -309,6 +309,36 @@ export class RiskService {
       SELECT * FROM risks WHERE project_id = ${projectId} ORDER BY score DESC, updated_at DESC`);
   }
 
+  // Deletes via the risk's root_node_id rather than `risks` directly:
+  // risks.root_node_id -> risk_graph_nodes(id) ON DELETE CASCADE (migration
+  // 051), and risk_graph_nodes is itself the parent of risk_evidence,
+  // risk_graph_edges and risk_signals (migration 050), so removing the
+  // graph node cascades away the risk row and every one of its derived
+  // children in a single statement, leaving no orphaned graph/evidence rows
+  // the way deleting only `risks` would.
+  async delete(companyId: string, projectId: string, riskId: string): Promise<void> {
+    const result = await this.db.withTenant(companyId, sql => sql`
+      DELETE FROM risk_graph_nodes WHERE id = (
+        SELECT root_node_id FROM risks WHERE id = ${riskId} AND project_id = ${projectId} AND company_id = ${companyId}
+      ) AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (result.count === 0) throw new NotFoundException('Risk not found.');
+  }
+
+  async bulkDelete(companyId: string, projectId: string, riskIds: string[]): Promise<{ deleted: number; failed: number }> {
+    let deleted = 0;
+    let failed = 0;
+    for (const id of riskIds) {
+      try {
+        await this.delete(companyId, projectId, id);
+        deleted++;
+      } catch {
+        failed++;
+      }
+    }
+    return { deleted, failed };
+  }
+
   private async upsertRisk(companyId: string, projectId: string, input: {
     rootNodeId: string; title: string; category: string; discipline: RiskDiscipline | null;
     locationNodeId: string | null; locationLabel: string | null;

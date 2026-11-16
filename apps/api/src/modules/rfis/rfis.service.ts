@@ -676,6 +676,13 @@ export class RfisService {
     return { message: 'RFI deleted.' };
   }
 
+  async bulkDelete(companyId: string, projectId: string, rfiIds: string[]) {
+    const result = await this.db.withTenant(companyId, sql => sql`
+      DELETE FROM rfis WHERE id = ANY(${rfiIds}::uuid[]) AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    return { deleted: result.count, failed: rfiIds.length - result.count };
+  }
+
   // view: same 'main'/'subcontractor' split as findAll(): omitted keeps
   // today's unfiltered, whole-project summary (every pre-existing caller).
   async getSummary(companyId: string, projectId: string, view?: 'main' | 'subcontractor', viewerId?: string) {

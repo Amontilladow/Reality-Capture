@@ -403,6 +403,24 @@ export class CapturesService {
     return { message: 'Capture deleted.' };
   }
 
+  // Loops the single-item delete() above so storage cleanup and the
+  // storage-usage decrement happen for every capture exactly as they would
+  // one at a time; one bad id (already gone, wrong project) is skipped
+  // rather than failing the whole batch.
+  async bulkDelete(companyId: string, projectId: string, captureIds: string[]) {
+    let deleted = 0;
+    let failed = 0;
+    for (const id of captureIds) {
+      try {
+        await this.delete(companyId, projectId, id);
+        deleted++;
+      } catch {
+        failed++;
+      }
+    }
+    return { deleted, failed };
+  }
+
   // Lightweight existence+ownership check for a referenced capture id that
   // isn't the route's own :id (e.g. a hotspot's targetCaptureId): mirrors
   // findOne()'s own project_id/company_id scoping without its full join.

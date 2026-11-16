@@ -12,7 +12,7 @@ import { RfiNoticeLetterModal } from '../components/RfiNoticeLetterModal';
 import { UploadRfiModal } from '../components/UploadRfiModal';
 import {
   listRfis, getRfiSummary, updateRfi, markRfiDrawingApplied, markRfiDrawingNotApplied,
-  markRfiDrawingSentToSite, markRfiDrawingNotSentToSite, remindRfiDrawingUpdate,
+  markRfiDrawingSentToSite, markRfiDrawingNotSentToSite, remindRfiDrawingUpdate, bulkDeleteRfis,
   type RfiListItem,
 } from '../lib/rfis.api';
 import { getProject, getMembers } from '../lib/projects.api';
@@ -78,8 +78,14 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
   // 403. Everyone else (including on the Subcontractor window, where any
   // main-contractor staff can still raise one on a subcontractor's behalf)
   // sees the normal, unrestricted controls.
-  const isSubcontractor = (membersQuery.data ?? []).find((m) => m.userId === currentUser?.id)?.role === 'subcontractor';
+  const myMembership = (membersQuery.data ?? []).find((m) => m.userId === currentUser?.id);
+  const isSubcontractor = myMembership?.role === 'subcontractor';
   const readOnly = view === 'main' && isSubcontractor;
+  // Mirrors RfiDetailPage.tsx's canDeleteRfi: the bulk-delete route is
+  // gated server-side on 'manage_project_records', which only super_admin
+  // and project_lead hold by default.
+  const canDelete = currentUser?.companyRole === 'super_admin' || myMembership?.role === 'project_lead';
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const summaryQuery = useQuery({
     queryKey: ['rfi-summary', projectId, view],
@@ -140,7 +146,19 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
     onError: (err) => setDrawingActionError(apiErrorMessage(err)),
   });
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () => bulkDeleteRfis(projectId!, [...selectedIds]),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rfis', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['rfi-summary', projectId] });
+      setSelectedIds(new Set());
+    },
+  });
+
   if (!projectId) return null;
+
+  const rfiRows = rfisQuery.data?.data ?? [];
+  const allSelected = rfiRows.length > 0 && selectedIds.size === rfiRows.length;
 
   return (
     <>
@@ -239,6 +257,20 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
           )}
         </div>
 
+        {!readOnly && canDelete && selectedIds.size > 0 && (
+          <div className="flex items-center gap-3 tick-frame panel px-4 py-3">
+            <span className="text-sm font-medium">{selectedIds.size} selected</span>
+            <button
+              onClick={() => { if (confirm(`Delete ${selectedIds.size} RFI(s)? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
+              disabled={bulkDeleteMutation.isPending}
+              className="btn-danger !px-3 !py-1.5 text-sm ml-auto"
+            >
+              {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
+            </button>
+            {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
+          </div>
+        )}
+
         {drawingActionError && <p className="field-error">{drawingActionError}</p>}
 
         {rfisQuery.isLoading && <div className="text-sm text-ink-500">Loading…</div>}
@@ -254,6 +286,15 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-ink-500 border-b border-base-600">
+                  {!readOnly && canDelete && (
+                    <th className="px-4 py-2 font-medium w-8">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={() => setSelectedIds(allSelected ? new Set() : new Set(rfiRows.map((r) => r.id)))}
+                      />
+                    </th>
+                  )}
                   <th className="px-4 py-2 font-medium">Number</th>
                   <th className="px-4 py-2 font-medium">Subject</th>
                   <th className="px-4 py-2 font-medium">Discipline</th>
@@ -270,7 +311,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                 </tr>
               </thead>
               <tbody>
-                {(rfisQuery.data?.data ?? []).map((r) => {
+                {rfiRows.map((r) => {
                   const overdue = isRfiOverdue(r.dueDate, r.status);
                   // getDeadlineTimer is typed for IssueStatus, but its only status-aware
                   // branch is a plain string check against 'closed'/'void'; both of
@@ -287,6 +328,19 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                       onClick={() => navigate(`/projects/${projectId}/rfis/${r.id}`)}
                       className={`border-b border-base-700/60 last:border-0 hover:bg-base-700 cursor-pointer ${hasImpact ? 'border-l-2 border-l-warn bg-warn/5' : ''}`}
                     >
+                      {!readOnly && canDelete && (
+                        <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(r.id)}
+                            onChange={() => setSelectedIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(r.id)) next.delete(r.id); else next.add(r.id);
+                              return next;
+                            })}
+                          />
+                        </td>
+                      )}
                       <td className="px-4 py-2 font-mono text-xs text-ink-500">{r.rfiNumber ?? '—'}</td>
                       <td className="px-4 py-2">{r.subject}</td>
                       <td className="px-4 py-2 text-ink-300">{r.discipline ? RFI_DISCIPLINE_LABELS[r.discipline] : '—'}</td>

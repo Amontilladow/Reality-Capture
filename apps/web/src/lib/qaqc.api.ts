@@ -161,6 +161,14 @@ export function deleteQaqcAttachment(projectId: string, qaqcId: string, attachme
   return apiDelete<{ message: string }>(`/projects/${projectId}/qaqc/${qaqcId}/attachments/${attachmentId}`);
 }
 
+export function deleteQaqcRecord(projectId: string, qaqcId: string) {
+  return apiDelete<{ message: string }>(`/projects/${projectId}/qaqc/${qaqcId}`);
+}
+
+export function bulkDeleteQaqcRecords(projectId: string, qaqcIds: string[]) {
+  return apiPost<{ deleted: number; failed: number }>(`/projects/${projectId}/qaqc/bulk-delete`, { ids: qaqcIds });
+}
+
 // Full client-side flow: request the presigned URL, PUT the file straight
 // to storage, then register it as a qaqc_attachments row; identical
 // shape to uploadRfiAttachment() in rfis.api.ts.
