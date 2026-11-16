@@ -24,7 +24,9 @@ export function WelcomePanel({ projectId, subtitle, onAddTask }: { projectId?: s
   const agenda = useAgenda(range.from, range.to, projectId);
   const items = useMemo(() => agenda.data?.items ?? [], [agenda.data]);
   const marks = useMemo(() => dayMarks(items, today), [items, today]);
-  const dayItems = items.filter((i) => i.date === day);
+  // Open work first (by time), completed items last, so nothing new is
+  // hidden behind finished ones.
+  const dayItems = items.filter((i) => i.date === day).sort((x, y) => Number(x.done) - Number(y.done));
   const firstName = user?.firstName?.trim();
 
   return (

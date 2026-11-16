@@ -13,7 +13,7 @@ const FILTERS: { key: AgendaCategory; label: string; dot: string }[] = [
   { key: 'my_tasks', label: 'My tasks', dot: 'bg-signal' },
   { key: 'project_deadlines', label: 'Project deadlines', dot: 'bg-ink-300' },
   { key: 'inspections', label: 'Inspections', dot: 'bg-warn' },
-  { key: 'reminders', label: 'Personal reminders', dot: 'bg-blueprint' },
+  { key: 'reminders', label: 'Personal reminders', dot: 'bg-ink-100' },
 ];
 
 // The calendar reads dates straight from the records themselves (issue

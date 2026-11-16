@@ -187,8 +187,10 @@ function latest(a: Date | null, b: Date | null): string | null {
 
 function attentionLabel(type: string, cls: AttentionClass): string {
   const noun: Record<string, string> = { issue: 'Issue', rfi: 'RFI', snag: 'Snag', qaqc: 'QA/QC record', submittal: 'Submission', inspection: 'Inspection' };
-  if (cls === 'critical') return `Critical ${noun[type]?.toLowerCase() ?? type}`;
-  if (cls === 'overdue') return `Overdue ${noun[type]?.toLowerCase() ?? type}`;
+  // Lower-case the noun mid-sentence, but never an acronym (RFI, QA/QC).
+  const mid = (t: string) => { const n = noun[t] ?? t; return /^[A-Z]{2}/.test(n) ? n : n.toLowerCase(); };
+  if (cls === 'critical') return `Critical ${mid(type)}`;
+  if (cls === 'overdue') return `Overdue ${mid(type)}`;
   if (cls === 'due_soon') return type === 'submittal' ? 'Submission deadline soon' : `${noun[type] ?? type} due soon`;
   if (type === 'rfi') return 'Awaiting response';
   if (type === 'qaqc') return 'Outstanding QA/QC';

@@ -55,3 +55,62 @@
 6. Tests: API unit tests, a real Postgres migration run plus endpoint smoke tests, web unit tests, desktop/phone screenshots, regression suite.
 
 Then screenshots for approval; merge only after the owner says so.
+
+---
+
+# Implementation report
+
+## Built
+
+| Area | What | Where |
+|---|---|---|
+| Schema | Migration 085: `user_tasks` (tasks + reminders) and `saved_items`, company RLS + FORCE RLS, always filtered by `user_id` | `apps/api/src/database/migrations/085_personal_workspace.sql` |
+| API | `/me/preferences`, `/me/tasks`, `/me/saved`, `/me/agenda`, `/me/priorities`, `/me/workspace`, `/me/search`; `/projects/:id/command-center` | `apps/api/src/modules/workspace/` |
+| Priority rules | Pure, unit-tested ranking and attention classification (section 3 above) | `priority-rules.ts` + spec |
+| Overview → Command Center | Greeting, live clock, interactive month calendar (week strip on phones), today's agenda with tick-off, quick actions, engineer/management views, Today's priorities, My workspace, KPI snapshot, Attention center, linked activity timeline, project health | `apps/web/src/components/command-center/`, `pages/ProjectDetail.tsx` |
+| Pages | My tasks (Assigned / Personal / Reminders / Completed), My calendar (month / week / day, filters, upcoming deadlines), My saved items | `pages/MyTasksPage.tsx`, `MyCalendarPage.tsx`, `SavedItemsPage.tsx` |
+| Navigation | MY WORKSPACE sidebar section (inside and outside a project); Search button + Ctrl/⌘+K global search; Save buttons on issue, RFI and QA/QC detail | `AppShell.tsx`, `workspace/GlobalSearch.tsx`, `workspace/SaveButton.tsx` |
+| Deep links | `?new=1` opens the create form on Issues, RFIs, QA/QC lists, QA inspections and the Site Drawing Hub (quick actions) | the four pages |
+
+## Reused
+
+Existing tenancy/RLS (`withTenant`), every global guard, `users.preferences` JSONB, the audit log and `groupActivity()`, the Risk and Reports executive summary (`useProjectBriefing`, risk card, banner), `categoryCan`/`getOrgCategory` and `SITE_RESTRICTED_COMPANY_ROLES` for quick actions, and the shared Modal, Field, Listbox, Menu, Collapsible, Badge and toast components. No new colours: Jet Black / Smoke Grey / Cherry Red tokens throughout.
+
+## Task and calendar data
+
+Personal tasks and reminders are the only new records. Every other calendar entry is read live from its own table (issue `deadline`, RFI/snag/submittal `due_date`, QA/QC `due_date`, inspection `inspection_date`), so nothing is duplicated and completing a record anywhere updates the calendar, priorities and workspace at once (shared React Query keys under `['me']` and `['command-center']`).
+
+## Time zones
+
+The user's saved IANA zone (`preferences.timezone`) wins, else the browser's zone (sent as `tz`), else UTC. Postgres converts timestamps with `AT TIME ZONE` and formats dates in SQL; the browser formats with `Intl`, so DST changes apply at the next tick with no reload. Date-only fields (QA/QC due dates, personal task dates) are treated as that calendar day. Tests cover the date line (Dubai vs New York) and a US DST transition.
+
+## Permissions verified (against a real Postgres + API)
+
+- Personal tasks and saved items: invisible and unchangeable by another user or another company (404).
+- Saved items can only point at records the caller's company owns, and tasks they own.
+- `/projects/:id/command-center` sits under the existing project guards: other company → 404, subcontractor → 403.
+- `/me` aggregations apply the subcontractor rule themselves (RFIs only on those projects).
+- Search never returns another user's tasks and is company-isolated.
+- One deliberate guard change: `SiteRoleRestrictionGuard` (read-only-elsewhere for site roles) now lets `/api/v1/me/*` writes through, since they only touch the caller's own rows; covered by a new guard test, and project paths stay blocked.
+- Quick actions mirror the category matrix and the site-role restriction (a site engineer sees Create issue, not Create RFI).
+
+## Testing
+
+- API: 1157 unit tests (14 new for priority rules, 1 for the guard); 43-check smoke run against the real API + Postgres (privacy, isolation, subcontractor, timezone, ranking, no duplicates, completion).
+- Web: 153 tests (6 new for clock, calendar, dots, labels, links; 1 regression for string counts); typecheck, lint (3 pre-existing warnings), production build, design-rules test.
+- End to end in Chromium on the real stack: create a task in the UI → appears and ranks → tick it off → leaves priorities; calendar day select + Today; Save → Saved items; perspective persists across reload; attention filters; Ctrl+K search → Enter opens the record; no page errors.
+- Desktop 1440px and phone 390px: no horizontal overflow.
+
+## Fixed along the way
+
+- Executive signals printed "1 critical issues are open": the reports API returns counts as strings; `buildSignals` now coerces them.
+
+## Limitations
+
+- **Meetings** do not exist in RealityCapture; the calendar says so instead of inventing any. External calendar sync stays a future capability (only Workforce has one).
+- **Drawings awaiting review** are project-wide: site drawings have no reviewer or due-date column, so they can't be "awaiting *my* review" or overdue.
+- **Revision conflicts** have no data model, so they aren't shown.
+- **Personal tasks can't be shared** yet (private by default, with no share option).
+- **Reminders don't send notifications** yet; they appear in the calendar, priorities and workspace.
+- **Package progress** isn't included for management; no package-level data exists.
+- Submittals and QA inspections link to their module lists, since those pages have no per-record URL.

@@ -76,7 +76,7 @@ export default function ProjectDetail() {
     enabled: Boolean(projectId),
   });
   const isSubcontractor = (membersQuery.data ?? []).some((m) => m.userId === currentUser?.id && m.role === 'subcontractor');
-  const isProjectLead = (membersQuery.data ?? []).some((m) => m.userId === currentUser?.id && m.role === 'project_lead');
+  const myProjectRole = (membersQuery.data ?? []).find((m) => m.userId === currentUser?.id)?.role;
 
   // The Overview reads conclusion-first: a banner, four key numbers, what
   // needs attention and the risk index; everything else (activity, BIM,
@@ -183,7 +183,7 @@ export default function ProjectDetail() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <QuickActions
             projectId={projectId}
-            isProjectLead={isProjectLead}
+            projectRole={myProjectRole}
             onNewTask={() => setTaskModal({ kind: 'task' })}
             onNewReminder={() => setTaskModal({ kind: 'reminder' })}
           />

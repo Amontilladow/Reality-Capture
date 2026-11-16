@@ -108,7 +108,7 @@ export default function MyTasksPage() {
                           {it.projectName && ` · ${it.projectName}`}
                         </span>
                       </div>
-                      {it.priority && <StatusBadge tone={PRIORITY_TONE[it.priority]} label={it.priority} />}
+                      {it.priority && <StatusBadge tone={PRIORITY_TONE[it.priority]} label={cap(it.priority)} />}
                       <span className={`w-36 text-right text-xs tabular-nums ${it.dueState === 'overdue' ? 'text-danger font-medium' : 'text-ink-300'}`}>{dueLabel(it.dueDate, it.dueTime, today, hour12)}</span>
                     </li>
                   );
@@ -134,7 +134,7 @@ export default function MyTasksPage() {
                         {t.notes && ' · has notes'}
                       </span>
                     </button>
-                    <StatusBadge tone={PRIORITY_TONE[t.priority]} label={t.priority} />
+                    <StatusBadge tone={PRIORITY_TONE[t.priority]} label={cap(t.priority)} />
                     <span className={`w-36 text-right text-xs tabular-nums ${t.status !== 'done' && t.dueDate && t.dueDate < today ? 'text-danger font-medium' : 'text-ink-300'}`}>
                       {t.status === 'done' ? 'Done' : dueLabel(t.dueDate, t.dueTime, today, hour12)}
                     </span>
@@ -157,3 +157,5 @@ export default function MyTasksPage() {
     </>
   );
 }
+
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);

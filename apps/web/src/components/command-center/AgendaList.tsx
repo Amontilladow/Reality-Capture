@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { showToast } from '../../store/toast.store';
 import { updateMyTask, type AgendaItem } from '../../lib/workspace.api';
 import { recordHref, RECORD_LABEL, formatTime } from '../../lib/record-links';
 import { useInvalidateWorkspace } from './hooks';
@@ -8,7 +10,7 @@ const CATEGORY_DOT: Record<AgendaItem['category'], string> = {
   my_tasks: 'bg-signal',
   project_deadlines: 'bg-ink-300',
   inspections: 'bg-warn',
-  reminders: 'bg-blueprint',
+  reminders: 'bg-ink-100',
 };
 
 // One day's (or one range's) calendar items. A personal task or reminder
@@ -22,14 +24,25 @@ export function AgendaList({ items, today, hour12, empty = 'Nothing scheduled.',
   showDate?: boolean;
 }) {
   const invalidate = useInvalidateWorkspace();
+  // Ticks show at once; the server confirms, and a failure puts it back.
+  const [pending, setPending] = useState<Map<string, boolean>>(new Map());
   const toggle = useMutation({
-    mutationFn: (it: AgendaItem) => updateMyTask(it.id, { status: it.done ? 'todo' : 'done' }),
-    onSuccess: invalidate,
+    mutationFn: ({ it, done }: { it: AgendaItem; done: boolean }) => updateMyTask(it.id, { status: done ? 'done' : 'todo' }),
+    onMutate: ({ it, done }) => setPending((p) => new Map(p).set(it.key, done)),
+    onError: (_e, { it }) => {
+      setPending((p) => { const n = new Map(p); n.delete(it.key); return n; });
+      showToast("Couldn't update the task", 'danger');
+    },
+    onSettled: async (_d, _e, { it }) => {
+      await invalidate();
+      setPending((p) => { const n = new Map(p); n.delete(it.key); return n; });
+    },
   });
   if (items.length === 0) return <p className="text-sm text-ink-500">{empty}</p>;
   return (
     <ul className="divide-y divide-ink-100/10">
-      {items.map((it) => {
+      {items.map((raw) => {
+        const it = pending.has(raw.key) ? { ...raw, done: pending.get(raw.key)! } : raw;
         const own = it.source === 'task' || it.source === 'reminder';
         const href = recordHref(it.source, it.projectId, it.id, it.recordType);
         const overdue = !it.done && it.date < today;
@@ -39,7 +52,7 @@ export function AgendaList({ items, today, hour12, empty = 'Nothing scheduled.',
               <input
                 type="checkbox"
                 checked={it.done}
-                onChange={() => toggle.mutate(it)}
+                onChange={() => toggle.mutate({ it: raw, done: !it.done })}
                 aria-label={`Mark "${it.title}" ${it.done ? 'not done' : 'done'}`}
                 className="w-5 h-5 shrink-0 accent-[rgb(var(--rc-signal))]"
               />

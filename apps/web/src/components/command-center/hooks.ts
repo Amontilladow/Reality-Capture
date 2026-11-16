@@ -45,10 +45,10 @@ export function useAgenda(from: string, to: string, projectId?: string) {
 /** Everything that changes when a task or record is completed or edited. */
 export function useInvalidateWorkspace() {
   const qc = useQueryClient();
-  return () => {
-    qc.invalidateQueries({ queryKey: ['me'] });
-    qc.invalidateQueries({ queryKey: ['command-center'] });
-  };
+  return () => Promise.all([
+    qc.invalidateQueries({ queryKey: ['me'] }),
+    qc.invalidateQueries({ queryKey: ['command-center'] }),
+  ]);
 }
 
 /** Calendar dots: per day, how many items are open or done, and whether any open one is overdue. */

@@ -1,20 +1,26 @@
 import { Link } from 'react-router-dom';
-import { categoryCan, getOrgCategory, type CompanyRole } from '@engineeringos/types';
+import { categoryCan, getOrgCategory, SITE_RESTRICTED_COMPANY_ROLES, type CompanyRole } from '@engineeringos/types';
 import { useAuthStore } from '../../store/auth.store';
 
 // Shortcuts into existing create flows. Each one shows only when the
-// user's role could actually do it (same org-category rules the API
-// enforces; a project lead may always). The API stays the authority.
-export function QuickActions({ projectId, isProjectLead, onNewTask, onNewReminder }: {
+// user's role could actually do it: the same org-category rules the API
+// enforces (a project lead may always), narrowed by the site-role
+// restriction (SiteRoleRestrictionGuard: construction roles write to
+// issues/snags only; a site_engineer project member also to drawings).
+// The API stays the authority.
+export function QuickActions({ projectId, projectRole, onNewTask, onNewReminder }: {
   projectId: string;
-  isProjectLead: boolean;
+  projectRole?: string;
   onNewTask: () => void;
   onNewReminder: () => void;
 }) {
   const role = useAuthStore((s) => s.user?.companyRole) as CompanyRole | undefined;
   const cat = role ? getOrgCategory(role) : 'view_only';
-  const superUser = isProjectLead || role === 'super_admin';
-  const can = (module: Parameters<typeof categoryCan>[1]) => superUser || categoryCan(cat, module, 'create');
+  const superUser = projectRole === 'project_lead' || role === 'super_admin';
+  const companyRestricted = Boolean(role && (SITE_RESTRICTED_COMPANY_ROLES as readonly string[]).includes(role));
+  const siteAllowed = companyRestricted ? ['issues_snags'] : projectRole === 'site_engineer' ? ['issues_snags', 'drawings'] : null;
+  const can = (module: Parameters<typeof categoryCan>[1]) =>
+    (!siteAllowed || siteAllowed.includes(module)) && (superUser || categoryCan(cat, module, 'create'));
   const base = `/projects/${projectId}`;
   const links = [
     can('drawings') && { to: `${base}/site-drawings?new=1`, label: 'Upload drawing', icon: 'M12 16V4m0 0l-4 4m4-4l4 4M4 20h16' },
