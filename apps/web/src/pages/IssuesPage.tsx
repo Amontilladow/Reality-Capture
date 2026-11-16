@@ -43,6 +43,10 @@ export default function IssuesPage() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const desktop = useMediaQuery(DESKTOP_QUERY);
+  // The phone list (IssueRecordList) has no checkbox column like the
+  // desktop table's always-visible one; this is its "Select" mode toggle,
+  // same pattern as CaptureGrid's own mobile selection affordance.
+  const [mobileSelecting, setMobileSelecting] = useState(false);
   const [assignedTo, setAssignedTo] = useState('');
   const [discipline, setDiscipline] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -474,7 +478,7 @@ export default function IssuesPage() {
           )}
 
           {/* Bulk actions appear only once something is selected. */}
-          {desktop && selectedIds.size > 0 && (
+          {selectedIds.size > 0 && (
             <div className="panel flex flex-wrap items-center gap-2 px-4 py-2">
               <span className="text-sm font-medium text-ink-100 mr-2">{selectedIds.size} selected</span>
               <button
@@ -574,10 +578,25 @@ export default function IssuesPage() {
             </div>
           ) : (
             <div className="space-y-4">
+              <div className="flex items-center justify-end px-2">
+                <button
+                  onClick={() => { setMobileSelecting((s) => !s); if (mobileSelecting) setSelectedIds(new Set()); }}
+                  className="text-xs font-medium text-ink-500 hover:text-ink-100"
+                >
+                  {mobileSelecting ? 'Cancel' : 'Select'}
+                </button>
+              </div>
               {sections.map((section) => (
                 <div key={section.key}>
                   {showSectionHeaders && <div className="text-xs font-semibold text-ink-300 px-2 py-2">{section.label}</div>}
-                  <IssueRecordList label={section.label} issues={section.issues} onOpen={setViewIssueId} />
+                  <IssueRecordList
+                    label={section.label}
+                    issues={section.issues}
+                    onOpen={setViewIssueId}
+                    selecting={mobileSelecting}
+                    selectedIds={selectedIds}
+                    onToggleSelect={toggleSelect}
+                  />
                 </div>
               ))}
             </div>
@@ -981,15 +1000,37 @@ function filterClass(value: string) {
 }
 
 // Phones: the compact two-line register (see RecordRow).
-function IssueRecordList({ label, issues, onOpen }: { label: string; issues: IssueListItem[]; onOpen: (id: string) => void }) {
+function IssueRecordList({ label, issues, onOpen, selecting, selectedIds, onToggleSelect }: {
+  label: string;
+  issues: IssueListItem[];
+  onOpen: (id: string) => void;
+  selecting?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+}) {
   return (
     <RecordList label={label}>
       {issues.map((issue) => {
         const timer = getDeadlineTimer(issue.deadline, issue.status);
         const where = issue.locationName && issue.locationName.trim().toLowerCase() !== issue.title.trim().toLowerCase() ? issue.locationName : undefined;
+        const isSelected = selectedIds?.has(issue.id) ?? false;
         return (
           <RecordRow
             key={issue.id}
+            lead={selecting ? (
+              <span
+                aria-hidden="true"
+                className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${
+                  isSelected ? 'bg-blueprint border-blueprint' : 'border-ink-500/60'
+                }`}
+              >
+                {isSelected && (
+                  <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="3">
+                    <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </span>
+            ) : undefined}
             marker={PRIORITY_MARKER[issue.priority]}
             title={issue.title}
             meta={[
@@ -1002,7 +1043,7 @@ function IssueRecordList({ label, issues, onOpen }: { label: string; issues: Iss
             due={timer.label}
             dueTone={timer.state === 'overdue' ? 'danger' : timer.state === 'warn' ? 'warn' : 'muted'}
             owner={issue.assignedToName ?? undefined}
-            onClick={() => onOpen(issue.id)}
+            onClick={() => (selecting ? onToggleSelect?.(issue.id) : onOpen(issue.id))}
           />
         );
       })}
