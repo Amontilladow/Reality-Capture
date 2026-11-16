@@ -5,8 +5,10 @@ import { CreateDrawingDto } from './dto/create-drawing.dto';
 import { GetDrawingUploadUrlDto } from './dto/get-upload-url.dto';
 import { LinkCaptureToDrawingDto } from './dto/link-capture.dto';
 import { CreatePinDto } from './dto/create-pin.dto';
+import { BulkDeleteDto } from '../../common/dto/bulk-delete.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireCategoryAction } from '../../common/decorators/require-category-action.decorator';
+import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
 import type { AuthenticatedUser } from '@engineeringos/types';
 
 @ApiTags('drawings')
@@ -51,6 +53,32 @@ export class DrawingsController {
   @ApiOperation({ summary: 'Get floor plan data for the viewer — drawing + all capture pins with thumbnails' })
   async getFloorPlanData(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
     return { data: await this.svc.getFloorPlanData(u.companyId, pid, id), error: null };
+  }
+
+  @Delete(':id')
+  @RequireProjectPermission('manage_project_records')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete a drawing and every capture pin placed on it' })
+  async deleteDrawing(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    await this.svc.delete(u.companyId, pid, id);
+    return { data: { message: 'Drawing deleted.' }, error: null };
+  }
+
+  @Post('bulk-delete')
+  @RequireProjectPermission('manage_project_records')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete multiple drawings at once' })
+  async bulkDeleteDrawings(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: BulkDeleteDto) {
+    return { data: await this.svc.bulkDelete(u.companyId, pid, dto.ids), error: null };
+  }
+
+  @Delete(':id/pins/:locationId')
+  @RequireCategoryAction('drawings', 'edit', 'manage_project_records')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete a pin from a drawing' })
+  async deletePin(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Param('locationId') locationId: string) {
+    await this.svc.deletePin(u.companyId, pid, id, locationId);
+    return { data: { message: 'Pin deleted.' }, error: null };
   }
 
   @Post(':id/link-capture')

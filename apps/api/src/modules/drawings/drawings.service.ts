@@ -139,6 +139,63 @@ export class DrawingsService {
     return { ...drawing, downloadUrl: url };
   }
 
+  // capture_drawing_links.drawing_id -> drawings(id) ON DELETE CASCADE
+  // (migration 001) removes every capture-pin link on this drawing;
+  // locations.drawing_id -> drawings(id) ON DELETE SET NULL (migration 005)
+  // leaves any pin placed on it intact but unplaced, rather than destroying
+  // the issue/snag/QAQC record it may still carry. Only the drawing's own
+  // S3 objects (storage_key/thumbnail_key) need separate cleanup.
+  async delete(companyId: string, projectId: string, drawingId: string): Promise<void> {
+    const result = await this.db.withTenant(companyId, async (sql) => {
+      const [drawing] = await sql<{ storageKey: string; thumbnailKey: string | null }[]>`
+        SELECT storage_key, thumbnail_key FROM drawings WHERE id = ${drawingId} AND project_id = ${projectId} AND company_id = ${companyId}
+      `;
+      const deleteResult = await sql`
+        DELETE FROM drawings WHERE id = ${drawingId} AND project_id = ${projectId} AND company_id = ${companyId}
+      `;
+      return { drawing, deleteResult };
+    });
+    if (result.deleteResult.count === 0) throw new NotFoundException('Drawing not found.');
+
+    const keys = [result.drawing?.storageKey, result.drawing?.thumbnailKey].filter((k): k is string => Boolean(k));
+    Promise.allSettled(keys.map(k => this.storage.deleteIfExists(k))).catch(() => {});
+  }
+
+  async bulkDelete(companyId: string, projectId: string, drawingIds: string[]): Promise<{ deleted: number; failed: number }> {
+    let deleted = 0;
+    let failed = 0;
+    for (const id of drawingIds) {
+      try {
+        await this.delete(companyId, projectId, id);
+        deleted++;
+      } catch {
+        failed++;
+      }
+    }
+    return { deleted, failed };
+  }
+
+  // Deletes a pin (a `locations` row created as a drawing marker) scoped to
+  // this exact drawing, so you can't delete a pin that belongs to a
+  // different drawing by guessing its id. issues.location_id and
+  // snag_items.location_id are both ON DELETE SET NULL (migrations 006,
+  // 031) so an issue/snag placed here survives, just unplaced; a
+  // qaqc_records row referencing it (migration 067, no ON DELETE clause)
+  // blocks the delete with a FK violation instead, surfaced as a 400 rather
+  // than silently corrupting data.
+  async deletePin(companyId: string, projectId: string, drawingId: string, locationId: string): Promise<void> {
+    await this.assertDrawingInProject(companyId, projectId, drawingId);
+    try {
+      const result = await this.db.withTenant(companyId, sql => sql`
+        DELETE FROM locations WHERE id = ${locationId} AND drawing_id = ${drawingId} AND company_id = ${companyId}
+      `);
+      if (result.count === 0) throw new NotFoundException('Pin not found on this drawing.');
+    } catch (err) {
+      if (err instanceof NotFoundException) throw err;
+      throw new BadRequestException('This pin is still referenced by a QAQC record and cannot be deleted.');
+    }
+  }
+
   async linkCapture(companyId: string, projectId: string, drawingId: string, userId: string, dto: LinkCaptureToDrawingDto) {
     await this.assertDrawingInProject(companyId, projectId, drawingId);
     await this.assertCaptureInProject(companyId, projectId, dto.captureId);

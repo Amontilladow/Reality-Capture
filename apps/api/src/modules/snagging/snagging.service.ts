@@ -226,15 +226,23 @@ export class SnaggingService {
     return updated;
   }
 
+  // withTenant required: snag_items carries the tenant_isolation RLS policy
+  // (migration 053) and FORCES it, so a plain this.db.query() DELETE sets no
+  // app.current_company_id and silently matches 0 rows -- reporting success
+  // while the row stays in the DB forever. Same bug class documented on
+  // captures.service.ts's own delete().
   async delete(companyId: string, projectId: string, snagId: string) {
-    await this.db.query`DELETE FROM snag_items WHERE id = ${snagId} AND project_id = ${projectId} AND company_id = ${companyId}`;
+    const result = await this.db.withTenant(companyId, sql => sql`
+      DELETE FROM snag_items WHERE id = ${snagId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (result.count === 0) throw new NotFoundException(`Snag item ${snagId} not found.`);
     return { message: 'Snag item deleted.' };
   }
 
   async bulkDelete(companyId: string, projectId: string, snagIds: string[]) {
-    const result = await this.db.query`
+    const result = await this.db.withTenant(companyId, sql => sql`
       DELETE FROM snag_items WHERE id = ANY(${snagIds}::uuid[]) AND project_id = ${projectId} AND company_id = ${companyId}
-    `;
+    `);
     return { deleted: result.count, failed: snagIds.length - result.count };
   }
 

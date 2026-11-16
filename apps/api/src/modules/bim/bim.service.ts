@@ -91,6 +91,42 @@ export class BimService {
     return model;
   }
 
+  // bim_elements.model_id -> bim_models(id) ON DELETE CASCADE (migration
+  // 001) removes every element extracted from this model; issues.bim_element_id
+  // / issues.bim_model_id are both ON DELETE SET NULL, so an issue raised
+  // against this model survives, just unlinked. Only the model's own IFC
+  // file in storage needs separate cleanup.
+  async deleteModel(companyId: string, projectId: string, modelId: string): Promise<void> {
+    const result = await this.db.withTenant(companyId, async (sql) => {
+      const [model] = await sql<{ storageKey: string | null }[]>`
+        SELECT storage_key FROM bim_models WHERE id = ${modelId} AND project_id = ${projectId} AND company_id = ${companyId}
+      `;
+      const deleteResult = await sql`
+        DELETE FROM bim_models WHERE id = ${modelId} AND project_id = ${projectId} AND company_id = ${companyId}
+      `;
+      return { model, deleteResult };
+    });
+    if (result.deleteResult.count === 0) throw new NotFoundException('BIM model not found.');
+
+    if (result.model?.storageKey) {
+      this.storage.deleteIfExists(result.model.storageKey).catch(err => this.logger.error('Storage cleanup failed', err));
+    }
+  }
+
+  async bulkDeleteModels(companyId: string, projectId: string, modelIds: string[]): Promise<{ deleted: number; failed: number }> {
+    let deleted = 0;
+    let failed = 0;
+    for (const id of modelIds) {
+      try {
+        await this.deleteModel(companyId, projectId, id);
+        deleted++;
+      } catch {
+        failed++;
+      }
+    }
+    return { deleted, failed };
+  }
+
   // Same rationale as captures.service.ts's assertProjectBelongsToCompany;
   // this controller has no @RequireProjectPermission gate either, and
   // getModelUploadUrl/registerModel both take a client-supplied projectId.

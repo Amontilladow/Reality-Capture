@@ -95,15 +95,22 @@ export class TransmittalsService {
     return updated;
   }
 
+  // withTenant required: transmittals carries the tenant_isolation RLS
+  // policy (migration 053) and FORCES it, so a plain this.db.query() DELETE
+  // sets no app.current_company_id and silently matches 0 rows -- reporting
+  // success while the row stays in the DB forever.
   async delete(companyId: string, projectId: string, transmittalId: string) {
-    await this.db.query`DELETE FROM transmittals WHERE id = ${transmittalId} AND project_id = ${projectId} AND company_id = ${companyId}`;
+    const result = await this.db.withTenant(companyId, sql => sql`
+      DELETE FROM transmittals WHERE id = ${transmittalId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (result.count === 0) throw new NotFoundException(`Transmittal ${transmittalId} not found.`);
     return { message: 'Transmittal deleted.' };
   }
 
   async bulkDelete(companyId: string, projectId: string, transmittalIds: string[]) {
-    const result = await this.db.query`
+    const result = await this.db.withTenant(companyId, sql => sql`
       DELETE FROM transmittals WHERE id = ANY(${transmittalIds}::uuid[]) AND project_id = ${projectId} AND company_id = ${companyId}
-    `;
+    `);
     return { deleted: result.count, failed: transmittalIds.length - result.count };
   }
 

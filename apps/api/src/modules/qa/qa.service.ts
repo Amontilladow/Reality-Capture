@@ -113,15 +113,22 @@ export class QaService {
     return updated;
   }
 
+  // withTenant required: qa_inspections carries the tenant_isolation RLS
+  // policy (migration 053) and FORCES it, so a plain this.db.query() DELETE
+  // sets no app.current_company_id and silently matches 0 rows -- reporting
+  // success while the row stays in the DB forever.
   async delete(companyId: string, projectId: string, inspectionId: string) {
-    await this.db.query`DELETE FROM qa_inspections WHERE id = ${inspectionId} AND project_id = ${projectId} AND company_id = ${companyId}`;
+    const result = await this.db.withTenant(companyId, sql => sql`
+      DELETE FROM qa_inspections WHERE id = ${inspectionId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (result.count === 0) throw new NotFoundException(`Inspection ${inspectionId} not found.`);
     return { message: 'Inspection deleted.' };
   }
 
   async bulkDelete(companyId: string, projectId: string, inspectionIds: string[]) {
-    const result = await this.db.query`
+    const result = await this.db.withTenant(companyId, sql => sql`
       DELETE FROM qa_inspections WHERE id = ANY(${inspectionIds}::uuid[]) AND project_id = ${projectId} AND company_id = ${companyId}
-    `;
+    `);
     return { deleted: result.count, failed: inspectionIds.length - result.count };
   }
 

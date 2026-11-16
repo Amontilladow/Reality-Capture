@@ -5,11 +5,12 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { DrawingViewer } from '../components/drawing/DrawingViewer';
 import { DrawingUploadModal } from '../components/drawing/DrawingUploadModal';
 import { PinPanel } from '../components/drawing/PinPanel';
-import { listDrawings, getDrawing, createPin, getPins, type Drawing, type Pin } from '../lib/drawings.api';
+import { listDrawings, getDrawing, createPin, getPins, deleteDrawing, type Drawing, type Pin } from '../lib/drawings.api';
 import { getHierarchy, updateLocation, getMembers, type ProjectHierarchy } from '../lib/projects.api';
 import { Input, SelectField } from '../components/ui/Field';
 import { HelpLink } from '../components/help/HelpLink';
 import { Listbox } from '../components/ui/Listbox';
+import { apiErrorMessage } from '../lib/api';
 
 export default function FloorPlanViewer() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -148,6 +149,20 @@ export default function FloorPlanViewer() {
 
   const activeDrawingId = selectedDrawingId ?? drawingsQuery.data?.[0]?.id ?? null;
 
+  const deleteDrawingMutation = useMutation({
+    mutationFn: (drawingId: string) => deleteDrawing(projectId!, drawingId),
+    onSuccess: (_data, drawingId) => {
+      queryClient.invalidateQueries({ queryKey: ['drawings', projectId] });
+      if (selectedDrawingId === drawingId) setSelectedDrawingId(null);
+    },
+  });
+
+  function handleDeleteDrawing(drawing: Drawing) {
+    if (confirm(`Delete "${drawing.title}" and unplace every pin on it? This cannot be undone.`)) {
+      deleteDrawingMutation.mutate(drawing.id);
+    }
+  }
+
   const drawingQuery = useQuery({
     queryKey: ['drawing', projectId, activeDrawingId],
     queryFn: () => getDrawing(projectId!, activeDrawingId!),
@@ -250,6 +265,7 @@ export default function FloorPlanViewer() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-6">
         <div className="lg:col-span-1 space-y-4">
           {drawingsQuery.isLoading && <div className="text-sm text-ink-500">Loading…</div>}
+          {deleteDrawingMutation.isError && <p className="field-error">{apiErrorMessage(deleteDrawingMutation.error)}</p>}
           {drawingsQuery.isSuccess && (drawingsQuery.data ?? []).length === 0 && (
             <div className="tick-frame panel p-6 text-center text-sm text-ink-500">
               No floor plans uploaded yet.
@@ -318,7 +334,7 @@ export default function FloorPlanViewer() {
                       </div>
                       <div className="space-y-2">
                         {drawings.map((d) => (
-                          <DrawingRow key={d.id} drawing={d} active={activeDrawingId === d.id} onSelect={selectDrawing} />
+                          <DrawingRow key={d.id} drawing={d} active={activeDrawingId === d.id} onSelect={selectDrawing} onDelete={handleDeleteDrawing} />
                         ))}
                       </div>
                     </div>
@@ -334,7 +350,7 @@ export default function FloorPlanViewer() {
                 </summary>
                 <div className="pl-2 space-y-2 mt-2">
                   {groupedDrawings.unassigned.map((d) => (
-                    <DrawingRow key={d.id} drawing={d} active={activeDrawingId === d.id} onSelect={selectDrawing} />
+                    <DrawingRow key={d.id} drawing={d} active={activeDrawingId === d.id} onSelect={selectDrawing} onDelete={handleDeleteDrawing} />
                   ))}
                 </div>
               </details>
@@ -444,16 +460,28 @@ export default function FloorPlanViewer() {
 // Same row markup/behavior as the old flat sidebar's inline .map(): just
 // pulled out so it can be reused under every building/level group and the
 // Unassigned bucket without repeating the button/className logic.
-function DrawingRow({ drawing, active, onSelect }: { drawing: Drawing; active: boolean; onSelect: (id: string) => void }) {
+function DrawingRow({ drawing, active, onSelect, onDelete }: { drawing: Drawing; active: boolean; onSelect: (id: string) => void; onDelete: (drawing: Drawing) => void }) {
   return (
-    <button
-      onClick={() => onSelect(drawing.id)}
-      className={`w-full text-left px-4 py-2 rounded text-sm transition-colors ${
-        active ? 'bg-signal text-on-signal' : 'text-ink-300 hover:bg-base-700'
-      }`}
-    >
-      <div className="font-medium truncate">{drawing.title}</div>
-    </button>
+    <div className={`w-full flex items-center gap-2 rounded text-sm transition-colors ${active ? 'bg-signal text-on-signal' : 'text-ink-300 hover:bg-base-700'}`}>
+      <button onClick={() => onSelect(drawing.id)} className="flex-1 min-w-0 text-left px-4 py-2">
+        <div className="font-medium truncate">{drawing.title}</div>
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete(drawing); }}
+        className={`shrink-0 mr-2 ${active ? 'text-on-signal/70 hover:text-on-signal' : 'text-ink-500 hover:text-danger'}`}
+        title="Delete drawing"
+      >
+        <TrashIcon />
+      </button>
+    </div>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
