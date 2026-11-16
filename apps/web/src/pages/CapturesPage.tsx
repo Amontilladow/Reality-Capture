@@ -5,7 +5,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { DrawingViewer } from '../components/drawing/DrawingViewer';
 import { DrawingUploadModal } from '../components/drawing/DrawingUploadModal';
 import { PinPanel } from '../components/drawing/PinPanel';
-import { listDrawings, getDrawing, createPin, getPins, deleteDrawing, type Drawing, type Pin } from '../lib/drawings.api';
+import { listDrawings, getDrawing, createPin, getPins, deleteDrawing, bulkDeleteDrawings, type Drawing, type Pin } from '../lib/drawings.api';
 import { getHierarchy, updateLocation, getProject, type ProjectHierarchy } from '../lib/projects.api';
 import { Input, SelectField } from '../components/ui/Field';
 import { apiErrorMessage } from '../lib/api';
@@ -142,6 +142,27 @@ export default function CapturesPage() {
     }
   }
 
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  const bulkDeleteDrawingsMutation = useMutation({
+    mutationFn: () => bulkDeleteDrawings(projectId!, [...selectedIds]),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drawings', projectId] });
+      if (selectedIds.has(activeDrawingId ?? '')) setSelectedDrawingId(null);
+      setSelectedIds(new Set());
+      setSelecting(false);
+    },
+  });
+
   const drawingQuery = useQuery({
     queryKey: ['drawing', projectId, activeDrawingId],
     queryFn: () => getDrawing(projectId!, activeDrawingId!),
@@ -222,9 +243,19 @@ export default function CapturesPage() {
         eyebrow={projectQuery.data?.name ?? 'Project'}
         title="Captures"
         actions={
-          <button onClick={() => setUploadOpen(true)} className="btn-primary">
-            <UploadIcon /> Upload
-          </button>
+          <div className="flex items-center gap-2">
+            {(drawingsQuery.data ?? []).length > 0 && (
+              <button
+                onClick={() => { setSelecting(!selecting); setSelectedIds(new Set()); }}
+                className="btn-secondary !py-2"
+              >
+                {selecting ? 'Cancel' : 'Select'}
+              </button>
+            )}
+            <button onClick={() => setUploadOpen(true)} className="btn-primary">
+              <UploadIcon /> Upload
+            </button>
+          </div>
         }
       />
 
@@ -232,9 +263,23 @@ export default function CapturesPage() {
         <div className="lg:col-span-1 space-y-4">
           {drawingsQuery.isLoading && <div className="text-sm text-ink-500">Loading…</div>}
           {deleteDrawingMutation.isError && <p className="field-error">{apiErrorMessage(deleteDrawingMutation.error)}</p>}
+          {bulkDeleteDrawingsMutation.isError && <p className="field-error">{apiErrorMessage(bulkDeleteDrawingsMutation.error)}</p>}
           {drawingsQuery.isSuccess && (drawingsQuery.data ?? []).length === 0 && (
             <div className="tick-frame panel p-6 text-center text-sm text-ink-500">
               No floor plans uploaded yet.
+            </div>
+          )}
+
+          {selecting && selectedIds.size > 0 && (
+            <div className="flex items-center gap-2 tick-frame panel px-4 py-2">
+              <span className="text-sm font-medium">{selectedIds.size} selected</span>
+              <button
+                onClick={() => { if (confirm(`Delete ${selectedIds.size} floor plan(s) and every camera pin on them? This cannot be undone.`)) bulkDeleteDrawingsMutation.mutate(); }}
+                disabled={bulkDeleteDrawingsMutation.isPending}
+                className="btn-danger !px-4 !py-2 text-sm ml-auto"
+              >
+                {bulkDeleteDrawingsMutation.isPending ? 'Deleting…' : 'Delete selected'}
+              </button>
             </div>
           )}
 
@@ -288,7 +333,7 @@ export default function CapturesPage() {
                       </div>
                       <div className="space-y-2">
                         {drawings.map((d) => (
-                          <DrawingRow key={d.id} drawing={d} active={activeDrawingId === d.id} onSelect={selectDrawing} onDelete={handleDeleteDrawing} />
+                          <DrawingRow key={d.id} drawing={d} active={activeDrawingId === d.id} onSelect={selectDrawing} onDelete={handleDeleteDrawing} selecting={selecting} checked={selectedIds.has(d.id)} onToggleSelect={toggleSelected} />
                         ))}
                       </div>
                     </div>
@@ -304,7 +349,7 @@ export default function CapturesPage() {
                 </summary>
                 <div className="pl-2 space-y-2 mt-2">
                   {groupedDrawings.unassigned.map((d) => (
-                    <DrawingRow key={d.id} drawing={d} active={activeDrawingId === d.id} onSelect={selectDrawing} onDelete={handleDeleteDrawing} />
+                    <DrawingRow key={d.id} drawing={d} active={activeDrawingId === d.id} onSelect={selectDrawing} onDelete={handleDeleteDrawing} selecting={selecting} checked={selectedIds.has(d.id)} onToggleSelect={toggleSelected} />
                   ))}
                 </div>
               </details>
@@ -396,19 +441,37 @@ export default function CapturesPage() {
   );
 }
 
-function DrawingRow({ drawing, active, onSelect, onDelete }: { drawing: Drawing; active: boolean; onSelect: (id: string) => void; onDelete: (drawing: Drawing) => void }) {
+function DrawingRow({
+  drawing, active, onSelect, onDelete, selecting, checked, onToggleSelect,
+}: {
+  drawing: Drawing; active: boolean; onSelect: (id: string) => void; onDelete: (drawing: Drawing) => void;
+  selecting?: boolean; checked?: boolean; onToggleSelect?: (id: string) => void;
+}) {
   return (
     <div className={`w-full flex items-center gap-2 rounded text-sm transition-colors ${active ? 'bg-signal text-on-signal' : 'text-ink-300 hover:bg-base-700'}`}>
-      <button onClick={() => onSelect(drawing.id)} className="flex-1 min-w-0 text-left px-4 py-2">
+      {selecting && (
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={() => onToggleSelect?.(drawing.id)}
+          className="ml-4 shrink-0"
+        />
+      )}
+      <button
+        onClick={() => (selecting ? onToggleSelect?.(drawing.id) : onSelect(drawing.id))}
+        className="flex-1 min-w-0 text-left px-4 py-2"
+      >
         <div className="font-medium truncate">{drawing.title}</div>
       </button>
-      <button
-        onClick={(e) => { e.stopPropagation(); onDelete(drawing); }}
-        className={`shrink-0 mr-2 ${active ? 'text-on-signal/70 hover:text-on-signal' : 'text-ink-500 hover:text-danger'}`}
-        title="Delete drawing"
-      >
-        <TrashIcon />
-      </button>
+      {!selecting && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(drawing); }}
+          className={`shrink-0 mr-2 ${active ? 'text-on-signal/70 hover:text-on-signal' : 'text-ink-500 hover:text-danger'}`}
+          title="Delete drawing"
+        >
+          <TrashIcon />
+        </button>
+      )}
     </div>
   );
 }
