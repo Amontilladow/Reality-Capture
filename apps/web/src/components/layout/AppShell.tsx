@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { GlobalSearch } from '../workspace/GlobalSearch';
 import { useQuery } from '@tanstack/react-query';
 import { create } from 'zustand';
 import { useAuthStore } from '../../store/auth.store';
@@ -35,6 +36,20 @@ interface NavGroup {
   items: NavItem[];
 }
 
+// The user's own tasks, calendar and saved items: personal, so the same
+// section appears inside a project (where the calendar adds that
+// project's deadlines) and outside one.
+const MY_WORKSPACE_GROUP: NavGroup = {
+  id: 'my-workspace',
+  heading: 'My workspace',
+  icon: IconCheckList,
+  items: [
+    { to: 'my-tasks', label: 'My tasks', icon: IconCheckList },
+    { to: 'my-calendar', label: 'My calendar', icon: IconCheckList },
+    { to: 'saved', label: 'My saved items', icon: IconCheckList },
+  ],
+};
+
 // Company-level destinations, outside any project. Every item here is a
 // route that already exists; nothing added for show.
 const NAV_GROUPS: NavGroup[] = [
@@ -46,6 +61,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: 'workforce', label: 'Workforce', icon: IconGauge },
     ],
   },
+  MY_WORKSPACE_GROUP,
 ];
 
 // Personal, account-level settings, pinned to the bottom of the sidebar so
@@ -118,6 +134,7 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
     items: [{ to: 'gis-prep', label: 'GIS preparation', icon: IconGlobe }],
   },
   { id: 'intelligence', items: [{ to: 'assistant', label: 'AI assistant', icon: IconSpark }] },
+  MY_WORKSPACE_GROUP,
 ];
 
 // A 'subcontractor' project member (SubcontractorRfiAccessGuard) has
@@ -287,6 +304,7 @@ export function AppShell() {
         onMore={() => setMobileNavOpen(true)}
       />
 
+      <GlobalSearch />
       <ChatWidget />
       <OnboardingFlow />
     </div>
@@ -515,6 +533,14 @@ function NavTree({ groups, basePath }: { groups: NavGroup[]; basePath: string })
         );
       })}
     </div>
+  );
+}
+
+function IconCheckList({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M4 6l1.5 1.5L8 5M4 12l1.5 1.5L8 11M4 18l1.5 1.5L8 17M11 6h9M11 12h9M11 18h9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 

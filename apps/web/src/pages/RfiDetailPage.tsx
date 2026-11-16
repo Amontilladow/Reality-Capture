@@ -10,6 +10,7 @@ import {
   type RfiExternalAccessAction,
 } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
+import { SaveButton } from '../components/workspace/SaveButton';
 import { EmailComposerModal } from '../components/EmailComposerModal';
 import { EmailHistoryList } from '../components/EmailHistoryList';
 import { RichTextEditor, isRichTextEmpty } from '../components/ui/RichTextEditor';
@@ -450,6 +451,7 @@ export default function RfiDetailPage() {
         title={rfi.rfiNumber ?? 'RFI'}
         actions={
           <>
+            <SaveButton itemType="rfi" itemId={rfi.id} />
             {!isSubcontractor && (
               <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary ">
                 Email

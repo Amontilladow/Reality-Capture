@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RFI_DISCIPLINE_LABELS, RFI_DOCUMENT_TYPES, RFI_DOCUMENT_TYPE_LABELS, type RfiDocumentType } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
+import { SaveButton } from '../components/workspace/SaveButton';
 import { InlineRiskAssessment } from '../components/RiskIntelligenceSection';
 import {
   getQaqcRecord, respondToQaqcRecord, confirmQaqcRecord,
@@ -159,9 +160,12 @@ export default function QaqcDetailPage() {
         eyebrow={projectQuery.data?.name ?? 'Project'}
         title={record.recordNumber ?? shortLabel}
         actions={
-          <Link to={`/projects/${projectId}/qaqc/${recordType}`} className="btn-ghost !px-2 !py-2 ">
-            Back to {shortLabel}s
-          </Link>
+          <>
+            <SaveButton itemType="qaqc" itemId={record.id} />
+            <Link to={`/projects/${projectId}/qaqc/${recordType}`} className="btn-ghost !px-2 !py-2 ">
+              Back to {shortLabel}s
+            </Link>
+          </>
         }
       />
 

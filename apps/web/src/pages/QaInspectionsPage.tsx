@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { QaInspectionFormModal } from '../components/QaInspectionFormModal';
@@ -14,7 +14,9 @@ import { Listbox } from '../components/ui/Listbox';
 export default function QaInspectionsPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [status, setStatus] = useState('');
-  const [createOpen, setCreateOpen] = useState(false);
+  // ?new=1 (the Overview's quick actions) opens the form straight away.
+  const [newParams] = useSearchParams();
+  const [createOpen, setCreateOpen] = useState(newParams.get('new') === '1');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const projectQuery = useQuery({

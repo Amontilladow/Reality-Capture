@@ -36,6 +36,9 @@ import AssistantPage from './pages/AssistantPage';
 import ReportsPage from './pages/ReportsPage';
 import RiskPage from './pages/RiskPage';
 import MessagesPage from './pages/MessagesPage';
+import MyTasksPage from './pages/MyTasksPage';
+import MyCalendarPage from './pages/MyCalendarPage';
+import SavedItemsPage from './pages/SavedItemsPage';
 import WorkforcePage from './pages/WorkforcePage';
 import DeveloperSettingsPage from './pages/DeveloperSettingsPage';
 import AiSettingsPage from './pages/AiSettingsPage';
@@ -142,6 +145,14 @@ export default function App() {
           <Route element={<AppShell />}>
             <Route path="/projects" element={<ProjectList />} />
             <Route path="/projects/messages" element={<MessagesPage />} />
+            {/* My workspace: personal, so reachable with or without a project
+                in view; inside one, the calendar adds that project's deadlines. */}
+            <Route path="/projects/my-tasks" element={<MyTasksPage />} />
+            <Route path="/projects/my-calendar" element={<MyCalendarPage />} />
+            <Route path="/projects/saved" element={<SavedItemsPage />} />
+            <Route path="/projects/:projectId/my-tasks" element={<MyTasksPage />} />
+            <Route path="/projects/:projectId/my-calendar" element={<MyCalendarPage />} />
+            <Route path="/projects/:projectId/saved" element={<SavedItemsPage />} />
             <Route path="/projects/workforce" element={<WorkforcePage />} />
             <Route path="/projects/developer" element={<DeveloperSettingsPage />} />
             <Route path="/projects/sharepoint-integration" element={<SharePointIntegrationPage />} />

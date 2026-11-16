@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { RFI_DISCIPLINES, RFI_DISCIPLINE_LABELS } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -25,7 +25,9 @@ export default function QaqcListPage() {
   const [status, setStatus] = useState('');
   const [priority, setPriority] = useState('');
   const [discipline, setDiscipline] = useState('');
-  const [createOpen, setCreateOpen] = useState(false);
+  // ?new=1 (the Overview's quick actions) opens the form straight away.
+  const [newParams] = useSearchParams();
+  const [createOpen, setCreateOpen] = useState(newParams.get('new') === '1');
 
   const projectQuery = useQuery({
     queryKey: ['project', projectId],

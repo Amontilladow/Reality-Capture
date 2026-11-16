@@ -1,7 +1,5 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { StatusBadge } from './ui/Badge';
-import { SEVERITY_TONE, SEVERITY_LABEL, STATUS_LABEL, type OverallStatus } from '../lib/executive-signals';
+import { STATUS_LABEL, type OverallStatus } from '../lib/executive-signals';
 import type { ProjectBriefing } from './overview/useProjectBriefing';
 
 // The Overview's top of page, from useProjectBriefing: one banner with the
@@ -41,41 +39,6 @@ export function BriefingBanner({ brief }: { brief: ProjectBriefing }) {
         <p className="text-base font-semibold text-ink-100 max-w-none">{brief.conclusion}</p>
       </div>
       {top && <Link to={top.to} className="btn-primary shrink-0">Review now</Link>}
-    </section>
-  );
-}
-
-const COLLAPSED_COUNT = 5;
-
-export function NeedsAttention({ brief }: { brief: ProjectBriefing }) {
-  const [expanded, setExpanded] = useState(false);
-  const visible = expanded ? brief.signals : brief.signals.slice(0, COLLAPSED_COUNT);
-  return (
-    <section className="panel overflow-hidden">
-      <div className="flex items-center justify-between px-6 pt-6 pb-4">
-        <h2 className="text-base font-semibold text-ink-100">Needs your attention</h2>
-        {brief.signals.length > COLLAPSED_COUNT && (
-          <button onClick={() => setExpanded((e) => !e)} className="text-xs font-medium text-blueprint hover:text-blueprint-hover">
-            {expanded ? 'Show fewer' : `Show all ${brief.signals.length}`}
-          </button>
-        )}
-      </div>
-      {brief.isLoading && <div className="px-6 pb-6 text-sm text-ink-500">Loading…</div>}
-      {!brief.isLoading && brief.signals.length === 0 && (
-        <div className="px-6 pb-6 text-sm text-ink-500">Nothing is flagged right now across risk, issues, RFIs, QA/QC, snagging and BIM.</div>
-      )}
-      {visible.map((signal, i) => (
-        <div key={`${signal.domain}-${i}`} className="flex items-center gap-4 px-6 py-4 border-t border-ink-100/10">
-          <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium text-ink-100 truncate">{signal.label}</div>
-            <div className="mt-2 flex items-center gap-2 text-xs text-ink-500">
-              <StatusBadge tone={SEVERITY_TONE[signal.severity]} label={SEVERITY_LABEL[signal.severity]} />
-              <span>{signal.domain}</span>
-            </div>
-          </div>
-          <Link to={signal.to} className="btn-secondary shrink-0">Open</Link>
-        </div>
-      ))}
     </section>
   );
 }
