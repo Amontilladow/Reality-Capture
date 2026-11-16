@@ -1,0 +1,903 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ORZIA · Wellness essentials, curated with care</title>
+<meta name="description" content="Premium supplements and cosmetics to support your daily wellness and beauty routine. Free shipping on orders over AED 200.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='16' fill='%232D0A1E'/><path d='M16 22c-5-3-6-8-3-12 2 3 3 7 3 12zm0 0c5-3 6-8 3-12-2 3-3 7-3 12z' fill='%23FFC9B9'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="scrollcraft.css">
+<style>
+  /* The palette, verbatim. Six steps from wine to cream. */
+  @property --shade { syntax: "<color>"; inherits: true; initial-value: #E97DA6; }
+  :root {
+    --wine:  #2D0A1E;
+    --plum:  #6A1E3B;
+    --rose:  #B94273;
+    --pink:  #E97DA6;
+    --peach: #FFC9B9;
+    --cream: #FFF3E6;
+
+    --sc-canvas:     var(--cream);
+    --sc-surface:    color-mix(in oklab, var(--peach) 34%, var(--cream));
+    --sc-ink:        var(--wine);
+    --sc-ink-soft:   var(--plum);
+    --sc-accent:     var(--rose);
+    --sc-accent-ink: var(--cream);
+    --sc-shadow-color: 330 60% 20%;
+    --sc-font-display: "Cormorant Garamond", Georgia, serif;
+    --sc-font-text:    "Outfit", system-ui, sans-serif;
+
+    /* The signature control. Every product render reads this one value. */
+    --shade: #E97DA6;
+    transition: --shade 700ms var(--sc-ease-out);
+
+    --bar-h: 64px;
+    --util-h: 36px;
+    --cats-h: 44px;
+    --radius: 22px;
+  }
+  @media (prefers-reduced-motion: reduce) { :root { transition-duration: 1ms; } }
+
+  .vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  /* ------------------------------------------------------------ chrome -- */
+  .store { position: fixed; inset: 0 0 auto; z-index: 50; transition: transform 260ms var(--sc-ease-out); }
+  .util {
+    height: var(--util-h); display: flex; align-items: center; justify-content: space-between;
+    padding-inline: var(--sc-gutter); background: var(--wine); color: var(--cream);
+    font-size: var(--sc-t-xs); letter-spacing: 0.02em;
+  }
+  .util p { margin: 0; display: flex; gap: .55rem; align-items: center; }
+  .util .i { width: 17px; height: 17px; color: var(--peach); }
+  .util ul { display: flex; gap: 0; list-style: none; margin: 0; padding: 0; }
+  .util li + li { border-left: 1px solid color-mix(in oklab, var(--cream) 28%, transparent); }
+  .util a, .util button { padding: .2rem .9rem; text-decoration: none; background: none; border: 0; cursor: pointer; display: inline-flex; gap: .3rem; align-items: center; }
+  .util a:hover, .util button:hover { color: var(--peach); }
+  .util .i--s { width: 14px; height: 14px; color: currentColor; }
+
+  .bar {
+    background: color-mix(in oklab, var(--cream) 88%, transparent);
+    backdrop-filter: saturate(1.2) blur(14px); -webkit-backdrop-filter: saturate(1.2) blur(14px);
+    border-bottom: 1px solid color-mix(in oklab, var(--rose) 16%, transparent);
+  }
+  .bar__row {
+    height: var(--bar-h); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    padding-inline: var(--sc-gutter);
+  }
+  .iconbtn {
+    width: 44px; height: 44px; display: inline-grid; place-items: center; border-radius: 50%;
+    background: none; border: 0; color: var(--wine); cursor: pointer; position: relative;
+    transition: background-color 160ms var(--sc-ease-out), transform 120ms var(--sc-ease-out);
+  }
+  .iconbtn:hover { background: color-mix(in oklab, var(--peach) 45%, transparent); }
+  .iconbtn:active { transform: scale(.94); }
+  .tools { display: flex; justify-content: flex-end; gap: .25rem; }
+  .badge {
+    position: absolute; top: 3px; right: 1px; min-width: 18px; height: 18px; padding: 0 5px;
+    border-radius: 9px; background: var(--rose); color: var(--cream); font-size: 11px; font-weight: 600;
+    display: grid; place-items: center; font-variant-numeric: tabular-nums;
+    transition: transform 220ms var(--sc-ease-out);
+  }
+  .badge.is-bump { transform: scale(1.25); }
+
+  .mark { display: grid; justify-items: center; text-decoration: none; color: var(--rose); line-height: 1; }
+  .mark svg { width: 30px; height: 18px; margin-bottom: 1px; }
+  .mark span {
+    font-family: var(--sc-font-display); font-weight: 600; font-size: 1.95rem; letter-spacing: 0.16em;
+    margin-right: -0.16em; color: var(--plum);
+  }
+
+  .cats {
+    height: var(--cats-h); display: flex; justify-content: center; gap: clamp(1.5rem, 4vw, 4rem);
+    list-style: none; margin: 0; padding: 0 var(--sc-gutter); align-items: center;
+    transition: opacity 200ms var(--sc-ease-out);
+  }
+  .cats a {
+    text-decoration: none; font-size: var(--sc-t-sm); color: var(--wine); display: inline-flex; gap: .25rem; align-items: center;
+    padding-block: .55rem; background: linear-gradient(var(--rose), var(--rose)) no-repeat 0 100% / 0 1px;
+    transition: background-size 220ms var(--sc-ease-out), color 160ms;
+  }
+  .cats a:hover { color: var(--rose); background-size: 100% 1px; }
+  .cats .i { width: 15px; height: 15px; }
+
+  .store.is-condensed { transform: translateY(calc(-1 * var(--util-h))); }
+  .store.is-condensed .cats { display: none; }
+
+  /* drawer + search, both real */
+  .sheet {
+    position: fixed; inset: 0; z-index: 80; display: none;
+    background: color-mix(in oklab, var(--wine) 42%, transparent);
+  }
+  .sheet.is-open { display: block; }
+  .sheet__panel {
+    position: absolute; inset: 0 auto 0 0; width: min(380px, 88vw); background: var(--cream);
+    padding: var(--sc-6) var(--sc-6); box-shadow: var(--sc-e3); overflow: auto;
+    animation: slide-in 260ms var(--sc-ease-out);
+  }
+  @keyframes slide-in { from { transform: translateX(-24px); opacity: 0; } }
+  .sheet__panel h2 { font-family: var(--sc-font-display); font-size: var(--sc-t-xl); margin: var(--sc-6) 0 var(--sc-3); }
+  .sheet__panel ul { list-style: none; padding: 0; margin: 0; }
+  .sheet__panel li a { display: block; padding: .8rem 0; border-bottom: 1px solid color-mix(in oklab, var(--rose) 18%, transparent); text-decoration: none; }
+  .sheet__panel li a:hover { color: var(--rose); }
+  .sheet__close { position: absolute; top: var(--sc-4); right: var(--sc-4); }
+  .search {
+    position: absolute; inset: 0 0 auto; background: var(--cream); padding: var(--sc-6) var(--sc-gutter);
+    box-shadow: var(--sc-e2); animation: drop 240ms var(--sc-ease-out);
+  }
+  @keyframes drop { from { transform: translateY(-12px); opacity: 0; } }
+  .search form { max-width: 760px; margin: 0 auto; display: flex; gap: .75rem; align-items: center; }
+  .search input {
+    flex: 1; height: 54px; border: 1px solid color-mix(in oklab, var(--rose) 40%, transparent); border-radius: 27px;
+    padding: 0 1.4rem; background: #fff8f0; font-size: var(--sc-t-lg);
+  }
+  .search input:focus-visible { outline: 2px solid var(--rose); outline-offset: 2px; }
+  .search__hint { max-width: 760px; margin: .8rem auto 0; padding-left: 1.4rem; font-size: var(--sc-t-sm); color: var(--plum); min-height: 1.5em; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; z-index: 90; transform: translate(-50%, 16px); opacity: 0;
+    background: var(--wine); color: var(--cream); padding: .8rem 1.2rem; border-radius: 999px;
+    display: flex; gap: .6rem; align-items: center; box-shadow: var(--sc-e3); font-size: var(--sc-t-sm);
+    transition: opacity 200ms var(--sc-ease-out), transform 240ms var(--sc-ease-out); pointer-events: none;
+  }
+  .toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+  .toast i { width: 14px; height: 14px; border-radius: 50%; background: var(--shade); box-shadow: 0 0 0 2px var(--cream); }
+
+  /* ----------------------------------------------------------- buttons -- */
+  .btn {
+    display: inline-flex; align-items: center; gap: .6rem; white-space: nowrap;
+    height: 54px; padding: 0 1.8rem; border-radius: 999px; border: 0; cursor: pointer;
+    background: var(--rose); color: var(--cream); text-decoration: none;
+    font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; font-size: var(--sc-t-sm);
+    box-shadow: 0 6px 16px -6px color-mix(in oklab, var(--plum) 70%, transparent), inset 0 1px 0 color-mix(in oklab, var(--peach) 60%, transparent);
+    transition: background-color 160ms var(--sc-ease-out), transform 120ms var(--sc-ease-out), box-shadow 160ms;
+  }
+  .btn .i { width: 18px; height: 18px; transition: transform 160ms var(--sc-ease-out); }
+  .btn:hover { background: var(--plum); }
+  @media (hover: hover) and (pointer: fine) { .btn:hover .i { transform: translateX(3px); } }
+  .btn:active { transform: translateY(1px) scale(.98); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .link {
+    display: inline-flex; gap: .4rem; align-items: center; color: var(--rose); text-decoration: none;
+    font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; font-size: var(--sc-t-sm);
+  }
+  .link .i { width: 17px; height: 17px; transition: transform 160ms var(--sc-ease-out); }
+  .link:hover { color: var(--plum); }
+  .link:hover .i { transform: translateX(3px); }
+
+  /* -------------------------------------------------------------- hero -- */
+  .hero .sc-stage { background:
+      radial-gradient(60% 70% at 70% 52%, color-mix(in oklab, var(--peach) 70%, var(--cream)) 0%, transparent 70%),
+      linear-gradient(180deg, color-mix(in oklab, var(--peach) 22%, var(--cream)), var(--cream) 80%); }
+  .hero { --q: clamp(0, var(--sc-p, 0), 1); }
+  .plane { position: absolute; pointer-events: none; will-change: transform; }
+  .plane svg, .plane img { max-width: none; }
+
+  /* back: the arch and an out-of-focus branch. Recedes. */
+  .p-back { inset: 0; transform: translateY(calc(var(--q) * -36px)) scale(calc(1 - var(--q) * .05)); transform-origin: 68% 60%; }
+  .arch {
+    position: absolute; left: 68%; top: 54%; width: min(46vw, 70vh); aspect-ratio: 1; translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, color-mix(in oklab, var(--cream) 80%, transparent) 60%, transparent 100%);
+    box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--rose) 30%, transparent);
+  }
+  .arch::after {
+    content: ""; position: absolute; inset: -5%; border-radius: 50%;
+    border: 1px solid color-mix(in oklab, var(--peach) 90%, transparent);
+    mask: linear-gradient(170deg, #000 10%, transparent 60%);
+  }
+  .branch-far { position: absolute; right: -4vw; top: 6vh; width: min(40vw, 620px); filter: blur(5px); opacity: .55; transform: rotate(8deg); }
+
+  /* mid: the product group. Plinth, jar and serum share one contact line. */
+  .p-prod {
+    left: 68%; bottom: 13vh; width: min(40vw, 640px); translate: -50% 0;
+    transform: translateY(calc(var(--q) * -70px)) scale(calc(1 + var(--q) * .05)); transform-origin: 50% 100%;
+  }
+  .prod-set { position: relative; width: 100%; aspect-ratio: 640 / 420; }
+  .plinth { position: absolute; left: 6%; right: 6%; bottom: 0; height: 22%; }
+  .plinth svg { width: 100%; height: 100%; }
+  .prod-jar   { position: absolute; left: 12%; bottom: 15%; width: 44%; filter: drop-shadow(0 18px 18px color-mix(in oklab, var(--plum) 22%, transparent)); }
+  .prod-serum { position: absolute; left: 56%; bottom: 15%; width: 20%; filter: drop-shadow(0 18px 18px color-mix(in oklab, var(--plum) 22%, transparent)); }
+
+  /* front: a crisp branch that overtakes the plinth corner as you scroll */
+  .p-front {
+    right: -6vw; bottom: -8vh; width: min(44vw, 700px);
+    transform: translate(calc(var(--q) * -6vw), calc(var(--q) * -22vh)) rotate(calc(-14deg + var(--q) * 6deg));
+    transform-origin: 80% 90%;
+  }
+  .petal-fall { position: absolute; width: 26px; opacity: .9; }
+
+  .hero__copy { position: absolute; z-index: 5; left: var(--sc-gutter); top: calc(var(--util-h) + var(--bar-h) + var(--cats-h) + 9vh); max-width: min(50rem, 52vw); }
+  .hero h1 {
+    font-family: var(--sc-font-display); font-weight: 600; color: var(--plum);
+    font-size: clamp(3rem, 2rem + 4vw, 5.6rem); line-height: .98; letter-spacing: -0.012em; margin: 0;
+    text-wrap: balance;
+  }
+  .hero h1 em { font-style: italic; font-weight: 500; color: var(--rose); }
+  .rule { width: 72px; height: 3px; border-radius: 2px; background: linear-gradient(90deg, var(--rose), var(--peach)); margin: var(--sc-6) 0 var(--sc-5); }
+  .hero p { margin: 0 0 var(--sc-7); max-width: 34ch; font-size: var(--sc-t-lg); line-height: 1.5; color: var(--wine); font-weight: 300; }
+
+  /* trust promises arrive as the hero's second beat */
+  .trust {
+    position: absolute; z-index: 6; left: 0; right: 0; bottom: 0;
+    background: color-mix(in oklab, var(--cream) 92%, transparent);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid color-mix(in oklab, var(--rose) 18%, transparent);
+  }
+  .trust ul { list-style: none; margin: 0 auto; padding: var(--sc-5) var(--sc-gutter); display: grid; grid-template-columns: repeat(4, 1fr); max-width: 1440px; }
+  .trust li { display: flex; gap: 1rem; align-items: center; justify-content: center; padding-inline: 1rem; }
+  .trust li + li { border-left: 1px solid color-mix(in oklab, var(--rose) 22%, transparent); }
+  .trust .i { width: 34px; height: 34px; color: var(--rose); stroke-width: 1.2; }
+  .trust b { display: block; font-weight: 500; color: var(--wine); }
+  .trust span { font-size: var(--sc-t-sm); color: var(--plum); }
+
+  /* -------------------------------------------------------- categories -- */
+  .doors { padding-block: var(--sc-section) clamp(3rem, 6vw, 6rem); }
+  .doors__head { display: flex; justify-content: space-between; align-items: end; gap: 1rem; margin-bottom: var(--sc-7); }
+  .h2 { font-family: var(--sc-font-display); font-weight: 600; color: var(--plum); font-size: clamp(2.3rem, 1.6rem + 2.4vw, 3.9rem); line-height: 1; letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+  .doors__grid {
+    display: grid; gap: clamp(.9rem, 1.6vw, 1.5rem);
+    grid-template-columns: 1.15fr 1fr; grid-template-rows: auto auto auto;
+    grid-template-areas: "sup skin" "sup cos" "all all";
+  }
+  .door {
+    position: relative; display: block; overflow: hidden; border-radius: var(--radius);
+    text-decoration: none; color: var(--wine); isolation: isolate;
+    background: linear-gradient(135deg, color-mix(in oklab, var(--peach) 55%, var(--cream)), color-mix(in oklab, var(--pink) 22%, var(--cream)));
+    box-shadow: var(--sc-e1), inset 0 1px 0 #fff8;
+    transition: box-shadow 200ms var(--sc-ease-out), transform 200ms var(--sc-ease-out);
+  }
+  .door:hover { box-shadow: var(--sc-e3), inset 0 1px 0 #fff8; transform: translateY(-3px); }
+  .door:active { transform: translateY(-1px); }
+  .door__txt { position: relative; z-index: 2; padding: clamp(1.5rem, 3vw, 2.6rem); max-width: 22rem; }
+  .door h3 { font-family: var(--sc-font-display); font-weight: 600; font-size: clamp(1.9rem, 1.4rem + 1.4vw, 2.8rem); line-height: 1; margin: 0 0 .5rem; color: var(--wine); }
+  .door p { margin: 0 0 1.4rem; color: var(--plum); }
+  .door .link { pointer-events: none; }
+  .door__art { position: absolute; z-index: 1; pointer-events: none; }
+  .door--sup  { grid-area: sup; min-height: 560px; }
+  .door--skin { grid-area: skin; min-height: 268px; }
+  .door--cos  { grid-area: cos; min-height: 268px; }
+  .door--all  { grid-area: all; min-height: 200px; display: flex; align-items: center;
+    background: linear-gradient(100deg, color-mix(in oklab, var(--pink) 30%, var(--cream)), color-mix(in oklab, var(--peach) 50%, var(--cream)) 60%, var(--cream)); }
+  .door--sup .door__art { right: 6%; bottom: 6%; width: 62%; }
+  .door--skin .door__art { right: 4%; bottom: 6%; width: 40%; }
+  .door--cos .door__art { right: 9%; bottom: -4%; width: 18%; }
+  .door--all .door__art { right: 3%; top: 50%; translate: 0 -50%; width: 48%; }
+
+  /* ------------------------------------------------------- peak: shade -- */
+  .shade { color: var(--cream); --sc-ink: var(--cream); --sc-ink-soft: var(--peach); }
+  .shade .sc-stage {
+    display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: clamp(2rem, 5vw, 6rem);
+    padding: calc(var(--bar-h) + 4rem) var(--sc-gutter) 2rem;
+    background:
+      radial-gradient(40% 50% at 0% 25%, color-mix(in oklab, var(--pink) 40%, transparent), transparent 70%),
+      radial-gradient(40% 50% at 100% 80%, color-mix(in oklab, var(--rose) 45%, transparent), transparent 70%),
+      var(--wine);
+  }
+  .shade { --f: clamp(0, calc(var(--sc-p, 0) * 2.4 - 0.12), 1); }
+  .fan { position: relative; height: min(68vh, 560px); width: min(100%, 520px); justify-self: end; }
+  .pill {
+    position: absolute; left: 0; width: 100%; height: 20%; top: 0;
+    border-radius: 999px; border: 0; padding: 0 0 0 2.2rem; text-align: left;
+    display: flex; flex-direction: column; justify-content: center; gap: .1rem;
+    font-family: var(--sc-font-text); font-weight: 500; letter-spacing: .03em;
+    background: var(--c); color: var(--t, var(--wine));
+    box-shadow: 0 -2px 0 color-mix(in oklab, #fff 18%, transparent) inset,
+                0 14px 26px -10px color-mix(in oklab, var(--wine) 90%, transparent),
+                0 2px 4px color-mix(in oklab, var(--wine) 60%, transparent);
+    transform-origin: 8% 50%;
+    transform:
+      translateY(calc(var(--n) * 50% * (1 + var(--f) * .5)))
+      rotate(calc((var(--n) - 2.5) * var(--f) * 5deg))
+      translateX(calc(var(--f) * var(--n) * 1.4%));
+    transition: box-shadow 160ms var(--sc-ease-out), filter 160ms;
+  }
+  .pill small { font-size: var(--sc-t-xs); opacity: .8; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+  .pill b { font-weight: 500; font-size: var(--sc-t-base); }
+  button.pill { cursor: pointer; }
+  button.pill:hover { filter: brightness(1.06); }
+  button.pill[aria-pressed="true"]::after {
+    content: ""; position: absolute; right: 2rem; top: 50%; width: 22px; height: 22px; translate: 0 -50%;
+    border-radius: 50%; border: 2px solid currentColor;
+    background: radial-gradient(circle, currentColor 0 4px, transparent 5px);
+  }
+  button.pill:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
+  .shade__copy { max-width: 32rem; }
+  .shade h2 { font-family: var(--sc-font-display); font-weight: 600; font-size: clamp(2.8rem, 1.8rem + 3.6vw, 5.2rem); line-height: .96; margin: 0 0 var(--sc-5); color: var(--cream); }
+  .shade h2 em { color: var(--peach); font-weight: 500; }
+  .shade p { color: color-mix(in oklab, var(--peach) 80%, var(--cream)); margin: 0 0 var(--sc-7); max-width: 34ch; font-size: var(--sc-t-lg); font-weight: 300; }
+  .vanity { display: flex; gap: 1.6rem; align-items: end; margin-bottom: var(--sc-7); }
+  .vanity__mirror {
+    width: 200px; aspect-ratio: 1; border-radius: 50%; position: relative; flex: none;
+    background: radial-gradient(circle at 35% 30%, var(--cream), color-mix(in oklab, var(--peach) 70%, var(--cream)) 60%, var(--peach));
+    box-shadow: 0 0 0 6px color-mix(in oklab, var(--rose) 55%, var(--peach)), 0 24px 40px -12px #0008;
+  }
+  .vanity__mirror svg { position: absolute; bottom: 8%; }
+  .vanity__lip { left: 22%; width: 22%; }
+  .vanity__serum { left: 52%; width: 24%; }
+  .vanity__name { font-family: var(--sc-font-display); font-size: var(--sc-t-2xl); line-height: 1; color: var(--cream); margin: 0 0 .3rem; }
+  .vanity__hex { font-size: var(--sc-t-sm); color: var(--peach); letter-spacing: .08em; margin: 0; font-variant-numeric: tabular-nums; }
+  .btn--light { background: var(--cream); color: var(--wine); box-shadow: 0 10px 22px -10px #000a; }
+  .btn--light:hover { background: var(--peach); }
+
+  /* ------------------------------------------------------------ brands -- */
+  .brands .sc-stage { display: flex; flex-direction: column; justify-content: center; padding-top: var(--bar-h); }
+  .brands__head { display: flex; justify-content: space-between; align-items: end; padding-inline: var(--sc-gutter); margin-bottom: var(--sc-8); }
+  .rail { display: flex; gap: clamp(1rem, 2vw, 1.75rem); padding-inline: var(--sc-gutter); width: max-content; }
+  .brand {
+    width: clamp(260px, 26vw, 400px); aspect-ratio: 4 / 3; border-radius: var(--radius); flex: none;
+    background: #fffaf4; box-shadow: var(--sc-e2), inset 0 1px 0 #fff;
+    border: 1px solid color-mix(in oklab, var(--rose) 14%, transparent);
+    display: grid; grid-template-rows: 1fr auto; padding: 1.6rem; text-decoration: none; color: var(--wine);
+    transition: box-shadow 200ms var(--sc-ease-out), transform 200ms var(--sc-ease-out);
+  }
+  .brand:hover { box-shadow: var(--sc-e3), inset 0 1px 0 #fff; transform: translateY(-3px); }
+  .brand__name { align-self: center; justify-self: center; text-align: center; color: var(--plum); }
+  .brand__foot { display: flex; justify-content: space-between; align-items: center; font-size: var(--sc-t-sm); color: var(--plum); border-top: 1px solid color-mix(in oklab, var(--rose) 16%, transparent); padding-top: .9rem; }
+  .brand__foot .i { width: 18px; height: 18px; color: var(--rose); }
+  .bn-1 { font-family: var(--sc-font-text); font-weight: 600; font-size: 2.1rem; letter-spacing: -.01em; }
+  .bn-2 { font-family: var(--sc-font-text); font-weight: 400; font-size: 2.6rem; letter-spacing: .14em; }
+  .bn-3 { font-family: var(--sc-font-text); font-weight: 500; font-size: 1.7rem; letter-spacing: .22em; line-height: 1.1; }
+  .bn-3 small, .bn-4 small, .bn-5 small { display: block; font-size: .42em; letter-spacing: .3em; font-weight: 400; }
+  .bn-4 { font-family: var(--sc-font-display); font-weight: 600; font-size: 2.4rem; letter-spacing: .06em; line-height: 1.05; }
+  .bn-5 { font-family: var(--sc-font-text); font-weight: 600; font-size: 3rem; letter-spacing: .02em; line-height: 1.05; color: var(--rose); }
+  .bn-6 { font-family: var(--sc-font-text); font-weight: 600; font-size: 2.8rem; letter-spacing: .08em; color: var(--rose); }
+
+  /* ------------------------------------------------------------- close -- */
+  .close .sc-stage { display: grid; grid-template-rows: 1fr auto; background:
+      radial-gradient(60% 80% at 50% 110%, color-mix(in oklab, var(--pink) 45%, transparent), transparent 70%),
+      linear-gradient(180deg, var(--cream), color-mix(in oklab, var(--peach) 55%, var(--cream))); }
+  .close__inner { align-self: center; text-align: center; padding: calc(var(--bar-h) + 2rem) var(--sc-gutter) 2rem; display: grid; justify-items: center; }
+  .close__inner .h2 { font-size: clamp(2.6rem, 1.6rem + 3.8vw, 5.4rem); max-width: 18ch; margin-bottom: var(--sc-6); }
+  .close__chip { display: inline-flex; gap: .6rem; align-items: center; margin: 0 0 var(--sc-7); color: var(--plum); }
+  .close__chip i { width: 18px; height: 18px; border-radius: 50%; background: var(--shade); box-shadow: 0 0 0 3px var(--cream), 0 0 0 4px color-mix(in oklab, var(--rose) 40%, transparent); }
+  .close__blooms { position: absolute; inset: auto 0 0; height: 40%; pointer-events: none; }
+  .close__blooms svg { position: absolute; }
+  .foot {
+    position: relative; z-index: 2; display: flex; flex-wrap: wrap; gap: 1rem 2.5rem; justify-content: space-between; align-items: center;
+    padding: 1.4rem var(--sc-gutter); background: var(--wine); color: var(--peach); font-size: var(--sc-t-sm);
+  }
+  .foot ul { display: flex; flex-wrap: wrap; gap: .4rem 1.8rem; list-style: none; margin: 0; padding: 0; }
+  .foot a { text-decoration: none; color: var(--cream); }
+  .foot a:hover { color: var(--peach); text-decoration: underline; }
+  .foot .mark span { color: var(--cream); font-size: 1.4rem; }
+  .foot .mark { color: var(--peach); grid-auto-flow: column; gap: .5rem; align-items: center; }
+
+  /* ------------------------------------------------------------ mobile -- */
+  @media (max-width: 1100px) {
+    .cats { display: none; }
+    :root { --cats-h: 0px; }
+  }
+  @media (max-width: 860px) {
+    :root { --bar-h: 58px; --util-h: 32px; }
+    .util ul li:nth-child(n+2) { display: none; }
+    .util p span.long { display: none; }
+    .mark span { font-size: 1.5rem; }
+    .tools .t-acct, .tools .t-wish { display: none; }
+
+    .hero__copy { top: calc(var(--util-h) + var(--bar-h) + 4vh); right: var(--sc-gutter); }
+    .hero h1 { font-size: clamp(2.5rem, 10.5vw, 3.4rem); }
+    .hero p { font-size: var(--sc-t-base); margin-bottom: var(--sc-6); }
+    .rule { margin: var(--sc-4) 0; }
+    .arch { left: 58%; top: 70%; width: 92vw; }
+    .branch-far { width: 70vw; top: auto; bottom: 36vh; right: -20vw; }
+    .p-prod { left: 50%; bottom: 17vh; width: 92vw; }
+    .p-front { width: 70vw; right: -18vw; bottom: -6vh; }
+    .trust ul { grid-template-columns: 1fr 1fr; gap: .9rem 0; padding-block: .9rem; }
+    .trust li { justify-content: flex-start; padding-inline: .6rem; gap: .6rem; }
+    .trust li:nth-child(3) { border-left: 0; }
+    .trust .i { width: 26px; height: 26px; }
+    .trust b { font-size: var(--sc-t-sm); }
+    .trust span { font-size: var(--sc-t-xs); }
+
+    .doors__grid { grid-template-columns: 1fr; grid-template-areas: "sup" "skin" "cos" "all"; }
+    .door--sup { min-height: 440px; }
+    .door--sup .door__art { width: 74%; right: 4%; }
+    .door--skin .door__art { width: 46%; }
+    .door--cos .door__art { width: 24%; }
+    .door--all { align-items: start; min-height: 300px; }
+    .door--all .door__art { top: auto; bottom: 0; translate: 0; width: 86%; }
+    .doors__head { flex-direction: column; align-items: start; }
+
+    .shade .sc-stage { grid-template-columns: 1fr; grid-template-rows: auto 1fr; align-content: start; gap: 1.2rem; padding-top: calc(var(--bar-h) + 1.2rem); }
+    .shade__copy { order: -1; }
+    .shade h2 { font-size: clamp(2.3rem, 10vw, 3rem); margin-bottom: .6rem; }
+    .shade p { font-size: var(--sc-t-sm); margin-bottom: 1rem; }
+    .vanity { gap: 1rem; margin-bottom: 1rem; }
+    .vanity__mirror { width: 108px; }
+    .vanity__name { font-size: var(--sc-t-xl); }
+    .fan { justify-self: stretch; height: 36vh; width: 100%; }
+    .pill { padding-left: 1.4rem; }
+    .pill b { font-size: var(--sc-t-sm); }
+    .pill small { font-size: 11px; }
+    button.pill[aria-pressed="true"]::after { right: 1.2rem; width: 18px; height: 18px; }
+    .shade .btn { height: 48px; }
+
+    .brands__head { flex-direction: column; align-items: start; gap: .6rem; margin-bottom: var(--sc-6); }
+    .brand { width: 72vw; }
+    .close__inner .h2 { font-size: clamp(2.4rem, 11vw, 3.4rem); }
+    .foot { flex-direction: column; align-items: start; }
+  }
+  @media (max-width: 860px) and (max-height: 700px) {
+    .vanity__mirror { width: 84px; }
+    .shade p { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero, .shade { --q: 0; --f: 1; }
+    .door:hover, .brand:hover { transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Artwork. Every fill that should take the chosen shade reads var(--shade). -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="g-metal" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#6A1E3B"/><stop offset=".18" stop-color="#B94273"/>
+      <stop offset=".42" stop-color="#FFC9B9"/><stop offset=".52" stop-color="#FFF3E6"/>
+      <stop offset=".7" stop-color="#E97DA6"/><stop offset="1" stop-color="#6A1E3B"/>
+    </linearGradient>
+    <linearGradient id="g-glass" x1="0" x2="1">
+      <stop offset="0" style="stop-color: color-mix(in oklab, var(--shade) 70%, #6A1E3B)"/>
+      <stop offset=".3" style="stop-color: color-mix(in oklab, var(--shade) 45%, #FFF3E6)"/>
+      <stop offset=".55" style="stop-color: color-mix(in oklab, var(--shade) 28%, #FFF3E6)"/>
+      <stop offset="1" style="stop-color: color-mix(in oklab, var(--shade) 80%, #6A1E3B)"/>
+    </linearGradient>
+    <linearGradient id="g-liquid" x1="0" x2="1">
+      <stop offset="0" style="stop-color: color-mix(in oklab, var(--shade) 70%, #2D0A1E)"/>
+      <stop offset=".4" style="stop-color: var(--shade)"/>
+      <stop offset="1" style="stop-color: color-mix(in oklab, var(--shade) 65%, #2D0A1E)"/>
+    </linearGradient>
+    <linearGradient id="g-bullet" x1="0" x2="1">
+      <stop offset="0" style="stop-color: color-mix(in oklab, var(--shade) 65%, #2D0A1E)"/>
+      <stop offset=".35" style="stop-color: color-mix(in oklab, var(--shade) 80%, #FFF3E6)"/>
+      <stop offset=".6" style="stop-color: var(--shade)"/>
+      <stop offset="1" style="stop-color: color-mix(in oklab, var(--shade) 55%, #2D0A1E)"/>
+    </linearGradient>
+    <radialGradient id="g-cream" cx=".4" cy=".35" r=".8">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset=".6" style="stop-color: color-mix(in oklab, var(--shade) 10%, #FFF3E6)"/>
+      <stop offset="1" style="stop-color: color-mix(in oklab, var(--shade) 30%, #FFC9B9)"/>
+    </radialGradient>
+    <radialGradient id="g-petal" cx=".5" cy=".9" r="1">
+      <stop offset="0" style="stop-color: color-mix(in oklab, var(--shade) 75%, #6A1E3B)"/>
+      <stop offset=".35" style="stop-color: color-mix(in oklab, var(--shade) 55%, #FFC9B9)"/>
+      <stop offset="1" stop-color="#FFF3E6"/>
+    </radialGradient>
+    <radialGradient id="g-gel" cx=".35" cy=".3" r=".9">
+      <stop offset="0" stop-color="#FFF3E6"/>
+      <stop offset=".35" style="stop-color: color-mix(in oklab, var(--shade) 25%, #FFC9B9)"/>
+      <stop offset="1" style="stop-color: color-mix(in oklab, var(--shade) 60%, #B94273)"/>
+    </radialGradient>
+    <linearGradient id="g-marble" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#FFF8F2"/><stop offset=".5" stop-color="#FFF3E6"/><stop offset="1" stop-color="#FFC9B9"/>
+    </linearGradient>
+    <linearGradient id="g-bottle" x1="0" x2="1">
+      <stop offset="0" stop-color="#FFC9B9"/><stop offset=".35" stop-color="#FFFFFF"/><stop offset=".7" stop-color="#FFF3E6"/><stop offset="1" stop-color="#FFC9B9"/>
+    </linearGradient>
+
+    <symbol id="jar" viewBox="0 0 200 180">
+      <path d="M40 58 C40 26 70 8 100 10 C112 4 132 12 128 28 C150 30 162 44 160 58 Z" fill="url(#g-cream)"/>
+      <path d="M78 22 C92 30 108 30 118 22" fill="none" stroke="#FFC9B9" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+      <rect x="22" y="54" width="156" height="40" rx="9" fill="url(#g-metal)"/>
+      <rect x="22" y="56" width="156" height="5" rx="2.5" fill="#FFF3E6" opacity=".55"/>
+      <rect x="14" y="90" width="172" height="86" rx="20" fill="url(#g-glass)"/>
+      <rect x="26" y="98" width="20" height="68" rx="10" fill="#FFF3E6" opacity=".38"/>
+      <text x="100" y="146" text-anchor="middle" font-family="Cormorant Garamond, Georgia, serif" font-weight="600" font-size="24" letter-spacing="4" fill="#2D0A1E" opacity=".72">ORZIA</text>
+    </symbol>
+
+    <symbol id="serum" viewBox="0 0 100 270">
+      <rect x="35" y="0" width="30" height="50" rx="15" fill="url(#g-metal)"/>
+      <rect x="25" y="44" width="50" height="46" rx="6" fill="url(#g-metal)"/>
+      <rect x="25" y="46" width="50" height="4" rx="2" fill="#FFF3E6" opacity=".55"/>
+      <rect x="12" y="86" width="76" height="182" rx="16" fill="url(#g-glass)"/>
+      <rect x="17" y="132" width="66" height="130" rx="12" fill="url(#g-liquid)" opacity=".92"/>
+      <rect x="22" y="150" width="56" height="62" rx="4" fill="#FFF3E6" opacity=".88"/>
+      <text x="50" y="176" text-anchor="middle" font-family="Cormorant Garamond, Georgia, serif" font-weight="600" font-size="13" letter-spacing="2" fill="#2D0A1E">ORZIA</text>
+      <text x="50" y="194" text-anchor="middle" font-family="Outfit, sans-serif" font-size="6" letter-spacing="1" fill="#6A1E3B">REVITALIZING</text>
+      <text x="50" y="203" text-anchor="middle" font-family="Outfit, sans-serif" font-size="6" letter-spacing="1" fill="#6A1E3B">SERUM</text>
+      <rect x="18" y="92" width="10" height="168" rx="5" fill="#FFF3E6" opacity=".35"/>
+    </symbol>
+
+    <symbol id="lipstick" viewBox="0 0 70 230">
+      <path d="M16 96 V44 Q16 34 26 28 L54 12 V96 Z" fill="url(#g-bullet)"/>
+      <path d="M22 92 V46 Q22 40 28 36 L32 34 V92 Z" fill="#FFF3E6" opacity=".25"/>
+      <rect x="11" y="90" width="48" height="42" rx="3" fill="url(#g-metal)"/>
+      <rect x="5" y="128" width="60" height="100" rx="6" fill="url(#g-metal)"/>
+      <rect x="5" y="128" width="60" height="5" fill="#2D0A1E" opacity=".15"/>
+    </symbol>
+
+    <symbol id="gel" viewBox="0 0 64 36">
+      <ellipse cx="32" cy="18" rx="30" ry="16" fill="url(#g-gel)"/>
+      <ellipse cx="22" cy="11" rx="12" ry="4" fill="#FFFFFF" opacity=".7"/>
+    </symbol>
+
+    <symbol id="bottle" viewBox="0 0 130 190">
+      <rect x="30" y="0" width="70" height="38" rx="6" fill="url(#g-metal)"/>
+      <rect x="36" y="34" width="58" height="12" rx="3" fill="#FFC9B9"/>
+      <rect x="8" y="44" width="114" height="144" rx="26" fill="url(#g-bottle)"/>
+      <rect x="8" y="88" width="114" height="58" fill="url(#g-liquid)" opacity=".85"/>
+      <text x="65" y="122" text-anchor="middle" font-family="Cormorant Garamond, Georgia, serif" font-weight="600" font-size="18" letter-spacing="3" fill="#FFF3E6">ORZIA</text>
+      <rect x="18" y="54" width="12" height="124" rx="6" fill="#FFFFFF" opacity=".5"/>
+    </symbol>
+
+    <symbol id="blossom" viewBox="-50 -50 100 100">
+      <g fill="url(#g-petal)">
+        <path id="petal" d="M0 -4 C-15 -14 -18 -36 -6 -46 C-3 -42 3 -42 6 -46 C18 -36 15 -14 0 -4Z"/>
+        <use href="#petal" transform="rotate(72)"/><use href="#petal" transform="rotate(144)"/>
+        <use href="#petal" transform="rotate(216)"/><use href="#petal" transform="rotate(288)"/>
+      </g>
+      <circle r="7" fill="#B94273"/>
+      <g fill="#6A1E3B">
+        <circle cx="0" cy="-12" r="2"/><circle cx="11" cy="-4" r="2"/><circle cx="7" cy="10" r="2"/>
+        <circle cx="-7" cy="10" r="2"/><circle cx="-11" cy="-4" r="2"/>
+      </g>
+      <circle r="3" fill="#FFC9B9"/>
+    </symbol>
+
+    <symbol id="bud" viewBox="-12 -20 24 32">
+      <path d="M0 10 C-10 2 -9 -12 0 -18 C9 -12 10 2 0 10Z" fill="url(#g-petal)"/>
+    </symbol>
+
+    <symbol id="branch" viewBox="0 0 600 440">
+      <path d="M600 420 C520 380 470 330 420 250 C380 180 300 120 180 90 M420 250 C460 190 470 130 520 80 M330 150 C300 210 230 240 150 250 M180 90 C140 80 90 60 50 30"
+            fill="none" stroke="#6A1E3B" stroke-width="7" stroke-linecap="round"/>
+      <path d="M520 80 C540 60 560 50 580 48 M150 250 C120 254 100 270 80 290" fill="none" stroke="#6A1E3B" stroke-width="4" stroke-linecap="round"/>
+      <use href="#blossom" x="372" y="146" width="130" height="130"/>
+      <use href="#blossom" x="120" y="40" width="112" height="112" transform="rotate(-12 176 96)"/>
+      <use href="#blossom" x="440" y="10" width="100" height="100" transform="rotate(20 490 60)"/>
+      <use href="#blossom" x="200" y="190" width="106" height="106" transform="rotate(34 253 243)"/>
+      <use href="#blossom" x="30" y="230" width="84" height="84"/>
+      <use href="#bud" x="40" y="10" width="30" height="40" transform="rotate(-40 55 30)"/>
+      <use href="#bud" x="560" y="24" width="28" height="38" transform="rotate(50 574 43)"/>
+      <use href="#bud" x="300" y="100" width="26" height="36"/>
+    </symbol>
+
+    <symbol id="ic-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="ic-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+    <symbol id="ic-heart" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></symbol>
+    <symbol id="ic-bag" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></symbol>
+    <symbol id="ic-truck" viewBox="0 0 24 24"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></symbol>
+    <symbol id="ic-leaf" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></symbol>
+    <symbol id="ic-gem" viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></symbol>
+    <symbol id="ic-return" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="ic-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+    <symbol id="ic-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="ic-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="ic-mark" viewBox="0 0 30 18"><path d="M15 17C8 14 5 8 8 1c5 3 7 9 7 16Zm0 0c7-3 10-9 7-16-5 3-7 9-7 16Z" fill="currentColor" stroke="none"/></symbol>
+  </defs>
+</svg>
+
+<a class="vh" href="#main">Skip to content</a>
+<span data-sc-progress></span>
+
+<header class="store" id="store">
+  <div class="util">
+    <p><svg class="i"><use href="#ic-truck"/></svg><span>Free shipping <span class="long">on orders </span>over AED 200</span></p>
+    <ul>
+      <li><a href="#help">Help &amp; Support</a></li>
+      <li><a href="#track">Track Order</a></li>
+      <li><button type="button" aria-label="Currency: AED">AED <svg class="i i--s"><use href="#ic-down"/></svg></button></li>
+      <li><button type="button" aria-label="Language: English">English <svg class="i i--s"><use href="#ic-down"/></svg></button></li>
+    </ul>
+  </div>
+  <div class="bar">
+    <div class="bar__row">
+      <div><button class="iconbtn" type="button" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="drawer"><svg class="i"><use href="#ic-menu"/></svg></button></div>
+      <a class="mark" href="#top" aria-label="ORZIA home"><svg aria-hidden="true"><use href="#ic-mark"/></svg><span>ORZIA</span></a>
+      <div class="tools">
+        <button class="iconbtn" type="button" id="searchBtn" aria-label="Search"><svg class="i"><use href="#ic-search"/></svg></button>
+        <a class="iconbtn t-acct" href="#account" aria-label="Account"><svg class="i"><use href="#ic-user"/></svg></a>
+        <a class="iconbtn t-wish" href="#wishlist" aria-label="Wishlist"><svg class="i"><use href="#ic-heart"/></svg></a>
+        <a class="iconbtn" href="#bag" aria-label="Bag, 0 items" id="bagLink"><svg class="i"><use href="#ic-bag"/></svg><span class="badge" id="bagCount" aria-hidden="true">0</span></a>
+      </div>
+    </div>
+    <nav aria-label="Shop">
+      <ul class="cats">
+        <li><a href="#shop">All Products <svg class="i"><use href="#ic-down"/></svg></a></li>
+        <li><a href="#brands">Brands <svg class="i"><use href="#ic-down"/></svg></a></li>
+        <li><a href="#shop">Best Sellers</a></li>
+        <li><a href="#shop">New Arrivals</a></li>
+        <li><a href="#shop">Offers</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<div class="sheet" id="drawer" role="dialog" aria-modal="true" aria-label="Menu">
+  <div class="sheet__panel">
+    <button class="iconbtn sheet__close" type="button" data-close aria-label="Close menu"><svg class="i"><use href="#ic-x"/></svg></button>
+    <a class="mark" href="#top" style="justify-items:start"><svg aria-hidden="true"><use href="#ic-mark"/></svg><span>ORZIA</span></a>
+    <h2>Shop</h2>
+    <ul>
+      <li><a href="#shop" data-close>All Products</a></li>
+      <li><a href="#shop" data-close>Supplements</a></li>
+      <li><a href="#shop" data-close>Skincare</a></li>
+      <li><a href="#shop" data-close>Cosmetics</a></li>
+      <li><a href="#brands" data-close>Brands</a></li>
+      <li><a href="#shop" data-close>Best Sellers</a></li>
+      <li><a href="#shop" data-close>New Arrivals</a></li>
+      <li><a href="#shop" data-close>Offers</a></li>
+    </ul>
+    <h2>Help</h2>
+    <ul>
+      <li><a href="#help" data-close>Help &amp; Support</a></li>
+      <li><a href="#track" data-close>Track Order</a></li>
+    </ul>
+  </div>
+</div>
+
+<div class="sheet" id="searchSheet" role="dialog" aria-modal="true" aria-label="Search">
+  <div class="search">
+    <form role="search" id="searchForm">
+      <label class="vh" for="q">Search ORZIA</label>
+      <input id="q" name="q" type="search" placeholder="Search supplements, skincare, brands" autocomplete="off">
+      <button class="iconbtn" type="button" data-close aria-label="Close search"><svg class="i"><use href="#ic-x"/></svg></button>
+    </form>
+    <p class="search__hint" id="searchHint" aria-live="polite"></p>
+  </div>
+</div>
+
+<main id="main">
+
+  <!-- 1 · HERO: layered vitrine. Four planes, copy at 1x. -->
+  <section class="hero" id="top" data-sc-act="pin" data-sc-span="1.7" data-sc-drift="#FFF3E6">
+    <div data-sc-stage>
+      <div class="plane p-back" aria-hidden="true">
+        <div class="arch"></div>
+        <svg class="branch-far" viewBox="0 0 600 440"><use href="#branch"/></svg>
+      </div>
+
+      <div class="hero__copy" data-sc-cue="0 0.72 0 0.3">
+        <h1>Wellness essentials, <em>curated with care</em></h1>
+        <div class="rule" aria-hidden="true"></div>
+        <p>Premium supplements and cosmetics to support your daily wellness and beauty routine.</p>
+        <a class="btn" href="#shop">Shop now <svg class="i"><use href="#ic-arrow"/></svg></a>
+      </div>
+
+      <div class="plane p-prod" aria-hidden="true">
+        <div class="prod-set">
+          <div class="plinth"><svg viewBox="0 0 520 90" preserveAspectRatio="none">
+            <path d="M10 22 Q10 6 260 4 Q510 6 510 22 V62 Q510 86 260 88 Q10 86 10 62Z" fill="url(#g-marble)"/>
+            <ellipse cx="260" cy="20" rx="250" ry="17" fill="#FFF8F2"/>
+            <path d="M60 30 C140 50 200 24 300 46 S440 40 480 60" fill="none" stroke="#B94273" stroke-opacity=".14" stroke-width="2"/>
+            <path d="M14 64 Q260 92 506 64" fill="none" stroke="#B94273" stroke-opacity=".45" stroke-width="3"/>
+          </svg></div>
+          <svg class="prod-serum" viewBox="0 0 100 270"><use href="#serum"/></svg>
+          <svg class="prod-jar" viewBox="0 0 200 180"><use href="#jar"/></svg>
+        </div>
+      </div>
+
+      <div class="plane p-front" aria-hidden="true">
+        <svg viewBox="0 0 600 440" style="width:100%"><use href="#branch"/></svg>
+      </div>
+
+      <div class="trust" data-sc-cue="0.32 1 0.28 0">
+        <ul>
+          <li><svg class="i"><use href="#ic-leaf"/></svg><div><b>Curated Selection</b><span>Supplements &amp; Cosmetics</span></div></li>
+          <li><svg class="i"><use href="#ic-gem"/></svg><div><b>Authentic Brands</b><span>Genuine &amp; Trusted</span></div></li>
+          <li><svg class="i"><use href="#ic-truck"/></svg><div><b>Free Shipping</b><span>Orders Over AED 200</span></div></li>
+          <li><svg class="i"><use href="#ic-return"/></svg><div><b>Easy Returns</b><span>Hassle-Free Shopping</span></div></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · CATEGORIES: flow, four doors wipe open -->
+  <section class="doors sc-wrap" id="shop" data-sc-act="flow" data-sc-drift="#FFF3E6">
+    <div class="doors__head" data-sc-in>
+      <h2 class="h2">Shop the range</h2>
+      <a class="link" href="#shop">All products <svg class="i"><use href="#ic-arrow"/></svg></a>
+    </div>
+    <div class="doors__grid">
+      <div data-sc-reveal="up" data-sc-reveal-at="0.12 0.42" style="grid-area:sup;display:grid">
+        <a class="door door--sup" href="#shop" data-sc-tilt="4">
+          <div class="door__txt"><h3>Supplements</h3><p>Vitamins, minerals &amp; more</p><span class="link">Shop now <svg class="i"><use href="#ic-arrow"/></svg></span></div>
+          <div class="door__art" aria-hidden="true">
+            <svg viewBox="0 0 400 300" style="width:100%">
+              <use href="#bottle" x="150" y="10" width="160" height="234"/>
+              <use href="#gel" x="40" y="214" width="96" height="54"/>
+              <use href="#gel" x="110" y="236" width="84" height="48" transform="rotate(-18 152 260)"/>
+              <use href="#gel" x="300" y="226" width="84" height="48" transform="rotate(14 342 250)"/>
+              <use href="#gel" x="76" y="250" width="70" height="40" transform="rotate(30 111 270)"/>
+            </svg>
+          </div>
+        </a>
+      </div>
+      <div data-sc-reveal="left" data-sc-reveal-at="0.16 0.46" style="grid-area:skin;display:grid">
+        <a class="door door--skin" href="#shop" data-sc-tilt="4">
+          <div class="door__txt"><h3>Skincare</h3><p>Nourish &amp; protect your skin</p><span class="link">Shop now <svg class="i"><use href="#ic-arrow"/></svg></span></div>
+          <div class="door__art" aria-hidden="true"><svg viewBox="0 0 200 180"><use href="#jar"/></svg></div>
+        </a>
+      </div>
+      <div data-sc-reveal="left" data-sc-reveal-at="0.22 0.52" style="grid-area:cos;display:grid">
+        <a class="door door--cos" href="#shop" data-sc-tilt="4">
+          <div class="door__txt"><h3>Cosmetics</h3><p>Beauty for every you</p><span class="link">Shop now <svg class="i"><use href="#ic-arrow"/></svg></span></div>
+          <div class="door__art" aria-hidden="true"><svg viewBox="0 0 70 230"><use href="#lipstick"/></svg></div>
+        </a>
+      </div>
+      <div data-sc-reveal="right" data-sc-reveal-at="0.3 0.62" style="grid-area:all;display:grid">
+        <a class="door door--all" href="#shop">
+          <div class="door__txt"><h3>All Products</h3><p>Discover our complete range</p><span class="link">Shop now <svg class="i"><use href="#ic-arrow"/></svg></span></div>
+          <div class="door__art" aria-hidden="true">
+            <svg viewBox="0 0 640 220" style="width:100%">
+              <use href="#branch" x="380" y="-40" width="300" height="220"/>
+              <use href="#bottle" x="60" y="40" width="110" height="160"/>
+              <use href="#jar" x="170" y="96" width="130" height="117"/>
+              <use href="#serum" x="306" y="52" width="58" height="157"/>
+              <use href="#lipstick" x="380" y="88" width="38" height="125"/>
+              <use href="#gel" x="440" y="180" width="56" height="32"/>
+              <use href="#gel" x="490" y="186" width="50" height="28" transform="rotate(-20 515 200)"/>
+            </svg>
+          </div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · PEAK: the swatch stack fans open; one tap regrades the shop -->
+  <section class="shade" id="shade" data-sc-act="pin" data-sc-span="2.6" data-sc-drift="#2D0A1E">
+    <div data-sc-stage>
+      <div class="fan" role="group" aria-label="Choose a shade">
+        <div class="pill" style="--n:0;--c:#2D0A1E;--t:#FFC9B9;box-shadow:inset 0 0 0 1px #6A1E3B, 0 14px 26px -10px #000"><b>Noir</b><small>#2D0A1E</small></div>
+        <button class="pill" type="button" style="--n:1;--c:#6A1E3B;--t:#FFF3E6" data-shade="#6A1E3B" data-name="Berry" aria-pressed="false"><b>Berry</b><small>#6A1E3B</small></button>
+        <button class="pill" type="button" style="--n:2;--c:#B94273;--t:#FFF3E6" data-shade="#B94273" data-name="Rose" aria-pressed="false"><b>Rose</b><small>#B94273</small></button>
+        <button class="pill" type="button" style="--n:3;--c:#E97DA6;--t:#2D0A1E" data-shade="#E97DA6" data-name="Petal" aria-pressed="true"><b>Petal</b><small>#E97DA6</small></button>
+        <button class="pill" type="button" style="--n:4;--c:#FFC9B9;--t:#2D0A1E" data-shade="#FFC9B9" data-name="Blush" aria-pressed="false"><b>Blush</b><small>#FFC9B9</small></button>
+        <div class="pill" style="--n:5;--c:#FFF3E6;--t:#2D0A1E"><b>Bare</b><small>#FFF3E6</small></div>
+      </div>
+      <div class="shade__copy" data-sc-cue="0 1 0 0">
+        <h2>Find your <em>shade</em></h2>
+        <p>Tap a swatch. Every product in the shop takes it on, from the serum to the softgels.</p>
+        <div class="vanity">
+          <div class="vanity__mirror" aria-hidden="true">
+            <svg class="vanity__lip" viewBox="0 0 70 230"><use href="#lipstick"/></svg>
+            <svg class="vanity__serum" viewBox="0 0 100 270"><use href="#serum"/></svg>
+          </div>
+          <div aria-live="polite">
+            <p class="vanity__name" id="shadeName">Petal</p>
+            <p class="vanity__hex" id="shadeHex">#E97DA6</p>
+          </div>
+        </div>
+        <button class="btn btn--light" type="button" id="addShade">Add to bag <svg class="i"><use href="#ic-bag"/></svg></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · BRANDS: pan, names they already buy -->
+  <section class="brands" id="brands" data-sc-act="pan" data-sc-span="2.3" data-sc-drift="#FFF3E6">
+    <div data-sc-stage>
+      <div class="brands__head">
+        <h2 class="h2">Shop by brand</h2>
+        <a class="link" href="#brands">View all brands <svg class="i"><use href="#ic-arrow"/></svg></a>
+      </div>
+      <div class="rail" data-sc-pan="0.04">
+        <a class="brand" href="#brands"><span class="brand__name bn-1">Dynamogén</span><span class="brand__foot">Shop brand <svg class="i"><use href="#ic-arrow"/></svg></span></a>
+        <a class="brand" href="#brands"><span class="brand__name bn-2">VICHY</span><span class="brand__foot">Shop brand <svg class="i"><use href="#ic-arrow"/></svg></span></a>
+        <a class="brand" href="#brands"><span class="brand__name bn-3">MAYBELLINE<small>NEW YORK</small></span><span class="brand__foot">Shop brand <svg class="i"><use href="#ic-arrow"/></svg></span></a>
+        <a class="brand" href="#brands"><span class="brand__name bn-4">COSMO<small>NATURAL</small></span><span class="brand__foot">Shop brand <svg class="i"><use href="#ic-arrow"/></svg></span></a>
+        <a class="brand" href="#brands"><span class="brand__name bn-5">PLC<small>SUPPLEMENTS</small></span><span class="brand__foot">Shop brand <svg class="i"><use href="#ic-arrow"/></svg></span></a>
+        <a class="brand" href="#brands"><span class="brand__name bn-6">KISS</span><span class="brand__foot">Shop brand <svg class="i"><use href="#ic-arrow"/></svg></span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · CLOSE: one line, one button, their shade carried through -->
+  <section class="close" id="help" data-sc-act="pin" data-sc-span="1.1" data-sc-drift="#FFF3E6">
+    <div data-sc-stage>
+      <div class="close__blooms" aria-hidden="true">
+        <svg viewBox="0 0 600 440" style="left:-8vw;bottom:-14vh;width:min(46vw,620px);transform:scaleX(-1) rotate(-10deg)"><use href="#branch"/></svg>
+        <svg viewBox="0 0 600 440" style="right:-10vw;bottom:-18vh;width:min(42vw,580px);transform:rotate(-16deg)"><use href="#branch"/></svg>
+      </div>
+      <div class="close__inner" data-sc-cue="0.02">
+        <h2 class="h2">Your whole routine, in one bag.</h2>
+        <p class="close__chip"><i aria-hidden="true"></i><span>Shopping in <b id="closeShade">Petal</b></span></p>
+        <a class="btn" href="#shop">Shop now <svg class="i"><use href="#ic-arrow"/></svg></a>
+      </div>
+      <footer class="foot" id="track">
+        <a class="mark" href="#top" aria-label="ORZIA home"><svg aria-hidden="true"><use href="#ic-mark"/></svg><span>ORZIA</span></a>
+        <ul>
+          <li><a href="#help">Help &amp; Support</a></li>
+          <li><a href="#track">Track Order</a></li>
+          <li><a href="#help">Shipping &amp; Returns</a></li>
+          <li><a href="#help">Privacy</a></li>
+        </ul>
+        <span>&copy; 2026 ORZIA. Free shipping on orders over AED 200.</span>
+      </footer>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><i></i><span id="toastMsg"></span></div>
+
+<script src="scrollcraft.js"></script>
+<script>ScrollCraft.mount(document.body);</script>
+<script>
+(function () {
+  var root = document.documentElement;
+  var store = document.getElementById('store');
+
+  /* condensed chrome once the page moves */
+  var condensed = false;
+  function onScroll() {
+    var c = window.scrollY > 40;
+    if (c !== condensed) { condensed = c; store.classList.toggle('is-condensed', c); }
+  }
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  /* sheets: menu drawer + search */
+  var lastFocus = null;
+  function openSheet(el, focusSel) {
+    lastFocus = document.activeElement;
+    el.classList.add('is-open');
+    document.getElementById('menuBtn').setAttribute('aria-expanded', el.id === 'drawer');
+    var f = el.querySelector(focusSel || 'a, button, input'); if (f) f.focus();
+  }
+  function closeSheets() {
+    document.querySelectorAll('.sheet.is-open').forEach(function (s) { s.classList.remove('is-open'); });
+    document.getElementById('menuBtn').setAttribute('aria-expanded', 'false');
+    if (lastFocus) lastFocus.focus();
+  }
+  document.getElementById('menuBtn').addEventListener('click', function () { openSheet(document.getElementById('drawer'), '.sheet__close'); });
+  document.getElementById('searchBtn').addEventListener('click', function () { openSheet(document.getElementById('searchSheet'), 'input'); });
+  document.querySelectorAll('.sheet').forEach(function (s) {
+    s.addEventListener('click', function (e) {
+      if (e.target === s || e.target.closest('[data-close]')) closeSheets();
+    });
+  });
+  addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheets(); });
+
+  var catalogue = ['Supplements', 'Skincare', 'Cosmetics', 'Dynamogén', 'Vichy', 'Maybelline New York', 'Cosmo Natural', 'PLC Supplements', 'Kiss'];
+  var q = document.getElementById('q'), hint = document.getElementById('searchHint');
+  q.addEventListener('input', function () {
+    var v = q.value.trim().toLowerCase();
+    if (!v) { hint.textContent = ''; return; }
+    var hits = catalogue.filter(function (c) { return c.toLowerCase().indexOf(v) !== -1; });
+    hint.textContent = hits.length ? 'Matches: ' + hits.join(', ') : 'No matches for "' + q.value.trim() + '"';
+  });
+  document.getElementById('searchForm').addEventListener('submit', function (e) { e.preventDefault(); });
+
+  /* the signature: one swatch regrades every product render on the page */
+  var pills = document.querySelectorAll('button.pill');
+  var current = { hex: '#E97DA6', name: 'Petal' };
+  function setShade(hex, name, save) {
+    current = { hex: hex, name: name };
+    root.style.setProperty('--shade', hex);
+    pills.forEach(function (p) { p.setAttribute('aria-pressed', p.getAttribute('data-shade') === hex); });
+    document.getElementById('shadeName').textContent = name;
+    document.getElementById('shadeHex').textContent = hex;
+    document.getElementById('closeShade').textContent = name;
+    if (save) try { localStorage.setItem('orzia-shade', JSON.stringify(current)); } catch (e) {}
+  }
+  pills.forEach(function (p) {
+    p.addEventListener('click', function () { setShade(p.getAttribute('data-shade'), p.getAttribute('data-name'), true); });
+  });
+  try {
+    var saved = JSON.parse(localStorage.getItem('orzia-shade') || 'null');
+    if (saved && saved.hex) setShade(saved.hex, saved.name, false);
+  } catch (e) {}
+
+  /* a real bag count */
+  var count = 0, badge = document.getElementById('bagCount'), bagLink = document.getElementById('bagLink');
+  var toast = document.getElementById('toast'), toastMsg = document.getElementById('toastMsg'), tt;
+  document.getElementById('addShade').addEventListener('click', function () {
+    count++;
+    badge.textContent = count;
+    bagLink.setAttribute('aria-label', 'Bag, ' + count + (count === 1 ? ' item' : ' items'));
+    badge.classList.add('is-bump'); setTimeout(function () { badge.classList.remove('is-bump'); }, 220);
+    toastMsg.textContent = current.name + ' lipstick added to your bag';
+    toast.classList.add('is-on'); clearTimeout(tt);
+    tt = setTimeout(function () { toast.classList.remove('is-on'); }, 2400);
+  });
+})();
+</script>
+</body>
+</html>
