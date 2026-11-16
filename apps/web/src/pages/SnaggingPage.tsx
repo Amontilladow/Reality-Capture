@@ -1,10 +1,10 @@
 import { Fragment, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { SnagItemFormModal } from '../components/SnagItemFormModal';
 import { SnagDetail } from '../components/SnagDetail';
-import { listSnagItems, getSnagSummary, type SnagListItem } from '../lib/snagging.api';
+import { listSnagItems, getSnagSummary, bulkDeleteSnagItems, type SnagListItem } from '../lib/snagging.api';
 import { getProject, getMembers, getHierarchy, type ProjectHierarchy } from '../lib/projects.api';
 import {
   SNAG_STATUSES, SNAG_STATUS_LABELS,
@@ -12,15 +12,18 @@ import {
 } from '../lib/snagging-constants';
 import { SNAG_STATUS_TONE, SNAG_PRIORITY_TONE } from '../lib/status-tone';
 import { StatusBadge } from '../components/ui/Badge';
+import { apiErrorMessage } from '../lib/api';
 import { Listbox } from '../components/ui/Listbox';
 
 export default function SnaggingPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [editSnag, setEditSnag] = useState<SnagListItem | null>(null);
   const [viewSnagId, setViewSnagId] = useState<string | null>(searchParams.get('snagId'));
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // ── Building/level grouping (same treatment as Floor plans/Issues);
   // snag_items.building_id/level_id are joined into buildingName/levelName
@@ -125,6 +128,26 @@ export default function SnaggingPage() {
     return { buildingGroups, unassigned };
   }, [filteredSnags, hierarchy]);
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () => bulkDeleteSnagItems(projectId!, [...selectedIds]),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['snag-items', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['snag-summary', projectId] });
+      setSelectedIds(new Set());
+    },
+  });
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  const allFilteredIds = filteredSnags.map((s) => s.id);
+  const allSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.has(id));
+
   if (!projectId) return null;
 
   if (viewSnagId) {
@@ -216,6 +239,24 @@ export default function SnaggingPage() {
           </div>
         )}
 
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-2 tick-frame panel px-4 py-2">
+            <span className="text-sm font-medium">{selectedIds.size} selected</span>
+            <label className="flex items-center gap-2 text-xs text-ink-500">
+              <input type="checkbox" checked={allSelected} onChange={() => setSelectedIds(allSelected ? new Set() : new Set(allFilteredIds))} />
+              Select all shown
+            </label>
+            <button
+              onClick={() => { if (confirm(`Delete ${selectedIds.size} snag item(s)? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
+              disabled={bulkDeleteMutation.isPending}
+              className="btn-danger !px-4 !py-2 text-sm ml-auto"
+            >
+              {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
+            </button>
+            {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
+          </div>
+        )}
+
         {/* Grouped by building -> level (same treatment as Floor plans/
             Issues): one table per building, a level sub-header row inside,
             "Unassigned" table last for items with no building or a deleted
@@ -227,7 +268,7 @@ export default function SnaggingPage() {
                 {building.name}
               </summary>
               <div className="panel tick-frame overflow-x-auto mt-2" tabIndex={0}>
-                <SnagTable levelGroups={levelGroups} onRowClick={setViewSnagId} />
+                <SnagTable levelGroups={levelGroups} onRowClick={setViewSnagId} selectedIds={selectedIds} onToggleSelect={toggleSelected} />
               </div>
             </details>
           ))}
@@ -238,7 +279,7 @@ export default function SnaggingPage() {
                 Unassigned
               </summary>
               <div className="panel tick-frame overflow-x-auto mt-2" tabIndex={0}>
-                <SnagTable levelGroups={[{ level: undefined, snags: groupedSnags.unassigned }]} onRowClick={setViewSnagId} hideLevelHeader />
+                <SnagTable levelGroups={[{ level: undefined, snags: groupedSnags.unassigned }]} onRowClick={setViewSnagId} hideLevelHeader selectedIds={selectedIds} onToggleSelect={toggleSelected} />
               </div>
             </details>
           )}
@@ -258,15 +299,20 @@ function SnagTable({
   levelGroups,
   onRowClick,
   hideLevelHeader,
+  selectedIds,
+  onToggleSelect,
 }: {
   levelGroups: { level?: ProjectHierarchy['levels'][number]; snags: SnagListItem[] }[];
   onRowClick: (id: string) => void;
   hideLevelHeader?: boolean;
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
 }) {
   return (
     <table className="w-full text-sm">
       <thead>
         <tr className="text-left text-xs text-ink-500 border-b border-base-600">
+          <th className="px-4 py-2 font-medium w-8"></th>
           <th className="px-4 py-2 font-medium">Number</th>
           <th className="px-4 py-2 font-medium">Title</th>
           <th className="px-4 py-2 font-medium">Location</th>
@@ -281,13 +327,13 @@ function SnagTable({
           <Fragment key={group.level?.id ?? '__no-level__'}>
             {!hideLevelHeader && (
               <tr>
-                <td colSpan={7} className="px-4 py-2 text-xs font-medium text-ink-500 bg-base-800/40">
+                <td colSpan={8} className="px-4 py-2 text-xs font-medium text-ink-500 bg-base-800/40">
                   {group.level?.name ?? 'No level'}
                 </td>
               </tr>
             )}
             {group.snags.map((s) => (
-              <SnagRow key={s.id} snag={s} onClick={() => onRowClick(s.id)} />
+              <SnagRow key={s.id} snag={s} onClick={() => onRowClick(s.id)} selected={selectedIds.has(s.id)} onToggleSelect={() => onToggleSelect(s.id)} />
             ))}
           </Fragment>
         ))}
@@ -296,10 +342,13 @@ function SnagTable({
   );
 }
 
-function SnagRow({ snag: s, onClick }: { snag: SnagListItem; onClick: () => void }) {
+function SnagRow({ snag: s, onClick, selected, onToggleSelect }: { snag: SnagListItem; onClick: () => void; selected: boolean; onToggleSelect: () => void }) {
   const overdue = isSnagOverdue(s.dueDate, s.status);
   return (
     <tr onClick={onClick} className="border-b border-base-700/60 last:border-0 hover:bg-base-700 cursor-pointer">
+      <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+        <input type="checkbox" checked={selected} onChange={onToggleSelect} />
+      </td>
       <td className="px-4 py-2 font-mono text-xs text-ink-500">{s.snagNumber ?? '—'}</td>
       <td className="px-4 py-2">{s.title}</td>
       <td className="px-4 py-2 text-ink-300">{s.location ?? '—'}</td>

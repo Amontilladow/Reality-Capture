@@ -63,3 +63,7 @@ export function updateTransmittal(projectId: string, transmittalId: string, payl
 export function deleteTransmittal(projectId: string, transmittalId: string) {
   return apiDelete<{ message: string }>(`/projects/${projectId}/transmittals/${transmittalId}`);
 }
+
+export function bulkDeleteTransmittals(projectId: string, transmittalIds: string[]) {
+  return apiPost<{ deleted: number; failed: number }>(`/projects/${projectId}/transmittals/bulk-delete`, { ids: transmittalIds });
+}

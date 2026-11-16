@@ -35,6 +35,10 @@ export function deleteCapture(projectId: string, captureId: string) {
   return apiDelete<void>(`/projects/${projectId}/captures/${captureId}`);
 }
 
+export function bulkDeleteCaptures(projectId: string, captureIds: string[]) {
+  return apiPost<{ deleted: number; failed: number }>(`/projects/${projectId}/captures/bulk-delete`, { ids: captureIds });
+}
+
 export function getViewerData(projectId: string, locationId: string) {
   return apiGet<Capture[]>(`/projects/${projectId}/captures/viewer/${locationId}`);
 }

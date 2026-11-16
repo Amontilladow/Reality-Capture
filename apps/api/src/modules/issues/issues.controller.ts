@@ -11,6 +11,7 @@ import { AddCaptureToIssueDto } from './dto/add-capture-to-issue.dto';
 import { ForwardIssueDto } from './dto/forward-issue.dto';
 import { ForceStatusDto } from './dto/force-status.dto';
 import { BulkCloseIssuesDto } from './dto/bulk-close-issues.dto';
+import { BulkDeleteDto } from '../../common/dto/bulk-delete.dto';
 import { BulkExportIssuesDto } from './dto/bulk-export-issues.dto';
 import { BroadcastReminderDto } from './dto/broadcast-reminder.dto';
 import { UserReminderDto } from './dto/user-reminder.dto';
@@ -190,6 +191,12 @@ export class IssuesController {
   @HttpCode(HttpStatus.OK)
   async delete(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
     return { data: await this.svc.delete(u.companyId, pid, id, u.id, u.companyRole), error: null };
+  }
+
+  @Post('bulk-delete')
+  @HttpCode(HttpStatus.OK)
+  async bulkDelete(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: BulkDeleteDto) {
+    return { data: await this.svc.bulkDelete(u.companyId, pid, dto.ids, u.id, u.companyRole), error: null };
   }
 
   @Get(':id/activities')

@@ -9,6 +9,7 @@ import { RegisterCaptureDto } from './dto/register-capture.dto';
 import { UpdateCaptureDto } from './dto/update-capture.dto';
 import { CreateHotspotDto } from './dto/create-hotspot.dto';
 import { SyncCapturesDto } from './dto/sync-captures.dto';
+import { BulkDeleteDto } from '../../common/dto/bulk-delete.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
@@ -76,6 +77,17 @@ export class CapturesController {
   @ApiOperation({ summary: 'Delete a capture and all its renditions from storage' })
   async delete(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
     return { data: await this.svc.delete(u.companyId, pid, id), error: null };
+  }
+
+  // Registered before ':id' is reached by routing only because Nest matches
+  // literal segments first; still declared here, ahead of the other :id
+  // routes, so it reads in the same order it matches.
+  @Post('bulk-delete')
+  @RequireProjectPermission('manage_project_records')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete multiple captures (and their renditions) at once' })
+  async bulkDelete(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: BulkDeleteDto) {
+    return { data: await this.svc.bulkDelete(u.companyId, pid, dto.ids), error: null };
   }
 
   // ── Hotspots ──────────────────────────────────────────────────────────────

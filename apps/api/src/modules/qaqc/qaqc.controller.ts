@@ -8,6 +8,7 @@ import { ConfirmQaqcRecordDto } from './dto/confirm-qaqc-record.dto';
 import { QaqcAttachmentUploadUrlDto } from './dto/qaqc-attachment-upload-url.dto';
 import { AddQaqcAttachmentDto } from './dto/add-qaqc-attachment.dto';
 import { AddQaqcCaptureDto } from './dto/add-qaqc-capture.dto';
+import { BulkDeleteDto } from '../../common/dto/bulk-delete.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireExactRoles } from '../../common/decorators/require-exact-roles.decorator';
 import type { AuthenticatedUser, PaginationQuery } from '@engineeringos/types';
@@ -51,6 +52,9 @@ const CONFIRM_ROLES = ['qa_qc_manager', 'qaqc_team_member', 'company_admin', 'su
 // Attachment/photo management is shared by both sides of the workflow,
 // for every record type; same union as the broadened create/respond guard.
 const ATTACHMENT_ROLES = QAQC_OR_CONSTRUCTION_ROLES;
+// Deleting the record itself (not just an attachment) is restricted to
+// admins, unlike the two-party issue/respond/confirm workflow above.
+const DELETE_ROLES = ['company_admin', 'super_admin'] as const;
 
 @ApiTags('qaqc')
 @ApiBearerAuth()
@@ -85,6 +89,22 @@ export class QaqcController {
   @Get(':id')
   async findOne(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
     return { data: await this.svc.findOne(u.companyId, pid, id), error: null };
+  }
+
+  @Delete(':id')
+  @RequireExactRoles(...DELETE_ROLES)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete an NCR/SOR/WIR/MIR record (admin only)' })
+  async delete(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: await this.svc.delete(u.companyId, pid, id), error: null };
+  }
+
+  @Post('bulk-delete')
+  @RequireExactRoles(...DELETE_ROLES)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete multiple NCR/SOR/WIR/MIR records at once (admin only)' })
+  async bulkDelete(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: BulkDeleteDto) {
+    return { data: await this.svc.bulkDelete(u.companyId, pid, dto.ids), error: null };
   }
 
   // Same binary-response StreamableFile + passthrough Response convention

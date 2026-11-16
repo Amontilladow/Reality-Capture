@@ -274,6 +274,9 @@ export const getGraphNodeDetail = (projectId: string, nodeId: string) =>
 export const overrideRisk = (projectId: string, riskId: string, dto: { score?: number; level?: RiskLevel; reason: string }) =>
   apiPatch<Risk>(`${base(projectId)}/${riskId}/override`, dto);
 export const clearRiskOverride = (projectId: string, riskId: string) => apiDelete<Risk>(`${base(projectId)}/${riskId}/override`);
+export const deleteRisk = (projectId: string, riskId: string) => apiDelete<{ message: string }>(`${base(projectId)}/${riskId}`);
+export const bulkDeleteRisks = (projectId: string, riskIds: string[]) =>
+  apiPost<{ deleted: number; failed: number }>(`${base(projectId)}/bulk-delete`, { ids: riskIds });
 export const setRiskStatus = (projectId: string, riskId: string, status: RiskStatus, reason?: string) =>
   apiPatch<Risk>(`${base(projectId)}/${riskId}/status`, { status, reason });
 export const assignRiskOwner = (projectId: string, riskId: string, ownerId: string | null) =>

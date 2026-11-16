@@ -5,7 +5,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { IssueFormModal } from '../components/issues/IssueFormModal';
 import { IssueDetail } from '../components/issues/IssueDetail';
 import {
-  listIssues, getIssueSummary, bulkCloseIssues, bulkDownloadIssuesPdf, bulkDownloadIssuesXls, downloadIssuePdf, downloadIssueXls,
+  listIssues, getIssueSummary, bulkCloseIssues, bulkDeleteIssues, bulkDownloadIssuesPdf, bulkDownloadIssuesXls, downloadIssuePdf, downloadIssueXls,
   listReminders, broadcastReminder, sendUserReminder, warnUser,
   type IssueListItem, type IssueDetailItem,
 } from '../lib/issues.api';
@@ -183,6 +183,16 @@ export default function IssuesPage() {
 
   const bulkCloseMutation = useMutation({
     mutationFn: () => bulkCloseIssues(projectId!, [...selectedIds]),
+    onSuccess: () => {
+      setSelectedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ['issues', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['issue-summary', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['issues-dashboard', projectId] });
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () => bulkDeleteIssues(projectId!, [...selectedIds]),
     onSuccess: () => {
       setSelectedIds(new Set());
       queryClient.invalidateQueries({ queryKey: ['issues', projectId] });
@@ -490,11 +500,25 @@ export default function IssuesPage() {
               >
                 {bulkCloseMutation.isPending ? 'Closing…' : 'Close issues'}
               </button>
+              <button
+                onClick={() => { if (confirm(`Delete ${selectedIds.size} issue(s)? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
+                disabled={bulkDeleteMutation.isPending}
+                className="btn-danger"
+              >
+                {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete issues'}
+              </button>
               <button onClick={() => setSelectedIds(new Set())} className="btn-ghost ml-auto">Clear selection</button>
             </div>
           )}
           {bulkDownloadError && <p className="field-error">{bulkDownloadError}</p>}
           {bulkCloseMutation.isError && <p className="field-error">{apiErrorMessage(bulkCloseMutation.error)}</p>}
+          {bulkDeleteMutation.isError && <p className="field-error">{apiErrorMessage(bulkDeleteMutation.error)}</p>}
+          {bulkDeleteMutation.isSuccess && (
+            <p className="text-xs text-ok">
+              Deleted {bulkDeleteMutation.data.deleted} issue(s).
+              {bulkDeleteMutation.data.failed > 0 && <> {bulkDeleteMutation.data.failed} skipped (not yours to delete, or already gone).</>}
+            </p>
+          )}
           {bulkCloseMutation.isSuccess && (
             <p className="text-xs text-ok">
               Closed {bulkCloseMutation.data.closed} issue(s).

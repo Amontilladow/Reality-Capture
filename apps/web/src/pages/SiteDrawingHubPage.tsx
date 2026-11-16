@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { StatTile } from '../components/ui/StatTile';
@@ -9,7 +9,7 @@ import { apiErrorMessage } from '../lib/api';
 import { getProject } from '../lib/projects.api';
 import {
   listSiteDrawings, getSiteDrawingFilterOptions, getSiteDrawingSourceHealth, getSiteDrawingDashboardStats, listOfflinePackages,
-  revalidateOfflinePackage, listReviewQueue, exportSiteDrawingRegister,
+  revalidateOfflinePackage, listReviewQueue, exportSiteDrawingRegister, bulkDeleteSiteDrawings,
   type SiteDrawingFilters, type SiteDrawingWorkflowStatus,
 } from '../lib/site-drawings.api';
 import {
@@ -43,6 +43,7 @@ export default function SiteDrawingHubPage() {
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [exportBusy, setExportBusy] = useState(false);
   const [exportError, setExportError] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Search is server-side (brief section 10: indexed queries, not a
   // client-side filter over a fully fetched register): debounced so
@@ -95,6 +96,16 @@ export default function SiteDrawingHubPage() {
   const total = listQuery.data?.meta?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
   const drawings = listQuery.data?.data ?? [];
+  const allSelected = drawings.length > 0 && drawings.every((d) => selectedIds.has(d.id));
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () => bulkDeleteSiteDrawings(projectId!, [...selectedIds]),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['site-drawings', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-dashboard-stats', projectId] });
+      setSelectedIds(new Set());
+    },
+  });
   const hasActiveFilters = Boolean(
     filters.search || filters.discipline || filters.buildingOrZone || filters.floorOrLevel || filters.responsibleSubcontractor || filters.workflowStatus,
   );
@@ -211,12 +222,33 @@ export default function SiteDrawingHubPage() {
 
         {!listQuery.isLoading && !listQuery.isError && (
           <>
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-2 tick-frame panel px-4 py-2">
+                <span className="text-sm font-medium">{selectedIds.size} selected</span>
+                <button
+                  onClick={() => { if (confirm(`Delete ${selectedIds.size} drawing(s) and their entire revision history? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
+                  disabled={bulkDeleteMutation.isPending}
+                  className="btn-danger !px-4 !py-2 text-sm ml-auto"
+                >
+                  {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
+                </button>
+                {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
+              </div>
+            )}
+
             {/* Desktop/tablet: table */}
             <div className="panel tick-frame overflow-hidden hidden md:block">
               <div className="overflow-x-auto" tabIndex={0}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-ink-500 border-b border-base-600">
+                      <th className="px-4 py-2 font-medium w-8">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={() => setSelectedIds(allSelected ? new Set() : new Set(drawings.map((d) => d.id)))}
+                        />
+                      </th>
                       <th className="px-4 py-2 font-medium">Drawing No.</th>
                       <th className="px-4 py-2 font-medium">Title</th>
                       <th className="px-4 py-2 font-medium">Discipline</th>
@@ -232,6 +264,17 @@ export default function SiteDrawingHubPage() {
                   <tbody>
                     {drawings.map((d) => (
                       <tr key={d.id} onClick={() => setSelectedDrawingId(d.id)} className="border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-700">
+                        <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(d.id)}
+                            onChange={() => setSelectedIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(d.id)) next.delete(d.id); else next.add(d.id);
+                              return next;
+                            })}
+                          />
+                        </td>
                         <td className="px-4 py-2 font-mono text-xs text-ink-500 whitespace-nowrap">{d.drawingNumber}</td>
                         <td className="px-4 py-2 max-w-xs">
                           <div className="text-ink-100 truncate">{d.drawingTitle}</div>
@@ -253,7 +296,7 @@ export default function SiteDrawingHubPage() {
                       </tr>
                     ))}
                     {drawings.length === 0 && (
-                      <tr><td colSpan={10} className="px-4 py-10 text-center text-ink-500">No drawings match the current filters.</td></tr>
+                      <tr><td colSpan={11} className="px-4 py-10 text-center text-ink-500">No drawings match the current filters.</td></tr>
                     )}
                   </tbody>
                 </table>

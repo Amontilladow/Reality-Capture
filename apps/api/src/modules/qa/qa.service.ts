@@ -118,6 +118,13 @@ export class QaService {
     return { message: 'Inspection deleted.' };
   }
 
+  async bulkDelete(companyId: string, projectId: string, inspectionIds: string[]) {
+    const result = await this.db.query`
+      DELETE FROM qa_inspections WHERE id = ANY(${inspectionIds}::uuid[]) AND project_id = ${projectId} AND company_id = ${companyId}
+    `;
+    return { deleted: result.count, failed: inspectionIds.length - result.count };
+  }
+
   async getSummary(companyId: string, projectId: string) {
     const [summary] = await this.db.withTenant(companyId, sql => sql`
       SELECT

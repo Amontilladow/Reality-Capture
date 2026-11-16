@@ -8,6 +8,7 @@ import { ForwardSnagDto } from './dto/forward-snag.dto';
 import { ForceSnagStatusDto } from './dto/force-snag-status.dto';
 import { SnagAttachmentUploadUrlDto } from './dto/snag-attachment-upload-url.dto';
 import { AddSnagAttachmentDto } from './dto/add-snag-attachment.dto';
+import { BulkDeleteDto } from '../../common/dto/bulk-delete.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
@@ -64,6 +65,13 @@ export class SnaggingController {
   @HttpCode(HttpStatus.OK)
   async delete(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
     return { data: await this.svc.delete(u.companyId, pid, id), error: null };
+  }
+
+  @Post('bulk-delete')
+  @RequireProjectPermission('manage_project_records')
+  @HttpCode(HttpStatus.OK)
+  async bulkDelete(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: BulkDeleteDto) {
+    return { data: await this.svc.bulkDelete(u.companyId, pid, dto.ids), error: null };
   }
 
   @Get(':id/activities')

@@ -12,6 +12,7 @@ import { AddRfiCommentDto } from './dto/add-rfi-comment.dto';
 import { DecideReviewDto } from './dto/decide-review.dto';
 import { CloseRfiDto } from './dto/close-rfi.dto';
 import { UpsertRfiNoticeLetterDto } from './dto/upsert-rfi-notice-letter.dto';
+import { BulkDeleteDto } from '../../common/dto/bulk-delete.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
 import { RequireCategoryAction } from '../../common/decorators/require-category-action.decorator';
@@ -112,6 +113,13 @@ export class RfisController {
   @HttpCode(HttpStatus.OK)
   async delete(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
     return { data: await this.svc.delete(u.companyId, pid, id), error: null };
+  }
+
+  @Post('bulk-delete')
+  @RequireProjectPermission('manage_project_records')
+  @HttpCode(HttpStatus.OK)
+  async bulkDelete(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: BulkDeleteDto) {
+    return { data: await this.svc.bulkDelete(u.companyId, pid, dto.ids), error: null };
   }
 
   // ── Attachments ───────────────────────────────────────────────────────────

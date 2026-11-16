@@ -23,13 +23,20 @@ const PAGE_SIZE = 25;
 // RiskIntelligenceSection; filtering/sorting/paging all happen here,
 // client-side, same as the register this replaces, just with more filter
 // dimensions and real pagination instead of one long table.
-export function RiskRegisterTable({ risks, members, ownerNames, filters, onFiltersChange, onSelectRisk }: {
+export function RiskRegisterTable({
+  risks, members, ownerNames, filters, onFiltersChange, onSelectRisk, selectedIds, onToggleSelect, onToggleSelectAll,
+}: {
   risks: Risk[];
   members: ProjectMember[];
   ownerNames: Map<string, string>;
   filters: RegisterFilters;
   onFiltersChange: (f: RegisterFilters) => void;
   onSelectRisk: (riskId: string) => void;
+  // Desktop-only bulk-delete selection (cleanup workflow); the phone layout
+  // below doesn't offer it, same as every other register's phone view.
+  selectedIds: Set<string>;
+  onToggleSelect: (riskId: string) => void;
+  onToggleSelectAll: (ids: string[]) => void;
 }) {
   const themeColors = useThemeColors();
   const levelColor: Record<RiskLevel, string> = { LOW: themeColors.ok, MODERATE: themeColors.warn, HIGH: themeColors.high, CRITICAL: themeColors.danger };
@@ -138,6 +145,13 @@ export function RiskRegisterTable({ risks, members, ownerNames, filters, onFilte
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">
+                <th className="px-4 py-2 font-medium w-8">
+                  <input
+                    type="checkbox"
+                    checked={pageRows.length > 0 && pageRows.every((r) => selectedIds.has(r.id))}
+                    onChange={() => onToggleSelectAll(pageRows.map((r) => r.id))}
+                  />
+                </th>
                 <th className="px-4 py-2 font-medium">ID</th>
                 <th className="px-4 py-2 font-medium">Risk</th>
                 <th className="px-4 py-2 font-medium">Discipline</th>
@@ -156,6 +170,9 @@ export function RiskRegisterTable({ risks, members, ownerNames, filters, onFilte
                 const tone = dueDateTone(r);
                 return (
                   <tr key={r.id} onClick={() => onSelectRisk(r.id)} className="border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-700">
+                    <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" checked={selectedIds.has(r.id)} onChange={() => onToggleSelect(r.id)} />
+                    </td>
                     <td className="px-4 py-2 text-xs font-mono text-ink-500 whitespace-nowrap">{riskRef(r)}</td>
                     <td className="px-4 py-2 max-w-xs">
                       <div className="text-ink-100 truncate">{r.title}</div>
@@ -183,7 +200,7 @@ export function RiskRegisterTable({ risks, members, ownerNames, filters, onFilte
                 );
               })}
               {pageRows.length === 0 && (
-                <tr><td colSpan={11} className="px-4 py-10 text-center text-ink-500">No risks match the current filters.</td></tr>
+                <tr><td colSpan={12} className="px-4 py-10 text-center text-ink-500">No risks match the current filters.</td></tr>
               )}
             </tbody>
           </table>

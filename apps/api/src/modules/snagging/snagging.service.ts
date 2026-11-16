@@ -231,6 +231,13 @@ export class SnaggingService {
     return { message: 'Snag item deleted.' };
   }
 
+  async bulkDelete(companyId: string, projectId: string, snagIds: string[]) {
+    const result = await this.db.query`
+      DELETE FROM snag_items WHERE id = ANY(${snagIds}::uuid[]) AND project_id = ${projectId} AND company_id = ${companyId}
+    `;
+    return { deleted: result.count, failed: snagIds.length - result.count };
+  }
+
   async getSummary(companyId: string, projectId: string) {
     const [summary] = await this.db.withTenant(companyId, sql => sql`
       SELECT

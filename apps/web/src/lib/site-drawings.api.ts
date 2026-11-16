@@ -142,6 +142,12 @@ export const triggerSiteDrawingSync = (projectId: string, provider: 'sharepoint'
 export const getSiteDrawing = (projectId: string, drawingId: string) =>
   apiGet<SiteDrawingWithCurrentRevision>(`${base(projectId)}/${drawingId}`);
 
+export const deleteSiteDrawing = (projectId: string, drawingId: string) =>
+  apiDelete<{ message: string }>(`${base(projectId)}/${drawingId}`);
+
+export const bulkDeleteSiteDrawings = (projectId: string, drawingIds: string[]) =>
+  apiPost<{ deleted: number; failed: number }>(`${base(projectId)}/bulk-delete`, { ids: drawingIds });
+
 export const listSiteDrawingRevisions = (projectId: string, drawingId: string) =>
   apiGet<SiteDrawingRevision[]>(`${base(projectId)}/${drawingId}/revisions`);
 
