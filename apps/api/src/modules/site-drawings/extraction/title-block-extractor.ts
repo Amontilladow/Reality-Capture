@@ -38,7 +38,19 @@ interface FieldMatch {
 // conservative to avoid matching random short numbers elsewhere on the
 // page); isPlausibleDrawingNumber()'s digit requirement below still
 // rejects a labeled non-numeric false positive like "Drawing No: Checked".
-const DRAWING_NUMBER_LABELED = /(?:drawing|dwg|sheet)\s*(?:no\.?|number|#)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-./]{0,19})/i;
+//
+// The maximum is 60, not the 20 an earlier version capped it at: the
+// longer multi-segment codes common on larger CAD-template-driven
+// projects (this file's own DRAWING_NUMBER_BARE comment gives
+// "M19-M4C-C0-PW-AX-SD-05713" as exactly this shape) regularly run past
+// 20 characters -- that example is 25 -- and the old cap silently
+// truncated the captured value mid-token instead of failing outright
+// (confirmed by hand: it returned "M19-M4C-C0-PW-AX-SD-", missing the
+// sheet number entirely, for a drawing labeled with its own real number).
+// A regex quantifier only bounds how much it CAN consume, not how much it
+// has to -- a short labeled value like "29" still matches exactly "29";
+// this only raises the ceiling for one that's genuinely longer.
+const DRAWING_NUMBER_LABELED = /(?:drawing|dwg|sheet)\s*(?:no\.?|number|#)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-./]{0,59})/i;
 // Two shapes, tried in order: the short "LETTERS-DIGITS" code
 // (`A-101`, `S-2.03`) common on simpler consultant title blocks, and a
 // longer multi-segment code (`M19-M4C-C0-PW-AX-SD-05713`) common on
