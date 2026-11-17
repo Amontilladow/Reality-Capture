@@ -44,6 +44,11 @@ export default function SiteDrawingHubPage() {
   const [exportBusy, setExportBusy] = useState(false);
   const [exportError, setExportError] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // Desktop's table always shows its checkbox column; the phone card list
+  // below 768px has no room for one by default, so without an explicit
+  // select mode there is no way at all to enter bulk-select on a phone --
+  // the same gap already found and fixed on the Issues list.
+  const [mobileSelecting, setMobileSelecting] = useState(false);
 
   // Search is server-side (brief section 10: indexed queries, not a
   // client-side filter over a fully fetched register): debounced so
@@ -104,6 +109,7 @@ export default function SiteDrawingHubPage() {
       queryClient.invalidateQueries({ queryKey: ['site-drawings', projectId] });
       queryClient.invalidateQueries({ queryKey: ['site-drawing-dashboard-stats', projectId] });
       setSelectedIds(new Set());
+      setMobileSelecting(false);
     },
   });
   const hasActiveFilters = Boolean(
@@ -135,6 +141,14 @@ export default function SiteDrawingHubPage() {
         subtitle="Discover, open and verify the latest valid construction drawings."
         actions={
           <div className="flex items-center gap-2">
+            {drawings.length > 0 && (
+              <button
+                onClick={() => { setMobileSelecting(!mobileSelecting); setSelectedIds(new Set()); }}
+                className="btn-secondary md:hidden"
+              >
+                {mobileSelecting ? 'Cancel' : 'Select'}
+              </button>
+            )}
             <button
               onClick={() => { setActivityInitialTab('batches'); setActivityOpen(true); }}
               className="btn-secondary"
@@ -309,18 +323,50 @@ export default function SiteDrawingHubPage() {
                 <div className="panel tick-frame p-8 text-center text-sm text-ink-500">No drawings match the current filters.</div>
               )}
               {drawings.map((d) => (
-                <button key={d.id} onClick={() => setSelectedDrawingId(d.id)} className="panel tick-frame w-full text-left p-4 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs text-ink-500">{d.drawingNumber}</span>
-                    <StatusBadge tone={WORKFLOW_STATUS_TONE[d.currentWorkflowStatus]} label={WORKFLOW_STATUS_LABELS[d.currentWorkflowStatus]} dot />
+                <button
+                  key={d.id}
+                  onClick={() => (mobileSelecting
+                    ? setSelectedIds((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(d.id)) next.delete(d.id); else next.add(d.id);
+                      return next;
+                    })
+                    : setSelectedDrawingId(d.id))}
+                  className="panel tick-frame w-full text-left p-4 space-y-2 flex items-start gap-4"
+                >
+                  {mobileSelecting && (
+                    // A real <input type="checkbox"> would nest an
+                    // interactive element inside this already-interactive
+                    // <button> (invalid HTML); a purely decorative span
+                    // styled the same way, same convention already used
+                    // elsewhere in this app's own mobile select-mode lists,
+                    // avoids that while looking identical.
+                    <span
+                      aria-hidden="true"
+                      className={`mt-2 shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center ${
+                        selectedIds.has(d.id) ? 'bg-blueprint border-blueprint' : 'bg-base-900 border-base-500'
+                      }`}
+                    >
+                      {selectedIds.has(d.id) && (
+                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="3">
+                          <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </span>
+                  )}
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-xs text-ink-500">{d.drawingNumber}</span>
+                      <StatusBadge tone={WORKFLOW_STATUS_TONE[d.currentWorkflowStatus]} label={WORKFLOW_STATUS_LABELS[d.currentWorkflowStatus]} dot />
+                    </div>
+                    <div className="text-sm text-ink-100 font-medium">{d.drawingTitle}</div>
+                    {d.responsibleSubcontractor && <div className="text-xs text-ink-500">{d.responsibleSubcontractor}</div>}
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-ink-500">{sourceProviderLabel(d.sourceProvider)} · Rev {d.currentRevision?.revisionNumber ?? '—'}</span>
+                      {offlineDrawingIds.has(d.id) && <StatusBadge tone="info" label="Offline" />}
+                    </div>
+                    <div className="text-xs text-ink-500">{formatVerifiedAt(d.currentRevision?.lastVerifiedAt)}</div>
                   </div>
-                  <div className="text-sm text-ink-100 font-medium">{d.drawingTitle}</div>
-                  {d.responsibleSubcontractor && <div className="text-xs text-ink-500">{d.responsibleSubcontractor}</div>}
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-ink-500">{sourceProviderLabel(d.sourceProvider)} · Rev {d.currentRevision?.revisionNumber ?? '—'}</span>
-                    {offlineDrawingIds.has(d.id) && <StatusBadge tone="info" label="Offline" />}
-                  </div>
-                  <div className="text-xs text-ink-500">{formatVerifiedAt(d.currentRevision?.lastVerifiedAt)}</div>
                 </button>
               ))}
             </div>
