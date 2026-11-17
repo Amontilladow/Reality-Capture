@@ -5,6 +5,16 @@ import { stripPdfParseBoilerplate, hasUsableEmbeddedText, MIN_USABLE_TEXT_LENGTH
 // incompatibility with pdf-parse's internal dynamic import, confirmed by
 // hand against a real pdf-lib fixture under plain Node instead). These
 // tests cover the pure logic this module adds on top of it.
+//
+// getTable()'s own isolated try/catch inside extractEmbeddedText() (added
+// after a real production bug: pdf-parse's table detection throws on any
+// page whose vector content is dense enough to look like an actual CAD
+// drawing sheet, not just a bare title-block grid, discarding the page's
+// already-successfully-extracted text along with it) is covered by that
+// same hand-verification method, for the same reason -- confirmed against
+// a pdf-lib fixture combining a bordered title-block grid with a few
+// thousand unrelated vector lines: getTable() throws exactly as it does
+// in production, and the fixed code still returns the page's full text.
 
 describe('stripPdfParseBoilerplate', () => {
   it('removes the "-- N of M --" page marker pdf-parse always appends, regardless of real content', () => {

@@ -66,8 +66,32 @@ export async function extractEmbeddedText(pdfBuffer: Buffer): Promise<PdfTextRes
     // operator list getText() already parsed, so folding it into this same
     // call avoids a second full PDF parse per file -- worth doing given an
     // import batch can be hundreds of files.
-    const tableResult = await parser.getTable({ partial: [1] });
-    const tableCells = (tableResult.pages[0]?.tables ?? []).flatMap((table) => table.flat());
+    //
+    // getTable() is kept in its OWN try/catch, separate from getText()
+    // above: confirmed by hand against a reproduction fixture (a bordered
+    // title-block grid on a page also carrying a few thousand unrelated
+    // vector lines, the way an actual CAD-exported drawing sheet looks
+    // next to its title block -- not just the bare grid a simpler fixture
+    // would have), pdf-parse's own table-detection (geometry/Table.js)
+    // throws "Cannot read properties of undefined (reading 'from')" on
+    // exactly this shape of page. Reproduced on every real drawing in
+    // production (confirmed in the API's own logs), meaning table-cell
+    // extraction never once succeeded for a real file, and -- since this
+    // call sat inline before this fix -- silently took the whole-page text
+    // getText() had ALREADY successfully extracted down with it, forcing
+    // every single import onto the slower, flakier OCR fallback for no
+    // reason: the page's real text was sitting right there. Falling back to
+    // no detected table on this failure costs nothing it wasn't already
+    // going to cost (extractTitleBlockFieldsFromCells() returning null here
+    // is the same, already-handled fallback path as a page with no table
+    // at all; see this type's own comment above).
+    let tableCells: string[] = [];
+    try {
+      const tableResult = await parser.getTable({ partial: [1] });
+      tableCells = (tableResult.pages[0]?.tables ?? []).flatMap((table) => table.flat());
+    } catch {
+      tableCells = [];
+    }
     return { text: stripPdfParseBoilerplate(textResult.text ?? ''), pageCount: info.total ?? 1, tableCells };
   } finally {
     await parser.destroy();

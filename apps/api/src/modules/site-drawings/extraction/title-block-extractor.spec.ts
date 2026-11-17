@@ -64,7 +64,26 @@ describe('extractTitleBlockFields', () => {
     // between them at all.
     const text = 'Drawing No: M19-M4C-C0-PW-AX-SD-05713\nDrawing Title\nGROUND FLOOR STEEL DOOR KEY PLAN\nRevision: 00';
     const result = extractTitleBlockFields(text, 'embedded_text');
+    // The drawing number itself, not just the title: this exact fixture
+    // previously reproduced a real truncation bug (see the next test) that
+    // this assertion alone would have caught from the start.
+    expect(result?.drawingNumber).toBe('M19-M4C-C0-PW-AX-SD-05713');
     expect(result?.drawingTitle).toBe('GROUND FLOOR STEEL DOOR KEY PLAN');
+  });
+
+  it('does not truncate a long labeled multi-segment drawing number (previously cut off at 20 characters)', () => {
+    // Reproduces a real production failure: a 25-character drawing number
+    // ("M19-M4C-C0-PW-AX-SD-05729" from an actual title block) came back
+    // as "M19-M4C-C0-PW-AX-SD-" -- the sheet number silently dropped --
+    // because the labeled pattern's captured-value length was capped at
+    // 20. Confirmed by hand that this exact drawing number, plain-text
+    // extracted from a real CAD-exported PDF with a dense, line-heavy
+    // drawing body around its title block, round-trips correctly now.
+    const text = 'Drawing No.\nM19-M4C-C0-PW-AX-SD-05729\nRevision\n00\nDrawing Title\n60&90MIN FIRE RATED SINGLE LEAF STEEL DOOR';
+    const result = extractTitleBlockFields(text, 'embedded_text');
+    expect(result?.drawingNumber).toBe('M19-M4C-C0-PW-AX-SD-05729');
+    expect(result?.revisionNumber).toBe('00');
+    expect(result?.drawingTitle).toBe('60&90MIN FIRE RATED SINGLE LEAF STEEL DOOR');
   });
 
   it('rejects an implausible labeled drawing-number match (no digits) and falls back to a bare multi-segment code', () => {
@@ -117,6 +136,12 @@ describe('extractTitleBlockFieldsFromCells', () => {
     expect(result?.drawingTitle).toBe('GROUND FLOOR PLAN - STRUCTURAL LAYOUT');
     expect(result?.issueDate).toBe('12/03/2025');
     expect(result?.discipline).toBe('Structural');
+  });
+
+  it('does not truncate a long labeled multi-segment drawing number combined with its label in one cell', () => {
+    const cells = ['Drawing No: M19-M4C-C0-PW-AX-SD-05729', 'Revision: 00'];
+    const result = extractTitleBlockFieldsFromCells(cells, 'embedded_text');
+    expect(result?.drawingNumber).toBe('M19-M4C-C0-PW-AX-SD-05729');
   });
 
   it('returns null when no cell contains a plausible drawing number', () => {
