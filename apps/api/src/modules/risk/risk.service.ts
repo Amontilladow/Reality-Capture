@@ -149,6 +149,26 @@ export class RiskService {
     if (node) await this.recalculateForNode(companyId, projectId, node);
   }
 
+  /**
+   * The other half of event-driven recalculation (brief section 41):
+   * recalculateForEntity() above re-extracts and rescans a node from the
+   * source record's CURRENT row, but once that row is deleted there's no
+   * current row left to extract from, so it was never called at all from
+   * any module's delete() -- the risk this entity drove (if any), its
+   * signals, and its graph edges all survived every subsequent recalc,
+   * including the full-project one "Refresh" runs, forever, since none of
+   * those extraction passes ever considers removing a node whose source
+   * row no longer exists (they only upsert from what SELECT ... FROM
+   * <table> still returns). RiskGraphService.deleteNode() already existed
+   * for exactly this and was already correct -- it was just never called.
+   * Deleting the node cascades (FK, migrations 050/051) to its risks row,
+   * risk_signals, risk_evidence and graph edges in one statement; a no-op,
+   * never an error, when the entity never had a risk node at all.
+   */
+  async removeEntityNode(companyId: string, nodeType: typeof RISK_WORTHY_NODE_TYPES[number], entityId: string): Promise<void> {
+    await this.graph.deleteNode(companyId, nodeType, entityId);
+  }
+
   private async recalculateForNode(companyId: string, projectId: string, node: GraphNodeRow): Promise<void> {
     const signalRows = await this.db.withTenant(companyId, sql => sql<{ signalType: string; severityContribution: number }[]>`
       SELECT signal_type, severity_contribution FROM risk_signals WHERE node_id = ${node.id}`);

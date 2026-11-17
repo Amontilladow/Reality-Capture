@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { StorageService } from '../storage/storage.service';
 import { IssuesService } from '../issues/issues.service';
+import { RiskService } from '../risk/risk.service';
 import type { CreateDrawingDto } from './dto/create-drawing.dto';
 import type { LinkCaptureToDrawingDto } from './dto/link-capture.dto';
 import type { CreatePinDto } from './dto/create-pin.dto';
@@ -16,11 +17,34 @@ const DRAWING_ALLOWED_EXTENSIONS = new Set(['pdf']);
 
 @Injectable()
 export class DrawingsService {
+  private readonly logger = new Logger(DrawingsService.name);
+
   constructor(
     private readonly db: DatabaseService,
     private readonly storage: StorageService,
     private readonly issues: IssuesService,
+    // @Optional(): same rationale as RfisService's own optional RiskService
+    // (keeps the many existing drawings.service.spec.ts call sites, built
+    // before this dependency existed, constructing this service unchanged).
+    // This module never had a create/update-side risk trigger either --
+    // a drawing only ever entered the risk graph via the full-project
+    // recalculation -- so this is solely for cleanup on delete() below.
+    @Optional() private readonly risk?: RiskService,
   ) {}
+
+  // The removal half of the event-driven risk pattern (RiskService.
+  // removeEntityNode()'s own comment has the full story): fired after a
+  // successful delete so a deleted drawing's risk, signals and graph
+  // edges don't linger forever, including through a full Risk
+  // Intelligence "Refresh" -- nothing previously called this at all.
+  private async triggerRiskRemoval(companyId: string, drawingId: string): Promise<void> {
+    if (!this.risk) return;
+    try {
+      await this.risk.removeEntityNode(companyId, 'drawing', drawingId);
+    } catch (err) {
+      this.logger.warn(`Risk node removal failed for drawing ${drawingId}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   // All pins across every drawing in a project, for linking FROM the BIM
   // viewer side (pick an existing pin to attach to the element you're
@@ -159,6 +183,7 @@ export class DrawingsService {
 
     const keys = [result.drawing?.storageKey, result.drawing?.thumbnailKey].filter((k): k is string => Boolean(k));
     Promise.allSettled(keys.map(k => this.storage.deleteIfExists(k))).catch(() => {});
+    await this.triggerRiskRemoval(companyId, drawingId);
   }
 
   async bulkDelete(companyId: string, projectId: string, drawingIds: string[]): Promise<{ deleted: number; failed: number }> {

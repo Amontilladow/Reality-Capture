@@ -445,6 +445,17 @@ export class QaqcService {
     Promise.allSettled(keys.map(k => this.storage.delete(k))).catch(err =>
       this.logger.error('Storage cleanup failed', err),
     );
+    // Unconditional, unlike triggerRiskRecalc()'s own NCR-only gate: this
+    // is a no-op for a SOR/WIR/MIR id (it never had an 'ncr' risk node to
+    // begin with), so there's no need to look up recordType first just to
+    // decide whether to call it.
+    if (this.risk) {
+      try {
+        await this.risk.removeEntityNode(companyId, 'ncr', qaqcId);
+      } catch (err) {
+        this.logger.warn(`Risk node removal failed for QAQC record ${qaqcId}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
     return { message: 'QAQC record deleted.' };
   }
 
