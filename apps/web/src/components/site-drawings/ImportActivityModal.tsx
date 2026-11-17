@@ -4,7 +4,7 @@ import { Modal } from '../ui/Modal';
 import { StatusBadge } from '../ui/Badge';
 import { apiErrorMessage } from '../../lib/api';
 import {
-  listImportBatches, listReviewQueue, resolveReview,
+  listImportBatches, listReviewQueue, resolveReview, deleteSiteDrawing,
   type SiteDrawingImportBatch, type SiteDrawingReviewQueueItem,
 } from '../../lib/site-drawings.api';
 import {
@@ -120,14 +120,39 @@ function ReviewQueueRow({ projectId, item }: { projectId: string; item: SiteDraw
     },
   });
 
+  // A flagged revision isn't always worth correcting -- a bad test import,
+  // a duplicate that extraction misread as a conflict -- and Confirm above
+  // requires filling in real values plus a note either way. This is the
+  // one way out of the queue that doesn't: delete the whole drawing (and
+  // every revision under it) outright, same action as the register's own
+  // detail-drawer delete button, just reachable directly from here too.
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteSiteDrawing(projectId, item.drawingId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-review-queue', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['site-drawings', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-dashboard-stats', projectId] });
+    },
+  });
+
   return (
     <div className="panel tick-frame p-4 space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="text-sm text-ink-100">
           {item.drawingNumber} <span className="text-ink-500">· {item.drawingTitle}</span>
         </div>
-        <StatusBadge tone={EXTRACTION_STATUS_TONE[item.extractionStatus]} label={EXTRACTION_STATUS_LABELS[item.extractionStatus]} dot />
+        <div className="flex items-center gap-2">
+          <StatusBadge tone={EXTRACTION_STATUS_TONE[item.extractionStatus]} label={EXTRACTION_STATUS_LABELS[item.extractionStatus]} dot />
+          <button
+            onClick={() => { if (confirm('Delete this drawing and its entire revision history? This cannot be undone.')) deleteMutation.mutate(); }}
+            disabled={deleteMutation.isPending}
+            className="btn-secondary !text-danger !px-4 !py-2 text-xs"
+          >
+            {deleteMutation.isPending ? 'Deleting…' : 'Delete drawing'}
+          </button>
+        </div>
       </div>
+      {deleteMutation.isError && <p className="field-error">{apiErrorMessage(deleteMutation.error)}</p>}
 
       {item.reviewNotes && (
         <p className="text-xs text-ink-300 bg-base-700/40 rounded px-4 py-2">{item.reviewNotes}</p>
