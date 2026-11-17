@@ -162,6 +162,16 @@ export default function ProgressReportPage() {
 
   if (!projectId) return null;
 
+  // Same rationale as ReportsPage.tsx's own Refresh button: this report is
+  // already computed live on every fetch, so there's nothing to
+  // recalculate server-side -- just a re-fetch for when this page was
+  // already open before a record changed elsewhere.
+  const isRefreshing = reportQuery.isFetching || hierarchyQuery.isFetching;
+  function handleRefresh() {
+    reportQuery.refetch();
+    hierarchyQuery.refetch();
+  }
+
   return (
     <>
       <PageHeader
@@ -169,6 +179,9 @@ export default function ProgressReportPage() {
         title="Progress report"
         actions={
           <div className="flex items-center gap-2">
+            <button onClick={handleRefresh} disabled={isRefreshing} className="btn-secondary">
+              {isRefreshing ? 'Refreshing…' : 'Refresh'}
+            </button>
             <button onClick={handleDownloadPdf} disabled={!report || pdfDownloading} className="btn-secondary">
               {pdfDownloading ? 'Preparing…' : 'Download PDF'}
             </button>
