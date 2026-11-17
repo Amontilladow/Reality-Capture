@@ -43,6 +43,14 @@ describe('extractTitleBlockFields', () => {
     expect(result?.drawingTitle).toBeUndefined();
   });
 
+  it('extracts a bare 1-2 digit drawing number when explicitly labeled (plenty of real projects number sheets this way)', () => {
+    const text = 'Drawing No: 29\nRevision: 0\nDrawing Title: GROUND FLOOR PLAN';
+    const result = extractTitleBlockFields(text, 'embedded_text');
+    expect(result?.drawingNumber).toBe('29');
+    expect(result?.revisionNumber).toBe('0');
+    expect(isConfidentExtraction(result!)).toBe(true);
+  });
+
   it('scores an OCR-sourced extraction lower than the same text from the embedded layer', () => {
     const text = 'DRAWING NO: E-110\nREV: B\nTITLE: LIGHTING LAYOUT';
     const embedded = extractTitleBlockFields(text, 'embedded_text')!;
@@ -172,5 +180,12 @@ describe('extractTitleBlockFieldsFromCells', () => {
     expect(result?.drawingNumber).toBe('M-301');
     expect(result?.revisionNumber).toBeUndefined();
     expect(result?.drawingTitle).toBeUndefined();
+  });
+
+  it('extracts a bare 1-2 digit drawing number from a labeled cell', () => {
+    const cells = ['Drawing No: 29', 'Revision: 0'];
+    const result = extractTitleBlockFieldsFromCells(cells, 'embedded_text');
+    expect(result?.drawingNumber).toBe('29');
+    expect(result?.revisionNumber).toBe('0');
   });
 });
