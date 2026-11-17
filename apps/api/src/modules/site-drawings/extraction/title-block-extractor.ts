@@ -26,7 +26,19 @@ interface FieldMatch {
 // "S-2.03", "M4-C-0012", "ARC-00-101". Anchored to an explicit label when
 // one is present (higher confidence); a bare pattern anywhere in the text
 // scores lower, since it's more likely to be a false positive.
-const DRAWING_NUMBER_LABELED = /(?:drawing|dwg|sheet)\s*(?:no\.?|number|#)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-./]{2,19})/i;
+// The captured value's minimum length is deliberately 1, not the 3+ an
+// earlier version required: plenty of real projects number sheets with
+// nothing but a bare 1-2 digit number ("Drawing No: 29"), and that
+// previous minimum silently rejected every one of them, with no fallback
+// -- DRAWING_NUMBER_BARE below requires a letter prefix or multiple
+// dash-separated segments, neither of which a bare "29" has either, so a
+// labeled short number had nowhere left to be recognized at all. Safe to
+// relax here specifically because this pattern is anchored to an explicit
+// label (unlike the bare pattern, which has no anchor and must stay
+// conservative to avoid matching random short numbers elsewhere on the
+// page); isPlausibleDrawingNumber()'s digit requirement below still
+// rejects a labeled non-numeric false positive like "Drawing No: Checked".
+const DRAWING_NUMBER_LABELED = /(?:drawing|dwg|sheet)\s*(?:no\.?|number|#)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-./]{0,19})/i;
 // Two shapes, tried in order: the short "LETTERS-DIGITS" code
 // (`A-101`, `S-2.03`) common on simpler consultant title blocks, and a
 // longer multi-segment code (`M19-M4C-C0-PW-AX-SD-05713`) common on
