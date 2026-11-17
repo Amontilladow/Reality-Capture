@@ -140,7 +140,7 @@ export default function SiteDrawingHubPage() {
         title="Site drawing hub"
         subtitle="Discover, open and verify the latest valid construction drawings."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {drawings.length > 0 && (
               <button
                 onClick={() => { setMobileSelecting(!mobileSelecting); setSelectedIds(new Set()); }}
