@@ -85,6 +85,20 @@ export class IssuesService {
     }
   }
 
+  // The removal half of the same event-driven pattern (RiskService.
+  // removeEntityNode()'s own comment has the full story): fired after a
+  // successful delete so a deleted issue's risk, signals and graph edges
+  // don't linger forever, including through a full Risk Intelligence
+  // "Refresh" -- nothing previously called this at all.
+  private async triggerRiskRemoval(companyId: string, issueId: string): Promise<void> {
+    if (!this.risk) return;
+    try {
+      await this.risk.removeEntityNode(companyId, 'issue', issueId);
+    } catch (err) {
+      this.logger.warn(`Risk node removal failed for issue ${issueId}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
   // ── Generate issue number ─────────────────────────────────────────────────
   // Sequential per (project, discipline): {projectCode}-{disciplineCode}-{0001}.
   // Previously keyed off issue type ({projectCode}-{typeCode}-{0001}); this
@@ -580,6 +594,7 @@ export class IssuesService {
     if (result.count === 0) {
       throw new NotFoundException(`Issue ${issueId} not found.`);
     }
+    await this.triggerRiskRemoval(companyId, issueId);
     return { message: `Issue ${issue.issueNumber as string} deleted.` };
   }
 

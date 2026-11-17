@@ -49,7 +49,7 @@ function makeService(responder: (text: string, values: unknown[]) => unknown[] |
     resolveUrls: jest.fn(async (keys: string[]) => new Map(keys.map((k) => [k, `https://read/${k}`]))),
     download: jest.fn(async () => Buffer.from('x')),
   };
-  const risk = { recalculateForEntity: jest.fn() };
+  const risk = { recalculateForEntity: jest.fn(), removeEntityNode: jest.fn() };
   const svc = new QaqcService(
     db as unknown as DatabaseService,
     notifications as unknown as NotificationsService,
@@ -715,6 +715,36 @@ describe('QaqcService', () => {
 
       await expect(svc.create(companyId, projectId, 'user-1', 'qa_qc_manager', dto)).rejects.toThrow(NotFoundException);
       expect(insertSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  // The real production bug this covers: delete() never told the Risk
+  // Engine an NCR was gone, so its risk node (if any), signals and graph
+  // edges survived forever -- including through a full Risk Intelligence
+  // "Refresh", which only ever upserts from NCRs that still exist and
+  // never removes one for an NCR that doesn't.
+  describe('delete — risk node removal', () => {
+    it('removes the record\'s risk graph node after a successful delete', async () => {
+      const { svc, risk } = makeService((text) => {
+        if (text.includes('SELECT storage_key')) return [];
+        if (text.includes('DELETE FROM qaqc_records')) return { count: 1 } as unknown as unknown[];
+        return undefined;
+      });
+
+      await svc.delete(companyId, projectId, qaqcId);
+
+      expect(risk.removeEntityNode).toHaveBeenCalledWith(companyId, 'ncr', qaqcId);
+    });
+
+    it('a risk node removal failure never fails or blocks the delete itself', async () => {
+      const { svc, risk } = makeService((text) => {
+        if (text.includes('SELECT storage_key')) return [];
+        if (text.includes('DELETE FROM qaqc_records')) return { count: 1 } as unknown as unknown[];
+        return undefined;
+      });
+      risk.removeEntityNode.mockRejectedValue(new Error('graph exploded'));
+
+      await expect(svc.delete(companyId, projectId, qaqcId)).resolves.toMatchObject({ message: 'QAQC record deleted.' });
     });
   });
 });

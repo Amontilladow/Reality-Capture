@@ -88,6 +88,20 @@ export class RfisService {
     }
   }
 
+  // The removal half of the same event-driven pattern: fired after a
+  // successful delete so a deleted RFI's risk (if any), its signals and
+  // its graph edges don't survive it -- nothing previously called this at
+  // all, so they used to linger forever, including through a full
+  // Risk Intelligence "Refresh".
+  private async triggerRiskRemoval(companyId: string, rfiId: string): Promise<void> {
+    if (!this.risk) return;
+    try {
+      await this.risk.removeEntityNode(companyId, 'rfi', rfiId);
+    } catch (err) {
+      this.logger.warn(`Risk node removal failed for RFI ${rfiId}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
   // withTenant required for the projects lookup: projects carries the tenant_isolation
   // RLS policy. A plain this.db.query() never sets app.current_company_id, so under any DB
   // role that isn't the table owner/a superuser this SELECT sees no rows and silently falls
@@ -673,6 +687,7 @@ export class RfisService {
       DELETE FROM rfis WHERE id = ${rfiId} AND project_id = ${projectId} AND company_id = ${companyId}
     `);
     if (result.count === 0) throw new NotFoundException(`RFI ${rfiId} not found.`);
+    await this.triggerRiskRemoval(companyId, rfiId);
     return { message: 'RFI deleted.' };
   }
 
@@ -680,6 +695,10 @@ export class RfisService {
     const result = await this.db.withTenant(companyId, sql => sql`
       DELETE FROM rfis WHERE id = ANY(${rfiIds}::uuid[]) AND project_id = ${projectId} AND company_id = ${companyId}
     `);
+    // Fired for every requested id, not just the ones result.count confirms
+    // were actually found: removeEntityNode() is a no-op for an id that
+    // never had a risk node, so there's nothing to gate on here.
+    await Promise.all(rfiIds.map(id => this.triggerRiskRemoval(companyId, id)));
     return { deleted: result.count, failed: rfiIds.length - result.count };
   }
 
