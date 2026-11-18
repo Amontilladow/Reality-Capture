@@ -116,14 +116,40 @@ export class RiskService {
     private readonly aiUsage: AiUsageService,
   ) {}
 
-  /** Full pipeline for one project: rebuild the graph, redetect signals, recalculate every risk-worthy node. */
+  /** Full pipeline for one project: rebuild the graph, prune stale nodes, redetect signals, recalculate every risk-worthy node. */
   async recalculateProject(companyId: string, projectId: string): Promise<void> {
     await this.extraction.extractProject(companyId, projectId);
+    await this.pruneOrphanedNodes(companyId, projectId);
     await this.signals.detectSignalsForProject(companyId, projectId);
 
     const nodes = await this.graph.getNodesByProject(companyId, projectId, [...RISK_WORTHY_NODE_TYPES]);
     for (const node of nodes) {
       await this.recalculateForNode(companyId, projectId, node);
+    }
+  }
+
+  /**
+   * Retroactive cleanup for risk graph nodes left behind by a deletion made
+   * before removeEntityNode() existed, or before its wiring reached that
+   * entity's module (both true for every delete performed before this
+   * fix shipped) -- see removeEntityNode()'s own comment above for the
+   * original bug. extractProject() just above only ever upserts from rows
+   * that still exist; it was never going to notice, let alone remove, a
+   * node whose row is gone, so every "Refresh" since then kept recalculating
+   * (and the Risk Intelligence summary kept counting) stale risks forever.
+   * This is what makes "Refresh" finally self-healing for that backlog,
+   * not just a guard against new leaks going forward.
+   */
+  private async pruneOrphanedNodes(companyId: string, projectId: string): Promise<void> {
+    for (const nodeType of RISK_WORTHY_NODE_TYPES) {
+      const nodes = await this.graph.getNodesByProject(companyId, projectId, [nodeType]);
+      if (nodes.length === 0) continue;
+      const existingIds = await this.extraction.findExistingEntityIds(companyId, nodeType, nodes.map(n => n.entityId));
+      for (const node of nodes) {
+        if (!existingIds.has(node.entityId)) {
+          await this.graph.deleteNode(companyId, nodeType, node.entityId);
+        }
+      }
     }
   }
 
