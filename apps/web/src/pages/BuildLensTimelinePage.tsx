@@ -288,6 +288,12 @@ export default function BuildLensTimelinePage() {
     mutationFn: () => deleteCapture(projectId!, active!.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['viewer', projectId, locationId] });
+      // Captures also render in CaptureGrid (ProjectDetail/CapturesPage),
+      // which caches them under this separate key; without this, a capture
+      // deleted here still shows there until a hard reload re-fetches it
+      // from scratch, the same real bug CaptureGrid's/CaptureLightbox's own
+      // delete mutations had in the opposite direction (see their comments).
+      queryClient.invalidateQueries({ queryKey: ['captures', projectId] });
       setActiveCaptureId(null);
     },
   });
@@ -296,6 +302,7 @@ export default function BuildLensTimelinePage() {
     mutationFn: () => bulkDeleteCaptures(projectId!, [...selectedIds]),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['viewer', projectId, locationId] });
+      queryClient.invalidateQueries({ queryKey: ['captures', projectId] });
       setSelectedIds(new Set());
       setSelecting(false);
       setActiveCaptureId(null);

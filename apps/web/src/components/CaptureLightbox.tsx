@@ -57,6 +57,12 @@ export function CaptureLightbox({
     mutationFn: () => deleteCapture(projectId, capture!.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['captures', projectId] });
+      // This same capture also renders in BuildLens Timeline, cached per
+      // location under ['viewer', projectId, locationId]; without this it
+      // keeps showing there until a hard reload re-fetches it from scratch.
+      if (capture?.locationId) {
+        queryClient.invalidateQueries({ queryKey: ['viewer', projectId, capture.locationId] });
+      }
       onClose();
     },
   });
