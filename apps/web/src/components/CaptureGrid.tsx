@@ -113,6 +113,13 @@ export function CaptureGrid({
     mutationFn: () => bulkDeleteCaptures(projectId, [...selectedIds]),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['captures', projectId] });
+      // A deleted capture also renders in BuildLens Timeline, cached per
+      // location under ['viewer', projectId, locationId]; without this it
+      // keeps showing there until a hard reload. No single locationId to
+      // target here (the selection can span several), so invalidate the
+      // whole ['viewer', projectId] prefix -- React Query matches every
+      // query whose key starts with it, i.e. every location's cache.
+      queryClient.invalidateQueries({ queryKey: ['viewer', projectId] });
       setSelectedIds(new Set());
       setSelecting(false);
     },
