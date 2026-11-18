@@ -263,20 +263,35 @@ export class SiteDrawingImportProcessor {
       }
 
       // Content differs -- a genuine new revision -- but extraction
-      // couldn't tell its real revision number apart from the current
-      // one's (both landed on the same label, often both on the '1'
-      // fallback). site_drawing_revisions' UNIQUE(drawing_id,
+      // couldn't tell its real revision number apart from one ALREADY used
+      // on this drawing. site_drawing_revisions' UNIQUE(drawing_id,
       // revision_number) would otherwise reject this insert outright.
-      // Disambiguated with a running count rather than dropped, and
-      // always routed to CONFLICT/review -- the same treatment a title
-      // mismatch already gets below -- since a human needs to correct the
-      // real revision label, not have this import silently fail.
+      // Disambiguated with a suffix guaranteed free among every revision
+      // this drawing has ever had, and always routed to CONFLICT/review --
+      // the same treatment a title mismatch already gets below -- since a
+      // human needs to correct the real revision label, not have this
+      // import silently fail.
+      //
+      // Checked against every revision_number this drawing has, not just
+      // the CURRENT one: confirmed by hand against production -- a drawing
+      // reimported several times over (each failed/defaulted extraction
+      // landing on the same '1' fallback, or on a label already used by a
+      // now-superseded revision from an earlier reimport) kept colliding
+      // with a revision number that was no longer current, which a
+      // current-revision-only check could never see, and the INSERT below
+      // failed with the same unique-constraint violation this disambiguation
+      // exists to prevent.
+      const usedRevisionNumbers = await sql<{ revisionNumber: string }[]>`
+        SELECT revision_number FROM site_drawing_revisions WHERE drawing_id = ${existing.id}`;
+      const usedRevisionNumberSet = new Set(usedRevisionNumbers.map(r => r.revisionNumber));
+
       let revisionNumberCollision = false;
       let effectiveRevisionNumber = revisionNumber;
-      if (currentRevision && currentRevision.revisionNumber === revisionNumber) {
+      if (usedRevisionNumberSet.has(revisionNumber)) {
         revisionNumberCollision = true;
-        const [{ count }] = await sql<{ count: string }[]>`SELECT COUNT(*)::text AS count FROM site_drawing_revisions WHERE drawing_id = ${existing.id}`;
-        effectiveRevisionNumber = `${revisionNumber}-v${Number(count) + 1}`;
+        let suffix = 2;
+        while (usedRevisionNumberSet.has(`${revisionNumber}-v${suffix}`)) suffix++;
+        effectiveRevisionNumber = `${revisionNumber}-v${suffix}`;
       }
 
       const extractionStatus = titleConflict || revisionNumberCollision ? 'CONFLICT' : baseExtractionStatus;
