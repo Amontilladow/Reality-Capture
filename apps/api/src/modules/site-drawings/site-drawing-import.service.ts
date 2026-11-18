@@ -86,6 +86,32 @@ export class SiteDrawingImportService {
     return rows.map(toImportBatch);
   }
 
+  // Clears one row from the Import Activity log -- never the drawings or
+  // revisions that batch actually created. Those are real register
+  // entries a user wants to keep regardless of whether its own upload-log
+  // entry is still useful to look at; this undoes none of that, it just
+  // stops a growing list of (often repeat-test) uploads from cluttering
+  // the Batches tab forever, with no automatic cleanup otherwise.
+  //
+  // site_drawing_revisions.import_batch_id has no ON DELETE clause
+  // (migration 075), so this must detach every revision that still
+  // references this batch FIRST -- without it, deleting any batch that
+  // actually created something (COMPLETED/PARTIAL, i.e. most of them)
+  // would fail outright with a foreign-key violation.
+  async deleteBatch(companyId: string, projectId: string, batchId: string): Promise<void> {
+    const result = await this.db.withTenant(companyId, async (sql) => {
+      const [batch] = await sql<{ storageKey: string }[]>`
+        SELECT storage_key FROM site_drawing_import_batches WHERE id = ${batchId} AND project_id = ${projectId}
+      `;
+      if (!batch) return null;
+      await sql`UPDATE site_drawing_revisions SET import_batch_id = NULL WHERE import_batch_id = ${batchId} AND project_id = ${projectId}`;
+      await sql`DELETE FROM site_drawing_import_batches WHERE id = ${batchId} AND project_id = ${projectId}`;
+      return batch;
+    });
+    if (!result) throw new NotFoundException(`Import batch ${batchId} not found.`);
+    this.storage.deleteIfExists(result.storageKey).catch(() => {});
+  }
+
   // The review queue (brief section 4: "a review queue for uncertain
   // records"): every revision an import flagged as needing a human
   // look, newest first. Joined to site_drawings for drawing_number/

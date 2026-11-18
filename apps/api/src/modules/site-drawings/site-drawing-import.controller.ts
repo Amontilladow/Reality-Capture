@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import type { AuthenticatedUser } from '@engineeringos/types';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireCategoryAction } from '../../common/decorators/require-category-action.decorator';
+import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
 import { SiteDrawingImportService } from './site-drawing-import.service';
 import { GetImportBatchUploadUrlDto, CreateImportBatchDto } from './dto/create-import-batch.dto';
 import { ResolveReviewDto } from './dto/resolve-review.dto';
@@ -57,5 +58,16 @@ export class SiteDrawingImportController {
   @ApiOperation({ summary: 'Get an import batch\'s current status and counts' })
   async getBatch(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('batchId') batchId: string) {
     return { data: await this.svc.getBatch(u.companyId, pid, batchId), error: null };
+  }
+
+  // Gated on manage_project_records directly (not RequireCategoryAction,
+  // whose 'drawings' category has no 'delete' action), same as every
+  // other module's record-delete route.
+  @Delete(':batchId')
+  @RequireProjectPermission('manage_project_records')
+  @ApiOperation({ summary: 'Delete an import batch\'s log entry (never the drawings/revisions it created)' })
+  async deleteBatch(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('batchId') batchId: string) {
+    await this.svc.deleteBatch(u.companyId, pid, batchId);
+    return { data: { message: 'Import batch deleted.' }, error: null };
   }
 }

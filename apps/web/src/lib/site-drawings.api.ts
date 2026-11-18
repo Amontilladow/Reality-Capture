@@ -228,6 +228,11 @@ export const listImportBatches = (projectId: string) =>
 export const getImportBatch = (projectId: string, batchId: string) =>
   apiGet<SiteDrawingImportBatch>(`${importBase(projectId)}/${batchId}`);
 
+// Clears one row from the Batches log; never deletes the drawings/
+// revisions that batch actually created.
+export const deleteImportBatch = (projectId: string, batchId: string) =>
+  apiDelete<{ message: string }>(`${importBase(projectId)}/${batchId}`);
+
 export const listReviewQueue = (projectId: string) =>
   apiGet<SiteDrawingReviewQueueItem[]>(`${importBase(projectId)}/review-queue`);
 
