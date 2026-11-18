@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Modal } from '../ui/Modal';
 import { StatusBadge } from '../ui/Badge';
 import { apiErrorMessage } from '../../lib/api';
 import {
   listImportBatches, listReviewQueue, resolveReview, deleteSiteDrawing, deleteImportBatch,
-  type SiteDrawingImportBatch, type SiteDrawingReviewQueueItem,
+  type SiteDrawingImportBatch, type SiteDrawingImportBatchStatus, type SiteDrawingReviewQueueItem,
 } from '../../lib/site-drawings.api';
 import {
   IMPORT_BATCH_STATUS_LABELS, IMPORT_BATCH_STATUS_TONE, isImportBatchInProgress, sourceProviderLabel,
@@ -23,6 +23,7 @@ export function ImportActivityModal({
   open: boolean; onClose: () => void; projectId: string; initialTab?: 'batches' | 'review';
 }) {
   const [tab, setTab] = useState<'batches' | 'review'>(initialTab);
+  const queryClient = useQueryClient();
 
   const batchesQuery = useQuery({
     queryKey: ['site-drawing-import-batches', projectId],
@@ -30,6 +31,35 @@ export function ImportActivityModal({
     enabled: open,
     refetchInterval: (query) => (query.state.data ?? []).some((b) => isImportBatchInProgress(b.status)) ? 4000 : false,
   });
+
+  // The import itself runs in a background worker; this modal only learns
+  // it finished by polling batchesQuery above, which refetches its OWN
+  // query only. Nothing else ever told the Site Drawings register (or its
+  // review-queue badge / dashboard stats) to refetch, so a user who
+  // watched a batch go PENDING -> COMPLETED right here, then checked the
+  // register, saw it still missing the new/updated drawings -- the same
+  // "it finished, but nowhere that matters shows it" cache gap the capture
+  // delete fix (BuildLens Timeline/Grid/Lightbox) already fixed once this
+  // session, just for this page pair instead. Detected as a transition
+  // (in-progress -> finished), not "invalidate on every poll tick": a
+  // ref holds each batch's last-seen status so this only fires once per
+  // batch actually finishing, not every 4s while nothing has changed.
+  const lastSeenStatuses = useRef<Map<string, SiteDrawingImportBatchStatus>>(new Map());
+  useEffect(() => {
+    const batches = batchesQuery.data;
+    if (!batches) return;
+    const previous = lastSeenStatuses.current;
+    const anyJustFinished = batches.some((b) => {
+      const prevStatus = previous.get(b.id);
+      return prevStatus !== undefined && isImportBatchInProgress(prevStatus) && !isImportBatchInProgress(b.status);
+    });
+    lastSeenStatuses.current = new Map(batches.map((b) => [b.id, b.status]));
+    if (anyJustFinished) {
+      queryClient.invalidateQueries({ queryKey: ['site-drawings', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-dashboard-stats', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-review-queue', projectId] });
+    }
+  }, [batchesQuery.data, projectId, queryClient]);
 
   const reviewQueueQuery = useQuery({
     queryKey: ['site-drawing-review-queue', projectId],
