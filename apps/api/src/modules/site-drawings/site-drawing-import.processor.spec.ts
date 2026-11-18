@@ -190,10 +190,11 @@ describe('SiteDrawingImportProcessor', () => {
     const { processor, db, storage } = makeProcessor([
       single(undefined), // markStarted
       single([batchRow]), // getBatch
-      // reconcile: SELECT existing, SELECT currentRevision (rev 'A', different hash), INSERT newRevision, supersede UPDATE, UPDATE current_revision_id
+      // reconcile: SELECT existing, SELECT currentRevision (rev 'A', different hash), SELECT usedRevisionNumbers (just 'A', no collision with 'B'), INSERT newRevision, supersede UPDATE, UPDATE current_revision_id
       multi([
         [{ id: 'drawing-1', drawingTitle: 'A-101', currentRevisionId: 'revision-1' }],
         [{ id: 'revision-1', revisionNumber: 'A', contentHash: sha256(Buffer.from('the previous revision')) }],
+        [{ revisionNumber: 'A' }],
         [{ id: 'revision-2' }],
         [],
         [],
@@ -220,11 +221,11 @@ describe('SiteDrawingImportProcessor', () => {
     const { processor, db, storage } = makeProcessor([
       single(undefined), // markStarted
       single([batchRow]), // getBatch
-      // reconcile: SELECT existing, SELECT currentRevision ('1', different hash), COUNT(*), INSERT newRevision, supersede UPDATE, UPDATE current_revision_id
+      // reconcile: SELECT existing, SELECT currentRevision ('1', different hash), SELECT usedRevisionNumbers (just '1', collides), INSERT newRevision ('1-v2'), supersede UPDATE, UPDATE current_revision_id
       multi([
         [{ id: 'drawing-1', drawingTitle: 'A-101', currentRevisionId: 'revision-1' }],
         [{ id: 'revision-1', revisionNumber: '1', contentHash: sha256(Buffer.from('the previous revision, same failed label')) }],
-        [{ count: '1' }],
+        [{ revisionNumber: '1' }],
         [{ id: 'revision-2' }],
         [],
         [],
@@ -277,5 +278,55 @@ describe('SiteDrawingImportProcessor', () => {
     // -- so the 5th interpolated value (args[5], after the strings array
     // and the first 4 values) is issue_date.
     expect(revisionInsertCall![5]).toBeNull();
+  });
+
+  it('disambiguates against a SUPERSEDED revision number, not just the current one -- reproduces the real production unique-constraint crash', async () => {
+    // The real bug: the prior disambiguation logic only compared the
+    // extracted/fallback revisionNumber against the CURRENT revision's own
+    // label. A drawing reimported many times over this session had several
+    // now-superseded revisions sitting under it, one of them labeled '1'
+    // (a prior failed-extraction fallback) that was no longer current --
+    // the current revision was '2'. A later reimport, whose extraction
+    // also failed and fell back to '1', saw no collision against '2' and
+    // tried to insert a second revision_number '1' for the same drawing_id,
+    // which site_drawing_revisions' UNIQUE(drawing_id, revision_number)
+    // constraint rejected outright: confirmed by hand against production,
+    // `duplicate key value violates unique constraint
+    // "site_drawing_revisions_drawing_id_revision_number_key"`.
+    const buffer = Buffer.from('yet another reimport, different content, same failed-extraction fallback label');
+    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: '', pageCount: 1 });
+    (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(false);
+
+    const insertCalls: unknown[][] = [];
+    const captureSql = (results: unknown[]) => (callback: WithTenantCallback) => {
+      let i = 0;
+      const sql = withJson((...args: unknown[]) => { insertCalls.push(args); return Promise.resolve(results[i++] ?? []); });
+      return callback(sql);
+    };
+
+    const { processor, db, storage } = makeProcessor([
+      single(undefined), // markStarted
+      single([batchRow]), // getBatch
+      captureSql([
+        [{ id: 'drawing-1', drawingTitle: 'A-101', currentRevisionId: 'revision-current' }], // SELECT existing
+        [{ id: 'revision-current', revisionNumber: '2', contentHash: sha256(Buffer.from('the current revision, different content')) }], // SELECT currentRevision ('2' -- no collision against the fallback '1' alone)
+        [{ revisionNumber: '2' }, { revisionNumber: '1' }], // SELECT usedRevisionNumbers: '1' was used by an OLDER, now-superseded revision
+        [{ id: 'revision-new' }], // INSERT newRevision
+        [], // supersede UPDATE
+        [], // UPDATE current_revision_id
+      ]),
+      single(undefined), // finish
+    ]);
+    (storage.download as jest.Mock).mockResolvedValue(buffer);
+
+    await expect(processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never)).resolves.toBeUndefined();
+    expect(db.withTenant).toHaveBeenCalledTimes(4); // never aborted into the per-file error path
+
+    const revisionInsertCall = insertCalls.find((args) => (args[0] as string[]).join('?').includes('INSERT INTO site_drawing_revisions'));
+    expect(revisionInsertCall).toBeDefined();
+    // Column order: company_id, project_id, drawing_id, revision_number, ...
+    // -- args[4] is revision_number. Disambiguated to '1-v2' (not the
+    // colliding '1'), since '1' is taken but '1-v2' is free.
+    expect(revisionInsertCall![4]).toBe('1-v2');
   });
 });
