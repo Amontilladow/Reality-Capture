@@ -12,7 +12,7 @@ import {
   DRAWING_TYPES, UNIT_TYPES, UPPERCASE_FACTS, UPPERCASE_META, USAGE_CATEGORY_TYPES, USAGE_TYPES, convertInputProblems,
 } from '../lib/bdms-inputs';
 import {
-  getGisPrepJob, listGisPrepJobs, rerunGisPrepJob, uploadAndCreateGisPrepJob,
+  getGisPrepJob, listGisPrepJobs, rerunGisPrepJob, uploadAndCreateGisPrepJob, deleteGisPrepJob, bulkDeleteGisPrepJobs,
   type GisConvertSettings, type GisPrepJob, type GisPrepJobStatus, type GisPrepProfile, type GisPrepSettings,
 } from '../lib/gis-prep.api';
 import { Listbox } from '../components/ui/Listbox';
@@ -155,6 +155,8 @@ export default function GisPrepPage() {
   const [fileFormat, setFileFormat] = useState<DrawingFormat | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   useEffect(() => { if (projectId) saveForm(formKey(projectId), form); }, [projectId, form]);
 
   const projectQuery = useQuery({ queryKey: ['project', projectId], queryFn: () => getProject(projectId!), enabled: Boolean(projectId) });
@@ -178,6 +180,35 @@ export default function GisPrepPage() {
     onError: (err) => setFormError(err instanceof Error && !('isAxiosError' in err) ? err.message : apiErrorMessage(err)),
   });
 
+  // GIS prep jobs had no delete path at all before this -- the list only
+  // ever grew, including every dead re-run and every test upload, with no
+  // way to clean any of it up.
+  const deleteMutation = useMutation({
+    mutationFn: (jobId: string) => deleteGisPrepJob(projectId!, jobId),
+    onSuccess: (_data, jobId) => {
+      queryClient.invalidateQueries({ queryKey: ['gis-prep-jobs', projectId] });
+      setSelectedId((cur) => (cur === jobId ? null : cur));
+      setSelectedIds((prev) => { const next = new Set(prev); next.delete(jobId); return next; });
+    },
+  });
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () => bulkDeleteGisPrepJobs(projectId!, [...selectedIds]),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['gis-prep-jobs', projectId] });
+      if (selectedId && selectedIds.has(selectedId)) setSelectedId(null);
+      setSelectedIds(new Set());
+      if (result.failed === 0) setSelecting(false);
+    },
+  });
+
+  function toggleSelected(jobId: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(jobId)) next.delete(jobId); else next.add(jobId);
+      return next;
+    });
+  }
+
   if (!projectId) return null;
   const fields = form.mode === 'convert' || form.profile === 'bdms_building' ? BDMS_FIELDS : SDD_FIELDS;
   const jobs = jobsQuery.data ?? [];
@@ -188,6 +219,14 @@ export default function GisPrepPage() {
         breadcrumbs={[{ label: 'Projects', to: '/projects' }, { label: projectQuery.data?.name ?? 'Loading…', to: `/projects/${projectId}` }, { label: 'GIS preparation' }]}
         title="GIS preparation"
         subtitle="Prepare DXF/DWG drawings for ADM / DRM GIS submission and run preliminary checks."
+        actions={
+          <button
+            className="btn-secondary"
+            onClick={() => { setSelecting((s) => !s); setSelectedIds(new Set()); }}
+          >
+            {selecting ? 'Cancel' : 'Select'}
+          </button>
+        }
       />
       <div className="p-6 space-y-4">
         <div className="panel p-4 border border-warn/40 bg-warn/5 text-xs text-ink-100">
@@ -336,33 +375,78 @@ export default function GisPrepPage() {
 
         {jobsQuery.isError && <div className="panel p-4 text-sm text-danger">{apiErrorMessage(jobsQuery.error)}</div>}
 
+        {selecting && selectedIds.size > 0 && (
+          <div className="panel p-4 flex items-center justify-between gap-4 flex-wrap">
+            <span className="text-sm text-ink-300">{selectedIds.size} job{selectedIds.size === 1 ? '' : 's'} selected</span>
+            <div className="flex items-center gap-2">
+              {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
+              <button
+                className="btn-secondary !text-danger !px-4 !py-2"
+                disabled={bulkDeleteMutation.isPending}
+                onClick={() => {
+                  if (confirm(`Delete ${selectedIds.size} GIS preparation job${selectedIds.size === 1 ? '' : 's'}? This cannot be undone.`)) bulkDeleteMutation.mutate();
+                }}
+              >
+                {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="panel tick-frame overflow-x-auto" tabIndex={0}>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-ink-500 border-b border-base-600">
+                {selecting && <th className="px-4 py-2 font-medium w-8"></th>}
                 <th className="px-4 py-2 font-medium">Drawing</th>
                 <th className="px-4 py-2 font-medium">Profile</th>
                 <th className="px-4 py-2 font-medium">Status</th>
                 <th className="px-4 py-2 font-medium">Errors / warnings / decisions</th>
                 <th className="px-4 py-2 font-medium">Created</th>
+                <th className="px-4 py-2 font-medium"></th>
               </tr>
             </thead>
             <tbody>
               {jobs.map(j => (
-                <tr key={j.id} onClick={() => setSelectedId(j.id)} className={`border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-700 ${selectedId === j.id ? 'bg-base-800/60' : ''}`}>
+                <tr
+                  key={j.id}
+                  onClick={() => (selecting ? toggleSelected(j.id) : setSelectedId(j.id))}
+                  className={`border-b border-base-700/60 last:border-0 cursor-pointer hover:bg-base-700 ${selectedId === j.id ? 'bg-base-800/60' : ''}`}
+                >
+                  {selecting && (
+                    <td className="px-4 py-2">
+                      <input
+                        type="checkbox" checked={selectedIds.has(j.id)} onChange={() => toggleSelected(j.id)}
+                        onClick={(e) => e.stopPropagation()} aria-label={`Select ${j.sourceFilename}`}
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-2 text-ink-100">{j.sourceFilename}{j.parentJobId && <span className="text-xs text-ink-500"> · re-run</span>}</td>
                   <td className="px-4 py-2 text-ink-300 whitespace-nowrap">{j.profile}</td>
                   <td className="px-4 py-2"><StatusBadge tone={STATUS_TONE[j.status]} label={STATUS_LABEL[j.status]} dot /></td>
                   <td className="px-4 py-2 text-ink-300 whitespace-nowrap">{j.counts ? `${j.counts.errors} / ${j.counts.warnings} / ${j.counts.openDecisions}` : '—'}</td>
                   <td className="px-4 py-2 text-ink-500 whitespace-nowrap">{new Date(j.createdAt).toLocaleString()}</td>
+                  <td className="px-4 py-2 text-right">
+                    <button
+                      className="btn-ghost !text-danger !px-2 !py-2 text-xs"
+                      disabled={deleteMutation.isPending}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Delete the GIS preparation job for "${j.sourceFilename}"? This cannot be undone.`)) deleteMutation.mutate(j.id);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
               {!jobsQuery.isLoading && jobs.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-10 text-center text-ink-500">No GIS preparation jobs yet.</td></tr>
+                <tr><td colSpan={selecting ? 7 : 6} className="px-4 py-10 text-center text-ink-500">No GIS preparation jobs yet.</td></tr>
               )}
             </tbody>
           </table>
         </div>
+        {deleteMutation.isError && <p className="text-xs text-danger">{apiErrorMessage(deleteMutation.error)}</p>}
 
         {selectedId && <JobDetail projectId={projectId} jobId={selectedId} onRerun={setSelectedId} />}
       </div>

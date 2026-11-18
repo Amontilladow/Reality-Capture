@@ -83,6 +83,57 @@ describe('GisPrepService', () => {
     const { svc } = makeService([[]]);
     await expect(svc.getJob(companyId, projectId, 'nope')).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  describe('deleteJob', () => {
+    it('404s when the job does not exist in this project', async () => {
+      const { svc, storage } = makeService([[]]); // SELECT -> none
+      await expect(svc.deleteJob(companyId, projectId, 'nope')).rejects.toBeInstanceOf(NotFoundException);
+      expect(storage.deleteIfExists).not.toHaveBeenCalled();
+    });
+
+    // The real bug this guards against: parent_job_id has no ON DELETE
+    // clause (migration 076), so deleting a job some later re-run still
+    // points at would otherwise fail with a foreign-key violation --
+    // re-running with corrected decisions is the NORMAL way a job gets
+    // resolved, so this is the common case, not an edge case.
+    it('detaches any re-run that points at this job, deletes the row, and removes every storage object it owns', async () => {
+      const fullRow = {
+        ...row,
+        reportStorageKey: 'company-1/gis-prep/project-1/qc_report.json',
+        packageStorageKey: 'company-1/gis-prep/project-1/package.zip',
+        outputs: [{ path: 'output/a.dxf', storageKey: 'company-1/gis-prep/project-1/a.dxf', sizeBytes: 10 }],
+      };
+      const { svc, storage } = makeService([
+        [fullRow], // SELECT
+        [], // UPDATE parent_job_id = NULL
+        [], // DELETE
+      ]);
+
+      await svc.deleteJob(companyId, projectId, 'job-1');
+
+      expect(storage.deleteIfExists).toHaveBeenCalledWith(key);
+      expect(storage.deleteIfExists).toHaveBeenCalledWith('company-1/gis-prep/project-1/qc_report.json');
+      expect(storage.deleteIfExists).toHaveBeenCalledWith('company-1/gis-prep/project-1/package.zip');
+      expect(storage.deleteIfExists).toHaveBeenCalledWith('company-1/gis-prep/project-1/a.dxf');
+    });
+
+    it('never throws when a storage object is already gone', async () => {
+      const { svc, storage } = makeService([[row], [], []]);
+      (storage.deleteIfExists as jest.Mock).mockRejectedValue(new Error('not found'));
+      await expect(svc.deleteJob(companyId, projectId, 'job-1')).resolves.toBeUndefined();
+    });
+  });
+
+  describe('bulkDelete', () => {
+    it("loops the single-item delete so one bad id doesn't block the rest", async () => {
+      const { svc } = makeService([
+        [row], [], [], // job-1: SELECT, UPDATE, DELETE
+        [], // job-2: SELECT -> not found
+      ]);
+      const result = await svc.bulkDelete(companyId, projectId, ['job-1', 'job-2']);
+      expect(result).toEqual({ deleted: 1, failed: 1 });
+    });
+  });
 });
 
 describe('toJob', () => {
