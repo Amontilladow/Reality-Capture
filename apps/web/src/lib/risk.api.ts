@@ -121,6 +121,9 @@ export interface RiskDataAvailability {
   issuesAvailable: number;
   snagItemsAvailable: number;
   qaInspectionsAvailable: number;
+  qaqcRecordsAvailable: number;
+  drawingsAvailable: number;
+  submittalsAvailable: number;
   bimElementRelationships: string;
   programmeData: string;
   procurementData: string;

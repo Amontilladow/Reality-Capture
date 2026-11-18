@@ -141,16 +141,30 @@ export class RiskService {
    * not just a guard against new leaks going forward.
    */
   private async pruneOrphanedNodes(companyId: string, projectId: string): Promise<void> {
+    let prunedTotal = 0;
     for (const nodeType of RISK_WORTHY_NODE_TYPES) {
       const nodes = await this.graph.getNodesByProject(companyId, projectId, [nodeType]);
       if (nodes.length === 0) continue;
       const existingIds = await this.extraction.findExistingEntityIds(companyId, nodeType, nodes.map(n => n.entityId));
+      let prunedForType = 0;
       for (const node of nodes) {
         if (!existingIds.has(node.entityId)) {
           await this.graph.deleteNode(companyId, nodeType, node.entityId);
+          prunedForType++;
         }
       }
+      prunedTotal += prunedForType;
+      // Temporary diagnostic: a user reported "Refresh" still showing stale
+      // open-risk counts after this prune shipped. Logging node counts per
+      // type (not just a final total) pinpoints exactly which entity type,
+      // if any, still carries orphaned risk_graph_nodes after a real
+      // Refresh runs -- without this there is no way to tell "pruning
+      // found nothing because there's genuinely nothing to prune" apart
+      // from "pruning never ran at all" from the API side alone (direct DB
+      // inspection is RLS-blocked for this session).
+      this.logger.log(`pruneOrphanedNodes: project ${projectId}, nodeType ${nodeType}: ${nodes.length} node(s) checked, ${prunedForType} pruned`);
     }
+    this.logger.log(`pruneOrphanedNodes: project ${projectId}: ${prunedTotal} total node(s) pruned`);
   }
 
   /** Event-driven incremental recalculation for one changed entity (brief section 41). */
@@ -1037,13 +1051,26 @@ export class RiskService {
 
   /** Empty-state / data-availability honesty (brief section 44). */
   async getDataAvailability(companyId: string, projectId: string) {
-    const [[rfiCount], [issueCount], [snagCount], [qaCount], [bimCount], [qaqcCount]] = await Promise.all([
+    // Every RISK_WORTHY_NODE_TYPES source table, not a subset: a project
+    // can still carry real, undeleted Drawings or Submittals (both
+    // risk-worthy, neither counted here before) that legitimately drive
+    // Executive Summary's open-risk total while this breakdown reported
+    // nothing for them at all -- reported as "shows risks while there is
+    // nothing," when the actual gap was that two whole categories were
+    // invisible here, not that the risk count itself was wrong.
+    const [[rfiCount], [issueCount], [snagCount], [qaCount], [bimCount], [qaqcCount], [drawingCount], [submittalCount]] = await Promise.all([
       this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM rfis WHERE project_id = ${projectId}`),
       this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM issues WHERE project_id = ${projectId}`),
       this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM snag_items WHERE project_id = ${projectId}`),
       this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM qa_inspections WHERE project_id = ${projectId}`),
       this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM bim_elements WHERE project_id = ${projectId}`),
-      this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM qaqc_records WHERE project_id = ${projectId}`),
+      this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM qaqc_records WHERE project_id = ${projectId} AND record_type = 'ncr'`),
+      // The OLDER 'drawings' table (Floor Plans/BuildLens Captures pin
+      // tool), which is what the risk engine's 'drawing' node type
+      // actually extracts from -- NOT the newer site_drawings register
+      // (relationship-extraction.service.ts's extractDrawings()).
+      this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM drawings WHERE project_id = ${projectId}`),
+      this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM submittals WHERE project_id = ${projectId}`),
     ]);
     return {
       rfisAvailable: Number(rfiCount.c),
@@ -1051,6 +1078,8 @@ export class RiskService {
       snagItemsAvailable: Number(snagCount.c),
       qaInspectionsAvailable: Number(qaCount.c),
       qaqcRecordsAvailable: Number(qaqcCount.c),
+      drawingsAvailable: Number(drawingCount.c),
+      submittalsAvailable: Number(submittalCount.c),
       bimElementRelationships: Number(bimCount.c) > 0 ? 'Available' : 'Not available',
       programmeData: 'Not connected — no programme/schedule module exists in this system yet.',
       procurementData: 'Not connected — no procurement/material module exists in this system yet.',
@@ -1089,6 +1118,9 @@ export class RiskService {
       `Issues available: ${availability.issuesAvailable}`,
       `Snag items available: ${availability.snagItemsAvailable}`,
       `QA inspections available: ${availability.qaInspectionsAvailable}`,
+      `NCRs available: ${availability.qaqcRecordsAvailable}`,
+      `Drawings available: ${availability.drawingsAvailable}`,
+      `Submittals available: ${availability.submittalsAvailable}`,
       `BIM element relationships: ${availability.bimElementRelationships}`,
       `Programme data: ${availability.programmeData}`,
       `Procurement data: ${availability.procurementData}`,
