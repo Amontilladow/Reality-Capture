@@ -49,3 +49,78 @@ describe('RiskService.removeEntityNode', () => {
     await expect(svc.removeEntityNode('company-1', 'drawing', 'drawing-never-extracted')).resolves.toBeUndefined();
   });
 });
+
+describe('RiskService.recalculateProject — orphan pruning', () => {
+  // The real bug this covers: every PR-156-era delete() calls
+  // removeEntityNode() going forward, but a deletion made before that
+  // wiring existed (or before it reached a given module) left its node
+  // behind forever -- extractProject() above only upserts from rows that
+  // still exist, so it was never going to notice. This is the retroactive
+  // half: recalculateProject() ("Refresh") must now also remove any node
+  // whose source row is gone, not just skip touching it.
+  it("deletes a node whose entityId findExistingEntityIds says is gone, and leaves one that's still live", async () => {
+    const graph = {
+      getNodesByProject: jest.fn((_companyId: string, _projectId: string, nodeTypes: string[]) => {
+        if (nodeTypes.length === 1 && nodeTypes[0] === 'rfi') {
+          return Promise.resolve([
+            { id: 'node-gone', entityId: 'rfi-gone', nodeType: 'rfi' },
+            { id: 'node-live', entityId: 'rfi-live', nodeType: 'rfi' },
+          ]);
+        }
+        // Every other per-type pruning pass finds nothing, and the final
+        // full-list call (for the recalculateForNode loop) finds nothing
+        // either, so that loop never runs in this test.
+        return Promise.resolve([]);
+      }),
+      deleteNode: jest.fn().mockResolvedValue(undefined),
+    };
+    const extraction = {
+      extractProject: jest.fn().mockResolvedValue(undefined),
+      findExistingEntityIds: jest.fn().mockResolvedValue(new Set(['rfi-live'])),
+    };
+    const signals = { detectSignalsForProject: jest.fn().mockResolvedValue(undefined) };
+
+    const svc = new RiskService(
+      {} as DatabaseService,
+      graph as unknown as RiskGraphService,
+      extraction as unknown as RelationshipExtractionService,
+      signals as unknown as SignalsService,
+      {} as ScoringService,
+      {} as AiClientService,
+      {} as AiUsageService,
+    );
+
+    await svc.recalculateProject('company-1', 'project-1');
+
+    expect(extraction.findExistingEntityIds).toHaveBeenCalledWith('company-1', 'rfi', ['rfi-gone', 'rfi-live']);
+    expect(graph.deleteNode).toHaveBeenCalledTimes(1);
+    expect(graph.deleteNode).toHaveBeenCalledWith('company-1', 'rfi', 'rfi-gone');
+  });
+
+  it('skips the existence check entirely for a node type with no nodes at all', async () => {
+    const graph = {
+      getNodesByProject: jest.fn().mockResolvedValue([]),
+      deleteNode: jest.fn(),
+    };
+    const extraction = {
+      extractProject: jest.fn().mockResolvedValue(undefined),
+      findExistingEntityIds: jest.fn(),
+    };
+    const signals = { detectSignalsForProject: jest.fn().mockResolvedValue(undefined) };
+
+    const svc = new RiskService(
+      {} as DatabaseService,
+      graph as unknown as RiskGraphService,
+      extraction as unknown as RelationshipExtractionService,
+      signals as unknown as SignalsService,
+      {} as ScoringService,
+      {} as AiClientService,
+      {} as AiUsageService,
+    );
+
+    await svc.recalculateProject('company-1', 'project-1');
+
+    expect(extraction.findExistingEntityIds).not.toHaveBeenCalled();
+    expect(graph.deleteNode).not.toHaveBeenCalled();
+  });
+});

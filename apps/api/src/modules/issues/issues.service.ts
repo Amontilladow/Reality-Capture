@@ -586,8 +586,13 @@ export class IssuesService {
   // ── Delete ────────────────────────────────────────────────────────────────
   async delete(companyId: string, projectId: string, issueId: string, userId: string, userRole: string) {
     const issue = await this.findOne(companyId, projectId, issueId);
-    // Only creator or admin can delete
-    if (issue.createdBy !== userId && !['company_admin','engineering_manager'].includes(userRole)) {
+    // Only creator or admin can delete. Weight-based, not a hardcoded role
+    // array: see the identical reasoning on isPermittedApprover below (F5)
+    // — a literal ['company_admin','engineering_manager'] list silently
+    // excluded super_admin and technical_director despite both outranking
+    // engineering_manager everywhere else in this app.
+    const weight = COMPANY_ROLE_WEIGHT[userRole as CompanyRole] ?? 0;
+    if (issue.createdBy !== userId && weight < COMPANY_ROLE_WEIGHT.engineering_manager) {
       throw new ForbiddenException('Only the issue creator or an administrator can delete an issue.');
     }
     const result = await this.db.withTenant(companyId, sql => sql`DELETE FROM issues WHERE id = ${issueId} AND company_id = ${companyId}`);
