@@ -1,8 +1,10 @@
 import logging
 
 import httpx
+import numpy as np
 import pytesseract
 from fastapi import APIRouter, HTTPException
+from PIL import Image, ImageOps
 from pdf2image import convert_from_bytes
 from pydantic import BaseModel
 
@@ -17,6 +19,61 @@ router = APIRouter()
 # character recognition, especially for the dense, small-font title
 # blocks typical of construction drawings.
 RASTERIZE_DPI = 300
+
+
+def _binarize_for_ocr(image: Image.Image) -> Image.Image:
+    """
+    The other half of Decision 1 step 3 ("use image preprocessing... to
+    improve title-block recognition"), which this router never actually
+    did -- OCR ran straight off the raw rasterized page. Root-caused from
+    reported wrong (not just low-confidence/NEEDS_REVIEW) extracted field
+    values on real CAD-exported sheets: bordered title-block grids, thin
+    ruled lines, dimension marks, light hatching and revision-cloud stamps
+    give Tesseract's own internal thresholding plenty of non-text ink to
+    confuse with characters. Grayscale + Otsu's-threshold binarization
+    removes almost all of that ambiguity before Tesseract ever runs: clean
+    black text on a white background is the input Tesseract is actually
+    tuned for.
+
+    Deliberately does NOT crop to a specific region: this app explicitly
+    never assumes one fixed title-block layout (title-block-extractor.ts's
+    own comment on DRAWING_NUMBER_LABELED/DRAWING_NUMBER_BARE), since a
+    different consultant's template places it in a different corner. This
+    improves raw recognition fidelity everywhere on the page instead,
+    which helps regardless of layout.
+
+    Otsu's method (not a single fixed brightness cutoff) finds the
+    threshold that best separates ink from background FOR THIS IMAGE,
+    so it adapts to a lightly-scanned, over-exposed, or tinted sheet
+    instead of misfiring on one fixed assumption. Implemented directly
+    (no opencv dependency -- this service already tracks container size
+    closely, see RASTERIZE_DPI's and torch's own comments above) over
+    grayscale pixel data: numpy and Pillow are already dependencies here.
+    """
+    gray = np.asarray(ImageOps.autocontrast(image.convert("L")), dtype=np.uint8)
+
+    histogram, _ = np.histogram(gray, bins=256, range=(0, 256))
+    total_pixels = gray.size
+    cumulative_sum = np.cumsum(histogram)
+    cumulative_intensity = np.cumsum(histogram * np.arange(256))
+    total_intensity = cumulative_intensity[-1]
+
+    # Between-class variance at every possible threshold, vectorized
+    # rather than looped: the classic Otsu formula, computed for all 256
+    # candidate thresholds at once.
+    with np.errstate(divide="ignore", invalid="ignore"):
+        weight_background = cumulative_sum / total_pixels
+        weight_foreground = 1.0 - weight_background
+        mean_background = np.where(cumulative_sum > 0, cumulative_intensity / np.maximum(cumulative_sum, 1), 0)
+        remaining = total_pixels - cumulative_sum
+        mean_foreground = np.where(
+            remaining > 0, (total_intensity - cumulative_intensity) / np.maximum(remaining, 1), 0,
+        )
+        between_class_variance = weight_background * weight_foreground * (mean_background - mean_foreground) ** 2
+
+    threshold = int(np.nanargmax(np.nan_to_num(between_class_variance)))
+    binary = np.where(gray > threshold, 255, 0).astype(np.uint8)
+    return Image.fromarray(binary)
 
 
 class OcrExtractRequest(BaseModel):
@@ -59,7 +116,7 @@ async def extract_text(req: OcrExtractRequest) -> OcrExtractResponse:
     if not images:
         raise HTTPException(status_code=422, detail=f"page {req.page} does not exist in this PDF")
 
-    image = images[0]
+    image = _binarize_for_ocr(images[0])
     # image_to_string preserves line breaks (needed for the Node-side
     # title-block regexes, several of which anchor on end-of-line) --
     # image_to_data's per-word boxes do not, and would silently merge
