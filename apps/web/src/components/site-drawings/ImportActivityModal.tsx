@@ -4,7 +4,7 @@ import { Modal } from '../ui/Modal';
 import { StatusBadge } from '../ui/Badge';
 import { apiErrorMessage } from '../../lib/api';
 import {
-  listImportBatches, listReviewQueue, resolveReview, deleteSiteDrawing,
+  listImportBatches, listReviewQueue, resolveReview, deleteSiteDrawing, deleteImportBatch,
   type SiteDrawingImportBatch, type SiteDrawingReviewQueueItem,
 } from '../../lib/site-drawings.api';
 import {
@@ -51,39 +51,97 @@ export function ImportActivityModal({
           </button>
         </div>
 
-        {tab === 'batches' && <BatchesTab batches={batchesQuery.data ?? []} isLoading={batchesQuery.isLoading} />}
+        {tab === 'batches' && <BatchesTab projectId={projectId} batches={batchesQuery.data ?? []} isLoading={batchesQuery.isLoading} />}
         {tab === 'review' && <ReviewQueueTab projectId={projectId} items={reviewQueueQuery.data ?? []} isLoading={reviewQueueQuery.isLoading} />}
       </div>
     </Modal>
   );
 }
 
-function BatchesTab({ batches, isLoading }: { batches: SiteDrawingImportBatch[]; isLoading: boolean }) {
+function BatchesTab({ projectId, batches, isLoading }: { projectId: string; batches: SiteDrawingImportBatch[]; isLoading: boolean }) {
+  const queryClient = useQueryClient();
+
+  // One-shot cleanup for the whole list at once, same non-destructive
+  // "log entry only" guarantee as each row's own Delete (deleteImportBatch's
+  // comment on the API side) -- for a project that's been reimported/
+  // retested repeatedly, deleting dozens of rows one at a time isn't
+  // realistic.
+  const clearAllMutation = useMutation({
+    mutationFn: () => Promise.all(batches.map((b) => deleteImportBatch(projectId, b.id))),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-import-batches', projectId] });
+    },
+  });
+
   if (isLoading) return <p className="text-sm text-ink-500">Loading…</p>;
   if (batches.length === 0) return <p className="text-sm text-ink-500">No imports yet.</p>;
 
   return (
-    <div className="panel tick-frame divide-y divide-base-700/60">
-      {batches.map((b) => (
-        <div key={b.id} className="px-4 py-2">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <div className="text-sm text-ink-100">{b.originalFilename}</div>
-              <div className="text-xs text-ink-500">
-                {sourceProviderLabel(b.sourceSystem)} · {formatDate(b.createdAt)}
-              </div>
-            </div>
-            <StatusBadge tone={IMPORT_BATCH_STATUS_TONE[b.status]} label={IMPORT_BATCH_STATUS_LABELS[b.status]} dot />
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        {clearAllMutation.isError
+          ? <p className="field-error">{apiErrorMessage(clearAllMutation.error)}</p>
+          : <span />}
+        <button
+          onClick={() => {
+            if (confirm(`Remove all ${batches.length} import batches from the activity log? This does not delete any drawings they already created.`)) clearAllMutation.mutate();
+          }}
+          disabled={clearAllMutation.isPending}
+          className="btn-ghost !text-danger text-xs shrink-0"
+        >
+          {clearAllMutation.isPending ? 'Clearing…' : 'Clear all'}
+        </button>
+      </div>
+      <div className="panel tick-frame divide-y divide-base-700/60">
+        {batches.map((b) => <BatchRow key={b.id} projectId={projectId} batch={b} />)}
+      </div>
+    </div>
+  );
+}
+
+function BatchRow({ projectId, batch: b }: { projectId: string; batch: SiteDrawingImportBatch }) {
+  const queryClient = useQueryClient();
+
+  // Clears this row from the log only -- never the drawings/revisions the
+  // batch actually created (deleteImportBatch's own comment on the API
+  // side). Without this, a project that gets reimported/retested a lot
+  // (exactly what this list is for) just grows forever with no way to
+  // clean it up.
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteImportBatch(projectId, b.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-import-batches', projectId] });
+    },
+  });
+
+  return (
+    <div className="px-4 py-2">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <div className="text-sm text-ink-100">{b.originalFilename}</div>
+          <div className="text-xs text-ink-500">
+            {sourceProviderLabel(b.sourceSystem)} · {formatDate(b.createdAt)}
           </div>
-          {b.status !== 'PENDING' && (
-            <div className="text-xs text-ink-500 mt-2">
-              {b.fileCount} file{b.fileCount === 1 ? '' : 's'} · {b.createdCount} new · {b.revisionCount} revision{b.revisionCount === 1 ? '' : 's'} ·
-              {' '}{b.skippedCount} skipped (duplicate){b.errorCount > 0 ? ` · ${b.errorCount} error${b.errorCount === 1 ? '' : 's'}` : ''}
-            </div>
-          )}
-          {b.errorMessage && <div className="text-xs text-danger mt-2">{b.errorMessage}</div>}
         </div>
-      ))}
+        <div className="flex items-center gap-2">
+          <StatusBadge tone={IMPORT_BATCH_STATUS_TONE[b.status]} label={IMPORT_BATCH_STATUS_LABELS[b.status]} dot />
+          <button
+            onClick={() => { if (confirm('Remove this import batch from the activity log? This does not delete any drawings it already created.')) deleteMutation.mutate(); }}
+            disabled={deleteMutation.isPending}
+            className="btn-secondary !text-danger !px-4 !py-2 text-xs"
+          >
+            {deleteMutation.isPending ? 'Removing…' : 'Delete'}
+          </button>
+        </div>
+      </div>
+      {b.status !== 'PENDING' && (
+        <div className="text-xs text-ink-500 mt-2">
+          {b.fileCount} file{b.fileCount === 1 ? '' : 's'} · {b.createdCount} new · {b.revisionCount} revision{b.revisionCount === 1 ? '' : 's'} ·
+          {' '}{b.skippedCount} skipped (duplicate){b.errorCount > 0 ? ` · ${b.errorCount} error${b.errorCount === 1 ? '' : 's'}` : ''}
+        </div>
+      )}
+      {b.errorMessage && <div className="text-xs text-danger mt-2">{b.errorMessage}</div>}
+      {deleteMutation.isError && <p className="field-error mt-2">{apiErrorMessage(deleteMutation.error)}</p>}
     </div>
   );
 }
