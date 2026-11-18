@@ -172,7 +172,10 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
 
   const summary = summaryQuery.data;
   const availability = dataAvailabilityQuery.data;
-  const hasAnyData = availability && (availability.rfisAvailable + availability.issuesAvailable + availability.snagItemsAvailable + availability.qaInspectionsAvailable) > 0;
+  const hasAnyData = availability && (
+    availability.rfisAvailable + availability.issuesAvailable + availability.snagItemsAvailable + availability.qaInspectionsAvailable
+    + availability.qaqcRecordsAvailable + availability.drawingsAvailable + availability.submittalsAvailable
+  ) > 0;
 
   const members = useMemo(() => membersQuery.data ?? [], [membersQuery.data]);
   const ownerNames = useMemo(() => ownerNameMap(members), [members]);
@@ -217,7 +220,7 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
         <div className="panel p-8 text-center space-y-2">
           <p className="text-sm text-ink-300">Risk intelligence is building.</p>
           <p className="text-xs text-ink-500">
-            No RFIs, Issues, Snag items, or QA inspections were found yet on this project. Connect project data to begin generating risk intelligence.
+            No RFIs, Issues, Snag items, QA inspections, NCRs, Drawings, or Submittals were found yet on this project. Connect project data to begin generating risk intelligence.
           </p>
         </div>
       )}
@@ -283,6 +286,9 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
                 <span>Issues {availability.issuesAvailable}</span>
                 <span>Snag items {availability.snagItemsAvailable}</span>
                 <span>QA inspections {availability.qaInspectionsAvailable}</span>
+                <span>NCRs {availability.qaqcRecordsAvailable}</span>
+                <span>Drawings {availability.drawingsAvailable}</span>
+                <span>Submittals {availability.submittalsAvailable}</span>
                 {/* Data sources that aren't connected say nothing a reader
                     can act on, so only connected ones are listed. */}
                 {connected(availability.bimElementRelationships) && <span>BIM relationships: {availability.bimElementRelationships}</span>}

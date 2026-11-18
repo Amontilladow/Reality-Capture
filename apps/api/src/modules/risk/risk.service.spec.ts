@@ -124,3 +124,68 @@ describe('RiskService.recalculateProject — orphan pruning', () => {
     expect(graph.deleteNode).not.toHaveBeenCalled();
   });
 });
+
+describe('RiskService.getDataAvailability', () => {
+  // The real bug this covers: the Risk Intelligence summary's "data
+  // available" breakdown never counted the OLDER drawings table or
+  // submittals at all, even though both are risk-worthy node types --
+  // a project with real, undeleted Drawings or Submittals could show a
+  // nonzero open-risk count while this breakdown reported nothing for
+  // either category, reading as "risks exist but there's nothing here"
+  // when the real gap was that two whole categories were invisible.
+  function makeCountingDb(counts: Record<string, string>) {
+    const withTenant = jest.fn((_companyId: string, callback: (sql: unknown) => unknown) => {
+      const sql = (strings: TemplateStringsArray) => {
+        const text = strings.join('?');
+        const key = Object.keys(counts).find((k) => text.includes(k));
+        return Promise.resolve([{ c: key ? counts[key] : '0' }]);
+      };
+      return callback(sql);
+    });
+    return { withTenant } as unknown as DatabaseService;
+  }
+
+  function makeSvc(db: DatabaseService) {
+    return new RiskService(
+      db,
+      {} as RiskGraphService,
+      {} as RelationshipExtractionService,
+      {} as SignalsService,
+      {} as ScoringService,
+      {} as AiClientService,
+      {} as AiUsageService,
+    );
+  }
+
+  it('counts every risk-worthy source table, not a subset -- including the older drawings table and submittals', async () => {
+    const db = makeCountingDb({
+      'FROM rfis': '3', 'FROM issues': '1', 'FROM snag_items': '0', 'FROM qa_inspections': '2',
+      'FROM bim_elements': '5', 'FROM qaqc_records': '4', 'FROM drawings': '7', 'FROM submittals': '2',
+    });
+    const result = await makeSvc(db).getDataAvailability('company-1', 'project-1');
+
+    expect(result).toMatchObject({
+      rfisAvailable: 3, issuesAvailable: 1, snagItemsAvailable: 0, qaInspectionsAvailable: 2,
+      qaqcRecordsAvailable: 4, drawingsAvailable: 7, submittalsAvailable: 2, bimElementRelationships: 'Available',
+    });
+  });
+
+  it('scopes the qaqc_records count to NCR only, matching RISK_WORTHY_NODE_TYPES (SOR/WIR/MIR are never risk-worthy)', async () => {
+    const withTenant = jest.fn((_companyId: string, callback: (sql: unknown) => unknown) => {
+      const sql = (strings: TemplateStringsArray) => {
+        const text = strings.join('?');
+        if (text.includes('FROM qaqc_records')) expect(text).toContain("record_type = 'ncr'");
+        return Promise.resolve([{ c: '0' }]);
+      };
+      return callback(sql);
+    });
+    await makeSvc({ withTenant } as unknown as DatabaseService).getDataAvailability('company-1', 'project-1');
+    expect(withTenant).toHaveBeenCalledTimes(8);
+  });
+
+  it('reports BIM relationships as not available when no bim_elements rows exist', async () => {
+    const db = makeCountingDb({ 'FROM bim_elements': '0' });
+    const result = await makeSvc(db).getDataAvailability('company-1', 'project-1');
+    expect(result.bimElementRelationships).toBe('Not available');
+  });
+});
