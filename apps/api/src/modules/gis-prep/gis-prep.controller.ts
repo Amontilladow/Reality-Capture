@@ -1,8 +1,10 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import type { AuthenticatedUser } from '@engineeringos/types';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireCategoryAction } from '../../common/decorators/require-category-action.decorator';
+import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
+import { BulkDeleteDto } from '../../common/dto/bulk-delete.dto';
 import { GisPrepService } from './gis-prep.service';
 import { CreateGisPrepJobDto, GetGisPrepUploadUrlDto, RerunGisPrepJobDto } from './dto/gis-prep.dto';
 
@@ -47,5 +49,23 @@ export class GisPrepController {
     @CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('jobId') jobId: string, @Body() dto: RerunGisPrepJobDto,
   ) {
     return { data: await this.svc.rerunJob(u.companyId, pid, u.id, jobId, dto.settings), error: null };
+  }
+
+  // Gated on manage_project_records directly (not RequireCategoryAction,
+  // whose 'drawings' category has no 'delete' action), same as every
+  // other module's record-delete route.
+  @Delete('jobs/:jobId')
+  @RequireProjectPermission('manage_project_records')
+  @ApiOperation({ summary: 'Delete a GIS preparation job and its outputs' })
+  async deleteJob(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('jobId') jobId: string) {
+    await this.svc.deleteJob(u.companyId, pid, jobId);
+    return { data: { message: 'GIS preparation job deleted.' }, error: null };
+  }
+
+  @Post('jobs/bulk-delete')
+  @RequireProjectPermission('manage_project_records')
+  @ApiOperation({ summary: 'Delete multiple GIS preparation jobs at once' })
+  async bulkDeleteJobs(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: BulkDeleteDto) {
+    return { data: await this.svc.bulkDelete(u.companyId, pid, dto.ids), error: null };
   }
 }
