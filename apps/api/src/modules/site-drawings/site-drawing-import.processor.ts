@@ -173,6 +173,23 @@ export class SiteDrawingImportProcessor {
     const drawingNumber = fields?.drawingNumber ?? filenameWithoutExtension;
     const drawingTitle = fields?.drawingTitle ?? filenameWithoutExtension;
     const revisionNumber = fields?.revisionNumber ?? '1';
+    // Second, independent check at the insert boundary itself -- not a
+    // substitute for extractDate()'s own calendar-validity check
+    // (title-block-extractor.ts, commit 13360bd), a backstop for it. That
+    // fix addressed one specific date shape ("60/90/2025") and the same
+    // handful of files crashed again in production with the identical
+    // `RangeError: Invalid time value` afterwards, proving some other
+    // garbled-OCR shape still gets past the regex-based check. Rather than
+    // chase the exact string a regex missed, this makes the one thing that
+    // actually throws -- the postgres driver's `new Date(value)
+    // .toISOString()` call when serializing a SQL DATE parameter --
+    // impossible to reach with a bad value, by doing that same conversion
+    // here first and discarding the value (never throwing) if it fails.
+    // Matches how every other uncertain field already behaves (drawingNumber/
+    // drawingTitle fall back to the filename, confidence degrades to
+    // NEEDS_REVIEW): an extraction that couldn't produce a real date is
+    // "no date found," never a crash that aborts the whole file.
+    const issueDate = fields?.issueDate && !Number.isNaN(new Date(fields.issueDate).getTime()) ? fields.issueDate : null;
     // Never inferred as MANUAL: an import always went through extraction
     // (even a fallback-to-filename case), so 'MANUAL' (reserved for a
     // human directly typing values in the register UI) would misrepresent
@@ -207,7 +224,7 @@ export class SiteDrawingImportProcessor {
             company_id, project_id, drawing_id, revision_number, workflow_status, issue_date, storage_key, file_size_bytes,
             content_hash, synchronization_status, extraction_status, extracted_fields_raw, import_batch_id, uploaded_by
           ) VALUES (
-            ${companyId}, ${projectId}, ${drawing.id}, ${revisionNumber}, 'UNKNOWN', ${fields?.issueDate ?? null}, ${storageKey}, ${fileSizeBytes},
+            ${companyId}, ${projectId}, ${drawing.id}, ${revisionNumber}, 'UNKNOWN', ${issueDate}, ${storageKey}, ${fileSizeBytes},
             ${contentHash}, 'NOT_APPLICABLE', ${baseExtractionStatus}, ${sql.json(toJsonSafe(fields))}, ${batch.id}, ${batch.uploadedBy ?? null}
           ) RETURNING id
         `;
@@ -275,7 +292,7 @@ export class SiteDrawingImportProcessor {
           content_hash, supersedes_revision_id, synchronization_status, extraction_status, extracted_fields_raw, import_batch_id,
           review_notes, uploaded_by
         ) VALUES (
-          ${companyId}, ${projectId}, ${existing.id}, ${effectiveRevisionNumber}, 'UNKNOWN', ${fields?.issueDate ?? null}, ${storageKey}, ${fileSizeBytes},
+          ${companyId}, ${projectId}, ${existing.id}, ${effectiveRevisionNumber}, 'UNKNOWN', ${issueDate}, ${storageKey}, ${fileSizeBytes},
           ${contentHash}, ${currentRevision?.id ?? null}, 'NOT_APPLICABLE', ${extractionStatus}, ${sql.json(toJsonSafe(fields))}, ${batch.id},
           ${reviewNotes}, ${batch.uploadedBy ?? null}
         ) RETURNING id

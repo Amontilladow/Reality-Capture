@@ -6,6 +6,7 @@ import type { AiClientService } from '../ai-client/ai-client.service';
 import type { SiteDrawingsService } from './site-drawings.service';
 import * as pdfTextExtractor from './extraction/pdf-text-extractor';
 import * as zipExtraction from './extraction/zip-extraction.util';
+import * as extractDrawingFieldsModule from './extraction/extract-drawing-fields';
 
 jest.mock('./extraction/pdf-text-extractor');
 jest.mock('./extraction/zip-extraction.util');
@@ -234,5 +235,47 @@ describe('SiteDrawingImportProcessor', () => {
 
     await expect(processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never)).resolves.toBeUndefined();
     expect(db.withTenant).toHaveBeenCalledTimes(4);
+  });
+
+  it('never throws and stores no issue_date when extraction produces a date-shaped value that is not a real calendar date', async () => {
+    // Reproduces the real production incident: commit 13360bd already
+    // rejects one specific garbled-date shape ("60/90/2025") inside
+    // extractDate()'s own regex validation, and the same handful of files
+    // crashed again afterwards with the identical `RangeError: Invalid
+    // time value`, proving some other shape still gets past that check.
+    // This test doesn't depend on finding the exact string a regex missed
+    // -- it simulates "extraction produced an unparseable issueDate,
+    // however that happened" directly, and proves reconcile()'s own
+    // insert-boundary guard (not the regex) is what actually stops the
+    // crash: the postgres driver would throw serializing this value for
+    // the `issue_date` DATE column if it ever reached the INSERT.
+    (zipExtraction.extractPdfEntriesFromZip as jest.Mock).mockResolvedValue({ entries: [{ filename: 'A-101.pdf', buffer: Buffer.from('x') }] });
+    jest.spyOn(extractDrawingFieldsModule, 'extractDrawingFields').mockResolvedValue({
+      drawingNumber: 'A-101', confidence: 0.9, source: 'embedded_text', issueDate: 'not-a-real-calendar-date',
+    });
+
+    const insertCalls: unknown[][] = [];
+    const captureSql = (results: unknown[]) => (callback: WithTenantCallback) => {
+      let i = 0;
+      const sql = withJson((...args: unknown[]) => { insertCalls.push(args); return Promise.resolve(results[i++] ?? []); });
+      return callback(sql);
+    };
+
+    const { processor } = makeProcessor([
+      single(undefined), // markStarted
+      single([batchRow]), // getBatch
+      captureSql([[], [], [{ id: 'drawing-1' }], [{ id: 'revision-1' }], []]), // reconcile: created
+      single(undefined), // finish
+    ]);
+
+    await expect(processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never)).resolves.toBeUndefined();
+
+    const revisionInsertCall = insertCalls.find((args) => (args[0] as string[]).join('?').includes('INSERT INTO site_drawing_revisions'));
+    expect(revisionInsertCall).toBeDefined();
+    // Column order: company_id, project_id, drawing_id, revision_number,
+    // 'UNKNOWN' (literal, not interpolated), issue_date, storage_key, ...
+    // -- so the 5th interpolated value (args[5], after the strings array
+    // and the first 4 values) is issue_date.
+    expect(revisionInsertCall![5]).toBeNull();
   });
 });
