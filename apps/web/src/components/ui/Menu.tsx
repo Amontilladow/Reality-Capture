@@ -1,5 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import type { Animation, EventProps } from 'react-useanimations';
+import { WithAnimatedIcon } from './AnimatedIcon';
+import { chain } from '../../lib/chain-handlers';
 
 // A button that opens a short list of actions: the "More" and "⋯" menus
 // that keep secondary actions out of the way. The list renders through a
@@ -10,6 +13,8 @@ import { createPortal } from 'react-dom';
 export interface MenuItem {
   label: string;
   icon?: ReactNode;
+  /** Animated icon (replaces `icon`), played as the item is pointed at or arrowed onto. */
+  anim?: Animation;
   onSelect: () => void;
   danger?: boolean;
   disabled?: boolean;
@@ -120,24 +125,30 @@ export function Menu({
                 {section.heading && (
                   <div className="px-4 pt-2 pb-2 text-eyebrow font-medium uppercase text-ink-500">{section.heading}</div>
                 )}
-                {section.items.map((item) => (
-                  <button
-                    key={item.label}
-                    type="button"
-                    role="menuitem"
-                    disabled={item.disabled}
-                    onClick={() => {
-                      setOpen(false);
-                      item.onSelect();
-                    }}
-                    className={`w-full flex items-center gap-4 px-4 h-11 text-sm text-left transition-colors hover:bg-ink-100/5 focus:bg-ink-100/5 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed ${
-                      item.danger ? 'text-danger' : 'text-ink-100'
-                    }`}
-                  >
-                    {item.icon && <span className={`w-5 h-5 grid place-items-center shrink-0 ${item.danger ? '' : 'text-ink-300'}`}>{item.icon}</span>}
-                    <span className="truncate">{item.label}</span>
-                  </button>
-                ))}
+                {section.items.map((item) => {
+                  const row = (ev: Partial<EventProps>, icon: ReactNode) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      role="menuitem"
+                      disabled={item.disabled}
+                      {...ev}
+                      onClick={chain(ev.onClick, () => {
+                        setOpen(false);
+                        item.onSelect();
+                      })}
+                      className={`w-full flex items-center gap-4 px-4 h-11 text-sm text-left transition-colors hover:bg-ink-100/5 focus:bg-ink-100/5 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed ${
+                        item.danger ? 'text-danger' : 'text-ink-100'
+                      }`}
+                    >
+                      {icon && <span className={`w-5 h-5 grid place-items-center shrink-0 ${item.danger ? '' : 'text-ink-300'}`}>{icon}</span>}
+                      <span className="truncate">{item.label}</span>
+                    </button>
+                  );
+                  return item.anim
+                    ? <WithAnimatedIcon key={item.label} animation={item.anim} interaction="hover-replay">{row}</WithAnimatedIcon>
+                    : row({}, item.icon);
+                })}
               </div>
             ))}
           </div>

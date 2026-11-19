@@ -1,4 +1,11 @@
 import { useMemo, useState } from 'react';
+import { AnimatedButton } from '../components/ui/AnimatedIcon';
+import aDownload from 'react-useanimations/lib/download';
+import aPlus from 'react-useanimations/lib/plusCircle';
+import aCheckCircle from 'react-useanimations/lib/checkCircle';
+import aTrash from 'react-useanimations/lib/trash2';
+import aSend from 'react-useanimations/lib/send';
+import aOpen from 'react-useanimations/lib/arrowUpRight';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -333,12 +340,12 @@ export default function IssuesPage() {
         subtitle={s ? `${s.total} issues · ${s.open} open · ${s.overdue} overdue` : undefined}
         actions={
           <>
-            <button onClick={handleExport} disabled={filteredIssues.length === 0} className="btn-secondary">
-              <ExportIcon /> Export to Excel
-            </button>
-            <button onClick={() => setCreateOpen(true)} className="btn-primary">
-              <PlusIcon /> New issue
-            </button>
+            <AnimatedButton animation={aDownload} onClick={handleExport} disabled={filteredIssues.length === 0} className="btn-secondary">
+              Export to Excel
+            </AnimatedButton>
+            <AnimatedButton animation={aPlus} onClick={() => setCreateOpen(true)} className="btn-primary">
+              New issue
+            </AnimatedButton>
           </>
         }
       />
@@ -481,36 +488,41 @@ export default function IssuesPage() {
           {selectedIds.size > 0 && (
             <div className="panel flex flex-wrap items-center gap-2 px-4 py-2">
               <span className="text-sm font-medium text-ink-100 mr-2">{selectedIds.size} selected</span>
-              <button
+              <AnimatedButton
+                animation={aDownload}
                 onClick={handleBulkDownloadPdf}
                 disabled={bulkDownloading === 'pdf'}
                 className="btn-secondary"
                 title="A ZIP with each selected issue as its own PDF"
               >
                 {bulkDownloading === 'pdf' ? 'Preparing…' : 'Download PDFs'}
-              </button>
-              <button
+              </AnimatedButton>
+              <AnimatedButton
+                animation={aDownload}
                 onClick={handleBulkDownloadXls}
                 disabled={bulkDownloading === 'xls'}
                 className="btn-secondary"
                 title="A ZIP with each selected issue as its own Excel file"
               >
                 {bulkDownloading === 'xls' ? 'Preparing…' : 'Download Excel files'}
-              </button>
-              <button
+              </AnimatedButton>
+              <AnimatedButton
+                animation={aCheckCircle}
                 onClick={() => { if (confirm(`Close ${selectedIds.size} issue(s)?`)) bulkCloseMutation.mutate(); }}
                 disabled={bulkCloseMutation.isPending}
                 className="btn-secondary"
               >
                 {bulkCloseMutation.isPending ? 'Closing…' : 'Close issues'}
-              </button>
-              <button
+              </AnimatedButton>
+              <AnimatedButton
+                animation={aTrash}
+                interaction="hover"
                 onClick={() => { if (confirm(`Delete ${selectedIds.size} issue(s)? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
                 disabled={bulkDeleteMutation.isPending}
                 className="btn-danger"
               >
                 {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete issues'}
-              </button>
+              </AnimatedButton>
               <button onClick={() => setSelectedIds(new Set())} className="btn-ghost ml-auto">Clear selection</button>
             </div>
           )}
@@ -906,13 +918,14 @@ function RemindersPanel({
               value={broadcastMessage}
               onChange={(e) => setBroadcastMessage(e.target.value)}
             />
-            <button
+            <AnimatedButton
+              animation={aSend}
               onClick={() => broadcastMutation.mutate()}
               disabled={!broadcastMessage.trim() || broadcastMutation.isPending}
               className="btn-primary !px-4 !py-2 "
             >
               {broadcastMutation.isPending ? 'Sending…' : 'Send broadcast'}
-            </button>
+            </AnimatedButton>
             {broadcastMutation.isError && <p className="field-error">{apiErrorMessage(broadcastMutation.error)}</p>}
             {broadcastMutation.isSuccess && <p className="text-xs text-ok">Sent to {broadcastMutation.data.remindersSent} issue(s).</p>}
           </div>
@@ -932,13 +945,14 @@ function RemindersPanel({
               value={userReminderMessage}
               onChange={(e) => setUserReminderMessage(e.target.value)}
             />
-            <button
+            <AnimatedButton
+              animation={aSend}
               onClick={() => userReminderMutation.mutate()}
               disabled={!userReminderTarget || !userReminderMessage.trim() || userReminderMutation.isPending}
               className="btn-primary !px-4 !py-2 "
             >
               {userReminderMutation.isPending ? 'Sending…' : 'Send reminder'}
-            </button>
+            </AnimatedButton>
             {userReminderMutation.isError && <p className="field-error">{apiErrorMessage(userReminderMutation.error)}</p>}
             {userReminderMutation.isSuccess && <p className="text-xs text-ok">Sent to {userReminderMutation.data.remindersSent} issue(s).</p>}
           </div>
@@ -1130,12 +1144,12 @@ function IssueRow({
           buttonClassName="w-10 h-10 rounded-lg grid place-items-center text-ink-300 hover:bg-ink-100/5 hover:text-ink-100"
           buttonContent={<DotsIcon />}
           sections={[
-            { items: [{ label: 'Open issue', icon: <OpenIcon />, onSelect: onOpen }] },
+            { items: [{ label: 'Open issue', anim: aOpen, onSelect: onOpen }] },
             {
               heading: 'Download',
               items: [
-                { label: 'PDF report', icon: <ExportIcon />, onSelect: () => download('pdf') },
-                { label: 'Excel (XLS)', icon: <ExportIcon />, onSelect: () => download('xls') },
+                { label: 'PDF report', anim: aDownload, onSelect: () => download('pdf') },
+                { label: 'Excel (XLS)', anim: aDownload, onSelect: () => download('xls') },
               ],
             },
           ]}
@@ -1185,27 +1199,5 @@ function DotsIcon() {
     </svg>
   );
 }
-function OpenIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
-function PlusIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-    </svg>
-  );
-}
 
-function ExportIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 3v12M7 10l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M5 21h14" strokeLinecap="round" />
-    </svg>
-  );
-}

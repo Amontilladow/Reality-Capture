@@ -11,6 +11,21 @@ import {
 } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
 import { SaveButton } from '../components/workspace/SaveButton';
+import { AnimatedButton, WithAnimatedIcon } from '../components/ui/AnimatedIcon';
+import aMail from 'react-useanimations/lib/mail';
+import aTrash from 'react-useanimations/lib/trash2';
+import aSave from 'react-useanimations/lib/save';
+import aSend from 'react-useanimations/lib/send';
+import aLink from 'react-useanimations/lib/link';
+import aCopy from 'react-useanimations/lib/copy';
+import aHelp from 'react-useanimations/lib/messageSquare';
+import aReply from 'react-useanimations/lib/cornerUpLeft';
+import aNext from 'react-useanimations/lib/arrowRightCircle';
+import aCheckCircle from 'react-useanimations/lib/checkCircle';
+import aReject from 'react-useanimations/lib/xOctagon';
+import aReopen from 'react-useanimations/lib/rotateCcw';
+import aDownload from 'react-useanimations/lib/download';
+import aPaperclip from 'react-useanimations/lib/paperclip';
 import { EmailComposerModal } from '../components/EmailComposerModal';
 import { EmailHistoryList } from '../components/EmailHistoryList';
 import { RichTextEditor, isRichTextEmpty } from '../components/ui/RichTextEditor';
@@ -467,18 +482,18 @@ export default function RfiDetailPage() {
           <>
             <SaveButton itemType="rfi" itemId={rfi.id} />
             {!isSubcontractor && (
-              <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary ">
+              <AnimatedButton animation={aMail} onClick={() => setComposeEmailOpen(true)} className="btn-secondary ">
                 Email
-              </button>
+              </AnimatedButton>
             )}
             {canDeleteRfi && (
-              <button
+              <AnimatedButton animation={aTrash} interaction="hover"
                 onClick={() => { if (confirm('Delete this RFI? This cannot be undone.')) deleteRfiMutation.mutate(); }}
                 disabled={deleteRfiMutation.isPending}
                 className="btn-secondary !text-danger"
               >
                 {deleteRfiMutation.isPending ? 'Deleting…' : 'Delete'}
-              </button>
+              </AnimatedButton>
             )}
             <Link
               to={`/projects/${projectId}/rfis/${rfi.raisedByOrganizationSlot === 'subcontractor' ? 'subcontractor' : 'main'}`}
@@ -599,13 +614,13 @@ export default function RfiDetailPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="field-label !mb-0">RFI information</div>
             {canEditQuery && (
-              <button
+              <AnimatedButton animation={aSave}
                 onClick={() => saveDraftMutation.mutate()}
                 disabled={saveDraftMutation.isPending}
                 className="btn-secondary !px-4 !py-2 "
               >
                 {saveDraftMutation.isPending ? 'Saving…' : 'Save'}
-              </button>
+              </AnimatedButton>
             )}
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
@@ -718,13 +733,13 @@ export default function RfiDetailPage() {
           <div className="flex items-center justify-between">
             <div className="field-label !mb-0">Query</div>
             {canEditQuery && (
-              <button
+              <AnimatedButton animation={aSave}
                 onClick={() => saveDraftMutation.mutate()}
                 disabled={saveDraftMutation.isPending}
                 className="btn-secondary !px-4 !py-2 "
               >
                 {saveDraftMutation.isPending ? 'Saving…' : 'Save draft'}
-              </button>
+              </AnimatedButton>
             )}
           </div>
           <RichTextEditor
@@ -799,13 +814,13 @@ export default function RfiDetailPage() {
               onChange={(e) => setCommentBody(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && commentBody.trim()) commentMutation.mutate(); }}
             />
-            <button
+            <AnimatedButton animation={aSend}
               onClick={() => commentMutation.mutate()}
               disabled={!commentBody.trim() || commentMutation.isPending}
               className="btn-primary !px-4 shrink-0"
             >
               Send
-            </button>
+            </AnimatedButton>
           </div>
           {commentMutation.isError && <p className="field-error">{apiErrorMessage(commentMutation.error)}</p>}
         </section>
@@ -912,25 +927,25 @@ export default function RfiDetailPage() {
               </div>
             </div>
 
-            <button
+            <AnimatedButton animation={aLink}
               onClick={() => generateExternalAccessMutation.mutate()}
               disabled={!extEmail.trim() || generateExternalAccessMutation.isPending}
               className="btn-primary !px-4 !py-2 "
             >
               {generateExternalAccessMutation.isPending ? 'Generating…' : 'Generate link'}
-            </button>
+            </AnimatedButton>
             {generateExternalAccessMutation.isError && (
               <p className="field-error">{apiErrorMessage(generateExternalAccessMutation.error)}</p>
             )}
             {extGeneratedUrl && (
               <div className="flex items-center gap-2">
                 <input readOnly className="field-input !py-2 text-xs font-mono" value={extGeneratedUrl} onFocus={(e) => e.target.select()} />
-                <button
+                <AnimatedButton animation={aCopy}
                   onClick={() => navigator.clipboard.writeText(extGeneratedUrl)}
                   className="btn-secondary !px-4 !py-2 shrink-0"
                 >
                   Copy
-                </button>
+                </AnimatedButton>
               </div>
             )}
             {extGeneratedUrl && (
@@ -997,15 +1012,15 @@ export default function RfiDetailPage() {
         {/* Action buttons */}
         <div className="flex flex-wrap gap-2 pt-2 border-t border-base-600">
           {canSubmit && (
-            <button onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending} className="btn-primary !px-4 !py-2 ">
+            <AnimatedButton animation={aSend} onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending} className="btn-primary !px-4 !py-2 ">
               {submitMutation.isPending ? 'Submitting…' : 'Submit'}
-            </button>
+            </AnimatedButton>
           )}
 
           {canRequestClarification && !clarifyOpen && (
-            <button onClick={() => setClarifyOpen(true)} className="btn-secondary !px-4 !py-2 ">
+            <AnimatedButton animation={aHelp} onClick={() => setClarifyOpen(true)} className="btn-secondary !px-4 !py-2 ">
               Request clarification
-            </button>
+            </AnimatedButton>
           )}
           {canRequestClarification && clarifyOpen && (
             <div className="flex items-center gap-2">
@@ -1015,35 +1030,35 @@ export default function RfiDetailPage() {
                 value={clarifyReason}
                 onChange={(e) => setClarifyReason(e.target.value)}
               />
-              <button
+              <AnimatedButton animation={aSend}
                 onClick={() => clarifyMutation.mutate()}
                 disabled={!clarifyReason.trim() || clarifyMutation.isPending}
                 className="btn-primary !px-4 !py-2 "
               >
                 Send
-              </button>
+              </AnimatedButton>
               <button onClick={() => setClarifyOpen(false)} className="btn-ghost !px-2 !py-2 ">Cancel</button>
             </div>
           )}
           {clarifyMutation.isError && <p className="field-error">{apiErrorMessage(clarifyMutation.error)}</p>}
 
           {canRespond && (
-            <button
+            <AnimatedButton animation={aReply}
               onClick={() => respondMutation.mutate()}
               disabled={isRichTextEmpty(answerDraft) || respondMutation.isPending}
               className="btn-primary !px-4 !py-2 "
             >
               {respondMutation.isPending ? 'Submitting…' : 'Respond'}
-            </button>
+            </AnimatedButton>
           )}
           {canSubmitForReview && (
-            <button
+            <AnimatedButton animation={aNext}
               onClick={() => submitForReviewMutation.mutate()}
               disabled={submitForReviewMutation.isPending}
               className="btn-secondary !px-4 !py-2 "
             >
               {submitForReviewMutation.isPending ? 'Sending…' : 'Submit for review'}
-            </button>
+            </AnimatedButton>
           )}
           {submitForReviewMutation.isError && <p className="field-error">{apiErrorMessage(submitForReviewMutation.error)}</p>}
 
@@ -1063,16 +1078,16 @@ export default function RfiDetailPage() {
 
           {canDecideReview && !reviewRejectOpen && (
             <>
-              <button
+              <AnimatedButton animation={aCheckCircle}
                 onClick={() => decideReviewMutation.mutate({ decision: 'approved', organizationSlot: closingOrgSlot || undefined })}
                 disabled={!closingOrgSlot || decideReviewMutation.isPending}
                 className="btn-primary !px-4 !py-2 "
               >
                 Approve &amp; close
-              </button>
-              <button onClick={() => setReviewRejectOpen(true)} className="btn-secondary !px-4 !py-2 ">
+              </AnimatedButton>
+              <AnimatedButton animation={aReject} onClick={() => setReviewRejectOpen(true)} className="btn-secondary !px-4 !py-2 ">
                 Reject
-              </button>
+              </AnimatedButton>
             </>
           )}
           {canDecideReview && reviewRejectOpen && (
@@ -1083,44 +1098,44 @@ export default function RfiDetailPage() {
                 value={reviewRejectComment}
                 onChange={(e) => setReviewRejectComment(e.target.value)}
               />
-              <button
+              <AnimatedButton animation={aReopen}
                 onClick={() => decideReviewMutation.mutate({ decision: 'rejected', comment: reviewRejectComment.trim() })}
                 disabled={!reviewRejectComment.trim() || decideReviewMutation.isPending}
                 className="btn-primary !px-4 !py-2 "
               >
                 Send back
-              </button>
+              </AnimatedButton>
               <button onClick={() => setReviewRejectOpen(false)} className="btn-ghost !px-2 !py-2 ">Cancel</button>
             </div>
           )}
           {decideReviewMutation.isError && <p className="field-error">{apiErrorMessage(decideReviewMutation.error)}</p>}
 
           {canClose && (
-            <button
+            <AnimatedButton animation={aCheckCircle}
               onClick={() => closeMutation.mutate()}
               disabled={!closingOrgSlot || closeMutation.isPending}
               className="btn-secondary !px-4 !py-2 "
             >
               Close RFI
-            </button>
+            </AnimatedButton>
           )}
           {canReopen && (
-            <button onClick={() => reopenMutation.mutate()} disabled={reopenMutation.isPending} className="btn-secondary !px-4 !py-2 ">
+            <AnimatedButton animation={aReopen} onClick={() => reopenMutation.mutate()} disabled={reopenMutation.isPending} className="btn-secondary !px-4 !py-2 ">
               ↩ Reopen
-            </button>
+            </AnimatedButton>
           )}
 
-          <button onClick={handleDownloadPdf} disabled={downloading} className="btn-secondary !px-4 !py-2 ml-auto">
+          <AnimatedButton animation={aDownload} onClick={handleDownloadPdf} disabled={downloading} className="btn-secondary !px-4 !py-2 ml-auto">
             {downloading ? 'Preparing…' : 'Download PDF'}
-          </button>
-          <button
+          </AnimatedButton>
+          <AnimatedButton animation={aDownload}
             onClick={handleDownloadXls}
             disabled={xlsDownloading}
             className="btn-secondary !px-4 !py-2 "
             title="Editable spreadsheet, formatted to match the PDF"
           >
             {xlsDownloading ? 'Preparing…' : 'Download XLS'}
-          </button>
+          </AnimatedButton>
         </div>
       </div>
     </>
@@ -1440,8 +1455,11 @@ function AttachmentSection({
               <option key={t} value={t}>{RFI_DOCUMENT_TYPE_LABELS[t]}</option>
             ))}
           </Listbox>
-          <label className="btn-secondary !px-4 !py-2 cursor-pointer">
-            {uploadMutation.isPending ? 'Uploading…' : '+ Upload document'}
+          <WithAnimatedIcon animation={aPaperclip} interaction="hover-replay">
+            {(ev, icon) => (
+          <label {...ev} className="btn-secondary !px-4 !py-2 cursor-pointer">
+            {icon}
+            {uploadMutation.isPending ? 'Uploading…' : 'Upload document'}
             <input
               type="file"
               className="hidden"
@@ -1453,6 +1471,8 @@ function AttachmentSection({
               }}
             />
           </label>
+            )}
+          </WithAnimatedIcon>
         </div>
       )}
     </div>
