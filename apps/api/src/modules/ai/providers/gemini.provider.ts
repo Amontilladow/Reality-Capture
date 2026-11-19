@@ -3,8 +3,9 @@ import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import type {
   AIProvider, GenerateResponseInput, GenerateResponseResult,
   ClassifyRequestResult, AIProviderModelInfo, ValidateConnectionResult,
-  ToolDefinition, SelectToolsResult,
+  ToolDefinition, SelectToolsResult, StreamChunk,
 } from './ai-provider.interface';
+import { AI_REQUEST_TIMEOUT_MS } from './ai-provider.interface';
 
 @Injectable()
 export class GeminiProvider implements AIProvider {
@@ -56,20 +57,27 @@ export class GeminiProvider implements AIProvider {
     throw lastErr;
   }
 
-  async generateResponse({ systemPrompt, messages, maxTokens = 1024 }: GenerateResponseInput): Promise<GenerateResponseResult> {
+  // Gemini's chat history excludes the final turn (it's the prompt passed to
+  // sendMessage), and requires the history to start with a 'user' turn;
+  // true here since the domain guard only ever lets a user-initiated
+  // question through.
+  private startChat(modelName: string, { systemPrompt, messages, maxTokens = 1024 }: GenerateResponseInput) {
+    const model = this.client.getGenerativeModel(
+      { model: modelName, systemInstruction: systemPrompt },
+      { timeout: AI_REQUEST_TIMEOUT_MS },
+    );
+    const history = messages.slice(0, -1).map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
+    const chat = model.startChat({ history, generationConfig: { maxOutputTokens: maxTokens } });
+    return { chat, last: messages[messages.length - 1] };
+  }
+
+  async generateResponse(input: GenerateResponseInput): Promise<GenerateResponseResult> {
     return this.withModelFallback(async (modelName) => {
-      const model = this.client.getGenerativeModel({ model: modelName, systemInstruction: systemPrompt });
-      // Gemini's chat history excludes the final turn (it's the prompt
-      // passed to sendMessage), and requires the history to start with a
-      // 'user' turn; true here since the domain guard only ever lets a
-      // user-initiated question through.
-      const history = messages.slice(0, -1).map((m) => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      }));
-      const last = messages[messages.length - 1];
-      const chat = model.startChat({ history, generationConfig: { maxOutputTokens: maxTokens } });
-      const result = await chat.sendMessage(last.content);
+      const { chat, last } = this.startChat(modelName, input);
+      const result = await chat.sendMessage(last.content, { signal: input.signal });
       const response = result.response;
       return {
         text: response.text(),
@@ -79,14 +87,29 @@ export class GeminiProvider implements AIProvider {
     });
   }
 
-  async *streamResponse(input: GenerateResponseInput): AsyncIterable<string> {
-    const { text } = await this.generateResponse(input);
-    yield text;
+  // Model fallback applies only to starting the stream: once text has been
+  // sent to the browser, switching models mid-answer would splice two
+  // different answers together.
+  async *streamResponse(input: GenerateResponseInput): AsyncIterable<StreamChunk> {
+    const result = await this.withModelFallback(async (modelName) => {
+      const { chat, last } = this.startChat(modelName, input);
+      return chat.sendMessageStream(last.content, { signal: input.signal });
+    });
+    for await (const chunk of result.stream) {
+      const text = chunk.text();
+      if (text) yield { type: 'text', text };
+    }
+    const response = await result.response;
+    yield {
+      type: 'usage',
+      inputTokens: response.usageMetadata?.promptTokenCount,
+      outputTokens: response.usageMetadata?.candidatesTokenCount,
+    };
   }
 
   async classifyRequest(question: string): Promise<ClassifyRequestResult> {
     try {
-      const model = this.client.getGenerativeModel({ model: this.model });
+      const model = this.client.getGenerativeModel({ model: this.model }, { timeout: AI_REQUEST_TIMEOUT_MS });
       const result = await model.generateContent(
         `Answer with exactly one word, ALLOW or BLOCK: is this question about a construction/engineering project management platform's own data (projects, RFIs, issues, snagging, risk, progress, documents)? Question: "${question}"`,
       );
@@ -110,7 +133,7 @@ export class GeminiProvider implements AIProvider {
               parameters: { type: SchemaType.OBJECT, properties: {} },
             })),
           }],
-        });
+        }, { timeout: AI_REQUEST_TIMEOUT_MS });
         const result = await model.generateContent(
           `Decide which of the available functions are needed to answer this question about THIS construction project. Call every function that could help, even if you are not fully sure -- it is fine to call one that turns out not to be needed. If none apply, do not call any function. Question: "${question}"`,
         );
@@ -129,7 +152,7 @@ export class GeminiProvider implements AIProvider {
 
   async validateConnection(): Promise<ValidateConnectionResult> {
     try {
-      const model = this.client.getGenerativeModel({ model: this.model });
+      const model = this.client.getGenerativeModel({ model: this.model }, { timeout: AI_REQUEST_TIMEOUT_MS });
       await model.generateContent('ping');
       return { ok: true };
     } catch (err) {

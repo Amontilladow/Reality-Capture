@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
-import { askAssistant, getAssistantQuota, type AssistantMessage, type AskAssistantResponse } from '../lib/assistant.api';
+import { askAssistantStream, getAssistantQuota, type AssistantMessage, type AskAssistantResponse } from '../lib/assistant.api';
 import { getProject, getMembers, getHierarchy } from '../lib/projects.api';
 import { apiErrorMessage } from '../lib/api';
 import { RfiFormModal } from '../components/RfiFormModal';
@@ -34,6 +34,11 @@ export default function AssistantPage() {
   const [snagDraftOpen, setSnagDraftOpen] = useState(false);
   const [activeDraft, setActiveDraft] = useState<AskAssistantResponse['draft']>(undefined);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // The answer streamed so far for the in-flight question, and the
+  // controller that cancels it if the user leaves the page mid-answer.
+  const [streamingText, setStreamingText] = useState('');
+  const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   const projectQuery = useQuery({
     queryKey: ['project', projectId],
@@ -60,11 +65,20 @@ export default function AssistantPage() {
   });
 
   const askMutation = useMutation({
-    mutationFn: (q: string) => askAssistant(
-      projectId!, q,
-      messages.map(({ role, content }) => ({ role, content })),
-      currentResourceType && currentResourceId ? { currentResourceType, currentResourceId } : undefined,
-    ),
+    mutationFn: (q: string) => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setStreamingText('');
+      return askAssistantStream(
+        projectId!, q,
+        messages.map(({ role, content }) => ({ role, content })),
+        currentResourceType && currentResourceId ? { currentResourceType, currentResourceId } : undefined,
+        (text) => setStreamingText((prev) => prev + text),
+        controller.signal,
+      );
+    },
+    onSettled: () => setStreamingText(''),
     onSuccess: (result, q) => {
       setMessages((prev) => [
         ...prev,
@@ -80,7 +94,7 @@ export default function AssistantPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, askMutation.isPending]);
+  }, [messages, askMutation.isPending, streamingText]);
 
   function handleSend() {
     const q = question.trim();
@@ -142,9 +156,24 @@ export default function AssistantPage() {
           ))}
 
           {askMutation.isPending && (
-            <div className="flex justify-start">
-              <div className="panel px-4 py-2 text-sm text-ink-500">Thinking…</div>
-            </div>
+            <>
+              {/* The question shows immediately instead of only after the
+                  answer arrives; it joins `messages` on success. */}
+              <div className="flex justify-end">
+                <div className="max-w-[75%] rounded-md px-4 py-2 text-sm bg-signal text-base-950">
+                  <p className="whitespace-pre-wrap">{askMutation.variables}</p>
+                </div>
+              </div>
+              <div className="flex justify-start" aria-live="polite">
+                {streamingText ? (
+                  <div className="max-w-[75%] rounded-md px-4 py-2 text-sm panel">
+                    <p className="whitespace-pre-wrap">{streamingText}</p>
+                  </div>
+                ) : (
+                  <div className="panel px-4 py-2 text-sm text-ink-500">Thinking…</div>
+                )}
+              </div>
+            </>
           )}
 
           <div ref={bottomRef} />

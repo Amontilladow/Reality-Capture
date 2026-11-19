@@ -3,8 +3,9 @@ import OpenAI from 'openai';
 import type {
   AIProvider, GenerateResponseInput, GenerateResponseResult,
   ClassifyRequestResult, AIProviderModelInfo, ValidateConnectionResult,
-  ToolDefinition, SelectToolsResult,
+  ToolDefinition, SelectToolsResult, StreamChunk,
 } from './ai-provider.interface';
+import { AI_MAX_RETRIES, AI_REQUEST_TIMEOUT_MS } from './ai-provider.interface';
 
 // One implementation backs three provider names (OpenAI itself, a
 // self-hosted/enterprise "custom_openai_compatible" endpoint, and Ollama)
@@ -30,10 +31,15 @@ export class OpenAICompatibleProvider implements AIProvider {
     // Ollama commonly needs no API key at all (local, unauthenticated);
     // the SDK requires a non-empty string, so this is a harmless placeholder
     // never actually checked by a local Ollama server.
-    this.client = new OpenAI({ apiKey: apiKey || 'not-required', baseURL });
+    this.client = new OpenAI({
+      apiKey: apiKey || 'not-required',
+      baseURL,
+      timeout: AI_REQUEST_TIMEOUT_MS,
+      maxRetries: AI_MAX_RETRIES,
+    });
   }
 
-  async generateResponse({ systemPrompt, messages, maxTokens = 1024 }: GenerateResponseInput): Promise<GenerateResponseResult> {
+  async generateResponse({ systemPrompt, messages, maxTokens = 1024, signal }: GenerateResponseInput): Promise<GenerateResponseResult> {
     const response = await this.client.chat.completions.create({
       model: this.model,
       max_tokens: maxTokens,
@@ -41,7 +47,7 @@ export class OpenAICompatibleProvider implements AIProvider {
         { role: 'system', content: systemPrompt },
         ...messages.map((m) => ({ role: m.role, content: m.content })),
       ],
-    });
+    }, { signal });
     return {
       text: response.choices[0]?.message?.content ?? '',
       inputTokens: response.usage?.prompt_tokens,
@@ -49,9 +55,35 @@ export class OpenAICompatibleProvider implements AIProvider {
     };
   }
 
-  async *streamResponse(input: GenerateResponseInput): AsyncIterable<string> {
-    const { text } = await this.generateResponse(input);
-    yield text;
+  async *streamResponse({ systemPrompt, messages, maxTokens = 1024, signal }: GenerateResponseInput): AsyncIterable<StreamChunk> {
+    const body = {
+      model: this.model,
+      max_tokens: maxTokens,
+      stream: true as const,
+      messages: [
+        { role: 'system' as const, content: systemPrompt },
+        ...messages.map((m) => ({ role: m.role, content: m.content })),
+      ],
+    };
+    // stream_options.include_usage makes the server send a final chunk with
+    // token usage. Some OpenAI-compatible gateways reject unknown options
+    // with a 400, so on that specific failure retry once without it (usage
+    // is then just not reported for this answer).
+    let stream;
+    try {
+      stream = await this.client.chat.completions.create({ ...body, stream_options: { include_usage: true } }, { signal });
+    } catch (err) {
+      if (!(err instanceof OpenAI.APIError) || err.status !== 400) throw err;
+      this.logger.warn(`${this.providerLabel} rejected stream_options; streaming without usage reporting`);
+      stream = await this.client.chat.completions.create(body, { signal });
+    }
+    let usage: { prompt_tokens?: number; completion_tokens?: number } | undefined;
+    for await (const chunk of stream) {
+      const text = chunk.choices[0]?.delta?.content;
+      if (text) yield { type: 'text', text };
+      if (chunk.usage) usage = chunk.usage;
+    }
+    yield { type: 'usage', inputTokens: usage?.prompt_tokens, outputTokens: usage?.completion_tokens };
   }
 
   async classifyRequest(question: string): Promise<ClassifyRequestResult> {

@@ -59,6 +59,11 @@ function makeService(opts: {
     // unchanged; see the "native tool-calling" describe block below for
     // tests of the function-calling path itself and its fallback behavior.
     selectTools: jest.fn().mockResolvedValue({ toolCalls: [], failed: true }),
+    streamResponse: jest.fn().mockImplementation(async function* () {
+      yield { type: 'text', text: 'Here is ' };
+      yield { type: 'text', text: 'the answer.' };
+      yield { type: 'usage', inputTokens: 12, outputTokens: 6 };
+    }),
   };
   const providerFactory = { getProvider: jest.fn().mockReturnValue(provider) };
 
@@ -465,5 +470,31 @@ describe('AiService — role-aware draft blocking (CTO spec sections 16-21)', ()
 
     expect(result.blocked).toBeUndefined();
     expect(result.draft?.type).toBe('rfi');
+  });
+});
+
+describe('AiService.ask with streaming', () => {
+  it('forwards each text chunk to onDelta, returns the joined answer and logs streamed usage', async () => {
+    const { svc, provider, usage } = makeService();
+    const deltas: string[] = [];
+    const controller = new AbortController();
+    const result = await svc.ask(user, 'project-1', { question: 'Summarize the current project.' }, {
+      onDelta: (t) => deltas.push(t),
+      signal: controller.signal,
+    });
+    expect(deltas).toEqual(['Here is ', 'the answer.']);
+    expect(result.answer).toBe('Here is the answer.');
+    expect(provider.generateResponse).not.toHaveBeenCalled();
+    expect(provider.streamResponse).toHaveBeenCalledWith(expect.objectContaining({ signal: controller.signal }));
+    expect(usage.log).toHaveBeenCalledWith(expect.objectContaining({ status: 'allowed', inputTokens: 12, outputTokens: 6 }));
+  });
+
+  it('still enforces the domain guard before streaming anything', async () => {
+    const { svc, provider } = makeService();
+    const onDelta = jest.fn();
+    const result = await svc.ask(user, 'project-1', { question: 'Tell me a joke.' }, { onDelta });
+    expect(result.blocked).toBe(true);
+    expect(onDelta).not.toHaveBeenCalled();
+    expect(provider.streamResponse).not.toHaveBeenCalled();
   });
 });

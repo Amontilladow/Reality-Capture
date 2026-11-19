@@ -40,6 +40,15 @@ type GenerateOutcome = Omit<AskAssistantResult, 'remainingQuota'> & {
 // endpoint would reject anyway.
 const RFI_DRAFT_RESTRICTED_MESSAGE = 'Your current RealityCapture role does not have permission to create RFIs. I can help you review the issue or prepare information for an authorized user.';
 
+// Streaming hooks for ask(): `onDelta` receives answer text as the provider
+// generates it; `signal` aborts the provider call (browser disconnected).
+// Drafts (structured RFI/issue/snag fields) aren't streamed: they arrive in
+// the final result only.
+export interface AskStreamOptions {
+  onDelta: (text: string) => void;
+  signal?: AbortSignal;
+}
+
 export class AssistantQuotaExceededError extends Error {
   constructor(message: string, public readonly reason: 'daily_limit' | 'rate_limit') { super(message); }
 }
@@ -201,7 +210,7 @@ export class AiService {
     }
   }
 
-  async ask(user: AuthenticatedUser, projectId: string, dto: AskAssistantDto): Promise<AskAssistantResult> {
+  async ask(user: AuthenticatedUser, projectId: string, dto: AskAssistantDto, stream?: AskStreamOptions): Promise<AskAssistantResult> {
     const ctx: AssistantContext = {
       companyId: user.companyId,
       projectId,
@@ -291,7 +300,7 @@ export class AiService {
 
     const startedAt = Date.now();
     try {
-      const { inputTokens, outputTokens, ...result } = await this.generate(provider, intent, ctx, dto);
+      const { inputTokens, outputTokens, ...result } = await this.generate(provider, intent, ctx, dto, stream);
       this.usage.log({
         companyId: user.companyId, projectId, userId: user.id, userRole: user.companyRole,
         status: 'allowed', category: result.toolsUsed[0],
@@ -313,7 +322,7 @@ export class AiService {
     }
   }
 
-  private async generate(provider: AIProvider, intent: Intent, ctx: AssistantContext, dto: AskAssistantDto): Promise<GenerateOutcome> {
+  private async generate(provider: AIProvider, intent: Intent, ctx: AssistantContext, dto: AskAssistantDto, stream?: AskStreamOptions): Promise<GenerateOutcome> {
     if (intent.kind === 'draft_rfi' || intent.kind === 'draft_issue' || intent.kind === 'draft_snag') {
       return this.generateDraft(provider, intent.kind, ctx, dto.question);
     }
@@ -330,8 +339,25 @@ export class AiService {
     const history: AIMessage[] = (dto.conversationHistory ?? []).slice(-maxTurns);
     const messages: AIMessage[] = [...history, { role: 'user', content: dto.question }];
 
+    const toolsUsed = toolResults.map((r) => r.tool);
+    if (stream) {
+      let answer = '';
+      let inputTokens: number | undefined;
+      let outputTokens: number | undefined;
+      for await (const chunk of provider.streamResponse({ systemPrompt, messages, maxTokens: 1024, signal: stream.signal })) {
+        if (chunk.type === 'text') {
+          answer += chunk.text;
+          stream.onDelta(chunk.text);
+        } else {
+          inputTokens = chunk.inputTokens;
+          outputTokens = chunk.outputTokens;
+        }
+      }
+      return { answer, toolsUsed, inputTokens, outputTokens };
+    }
+
     const { text, inputTokens, outputTokens } = await provider.generateResponse({ systemPrompt, messages, maxTokens: 1024 });
-    return { answer: text, toolsUsed: toolResults.map((r) => r.tool), inputTokens, outputTokens };
+    return { answer: text, toolsUsed, inputTokens, outputTokens };
   }
 
   // Owner request, following the plural-matching bug: "the assistant must

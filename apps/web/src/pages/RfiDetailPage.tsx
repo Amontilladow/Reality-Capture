@@ -27,7 +27,8 @@ import {
 } from '../lib/rfi-external-access.api';
 import { getProject, getMembers, getPermissionGrants, getOrganizations, uploadOrganizationLogo } from '../lib/projects.api';
 import { getProjectActivity } from '../lib/audit.api';
-import { downloadRfiXls, type RfiWorkbookExtras } from '../lib/rfi-xls';
+// exceljs (~1 MB) is only needed when a user exports; loaded on demand below.
+import type { RfiWorkbookExtras } from '../lib/rfi-xls';
 import {
   RFI_WORKFLOW_STATUS_LABELS, RFI_PRIORITY_LABELS,
   DRAWING_IMPACT_BADGE_CLASS,
@@ -358,6 +359,7 @@ export default function RfiDetailPage() {
           action: a.action, userName: a.userName, occurredAt: formatDateTime(a.occurredAt),
         })),
       };
+      const { downloadRfiXls } = await import('../lib/rfi-xls');
       const warnings = await downloadRfiXls(rfi as unknown as Rfi, projectQuery.data, extras);
       if (warnings.length > 0) setXlsWarning(warnings.join(' '));
     } catch (err) {

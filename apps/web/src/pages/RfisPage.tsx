@@ -7,6 +7,8 @@ import {
   type RfiImpactLevel,
 } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
+import { Pagination } from '../components/ui/Pagination';
+import { usePage } from '../lib/usePage';
 import { RfiFormModal } from '../components/RfiFormModal';
 import { RfiNoticeLetterModal } from '../components/RfiNoticeLetterModal';
 import { UploadRfiModal } from '../components/UploadRfiModal';
@@ -85,10 +87,11 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
     enabled: Boolean(projectId),
   });
 
+  const [page, setPage] = usePage(['rfis', projectId, view, status, discipline, costImpactLevel, timeImpactLevel, assignedTo, dateFrom, dateTo, origin]);
   const rfisQuery = useQuery({
-    queryKey: ['rfis', projectId, view, status, discipline, costImpactLevel, timeImpactLevel, assignedTo, dateFrom, dateTo, origin],
+    queryKey: ['rfis', projectId, view, status, discipline, costImpactLevel, timeImpactLevel, assignedTo, dateFrom, dateTo, origin, page],
     queryFn: () => listRfis(projectId!, {
-      perPage: 100,
+      page, perPage: 100,
       view,
       status: status || undefined,
       discipline: discipline || undefined,
@@ -386,6 +389,11 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+        {rfisQuery.data?.meta && (
+          <div className="mt-4">
+            <Pagination page={page} pageSize={rfisQuery.data.meta.perPage} total={rfisQuery.data.meta.total} onPageChange={setPage} />
           </div>
         )}
       </div>

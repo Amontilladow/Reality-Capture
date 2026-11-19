@@ -12,7 +12,23 @@ export interface GenerateResponseInput {
   systemPrompt: string;
   messages: AIMessage[];
   maxTokens?: number;
+  // Aborts the provider call; used by the streaming endpoint when the
+  // browser disconnects mid-answer, so an abandoned answer stops costing
+  // tokens.
+  signal?: AbortSignal;
 }
+
+// One piece of a streamed answer: text as it is generated, then (when the
+// provider reports it) a final usage chunk so token accounting still works.
+export type StreamChunk =
+  | { type: 'text'; text: string }
+  | { type: 'usage'; inputTokens?: number; outputTokens?: number };
+
+// Every vendor SDK call gets an explicit bound. The SDK defaults are up to
+// 10 minutes, which would let one slow provider hold an API request (and
+// its DB/Redis resources) far past any useful answer.
+export const AI_REQUEST_TIMEOUT_MS = 60_000;
+export const AI_MAX_RETRIES = 2;
 
 export interface GenerateResponseResult {
   text: string;
@@ -72,14 +88,10 @@ export interface ValidateConnectionResult {
 export interface AIProvider {
   generateResponse(input: GenerateResponseInput): Promise<GenerateResponseResult>;
 
-  // Declared per spec section 3's interface list. The Gateway/frontend don't
-  // consume this yet (Known limitations, final report): real token-level
-  // streaming needs an SSE/WebSocket round trip the current AssistantPage
-  // doesn't have, which is real scope beyond this pass. Each adapter below
-  // implements it as a single-chunk wrapper over generateResponse() so the
-  // interface is satisfiable today and swappable to real streaming
-  // later without changing this contract.
-  streamResponse(input: GenerateResponseInput): AsyncIterable<string>;
+  // Token-level streaming of the same answer generateResponse() returns,
+  // consumed by POST /projects/:projectId/assistant/stream (Server-Sent
+  // Events) so the Assistant shows text as it is generated.
+  streamResponse(input: GenerateResponseInput): AsyncIterable<StreamChunk>;
 
   // Not used by the heuristic domain guard today (see domain-guard.service.ts;
   // the spec's example block/allow list is unambiguous enough for a

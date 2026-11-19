@@ -10,7 +10,6 @@ import { StatTile } from '../components/ui/StatTile';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { MobileFold } from '../components/ui/MobileFold';
 import { getReportKpis, getReportsBriefing } from '../lib/reports.api';
-import { downloadReportsXls } from '../lib/reports-xls';
 import { getProject } from '../lib/projects.api';
 import { listDocuments, uploadDocumentFile } from '../lib/documents.api';
 import { remindRfiDrawingUpdate } from '../lib/rfis.api';
@@ -134,6 +133,8 @@ export default function ReportsPage() {
     setXlsError('');
     setXlsDownloading(true);
     try {
+      // exceljs (~1 MB) loads only when the user actually exports.
+      const { downloadReportsXls } = await import('../lib/reports-xls');
       await downloadReportsXls(kpisQuery.data, projectQuery.data?.code ?? projectId!);
     } catch (err) {
       setXlsError(apiErrorMessage(err));

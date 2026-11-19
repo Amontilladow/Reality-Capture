@@ -1,9 +1,12 @@
+// Must stay the first import; see tracing.ts.
+import './tracing';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe, ClassSerializerInterceptor, Logger } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
@@ -40,6 +43,21 @@ async function bootstrap() {
   // Setting a cookie on the response (res.cookie()) needs no middleware;
   // this is only for reading one back on a later request.
   app.use(cookieParser());
+
+  // gzip/deflate for API responses (JSON list endpoints compress ~5-10x).
+  // Server-Sent Events are excluded: compression buffers output until a
+  // chunk threshold, which would hold back streamed AI tokens. Bodies under
+  // 1 KB aren't worth the CPU.
+  app.use(
+    compression({
+      threshold: 1024,
+      filter: (req, res) => {
+        const type = String(res.getHeader('Content-Type') ?? '');
+        if (type.includes('text/event-stream')) return false;
+        return compression.filter(req, res);
+      },
+    }),
+  );
 
   // ── Security headers ────────────────────────────────────────────────────
   // HSTS, X-Content-Type-Options, X-Frame-Options, etc. CSP and COEP are off:

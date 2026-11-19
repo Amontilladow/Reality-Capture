@@ -6,44 +6,47 @@ import { LogoMark } from './components/ui/LogoMark';
 import { bootstrapSession } from './lib/api';
 import { useAuthStore } from './store/auth.store';
 
+// The public landing page and login are the first screen for signed-out
+// visitors, so they stay in the main bundle. Every other page is its own
+// lazily-loaded chunk: a user downloads only the pages they open.
 import PublicLandingPage from './pages/PublicLandingPage';
 import Login from './pages/auth/Login';
-import ForgotPassword from './pages/auth/ForgotPassword';
-import ResetPassword from './pages/auth/ResetPassword';
-import AcceptInvitation from './pages/auth/AcceptInvitation';
-import SelfSignup from './pages/auth/SelfSignup';
-import PendingApproval from './pages/PendingApproval';
-import RfiExternalPage from './pages/RfiExternalPage';
-import ProgressReportExternalPage from './pages/ProgressReportExternalPage';
-import DocumentExternalPage from './pages/DocumentExternalPage';
+const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
+const AcceptInvitation = lazy(() => import('./pages/auth/AcceptInvitation'));
+const SelfSignup = lazy(() => import('./pages/auth/SelfSignup'));
+const PendingApproval = lazy(() => import('./pages/PendingApproval'));
+const RfiExternalPage = lazy(() => import('./pages/RfiExternalPage'));
+const ProgressReportExternalPage = lazy(() => import('./pages/ProgressReportExternalPage'));
+const DocumentExternalPage = lazy(() => import('./pages/DocumentExternalPage'));
 
-import ProjectList from './pages/ProjectList';
-import ProjectDetail from './pages/ProjectDetail';
-import IssuesPage from './pages/IssuesPage';
-import RfisLandingPage from './pages/RfisLandingPage';
-import RfisPage from './pages/RfisPage';
-import RfiDetailPage from './pages/RfiDetailPage';
-import SnaggingPage from './pages/SnaggingPage';
-import SubmittalsPage from './pages/SubmittalsPage';
-import DocumentsPage from './pages/DocumentsPage';
-import TransmittalsPage from './pages/TransmittalsPage';
-import QaInspectionsPage from './pages/QaInspectionsPage';
-import QaqcLandingPage from './pages/QaqcLandingPage';
-import QaqcListPage from './pages/QaqcListPage';
-import QaqcDetailPage from './pages/QaqcDetailPage';
-import ProgressReportPage from './pages/ProgressReportPage';
-import AssistantPage from './pages/AssistantPage';
-import ReportsPage from './pages/ReportsPage';
-import RiskPage from './pages/RiskPage';
-import MessagesPage from './pages/MessagesPage';
-import WorkforcePage from './pages/WorkforcePage';
-import DeveloperSettingsPage from './pages/DeveloperSettingsPage';
-import AiSettingsPage from './pages/AiSettingsPage';
-import SharePointIntegrationPage from './pages/SharePointIntegrationPage';
-import EmailSettingsPage from './pages/EmailSettingsPage';
-import BuildLensPage from './pages/BuildLensPage';
-import HelpPage from './pages/HelpPage';
-import NotificationsPage from './pages/NotificationsPage';
+const ProjectList = lazy(() => import('./pages/ProjectList'));
+const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
+const IssuesPage = lazy(() => import('./pages/IssuesPage'));
+const RfisLandingPage = lazy(() => import('./pages/RfisLandingPage'));
+const RfisPage = lazy(() => import('./pages/RfisPage'));
+const RfiDetailPage = lazy(() => import('./pages/RfiDetailPage'));
+const SnaggingPage = lazy(() => import('./pages/SnaggingPage'));
+const SubmittalsPage = lazy(() => import('./pages/SubmittalsPage'));
+const DocumentsPage = lazy(() => import('./pages/DocumentsPage'));
+const TransmittalsPage = lazy(() => import('./pages/TransmittalsPage'));
+const QaInspectionsPage = lazy(() => import('./pages/QaInspectionsPage'));
+const QaqcLandingPage = lazy(() => import('./pages/QaqcLandingPage'));
+const QaqcListPage = lazy(() => import('./pages/QaqcListPage'));
+const QaqcDetailPage = lazy(() => import('./pages/QaqcDetailPage'));
+const ProgressReportPage = lazy(() => import('./pages/ProgressReportPage'));
+const AssistantPage = lazy(() => import('./pages/AssistantPage'));
+const ReportsPage = lazy(() => import('./pages/ReportsPage'));
+const RiskPage = lazy(() => import('./pages/RiskPage'));
+const MessagesPage = lazy(() => import('./pages/MessagesPage'));
+const WorkforcePage = lazy(() => import('./pages/WorkforcePage'));
+const DeveloperSettingsPage = lazy(() => import('./pages/DeveloperSettingsPage'));
+const AiSettingsPage = lazy(() => import('./pages/AiSettingsPage'));
+const SharePointIntegrationPage = lazy(() => import('./pages/SharePointIntegrationPage'));
+const EmailSettingsPage = lazy(() => import('./pages/EmailSettingsPage'));
+const BuildLensPage = lazy(() => import('./pages/BuildLensPage'));
+const HelpPage = lazy(() => import('./pages/HelpPage'));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 
 // These four pull in the heaviest dependencies in the app (Three.js +
 // @thatopen/components + @thatopen/fragments for the two BIM routes,
