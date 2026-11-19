@@ -57,6 +57,12 @@ export function ImportDrawingsModal({
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [sourceSystem, setSourceSystem] = useState<DocSource>(() => readLastUsedSource(projectId));
+  // Phase 5: visible progress for a potentially-long upload (up to
+  // 500 MB), so "Uploading…" with no further feedback isn't the only
+  // sign of life on a slow connection -- and isn't indistinguishable from
+  // a genuine stall (which the 15-minute upload timeout now also guards
+  // against; see site-drawings.api.ts's own comment).
+  const [uploadFraction, setUploadFraction] = useState(0);
 
   const onDrop = useCallback((accepted: File[]) => {
     const f = accepted[0];
@@ -69,11 +75,15 @@ export function ImportDrawingsModal({
   });
 
   const mutation = useMutation({
-    mutationFn: () => uploadImportBatch(projectId, file!, sourceSystem),
+    mutationFn: () => {
+      setUploadFraction(0);
+      return uploadImportBatch(projectId, file!, sourceSystem, setUploadFraction);
+    },
     onSuccess: (batch) => {
       queryClient.invalidateQueries({ queryKey: ['site-drawing-import-batches', projectId] });
       writeLastUsedSource(projectId, sourceSystem);
       setFile(null); // keep sourceSystem as-is: the next package is very likely from the same source
+      setUploadFraction(0);
       onClose();
       onCreated(batch);
     },
@@ -115,12 +125,22 @@ export function ImportDrawingsModal({
           </p>
         </div>
 
-        {mutation.isError && <p className="field-error">{apiErrorMessage(mutation.error)}</p>}
+        {mutation.isPending && (
+          <div className="h-1.5 rounded-full bg-base-700 overflow-hidden" role="progressbar" aria-valuenow={Math.round(uploadFraction * 100)} aria-valuemin={0} aria-valuemax={100}>
+            <div className="h-full bg-signal transition-[width]" style={{ width: `${Math.round(uploadFraction * 100)}%` }} />
+          </div>
+        )}
+
+        {mutation.isError && (
+          <p className="field-error">
+            {apiErrorMessage(mutation.error)} Nothing was imported — click "Start import" again to retry.
+          </p>
+        )}
 
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="btn-ghost">Cancel</button>
           <button onClick={() => mutation.mutate()} disabled={!file || mutation.isPending} className="btn-primary">
-            {mutation.isPending ? 'Uploading…' : 'Start import'}
+            {mutation.isPending ? `Uploading… ${Math.round(uploadFraction * 100)}%` : 'Start import'}
           </button>
         </div>
       </div>

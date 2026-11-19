@@ -86,7 +86,8 @@ export class SiteDrawingsService {
     await this.assertProjectBelongsToCompany(companyId, projectId);
     await this.assertUploadedSizeWithinLimit(storageKey);
     const buffer = await this.storage.download(storageKey);
-    return extractDrawingFields(this.storage, this.aiClient, companyId, projectId, storageKey, buffer, storageKey);
+    const { fields } = await extractDrawingFields(this.storage, this.aiClient, companyId, projectId, storageKey, buffer, storageKey);
+    return fields;
   }
 
   async registerDrawing(companyId: string, projectId: string, userId: string, dto: RegisterSiteDrawingDto): Promise<SiteDrawingWithCurrentRevision> {

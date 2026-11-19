@@ -145,20 +145,94 @@ describe('SiteDrawingImportService', () => {
   describe('listReviewQueue', () => {
     // The whole point of this endpoint: a reviewer needs to know WHICH
     // drawing a flagged revision belongs to, not just the bare revision row.
-    it("joins each flagged revision to its drawing's number and title", async () => {
-      const row = {
+    it("joins each flagged revision to its drawing's number and title, and reports whether it's still pending promotion", async () => {
+      const pendingRow = {
         id: 'rev-1', companyId, projectId, drawingId: 'drawing-1', revisionNumber: '2',
         workflowStatus: 'UNKNOWN', sourceStatusRaw: null, issueDate: null, sourceModifiedAt: null,
         lastVerifiedAt: null, contentHash: null, storageKey: 'key', sourceRevisionId: null, sourceWebUrl: null,
         fileSizeBytes: 1024, supersedesRevisionId: null, isSuperseded: false, offlineEligibility: true,
         synchronizationStatus: 'NOT_APPLICABLE', uploadedBy: userId, documentClassification: 'CONSTRUCTION',
-        suitabilityCode: null, extractionStatus: 'NEEDS_REVIEW', extractedFieldsRaw: null, importBatchId: 'batch-1',
+        suitabilityCode: null, extractionStatus: 'CONFLICT', extractedFieldsRaw: null, importBatchId: 'batch-1',
         reviewNotes: null, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
         drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan',
+        // The drawing's own current_revision_id points elsewhere -- this
+        // revision was never promoted.
+        drawingCurrentRevisionId: 'rev-0',
       };
-      const { svc } = makeService([single([row])]);
+      const alreadyCurrentRow = { ...pendingRow, id: 'rev-2', extractionStatus: 'NEEDS_REVIEW', drawingCurrentRevisionId: 'rev-2' };
+      const { svc } = makeService([single([pendingRow, alreadyCurrentRow])]);
       const result = await svc.listReviewQueue(companyId, projectId);
-      expect(result).toEqual([expect.objectContaining({ id: 'rev-1', drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan' })]);
+      expect(result[0]).toEqual(expect.objectContaining({ id: 'rev-1', drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan', isPendingPromotion: true }));
+      expect(result[1]).toEqual(expect.objectContaining({ id: 'rev-2', isPendingPromotion: false }));
+    });
+  });
+
+  // Site Drawing Hub integrity hardening, Phase 1/2: the two decisions on
+  // a revision reconcile() left pending (not yet current).
+  describe('confirmRevisionAsNew', () => {
+    it('404s when the revision does not exist in this project', async () => {
+      const { svc } = makeService([single([])]);
+      await expect(svc.confirmRevisionAsNew(companyId, projectId, 'missing', 'looks right')).rejects.toThrow(NotFoundException);
+    });
+
+    it('promotes the pending revision to current and supersedes the previous current revision', async () => {
+      const revision = { id: 'rev-2', drawingId: 'drawing-1' };
+      const updated = { ...revision, extractionStatus: 'CONFIRMED', isSuperseded: false, reviewNotes: 'confirmed against the title block' };
+      const { svc } = makeService([
+        multi([
+          [revision], // SELECT revision
+          [{ currentRevisionId: 'rev-1' }], // SELECT drawing's current_revision_id (still the OLD one)
+          [], // UPDATE site_drawing_revisions SET is_superseded = true WHERE id = rev-1
+          [], // UPDATE site_drawings SET current_revision_id = rev-2
+          [updated], // UPDATE site_drawing_revisions SET extraction_status = 'CONFIRMED' ... RETURNING *
+        ]),
+      ]);
+      const result = await svc.confirmRevisionAsNew(companyId, projectId, 'rev-2', 'confirmed against the title block');
+      expect(result.extractionStatus).toBe('CONFIRMED');
+      expect(result.isSuperseded).toBe(false);
+    });
+
+    it('does not try to supersede anything when the drawing had no current revision yet', async () => {
+      const revision = { id: 'rev-1', drawingId: 'drawing-1' };
+      const updated = { ...revision, extractionStatus: 'CONFIRMED' };
+      const { svc, withTenant } = makeService([
+        multi([
+          [revision], // SELECT revision
+          [{ currentRevisionId: null }], // drawing has no current revision at all
+          [], // UPDATE site_drawings SET current_revision_id = rev-1
+          [updated], // final UPDATE ... RETURNING *
+        ]),
+      ]);
+      await svc.confirmRevisionAsNew(companyId, projectId, 'rev-1', 'first revision for this drawing');
+      expect(withTenant).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('splitRevisionAsNewDrawing', () => {
+    it('404s when the revision does not exist in this project', async () => {
+      const { svc } = makeService([single([])]);
+      await expect(svc.splitRevisionAsNewDrawing(companyId, projectId, 'missing', {
+        drawingNumber: 'B-201', drawingTitle: 'Actually a Different Drawing', reviewNotes: 'misextracted number collision',
+      })).rejects.toThrow(NotFoundException);
+    });
+
+    it("detaches the revision into its own new drawing, using the reviewer's corrected identity, without touching the original drawing", async () => {
+      const revision = { id: 'rev-2', drawingId: 'drawing-1', revisionNumber: '1-v2' };
+      const movedRevision = { ...revision, drawingId: 'drawing-2', extractionStatus: 'CONFIRMED', isSuperseded: false, supersedesRevisionId: null };
+      const { svc } = makeService([
+        multi([
+          [revision], // SELECT revision
+          [{ sourceProvider: 'internal', discipline: null }], // SELECT original drawing's own provider/discipline
+          [{ id: 'drawing-2' }], // INSERT new site_drawings row
+          [movedRevision], // UPDATE site_drawing_revisions SET drawing_id = drawing-2, ... RETURNING *
+          [], // UPDATE site_drawings SET current_revision_id = rev-2 WHERE id = drawing-2
+        ]),
+      ]);
+      const result = await svc.splitRevisionAsNewDrawing(companyId, projectId, 'rev-2', {
+        drawingNumber: 'B-201', drawingTitle: 'Actually a Different Drawing', reviewNotes: 'misextracted number collision -- different physical drawing',
+      });
+      expect(result.drawingId).toBe('drawing-2');
+      expect(result.supersedesRevisionId).toBeUndefined();
     });
   });
 

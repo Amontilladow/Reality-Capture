@@ -11,24 +11,29 @@ import {
 import { WORKFLOW_STATUS_LABELS } from './siteDrawingDisplay';
 import { Listbox } from '../ui/Listbox';
 
-// Registers a brand-new drawing from the Local source (brief section 6;
-// the only source this phase has real, credential-free access to). The
-// uploader picks the canonical workflow status directly, since there's no
-// external source status to map yet for an internal upload (never inferred
-// from the filename, per section 5).
-//
-// The dropped file is uploaded immediately (not deferred to submit) and
-// run through the same embedded-text/OCR extraction the bulk import
-// pipeline uses, so the fields below arrive pre-filled instead of typed
-// from a blank form -- exactly what a confident extraction already gives
-// a bulk import, just for one file. Extraction never invents a value with
-// nothing to back it: a field stays blank, for manual entry, when nothing
-// could be confidently read.
+// Site Drawing Hub integrity hardening, Phase 3. Upload and extraction are
+// two genuinely separate steps with two separate failure modes, and this
+// modal used to track only ONE combined state (extractState) for both.
+// canSubmit required storageKey to be set (only true once the upload
+// itself succeeds) AND extractState !== 'working' -- but the one catch
+// block around BOTH steps set extractState to 'error' for either kind of
+// failure, with no way to tell them apart afterward. If the UPLOAD failed,
+// storageKey stayed null forever, so canSubmit stayed false forever too --
+// "Register drawing" went permanently disabled, while the shown message
+// ("Auto-fill failed. Fill in the fields below manually.") claimed manual
+// entry was still possible. It wasn't: there was nothing uploaded to
+// register. This file tracks upload and extraction as two independent,
+// named phases instead, so each failure gets its own honest message and
+// its own way out.
+type UploadPhase = 'idle' | 'uploading' | 'uploaded' | 'upload_failed';
+type ExtractPhase = 'idle' | 'working' | 'confident' | 'uncertain' | 'none' | 'error';
+
 export function RegisterSiteDrawingModal({ open, onClose, projectId }: { open: boolean; onClose: () => void; projectId: string }) {
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [storageKey, setStorageKey] = useState<string | null>(null);
-  const [extractState, setExtractState] = useState<'idle' | 'working' | 'confident' | 'uncertain' | 'none' | 'error'>('idle');
+  const [uploadPhase, setUploadPhase] = useState<UploadPhase>('idle');
+  const [extractPhase, setExtractPhase] = useState<ExtractPhase>('idle');
   const [drawingNumber, setDrawingNumber] = useState('');
   const [drawingTitle, setDrawingTitle] = useState('');
   const [discipline, setDiscipline] = useState('');
@@ -40,41 +45,60 @@ export function RegisterSiteDrawingModal({ open, onClose, projectId }: { open: b
   const [workflowStatus, setWorkflowStatus] = useState<SiteDrawingWorkflowStatus>('UNDER_REVIEW');
   const [issueDate, setIssueDate] = useState('');
 
+  // The upload step, split out from onDrop so a failed upload can be
+  // retried against the SAME File object without the user having to
+  // re-drag/re-browse for it (dropzone's own UI still shows the filename
+  // from the first drop either way, so retrying in place is also what
+  // the UI already implies is possible).
+  const runUpload = useCallback(async (f: File) => {
+    setUploadPhase('uploading');
+    setExtractPhase('idle');
+    let key: string;
+    try {
+      const uploaded = await uploadSiteDrawingFile(projectId, f);
+      key = uploaded.storageKey;
+      setStorageKey(key);
+      setUploadPhase('uploaded');
+    } catch {
+      setUploadPhase('upload_failed');
+      return;
+    }
+
+    // Upload is done; extraction is a separate, independently-failable
+    // step from here on. Nothing in this block can put canSubmit back to
+    // false -- it only ever moves extractPhase, never uploadPhase/storageKey.
+    setExtractPhase('working');
+    try {
+      const fields = await extractSiteDrawingFields(projectId, key);
+      if (!fields) {
+        setExtractPhase('none');
+        return;
+      }
+      if (fields.drawingNumber) setDrawingNumber(fields.drawingNumber);
+      if (fields.drawingTitle) setDrawingTitle(fields.drawingTitle);
+      if (fields.revisionNumber) setRevisionNumber(fields.revisionNumber);
+      if (fields.discipline) setDiscipline(fields.discipline);
+      if (fields.issueDate) setIssueDate(fields.issueDate);
+      setExtractPhase(fields.confidence >= 0.7 ? 'confident' : 'uncertain');
+    } catch {
+      // Extraction failing after a successful upload is never fatal to
+      // registration -- the form just falls back to fully manual entry.
+      setExtractPhase('error');
+    }
+  }, [projectId]);
+
   const onDrop = useCallback((accepted: File[]) => {
     const f = accepted[0];
     if (!f) return;
     setFile(f);
     setDrawingTitle(f.name.replace(/\.pdf$/i, ''));
-    setExtractState('working');
-
-    void (async () => {
-      try {
-        const { storageKey: key } = await uploadSiteDrawingFile(projectId, f);
-        setStorageKey(key);
-        const fields = await extractSiteDrawingFields(projectId, key);
-        if (!fields) {
-          setExtractState('none');
-          return;
-        }
-        if (fields.drawingNumber) setDrawingNumber(fields.drawingNumber);
-        if (fields.drawingTitle) setDrawingTitle(fields.drawingTitle);
-        if (fields.revisionNumber) setRevisionNumber(fields.revisionNumber);
-        if (fields.discipline) setDiscipline(fields.discipline);
-        if (fields.issueDate) setIssueDate(fields.issueDate);
-        setExtractState(fields.confidence >= 0.7 ? 'confident' : 'uncertain');
-      } catch {
-        // Upload/extraction failure here is never fatal to registration --
-        // the form just falls back to fully manual entry, same as before
-        // this existed.
-        setExtractState('error');
-      }
-    })();
-  }, [projectId]);
+    void runUpload(f);
+  }, [runUpload]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept: { 'application/pdf': ['.pdf'] }, maxFiles: 1 });
 
   function reset() {
-    setFile(null); setStorageKey(null); setExtractState('idle');
+    setFile(null); setStorageKey(null); setUploadPhase('idle'); setExtractPhase('idle');
     setDrawingNumber(''); setDrawingTitle(''); setDiscipline(''); setBuildingOrZone('');
     setFloorOrLevel(''); setOriginator(''); setResponsibleSubcontractor('');
     setRevisionNumber(''); setWorkflowStatus('UNDER_REVIEW'); setIssueDate('');
@@ -101,8 +125,13 @@ export function RegisterSiteDrawingModal({ open, onClose, projectId }: { open: b
     },
   });
 
+  // Upload succeeding is the ONLY precondition tied to the file itself;
+  // extraction succeeding never is -- a failed/uncertain/no-match
+  // extraction always falls back to manual entry, exactly as before.
+  // "working" (either phase) is the only thing that blocks submission
+  // beyond the required fields themselves.
   const canSubmit = Boolean(
-    file && storageKey && extractState !== 'working' && drawingNumber.trim() && drawingTitle.trim() && revisionNumber.trim(),
+    file && uploadPhase === 'uploaded' && extractPhase !== 'working' && drawingNumber.trim() && drawingTitle.trim() && revisionNumber.trim(),
   );
 
   return (
@@ -123,11 +152,21 @@ export function RegisterSiteDrawingModal({ open, onClose, projectId }: { open: b
           )}
         </div>
 
-        {extractState === 'working' && <p className="text-sm text-ink-300">{storageKey ? 'Reading the drawing…' : 'Uploading…'}</p>}
-        {extractState === 'confident' && <Alert tone="success">Fields auto-filled from the drawing. Check them before registering.</Alert>}
-        {extractState === 'uncertain' && <Alert tone="warning">Some fields were auto-filled, but the reading wasn't confident — check them carefully.</Alert>}
-        {extractState === 'none' && <Alert tone="info">Couldn't read this drawing automatically. Fill in the fields below.</Alert>}
-        {extractState === 'error' && <Alert tone="info">Auto-fill failed. Fill in the fields below manually.</Alert>}
+        {uploadPhase === 'uploading' && <p className="text-sm text-ink-300">Uploading…</p>}
+        {uploadPhase === 'upload_failed' && (
+          <Alert tone="danger">
+            The upload failed — this file was never actually uploaded, so there's nothing yet to register.
+            {' '}
+            <button type="button" className="underline" onClick={() => file && void runUpload(file)}>Try again</button>
+            {' or drop a different file.'}
+          </Alert>
+        )}
+
+        {uploadPhase === 'uploaded' && extractPhase === 'working' && <p className="text-sm text-ink-300">Reading the drawing…</p>}
+        {uploadPhase === 'uploaded' && extractPhase === 'confident' && <Alert tone="success">Fields auto-filled from the drawing. Check them before registering.</Alert>}
+        {uploadPhase === 'uploaded' && extractPhase === 'uncertain' && <Alert tone="warning">Some fields were auto-filled, but the reading wasn't confident — check them carefully.</Alert>}
+        {uploadPhase === 'uploaded' && extractPhase === 'none' && <Alert tone="info">Couldn't read this drawing automatically. The file uploaded fine — fill in the fields below.</Alert>}
+        {uploadPhase === 'uploaded' && extractPhase === 'error' && <Alert tone="info">Auto-fill failed, but the file uploaded fine. Fill in the fields below manually.</Alert>}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>

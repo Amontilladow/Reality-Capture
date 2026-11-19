@@ -221,6 +221,14 @@ export interface SiteDrawingOrgMapping {
 export interface SiteDrawingReviewQueueItem extends SiteDrawingRevision {
   drawingNumber: string;
   drawingTitle: string;
+  // True when this revision exists but was deliberately NOT promoted to
+  // its drawing's current_revision_id (identity or chronology couldn't be
+  // confirmed automatically -- see SiteDrawingImportProcessor.reconcile()).
+  // The Review Queue needs this to offer the right actions: a pending item
+  // can be confirmed as a new revision OR split into its own drawing;
+  // an already-current one (flagged only for a lower-confidence VALUE,
+  // e.g. NEEDS_REVIEW from OCR) only ever needed its fields corrected.
+  isPendingPromotion: boolean;
 }
 
 // One row per uploaded ZIP/PDF package (brief section 2: "store import
@@ -239,8 +247,17 @@ export interface SiteDrawingImportBatch {
   fileCount: number;
   createdCount: number;
   revisionCount: number;
+  // A revision WAS created and is linked to its matched drawing, but was
+  // deliberately not promoted to current because identity or revision
+  // chronology couldn't be confirmed automatically (migration 086) --
+  // distinct from revisionCount (auto-promoted) and errorCount (nothing
+  // was created at all). Needs a human decision in the Review Queue.
+  conflictCount: number;
   skippedCount: number;
   errorCount: number;
+  // Non-PDF entries and oversized/unsafe entries the archive contained,
+  // never counted anywhere in the batch record before migration 086.
+  unsupportedCount: number;
   errorMessage?: string;
   uploadedBy: string;
   startedAt?: string;
