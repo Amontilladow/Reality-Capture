@@ -3,6 +3,7 @@ import { categoryCan, getOrgCategory, SITE_RESTRICTED_COMPANY_ROLES, type Compan
 import { useAuthStore } from '../../store/auth.store';
 import type { Animation } from 'react-useanimations';
 import { WithAnimatedIcon } from '../ui/AnimatedIcon';
+import { chain } from '../../lib/chain-handlers';
 import aUpload from 'react-useanimations/lib/upload';
 import aFlag from 'react-useanimations/lib/flag';
 import aMessage from 'react-useanimations/lib/messageSquare';
@@ -44,10 +45,10 @@ export function QuickActions({ projectId, projectRole, onNewTask, onNewReminder 
         </WithAnimatedIcon>
       ))}
       <WithAnimatedIcon animation={aPlus} interaction="hover-replay">
-        {(ev, icon) => <button type="button" {...ev} onClick={onNewTask} className="btn-secondary">{icon}Personal task</button>}
+        {(ev, icon) => <button type="button" {...ev} onClick={chain(() => onNewTask(), ev.onClick)} className="btn-secondary">{icon}Personal task</button>}
       </WithAnimatedIcon>
       <WithAnimatedIcon animation={aClock} interaction="hover-replay">
-        {(ev, icon) => <button type="button" {...ev} onClick={onNewReminder} className="btn-secondary">{icon}Reminder</button>}
+        {(ev, icon) => <button type="button" {...ev} onClick={chain(() => onNewReminder(), ev.onClick)} className="btn-secondary">{icon}Reminder</button>}
       </WithAnimatedIcon>
     </div>
   );

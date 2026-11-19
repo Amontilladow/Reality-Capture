@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-rout
 import { GlobalSearch } from '../workspace/GlobalSearch';
 import type { Animation, EventProps } from 'react-useanimations';
 import { WithAnimatedIcon } from '../ui/AnimatedIcon';
+import { chain } from '../../lib/chain-handlers';
 import aGrid from 'react-useanimations/lib/grid';
 import aMessage from 'react-useanimations/lib/messageCircle';
 import aUsers from 'react-useanimations/lib/users';
@@ -311,7 +312,7 @@ export function AppShell() {
               <div className="flex items-center gap-2">
                 <WithAnimatedIcon animation={aLogOut} interaction="hover-replay">
                   {(ev, icon) => (
-                    <button type="button" {...ev} onClick={handleLogout} className="nav-row flex-1">
+                    <button type="button" {...ev} onClick={chain(() => void handleLogout(), ev.onClick)} className="nav-row flex-1">
                       <span className="nav-tile">{icon}</span>
                       Log out
                     </button>
@@ -552,7 +553,7 @@ function NavTree({ groups, basePath }: { groups: NavGroup[]; basePath: string })
                 <button
                   type="button"
                   {...ev}
-                  onClick={() => setOpen(group.id, !isOpen)}
+                  onClick={chain(() => setOpen(group.id, !isOpen), ev.onClick)}
                   aria-expanded={isOpen}
                   aria-controls={listId}
                   className={`nav-row ${holdsCurrent ? 'nav-row-current' : ''}`}
