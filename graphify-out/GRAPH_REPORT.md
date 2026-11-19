@@ -1,25 +1,25 @@
-# Graph Report - Reality-Capture  (2026-11-16)
+# Graph Report - Reality-Capture  (2026-11-19)
 
 ## Corpus Check
-- 1213 files · ~831,948 words
+- 1216 files · ~844,612 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 38 file(s) not represented in the graph (top: .dxf 13, (none) 12, .example 5)
 
 ## Summary
-- 10877 nodes · 28673 edges · 427 communities (328 shown, 99 thin omitted)
-- Extraction: 92% EXTRACTED · 8% INFERRED · 0% AMBIGUOUS · INFERRED: 2237 edges (avg confidence: 0.87)
+- 10950 nodes · 28912 edges · 429 communities (326 shown, 103 thin omitted)
+- Extraction: 92% EXTRACTED · 8% INFERRED · 0% AMBIGUOUS · INFERRED: 2264 edges (avg confidence: 0.87)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `1e6fe527`
+- Built from commit: `caee05e9`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - pipeline.py
-- class-validator
+- risk.controller.ts
 - SchedulingController
-- test_ui_convert.py
+- create_app
 - bim.api.ts
 - convert/__init__.py
 - apiPost
@@ -27,20 +27,20 @@
 - api/src/app.module.ts
 - web/src/lib/api.ts
 - IssueDetail.tsx
-- SnaggingController
+- SnaggingService
 - web/src/lib/captures.api.ts
 - steps
 - @tanstack/react-query
-- MessagesBell.tsx
-- ProjectDetail.tsx
-- AttentionCenter.tsx
+- dependencies
+- RiskIntelligenceSection.tsx
+- GisPrepService
 - PageHeader
 - sharepoint-adapter.ts
 - site-drawings.api.ts
 - findings
 - api/package.json
 - SubscriptionController
-- EmailTokenStore
+- EmailProvider
 - mobile/package.json
 - apiGet
 - issues.service.spec.ts
@@ -59,13 +59,13 @@
 - risk.types.ts
 - rfi-pdf.template.ts
 - TransmittalsPage.tsx
-- RiskService
+- RiskGraphService
 - CompanyRole
 - RiskRegisterTable.tsx
 - web/package.json
 - CapturesService
 - RfisService
-- RequireCategoryAction
+- gis-prep.service.ts
 - test_convert.py
 - CompanyExecutiveBriefing.tsx
 - AuthService
@@ -79,7 +79,7 @@
 - services
 - test_bdms.py
 - workforce.api.ts
-- classify/__init__.py
+- ActivitiesController
 - ProjectsScreen.tsx
 - vitest
 - CaptureSessionScreen.tsx
@@ -97,69 +97,69 @@
 - EmailLauncherButton.tsx
 - usage_by_category
 - blocks
-- CapturesController
-- RequireProjectPermission
+- AuthenticatedUser
 - .handle
 - agent/package.json
-- apiGet
+- DeveloperSettingsPage.tsx
 - ProgressReportsService
 - ifc-parser.service.ts
 - GisPrepPage.tsx
 - WorkforcePage.tsx
-- NotificationsPage.tsx
-- documents.api.ts
+- workforce-visibility.util.ts
+- productivity.service.ts
 - background.js
 - bim-debug/package.json
 - crs/__init__.py
-- cli.py
+- pipeline.py
 - WebhooksController
 - reports-xls.ts
-- site-drawings.service.ts
+- RegisterSiteDrawingRevisionDto
 - AIProvider
 - ifc-service/package.json
 - expo
 - Phase 2 — Production Deployment & Scalability
 - SiteDrawingSharePointAdapter
 - .withTenant
-- .generateDraft
-- ProgressReportPage.tsx
-- site-drawings.controller.ts
-- MyCalendarPage.tsx
+- UsersController
+- title-block-extractor.ts
+- SiteDrawingsService
+- ProjectDetail.tsx
 - SendEmailDto
 - flush.test.ts
 - MEDIUM
-- AiService
-- Listbox.tsx
+- ReportingLinesController
+- AddRfiAttachmentDto
 - RootNavigator.tsx
 - Issue 2: Missing/incomplete geometry — FROZEN, NOT RESOLVED
 - Public
 - messaging.service.ts
 - ChatService
-- MyTasksPage.tsx
+- EmailTokenStore
 - test_adm_trial_01.py
 - gis-prep.processor.ts
 - DocumentsController
-- test_ui_cli.py
+- SharePointGraphClient
 - QaService
 - JwtAuthGuard
-- drawings.controller.ts
+- SubmittalsService
 - mount
 - UpdatePrivacySettingsDto
 - compilerOptions
-- SiteDrawingImportController
+- SiteDrawingImportService
 - SignalsService
-- rfi.types.ts
+- react
 - web/src/lib/captures.api.ts
 - ApiKeysController
 - priority-rules.ts
-- SubcontractorRfiAccessService
+- ai.service.spec.ts
 - PublicApiController
 - dependencies
-- pipeline.py
+- cli.py
 - compilerOptions
 - steps
-- ConnectAiProviderDto
-- .create
+- provider.factory.spec.ts
+- UpdateIssueDto
+- modules/reports/reports.controller.ts
 - BaseModel
 - issue-xls.ts
 - upc_levels
@@ -175,10 +175,10 @@
 - drm_bdms_v4.1.yaml
 - page
 - workspace.controller.ts
-- AiConnectionsController
+- CredentialEncryptionService
 - doctor.mjs
 - ScreenshotsController
-- RiskGraphService
+- relationship-extraction.service.ts
 - environment
 - spec
 - RiskHeatmap.tsx
@@ -195,9 +195,9 @@
 - shoot.mjs
 - EngineeringOS — REMAINING_WORK.md
 - compilerOptions
-- HealthController
-- useProjectBriefing.ts
-- Phase 3E: Reusable email composer: IMPLEMENTED BUT NOT VERIFIED (code-complete; no live backend/DB in this environment to exercise a real send against)
+- @nestjs/bull
+- .getScoreForUser
+- Phase 3: Outlook & Gmail Integration
 - SharePointIntegrationController
 - CalendarIntegrationService
 - .paginate
@@ -207,26 +207,26 @@
 - compilerOptions
 - adm_v1.18.2.yaml
 - scripts
-- rfis.service.ts
+- rfis.controller.ts
 - EngineeringOS™ Reality Capture
-- .addActivity
+- AddActivityDto
 - EngineeringOS Reality Capture — CURRENT_STATUS.md
 - lib/config.ts
 - api
 - adm-gis-prep/README.md
 - layers
 - spec
-- GoogleCalendarClient
-- ProjectsService
+- calendar-integration.service.ts
+- DocumentsService
 - scripts
 - .register
-- workspace.api.ts
+- lib/queue.ts
 - BuildingsController
 - ingestion.py
 - design-rules.test.ts
 - scroll-craft changelog
 - DatabaseService
-- Implementation report
+- workspace.service.ts
 - Schema
 - health-check
 - services
@@ -235,7 +235,7 @@
 - extract-prefix-subset.cjs
 - site-drawing-workflow.ts
 - AiToolsService
-- JobMetrics
+- mapping/__init__.py
 - types/src/index.ts
 - manifest.json
 - EngineeringOS — 30/60/90-Day Roadmap
@@ -249,11 +249,11 @@
 - page
 - output
 - gmail-client.ts
-- MessagingController
-- GeminiProvider
+- attachment-pdf-merge.util.ts
 - 4. Confirmed gaps / concerns (ranked by severity)
-- SnaggingService
+- ReportsService
 - Raycast design system
+- .reply
 - EngineeringOS — ARCHITECTURE_STATE.md
 - EngineeringOS Reality Capture — Master Backlog
 - postgres
@@ -270,14 +270,14 @@
 - User guide for M4 engineers
 - crs
 - compilerOptions
-- assistant.py
+- vector_store.py
 - jest
-- title-block-extractor.ts
-- GenerateExternalAccessDto
+- site-drawings.service.ts
+- InviteUserDto
 - 2. Page grammars
 - compilerOptions
 - ifc-service/tsconfig.json
-- Workforce Intelligence™: API (MVP)
+- scoring.service.ts
 - compilerOptions
 - EngineeringOS — Production Deployment Checklist
 - Lessons Learned — BIM Viewer Investigation
@@ -288,12 +288,12 @@
 - Technical report
 - filename
 - llm_complete
-- RfiExternalAccessService
+- RiskMovementSection.tsx
 - api/tsconfig.json
 - browser-extension/package.json
 - mobile/tsconfig.json
 - scripts
-- AskAssistantDto
+- .findAll
 - EngineeringOS — Release Management and Regression Prevention
 - EngineeringOS — KNOWN_ISSUES.md
 - EngineeringOS Reality Capture — NEXT_STEPS.md
@@ -309,7 +309,7 @@
 - filename
 - The eight
 - scroll-craft
-- AiController
+- sharepoint-adapter.ts
 - SendEmailDto
 - Worldflight: the continuous-world page mode
 - CreateRfiDto
@@ -322,34 +322,35 @@
 - Sample end-to-end run (synthetic data)
 - output
 - ifc-processing.processor.ts
-- CapturesSyncController
+- CapturesController
 - change_detection.py
 - chat-socket.ts
 - scripts
-- OutlookIntegrationService
-- ResolveReviewDto
+- MicrosoftGraphClient
+- BarChart.tsx
 - ref_fs
 - IFC Processing Engine: COMPLETE
 - Deployment Guide
 - qdrant
-- SubscriptionBanner.tsx
+- subscription.types.ts
 - bim-debug
 - ADM QC trial 02: first floor converted with identifiers
-- HierarchyTree.tsx
+- .getCompanySummary
 - agent/src/index.ts
 - vendor.d.ts
-- eslint.config.js
-- ConnectCalendar.tsx
+- Workforce Intelligence™: Implementation Plan
+- Public Interfaces
 - Part 2: Real gaps, in priority order
 - ocr.py
 - ingestion.py
-- risk.service.ts
+- IssueWarningService
+- RiskService
 - depends_on
 - bim.types.ts
 - The taste floor
 - Pagination.tsx
 - risk.py
-- ScheduleIssueReminderDto
+- CreateQaInspectionDto
 - fixtures/README.md
 - reference/README.md
 - @nestjs/bull@^10.1.1
@@ -360,127 +361,131 @@
 - CLAUDE.md
 - m4adm
 - The emotion axis
-- EngineeringOS: Incident and Recovery Runbook
+- CreateTransmittalDto
 - Verify
 - CreateHotspotDto
 - SelfSignupDto
-- worldflight-assert.mjs
+- .authorizeUrl
 - Assets
 - Premium hero depth
-- ElementIssuesController
-- DocumentsService
-- MessagingService
+- EmailLink.tsx
+- EngineeringOS: TECHNICAL_DECISIONS.md
+- UpdateCaptureDto
 - The approved ten-site standard
 - serve.mjs
 - UpdateRfiDto
-- progress-reports.service.ts
-- captures.service.ts
-- RfiExternalAccessPublicController
+- gis-prep.dto.ts
+- UploadUrlDto
+- CreateSubmittalDto
 - graphify-guard.sh
 - graphify-session-start.sh
-- OverrideRiskDto
+- UpdateUserDto
 - DrawingsService
-- GenerateRiskPdfDto
-- SubmittalsService
+- metro.config.js
+- SubmittalsController
 - CompleteOfflinePackageDto
 - Fingerprints
-- CreateSnagItemDto
-- reserialize-full.cjs
-- UpdateProjectDto
+- .computeAiMatrixScore
+- UpdateSubmittalDto
 - RegisterCompanyDto
-- Workforce Intelligence browser extension (MVP)
+- assistant.py
 - encode.sh
-- DRM review: Yas Island-YS1-P10 (Nov 2026)
-- Tabs.tsx
+- audit.interceptor.ts
+- CreatePinForElementDto
 - MyScheduling
-- AddCaptureToIssueDto
-- SyncCaptureItemDto
+- UpdateTransmittalDto
+- send-email.dto.ts
 - FakeDb
-- AddIssueAttachmentDto
+- MessagingController
 - LoginDto
+- repro-main.ts
 - AcceptInvitationDto
-- CountBarChart
-- BulkExportIssuesDto
+- SyncCapturesDto
+- RiskScoreFactors
 - ResetPasswordDto
-- RevisionRow
-- ShiftSchedulingAdmin
+- CommandCenterService
+- AbsenceRequestsAdmin
 
 ## God Nodes (most connected - your core abstractions)
-1. `CurrentUser` - 452 edges
+1. `CurrentUser` - 460 edges
 2. `@nestjs/common` - 281 edges
-3. `AuthenticatedUser` - 252 edges
-4. `DatabaseService` - 222 edges
-5. `apiErrorMessage()` - 181 edges
+3. `DatabaseService` - 224 edges
+4. `AuthenticatedUser` - 206 edges
+5. `apiErrorMessage()` - 191 edges
 6. `apiGet()` - 178 edges
-7. `apiPost()` - 156 edges
-8. `react` - 154 edges
+7. `apiPost()` - 159 edges
+8. `react` - 157 edges
 9. `class-validator` - 145 edges
 10. `Listbox` - 120 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `Requesting approval` --references--> `BimService`  [INFERRED]
+  engineering-review/IFC_ARCHITECTURE_PROPOSAL.md → apps/api/src/modules/bim/bim.service.ts
 - `C-4. Risk module had zero project-scoped authorization: FIXED` --references--> `RiskService`  [INFERRED]
   docs/KNOWN_ISSUES_AND_REMEDIATION.md → apps/api/src/modules/risk/risk.service.ts
 - `4.4 CRITICAL: Risk module has zero project-scoped authorization (CODE-VERIFIED)` --references--> `RiskService`  [INFERRED]
   docs/ROLE_PERMISSION_MATRIX.md → apps/api/src/modules/risk/risk.service.ts
-- `1. Current architecture (verified)` --references--> `AiService`  [INFERRED]
-  docs/AI_PROVIDER_STRATEGY.md → apps/api/src/modules/ai/ai.service.ts
-- `11. Logging & monitoring: PARTIAL, one historical incident traced to resolution` --references--> `AiUsageService`  [INFERRED]
-  docs/phase2-production-readiness.md → apps/api/src/modules/ai/ai-usage.service.ts
-- `5. Not yet verified (time-budget limited, explicitly flagged rather than assumed clean)` --references--> `AiUsageService`  [INFERRED]
-  docs/ROLE_PERMISSION_MATRIX.md → apps/api/src/modules/ai/ai-usage.service.ts
+- `Correcting the premise` --references--> `AppShell()`  [INFERRED]
+  docs/workforce-intelligence-architecture.md → apps/web/src/components/layout/AppShell.tsx
+- `Frontend structure` --references--> `AppShell()`  [INFERRED]
+  engineering-review/ARCHITECTURE_STATE.md → apps/web/src/components/layout/AppShell.tsx
 
 ## Import Cycles
 - None detected.
 
-## Communities (427 total, 99 thin omitted)
+## Communities (429 total, 103 thin omitted)
 
 ### Community 0 - "pipeline.py"
 Cohesion: 0.04
-Nodes (87): EntityRecord, angle_of(), check_crs(), extents_of(), _plausibility(), apply_fixes(), FixResult, is_accepted() (+79 more)
+Nodes (92): classify_entity(), classify_layout(), EntityRecord, _extrusion_ok(), _overrides(), paperspace_entity_count(), unused_block_names(), unused_linetypes() (+84 more)
 
-### Community 1 - "class-validator"
-Cohesion: 0.03
-Nodes (24): ATTACHMENT_ALLOWED_EXTENSIONS, ATTACHMENT_MAX_SIZE, PROJECT_PERMISSION_KEY, BulkDeleteDto, CreateDocumentDto, BroadcastReminderDto, ForceStatusDto, IssueAttachmentUploadUrlDto (+16 more)
+### Community 1 - "risk.controller.ts"
+Cohesion: 0.05
+Nodes (11): AssignRiskOwnerDto, GenerateRiskPdfDto, OverrideRiskDto, SetHumanAssessmentDto, SetMatrixOverrideDto, SetRiskDueDateDto, RISK_STATUSES, SetRiskStatusDto (+3 more)
 
 ### Community 2 - "SchedulingController"
 Cohesion: 0.06
 Nodes (7): AssignShiftDto, RequestAbsenceDto, SetShiftPreferenceDto, SchedulingController, resolveScheduleRange(), SchedulingService, makeService()
 
-### Community 3 - "test_ui_convert.py"
-Cohesion: 0.11
-Nodes (9): client(), plan(), _post(), test_bad_input_and_unsafe_paths_are_refused(), test_filled_form_gives_a_named_draft_and_an_official_terms_summary(), test_missing_identifiers_are_listed_not_guessed(), test_unit_details_entered_in_the_form_reach_the_draft(), test_window_check_and_fallback_without_a_web_view() (+1 more)
+### Community 3 - "create_app"
+Cohesion: 0.06
+Nodes (34): list_jobs(), _back(), create_app(), api_job(), api_jobs(), conversion_dir(), conversion_file(), convert_form() (+26 more)
 
 ### Community 4 - "bim.api.ts"
-Cohesion: 0.05
-Nodes (65): BimViewer, BimViewerHandle, BimViewerProps, CameraState, CameraVector, ElementList(), PinSearch(), LevelRow() (+57 more)
+Cohesion: 0.04
+Nodes (79): BimViewer, BimViewerHandle, BimViewerProps, CameraState, CameraVector, ElementList(), ElementSearch(), PinSearch() (+71 more)
 
 ### Community 5 - "convert/__init__.py"
-Cohesion: 0.03
-Nodes (71): 5. Mapping and attributes, Identifiers required by the official QC (ADM QC trial 01), dxf_size_blocker(), AuditLog, utc_now(), apply_decisions(), AttrValue, _blank() (+63 more)
+Cohesion: 0.04
+Nodes (63): 5. Mapping and attributes, Identifiers required by the official QC (ADM QC trial 01), apply_decisions(), AttrValue, _blank(), build_features(), common(), _closure_groups() (+55 more)
 
 ### Community 6 - "apiPost"
 Cohesion: 0.04
-Nodes (111): RfiFormModal(), handleClose(), reset(), CheckIcon(), RECIPIENT_TITLE_PRESETS, RecipientTitlePreset, RfiNoticeLetterModal(), Listbox (+103 more)
+Nodes (88): CheckIcon(), RECIPIENT_TITLE_PRESETS, RecipientTitlePreset, RfiNoticeLetterModal(), MobileFold(), apiPost(), getProjectActivity(), formatDateTime() (+80 more)
 
 ### Community 7 - "DatabaseService"
-Cohesion: 0.02
-Nodes (53): sharp@^0.33.4, DatabaseService, ApiKeysService, BIM_MODEL_ALLOWED_EXTENSIONS, ImageProcessingJob, ImageProcessingProcessor, RenditionSpec, DOCUMENT_ALLOWED_MIME (+45 more)
+Cohesion: 0.03
+Nodes (61): ATTACHMENT_ALLOWED_EXTENSIONS, ATTACHMENT_MAX_SIZE, ApiKeyAuthGuard, DatabaseService, ctx, ApiKeysService, BIM_MODEL_ALLOWED_EXTENSIONS, ALLOWED_MIME (+53 more)
 
 ### Community 8 - "api/src/app.module.ts"
-Cohesion: 0.03
-Nodes (54): ALLOW_PENDING_KEY, AllowPending(), CompanyId, IS_PUBLIC_KEY, FEATURE_KEY, PaymentRequiredException, GlobalExceptionFilter, STATUS_CODE_FALLBACK (+46 more)
+Cohesion: 0.04
+Nodes (41): ALLOW_PENDING_KEY, CompanyId, IS_PUBLIC_KEY, STATUS_CODE_FALLBACK, WRITE_METHODS, DatabaseModule, AiModule, AiUsageModule (+33 more)
 
 ### Community 9 - "web/src/lib/api.ts"
-Cohesion: 0.05
-Nodes (74): AddHierarchyNodeModal(), FormValues, Kind, Props, TITLES, BuildingLevelRoomPicker(), HierarchySelection, PickOrCreate() (+66 more)
+Cohesion: 0.08
+Nodes (48): useProjectContext(), ManageMembersModal(), OrganizationRow(), OnboardingFlow(), finish(), apiDelete(), apiPatch(), apiPut() (+40 more)
 
 ### Community 10 - "IssueDetail.tsx"
 Cohesion: 0.03
-Nodes (133): activityLabel(), BackIcon(), BellIcon(), ChevronIcon(), DetailRow(), DotsIcon(), DownloadIcon(), EditIcon() (+125 more)
+Nodes (131): activityLabel(), BackIcon(), BellIcon(), ChevronIcon(), DetailRow(), DotsIcon(), DownloadIcon(), EditIcon() (+123 more)
+
+### Community 11 - "SnaggingService"
+Cohesion: 0.05
+Nodes (9): AddSnagActivityDto, AddSnagAttachmentDto, CreateSnagItemDto, ForwardSnagDto, SnagAttachmentUploadUrlDto, UpdateSnagItemDto, SnaggingController, SnaggingService (+1 more)
 
 ### Community 12 - "web/src/lib/captures.api.ts"
 Cohesion: 0.04
-Nodes (70): CameraIcon(), CaptureCardBody(), CaptureGrid(), dateRangeLabel(), getAspectRatio(), groupByLocationId(), LocationGroup, STATUS_STYLES (+62 more)
+Nodes (75): CameraIcon(), CaptureCardBody(), CaptureGrid(), dateRangeLabel(), getAspectRatio(), groupByLocationId(), LocationGroup, STATUS_STYLES (+67 more)
 
 ### Community 13 - "steps"
 Cohesion: 0.05
@@ -488,167 +493,179 @@ Nodes (48): defaults, runs-on, steps, run, env, GH_REPO, GH_TOKEN, LIBREDWG_COMM
 
 ### Community 14 - "@tanstack/react-query"
 Cohesion: 0.05
-Nodes (89): App(), BimModelsPage, BimViewerPage, BuildLensTimelinePage, CapturesPage, FloorPlanViewer, GisPrepPage, RootRoute() (+81 more)
+Nodes (85): App(), BimModelsPage, BimViewerPage, BuildLensTimelinePage, CapturesPage, FloorPlanViewer, GisPrepPage, RootRoute() (+77 more)
 
-### Community 15 - "MessagesBell.tsx"
-Cohesion: 0.28
-Nodes (9): ChatIcon(), HeaderIconButton, Props, MessagesBell(), timeAgo(), useMenuPosition(), getChatUnreadCount(), setChatPanelOpen() (+1 more)
+### Community 15 - "dependencies"
+Cohesion: 0.06
+Nodes (36): dependencies, axios@^1.21.0, camera-controls@^3.1.2, d3-drag@^3.0.0, d3-force@^3.0.0, d3-selection@^3.0.0, d3-zoom@^3.0.0, pdfjs-dist@^4.6.82 (+28 more)
 
-### Community 16 - "ProjectDetail.tsx"
-Cohesion: 0.08
-Nodes (32): AttentionCenter, Kpi(), KpiSnapshot(), PerspectiveSwitch(), Glyph(), QuickActions(), BANNER_ACCENT, BANNER_ICON (+24 more)
+### Community 16 - "RiskIntelligenceSection.tsx"
+Cohesion: 0.10
+Nodes (28): EVIDENCE_LINK_ROUTE, EvidenceLink(), HumanAssessmentPanel(), IMPACT_LABELS, LEVEL_LABELS, LevelBadge(), levelColors(), MATRIX_LEVEL_LABELS (+20 more)
 
-### Community 17 - "AttentionCenter.tsx"
-Cohesion: 0.22
-Nodes (10): AttentionFilter, AttentionRow(), CLASS_BAR, CLASS_LABEL, CLASS_TONE, dueText(), elapsed(), TYPES (+2 more)
+### Community 17 - "GisPrepService"
+Cohesion: 0.13
+Nodes (4): assertProfile(), GisPrepController, GisPrepService, toJob()
 
 ### Community 18 - "PageHeader"
 Cohesion: 0.07
-Nodes (59): QaqcFormModal(), handleClose(), reset(), getProject(), addQaqcAttachment(), AddQaqcAttachmentPayload, bulkDeleteQaqcRecords(), confirmQaqcRecord() (+51 more)
+Nodes (58): QaqcFormModal(), handleClose(), reset(), InlineRiskAssessment(), addQaqcAttachment(), AddQaqcAttachmentPayload, bulkDeleteQaqcRecords(), confirmQaqcRecord() (+50 more)
 
 ### Community 19 - "sharepoint-adapter.ts"
-Cohesion: 0.06
-Nodes (17): DrawingSourceAdapter, SourceHealthCheck, StatusMapper, SiteDrawingLocalAdapter, DriveChildrenPage, DriveItem, DriveItemFields, DriveItemVersion (+9 more)
+Cohesion: 0.08
+Nodes (13): DrawingSourceAdapter, SourceHealthCheck, StatusMapper, SiteDrawingLocalAdapter, SiteDrawingAdapterRegistry, SiteDrawingRevisionRow, SiteDrawingRow, SiteDrawingSyncOutcome (+5 more)
 
 ### Community 20 - "site-drawings.api.ts"
 Cohesion: 0.04
-Nodes (96): QueuedFile, handleLogout(), AddRevisionModal(), BatchesTab(), ImportActivityModal(), ReviewQueueRow(), ReviewQueueTab(), IMPORT_SOURCE_OPTIONS (+88 more)
+Nodes (104): handleDownloadPdf(), AddRevisionModal(), BatchesTab(), BatchRow(), ImportActivityModal(), ReviewQueueRow(), ReviewQueueTab(), IMPORT_SOURCE_OPTIONS (+96 more)
 
 ### Community 21 - "findings"
 Cohesion: 0.07
-Nodes (74): ambiguous_line(), attribute_outside(), detail(), duplicate_geometry(), fixable(), mixed(), new_doc(), open_polygon() (+66 more)
+Nodes (77): TemplateComparison, ambiguous_line(), attribute_outside(), detail(), duplicate_geometry(), finish(), fixable(), mixed() (+69 more)
 
 ### Community 22 - "api/package.json"
 Cohesion: 0.02
-Nodes (120): dependencies, @anthropic-ai/sdk@^0.131.0, @aws-sdk/s3-request-presigner@^3.577.0, axios@^1.21.0, bull@^4.12.6, class-transformer@^0.5.1, class-validator@^0.14.1, cookie-parser@^1.4.6 (+112 more)
+Nodes (108): dependencies, @anthropic-ai/sdk@^0.131.0, @aws-sdk/client-s3@^3.577.0, @aws-sdk/s3-request-presigner@^3.577.0, axios@^1.21.0, class-transformer@^0.5.1, class-validator@^0.14.1, cookie-parser@^1.4.6 (+100 more)
 
 ### Community 23 - "SubscriptionController"
 Cohesion: 0.07
 Nodes (3): CheckoutDto, SubscriptionController, WhatsAppWebhookController
 
-### Community 24 - "EmailTokenStore"
-Cohesion: 0.12
-Nodes (9): EmailTokenStore, EmailOAuthStatePayload, EmailMessageRecord, SendEmailPayload, Phase 3B: Secure backend OAuth infrastructure: VERIFIED COMPLETE, Phase 3D: Gmail connection: IMPLEMENTED BUT NOT VERIFIED (code-complete, no real Google Cloud OAuth client exists to test against), EmailIntegrationStatus, EmailIntegrationStatusValue (+1 more)
+### Community 24 - "EmailProvider"
+Cohesion: 0.24
+Nodes (5): EmailOAuthStatePayload, EmailMessageRecord, SendEmailPayload, Phase 3E: Reusable email composer: IMPLEMENTED BUT NOT VERIFIED (code-complete; no live backend/DB in this environment to exercise a real send against), EmailProvider
 
 ### Community 25 - "mobile/package.json"
 Cohesion: 0.04
-Nodes (70): dependencies, axios@^1.21.0, @babel/runtime@^7.24.0, @engineeringos/types@workspace:*, expo@~51.0.28, expo-background-fetch@~12.0.1, expo-camera@~15.0.16, expo-constants@~16.0.2 (+62 more)
+Nodes (64): dependencies, axios@^1.21.0, @babel/runtime@^7.24.0, @engineeringos/types@workspace:*, expo-background-fetch@~12.0.1, expo-camera@~15.0.16, expo-constants@~16.0.2, expo-crypto@~13.0.2 (+56 more)
 
 ### Community 26 - "apiGet"
-Cohesion: 0.05
-Nodes (72): ownerNameMap(), buildBriefing(), connected(), EVIDENCE_LINK_ROUTE, EvidenceLink(), HumanAssessmentPanel(), IMPACT_LABELS, InlineRiskAssessment() (+64 more)
+Cohesion: 0.07
+Nodes (41): buildBriefing(), RiskIntelligenceSection(), handleDownloadPdf(), timeAgo(), apiDownloadPost(), AiNarrativeResult, base(), bulkDeleteRisks() (+33 more)
 
 ### Community 28 - "SubmittalsPage.tsx"
-Cohesion: 0.12
-Nodes (29): SubmittalDetailModal(), SubmittalFormModal(), handleClose(), reset(), formatDate(), isSubmittalOverdue(), REVIEW_OUTCOMES, SUBMITTAL_PRIORITIES (+21 more)
+Cohesion: 0.06
+Nodes (60): EmailComposerModal(), handleFilesSelected(), reset(), newIdempotencyKey(), parseRecipients(), PROVIDER_LABEL, EmailHistoryList(), PROVIDER_LABEL (+52 more)
 
 ### Community 29 - "PageHeader"
-Cohesion: 0.06
-Nodes (50): ElementSearch(), DrawingUploadModal(), degToRad(), DrawingViewer(), attemptRender(), render(), EditIcon(), LinkedElement (+42 more)
+Cohesion: 0.08
+Nodes (38): DrawingUploadModal(), degToRad(), DrawingViewer(), attemptRender(), render(), EditIcon(), LinkedElement, PinPanel() (+30 more)
 
 ### Community 30 - "help/index.ts"
-Cohesion: 0.06
-Nodes (42): getArticleSectionTitles(), slugifySectionTitle(), ArticleView(), Section(), aiAssistantArticles, dashboardProjectsArticles, drawingsDocumentsArticles, faqArticles (+34 more)
+Cohesion: 0.07
+Nodes (38): getArticleSectionTitles(), slugifySectionTitle(), ArticleView(), Section(), aiAssistantArticles, dashboardProjectsArticles, drawingsDocumentsArticles, faqArticles (+30 more)
 
 ### Community 31 - "IFC Parsing Architecture Proposal: EngineeringOS Reality Capture"
 Cohesion: 0.17
 Nodes (11): 1. `web-ifc` (That Open Company, formerly IFC.js), 2. IfcOpenShell (Python, C++/OpenCascade core), 3. `ifc-lite-core` (Rust → WASM, newer entrant), 4. xBIM (.NET), Candidates evaluated, Comparison summary, IFC Parsing Architecture Proposal: EngineeringOS Reality Capture, Recommendation (+3 more)
 
 ### Community 32 - "BimController"
-Cohesion: 0.08
-Nodes (5): BimController, CreatePinForElementDto, GetModelUploadUrlDto, LinkCaptureToElementDto, UpdateElementStatusDto
+Cohesion: 0.06
+Nodes (7): BimController, BimService, makeService(), makeSvc(), UpdateElementStatusDto, Bugs fixed, Bugs found and fixed during this verification (both real, both required: not speculative)
+
+### Community 33 - "AuthenticatedUser"
+Cohesion: 0.12
+Nodes (3): CurrentUser, RequireProjectPermission(), RiskController
 
 ### Community 34 - "QaqcController"
-Cohesion: 0.06
-Nodes (10): RequireExactRoles(), toNotificationPriority(), AddQaqcCaptureDto, ConfirmQaqcRecordDto, CreateQaqcRecordDto, QaqcController, assertRoleAllowed(), qaqcNotificationCategory() (+2 more)
+Cohesion: 0.07
+Nodes (8): RequireExactRoles(), AddQaqcCaptureDto, ConfirmQaqcRecordDto, CreateQaqcRecordDto, QaqcAttachmentUploadUrlDto, RespondQaqcRecordDto, QaqcController, QaqcRecordType
 
 ### Community 35 - "IssuesService"
-Cohesion: 0.12
-Nodes (4): buildIssueWorkbookBuffer(), IssuesService, makeService(), makeSvc()
+Cohesion: 0.07
+Nodes (10): buildIssueWorkbookBuffer(), IssueXlsData, IssuesService, makeService(), makeSvc(), toNotificationPriority(), C-3. Buildings/Levels/Locations module had zero authorization: FIXED, Phase 4D: Write + verify highest-priority articles: VERIFIED COMPLETE (+2 more)
 
 ### Community 36 - "SnagDetail.tsx"
 Cohesion: 0.05
-Nodes (69): EmailHistoryList(), PROVIDER_LABEL, STATUS_LABELS, BackIcon(), DetailRow(), formatBytes(), PaperclipIcon(), snagActivityLabel() (+61 more)
+Nodes (61): BackIcon(), DetailRow(), formatBytes(), PaperclipIcon(), snagActivityLabel(), SnagDetail(), SnagDraftFields, addSnagAttachment() (+53 more)
+
+### Community 37 - "IssuesController"
+Cohesion: 0.04
+Nodes (13): AddCaptureToIssueDto, AddIssueAttachmentDto, BroadcastReminderDto, BulkCloseIssuesDto, BulkExportIssuesDto, ForwardIssueDto, IssueAttachmentUploadUrlDto, ScheduleIssueReminderDto (+5 more)
 
 ### Community 38 - "test_integrity.py"
 Cohesion: 0.11
-Nodes (12): make_settings(), _msp_signature(), test_audit_trail_records_every_stage(), test_dwg_input_is_identified_and_blocked(), test_entities_conserved_across_outputs(), test_export_requires_acknowledgement_and_is_audited(), test_failed_checks_never_touch_the_source(), test_failure_never_looks_like_success() (+4 more)
+Nodes (11): _msp_signature(), test_audit_trail_records_every_stage(), test_dwg_input_is_identified_and_blocked(), test_entities_conserved_across_outputs(), test_export_requires_acknowledgement_and_is_audited(), test_failed_checks_never_touch_the_source(), test_failure_never_looks_like_success(), test_fixes_only_when_accepted_and_logged() (+3 more)
 
 ### Community 39 - "auth.controller.ts"
-Cohesion: 0.04
-Nodes (33): ForgotPasswordDto, JwtStrategy, basePayload, makeStrategy(), SessionRevocationService, existsMock, makeService(), setMock (+25 more)
+Cohesion: 0.03
+Nodes (40): @nestjs/jwt@^10.2.0, @nestjs/passport@^10.0.3, stripe@^15.7.0, PaymentRequiredException, GlobalExceptionFilter, AuthModule, JwtStrategy, basePayload (+32 more)
 
 ### Community 40 - "risk.types.ts"
-Cohesion: 0.03
-Nodes (54): SetHumanAssessmentDto, SetMatrixOverrideDto, SetRiskStatusDto, ExposureResult, NODE_TYPE_EXPOSURE_WEIGHT, ScoringService, SignalRow, makeGraphMock() (+46 more)
+Cohesion: 0.06
+Nodes (35): CLUSTER_SIGNAL_TYPES, DESIGN_SIGNAL_TYPES, ISSUE_DISCIPLINE_TO_RISK_DISCIPLINE, ISSUE_SIGNAL_TYPES, QAQC_SIGNAL_TYPES, QUALITY_SIGNAL_TYPES, RFI_DISCIPLINE_TO_RISK_DISCIPLINE, RFI_SIGNAL_TYPES (+27 more)
 
 ### Community 41 - "rfi-pdf.template.ts"
-Cohesion: 0.20
+Cohesion: 0.16
 Nodes (9): capitalize(), renderRfiPdf(), RfiPdfAttachmentItem, RfiPdfAuditEvent, RfiPdfComment, RfiPdfData, RfiPdfOrgLogo, RfiPdfUploadStamp (+1 more)
 
 ### Community 42 - "TransmittalsPage.tsx"
-Cohesion: 0.12
-Nodes (26): TransmittalDetailModal(), TransmittalFormModal(), handleClose(), reset(), formatDate(), TRANSMITTAL_PURPOSE_LABELS, TRANSMITTAL_PURPOSES, TRANSMITTAL_STATUS_BADGE_CLASS (+18 more)
+Cohesion: 0.07
+Nodes (44): ProjectSwitcher(), TransmittalDetailModal(), TransmittalFormModal(), handleClose(), reset(), collectOptions(), Listbox, ParsedOption (+36 more)
 
-### Community 43 - "RiskService"
-Cohesion: 0.04
-Nodes (19): baseRisk, makeService(), GraphEdgeRow, GraphNodeRow, RiskGraphService, UpsertEdgeInput, UpsertNodeInput, since (+11 more)
+### Community 43 - "RiskGraphService"
+Cohesion: 0.07
+Nodes (9): RelationshipExtractionService, GraphNodeRow, RiskGraphService, UpsertNodeInput, makeGraphMock(), makeNode(), Part 1: What's already implemented (do not rebuild), 2. Company settings: a working feature with no UI (+1 more)
 
 ### Community 44 - "CompanyRole"
-Cohesion: 0.03
-Nodes (36): ROLES_KEY, InviteUserDto, DevicesController, DevicesService, deviceRow, makeService(), EnrollDeviceDto, ProductivityQueryDto (+28 more)
+Cohesion: 0.04
+Nodes (32): EXACT_ROLES_KEY, ROLES_KEY, AddMemberDto, DevicesController, DevicesService, makeService(), EnrollDeviceDto, HeartbeatDeviceDto (+24 more)
 
 ### Community 45 - "RiskRegisterTable.tsx"
-Cohesion: 0.10
-Nodes (33): applyRegisterFilters(), attentionRank(), DEFAULT_REGISTER_FILTERS, disciplineLabel(), dueDateTone(), formatDueDate(), hasActiveFilters(), isOpenRiskStatus() (+25 more)
+Cohesion: 0.14
+Nodes (22): applyRegisterFilters(), attentionRank(), DEFAULT_REGISTER_FILTERS, dueDateTone(), formatDueDate(), hasActiveFilters(), isOpenRiskStatus(), isOverdue() (+14 more)
 
 ### Community 46 - "web/package.json"
-Cohesion: 0.03
-Nodes (92): log(), run(), dependencies, axios@^1.21.0, camera-controls@^3.1.2, d3-drag@^3.0.0, d3-force@^3.0.0, @engineeringos/types@workspace:* (+84 more)
+Cohesion: 0.05
+Nodes (50): tsParser, tsPlugin, @types/react@^18.3.3, typescript@^5.4.5, devDependencies, autoprefixer@^10.4.20, eslint@^8.57.1, eslint-plugin-react-hooks@^4.6.2 (+42 more)
 
 ### Community 48 - "RfisService"
-Cohesion: 0.08
-Nodes (5): AddRfiCommentDto, RequestClarificationDto, UpsertRfiNoticeLetterDto, RfisService, makeAttachmentService()
+Cohesion: 0.06
+Nodes (7): RequireCategoryAction(), AddRfiCommentDto, RequestClarificationDto, UpsertRfiNoticeLetterDto, RfisController, RfisService, makeAttachmentService()
+
+### Community 49 - "gis-prep.service.ts"
+Cohesion: 0.12
+Nodes (17): ALLOWED_EXTENSIONS, GIS_PREP_MAX_SIZE_BYTES, GisPrepJobRow, base(), bulkDeleteGisPrepJobs(), deleteGisPrepJob(), getGisPrepJob(), listGisPrepJobs() (+9 more)
 
 ### Community 50 - "test_convert.py"
 Cohesion: 0.09
 Nodes (37): arch_floor(), by_usage(), _cps(), run(), spaces(), test_blocks_use_the_official_template_order_and_the_roof_repeats_the_outline(), test_duplicate_and_overlapping_walls_do_not_break_detection(), test_free_standing_column_is_absorbed_and_logged() (+29 more)
 
 ### Community 51 - "CompanyExecutiveBriefing.tsx"
-Cohesion: 0.10
-Nodes (34): buildProjectAttentionRows(), CompanyExecutiveBriefing(), hasAnyCompanyActivity(), ProjectAttention, useProjectBriefing(), buildConclusion(), buildSignals(), deriveOverallStatus() (+26 more)
+Cohesion: 0.06
+Nodes (51): buildProjectAttentionRows(), CompanyExecutiveBriefing(), hasAnyCompanyActivity(), ProjectAttention, BANNER_ACCENT, BANNER_ICON, BriefingBanner(), FlagIcon() (+43 more)
 
 ### Community 52 - "AuthService"
-Cohesion: 0.10
-Nodes (16): TenantNotFoundException, TenancyGuard, AuthService, makeService(), LoginResult, LoginResult, P0-1: Structured auth-failure logging, P0-2: Decide and implement the BYO-AI-fallback policy (+8 more)
+Cohesion: 0.11
+Nodes (15): TenantNotFoundException, TenancyGuard, AuthService, makeService(), LoginResult, P0-1: Structured auth-failure logging, P0-2: Decide and implement the BYO-AI-fallback policy, P0-3: Company deactivation endpoint (+7 more)
 
 ### Community 53 - "ReportsPage.tsx"
-Cohesion: 0.12
-Nodes (32): ArrowIcon(), BigStat(), ColumnBars(), DashCanvas(), DashCard(), DashHero(), Glyph(), NoirItem (+24 more)
+Cohesion: 0.04
+Nodes (89): ArrowIcon(), BigStat(), ColumnBars(), DashCanvas(), DashCard(), DashHero(), Glyph(), NoirItem (+81 more)
 
 ### Community 54 - "extract-sized-subset.cjs"
 Cohesion: 0.14
 Nodes (15): addEntity(), chosen, closure, drain(), elementIds, entityById, fs, lines (+7 more)
 
 ### Community 55 - "@nestjs/config"
-Cohesion: 0.04
-Nodes (26): @aws-sdk/client-s3@^3.577.0, rxjs@^7.8.1, CredentialEncryptionService, EncryptedCredential, makeService(), AuditLogEntry, deriveAction(), MUTATING_METHODS (+18 more)
+Cohesion: 0.07
+Nodes (6): AppModule, DatabaseModule, describeError(), HealthController, StorageModule, @nestjs/config
 
 ### Community 56 - "AppShell.tsx"
-Cohesion: 0.06
-Nodes (35): AppBackdrop(), sheet(), ADMIN_SETTINGS_ITEMS, HelpCard(), IconArrowLeft(), IconChevron(), IconClose(), IconCog() (+27 more)
+Cohesion: 0.03
+Nodes (91): QuickActions(), AppBackdrop(), sheet(), ADMIN_SETTINGS_ITEMS, AppShell(), handleLogout(), HelpCard(), IconArrowLeft() (+83 more)
 
 ### Community 57 - "rfi-xls.ts"
 Cohesion: 0.11
-Nodes (26): addPixelImage(), attachmentLabel(), attachmentListRows(), base64ToArrayBuffer(), buildRfiWorkbookBuffer(), extensionFromMimeType(), fetchExportAssets(), fieldRow() (+18 more)
+Nodes (25): addPixelImage(), attachmentLabel(), attachmentListRows(), base64ToArrayBuffer(), buildRfiWorkbookBuffer(), extensionFromMimeType(), fetchExportAssets(), fieldRow() (+17 more)
 
 ### Community 58 - "ChatWidget.tsx"
 Cohesion: 0.14
-Nodes (18): ActiveChannel, ChatWidget(), openChannel(), openDm(), openTeamChat(), displayName(), IconArrowLeft(), IconClose() (+10 more)
+Nodes (19): ActiveChannel, ChatWidget(), openChannel(), openDm(), openTeamChat(), displayName(), IconArrowLeft(), IconClose() (+11 more)
 
 ### Community 59 - "EngineeringOS IFC Processing Engine — Release v1.0.0"
-Cohesion: 0.04
-Nodes (44): Architecture decisions, Backups, Batch strategy, Breaking changes, Bugs fixed during verification (all found via a failing test, then fixed, then re-verified passing), Build, Configuration / environment variables (`apps/ifc-service`), Current limitations (verified, real) (+36 more)
+Cohesion: 0.05
+Nodes (38): Architecture decisions, Backups, Batch strategy, Breaking changes, Bugs fixed during verification (all found via a failing test, then fixed, then re-verified passing), Build, Current limitations (verified, real), Database Schema (+30 more)
 
 ### Community 60 - "services"
 Cohesion: 0.05
@@ -660,23 +677,23 @@ Nodes (32): bdms_floor(), bm(), brun(), _run(), ids(), _set(), test_arc_in_polyg
 
 ### Community 62 - "workforce.api.ts"
 Cohesion: 0.07
-Nodes (38): ActivitySummary, CompanyAbsenceRow, CompanyReportRow, CompanyShiftPreferenceRow, CompanyShiftRow, listCompanyShiftPreferences(), ReportingLineRow, ABSENCE_STATUSES (+30 more)
+Nodes (43): ActivitySummary, CompanyAbsenceRow, CompanyReportRow, CompanyShiftPreferenceRow, CompanyShiftRow, disconnectGoogleCalendar(), getGoogleCalendarAuthorizeUrl(), getGoogleCalendarStatus() (+35 more)
 
-### Community 63 - "classify/__init__.py"
-Cohesion: 0.20
-Nodes (11): classify_entity(), classify_layout(), _extrusion_ok(), _overrides(), paperspace_entity_count(), referenced_block_names(), unused_block_names(), unused_linetypes() (+3 more)
+### Community 63 - "ActivitiesController"
+Cohesion: 0.11
+Nodes (4): ActivitiesController, aggregateBy(), AttributeActivityDto, IngestActivitiesDto
 
 ### Community 64 - "ProjectsScreen.tsx"
-Cohesion: 0.10
-Nodes (20): @react-navigation/native-stack@^6.11.0, apiGet(), fetchMe(), getHierarchy(), getProject(), listProjects(), ProjectHierarchy, ProjectDetailScreen() (+12 more)
+Cohesion: 0.11
+Nodes (17): apiGet(), http, fetchMe(), LoginResult, getHierarchy(), getProject(), ProjectHierarchy, ProjectDetailScreen() (+9 more)
 
 ### Community 65 - "vitest"
-Cohesion: 0.09
-Nodes (25): @testing-library/react@^16.3.3, @testing-library/user-event@^14.6.7, BarChart(), BarDatum, FOCAL_CLASSES, foldTail(), niceScale(), rows (+17 more)
+Cohesion: 0.10
+Nodes (22): zustand@^4.5.5, @testing-library/react@^16.3.3, @testing-library/user-event@^14.6.7, ListboxChangeEvent, Controlled(), ToastViewport(), TONE_CLASS, api (+14 more)
 
 ### Community 66 - "CaptureSessionScreen.tsx"
 Cohesion: 0.09
-Nodes (32): Button(), ButtonProps, styles, variantStyles, styles, TextField(), TextFieldProps, apiErrorMessage() (+24 more)
+Nodes (37): react-native@0.74.5, react-native-safe-area-context@4.10.5, @react-navigation/native-stack@^6.11.0, Button(), ButtonProps, styles, variantStyles, styles (+29 more)
 
 ### Community 67 - "EngineeringOS — Monitoring and Incident Management"
 Cohesion: 0.25
@@ -684,7 +701,7 @@ Nodes (7): 1. Current state: logs exist, but are ephemeral and unaggregated, 4. 
 
 ### Community 68 - "ApplicationsController"
 Cohesion: 0.07
-Nodes (4): ApplicationsController, ApplicationsService, CreateApplicationDto, UpdateApplicationDto
+Nodes (5): ApplicationsController, ApplicationsService, CreateApplicationDto, UpdateApplicationDto, PRODUCTIVITY_CLASSIFICATIONS
 
 ### Community 69 - "package.json"
 Cohesion: 0.07
@@ -692,35 +709,39 @@ Nodes (34): description, devDependencies, eslint@^9.0.0, prettier@^3.0.0, typesc
 
 ### Community 70 - "DWGConverter"
 Cohesion: 0.05
-Nodes (22): Architecture and limitations, DWG strategy (brief E3), Limitations (disclosed in every report), Modules (`src/m4adm`), Pipeline, Rules engine, Status 2026-10-26 (DRM BDMS 4.1 material received), ConverterLimitExceeded (+14 more)
+Nodes (25): Architecture and limitations, DWG strategy (brief E3), Limitations (disclosed in every report), Modules (`src/m4adm`), Pipeline, Rules engine, Calibrating DRM-LOG-22 on real data, DRM review: Yas Island-YS1-P10 (Nov 2026) (+17 more)
 
 ### Community 71 - "ai-provider.interface.ts"
-Cohesion: 0.10
-Nodes (15): @google/generative-ai@^0.24.1, AIMessage, AIProviderModelInfo, ClassifyRequestResult, GenerateResponseInput, GenerateResponseResult, SelectedToolCall, SelectToolsResult (+7 more)
+Cohesion: 0.09
+Nodes (17): AIProviderModelInfo, ClassifyRequestResult, GenerateResponseInput, GenerateResponseResult, SelectedToolCall, SelectToolsResult, ToolDefinition, ValidateConnectionResult (+9 more)
+
+### Community 72 - "timeline.controller.ts"
+Cohesion: 0.11
+Nodes (3): CreateTimelineEntryDto, TimelineController, TimelineService
 
 ### Community 73 - "CreateProjectDto"
-Cohesion: 0.12
-Nodes (9): CreateProjectDto, 2. Company settings: a working feature with no UI, 3. Confirmed dead schema: `custom_max_projects`/`custom_max_users`/`custom_feature_flags`, 4. Confirmed dead code path: storage limit enforcement, 6. No full-company data export, 7. Customer support: Help Centre only, 8. Billing/subscription/payment: explicitly not touched, 9. Summary: implemented vs. proposed (+1 more)
+Cohesion: 0.22
+Nodes (7): 3. Confirmed dead schema: `custom_max_projects`/`custom_max_users`/`custom_feature_flags`, 4. Confirmed dead code path: storage limit enforcement, 6. No full-company data export, 7. Customer support: Help Centre only, 8. Billing/subscription/payment: explicitly not touched, 9. Summary: implemented vs. proposed, EngineeringOS: SaaS Commercial Readiness
 
 ### Community 74 - "db.ts"
 Cohesion: 0.11
-Nodes (29): CONFIG, StatusBadge(), styles, useNetworkStatus(), useQueueByStatus(), useSyncQueue(), logout(), countByStatus() (+21 more)
+Nodes (31): @react-native-community/netinfo@11.3.1, CONFIG, StatusBadge(), styles, useNetworkStatus(), useQueueByStatus(), useSyncQueue(), countByStatus() (+23 more)
 
 ### Community 75 - ".ask"
-Cohesion: 0.12
-Nodes (10): AiRoleLimit, routeIntent(), 1. What exists today to evaluate against, 2. CONFIRMED: domain guard has concrete bypass examples, 3. Proposed: versioned evaluation dataset (not built), 4. Never test with real confidential project data against an external model, 5. Human escalation for engineering/contractual decisions: VERIFIED by design, 6. Summary: what's proposed vs. built (+2 more)
+Cohesion: 0.06
+Nodes (14): AiController, AssistantQuotaExceededError, routeIntent(), AskAssistantDto, AssistantContextDto, ConversationMessageDto, 1. What exists today to evaluate against, 2. CONFIRMED: domain guard has concrete bypass examples (+6 more)
 
 ### Community 76 - "ScreenshotsService"
-Cohesion: 0.14
-Nodes (8): ScreenshotsService, makeService(), 1. Data inventory, 2. Missing product controls and user-facing materials, 3. What this document deliberately does NOT do, 4. Counsel-review checklist, 5. If/when a privacy notice or ToS is drafted, EngineeringOS / Reality Capture: Data Inventory & Privacy Readiness Gaps
+Cohesion: 0.20
+Nodes (6): 1. Data inventory, 2. Missing product controls and user-facing materials, 3. What this document deliberately does NOT do, 4. Counsel-review checklist, 5. If/when a privacy notice or ToS is drafted, EngineeringOS / Reality Capture: Data Inventory & Privacy Readiness Gaps
 
 ### Community 77 - "ActivitiesService"
-Cohesion: 0.05
-Nodes (16): Configuration, Enroll, How this was tested, Known MVP limitations (deliberate, not oversights), Prerequisites, Private Time, Run, Setup (+8 more)
+Cohesion: 0.08
+Nodes (14): Configuration, Enroll, How this was tested, Known MVP limitations (deliberate, not oversights), Prerequisites, Private Time, Run, Setup (+6 more)
 
 ### Community 78 - "EmailLauncherButton.tsx"
-Cohesion: 0.11
-Nodes (26): EmailLauncherButton(), handleMainClick(), handleSelect(), launch(), onPointerDown(), IconCheck(), IconChevronDown(), IconMail() (+18 more)
+Cohesion: 0.15
+Nodes (20): EmailLauncherButton(), handleMainClick(), handleSelect(), launch(), onPointerDown(), IconCheck(), IconChevronDown(), IconMail() (+12 more)
 
 ### Community 79 - "usage_by_category"
 Cohesion: 0.06
@@ -730,25 +751,25 @@ Nodes (31): as_of, evidence, note, pages, row_count, section, source_pdf_sha256,
 Cohesion: 0.13
 Nodes (32): domain, mandatory, max_length, tag, type, blocks, BuildingDetail, BuildingRoofDetail (+24 more)
 
-### Community 82 - "RequireProjectPermission"
-Cohesion: 0.12
-Nodes (4): RequireProjectPermission(), BrandingUploadUrlDto, OrganizationLogoUploadUrlDto, ProjectsController
+### Community 82 - "AuthenticatedUser"
+Cohesion: 0.05
+Nodes (15): ChatSocketSession, MarkChatReadDto, AddOrganizationMemberDto, BrandingUploadUrlDto, CreatePermissionGrantDto, CreateProjectDto, OrganizationLogoUploadUrlDto, PROJECT_PHASES (+7 more)
 
 ### Community 83 - ".handle"
-Cohesion: 0.13
-Nodes (3): IfcRepositoryService, StorageService, Bugs fixed (all found via a failing test first, not assumed)
+Cohesion: 0.11
+Nodes (6): IfcRepositoryService, JobMetrics, StageTiming, Bugs fixed (all found via a failing test first, not assumed), Bugs found and fixed during verification (all confirmed via a failing, IfcProcessingStage
 
 ### Community 84 - "agent/package.json"
 Cohesion: 0.08
 Nodes (30): dependencies, axios@^1.21.0, screenshot-desktop@^1.15.6, description, devDependencies, tsx@^4.19.2, @types/node@^22.13.0, typescript@^5.6.2 (+22 more)
 
-### Community 85 - "apiGet"
-Cohesion: 0.07
-Nodes (52): EmailComposerModal(), handleFilesSelected(), reset(), newIdempotencyKey(), parseRecipients(), PROVIDER_LABEL, HelpLink(), IconHelpCircle() (+44 more)
+### Community 85 - "DeveloperSettingsPage.tsx"
+Cohesion: 0.14
+Nodes (22): ApiKey, createApiKey(), listApiKeys(), revokeApiKey(), getSignupCode(), regenerateSignupCode(), SignupCodeResult, createWebhookEndpoint() (+14 more)
 
 ### Community 86 - "ProgressReportsService"
-Cohesion: 0.09
-Nodes (3): GenerateProgressReportShareDto, ProgressReportsController, ProgressReportsPublicController
+Cohesion: 0.08
+Nodes (4): GenerateProgressReportShareDto, ProgressReportsController, ProgressReportsPublicController, ProgressReportsService
 
 ### Community 87 - "ifc-parser.service.ts"
 Cohesion: 0.12
@@ -756,47 +777,43 @@ Nodes (19): collectMaterialNames(), IfcParserService, SPATIAL_TYPES, TreeNode, W
 
 ### Community 88 - "GisPrepPage.tsx"
 Cohesion: 0.06
-Nodes (51): convertInputProblems(), DRAWING_TYPES, isDrawingDate(), MONTHS, UNIT_TYPES, UPPERCASE_FACTS, UPPERCASE_META, USAGE_CATEGORY_TYPES (+43 more)
+Nodes (38): convertInputProblems(), DRAWING_TYPES, isDrawingDate(), MONTHS, UNIT_TYPES, UPPERCASE_FACTS, UPPERCASE_META, USAGE_CATEGORY_TYPES (+30 more)
 
 ### Community 89 - "WorkforcePage.tsx"
 Cohesion: 0.08
-Nodes (36): attributeActivity(), decideAbsence(), disconnectGoogleCalendar(), getCompanyReport(), getGoogleCalendarAuthorizeUrl(), getGoogleCalendarStatus(), getMyActivitySummary(), getMyProductivityScore() (+28 more)
+Nodes (41): TabItem, TabPanel(), Tabs(), focusIndex(), onKeyDown(), assignShift(), attributeActivity(), getCompanyReport() (+33 more)
 
-### Community 90 - "NotificationsPage.tsx"
-Cohesion: 0.12
-Nodes (32): BellIcon(), NotificationBell(), handleClick(), routeFor(), PRIORITY_DOT, timeAgo(), getNotificationSocketSnapshot(), subscribeToNotificationSocket() (+24 more)
+### Community 90 - "workforce-visibility.util.ts"
+Cohesion: 0.14
+Nodes (10): postgres@^3.4.4, OrgMappingRow, resolveOrgMapping(), makeService(), TeamService, canViewUserActivity(), LEADERSHIP_OVERRIDE_ROLE, resolveDownlineUserIds() (+2 more)
 
-### Community 91 - "documents.api.ts"
-Cohesion: 0.13
-Nodes (23): DocumentShareModal(), DocumentUploadModal(), handleClose(), reset(), DOC_SOURCE_LABELS, DOC_TYPE_LABELS, DOC_TYPES, createDocument() (+15 more)
+### Community 91 - "productivity.service.ts"
+Cohesion: 0.15
+Nodes (11): ActivityAggregateRow, clamp(), computeFactors(), ENGINEERING_ACTIVITY_TYPES, ProductivityService, resolvePeriod(), toDateOnly(), ReportsService (+3 more)
 
 ### Community 92 - "background.js"
-Cohesion: 0.12
-Nodes (22): Architecture, createApiClient(), enrollDevice(), login(), ensureTrackerRestored(), flush(), handleStateChange(), onEvent() (+14 more)
+Cohesion: 0.10
+Nodes (27): Architecture, How this was tested, Known MVP limitations (deliberate, not oversights), Load it (development/testing only, no store listing), What this captures, precisely, Workforce Intelligence browser extension (MVP), createApiClient(), enrollDevice() (+19 more)
 
 ### Community 93 - "bim-debug/package.json"
 Cohesion: 0.08
 Nodes (29): dependencies, @thatopen/fragments@3.4.6, web-ifc@0.0.77, description, devDependencies, jest@^29.7.0, ts-jest@^29.1.3, @types/jest@^29.5.12 (+21 more)
 
 ### Community 94 - "crs/__init__.py"
-Cohesion: 0.06
-Nodes (18): compare(), _norm(), _reference(), GeorefResult, plan(), CRSStatus, fit_similarity(), georeference_entities() (+10 more)
+Cohesion: 0.08
+Nodes (18): compare(), _norm(), _reference(), check_crs(), CRSStatus, extents_of(), fit_similarity(), georeference_entities() (+10 more)
 
-### Community 95 - "cli.py"
+### Community 95 - "pipeline.py"
 Cohesion: 0.03
-Nodes (87): build_parser(), cmd_attach_qc(), cmd_check_name(), cmd_convert(), cmd_export(), cmd_fixtures(), cmd_history(), cmd_inspect() (+79 more)
+Nodes (82): dxf_size_blocker(), OfficialQC, OfficialQCResult, AuditLog, utc_now(), referenced_block_names(), ConversionResult, convert() (+74 more)
 
 ### Community 97 - "reports-xls.ts"
-Cohesion: 0.16
-Nodes (22): DISCIPLINE_LABELS, PRIORITY_LABELS, STATUS_LABELS, breakdownTable(), buildIssuesSheet(), buildReportsWorkbookBuffer(), buildSnaggingSheet(), disciplineLabel() (+14 more)
-
-### Community 98 - "site-drawings.service.ts"
-Cohesion: 0.04
-Nodes (28): ExtractSiteDrawingFieldsDto, GetSiteDrawingUploadUrlDto, StartOfflinePackageDto, RegisterSiteDrawingDto, RegisterSiteDrawingRevisionDto, SetSiteDrawingWorkflowStatusDto, OrgMappingRow, resolveOrgMapping() (+20 more)
+Cohesion: 0.17
+Nodes (21): breakdownTable(), buildIssuesSheet(), buildReportsWorkbookBuffer(), buildSnaggingSheet(), disciplineLabel(), gridBorder, priorityLabel(), sectionRow() (+13 more)
 
 ### Community 99 - "AIProvider"
-Cohesion: 0.13
-Nodes (9): AIProvider, ProviderFactory, 1. Current architecture (verified), 2. Providers implemented today, 3. Switching providers: cost and effort, 4. Known limitation: streaming is not real yet, 5. What this document does NOT cover, EngineeringOS AI provider strategy (+1 more)
+Cohesion: 0.10
+Nodes (16): AiService, AIProvider, ProviderFactory, 1. Current architecture (verified), 2. Providers implemented today, 3. Switching providers: cost and effort, 4. Known limitation: streaming is not real yet, 5. What this document does NOT cover (+8 more)
 
 ### Community 100 - "ifc-service/package.json"
 Cohesion: 0.10
@@ -810,85 +827,77 @@ Nodes (27): backgroundColor, adaptiveIcon, package, permissions, expo, android, 
 Cohesion: 0.13
 Nodes (15): 10. Monitoring status, 11. Estimated monthly costs, 12. Remaining blockers, 13. Exact actions requiring your involvement, 14. Production launch checklist, 16. Final report, 1. Actual production architecture, 2. Changes made (+7 more)
 
-### Community 103 - "SiteDrawingSharePointAdapter"
-Cohesion: 0.13
-Nodes (5): DiscoveredDrawing, SiteDrawingSharePointAdapter, SharePointGraphClient, SharePointProjectSiteConfig, SharePointIntegrationStatus
-
 ### Community 104 - ".withTenant"
-Cohesion: 0.04
-Nodes (18): BimService, makeService(), makeSvc(), BuildingsService, makeService(), SiteDrawingsService, toOfflinePackage(), toOrgMapping() (+10 more)
+Cohesion: 0.03
+Nodes (10): BuildingsService, makeService(), ProjectsService, makeOrgService(), makeService(), PublicApiService, assertRoleAllowed(), qaqcNotificationCategory() (+2 more)
 
-### Community 105 - ".generateDraft"
-Cohesion: 0.19
-Nodes (10): AskAssistantResult, buildContextBlock(), escapeForContext(), 2. Caching: NOT implemented; guidelines for if it ever is, 3. RAG (retrieval-augmented generation) from authorized documents: NOT implemented; feasibility only, 5. CONFIRMED RISK: automatic fallback to the platform's paid provider, with no approval or spending-limit gate, 6. Configurable budgets and alerts: NOT implemented, 7. Token-cost tracking fix: IMPLEMENTED AND VERIFIED this phase (+2 more)
+### Community 106 - "title-block-extractor.ts"
+Cohesion: 0.22
+Nodes (18): buildResult(), DATE_PATTERNS, DISCIPLINE_LABELS, extractDate(), extractDiscipline(), extractDrawingNumber(), extractDrawingNumberFromCells(), EXTRACTION_CONFIDENCE_CONFIRMED_THRESHOLD (+10 more)
 
-### Community 106 - "ProgressReportPage.tsx"
-Cohesion: 0.08
-Nodes (41): BimModelUploadModal(), startUpload(), CreateProjectModal(), ProjectCard(), handleDownloadPdf(), SubscriptionBanner(), StatTile(), apiDownload() (+33 more)
+### Community 107 - "SiteDrawingsService"
+Cohesion: 0.07
+Nodes (7): RegisterSiteDrawingDto, SiteDrawingsController, SiteDrawingsService, toOfflinePackage(), toOrgMapping(), toSiteDrawing(), toSiteDrawingRevision()
 
-### Community 108 - "MyCalendarPage.tsx"
-Cohesion: 0.18
-Nodes (28): dayMarks(), useAgenda(), usePreferences(), Chevron(), DayMarks, MiniCalendar(), WEEKDAYS, addDays() (+20 more)
+### Community 108 - "ProjectDetail.tsx"
+Cohesion: 0.03
+Nodes (149): AgendaList(), CATEGORY_DOT, AttentionCenter, AttentionFilter, AttentionRow(), CLASS_BAR, CLASS_LABEL, CLASS_TONE (+141 more)
 
 ### Community 109 - "SendEmailDto"
-Cohesion: 0.10
-Nodes (5): SendEmailAttachmentDto, SendEmailDto, Findings and fixes, Phase 3I: Security, permission, and regression tests, Regression pass
+Cohesion: 0.11
+Nodes (3): SendEmailAttachmentDto, SendEmailDto, Findings and fixes
 
 ### Community 110 - "flush.test.ts"
 Cohesion: 0.13
 Nodes (13): ClosedSegment, OpenSegment, ApiClient, IngestResult, UploadUrlResult, flushQueue(), enqueueActivity(), readQueue() (+5 more)
 
 ### Community 111 - "MEDIUM"
-Cohesion: 0.09
-Nodes (22): EngineeringOS: Known Issues and Remediation, H-1. Same-company cross-project access on issue/drawing sub-resources: FIXED (2026-10-29), H-2. Fine-grained project permissions are unreachable for anyone but company_admin: OPEN, H-3. Dependency vulnerabilities: PARTIALLY FIXED (2026-10-29 re-audit), HIGH, L-1. Weak password policy: OPEN, L-2. Weight-based `@Roles()` resolution silently widens access beyond named roles: OPEN, L-3. BYO-AI "test connection" echoes raw vendor error text to the browser: OPEN (+14 more)
+Cohesion: 0.11
+Nodes (18): EngineeringOS: Known Issues and Remediation, L-1. Weak password policy: OPEN, L-2. Weight-based `@Roles()` resolution silently widens access beyond named roles: OPEN, L-3. BYO-AI "test connection" echoes raw vendor error text to the browser: OPEN, L-4. Duplicate migration number `052`: OPEN, L-5. Large web bundle chunks: OPEN, L-6. No structured logging / error-monitoring (APM) integration: OPEN, LOW (+10 more)
 
-### Community 112 - "AiService"
-Cohesion: 0.20
-Nodes (7): AiService, makeService(), DomainGuardResult, DomainGuardService, OFF_TOPIC_PATTERNS, STRONG_IN_DOMAIN_PATTERNS, WEAK_IN_DOMAIN_PATTERNS
+### Community 112 - "ReportingLinesController"
+Cohesion: 0.12
+Nodes (4): SetReportingLineDto, ReportingLinesController, ReportingLinesService, makeService()
 
-### Community 113 - "Listbox.tsx"
-Cohesion: 0.22
-Nodes (13): AiConnectionStatus, BYO_AI_PROVIDER_LABELS, BYO_AI_PROVIDERS, ByoAiProvider, connectAiProvider(), ConnectAiProviderInput, disconnectAiProvider(), getAiConnectionStatus() (+5 more)
+### Community 113 - "AddRfiAttachmentDto"
+Cohesion: 0.14
+Nodes (5): AddQaqcAttachmentDto, AddRfiAttachmentDto, RFI_DOCUMENT_TYPES, RfiAttachmentKind, RfiDocumentType
 
 ### Community 114 - "RootNavigator.tsx"
-Cohesion: 0.08
-Nodes (27): App(), styles, MAX_UPLOAD_RETRIES, SYNC_TASK_NAME, deleteQueuedCapture(), initDatabase(), listeners, pruneUploaded() (+19 more)
+Cohesion: 0.11
+Nodes (18): App(), styles, initDatabase(), registerBackgroundSync(), stopNetworkTriggeredSync(), HistoryStack, HistoryStackParamList, MainTabs() (+10 more)
 
 ### Community 115 - "Issue 2: Missing/incomplete geometry — FROZEN, NOT RESOLVED"
 Cohesion: 0.08
 Nodes (24): 1. Representation-type failure (SweptSolid/circular-profile, Clipping/boolean CSG), 2. Representation failure specific to Brep welds, 3. Content/scale-dependent trigger, 4. Environment parity (dependency versions), 5. Client-side loading non-determinism (claimed, then retracted), 6. Server-side generation non-determinism (claimed, filed upstream, then corrected), Backend bugs found and fixed as a byproduct of this investigation, BIM Viewer Investigation: Navigation Loss & Missing Geometry (+16 more)
 
-### Community 118 - "ChatService"
-Cohesion: 0.09
-Nodes (4): ChatController, ProjectChatController, ChatService, MarkChatReadDto
+### Community 116 - "Public"
+Cohesion: 0.20
+Nodes (3): AllowPending(), AuthController, RefreshTokenDto
 
-### Community 119 - "MyTasksPage.tsx"
-Cohesion: 0.13
-Nodes (24): AgendaList(), CATEGORY_DOT, MyWorkspacePanel(), TabKey, TABS, WorkRow(), PriorityRow(), STATE_TONE (+16 more)
+### Community 118 - "ChatService"
+Cohesion: 0.12
+Nodes (3): ChatController, ProjectChatController, ChatService
+
+### Community 119 - "EmailTokenStore"
+Cohesion: 0.18
+Nodes (7): EmailTokenStore, makeStore(), tokens, connected(), Phase 3B: Secure backend OAuth infrastructure: VERIFIED COMPLETE, EmailIntegrationStatus, EmailIntegrationStatusValue
 
 ### Community 120 - "test_adm_trial_01.py"
 Cohesion: 0.15
 Nodes (12): _c_to_f(), category(), norm(), official_rows(), our_rows(), test_corrected_m19b_conversion_has_no_c_to_f_errors(), test_corrected_synthetic_conversion_has_no_c_to_f_errors(), test_counts_match_except_documented_deltas() (+4 more)
 
 ### Community 121 - "gis-prep.processor.ts"
-Cohesion: 0.06
-Nodes (36): jszip@^3.10.2, assertProfile(), CreateGisPrepJobDto, GetGisPrepUploadUrlDto, RerunGisPrepJobDto, GisPrepController, GisPrepModule, CONTENT_TYPES (+28 more)
+Cohesion: 0.10
+Nodes (25): jszip@^3.10.2, CONTENT_TYPES, contentType(), countsFromReport(), GisPrepProcessor, isSafeEntryName(), JobDbRow, NonRetryableError (+17 more)
 
 ### Community 122 - "DocumentsController"
-Cohesion: 0.13
-Nodes (3): DocumentsController, DocumentsPublicController, GetDocumentUploadUrlDto
-
-### Community 123 - "test_ui_cli.py"
-Cohesion: 0.12
-Nodes (18): main(), finish(), manifest(), run(), _run(), save(), _save(), client() (+10 more)
-
-### Community 124 - "QaService"
 Cohesion: 0.06
-Nodes (8): makeService(), CreateQaInspectionDto, UpdateQaInspectionDto, QaController, OUTCOMES, QaService, existingRow(), makeService()
+Nodes (6): DocumentsController, DocumentsPublicController, CreateDocumentDto, GenerateDocumentShareDto, GetDocumentUploadUrlDto, LinkDocumentDto
 
 ### Community 125 - "JwtAuthGuard"
 Cohesion: 0.09
-Nodes (16): JwtAuthGuard, RolesGuard, Existing architecture (as found), Multi-tenancy fit, RBAC: the exact mechanism to reuse, Subscription/billing fit, API structure, `apps/web` build config: explicit `commonjsOptions.include` for workspace packages (+8 more)
+Nodes (16): JwtAuthGuard, PendingApprovalGuard, RolesGuard, Activities: `apps/api/src/modules/workforce/activities`, Application registry: `apps/api/src/modules/workforce/applications`, Devices: `apps/api/src/modules/workforce/devices`, Privacy settings: `apps/api/src/modules/workforce/privacy`, Productivity: `apps/api/src/modules/workforce/productivity` (+8 more)
 
 ### Community 127 - "mount"
 Cohesion: 0.14
@@ -902,37 +911,37 @@ Nodes (4): UpdatePrivacySettingsDto, PrivacyController, PrivacyService, makeServ
 Cohesion: 0.09
 Nodes (22): compilerOptions, allowSyntheticDefaultImports, declaration, declarationMap, emitDecoratorMetadata, esModuleInterop, experimentalDecorators, lib (+14 more)
 
-### Community 130 - "SiteDrawingImportController"
-Cohesion: 0.18
-Nodes (3): CreateImportBatchDto, GetImportBatchUploadUrlDto, SiteDrawingImportController
+### Community 130 - "SiteDrawingImportService"
+Cohesion: 0.08
+Nodes (9): CreateImportBatchDto, GetImportBatchUploadUrlDto, ResolveReviewDto, SiteDrawingImportController, SiteDrawingImportService, makeService(), toImportBatch(), toReviewQueueItem() (+1 more)
 
-### Community 132 - "rfi.types.ts"
-Cohesion: 0.12
-Nodes (18): DRAWING_UPDATE_STATUS_LABELS, PROJECT_ORGANIZATION_SLOT_LABELS, Rfi, RFI_ATTACHMENT_KINDS, RFI_DISCIPLINE_CODES, RFI_DOCUMENT_TYPE_LABELS, RFI_EXTERNAL_ACCESS_ACTION_LABELS, RFI_EXTERNAL_ACCESS_ACTIONS (+10 more)
+### Community 132 - "react"
+Cohesion: 0.05
+Nodes (68): AddHierarchyNodeModal(), FormValues, Kind, Props, TITLES, CreateProjectModal(), BuildingLevelRoomPicker(), HierarchySelection (+60 more)
 
 ### Community 133 - "web/src/lib/captures.api.ts"
 Cohesion: 0.13
-Nodes (24): apiGetWithMeta(), apiPost(), getCapture(), getUploadUrl(), getViewerData(), listCaptures(), registerCapture(), syncCapture() (+16 more)
+Nodes (25): apiGetWithMeta(), apiPost(), getCapture(), getUploadUrl(), getViewerData(), listCaptures(), registerCapture(), syncCapture() (+17 more)
 
 ### Community 135 - "priority-rules.ts"
-Cohesion: 0.11
-Nodes (30): CalendarProvider, AttentionItem, attentionLabel(), COMPLIANCE_MIN_DRAWINGS, latest(), ATTENTION_ORDER, AttentionClass, classifyAttention() (+22 more)
+Cohesion: 0.14
+Nodes (19): AttentionItem, attentionLabel(), COMPLIANCE_MIN_DRAWINGS, latest(), ATTENTION_ORDER, AttentionClass, classifyAttention(), dayDiff() (+11 more)
 
-### Community 136 - "SubcontractorRfiAccessService"
-Cohesion: 0.20
-Nodes (3): SubcontractorRfiAccessService, makeGuard(), SubcontractorRfiAccessGuard
+### Community 136 - "ai.service.spec.ts"
+Cohesion: 0.05
+Nodes (21): AuthorizationModule, SiteRoleService, makeService(), SubcontractorRfiAccessService, SiteRoleRestrictionGuard, makeGuard(), restrictedUser, siteEngineerUser (+13 more)
 
 ### Community 137 - "PublicApiController"
-Cohesion: 0.15
-Nodes (4): ApiKeyContext, CurrentApiKey, PublicApiController, PublicApiService
+Cohesion: 0.25
+Nodes (3): ApiKeyContext, CurrentApiKey, PublicApiController
 
 ### Community 138 - "dependencies"
 Cohesion: 0.10
 Nodes (21): dependencies, @aws-sdk/client-s3@^3.577.0, bull@^4.12.6, dotenv@^16.4.5, @engineeringos/types@workspace:*, ioredis@^5.3.2, @nestjs/common@^10.3.0, @nestjs/config@^3.2.0 (+13 more)
 
-### Community 139 - "pipeline.py"
-Cohesion: 0.03
-Nodes (55): main(), manual_unit_usage(), upc_terms(), main(), OfficialQCResult, atomic_save_doc(), atomic_write_bytes(), build_output() (+47 more)
+### Community 139 - "cli.py"
+Cohesion: 0.04
+Nodes (55): main(), manual_unit_usage(), upc_terms(), main(), build_parser(), cmd_attach_qc(), cmd_check_name(), cmd_convert() (+47 more)
 
 ### Community 140 - "compilerOptions"
 Cohesion: 0.10
@@ -942,13 +951,9 @@ Nodes (20): compilerOptions, allowImportingTsExtensions, baseUrl, isolatedModule
 Cohesion: 0.09
 Nodes (26): name, runs-on, steps, concurrency, cancel-in-progress, group, jobs, build-and-test (+18 more)
 
-### Community 142 - "ConnectAiProviderDto"
-Cohesion: 0.14
-Nodes (8): AiConnectionStatus, DecryptedConnection, BYO_AI_PROVIDERS, ByoAiProvider, ConnectAiProviderDto, mockGetGenerativeModel, mockSendMessage, mockStartChat
-
-### Community 143 - ".create"
-Cohesion: 0.08
-Nodes (6): isSidewaysOrientation(), BulkCloseIssuesDto, UpdateIssueDto, Phase 4D: Write + verify highest-priority articles: VERIFIED COMPLETE, Completed, Reality Capture Module feature set (F1-F6): COMPLETE
+### Community 142 - "provider.factory.spec.ts"
+Cohesion: 0.40
+Nodes (3): mockGetGenerativeModel, mockSendMessage, mockStartChat
 
 ### Community 145 - "BaseModel"
 Cohesion: 0.13
@@ -963,16 +968,12 @@ Cohesion: 0.11
 Nodes (18): evidence, note, file, sha256, qc_manual_unit_usage_text, sources, qc_manual, upc_xls (+10 more)
 
 ### Community 148 - "user.types.ts"
-Cohesion: 0.04
-Nodes (53): AuthorizationModule, OrgCategoryPermissionService, makeQuery(), makeService(), ProjectAuthorizationService, makeQuery(), makeService(), SiteRoleService (+45 more)
+Cohesion: 0.05
+Nodes (34): OrgCategoryPermissionService, makeQuery(), makeService(), ProjectAuthorizationService, makeQuery(), makeService(), CATEGORY_ACTION_KEY, CategoryActionSpec (+26 more)
 
 ### Community 149 - "AuditInterceptor"
 Cohesion: 0.13
 Nodes (12): AuditInterceptor, 1. What's already captured (verified, not estimated), 2. Real gaps (verified by grep, not assumed), 3. Design: three layers, reusing what exists, 4. Privacy, data minimization, and retention, 5. What this gives administrators, 6. What this deliberately does NOT do, 7. Implementation status in this engagement (+4 more)
-
-### Community 150 - "SiteDrawingSyncService"
-Cohesion: 0.21
-Nodes (4): TriggerSiteDrawingSyncDto, SiteDrawingSyncService, makeService(), SiteDrawingSourceProvider
 
 ### Community 151 - "Phase 2 — Production Deployment & Scalability"
 Cohesion: 0.14
@@ -982,13 +983,9 @@ Nodes (13): 10. Backup & recovery: VERIFIED COMPLETE (configuration confirmed, r
 Cohesion: 0.18
 Nodes (10): 10. Implementation status, 1. Design principles, 2. Proposed data model, 3. Submission UX (proposed, not built), 4. Privacy and data minimization, 5. Duplicate detection, 6. Prioritization framework (for whoever triages, not automated), 7. Release notes and change communication (+2 more)
 
-### Community 153 - "TransmittalsController"
-Cohesion: 0.07
-Nodes (3): CreateTransmittalDto, UpdateTransmittalDto, TransmittalsController
-
 ### Community 154 - "QaInspectionsPage.tsx"
-Cohesion: 0.12
-Nodes (25): QaInspectionDetailModal(), QaInspectionFormModal(), handleClose(), reset(), ProjectMember, bulkDeleteInspections(), createInspection(), CreateInspectionPayload (+17 more)
+Cohesion: 0.13
+Nodes (24): QaInspectionDetailModal(), QaInspectionFormModal(), handleClose(), reset(), bulkDeleteInspections(), createInspection(), CreateInspectionPayload, deleteInspection() (+16 more)
 
 ### Community 155 - "EngineeringOS / RealityCapture — Production Readiness Report"
 Cohesion: 0.11
@@ -1007,24 +1004,24 @@ Cohesion: 0.20
 Nodes (18): ref, ref, ref, ref, ref, ref, ref, ref (+10 more)
 
 ### Community 159 - "workspace.controller.ts"
-Cohesion: 0.09
-Nodes (7): CommandCenterService, CalendarConnectionsController, CommandCenterController, PROVIDER_BY_SLUG, providerOf(), WorkspaceController, WorkspaceModule
+Cohesion: 0.17
+Nodes (4): CalendarConnectionsController, CommandCenterController, WorkspaceController, WorkspaceModule
 
-### Community 160 - "AiConnectionsController"
-Cohesion: 0.13
-Nodes (3): AiConnectionsController, AiConnectionsService, makeService()
+### Community 160 - "CredentialEncryptionService"
+Cohesion: 0.07
+Nodes (10): CredentialEncryptionService, makeService(), AiConnectionsController, AiConnectionsService, AiConnectionStatus, DecryptedConnection, makeService(), BYO_AI_PROVIDERS (+2 more)
 
 ### Community 161 - "doctor.mjs"
 Cohesion: 0.10
 Nodes (14): candidates, chrome, hardFails, HERE, keyWhere, major, rows, softFails (+6 more)
 
 ### Community 162 - "ScreenshotsController"
-Cohesion: 0.10
+Cohesion: 0.09
 Nodes (3): RecordScreenshotDto, ScreenshotQueryDto, ScreenshotsController
 
-### Community 163 - "RiskGraphService"
-Cohesion: 0.20
-Nodes (11): canonicalizeFreeTextDiscipline(), computeInferredRfiIssueConfidence(), jaccard(), RelationshipExtractionService, RFI_ISSUE_MAX_DAY_GAP, STOPWORDS, titleWords(), ISSUE_DISCIPLINE_TO_RISK_DISCIPLINE (+3 more)
+### Community 163 - "relationship-extraction.service.ts"
+Cohesion: 0.11
+Nodes (11): canonicalizeFreeTextDiscipline(), computeInferredRfiIssueConfidence(), jaccard(), RFI_ISSUE_MAX_DAY_GAP, makeSvc(), STOPWORDS, titleWords(), GraphEdgeRow (+3 more)
 
 ### Community 164 - "environment"
 Cohesion: 0.14
@@ -1035,20 +1032,20 @@ Cohesion: 0.12
 Nodes (17): spec, codelists_file, extracted_on, id, issuer, manifest_revision, manifest_schema, qc_manual (+9 more)
 
 ### Community 166 - "RiskHeatmap.tsx"
-Cohesion: 0.17
-Nodes (12): contrast(), IMPACT_LABELS, luminance(), MATRIX_LEVEL_LABELS, mix(), PROBABILITY_LABELS, readableOn(), RiskHeatmap() (+4 more)
+Cohesion: 0.16
+Nodes (13): contrast(), IMPACT_LABELS, luminance(), MATRIX_LEVEL_LABELS, mix(), PROBABILITY_LABELS, readableOn(), RiskHeatmap() (+5 more)
 
 ### Community 167 - "gmail-integration.service.ts"
-Cohesion: 0.20
-Nodes (14): @nestjs/axios@^3.0.2, DecryptedConnection, InitialProviderTokens, ProviderTokens, SendResult, IntegrationRow, GoogleTokenResponse, RFC-2822 (+6 more)
+Cohesion: 0.15
+Nodes (14): DecryptedConnection, InitialProviderTokens, OutgoingMessage, ProviderTokens, SendResult, IntegrationRow, GmailClient, GoogleTokenResponse (+6 more)
 
 ### Community 168 - "site-drawing.types.ts"
-Cohesion: 0.11
-Nodes (19): ImportBatchRow, SITE_DRAWING_DOCUMENT_CLASSIFICATIONS, SITE_DRAWING_EXTRACTION_STATUSES, SITE_DRAWING_IMPORT_BATCH_STATUSES, SITE_DRAWING_OFFLINE_PACKAGE_STATUSES, SITE_DRAWING_ORG_MAPPING_ROLES, SITE_DRAWING_SYNC_LOG_STATUSES, SITE_DRAWING_SYNC_STATUSES (+11 more)
+Cohesion: 0.09
+Nodes (22): DOC_SOURCES, Document, ExtractedDrawingFields, SITE_DRAWING_DOCUMENT_CLASSIFICATIONS, SITE_DRAWING_EXTRACTION_STATUSES, SITE_DRAWING_IMPORT_BATCH_STATUSES, SITE_DRAWING_ORG_MAPPING_ROLES, SITE_DRAWING_SYNC_LOG_STATUSES (+14 more)
 
 ### Community 169 - "notifications.service.ts"
-Cohesion: 0.05
-Nodes (31): EmailService, NOTIFICATION_EMAIL_JOB_NAME, NOTIFICATION_EMAIL_QUEUE, NotificationEmailJobData, buildNotificationEmail(), escapeHtml(), NotificationEmailContent, PRIORITY_COLOR (+23 more)
+Cohesion: 0.04
+Nodes (38): @nestjs/schedule@^4.1.2, EmailService, IssueScheduledRemindersService, NOTIFICATION_EMAIL_JOB_NAME, NOTIFICATION_EMAIL_QUEUE, NotificationEmailJobData, buildNotificationEmail(), escapeHtml() (+30 more)
 
 ### Community 170 - "parameters"
 Cohesion: 0.12
@@ -1059,24 +1056,24 @@ Cohesion: 0.12
 Nodes (16): file_token, label, layers, categories, building, block, color, constraint (+8 more)
 
 ### Community 172 - "RiskGraphView.tsx"
-Cohesion: 0.15
-Nodes (20): d3-selection@^3.0.0, d3-zoom@^3.0.0, GraphNodeDetailPanel(), makeNodeColor(), NODE_TYPE_COLORS, NODE_TYPE_LABELS, nodeRadius(), RiskGraphView() (+12 more)
+Cohesion: 0.20
+Nodes (16): GraphNodeDetailPanel(), makeNodeColor(), NODE_TYPE_COLORS, NODE_TYPE_LABELS, nodeRadius(), RiskGraphView(), riskLevelColors(), SimLink (+8 more)
 
 ### Community 173 - "GmailIntegrationService"
-Cohesion: 0.08
-Nodes (5): EmailOAuthCallbackQueryDto, GmailClient, GmailIntegrationController, GmailIntegrationService, makeService()
+Cohesion: 0.11
+Nodes (3): GmailIntegrationController, GmailIntegrationService, makeService()
 
-### Community 175 - "WorkspaceService"
-Cohesion: 0.24
-Nodes (3): isValidTimeZone(), toPriority(), WorkspaceService
+### Community 174 - "OutlookIntegrationController"
+Cohesion: 0.08
+Nodes (8): OutlookIntegrationController, OutlookIntegrationService, makeService(), 1. Automated baseline (full-suite results), 2. Authentication, authorization, multi-tenancy, 3. Core functional / UAT scenarios (per the brief's required A–K list), 4. Status classification summary (per the brief's required scheme), EngineeringOS acceptance test matrix
 
 ### Community 176 - "TenancyController"
 Cohesion: 0.10
 Nodes (6): argon2@^0.40.0, TenancyController, makeService(), TenancyService, 1. Onboarding: two real paths, with a gap between them, argon2
 
 ### Community 177 - "shoot.mjs"
-Cohesion: 0.09
-Nodes (19): argv, CHROME, consoleErrors, dead, failed, fails, FFMPEG, H (+11 more)
+Cohesion: 0.06
+Nodes (23): argv, CHROME, consoleErrors, dead, failed, fails, FFMPEG, H (+15 more)
 
 ### Community 178 - "EngineeringOS — REMAINING_WORK.md"
 Cohesion: 0.13
@@ -1086,33 +1083,29 @@ Nodes (9): 1. Issue Management integrated into the BIM viewer (NEXT OBJECTIVE), 
 Cohesion: 0.13
 Nodes (14): compilerOptions, declaration, declarationMap, lib, module, moduleResolution, noEmit, outDir (+6 more)
 
-### Community 180 - "HealthController"
-Cohesion: 0.19
-Nodes (3): describeError(), HealthController, makeController()
+### Community 180 - "@nestjs/bull"
+Cohesion: 0.05
+Nodes (22): bull@^4.12.6, exifr@^7.1.3, sharp@^0.33.4, describeError(), ImageProcessingJob, ImageProcessingProcessor, isSidewaysOrientation(), RenditionSpec (+14 more)
 
-### Community 181 - "useProjectBriefing.ts"
-Cohesion: 0.18
-Nodes (13): PROCESSING_STATUS_LABELS, RecentActivity, ProjectBriefing, ACTIVITY_RECORD, PROCESSING_STATUS_TONE, RecentActivityList(), timeAgo(), ACTION_VERB_LABELS (+5 more)
-
-### Community 182 - "Phase 3E: Reusable email composer: IMPLEMENTED BUT NOT VERIFIED (code-complete; no live backend/DB in this environment to exercise a real send against)"
-Cohesion: 0.26
-Nodes (3): EmailProviderClient, OutgoingMessage, Phase 3E: Reusable email composer: IMPLEMENTED BUT NOT VERIFIED (code-complete; no live backend/DB in this environment to exercise a real send against)
+### Community 182 - "Phase 3: Outlook & Gmail Integration"
+Cohesion: 0.15
+Nodes (8): EmailProviderClient, Open items requiring the account owner's action (running list), Phase 3: Outlook & Gmail Integration, Phase 3D: Gmail connection: IMPLEMENTED BUT NOT VERIFIED (code-complete, no real Google Cloud OAuth client exists to test against), Phase 3F: Project-workflow integration: IMPLEMENTED BUT NOT VERIFIED (same no-live-backend caveat as 3E), Phase 3H: Incoming replies / threading: NOT IMPLEMENTED (design reasoning only, by deliberate choice), Phase 3I: Security, permission, and regression tests, Regression pass
 
 ### Community 183 - "SharePointIntegrationController"
 Cohesion: 0.10
 Nodes (4): ConnectSharePointDto, MapSharePointProjectSiteDto, SharePointIntegrationController, SharePointIntegrationService
 
 ### Community 184 - "CalendarIntegrationService"
-Cohesion: 0.07
-Nodes (11): CalendarIntegrationController, CalendarIntegrationService, encryptedRow(), makeService(), OAuthCallbackQueryDto, OAuthReturnTo, OAuthStatePayload, signOAuthState() (+3 more)
+Cohesion: 0.10
+Nodes (4): CalendarIntegrationController, CalendarIntegrationService, OAuthReturnTo, H-4. Google Calendar integration stores OAuth tokens in plaintext: FIXED (2026-10-29)
 
 ### Community 186 - "CreateUserTaskDto"
-Cohesion: 0.15
-Nodes (8): CreateUserTaskDto, LINK_TYPES, PRIORITIES, SAVE_TYPES, SaveItemDto, STATUSES, UpdatePreferencesDto, UpdateUserTaskDto
+Cohesion: 0.23
+Nodes (9): CreateUserTaskDto, LINK_TYPES, PRIORITIES, SAVE_TYPES, SaveItemDto, STATUSES, UpdatePreferencesDto, UpdateUserTaskDto (+1 more)
 
 ### Community 187 - "CAD-to-GIS conversion (architectural floor plan → DRM BDMS 4.1 building-floor draft)"
-Cohesion: 0.13
-Nodes (11): 1. Gap analysis (why the first release only reported problems), 2. Pipeline stages, 3. Room detection algorithm, 4. Target schema (verified from the accepted drawings), 6. Coordinates, 7. Measured result on the real M19B first floor, 8. Limitations (also listed in every report), CAD-to-GIS conversion (architectural floor plan → DRM BDMS 4.1 building-floor draft) (+3 more)
+Cohesion: 0.12
+Nodes (12): 1. Gap analysis (why the first release only reported problems), 2. Pipeline stages, 3. Room detection algorithm, 4. Target schema (verified from the accepted drawings), 6. Coordinates, 7. Measured result on the real M19B first floor, 8. Limitations (also listed in every report), CAD-to-GIS conversion (architectural floor plan → DRM BDMS 4.1 building-floor draft) (+4 more)
 
 ### Community 188 - "BIM Viewer Gap Analysis — xeokit-sdk / engine_components / engine_fragment vs. our viewer"
 Cohesion: 0.13
@@ -1130,9 +1123,9 @@ Nodes (13): crs, name, plausibility_window_lonlat, target_epsg, max_lat, max_lon
 Cohesion: 0.33
 Nodes (6): scripts, android, ios, start, test, typecheck
 
-### Community 192 - "rfis.service.ts"
-Cohesion: 0.03
-Nodes (43): pdf-lib@^1.17.1, EXACT_ROLES_KEY, ExactRolesGuard, addAttachmentDividerPage(), appendAttachmentPages(), AttachmentDownloader, getFileExtension(), MERGEABLE_IMAGE_EXTENSIONS (+35 more)
+### Community 192 - "rfis.controller.ts"
+Cohesion: 0.06
+Nodes (13): CloseRfiDto, DecideReviewDto, ExternalCommentDto, GenerateExternalAccessDto, RespondToRfiDto, RfiExternalAccessController, RfiExternalAccessPublicController, RfiExternalAccessService (+5 more)
 
 ### Community 193 - "EngineeringOS™ Reality Capture"
 Cohesion: 0.33
@@ -1143,8 +1136,8 @@ Cohesion: 0.29
 Nodes (7): 1. Implemented modules, 3. Authentication error disclosure: reviewed, not changed, 5. Migration behavior: documented, 6. Workspace / tooling truth (what the root scripts actually cover), 7. Known operational risks (not fixed this pass), 8. Exact verification commands and results (this sprint), EngineeringOS Reality Capture: CURRENT_STATUS.md
 
 ### Community 196 - "lib/config.ts"
-Cohesion: 0.15
-Nodes (13): http, AppEnv, isPlaceholderOrLocalUrl(), PLACEHOLDER_OR_LOCAL_PATTERNS, resolveAppEnv(), validateApiBaseUrlForEnv(), API_BASE_URL, APP_ENV (+5 more)
+Cohesion: 0.22
+Nodes (11): AppEnv, isPlaceholderOrLocalUrl(), PLACEHOLDER_OR_LOCAL_PATTERNS, resolveAppEnv(), validateApiBaseUrlForEnv(), API_BASE_URL, APP_ENV, MAX_UPLOAD_RETRIES (+3 more)
 
 ### Community 197 - "api"
 Cohesion: 0.14
@@ -1162,29 +1155,29 @@ Nodes (13): aliases, block, color, constraint, detail, linetype, lineweight, nam
 Cohesion: 0.15
 Nodes (13): spec, extracted_on, id, issuer, manifest_revision, manifest_schema, plot_usage_domain_file, revision_date (+5 more)
 
-### Community 201 - "GoogleCalendarClient"
-Cohesion: 0.09
-Nodes (4): ProviderClient, GoogleCalendarClient, GoogleTokens, OutlookCalendarClient
+### Community 201 - "calendar-integration.service.ts"
+Cohesion: 0.06
+Nodes (23): @nestjs/axios@^3.0.2, rxjs@^7.8.1, EncryptedCredential, encryption(), make(), CALENDAR_PROVIDERS, IntegrationRow, ProviderClient (+15 more)
 
-### Community 202 - "ProjectsService"
-Cohesion: 0.05
-Nodes (14): RegisterBimModelDto, ProjectsService, makeOrgService(), makeService(), SiteDrawingImportService, makeService(), toImportBatch(), 1. How authorization actually works (ground truth) (+6 more)
+### Community 202 - "DocumentsService"
+Cohesion: 0.06
+Nodes (11): RegisterBimModelDto, DocumentsService, makeLinkService(), makeService(), RfiAttachmentUploadUrlDto, 8. File / media upload handling: VERIFIED (code-level review), 2. Partially implemented / notable gaps found in this pass, Executive verdict (+3 more)
 
 ### Community 203 - "scripts"
 Cohesion: 0.15
 Nodes (13): scripts, build, db:migrate, db:reset, db:seed, dev, lint, start (+5 more)
 
-### Community 205 - "workspace.api.ts"
-Cohesion: 0.14
-Nodes (23): useInvalidateWorkspace(), useToday(), blank(), TaskFormModal(), AgendaResponse, CalendarConnection, createMyTask(), deleteMyTask() (+15 more)
+### Community 205 - "lib/queue.ts"
+Cohesion: 0.21
+Nodes (12): insertQueuedCapture(), EMPTY_TAG, getCurrentGpsTag(), GpsTag, enqueueCapture(), ensureCapturesDir(), CameraScreen(), handleSave() (+4 more)
 
 ### Community 206 - "BuildingsController"
 Cohesion: 0.05
-Nodes (6): BuildingsController, CreateBuildingDto, CreateLevelDto, CreateLocationDto, UpdateBuildingDto, UpdateLocationDto
+Nodes (7): PROJECT_PERMISSION_KEY, BuildingsController, CreateBuildingDto, CreateLevelDto, CreateLocationDto, UpdateBuildingDto, UpdateLocationDto
 
 ### Community 207 - "ingestion.py"
-Cohesion: 0.18
-Nodes (6): delete_by_resource(), get_client(), init_collections(), health(), require_service_auth(), startup()
+Cohesion: 0.25
+Nodes (3): health(), require_service_auth(), startup()
 
 ### Community 208 - "design-rules.test.ts"
 Cohesion: 0.50
@@ -1194,13 +1187,9 @@ Nodes (3): files(), SRC, violations()
 Cohesion: 0.11
 Nodes (19): 2026-08-21: consolidation after the showcase trio (descent, airfield, maison), 2026-08-21, later the same day, 2026-08-21: triage of three parallel builds (nateherk, agency, saas), 2026-08-21: worldflight mode and the global smoothed playhead, 2026-08-22: bespoke fixed-stage verification state, 2026-08-22, portability pass (v0.2.0), 2026-08-22: the `orrery` build (travel, continuous world), 2026-08-23: iOS clip priming hardened; real-device diagnostic added (+11 more)
 
-### Community 210 - "DatabaseService"
-Cohesion: 0.15
-Nodes (3): DatabaseService, describeError(), HealthController
-
-### Community 211 - "Implementation report"
-Cohesion: 0.14
-Nodes (13): 1. What exists today (inspected), 2. Decisions, 3. Calculations, 4. Build phases, Built, Connect calendar (Google / Outlook), optional, Implementation report, Limitations (+5 more)
+### Community 211 - "workspace.service.ts"
+Cohesion: 0.19
+Nodes (12): CalendarProvider, Priority, RankedItem, WorkItem, zonedMidnightUtc(), addDay(), AgendaCategory, AgendaItem (+4 more)
 
 ### Community 212 - "Schema"
 Cohesion: 0.15
@@ -1230,13 +1219,17 @@ Nodes (12): addEntity(), closure, drain(), entityById, fs, lines, maxId, outLine
 Cohesion: 0.23
 Nodes (11): DOCUMENT_CLASSIFICATION_LABELS, documentClassificationLabel(), FALLBACK_STATUS_PATTERNS, fallbackMapSourceStatus(), isConfirmedCurrent(), isValidForSiteUse(), needsApprovalWarning(), WORKFLOW_STATUS_LABELS (+3 more)
 
-### Community 220 - "JobMetrics"
-Cohesion: 0.24
-Nodes (3): JobMetrics, StageTiming, IfcProcessingStage
+### Community 219 - "AiToolsService"
+Cohesion: 0.08
+Nodes (14): AskAssistantResult, buildContextBlock(), escapeForContext(), GenerateOutcome, Intent, KNOWN_TOOL_NAMES, TOOL_CATALOG, AI_SYSTEM_PROMPT (+6 more)
+
+### Community 220 - "mapping/__init__.py"
+Cohesion: 0.22
+Nodes (5): build_mapping(), LayerIndex, MappingResult, _norm(), MappingDecision
 
 ### Community 221 - "types/src/index.ts"
 Cohesion: 0.03
-Nodes (27): Public(), RequireFeature(), Roles(), AuditController, AddMemberDto, AddOrganizationMemberDto, CreatePermissionGrantDto, UpdateUserDto (+19 more)
+Nodes (33): Public(), FEATURE_KEY, RequireFeature(), Roles(), BulkDeleteDto, ForgotPasswordDto, GetModelUploadUrlDto, LinkCaptureToElementDto (+25 more)
 
 ### Community 222 - "manifest.json"
 Cohesion: 0.17
@@ -1252,7 +1245,7 @@ Nodes (11): AI layer, Correcting the premise, Data flow, Desktop Agent: designed
 
 ### Community 226 - "reports-pdf.template.ts"
 Cohesion: 0.09
-Nodes (36): @react-pdf/renderer@^4.1.6, BLUEPRINT, BORDER, CHART_PALETTE, DANGER, INK, INK_MUTED, OK (+28 more)
+Nodes (38): @react-pdf/renderer@^4.1.6, BLUEPRINT, BORDER, CHART_PALETTE, DANGER, INK, INK_MUTED, OK (+30 more)
 
 ### Community 227 - "EngineeringOS v0.1: Release Candidate Verification Report"
 Cohesion: 0.17
@@ -1283,20 +1276,20 @@ Cohesion: 0.18
 Nodes (11): output, create_empty_layers, layer_table_extra_allowed, max_version_code, min_autocad_release, min_version_code, one_file_per, produced_dxf_version (+3 more)
 
 ### Community 234 - "gmail-client.ts"
-Cohesion: 0.20
+Cohesion: 0.19
 Nodes (5): CryptoModule, EmailComposerModule, EmailIntegrationModule, GmailModule, OutlookModule
 
-### Community 236 - "GeminiProvider"
-Cohesion: 0.21
-Nodes (5): GeminiProvider, mockGenerateContent, mockGetGenerativeModel, mockSendMessage, mockStartChat
+### Community 236 - "attachment-pdf-merge.util.ts"
+Cohesion: 0.24
+Nodes (9): pdf-lib@^1.17.1, addAttachmentDividerPage(), appendAttachmentPages(), AttachmentDownloader, getFileExtension(), MERGEABLE_IMAGE_EXTENSIONS, MergeableAttachment, mergeAttachmentPdfs() (+1 more)
 
 ### Community 237 - "4. Confirmed gaps / concerns (ranked by severity)"
-Cohesion: 0.17
-Nodes (11): 2. Role × Action matrix, 3. RFI / Issue / Snag lifecycle: the real gating per transition, 4.0 HIGH (functionality, not security): Fine-grained permission grants are unreachable for every role except company_admin (LIVE-VERIFIED), 4.2 CRITICAL: `PATCH /projects/:id` has no authorization at all (LIVE-VERIFIED), 4.3 CRITICAL: Buildings/Levels/Locations module has zero authorization (CODE-VERIFIED), 4.4 CRITICAL: Risk module has zero project-scoped authorization (CODE-VERIFIED), 4.6 MEDIUM: Inconsistent creation gating across record types (CODE-VERIFIED), 4.7 LOW: Weight-based `@Roles()` resolution silently widens access (+3 more)
+Cohesion: 0.15
+Nodes (12): 1. How authorization actually works (ground truth), 2. Role × Action matrix, 3. RFI / Issue / Snag lifecycle: the real gating per transition, 4.0 HIGH (functionality, not security): Fine-grained permission grants are unreachable for every role except company_admin (LIVE-VERIFIED), 4.2 CRITICAL: `PATCH /projects/:id` has no authorization at all (LIVE-VERIFIED), 4.3 CRITICAL: Buildings/Levels/Locations module has zero authorization (CODE-VERIFIED), 4.4 CRITICAL: Risk module has zero project-scoped authorization (CODE-VERIFIED), 4.6 MEDIUM: Inconsistent creation gating across record types (CODE-VERIFIED) (+4 more)
 
-### Community 238 - "SnaggingService"
-Cohesion: 0.04
-Nodes (9): CompanyReportsController, makeService(), ReportsController, buildReportsBriefingContext(), parseStructuredBriefing(), ReportsService, UpdateSnagItemDto, SnaggingService (+1 more)
+### Community 238 - "ReportsService"
+Cohesion: 0.16
+Nodes (3): CompanyReportsController, makeService(), ReportsService
 
 ### Community 239 - "Raycast design system"
 Cohesion: 0.18
@@ -1327,8 +1320,8 @@ Cohesion: 0.12
 Nodes (16): 10. `drift`: the ground moves with you, 1. `scrub`: the wheel is a scrubber, 2. `pin`: the frame holds, the content advances, 3. `pan`: vertical scroll, lateral travel, 4. `reveal`: a wipe is a change of state, 5. `kinetic`: type that assembles, 6. `parallax`: layers at different rates, 7. `count`: numbers that land (+8 more)
 
 ### Community 247 - "EngineeringOS — Performance and Infrastructure Optimization"
-Cohesion: 0.09
-Nodes (18): SubscriptionGuard, WorkforceModule, 10. Priority ranking of the above (highest value first), 1. Background job queues (Bull/Redis), 2. Unbounded query: `drawings.service.ts findAll()`, 3. Misleading comment: `SubscriptionGuard`, 5. Dead dependencies in `apps/api/package.json`, 7. Database connection pool: unconfigured, using library defaults (+10 more)
+Cohesion: 0.14
+Nodes (11): SubscriptionGuard, 10. Priority ranking of the above (highest value first), 1. Background job queues (Bull/Redis), 2. Unbounded query: `drawings.service.ts findAll()`, 3. Misleading comment: `SubscriptionGuard`, 4. N+1-shaped sequential loop: `RiskService.recalculateProject()`, 5. Dead dependencies in `apps/api/package.json`, 7. Database connection pool: unconfigured, using library defaults (+3 more)
 
 ### Community 248 - "LiquidLogo.tsx"
 Cohesion: 0.22
@@ -1366,17 +1359,21 @@ Nodes (9): crs, allowed_epsg, name, plausibility_window_lonlat, target_epsg, max
 Cohesion: 0.22
 Nodes (8): collection, compilerOptions, builder, deleteOutDir, tsConfigPath, typeCheck, $schema, sourceRoot
 
-### Community 257 - "assistant.py"
+### Community 257 - "vector_store.py"
 Cohesion: 0.26
-Nodes (6): search_vectors(), ask(), AssistantRequest, _escape_for_context(), search(), SearchRequest
+Nodes (6): delete_by_resource(), get_client(), init_collections(), search_vectors(), search(), SearchRequest
 
 ### Community 258 - "jest"
 Cohesion: 0.22
 Nodes (9): jest, collectCoverageFrom, coverageDirectory, moduleFileExtensions, rootDir, testEnvironment, testRegex, transform (+1 more)
 
-### Community 259 - "title-block-extractor.ts"
-Cohesion: 0.06
-Nodes (36): yazl@^3.3.1, extractDrawingFields(), logger, extractEmbeddedText(), hasUsableEmbeddedText(), MIN_USABLE_TEXT_LENGTH, PdfTextResult, stripPdfParseBoilerplate() (+28 more)
+### Community 259 - "site-drawings.service.ts"
+Cohesion: 0.03
+Nodes (48): yauzl@^3.4.0, AiClientService, IngestCapturePayload, IngestIssuePayload, extractDrawingFields(), logger, extractEmbeddedText(), hasUsableEmbeddedText() (+40 more)
+
+### Community 260 - "InviteUserDto"
+Cohesion: 0.17
+Nodes (7): InviteUserDto, C-1. Privilege escalation via `POST /users/invite`: FIXED, C-2. `PATCH /projects/:id` had no authorization at all: FIXED, C-4. Risk module had zero project-scoped authorization: FIXED, C-5. `CREDENTIAL_ENCRYPTION_KEY` silently fell back to a hardcoded key: FIXED, CRITICAL, 4.1 CRITICAL: Privilege escalation via user invite (LIVE-VERIFIED)
 
 ### Community 261 - "2. Page grammars"
 Cohesion: 0.13
@@ -1390,9 +1387,9 @@ Nodes (8): collection, compilerOptions, builder, deleteOutDir, tsConfigPath, typ
 Cohesion: 0.22
 Nodes (8): compilerOptions, outDir, resolveJsonModule, skipLibCheck, exclude, extends, include, ../../tsconfig.base.json
 
-### Community 264 - "Workforce Intelligence™: API (MVP)"
-Cohesion: 0.17
-Nodes (8): PendingApprovalGuard, Activities: `apps/api/src/modules/workforce/activities`, Application registry: `apps/api/src/modules/workforce/applications`, Devices: `apps/api/src/modules/workforce/devices`, Privacy settings: `apps/api/src/modules/workforce/privacy`, Productivity: `apps/api/src/modules/workforce/productivity`, Validation, Workforce Intelligence™: API (MVP)
+### Community 264 - "scoring.service.ts"
+Cohesion: 0.20
+Nodes (9): ExposureResult, NODE_TYPE_EXPOSURE_WEIGHT, SignalRow, computeConfidenceLevel(), DEFAULT_RISK_LEVEL_THRESHOLDS, DEFAULT_RISK_SCORING_WEIGHTS, RiskConfidenceLevel, RiskLevelThresholds (+1 more)
 
 ### Community 265 - "compilerOptions"
 Cohesion: 0.22
@@ -1434,6 +1431,10 @@ Nodes (8): filename, building_id_regex, examples, extension, floor_id_regex, kin
 Cohesion: 0.18
 Nodes (11): _anthropic(), _custom_openai_compatible(), llm_complete(), _ollama(), _omniroute(), _openai(), progress_summary(), ProgressRequest (+3 more)
 
+### Community 275 - "RiskMovementSection.tsx"
+Cohesion: 0.24
+Nodes (10): disciplineLabel(), riskRef(), DAY_OPTIONS, MovementGroup(), MovementRow(), RiskMovementSection(), showAllLink(), toggle() (+2 more)
+
 ### Community 276 - "api/tsconfig.json"
 Cohesion: 0.25
 Nodes (7): compilerOptions, outDir, skipLibCheck, exclude, extends, include, ../../tsconfig.base.json
@@ -1449,10 +1450,6 @@ Nodes (7): compilerOptions, baseUrl, paths, strict, extends, include, expo/tscon
 ### Community 279 - "scripts"
 Cohesion: 0.25
 Nodes (8): scripts, build, dev, lint, preview, test, test:watch, typecheck
-
-### Community 280 - "AskAssistantDto"
-Cohesion: 0.20
-Nodes (3): AskAssistantDto, AssistantContextDto, ConversationMessageDto
 
 ### Community 281 - "EngineeringOS — Release Management and Regression Prevention"
 Cohesion: 0.25
@@ -1514,9 +1511,13 @@ Nodes (15): 1. Low-key cinematic: the default, 2. High-key editorial, 3. Natural
 Cohesion: 0.13
 Nodes (15): Approved collection standard, Bootstrap, Hard rules, Output, scroll-craft, Standing hero preference, Step 0: The brief and creative authority, Step 1: The brief, journey first (+7 more)
 
+### Community 296 - "sharepoint-adapter.ts"
+Cohesion: 0.29
+Nodes (8): DriveChildrenPage, DriveItem, DriveItemFields, DriveItemVersion, SharePointIntegrationConfig, SharePointProjectSiteConfig, DocIntegrationRow, SharePointIntegrationStatus
+
 ### Community 297 - "SendEmailDto"
-Cohesion: 0.10
-Nodes (9): EmailAttachmentUploadUrlDto, EmailComposerController, EmailComposerService, Open items requiring the account owner's action (running list), Phase 3: Outlook & Gmail Integration, Phase 3F: Project-workflow integration: IMPLEMENTED BUT NOT VERIFIED (same no-live-backend caveat as 3E), Phase 3G: Email history and audit logging: IMPLEMENTED BUT NOT VERIFIED (same no-live-backend caveat as 3E/3F), Phase 3H: Incoming replies / threading: NOT IMPLEMENTED (design reasoning only, by deliberate choice) (+1 more)
+Cohesion: 0.12
+Nodes (5): EmailAttachmentUploadUrlDto, EmailComposerController, EmailComposerService, Phase 3G: Email history and audit logging: IMPLEMENTED BUT NOT VERIFIED (same no-live-backend caveat as 3E/3F), Section 16: Final Report
 
 ### Community 298 - "Worldflight: the continuous-world page mode"
 Cohesion: 0.14
@@ -1556,11 +1557,11 @@ Nodes (6): output, max_autocad_release, max_version_code, produced_dxf_version, 
 
 ### Community 308 - "ifc-processing.processor.ts"
 Cohesion: 0.07
-Nodes (22): IfcFragmentsService, IfcProcessingModule, IfcProcessingProcessor, IfcReportService, ReportInputs, captureGenerationVersions(), digest(), FileDigest (+14 more)
+Nodes (19): IfcFragmentsService, IfcProcessingModule, IfcProcessingProcessor, IfcReportService, ReportInputs, captureGenerationVersions(), digest(), FileDigest (+11 more)
 
 ### Community 310 - "change_detection.py"
-Cohesion: 0.16
-Nodes (5): Settings, Config, ChangeRequest, detect_changes(), s3_client()
+Cohesion: 0.10
+Nodes (11): client(), _drawing(), test_package_command_writes_the_zip_and_rejects_bad_input(), test_prepare_refuses_server_side_template_paths(), test_prepare_rejects_bad_settings(), test_prepare_returns_the_job_package(), Settings, Config (+3 more)
 
 ### Community 311 - "chat-socket.ts"
 Cohesion: 0.14
@@ -1570,17 +1571,13 @@ Nodes (17): socket.io-client@^4.8.1, refreshAccessToken(), connectSocket(), getC
 Cohesion: 0.33
 Nodes (6): scripts, build, dev, start, test, typecheck
 
-### Community 313 - "OutlookIntegrationService"
-Cohesion: 0.11
-Nodes (9): MicrosoftGraphClient, OutlookIntegrationService, makeService(), 1. Automated baseline (full-suite results), 2. Authentication, authorization, multi-tenancy, 3. Core functional / UAT scenarios (per the brief's required A–K list), 4. Status classification summary (per the brief's required scheme), EngineeringOS acceptance test matrix (+1 more)
-
-### Community 314 - "ResolveReviewDto"
-Cohesion: 0.20
-Nodes (5): ResolveReviewDto, toReviewQueueItem(), toRevision(), SiteDrawingReviewQueueItem, SiteDrawingRevision
+### Community 314 - "BarChart.tsx"
+Cohesion: 0.29
+Nodes (8): BarChart(), BarDatum, FOCAL_CLASSES, foldTail(), niceScale(), rows, truncate(), useElementWidth()
 
 ### Community 315 - "ref_fs"
-Cohesion: 0.10
-Nodes (12): MIGRATIONS_DIR, config, { getDefaultConfig }, path, workspaceRoot, generateFragment(), sha256(), fs (+4 more)
+Cohesion: 0.09
+Nodes (15): @thatopen/fragments@3.4.6, @thatopen/fragments, generateFragment(), sha256(), fs, main(), path, crypto (+7 more)
 
 ### Community 316 - "IFC Processing Engine: COMPLETE"
 Cohesion: 0.33
@@ -1594,9 +1591,9 @@ Nodes (6): Deployment Guide, Environment variables (both `apps/api` and `apps/if
 Cohesion: 0.33
 Nodes (6): QDRANT__SERVICE__API_KEY, environment, image, restart, volumes, qdrant
 
-### Community 319 - "SubscriptionBanner.tsx"
-Cohesion: 0.18
-Nodes (9): TIER_LABELS, Bar(), UsageIndicator(), CompanySubscription, FeatureFlags, SubscriptionPlan, SubscriptionStatus, SubscriptionTier (+1 more)
+### Community 319 - "subscription.types.ts"
+Cohesion: 0.33
+Nodes (5): FeatureFlags, SubscriptionPlan, SubscriptionStatus, SubscriptionTier, UsageMetrics
 
 ### Community 320 - "bim-debug"
 Cohesion: 0.33
@@ -1606,10 +1603,6 @@ Nodes (5): bim-debug, Browser-side harness, Critical gotcha: `getItemsGeometry()
 Cohesion: 0.40
 Nodes (4): ADM QC trial 02: first floor converted with identifiers, Changes made, Main finding: the official QC reads block attributes by position, Rows, causes and status
 
-### Community 322 - "HierarchyTree.tsx"
-Cohesion: 0.27
-Nodes (7): BuildingIcon(), Chevron(), HierarchyTree(), LevelIcon(), PlusIcon(), EditIcon(), PhaseEditor()
-
 ### Community 323 - "agent/src/index.ts"
 Cohesion: 0.11
 Nodes (25): ActivityTracker, createApiClient(), CONFIG_DIR, CONFIG_PATH, DEFAULTS, isPrivateModeOn(), loadConfig(), PRIVATE_MODE_PATH (+17 more)
@@ -1618,25 +1611,29 @@ Nodes (25): ActivityTracker, createApiClient(), CONFIG_DIR, CONFIG_PATH, DEFAULT
 Cohesion: 0.40
 Nodes (3): desktop-idle, screenshot-desktop, ScreenshotOptions
 
-### Community 326 - "ConnectCalendar.tsx"
-Cohesion: 0.19
-Nodes (13): Menu(), MenuItem, MenuSection, setup(), ConnectCalendar(), ProviderIcon(), short(), api (+5 more)
+### Community 325 - "Workforce Intelligence™: Implementation Plan"
+Cohesion: 0.20
+Nodes (8): WorkforceModule, Challenging the product (brief §5), Competitive capability vs. EngineeringOS opportunity, Files/modules that must NOT change, Files/modules that will change, MVP / V1 / V2 / Future, Testing plan (MVP scope), Workforce Intelligence™: Implementation Plan
+
+### Community 326 - "Public Interfaces"
+Cohesion: 0.20
+Nodes (10): Packages, `packages/types` (`@engineeringos/types`), Configuration / environment variables (`apps/ifc-service`), Database interactions, Public Interfaces, Queue messages (Bull, queue name `ifc-processing`), REST endpoints (all under `apps/api`, prefix `/api/v1`), Storage interactions (+2 more)
 
 ### Community 327 - "Part 2: Real gaps, in priority order"
 Cohesion: 0.20
 Nodes (9): EngineeringOS: Construction Workflow Improvement Roadmap, Feature 1 (highest priority): RFI aging and automated response-delay alerts, Feature 2: Drawing submission and approval cycle analysis, Feature 3: Recurring coordination problems / repeated-defect detection, Feature 4: Project-level team workload view, Feature 5 (lower priority, longer-term): Document revision and approval bottleneck detection, Part 2: Real gaps, in priority order, Part 3: What was explicitly NOT recommended, and why (+1 more)
 
 ### Community 328 - "ocr.py"
-Cohesion: 0.36
-Nodes (3): extract_text(), OcrExtractRequest, OcrExtractResponse
+Cohesion: 0.22
+Nodes (4): _binarize_for_ocr(), extract_text(), OcrExtractRequest, OcrExtractResponse
 
 ### Community 329 - "ingestion.py"
 Cohesion: 0.36
 Nodes (8): embed(), embed_batch(), _get_model(), ingest_capture(), ingest_document_chunks(), ingest_issue(), _uid(), upsert_vectors()
 
-### Community 331 - "risk.service.ts"
+### Community 331 - "RiskService"
 Cohesion: 0.03
-Nodes (49): GenerateOutcome, Intent, KNOWN_TOOL_NAMES, TOOL_CATALOG, AI_SYSTEM_PROMPT, AssistantContext, ctx, ToolResult (+41 more)
+Nodes (49): AiRoleLimit, DEFAULT_LIMITS, AiUsageService, decrMock, expireMock, getMock, incrMock, makeService() (+41 more)
 
 ### Community 332 - "depends_on"
 Cohesion: 0.40
@@ -1662,17 +1659,9 @@ Nodes (5): _escape_for_context(), explain_risk(), generate_briefing(), RiskBrief
 Cohesion: 0.18
 Nodes (11): 1. The feeling curve, 2. The peak, 3. The tell-someone test, 4. Being in it, not watching it, 5. Pacing as emotion, 6. The feel check, The emotion axis, Worked curve: a canned drink brand (+3 more)
 
-### Community 356 - "EngineeringOS: Incident and Recovery Runbook"
-Cohesion: 0.25
-Nodes (7): 1. API is unresponsive / 5xx on everything, 2. Database unreachable or connection pool exhausted, 4. Suspected credential compromise (API keys, OAuth tokens, BYO AI keys), 5. Suspected unauthorized cross-company or cross-project data access, 6. AI Assistant failures, 7. Escalation, EngineeringOS: Incident and Recovery Runbook
-
 ### Community 357 - "Verify"
 Cohesion: 0.18
 Nodes (11): Ask what differs before asking what's broken, Failures worth knowing about, Known limitations of the contrast pass, Ship the diagnostic with the site, The harness will photograph the wrong site without telling you, The manual passes, The phone is a different machine, The scrim has to be a SIBLING of the copy, never a child (+3 more)
-
-### Community 361 - "worldflight-assert.mjs"
-Cohesion: 0.25
-Nodes (4): argv, CHROME, { chromium }, URL
 
 ### Community 362 - "Assets"
 Cohesion: 0.22
@@ -1682,9 +1671,13 @@ Nodes (9): Assets, Camera moves, Encoding, How many assets, Portrait, Real foota
 Cohesion: 0.22
 Nodes (9): Acceptance, Approved example: Sonder Studio, Art-direct mobile separately, Choreograph restrained motion, Further approved examples, Plan the depth before generating assets, Premium hero depth, Prepare real compositing assets (+1 more)
 
-### Community 365 - "DocumentsService"
-Cohesion: 0.08
-Nodes (5): DocumentsService, makeLinkService(), makeService(), GenerateDocumentShareDto, LinkDocumentDto
+### Community 364 - "EmailLink.tsx"
+Cohesion: 0.39
+Nodes (5): EmailLink(), buildMailtoHref(), isValidEmail(), RFC-5322, RFC-6068
+
+### Community 365 - "EngineeringOS: TECHNICAL_DECISIONS.md"
+Cohesion: 0.22
+Nodes (8): `apps/web` build config: explicit `commonjsOptions.include` for workspace packages, Architecture: standalone `apps/ifc-service`, not embedded in `apps/api`, `bim_element_relationships` stores GUIDs, not foreign keys, Database: single shared Postgres, row-level security by `company_id`, EngineeringOS: TECHNICAL_DECISIONS.md, Library choice: `web-ifc` + `@thatopen/fragments`, not IfcOpenShell or `ifc-lite-core`, Resumability design: stage-level, not element-level, Testing philosophy: empirical verification over assumption, applied consistently
 
 ### Community 367 - "The approved ten-site standard"
 Cohesion: 0.25
@@ -1694,77 +1687,77 @@ Nodes (8): 1. Establish the actual brand before art direction, 2. Design the fir
 Cohesion: 0.25
 Nodes (5): argv, LAN, PORT, ROOT, TYPES
 
-### Community 370 - "progress-reports.service.ts"
-Cohesion: 0.25
-Nodes (7): ProgressReportPdfData, ProgressReportPdfIssueRow, IssueSummaryRow, ProgressReportCapture, ProgressReportData, ProgressReportFilters, ProgressReportLevelSummary
+### Community 370 - "gis-prep.dto.ts"
+Cohesion: 0.43
+Nodes (4): CreateGisPrepJobDto, GetGisPrepUploadUrlDto, RerunGisPrepJobDto, GisPrepProfile
 
-### Community 371 - "captures.service.ts"
-Cohesion: 0.11
-Nodes (4): ALLOWED_MIME, SyncCapturesDto, UpdateCaptureDto, UploadUrlDto
+### Community 375 - "UpdateUserDto"
+Cohesion: 0.29
+Nodes (3): UpdateUserDto, Phase 4F: Interactive onboarding: VERIFIED COMPLETE, 4.8 Positive findings worth recording
 
 ### Community 376 - "DrawingsService"
-Cohesion: 0.09
-Nodes (5): DrawingsService, makeService(), makeSvc(), makeUploadService(), CreatePinDto
+Cohesion: 0.05
+Nodes (13): DrawingsController, DrawingsService, makeService(), makeSvc(), makeUploadService(), CreateDrawingDto, CreatePinDto, GetDrawingUploadUrlDto (+5 more)
 
-### Community 378 - "SubmittalsService"
-Cohesion: 0.06
-Nodes (5): CreateSubmittalDto, UpdateSubmittalDto, SubmittalsController, makeService(), SubmittalsService
+### Community 377 - "metro.config.js"
+Cohesion: 0.25
+Nodes (6): config, { getDefaultConfig }, path, workspaceRoot, expo@~51.0.28, expo
+
+### Community 379 - "CompleteOfflinePackageDto"
+Cohesion: 0.18
+Nodes (4): CompleteOfflinePackageDto, StartOfflinePackageDto, SITE_DRAWING_OFFLINE_PACKAGE_STATUSES, SiteDrawingOfflinePackageStatus
 
 ### Community 380 - "Fingerprints"
 Cohesion: 0.33
 Nodes (5): Appending a row, Fingerprints, The registry, What is taken, Worked example
 
-### Community 382 - "reserialize-full.cjs"
-Cohesion: 0.25
-Nodes (6): allIds, entityById, fs, lines, outLines, rawBuf
-
-### Community 385 - "Workforce Intelligence browser extension (MVP)"
+### Community 381 - ".computeAiMatrixScore"
 Cohesion: 0.29
-Nodes (6): How this reuses the existing backend unchanged, How this was tested, Known MVP limitations (deliberate, not oversights), Load it (development/testing only, no store listing), What this captures, precisely, Workforce Intelligence browser extension (MVP)
+Nodes (4): DEFAULT_RISK_MATRIX_THRESHOLDS, RiskMatrixLevel, RiskMatrixThresholds, scoreToMatrixLevel()
 
-### Community 387 - "DRM review: Yas Island-YS1-P10 (Nov 2026)"
-Cohesion: 0.33
-Nodes (5): Calibrating DRM-LOG-22 on real data, DRM review: Yas Island-YS1-P10 (Nov 2026), Inputs, Reading the DWG files, What changed between the old and the rectified files
+### Community 385 - "assistant.py"
+Cohesion: 0.47
+Nodes (3): ask(), AssistantRequest, _escape_for_context()
 
-### Community 388 - "Tabs.tsx"
+### Community 387 - "audit.interceptor.ts"
 Cohesion: 0.40
-Nodes (5): TabItem, TabPanel(), Tabs(), focusIndex(), onKeyDown()
+Nodes (4): AuditLogEntry, deriveAction(), MUTATING_METHODS, ROUTE_MAP
 
 ### Community 389 - "MyScheduling"
 Cohesion: 0.33
 Nodes (6): getMyAbsences(), getMyShiftPreferences(), getMyShifts(), requestAbsence(), setMyShiftPreference(), MyScheduling()
 
-### Community 408 - "CountBarChart"
-Cohesion: 0.60
-Nodes (5): CountBarChart(), EmptyChart(), seriesPalette(), StatusPieChart(), tooltipStyle()
+### Community 391 - "send-email.dto.ts"
+Cohesion: 0.11
+Nodes (7): SyncCaptureItemDto, NO_LINE_BREAKS, EMAIL_RELATED_RECORD_TYPES, EmailRelatedRecordType, RFC-2822, RFC-2822, class-transformer
 
-### Community 412 - "RevisionRow"
-Cohesion: 0.67
-Nodes (3): ReviewQueueRow, RevisionRow, ExtractedDrawingFields
+### Community 406 - "repro-main.ts"
+Cohesion: 0.50
+Nodes (4): log(), run(), @thatopen/components@3.4.7, @thatopen/components
 
-### Community 413 - "ShiftSchedulingAdmin"
+### Community 412 - "AbsenceRequestsAdmin"
 Cohesion: 0.67
-Nodes (3): assignShift(), getCompanyShifts(), ShiftSchedulingAdmin()
+Nodes (3): decideAbsence(), listCompanyAbsences(), AbsenceRequestsAdmin()
 
 ## Knowledge Gaps
-- **10 isolated node(s):** `RFC-2822`, `RFC-2822`, `../../tsconfig.base.json`, `RFC-2822`, `../../tsconfig.base.json` (+5 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 3813 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **99 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **10 isolated node(s):** `RFC-2822`, `../../tsconfig.base.json`, `RFC-2822`, `RFC-2822`, `../../tsconfig.base.json` (+5 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 3837 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **103 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Phase 4B/4C: Help Centre navigation/layout + article rendering/search: VERIFIED COMPLETE (framework; see 4D for content coverage)` connect `help/index.ts` to `test_adm_trial_01.py`, `ProjectDetail.tsx`, `findings`, `convert/__init__.py`?**
-  _High betweenness centrality (0.123) - this node is a cross-community bridge._
-- **What connects `RFC-2822`, `RFC-2822`, `../../tsconfig.base.json` to the rest of the system?**
+- **Why does `Phase 4B/4C: Help Centre navigation/layout + article rendering/search: VERIFIED COMPLETE (framework; see 4D for content coverage)` connect `help/index.ts` to `test_adm_trial_01.py`, `findings`, `ProjectDetail.tsx`, `convert/__init__.py`?**
+  _High betweenness centrality (0.142) - this node is a cross-community bridge._
+- **What connects `RFC-2822`, `../../tsconfig.base.json`, `RFC-2822` to the rest of the system?**
   _10 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `pipeline.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.04326710816777042 - nodes in this community are weakly interconnected._
-- **Why does `ProjectDetail()` connect `ProjectDetail.tsx` to `web/src/lib/api.ts`, `IssueDetail.tsx`, `web/src/lib/captures.api.ts`, `@tanstack/react-query`, `PageHeader`, `PageHeader`, `help/index.ts`, `SendEmailDto`, `CompanyExecutiveBriefing.tsx`, `useProjectBriefing.ts`, `Phase 3E: Reusable email composer: IMPLEMENTED BUT NOT VERIFIED (code-complete; no live backend/DB in this environment to exercise a real send against)`, `CAD-to-GIS conversion (architectural floor plan → DRM BDMS 4.1 building-floor draft)`, `HierarchyTree.tsx`, `ConnectCalendar.tsx`, `workspace.api.ts`, `apiGet`, `MyCalendarPage.tsx`, `EngineeringOS — ARCHITECTURE_STATE.md`, `EngineeringOS Reality Capture — Master Backlog`, `MyTasksPage.tsx`, `User guide for M4 engineers`?**
-  _High betweenness centrality (0.093) - this node is a cross-community bridge._
-- **Should `class-validator` be split into smaller, more focused modules?**
-  _Cohesion score 0.027233115468409588 - nodes in this community are weakly interconnected._
-- **Why does `CurrentUser` connect `AuthenticatedUser` to `UpdatePrivacySettingsDto`, `class-validator`, `SiteDrawingImportController`, `SchedulingController`, `GenerateExternalAccessDto`, `ApiKeysController`, `DatabaseService`, `api/src/app.module.ts`, `SnaggingController`, `.create`, `.revoke`, `.cancelScheduledReminder`, `SubscriptionController`, `EmailTokenStore`, `TransmittalsController`, `workspace.controller.ts`, `AiConnectionsController`, `BimController`, `QaqcController`, `ScreenshotsController`, `IssuesController`, `auth.controller.ts`, `AiController`, `SendEmailDto`, `CompanyRole`, `GmailIntegrationService`, `OutlookIntegrationController`, `TenancyController`, `RequireCategoryAction`, `SharePointIntegrationController`, `CalendarIntegrationService`, `.paginate`, `CreateUserTaskDto`, `rfis.service.ts`, `ApplicationsController`, `timeline.controller.ts`, `risk.service.ts`, `ActivitiesService`, `BuildingsController`, `CapturesController`, `RequireProjectPermission`, `ProgressReportsService`, `types/src/index.ts`, `WebhooksController`, `site-drawings.service.ts`, `CreateHotspotDto`, `MessagingController`, `site-drawings.controller.ts`, `SnaggingService`, `SubmittalsService`, `.reply`, `captures.service.ts`, `Public`, `messaging.service.ts`, `ChatService`, `gis-prep.processor.ts`, `DocumentsController`, `QaService`, `drawings.controller.ts`?**
-  _High betweenness centrality (0.075) - this node is a cross-community bridge._
+  _Cohesion score 0.03882986682627562 - nodes in this community are weakly interconnected._
+- **Why does `ProjectDetail()` connect `ProjectDetail.tsx` to `react`, `web/src/lib/api.ts`, `IssueDetail.tsx`, `SendEmailDto`, `web/src/lib/captures.api.ts`, `@tanstack/react-query`, `EngineeringOS — ARCHITECTURE_STATE.md`, `EngineeringOS Reality Capture — Master Backlog`, `CompanyExecutiveBriefing.tsx`, `ReportsPage.tsx`, `help/index.ts`, `AppShell.tsx`, `EmailProvider`, `CAD-to-GIS conversion (architectural floor plan → DRM BDMS 4.1 building-floor draft)`, `SubmittalsPage.tsx`, `User guide for M4 engineers`?**
+  _High betweenness centrality (0.097) - this node is a cross-community bridge._
+- **Should `risk.controller.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.05087881591119334 - nodes in this community are weakly interconnected._
+- **Why does `CurrentUser` connect `AuthenticatedUser` to `UpdatePrivacySettingsDto`, `risk.controller.ts`, `SiteDrawingImportService`, `SchedulingController`, `ApiKeysController`, `SnaggingService`, `modules/reports/reports.controller.ts`, `GisPrepService`, `SubscriptionController`, `.findAll`, `TransmittalsController`, `workspace.controller.ts`, `CredentialEncryptionService`, `BimController`, `QaqcController`, `ScreenshotsController`, `IssuesController`, `SendEmailDto`, `CompanyRole`, `GmailIntegrationService`, `OutlookIntegrationController`, `RfisService`, `TenancyController`, `CapturesController`, `.getScoreForUser`, `SharePointIntegrationController`, `CalendarIntegrationService`, `.paginate`, `CreateUserTaskDto`, `ActivitiesController`, `rfis.controller.ts`, `.getCompanySummary`, `ApplicationsController`, `timeline.controller.ts`, `.ask`, `BuildingsController`, `CapturesController`, `AuthenticatedUser`, `ProgressReportsService`, `types/src/index.ts`, `WebhooksController`, `CreateHotspotDto`, `UsersController`, `.authorizeUrl`, `MessagingController`, `SiteDrawingsService`, `UpdateCaptureDto`, `ReportsService`, `.reply`, `SubmittalsController`, `ReportingLinesController`, `Public`, `messaging.service.ts`, `ChatService`, `DrawingsService`, `DocumentsController`, `QaService`, `.updateTask`?**
+  _High betweenness centrality (0.082) - this node is a cross-community bridge._
 - **Should `SchedulingController` be split into smaller, more focused modules?**
   _Cohesion score 0.06110102843315184 - nodes in this community are weakly interconnected._

@@ -1,3 +1,4 @@
+import { Loading } from '../components/ui/AnimatedIcon';
 import { useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -92,7 +93,7 @@ export default function MyTasksPage() {
               <p className="px-6 py-4 text-xs text-ink-500 border-b border-ink-100/10">
                 Project records assigned to you or waiting on you. Open one to update it in its own module.
               </p>
-              {work.isLoading && <p className="px-6 py-6 text-sm text-ink-500">Loading…</p>}
+              {work.isLoading && <div className="px-6 py-6"><Loading /></div>}
               {work.isError && <p className="px-6 py-6 text-sm text-danger">Couldn't load your assigned work.</p>}
               {work.data && assigned.length === 0 && <p className="px-6 py-6 text-sm text-ink-500">Nothing is assigned to you right now.</p>}
               <ul>
@@ -119,7 +120,7 @@ export default function MyTasksPage() {
           {view !== 'assigned' && (
             <>
               <p className="px-6 py-4 text-xs text-ink-500 border-b border-ink-100/10">Private to you. Nobody else can see these.</p>
-              {tasks.isLoading && <p className="px-6 py-6 text-sm text-ink-500">Loading…</p>}
+              {tasks.isLoading && <div className="px-6 py-6"><Loading /></div>}
               {tasks.isError && <p className="px-6 py-6 text-sm text-danger">Couldn't load your tasks.</p>}
               <ul>
                 {(view === 'personal' ? personal : view === 'reminders' ? reminders : done).map((t) => (

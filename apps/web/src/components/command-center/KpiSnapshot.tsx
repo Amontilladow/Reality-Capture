@@ -44,7 +44,7 @@ function Kpi({ as, label, value, note, loading, danger, suffix }: {
     <>
       <span className="flex items-center justify-between gap-2 text-xs text-ink-300">
         <span className="truncate">{label}</span>
-        <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4 shrink-0 opacity-60" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4 shrink-0 opacity-60 transition-transform motion-reduce:transition-none group-hover:translate-x-1 group-hover:opacity-100" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </span>
       {loading ? (
         <span className="h-10 w-16 rounded bg-ink-100/10 animate-pulse" />
@@ -56,6 +56,6 @@ function Kpi({ as, label, value, note, loading, danger, suffix }: {
       {note && <span className="text-xs text-ink-500 line-clamp-2">{note}</span>}
     </>
   );
-  const cls = 'panel panel-interactive p-6 flex flex-col gap-2 min-w-0 text-left';
+  const cls = 'group panel panel-interactive p-6 flex flex-col gap-2 min-w-0 text-left';
   return 'to' in as ? <Link to={as.to} className={cls}>{body}</Link> : <button type="button" onClick={as.onClick} className={cls}>{body}</button>;
 }

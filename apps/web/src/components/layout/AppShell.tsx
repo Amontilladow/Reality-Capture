@@ -1,6 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { GlobalSearch } from '../workspace/GlobalSearch';
+import type { Animation, EventProps } from 'react-useanimations';
+import { WithAnimatedIcon } from '../ui/AnimatedIcon';
+import aGrid from 'react-useanimations/lib/grid';
+import aMessage from 'react-useanimations/lib/messageCircle';
+import aUsers from 'react-useanimations/lib/users';
+import aLayers from 'react-useanimations/lib/layers';
+import aTrending from 'react-useanimations/lib/trendingUp';
+import aAperture from 'react-useanimations/lib/aperture';
+import aTool from 'react-useanimations/lib/tool';
+import aZap from 'react-useanimations/lib/zap';
+import aList from 'react-useanimations/lib/list';
+import aSettings from 'react-useanimations/lib/settings';
+import aLogOut from 'react-useanimations/lib/logOut';
+import aBook from 'react-useanimations/lib/bookOpen';
 import { useQuery } from '@tanstack/react-query';
 import { create } from 'zustand';
 import { useAuthStore } from '../../store/auth.store';
@@ -20,6 +34,8 @@ import { ThemeToggle } from '../ui/ThemeToggle';
 import { clearAllOfflinePackages } from '../../lib/site-drawings-offline';
 
 interface NavItem {
+  /** Animated version of the icon, played when the row is hovered or focused. */
+  anim?: Animation;
   to: string;
   label: string;
   icon: (props: { className?: string }) => JSX.Element;
@@ -29,6 +45,7 @@ interface NavItem {
 // opens to show its pages on a tree line. A group without one lists its
 // items as top-level rows.
 interface NavGroup {
+  anim?: Animation;
   // Stable key for the section's remembered open/closed state.
   id: string;
   heading?: string;
@@ -43,6 +60,7 @@ const MY_WORKSPACE_GROUP: NavGroup = {
   id: 'my-workspace',
   heading: 'My workspace',
   icon: IconCheckList,
+  anim: aList,
   items: [
     { to: 'my-tasks', label: 'My tasks', icon: IconCheckList },
     { to: 'my-calendar', label: 'My calendar', icon: IconCheckList },
@@ -56,9 +74,9 @@ const NAV_GROUPS: NavGroup[] = [
   {
     id: 'workspace',
     items: [
-      { to: '', label: 'Projects', icon: IconGrid, end: true },
-      { to: 'messages', label: 'Messages', icon: IconMail },
-      { to: 'workforce', label: 'Workforce', icon: IconGauge },
+      { to: '', label: 'Projects', icon: IconGrid, end: true, anim: aGrid },
+      { to: 'messages', label: 'Messages', icon: IconMail, anim: aMessage },
+      { to: 'workforce', label: 'Workforce', icon: IconGauge, anim: aUsers },
     ],
   },
   MY_WORKSPACE_GROUP,
@@ -87,11 +105,12 @@ const ADMIN_SETTINGS_ITEMS: NavItem[] = [
 // per request, backend modules/routes untouched; still reachable by
 // direct URL, just not linked from the sidebar.
 const PROJECT_NAV_GROUPS: NavGroup[] = [
-  { id: 'overview', items: [{ to: '', label: 'Overview', icon: IconLayers, end: true }] },
+  { id: 'overview', items: [{ to: '', label: 'Overview', icon: IconLayers, end: true, anim: aLayers }] },
   {
     id: 'project',
     heading: 'Project',
     icon: IconGrid,
+    anim: aGrid,
     items: [
       { to: 'site-drawings', label: 'Site drawings', icon: IconDrawingStack },
       { to: 'drawings', label: 'Floor plans', icon: IconMap },
@@ -105,6 +124,7 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
     id: 'reporting',
     heading: 'Reporting & insights',
     icon: IconTrending,
+    anim: aTrending,
     items: [
       { to: 'progress-report', label: 'Progress report', icon: IconTrending },
       { to: 'reports', label: 'Reports', icon: IconReport },
@@ -124,6 +144,7 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
     id: 'reality-capture',
     heading: 'Reality capture',
     icon: IconCamera,
+    anim: aAperture,
     items: [
       { to: 'bim', label: 'BIM models', icon: IconBim },
       { to: 'captures', label: 'BuildLens captures', icon: IconCamera },
@@ -134,9 +155,10 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
     id: 'engineering-tools',
     heading: 'Engineering tools',
     icon: IconGlobe,
+    anim: aTool,
     items: [{ to: 'gis-prep', label: 'GIS preparation', icon: IconGlobe }],
   },
-  { id: 'intelligence', items: [{ to: 'assistant', label: 'AI assistant', icon: IconSpark }] },
+  { id: 'intelligence', items: [{ to: 'assistant', label: 'AI assistant', icon: IconSpark, anim: aZap }] },
   // Inside a project the calendar lives under Reporting & insights.
   { ...MY_WORKSPACE_GROUP, items: MY_WORKSPACE_GROUP.items.filter((i) => i.to !== 'my-calendar') },
 ];
@@ -149,7 +171,7 @@ const PROJECT_NAV_GROUPS: NavGroup[] = [
 // project's landing page for this role; see RootRoute-style redirect in
 // ProjectDetail.tsx for what happens if they land on /projects/:id anyway.
 const SUBCONTRACTOR_NAV_GROUPS: NavGroup[] = [
-  { id: 'subcontractor', items: [{ to: 'rfis', label: 'RFIs', icon: IconQuestion }] },
+  { id: 'subcontractor', items: [{ to: 'rfis', label: 'RFIs', icon: IconQuestion, anim: aMessage }] },
 ];
 
 // Glass-tile look for the header's bell and messages buttons.
@@ -190,6 +212,7 @@ export function AppShell() {
     id: 'settings',
     heading: 'Settings',
     icon: IconCog,
+    anim: aSettings,
     items: isCompanyAdmin ? [...SETTINGS_ITEMS, ...ADMIN_SETTINGS_ITEMS] : SETTINGS_ITEMS,
   };
 
@@ -286,10 +309,14 @@ export function AppShell() {
             <div className="pt-2">
               <NavTree groups={[settingsGroup]} basePath="/projects" />
               <div className="flex items-center gap-2">
-                <button type="button" onClick={handleLogout} className="nav-row flex-1">
-                  <span className="nav-tile"><IconLogout className="w-4 h-4" /></span>
-                  Log out
-                </button>
+                <WithAnimatedIcon animation={aLogOut} interaction="hover-replay">
+                  {(ev, icon) => (
+                    <button type="button" {...ev} onClick={handleLogout} className="nav-row flex-1">
+                      <span className="nav-tile">{icon}</span>
+                      Log out
+                    </button>
+                  )}
+                </WithAnimatedIcon>
                 <ThemeToggle />
               </div>
             </div>
@@ -376,23 +403,26 @@ function ProfileName({ name, role }: { name: string; role?: string }) {
 // plain Help row it duplicated.)
 function HelpCard() {
   return (
-    <NavLink
-      to="/projects/help"
-      className={({ isActive }) =>
-        `group flex items-center gap-4 shrink-0 mt-2 mb-2 p-2 pr-4 rounded-2xl border transition-colors ${
-          isActive ? 'border-signal/60 bg-signal/10' : 'border-ink-100/15 bg-ink-100/5 hover:bg-ink-100/10'
-        }`
-      }
-    >
-      <span className="w-10 h-10 shrink-0 rounded-xl grid place-items-center bg-signal text-on-signal">
-        <IconHelp className="w-5 h-5" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-ink-100 truncate">Help &amp; training</span>
-        <span className="block text-xs text-ink-500 truncate">Guides and videos</span>
-      </span>
-      <IconChevron className="w-4 h-4 -rotate-90 text-ink-500 group-hover:text-ink-100 transition-colors" />
-    </NavLink>
+    <WithAnimatedIcon animation={aBook} size={20} interaction="hover-replay">
+      {(ev, icon) => (
+        <NavLink
+          to="/projects/help"
+          {...ev}
+          className={({ isActive }) =>
+            `group flex items-center gap-4 shrink-0 mt-2 mb-2 p-2 pr-4 rounded-2xl border transition-colors ${
+              isActive ? 'border-signal/60 bg-signal/10' : 'border-ink-100/15 bg-ink-100/5 hover:bg-ink-100/10'
+            }`
+          }
+        >
+          <span className="w-10 h-10 shrink-0 rounded-xl grid place-items-center bg-signal text-on-signal">{icon}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-ink-100 truncate">Help &amp; training</span>
+            <span className="block text-xs text-ink-500 truncate">Guides and videos</span>
+          </span>
+          <IconChevron className="w-4 h-4 -rotate-90 text-ink-500 group-hover:text-ink-100 group-hover:translate-x-1 transition motion-reduce:transition-none" />
+        </NavLink>
+      )}
+    </WithAnimatedIcon>
   );
 }
 
@@ -493,17 +523,23 @@ function NavTree({ groups, basePath }: { groups: NavGroup[]; basePath: string })
     <div className="space-y-0">
       {groups.map((group) => {
         if (!group.heading) {
-          return group.items.map((item) => (
-            <NavLink
-              key={item.label}
-              to={href(item)}
-              end={item.end}
-              className={({ isActive }) => `nav-row ${isActive ? 'nav-pill-active' : ''}`}
-            >
-              <span className="nav-tile"><item.icon className="w-4 h-4" /></span>
-              <span className="truncate">{item.label}</span>
-            </NavLink>
-          ));
+          return group.items.map((item) => {
+            const row = (ev: Partial<EventProps>, icon: ReactNode) => (
+              <NavLink
+                key={item.label}
+                to={href(item)}
+                end={item.end}
+                {...ev}
+                className={({ isActive }) => `nav-row ${isActive ? 'nav-pill-active' : ''}`}
+              >
+                <span className="nav-tile">{icon}</span>
+                <span className="truncate">{item.label}</span>
+              </NavLink>
+            );
+            return item.anim
+              ? <WithAnimatedIcon key={item.label} animation={item.anim} interaction="hover-replay">{row}</WithAnimatedIcon>
+              : row({}, <item.icon className="w-4 h-4" />);
+          });
         }
         const Icon = group.icon ?? IconLayers;
         const isOpen = open.has(group.id);
@@ -511,17 +547,25 @@ function NavTree({ groups, basePath }: { groups: NavGroup[]; basePath: string })
         const listId = `nav-section-${group.id}`;
         return (
           <div key={group.id}>
-            <button
-              type="button"
-              onClick={() => setOpen(group.id, !isOpen)}
-              aria-expanded={isOpen}
-              aria-controls={listId}
-              className={`nav-row ${holdsCurrent ? 'nav-row-current' : ''}`}
-            >
-              <span className="nav-tile"><Icon className="w-4 h-4" /></span>
-              <span className="flex-1 truncate">{group.heading}</span>
-              <IconChevron className={`w-3.5 h-3.5 opacity-60 transition-transform duration-150 motion-reduce:transition-none ${isOpen ? '' : '-rotate-90'}`} />
-            </button>
+            {(() => {
+              const head = (ev: Partial<EventProps>, icon: ReactNode) => (
+                <button
+                  type="button"
+                  {...ev}
+                  onClick={() => setOpen(group.id, !isOpen)}
+                  aria-expanded={isOpen}
+                  aria-controls={listId}
+                  className={`nav-row ${holdsCurrent ? 'nav-row-current' : ''}`}
+                >
+                  <span className="nav-tile">{icon}</span>
+                  <span className="flex-1 truncate">{group.heading}</span>
+                  <IconChevron className={`w-3.5 h-3.5 opacity-60 transition-transform duration-150 motion-reduce:transition-none ${isOpen ? '' : '-rotate-90'}`} />
+                </button>
+              );
+              return group.anim
+                ? <WithAnimatedIcon animation={group.anim} interaction={group.anim === aSettings ? 'hover' : 'hover-replay'}>{head}</WithAnimatedIcon>
+                : head({}, <Icon className="w-4 h-4" />);
+            })()}
             {isOpen && (
               <div id={listId} className="nav-tree">
                 {group.items.map((item) => (
@@ -706,14 +750,6 @@ function IconTrending({ className }: { className?: string }) {
 }
 // Open book, not another question mark; IconQuestion (RFI) already owns
 // that shape; Help & Training needs its own silhouette in the same nav.
-function IconHelp({ className }: { className?: string }) {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M12 6c-1.5-1-4-1.5-6-1.2v12c2 -0.3 4.5 0.2 6 1.2 1.5-1 4-1.5 6-1.2V4.8c-2-0.3-4.5 0.2-6 1.2z" strokeLinejoin="round" />
-      <path d="M12 6v12" />
-    </svg>
-  );
-}
 function IconBim({ className }: { className?: string }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -742,14 +778,6 @@ function IconArrowLeft({ className }: { className?: string }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M19 12H5M11 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function IconLogout({ className }: { className?: string }) {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" strokeLinecap="round" />
-      <path d="M16 17l5-5-5-5M21 12H9" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

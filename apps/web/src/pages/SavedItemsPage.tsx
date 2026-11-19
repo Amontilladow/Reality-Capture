@@ -1,3 +1,4 @@
+import { Loading } from '../components/ui/AnimatedIcon';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -26,7 +27,7 @@ export default function SavedItemsPage() {
         subtitle="Drawings, records and tasks you saved to come back to. Only you can see this list."
       />
       <div className="p-4 sm:p-6 max-w-4xl space-y-6">
-        {saved.isLoading && <p className="text-sm text-ink-500">Loading…</p>}
+        {saved.isLoading && <Loading />}
         {saved.isError && <p className="text-sm text-danger">Couldn't load your saved items.</p>}
         {saved.data && items.length === 0 && (
           <div className="panel p-12 text-center text-sm text-ink-500">Nothing saved yet. Use the Save button on any issue, RFI or QA/QC record.</div>

@@ -1,3 +1,4 @@
+import { Loading } from '../ui/AnimatedIcon';
 import { forwardRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { AttentionClass, AttentionItem, CommandCenterSummary } from '../../lib/workspace.api';
@@ -58,7 +59,7 @@ export const AttentionCenter = forwardRef<HTMLElement, {
           })}
         </div>
       </div>
-      {isLoading && <p className="px-6 pb-6 text-sm text-ink-500">Loading…</p>}
+      {isLoading && <div className="px-6 pb-6"><Loading /></div>}
       {isError && <p className="px-6 pb-6 text-sm text-danger">Couldn't load what needs attention.</p>}
       {!isLoading && !isError && items.length === 0 && (
         <p className="px-6 pb-6 text-sm text-ink-500">{all.length === 0 ? 'Nothing on this project needs attention right now.' : 'Nothing matches this filter.'}</p>
