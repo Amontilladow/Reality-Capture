@@ -69,7 +69,18 @@ function sha256(buffer: Buffer): string {
 }
 
 describe('SiteDrawingImportProcessor', () => {
-  beforeEach(() => jest.clearAllMocks());
+  // restoreAllMocks (not just clearAllMocks): several tests
+  // jest.spyOn(extractDrawingFieldsModule, 'extractDrawingFields') with
+  // their own one-off mockResolvedValue/mockRejectedValue/
+  // mockImplementation. clearAllMocks only resets call history, not a
+  // spy's installed implementation -- without restoreAllMocks, a test
+  // whose mock LEFT the spy rejecting/returning a fixed value "bled" that
+  // behavior into every later test that never re-spies it itself (caught
+  // by hand: Test 8 of the Site Drawing Hub integrity hardening suite,
+  // which mockRejectedValue()s this exact spy, made the UNRELATED Test 10
+  // -- which relies on the real extractDrawingFields -- fail, but only
+  // when run after Test 8, never in isolation).
+  beforeEach(() => jest.restoreAllMocks());
 
   it('skips OCR entirely when the embedded text layer is already usable', async () => {
     (zipExtraction.extractPdfEntriesFromZip as jest.Mock).mockResolvedValue({ entries: [{ filename: 'A-101.pdf', buffer: Buffer.from('x') }] });
@@ -182,17 +193,31 @@ describe('SiteDrawingImportProcessor', () => {
     expect(db.withTenant).toHaveBeenCalledTimes(4); // no extra INSERT/UPDATE statements beyond the two SELECTs
   });
 
-  it('creates a new, superseding revision when content differs, even though extraction also found a genuinely different revision number', async () => {
+  it('creates a new, superseding revision when the title corroborates identity and the revision is confidently newer', async () => {
+    // Title-block text includes a TITLE line this time -- confirming
+    // identity against the existing drawing's own title -- and the
+    // incoming revision ('B') is a confidently-newer single-letter label
+    // than the current one ('A'); both gates (Phase 1/2) must pass for
+    // this to auto-promote at all.
     const buffer = Buffer.from('a real new revision of the drawing');
-    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: 'DRAWING NO: A-101\nREV: B', tableCells: [], pageCount: 1 });
+    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({
+      text: 'DRAWING NO: A-101\nREV: B\nTITLE: Ground Floor Plan', tableCells: [], pageCount: 1,
+    });
     (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
+
+    const insertCalls: unknown[][] = [];
+    const captureSql = (results: unknown[]) => (callback: WithTenantCallback) => {
+      let i = 0;
+      const sql = withJson((...args: unknown[]) => { insertCalls.push(args); return Promise.resolve(results[i++] ?? []); });
+      return callback(sql);
+    };
 
     const { processor, db, storage } = makeProcessor([
       single(undefined), // markStarted
       single([batchRow]), // getBatch
       // reconcile: SELECT existing, SELECT currentRevision (rev 'A', different hash), SELECT usedRevisionNumbers (just 'A', no collision with 'B'), INSERT newRevision, supersede UPDATE, UPDATE current_revision_id
-      multi([
-        [{ id: 'drawing-1', drawingTitle: 'A-101', currentRevisionId: 'revision-1' }],
+      captureSql([
+        [{ id: 'drawing-1', drawingTitle: 'Ground Floor Plan', currentRevisionId: 'revision-1' }],
         [{ id: 'revision-1', revisionNumber: 'A', contentHash: sha256(Buffer.from('the previous revision')) }],
         [{ revisionNumber: 'A' }],
         [{ id: 'revision-2' }],
@@ -206,6 +231,95 @@ describe('SiteDrawingImportProcessor', () => {
     await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
 
     expect(db.withTenant).toHaveBeenCalledTimes(4);
+    // The promotion steps (supersede the old current revision, repoint
+    // current_revision_id) must have actually run -- not just the INSERT --
+    // proving both the identity and chronology gates were satisfied.
+    expect(insertCalls.some((args) => (args[0] as string[]).join('?').includes('UPDATE site_drawing_revisions SET is_superseded'))).toBe(true);
+    expect(insertCalls.some((args) => (args[0] as string[]).join('?').includes('UPDATE site_drawings SET current_revision_id'))).toBe(true);
+  });
+
+  it('does NOT promote a new revision when its title is missing, even though the drawing number matched -- Phase 1 identity gate', async () => {
+    // The exact shape of the real production incident (import batch
+    // 05f82c73): a second file matches an existing drawing by number
+    // alone, but its own title could not be read at all. Previously this
+    // sailed through as a confirmed, auto-promoted revision; now it must
+    // be preserved as a pending CONFLICT, with the existing drawing's
+    // current revision left completely untouched.
+    const buffer = Buffer.from('a different physical drawing with no readable title');
+    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: 'DRAWING NO: A-101', tableCells: [], pageCount: 1 });
+    (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
+
+    const insertCalls: unknown[][] = [];
+    const captureSql = (results: unknown[]) => (callback: WithTenantCallback) => {
+      let i = 0;
+      const sql = withJson((...args: unknown[]) => { insertCalls.push(args); return Promise.resolve(results[i++] ?? []); });
+      return callback(sql);
+    };
+
+    const { processor, storage } = makeProcessor([
+      single(undefined), // markStarted
+      single([batchRow]), // getBatch
+      captureSql([
+        [{ id: 'drawing-1', drawingTitle: 'Ground Floor Plan', currentRevisionId: 'revision-1' }], // SELECT existing
+        [{ id: 'revision-1', revisionNumber: 'A', contentHash: sha256(Buffer.from('the current, unrelated revision')) }], // SELECT currentRevision
+        [{ revisionNumber: 'A' }], // SELECT usedRevisionNumbers
+        [{ id: 'revision-pending' }], // INSERT newRevision (pending, not promoted)
+      ]),
+      single(undefined), // finish
+    ]);
+    (storage.download as jest.Mock).mockResolvedValue(buffer);
+
+    await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
+
+    // No promotion statements at all -- the existing current revision is
+    // untouched.
+    expect(insertCalls.some((args) => (args[0] as string[]).join('?').includes('UPDATE site_drawing_revisions SET is_superseded'))).toBe(false);
+    expect(insertCalls.some((args) => (args[0] as string[]).join('?').includes('UPDATE site_drawings SET current_revision_id'))).toBe(false);
+
+    const revisionInsertCall = insertCalls.find((args) => (args[0] as string[]).join('?').includes('INSERT INTO site_drawing_revisions'));
+    expect(revisionInsertCall).toBeDefined();
+    // Column order: ..., content_hash, supersedes_revision_id, synchronization_status, extraction_status, ...
+    // args[9] = supersedes_revision_id (must be NULL: nothing was superseded), args[10] = extraction_status.
+    expect(revisionInsertCall![9]).toBeNull();
+    expect(revisionInsertCall![10]).toBe('CONFLICT');
+  });
+
+  it('does NOT promote when the revision label cannot be confirmed as newer than the current one -- Phase 2 chronology gate', async () => {
+    // Title corroborates identity (same drawing), but the incoming label
+    // ('A') sorts BEFORE the current one ('C') -- an older revision
+    // processed out of order (e.g. ZIP entry order, not real chronology)
+    // must never become current.
+    const buffer = Buffer.from('an older revision, uploaded/processed after the newer one');
+    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({
+      text: 'DRAWING NO: A-101\nREV: A\nTITLE: Ground Floor Plan', tableCells: [], pageCount: 1,
+    });
+    (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
+
+    const insertCalls: unknown[][] = [];
+    const captureSql = (results: unknown[]) => (callback: WithTenantCallback) => {
+      let i = 0;
+      const sql = withJson((...args: unknown[]) => { insertCalls.push(args); return Promise.resolve(results[i++] ?? []); });
+      return callback(sql);
+    };
+
+    const { processor, storage } = makeProcessor([
+      single(undefined), // markStarted
+      single([batchRow]), // getBatch
+      captureSql([
+        [{ id: 'drawing-1', drawingTitle: 'Ground Floor Plan', currentRevisionId: 'revision-current' }],
+        [{ id: 'revision-current', revisionNumber: 'C', contentHash: sha256(Buffer.from('the current, newer revision')) }],
+        [{ revisionNumber: 'C' }],
+        [{ id: 'revision-pending' }],
+      ]),
+      single(undefined), // finish
+    ]);
+    (storage.download as jest.Mock).mockResolvedValue(buffer);
+
+    await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
+
+    expect(insertCalls.some((args) => (args[0] as string[]).join('?').includes('UPDATE site_drawings SET current_revision_id'))).toBe(false);
+    const revisionInsertCall = insertCalls.find((args) => (args[0] as string[]).join('?').includes('INSERT INTO site_drawing_revisions'));
+    expect(revisionInsertCall![10]).toBe('CONFLICT');
   });
 
   it('disambiguates and flags CONFLICT when content differs but extraction lands on the same revision label as the current revision', async () => {
@@ -252,7 +366,8 @@ describe('SiteDrawingImportProcessor', () => {
     // the `issue_date` DATE column if it ever reached the INSERT.
     (zipExtraction.extractPdfEntriesFromZip as jest.Mock).mockResolvedValue({ entries: [{ filename: 'A-101.pdf', buffer: Buffer.from('x') }] });
     jest.spyOn(extractDrawingFieldsModule, 'extractDrawingFields').mockResolvedValue({
-      drawingNumber: 'A-101', confidence: 0.9, source: 'embedded_text', issueDate: 'not-a-real-calendar-date',
+      fields: { drawingNumber: 'A-101', confidence: 0.9, source: 'embedded_text', issueDate: 'not-a-real-calendar-date' },
+      pageCount: 1,
     });
 
     const insertCalls: unknown[][] = [];
@@ -328,5 +443,184 @@ describe('SiteDrawingImportProcessor', () => {
     // -- args[4] is revision_number. Disambiguated to '1-v2' (not the
     // colliding '1'), since '1' is taken but '1-v2' is free.
     expect(revisionInsertCall![4]).toBe('1-v2');
+  });
+
+  // Site Drawing Hub integrity hardening, Phase 8: the exact scenario
+  // reported broken -- "a ZIP of 4 drawings identifies only one" -- and
+  // the multi-file reliability behaviors the brief explicitly requires.
+  describe('multi-file batches', () => {
+    // These tests need the archive to actually be a ZIP (the shared
+    // `batchRow` above is a bare .pdf, which takes the single-file path
+    // and never consults extractPdfEntriesFromZip at all).
+    const zipBatchRow = { ...batchRow, originalFilename: 'package.zip' };
+
+    it('Test 1: a ZIP of four distinct drawings creates four independent drawing records, with no cross-contamination', async () => {
+      (zipExtraction.extractPdfEntriesFromZip as jest.Mock).mockResolvedValue({
+        entries: [
+          { filename: 'A-101.pdf', buffer: Buffer.from('sheet 1') },
+          { filename: 'A-102.pdf', buffer: Buffer.from('sheet 2') },
+          { filename: 'S-201.pdf', buffer: Buffer.from('sheet 3') },
+          { filename: 'M-301.pdf', buffer: Buffer.from('sheet 4') },
+        ],
+        skippedNonPdf: [], rejectedUnsafe: [],
+      });
+      jest.spyOn(extractDrawingFieldsModule, 'extractDrawingFields').mockImplementation(async (_s, _a, _c, _p, _k, _buf, label: string) => {
+        const byFile: Record<string, { drawingNumber: string; drawingTitle: string }> = {
+          'A-101.pdf': { drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan' },
+          'A-102.pdf': { drawingNumber: 'A-102', drawingTitle: 'First Floor Plan' },
+          'S-201.pdf': { drawingNumber: 'S-201', drawingTitle: 'Foundation Plan' },
+          'M-301.pdf': { drawingNumber: 'M-301', drawingTitle: 'Mechanical Schematic' },
+        };
+        return { fields: { ...byFile[label], revisionNumber: 'A', confidence: 0.9, source: 'embedded_text' }, pageCount: 1 };
+      });
+
+      const perFileCreate = () => (callback: WithTenantCallback) => {
+        let i = 0;
+        // Each file is a brand-new drawing: SELECT existing (none),
+        // resolveOrgMapping SELECT, INSERT drawing, INSERT revision,
+        // UPDATE current_revision_id.
+        const results = [[], [], [{ id: `drawing-${Math.random()}` }], [{ id: `revision-${Math.random()}` }], []];
+        const sql = withJson(() => Promise.resolve(results[i++] ?? []));
+        return callback(sql);
+      };
+
+      const { processor, db } = makeProcessor([
+        single(undefined), // markStarted
+        single([zipBatchRow]), // getBatch
+        perFileCreate(), perFileCreate(), perFileCreate(), perFileCreate(),
+        single(undefined), // finish
+      ]);
+
+      await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
+
+      // markStarted + getBatch + 4 files + finish = 7 outer withTenant calls.
+      expect(db.withTenant).toHaveBeenCalledTimes(7);
+      const extractCalls = (extractDrawingFieldsModule.extractDrawingFields as jest.Mock).mock.calls;
+      expect(extractCalls).toHaveLength(4);
+      // Every file was read with ITS OWN filename/label -- no file's
+      // extraction call could have been given another's content.
+      expect(extractCalls.map((c) => c[6])).toEqual(['A-101.pdf', 'A-102.pdf', 'S-201.pdf', 'M-301.pdf']);
+    });
+
+    it('Test 7: one unprocessable PDF among four does not block the other three, and the batch is accurately classified PARTIAL', async () => {
+      (zipExtraction.extractPdfEntriesFromZip as jest.Mock).mockResolvedValue({
+        entries: [
+          { filename: 'A-101.pdf', buffer: Buffer.from('sheet 1') },
+          { filename: 'corrupt.pdf', buffer: Buffer.from('not a real pdf') },
+          { filename: 'S-201.pdf', buffer: Buffer.from('sheet 3') },
+          { filename: 'M-301.pdf', buffer: Buffer.from('sheet 4') },
+        ],
+        skippedNonPdf: [], rejectedUnsafe: [],
+      });
+      jest.spyOn(extractDrawingFieldsModule, 'extractDrawingFields').mockImplementation(async (_s, _a, _c, _p, _k, _buf, label: string) => {
+        if (label === 'corrupt.pdf') throw new Error('Invalid PDF structure');
+        const byFile: Record<string, { drawingNumber: string; drawingTitle: string }> = {
+          'A-101.pdf': { drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan' },
+          'S-201.pdf': { drawingNumber: 'S-201', drawingTitle: 'Foundation Plan' },
+          'M-301.pdf': { drawingNumber: 'M-301', drawingTitle: 'Mechanical Schematic' },
+        };
+        return { fields: { ...byFile[label], revisionNumber: 'A', confidence: 0.9, source: 'embedded_text' }, pageCount: 1 };
+      });
+
+      const perFileCreate = () => (callback: WithTenantCallback) => {
+        let i = 0;
+        const results = [[], [], [{ id: `drawing-${Math.random()}` }], [{ id: `revision-${Math.random()}` }], []];
+        const sql = withJson(() => Promise.resolve(results[i++] ?? []));
+        return callback(sql);
+      };
+
+      let finishedCounts: Record<string, unknown> | null = null;
+      const captureFinish = (callback: WithTenantCallback) => {
+        const sql = withJson((...args: unknown[]) => { finishedCounts = args as unknown as Record<string, unknown>; return Promise.resolve([]); });
+        return callback(sql);
+      };
+
+      const { processor, storage } = makeProcessor([
+        single(undefined), // markStarted
+        single([zipBatchRow]), // getBatch
+        perFileCreate(), // A-101: created
+        // corrupt.pdf: processOneFile uploads, then extraction throws --
+        // no withTenant/reconcile call is ever reached for this file.
+        perFileCreate(), // S-201: created
+        perFileCreate(), // M-301: created
+        captureFinish, // finish
+      ]);
+
+      await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
+
+      // The corrupt file's own uploaded object is cleaned up (Phase 4) --
+      // never left stranded with nothing in the database pointing to it.
+      expect(storage.deleteIfExists).toHaveBeenCalled();
+      // finish()'s own UPDATE: args[1..]=status, file_count, created_count,
+      // revision_count, conflict_count, skipped_count, error_count,
+      // unsupported_count, error_message.
+      expect(finishedCounts![1]).toBe('PARTIAL');
+      expect(finishedCounts![2]).toBe(4); // fileCount: all 4 PDFs were attempted
+      expect(finishedCounts![3]).toBe(3); // createdCount: the 3 valid files, none lost
+      expect(finishedCounts![7]).toBe(1); // errorCount: exactly the one corrupt file
+    });
+
+    it('Test 8: a file that fails after its PDF is already uploaded has its orphaned storage object cleaned up', async () => {
+      (zipExtraction.extractPdfEntriesFromZip as jest.Mock).mockResolvedValue({
+        entries: [{ filename: 'corrupt.pdf', buffer: Buffer.from('not a real pdf') }],
+        skippedNonPdf: [], rejectedUnsafe: [],
+      });
+      jest.spyOn(extractDrawingFieldsModule, 'extractDrawingFields').mockRejectedValue(new Error('Invalid PDF structure'));
+
+      const { processor, storage } = makeProcessor([
+        single(undefined), // markStarted
+        single([batchRow]), // getBatch
+        // No withTenant/reconcile call at all for this file -- it never
+        // gets past extraction.
+        single(undefined), // finish
+      ]);
+      (storage.generateKey as jest.Mock).mockReturnValue('company-1/documents/project-1/corrupt.pdf');
+
+      await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
+
+      expect(storage.upload).toHaveBeenCalledWith('company-1/documents/project-1/corrupt.pdf', expect.anything(), 'application/pdf');
+      // The SAME key that was uploaded is the one cleaned up -- never a
+      // different file's object, and never left as a stray billable object
+      // with nothing in the database pointing to it.
+      expect(storage.deleteIfExists).toHaveBeenCalledWith('company-1/documents/project-1/corrupt.pdf');
+    });
+
+    it('Test 10: a multi-page PDF is never silently treated as a single confidently-read sheet', async () => {
+      (zipExtraction.extractPdfEntriesFromZip as jest.Mock).mockResolvedValue({
+        entries: [{ filename: 'multi-sheet.pdf', buffer: Buffer.from('x') }], skippedNonPdf: [], rejectedUnsafe: [],
+      });
+      // A confident, complete-looking extraction -- drawing number, title
+      // AND revision all present -- but the file has 3 pages; only page 1
+      // was actually read, so this must still degrade to NEEDS_REVIEW
+      // rather than being reported as a clean, fully-confirmed read.
+      (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({
+        text: 'DRAWING NO: A-101\nREV: B\nTITLE: Ground Floor Plan', tableCells: [], pageCount: 3,
+      });
+      (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
+
+      const insertCalls: unknown[][] = [];
+      const captureSql = (results: unknown[]) => (callback: WithTenantCallback) => {
+        let i = 0;
+        const sql = withJson((...args: unknown[]) => { insertCalls.push(args); return Promise.resolve(results[i++] ?? []); });
+        return callback(sql);
+      };
+
+      const { processor } = makeProcessor([
+        single(undefined), // markStarted
+        single([batchRow]), // getBatch
+        captureSql([[], [], [{ id: 'drawing-1' }], [{ id: 'revision-1' }], []]), // new drawing: created
+        single(undefined), // finish
+      ]);
+
+      await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
+
+      const revisionInsertCall = insertCalls.find((args) => (args[0] as string[]).join('?').includes('INSERT INTO site_drawing_revisions'));
+      expect(revisionInsertCall).toBeDefined();
+      // Column order (new-drawing INSERT): ..., content_hash, (literal),
+      // extraction_status is args[9]; review_notes (the multi-page note)
+      // is the trailing args[13].
+      expect(revisionInsertCall![9]).toBe('NEEDS_REVIEW');
+      expect(revisionInsertCall![13]).toMatch(/3 pages/);
+    });
   });
 });

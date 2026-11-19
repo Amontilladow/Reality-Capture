@@ -19,6 +19,27 @@ export {
 
 const base = (projectId: string) => `/projects/${projectId}/site-drawings`;
 
+// Site Drawing Hub integrity hardening, Phase 5: these PUTs had no timeout
+// at all before (axios's own default is 0 -- no limit), so a genuinely
+// stalled connection left the uploader stuck on "Uploading…" indefinitely
+// with no way to tell a hang apart from a slow-but-working large transfer.
+// 15 minutes is generous enough for a 500 MB archive (an import batch's own
+// upper limit) on a slow site connection; it is NOT meant to be tight
+// enough to ever cut off a legitimate upload still making progress --
+// a real stall, not a slow one, is what this guards against.
+const UPLOAD_TIMEOUT_MS = 15 * 60 * 1000;
+
+export type UploadProgressCallback = (fractionComplete: number) => void;
+
+function uploadProgressConfig(onProgress?: UploadProgressCallback) {
+  return {
+    timeout: UPLOAD_TIMEOUT_MS,
+    onUploadProgress: onProgress
+      ? (e: { loaded: number; total?: number }) => { if (e.total) onProgress(e.loaded / e.total); }
+      : undefined,
+  };
+}
+
 export interface SiteDrawingFilters {
   search?: string;
   discipline?: string;
@@ -54,9 +75,9 @@ export const registerSiteDrawing = (projectId: string, input: RegisterSiteDrawin
 // modal can upload a dropped file immediately, run extraction against the
 // result, and only call registerSiteDrawing() once the uploader has
 // reviewed/corrected the pre-filled fields.
-export async function uploadSiteDrawingFile(projectId: string, file: File): Promise<{ storageKey: string }> {
+export async function uploadSiteDrawingFile(projectId: string, file: File, onProgress?: UploadProgressCallback): Promise<{ storageKey: string }> {
   const { uploadUrl, storageKey } = await getSiteDrawingUploadUrl(projectId, file.name);
-  await axios.put(uploadUrl, file, { headers: { 'Content-Type': 'application/pdf' } });
+  await axios.put(uploadUrl, file, { headers: { 'Content-Type': 'application/pdf' }, ...uploadProgressConfig(onProgress) });
   return { storageKey };
 }
 
@@ -78,7 +99,7 @@ export async function uploadAndRegisterSiteDrawing(projectId: string, file: File
 
 export async function uploadAndAddSiteDrawingRevision(projectId: string, drawingId: string, file: File, meta: Omit<AddRevisionInput, 'storageKey'>): Promise<SiteDrawingWithCurrentRevision> {
   const { uploadUrl, storageKey } = await getSiteDrawingUploadUrl(projectId, file.name);
-  await axios.put(uploadUrl, file, { headers: { 'Content-Type': 'application/pdf' } });
+  await axios.put(uploadUrl, file, { headers: { 'Content-Type': 'application/pdf' }, timeout: UPLOAD_TIMEOUT_MS });
   return addSiteDrawingRevision(projectId, drawingId, { ...meta, storageKey });
 }
 
@@ -215,10 +236,10 @@ export const createImportBatch = (projectId: string, input: CreateImportBatchInp
 // type has to match exactly what getUploadUrl() signed server-side
 // (SiteDrawingImportService.getUploadUrl: .zip -> application/zip, else
 // application/pdf), or the presigned PUT's signature won't match.
-export async function uploadImportBatch(projectId: string, file: File, sourceSystem: DocSource): Promise<SiteDrawingImportBatch> {
+export async function uploadImportBatch(projectId: string, file: File, sourceSystem: DocSource, onProgress?: UploadProgressCallback): Promise<SiteDrawingImportBatch> {
   const { uploadUrl, storageKey } = await getImportBatchUploadUrl(projectId, file.name);
   const contentType = file.name.toLowerCase().endsWith('.zip') ? 'application/zip' : 'application/pdf';
-  await axios.put(uploadUrl, file, { headers: { 'Content-Type': contentType } });
+  await axios.put(uploadUrl, file, { headers: { 'Content-Type': contentType }, ...uploadProgressConfig(onProgress) });
   return createImportBatch(projectId, { storageKey, originalFilename: file.name, sourceSystem });
 }
 
@@ -244,3 +265,19 @@ export interface ResolveReviewInput {
 }
 export const resolveReview = (projectId: string, revisionId: string, input: ResolveReviewInput) =>
   apiPatch<SiteDrawingRevision>(`${importBase(projectId)}/review-queue/${revisionId}`, { ...input, extractionStatus: 'CONFIRMED' });
+
+// The two decisions on a PENDING review item (SiteDrawingReviewQueueItem.
+// isPendingPromotion) -- reconcile() left it un-promoted because identity
+// or revision chronology couldn't be confirmed automatically, and only a
+// human can settle which of these is true.
+export const confirmRevisionAsNew = (projectId: string, revisionId: string, reviewNotes: string) =>
+  apiPatch<SiteDrawingRevision>(`${importBase(projectId)}/review-queue/${revisionId}/confirm-as-revision`, { reviewNotes });
+
+export interface SplitAsNewDrawingInput {
+  drawingNumber: string;
+  drawingTitle: string;
+  revisionNumber?: string;
+  reviewNotes: string;
+}
+export const splitRevisionAsNewDrawing = (projectId: string, revisionId: string, input: SplitAsNewDrawingInput) =>
+  apiPatch<SiteDrawingRevision>(`${importBase(projectId)}/review-queue/${revisionId}/split-as-new-drawing`, input);

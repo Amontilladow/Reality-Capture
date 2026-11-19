@@ -7,6 +7,8 @@ import { RequireProjectPermission } from '../../common/decorators/require-projec
 import { SiteDrawingImportService } from './site-drawing-import.service';
 import { GetImportBatchUploadUrlDto, CreateImportBatchDto } from './dto/create-import-batch.dto';
 import { ResolveReviewDto } from './dto/resolve-review.dto';
+import { ConfirmAsRevisionDto } from './dto/confirm-as-revision.dto';
+import { SplitAsNewDrawingDto } from './dto/split-as-new-drawing.dto';
 
 // Bulk ZIP/PDF ingestion (brief Phase 2): same permission convention as
 // SiteDrawingsController: reads ungated, mutations gated by the existing
@@ -52,6 +54,31 @@ export class SiteDrawingImportController {
     @CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('revisionId') revisionId: string, @Body() dto: ResolveReviewDto,
   ) {
     return { data: await this.svc.resolveReview(u.companyId, pid, revisionId, dto), error: null };
+  }
+
+  // Site Drawing Hub integrity hardening (Phase 1/2): the Review Queue's
+  // two decisions on a revision reconcile() left un-promoted -- "yes,
+  // genuinely a new revision of this drawing" (this route) or "no,
+  // actually a different drawing" (split-as-new-drawing, below). Gated
+  // the same as resolveReview() just above: correcting/confirming an
+  // extraction is the 'edit' action on the 'drawings' category regardless
+  // of which of the three resolution routes does it.
+  @Patch('review-queue/:revisionId/confirm-as-revision')
+  @RequireCategoryAction('drawings', 'edit', 'manage_project_records')
+  @ApiOperation({ summary: 'Confirm a pending revision as a genuine new revision of its matched drawing, promoting it to current' })
+  async confirmAsRevision(
+    @CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('revisionId') revisionId: string, @Body() dto: ConfirmAsRevisionDto,
+  ) {
+    return { data: await this.svc.confirmRevisionAsNew(u.companyId, pid, revisionId, dto.reviewNotes), error: null };
+  }
+
+  @Patch('review-queue/:revisionId/split-as-new-drawing')
+  @RequireCategoryAction('drawings', 'edit', 'manage_project_records')
+  @ApiOperation({ summary: 'Detach a pending revision into its own new drawing, leaving the originally-matched drawing untouched' })
+  async splitAsNewDrawing(
+    @CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('revisionId') revisionId: string, @Body() dto: SplitAsNewDrawingDto,
+  ) {
+    return { data: await this.svc.splitRevisionAsNewDrawing(u.companyId, pid, revisionId, dto), error: null };
   }
 
   @Get(':batchId')

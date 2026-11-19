@@ -7,6 +7,19 @@ import { extractTitleBlockFields, extractTitleBlockFieldsFromCells } from './tit
 
 const logger = new Logger('extractDrawingFields');
 
+export interface DrawingFieldsExtractionResult {
+  fields: ExtractedDrawingFields | null;
+  // Null only when even getInfo() failed (embedded-text extraction threw
+  // before it could report a page count at all) -- effectively "unknown",
+  // never read as "single page" by a caller that cares about this (Site
+  // Drawing Hub integrity hardening, Phase 6): a PDF with more than one
+  // page may hold several independently-numbered sheets, which this
+  // pipeline only ever reads page 1 of (see extractEmbeddedText's own
+  // comment); callers that skip this field entirely and just read .fields
+  // get the exact same behavior as before this existed.
+  pageCount: number | null;
+}
+
 // Shared by SiteDrawingImportProcessor (a bulk ZIP/PDF import) and
 // SiteDrawingsService.extractFields() (a single manual upload via
 // "Register a drawing") -- same embedded-text-first, OCR-fallback pipeline
@@ -22,11 +35,13 @@ export async function extractDrawingFields(
   storageKey: string,
   buffer: Buffer,
   label: string,
-): Promise<ExtractedDrawingFields | null> {
+): Promise<DrawingFieldsExtractionResult> {
   let fields: ExtractedDrawingFields | null = null;
   let hasUsableText = false;
+  let pageCount: number | null = null;
   try {
-    const { text, tableCells } = await extractEmbeddedText(buffer);
+    const { text, tableCells, pageCount: pages } = await extractEmbeddedText(buffer);
+    pageCount = pages;
     hasUsableText = hasUsableEmbeddedText(text);
     if (hasUsableText) {
       // Table-cell-scoped extraction first, when the page has a detected
@@ -52,5 +67,5 @@ export async function extractDrawingFields(
     }
   }
 
-  return fields;
+  return { fields, pageCount };
 }

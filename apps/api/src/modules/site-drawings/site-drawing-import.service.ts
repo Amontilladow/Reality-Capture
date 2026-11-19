@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
@@ -7,6 +8,7 @@ import type {
 import { DatabaseService } from '../../database/database.service';
 import { StorageService } from '../storage/storage.service';
 import type { ResolveReviewDto } from './dto/resolve-review.dto';
+import type { SplitAsNewDrawingDto } from './dto/split-as-new-drawing.dto';
 
 const BATCH_MAX_SIZE_BYTES = 500 * 1024 * 1024; // 500 MB: "hundreds of PDF drawings" in one archive
 const BATCH_ALLOWED_EXTENSIONS = new Set(['zip', 'pdf']);
@@ -119,13 +121,88 @@ export class SiteDrawingImportService {
   // revision belongs to, which a bare site_drawing_revisions row can't
   // say on its own.
   async listReviewQueue(companyId: string, projectId: string): Promise<SiteDrawingReviewQueueItem[]> {
+    // d.current_revision_id is joined in (never previously selected here)
+    // so the frontend can tell apart a revision that's just flagged for a
+    // VALUE correction (it's already current -- e.g. NEEDS_REVIEW from an
+    // OCR read) from one reconcile() deliberately left un-promoted
+    // pending a human's identity/chronology decision (Site Drawing Hub
+    // integrity hardening, Phase 1/2). Those need different actions in
+    // the Review Queue, not just the same "Confirm" button.
     const rows = await this.db.withTenant(companyId, sql => sql<ReviewQueueRow[]>`
-      SELECT r.*, d.drawing_number, d.drawing_title FROM site_drawing_revisions r
+      SELECT r.*, d.drawing_number, d.drawing_title, d.current_revision_id AS drawing_current_revision_id FROM site_drawing_revisions r
       JOIN site_drawings d ON d.id = r.drawing_id
       WHERE r.project_id = ${projectId} AND r.extraction_status IN ('NEEDS_REVIEW', 'CONFLICT')
       ORDER BY r.created_at DESC
     `);
     return rows.map(toReviewQueueItem);
+  }
+
+  // Phase 1/2's "confirm" half: an authorized human has looked at a
+  // pending (not-yet-current) revision and decided it genuinely IS a new
+  // revision of the drawing it's already linked to. Performs exactly the
+  // promotion reconcile() itself used to do unconditionally -- mark the
+  // previous current revision superseded, repoint current_revision_id --
+  // now gated behind an explicit decision instead of an assumption.
+  async confirmRevisionAsNew(companyId: string, projectId: string, revisionId: string, reviewNotes: string): Promise<SiteDrawingRevision> {
+    return this.db.withTenant(companyId, async (sql) => {
+      const [revision] = await sql<RevisionRow[]>`SELECT * FROM site_drawing_revisions WHERE id = ${revisionId} AND project_id = ${projectId}`;
+      if (!revision) throw new NotFoundException(`Revision ${revisionId} not found.`);
+
+      const [drawing] = await sql<{ currentRevisionId: string | null }[]>`SELECT current_revision_id FROM site_drawings WHERE id = ${revision.drawingId}`;
+      if (drawing?.currentRevisionId && drawing.currentRevisionId !== revisionId) {
+        await sql`UPDATE site_drawing_revisions SET is_superseded = true WHERE id = ${drawing.currentRevisionId}`;
+      }
+      await sql`UPDATE site_drawings SET current_revision_id = ${revisionId}, current_is_superseded = false WHERE id = ${revision.drawingId}`;
+
+      const [updatedRevision] = await sql<RevisionRow[]>`
+        UPDATE site_drawing_revisions SET
+          extraction_status = 'CONFIRMED', is_superseded = false, supersedes_revision_id = ${drawing?.currentRevisionId ?? null},
+          review_notes = ${reviewNotes}, updated_at = now()
+        WHERE id = ${revisionId} RETURNING *
+      `;
+      return toRevision(updatedRevision);
+    });
+  }
+
+  // Phase 1's other half: the human decided this is really a DIFFERENT
+  // drawing that happened to extract the same number as an existing one.
+  // Detaches the revision into its own brand-new site_drawings row rather
+  // than leaving it mis-attached to the original drawing's history --
+  // the drawingNumber/drawingTitle a human now supplies are the real
+  // identity a machine couldn't confirm, never guessed here. The
+  // ORIGINAL drawing's own current revision is left completely untouched.
+  async splitRevisionAsNewDrawing(companyId: string, projectId: string, revisionId: string, dto: SplitAsNewDrawingDto): Promise<SiteDrawingRevision> {
+    return this.db.withTenant(companyId, async (sql) => {
+      const [revision] = await sql<RevisionRow[]>`SELECT * FROM site_drawing_revisions WHERE id = ${revisionId} AND project_id = ${projectId}`;
+      if (!revision) throw new NotFoundException(`Revision ${revisionId} not found.`);
+
+      const [originalDrawing] = await sql<{ sourceProvider: DocSource; discipline: string | null }[]>`
+        SELECT source_provider, discipline FROM site_drawings WHERE id = ${revision.drawingId}`;
+      if (!originalDrawing) throw new NotFoundException(`Drawing for revision ${revisionId} not found.`);
+
+      const [newDrawing] = await sql<{ id: string }[]>`
+        INSERT INTO site_drawings (
+          company_id, project_id, drawing_number, drawing_title, discipline, source_provider, source_file_id, current_workflow_status
+        ) VALUES (
+          ${companyId}, ${projectId}, ${dto.drawingNumber}, ${dto.drawingTitle}, ${originalDrawing.discipline},
+          ${originalDrawing.sourceProvider}, ${randomUUID()}, 'UNKNOWN'
+        ) RETURNING id
+      `;
+
+      // The new drawing has no other revisions yet, so there is nothing
+      // for this revision_number to collide with; kept as-is (or the
+      // reviewer's own correction) rather than re-run through the
+      // disambiguation suffix logic that only exists for a SHARED history.
+      const [movedRevision] = await sql<RevisionRow[]>`
+        UPDATE site_drawing_revisions SET
+          drawing_id = ${newDrawing.id}, revision_number = ${dto.revisionNumber ?? revision.revisionNumber},
+          extraction_status = 'CONFIRMED', is_superseded = false, supersedes_revision_id = NULL,
+          review_notes = ${dto.reviewNotes}, updated_at = now()
+        WHERE id = ${revisionId} RETURNING *
+      `;
+      await sql`UPDATE site_drawings SET current_revision_id = ${revisionId} WHERE id = ${newDrawing.id}`;
+      return toRevision(movedRevision);
+    });
   }
 
   // An authorized user's correction/confirmation (brief section 3: "allow
@@ -171,15 +248,16 @@ export class SiteDrawingImportService {
 
 interface ImportBatchRow {
   id: string; companyId: string; projectId: string; sourceSystem: DocSource; originalFilename: string; storageKey: string;
-  status: SiteDrawingImportBatchStatus; fileCount: number; createdCount: number; revisionCount: number; skippedCount: number;
-  errorCount: number; errorMessage: string | null; uploadedBy: string; startedAt: string | null; finishedAt: string | null; createdAt: string;
+  status: SiteDrawingImportBatchStatus; fileCount: number; createdCount: number; revisionCount: number; conflictCount: number; skippedCount: number;
+  errorCount: number; unsupportedCount: number; errorMessage: string | null; uploadedBy: string; startedAt: string | null; finishedAt: string | null; createdAt: string;
 }
 
 function toImportBatch(row: ImportBatchRow): SiteDrawingImportBatch {
   return {
     id: row.id, companyId: row.companyId, projectId: row.projectId, sourceSystem: row.sourceSystem,
     originalFilename: row.originalFilename, storageKey: row.storageKey, status: row.status, fileCount: row.fileCount,
-    createdCount: row.createdCount, revisionCount: row.revisionCount, skippedCount: row.skippedCount, errorCount: row.errorCount,
+    createdCount: row.createdCount, revisionCount: row.revisionCount, conflictCount: row.conflictCount ?? 0,
+    skippedCount: row.skippedCount, errorCount: row.errorCount, unsupportedCount: row.unsupportedCount ?? 0,
     errorMessage: row.errorMessage ?? undefined, uploadedBy: row.uploadedBy, startedAt: row.startedAt ?? undefined,
     finishedAt: row.finishedAt ?? undefined, createdAt: row.createdAt,
   };
@@ -214,8 +292,12 @@ function toRevision(r: RevisionRow): SiteDrawingRevision {
 interface ReviewQueueRow extends RevisionRow {
   drawingNumber: string;
   drawingTitle: string;
+  drawingCurrentRevisionId: string | null;
 }
 
 function toReviewQueueItem(r: ReviewQueueRow): SiteDrawingReviewQueueItem {
-  return { ...toRevision(r), drawingNumber: r.drawingNumber, drawingTitle: r.drawingTitle };
+  return {
+    ...toRevision(r), drawingNumber: r.drawingNumber, drawingTitle: r.drawingTitle,
+    isPendingPromotion: r.drawingCurrentRevisionId !== r.id,
+  };
 }

@@ -4,7 +4,7 @@ import { Modal } from '../ui/Modal';
 import { StatusBadge } from '../ui/Badge';
 import { apiErrorMessage } from '../../lib/api';
 import {
-  listImportBatches, listReviewQueue, resolveReview, deleteSiteDrawing, deleteImportBatch,
+  listImportBatches, listReviewQueue, resolveReview, confirmRevisionAsNew, splitRevisionAsNewDrawing, deleteSiteDrawing, deleteImportBatch,
   type SiteDrawingImportBatch, type SiteDrawingImportBatchStatus, type SiteDrawingReviewQueueItem,
 } from '../../lib/site-drawings.api';
 import {
@@ -166,8 +166,11 @@ function BatchRow({ projectId, batch: b }: { projectId: string; batch: SiteDrawi
       </div>
       {b.status !== 'PENDING' && (
         <div className="text-xs text-ink-500 mt-2">
-          {b.fileCount} file{b.fileCount === 1 ? '' : 's'} · {b.createdCount} new · {b.revisionCount} revision{b.revisionCount === 1 ? '' : 's'} ·
-          {' '}{b.skippedCount} skipped (duplicate){b.errorCount > 0 ? ` · ${b.errorCount} error${b.errorCount === 1 ? '' : 's'}` : ''}
+          {b.fileCount} PDF{b.fileCount === 1 ? '' : 's'}{b.unsupportedCount > 0 ? ` (+${b.unsupportedCount} unsupported skipped)` : ''}
+          {' '}· {b.createdCount} new · {b.revisionCount} revision{b.revisionCount === 1 ? '' : 's'} ·
+          {' '}{b.skippedCount} skipped (duplicate)
+          {b.conflictCount > 0 ? ` · ${b.conflictCount} need review` : ''}
+          {b.errorCount > 0 ? ` · ${b.errorCount} error${b.errorCount === 1 ? '' : 's'}` : ''}
         </div>
       )}
       {b.errorMessage && <div className="text-xs text-danger mt-2">{b.errorMessage}</div>}
@@ -193,7 +196,22 @@ function ReviewQueueRow({ projectId, item }: { projectId: string; item: SiteDraw
   const [drawingTitle, setDrawingTitle] = useState(item.drawingTitle);
   const [revisionNumber, setRevisionNumber] = useState(item.revisionNumber);
   const [reviewNotes, setReviewNotes] = useState('');
+  // Only meaningful when item.isPendingPromotion: the two outcomes Phase
+  // 1/2 require a human to actually choose between, rather than this row
+  // always meaning "confirm the values as extracted" the way it did when
+  // every revision was already auto-promoted on arrival.
+  const [decision, setDecision] = useState<'same_drawing' | 'different_drawing'>('same_drawing');
 
+  const invalidateAfterResolution = () => {
+    queryClient.invalidateQueries({ queryKey: ['site-drawing-review-queue', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['site-drawings', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['site-drawing-dashboard-stats', projectId] });
+  };
+
+  // Value-only correction: for an item that's already current (flagged
+  // only because ITS OWN fields were low-confidence, e.g. an OCR read --
+  // never for a pending, unpromoted one, which needs an identity decision
+  // instead; see confirmMutation/splitMutation below).
   const mutation = useMutation({
     mutationFn: () => resolveReview(projectId, item.id, {
       drawingNumber: drawingNumber !== item.drawingNumber ? drawingNumber : undefined,
@@ -201,11 +219,26 @@ function ReviewQueueRow({ projectId, item }: { projectId: string; item: SiteDraw
       revisionNumber: revisionNumber !== item.revisionNumber ? revisionNumber : undefined,
       reviewNotes: reviewNotes.trim(),
     }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['site-drawing-review-queue', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['site-drawings', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['site-drawing-dashboard-stats', projectId] });
-    },
+    onSuccess: invalidateAfterResolution,
+  });
+
+  // "Yes, this really is a new revision of the drawing it already matched
+  // by number" -- promotes it to current exactly the way reconcile()
+  // itself used to do automatically, now gated behind this explicit call.
+  const confirmMutation = useMutation({
+    mutationFn: () => confirmRevisionAsNew(projectId, item.id, reviewNotes.trim()),
+    onSuccess: invalidateAfterResolution,
+  });
+
+  // "No, this is actually a different drawing" -- detaches it into its
+  // own new drawing record using the corrected number/title a human just
+  // supplied; the ORIGINALLY-matched drawing's own current revision is
+  // left completely untouched by this.
+  const splitMutation = useMutation({
+    mutationFn: () => splitRevisionAsNewDrawing(projectId, item.id, {
+      drawingNumber, drawingTitle, revisionNumber, reviewNotes: reviewNotes.trim(),
+    }),
+    onSuccess: invalidateAfterResolution,
   });
 
   // A flagged revision isn't always worth correcting -- a bad test import,
@@ -223,11 +256,19 @@ function ReviewQueueRow({ projectId, item }: { projectId: string; item: SiteDraw
     },
   });
 
+  const activeMutation = !item.isPendingPromotion ? mutation : decision === 'same_drawing' ? confirmMutation : splitMutation;
+  const fieldsFilled = Boolean(reviewNotes.trim() && drawingNumber.trim() && drawingTitle.trim() && revisionNumber.trim());
+
   return (
     <div className="panel tick-frame p-4 space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="text-sm text-ink-100">
           {item.drawingNumber} <span className="text-ink-500">· {item.drawingTitle}</span>
+          {/* Phase 1: this file was never silently attached without a
+              trace -- isPendingPromotion means exactly that it's NOT yet
+              this drawing's current revision, still awaiting one of the
+              two decisions below. */}
+          {item.isPendingPromotion && <span className="ml-2 text-xs text-warn">· not yet applied to the register</span>}
         </div>
         <div className="flex items-center gap-2">
           <StatusBadge tone={EXTRACTION_STATUS_TONE[item.extractionStatus]} label={EXTRACTION_STATUS_LABELS[item.extractionStatus]} dot />
@@ -246,26 +287,57 @@ function ReviewQueueRow({ projectId, item }: { projectId: string; item: SiteDraw
         <p className="text-xs text-ink-300 bg-base-700/40 rounded px-4 py-2">{item.reviewNotes}</p>
       )}
 
-      {/* What the extraction pipeline actually read (brief section 3: "AI may
-          assist with extraction, but it must not invent missing values") --
-          shown alongside the correction fields so a reviewer can see exactly
-          what the system found before deciding whether to change it. */}
-      {item.extractedFieldsRaw && (
-        <p className="text-xs text-ink-500">
-          Extracted via {item.extractedFieldsRaw.source === 'ocr' ? 'OCR' : 'embedded text'}
-          {' '}(confidence {Math.round(item.extractedFieldsRaw.confidence * 100)}%):
-          {' '}drawing no. "{item.extractedFieldsRaw.drawingNumber ?? '—'}", title "{item.extractedFieldsRaw.drawingTitle ?? '—'}",
-          revision "{item.extractedFieldsRaw.revisionNumber ?? '—'}"
-        </p>
+      {/* Side by side (Phase 1: "display the existing drawing and incoming
+          document side by side for review"): the register's own current
+          identity for the matched drawing_number, next to what THIS file's
+          extraction actually read -- never invented, shown exactly as
+          found so a reviewer can judge the match themselves. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+        <div className="rounded border border-base-700/60 px-4 py-2">
+          <div className="text-ink-500 uppercase tracking-wide mb-2">Existing drawing in the register</div>
+          <div className="text-ink-100">{item.drawingNumber} · {item.drawingTitle}</div>
+        </div>
+        <div className="rounded border border-base-700/60 px-4 py-2">
+          <div className="text-ink-500 uppercase tracking-wide mb-2">This file's own extraction</div>
+          {item.extractedFieldsRaw ? (
+            <div className="text-ink-100">
+              {item.extractedFieldsRaw.drawingNumber ?? '—'} · {item.extractedFieldsRaw.drawingTitle ?? '— (no title read)'}
+              <span className="text-ink-500">
+                {' '}({item.extractedFieldsRaw.source === 'ocr' ? 'OCR' : 'embedded text'}, {Math.round(item.extractedFieldsRaw.confidence * 100)}% confidence)
+              </span>
+            </div>
+          ) : <div className="text-ink-500">Nothing could be extracted from this file.</div>}
+        </div>
+      </div>
+
+      {item.isPendingPromotion && (
+        <div role="radiogroup" aria-label="Is this a new revision or a different drawing?" className="grid grid-cols-2 gap-2">
+          <button
+            type="button" role="radio" aria-checked={decision === 'same_drawing'} onClick={() => setDecision('same_drawing')}
+            className={`h-9 rounded-lg border text-xs font-medium ${decision === 'same_drawing' ? 'bg-signal text-on-signal border-transparent' : 'border-ink-100/15 text-ink-300 hover:text-ink-100'}`}
+          >
+            Same drawing, new revision
+          </button>
+          <button
+            type="button" role="radio" aria-checked={decision === 'different_drawing'} onClick={() => setDecision('different_drawing')}
+            className={`h-9 rounded-lg border text-xs font-medium ${decision === 'different_drawing' ? 'bg-signal text-on-signal border-transparent' : 'border-ink-100/15 text-ink-300 hover:text-ink-100'}`}
+          >
+            A different drawing
+          </button>
+        </div>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <label className="field-label" htmlFor={`rq-number-${item.id}`}>Drawing number</label>
+          <label className="field-label" htmlFor={`rq-number-${item.id}`}>
+            {item.isPendingPromotion && decision === 'different_drawing' ? 'New drawing number' : 'Drawing number'}
+          </label>
           <input id={`rq-number-${item.id}`} className="field-input text-sm" value={drawingNumber} onChange={(e) => setDrawingNumber(e.target.value)} />
         </div>
         <div>
-          <label className="field-label" htmlFor={`rq-title-${item.id}`}>Title</label>
+          <label className="field-label" htmlFor={`rq-title-${item.id}`}>
+            {item.isPendingPromotion && decision === 'different_drawing' ? 'New drawing title' : 'Title'}
+          </label>
           <input id={`rq-title-${item.id}`} className="field-input text-sm" value={drawingTitle} onChange={(e) => setDrawingTitle(e.target.value)} />
         </div>
         <div>
@@ -282,15 +354,27 @@ function ReviewQueueRow({ projectId, item }: { projectId: string; item: SiteDraw
         />
       </div>
 
-      {mutation.isError && <p className="field-error">{apiErrorMessage(mutation.error)}</p>}
+      {activeMutation.isError && <p className="field-error">{apiErrorMessage(activeMutation.error)}</p>}
 
       <div className="flex justify-end">
         <button
-          onClick={() => mutation.mutate()}
-          disabled={!reviewNotes.trim() || !drawingNumber.trim() || !drawingTitle.trim() || !revisionNumber.trim() || mutation.isPending}
+          onClick={() => {
+            if (!item.isPendingPromotion) mutation.mutate();
+            else if (decision === 'same_drawing') confirmMutation.mutate();
+            else splitMutation.mutate();
+          }}
+          disabled={
+            item.isPendingPromotion
+              ? (decision === 'different_drawing' ? !fieldsFilled : !reviewNotes.trim()) || activeMutation.isPending
+              : !fieldsFilled || activeMutation.isPending
+          }
           className="btn-primary !px-4 !py-2 "
         >
-          {mutation.isPending ? 'Confirming…' : 'Confirm'}
+          {activeMutation.isPending
+            ? 'Saving…'
+            : item.isPendingPromotion
+              ? (decision === 'same_drawing' ? 'Confirm as new revision' : 'Split into a new drawing')
+              : 'Confirm'}
         </button>
       </div>
     </div>

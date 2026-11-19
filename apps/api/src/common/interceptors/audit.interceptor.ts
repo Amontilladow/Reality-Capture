@@ -103,6 +103,17 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   // queue corrections. Specific patterns before the general import-
   // batches collection route, same "specific before general" convention
   // this file already follows throughout.
+  // Site Drawing Hub integrity hardening (Phase 1/2): the two decisions a
+  // human makes on a pending, not-yet-promoted revision. Each needs its
+  // own explicit label (not deriveAction()'s generic last-segment
+  // fallback, which would give both the same unhelpful
+  // "confirm-as-revision.updated"/"split-as-new-drawing.updated" shape)
+  // since this IS the "record who confirmed a revision relationship and
+  // when" requirement -- occurred_at/user_id/user_email on this table
+  // already capture exactly that, with no new column needed. Both must
+  // stay above the general review-queue/:id route below them.
+  [/\/site-drawings\/import-batches\/review-queue\/[^/]+\/confirm-as-revision$/, 'site_drawing.revision_confirmed_as_new', 'site_drawing_revision'],
+  [/\/site-drawings\/import-batches\/review-queue\/[^/]+\/split-as-new-drawing$/, 'site_drawing.revision_split_to_new_drawing', 'site_drawing_revision'],
   [/\/site-drawings\/import-batches\/review-queue\/[^/]+$/,        'site_drawing.extraction_reviewed', 'site_drawing_revision'],
   [/\/site-drawings\/import-batches\/upload-url$/,                 'site_drawing_import_batch.upload_url_issued', 'site_drawing_import_batch'],
   [/\/site-drawings\/import-batches$/,                             'site_drawing_import_batch.created',       'site_drawing_import_batch'],
