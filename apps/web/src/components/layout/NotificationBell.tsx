@@ -1,3 +1,4 @@
+import aBell from 'react-useanimations/lib/notification4';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -130,6 +131,7 @@ export function NotificationBell({ buttonClassName = '' }: { buttonClassName?: s
         onClick={() => setOpen((v) => !v)}
         aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
         aria-expanded={open}
+        animation={aBell}
         icon={<BellIcon className="w-5 h-5" />}
         count={unreadCount}
       />

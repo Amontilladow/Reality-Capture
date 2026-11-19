@@ -280,6 +280,9 @@
     @apply bg-base-950 text-ink-100 font-sans antialiased;
     background-image: linear-gradient(120deg, rgb(var(--rc-dash-from)) 0%, rgb(var(--rc-dash-from)) 18%, rgb(var(--rc-dash-to)) 85%);
     background-attachment: fixed;
+    /* Animated icons (useAnimations) cut small gaps (a bell's badge ring,
+       a slash) in the page colour; match our canvas, not plain white/black. */
+    --ua-knockout: rgb(var(--rc-base-950));
   }
   /* Reading measure: running text never exceeds 75 characters a line.
      Outfit's "0" (what ch measures) is wider than its average glyph, so

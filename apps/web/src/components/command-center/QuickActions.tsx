@@ -1,6 +1,14 @@
 import { Link } from 'react-router-dom';
 import { categoryCan, getOrgCategory, SITE_RESTRICTED_COMPANY_ROLES, type CompanyRole } from '@engineeringos/types';
 import { useAuthStore } from '../../store/auth.store';
+import type { Animation } from 'react-useanimations';
+import { WithAnimatedIcon } from '../ui/AnimatedIcon';
+import aUpload from 'react-useanimations/lib/upload';
+import aFlag from 'react-useanimations/lib/flag';
+import aMessage from 'react-useanimations/lib/messageSquare';
+import aCheck from 'react-useanimations/lib/checkCircle';
+import aPlus from 'react-useanimations/lib/plusCircle';
+import aClock from 'react-useanimations/lib/clock';
 
 // Shortcuts into existing create flows. Each one shows only when the
 // user's role could actually do it: the same org-category rules the API
@@ -23,26 +31,24 @@ export function QuickActions({ projectId, projectRole, onNewTask, onNewReminder 
     (!siteAllowed || siteAllowed.includes(module)) && (superUser || categoryCan(cat, module, 'create'));
   const base = `/projects/${projectId}`;
   const links = [
-    can('drawings') && { to: `${base}/site-drawings?new=1`, label: 'Upload drawing', icon: 'M12 16V4m0 0l-4 4m4-4l4 4M4 20h16' },
-    can('issues_snags') && { to: `${base}/issues?new=1`, label: 'Create issue', icon: 'M5 3v18M5 4h13l-3 4 3 4H5' },
-    can('rfis') && { to: `${base}/rfis/main?new=1`, label: 'Create RFI', icon: 'M9 9a3 3 0 1 1 4 2.8c-.6.3-1 .9-1 1.6V14m0 4h.01' },
-    can('qaqc_checklists') && { to: `${base}/qaqc/wir?new=1`, label: 'New inspection', icon: 'M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9' },
-  ].filter(Boolean) as { to: string; label: string; icon: string }[];
+    can('drawings') && { to: `${base}/site-drawings?new=1`, label: 'Upload drawing', anim: aUpload },
+    can('issues_snags') && { to: `${base}/issues?new=1`, label: 'Create issue', anim: aFlag },
+    can('rfis') && { to: `${base}/rfis/main?new=1`, label: 'Create RFI', anim: aMessage },
+    can('qaqc_checklists') && { to: `${base}/qaqc/wir?new=1`, label: 'New inspection', anim: aCheck },
+  ].filter(Boolean) as { to: string; label: string; anim: Animation }[];
   return (
     <div className="flex flex-wrap gap-2" aria-label="Quick actions">
       {links.map((l) => (
-        <Link key={l.label} to={l.to} className="btn-secondary"><Glyph d={l.icon} />{l.label}</Link>
+        <WithAnimatedIcon key={l.label} animation={l.anim} interaction="hover-replay">
+          {(ev, icon) => <Link to={l.to} {...ev} className="btn-secondary">{icon}{l.label}</Link>}
+        </WithAnimatedIcon>
       ))}
-      <button type="button" onClick={onNewTask} className="btn-secondary"><Glyph d="M12 5v14M5 12h14" />Personal task</button>
-      <button type="button" onClick={onNewReminder} className="btn-secondary"><Glyph d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />Reminder</button>
+      <WithAnimatedIcon animation={aPlus} interaction="hover-replay">
+        {(ev, icon) => <button type="button" {...ev} onClick={onNewTask} className="btn-secondary">{icon}Personal task</button>}
+      </WithAnimatedIcon>
+      <WithAnimatedIcon animation={aClock} interaction="hover-replay">
+        {(ev, icon) => <button type="button" {...ev} onClick={onNewReminder} className="btn-secondary">{icon}Reminder</button>}
+      </WithAnimatedIcon>
     </div>
-  );
-}
-
-function Glyph({ d }: { d: string }) {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d={d} strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }

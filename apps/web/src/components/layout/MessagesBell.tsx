@@ -1,3 +1,4 @@
+import aChat from 'react-useanimations/lib/messageCircle';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -77,6 +78,7 @@ export function MessagesBell({ buttonClassName = '' }: { buttonClassName?: strin
         onClick={() => setOpen((v) => !v)}
         aria-label={unreadCount > 0 ? `Messages, ${unreadCount} unread` : 'Messages'}
         aria-expanded={open}
+        animation={aChat}
         icon={<ChatIcon className="w-5 h-5" />}
         count={unreadCount}
       />

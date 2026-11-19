@@ -1,3 +1,4 @@
+import { Loading } from '../ui/AnimatedIcon';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -44,7 +45,7 @@ export function MyWorkspacePanel({ projectId, hour12 }: { projectId?: string; ho
           );
         })}
       </div>
-      {query.isLoading && <p className="px-6 pb-6 text-sm text-ink-500">Loading…</p>}
+      {query.isLoading && <div className="px-6 pb-6"><Loading /></div>}
       {query.isError && <p className="px-6 pb-6 text-sm text-danger">Couldn't load your workspace.</p>}
       {data && rows.length === 0 && <p className="px-6 pb-6 text-sm text-ink-500">{TABS.find((t) => t.key === active)!.empty}</p>}
       <ul>
