@@ -4218,9 +4218,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/AppShell.tsx": {
-    "mtime": 1795055081.6326485,
-    "seen": 1795055427.720324,
-    "ast_hash": "3bde93d062852e708ddd0c6a200aa065",
+    "mtime": 1795060829.8235366,
+    "seen": 1795061022.2136154,
+    "ast_hash": "6c5f55a6931ca5f8327cd9bd659b4b95",
     "semantic_hash": ""
   },
   "apps/web/src/components/layout/MessagesBell.tsx": {
@@ -4368,9 +4368,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/ui/Field.tsx": {
-    "mtime": 1793934302.6911738,
-    "seen": 1795055427.7203784,
-    "ast_hash": "8246a3b2439cf4027e6b1fd9076c777b",
+    "mtime": 1795056558.4487305,
+    "seen": 1795061022.2146947,
+    "ast_hash": "0d17d5791453f45502d97725b26ef57c",
     "semantic_hash": ""
   },
   "apps/web/src/components/ui/Listbox.test.tsx": {
@@ -6780,9 +6780,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/command-center/QuickActions.tsx": {
-    "mtime": 1795055049.6084216,
-    "seen": 1795055427.7202966,
-    "ast_hash": "f5d972effd35bacd8770d0c44ca15354",
+    "mtime": 1795060829.8243709,
+    "seen": 1795061022.2130475,
+    "ast_hash": "82b7aa6c9370a7e0f409c55ed3a37f7c",
     "semantic_hash": ""
   },
   "apps/web/src/components/command-center/TodaysPriorities.tsx": {
@@ -6828,9 +6828,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/workspace/TaskFormModal.tsx": {
-    "mtime": 1794779422.377825,
-    "seen": 1795055427.7204168,
-    "ast_hash": "c94bbd8ff6099c7dbf81f794b3a26674",
+    "mtime": 1795056558.4487305,
+    "seen": 1795061022.2154756,
+    "ast_hash": "593a8344cce8cd299a0e6681463623ec",
     "semantic_hash": ""
   },
   "apps/web/src/lib/global-search.ts": {
@@ -6918,15 +6918,39 @@
     "semantic_hash": ""
   },
   "apps/web/src/components/ui/AnimatedIcon.tsx": {
-    "mtime": 1795055095.9818354,
-    "seen": 1795055427.720363,
-    "ast_hash": "e7e08e98e0f74f0a2fc6bb9a66b706fc",
+    "mtime": 1795060608.758968,
+    "seen": 1795061022.2144299,
+    "ast_hash": "d91ddecca34b0bcc16f65599a0062077",
     "semantic_hash": ""
   },
   "apps/web/src/lib/chain-handlers.ts": {
     "mtime": 1795055095.9819283,
     "seen": 1795055427.7204626,
     "ast_hash": "635412dd12b262a0cdcab61bad6a84a3",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/ui/AnimatedIcon.test.tsx": {
+    "mtime": 1795060911.3109612,
+    "seen": 1795061022.214426,
+    "ast_hash": "1d27a78aab8d0f1d878f89c8e27934a9",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/ui/TimeOfDayField.test.tsx": {
+    "mtime": 1795056558.4487305,
+    "seen": 1795061022.2152526,
+    "ast_hash": "a17cb5a8b9edfa53c81e09fa02585776",
+    "semantic_hash": ""
+  },
+  "apps/web/src/components/ui/TimeOfDayField.tsx": {
+    "mtime": 1795056558.4487305,
+    "seen": 1795061022.2152555,
+    "ast_hash": "2d92c40ee4a94c1e8da23b9e54e5a814",
+    "semantic_hash": ""
+  },
+  "apps/web/src/lib/use-can-hover.ts": {
+    "mtime": 1795060608.7440479,
+    "seen": 1795061022.2180412,
+    "ast_hash": "613901f6cdccd0751453c9895175fb7e",
     "semantic_hash": ""
   },
   "pnpm-lock.yaml": {
