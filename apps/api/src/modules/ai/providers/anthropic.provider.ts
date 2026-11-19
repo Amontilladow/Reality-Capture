@@ -3,8 +3,9 @@ import Anthropic from '@anthropic-ai/sdk';
 import type {
   AIProvider, GenerateResponseInput, GenerateResponseResult,
   ClassifyRequestResult, AIProviderModelInfo, ValidateConnectionResult,
-  ToolDefinition, SelectToolsResult,
+  ToolDefinition, SelectToolsResult, StreamChunk,
 } from './ai-provider.interface';
+import { AI_MAX_RETRIES, AI_REQUEST_TIMEOUT_MS } from './ai-provider.interface';
 
 @Injectable()
 export class AnthropicProvider implements AIProvider {
@@ -12,16 +13,16 @@ export class AnthropicProvider implements AIProvider {
   private readonly client: Anthropic;
 
   constructor(apiKey: string, private readonly model: string) {
-    this.client = new Anthropic({ apiKey });
+    this.client = new Anthropic({ apiKey, timeout: AI_REQUEST_TIMEOUT_MS, maxRetries: AI_MAX_RETRIES });
   }
 
-  async generateResponse({ systemPrompt, messages, maxTokens = 1024 }: GenerateResponseInput): Promise<GenerateResponseResult> {
+  async generateResponse({ systemPrompt, messages, maxTokens = 1024, signal }: GenerateResponseInput): Promise<GenerateResponseResult> {
     const response = await this.client.messages.create({
       model: this.model,
       max_tokens: maxTokens,
       system: systemPrompt,
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
-    });
+    }, { signal });
     const text = response.content
       .filter((block): block is Anthropic.TextBlock => block.type === 'text')
       .map((block) => block.text)
@@ -33,9 +34,20 @@ export class AnthropicProvider implements AIProvider {
     };
   }
 
-  async *streamResponse(input: GenerateResponseInput): AsyncIterable<string> {
-    const { text } = await this.generateResponse(input);
-    yield text;
+  async *streamResponse({ systemPrompt, messages, maxTokens = 1024, signal }: GenerateResponseInput): AsyncIterable<StreamChunk> {
+    const stream = this.client.messages.stream({
+      model: this.model,
+      max_tokens: maxTokens,
+      system: systemPrompt,
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    }, { signal });
+    for await (const event of stream) {
+      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+        yield { type: 'text', text: event.delta.text };
+      }
+    }
+    const final = await stream.finalMessage();
+    yield { type: 'usage', inputTokens: final.usage?.input_tokens, outputTokens: final.usage?.output_tokens };
   }
 
   async classifyRequest(question: string): Promise<ClassifyRequestResult> {

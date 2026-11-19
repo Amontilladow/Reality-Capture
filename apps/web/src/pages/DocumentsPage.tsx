@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
+import { Pagination } from '../components/ui/Pagination';
+import { usePage } from '../lib/usePage';
 import { DocumentUploadModal } from '../components/DocumentUploadModal';
 import { DocumentShareModal } from '../components/DocumentShareModal';
 import { listDocuments } from '../lib/documents.api';
@@ -21,9 +23,10 @@ export default function DocumentsPage() {
     enabled: Boolean(projectId),
   });
 
+  const [page, setPage] = usePage(['documents', projectId, docType]);
   const documentsQuery = useQuery({
-    queryKey: ['documents', projectId, docType],
-    queryFn: () => listDocuments(projectId!, { perPage: 100, docType: docType || undefined }),
+    queryKey: ['documents', projectId, docType, page],
+    queryFn: () => listDocuments(projectId!, { page, perPage: 100, docType: docType || undefined }),
     enabled: Boolean(projectId),
   });
 
@@ -111,6 +114,11 @@ export default function DocumentsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {documentsQuery.data?.meta && (
+          <div className="mt-4">
+            <Pagination page={page} pageSize={documentsQuery.data.meta.perPage} total={documentsQuery.data.meta.total} onPageChange={setPage} />
           </div>
         )}
       </div>

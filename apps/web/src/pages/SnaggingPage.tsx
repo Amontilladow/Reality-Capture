@@ -2,6 +2,8 @@ import { Fragment, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
+import { Pagination } from '../components/ui/Pagination';
+import { usePage } from '../lib/usePage';
 import { SnagItemFormModal } from '../components/SnagItemFormModal';
 import { SnagDetail } from '../components/SnagDetail';
 import { listSnagItems, getSnagSummary, bulkDeleteSnagItems, type SnagListItem } from '../lib/snagging.api';
@@ -57,9 +59,10 @@ export default function SnaggingPage() {
     enabled: Boolean(projectId),
   });
 
+  const [page, setPage] = usePage(['snag-items', projectId, status]);
   const snagItemsQuery = useQuery({
-    queryKey: ['snag-items', projectId, status],
-    queryFn: () => listSnagItems(projectId!, { perPage: 100, status: status || undefined }),
+    queryKey: ['snag-items', projectId, status, page],
+    queryFn: () => listSnagItems(projectId!, { page, perPage: 100, status: status || undefined }),
     enabled: Boolean(projectId),
   });
 
@@ -284,6 +287,11 @@ export default function SnaggingPage() {
             </details>
           )}
         </div>
+        {snagItemsQuery.data?.meta && (
+          <div className="mt-4">
+            <Pagination page={page} pageSize={snagItemsQuery.data.meta.perPage} total={snagItemsQuery.data.meta.total} onPageChange={setPage} />
+          </div>
+        )}
       </div>
 
       <SnagItemFormModal open={createOpen} onClose={() => setCreateOpen(false)} projectId={projectId} members={membersQuery.data ?? []} hierarchy={hierarchy} />

@@ -1,9 +1,13 @@
 const mockCreate = jest.fn();
 
 jest.mock('openai', () => {
-  return jest.fn().mockImplementation(() => ({
-    chat: { completions: { create: mockCreate } },
-  }));
+  class APIError extends Error {
+    constructor(public status: number, message: string) { super(message); }
+  }
+  return Object.assign(
+    jest.fn().mockImplementation(() => ({ chat: { completions: { create: mockCreate } } })),
+    { APIError },
+  );
 });
 
 import { OpenAICompatibleProvider } from './openai-compatible.provider';
@@ -81,5 +85,41 @@ describe('OpenAICompatibleProvider', () => {
       await expect(provider.selectTools('Summarize open RFIs.', [{ name: 'getOpenRfis', description: 'd' }]))
         .resolves.toEqual({ toolCalls: [], failed: true });
     });
+  });
+});
+
+describe('OpenAICompatibleProvider.streamResponse', () => {
+  beforeEach(() => mockCreate.mockReset());
+
+  async function* chunks(...items: unknown[]) { for (const i of items) yield i; }
+  async function collect(it: AsyncIterable<unknown>) { const out: unknown[] = []; for await (const c of it) out.push(c); return out; }
+  const input = { systemPrompt: 'sys', messages: [{ role: 'user' as const, content: 'hi' }] };
+
+  it('yields text deltas then the usage reported in the final chunk', async () => {
+    mockCreate.mockResolvedValue(chunks(
+      { choices: [{ delta: { content: 'Hel' } }] },
+      { choices: [{ delta: { content: 'lo' } }] },
+      { choices: [], usage: { prompt_tokens: 7, completion_tokens: 2 } },
+    ));
+    const provider = new OpenAICompatibleProvider('k', 'm', 'openai');
+    expect(await collect(provider.streamResponse(input))).toEqual([
+      { type: 'text', text: 'Hel' },
+      { type: 'text', text: 'lo' },
+      { type: 'usage', inputTokens: 7, outputTokens: 2 },
+    ]);
+    expect(mockCreate.mock.calls[0][0]).toMatchObject({ stream: true, stream_options: { include_usage: true } });
+  });
+
+  it('retries without stream_options when a gateway rejects them with a 400', async () => {
+    const { APIError } = jest.requireMock('openai') as { APIError: new (s: number, m: string) => Error };
+    mockCreate
+      .mockRejectedValueOnce(new APIError(400, 'unknown field stream_options'))
+      .mockResolvedValueOnce(chunks({ choices: [{ delta: { content: 'ok' } }] }));
+    const provider = new OpenAICompatibleProvider('k', 'm', 'custom_openai_compatible', 'https://gw.example/v1');
+    expect(await collect(provider.streamResponse(input))).toEqual([
+      { type: 'text', text: 'ok' },
+      { type: 'usage', inputTokens: undefined, outputTokens: undefined },
+    ]);
+    expect(mockCreate.mock.calls[1][0].stream_options).toBeUndefined();
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { Suspense, useEffect, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { GlobalSearch } from '../workspace/GlobalSearch';
 import type { Animation, EventProps } from 'react-useanimations';
@@ -327,7 +327,12 @@ export function AppShell() {
 
       {/* pb-16 keeps the last row of a page clear of the phone tab bar. */}
       <main className="flex-1 min-w-0 pb-16 md:pb-0">
-        <Outlet />
+        {/* Routes inside the shell are lazy-loaded (App.tsx); suspending here
+            keeps the sidebar and header on screen while a page's chunk loads,
+            instead of App's full-screen loader replacing the whole shell. */}
+        <Suspense fallback={<PageLoading />}>
+          <Outlet />
+        </Suspense>
       </main>
 
       <PhoneTabBar
@@ -794,5 +799,19 @@ function IconClose({ className }: { className?: string }) {
     <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
     </svg>
+  );
+}
+
+function PageLoading() {
+  return (
+    <div className="p-6 space-y-4" aria-busy="true" aria-label="Loading page">
+      <div className="h-7 w-48 rounded bg-base-700/40 motion-safe:animate-pulse" />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="panel h-[68px] bg-base-700/40 motion-safe:animate-pulse" />
+        ))}
+      </div>
+      <div className="panel h-64 bg-base-700/40 motion-safe:animate-pulse" />
+    </div>
   );
 }

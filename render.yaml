@@ -200,6 +200,16 @@ services:
         sync: false
       - key: WHATSAPP_TEMPLATE_LANGUAGE
         value: en_US
+      # OpenTelemetry tracing (apps/api/src/tracing.ts). Off while
+      # OTEL_EXPORTER_OTLP_ENDPOINT is unset; to turn it on, fill in any
+      # OTLP/HTTP backend's endpoint and auth header in the dashboard, e.g.
+      # OTEL_EXPORTER_OTLP_HEADERS = "authorization=Bearer <token>".
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        sync: false
+      - key: OTEL_EXPORTER_OTLP_HEADERS
+        sync: false
+      - key: OTEL_SERVICE_NAME
+        value: engineeringos-api
       - key: AI_SERVICE_URL
         value: http://engineeringos-ai-service:8001
       # GIS Preparation runs inside engineeringos-ai-service (routers/gis_prep.py),
@@ -376,3 +386,11 @@ services:
       - path: /*
         name: Permissions-Policy
         value: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+      # Vite writes every JS/CSS/asset bundle to /assets/ with a content hash
+      # in its filename, so a given URL's bytes never change: browsers can
+      # keep them for a year without revalidating. index.html (not under
+      # /assets/) keeps Render's default caching, so a new deploy's
+      # index.html still points browsers at the new hashed files.
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable

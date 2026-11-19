@@ -1,8 +1,9 @@
 const mockCreate = jest.fn();
+const mockStream = jest.fn();
 
 jest.mock('@anthropic-ai/sdk', () => {
   return jest.fn().mockImplementation(() => ({
-    messages: { create: mockCreate },
+    messages: { create: mockCreate, stream: mockStream },
   }));
 });
 
@@ -53,5 +54,28 @@ describe('AnthropicProvider.selectTools', () => {
     const provider = new AnthropicProvider('key', 'claude-sonnet-4-6');
     await expect(provider.selectTools('Summarize open RFIs.', [{ name: 'getOpenRfis', description: 'd' }]))
       .resolves.toEqual({ toolCalls: [], failed: true });
+  });
+});
+
+describe('AnthropicProvider.streamResponse', () => {
+  it('yields text deltas (ignoring other events) then the final message usage', async () => {
+    const events = [
+      { type: 'message_start' },
+      { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Hi ' } },
+      { type: 'content_block_delta', delta: { type: 'input_json_delta', partial_json: '{}' } },
+      { type: 'content_block_delta', delta: { type: 'text_delta', text: 'there' } },
+    ];
+    mockStream.mockReturnValue({
+      async *[Symbol.asyncIterator]() { for (const e of events) yield e; },
+      finalMessage: async () => ({ usage: { input_tokens: 9, output_tokens: 3 } }),
+    });
+    const provider = new AnthropicProvider('key', 'claude-sonnet-4-6');
+    const out: unknown[] = [];
+    for await (const c of provider.streamResponse({ systemPrompt: 's', messages: [{ role: 'user', content: 'q' }] })) out.push(c);
+    expect(out).toEqual([
+      { type: 'text', text: 'Hi ' },
+      { type: 'text', text: 'there' },
+      { type: 'usage', inputTokens: 9, outputTokens: 3 },
+    ]);
   });
 });

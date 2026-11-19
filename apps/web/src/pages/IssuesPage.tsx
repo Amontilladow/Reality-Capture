@@ -9,6 +9,8 @@ import aOpen from 'react-useanimations/lib/arrowUpRight';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
+import { Pagination } from '../components/ui/Pagination';
+import { usePage } from '../lib/usePage';
 import { IssueFormModal } from '../components/issues/IssueFormModal';
 import { IssueDetail } from '../components/issues/IssueDetail';
 import {
@@ -90,11 +92,12 @@ export default function IssuesPage() {
     enabled: Boolean(projectId),
   });
 
+  const [page, setPage] = usePage(['issues', projectId, status, priority, quickFilter, search, assignedTo, discipline, dateFrom, dateTo]);
   const issuesQuery = useQuery({
-    queryKey: ['issues', projectId, status, priority, quickFilter, search, assignedTo, discipline, dateFrom, dateTo],
+    queryKey: ['issues', projectId, status, priority, quickFilter, search, assignedTo, discipline, dateFrom, dateTo, page],
     queryFn: () =>
       listIssues(projectId!, {
-        perPage: 100,
+        page, perPage: 100,
         status: status || undefined,
         priority: priority || (quickFilter === 'critical' ? 'critical' : undefined),
         overdue: quickFilter === 'overdue' ? true : undefined,
@@ -613,6 +616,11 @@ export default function IssuesPage() {
               ))}
             </div>
           ))}
+          {issuesQuery.data?.meta && (
+            <div className="mt-4">
+              <Pagination page={page} pageSize={issuesQuery.data.meta.perPage} total={issuesQuery.data.meta.total} onPageChange={setPage} />
+            </div>
+          )}
         </div>
       )}
 

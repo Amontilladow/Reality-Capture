@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
+import { Pagination } from '../components/ui/Pagination';
+import { usePage } from '../lib/usePage';
 import { QaInspectionFormModal } from '../components/QaInspectionFormModal';
 import { QaInspectionDetailModal } from '../components/QaInspectionDetailModal';
 import { listInspections, getQaSummary, bulkDeleteInspections } from '../lib/qa.api';
@@ -40,9 +42,10 @@ export default function QaInspectionsPage() {
     enabled: Boolean(projectId),
   });
 
+  const [page, setPage] = usePage(['qa-inspections', projectId, status]);
   const inspectionsQuery = useQuery({
-    queryKey: ['qa-inspections', projectId, status],
-    queryFn: () => listInspections(projectId!, { perPage: 100, status: status || undefined }),
+    queryKey: ['qa-inspections', projectId, status, page],
+    queryFn: () => listInspections(projectId!, { page, perPage: 100, status: status || undefined }),
     enabled: Boolean(projectId),
   });
 
@@ -168,6 +171,11 @@ export default function QaInspectionsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {inspectionsQuery.data?.meta && (
+          <div className="mt-4">
+            <Pagination page={page} pageSize={inspectionsQuery.data.meta.perPage} total={inspectionsQuery.data.meta.total} onPageChange={setPage} />
           </div>
         )}
       </div>

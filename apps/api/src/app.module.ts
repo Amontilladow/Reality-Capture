@@ -42,6 +42,7 @@ import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { WorkforceModule } from './modules/workforce/workforce.module';
 import { RiskModule } from './modules/risk/risk.module';
 import { HealthModule } from './modules/health/health.module';
+import { TelemetryModule } from './modules/telemetry/telemetry.module';
 import { ApiKeysModule } from './modules/api-keys/api-keys.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { PublicApiModule } from './modules/public-api/public-api.module';
@@ -116,6 +117,7 @@ import gmailConfig from './config/google-gmail.config';
     AuditModule,
     WorkspaceModule,
     HealthModule,
+    TelemetryModule,
     TenancyModule,
     AuthModule,
     UsersModule,

@@ -3,6 +3,8 @@ import { useNavigate, useParams, Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RFI_DISCIPLINES, RFI_DISCIPLINE_LABELS } from '@engineeringos/types';
 import { PageHeader } from '../components/layout/PageHeader';
+import { Pagination } from '../components/ui/Pagination';
+import { usePage } from '../lib/usePage';
 import { QaqcFormModal } from '../components/QaqcFormModal';
 import { listQaqcRecords, bulkDeleteQaqcRecords, type QaqcRecordType } from '../lib/qaqc.api';
 import { getProject, getMembers } from '../lib/projects.api';
@@ -44,11 +46,12 @@ export default function QaqcListPage() {
     enabled: Boolean(projectId),
   });
 
+  const [page, setPage] = usePage(['qaqc-records', projectId, recordType, status, priority, discipline]);
   const recordsQuery = useQuery({
-    queryKey: ['qaqc-records', projectId, recordType, status, priority, discipline],
+    queryKey: ['qaqc-records', projectId, recordType, status, priority, discipline, page],
     queryFn: () => listQaqcRecords(projectId!, {
       recordType,
-      perPage: 100,
+      page, perPage: 100,
       status: status || undefined,
       priority: priority || undefined,
       discipline: discipline || undefined,
@@ -202,6 +205,11 @@ export default function QaqcListPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+        {recordsQuery.data?.meta && (
+          <div className="mt-4">
+            <Pagination page={page} pageSize={recordsQuery.data.meta.perPage} total={recordsQuery.data.meta.total} onPageChange={setPage} />
           </div>
         )}
       </div>

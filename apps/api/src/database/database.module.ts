@@ -42,6 +42,9 @@ import { DatabaseService } from './database.service';
           max: 20,              // connection pool size
           idle_timeout: 30,     // seconds before idle connection is closed
           connect_timeout: 10,
+          // Sent as a startup parameter, so it applies to every connection
+          // in the pool (see database.config.ts statementTimeoutMs).
+          connection: { statement_timeout: config.get<number>('database.statementTimeoutMs') ?? 60_000 },
           transform: postgres.camel, // snake_case DB columns → camelCase in JS
           onnotice: () => {},   // silence NOTICE messages in tests
         });

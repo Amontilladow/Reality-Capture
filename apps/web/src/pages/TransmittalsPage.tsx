@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
+import { Pagination } from '../components/ui/Pagination';
+import { usePage } from '../lib/usePage';
 import { TransmittalFormModal } from '../components/TransmittalFormModal';
 import { TransmittalDetailModal } from '../components/TransmittalDetailModal';
 import { listTransmittals, getTransmittalSummary, bulkDeleteTransmittals } from '../lib/transmittals.api';
@@ -33,9 +35,10 @@ export default function TransmittalsPage() {
     enabled: Boolean(projectId),
   });
 
+  const [page, setPage] = usePage(['transmittals', projectId, status]);
   const transmittalsQuery = useQuery({
-    queryKey: ['transmittals', projectId, status],
-    queryFn: () => listTransmittals(projectId!, { perPage: 100, status: status || undefined }),
+    queryKey: ['transmittals', projectId, status, page],
+    queryFn: () => listTransmittals(projectId!, { page, perPage: 100, status: status || undefined }),
     enabled: Boolean(projectId),
   });
 
@@ -159,6 +162,11 @@ export default function TransmittalsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {transmittalsQuery.data?.meta && (
+          <div className="mt-4">
+            <Pagination page={page} pageSize={transmittalsQuery.data.meta.perPage} total={transmittalsQuery.data.meta.total} onPageChange={setPage} />
           </div>
         )}
       </div>

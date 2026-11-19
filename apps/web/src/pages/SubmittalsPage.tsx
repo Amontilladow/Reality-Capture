@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
+import { Pagination } from '../components/ui/Pagination';
+import { usePage } from '../lib/usePage';
 import { SubmittalFormModal } from '../components/SubmittalFormModal';
 import { SubmittalDetailModal } from '../components/SubmittalDetailModal';
 import { listSubmittals, getSubmittalSummary, bulkDeleteSubmittals, type SubmittalListItem } from '../lib/submittals.api';
@@ -40,9 +42,10 @@ export default function SubmittalsPage() {
     enabled: Boolean(projectId),
   });
 
+  const [page, setPage] = usePage(['submittals', projectId, status]);
   const submittalsQuery = useQuery({
-    queryKey: ['submittals', projectId, status],
-    queryFn: () => listSubmittals(projectId!, { perPage: 100, status: status || undefined }),
+    queryKey: ['submittals', projectId, status, page],
+    queryFn: () => listSubmittals(projectId!, { page, perPage: 100, status: status || undefined }),
     enabled: Boolean(projectId),
   });
 
@@ -165,6 +168,11 @@ export default function SubmittalsPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+        {submittalsQuery.data?.meta && (
+          <div className="mt-4">
+            <Pagination page={page} pageSize={submittalsQuery.data.meta.perPage} total={submittalsQuery.data.meta.total} onPageChange={setPage} />
           </div>
         )}
       </div>
