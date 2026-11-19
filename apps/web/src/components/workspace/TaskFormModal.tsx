@@ -3,6 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Modal } from '../ui/Modal';
 import { Input, Textarea } from '../ui/Field';
 import { Listbox } from '../ui/Listbox';
+import { TimeOfDayField } from '../ui/TimeOfDayField';
 import { createMyTask, updateMyTask, deleteMyTask, type UserTask, type UserTaskInput } from '../../lib/workspace.api';
 import { listProjects } from '../../lib/projects.api';
 import { apiErrorMessage } from '../../lib/api';
@@ -84,7 +85,7 @@ export function TaskFormModal({ open, onClose, task, defaults }: {
         <Input label="Title" value={form.title} onChange={(e) => set('title', e.target.value)} maxLength={300} autoFocus placeholder={isReminder ? 'e.g. Call the façade supplier' : 'e.g. Review STR-204 Rev.03'} />
         <div className="grid grid-cols-2 gap-4">
           <Input label="Due date" requirement={isReminder ? 'required' : 'optional'} type="date" value={form.dueDate ?? ''} onChange={(e) => set('dueDate', e.target.value)} />
-          <Input label="Time" requirement="optional" type="time" value={form.dueTime ?? ''} onChange={(e) => set('dueTime', e.target.value)} disabled={!form.dueDate} />
+          <TimeOfDayField label="Time" requirement="optional" value={form.dueTime ?? ''} onChange={(next) => set('dueTime', next)} disabled={!form.dueDate} />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <label className="block">
