@@ -85,7 +85,7 @@ export default function HelpPage() {
                   aria-current={!activeSlug && showRoleGuide ? 'true' : undefined}
                   className={`w-full text-left px-4 py-2 rounded text-sm font-medium transition-colors mb-2 border ${
                     !activeSlug && showRoleGuide
-                      ? 'bg-signal text-base-800 border-signal'
+                      ? 'bg-signal text-on-signal border-signal'
                       : 'text-ink-200 border-base-700 hover:bg-base-700'
                   }`}
                 >
@@ -99,7 +99,7 @@ export default function HelpPage() {
                   onClick={() => openCategory(key)}
                   aria-current={!activeSlug && !showRoleGuide && key === activeCategory ? 'true' : undefined}
                   className={`w-full text-left px-4 py-2 rounded text-sm transition-colors ${
-                    !activeSlug && !showRoleGuide && key === activeCategory ? 'bg-signal text-base-800' : 'text-ink-300 hover:bg-base-700'
+                    !activeSlug && !showRoleGuide && key === activeCategory ? 'bg-signal text-on-signal' : 'text-ink-300 hover:bg-base-700'
                   }`}
                 >
                   {HELP_CATEGORY_LABELS[key]}
@@ -132,7 +132,7 @@ export default function HelpPage() {
                   <ul className="space-y-2 text-sm">
                     {sectionTitles.map((title) => (
                       <li key={title}>
-                        <a href={`#${slugifySectionTitle(title)}`} className="text-ink-300 hover:text-signal">{title}</a>
+                        <a href={`#${slugifySectionTitle(title)}`} className="text-ink-300 hover:text-blueprint">{title}</a>
                       </li>
                     ))}
                   </ul>

@@ -1,4 +1,7 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import type { Animation } from 'react-useanimations';
+import { WithAnimatedIcon } from '../ui/AnimatedIcon';
+import { chain } from '../../lib/chain-handlers';
 
 // One look for every icon button in the app chrome (notifications,
 // messages): a 36px round hit area with a 20px glyph, and an unread count
@@ -8,29 +11,43 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon: ReactNode;
   count?: number;
+  /** Animated version of the icon, played on hover/focus (the static `icon` is the fallback). */
+  animation?: Animation;
 }
 
 export const HeaderIconButton = forwardRef<HTMLButtonElement, Props>(function HeaderIconButton(
-  { icon, count = 0, className = '', ...rest },
+  { icon, count = 0, className = '', animation, onClick, onMouseEnter, onMouseLeave, onFocus, onBlur, ...rest },
   ref,
 ) {
-  return (
+  const button = (glyph: ReactNode, ev?: Partial<Pick<Props, 'onClick' | 'onMouseEnter' | 'onMouseLeave' | 'onFocus' | 'onBlur' | 'onPointerEnter'>>) => (
     <button
       ref={ref}
       type="button"
       className={`relative flex items-center justify-center w-9 h-9 rounded-full text-ink-300 hover:bg-base-700 hover:text-ink-100 transition-colors ${className}`}
       {...rest}
+      onPointerEnter={ev?.onPointerEnter}
+      onClick={chain(onClick, ev?.onClick)}
+      onMouseEnter={chain(onMouseEnter, ev?.onMouseEnter)}
+      onMouseLeave={chain(onMouseLeave, ev?.onMouseLeave)}
+      onFocus={chain(onFocus, ev?.onFocus)}
+      onBlur={chain(onBlur, ev?.onBlur)}
     >
-      {icon}
+      {glyph}
       {count > 0 && (
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute top-0 right-0 min-w-5 h-5 px-0 rounded-full bg-danger text-base-950 ring-2 ring-base-950 text-xs leading-none font-semibold tabular-nums tracking-tight flex items-center justify-center"
+          className="pointer-events-none absolute -top-1 -right-1 min-w-5 h-5 px-0 rounded-full bg-danger text-base-950 ring-2 ring-base-950 text-caption leading-none font-semibold tabular-nums tracking-tight flex items-center justify-center"
         >
           {count > 99 ? '99+' : count}
         </span>
       )}
     </button>
+  );
+  if (!animation) return button(icon);
+  return (
+    <WithAnimatedIcon animation={animation} size={20} interaction="hover-replay">
+      {(ev, glyph) => button(glyph, ev)}
+    </WithAnimatedIcon>
   );
 });
 

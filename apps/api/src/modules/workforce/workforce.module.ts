@@ -24,6 +24,7 @@ import { SchedulingService } from './scheduling/scheduling.service';
 import { CalendarIntegrationController } from './calendar-integration/calendar-integration.controller';
 import { CalendarIntegrationService } from './calendar-integration/calendar-integration.service';
 import { GoogleCalendarClient } from './calendar-integration/google-calendar-client';
+import { OutlookCalendarClient } from './calendar-integration/outlook-calendar-client';
 
 @Module({
   imports: [HttpModule, CryptoModule],
@@ -53,7 +54,8 @@ import { GoogleCalendarClient } from './calendar-integration/google-calendar-cli
     SchedulingService,
     CalendarIntegrationService,
     GoogleCalendarClient,
+    OutlookCalendarClient,
   ],
-  exports: [ActivitiesService, ProductivityService],
+  exports: [ActivitiesService, ProductivityService, CalendarIntegrationService],
 })
 export class WorkforceModule {}

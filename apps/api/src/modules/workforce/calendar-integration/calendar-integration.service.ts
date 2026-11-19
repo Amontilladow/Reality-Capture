@@ -1,9 +1,24 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from '../../../database/database.service';
 import { CredentialEncryptionService, type EncryptedCredential } from '../../../common/crypto/credential-encryption.service';
-import { GoogleCalendarClient, type CalendarEventSummary } from './google-calendar-client';
-import { signOAuthState, verifyOAuthState } from './oauth-state.util';
+import { GoogleCalendarClient, type CalendarEventSummary, type ExternalCalendarEvent, type GoogleTokens } from './google-calendar-client';
+import { OutlookCalendarClient } from './outlook-calendar-client';
+import { signOAuthState, verifyOAuthState, type OAuthReturnTo } from './oauth-state.util';
+
+// One row per (user, provider) in workforce_calendar_integrations, tokens
+// encrypted. Workforce reads today's Google events; the personal calendar
+// (Command Center) reads either provider's events for a date range.
+export const CALENDAR_PROVIDERS = ['google_calendar', 'outlook_calendar'] as const;
+export type CalendarProvider = typeof CALENDAR_PROVIDERS[number];
+
+interface ProviderClient {
+  isConfigured(): boolean;
+  buildAuthorizeUrl(state: string): string;
+  exchangeCodeForTokens(code: string): Promise<GoogleTokens>;
+  refreshAccessToken(refreshToken: string): Promise<GoogleTokens>;
+  listEventsInRange(accessToken: string, timeMin: string, timeMax: string): Promise<ExternalCalendarEvent[]>;
+}
 
 interface IntegrationRow {
   userId: string;
@@ -37,15 +52,46 @@ export class CalendarIntegrationService {
     private readonly config: ConfigService,
     private readonly googleClient: GoogleCalendarClient,
     private readonly encryption: CredentialEncryptionService,
+    @Optional() private readonly outlookClient?: OutlookCalendarClient,
   ) {}
+
+  private client(provider: CalendarProvider): ProviderClient {
+    if (provider === 'outlook_calendar') {
+      if (!this.outlookClient) throw new BadRequestException('Outlook calendar is not available');
+      return this.outlookClient;
+    }
+    return this.googleClient;
+  }
+
+  /** Which providers this deployment has OAuth credentials for. */
+  configuredProviders(): Record<CalendarProvider, boolean> {
+    return {
+      google_calendar: this.googleClient.isConfigured?.() ?? false,
+      outlook_calendar: this.outlookClient?.isConfigured() ?? false,
+    };
+  }
 
   private get stateSecret(): string {
     return this.config.get<string>('jwt.accessSecret')!;
   }
 
-  getAuthorizeUrl(companyId: string, userId: string): string {
-    const state = signOAuthState(this.stateSecret, companyId, userId);
-    return this.googleClient.buildAuthorizeUrl(state);
+  getAuthorizeUrl(companyId: string, userId: string, provider: CalendarProvider = 'google_calendar', returnTo?: OAuthReturnTo): string {
+    const client = this.client(provider);
+    if (returnTo === 'calendar' && !client.isConfigured()) {
+      throw new BadRequestException({ code: 'CALENDAR_PROVIDER_NOT_CONFIGURED', message: 'This calendar provider has not been set up for your organisation yet.' });
+    }
+    const state = signOAuthState(this.stateSecret, companyId, userId, returnTo);
+    return client.buildAuthorizeUrl(state);
+  }
+
+  /** Where a callback should send the browser, read from a state we can still verify; else Workforce. */
+  returnToFromState(state: string | undefined): OAuthReturnTo {
+    if (!state) return 'workforce';
+    try {
+      return verifyOAuthState(this.stateSecret, state).returnTo ?? 'workforce';
+    } catch {
+      return 'workforce';
+    }
   }
 
   // Verifies `state` (see oauth-state.util.ts's own comment for why this
@@ -54,9 +100,9 @@ export class CalendarIntegrationService {
   // failure; the controller decides what that means for the redirect the
   // user's browser ends up at, this service only ever deals in success or
   // a thrown error, never a partial/ambiguous state.
-  async handleCallback(code: string, state: string): Promise<{ companyId: string }> {
+  async handleCallback(code: string, state: string, provider: CalendarProvider = 'google_calendar'): Promise<{ companyId: string }> {
     const { companyId, userId } = verifyOAuthState(this.stateSecret, state);
-    const tokens = await this.googleClient.exchangeCodeForTokens(code);
+    const tokens = await this.client(provider).exchangeCodeForTokens(code);
     const refreshToken = tokens.refreshToken;
 
     if (!refreshToken) {
@@ -64,7 +110,7 @@ export class CalendarIntegrationService {
       // `prompt=consent` didn't force a fresh grant. Refuse rather than
       // store a connection with no way to refresh past the short-lived
       // access token.
-      throw new Error('Google did not return a refresh token for this connection.');
+      throw new Error(`${provider === 'outlook_calendar' ? 'Microsoft' : 'Google'} did not return a refresh token for this connection.`);
     }
 
     const access = this.encryption.encrypt(tokens.accessToken);
@@ -85,7 +131,7 @@ export class CalendarIntegrationService {
         token_expires_at, connected_by
       )
       VALUES (
-        ${companyId}, ${userId}, 'google_calendar',
+        ${companyId}, ${userId}, ${provider},
         ${access.ciphertext}, ${access.iv}, ${access.authTag},
         ${refresh.ciphertext}, ${refresh.iv}, ${refresh.authTag},
         ${tokens.expiresAt}, ${userId}
@@ -107,10 +153,10 @@ export class CalendarIntegrationService {
     return { companyId };
   }
 
-  async getStatus(companyId: string, userId: string) {
+  async getStatus(companyId: string, userId: string, provider: CalendarProvider = 'google_calendar') {
     const [row] = await this.db.withTenant(companyId, sql => sql`
       SELECT connected_at, last_used_at FROM workforce_calendar_integrations
-      WHERE user_id = ${userId} AND provider = 'google_calendar'`);
+      WHERE user_id = ${userId} AND provider = ${provider}`);
     return {
       connected: !!row,
       connectedAt: (row?.connectedAt as string | undefined) ?? null,
@@ -118,9 +164,20 @@ export class CalendarIntegrationService {
     };
   }
 
-  async disconnect(companyId: string, userId: string): Promise<void> {
+  async disconnect(companyId: string, userId: string, provider: CalendarProvider = 'google_calendar'): Promise<void> {
     await this.db.withTenant(companyId, sql => sql`
-      DELETE FROM workforce_calendar_integrations WHERE user_id = ${userId} AND provider = 'google_calendar'`);
+      DELETE FROM workforce_calendar_integrations WHERE user_id = ${userId} AND provider = ${provider}`);
+  }
+
+  /** The user's own events between two instants, from one provider. Read live, never stored. */
+  async listEvents(companyId: string, userId: string, provider: CalendarProvider, timeMin: string, timeMax: string): Promise<ExternalCalendarEvent[]> {
+    const integration = await this.getIntegrationRow(companyId, userId, provider);
+    if (!integration) throw new NotFoundException({ code: 'CALENDAR_NOT_CONNECTED', message: 'This calendar is not connected.' });
+    const accessToken = await this.ensureFreshAccessToken(companyId, integration, provider);
+    const events = await this.client(provider).listEventsInRange(accessToken, timeMin, timeMax);
+    await this.db.withTenant(companyId, sql => sql`
+      UPDATE workforce_calendar_integrations SET last_used_at = NOW() WHERE user_id = ${userId} AND provider = ${provider}`);
+    return events;
   }
 
   async getTodayEvents(companyId: string, userId: string): Promise<CalendarEventSummary[]> {
@@ -142,13 +199,13 @@ export class CalendarIntegrationService {
     return events;
   }
 
-  private async getIntegrationRow(companyId: string, userId: string): Promise<IntegrationRow | undefined> {
+  private async getIntegrationRow(companyId: string, userId: string, provider: CalendarProvider = 'google_calendar'): Promise<IntegrationRow | undefined> {
     const [row] = await this.db.withTenant(companyId, sql => sql`
       SELECT user_id, access_token, refresh_token, token_expires_at,
         access_token_ciphertext, access_token_iv, access_token_auth_tag,
         refresh_token_ciphertext, refresh_token_iv, refresh_token_auth_tag
       FROM workforce_calendar_integrations
-      WHERE user_id = ${userId} AND provider = 'google_calendar'`);
+      WHERE user_id = ${userId} AND provider = ${provider}`);
     if (!row) return undefined;
     const typed = row as unknown as RawIntegrationRow;
     return {
@@ -180,13 +237,13 @@ export class CalendarIntegrationService {
 
   // 60s safety margin against a token expiring mid-request rather than
   // racing the exact expiry instant.
-  private async ensureFreshAccessToken(companyId: string, integration: IntegrationRow): Promise<string> {
+  private async ensureFreshAccessToken(companyId: string, integration: IntegrationRow, provider: CalendarProvider = 'google_calendar'): Promise<string> {
     const expiresAt = new Date(integration.tokenExpiresAt);
     if (expiresAt.getTime() > Date.now() + 60_000) {
       return integration.accessToken;
     }
 
-    const refreshed = await this.googleClient.refreshAccessToken(integration.refreshToken);
+    const refreshed = await this.client(provider).refreshAccessToken(integration.refreshToken);
     const access = this.encryption.encrypt(refreshed.accessToken);
     // Opportunistic full migration off plaintext: by the time we're here we
     // hold the refresh token's real value regardless of which column it
@@ -195,14 +252,15 @@ export class CalendarIntegrationService {
     // encrypted columns; re-encrypting the refresh token (unchanged by
     // Google in this flow; see google-calendar-client.ts) and clearing
     // both plaintext columns for this row.
-    const refresh = this.encryption.encrypt(integration.refreshToken);
+    // Microsoft rotates refresh tokens on refresh; Google doesn't (keeps the old one).
+    const refresh = this.encryption.encrypt(refreshed.refreshToken ?? integration.refreshToken);
     await this.db.withTenant(companyId, sql => sql`
       UPDATE workforce_calendar_integrations
       SET access_token = NULL, refresh_token = NULL,
         access_token_ciphertext = ${access.ciphertext}, access_token_iv = ${access.iv}, access_token_auth_tag = ${access.authTag},
         refresh_token_ciphertext = ${refresh.ciphertext}, refresh_token_iv = ${refresh.iv}, refresh_token_auth_tag = ${refresh.authTag},
         token_expires_at = ${refreshed.expiresAt}, updated_at = NOW()
-      WHERE user_id = ${integration.userId} AND provider = 'google_calendar'`);
+      WHERE user_id = ${integration.userId} AND provider = ${provider}`);
     return refreshed.accessToken;
   }
 }

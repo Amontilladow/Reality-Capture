@@ -16,4 +16,9 @@ export default registerAs('microsoftGraph', () => ({
   // Registration, e.g.
   // https://engineeringos-api.onrender.com/api/v1/email-integration/outlook/callback
   redirectUri: process.env.MICROSOFT_OAUTH_REDIRECT_URI ?? '',
+  // The personal calendar's own callback on the same app registration
+  // (Calendars.Read), e.g.
+  // https://engineeringos-api.onrender.com/api/v1/me/calendar-connections/outlook/callback
+  // Empty means Outlook calendar isn't offered.
+  calendarRedirectUri: process.env.MICROSOFT_CALENDAR_REDIRECT_URI ?? '',
 }));

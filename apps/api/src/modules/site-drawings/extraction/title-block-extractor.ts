@@ -26,7 +26,31 @@ interface FieldMatch {
 // "S-2.03", "M4-C-0012", "ARC-00-101". Anchored to an explicit label when
 // one is present (higher confidence); a bare pattern anywhere in the text
 // scores lower, since it's more likely to be a false positive.
-const DRAWING_NUMBER_LABELED = /(?:drawing|dwg|sheet)\s*(?:no\.?|number|#)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-./]{2,19})/i;
+// The captured value's minimum length is deliberately 1, not the 3+ an
+// earlier version required: plenty of real projects number sheets with
+// nothing but a bare 1-2 digit number ("Drawing No: 29"), and that
+// previous minimum silently rejected every one of them, with no fallback
+// -- DRAWING_NUMBER_BARE below requires a letter prefix or multiple
+// dash-separated segments, neither of which a bare "29" has either, so a
+// labeled short number had nowhere left to be recognized at all. Safe to
+// relax here specifically because this pattern is anchored to an explicit
+// label (unlike the bare pattern, which has no anchor and must stay
+// conservative to avoid matching random short numbers elsewhere on the
+// page); isPlausibleDrawingNumber()'s digit requirement below still
+// rejects a labeled non-numeric false positive like "Drawing No: Checked".
+//
+// The maximum is 60, not the 20 an earlier version capped it at: the
+// longer multi-segment codes common on larger CAD-template-driven
+// projects (this file's own DRAWING_NUMBER_BARE comment gives
+// "M19-M4C-C0-PW-AX-SD-05713" as exactly this shape) regularly run past
+// 20 characters -- that example is 25 -- and the old cap silently
+// truncated the captured value mid-token instead of failing outright
+// (confirmed by hand: it returned "M19-M4C-C0-PW-AX-SD-", missing the
+// sheet number entirely, for a drawing labeled with its own real number).
+// A regex quantifier only bounds how much it CAN consume, not how much it
+// has to -- a short labeled value like "29" still matches exactly "29";
+// this only raises the ceiling for one that's genuinely longer.
+const DRAWING_NUMBER_LABELED = /(?:drawing|dwg|sheet)\s*(?:no\.?|number|#)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-./]{0,59})/i;
 // Two shapes, tried in order: the short "LETTERS-DIGITS" code
 // (`A-101`, `S-2.03`) common on simpler consultant title blocks, and a
 // longer multi-segment code (`M19-M4C-C0-PW-AX-SD-05713`) common on
@@ -36,6 +60,19 @@ const DRAWING_NUMBER_LABELED = /(?:drawing|dwg|sheet)\s*(?:no\.?|number|#)\s*[:\
 const DRAWING_NUMBER_BARE = /\b([A-Z]{1,4}-\d{1,4}(?:\.\d{1,2})?|[A-Z0-9]{1,8}(?:-[A-Z0-9]{1,8}){2,8})\b/i;
 
 const REVISION_LABELED = /\brev(?:ision)?\.?\s*(?:no\.?)?\s*[:\-]?\s*([A-Z0-9]{1,3})\b/i;
+
+// A table-grid title block commonly puts a field's label and its value in
+// two ADJACENT cells (a label cell beside, or above, an otherwise-blank
+// value cell) rather than both in one cell -- confirmed by hand against a
+// reproduction fixture built with a real bordered grid. These match a cell
+// that is NOTHING BUT the label itself (anchored start-to-end, so a cell
+// that happens to contain both label and value text together is left to
+// the *_LABELED patterns above instead). Paired with the next cell in
+// pdf-parse's getTable() flattening, which walks a table row by row,
+// left to right -- the same order a label-then-value pair appears in.
+const DRAWING_NUMBER_LABEL_ONLY = /^(?:drawing|dwg|sheet)\s*(?:no\.?|number|#)\s*[:\-]?$/i;
+const REVISION_LABEL_ONLY = /^rev(?:ision)?\.?\s*(?:no\.?)?\s*[:\-]?$/i;
+const TITLE_LABEL_ONLY = /^(?:drawing\s*)?title\s*[:\-]?$/i;
 
 // Separator kept optional (`[:\-]?`, not `[:\-]`): a common CAD
 // title-block layout prints "Drawing Title" as its own label line with
@@ -92,10 +129,49 @@ function extractDiscipline(drawingNumber: string | undefined): string | undefine
   return prefix ? DISCIPLINE_LABELS[prefix] : undefined;
 }
 
+// `issue_date` is a SQL DATE column (migration 072); the `postgres` driver
+// serializes a matched string via `new Date(value).toISOString()`, which
+// THROWS `RangeError: Invalid time value` for a string that is date-SHAPED
+// but not a real calendar date (day/month out of range) -- confirmed by
+// hand against production: the same "Invalid time value" crash recurred
+// deterministically for the same handful of files across every reimport,
+// aborting that file's entire import (never reaching the Review Queue at
+// all, unlike every other uncertain-field case, which degrades to
+// NEEDS_REVIEW instead of throwing). A bad date must fail the SAME way an
+// implausible drawing number does: rejected here and treated as "no date
+// found", never propagated to crash the file's own DB insert.
+function isValidCalendarDate(year: number, month: number, day: number): boolean {
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const date = new Date(year, month - 1, day);
+  // Rolls over out-of-range days (e.g. Feb 30 -> Mar 2) instead of
+  // throwing; comparing the components back out catches that roll-over.
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
+// The numeric slash/dash pattern doesn't know if it's DD/MM or MM/DD
+// (both appear on consultant-issued drawings internationally), so a match
+// is accepted as long as EITHER reading is a real date -- only rejecting a
+// value where NEITHER order could possibly be valid.
+function isValidExtractedDate(value: string): boolean {
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (iso) return isValidCalendarDate(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+
+  const numeric = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(value);
+  if (numeric) {
+    const [, a, b, year] = numeric;
+    return isValidCalendarDate(Number(year), Number(a), Number(b)) || isValidCalendarDate(Number(year), Number(b), Number(a));
+  }
+
+  // The remaining two patterns are English month-name forms ("12 Mar
+  // 2025", "March 12, 2025"), which JS's Date constructor parses
+  // reliably; no day/month ambiguity to resolve since the month is named.
+  return !isNaN(new Date(value).getTime());
+}
+
 function extractDate(text: string): string | undefined {
   for (const pattern of DATE_PATTERNS) {
     const match = pattern.exec(text);
-    if (match) return match[1];
+    if (match && isValidExtractedDate(match[1])) return match[1];
   }
   return undefined;
 }
@@ -107,19 +183,14 @@ function extractDate(text: string): string | undefined {
 // not found at all, same as an unrecognized layout.
 const DRAWING_NUMBER_CONFIDENCE_THRESHOLD = 0.5;
 
-// Returns null when the text doesn't contain anything recognizable as a
-// drawing number at all; an "unknown layout" (Decision 3: "flag unknown
-// layouts... for review"), never a guess. A non-null result can still be
-// low-confidence; the caller (the import processor) is the one that
-// decides CONFIRMED vs. NEEDS_REVIEW from the reported confidence.
-export function extractTitleBlockFields(text: string, source: 'embedded_text' | 'ocr'): ExtractedDrawingFields | null {
-  const drawingNumberMatch = extractDrawingNumber(text);
-  if (!drawingNumberMatch || drawingNumberMatch.confidence < DRAWING_NUMBER_CONFIDENCE_THRESHOLD) return null;
-
-  const revisionMatch = matchLabeled(text, REVISION_LABELED, 0.75);
-  const titleMatch = matchLabeled(text, TITLE_LABELED, 0.7);
-  const issueDate = extractDate(text);
-
+// Shared by extractTitleBlockFields() and extractTitleBlockFieldsFromCells()
+// below: both find the same shape of result (a drawing number plus
+// whatever else was found alongside it), just by searching different text
+// scopes.
+function buildResult(
+  drawingNumberMatch: FieldMatch, revisionMatch: FieldMatch | null, titleMatch: FieldMatch | null,
+  issueDate: string | undefined, source: 'embedded_text' | 'ocr',
+): ExtractedDrawingFields {
   // Overall confidence is the weakest link, not an average; a confident
   // drawing-number match next to a missing revision is still an uncertain
   // record overall (there's nothing to compare a re-import's revision
@@ -136,6 +207,90 @@ export function extractTitleBlockFields(text: string, source: 'embedded_text' | 
     source,
     confidence,
   };
+}
+
+// Returns null when the text doesn't contain anything recognizable as a
+// drawing number at all; an "unknown layout" (Decision 3: "flag unknown
+// layouts... for review"), never a guess. A non-null result can still be
+// low-confidence; the caller (the import processor) is the one that
+// decides CONFIRMED vs. NEEDS_REVIEW from the reported confidence.
+export function extractTitleBlockFields(text: string, source: 'embedded_text' | 'ocr'): ExtractedDrawingFields | null {
+  const drawingNumberMatch = extractDrawingNumber(text);
+  if (!drawingNumberMatch || drawingNumberMatch.confidence < DRAWING_NUMBER_CONFIDENCE_THRESHOLD) return null;
+
+  const revisionMatch = matchLabeled(text, REVISION_LABELED, 0.75);
+  const titleMatch = matchLabeled(text, TITLE_LABELED, 0.7);
+  const issueDate = extractDate(text);
+  return buildResult(drawingNumberMatch, revisionMatch, titleMatch, issueDate, source);
+}
+
+function firstMatchAcrossCells(cells: string[], matcher: (cell: string) => FieldMatch | null): FieldMatch | null {
+  for (const cell of cells) {
+    const match = matcher(cell);
+    if (match) return match;
+  }
+  return null;
+}
+
+// A labeled match from ANY cell is tried across every cell before a bare
+// match from ANY cell is tried at all -- not "the first cell's own best
+// match". A stray bare-pattern-shaped token sitting in some other cell of
+// the same title-block table (an equipment tag in an embedded schedule, a
+// project code in a notes cell) must never outrank a real "Drawing No:"
+// label elsewhere in the grid just because it happens to live in a cell
+// this function reaches first.
+//
+// Tries both label shapes at each cell before moving to the next: a
+// combined "label: value" cell first, then (when the cell is nothing but
+// the bare label) the next cell in array order as the value, since
+// getTable()'s flattening walks a row's cells left to right -- the same
+// order a label-then-value pair is laid out in. Either shape can win at
+// any position; what matters is that a labeled match (of either shape)
+// from an earlier cell always outranks a bare match from a later one.
+function matchLabeledAcrossCells(
+  cells: string[], combinedPattern: RegExp, labelOnlyPattern: RegExp, confidence: number, validate?: (value: string) => boolean,
+): FieldMatch | null {
+  for (let i = 0; i < cells.length; i++) {
+    const combined = matchLabeled(cells[i], combinedPattern, confidence);
+    if (combined && (!validate || validate(combined.value))) return combined;
+
+    if (labelOnlyPattern.test(cells[i].trim())) {
+      const next = cells[i + 1]?.trim();
+      if (next && (!validate || validate(next))) return { value: next, confidence };
+    }
+  }
+  return null;
+}
+
+function extractDrawingNumberFromCells(cells: string[]): FieldMatch | null {
+  const labeled = matchLabeledAcrossCells(cells, DRAWING_NUMBER_LABELED, DRAWING_NUMBER_LABEL_ONLY, 0.85, isPlausibleDrawingNumber);
+  if (labeled) return labeled;
+  return firstMatchAcrossCells(cells, (cell) => matchLabeled(cell, DRAWING_NUMBER_BARE, 0.55));
+}
+
+// The table-grid counterpart to extractTitleBlockFields() above: scopes
+// every field regex to one detected table cell's own text at a time
+// (pdf-parse's getTable(), via PdfTextResult.tableCells -- see that type's
+// own comment for why this is more reliable than matching across the
+// whole page). A title block's label and its value are visually always in
+// the same bordered cell, so confining the search this way makes the
+// cross-field contamination plain getText()-based matching is vulnerable
+// to structurally impossible for any two DIFFERENT fields, regardless of
+// how the PDF's content stream happened to serialize them. Returns null
+// (falls back to extractTitleBlockFields() against the whole page) when no
+// cell contains a plausible drawing number at all -- an untabled layout,
+// or a table that isn't actually the title block.
+export function extractTitleBlockFieldsFromCells(cells: string[], source: 'embedded_text' | 'ocr'): ExtractedDrawingFields | null {
+  const drawingNumberMatch = extractDrawingNumberFromCells(cells);
+  if (!drawingNumberMatch || drawingNumberMatch.confidence < DRAWING_NUMBER_CONFIDENCE_THRESHOLD) return null;
+
+  const revisionMatch = matchLabeledAcrossCells(cells, REVISION_LABELED, REVISION_LABEL_ONLY, 0.75);
+  const titleMatch = matchLabeledAcrossCells(cells, TITLE_LABELED, TITLE_LABEL_ONLY, 0.7);
+  const issueDate = firstMatchAcrossCells(cells, (cell) => {
+    const date = extractDate(cell);
+    return date ? { value: date, confidence: 1 } : null;
+  })?.value;
+  return buildResult(drawingNumberMatch, revisionMatch, titleMatch, issueDate, source);
 }
 
 // The line between "trust this extraction enough to show it as confirmed"

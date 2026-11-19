@@ -780,6 +780,52 @@ describe('IssuesService view-state / screenshot behavior', () => {
     });
   });
 
+  describe('delete — permission checks (role weight, not a hardcoded role array)', () => {
+    function makeDeleteSvc() {
+      const { query } = makeQuery((text) => {
+        if (text.includes('FROM issues i')) {
+          return [{ id: 'issue-1', status: 'open', createdBy: 'user-creator', issueNumber: 'TWR-MEP-0001' }];
+        }
+        if (text.includes('DELETE FROM issues')) {
+          return { count: 1 } as unknown as unknown[];
+        }
+        return undefined;
+      });
+      const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
+      return new IssuesService(
+        { query, withTenant } as unknown as DatabaseService,
+        {} as unknown as AiClientService,
+        {} as unknown as NotificationsService,
+        {} as unknown as StorageService,
+      );
+    }
+
+    it('allows the creator to delete their own issue regardless of role', async () => {
+      const svc = makeDeleteSvc();
+      await expect(svc.delete('company-1', 'project-1', 'issue-1', 'user-creator', 'site_engineer')).resolves.toBeDefined();
+    });
+
+    it('rejects a non-creator below engineering_manager weight', async () => {
+      const svc = makeDeleteSvc();
+      await expect(svc.delete('company-1', 'project-1', 'issue-1', 'user-other', 'site_engineer'))
+        .rejects.toThrow(ForbiddenException);
+    });
+
+    // Regression: a literal ['company_admin','engineering_manager'] array
+    // silently excluded every role that outranks engineering_manager, same
+    // bug the comment on isPermittedApprover (F5, above) already called out
+    // for this exact pattern. super_admin (weight 100) and technical_director
+    // (weight 80) both outrank engineering_manager (weight 70) and must be
+    // able to delete an issue they didn't create.
+    it.each(['super_admin', 'technical_director', 'company_admin', 'engineering_manager'])(
+      'allows a non-creator with role %s to delete',
+      async (role) => {
+        const svc = makeDeleteSvc();
+        await expect(svc.delete('company-1', 'project-1', 'issue-1', 'user-other', role)).resolves.toBeDefined();
+      },
+    );
+  });
+
   describe('reminders', () => {
     it('broadcastReminder logs one issue_reminders row and one reminder activity per open issue', async () => {
       const sqlCalls: Array<{ text: string; values: unknown[] }> = [];

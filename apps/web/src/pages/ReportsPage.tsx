@@ -184,6 +184,21 @@ export default function ReportsPage() {
 
   const kpis = kpisQuery.data;
 
+  // Every number on this page is already computed live from the database
+  // on each fetch -- there's no cached/stale server value a "Refresh" here
+  // could recompute, unlike Risk Intelligence's own Refresh (which re-runs
+  // an actual AI/graph recalculation pipeline). This just re-fetches the
+  // same live queries, for the one real reason it's still worth a button:
+  // this page was already open in a tab before a record got deleted or
+  // edited elsewhere, and React Query has no way to know that happened.
+  const isRefreshing = kpisQuery.isFetching || riskSummaryQuery.isFetching || topRisksQuery.isFetching;
+  function handleRefresh() {
+    kpisQuery.refetch();
+    riskSummaryQuery.refetch();
+    topRisksQuery.refetch();
+    documentsQuery.refetch();
+  }
+
   return (
     <>
       <PageHeader
@@ -192,6 +207,9 @@ export default function ReportsPage() {
         actions={
           <div className="flex items-center gap-4">
             <HelpLink slug="understanding-available-kpis" label="Understanding these KPIs" />
+            <button onClick={handleRefresh} disabled={isRefreshing} className="btn-secondary">
+              {isRefreshing ? 'Refreshing…' : 'Refresh'}
+            </button>
             <button onClick={handleDownloadXls} disabled={!kpis || xlsDownloading} className="btn-secondary">
               {xlsDownloading ? 'Preparing…' : 'Export as Excel'}
             </button>

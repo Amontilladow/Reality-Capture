@@ -112,6 +112,18 @@ export function getFloorPlanData(projectId: string, drawingId: string) {
   return apiGet<FloorPlanData>(`/projects/${projectId}/drawings/${drawingId}/floor-plan`);
 }
 
+export function deleteDrawing(projectId: string, drawingId: string) {
+  return apiDelete<{ message: string }>(`/projects/${projectId}/drawings/${drawingId}`);
+}
+
+export function bulkDeleteDrawings(projectId: string, drawingIds: string[]) {
+  return apiPost<{ deleted: number; failed: number }>(`/projects/${projectId}/drawings/bulk-delete`, { ids: drawingIds });
+}
+
+export function deletePin(projectId: string, drawingId: string, locationId: string) {
+  return apiDelete<{ message: string }>(`/projects/${projectId}/drawings/${drawingId}/pins/${locationId}`);
+}
+
 export function linkCaptureToDrawing(
   projectId: string,
   drawingId: string,

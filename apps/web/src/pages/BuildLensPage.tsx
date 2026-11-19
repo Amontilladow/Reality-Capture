@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { listAllProjectCaptures } from '../lib/buildlens.api';
+import { bulkDeleteCaptures } from '../lib/captures.api';
+import { apiErrorMessage } from '../lib/api';
 import { getProject, getHierarchy, type ProjectHierarchy } from '../lib/projects.api';
 
 interface LocationSummary {
@@ -27,9 +29,12 @@ function sortLocations(rows: LocationSummary[], mode: SortMode): LocationSummary
 export default function BuildLensPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [sortMode, setSortMode] = useState<SortMode>('recent');
   const [openBuildings, setOpenBuildings] = useState<Set<string>>(new Set());
   const [openLevels, setOpenLevels] = useState<Set<string>>(new Set());
+  const [selecting, setSelecting] = useState(false);
+  const [selectedLocationIds, setSelectedLocationIds] = useState<Set<string>>(new Set());
 
   const projectQuery = useQuery({
     queryKey: ['project', projectId],
@@ -80,6 +85,47 @@ export default function BuildLensPage() {
     }
     return map;
   }, [capturesQuery.data]);
+
+  // Every capture id at each location, so bulk-deleting a selection of
+  // LOCATIONS can be expressed as the one capture-bulk-delete endpoint
+  // already built: deleting every capture at a location is what makes it
+  // disappear from this page (it's built entirely from capturesQuery.data),
+  // not a separate "delete location" action.
+  const captureIdsByLocation = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const c of capturesQuery.data ?? []) {
+      if (!c.locationId) continue;
+      const existing = map.get(c.locationId);
+      if (existing) existing.push(c.id); else map.set(c.locationId, [c.id]);
+    }
+    return map;
+  }, [capturesQuery.data]);
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () => {
+      const captureIds = [...selectedLocationIds].flatMap((id) => captureIdsByLocation.get(id) ?? []);
+      return bulkDeleteCaptures(projectId!, captureIds);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['buildlens', 'locations', projectId] });
+      // Same captures also render on the Capture Grid and, per location,
+      // on BuildLens Timeline -- both cache this data under their own key
+      // (see the capture-delete cache-sync fix), so both need invalidating
+      // too or they'd keep showing captures this page just deleted.
+      queryClient.invalidateQueries({ queryKey: ['captures', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['viewer', projectId] });
+      setSelectedLocationIds(new Set());
+      setSelecting(false);
+    },
+  });
+
+  function toggleLocationSelected(locationId: string) {
+    setSelectedLocationIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(locationId)) next.delete(locationId); else next.add(locationId);
+      return next;
+    });
+  }
 
   // Prunes the full building/level hierarchy down to just the buildings ->
   // levels -> locations that actually have a 360° capture, tracking which
@@ -141,12 +187,22 @@ export default function BuildLensPage() {
         eyebrow={projectQuery.data?.name ?? 'Project'}
         title="BuildLens"
         actions={
-          <button
-            onClick={() => navigate(`/projects/${projectId}/captures`)}
-            className="btn-secondary"
-          >
-            + Pin a camera location
-          </button>
+          <div className="flex items-center gap-2">
+            {!isEmpty && !isLoading && (
+              <button
+                onClick={() => { setSelecting(!selecting); setSelectedLocationIds(new Set()); }}
+                className="btn-secondary"
+              >
+                {selecting ? 'Cancel' : 'Select'}
+              </button>
+            )}
+            <button
+              onClick={() => navigate(`/projects/${projectId}/captures`)}
+              className="btn-secondary"
+            >
+              + Pin a camera location
+            </button>
+          </div>
         }
       />
 
@@ -161,7 +217,7 @@ export default function BuildLensPage() {
                   key={mode}
                   onClick={() => setSortMode(mode)}
                   className={`px-2 py-2 rounded text-xs transition-colors ${
-                    sortMode === mode ? 'bg-signal text-base-800' : 'text-ink-500 hover:text-ink-100 hover:bg-base-700'
+                    sortMode === mode ? 'bg-signal text-on-signal' : 'text-ink-500 hover:text-ink-100 hover:bg-base-700'
                   }`}
                 >
                   {mode === 'recent' ? 'Most recent' : 'A to Z'}
@@ -170,6 +226,23 @@ export default function BuildLensPage() {
             </div>
           )}
         </div>
+
+        {selecting && selectedLocationIds.size > 0 && (
+          <div className="flex items-center gap-2 tick-frame panel px-4 py-2">
+            <span className="text-sm font-medium">{selectedLocationIds.size} location{selectedLocationIds.size === 1 ? '' : 's'} selected</span>
+            <button
+              onClick={() => {
+                const totalCaptures = [...selectedLocationIds].reduce((n, id) => n + (captureIdsByLocation.get(id)?.length ?? 0), 0);
+                if (confirm(`Delete ${totalCaptures} capture(s) across ${selectedLocationIds.size} location(s)? This cannot be undone.`)) bulkDeleteMutation.mutate();
+              }}
+              disabled={bulkDeleteMutation.isPending}
+              className="btn-danger !px-4 !py-2 text-sm ml-auto"
+            >
+              {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
+            </button>
+            {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
+          </div>
+        )}
 
         {isLoading && (
           <div className="space-y-2">
@@ -217,7 +290,10 @@ export default function BuildLensPage() {
                               level.locations.map((loc) => summaryByLocation.get(loc.id)!),
                               sortMode,
                             ).map((loc) => (
-                              <LocationRow key={loc.locationId} loc={loc} onClick={() => goToLocation(loc.locationId)} />
+                              <LocationRow
+                                key={loc.locationId} loc={loc} onClick={() => goToLocation(loc.locationId)}
+                                selecting={selecting} checked={selectedLocationIds.has(loc.locationId)} onToggleSelect={toggleLocationSelected}
+                              />
                             ))}
                           </div>
                         )}
@@ -240,7 +316,10 @@ export default function BuildLensPage() {
             </div>
             <div className="panel tick-frame overflow-hidden divide-y divide-base-600">
               {unassigned.map((loc) => (
-                <LocationRow key={loc.locationId} loc={loc} onClick={() => goToLocation(loc.locationId)} wide />
+                <LocationRow
+                  key={loc.locationId} loc={loc} onClick={() => goToLocation(loc.locationId)} wide
+                  selecting={selecting} checked={selectedLocationIds.has(loc.locationId)} onToggleSelect={toggleLocationSelected}
+                />
               ))}
             </div>
           </div>
@@ -250,15 +329,39 @@ export default function BuildLensPage() {
   );
 }
 
-function LocationRow({ loc, onClick, wide }: { loc: LocationSummary; onClick: () => void; wide?: boolean }) {
+function LocationRow({
+  loc, onClick, wide, selecting, checked, onToggleSelect,
+}: {
+  loc: LocationSummary; onClick: () => void; wide?: boolean;
+  selecting?: boolean; checked?: boolean; onToggleSelect?: (locationId: string) => void;
+}) {
   return (
     <button
-      onClick={onClick}
+      onClick={() => (selecting ? onToggleSelect?.(loc.locationId) : onClick())}
       className={`w-full flex items-center gap-4 text-left transition-colors hover:bg-base-700 rounded ${
         wide ? 'px-4 py-4' : 'px-2 py-2'
       }`}
     >
-      <TimelineIcon className="w-4 h-4 text-blueprint shrink-0" />
+      {selecting ? (
+        // A real <input type="checkbox"> would nest an interactive element
+        // inside this already-interactive <button> (invalid HTML); a
+        // decorative span styled the same way, same convention already
+        // used on every other mobile/list select-mode in this app.
+        <span
+          aria-hidden="true"
+          className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${
+            checked ? 'bg-blueprint border-blueprint' : 'bg-base-900 border-base-500'
+          }`}
+        >
+          {checked && (
+            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="3">
+              <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </span>
+      ) : (
+        <TimelineIcon className="w-4 h-4 text-blueprint shrink-0" />
+      )}
       <div className="min-w-0 flex-1">
         <div className="text-sm truncate">{loc.label}</div>
         <div className="text-xs text-ink-500 mt-0">
@@ -266,7 +369,7 @@ function LocationRow({ loc, onClick, wide }: { loc: LocationSummary; onClick: ()
           {new Date(loc.mostRecent).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
         </div>
       </div>
-      <ChevronIcon className="w-4 h-4 text-ink-500 shrink-0" />
+      {!selecting && <ChevronIcon className="w-4 h-4 text-ink-500 shrink-0" />}
     </button>
   );
 }

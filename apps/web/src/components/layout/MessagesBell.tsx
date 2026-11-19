@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import aChat from 'react-useanimations/lib/messageCircle';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -8,6 +9,8 @@ import { getChatUnreadCount } from '../../lib/chat.api';
 import { setChatPanelOpen } from '../../lib/chatPanel';
 import { EmailLauncherButton } from '../ui/EmailLauncherButton';
 import { ChatIcon, HeaderIconButton } from './HeaderIconButton';
+import { useMenuPosition } from './useMenuPosition';
+import { createPortal } from 'react-dom';
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -24,8 +27,11 @@ function timeAgo(iso: string): string {
 // someone; the threaded inbox, live team chat (ChatWidget's panel) and
 // the user's own email app; so they no longer sit side by side as look-
 // alike envelopes and a floating bubble.
-export function MessagesBell() {
+/** buttonClassName restyles the icon button for where it sits (the sidebar's glass tiles). */
+export function MessagesBell({ buttonClassName = '' }: { buttonClassName?: string }) {
   const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuStyle = useMenuPosition(buttonRef, open);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -67,17 +73,20 @@ export function MessagesBell() {
   return (
     <div className="relative">
       <HeaderIconButton
+        ref={buttonRef}
+        className={buttonClassName}
         onClick={() => setOpen((v) => !v)}
         aria-label={unreadCount > 0 ? `Messages, ${unreadCount} unread` : 'Messages'}
         aria-expanded={open}
+        animation={aChat}
         icon={<ChatIcon className="w-5 h-5" />}
         count={unreadCount}
       />
 
-      {open && (
+      {open && createPortal(
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="fixed md:absolute top-16 md:top-full inset-x-4 md:inset-x-auto md:mt-2 md:left-0 z-50 md:w-80 max-h-[32rem] tick-frame panel !bg-base-800 overflow-hidden flex flex-col shadow-xl">
+          <div style={menuStyle} className="fixed top-16 inset-x-4 md:inset-x-auto z-50 md:w-80 max-h-[32rem] tick-frame panel !bg-base-800 overflow-hidden flex flex-col shadow-xl">
             <div className="flex items-center justify-between px-4 py-2 border-b border-base-600 shrink-0">
               <span className="text-sm font-semibold text-ink-100">Messages</span>
               <button
@@ -129,7 +138,8 @@ export function MessagesBell() {
               <EmailLauncherButton variant="row" />
             </div>
           </div>
-        </>
+        </>,
+        document.body,
       )}
     </div>
   );

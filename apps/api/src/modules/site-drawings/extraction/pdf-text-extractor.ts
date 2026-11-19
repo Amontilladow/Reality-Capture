@@ -10,6 +10,23 @@ export const MIN_USABLE_TEXT_LENGTH = 20;
 export interface PdfTextResult {
   text: string;
   pageCount: number;
+  // Every cell of every vector-drawn table detected on the page (pdf-parse's
+  // getTable(): scans draw operators for rectangles/lines forming a grid,
+  // then matches positioned text to cells by actual (x, y), not content-
+  // stream order), flattened across tables/rows into one list -- a title
+  // block's own cells, in practice, since that's normally the only bordered
+  // grid on a drawing sheet. A caller that scopes its field regexes to one
+  // cell's own text at a time is immune to the failure mode plain getText()
+  // has no defense against: a title-block field's label and value can be
+  // written to the PDF content stream in a different order than they're
+  // laid out visually (confirmed by hand against a reproduction fixture
+  // built the way CAD title-block attribute blocks commonly serialize --
+  // labels in one pass, values in another), so the token immediately
+  // following a label in the flattened text can genuinely belong to a
+  // different field entirely. Empty when the page has no detected table
+  // (a borderless or hand-drawn-rule title block) -- callers fall back to
+  // whole-page matching in that case, same as before this existed.
+  tableCells: string[];
 }
 
 // pdf-parse's getText() always appends a "-- N of M --" page-separator
@@ -44,8 +61,38 @@ export async function extractEmbeddedText(pdfBuffer: Buffer): Promise<PdfTextRes
   const parser = new PDFParse({ data: pdfBuffer });
   try {
     const info = await parser.getInfo();
-    const result = await parser.getText({ partial: [1] });
-    return { text: stripPdfParseBoilerplate(result.text ?? ''), pageCount: info.total ?? 1 };
+    const textResult = await parser.getText({ partial: [1] });
+    // One parser instance, both passes: getTable() re-walks the same page's
+    // operator list getText() already parsed, so folding it into this same
+    // call avoids a second full PDF parse per file -- worth doing given an
+    // import batch can be hundreds of files.
+    //
+    // getTable() is kept in its OWN try/catch, separate from getText()
+    // above: confirmed by hand against a reproduction fixture (a bordered
+    // title-block grid on a page also carrying a few thousand unrelated
+    // vector lines, the way an actual CAD-exported drawing sheet looks
+    // next to its title block -- not just the bare grid a simpler fixture
+    // would have), pdf-parse's own table-detection (geometry/Table.js)
+    // throws "Cannot read properties of undefined (reading 'from')" on
+    // exactly this shape of page. Reproduced on every real drawing in
+    // production (confirmed in the API's own logs), meaning table-cell
+    // extraction never once succeeded for a real file, and -- since this
+    // call sat inline before this fix -- silently took the whole-page text
+    // getText() had ALREADY successfully extracted down with it, forcing
+    // every single import onto the slower, flakier OCR fallback for no
+    // reason: the page's real text was sitting right there. Falling back to
+    // no detected table on this failure costs nothing it wasn't already
+    // going to cost (extractTitleBlockFieldsFromCells() returning null here
+    // is the same, already-handled fallback path as a page with no table
+    // at all; see this type's own comment above).
+    let tableCells: string[] = [];
+    try {
+      const tableResult = await parser.getTable({ partial: [1] });
+      tableCells = (tableResult.pages[0]?.tables ?? []).flatMap((table) => table.flat());
+    } catch {
+      tableCells = [];
+    }
+    return { text: stripPdfParseBoilerplate(textResult.text ?? ''), pageCount: info.total ?? 1, tableCells };
   } finally {
     await parser.destroy();
   }

@@ -39,6 +39,9 @@ const AssistantPage = lazy(() => import('./pages/AssistantPage'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 const RiskPage = lazy(() => import('./pages/RiskPage'));
 const MessagesPage = lazy(() => import('./pages/MessagesPage'));
+const MyTasksPage = lazy(() => import('./pages/MyTasksPage'));
+const MyCalendarPage = lazy(() => import('./pages/MyCalendarPage'));
+const SavedItemsPage = lazy(() => import('./pages/SavedItemsPage'));
 const WorkforcePage = lazy(() => import('./pages/WorkforcePage'));
 const DeveloperSettingsPage = lazy(() => import('./pages/DeveloperSettingsPage'));
 const AiSettingsPage = lazy(() => import('./pages/AiSettingsPage'));
@@ -145,6 +148,14 @@ export default function App() {
           <Route element={<AppShell />}>
             <Route path="/projects" element={<ProjectList />} />
             <Route path="/projects/messages" element={<MessagesPage />} />
+            {/* My workspace: personal, so reachable with or without a project
+                in view; inside one, the calendar adds that project's deadlines. */}
+            <Route path="/projects/my-tasks" element={<MyTasksPage />} />
+            <Route path="/projects/my-calendar" element={<MyCalendarPage />} />
+            <Route path="/projects/saved" element={<SavedItemsPage />} />
+            <Route path="/projects/:projectId/my-tasks" element={<MyTasksPage />} />
+            <Route path="/projects/:projectId/my-calendar" element={<MyCalendarPage />} />
+            <Route path="/projects/:projectId/saved" element={<SavedItemsPage />} />
             <Route path="/projects/workforce" element={<WorkforcePage />} />
             <Route path="/projects/developer" element={<DeveloperSettingsPage />} />
             <Route path="/projects/sharepoint-integration" element={<SharePointIntegrationPage />} />

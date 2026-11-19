@@ -142,6 +142,12 @@ export const triggerSiteDrawingSync = (projectId: string, provider: 'sharepoint'
 export const getSiteDrawing = (projectId: string, drawingId: string) =>
   apiGet<SiteDrawingWithCurrentRevision>(`${base(projectId)}/${drawingId}`);
 
+export const deleteSiteDrawing = (projectId: string, drawingId: string) =>
+  apiDelete<{ message: string }>(`${base(projectId)}/${drawingId}`);
+
+export const bulkDeleteSiteDrawings = (projectId: string, drawingIds: string[]) =>
+  apiPost<{ deleted: number; failed: number }>(`${base(projectId)}/bulk-delete`, { ids: drawingIds });
+
 export const listSiteDrawingRevisions = (projectId: string, drawingId: string) =>
   apiGet<SiteDrawingRevision[]>(`${base(projectId)}/${drawingId}/revisions`);
 
@@ -221,6 +227,11 @@ export const listImportBatches = (projectId: string) =>
 
 export const getImportBatch = (projectId: string, batchId: string) =>
   apiGet<SiteDrawingImportBatch>(`${importBase(projectId)}/${batchId}`);
+
+// Clears one row from the Batches log; never deletes the drawings/
+// revisions that batch actually created.
+export const deleteImportBatch = (projectId: string, batchId: string) =>
+  apiDelete<{ message: string }>(`${importBase(projectId)}/${batchId}`);
 
 export const listReviewQueue = (projectId: string) =>
   apiGet<SiteDrawingReviewQueueItem[]>(`${importBase(projectId)}/review-queue`);

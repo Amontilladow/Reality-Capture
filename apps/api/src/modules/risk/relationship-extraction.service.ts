@@ -6,6 +6,7 @@ import {
   type IssueDiscipline,
   type RfiDiscipline,
   type RiskDiscipline,
+  type RiskNodeType,
 } from '@engineeringos/types';
 import { DatabaseService } from '../../database/database.service';
 import { RiskGraphService } from './risk-graph.service';
@@ -528,6 +529,60 @@ export class RelationshipExtractionService {
         }
       }
     }
+  }
+
+  // ── Orphan detection (for RiskService's pruning pass on recalculateProject) ─
+  //
+  // Every extract* method above only ever upserts from rows that still
+  // exist (SELECT ... FROM <table> WHERE project_id = ...), so none of them
+  // can tell a node whose source row is gone from one that's current. This
+  // is the other half: given a node type and the entityIds its existing
+  // graph nodes carry, which of those ids still have a live row. One query
+  // per node type (never per-entity), since RiskService always calls this
+  // with every node of a type at once.
+  async findExistingEntityIds(companyId: string, nodeType: RiskNodeType, entityIds: string[]): Promise<Set<string>> {
+    if (entityIds.length === 0) return new Set();
+    return this.db.withTenant(companyId, async (sql) => {
+      switch (nodeType) {
+        case 'rfi': {
+          const rows = await sql<{ id: string }[]>`SELECT id FROM rfis WHERE id = ANY(${entityIds})`;
+          return new Set(rows.map(r => r.id));
+        }
+        case 'issue': {
+          const rows = await sql<{ id: string }[]>`SELECT id FROM issues WHERE id = ANY(${entityIds})`;
+          return new Set(rows.map(r => r.id));
+        }
+        case 'snag_item': {
+          const rows = await sql<{ id: string }[]>`SELECT id FROM snag_items WHERE id = ANY(${entityIds})`;
+          return new Set(rows.map(r => r.id));
+        }
+        case 'drawing': {
+          const rows = await sql<{ id: string }[]>`SELECT id FROM drawings WHERE id = ANY(${entityIds})`;
+          return new Set(rows.map(r => r.id));
+        }
+        case 'qa_inspection': {
+          const rows = await sql<{ id: string }[]>`SELECT id FROM qa_inspections WHERE id = ANY(${entityIds})`;
+          return new Set(rows.map(r => r.id));
+        }
+        case 'submittal': {
+          const rows = await sql<{ id: string }[]>`SELECT id FROM submittals WHERE id = ANY(${entityIds})`;
+          return new Set(rows.map(r => r.id));
+        }
+        case 'ncr': {
+          // Same record_type scoping as extractQaqcRecords above: a NCR id
+          // that got reused... can't happen (uuid), but keep the id alone
+          // sufficient -- record_type never changes after creation, so this
+          // is just symmetry with how the node was created, not a real guard.
+          const rows = await sql<{ id: string }[]>`SELECT id FROM qaqc_records WHERE id = ANY(${entityIds}) AND record_type = 'ncr'`;
+          return new Set(rows.map(r => r.id));
+        }
+        default:
+          // Not one of RISK_WORTHY_NODE_TYPES (risk.service.ts) -- this
+          // sweep is never called with any other node type, but treat
+          // everything as existing rather than prune something unknown.
+          return new Set(entityIds);
+      }
+    });
   }
 
   // ── Inferred RFI <-> Issue relationships ────────────────────────────────────

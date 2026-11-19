@@ -116,3 +116,26 @@ describe('RiskGraphService — tenant scoping', () => {
     expect(db.withTenant).toHaveBeenCalledWith('company-42', expect.any(Function));
   });
 });
+
+describe('RiskGraphService.deleteNode', () => {
+  // This existed for exactly the event-driven-removal purpose its own
+  // comment describes, but was never called from any entity's delete path
+  // until RiskService.removeEntityNode() was added to call it -- the real
+  // production bug that fix addresses. This just confirms the method
+  // itself issues the right, tenant-scoped DELETE.
+  it('deletes the graph node matching the given node type and entity id, scoped through withTenant', async () => {
+    const sqlMock = jest.fn(async (strings: TemplateStringsArray, ...values: unknown[]) => {
+      const text = strings.join('');
+      expect(text).toContain('DELETE FROM risk_graph_nodes');
+      expect(values).toEqual(['rfi', 'rfi-123']);
+      return [];
+    });
+    const db = makeDb(sqlMock);
+    const svc = new RiskGraphService(db);
+
+    await svc.deleteNode('company-1', 'rfi', 'rfi-123');
+
+    expect(db.withTenant).toHaveBeenCalledWith('company-1', expect.any(Function));
+    expect(sqlMock).toHaveBeenCalled();
+  });
+});

@@ -112,6 +112,46 @@ export class GisPrepService {
     return row;
   }
 
+  // gis_prep_jobs.parent_job_id has no ON DELETE clause (migration 076) --
+  // a re-run points back at the job it re-ran, so deleting a job some
+  // later re-run still references would otherwise fail outright with a
+  // foreign-key violation (re-running with corrected decisions is the
+  // NORMAL way to resolve a job, per rerunJob()'s own comment, so this is
+  // the common case, not an edge case). Detaches every such child first --
+  // it keeps its own history, it just stops pointing at a row that no
+  // longer exists.
+  async deleteJob(companyId: string, projectId: string, jobId: string): Promise<void> {
+    const row = await this.db.withTenant(companyId, async (sql) => {
+      const [found] = await sql<GisPrepJobRow[]>`SELECT * FROM gis_prep_jobs WHERE id = ${jobId} AND project_id = ${projectId}`;
+      if (!found) return null;
+      await sql`UPDATE gis_prep_jobs SET parent_job_id = NULL WHERE parent_job_id = ${jobId} AND project_id = ${projectId}`;
+      await sql`DELETE FROM gis_prep_jobs WHERE id = ${jobId} AND project_id = ${projectId}`;
+      return found;
+    });
+    if (!row) throw new NotFoundException(`GIS preparation job ${jobId} not found.`);
+
+    const keys = [row.sourceStorageKey, row.reportStorageKey, row.packageStorageKey, ...(row.outputs ?? []).map(o => o.storageKey)]
+      .filter((k): k is string => Boolean(k));
+    Promise.allSettled(keys.map(k => this.storage.deleteIfExists(k))).catch(() => {});
+  }
+
+  // Loops the single-item deleteJob() above so one missing/already-deleted
+  // id doesn't block the rest of the batch -- same "don't let one bad item
+  // fail everything" shape every other module's bulkDelete() already has.
+  async bulkDelete(companyId: string, projectId: string, jobIds: string[]): Promise<{ deleted: number; failed: number }> {
+    let deleted = 0;
+    let failed = 0;
+    for (const id of jobIds) {
+      try {
+        await this.deleteJob(companyId, projectId, id);
+        deleted++;
+      } catch {
+        failed++;
+      }
+    }
+    return { deleted, failed };
+  }
+
   private async assertProjectBelongsToCompany(companyId: string, projectId: string): Promise<void> {
     const [project] = await this.db.withTenant(companyId, sql => sql`
       SELECT id FROM projects WHERE id = ${projectId} AND company_id = ${companyId}

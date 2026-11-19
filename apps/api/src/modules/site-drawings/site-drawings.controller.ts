@@ -4,6 +4,8 @@ import type { Response } from 'express';
 import type { AuthenticatedUser, SiteDrawingWorkflowStatus } from '@engineeringos/types';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequireCategoryAction } from '../../common/decorators/require-category-action.decorator';
+import { RequireProjectPermission } from '../../common/decorators/require-project-permission.decorator';
+import { BulkDeleteDto } from '../../common/dto/bulk-delete.dto';
 import { SiteDrawingsService } from './site-drawings.service';
 import { SiteDrawingSyncService } from './site-drawing-sync.service';
 import { GetSiteDrawingUploadUrlDto } from './dto/get-upload-url.dto';
@@ -161,6 +163,26 @@ export class SiteDrawingsController {
   @ApiOperation({ summary: 'Full revision history for a drawing, most recent first' })
   async listRevisions(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
     return { data: await this.svc.listRevisions(u.companyId, pid, id), error: null };
+  }
+
+  // Unlike addRevision()'s supersede-don't-delete model, this removes the
+  // register entry and its entire revision history outright; gated on
+  // manage_project_records directly (not RequireCategoryAction, whose
+  // 'drawings' category has no 'delete' action) same as every other
+  // module's record-delete route.
+  @Delete(':id')
+  @RequireProjectPermission('manage_project_records')
+  @ApiOperation({ summary: 'Delete a drawing and its entire revision history' })
+  async deleteDrawing(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    await this.svc.delete(u.companyId, pid, id);
+    return { data: { message: 'Drawing deleted.' }, error: null };
+  }
+
+  @Post('bulk-delete')
+  @RequireProjectPermission('manage_project_records')
+  @ApiOperation({ summary: 'Delete multiple drawings (and their revision histories) at once' })
+  async bulkDeleteDrawings(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: BulkDeleteDto) {
+    return { data: await this.svc.bulkDelete(u.companyId, pid, dto.ids), error: null };
   }
 
   @Post(':id/revisions')

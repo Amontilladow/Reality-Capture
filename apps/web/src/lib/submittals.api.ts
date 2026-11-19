@@ -67,3 +67,7 @@ export function updateSubmittal(projectId: string, submittalId: string, payload:
 export function deleteSubmittal(projectId: string, submittalId: string) {
   return apiDelete<{ message: string }>(`/projects/${projectId}/submittals/${submittalId}`);
 }
+
+export function bulkDeleteSubmittals(projectId: string, submittalIds: string[]) {
+  return apiPost<{ deleted: number; failed: number }>(`/projects/${projectId}/submittals/bulk-delete`, { ids: submittalIds });
+}

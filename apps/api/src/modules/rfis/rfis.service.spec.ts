@@ -5,6 +5,7 @@ import type { DatabaseService } from '../../database/database.service';
 import type { NotificationsService } from '../notifications/notifications.service';
 import type { StorageService } from '../storage/storage.service';
 import type { MessagingService } from '../messaging/messaging.service';
+import type { RiskService } from '../risk/risk.service';
 import type { CreateRfiDto } from './dto/create-rfi.dto';
 
 // Generic tagged-template mock for this.db.withTenant's `sql` callback;
@@ -25,7 +26,7 @@ function makeQuery(responder: (text: string, values: unknown[]) => unknown[] | u
   return { query: query as unknown as DatabaseService['query'], calls };
 }
 
-function makeService(responder: (text: string, values: unknown[]) => unknown[] | undefined) {
+function makeService(responder: (text: string, values: unknown[]) => unknown[] | undefined, risk?: { removeEntityNode: jest.Mock }) {
   const { query, calls } = makeQuery(responder);
   const withTenant = jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query));
   // paginate() is plain synchronous JS, not a DB call; stub it with the
@@ -49,6 +50,7 @@ function makeService(responder: (text: string, values: unknown[]) => unknown[] |
     storage as unknown as StorageService,
     messaging as unknown as MessagingService,
     projectAuth,
+    risk as unknown as RiskService | undefined,
   );
   return { svc, calls, notifications, db };
 }
@@ -1082,6 +1084,39 @@ describe('RfisService', () => {
       })).rejects.toThrow(NotFoundException);
 
       expect(getObjectSize).not.toHaveBeenCalled(); // never reached past the project check
+    });
+  });
+
+  // The real production bug this covers: delete()/bulkDelete() never told
+  // the Risk Engine an RFI was gone, so its risk node (if any), signals
+  // and graph edges survived forever -- including through a full Risk
+  // Intelligence "Refresh", which only ever upserts from RFIs that still
+  // exist and never removes one for an RFI that doesn't.
+  describe('delete — risk node removal', () => {
+    it('delete: removes the RFI\'s risk graph node after a successful delete', async () => {
+      const risk = { removeEntityNode: jest.fn().mockResolvedValue(undefined) };
+      const { svc } = makeService((text) => (text.includes('DELETE FROM rfis') ? { count: 1 } as unknown as unknown[] : undefined), risk);
+
+      await svc.delete(companyId, projectId, rfiId);
+
+      expect(risk.removeEntityNode).toHaveBeenCalledWith(companyId, 'rfi', rfiId);
+    });
+
+    it('delete: a risk node removal failure never fails or blocks the delete itself', async () => {
+      const risk = { removeEntityNode: jest.fn().mockRejectedValue(new Error('graph exploded')) };
+      const { svc } = makeService((text) => (text.includes('DELETE FROM rfis') ? { count: 1 } as unknown as unknown[] : undefined), risk);
+
+      await expect(svc.delete(companyId, projectId, rfiId)).resolves.toEqual({ message: 'RFI deleted.' });
+    });
+
+    it('bulkDelete: removes the risk graph node for every requested id, even ones not actually deleted', async () => {
+      const risk = { removeEntityNode: jest.fn().mockResolvedValue(undefined) };
+      const { svc } = makeService((text) => (text.includes('DELETE FROM rfis') ? { count: 2 } as unknown as unknown[] : undefined), risk);
+
+      await svc.bulkDelete(companyId, projectId, ['rfi-1', 'rfi-2', 'rfi-3']);
+
+      expect(risk.removeEntityNode).toHaveBeenCalledTimes(3);
+      expect(risk.removeEntityNode).toHaveBeenCalledWith(companyId, 'rfi', 'rfi-3');
     });
   });
 

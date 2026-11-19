@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Modal } from '../ui/Modal';
 import { StatusBadge } from '../ui/Badge';
 import { apiErrorMessage } from '../../lib/api';
 import {
-  listImportBatches, listReviewQueue, resolveReview,
-  type SiteDrawingImportBatch, type SiteDrawingReviewQueueItem,
+  listImportBatches, listReviewQueue, resolveReview, deleteSiteDrawing, deleteImportBatch,
+  type SiteDrawingImportBatch, type SiteDrawingImportBatchStatus, type SiteDrawingReviewQueueItem,
 } from '../../lib/site-drawings.api';
 import {
   IMPORT_BATCH_STATUS_LABELS, IMPORT_BATCH_STATUS_TONE, isImportBatchInProgress, sourceProviderLabel,
@@ -23,6 +23,7 @@ export function ImportActivityModal({
   open: boolean; onClose: () => void; projectId: string; initialTab?: 'batches' | 'review';
 }) {
   const [tab, setTab] = useState<'batches' | 'review'>(initialTab);
+  const queryClient = useQueryClient();
 
   const batchesQuery = useQuery({
     queryKey: ['site-drawing-import-batches', projectId],
@@ -30,6 +31,35 @@ export function ImportActivityModal({
     enabled: open,
     refetchInterval: (query) => (query.state.data ?? []).some((b) => isImportBatchInProgress(b.status)) ? 4000 : false,
   });
+
+  // The import itself runs in a background worker; this modal only learns
+  // it finished by polling batchesQuery above, which refetches its OWN
+  // query only. Nothing else ever told the Site Drawings register (or its
+  // review-queue badge / dashboard stats) to refetch, so a user who
+  // watched a batch go PENDING -> COMPLETED right here, then checked the
+  // register, saw it still missing the new/updated drawings -- the same
+  // "it finished, but nowhere that matters shows it" cache gap the capture
+  // delete fix (BuildLens Timeline/Grid/Lightbox) already fixed once this
+  // session, just for this page pair instead. Detected as a transition
+  // (in-progress -> finished), not "invalidate on every poll tick": a
+  // ref holds each batch's last-seen status so this only fires once per
+  // batch actually finishing, not every 4s while nothing has changed.
+  const lastSeenStatuses = useRef<Map<string, SiteDrawingImportBatchStatus>>(new Map());
+  useEffect(() => {
+    const batches = batchesQuery.data;
+    if (!batches) return;
+    const previous = lastSeenStatuses.current;
+    const anyJustFinished = batches.some((b) => {
+      const prevStatus = previous.get(b.id);
+      return prevStatus !== undefined && isImportBatchInProgress(prevStatus) && !isImportBatchInProgress(b.status);
+    });
+    lastSeenStatuses.current = new Map(batches.map((b) => [b.id, b.status]));
+    if (anyJustFinished) {
+      queryClient.invalidateQueries({ queryKey: ['site-drawings', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-dashboard-stats', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-review-queue', projectId] });
+    }
+  }, [batchesQuery.data, projectId, queryClient]);
 
   const reviewQueueQuery = useQuery({
     queryKey: ['site-drawing-review-queue', projectId],
@@ -51,39 +81,97 @@ export function ImportActivityModal({
           </button>
         </div>
 
-        {tab === 'batches' && <BatchesTab batches={batchesQuery.data ?? []} isLoading={batchesQuery.isLoading} />}
+        {tab === 'batches' && <BatchesTab projectId={projectId} batches={batchesQuery.data ?? []} isLoading={batchesQuery.isLoading} />}
         {tab === 'review' && <ReviewQueueTab projectId={projectId} items={reviewQueueQuery.data ?? []} isLoading={reviewQueueQuery.isLoading} />}
       </div>
     </Modal>
   );
 }
 
-function BatchesTab({ batches, isLoading }: { batches: SiteDrawingImportBatch[]; isLoading: boolean }) {
+function BatchesTab({ projectId, batches, isLoading }: { projectId: string; batches: SiteDrawingImportBatch[]; isLoading: boolean }) {
+  const queryClient = useQueryClient();
+
+  // One-shot cleanup for the whole list at once, same non-destructive
+  // "log entry only" guarantee as each row's own Delete (deleteImportBatch's
+  // comment on the API side) -- for a project that's been reimported/
+  // retested repeatedly, deleting dozens of rows one at a time isn't
+  // realistic.
+  const clearAllMutation = useMutation({
+    mutationFn: () => Promise.all(batches.map((b) => deleteImportBatch(projectId, b.id))),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-import-batches', projectId] });
+    },
+  });
+
   if (isLoading) return <p className="text-sm text-ink-500">Loading…</p>;
   if (batches.length === 0) return <p className="text-sm text-ink-500">No imports yet.</p>;
 
   return (
-    <div className="panel tick-frame divide-y divide-base-700/60">
-      {batches.map((b) => (
-        <div key={b.id} className="px-4 py-2">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <div className="text-sm text-ink-100">{b.originalFilename}</div>
-              <div className="text-xs text-ink-500">
-                {sourceProviderLabel(b.sourceSystem)} · {formatDate(b.createdAt)}
-              </div>
-            </div>
-            <StatusBadge tone={IMPORT_BATCH_STATUS_TONE[b.status]} label={IMPORT_BATCH_STATUS_LABELS[b.status]} dot />
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        {clearAllMutation.isError
+          ? <p className="field-error">{apiErrorMessage(clearAllMutation.error)}</p>
+          : <span />}
+        <button
+          onClick={() => {
+            if (confirm(`Remove all ${batches.length} import batches from the activity log? This does not delete any drawings they already created.`)) clearAllMutation.mutate();
+          }}
+          disabled={clearAllMutation.isPending}
+          className="btn-ghost !text-danger text-xs shrink-0"
+        >
+          {clearAllMutation.isPending ? 'Clearing…' : 'Clear all'}
+        </button>
+      </div>
+      <div className="panel tick-frame divide-y divide-base-700/60">
+        {batches.map((b) => <BatchRow key={b.id} projectId={projectId} batch={b} />)}
+      </div>
+    </div>
+  );
+}
+
+function BatchRow({ projectId, batch: b }: { projectId: string; batch: SiteDrawingImportBatch }) {
+  const queryClient = useQueryClient();
+
+  // Clears this row from the log only -- never the drawings/revisions the
+  // batch actually created (deleteImportBatch's own comment on the API
+  // side). Without this, a project that gets reimported/retested a lot
+  // (exactly what this list is for) just grows forever with no way to
+  // clean it up.
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteImportBatch(projectId, b.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-import-batches', projectId] });
+    },
+  });
+
+  return (
+    <div className="px-4 py-2">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <div className="text-sm text-ink-100">{b.originalFilename}</div>
+          <div className="text-xs text-ink-500">
+            {sourceProviderLabel(b.sourceSystem)} · {formatDate(b.createdAt)}
           </div>
-          {b.status !== 'PENDING' && (
-            <div className="text-xs text-ink-500 mt-2">
-              {b.fileCount} file{b.fileCount === 1 ? '' : 's'} · {b.createdCount} new · {b.revisionCount} revision{b.revisionCount === 1 ? '' : 's'} ·
-              {' '}{b.skippedCount} skipped (duplicate){b.errorCount > 0 ? ` · ${b.errorCount} error${b.errorCount === 1 ? '' : 's'}` : ''}
-            </div>
-          )}
-          {b.errorMessage && <div className="text-xs text-danger mt-2">{b.errorMessage}</div>}
         </div>
-      ))}
+        <div className="flex items-center gap-2">
+          <StatusBadge tone={IMPORT_BATCH_STATUS_TONE[b.status]} label={IMPORT_BATCH_STATUS_LABELS[b.status]} dot />
+          <button
+            onClick={() => { if (confirm('Remove this import batch from the activity log? This does not delete any drawings it already created.')) deleteMutation.mutate(); }}
+            disabled={deleteMutation.isPending}
+            className="btn-secondary !text-danger !px-4 !py-2 text-xs"
+          >
+            {deleteMutation.isPending ? 'Removing…' : 'Delete'}
+          </button>
+        </div>
+      </div>
+      {b.status !== 'PENDING' && (
+        <div className="text-xs text-ink-500 mt-2">
+          {b.fileCount} file{b.fileCount === 1 ? '' : 's'} · {b.createdCount} new · {b.revisionCount} revision{b.revisionCount === 1 ? '' : 's'} ·
+          {' '}{b.skippedCount} skipped (duplicate){b.errorCount > 0 ? ` · ${b.errorCount} error${b.errorCount === 1 ? '' : 's'}` : ''}
+        </div>
+      )}
+      {b.errorMessage && <div className="text-xs text-danger mt-2">{b.errorMessage}</div>}
+      {deleteMutation.isError && <p className="field-error mt-2">{apiErrorMessage(deleteMutation.error)}</p>}
     </div>
   );
 }
@@ -120,14 +208,39 @@ function ReviewQueueRow({ projectId, item }: { projectId: string; item: SiteDraw
     },
   });
 
+  // A flagged revision isn't always worth correcting -- a bad test import,
+  // a duplicate that extraction misread as a conflict -- and Confirm above
+  // requires filling in real values plus a note either way. This is the
+  // one way out of the queue that doesn't: delete the whole drawing (and
+  // every revision under it) outright, same action as the register's own
+  // detail-drawer delete button, just reachable directly from here too.
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteSiteDrawing(projectId, item.drawingId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-review-queue', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['site-drawings', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-dashboard-stats', projectId] });
+    },
+  });
+
   return (
     <div className="panel tick-frame p-4 space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="text-sm text-ink-100">
           {item.drawingNumber} <span className="text-ink-500">· {item.drawingTitle}</span>
         </div>
-        <StatusBadge tone={EXTRACTION_STATUS_TONE[item.extractionStatus]} label={EXTRACTION_STATUS_LABELS[item.extractionStatus]} dot />
+        <div className="flex items-center gap-2">
+          <StatusBadge tone={EXTRACTION_STATUS_TONE[item.extractionStatus]} label={EXTRACTION_STATUS_LABELS[item.extractionStatus]} dot />
+          <button
+            onClick={() => { if (confirm('Delete this drawing and its entire revision history? This cannot be undone.')) deleteMutation.mutate(); }}
+            disabled={deleteMutation.isPending}
+            className="btn-secondary !text-danger !px-4 !py-2 text-xs"
+          >
+            {deleteMutation.isPending ? 'Deleting…' : 'Delete drawing'}
+          </button>
+        </div>
       </div>
+      {deleteMutation.isError && <p className="field-error">{apiErrorMessage(deleteMutation.error)}</p>}
 
       {item.reviewNotes && (
         <p className="text-xs text-ink-300 bg-base-700/40 rounded px-4 py-2">{item.reviewNotes}</p>

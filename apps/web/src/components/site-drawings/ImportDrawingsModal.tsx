@@ -16,6 +16,35 @@ import { sourceProviderLabel } from './siteDrawingDisplay';
 // external URL," which doesn't apply to an uploaded package.
 const IMPORT_SOURCE_OPTIONS: DocSource[] = ['aconex', 'procore', 'sharepoint', 'bim360', 'internal'];
 
+// A second package from the same real-world source only links up as new
+// revisions of the first package's drawings (DrawingsImportProcessor keys
+// each drawing on project + source + drawing number) if this selector
+// matches across both uploads. Remembering the last choice per project
+// avoids the easy-to-miss trap of this defaulting back to 'aconex' on
+// every reopen -- including right after a successful import, exactly when
+// someone is about to upload the next package from that same source.
+function lastUsedSourceKey(projectId: string): string {
+  return `site-drawings:last-import-source:${projectId}`;
+}
+
+function readLastUsedSource(projectId: string): DocSource {
+  try {
+    const stored = localStorage.getItem(lastUsedSourceKey(projectId));
+    return stored && (IMPORT_SOURCE_OPTIONS as string[]).includes(stored) ? (stored as DocSource) : 'aconex';
+  } catch {
+    return 'aconex';
+  }
+}
+
+function writeLastUsedSource(projectId: string, source: DocSource): void {
+  try {
+    localStorage.setItem(lastUsedSourceKey(projectId), source);
+  } catch {
+    // Best-effort convenience only; a blocked/full store just means the
+    // next modal open falls back to 'aconex' again, nothing breaks.
+  }
+}
+
 // Bulk ingestion (brief Phase 2): upload a ZIP of many drawings, or a
 // single PDF, and hand it to the existing background import pipeline
 // (SiteDrawingImportService/Processor) -- this was already fully built and
@@ -27,7 +56,7 @@ export function ImportDrawingsModal({
 }) {
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
-  const [sourceSystem, setSourceSystem] = useState<DocSource>('aconex');
+  const [sourceSystem, setSourceSystem] = useState<DocSource>(() => readLastUsedSource(projectId));
 
   const onDrop = useCallback((accepted: File[]) => {
     const f = accepted[0];
@@ -39,16 +68,12 @@ export function ImportDrawingsModal({
     accept: { 'application/zip': ['.zip'], 'application/pdf': ['.pdf'] },
   });
 
-  function reset() {
-    setFile(null);
-    setSourceSystem('aconex');
-  }
-
   const mutation = useMutation({
     mutationFn: () => uploadImportBatch(projectId, file!, sourceSystem),
     onSuccess: (batch) => {
       queryClient.invalidateQueries({ queryKey: ['site-drawing-import-batches', projectId] });
-      reset();
+      writeLastUsedSource(projectId, sourceSystem);
+      setFile(null); // keep sourceSystem as-is: the next package is very likely from the same source
       onClose();
       onCreated(batch);
     },
@@ -84,6 +109,10 @@ export function ImportDrawingsModal({
           <Listbox id="import-source" className="field-input" value={sourceSystem} onChange={(e) => setSourceSystem(e.target.value as DocSource)}>
             {IMPORT_SOURCE_OPTIONS.map((s) => <option key={s} value={s}>{sourceProviderLabel(s)}</option>)}
           </Listbox>
+          <p className="text-xs text-ink-500 mt-2">
+            Re-importing a later package of the same drawings? Pick the same source here, or they'll be added as new
+            drawings instead of new revisions.
+          </p>
         </div>
 
         {mutation.isError && <p className="field-error">{apiErrorMessage(mutation.error)}</p>}

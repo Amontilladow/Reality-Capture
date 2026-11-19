@@ -62,3 +62,7 @@ export function updateInspection(projectId: string, inspectionId: string, payloa
 export function deleteInspection(projectId: string, inspectionId: string) {
   return apiDelete<{ message: string }>(`/projects/${projectId}/qa-inspections/${inspectionId}`);
 }
+
+export function bulkDeleteInspections(projectId: string, inspectionIds: string[]) {
+  return apiPost<{ deleted: number; failed: number }>(`/projects/${projectId}/qa-inspections/bulk-delete`, { ids: inspectionIds });
+}

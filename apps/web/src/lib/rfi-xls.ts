@@ -7,6 +7,7 @@ import {
 } from '@engineeringos/types';
 import { RFI_STATUS_LABELS, RFI_PRIORITY_LABELS, formatDate } from './rfi-constants';
 import { apiGet } from './api';
+import { INK, MUTED, BORDER, SECTION_FILL, ACCENT, BLUEPRINT, FONT } from './xls-brand';
 
 // question/answer are stored as HTML from the RichTextEditor (Phase 3);
 // converts Tiptap's StarterKit output (paragraphs, headings, lists,
@@ -65,17 +66,9 @@ export interface RfiXlsAuditEvent {
   occurredAt: string;
 }
 
-// Mirrors rfi-pdf.template.ts's palette exactly; both apps/web/tailwind
-// config.js's real "blueprint-dark technical" tokens, not generic slate/blue;
-// so the two exports read as the same document family, and that family
-// reads as the same product as the live app, not an unrelated template.
-const INK = 'FF0A141C';          // base-950
-const MUTED = 'FF4A6178';        // base-500
-const BORDER = 'FFB9C6CE';       // lighter tint of base-500, print-legible
-const SECTION_FILL = 'FFEAF0F4'; // ink-100, reused as a light section tint
-const ACCENT = 'FFE56A1F';       // signal, darkened for contrast on white
-const BLUEPRINT = 'FF1E6E93';    // blueprint, darkened for contrast on white
-const FONT = 'IBM Plex Sans';    // matches index.html's Google Fonts load --
+// Colors/font: xls-brand.ts, the single source of truth this file shares
+// with reports-xls.ts, so the two exports read as the same document
+// family, and that family reads as the same product as the live app.
 // Excel has no font-embedding concept (unlike the PDF, which does embed
 // this via @fontsource); if a viewer's system doesn't have it installed,
 // Excel silently substitutes its own default, same as any other font name

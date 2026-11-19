@@ -1,4 +1,5 @@
 import { createElement as h } from 'react';
+import { INK, INK_MUTED, BORDER, SECTION_FILL, SIGNAL, BLUEPRINT, registerBrandFonts } from '../../common/pdf/brand';
 
 // status/priority/type/discipline/category arrive as raw lowercase DB
 // values; there's no shared label map for these outside apps/web's own
@@ -16,33 +17,8 @@ function capitalize(value: string): string {
 // comment for the full explanation. Kept as the one place in this module
 // that knows about @react-pdf/renderer at all.
 
-// ── Brand ────────────────────────────────────────────────────────────────
-// Same palette/font choices as rfi-pdf.template.ts (kept as a separate copy
-// rather than a shared module; this codebase's existing convention is one
-// private copy per feature, not a cross-module PDF-styling library).
-const INK = '#0A141C';
-const INK_MUTED = '#4A6178';
-const BORDER = '#B9C6CE';
-const SECTION_FILL = '#EAF0F4';
-const SIGNAL = '#E56A1F';
-const BLUEPRINT = '#1E6E93';
-
-let fontsRegistered = false;
-function registerFonts(Font: typeof import('@react-pdf/renderer').Font) {
-  if (fontsRegistered) return;
-  fontsRegistered = true;
-  Font.register({
-    family: 'IBM Plex Sans',
-    fonts: [
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff'), fontWeight: 400 },
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-600-normal.woff'), fontWeight: 600 },
-      { src: require.resolve('@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff'), fontWeight: 700 },
-    ],
-  });
-  // IBM Plex Mono deliberately not registered; see rfi-pdf.template.ts's
-  // identical comment (crashes on any string containing a space).
-  Font.registerHyphenationCallback((word) => [word]);
-}
+// Brand colors and font registration: see common/pdf/brand.ts, the single
+// source of truth every PDF template in this app shares.
 
 export interface IssuePdfAttachmentItem {
   filename: string;
@@ -93,34 +69,34 @@ export interface IssuePdfData {
 
 export async function renderIssuePdf(data: IssuePdfData): Promise<Buffer> {
   const { Document, Page, View, Text, Image, StyleSheet, Font, renderToBuffer } = await import('@react-pdf/renderer');
-  registerFonts(Font);
+  registerBrandFonts(Font);
 
   const styles = StyleSheet.create({
-    page: { padding: 32, fontSize: 9, fontFamily: 'IBM Plex Sans', color: INK },
+    page: { padding: 32, fontSize: 9, fontFamily: 'Outfit', color: INK },
     headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, paddingBottom: 10, borderBottom: `2 solid ${SIGNAL}` },
-    projectEyebrow: { fontSize: 7.5, fontFamily: 'IBM Plex Sans', fontWeight: 600, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
-    title: { fontSize: 15, fontFamily: 'IBM Plex Sans', fontWeight: 700, letterSpacing: 0.3 },
-    issueNumber: { fontSize: 12, fontFamily: 'IBM Plex Sans', fontWeight: 700, color: SIGNAL, marginTop: 3, letterSpacing: 0.2 },
-    badge: { fontSize: 8, fontFamily: 'IBM Plex Sans', fontWeight: 700, padding: '3 8', borderRadius: 2, backgroundColor: SECTION_FILL, color: BLUEPRINT, textTransform: 'uppercase', letterSpacing: 0.4 },
+    projectEyebrow: { fontSize: 7.5, fontFamily: 'Outfit', fontWeight: 600, color: INK_MUTED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 },
+    title: { fontSize: 15, fontFamily: 'Outfit', fontWeight: 700, letterSpacing: 0.3 },
+    issueNumber: { fontSize: 12, fontFamily: 'Outfit', fontWeight: 700, color: SIGNAL, marginTop: 3, letterSpacing: 0.2 },
+    badge: { fontSize: 8, fontFamily: 'Outfit', fontWeight: 700, padding: '3 8', borderRadius: 2, backgroundColor: SECTION_FILL, color: BLUEPRINT, textTransform: 'uppercase', letterSpacing: 0.4 },
     section: { border: `1 solid ${BORDER}`, borderRadius: 3, padding: 10, marginBottom: 10 },
-    sectionTitle: { fontSize: 8, fontFamily: 'IBM Plex Sans', fontWeight: 700, textTransform: 'uppercase', color: BLUEPRINT, marginBottom: 6, letterSpacing: 0.6 },
+    sectionTitle: { fontSize: 8, fontFamily: 'Outfit', fontWeight: 700, textTransform: 'uppercase', color: BLUEPRINT, marginBottom: 6, letterSpacing: 0.6 },
     row: { flexDirection: 'row', marginBottom: 4 },
     col: { flex: 1, paddingRight: 8 },
     label: { fontSize: 8, color: INK_MUTED, marginBottom: 1 },
     value: { fontSize: 9.5 },
     bodyText: { fontSize: 9.5, lineHeight: 1.5 },
     attachmentsBlock: { marginTop: 4 },
-    attachmentsHeading: { fontSize: 7, fontFamily: 'IBM Plex Sans', fontWeight: 700, textTransform: 'uppercase', color: INK_MUTED, marginBottom: 2, letterSpacing: 0.6 },
-    attachmentItem: { fontSize: 8.5, fontFamily: 'IBM Plex Sans', marginBottom: 1.5 },
+    attachmentsHeading: { fontSize: 7, fontFamily: 'Outfit', fontWeight: 700, textTransform: 'uppercase', color: INK_MUTED, marginBottom: 2, letterSpacing: 0.6 },
+    attachmentItem: { fontSize: 8.5, fontFamily: 'Outfit', marginBottom: 1.5 },
     attachmentImageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2, marginBottom: 4 },
     attachmentImageCard: { width: 150, marginBottom: 4 },
     attachmentImage: { width: 150, height: 110, objectFit: 'contain', border: `1 solid ${BORDER}`, borderRadius: 2, backgroundColor: SECTION_FILL },
-    attachmentImageCaption: { fontSize: 7, fontFamily: 'IBM Plex Sans', color: INK_MUTED, marginTop: 2 },
+    attachmentImageCaption: { fontSize: 7, fontFamily: 'Outfit', color: INK_MUTED, marginTop: 2 },
     commentItem: { marginBottom: 6, paddingBottom: 6, borderBottom: `1 solid ${BORDER}` },
     commentMeta: { fontSize: 7.5, color: INK_MUTED, marginBottom: 2 },
     commentBody: { fontSize: 9, lineHeight: 1.4 },
     activityRow: { flexDirection: 'row', fontSize: 8, marginBottom: 3, gap: 8 },
-    activityAction: { fontFamily: 'IBM Plex Sans', fontWeight: 600, color: INK, width: 220 },
+    activityAction: { fontFamily: 'Outfit', fontWeight: 600, color: INK, width: 220 },
     activityUser: { color: INK_MUTED, flex: 1 },
     activityTime: { color: INK_MUTED },
     emptyNote: { fontSize: 8.5, color: INK_MUTED },

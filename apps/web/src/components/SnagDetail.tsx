@@ -160,10 +160,12 @@ export function SnagDetail({
             </button>
             <button
               onClick={() => { if (confirm('Delete this snag item? This cannot be undone.')) deleteMutation.mutate(); }}
+              disabled={deleteMutation.isPending}
               className="btn-danger !px-4 !py-2 "
             >
-              Delete
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
             </button>
+            {deleteMutation.isError && <p className="field-error">{apiErrorMessage(deleteMutation.error)}</p>}
           </div>
         </div>
 

@@ -1,9 +1,12 @@
+import { createHash } from 'crypto';
 import { SiteDrawingImportProcessor } from './site-drawing-import.processor';
 import type { DatabaseService } from '../../database/database.service';
 import type { StorageService } from '../storage/storage.service';
 import type { AiClientService } from '../ai-client/ai-client.service';
+import type { SiteDrawingsService } from './site-drawings.service';
 import * as pdfTextExtractor from './extraction/pdf-text-extractor';
 import * as zipExtraction from './extraction/zip-extraction.util';
+import * as extractDrawingFieldsModule from './extraction/extract-drawing-fields';
 
 jest.mock('./extraction/pdf-text-extractor');
 jest.mock('./extraction/zip-extraction.util');
@@ -55,17 +58,22 @@ function makeProcessor(withTenantSteps: ((callback: WithTenantCallback) => unkno
     deleteIfExists: jest.fn().mockResolvedValue(undefined),
   } as unknown as StorageService;
   const aiClient = { ocrExtractText: jest.fn() } as unknown as AiClientService;
-  return { processor: new SiteDrawingImportProcessor(db, storage, aiClient), db, storage, aiClient, withTenant };
+  const siteDrawings = { notifyProjectMembers: jest.fn().mockResolvedValue(undefined) } as unknown as SiteDrawingsService;
+  return { processor: new SiteDrawingImportProcessor(db, storage, aiClient, siteDrawings), db, storage, aiClient, siteDrawings, withTenant };
 }
 
 const batchRow = { id: batchId, storageKey: 'batch-key.pdf', originalFilename: 'A-101.pdf', sourceSystem: 'manual_link' as const, uploadedBy: 'user-1' };
+
+function sha256(buffer: Buffer): string {
+  return createHash('sha256').update(buffer).digest('hex');
+}
 
 describe('SiteDrawingImportProcessor', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('skips OCR entirely when the embedded text layer is already usable', async () => {
     (zipExtraction.extractPdfEntriesFromZip as jest.Mock).mockResolvedValue({ entries: [{ filename: 'A-101.pdf', buffer: Buffer.from('x') }] });
-    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: 'DRAWING NO: A-101\nREV: B', pageCount: 1 });
+    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: 'DRAWING NO: A-101\nREV: B', tableCells: [], pageCount: 1 });
     (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
 
     const { processor, aiClient, withTenant } = makeProcessor([
@@ -119,5 +127,206 @@ describe('SiteDrawingImportProcessor', () => {
 
     await expect(processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never)).resolves.toBeUndefined();
     expect(db.withTenant).toHaveBeenCalledTimes(4); // the batch still completes (COMPLETED/PARTIAL), never aborted by the OCR failure
+  });
+
+  it('sends one notification per batch (not per file), excluding the uploader, summarizing the outcome', async () => {
+    (zipExtraction.extractPdfEntriesFromZip as jest.Mock).mockResolvedValue({ entries: [{ filename: 'A-101.pdf', buffer: Buffer.from('x') }] });
+    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: 'DRAWING NO: A-101\nREV: B', tableCells: [], pageCount: 1 });
+    (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
+
+    const { processor, siteDrawings } = makeProcessor([
+      single(undefined), // markStarted
+      single([batchRow]), // getBatch
+      multi([[], [], [{ id: 'drawing-1' }], [{ id: 'revision-1' }], []]), // reconcile: created
+      single(undefined), // finish
+    ]);
+
+    await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
+
+    expect(siteDrawings.notifyProjectMembers).toHaveBeenCalledTimes(1);
+    expect(siteDrawings.notifyProjectMembers).toHaveBeenCalledWith(
+      companyId, projectId, batchRow.uploadedBy,
+      expect.objectContaining({ type: 'site_drawing_import_completed', title: expect.stringContaining('1 new') }),
+    );
+  });
+
+  it('skips a reimport as a duplicate when its content hash matches the current revision, regardless of the extracted revision label', async () => {
+    // Reproduces the real bug: extraction fails entirely for both the
+    // original import and this reimport (same unreadable file), so both
+    // land on the revisionNumber fallback of '1' -- but that must never
+    // be the signal that decides duplicate-ness. Content hash is.
+    // batchRow.originalFilename is a bare .pdf, not a .zip, so the
+    // processor reads this file's bytes straight from storage.download()
+    // (the single-PDF path), never through extractPdfEntriesFromZip --
+    // that mock must therefore carry the SAME buffer being hashed here.
+    const buffer = Buffer.from('identical file bytes');
+    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: '', pageCount: 1 });
+    (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(false);
+
+    const { processor, storage, db } = makeProcessor([
+      single(undefined), // markStarted
+      single([batchRow]), // getBatch
+      // reconcile: SELECT existing (found), SELECT currentRevision (same content hash) -> duplicate_skipped, no INSERT
+      multi([
+        [{ id: 'drawing-1', drawingTitle: 'A-101', currentRevisionId: 'revision-1' }],
+        [{ id: 'revision-1', revisionNumber: '1', contentHash: sha256(buffer) }],
+      ]),
+      single(undefined), // finish
+    ]);
+    (storage.download as jest.Mock).mockResolvedValue(buffer);
+    (storage.getReadUrl as jest.Mock).mockResolvedValue('https://signed.example/abc.pdf');
+
+    await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
+
+    expect(storage.deleteIfExists).toHaveBeenCalled();
+    expect(db.withTenant).toHaveBeenCalledTimes(4); // no extra INSERT/UPDATE statements beyond the two SELECTs
+  });
+
+  it('creates a new, superseding revision when content differs, even though extraction also found a genuinely different revision number', async () => {
+    const buffer = Buffer.from('a real new revision of the drawing');
+    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: 'DRAWING NO: A-101\nREV: B', tableCells: [], pageCount: 1 });
+    (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
+
+    const { processor, db, storage } = makeProcessor([
+      single(undefined), // markStarted
+      single([batchRow]), // getBatch
+      // reconcile: SELECT existing, SELECT currentRevision (rev 'A', different hash), SELECT usedRevisionNumbers (just 'A', no collision with 'B'), INSERT newRevision, supersede UPDATE, UPDATE current_revision_id
+      multi([
+        [{ id: 'drawing-1', drawingTitle: 'A-101', currentRevisionId: 'revision-1' }],
+        [{ id: 'revision-1', revisionNumber: 'A', contentHash: sha256(Buffer.from('the previous revision')) }],
+        [{ revisionNumber: 'A' }],
+        [{ id: 'revision-2' }],
+        [],
+        [],
+      ]),
+      single(undefined), // finish
+    ]);
+    (storage.download as jest.Mock).mockResolvedValue(buffer);
+
+    await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
+
+    expect(db.withTenant).toHaveBeenCalledTimes(4);
+  });
+
+  it('disambiguates and flags CONFLICT when content differs but extraction lands on the same revision label as the current revision', async () => {
+    // Both the original import and this reimport failed extraction
+    // entirely and defaulted to revisionNumber '1' -- but the file content
+    // genuinely changed. The UNIQUE(drawing_id, revision_number)
+    // constraint means this can't be inserted as a second "1"; it must be
+    // disambiguated and routed to review instead of silently dropped.
+    const buffer = Buffer.from('a different file, same failed-extraction fallback label');
+    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: '', pageCount: 1 });
+    (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(false);
+
+    const { processor, db, storage } = makeProcessor([
+      single(undefined), // markStarted
+      single([batchRow]), // getBatch
+      // reconcile: SELECT existing, SELECT currentRevision ('1', different hash), SELECT usedRevisionNumbers (just '1', collides), INSERT newRevision ('1-v2'), supersede UPDATE, UPDATE current_revision_id
+      multi([
+        [{ id: 'drawing-1', drawingTitle: 'A-101', currentRevisionId: 'revision-1' }],
+        [{ id: 'revision-1', revisionNumber: '1', contentHash: sha256(Buffer.from('the previous revision, same failed label')) }],
+        [{ revisionNumber: '1' }],
+        [{ id: 'revision-2' }],
+        [],
+        [],
+      ]),
+      single(undefined), // finish
+    ]);
+    (storage.download as jest.Mock).mockResolvedValue(buffer);
+
+    await expect(processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never)).resolves.toBeUndefined();
+    expect(db.withTenant).toHaveBeenCalledTimes(4);
+  });
+
+  it('never throws and stores no issue_date when extraction produces a date-shaped value that is not a real calendar date', async () => {
+    // Reproduces the real production incident: commit 13360bd already
+    // rejects one specific garbled-date shape ("60/90/2025") inside
+    // extractDate()'s own regex validation, and the same handful of files
+    // crashed again afterwards with the identical `RangeError: Invalid
+    // time value`, proving some other shape still gets past that check.
+    // This test doesn't depend on finding the exact string a regex missed
+    // -- it simulates "extraction produced an unparseable issueDate,
+    // however that happened" directly, and proves reconcile()'s own
+    // insert-boundary guard (not the regex) is what actually stops the
+    // crash: the postgres driver would throw serializing this value for
+    // the `issue_date` DATE column if it ever reached the INSERT.
+    (zipExtraction.extractPdfEntriesFromZip as jest.Mock).mockResolvedValue({ entries: [{ filename: 'A-101.pdf', buffer: Buffer.from('x') }] });
+    jest.spyOn(extractDrawingFieldsModule, 'extractDrawingFields').mockResolvedValue({
+      drawingNumber: 'A-101', confidence: 0.9, source: 'embedded_text', issueDate: 'not-a-real-calendar-date',
+    });
+
+    const insertCalls: unknown[][] = [];
+    const captureSql = (results: unknown[]) => (callback: WithTenantCallback) => {
+      let i = 0;
+      const sql = withJson((...args: unknown[]) => { insertCalls.push(args); return Promise.resolve(results[i++] ?? []); });
+      return callback(sql);
+    };
+
+    const { processor } = makeProcessor([
+      single(undefined), // markStarted
+      single([batchRow]), // getBatch
+      captureSql([[], [], [{ id: 'drawing-1' }], [{ id: 'revision-1' }], []]), // reconcile: created
+      single(undefined), // finish
+    ]);
+
+    await expect(processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never)).resolves.toBeUndefined();
+
+    const revisionInsertCall = insertCalls.find((args) => (args[0] as string[]).join('?').includes('INSERT INTO site_drawing_revisions'));
+    expect(revisionInsertCall).toBeDefined();
+    // Column order: company_id, project_id, drawing_id, revision_number,
+    // 'UNKNOWN' (literal, not interpolated), issue_date, storage_key, ...
+    // -- so the 5th interpolated value (args[5], after the strings array
+    // and the first 4 values) is issue_date.
+    expect(revisionInsertCall![5]).toBeNull();
+  });
+
+  it('disambiguates against a SUPERSEDED revision number, not just the current one -- reproduces the real production unique-constraint crash', async () => {
+    // The real bug: the prior disambiguation logic only compared the
+    // extracted/fallback revisionNumber against the CURRENT revision's own
+    // label. A drawing reimported many times over this session had several
+    // now-superseded revisions sitting under it, one of them labeled '1'
+    // (a prior failed-extraction fallback) that was no longer current --
+    // the current revision was '2'. A later reimport, whose extraction
+    // also failed and fell back to '1', saw no collision against '2' and
+    // tried to insert a second revision_number '1' for the same drawing_id,
+    // which site_drawing_revisions' UNIQUE(drawing_id, revision_number)
+    // constraint rejected outright: confirmed by hand against production,
+    // `duplicate key value violates unique constraint
+    // "site_drawing_revisions_drawing_id_revision_number_key"`.
+    const buffer = Buffer.from('yet another reimport, different content, same failed-extraction fallback label');
+    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: '', pageCount: 1 });
+    (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(false);
+
+    const insertCalls: unknown[][] = [];
+    const captureSql = (results: unknown[]) => (callback: WithTenantCallback) => {
+      let i = 0;
+      const sql = withJson((...args: unknown[]) => { insertCalls.push(args); return Promise.resolve(results[i++] ?? []); });
+      return callback(sql);
+    };
+
+    const { processor, db, storage } = makeProcessor([
+      single(undefined), // markStarted
+      single([batchRow]), // getBatch
+      captureSql([
+        [{ id: 'drawing-1', drawingTitle: 'A-101', currentRevisionId: 'revision-current' }], // SELECT existing
+        [{ id: 'revision-current', revisionNumber: '2', contentHash: sha256(Buffer.from('the current revision, different content')) }], // SELECT currentRevision ('2' -- no collision against the fallback '1' alone)
+        [{ revisionNumber: '2' }, { revisionNumber: '1' }], // SELECT usedRevisionNumbers: '1' was used by an OLDER, now-superseded revision
+        [{ id: 'revision-new' }], // INSERT newRevision
+        [], // supersede UPDATE
+        [], // UPDATE current_revision_id
+      ]),
+      single(undefined), // finish
+    ]);
+    (storage.download as jest.Mock).mockResolvedValue(buffer);
+
+    await expect(processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never)).resolves.toBeUndefined();
+    expect(db.withTenant).toHaveBeenCalledTimes(4); // never aborted into the per-file error path
+
+    const revisionInsertCall = insertCalls.find((args) => (args[0] as string[]).join('?').includes('INSERT INTO site_drawing_revisions'));
+    expect(revisionInsertCall).toBeDefined();
+    // Column order: company_id, project_id, drawing_id, revision_number, ...
+    // -- args[4] is revision_number. Disambiguated to '1-v2' (not the
+    // colliding '1'), since '1' is taken but '1-v2' is free.
+    expect(revisionInsertCall![4]).toBe('1-v2');
   });
 });

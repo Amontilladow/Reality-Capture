@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException, Optional } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
+import { RiskService } from '../risk/risk.service';
 import type { CreateQaInspectionDto } from './dto/create-qa-inspection.dto';
 import type { UpdateQaInspectionDto } from './dto/update-qa-inspection.dto';
 import { getOrgCategory, type PaginationQuery, type CompanyRole } from '@engineeringos/types';
@@ -8,7 +9,32 @@ const OUTCOMES = new Set(['passed', 'passed_with_exceptions', 'failed']);
 
 @Injectable()
 export class QaService {
-  constructor(private readonly db: DatabaseService) {}
+  private readonly logger = new Logger(QaService.name);
+
+  constructor(
+    private readonly db: DatabaseService,
+    // @Optional(): same rationale as RfisService's own optional RiskService
+    // (keeps existing qa.service.spec.ts call sites, built before this
+    // dependency existed, constructing this service unchanged). This
+    // module never had a create/update-side risk trigger either -- an
+    // inspection only ever entered the risk graph via the full-project
+    // recalculation -- so this is solely for cleanup on delete() below.
+    @Optional() private readonly risk?: RiskService,
+  ) {}
+
+  // The removal half of the event-driven risk pattern (RiskService.
+  // removeEntityNode()'s own comment has the full story): fired after a
+  // successful delete so a deleted inspection's risk, signals and graph
+  // edges don't linger forever, including through a full Risk
+  // Intelligence "Refresh" -- nothing previously called this at all.
+  private async triggerRiskRemoval(companyId: string, inspectionId: string): Promise<void> {
+    if (!this.risk) return;
+    try {
+      await this.risk.removeEntityNode(companyId, 'qa_inspection', inspectionId);
+    } catch (err) {
+      this.logger.warn(`Risk node removal failed for inspection ${inspectionId}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   // withTenant required for the projects lookup: projects carries the tenant_isolation
   // RLS policy. A plain this.db.query() never sets app.current_company_id, so under any DB
@@ -113,9 +139,25 @@ export class QaService {
     return updated;
   }
 
+  // withTenant required: qa_inspections carries the tenant_isolation RLS
+  // policy (migration 053) and FORCES it, so a plain this.db.query() DELETE
+  // sets no app.current_company_id and silently matches 0 rows -- reporting
+  // success while the row stays in the DB forever.
   async delete(companyId: string, projectId: string, inspectionId: string) {
-    await this.db.query`DELETE FROM qa_inspections WHERE id = ${inspectionId} AND project_id = ${projectId} AND company_id = ${companyId}`;
+    const result = await this.db.withTenant(companyId, sql => sql`
+      DELETE FROM qa_inspections WHERE id = ${inspectionId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (result.count === 0) throw new NotFoundException(`Inspection ${inspectionId} not found.`);
+    await this.triggerRiskRemoval(companyId, inspectionId);
     return { message: 'Inspection deleted.' };
+  }
+
+  async bulkDelete(companyId: string, projectId: string, inspectionIds: string[]) {
+    const result = await this.db.withTenant(companyId, sql => sql`
+      DELETE FROM qa_inspections WHERE id = ANY(${inspectionIds}::uuid[]) AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    await Promise.all(inspectionIds.map(id => this.triggerRiskRemoval(companyId, id)));
+    return { deleted: result.count, failed: inspectionIds.length - result.count };
   }
 
   async getSummary(companyId: string, projectId: string) {

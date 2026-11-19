@@ -37,6 +37,7 @@ import { StorageModule } from './modules/storage/storage.module';
 import { EmailModule } from './modules/email/email.module';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { WorkspaceModule } from './modules/workspace/workspace.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { WorkforceModule } from './modules/workforce/workforce.module';
 import { RiskModule } from './modules/risk/risk.module';
@@ -114,6 +115,7 @@ import gmailConfig from './config/google-gmail.config';
     EmailModule,
     WhatsAppModule,
     AuditModule,
+    WorkspaceModule,
     HealthModule,
     TelemetryModule,
     TenancyModule,

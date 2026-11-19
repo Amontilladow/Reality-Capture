@@ -70,6 +70,9 @@ importers:
       '@fontsource/ibm-plex-sans':
         specifier: ^5.3.0
         version: 5.3.0
+      '@fontsource/outfit':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@google/generative-ai':
         specifier: ^0.24.1
         version: 0.24.1
@@ -546,6 +549,9 @@ importers:
       react-router-dom:
         specifier: ^6.26.2
         version: 6.30.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-useanimations:
+        specifier: 3.1.1
+        version: 3.1.1(react@18.3.1)
       recharts:
         specifier: ^3.10.1
         version: 3.10.1(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react-is@18.3.1)(react@18.3.1)(redux@5.0.1)
@@ -2062,6 +2068,9 @@ packages:
 
   '@fontsource/ibm-plex-sans@5.3.0':
     resolution: {integrity: sha512-CbE4CbbEEZJX860XyUiRpsksXIQR8Rp2XDva2VO53NJox9tVNtusrysd2x5YkUEY3ErQ66W1IiiQL8/wihhw5w==}
+
+  '@fontsource/outfit@5.3.0':
+    resolution: {integrity: sha512-0AVHzTTVJSxWDOxPKSfMeHhZeBFDU3cmgrcOb76ZEyhGo0+xgyG3GsLF3h9+X8w0IX7G4jzjJgFQEBiWdX6VgA==}
 
   '@google/generative-ai@0.24.1':
     resolution: {integrity: sha512-MqO+MLfM6kjxcKoy0p1wRzG3b4ZZXtPI+z2IE26UogS2Cm/XHO+7gGRBh6gcJsOiIVoH93UwKvW4HdgiOZCy9Q==}
@@ -8790,6 +8799,11 @@ packages:
     peerDependencies:
       react: ^16.0.0 || ^17.0.0 || ^18.0.0
 
+  react-useanimations@3.1.1:
+    resolution: {integrity: sha512-hq5ItlbkHk1ztmAxFvWTMX9ZTpPdT9ZTvRpvoakrdsvDNRtUl6Yf5IUPGxP+bxVidgKXUeDhBioQE8g/8jsYMQ==}
+    peerDependencies:
+      react: '>=18'
+
   react@18.2.0:
     resolution: {integrity: sha512-/3IjMdb2L9QbBdWiW5e3P2/npwMBaU9mHCSCUzNln0ZCYbcfTsGbTJrU/kGemdH2IWmB2ioZ+zkxtmq6g09fGQ==}
     engines: {node: '>=0.10.0'}
@@ -12179,6 +12193,8 @@ snapshots:
     optional: true
 
   '@fontsource/ibm-plex-sans@5.3.0': {}
+
+  '@fontsource/outfit@5.3.0': {}
 
   '@google/generative-ai@0.24.1': {}
 
@@ -20222,6 +20238,10 @@ snapshots:
       object-assign: 4.1.1
       react: 18.2.0
       react-is: 18.3.1
+
+  react-useanimations@3.1.1(react@18.3.1):
+    dependencies:
+      react: 18.3.1
 
   react@18.2.0:
     dependencies:

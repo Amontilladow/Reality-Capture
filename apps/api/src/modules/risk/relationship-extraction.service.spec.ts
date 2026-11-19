@@ -1,4 +1,6 @@
-import { canonicalizeFreeTextDiscipline, computeInferredRfiIssueConfidence, jaccard, titleWords } from './relationship-extraction.service';
+import { canonicalizeFreeTextDiscipline, computeInferredRfiIssueConfidence, jaccard, titleWords, RelationshipExtractionService } from './relationship-extraction.service';
+import type { DatabaseService } from '../../database/database.service';
+import type { RiskGraphService } from './risk-graph.service';
 
 describe('titleWords / jaccard — pure text-similarity helpers', () => {
   it('ignores short words and stopwords, keeping only meaningful terms', () => {
@@ -64,5 +66,47 @@ describe('computeInferredRfiIssueConfidence — the "no fabricated relationship"
     const close = computeInferredRfiIssueConfidence('MEP', 'MEP', 1, 'Ceiling clash', 'Ceiling clash issue');
     const far = computeInferredRfiIssueConfidence('MEP', 'MEP', 13, 'Ceiling clash', 'Ceiling clash issue');
     expect(close as number).toBeGreaterThan(far as number);
+  });
+});
+
+describe('findExistingEntityIds — RiskService.pruneOrphanedNodes support', () => {
+  function makeSvc(rows: { id: string }[]) {
+    const query = jest.fn((_strings: TemplateStringsArray, ..._values: unknown[]) => Promise.resolve(rows));
+    const db = { withTenant: jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => fn(query)) };
+    const svc = new RelationshipExtractionService(db as unknown as DatabaseService, {} as unknown as RiskGraphService);
+    return { svc, query };
+  }
+
+  it('returns an empty set without querying when given no entityIds', async () => {
+    const { svc, query } = makeSvc([]);
+    const result = await svc.findExistingEntityIds('company-1', 'rfi', []);
+    expect(result).toEqual(new Set());
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('queries the rfis table for nodeType rfi and returns the ids that still exist', async () => {
+    const { svc, query } = makeSvc([{ id: 'rfi-live' }]);
+    const result = await svc.findExistingEntityIds('company-1', 'rfi', ['rfi-gone', 'rfi-live']);
+    expect(result).toEqual(new Set(['rfi-live']));
+    const text = (query.mock.calls[0][0] as TemplateStringsArray).join('?');
+    expect(text).toContain('FROM rfis');
+  });
+
+  it('queries qaqc_records scoped to record_type = ncr for nodeType ncr', async () => {
+    const { svc, query } = makeSvc([{ id: 'ncr-live' }]);
+    await svc.findExistingEntityIds('company-1', 'ncr', ['ncr-gone', 'ncr-live']);
+    const text = (query.mock.calls[0][0] as TemplateStringsArray).join('?');
+    expect(text).toContain('FROM qaqc_records');
+    expect(text).toContain("record_type = 'ncr'");
+  });
+
+  // This sweep is only ever called by RiskService with RISK_WORTHY_NODE_TYPES,
+  // but a node type outside that set must never be mistaken for an orphan --
+  // there's no existence check defined for it, so treat every id as live.
+  it('treats every id as existing for a node type with no defined existence check', async () => {
+    const { svc, query } = makeSvc([]);
+    const result = await svc.findExistingEntityIds('company-1', 'location' as never, ['loc-1', 'loc-2']);
+    expect(result).toEqual(new Set(['loc-1', 'loc-2']));
+    expect(query).not.toHaveBeenCalled();
   });
 });

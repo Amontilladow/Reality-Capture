@@ -85,6 +85,20 @@ export class IssuesService {
     }
   }
 
+  // The removal half of the same event-driven pattern (RiskService.
+  // removeEntityNode()'s own comment has the full story): fired after a
+  // successful delete so a deleted issue's risk, signals and graph edges
+  // don't linger forever, including through a full Risk Intelligence
+  // "Refresh" -- nothing previously called this at all.
+  private async triggerRiskRemoval(companyId: string, issueId: string): Promise<void> {
+    if (!this.risk) return;
+    try {
+      await this.risk.removeEntityNode(companyId, 'issue', issueId);
+    } catch (err) {
+      this.logger.warn(`Risk node removal failed for issue ${issueId}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
   // ── Generate issue number ─────────────────────────────────────────────────
   // Sequential per (project, discipline): {projectCode}-{disciplineCode}-{0001}.
   // Previously keyed off issue type ({projectCode}-{typeCode}-{0001}); this
@@ -572,15 +586,39 @@ export class IssuesService {
   // ── Delete ────────────────────────────────────────────────────────────────
   async delete(companyId: string, projectId: string, issueId: string, userId: string, userRole: string) {
     const issue = await this.findOne(companyId, projectId, issueId);
-    // Only creator or admin can delete
-    if (issue.createdBy !== userId && !['company_admin','engineering_manager'].includes(userRole)) {
+    // Only creator or admin can delete. Weight-based, not a hardcoded role
+    // array: see the identical reasoning on isPermittedApprover below (F5)
+    // — a literal ['company_admin','engineering_manager'] list silently
+    // excluded super_admin and technical_director despite both outranking
+    // engineering_manager everywhere else in this app.
+    const weight = COMPANY_ROLE_WEIGHT[userRole as CompanyRole] ?? 0;
+    if (issue.createdBy !== userId && weight < COMPANY_ROLE_WEIGHT.engineering_manager) {
       throw new ForbiddenException('Only the issue creator or an administrator can delete an issue.');
     }
     const result = await this.db.withTenant(companyId, sql => sql`DELETE FROM issues WHERE id = ${issueId} AND company_id = ${companyId}`);
     if (result.count === 0) {
       throw new NotFoundException(`Issue ${issueId} not found.`);
     }
+    await this.triggerRiskRemoval(companyId, issueId);
     return { message: `Issue ${issue.issueNumber as string} deleted.` };
+  }
+
+  // Loops the single-item delete() above so its creator-or-admin check
+  // runs per issue; one the caller isn't allowed to delete (or that's
+  // already gone) is skipped rather than failing the whole batch, same
+  // "don't let one bad item block the rest" shape bulkClose() already has.
+  async bulkDelete(companyId: string, projectId: string, issueIds: string[], userId: string, userRole: string) {
+    let deleted = 0;
+    let failed = 0;
+    for (const id of issueIds) {
+      try {
+        await this.delete(companyId, projectId, id, userId, userRole);
+        deleted++;
+      } catch {
+        failed++;
+      }
+    }
+    return { deleted, failed };
   }
 
   // ── Activities ────────────────────────────────────────────────────────────

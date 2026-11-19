@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { apiGet, apiGetWithMeta, apiPatch, apiPost } from './api';
+import { apiGet, apiGetWithMeta, apiPatch, apiPost, apiDelete } from './api';
 
 export interface BimModel {
   id: string;
@@ -79,6 +79,14 @@ export interface BimElementDetail {
 
 export function listBimModels(projectId: string) {
   return apiGet<BimModel[]>(`/projects/${projectId}/bim/models`);
+}
+
+export function deleteBimModel(projectId: string, modelId: string) {
+  return apiDelete<{ message: string }>(`/projects/${projectId}/bim/models/${modelId}`);
+}
+
+export function bulkDeleteBimModels(projectId: string, modelIds: string[]) {
+  return apiPost<{ deleted: number; failed: number }>(`/projects/${projectId}/bim/models/bulk-delete`, { ids: modelIds });
 }
 
 export function getModelUploadUrl(projectId: string, filename: string) {

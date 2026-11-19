@@ -43,6 +43,20 @@ export class SnaggingService {
     }
   }
 
+  // The removal half of the same event-driven pattern (RiskService.
+  // removeEntityNode()'s own comment has the full story): fired after a
+  // successful delete so a deleted snag item's risk, signals and graph
+  // edges don't linger forever, including through a full Risk Intelligence
+  // "Refresh" -- nothing previously called this at all.
+  private async triggerRiskRemoval(companyId: string, snagId: string): Promise<void> {
+    if (!this.risk) return;
+    try {
+      await this.risk.removeEntityNode(companyId, 'snag_item', snagId);
+    } catch (err) {
+      this.logger.warn(`Risk node removal failed for snag item ${snagId}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
   // withTenant required for the projects lookup: projects carries the tenant_isolation
   // RLS policy. A plain this.db.query() never sets app.current_company_id, so under any DB
   // role that isn't the table owner/a superuser this SELECT sees no rows and silently falls
@@ -226,9 +240,26 @@ export class SnaggingService {
     return updated;
   }
 
+  // withTenant required: snag_items carries the tenant_isolation RLS policy
+  // (migration 053) and FORCES it, so a plain this.db.query() DELETE sets no
+  // app.current_company_id and silently matches 0 rows -- reporting success
+  // while the row stays in the DB forever. Same bug class documented on
+  // captures.service.ts's own delete().
   async delete(companyId: string, projectId: string, snagId: string) {
-    await this.db.query`DELETE FROM snag_items WHERE id = ${snagId} AND project_id = ${projectId} AND company_id = ${companyId}`;
+    const result = await this.db.withTenant(companyId, sql => sql`
+      DELETE FROM snag_items WHERE id = ${snagId} AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (result.count === 0) throw new NotFoundException(`Snag item ${snagId} not found.`);
+    await this.triggerRiskRemoval(companyId, snagId);
     return { message: 'Snag item deleted.' };
+  }
+
+  async bulkDelete(companyId: string, projectId: string, snagIds: string[]) {
+    const result = await this.db.withTenant(companyId, sql => sql`
+      DELETE FROM snag_items WHERE id = ANY(${snagIds}::uuid[]) AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    await Promise.all(snagIds.map(id => this.triggerRiskRemoval(companyId, id)));
+    return { deleted: result.count, failed: snagIds.length - result.count };
   }
 
   async getSummary(companyId: string, projectId: string) {

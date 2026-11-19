@@ -1,27 +1,12 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { DESKTOP_QUERY, useMediaQuery } from '../lib/useMediaQuery';
-import { useQuery } from '@tanstack/react-query';
-import { getIssueSummary } from '../lib/issues.api';
-import { getProjectActivity } from '../lib/audit.api';
-import { groupActivity } from '../lib/activity-feed';
-import { listBimModels } from '../lib/bim.api';
 import { StatTile } from './ui/StatTile';
-import { SectionHeader } from './ui/SectionHeader';
+import { recordHref } from '../lib/record-links';
+import type { ProjectBriefing } from './overview/useProjectBriefing';
+import { PROCESSING_STATUS_LABELS, type RecentActivity } from './overview/overview-data';
 
-const PROCESSING_STATUS_LABELS: Record<string, string> = {
-  pending: 'Pending',
-  processing: 'Processing',
-  ready: 'Ready',
-  failed: 'Failed',
-};
-
-const PROCESSING_STATUS_TONE: Record<string, 'warn' | 'danger' | 'ok' | undefined> = {
-  pending: undefined,
-  processing: 'warn',
-  ready: 'ok',
-  failed: 'danger',
-};
+// The Overview's numbers and its secondary sections: four key numbers,
+// each linking to its module, then the recent activity feed and BIM
+// processing, which the page shows inside collapsible sections.
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -34,127 +19,51 @@ function timeAgo(iso: string): string {
   return `${days}d ago`;
 }
 
-export function ProjectDashboard({ projectId }: { projectId: string }) {
-  const issuesQuery = useQuery({
-    queryKey: ['issue-summary', projectId],
-    queryFn: () => getIssueSummary(projectId),
-  });
+const ACTIVITY_RECORD: Record<string, string> = {
+  issue: 'issue', issues: 'issue', rfi: 'rfi', rfis: 'rfi', snag_item: 'snag', snag_items: 'snag', snags: 'snag',
+  qaqc_record: 'qaqc', qaqc: 'qaqc', site_drawing: 'drawing', site_drawings: 'drawing', submittal: 'submittal', submittals: 'submittal',
+};
 
-  const activityQuery = useQuery({
-    queryKey: ['project-activity', projectId],
-    // Fetched wider than shown: internal pipeline events are filtered out.
-    queryFn: () => getProjectActivity(projectId, 30),
-  });
-
-  const desktop = useMediaQuery(DESKTOP_QUERY);
-  const [activityExpanded, setActivityExpanded] = useState(false);
-  const activity = groupActivity(activityQuery.data ?? []);
-
-  const modelsQuery = useQuery({
-    queryKey: ['bim-models', projectId],
-    queryFn: () => listBimModels(projectId),
-  });
-
-  const modelStatusCounts = (modelsQuery.data ?? []).reduce<Record<string, number>>((acc, m) => {
-    acc[m.status] = (acc[m.status] ?? 0) + 1;
-    return acc;
-  }, {});
-
+export function RecentActivityList({ activity, projectId }: { activity: RecentActivity; projectId: string }) {
+  if (activity.isLoading) return <p className="text-sm text-ink-500">Loading…</p>;
+  if (activity.isLoaded && activity.entries.length === 0) return <p className="text-sm text-ink-500">Nothing recorded yet.</p>;
   return (
-    <div className="p-6 pb-0 space-y-6">
-      <div>
-        <div className="mb-4">
-          <SectionHeader
-            title="Issues"
-            size="sm"
-            actions={
-              <Link to={`/projects/${projectId}/issues`} className="text-xs text-blueprint hover:text-blueprint-hover">
-                View all
-              </Link>
-            }
-          />
-        </div>
-        {issuesQuery.isLoading && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="tick-frame panel p-4 h-[68px] animate-pulse bg-base-700/40" />
-            ))}
-          </div>
-        )}
-        {issuesQuery.data && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <StatTile label="Open" value={issuesQuery.data.open} />
-            <StatTile label="Critical" value={issuesQuery.data.critical} tone="danger" />
-            <StatTile label="Overdue" value={issuesQuery.data.overdue} tone="warn" />
-            <StatTile label="Closed this week" value={issuesQuery.data.closedThisWeek} tone="ok" />
-          </div>
-        )}
-      </div>
-
-      <div>
-        <div className="mb-4">
-          <SectionHeader
-            title="BIM processing"
-            size="sm"
-            actions={
-              <Link to={`/projects/${projectId}/bim`} className="text-xs text-blueprint hover:text-blueprint-hover">
-                View models
-              </Link>
-            }
-          />
-        </div>
-        {modelsQuery.isLoading && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="tick-frame panel p-4 h-[68px] animate-pulse bg-base-700/40" />
-            ))}
-          </div>
-        )}
-        {modelsQuery.data && modelsQuery.data.length === 0 && (
-          <div className="tick-frame panel p-4 text-sm text-ink-500">No BIM models uploaded yet.</div>
-        )}
-        {modelsQuery.data && modelsQuery.data.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {(['ready', 'processing', 'pending', 'failed'] as const).map((status) => (
-              <StatTile
-                key={status}
-                label={PROCESSING_STATUS_LABELS[status]}
-                value={modelStatusCounts[status] ?? 0}
-                tone={PROCESSING_STATUS_TONE[status]}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div>
-        <div className="mb-4"><SectionHeader title="Recent activity" size="sm" /></div>
-        <div className="tick-frame panel divide-y divide-base-600">
-          {activityQuery.isLoading && <div className="p-4 text-sm text-ink-500">Loading…</div>}
-          {activityQuery.data && activity.length === 0 && (
-            <div className="p-4 text-sm text-ink-500">Nothing recorded yet.</div>
-          )}
-          {activity.slice(0, desktop || activityExpanded ? 8 : 3).map((entry) => (
-            <div key={entry.id} className="px-4 py-2 flex items-start justify-between gap-4 text-sm">
-              <div className="min-w-0 line-clamp-2">
-                <span className="text-ink-100 font-medium">{entry.userName ?? 'Someone'}</span>{' '}
-                <span className="text-ink-300">{entry.text}</span>
-              </div>
-              <span className="text-xs text-ink-500 shrink-0 mt-0 tabular-nums">{timeAgo(entry.occurredAt)}</span>
+    <ol className="relative border-l border-ink-100/15 ml-2">
+      {activity.entries.slice(0, 10).map((entry) => {
+        const type = ACTIVITY_RECORD[entry.resourceType];
+        const href = entry.count === 1 && type && entry.resourceId ? recordHref(type, projectId, entry.resourceId) : null;
+        return (
+          <li key={entry.id} className="relative pl-6 py-2 flex items-start justify-between gap-4 text-sm">
+            <span aria-hidden="true" className="absolute -left-1 top-4 w-2 h-2 rounded-full bg-ink-300" />
+            <div className="min-w-0 line-clamp-2">
+              <span className="text-ink-100 font-medium">{entry.userName ?? 'Someone'}</span>{' '}
+              {href ? <Link to={href} className="text-ink-300 hover:text-blueprint">{entry.text}</Link> : <span className="text-ink-300">{entry.text}</span>}
             </div>
+            <time dateTime={entry.occurredAt} title={new Date(entry.occurredAt).toLocaleString()} className="text-xs text-ink-500 shrink-0 tabular-nums">{timeAgo(entry.occurredAt)}</time>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+const PROCESSING_STATUS_TONE: Record<string, 'warn' | 'danger' | 'ok' | undefined> = { pending: undefined, processing: 'warn', ready: 'ok', failed: 'danger' };
+
+export function BimProcessing({ projectId, brief }: { projectId: string; brief: ProjectBriefing }) {
+  const models = brief.bimModels ?? [];
+  const counts = models.reduce<Record<string, number>>((acc, m) => ({ ...acc, [m.status]: (acc[m.status] ?? 0) + 1 }), {});
+  return (
+    <div className="space-y-4">
+      {models.length === 0 ? (
+        <p className="text-sm text-ink-500">No BIM models uploaded yet.</p>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {(['ready', 'processing', 'pending', 'failed'] as const).map((status) => (
+            <StatTile key={status} label={PROCESSING_STATUS_LABELS[status]} value={counts[status] ?? 0} tone={PROCESSING_STATUS_TONE[status]} />
           ))}
-          {!desktop && activity.length > 3 && (
-            <button
-              type="button"
-              aria-expanded={activityExpanded}
-              onClick={() => setActivityExpanded((v) => !v)}
-              className="w-full px-4 py-2 text-left text-sm font-medium text-ink-300 hover:text-ink-100"
-            >
-              {activityExpanded ? 'Show less' : `Show ${Math.min(activity.length, 8) - 3} more`}
-            </button>
-          )}
         </div>
-      </div>
+      )}
+      <Link to={`/projects/${projectId}/bim`} className="text-xs font-medium text-blueprint hover:text-blueprint-hover">View models</Link>
     </div>
   );
 }

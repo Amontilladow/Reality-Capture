@@ -75,6 +75,10 @@ export function deleteSnagItem(projectId: string, snagId: string) {
   return apiDelete<{ message: string }>(`/projects/${projectId}/snag-items/${snagId}`);
 }
 
+export function bulkDeleteSnagItems(projectId: string, snagIds: string[]) {
+  return apiPost<{ deleted: number; failed: number }>(`/projects/${projectId}/snag-items/bulk-delete`, { ids: snagIds });
+}
+
 // ── Verify (RBAC Phase 3) ────────────────────────────────────────────────
 // Distinct from updateSnagItem({ status: 'verified' }) above, which still
 // works unchanged for anyone holding manage_project_records; this hits a

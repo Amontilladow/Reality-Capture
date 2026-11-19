@@ -15,13 +15,12 @@
       (function () {
         try {
           var stored = localStorage.getItem('rc-theme');
-          var theme = stored === 'light' || stored === 'dark'
-            ? stored
-            : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          // Dark is the default; light only when the user picked it.
+          var theme = stored === 'light' ? 'light' : 'dark';
           document.documentElement.setAttribute('data-theme', theme);
         } catch (e) {
-          // localStorage/matchMedia unavailable -- the CSS's own
-          // prefers-color-scheme fallback (index.css) still applies.
+          // localStorage unavailable -- index.css's own fallback renders
+          // the default (dark) theme anyway.
         }
       })();
     </script>

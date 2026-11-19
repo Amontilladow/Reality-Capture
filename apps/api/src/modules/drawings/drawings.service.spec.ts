@@ -3,6 +3,7 @@ import { DrawingsService } from './drawings.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { StorageService } from '../storage/storage.service';
 import type { IssuesService } from '../issues/issues.service';
+import type { RiskService } from '../risk/risk.service';
 
 describe('DrawingsService pin page_number', () => {
   const companyId = 'company-1';
@@ -307,8 +308,8 @@ describe('DrawingsService H-1: same-company cross-project access is rejected', (
     return { db, query };
   }
 
-  function makeSvc(db: DatabaseService, storage: Partial<StorageService> = {}) {
-    return new DrawingsService(db, storage as unknown as StorageService, {} as unknown as IssuesService);
+  function makeSvc(db: DatabaseService, storage: Partial<StorageService> = {}, risk?: { removeEntityNode: jest.Mock }) {
+    return new DrawingsService(db, storage as unknown as StorageService, {} as unknown as IssuesService, risk as unknown as RiskService | undefined);
   }
 
   it('findOne: succeeds under the real project, rejects the same drawingId under another project', async () => {
@@ -369,6 +370,66 @@ describe('DrawingsService H-1: same-company cross-project access is rejected', (
 
     await expect(svc.unlinkCapture(companyId, REAL_PROJECT, drawingId, 'capture-1')).resolves.toBeDefined();
     await expect(svc.unlinkCapture(companyId, OTHER_PROJECT, drawingId, 'capture-1')).rejects.toThrow(NotFoundException);
+  });
+
+  // The real production bug this covers: delete() never told the Risk
+  // Engine a drawing was gone, so its risk node (if any), signals and
+  // graph edges survived forever -- including through a full Risk
+  // Intelligence "Refresh", which only ever upserts from drawings that
+  // still exist and never removes one for a drawing that doesn't.
+  it('delete: removes the drawing\'s risk graph node after a successful delete', async () => {
+    const db = {
+      withTenant: jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => {
+        const sql = jest.fn((strings: TemplateStringsArray) => {
+          const text = strings.join('?');
+          if (text.includes('SELECT storage_key')) return Promise.resolve([{ storageKey: null, thumbnailKey: null }]);
+          if (text.includes('DELETE FROM drawings')) return Promise.resolve({ count: 1 });
+          return Promise.resolve([]);
+        });
+        return fn(sql);
+      }),
+    } as unknown as DatabaseService;
+    const risk = { removeEntityNode: jest.fn().mockResolvedValue(undefined) };
+    const svc = makeSvc(db, {}, risk);
+
+    await svc.delete(companyId, REAL_PROJECT, drawingId);
+
+    expect(risk.removeEntityNode).toHaveBeenCalledWith(companyId, 'drawing', drawingId);
+  });
+
+  it('delete: a risk node removal failure never fails or blocks the delete itself', async () => {
+    const db = {
+      withTenant: jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => {
+        const sql = jest.fn((strings: TemplateStringsArray) => {
+          const text = strings.join('?');
+          if (text.includes('SELECT storage_key')) return Promise.resolve([{ storageKey: null, thumbnailKey: null }]);
+          if (text.includes('DELETE FROM drawings')) return Promise.resolve({ count: 1 });
+          return Promise.resolve([]);
+        });
+        return fn(sql);
+      }),
+    } as unknown as DatabaseService;
+    const risk = { removeEntityNode: jest.fn().mockRejectedValue(new Error('graph exploded')) };
+    const svc = makeSvc(db, {}, risk);
+
+    await expect(svc.delete(companyId, REAL_PROJECT, drawingId)).resolves.toBeUndefined();
+  });
+
+  it('delete: never calls risk removal when no RiskService was provided', async () => {
+    const db = {
+      withTenant: jest.fn((_companyId: string, fn: (sql: unknown) => unknown) => {
+        const sql = jest.fn((strings: TemplateStringsArray) => {
+          const text = strings.join('?');
+          if (text.includes('SELECT storage_key')) return Promise.resolve([{ storageKey: null, thumbnailKey: null }]);
+          if (text.includes('DELETE FROM drawings')) return Promise.resolve({ count: 1 });
+          return Promise.resolve([]);
+        });
+        return fn(sql);
+      }),
+    } as unknown as DatabaseService;
+    const svc = makeSvc(db); // no risk arg at all, same as every pre-existing call site in this file
+
+    await expect(svc.delete(companyId, REAL_PROJECT, drawingId)).resolves.toBeUndefined();
   });
 
   it('getPins: succeeds under the real project, rejects the same drawingId under another project', async () => {

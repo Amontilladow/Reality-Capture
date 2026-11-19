@@ -53,6 +53,13 @@ const ALLOWED_PATH_PATTERN = /^\/api\/v1\/projects\/[^/]+\/(issues|snag-items|dr
 // there per the same matrix).
 const COMPANY_ROLE_ALLOWED_PATH_PATTERN = /^\/api\/v1\/projects\/[^/]+\/(issues|snag-items)(\/|$)/;
 
+// The caller's own personal workspace (WorkspaceController: personal tasks,
+// reminders, saved items, dashboard preferences). Those routes only ever
+// read or write the authenticated user's own rows and touch no project
+// record, so "read-only access elsewhere" doesn't apply to them; otherwise
+// a site engineer couldn't even tick off their own to-do list.
+const PERSONAL_PATH_PATTERN = /^\/api\/v1\/me(\/|$)/;
+
 @Injectable()
 export class SiteRoleRestrictionGuard implements CanActivate {
   constructor(
@@ -72,6 +79,7 @@ export class SiteRoleRestrictionGuard implements CanActivate {
     if (!user) return true; // no authenticated user: not this guard's concern
 
     if (!WRITE_METHODS.has(request.method)) return true; // reads are never restricted here
+    if (PERSONAL_PATH_PATTERN.test(request.path ?? request.url)) return true;
 
     const restricted = await this.siteRole.isRestricted(user, request.params?.projectId);
     if (!restricted) return true;

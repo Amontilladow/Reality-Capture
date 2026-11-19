@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { BimModelUploadModal } from '../components/BimModelUploadModal';
-import { listBimModels, reprocessModel, type BimModel } from '../lib/bim.api';
+import { listBimModels, reprocessModel, deleteBimModel, bulkDeleteBimModels, type BimModel } from '../lib/bim.api';
 import { apiErrorMessage } from '../lib/api';
 
 const STATUS_LABEL: Record<BimModel['status'], string> = {
@@ -24,6 +24,7 @@ export default function BimModelsPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const modelsQuery = useQuery({
     queryKey: ['bim-models', projectId],
@@ -49,7 +50,23 @@ export default function BimModelsPage() {
     }
   }
 
+  const deleteMutation = useMutation({
+    mutationFn: (modelId: string) => deleteBimModel(projectId!, modelId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bim-models', projectId] }),
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () => bulkDeleteBimModels(projectId!, [...selectedIds]),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bim-models', projectId] });
+      setSelectedIds(new Set());
+    },
+  });
+
   if (!projectId) return null;
+
+  const models = modelsQuery.data ?? [];
+  const allSelected = models.length > 0 && selectedIds.size === models.length;
 
   return (
     <>
@@ -66,16 +83,52 @@ export default function BimModelsPage() {
       <div className="p-6">
         {modelsQuery.isLoading && <p className="text-sm text-ink-500">Loading…</p>}
 
-        {!modelsQuery.isLoading && (modelsQuery.data ?? []).length === 0 && (
+        {!modelsQuery.isLoading && models.length === 0 && (
           <div className="rounded-lg border border-dashed border-base-600 p-10 text-center text-sm text-ink-500">
             No BIM models yet. Upload an IFC file to get started.
           </div>
         )}
 
+        {models.length > 0 && (
+          <div className="flex items-center gap-4 mb-4">
+            <label className="flex items-center gap-2 text-xs text-ink-500">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={() => setSelectedIds(allSelected ? new Set() : new Set(models.map((m) => m.id)))}
+              />
+              Select all
+            </label>
+            {selectedIds.size > 0 && (
+              <>
+                <span className="text-sm font-medium">{selectedIds.size} selected</span>
+                <button
+                  onClick={() => { if (confirm(`Delete ${selectedIds.size} model(s) and every element extracted from them? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
+                  disabled={bulkDeleteMutation.isPending}
+                  className="btn-danger !px-4 !py-2 text-sm ml-auto"
+                >
+                  {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
+                </button>
+              </>
+            )}
+            {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
+          </div>
+        )}
+
         <ul className="space-y-4">
-          {(modelsQuery.data ?? []).map((model) => (
+          {models.map((model) => (
             <li key={model.id} className="flex items-center justify-between rounded-lg border border-base-600 p-4">
-              <div className="flex-1">
+              <div className="flex items-center gap-4 flex-1">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(model.id)}
+                  onChange={() => setSelectedIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(model.id)) next.delete(model.id); else next.add(model.id);
+                    return next;
+                  })}
+                />
+                <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{model.name}</span>
                   <span className={`rounded px-2 py-0 text-xs ${STATUS_COLOR[model.status]}`}>
@@ -101,6 +154,7 @@ export default function BimModelsPage() {
                 {model.status === 'ready' && (
                   <p className="mt-2 text-xs text-ink-500">{model.elementCount} elements</p>
                 )}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 {model.status === 'ready' && (
@@ -113,10 +167,18 @@ export default function BimModelsPage() {
                     Retry
                   </button>
                 )}
+                <button
+                  onClick={() => { if (confirm(`Delete "${model.name}" and every element extracted from it? This cannot be undone.`)) deleteMutation.mutate(model.id); }}
+                  disabled={deleteMutation.isPending}
+                  className="btn-secondary !text-danger"
+                >
+                  Delete
+                </button>
               </div>
             </li>
           ))}
         </ul>
+        {deleteMutation.isError && <p className="field-error mt-2">{apiErrorMessage(deleteMutation.error)}</p>}
       </div>
 
       <BimModelUploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} projectId={projectId} />

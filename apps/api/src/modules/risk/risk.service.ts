@@ -116,15 +116,55 @@ export class RiskService {
     private readonly aiUsage: AiUsageService,
   ) {}
 
-  /** Full pipeline for one project: rebuild the graph, redetect signals, recalculate every risk-worthy node. */
+  /** Full pipeline for one project: rebuild the graph, prune stale nodes, redetect signals, recalculate every risk-worthy node. */
   async recalculateProject(companyId: string, projectId: string): Promise<void> {
     await this.extraction.extractProject(companyId, projectId);
+    await this.pruneOrphanedNodes(companyId, projectId);
     await this.signals.detectSignalsForProject(companyId, projectId);
 
     const nodes = await this.graph.getNodesByProject(companyId, projectId, [...RISK_WORTHY_NODE_TYPES]);
     for (const node of nodes) {
       await this.recalculateForNode(companyId, projectId, node);
     }
+  }
+
+  /**
+   * Retroactive cleanup for risk graph nodes left behind by a deletion made
+   * before removeEntityNode() existed, or before its wiring reached that
+   * entity's module (both true for every delete performed before this
+   * fix shipped) -- see removeEntityNode()'s own comment above for the
+   * original bug. extractProject() just above only ever upserts from rows
+   * that still exist; it was never going to notice, let alone remove, a
+   * node whose row is gone, so every "Refresh" since then kept recalculating
+   * (and the Risk Intelligence summary kept counting) stale risks forever.
+   * This is what makes "Refresh" finally self-healing for that backlog,
+   * not just a guard against new leaks going forward.
+   */
+  private async pruneOrphanedNodes(companyId: string, projectId: string): Promise<void> {
+    let prunedTotal = 0;
+    for (const nodeType of RISK_WORTHY_NODE_TYPES) {
+      const nodes = await this.graph.getNodesByProject(companyId, projectId, [nodeType]);
+      if (nodes.length === 0) continue;
+      const existingIds = await this.extraction.findExistingEntityIds(companyId, nodeType, nodes.map(n => n.entityId));
+      let prunedForType = 0;
+      for (const node of nodes) {
+        if (!existingIds.has(node.entityId)) {
+          await this.graph.deleteNode(companyId, nodeType, node.entityId);
+          prunedForType++;
+        }
+      }
+      prunedTotal += prunedForType;
+      // Temporary diagnostic: a user reported "Refresh" still showing stale
+      // open-risk counts after this prune shipped. Logging node counts per
+      // type (not just a final total) pinpoints exactly which entity type,
+      // if any, still carries orphaned risk_graph_nodes after a real
+      // Refresh runs -- without this there is no way to tell "pruning
+      // found nothing because there's genuinely nothing to prune" apart
+      // from "pruning never ran at all" from the API side alone (direct DB
+      // inspection is RLS-blocked for this session).
+      this.logger.log(`pruneOrphanedNodes: project ${projectId}, nodeType ${nodeType}: ${nodes.length} node(s) checked, ${prunedForType} pruned`);
+    }
+    this.logger.log(`pruneOrphanedNodes: project ${projectId}: ${prunedTotal} total node(s) pruned`);
   }
 
   /** Event-driven incremental recalculation for one changed entity (brief section 41). */
@@ -147,6 +187,26 @@ export class RiskService {
 
     const node = await this.graph.getNodeByEntity(companyId, nodeType, entityId);
     if (node) await this.recalculateForNode(companyId, projectId, node);
+  }
+
+  /**
+   * The other half of event-driven recalculation (brief section 41):
+   * recalculateForEntity() above re-extracts and rescans a node from the
+   * source record's CURRENT row, but once that row is deleted there's no
+   * current row left to extract from, so it was never called at all from
+   * any module's delete() -- the risk this entity drove (if any), its
+   * signals, and its graph edges all survived every subsequent recalc,
+   * including the full-project one "Refresh" runs, forever, since none of
+   * those extraction passes ever considers removing a node whose source
+   * row no longer exists (they only upsert from what SELECT ... FROM
+   * <table> still returns). RiskGraphService.deleteNode() already existed
+   * for exactly this and was already correct -- it was just never called.
+   * Deleting the node cascades (FK, migrations 050/051) to its risks row,
+   * risk_signals, risk_evidence and graph edges in one statement; a no-op,
+   * never an error, when the entity never had a risk node at all.
+   */
+  async removeEntityNode(companyId: string, nodeType: typeof RISK_WORTHY_NODE_TYPES[number], entityId: string): Promise<void> {
+    await this.graph.deleteNode(companyId, nodeType, entityId);
   }
 
   private async recalculateForNode(companyId: string, projectId: string, node: GraphNodeRow): Promise<void> {
@@ -307,6 +367,36 @@ export class RiskService {
   async listRisks(companyId: string, projectId: string): Promise<RiskRow[]> {
     return this.db.withTenant(companyId, sql => sql<RiskRow[]>`
       SELECT * FROM risks WHERE project_id = ${projectId} ORDER BY score DESC, updated_at DESC`);
+  }
+
+  // Deletes via the risk's root_node_id rather than `risks` directly:
+  // risks.root_node_id -> risk_graph_nodes(id) ON DELETE CASCADE (migration
+  // 051), and risk_graph_nodes is itself the parent of risk_evidence,
+  // risk_graph_edges and risk_signals (migration 050), so removing the
+  // graph node cascades away the risk row and every one of its derived
+  // children in a single statement, leaving no orphaned graph/evidence rows
+  // the way deleting only `risks` would.
+  async delete(companyId: string, projectId: string, riskId: string): Promise<void> {
+    const result = await this.db.withTenant(companyId, sql => sql`
+      DELETE FROM risk_graph_nodes WHERE id = (
+        SELECT root_node_id FROM risks WHERE id = ${riskId} AND project_id = ${projectId} AND company_id = ${companyId}
+      ) AND project_id = ${projectId} AND company_id = ${companyId}
+    `);
+    if (result.count === 0) throw new NotFoundException('Risk not found.');
+  }
+
+  async bulkDelete(companyId: string, projectId: string, riskIds: string[]): Promise<{ deleted: number; failed: number }> {
+    let deleted = 0;
+    let failed = 0;
+    for (const id of riskIds) {
+      try {
+        await this.delete(companyId, projectId, id);
+        deleted++;
+      } catch {
+        failed++;
+      }
+    }
+    return { deleted, failed };
   }
 
   private async upsertRisk(companyId: string, projectId: string, input: {
@@ -961,13 +1051,26 @@ export class RiskService {
 
   /** Empty-state / data-availability honesty (brief section 44). */
   async getDataAvailability(companyId: string, projectId: string) {
-    const [[rfiCount], [issueCount], [snagCount], [qaCount], [bimCount], [qaqcCount]] = await Promise.all([
+    // Every RISK_WORTHY_NODE_TYPES source table, not a subset: a project
+    // can still carry real, undeleted Drawings or Submittals (both
+    // risk-worthy, neither counted here before) that legitimately drive
+    // Executive Summary's open-risk total while this breakdown reported
+    // nothing for them at all -- reported as "shows risks while there is
+    // nothing," when the actual gap was that two whole categories were
+    // invisible here, not that the risk count itself was wrong.
+    const [[rfiCount], [issueCount], [snagCount], [qaCount], [bimCount], [qaqcCount], [drawingCount], [submittalCount]] = await Promise.all([
       this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM rfis WHERE project_id = ${projectId}`),
       this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM issues WHERE project_id = ${projectId}`),
       this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM snag_items WHERE project_id = ${projectId}`),
       this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM qa_inspections WHERE project_id = ${projectId}`),
       this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM bim_elements WHERE project_id = ${projectId}`),
-      this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM qaqc_records WHERE project_id = ${projectId}`),
+      this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM qaqc_records WHERE project_id = ${projectId} AND record_type = 'ncr'`),
+      // The OLDER 'drawings' table (Floor Plans/BuildLens Captures pin
+      // tool), which is what the risk engine's 'drawing' node type
+      // actually extracts from -- NOT the newer site_drawings register
+      // (relationship-extraction.service.ts's extractDrawings()).
+      this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM drawings WHERE project_id = ${projectId}`),
+      this.db.withTenant(companyId, sql => sql<{ c: string }[]>`SELECT COUNT(*) AS c FROM submittals WHERE project_id = ${projectId}`),
     ]);
     return {
       rfisAvailable: Number(rfiCount.c),
@@ -975,6 +1078,8 @@ export class RiskService {
       snagItemsAvailable: Number(snagCount.c),
       qaInspectionsAvailable: Number(qaCount.c),
       qaqcRecordsAvailable: Number(qaqcCount.c),
+      drawingsAvailable: Number(drawingCount.c),
+      submittalsAvailable: Number(submittalCount.c),
       bimElementRelationships: Number(bimCount.c) > 0 ? 'Available' : 'Not available',
       programmeData: 'Not connected — no programme/schedule module exists in this system yet.',
       procurementData: 'Not connected — no procurement/material module exists in this system yet.',
@@ -1013,6 +1118,9 @@ export class RiskService {
       `Issues available: ${availability.issuesAvailable}`,
       `Snag items available: ${availability.snagItemsAvailable}`,
       `QA inspections available: ${availability.qaInspectionsAvailable}`,
+      `NCRs available: ${availability.qaqcRecordsAvailable}`,
+      `Drawings available: ${availability.drawingsAvailable}`,
+      `Submittals available: ${availability.submittalsAvailable}`,
       `BIM element relationships: ${availability.bimElementRelationships}`,
       `Programme data: ${availability.programmeData}`,
       `Procurement data: ${availability.procurementData}`,

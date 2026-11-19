@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { apiGet, apiPost } from './api';
+import { apiGet, apiPost, apiDelete } from './api';
 import type { GisConvertSettings, GisPrepJob, GisPrepSettings } from '@engineeringos/types';
 export type { GisConvertSettings, GisPrepJob, GisPrepJobStatus, GisPrepProfile, GisPrepSettings, GisPrepOutputFile } from '@engineeringos/types';
 
@@ -8,6 +8,11 @@ const base = (projectId: string) => `/projects/${projectId}/gis-prep`;
 export const listGisPrepJobs = (projectId: string) => apiGet<GisPrepJob[]>(`${base(projectId)}/jobs`);
 
 export const getGisPrepJob = (projectId: string, jobId: string) => apiGet<GisPrepJob>(`${base(projectId)}/jobs/${jobId}`);
+
+export const deleteGisPrepJob = (projectId: string, jobId: string) => apiDelete<{ message: string }>(`${base(projectId)}/jobs/${jobId}`);
+
+export const bulkDeleteGisPrepJobs = (projectId: string, ids: string[]) =>
+  apiPost<{ deleted: number; failed: number }>(`${base(projectId)}/jobs/bulk-delete`, { ids });
 
 export const rerunGisPrepJob = (projectId: string, jobId: string, settings: GisPrepSettings | GisConvertSettings) =>
   apiPost<GisPrepJob>(`${base(projectId)}/jobs/${jobId}/rerun`, { settings });

@@ -424,6 +424,55 @@ export class QaqcService {
     return { message: 'Attachment deleted.' };
   }
 
+  // qaqc_attachments and qaqc_captures both FK to qaqc_records with ON
+  // DELETE CASCADE (migration 067), so the DELETE below removes them too;
+  // only the attachments' S3 objects need separate cleanup, same as
+  // captures.service.ts's own delete().
+  async delete(companyId: string, projectId: string, qaqcId: string) {
+    await this.assertQaqcInProject(companyId, projectId, qaqcId);
+    const result = await this.db.withTenant(companyId, async (sql) => {
+      const attachments = await sql`
+        SELECT storage_key FROM qaqc_attachments WHERE qaqc_id = ${qaqcId} AND company_id = ${companyId}
+      `;
+      const deleteResult = await sql`
+        DELETE FROM qaqc_records WHERE id = ${qaqcId} AND project_id = ${projectId} AND company_id = ${companyId}
+      `;
+      return { attachments, deleteResult };
+    });
+    if (result.deleteResult.count === 0) throw new NotFoundException(`QAQC record ${qaqcId} not found.`);
+
+    const keys = result.attachments.map(a => a.storageKey as string);
+    Promise.allSettled(keys.map(k => this.storage.delete(k))).catch(err =>
+      this.logger.error('Storage cleanup failed', err),
+    );
+    // Unconditional, unlike triggerRiskRecalc()'s own NCR-only gate: this
+    // is a no-op for a SOR/WIR/MIR id (it never had an 'ncr' risk node to
+    // begin with), so there's no need to look up recordType first just to
+    // decide whether to call it.
+    if (this.risk) {
+      try {
+        await this.risk.removeEntityNode(companyId, 'ncr', qaqcId);
+      } catch (err) {
+        this.logger.warn(`Risk node removal failed for QAQC record ${qaqcId}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    return { message: 'QAQC record deleted.' };
+  }
+
+  async bulkDelete(companyId: string, projectId: string, qaqcIds: string[]) {
+    let deleted = 0;
+    let failed = 0;
+    for (const id of qaqcIds) {
+      try {
+        await this.delete(companyId, projectId, id);
+        deleted++;
+      } catch {
+        failed++;
+      }
+    }
+    return { deleted, failed };
+  }
+
   // ── Quick photo picker ("+Add photo"): links an already-uploaded
   // Capture (captureType: 'photo_standard', uploaded client-side via
   // captures.api.ts's uploadCapture()) to this record, mirroring

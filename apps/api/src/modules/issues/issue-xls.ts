@@ -1,17 +1,12 @@
 import ExcelJS from 'exceljs';
+import { INK_ARGB as INK, MUTED_ARGB as MUTED, BORDER_ARGB as BORDER, SECTION_FILL_ARGB as SECTION_FILL, BLUEPRINT_ARGB as BLUEPRINT, XLS_FONT as FONT } from '../../common/pdf/brand';
 
 // Mirrors apps/web/src/lib/rfi-xls.ts's palette/row-builder conventions
 // exactly, adapted for a much simpler 3-column layout (Issues has no
 // organizations/stamps concept, so no dedicated org-logo columns are
 // needed): kept as its own copy since this one runs server-side
 // (apps/api) against real Buffers, not the browser/base64 round trip
-// rfi-xls.ts needs to dodge S3 CORS.
-const INK = 'FF0A141C';
-const MUTED = 'FF4A6178';
-const BORDER = 'FFB9C6CE';
-const SECTION_FILL = 'FFEAF0F4';
-const BLUEPRINT = 'FF1E6E93';
-const FONT = 'IBM Plex Sans';
+// rfi-xls.ts needs to dodge S3 CORS. Colors/font: common/pdf/brand.ts.
 
 const thin = { style: 'thin' as const, color: { argb: BORDER } };
 const gridBorder = { top: thin, bottom: thin, left: thin, right: thin };

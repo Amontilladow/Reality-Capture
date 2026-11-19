@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Capture, ProjectPhase } from '@engineeringos/types';
 import { PROJECT_PHASES, PROJECT_PHASE_LABELS } from '@engineeringos/types';
-import { updateCapture } from '../lib/captures.api';
+import { updateCapture, deleteCapture } from '../lib/captures.api';
+import { apiErrorMessage } from '../lib/api';
 import { Listbox } from './ui/Listbox';
 
 export function CaptureLightbox({
@@ -49,6 +50,20 @@ export function CaptureLightbox({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['captures', projectId] });
       setEditingPhase(false);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteCapture(projectId, capture!.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['captures', projectId] });
+      // This same capture also renders in BuildLens Timeline, cached per
+      // location under ['viewer', projectId, locationId]; without this it
+      // keeps showing there until a hard reload re-fetches it from scratch.
+      if (capture?.locationId) {
+        queryClient.invalidateQueries({ queryKey: ['viewer', projectId, capture.locationId] });
+      }
+      onClose();
     },
   });
 
@@ -142,8 +157,20 @@ export function CaptureLightbox({
             </button>
           )}
 
-          <span className="ml-auto capitalize">{capture.status}</span>
+          <span className="capitalize">{capture.status}</span>
+
+          <button
+            onClick={() => { if (confirm('Delete this capture and all its renditions? This cannot be undone.')) deleteMutation.mutate(); }}
+            disabled={deleteMutation.isPending}
+            className="ml-auto flex items-center gap-2 text-danger hover:text-danger"
+          >
+            <TrashIcon className="w-3.5 h-3.5" />
+            {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+          </button>
         </div>
+        {deleteMutation.isError && (
+          <div className="px-4 pb-2 -mt-2 text-xs text-danger shrink-0">{apiErrorMessage(deleteMutation.error)}</div>
+        )}
       </div>
     </div>
   );
@@ -157,6 +184,14 @@ function EditIcon({ className }: { className?: string }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

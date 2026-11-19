@@ -102,6 +102,46 @@ describe('SiteDrawingImportService', () => {
     });
   });
 
+  describe('deleteBatch', () => {
+    it('404s when the batch does not exist in this project', async () => {
+      const { svc, deleteIfExists } = makeService([multi([[]])]); // SELECT storage_key -> none
+      await expect(svc.deleteBatch(companyId, projectId, 'missing')).rejects.toThrow(NotFoundException);
+      expect(deleteIfExists).not.toHaveBeenCalled();
+    });
+
+    // The real bug this guards against: site_drawing_revisions.import_batch_id
+    // has no ON DELETE clause (migration 075), so deleting a batch that
+    // actually created revisions would otherwise fail with a foreign-key
+    // violation unless those revisions are detached first.
+    it('detaches every revision from the batch before deleting it, and removes the original archive from storage', async () => {
+      const { svc, deleteIfExists, withTenant } = makeService([
+        multi([
+          [{ storageKey: 'company-1/documents/project-1/batch.zip' }], // SELECT storage_key
+          [], // UPDATE site_drawing_revisions SET import_batch_id = NULL
+          [], // DELETE FROM site_drawing_import_batches
+        ]),
+      ]);
+
+      await svc.deleteBatch(companyId, projectId, 'batch-1');
+
+      expect(withTenant).toHaveBeenCalledTimes(1); // one withTenant call, three statements inside it
+      expect(deleteIfExists).toHaveBeenCalledWith('company-1/documents/project-1/batch.zip');
+    });
+
+    it('never throws when the original archive is already gone from storage', async () => {
+      const { svc, deleteIfExists } = makeService([
+        multi([
+          [{ storageKey: 'key' }],
+          [],
+          [],
+        ]),
+      ]);
+      deleteIfExists.mockRejectedValueOnce(new Error('not found'));
+
+      await expect(svc.deleteBatch(companyId, projectId, 'batch-1')).resolves.toBeUndefined();
+    });
+  });
+
   describe('listReviewQueue', () => {
     // The whole point of this endpoint: a reviewer needs to know WHICH
     // drawing a flagged revision belongs to, not just the bare revision row.
