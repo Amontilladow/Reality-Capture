@@ -17,7 +17,7 @@ const REQUIREMENT_SUFFIX: Record<Requirement, string> = {
 // (aria-invalid + aria-describedby pointing at the error text) for free,
 // instead of each form re-deriving ids and deciding its own wording for
 // "this one's optional."
-function FieldShell({
+export function FieldShell({
   id,
   label,
   requirement = 'required',
