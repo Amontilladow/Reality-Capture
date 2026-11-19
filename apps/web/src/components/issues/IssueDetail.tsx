@@ -25,6 +25,21 @@ import { apiErrorMessage } from '../../lib/api';
 import type { IssueStatus } from '@engineeringos/types';
 import { Listbox } from '../ui/Listbox';
 import { Collapsible } from '../ui/Collapsible';
+import { AnimatedButton, WithAnimatedIcon } from '../ui/AnimatedIcon';
+import aEdit from 'react-useanimations/lib/edit';
+import aMail from 'react-useanimations/lib/mail';
+import aSend from 'react-useanimations/lib/send';
+import aBell from 'react-useanimations/lib/notification4';
+import aZap from 'react-useanimations/lib/zap';
+import aDownload from 'react-useanimations/lib/download';
+import aNext from 'react-useanimations/lib/arrowRightCircle';
+import aReopen from 'react-useanimations/lib/rotateCcw';
+import aCheckCircle from 'react-useanimations/lib/checkCircle';
+import aTrash from 'react-useanimations/lib/trash2';
+import aAlert from 'react-useanimations/lib/alertTriangle';
+import aCamera from 'react-useanimations/lib/camera';
+import aClock from 'react-useanimations/lib/clock';
+import aPaperclip from 'react-useanimations/lib/paperclip';
 import { SaveButton } from '../workspace/SaveButton';
 import { Menu, type MenuSection } from '../ui/Menu';
 
@@ -242,18 +257,18 @@ export function IssueDetail({
     {
       heading: 'Issue',
       items: [
-        { label: 'Edit', icon: <EditIcon />, onSelect: () => onEdit(issue) },
-        { label: 'Email', icon: <MailIcon />, onSelect: () => setComposeEmailOpen(true) },
-        ...(canForward ? [{ label: 'Forward to…', icon: <ForwardIcon />, onSelect: () => { setReminderOpen(false); setForwardOpen(true); } }] : []),
-        { label: 'Schedule reminder…', icon: <BellIcon />, onSelect: () => { setForwardOpen(false); setReminderOpen(true); } },
-        { label: 'Ask AI about this', icon: <SparkIcon />, onSelect: () => navigate(`/projects/${projectId}/assistant?resourceType=issue&resourceId=${issue.id}`) },
+        { label: 'Edit', anim: aEdit, onSelect: () => onEdit(issue) },
+        { label: 'Email', anim: aMail, onSelect: () => setComposeEmailOpen(true) },
+        ...(canForward ? [{ label: 'Forward to…', anim: aSend, onSelect: () => { setReminderOpen(false); setForwardOpen(true); } }] : []),
+        { label: 'Schedule reminder…', anim: aBell, onSelect: () => { setForwardOpen(false); setReminderOpen(true); } },
+        { label: 'Ask AI about this', anim: aZap, onSelect: () => navigate(`/projects/${projectId}/assistant?resourceType=issue&resourceId=${issue.id}`) },
       ],
     },
     {
       heading: 'Download',
       items: [
-        { label: downloading === 'pdf' ? 'Preparing PDF…' : 'PDF report', icon: <DownloadIcon />, onSelect: handleDownloadPdf, disabled: downloading === 'pdf' },
-        { label: downloading === 'xls' ? 'Preparing Excel…' : 'Excel (XLS)', icon: <DownloadIcon />, onSelect: handleDownloadXls, disabled: downloading === 'xls' },
+        { label: downloading === 'pdf' ? 'Preparing PDF…' : 'PDF report', anim: aDownload, onSelect: handleDownloadPdf, disabled: downloading === 'pdf' },
+        { label: downloading === 'xls' ? 'Preparing Excel…' : 'Excel (XLS)', anim: aDownload, onSelect: handleDownloadXls, disabled: downloading === 'xls' },
       ],
     },
   ];
@@ -305,29 +320,32 @@ export function IssueDetail({
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <Menu label="Change status" buttonContent={<>Status <ChevronIcon /></>} sections={statusSections} />
             {nextStatus && nextStatus !== 'closed' ? (
-              <button onClick={() => statusMutation.mutate(nextStatus)} disabled={statusMutation.isPending} className="btn-primary">
+              <AnimatedButton animation={aNext} onClick={() => statusMutation.mutate(nextStatus)} disabled={statusMutation.isPending} className="btn-primary">
                 Move to {STATUS_LABELS[nextStatus]}
-              </button>
+              </AnimatedButton>
             ) : issue.status === 'closed' || issue.status === 'resolved' ? (
-              <button onClick={() => statusMutation.mutate('reopened')} disabled={statusMutation.isPending} className="btn-secondary">Reopen</button>
+              <AnimatedButton animation={aReopen} onClick={() => statusMutation.mutate('reopened')} disabled={statusMutation.isPending} className="btn-secondary">Reopen</AnimatedButton>
             ) : nextStatus === 'closed' ? (
-              <button
+              <AnimatedButton
+                animation={aCheckCircle}
                 onClick={() => closeMutation.mutate()}
                 disabled={!canClose || closeMutation.isPending}
                 title={canClose ? undefined : !isManager ? 'Closing requires sign-off from a permitted role (an engineering manager or company admin).' : 'Attach at least one evidence photo before closing.'}
                 className="btn-primary"
               >
                 {closeMutation.isPending ? 'Closing…' : 'Close issue'}
-              </button>
+              </AnimatedButton>
             ) : null}
             <SaveButton itemType="issue" itemId={issue.id} />
-            <button
+            <AnimatedButton
+              animation={aTrash}
+              interaction="hover"
               onClick={() => { if (confirm('Delete this issue? This cannot be undone.')) deleteMutation.mutate(); }}
               disabled={deleteMutation.isPending}
               className="btn-secondary !text-danger"
             >
-              <TrashIcon /> {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
-            </button>
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+            </AnimatedButton>
             <Menu
               label="More actions"
               buttonClassName="btn-secondary !w-9 !px-0"
@@ -368,9 +386,9 @@ export function IssueDetail({
             </Listbox>
             <input className="field-input" placeholder="Optional note…" value={forwardComment} onChange={(e) => setForwardComment(e.target.value)} />
           </div>
-          <button onClick={() => forwardMutation.mutate()} disabled={!forwardTo || forwardMutation.isPending} className="btn-primary">
+          <AnimatedButton animation={aSend} onClick={() => forwardMutation.mutate()} disabled={!forwardTo || forwardMutation.isPending} className="btn-primary">
             {forwardMutation.isPending ? 'Forwarding…' : 'Send forward'}
-          </button>
+          </AnimatedButton>
           {forwardMutation.isError && <p className="field-error">{apiErrorMessage(forwardMutation.error)}</p>}
         </section>
       )}
@@ -386,13 +404,14 @@ export function IssueDetail({
                 <input type="datetime-local" className="field-input" aria-label="Remind at" value={reminderWhen} onChange={(e) => setReminderWhen(e.target.value)} />
                 <input className="field-input" placeholder={`Message for ${issue.assignedToName ?? 'the assignee'}…`} value={reminderMessage} onChange={(e) => setReminderMessage(e.target.value)} />
               </div>
-              <button
+              <AnimatedButton
+                animation={aClock}
                 onClick={() => scheduleReminderMutation.mutate()}
                 disabled={!reminderWhen || !reminderMessage.trim() || scheduleReminderMutation.isPending}
                 className="btn-primary"
               >
                 {scheduleReminderMutation.isPending ? 'Scheduling…' : 'Schedule reminder'}
-              </button>
+              </AnimatedButton>
               {scheduleReminderMutation.isError && <p className="field-error">{apiErrorMessage(scheduleReminderMutation.error)}</p>}
             </>
           )}
@@ -409,9 +428,9 @@ export function IssueDetail({
                 <option key={s} value={s}>{STATUS_LABELS[s]}</option>
               ))}
             </Listbox>
-            <button onClick={() => forceStatusMutation.mutate()} disabled={!forceStatusValue || forceStatusMutation.isPending} className="btn-danger">
+            <AnimatedButton animation={aAlert} onClick={() => forceStatusMutation.mutate()} disabled={!forceStatusValue || forceStatusMutation.isPending} className="btn-danger">
               {forceStatusMutation.isPending ? 'Forcing…' : 'Force'}
-            </button>
+            </AnimatedButton>
           </div>
           {forceStatusMutation.isError && <p className="field-error">{apiErrorMessage(forceStatusMutation.error)}</p>}
         </section>
@@ -432,9 +451,11 @@ export function IssueDetail({
               <h2 className="text-base font-semibold text-ink-100">
                 Evidence <span className="ml-2 text-xs font-normal text-ink-500">{evidenceQuery.data?.length ?? 0}</span>
               </h2>
-              <button onClick={() => setPickerOpen((v) => !v)} className="btn-secondary">
-                {pickerOpen ? 'Cancel' : <><PlusIcon /> Attach a capture</>}
-              </button>
+              {pickerOpen ? (
+                <button onClick={() => setPickerOpen(false)} className="btn-secondary">Cancel</button>
+              ) : (
+                <AnimatedButton animation={aCamera} onClick={() => setPickerOpen(true)} className="btn-secondary">Attach a capture</AnimatedButton>
+              )}
             </div>
             {!evidenceQuery.isLoading && (evidenceQuery.data?.length ?? 0) === 0 && (
               <p className="text-xs text-ink-500">No evidence attached yet. Required before this issue can be closed.</p>
@@ -514,12 +535,15 @@ export function IssueDetail({
                 onChange={(e) => setComment(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && comment.trim()) commentMutation.mutate(); }}
               />
-              <button onClick={() => commentMutation.mutate()} disabled={!comment.trim() || commentMutation.isPending} className="btn-primary">Send</button>
+              <AnimatedButton animation={aSend} onClick={() => commentMutation.mutate()} disabled={!comment.trim() || commentMutation.isPending} className="btn-primary">Send</AnimatedButton>
             </div>
             {commentMutation.isError && <p className="field-error">{apiErrorMessage(commentMutation.error)}</p>}
             <div className="flex items-center gap-2">
               <input className="field-input flex-1" placeholder="Attachment note (optional)…" value={attachComment} onChange={(e) => setAttachComment(e.target.value)} />
-              <label className="btn-secondary cursor-pointer shrink-0">
+              <WithAnimatedIcon animation={aPaperclip} interaction="hover-replay">
+                {(ev, icon) => (
+              <label {...ev} className="btn-secondary cursor-pointer shrink-0">
+                {icon}
                 {attachMutation.isPending ? 'Uploading…' : 'Attach file'}
                 <input
                   type="file"
@@ -532,6 +556,8 @@ export function IssueDetail({
                   }}
                 />
               </label>
+                )}
+              </WithAnimatedIcon>
             </div>
             {attachMutation.isError && <p className="field-error">{apiErrorMessage(attachMutation.error)}</p>}
           </Collapsible>
@@ -586,7 +612,7 @@ export function IssueDetail({
             <section className="panel p-6 space-y-4" style={{ background: 'linear-gradient(180deg, rgb(var(--rc-signal) / 0.12), rgb(var(--rc-base-800) / 0.78))' }}>
               <h2 className="text-base font-semibold text-ink-100">Next step</h2>
               <p className="text-sm text-ink-300">{nextStep.text}</p>
-              <button onClick={nextStep.run} className="btn-primary w-full">{nextStep.action}</button>
+              <AnimatedButton animation={aNext} onClick={nextStep.run} className="btn-primary w-full">{nextStep.action}</AnimatedButton>
             </section>
           )}
 
@@ -729,14 +755,6 @@ function Icon({ d, className = 'w-5 h-5' }: { d: string; className?: string }) {
 }
 const ChevronIcon = ({ className = 'w-4 h-4 opacity-70' }: { className?: string }) => <Icon d="M6 9l6 6 6-6" className={className} />;
 const PinIcon = () => <Icon d="M12 21s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12zM12 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" className="w-5 h-5 text-ink-500 shrink-0" />;
-const PlusIcon = () => <Icon d="M12 5v14M5 12h14" className="w-4 h-4" />;
-const EditIcon = () => <Icon d="M4 20h4L19 9l-4-4L4 16v4z" />;
-const MailIcon = () => <Icon d="M3 7l9 6 9-6M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" />;
-const ForwardIcon = () => <Icon d="M14 6l6 6-6 6M20 12H9a5 5 0 0 0-5 5v1" />;
-const BellIcon = () => <Icon d="M6 9a6 6 0 1 1 12 0c0 3.5.8 5.6 1.6 6.8.4.6 0 1.2-.7 1.2H5.1c-.7 0-1.1-.6-.7-1.2C5.2 14.6 6 12.5 6 9zM10 20a2.2 2.2 0 0 0 4 0" />;
-const SparkIcon = () => <Icon d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z" />;
-const DownloadIcon = () => <Icon d="M12 4v11M7 10l5 5 5-5M5 20h14" />;
-const TrashIcon = () => <Icon d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />;
 function DotsIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">

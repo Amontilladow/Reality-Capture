@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import { AnimatedButton } from '../components/ui/AnimatedIcon';
+import aUpload from 'react-useanimations/lib/upload';
+import aPlus from 'react-useanimations/lib/plusCircle';
+import aTrash from 'react-useanimations/lib/trash2';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -172,13 +176,13 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
           ) : (
             <>
               {view === 'main' && (
-                <button onClick={() => setUploadOpen(true)} className="btn-secondary">
+                <AnimatedButton animation={aUpload} onClick={() => setUploadOpen(true)} className="btn-secondary">
                   Upload RFI
-                </button>
+                </AnimatedButton>
               )}
-              <button onClick={() => setCreateOpen(true)} className="btn-primary">
-                + New RFI
-              </button>
+              <AnimatedButton animation={aPlus} onClick={() => setCreateOpen(true)} className="btn-primary">
+                New RFI
+              </AnimatedButton>
             </>
           )
         }
@@ -260,13 +264,15 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
         {!readOnly && canDelete && selectedIds.size > 0 && (
           <div className="flex items-center gap-2 tick-frame panel px-4 py-2">
             <span className="text-sm font-medium">{selectedIds.size} selected</span>
-            <button
+            <AnimatedButton
+              animation={aTrash}
+              interaction="hover"
               onClick={() => { if (confirm(`Delete ${selectedIds.size} RFI(s)? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
               disabled={bulkDeleteMutation.isPending}
               className="btn-danger !px-4 !py-2 text-sm ml-auto"
             >
               {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
-            </button>
+            </AnimatedButton>
             {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
           </div>
         )}

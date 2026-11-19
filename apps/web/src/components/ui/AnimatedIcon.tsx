@@ -1,7 +1,8 @@
-import type { ReactElement, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, ReactElement, ReactNode } from 'react';
 import UseAnimations, { type Animation, type EventProps, type Interaction } from 'react-useanimations';
 import loading2 from 'react-useanimations/lib/loading2';
 import { useCanHover } from '../../lib/use-can-hover';
+import { chain } from '../../lib/chain-handlers';
 
 // Animated line icons (useAnimations, MIT): small Lottie icons drawn as SVG
 // in the text colour, so our ink/signal tokens apply as with any icon.
@@ -46,6 +47,37 @@ export function WithAnimatedIcon({ animation, size = 16, interaction, children }
   );
 }
 
+
+/**
+ * A button with an animated icon before its label: the icon plays on hover
+ * or keyboard focus (on tap on touch screens), and the button's own handlers
+ * still run. Defaults to playing once on hover; pass `interaction="hover"`
+ * for icons that should play forward and back (a bin's lid).
+ */
+export function AnimatedButton({
+  animation, interaction = 'hover-replay', iconSize = 16, children, type = 'button',
+  onClick, onMouseEnter, onMouseLeave, onFocus, onBlur, ...rest
+}: ButtonHTMLAttributes<HTMLButtonElement> & { animation: Animation; interaction?: Interaction; iconSize?: number }) {
+  return (
+    <WithAnimatedIcon animation={animation} size={iconSize} interaction={interaction}>
+      {(ev, icon) => (
+        <button
+          type={type}
+          {...rest}
+          onPointerEnter={ev.onPointerEnter}
+          onClick={chain(onClick, ev.onClick)}
+          onMouseEnter={chain(onMouseEnter, ev.onMouseEnter)}
+          onMouseLeave={chain(onMouseLeave, ev.onMouseLeave)}
+          onFocus={chain(onFocus, ev.onFocus)}
+          onBlur={chain(onBlur, ev.onBlur)}
+        >
+          {icon}
+          {children}
+        </button>
+      )}
+    </WithAnimatedIcon>
+  );
+}
 
 /** A standalone animated icon, e.g. a bookmark whose `active` state is controlled. */
 export function AnimatedIcon(props: { animation: Animation; size?: number; active?: boolean; interaction?: Interaction; className?: string }) {
