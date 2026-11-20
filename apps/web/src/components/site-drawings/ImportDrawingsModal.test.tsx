@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ImportDrawingsModal } from './ImportDrawingsModal';
 
@@ -33,10 +32,6 @@ function dropFile(root: HTMLElement, file: File) {
   fireEvent.drop(root, { dataTransfer });
 }
 
-function fileInput(container: HTMLElement): HTMLInputElement {
-  return container.querySelector('input[type="file"]') as HTMLInputElement;
-}
-
 describe('ImportDrawingsModal', () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -52,17 +47,17 @@ describe('ImportDrawingsModal', () => {
   });
 
   it('a supported file after a rejection: clears the rejection message and enables Start import', async () => {
-    const { container } = renderIt();
+    renderIt();
     const rarFile = new File(['Rar!'], 'package.rar', { type: 'application/x-rar-compressed' });
     const zipFile = new File(['PK'], 'package.zip', { type: 'application/zip' });
 
     dropFile(screen.getByRole('presentation'), rarFile);
     expect(await screen.findByText(/isn't a supported file/i)).toBeInTheDocument();
 
-    await userEvent.upload(fileInput(container), zipFile);
+    dropFile(screen.getByRole('presentation'), zipFile);
 
+    expect(await screen.findByText('package.zip')).toBeInTheDocument();
     expect(screen.queryByText(/isn't a supported file/i)).not.toBeInTheDocument();
-    expect(screen.getByText('package.zip')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Start import' })).toBeEnabled();
     expect(api.uploadImportBatch).not.toHaveBeenCalled();
   });
