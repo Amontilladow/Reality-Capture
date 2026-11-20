@@ -28,8 +28,9 @@ function renderIt() {
   );
 }
 
-function fileInput(container: HTMLElement): HTMLInputElement {
-  return container.querySelector('input[type="file"]') as HTMLInputElement;
+// The modal renders at the top of the page (a portal), so look there.
+function fileInput(): HTMLInputElement {
+  return document.body.querySelector('input[type="file"]') as HTMLInputElement;
 }
 
 const pdfFile = new File(['%PDF-1.4'], 'A-101.pdf', { type: 'application/pdf' });
@@ -39,9 +40,9 @@ describe('RegisterSiteDrawingModal', () => {
 
   it('upload failure: keeps the Register button disabled with an honest message and an explicit retry, never implying manual entry is possible', async () => {
     api.uploadSiteDrawingFile.mockRejectedValue(new Error('network error'));
-    const { container } = renderIt();
+    renderIt();
 
-    await userEvent.upload(fileInput(container), pdfFile);
+    await userEvent.upload(fileInput(), pdfFile);
 
     expect(await screen.findByText(/upload failed/i)).toBeInTheDocument();
     expect(screen.getByText(/this file was never actually uploaded/i)).toBeInTheDocument();
@@ -55,9 +56,9 @@ describe('RegisterSiteDrawingModal', () => {
     api.uploadSiteDrawingFile.mockRejectedValueOnce(new Error('network error'));
     api.uploadSiteDrawingFile.mockResolvedValueOnce({ storageKey: 'key-1' });
     api.extractSiteDrawingFields.mockResolvedValue(null);
-    const { container } = renderIt();
+    renderIt();
 
-    await userEvent.upload(fileInput(container), pdfFile);
+    await userEvent.upload(fileInput(), pdfFile);
     await screen.findByRole('button', { name: 'Try again' });
 
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
@@ -72,9 +73,9 @@ describe('RegisterSiteDrawingModal', () => {
   it('upload succeeds but extraction fails: the file is kept, manual entry is explicitly allowed, and the message says the upload itself worked', async () => {
     api.uploadSiteDrawingFile.mockResolvedValue({ storageKey: 'key-1' });
     api.extractSiteDrawingFields.mockRejectedValue(new Error('ai-service down'));
-    const { container } = renderIt();
+    renderIt();
 
-    await userEvent.upload(fileInput(container), pdfFile);
+    await userEvent.upload(fileInput(), pdfFile);
 
     expect(await screen.findByText(/auto-fill failed, but the file uploaded fine/i)).toBeInTheDocument();
 
@@ -88,9 +89,9 @@ describe('RegisterSiteDrawingModal', () => {
     api.extractSiteDrawingFields.mockResolvedValue({
       drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan', revisionNumber: 'B', confidence: 0.9, source: 'embedded_text',
     });
-    const { container } = renderIt();
+    renderIt();
 
-    await userEvent.upload(fileInput(container), pdfFile);
+    await userEvent.upload(fileInput(), pdfFile);
 
     expect(await screen.findByText(/fields auto-filled from the drawing/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Drawing number')).toHaveValue('A-101');
@@ -102,9 +103,9 @@ describe('RegisterSiteDrawingModal', () => {
   it('never enables Register while an upload or extraction is still in progress', async () => {
     let resolveUpload: (v: { storageKey: string }) => void = () => {};
     api.uploadSiteDrawingFile.mockImplementation(() => new Promise((resolve) => { resolveUpload = resolve; }));
-    const { container } = renderIt();
+    renderIt();
 
-    await userEvent.upload(fileInput(container), pdfFile);
+    await userEvent.upload(fileInput(), pdfFile);
     expect(screen.getByText('Uploading…')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Register drawing' })).toBeDisabled();
 

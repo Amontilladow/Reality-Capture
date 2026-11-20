@@ -1,3 +1,6 @@
+import { AnimatedButton } from '../components/ui/AnimatedIcon';
+import aTrash from 'react-useanimations/lib/trash2';
+import { confirmDialog } from '../store/confirm.store';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -380,15 +383,15 @@ export default function GisPrepPage() {
             <span className="text-sm text-ink-300">{selectedIds.size} job{selectedIds.size === 1 ? '' : 's'} selected</span>
             <div className="flex items-center gap-2">
               {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
-              <button
+              <AnimatedButton animation={aTrash} interaction="hover"
                 className="btn-secondary !text-danger !px-4 !py-2"
                 disabled={bulkDeleteMutation.isPending}
-                onClick={() => {
-                  if (confirm(`Delete ${selectedIds.size} GIS preparation job${selectedIds.size === 1 ? '' : 's'}? This cannot be undone.`)) bulkDeleteMutation.mutate();
+                onClick={async () => {
+                  if (await confirmDialog(`Delete ${selectedIds.size} GIS preparation job${selectedIds.size === 1 ? '' : 's'}? This cannot be undone.`)) bulkDeleteMutation.mutate();
                 }}
               >
                 {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
-              </button>
+              </AnimatedButton>
             </div>
           </div>
         )}
@@ -427,16 +430,16 @@ export default function GisPrepPage() {
                   <td className="px-4 py-2 text-ink-300 whitespace-nowrap">{j.counts ? `${j.counts.errors} / ${j.counts.warnings} / ${j.counts.openDecisions}` : '—'}</td>
                   <td className="px-4 py-2 text-ink-500 whitespace-nowrap">{new Date(j.createdAt).toLocaleString()}</td>
                   <td className="px-4 py-2 text-right">
-                    <button
+                    <AnimatedButton animation={aTrash} interaction="hover"
                       className="btn-ghost !text-danger !px-2 !py-2 text-xs"
                       disabled={deleteMutation.isPending}
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation();
-                        if (confirm(`Delete the GIS preparation job for "${j.sourceFilename}"? This cannot be undone.`)) deleteMutation.mutate(j.id);
+                        if (await confirmDialog(`Delete the GIS preparation job for "${j.sourceFilename}"? This cannot be undone.`)) deleteMutation.mutate(j.id);
                       }}
                     >
                       Delete
-                    </button>
+                    </AnimatedButton>
                   </td>
                 </tr>
               ))}

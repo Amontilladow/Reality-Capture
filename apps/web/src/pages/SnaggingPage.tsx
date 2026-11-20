@@ -1,3 +1,6 @@
+import { AnimatedButton } from '../components/ui/AnimatedIcon';
+import aTrash from 'react-useanimations/lib/trash2';
+import { confirmDialog } from '../store/confirm.store';
 import { Fragment, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -249,13 +252,13 @@ export default function SnaggingPage() {
               <input type="checkbox" checked={allSelected} onChange={() => setSelectedIds(allSelected ? new Set() : new Set(allFilteredIds))} />
               Select all shown
             </label>
-            <button
-              onClick={() => { if (confirm(`Delete ${selectedIds.size} snag item(s)? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
+            <AnimatedButton animation={aTrash} interaction="hover"
+              onClick={async () => { if (await confirmDialog(`Delete ${selectedIds.size} snag item(s)? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
               disabled={bulkDeleteMutation.isPending}
               className="btn-danger !px-4 !py-2 text-sm ml-auto"
             >
               {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
-            </button>
+            </AnimatedButton>
             {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
           </div>
         )}

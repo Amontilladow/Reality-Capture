@@ -1,3 +1,6 @@
+import { AnimatedButton } from '../ui/AnimatedIcon';
+import aTrash from 'react-useanimations/lib/trash2';
+import { confirmDialog } from '../../store/confirm.store';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Modal } from '../ui/Modal';
@@ -113,8 +116,8 @@ function BatchesTab({ projectId, batches, isLoading }: { projectId: string; batc
           ? <p className="field-error">{apiErrorMessage(clearAllMutation.error)}</p>
           : <span />}
         <button
-          onClick={() => {
-            if (confirm(`Remove all ${batches.length} import batches from the activity log? This does not delete any drawings they already created.`)) clearAllMutation.mutate();
+          onClick={async () => {
+            if (await confirmDialog(`Remove all ${batches.length} import batches from the activity log? This does not delete any drawings they already created.`)) clearAllMutation.mutate();
           }}
           disabled={clearAllMutation.isPending}
           className="btn-ghost !text-danger text-xs shrink-0"
@@ -155,13 +158,13 @@ function BatchRow({ projectId, batch: b }: { projectId: string; batch: SiteDrawi
         </div>
         <div className="flex items-center gap-2">
           <StatusBadge tone={IMPORT_BATCH_STATUS_TONE[b.status]} label={IMPORT_BATCH_STATUS_LABELS[b.status]} dot />
-          <button
-            onClick={() => { if (confirm('Remove this import batch from the activity log? This does not delete any drawings it already created.')) deleteMutation.mutate(); }}
+          <AnimatedButton animation={aTrash} interaction="hover"
+            onClick={async () => { if (await confirmDialog('Remove this import batch from the activity log? This does not delete any drawings it already created.')) deleteMutation.mutate(); }}
             disabled={deleteMutation.isPending}
             className="btn-secondary !text-danger !px-4 !py-2 text-xs"
           >
             {deleteMutation.isPending ? 'Removing…' : 'Delete'}
-          </button>
+          </AnimatedButton>
         </div>
       </div>
       {b.status !== 'PENDING' && (
@@ -272,13 +275,13 @@ function ReviewQueueRow({ projectId, item }: { projectId: string; item: SiteDraw
         </div>
         <div className="flex items-center gap-2">
           <StatusBadge tone={EXTRACTION_STATUS_TONE[item.extractionStatus]} label={EXTRACTION_STATUS_LABELS[item.extractionStatus]} dot />
-          <button
-            onClick={() => { if (confirm('Delete this drawing and its entire revision history? This cannot be undone.')) deleteMutation.mutate(); }}
+          <AnimatedButton animation={aTrash} interaction="hover"
+            onClick={async () => { if (await confirmDialog('Delete this drawing and its entire revision history? This cannot be undone.')) deleteMutation.mutate(); }}
             disabled={deleteMutation.isPending}
             className="btn-secondary !text-danger !px-4 !py-2 text-xs"
           >
             {deleteMutation.isPending ? 'Deleting…' : 'Delete drawing'}
-          </button>
+          </AnimatedButton>
         </div>
       </div>
       {deleteMutation.isError && <p className="field-error">{apiErrorMessage(deleteMutation.error)}</p>}

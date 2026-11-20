@@ -1,3 +1,5 @@
+import { AnimatedButton } from './ui/AnimatedIcon';
+import aDownload from 'react-useanimations/lib/download';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Project } from '@engineeringos/types';
@@ -203,7 +205,7 @@ export function RfiNoticeLetterModal({
           >
             {shareMutation.isPending ? 'Sharing…' : isShared ? 'Shared' : 'Share'}
           </button>
-          <button
+          <AnimatedButton animation={aDownload}
             type="button"
             onClick={handleDownloadPdf}
             disabled={!letterExists || downloading}
@@ -211,7 +213,7 @@ export function RfiNoticeLetterModal({
             title={!letterExists ? 'Save a draft first' : undefined}
           >
             {downloading ? 'Preparing…' : 'Download PDF'}
-          </button>
+          </AnimatedButton>
         </div>
       </div>
     </Modal>

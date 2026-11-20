@@ -1,3 +1,7 @@
+import { AnimatedButton } from './ui/AnimatedIcon';
+import aTrash from 'react-useanimations/lib/trash2';
+import aDownload from 'react-useanimations/lib/download';
+import { confirmDialog } from '../store/confirm.store';
 import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -205,9 +209,9 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
           dashboard parks its controls in the top bar. */}
       <div className="flex items-center justify-end flex-wrap gap-2">
         <button onClick={() => setGraphOpen(true)} className="btn-secondary !rounded-full">View risk graph</button>
-        <button onClick={handleDownloadPdf} disabled={pdfDownloading || !hasAnyData} className="btn-secondary !rounded-full">
+        <AnimatedButton animation={aDownload} onClick={handleDownloadPdf} disabled={pdfDownloading || !hasAnyData} className="btn-secondary !rounded-full">
           {pdfDownloading ? 'Preparing…' : 'Export report'}
-        </button>
+        </AnimatedButton>
         <button onClick={() => recalcMutation.mutate()} disabled={recalcMutation.isPending} className="btn-primary !rounded-full">
           {recalcMutation.isPending ? 'Analyzing…' : 'Refresh'}
         </button>
@@ -516,13 +520,13 @@ export function RiskIntelligenceSection({ projectId }: { projectId: string }) {
             {selectedRiskIds.size > 0 && (
               <div className="flex items-center gap-2 tick-frame panel px-4 py-2 mb-4">
                 <span className="text-sm font-medium">{selectedRiskIds.size} selected</span>
-                <button
-                  onClick={() => { if (confirm(`Delete ${selectedRiskIds.size} risk(s) and their entire graph/evidence trails? This cannot be undone.`)) bulkDeleteRisksMutation.mutate(); }}
+                <AnimatedButton animation={aTrash} interaction="hover"
+                  onClick={async () => { if (await confirmDialog(`Delete ${selectedRiskIds.size} risk(s) and their entire graph/evidence trails? This cannot be undone.`)) bulkDeleteRisksMutation.mutate(); }}
                   disabled={bulkDeleteRisksMutation.isPending}
                   className="btn-danger !px-4 !py-2 text-sm ml-auto"
                 >
                   {bulkDeleteRisksMutation.isPending ? 'Deleting…' : 'Delete selected'}
-                </button>
+                </AnimatedButton>
                 {bulkDeleteRisksMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteRisksMutation.error)}</span>}
               </div>
             )}
@@ -814,13 +818,13 @@ function RiskDetailDrawer({ projectId, riskId, members, onClose, onChanged, onVi
 
           <div>
             <div className="field-label !mb-2 !text-danger">Danger zone</div>
-            <button
-              onClick={() => { if (confirm('Delete this risk and its entire graph/evidence trail? This cannot be undone.')) deleteMutation.mutate(); }}
+            <AnimatedButton animation={aTrash} interaction="hover"
+              onClick={async () => { if (await confirmDialog('Delete this risk and its entire graph/evidence trail? This cannot be undone.')) deleteMutation.mutate(); }}
               disabled={deleteMutation.isPending}
               className="btn-danger !px-4 !py-2 text-sm"
             >
               {deleteMutation.isPending ? 'Deleting…' : 'Delete risk'}
-            </button>
+            </AnimatedButton>
             {deleteMutation.isError && <p className="field-error mt-2">{apiErrorMessage(deleteMutation.error)}</p>}
           </div>
 

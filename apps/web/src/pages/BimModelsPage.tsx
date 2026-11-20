@@ -1,3 +1,7 @@
+import { AnimatedButton } from '../components/ui/AnimatedIcon';
+import aTrash from 'react-useanimations/lib/trash2';
+import { alertDialog } from '../store/confirm.store';
+import { confirmDialog } from '../store/confirm.store';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -46,7 +50,7 @@ export default function BimModelsPage() {
       await reprocessModel(projectId, modelId);
       queryClient.invalidateQueries({ queryKey: ['bim-models', projectId] });
     } catch (err) {
-      alert(apiErrorMessage(err));
+      void alertDialog(apiErrorMessage(err), "Couldn't reprocess the model");
     }
   }
 
@@ -102,13 +106,13 @@ export default function BimModelsPage() {
             {selectedIds.size > 0 && (
               <>
                 <span className="text-sm font-medium">{selectedIds.size} selected</span>
-                <button
-                  onClick={() => { if (confirm(`Delete ${selectedIds.size} model(s) and every element extracted from them? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
+                <AnimatedButton animation={aTrash} interaction="hover"
+                  onClick={async () => { if (await confirmDialog(`Delete ${selectedIds.size} model(s) and every element extracted from them? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
                   disabled={bulkDeleteMutation.isPending}
                   className="btn-danger !px-4 !py-2 text-sm ml-auto"
                 >
                   {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
-                </button>
+                </AnimatedButton>
               </>
             )}
             {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
@@ -167,13 +171,13 @@ export default function BimModelsPage() {
                     Retry
                   </button>
                 )}
-                <button
-                  onClick={() => { if (confirm(`Delete "${model.name}" and every element extracted from it? This cannot be undone.`)) deleteMutation.mutate(model.id); }}
+                <AnimatedButton animation={aTrash} interaction="hover"
+                  onClick={async () => { if (await confirmDialog(`Delete "${model.name}" and every element extracted from it? This cannot be undone.`)) deleteMutation.mutate(model.id); }}
                   disabled={deleteMutation.isPending}
                   className="btn-secondary !text-danger"
                 >
                   Delete
-                </button>
+                </AnimatedButton>
               </div>
             </li>
           ))}

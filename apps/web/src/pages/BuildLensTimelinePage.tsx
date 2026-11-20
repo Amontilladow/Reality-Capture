@@ -1,3 +1,6 @@
+import { AnimatedButton } from '../components/ui/AnimatedIcon';
+import aTrash from 'react-useanimations/lib/trash2';
+import { confirmDialog } from '../store/confirm.store';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -406,7 +409,7 @@ export default function BuildLensTimelinePage() {
                   )}
                   {active && !editingDate && (
                     <button
-                      onClick={() => { if (confirm('Delete this capture and all its renditions? This cannot be undone.')) deleteMutation.mutate(); }}
+                      onClick={async () => { if (await confirmDialog('Delete this capture and all its renditions? This cannot be undone.')) deleteMutation.mutate(); }}
                       disabled={deleteMutation.isPending}
                       className="text-ink-500 hover:text-danger"
                       title="Delete this capture"
@@ -442,13 +445,13 @@ export default function BuildLensTimelinePage() {
               {selecting && selectedIds.size > 0 && (
                 <div className="flex items-center gap-2 tick-frame panel px-4 py-2">
                   <span className="text-sm font-medium">{selectedIds.size} selected</span>
-                  <button
-                    onClick={() => { if (confirm(`Delete ${selectedIds.size} capture(s) and all their renditions? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
+                  <AnimatedButton animation={aTrash} interaction="hover"
+                    onClick={async () => { if (await confirmDialog(`Delete ${selectedIds.size} capture(s) and all their renditions? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
                     disabled={bulkDeleteMutation.isPending}
                     className="btn-danger !px-4 !py-2 text-sm ml-auto"
                   >
                     {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
-                  </button>
+                  </AnimatedButton>
                   {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
                 </div>
               )}

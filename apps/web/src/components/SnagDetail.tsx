@@ -1,3 +1,6 @@
+import { AnimatedButton } from './ui/AnimatedIcon';
+import aTrash from 'react-useanimations/lib/trash2';
+import { confirmDialog } from '../store/confirm.store';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -158,13 +161,13 @@ export function SnagDetail({
             <button onClick={() => setForwardOpen((v) => !v)} className="btn-secondary !px-4 !py-2 ">
               {forwardOpen ? 'Cancel forward' : 'Forward'}
             </button>
-            <button
-              onClick={() => { if (confirm('Delete this snag item? This cannot be undone.')) deleteMutation.mutate(); }}
+            <AnimatedButton animation={aTrash} interaction="hover"
+              onClick={async () => { if (await confirmDialog('Delete this snag item? This cannot be undone.')) deleteMutation.mutate(); }}
               disabled={deleteMutation.isPending}
               className="btn-danger !px-4 !py-2 "
             >
               {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
-            </button>
+            </AnimatedButton>
             {deleteMutation.isError && <p className="field-error">{apiErrorMessage(deleteMutation.error)}</p>}
           </div>
         </div>

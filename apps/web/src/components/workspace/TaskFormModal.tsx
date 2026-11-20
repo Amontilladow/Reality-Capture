@@ -1,3 +1,5 @@
+import { AnimatedButton } from '../ui/AnimatedIcon';
+import aTrash from 'react-useanimations/lib/trash2';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Modal } from '../ui/Modal';
@@ -113,7 +115,7 @@ export function TaskFormModal({ open, onClose, task, defaults }: {
         {error && <p role="alert" className="field-error">{error}</p>}
         <div className="flex flex-wrap items-center gap-2 pt-2">
           {task && (
-            <button type="button" onClick={() => remove.mutate()} disabled={remove.isPending} className="btn-ghost text-danger mr-auto">Delete</button>
+            <AnimatedButton animation={aTrash} interaction="hover" type="button" onClick={() => remove.mutate()} disabled={remove.isPending} className="btn-ghost text-danger mr-auto">Delete</AnimatedButton>
           )}
           <button type="button" onClick={onClose} className="btn-secondary ml-auto">Cancel</button>
           <button type="submit" disabled={save.isPending} className="btn-primary">{save.isPending ? 'Saving…' : task ? 'Save' : 'Add'}</button>
