@@ -7,6 +7,9 @@ settings:
 overrides:
   proxy-addr: '>=2.0.8'
 
+patchedDependencies:
+  pdf-parse@2.4.5: 0689ff87090db50498f5d59efc969a4b876b8d4dc18d79a734f757b219d38fcf
+
 importers:
 
   .:
@@ -192,7 +195,7 @@ importers:
         version: 1.17.1
       pdf-parse:
         specifier: ^2.4.5
-        version: 2.4.5
+        version: 2.4.5(patch_hash=0689ff87090db50498f5d59efc969a4b876b8d4dc18d79a734f757b219d38fcf)
       postgres:
         specifier: ^3.4.4
         version: 3.4.9
@@ -19766,7 +19769,7 @@ snapshots:
       pako: 1.0.11
       tslib: 1.14.1
 
-  pdf-parse@2.4.5:
+  pdf-parse@2.4.5(patch_hash=0689ff87090db50498f5d59efc969a4b876b8d4dc18d79a734f757b219d38fcf):
     dependencies:
       '@napi-rs/canvas': 0.1.80
       pdfjs-dist: 5.4.296

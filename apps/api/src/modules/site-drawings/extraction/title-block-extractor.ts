@@ -73,6 +73,23 @@ const REVISION_LABELED = /\brev(?:ision)?\.?\s*(?:no\.?)?\s*[:\-]?\s*([A-Z0-9]{1
 const DRAWING_NUMBER_LABEL_ONLY = /^(?:drawing|dwg|sheet)\s*(?:no\.?|number|#)\s*[:\-]?$/i;
 const REVISION_LABEL_ONLY = /^rev(?:ision)?\.?\s*(?:no\.?)?\s*[:\-]?$/i;
 const TITLE_LABEL_ONLY = /^(?:drawing\s*)?title\s*[:\-]?$/i;
+const ANY_LABEL_ONLY_PATTERNS = [DRAWING_NUMBER_LABEL_ONLY, REVISION_LABEL_ONLY, TITLE_LABEL_ONLY];
+
+// A real "label row, then value row" layout (confirmed by hand: a
+// bordered grid whose top row is nothing but labels -- "Drawing No:",
+// "Rev:", "Title:" -- and whose next row is nothing but their values)
+// means the cell immediately after a label, in the SAME row, is very
+// often ANOTHER LABEL, not that label's own value: there is no `validate`
+// function for revision/title (unlike the drawing number's digit check)
+// to reject that wrong candidate on its own. A real value should never
+// itself be nothing but one of these three known label shapes, so
+// rejecting a same-row/next-row candidate that matches ANY of them is a
+// general-purpose way to tell "this is someone else's label cell" apart
+// from "this is an actual value" regardless of which field is being
+// matched.
+function looksLikeLabelCell(value: string): boolean {
+  return ANY_LABEL_ONLY_PATTERNS.some((pattern) => pattern.test(value));
+}
 
 // Separator kept optional (`[:\-]?`, not `[:\-]`): a common CAD
 // title-block layout prints "Drawing Title" as its own label line with
@@ -232,6 +249,10 @@ function firstMatchAcrossCells(cells: string[], matcher: (cell: string) => Field
   return null;
 }
 
+function cellAt(rows: string[][], r: number, c: number): string | undefined {
+  return rows[r]?.[c]?.trim();
+}
+
 // A labeled match from ANY cell is tried across every cell before a bare
 // match from ANY cell is tried at all -- not "the first cell's own best
 // match". A stray bare-pattern-shaped token sitting in some other cell of
@@ -240,53 +261,76 @@ function firstMatchAcrossCells(cells: string[], matcher: (cell: string) => Field
 // label elsewhere in the grid just because it happens to live in a cell
 // this function reaches first.
 //
-// Tries both label shapes at each cell before moving to the next: a
-// combined "label: value" cell first, then (when the cell is nothing but
-// the bare label) the next cell in array order as the value, since
-// getTable()'s flattening walks a row's cells left to right -- the same
-// order a label-then-value pair is laid out in. Either shape can win at
-// any position; what matters is that a labeled match (of either shape)
-// from an earlier cell always outranks a bare match from a later one.
+// Tries three shapes at each cell, in order, before moving to the next:
+// a combined "label: value" cell; then, when the cell is nothing but the
+// bare label, the next cell in the SAME ROW (a label beside its value);
+// then the cell directly below it in the NEXT ROW, same column (a label
+// above its value). Both of the latter two are real, common title-block
+// layouts -- see PdfTextResult.tableRows's own comment for why only
+// having rows (not a flat cell list) makes the second one detectable at
+// all. Either shape can win at any position; what matters is that a
+// labeled match (of any shape) from an earlier cell always outranks a
+// bare match from a later one.
 function matchLabeledAcrossCells(
-  cells: string[], combinedPattern: RegExp, labelOnlyPattern: RegExp, confidence: number, validate?: (value: string) => boolean,
+  rows: string[][], combinedPattern: RegExp, labelOnlyPattern: RegExp, confidence: number, validate?: (value: string) => boolean,
 ): FieldMatch | null {
-  for (let i = 0; i < cells.length; i++) {
-    const combined = matchLabeled(cells[i], combinedPattern, confidence);
-    if (combined && (!validate || validate(combined.value))) return combined;
+  for (let r = 0; r < rows.length; r++) {
+    const row = rows[r];
+    for (let c = 0; c < row.length; c++) {
+      const combined = matchLabeled(row[c], combinedPattern, confidence);
+      if (combined && (!validate || validate(combined.value))) return combined;
 
-    if (labelOnlyPattern.test(cells[i].trim())) {
-      const next = cells[i + 1]?.trim();
-      if (next && (!validate || validate(next))) return { value: next, confidence };
+      if (labelOnlyPattern.test(row[c].trim())) {
+        const sameRowNext = cellAt(rows, r, c + 1);
+        if (sameRowNext && !looksLikeLabelCell(sameRowNext) && (!validate || validate(sameRowNext))) return { value: sameRowNext, confidence };
+
+        const nextRowSame = cellAt(rows, r + 1, c);
+        if (nextRowSame && !looksLikeLabelCell(nextRowSame) && (!validate || validate(nextRowSame))) return { value: nextRowSame, confidence };
+      }
     }
   }
   return null;
 }
 
-function extractDrawingNumberFromCells(cells: string[]): FieldMatch | null {
-  const labeled = matchLabeledAcrossCells(cells, DRAWING_NUMBER_LABELED, DRAWING_NUMBER_LABEL_ONLY, 0.85, isPlausibleDrawingNumber);
+function extractDrawingNumberFromCells(rows: string[][], flatCells: string[]): FieldMatch | null {
+  const labeled = matchLabeledAcrossCells(rows, DRAWING_NUMBER_LABELED, DRAWING_NUMBER_LABEL_ONLY, 0.85, isPlausibleDrawingNumber);
   if (labeled) return labeled;
-  return firstMatchAcrossCells(cells, (cell) => matchLabeled(cell, DRAWING_NUMBER_BARE, 0.55));
+  return firstMatchAcrossCells(flatCells, (cell) => matchLabeled(cell, DRAWING_NUMBER_BARE, 0.55));
 }
+
+// A tempting next step here would be "guess the title from whichever
+// cell is left over once every other known field is excluded" -- tried
+// by hand and deliberately NOT shipped: there is no way to tell an
+// actually-unlabeled title apart from any other unrelated field with
+// ordinary prose text (confirmed against this file's own "Checked By: J.
+// Smith" test fixture, which such a guess picks up as a "title" with
+// nothing to distinguish it from a real one). That's exactly the
+// "invent a missing value" this module's header comment rules out, so
+// an unlabeled title still correctly falls through to no title at all,
+// same as a revision with no plausible value -- not a guess that could
+// be visibly wrong in the Review Queue.
 
 // The table-grid counterpart to extractTitleBlockFields() above: scopes
 // every field regex to one detected table cell's own text at a time
-// (pdf-parse's getTable(), via PdfTextResult.tableCells -- see that type's
+// (pdf-parse's getTable(), via PdfTextResult.tableRows -- see that type's
 // own comment for why this is more reliable than matching across the
-// whole page). A title block's label and its value are visually always in
-// the same bordered cell, so confining the search this way makes the
+// whole page, and why rows, not a flat cell list). A title block's label
+// and its value are visually always in the same bordered cell or an
+// immediately adjacent one, so confining the search this way makes the
 // cross-field contamination plain getText()-based matching is vulnerable
 // to structurally impossible for any two DIFFERENT fields, regardless of
 // how the PDF's content stream happened to serialize them. Returns null
 // (falls back to extractTitleBlockFields() against the whole page) when no
 // cell contains a plausible drawing number at all -- an untabled layout,
 // or a table that isn't actually the title block.
-export function extractTitleBlockFieldsFromCells(cells: string[], source: 'embedded_text' | 'ocr'): ExtractedDrawingFields | null {
-  const drawingNumberMatch = extractDrawingNumberFromCells(cells);
+export function extractTitleBlockFieldsFromCells(rows: string[][], source: 'embedded_text' | 'ocr'): ExtractedDrawingFields | null {
+  const flatCells = rows.flat();
+  const drawingNumberMatch = extractDrawingNumberFromCells(rows, flatCells);
   if (!drawingNumberMatch || drawingNumberMatch.confidence < DRAWING_NUMBER_CONFIDENCE_THRESHOLD) return null;
 
-  const revisionMatch = matchLabeledAcrossCells(cells, REVISION_LABELED, REVISION_LABEL_ONLY, 0.75);
-  const titleMatch = matchLabeledAcrossCells(cells, TITLE_LABELED, TITLE_LABEL_ONLY, 0.7);
-  const issueDate = firstMatchAcrossCells(cells, (cell) => {
+  const revisionMatch = matchLabeledAcrossCells(rows, REVISION_LABELED, REVISION_LABEL_ONLY, 0.75);
+  const titleMatch = matchLabeledAcrossCells(rows, TITLE_LABELED, TITLE_LABEL_ONLY, 0.7);
+  const issueDate = firstMatchAcrossCells(flatCells, (cell) => {
     const date = extractDate(cell);
     return date ? { value: date, confidence: 1 } : null;
   })?.value;

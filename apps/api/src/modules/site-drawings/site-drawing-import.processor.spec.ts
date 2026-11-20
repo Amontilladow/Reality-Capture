@@ -86,7 +86,7 @@ describe('SiteDrawingImportProcessor', () => {
 
   it('skips OCR entirely when the embedded text layer is already usable', async () => {
     (zipExtraction.extractPdfEntriesFromZip as jest.Mock).mockResolvedValue({ entries: [{ filename: 'A-101.pdf', buffer: Buffer.from('x') }] });
-    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: 'DRAWING NO: A-101\nREV: B', tableCells: [], pageCount: 1 });
+    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: 'DRAWING NO: A-101\nREV: B', tableRows: [], pageCount: 1 });
     (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
 
     const { processor, aiClient, withTenant } = makeProcessor([
@@ -144,7 +144,7 @@ describe('SiteDrawingImportProcessor', () => {
 
   it('sends one notification per batch (not per file), excluding the uploader, summarizing the outcome', async () => {
     (zipExtraction.extractPdfEntriesFromZip as jest.Mock).mockResolvedValue({ entries: [{ filename: 'A-101.pdf', buffer: Buffer.from('x') }] });
-    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: 'DRAWING NO: A-101\nREV: B', tableCells: [], pageCount: 1 });
+    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: 'DRAWING NO: A-101\nREV: B', tableRows: [], pageCount: 1 });
     (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
 
     const { processor, siteDrawings } = makeProcessor([
@@ -203,7 +203,7 @@ describe('SiteDrawingImportProcessor', () => {
     // this to auto-promote at all.
     const buffer = Buffer.from('a real new revision of the drawing');
     (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({
-      text: 'DRAWING NO: A-101\nREV: B\nTITLE: Ground Floor Plan', tableCells: [], pageCount: 1,
+      text: 'DRAWING NO: A-101\nREV: B\nTITLE: Ground Floor Plan', tableRows: [], pageCount: 1,
     });
     (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
 
@@ -248,7 +248,7 @@ describe('SiteDrawingImportProcessor', () => {
     // be preserved as a pending CONFLICT, with the existing drawing's
     // current revision left completely untouched.
     const buffer = Buffer.from('a different physical drawing with no readable title');
-    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: 'DRAWING NO: A-101', tableCells: [], pageCount: 1 });
+    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: 'DRAWING NO: A-101', tableRows: [], pageCount: 1 });
     (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
 
     const insertCalls: unknown[][] = [];
@@ -293,7 +293,7 @@ describe('SiteDrawingImportProcessor', () => {
     // must never become current.
     const buffer = Buffer.from('an older revision, uploaded/processed after the newer one');
     (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({
-      text: 'DRAWING NO: A-101\nREV: A\nTITLE: Ground Floor Plan', tableCells: [], pageCount: 1,
+      text: 'DRAWING NO: A-101\nREV: A\nTITLE: Ground Floor Plan', tableRows: [], pageCount: 1,
     });
     (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
 
@@ -596,7 +596,7 @@ describe('SiteDrawingImportProcessor', () => {
       // was actually read, so this must still degrade to NEEDS_REVIEW
       // rather than being reported as a clean, fully-confirmed read.
       (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({
-        text: 'DRAWING NO: A-101\nREV: B\nTITLE: Ground Floor Plan', tableCells: [], pageCount: 3,
+        text: 'DRAWING NO: A-101\nREV: B\nTITLE: Ground Floor Plan', tableRows: [], pageCount: 3,
       });
       (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
 

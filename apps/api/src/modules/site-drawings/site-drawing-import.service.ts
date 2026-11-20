@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import type {
@@ -12,6 +12,39 @@ import type { SplitAsNewDrawingDto } from './dto/split-as-new-drawing.dto';
 
 const BATCH_MAX_SIZE_BYTES = 500 * 1024 * 1024; // 500 MB: "hundreds of PDF drawings" in one archive
 const BATCH_ALLOWED_EXTENSIONS = new Set(['zip', 'rar', 'pdf']);
+
+// Site Drawing Hub, extraction accuracy Phase 0: the other half of
+// logExtractionOutcome() (extract-drawing-fields.ts) -- knowing which
+// path produced a guess is only half the feedback loop; knowing whether
+// a human later had to CORRECT that guess is the half that actually says
+// something about accuracy. revision.extractedFieldsRaw already holds
+// the original, as-extracted values (the jsonb column this service's own
+// INSERT already writes; see site-drawing-import.processor.ts), so a
+// genuine correction can be detected by diffing it against what the
+// reviewer submits -- no new column, no new query, nothing to migrate.
+// Logged, not persisted to its own table: this is meant to be read as
+// log data for now, not queried as structured state (that's a reasonable
+// next step once there's enough of it to be worth a real analysis, not
+// before).
+const reviewCorrectionLogger = new Logger('SiteDrawingReviewCorrection');
+
+function logReviewCorrections(revisionId: string, original: ExtractedDrawingFields | null | undefined, dto: ResolveReviewDto): void {
+  const corrections: string[] = [];
+  if (dto.drawingNumber !== undefined && dto.drawingNumber !== original?.drawingNumber) {
+    corrections.push(`drawingNumber: ${JSON.stringify(original?.drawingNumber ?? null)} -> ${JSON.stringify(dto.drawingNumber)}`);
+  }
+  if (dto.drawingTitle !== undefined && dto.drawingTitle !== original?.drawingTitle) {
+    corrections.push(`drawingTitle: ${JSON.stringify(original?.drawingTitle ?? null)} -> ${JSON.stringify(dto.drawingTitle)}`);
+  }
+  if (dto.revisionNumber !== undefined && dto.revisionNumber !== original?.revisionNumber) {
+    corrections.push(`revisionNumber: ${JSON.stringify(original?.revisionNumber ?? null)} -> ${JSON.stringify(dto.revisionNumber)}`);
+  }
+  if (corrections.length === 0) return; // a reviewer confirming an already-correct extraction is not a miss worth logging
+  reviewCorrectionLogger.log(
+    `Revision ${revisionId}: reviewer corrected an extraction originally sourced from ${original?.source ?? 'unknown'} `
+    + `(confidence ${original?.confidence ?? 'n/a'}): ${corrections.join('; ')}`,
+  );
+}
 
 export interface SiteDrawingImportJob {
   batchId: string;
@@ -217,6 +250,7 @@ export class SiteDrawingImportService {
     return this.db.withTenant(companyId, async (sql) => {
       const [revision] = await sql<RevisionRow[]>`SELECT * FROM site_drawing_revisions WHERE id = ${revisionId} AND project_id = ${projectId}`;
       if (!revision) throw new NotFoundException(`Revision ${revisionId} not found.`);
+      logReviewCorrections(revisionId, revision.extractedFieldsRaw, dto);
 
       const [updatedRevision] = await sql<RevisionRow[]>`
         UPDATE site_drawing_revisions SET

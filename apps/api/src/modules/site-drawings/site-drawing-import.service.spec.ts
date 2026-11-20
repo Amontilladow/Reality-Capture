@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Logger, NotFoundException } from '@nestjs/common';
 import type { Queue } from 'bull';
 import { SiteDrawingImportService } from './site-drawing-import.service';
 import type { DatabaseService } from '../../database/database.service';
@@ -257,6 +257,43 @@ describe('SiteDrawingImportService', () => {
       });
       expect(result.extractionStatus).toBe('CONFIRMED');
       expect(result.reviewNotes).toBe('fixed revision letter');
+    });
+
+    // Extraction accuracy Phase 0: the only way to learn, from real data,
+    // how often each field actually comes back wrong is to log when a
+    // reviewer's correction genuinely differs from what was extracted --
+    // and, just as importantly, NOT log a reviewer simply re-confirming an
+    // already-correct value as if it were a miss.
+    it('logs a reviewer correction that genuinely differs from the original extraction', async () => {
+      const log = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+      const revision = {
+        id: 'rev-1', drawingId: 'drawing-1', workflowStatus: 'UNKNOWN',
+        extractedFieldsRaw: { drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan', revisionNumber: 'A', source: 'embedded_text', confidence: 0.6 },
+      };
+      const { svc } = makeService([multi([[revision], [{ ...revision, revisionNumber: '2A' }], []])]);
+
+      await svc.resolveReview(companyId, projectId, 'rev-1', {
+        revisionNumber: '2A', reviewNotes: 'revision letter was misread', extractionStatus: 'CONFIRMED',
+      });
+
+      expect(log).toHaveBeenCalledWith(expect.stringContaining('revisionNumber: "A" -> "2A"'));
+      log.mockRestore();
+    });
+
+    it('does not log anything when the reviewer only re-confirms values that were already correct', async () => {
+      const log = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+      const revision = {
+        id: 'rev-1', drawingId: 'drawing-1', workflowStatus: 'UNKNOWN',
+        extractedFieldsRaw: { drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan', revisionNumber: 'A', source: 'embedded_text', confidence: 0.9 },
+      };
+      const { svc } = makeService([multi([[revision], [revision], []])]);
+
+      await svc.resolveReview(companyId, projectId, 'rev-1', {
+        drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan', revisionNumber: 'A', reviewNotes: 'looks right', extractionStatus: 'CONFIRMED',
+      });
+
+      expect(log).not.toHaveBeenCalledWith(expect.stringContaining('reviewer corrected'));
+      log.mockRestore();
     });
   });
 });
