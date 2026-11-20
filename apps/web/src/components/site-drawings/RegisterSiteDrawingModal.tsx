@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useDropzone, type FileRejection } from 'react-dropzone';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Modal } from '../ui/Modal';
 import { Alert } from '../ui/Alert';
@@ -44,6 +44,11 @@ export function RegisterSiteDrawingModal({ open, onClose, projectId }: { open: b
   const [revisionNumber, setRevisionNumber] = useState('');
   const [workflowStatus, setWorkflowStatus] = useState<SiteDrawingWorkflowStatus>('UNDER_REVIEW');
   const [issueDate, setIssueDate] = useState('');
+  // Same silent-rejection gap as ImportDrawingsModal: a non-PDF file (a
+  // .rar, a Word doc, anything) never reached onDrop's "accepted" list,
+  // so the drop zone just sat on its placeholder forever with no sign
+  // that anything was even tried.
+  const [rejectedFileName, setRejectedFileName] = useState<string | null>(null);
 
   // The upload step, split out from onDrop so a failed upload can be
   // retried against the SAME File object without the user having to
@@ -87,9 +92,14 @@ export function RegisterSiteDrawingModal({ open, onClose, projectId }: { open: b
     }
   }, [projectId]);
 
-  const onDrop = useCallback((accepted: File[]) => {
+  const onDrop = useCallback((accepted: File[], rejections: FileRejection[]) => {
     const f = accepted[0];
-    if (!f) return;
+    if (!f) {
+      const rejected = rejections[0];
+      if (rejected) setRejectedFileName(rejected.file.name);
+      return;
+    }
+    setRejectedFileName(null);
     setFile(f);
     setDrawingTitle(f.name.replace(/\.pdf$/i, ''));
     void runUpload(f);
@@ -101,7 +111,7 @@ export function RegisterSiteDrawingModal({ open, onClose, projectId }: { open: b
     setFile(null); setStorageKey(null); setUploadPhase('idle'); setExtractPhase('idle');
     setDrawingNumber(''); setDrawingTitle(''); setDiscipline(''); setBuildingOrZone('');
     setFloorOrLevel(''); setOriginator(''); setResponsibleSubcontractor('');
-    setRevisionNumber(''); setWorkflowStatus('UNDER_REVIEW'); setIssueDate('');
+    setRevisionNumber(''); setWorkflowStatus('UNDER_REVIEW'); setIssueDate(''); setRejectedFileName(null);
   }
 
   const mutation = useMutation({
@@ -151,6 +161,13 @@ export function RegisterSiteDrawingModal({ open, onClose, projectId }: { open: b
             </>
           )}
         </div>
+
+        {rejectedFileName && (
+          <Alert tone="danger">
+            "{rejectedFileName}" isn't a supported file — only PDF is accepted here. Use the bulk import for ZIP
+            packages, or a .rar/other archive needs extracting first.
+          </Alert>
+        )}
 
         {uploadPhase === 'uploading' && <p className="text-sm text-ink-300">Uploading…</p>}
         {uploadPhase === 'upload_failed' && (
