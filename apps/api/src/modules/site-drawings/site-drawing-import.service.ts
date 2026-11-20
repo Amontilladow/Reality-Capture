@@ -11,7 +11,7 @@ import type { ResolveReviewDto } from './dto/resolve-review.dto';
 import type { SplitAsNewDrawingDto } from './dto/split-as-new-drawing.dto';
 
 const BATCH_MAX_SIZE_BYTES = 500 * 1024 * 1024; // 500 MB: "hundreds of PDF drawings" in one archive
-const BATCH_ALLOWED_EXTENSIONS = new Set(['zip', 'pdf']);
+const BATCH_ALLOWED_EXTENSIONS = new Set(['zip', 'rar', 'pdf']);
 
 export interface SiteDrawingImportJob {
   batchId: string;
@@ -36,9 +36,9 @@ export class SiteDrawingImportService {
     await this.assertProjectBelongsToCompany(companyId, projectId);
     const ext = filename.split('.').pop()?.toLowerCase() ?? '';
     if (!BATCH_ALLOWED_EXTENSIONS.has(ext)) {
-      throw new BadRequestException(`File type ".${ext}" is not supported. Allowed: ZIP, PDF.`);
+      throw new BadRequestException(`File type ".${ext}" is not supported. Allowed: ZIP, RAR, PDF.`);
     }
-    const contentType = ext === 'zip' ? 'application/zip' : 'application/pdf';
+    const contentType = ext === 'zip' ? 'application/zip' : ext === 'rar' ? 'application/x-rar-compressed' : 'application/pdf';
     const key = this.storage.generateKey(companyId, projectId, 'documents', filename);
     const url = await this.storage.getUploadUrl(key, contentType, BATCH_MAX_SIZE_BYTES);
     return { ...url, storageKey: key };

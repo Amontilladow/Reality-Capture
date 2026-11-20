@@ -6,10 +6,12 @@ import type { AiClientService } from '../ai-client/ai-client.service';
 import type { SiteDrawingsService } from './site-drawings.service';
 import * as pdfTextExtractor from './extraction/pdf-text-extractor';
 import * as zipExtraction from './extraction/zip-extraction.util';
+import * as rarExtraction from './extraction/rar-extraction.util';
 import * as extractDrawingFieldsModule from './extraction/extract-drawing-fields';
 
 jest.mock('./extraction/pdf-text-extractor');
 jest.mock('./extraction/zip-extraction.util');
+jest.mock('./extraction/rar-extraction.util');
 
 type WithTenantCallback = (sql: unknown) => unknown;
 
@@ -621,6 +623,53 @@ describe('SiteDrawingImportProcessor', () => {
       // is the trailing args[13].
       expect(revisionInsertCall![9]).toBe('NEEDS_REVIEW');
       expect(revisionInsertCall![13]).toMatch(/3 pages/);
+    });
+
+    // RAR support: a .rar package of drawings must take the exact same
+    // per-file pipeline as a .zip one -- the only difference is which
+    // extractor the archive bytes go through first.
+    it('Test 11: a RAR package of distinct drawings is routed through extractPdfEntriesFromRar (never extractPdfEntriesFromZip) and creates independent drawing records', async () => {
+      const rarBatchRow = { ...batchRow, originalFilename: 'OneDrive_1_09-11-2026.rar' };
+      (rarExtraction.extractPdfEntriesFromRar as jest.Mock).mockResolvedValue({
+        entries: [
+          { filename: 'A-101.pdf', buffer: Buffer.from('sheet 1') },
+          { filename: 'S-201.pdf', buffer: Buffer.from('sheet 2') },
+        ],
+        skippedNonPdf: [], rejectedUnsafe: [],
+      });
+      jest.spyOn(extractDrawingFieldsModule, 'extractDrawingFields').mockImplementation(async (_s, _a, _c, _p, _k, _buf, label: string) => {
+        const byFile: Record<string, { drawingNumber: string; drawingTitle: string }> = {
+          'A-101.pdf': { drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan' },
+          'S-201.pdf': { drawingNumber: 'S-201', drawingTitle: 'Foundation Plan' },
+        };
+        return { fields: { ...byFile[label], revisionNumber: 'A', confidence: 0.9, source: 'embedded_text' }, pageCount: 1 };
+      });
+
+      const perFileCreate = () => (callback: WithTenantCallback) => {
+        let i = 0;
+        const results = [[], [], [{ id: `drawing-${Math.random()}` }], [{ id: `revision-${Math.random()}` }], []];
+        const sql = withJson(() => Promise.resolve(results[i++] ?? []));
+        return callback(sql);
+      };
+
+      const { processor } = makeProcessor([
+        single(undefined), // markStarted
+        single([rarBatchRow]), // getBatch
+        perFileCreate(), perFileCreate(),
+        single(undefined), // finish
+      ]);
+
+      await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
+
+      // zipExtraction's own call count isn't asserted here: restoreAllMocks()
+      // (see this file's beforeEach comment) only resets jest.spyOn
+      // implementations, not an automocked jest.fn()'s call history, so an
+      // earlier zip-batch test's calls would still be on the tape. The
+      // extractDrawingFields calls below, driven only by this test's RAR
+      // entries, are what actually proves the .rar branch routed correctly.
+      expect(rarExtraction.extractPdfEntriesFromRar).toHaveBeenCalled();
+      const extractCalls = (extractDrawingFieldsModule.extractDrawingFields as jest.Mock).mock.calls;
+      expect(extractCalls.map((c) => c[6])).toEqual(['A-101.pdf', 'S-201.pdf']);
     });
   });
 });

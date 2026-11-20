@@ -234,11 +234,13 @@ export const createImportBatch = (projectId: string, input: CreateImportBatchInp
 
 // Same 3-step upload flow as uploadAndRegisterSiteDrawing -- the content
 // type has to match exactly what getUploadUrl() signed server-side
-// (SiteDrawingImportService.getUploadUrl: .zip -> application/zip, else
-// application/pdf), or the presigned PUT's signature won't match.
+// (SiteDrawingImportService.getUploadUrl: .zip -> application/zip,
+// .rar -> application/x-rar-compressed, else application/pdf), or the
+// presigned PUT's signature won't match.
 export async function uploadImportBatch(projectId: string, file: File, sourceSystem: DocSource, onProgress?: UploadProgressCallback): Promise<SiteDrawingImportBatch> {
   const { uploadUrl, storageKey } = await getImportBatchUploadUrl(projectId, file.name);
-  const contentType = file.name.toLowerCase().endsWith('.zip') ? 'application/zip' : 'application/pdf';
+  const lowerName = file.name.toLowerCase();
+  const contentType = lowerName.endsWith('.zip') ? 'application/zip' : lowerName.endsWith('.rar') ? 'application/x-rar-compressed' : 'application/pdf';
   await axios.put(uploadUrl, file, { headers: { 'Content-Type': contentType }, ...uploadProgressConfig(onProgress) });
   return createImportBatch(projectId, { storageKey, originalFilename: file.name, sourceSystem });
 }
