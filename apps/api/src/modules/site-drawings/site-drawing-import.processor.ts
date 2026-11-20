@@ -9,6 +9,7 @@ import { AiClientService } from '../ai-client/ai-client.service';
 import { SiteDrawingsService } from './site-drawings.service';
 import type { SiteDrawingImportJob } from './site-drawing-import.service';
 import { extractPdfEntriesFromZip, type ExtractedZipEntry } from './extraction/zip-extraction.util';
+import { extractPdfEntriesFromRar } from './extraction/rar-extraction.util';
 import { isConfidentExtraction } from './extraction/title-block-extractor';
 import { extractDrawingFields } from './extraction/extract-drawing-fields';
 import { resolveOrgMapping } from './extraction/org-mapping-lookup';
@@ -91,14 +92,17 @@ export class SiteDrawingImportProcessor {
     let unsupportedCount = 0;
     try {
       const archiveBuffer = await this.storage.download(batch.storageKey);
-      if (batch.originalFilename.toLowerCase().endsWith('.zip')) {
-        const extracted = await extractPdfEntriesFromZip(archiveBuffer);
+      const lowerFilename = batch.originalFilename.toLowerCase();
+      if (lowerFilename.endsWith('.zip') || lowerFilename.endsWith('.rar')) {
+        const extracted = lowerFilename.endsWith('.zip')
+          ? await extractPdfEntriesFromZip(archiveBuffer)
+          : await extractPdfEntriesFromRar(archiveBuffer);
         entries = extracted.entries;
         // Phase 5: a batch's own record should say how many entries the
         // archive actually held, not just how many PDFs were attempted --
-        // skippedNonPdf/rejectedUnsafe were already computed by
-        // extractPdfEntriesFromZip but, before this, never surfaced past
-        // this function at all.
+        // skippedNonPdf/rejectedUnsafe were already computed by the
+        // extractor but, before this, never surfaced past this function
+        // at all.
         unsupportedCount = (extracted.skippedNonPdf?.length ?? 0) + (extracted.rejectedUnsafe?.length ?? 0);
       } else {
         entries = [{ filename: batch.originalFilename, buffer: archiveBuffer }];
