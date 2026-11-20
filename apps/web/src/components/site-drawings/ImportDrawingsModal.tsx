@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useDropzone, type FileRejection } from 'react-dropzone';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Modal } from '../ui/Modal';
 import { Listbox } from '../ui/Listbox';
@@ -63,10 +63,25 @@ export function ImportDrawingsModal({
   // a genuine stall (which the 15-minute upload timeout now also guards
   // against; see site-drawings.api.ts's own comment).
   const [uploadFraction, setUploadFraction] = useState(0);
+  // A file of an unsupported type (e.g. .rar, .7z) used to be dropped on
+  // the floor with zero feedback: react-dropzone's own accept filter
+  // rejects it internally, so onDrop's "accepted" list is simply empty --
+  // the drop zone just silently stayed on its placeholder text, forever,
+  // with no way to tell "this file isn't supported" apart from "nothing
+  // happened for some other reason." Confirmed by hand as the actual root
+  // cause of a real support case: a .rar archive (RAR, not ZIP) looked
+  // identical to a frozen upload button from the user's side.
+  const [rejectedFileName, setRejectedFileName] = useState<string | null>(null);
 
-  const onDrop = useCallback((accepted: File[]) => {
+  const onDrop = useCallback((accepted: File[], rejections: FileRejection[]) => {
     const f = accepted[0];
-    if (f) setFile(f);
+    if (f) {
+      setFile(f);
+      setRejectedFileName(null);
+      return;
+    }
+    const rejected = rejections[0];
+    if (rejected) setRejectedFileName(rejected.file.name);
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -113,6 +128,14 @@ export function ImportDrawingsModal({
             </>
           )}
         </div>
+
+        {rejectedFileName && (
+          <p className="field-error">
+            "{rejectedFileName}" isn't a supported file — only .zip and .pdf are accepted (not .rar, .7z, or other
+            archive formats). If it's an archive, extract it and upload the PDF files directly, or re-save it as a
+            .zip.
+          </p>
+        )}
 
         <div>
           <label className="field-label" htmlFor="import-source">Source system</label>

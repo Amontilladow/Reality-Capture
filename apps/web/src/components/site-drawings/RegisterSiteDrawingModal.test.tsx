@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RegisterSiteDrawingModal } from './RegisterSiteDrawingModal';
@@ -31,6 +31,19 @@ function renderIt() {
 // The modal renders at the top of the page (a portal), so look there.
 function fileInput(): HTMLInputElement {
   return document.body.querySelector('input[type="file"]') as HTMLInputElement;
+}
+
+// A real OS "choose file" dialog filters its list by the input's `accept`
+// attribute, so a mismatched file can never be selected that way at all --
+// confirmed here too: @testing-library/user-event's upload() enforces the
+// same filtering and simply refuses to attach a non-matching file (no
+// 'change' event fires). A real HTML5 drag-and-drop has no such filter --
+// the dropped file reaches react-dropzone's own `accept` validation, which
+// is what actually produces a `fileRejections` entry. This helper drives
+// that real path, the only one that can exercise the rejection UI at all.
+function dropFile(root: HTMLElement, file: File) {
+  const dataTransfer = { files: [file], items: [{ kind: 'file', type: file.type, getAsFile: () => file }], types: ['Files'] };
+  fireEvent.drop(root, { dataTransfer });
 }
 
 const pdfFile = new File(['%PDF-1.4'], 'A-101.pdf', { type: 'application/pdf' });
@@ -98,6 +111,17 @@ describe('RegisterSiteDrawingModal', () => {
     expect(screen.getByLabelText('Title')).toHaveValue('Ground Floor Plan');
     expect(screen.getByLabelText('Revision')).toHaveValue('B');
     expect(screen.getByRole('button', { name: 'Register drawing' })).toBeEnabled();
+  });
+
+  it('unsupported file type dragged in: shows a clear rejection message instead of silently doing nothing', async () => {
+    renderIt();
+    const notAPdf = new File(['PK...'], 'package.rar', { type: 'application/x-rar-compressed' });
+
+    dropFile(screen.getByRole('presentation'), notAPdf);
+
+    expect(await screen.findByText(/"package\.rar" isn't a supported file/i)).toBeInTheDocument();
+    expect(api.uploadSiteDrawingFile).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Register drawing' })).toBeDisabled();
   });
 
   it('never enables Register while an upload or extraction is still in progress', async () => {
