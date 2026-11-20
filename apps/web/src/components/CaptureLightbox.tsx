@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react';
+import { confirmDialog } from '../store/confirm.store';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useDialog } from '../lib/use-dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Capture, ProjectPhase } from '@engineeringos/types';
 import { PROJECT_PHASES, PROJECT_PHASE_LABELS } from '@engineeringos/types';
@@ -18,6 +21,8 @@ export function CaptureLightbox({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDialog(Boolean(capture), onClose, panelRef);
   const [editingTitle, setEditingTitle] = useState(false);
   const [title, setTitle] = useState('');
   const [editingPhase, setEditingPhase] = useState(false);
@@ -67,21 +72,13 @@ export function CaptureLightbox({
     },
   });
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    if (capture) window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [capture, onClose]);
-
   if (!capture) return null;
   const src = capture.previewUrl ?? capture.thumbnailUrl;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-base-950/90 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-3xl max-h-[90vh] tick-frame panel overflow-hidden flex flex-col">
+  return createPortal(
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6">
+      <div className="dialog-backdrop-in absolute inset-0 bg-base-950/80 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Capture" tabIndex={-1} className="dialog-in relative w-full max-w-3xl max-h-[calc(100dvh-2rem)] sm:max-h-[min(90dvh,calc(100dvh-3rem))] rounded-2xl border border-ink-100/10 bg-base-800 text-ink-100 shadow-xl overflow-hidden flex flex-col focus:outline-none">
         <div className="flex items-start justify-between gap-4 px-4 py-4 border-b border-base-600 shrink-0">
           <div className="min-w-0 flex-1">
           {editingTitle ? (
@@ -160,7 +157,7 @@ export function CaptureLightbox({
           <span className="capitalize">{capture.status}</span>
 
           <button
-            onClick={() => { if (confirm('Delete this capture and all its renditions? This cannot be undone.')) deleteMutation.mutate(); }}
+            onClick={async () => { if (await confirmDialog('Delete this capture and all its renditions? This cannot be undone.')) deleteMutation.mutate(); }}
             disabled={deleteMutation.isPending}
             className="ml-auto flex items-center gap-2 text-danger hover:text-danger"
           >
@@ -172,7 +169,8 @@ export function CaptureLightbox({
           <div className="px-4 pb-2 -mt-2 text-xs text-danger shrink-0">{apiErrorMessage(deleteMutation.error)}</div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

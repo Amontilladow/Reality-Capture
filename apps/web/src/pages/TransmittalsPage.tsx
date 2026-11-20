@@ -1,3 +1,6 @@
+import { AnimatedButton } from '../components/ui/AnimatedIcon';
+import aTrash from 'react-useanimations/lib/trash2';
+import { confirmDialog } from '../store/confirm.store';
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -95,13 +98,13 @@ export default function TransmittalsPage() {
         {selectedIds.size > 0 && (
           <div className="flex items-center gap-2 tick-frame panel px-4 py-2">
             <span className="text-sm font-medium">{selectedIds.size} selected</span>
-            <button
-              onClick={() => { if (confirm(`Delete ${selectedIds.size} transmittal(s)? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
+            <AnimatedButton animation={aTrash} interaction="hover"
+              onClick={async () => { if (await confirmDialog(`Delete ${selectedIds.size} transmittal(s)? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
               disabled={bulkDeleteMutation.isPending}
               className="btn-danger !px-4 !py-2 text-sm ml-auto"
             >
               {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
-            </button>
+            </AnimatedButton>
             {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
           </div>
         )}

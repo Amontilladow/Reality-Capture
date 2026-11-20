@@ -1,3 +1,7 @@
+import { AnimatedButton } from '../components/ui/AnimatedIcon';
+import aTrash from 'react-useanimations/lib/trash2';
+import aDownload from 'react-useanimations/lib/download';
+import { confirmDialog } from '../store/confirm.store';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -157,9 +161,9 @@ export default function SiteDrawingHubPage() {
             </button>
             <button onClick={() => setImportOpen(true)} className="btn-secondary">Import package</button>
             <button onClick={() => setOrgMappingsOpen(true)} className="btn-secondary">Organizations</button>
-            <button onClick={handleExport} disabled={exportBusy} className="btn-secondary">
+            <AnimatedButton animation={aDownload} onClick={handleExport} disabled={exportBusy} className="btn-secondary">
               {exportBusy ? 'Exporting…' : 'Export to Excel'}
-            </button>
+            </AnimatedButton>
             <button onClick={() => setRegisterOpen(true)} className="btn-primary">Register a drawing</button>
           </div>
         }
@@ -239,13 +243,13 @@ export default function SiteDrawingHubPage() {
             {selectedIds.size > 0 && (
               <div className="flex items-center gap-2 tick-frame panel px-4 py-2">
                 <span className="text-sm font-medium">{selectedIds.size} selected</span>
-                <button
-                  onClick={() => { if (confirm(`Delete ${selectedIds.size} drawing(s) and their entire revision history? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
+                <AnimatedButton animation={aTrash} interaction="hover"
+                  onClick={async () => { if (await confirmDialog(`Delete ${selectedIds.size} drawing(s) and their entire revision history? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
                   disabled={bulkDeleteMutation.isPending}
                   className="btn-danger !px-4 !py-2 text-sm ml-auto"
                 >
                   {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
-                </button>
+                </AnimatedButton>
                 {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
               </div>
             )}

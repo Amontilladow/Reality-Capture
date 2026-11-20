@@ -1,5 +1,10 @@
+import { AnimatedButton } from '../ui/AnimatedIcon';
+import aTrash from 'react-useanimations/lib/trash2';
+import { confirmDialog } from '../../store/confirm.store';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
+import { useDialog } from '../../lib/use-dialog';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Pin } from '../../lib/drawings.api';
 import { listCaptures, uploadCapture } from '../../lib/captures.api';
@@ -31,6 +36,8 @@ export function PinPanel({
 }) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDialog(Boolean(pin), onClose, panelRef);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [is360, setIs360] = useState(false);
@@ -167,9 +174,9 @@ export function PinPanel({
     },
   });
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!pin) return;
-    if (confirm('Delete this pin? Its photos, videos, and notes will be hidden, not permanently lost.')) {
+    if (await confirmDialog('Delete this pin? Its photos, videos, and notes will be hidden, not permanently lost.')) {
       archiveMutation.mutate();
     }
   }
@@ -202,10 +209,10 @@ export function PinPanel({
 
   if (!pin) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-base-950/80 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-2xl max-h-[85vh] tick-frame panel overflow-hidden flex flex-col">
+  return createPortal(
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6">
+      <div className="dialog-backdrop-in absolute inset-0 bg-base-950/70 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Pin" tabIndex={-1} className="dialog-in relative w-full max-w-2xl max-h-[calc(100dvh-2rem)] sm:max-h-[min(85dvh,calc(100dvh-3rem))] rounded-2xl border border-ink-100/10 bg-base-800 text-ink-100 shadow-xl overflow-hidden flex flex-col focus:outline-none">
         <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-base-600 shrink-0">
           <div className="min-w-0 flex-1">
             <div className="text-xs text-ink-500 mb-0 font-medium">Pin</div>
@@ -276,13 +283,13 @@ export function PinPanel({
             <button onClick={() => onMove(pin)} className="btn-ghost !px-2 !py-2 " title="Move this pin to a new spot on the drawing">
               Move
             </button>
-            <button
+            <AnimatedButton animation={aTrash} interaction="hover"
               onClick={handleDelete}
               disabled={archiveMutation.isPending}
               className="btn-ghost !px-2 !py-2 text-danger hover:!bg-danger/10"
             >
               {archiveMutation.isPending ? 'Deleting…' : 'Delete'}
-            </button>
+            </AnimatedButton>
             <button onClick={onClose} className="text-ink-500 hover:text-ink-100 !px-2" aria-label="Close">
               <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
@@ -418,7 +425,8 @@ export function PinPanel({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

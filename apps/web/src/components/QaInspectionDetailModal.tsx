@@ -1,3 +1,6 @@
+import { AnimatedButton } from './ui/AnimatedIcon';
+import aTrash from 'react-useanimations/lib/trash2';
+import { confirmDialog } from '../store/confirm.store';
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Modal } from './ui/Modal';
@@ -94,12 +97,12 @@ export function QaInspectionDetailModal({
               Start inspection
             </button>
           )}
-          <button
-            onClick={() => { if (confirm('Delete this inspection?')) deleteMutation.mutate(); }}
+          <AnimatedButton animation={aTrash} interaction="hover"
+            onClick={async () => { if (await confirmDialog('Delete this inspection?')) deleteMutation.mutate(); }}
             className="btn-danger !px-4 !py-2 ml-auto"
           >
             Delete
-          </button>
+          </AnimatedButton>
         </div>
       </div>
     </Modal>

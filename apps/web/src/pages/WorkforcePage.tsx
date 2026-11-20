@@ -1,3 +1,6 @@
+import { AnimatedButton } from '../components/ui/AnimatedIcon';
+import aDownload from 'react-useanimations/lib/download';
+import { ImageZoom } from '../components/ui/ImageZoom';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -398,14 +401,7 @@ function ScreenshotsPanel({ userId, from, to, screenshotsEnabled }: { userId: st
         </div>
       )}
 
-      {enlarged && (
-        <div
-          className="fixed inset-0 bg-base-950/80 flex items-center justify-center z-50 cursor-zoom-out"
-          onClick={() => setEnlarged(null)}
-        >
-          <img src={enlarged} alt="Enlarged screenshot" className="max-w-[90vw] max-h-[90vh] rounded" />
-        </div>
-      )}
+      <ImageZoom src={enlarged} alt="Enlarged screenshot" onClose={() => setEnlarged(null)} />
     </section>
   );
 }
@@ -875,9 +871,9 @@ function CompanyReportAdmin({ from, to }: { from: string; to: string }) {
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-ink-100">Company report (admin)</h2>
         {rows.length > 0 && (
-          <button className="btn-secondary !py-2 !px-4 " onClick={() => downloadCompanyReportCsv(rows, from, to)}>
+          <AnimatedButton animation={aDownload} className="btn-secondary !py-2 !px-4 " onClick={() => downloadCompanyReportCsv(rows, from, to)}>
             Export CSV
-          </button>
+          </AnimatedButton>
         )}
       </div>
       <p className="text-xs text-ink-500">Every active employee's tracked and productive time for the same period shown above.</p>

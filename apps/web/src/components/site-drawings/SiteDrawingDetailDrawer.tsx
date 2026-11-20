@@ -1,3 +1,7 @@
+import { AnimatedButton } from '../ui/AnimatedIcon';
+import aTrash from 'react-useanimations/lib/trash2';
+import aDownload from 'react-useanimations/lib/download';
+import { confirmDialog } from '../../store/confirm.store';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Modal } from '../ui/Modal';
@@ -142,13 +146,13 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
               <div><span className="text-xs text-ink-500 block">Source</span>{sourceProviderLabel(drawing.sourceProvider)}</div>
               <div><span className="text-xs text-ink-500 block">Last verified</span>{revision ? formatVerifiedAt(revision.lastVerifiedAt) : '—'}</div>
               {revision?.isSuperseded && <StatusBadge tone="neutral" label="Superseded" />}
-              <button
-                onClick={() => { if (confirm('Delete this drawing and its entire revision history? This cannot be undone.')) deleteMutation.mutate(); }}
+              <AnimatedButton animation={aTrash} interaction="hover"
+                onClick={async () => { if (await confirmDialog('Delete this drawing and its entire revision history? This cannot be undone.')) deleteMutation.mutate(); }}
                 disabled={deleteMutation.isPending}
                 className="btn-secondary !text-danger ml-auto"
               >
                 {deleteMutation.isPending ? 'Deleting…' : 'Delete drawing'}
-              </button>
+              </AnimatedButton>
             </div>
             {deleteMutation.isError && <p className="field-error">{apiErrorMessage(deleteMutation.error)}</p>}
 
@@ -223,12 +227,12 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
                     </div>
                     <div className="flex items-center gap-2">
                       {offlinePackage && offlinePackage.status !== 'REMOVED' ? (
-                        <button onClick={removeOffline} disabled={offlineBusy} className="btn-ghost !px-2 !py-2 ">Remove offline copy</button>
+                        <AnimatedButton animation={aTrash} interaction="hover" onClick={removeOffline} disabled={offlineBusy} className="btn-ghost !px-2 !py-2 ">Remove offline copy</AnimatedButton>
                       ) : (
                         revision.offlineEligibility && user && (
-                          <button onClick={downloadForOffline} disabled={offlineBusy} className="btn-secondary !px-2 !py-2 ">
+                          <AnimatedButton animation={aDownload} onClick={downloadForOffline} disabled={offlineBusy} className="btn-secondary !px-2 !py-2 ">
                             {offlineBusy ? 'Downloading…' : 'Download for offline'}
-                          </button>
+                          </AnimatedButton>
                         )
                       )}
                     </div>

@@ -1,3 +1,7 @@
+import { AnimatedButton } from '../components/ui/AnimatedIcon';
+import aTrash from 'react-useanimations/lib/trash2';
+import aDownload from 'react-useanimations/lib/download';
+import { confirmDialog } from '../store/confirm.store';
 import { useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -172,13 +176,13 @@ export default function QaqcDetailPage() {
           <>
             <SaveButton itemType="qaqc" itemId={record.id} />
             {canDelete && (
-              <button
-                onClick={() => { if (confirm(`Delete this ${shortLabel}? This cannot be undone.`)) deleteRecordMutation.mutate(); }}
+              <AnimatedButton animation={aTrash} interaction="hover"
+                onClick={async () => { if (await confirmDialog(`Delete this ${shortLabel}? This cannot be undone.`)) deleteRecordMutation.mutate(); }}
                 disabled={deleteRecordMutation.isPending}
                 className="btn-secondary !text-danger"
               >
                 {deleteRecordMutation.isPending ? 'Deleting…' : 'Delete'}
-              </button>
+              </AnimatedButton>
             )}
             <Link to={`/projects/${projectId}/qaqc/${recordType}`} className="btn-ghost !px-2 !py-2 ">
               Back to {shortLabel}s
@@ -370,9 +374,9 @@ export default function QaqcDetailPage() {
         {downloadError && <p className="field-error">{downloadError}</p>}
 
         <div className="flex flex-wrap gap-2 pt-2 border-t border-base-600">
-          <button onClick={handleDownloadPdf} disabled={downloading} className="btn-secondary !px-4 !py-2 ml-auto">
+          <AnimatedButton animation={aDownload} onClick={handleDownloadPdf} disabled={downloading} className="btn-secondary !px-4 !py-2 ml-auto">
             {downloading ? 'Preparing…' : 'Download PDF'}
-          </button>
+          </AnimatedButton>
         </div>
       </div>
     </>

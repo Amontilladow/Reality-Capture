@@ -1,3 +1,5 @@
+import { AnimatedButton } from '../ui/AnimatedIcon';
+import aTrash from 'react-useanimations/lib/trash2';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Modal } from '../ui/Modal';
@@ -75,7 +77,7 @@ export function OrgMappingsModal({ open, onClose, projectId }: { open: boolean; 
                 <span className="text-ink-100">{m.organizationName}</span>
                 <span className="text-xs text-ink-500">{ROLE_LABELS[m.role]}</span>
               </div>
-              <button onClick={() => deleteMutation.mutate(m.id)} disabled={deleteMutation.isPending} className="btn-ghost !px-2 !py-2 text-xs">Remove</button>
+              <AnimatedButton animation={aTrash} interaction="hover" onClick={() => deleteMutation.mutate(m.id)} disabled={deleteMutation.isPending} className="btn-ghost !px-2 !py-2 text-xs">Remove</AnimatedButton>
             </div>
           ))}
           {mappingsQuery.data?.length === 0 && <div className="px-4 py-8 text-center text-sm text-ink-500">No mappings yet.</div>}

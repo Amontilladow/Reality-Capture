@@ -80,7 +80,7 @@ export function AnimatedButton({
 }
 
 /** A standalone animated icon, e.g. a bookmark whose `active` state is controlled. */
-export function AnimatedIcon(props: { animation: Animation; size?: number; active?: boolean; interaction?: Interaction; className?: string }) {
+export function AnimatedIcon(props: { animation: Animation; size?: number; active?: boolean; interaction?: Interaction; className?: string; autoplay?: boolean; loop?: boolean }) {
   return <UseAnimations aria-hidden="true" size={16} {...props} />;
 }
 

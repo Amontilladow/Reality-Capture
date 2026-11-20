@@ -1,3 +1,4 @@
+import { confirmDialog } from '../store/confirm.store';
 import { useState } from 'react';
 import { AnimatedButton } from '../components/ui/AnimatedIcon';
 import aUpload from 'react-useanimations/lib/upload';
@@ -270,7 +271,7 @@ export default function RfisPage({ view }: { view: 'main' | 'subcontractor' }) {
             <AnimatedButton
               animation={aTrash}
               interaction="hover"
-              onClick={() => { if (confirm(`Delete ${selectedIds.size} RFI(s)? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
+              onClick={async () => { if (await confirmDialog(`Delete ${selectedIds.size} RFI(s)? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
               disabled={bulkDeleteMutation.isPending}
               className="btn-danger !px-4 !py-2 text-sm ml-auto"
             >

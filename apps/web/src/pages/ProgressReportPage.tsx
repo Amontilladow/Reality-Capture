@@ -1,3 +1,5 @@
+import { AnimatedButton } from '../components/ui/AnimatedIcon';
+import aDownload from 'react-useanimations/lib/download';
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -182,9 +184,9 @@ export default function ProgressReportPage() {
             <button onClick={handleRefresh} disabled={isRefreshing} className="btn-secondary">
               {isRefreshing ? 'Refreshing…' : 'Refresh'}
             </button>
-            <button onClick={handleDownloadPdf} disabled={!report || pdfDownloading} className="btn-secondary">
+            <AnimatedButton animation={aDownload} onClick={handleDownloadPdf} disabled={!report || pdfDownloading} className="btn-secondary">
               {pdfDownloading ? 'Preparing…' : 'Download PDF'}
-            </button>
+            </AnimatedButton>
             <button onClick={() => setShareOpen(true)} className="btn-primary">Share</button>
           </div>
         }

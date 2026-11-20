@@ -1,3 +1,4 @@
+import { confirmDialog } from '../../store/confirm.store';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -340,7 +341,7 @@ export function IssueDetail({
             <AnimatedButton
               animation={aTrash}
               interaction="hover"
-              onClick={() => { if (confirm('Delete this issue? This cannot be undone.')) deleteMutation.mutate(); }}
+              onClick={async () => { if (await confirmDialog('Delete this issue? This cannot be undone.')) deleteMutation.mutate(); }}
               disabled={deleteMutation.isPending}
               className="btn-secondary !text-danger"
             >

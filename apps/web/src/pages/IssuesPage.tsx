@@ -1,3 +1,4 @@
+import { confirmDialog } from '../store/confirm.store';
 import { useMemo, useState } from 'react';
 import { AnimatedButton } from '../components/ui/AnimatedIcon';
 import aDownload from 'react-useanimations/lib/download';
@@ -511,7 +512,7 @@ export default function IssuesPage() {
               </AnimatedButton>
               <AnimatedButton
                 animation={aCheckCircle}
-                onClick={() => { if (confirm(`Close ${selectedIds.size} issue(s)?`)) bulkCloseMutation.mutate(); }}
+                onClick={async () => { if (await confirmDialog(`Close ${selectedIds.size} issue(s)?`)) bulkCloseMutation.mutate(); }}
                 disabled={bulkCloseMutation.isPending}
                 className="btn-secondary"
               >
@@ -520,7 +521,7 @@ export default function IssuesPage() {
               <AnimatedButton
                 animation={aTrash}
                 interaction="hover"
-                onClick={() => { if (confirm(`Delete ${selectedIds.size} issue(s)? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
+                onClick={async () => { if (await confirmDialog(`Delete ${selectedIds.size} issue(s)? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
                 disabled={bulkDeleteMutation.isPending}
                 className="btn-danger"
               >

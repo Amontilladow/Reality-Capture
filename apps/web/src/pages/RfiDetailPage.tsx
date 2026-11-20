@@ -1,3 +1,4 @@
+import { confirmDialog } from '../store/confirm.store';
 import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -490,7 +491,7 @@ export default function RfiDetailPage() {
             )}
             {canDeleteRfi && (
               <AnimatedButton animation={aTrash} interaction="hover"
-                onClick={() => { if (confirm('Delete this RFI? This cannot be undone.')) deleteRfiMutation.mutate(); }}
+                onClick={async () => { if (await confirmDialog('Delete this RFI? This cannot be undone.')) deleteRfiMutation.mutate(); }}
                 disabled={deleteRfiMutation.isPending}
                 className="btn-secondary !text-danger"
               >

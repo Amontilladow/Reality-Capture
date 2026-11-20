@@ -1,3 +1,5 @@
+import { AnimatedButton } from '../components/ui/AnimatedIcon';
+import aDownload from 'react-useanimations/lib/download';
 import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -210,12 +212,12 @@ export default function ReportsPage() {
             <button onClick={handleRefresh} disabled={isRefreshing} className="btn-secondary">
               {isRefreshing ? 'Refreshing…' : 'Refresh'}
             </button>
-            <button onClick={handleDownloadXls} disabled={!kpis || xlsDownloading} className="btn-secondary">
+            <AnimatedButton animation={aDownload} onClick={handleDownloadXls} disabled={!kpis || xlsDownloading} className="btn-secondary">
               {xlsDownloading ? 'Preparing…' : 'Export as Excel'}
-            </button>
-            <button onClick={handleDownloadPdf} disabled={pdfDownloading} className="btn-primary">
+            </AnimatedButton>
+            <AnimatedButton animation={aDownload} onClick={handleDownloadPdf} disabled={pdfDownloading} className="btn-primary">
               {pdfDownloading ? 'Preparing…' : 'Export as PDF'}
-            </button>
+            </AnimatedButton>
           </div>
         }
       />
@@ -422,13 +424,13 @@ export default function ReportsPage() {
                   <Link to={`/projects/${projectId}/risk`} className="btn-secondary !px-4 !py-2 ">
                     View full Risk Intelligence
                   </Link>
-                  <button
+                  <AnimatedButton animation={aDownload}
                     onClick={handleDownloadRiskPdf}
                     disabled={riskPdfDownloading || riskSummaryQuery.data.totalOpenRisks === 0}
                     className="btn-secondary !px-4 !py-2 "
                   >
                     {riskPdfDownloading ? 'Preparing…' : 'Download Risk Report'}
-                  </button>
+                  </AnimatedButton>
                 </>
               }
             />
