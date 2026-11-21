@@ -414,6 +414,57 @@ describe('SiteDrawingsService', () => {
     });
   });
 
+  describe('updateDrawing', () => {
+    it('rejects an update with no fields set, before touching the database', async () => {
+      const { svc, withTenant } = makeService([]);
+      await expect(svc.updateDrawing(companyId, projectId, drawingId, {})).rejects.toThrow(BadRequestException);
+      expect(withTenant).not.toHaveBeenCalled();
+    });
+
+    it('404s when the drawing does not exist in this project', async () => {
+      const { svc } = makeService([
+        single([{ id: projectId }]), // assertProjectBelongsToCompany
+        multi([[]]), // SELECT drawing -- nothing found
+      ]);
+      await expect(svc.updateDrawing(companyId, projectId, drawingId, { drawingNumber: 'A-102' })).rejects.toThrow(NotFoundException);
+    });
+
+    it('corrects drawingNumber/drawingTitle and the current revision\'s own revisionNumber in one call', async () => {
+      const { svc, withTenant } = makeService([
+        single([{ id: projectId }]), // assertProjectBelongsToCompany
+        multi([
+          [{ id: drawingId, currentRevisionId: 'revision-1', drawingNumber: 'PR-169', drawingTitle: 'SE45_01' }], // SELECT drawing
+          [{ id: drawingId, currentRevisionId: 'revision-1', drawingNumber: 'M19-M4C-C0-PW-AX-SD-05731', drawingTitle: 'Drainage Layout' }], // UPDATE drawing RETURNING *
+          [{ id: 'revision-1', revisionNumber: '02' }], // UPDATE revision RETURNING *
+        ]),
+      ]);
+
+      const result = await svc.updateDrawing(companyId, projectId, drawingId, {
+        drawingNumber: 'M19-M4C-C0-PW-AX-SD-05731', drawingTitle: 'Drainage Layout', revisionNumber: '02',
+      });
+
+      expect(result.drawingNumber).toBe('M19-M4C-C0-PW-AX-SD-05731');
+      expect(result.currentRevision?.revisionNumber).toBe('02');
+      expect(withTenant).toHaveBeenCalledTimes(2);
+    });
+
+    it('leaves the current revision\'s number untouched (just re-reads it) when only drawingTitle is corrected', async () => {
+      const { svc } = makeService([
+        single([{ id: projectId }]), // assertProjectBelongsToCompany
+        multi([
+          [{ id: drawingId, currentRevisionId: 'revision-1', drawingNumber: 'A-101', drawingTitle: 'Ground Flor Plan' }], // SELECT drawing
+          [{ id: drawingId, currentRevisionId: 'revision-1', drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan' }], // UPDATE drawing RETURNING *
+          [{ id: 'revision-1', revisionNumber: 'B' }], // SELECT revision (no revisionNumber given -- not updated)
+        ]),
+      ]);
+
+      const result = await svc.updateDrawing(companyId, projectId, drawingId, { drawingTitle: 'Ground Floor Plan' });
+
+      expect(result.drawingTitle).toBe('Ground Floor Plan');
+      expect(result.currentRevision?.revisionNumber).toBe('B');
+    });
+  });
+
   describe('org mappings', () => {
     it('lists mappings for a project', async () => {
       const { svc } = makeService([

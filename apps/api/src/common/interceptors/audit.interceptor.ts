@@ -91,6 +91,14 @@ const ROUTE_MAP: [RegExp, string, string][] = [
   [/\/site-drawings\/[^/]+\/revisions$/,                           'site_drawing.revision_added',    'site_drawing_revision'],
   [/\/projects\/[^/]+\/site-drawings\/sync$/,                      'site_drawing.sync_triggered',    'site_drawing_sync_log'],
   [/\/projects\/[^/]+\/site-drawings$/,                            'site_drawing.registered',        'site_drawing'],
+  // Manual correction of a drawing's identity fields (PATCH :id), added
+  // alongside resolveReview's own site_drawing.extraction_reviewed below.
+  // Matched on a UUID-shaped id specifically, not the generic [^/]+ this
+  // file uses for a trailing :id elsewhere -- a looser pattern here would
+  // also swallow every literal-suffix sibling route just above and below
+  // (upload-url, extract-fields, org-mappings, export, filter-options,
+  // dashboard-stats), none of which this entry is meant to relabel.
+  [/\/site-drawings\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, 'site_drawing.updated', 'site_drawing'],
   // Company-admin SharePoint connection config: PUT and DELETE share the
   // exact same URL for each of these two routes (unlike project_member
   // above, there's no collection-vs-item URL shape difference to split
