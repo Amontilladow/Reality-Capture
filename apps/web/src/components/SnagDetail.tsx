@@ -1,4 +1,14 @@
-import { AnimatedButton } from './ui/AnimatedIcon';
+import aForce from 'react-useanimations/lib/alertTriangle';
+import aPaperclip from 'react-useanimations/lib/paperclip';
+import aBack from 'react-useanimations/lib/arrowLeft';
+import aEdit from 'react-useanimations/lib/edit';
+import aMail from 'react-useanimations/lib/mail';
+import aClose from 'react-useanimations/lib/xSquare';
+import aSend from 'react-useanimations/lib/send';
+import aTool from 'react-useanimations/lib/tool';
+import aCheckCircle from 'react-useanimations/lib/checkCircle';
+import aVoid from 'react-useanimations/lib/slash';
+import { AnimatedButton, AnimatedLabel } from './ui/AnimatedIcon';
 import aTrash from 'react-useanimations/lib/trash2';
 import { confirmDialog } from '../store/confirm.store';
 import { useState } from 'react';
@@ -135,9 +145,9 @@ export function SnagDetail({
 
   return (
     <div className="p-6 max-w-3xl space-y-6">
-      <button onClick={onBack} className="btn-ghost !px-2 !py-2 ">
-        <BackIcon /> Back to snagging
-      </button>
+      <AnimatedButton animation={aBack} onClick={onBack} className="btn-ghost !px-2 !py-2 ">
+        Back to snagging
+      </AnimatedButton>
 
       {/* Header card */}
       <div className="panel tick-frame p-6 space-y-4">
@@ -156,11 +166,11 @@ export function SnagDetail({
             </div>
           </div>
           <div className="flex flex-col gap-2 items-end">
-            <button onClick={() => onEdit(snag)} className="btn-secondary !px-4 !py-2 ">Edit</button>
-            <button onClick={() => setComposeEmailOpen(true)} className="btn-secondary !px-4 !py-2 ">Email</button>
-            <button onClick={() => setForwardOpen((v) => !v)} className="btn-secondary !px-4 !py-2 ">
+            <AnimatedButton animation={aEdit} onClick={() => onEdit(snag)} className="btn-secondary !px-4 !py-2 ">Edit</AnimatedButton>
+            <AnimatedButton animation={aMail} onClick={() => setComposeEmailOpen(true)} className="btn-secondary !px-4 !py-2 ">Email</AnimatedButton>
+            <AnimatedButton animation={forwardOpen ? aClose : aSend} onClick={() => setForwardOpen((v) => !v)} className="btn-secondary !px-4 !py-2 ">
               {forwardOpen ? 'Cancel forward' : 'Forward'}
-            </button>
+            </AnimatedButton>
             <AnimatedButton animation={aTrash} interaction="hover"
               onClick={async () => { if (await confirmDialog('Delete this snag item? This cannot be undone.')) deleteMutation.mutate(); }}
               disabled={deleteMutation.isPending}
@@ -189,13 +199,14 @@ export function SnagDetail({
                 onChange={(e) => setForwardComment(e.target.value)}
               />
             </div>
-            <button
+            <AnimatedButton
+              animation={aSend}
               onClick={() => forwardMutation.mutate()}
               disabled={!forwardTo || forwardMutation.isPending}
               className="btn-primary !px-4 !py-2 "
             >
               {forwardMutation.isPending ? 'Forwarding…' : 'Send forward'}
-            </button>
+            </AnimatedButton>
             {forwardMutation.isError && <p className="field-error">{apiErrorMessage(forwardMutation.error)}</p>}
           </div>
         )}
@@ -206,19 +217,19 @@ export function SnagDetail({
             a full stepper. */}
         <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-base-600">
           {snag.status === 'open' && (
-            <button onClick={() => statusMutation.mutate('fixed')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 ">
+            <AnimatedButton animation={aTool} onClick={() => statusMutation.mutate('fixed')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 ">
               Mark as fixed
-            </button>
+            </AnimatedButton>
           )}
           {snag.status === 'fixed' && (
-            <button onClick={() => verifyMutation.mutate()} disabled={verifyMutation.isPending} className="btn-secondary !px-4 !py-2 ">
+            <AnimatedButton animation={aCheckCircle} onClick={() => verifyMutation.mutate()} disabled={verifyMutation.isPending} className="btn-secondary !px-4 !py-2 ">
               Verify
-            </button>
+            </AnimatedButton>
           )}
           {snag.status !== 'void' && (
-            <button onClick={() => statusMutation.mutate('void')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 ">
+            <AnimatedButton animation={aVoid} onClick={() => statusMutation.mutate('void')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 ">
               Void
-            </button>
+            </AnimatedButton>
           )}
         </div>
         {statusMutation.isError && <p className="field-error">{apiErrorMessage(statusMutation.error)}</p>}
@@ -238,13 +249,14 @@ export function SnagDetail({
                 <option key={s} value={s}>{SNAG_STATUS_LABELS[s]}</option>
               ))}
             </Listbox>
-            <button
+            <AnimatedButton
+              animation={aForce}
               onClick={() => forceStatusMutation.mutate()}
               disabled={!forceStatusValue || forceStatusMutation.isPending}
               className="btn-danger !px-4 !py-2 "
             >
               {forceStatusMutation.isPending ? 'Forcing…' : 'Force'}
-            </button>
+            </AnimatedButton>
             {forceStatusMutation.isError && <p className="field-error">{apiErrorMessage(forceStatusMutation.error)}</p>}
           </div>
         )}
@@ -325,9 +337,9 @@ export function SnagDetail({
             onChange={(e) => setComment(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && comment.trim()) commentMutation.mutate(); }}
           />
-          <button onClick={() => commentMutation.mutate()} disabled={!comment.trim() || commentMutation.isPending} className="btn-primary !px-4">
+          <AnimatedButton animation={aSend} onClick={() => commentMutation.mutate()} disabled={!comment.trim() || commentMutation.isPending} className="btn-primary !px-4">
             Send
-          </button>
+          </AnimatedButton>
         </div>
         {commentMutation.isError && <p className="field-error">{apiErrorMessage(commentMutation.error)}</p>}
 
@@ -339,7 +351,7 @@ export function SnagDetail({
             value={attachComment}
             onChange={(e) => setAttachComment(e.target.value)}
           />
-          <label className="btn-secondary !px-4 !py-2 cursor-pointer shrink-0">
+          <AnimatedLabel animation={aPaperclip} className="btn-secondary !px-4 !py-2 cursor-pointer shrink-0">
             {attachMutation.isPending ? 'Uploading…' : 'Attach file'}
             <input
               type="file"
@@ -351,7 +363,7 @@ export function SnagDetail({
                 e.target.value = '';
               }}
             />
-          </label>
+          </AnimatedLabel>
         </div>
         {attachMutation.isError && <p className="field-error">{apiErrorMessage(attachMutation.error)}</p>}
       </div>
@@ -388,13 +400,6 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function BackIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 function PaperclipIcon() {
   return (

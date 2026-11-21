@@ -306,7 +306,9 @@ interface RevisionRow {
   synchronizationStatus: SiteDrawingRevision['synchronizationStatus']; uploadedBy: string | null;
   documentClassification: SiteDrawingRevision['documentClassification']; suitabilityCode: string | null;
   extractionStatus: SiteDrawingRevision['extractionStatus']; extractedFieldsRaw: ExtractedDrawingFields | null;
-  importBatchId: string | null; reviewNotes: string | null; createdAt: string; updatedAt: string;
+  importBatchId: string | null; reviewNotes: string | null;
+  sourceProvider: SiteDrawingRevision['sourceProvider'] | null; sourceFileId: string | null;
+  createdAt: string; updatedAt: string;
 }
 
 function toRevision(r: RevisionRow): SiteDrawingRevision {
@@ -319,7 +321,8 @@ function toRevision(r: RevisionRow): SiteDrawingRevision {
     isSuperseded: r.isSuperseded, offlineEligibility: r.offlineEligibility, synchronizationStatus: r.synchronizationStatus,
     uploadedBy: r.uploadedBy ?? undefined, documentClassification: r.documentClassification, suitabilityCode: r.suitabilityCode ?? undefined,
     extractionStatus: r.extractionStatus, extractedFieldsRaw: r.extractedFieldsRaw ?? undefined, importBatchId: r.importBatchId ?? undefined,
-    reviewNotes: r.reviewNotes ?? undefined, createdAt: r.createdAt, updatedAt: r.updatedAt,
+    reviewNotes: r.reviewNotes ?? undefined, sourceProvider: r.sourceProvider ?? undefined, sourceFileId: r.sourceFileId ?? undefined,
+    createdAt: r.createdAt, updatedAt: r.updatedAt,
   };
 }
 

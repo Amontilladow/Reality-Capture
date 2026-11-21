@@ -363,7 +363,19 @@ export const Listbox = forwardRef<HTMLButtonElement, ListboxProps>(function List
             maxWidth: `min(28rem, calc(100vw - ${VIEWPORT_GUTTER * 2}px))`,
             visibility: position ? 'visible' : 'hidden',
           }}
-          className="z-[70] overflow-auto rounded-lg border border-base-600 bg-base-800 py-2 shadow-lg"
+          // Above every dialog-level overlay in the app (Modal/ImageZoom at
+          // z-[80], ConfirmHost at z-[90]), not just Menu's z-[60-61]: a
+          // Listbox used inside a Modal (e.g. ImportDrawingsModal's "Source
+          // system" picker) previously opened its portaled list at z-[70],
+          // UNDER the Modal's own z-[80] full-screen overlay -- the trigger
+          // showed itself as open (flipped chevron, focus ring) but the
+          // actual option list was invisible, rendered behind the modal.
+          // Confirmed by hand: this is a real, reported bug, not
+          // theoretical. A popover/select list is a leaf primitive that can
+          // be opened from inside any container, so it needs to win
+          // against all of them, not just the ones it happened to be
+          // tested against.
+          className="z-[95] overflow-auto rounded-lg border border-base-600 bg-base-800 py-2 shadow-lg"
         >
           {options.length === 0 && (
             <li role="option" aria-selected={false} aria-disabled="true" className="px-4 py-2 text-sm text-ink-500">

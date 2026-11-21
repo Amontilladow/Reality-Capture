@@ -26,6 +26,25 @@ import { compareRevisionOrder } from './extraction/revision-order';
 // confident) and from a thrown error (nothing was created at all).
 type ReconcileOutcome = 'created' | 'revision_added' | 'conflict' | 'duplicate_skipped';
 
+// Stands in for revision_number when extraction found none at all
+// (site_drawing_revisions.revision_number is NOT NULL, so a literal
+// schema NULL isn't an option without a migration -- this sentinel gives
+// the same "we genuinely do not know" meaning without one). Deliberately
+// NOT '1': a real, plausible-looking revision label is indistinguishable
+// from a genuinely-read one anywhere it's displayed (the Register, the
+// Review Queue, a drawing's own detail view), which is exactly what
+// production data showed happening -- confirmed by hand, a drawing whose
+// revision was never actually read was shown as "Rev. 1" with no visual
+// difference from a confidently-extracted "1". Never a value
+// compareRevisionOrder() can parse as a real label (not pure-numeric,
+// not a letter, not a recognized prefixed-number shape), which is what
+// keeps it out of current_revision_id on its own: chronology against it
+// always comes back 'ambiguous', so canAutoPromote below is false by
+// construction, with no separate special-case needed. Distinct from
+// workflow_status's own literal 'UNKNOWN' (a status, not a label) used a
+// few lines below, so the two concerns never read as the same sentinel.
+const UNVERIFIED_REVISION_NUMBER = 'UNVERIFIED';
+
 interface ImportBatchDbRow {
   id: string;
   storageKey: string;
@@ -245,7 +264,7 @@ export class SiteDrawingImportProcessor {
     const filenameWithoutExtension = filename.replace(/\.pdf$/i, '');
     const drawingNumber = fields?.drawingNumber ?? filenameWithoutExtension;
     const drawingTitle = fields?.drawingTitle ?? filenameWithoutExtension;
-    const revisionNumber = fields?.revisionNumber ?? '1';
+    const revisionNumber = fields?.revisionNumber ?? UNVERIFIED_REVISION_NUMBER;
     // Second, independent check at the insert boundary itself -- not a
     // substitute for extractDate()'s own calendar-validity check
     // (title-block-extractor.ts, commit 13360bd), a backstop for it. That
@@ -270,7 +289,8 @@ export class SiteDrawingImportProcessor {
     let baseExtractionStatus: 'CONFIRMED' | 'NEEDS_REVIEW' = fields && isConfidentExtraction(fields) ? 'CONFIRMED' : 'NEEDS_REVIEW';
 
     // Phase 6 (multi-page PDFs): this pipeline only ever reads page 1 (see
-    // extractEmbeddedText's own comment on why). A single-page file is
+    // extraction/extract-drawing-fields.ts's own comment on why). A
+    // single-page file is
     // exactly what every title block this architecture was built against
     // looks like; a multi-page one might be a multi-sheet set this
     // pipeline would otherwise silently treat as a single drawing with
@@ -346,13 +366,14 @@ export class SiteDrawingImportProcessor {
       // section 2): a re-import of the EXACT SAME FILE is the duplicate
       // brief section 2 asks to prevent -- detected by the file's own
       // content, never by the extracted revision label alone. A failed/
-      // defaulted revision number (this function's own fallback to '1'
-      // above) must never be mistaken for proof two files are the same
-      // revision: confirmed by hand against production, every reimport of
-      // a file whose revision couldn't be extracted was silently skipped
-      // as a "duplicate" of revision "1", even when the file's actual
-      // content -- a real new revision -- had changed. The already-
-      // uploaded file for this revision is left alone; this one is simply
+      // defaulted revision number (this function's own fallback to
+      // UNVERIFIED_REVISION_NUMBER above) must never be mistaken for proof
+      // two files are the same revision: confirmed by hand against
+      // production, every reimport of a file whose revision couldn't be
+      // extracted was silently skipped as a "duplicate" of the fallback
+      // label, even when the file's actual content -- a real new revision
+      // -- had changed. The already-uploaded file for this revision is
+      // left alone; this one is simply
       // not attached as a new revision, and its freshly-uploaded (now
       // orphaned) storage object is removed rather than left as a stray
       // billable object with nothing pointing to it.
@@ -378,12 +399,12 @@ export class SiteDrawingImportProcessor {
       // Checked against every revision_number this drawing has, not just
       // the CURRENT one: confirmed by hand against production -- a drawing
       // reimported several times over (each failed/defaulted extraction
-      // landing on the same '1' fallback, or on a label already used by a
-      // now-superseded revision from an earlier reimport) kept colliding
-      // with a revision number that was no longer current, which a
-      // current-revision-only check could never see, and the INSERT below
-      // failed with the same unique-constraint violation this disambiguation
-      // exists to prevent.
+      // landing on the same UNVERIFIED_REVISION_NUMBER fallback, or on a
+      // label already used by a now-superseded revision from an earlier
+      // reimport) kept colliding with a revision number that was no longer
+      // current, which a current-revision-only check could never see, and
+      // the INSERT below failed with the same unique-constraint violation
+      // this disambiguation exists to prevent.
       const usedRevisionNumbers = await sql<{ revisionNumber: string }[]>`
         SELECT revision_number FROM site_drawing_revisions WHERE drawing_id = ${existing.id}`;
       const usedRevisionNumberSet = new Set(usedRevisionNumbers.map(r => r.revisionNumber));

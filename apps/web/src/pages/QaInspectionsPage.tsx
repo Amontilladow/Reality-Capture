@@ -1,3 +1,4 @@
+import aPlus from 'react-useanimations/lib/plusCircle';
 import { AnimatedButton } from '../components/ui/AnimatedIcon';
 import aTrash from 'react-useanimations/lib/trash2';
 import { confirmDialog } from '../store/confirm.store';
@@ -77,9 +78,9 @@ export default function QaInspectionsPage() {
         eyebrow={projectQuery.data?.name ?? 'Project'}
         title="QA/QC"
         actions={
-          <button onClick={() => setCreateOpen(true)} className="btn-primary">
-            + New inspection
-          </button>
+          <AnimatedButton animation={aPlus} onClick={() => setCreateOpen(true)} className="btn-primary">
+            New inspection
+          </AnimatedButton>
         }
       />
 

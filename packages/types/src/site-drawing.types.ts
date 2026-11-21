@@ -55,6 +55,55 @@ export type SiteDrawingExtractionStatus = typeof SITE_DRAWING_EXTRACTION_STATUSE
 export const SITE_DRAWING_IMPORT_BATCH_STATUSES = ['PENDING', 'PROCESSING', 'COMPLETED', 'PARTIAL', 'FAILED'] as const;
 export type SiteDrawingImportBatchStatus = typeof SITE_DRAWING_IMPORT_BATCH_STATUSES[number];
 
+// The individual fields a title-block extraction can produce -- used as
+// the key type for both per-field evidence and per-field verification
+// state below, so there is exactly one list of "the fields this system
+// extracts," never two that could drift apart.
+export type DrawingFieldName = 'drawingNumber' | 'drawingTitle' | 'revisionNumber' | 'issueDate' | 'discipline' | 'projectName';
+
+// Drawing Identification Engine replacement: "store the source location,
+// extraction method and supporting evidence for each field." `location`
+// is deliberately a free-form, human-readable string ("row 2, col 1",
+// "whole_page", "revision_table") rather than a strict row/col object --
+// its only job is to let a reviewer or an auditor see WHERE a value
+// came from, never to be computed against; different extraction paths
+// (a title-block grid cell, a whole-page regex fallback, a revision-
+// history table, a filename hint) each describe their own location in
+// whatever shape makes sense for that path.
+export type FieldExtractionMethod = 'native_text' | 'ocr' | 'revision_table' | 'filename' | 'manual';
+
+export interface FieldEvidence {
+  location: string;
+  method: FieldExtractionMethod;
+  // The raw matched text, before any trimming/normalization -- kept
+  // verbatim so a reviewer can see exactly what the extractor matched,
+  // even when the stored value itself was cleaned up slightly (e.g.
+  // trimmed whitespace).
+  rawText?: string;
+  // This specific field's OWN match confidence (0-1) -- NOT the
+  // extraction's overall `confidence` on ExtractedDrawingFields, which is
+  // the weakest-link of every field combined. extraction/verification.ts
+  // uses this, together with `location`, to decide VERIFIED vs
+  // UNVERIFIED per field: a confident match is still never VERIFIED
+  // unless it also came from a specific cell/region, not a whole-page
+  // fallback -- see that module's own comment for the exact rule.
+  confidence: number;
+}
+
+// Engineering Hybrid Drawing Intelligence Engine, verification stage:
+// three distinct states, never collapsed into a single confidence
+// number. VERIFIED requires real corroborating evidence (a title-block
+// match, found inside the detected title-block region, passing its
+// field's own plausibility check) -- successfully matching a regex
+// alone is never enough on its own to earn this; see
+// extraction/verification.ts's own comment for the exact rule per field.
+// UNVERIFIED means something was extracted but the evidence for it is
+// weaker (a whole-page fallback match, a lower-confidence OCR region, a
+// supplementary source like a revision table or filename). MISSING means
+// no value was found at all -- never a fabricated placeholder.
+export const FIELD_VERIFICATION_STATES = ['VERIFIED', 'UNVERIFIED', 'MISSING'] as const;
+export type FieldVerificationState = typeof FIELD_VERIFICATION_STATES[number];
+
 // What the extraction pipeline actually read from the title block, before
 // any human correction; kept verbatim even after an authorized user
 // edits the authoritative drawingNumber/drawingTitle/revisionNumber fields,
@@ -66,6 +115,14 @@ export interface ExtractedDrawingFields {
   revisionNumber?: string;
   issueDate?: string;
   discipline?: string;
+  // Best-effort, INFORMATIONAL ONLY: whatever project name/number the
+  // title block itself prints (a "Project:" label), if any. This never
+  // drives which project a drawing belongs to -- that's already decided
+  // by upload context (the project the user uploaded into) and governed
+  // by RBAC/project-scoping this change does not touch. Its only use is
+  // as evidence a reviewer can compare against the drawing's actual
+  // project, e.g. to catch a drawing uploaded into the wrong project.
+  projectName?: string;
   // Resolved from the project's own site_drawing_org_mappings (a
   // drawing-number-prefix lookup an authorized user maintains), matched
   // against this drawingNumber -- never guessed from title-block text
@@ -77,6 +134,17 @@ export interface ExtractedDrawingFields {
   // A rough 0-1 confidence the extractor itself reports; never treated as
   // a guarantee, only a threshold for CONFIRMED vs. NEEDS_REVIEW.
   confidence: number;
+  // Per-field source location/method/supporting evidence, additive to
+  // the flat fields above (never required -- a field with no entry here
+  // simply has no recorded evidence, the same as before this existed).
+  fieldEvidence?: Partial<Record<DrawingFieldName, FieldEvidence>>;
+  // Per-field Verified/Unverified/Missing state (extraction/
+  // verification.ts); additive, and deliberately SEPARATE from the flat
+  // `confidence` number above -- a drawing's overall confidence can stay
+  // for backward compatibility with every existing caller/display that
+  // reads it, while this gives the Review Queue and any future UI the
+  // finer-grained picture the brief asks for.
+  fieldStates?: Partial<Record<DrawingFieldName, FieldVerificationState>>;
 }
 
 export interface SiteDrawingRevision {
@@ -100,6 +168,17 @@ export interface SiteDrawingRevision {
   // 'internal' revisions, which already have their own distinct storageKey.
   sourceRevisionId?: string;
   sourceWebUrl?: string;
+  // Which external source (if any) actually produced THIS revision --
+  // distinct from site_drawings.sourceProvider/sourceFileId, which only
+  // ever recorded the drawing's ORIGINAL registering source and implicitly
+  // assumed a drawing has exactly one source forever. Set only for a
+  // sync-created revision (migration 087); undefined for a manually
+  // registered or RAR/ZIP-imported one, which has no external source file
+  // to track. Lets the sync job recognize a source file it has already
+  // reconciled onto ANY drawing, and lets a reviewer see which provider a
+  // CONFLICT-flagged cross-source match actually came from.
+  sourceProvider?: SiteDrawingSourceProvider;
+  sourceFileId?: string;
   fileSizeBytes?: number;
   supersedesRevisionId?: string;
   isSuperseded: boolean;
@@ -174,6 +253,10 @@ export interface SiteDrawingSyncLogEntry {
   drawingsSeen: number;
   drawingsCreated: number;
   revisionsCreated: number;
+  // A cross-source match (same drawing_number, different provider) left
+  // un-promoted pending a human decision in the Review Queue -- migration
+  // 087's own conflicts_created column.
+  conflictsCreated: number;
   errorMessage?: string;
   triggeredBy?: string;
 }

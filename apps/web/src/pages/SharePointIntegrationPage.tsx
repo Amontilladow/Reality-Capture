@@ -161,7 +161,8 @@ export default function SharePointIntegrationPage() {
               {syncMutation.isSuccess && (
                 <p className="text-xs text-ok">
                   Sync {syncMutation.data.status === 'SUCCESS' ? 'completed' : 'failed'}: {syncMutation.data.drawingsSeen} seen,
-                  {' '}{syncMutation.data.drawingsCreated} new, {syncMutation.data.revisionsCreated} new revision(s).
+                  {' '}{syncMutation.data.drawingsCreated} new, {syncMutation.data.revisionsCreated} new revision(s)
+                  {syncMutation.data.conflictsCreated > 0 && `, ${syncMutation.data.conflictsCreated} needing review (already registered from another source)`}.
                 </p>
               )}
               {syncMutation.isError && <p className="field-error">{apiErrorMessage(syncMutation.error)}</p>}

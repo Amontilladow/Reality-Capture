@@ -1,3 +1,4 @@
+import aPlus from 'react-useanimations/lib/plusCircle';
 import { AnimatedButton } from '../components/ui/AnimatedIcon';
 import aTrash from 'react-useanimations/lib/trash2';
 import { confirmDialog } from '../store/confirm.store';
@@ -184,9 +185,9 @@ export default function SnaggingPage() {
         eyebrow={projectQuery.data?.name ?? 'Project'}
         title="Snagging"
         actions={
-          <button onClick={() => setCreateOpen(true)} className="btn-primary">
-            + New snag item
-          </button>
+          <AnimatedButton animation={aPlus} onClick={() => setCreateOpen(true)} className="btn-primary">
+            New snag item
+          </AnimatedButton>
         }
       />
 
