@@ -14,6 +14,7 @@ import { RegisterSiteDrawingDto } from './dto/register-drawing.dto';
 import { CreateSiteDrawingOrgMappingDto } from './dto/org-mapping.dto';
 import { RegisterSiteDrawingRevisionDto } from './dto/register-revision.dto';
 import { SetSiteDrawingWorkflowStatusDto } from './dto/set-workflow-status.dto';
+import { UpdateSiteDrawingDto } from './dto/update-site-drawing.dto';
 import { StartOfflinePackageDto, CompleteOfflinePackageDto } from './dto/offline-package.dto';
 import { TriggerSiteDrawingSyncDto } from './dto/trigger-sync.dto';
 
@@ -163,6 +164,19 @@ export class SiteDrawingsController {
   @ApiOperation({ summary: 'Full revision history for a drawing, most recent first' })
   async listRevisions(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
     return { data: await this.svc.listRevisions(u.companyId, pid, id), error: null };
+  }
+
+  // Correcting a mistake the extractor already made and nobody caught
+  // before it left the Review Queue -- same capability resolveReview()
+  // gives a reviewer, reachable here for a drawing already sitting
+  // plainly in the register. Gated the same as createOrgMapping/
+  // deleteOrgMapping above ('edit', not 'create': this isn't adding a new
+  // record).
+  @Patch(':id')
+  @RequireCategoryAction('drawings', 'edit', 'manage_project_records')
+  @ApiOperation({ summary: 'Correct a drawing\'s number, title, and/or current revision number' })
+  async updateDrawing(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: UpdateSiteDrawingDto) {
+    return { data: await this.svc.updateDrawing(u.companyId, pid, id, dto), error: null };
   }
 
   // Unlike addRevision()'s supersede-don't-delete model, this removes the
