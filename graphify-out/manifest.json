@@ -7104,9 +7104,9 @@
     "semantic_hash": ""
   },
   "apps/ai-service/app/routers/drawing_extraction.py": {
-    "mtime": 1795278611.800169,
-    "seen": 1795279954.6150234,
-    "ast_hash": "221f81dd6a91748627a9b4809030309e",
+    "mtime": 1795282272.1845796,
+    "seen": 1795282298.4616053,
+    "ast_hash": "41fb0a303695d99eece2a228e4d6f8dc",
     "semantic_hash": ""
   },
   "apps/ai-service/app/services/__init__.py": {
@@ -7116,9 +7116,9 @@
     "semantic_hash": ""
   },
   "apps/ai-service/app/services/drawing_vision.py": {
-    "mtime": 1795278611.800169,
-    "seen": 1795279954.615151,
-    "ast_hash": "7f2f4bd5ddea9ffc8c8044e77e2a2027",
+    "mtime": 1795282272.1845796,
+    "seen": 1795282298.4618628,
+    "ast_hash": "06eae0be966d4064ee1673be1597d05b",
     "semantic_hash": ""
   },
   "apps/ai-service/tests/__init__.py": {
@@ -7128,15 +7128,15 @@
     "semantic_hash": ""
   },
   "apps/ai-service/tests/fixtures/generate_fixtures.py": {
-    "mtime": 1795278611.800169,
-    "seen": 1795279954.615154,
-    "ast_hash": "8f015898d872e54e1e9988daf1607de7",
+    "mtime": 1795282272.1845796,
+    "seen": 1795282298.4619007,
+    "ast_hash": "3ec26c9d41c20d3fe3a28de86fd86886",
     "semantic_hash": ""
   },
   "apps/ai-service/tests/test_drawing_vision.py": {
-    "mtime": 1795278611.8032663,
-    "seen": 1795279954.615156,
-    "ast_hash": "6e73febb2d953260611e3204aeabda67",
+    "mtime": 1795282272.1845796,
+    "seen": 1795282298.4619036,
+    "ast_hash": "b1bcbf604b2b94e196bf74db7b0b1ddd",
     "semantic_hash": ""
   },
   "apps/api/src/modules/site-drawings/extraction/extract-drawing-fields.spec.ts": {
@@ -7182,27 +7182,33 @@
     "semantic_hash": ""
   },
   "apps/ai-service/tests/fixtures/native_bottom_right.pdf": {
-    "mtime": 1795278611.8032663,
-    "seen": 1795279954.6438258,
+    "mtime": 1795281859.614255,
+    "seen": 1795282298.5082755,
     "ast_hash": "8b3394d490d64aaf35d23097ad06670e",
     "semantic_hash": ""
   },
   "apps/ai-service/tests/fixtures/native_bottom_strip.pdf": {
-    "mtime": 1795278611.8032663,
-    "seen": 1795279954.6438277,
+    "mtime": 1795281859.614255,
+    "seen": 1795282298.5082796,
     "ast_hash": "08b2b55b0efeddf799a45d753dba8cec",
     "semantic_hash": ""
   },
   "apps/ai-service/tests/fixtures/rotated_90.pdf": {
-    "mtime": 1795278611.8032663,
-    "seen": 1795279954.6438296,
+    "mtime": 1795281859.618255,
+    "seen": 1795282298.5082836,
     "ast_hash": "eaab4d9ba913bc775dcc06858392ceec",
     "semantic_hash": ""
   },
   "apps/ai-service/tests/fixtures/scanned_no_native_text.pdf": {
-    "mtime": 1795278611.8032663,
-    "seen": 1795279954.643831,
+    "mtime": 1795281859.618255,
+    "seen": 1795282298.5082874,
     "ast_hash": "198339752c095fdebca83c232988a1c0",
+    "semantic_hash": ""
+  },
+  "apps/ai-service/tests/fixtures/large_a0_sheet.pdf": {
+    "mtime": 1795282272.191619,
+    "seen": 1795282298.5082703,
+    "ast_hash": "70e90262e8324987d9013191ead2f695",
     "semantic_hash": ""
   },
   "pnpm-lock.yaml": {
