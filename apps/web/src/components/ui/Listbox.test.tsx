@@ -4,6 +4,20 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Listbox } from './Listbox';
 import type { ListboxChangeEvent } from './Listbox';
+import { Modal } from './Modal';
+
+// Both Listbox's popup list and Modal's own full-screen overlay render
+// into a portal at document.body, as two separate top-level stacking
+// contexts -- only their raw z-index numbers decide which one visually
+// wins, independent of where either is nested in the React tree. Tailwind's
+// generated stylesheet isn't loaded in this test environment, so
+// getComputedStyle can't read the arbitrary-value utility class's actual
+// effect; reading the z-[N] utility class itself is the real, load-bearing
+// thing both this bug and its fix are about.
+function zIndexClassOf(el: Element | null): number {
+  const match = el?.className.match(/z-\[(\d+)\]/);
+  return match ? Number(match[1]) : NaN;
+}
 
 function Controlled({ onChange, initial = 'open' }: { onChange?: (e: ListboxChangeEvent) => void; initial?: string }) {
   const [value, setValue] = useState(initial);
@@ -112,6 +126,26 @@ describe('Listbox', () => {
     expect(combo).toBeDisabled();
     await user.click(combo);
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  });
+
+  // Reproduces a real reported bug: a Listbox used inside a Modal (e.g.
+  // ImportDrawingsModal's "Source system" picker) opened its trigger
+  // (flipped chevron, focus ring -- aria-expanded="true") but the actual
+  // option list was invisible, because both portal to document.body as
+  // siblings and the list's z-index was LOWER than the Modal's own
+  // full-screen overlay. The trigger lies about nothing; the list is
+  // simply rendered behind the modal.
+  it('opens its popup list above a Modal it is nested inside, not behind it', async () => {
+    const user = userEvent.setup();
+    render(
+      <Modal open onClose={() => {}} title="Import drawing package">
+        <Controlled />
+      </Modal>,
+    );
+    await user.click(screen.getByRole('combobox', { name: 'Status' }));
+    const list = screen.getByRole('listbox', { name: 'Status' });
+    const modalOverlay = screen.getByRole('dialog').parentElement; // Modal's own fixed inset-0 wrapper
+    expect(zIndexClassOf(list)).toBeGreaterThan(zIndexClassOf(modalOverlay));
   });
 
   it('works uncontrolled from defaultValue and posts its value through a hidden input', async () => {
