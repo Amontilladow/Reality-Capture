@@ -167,6 +167,17 @@ export const triggerSiteDrawingSync = (projectId: string, provider: 'sharepoint'
 export const getSiteDrawing = (projectId: string, drawingId: string) =>
   apiGet<SiteDrawingWithCurrentRevision>(`${base(projectId)}/${drawingId}`);
 
+export interface UpdateSiteDrawingInput {
+  drawingNumber?: string;
+  drawingTitle?: string;
+  revisionNumber?: string;
+}
+// Corrects a drawing already sitting plainly in the register -- the gap
+// resolveReview() doesn't cover (that flow only ever sees a revision
+// while it's still pending in the Review Queue).
+export const updateSiteDrawing = (projectId: string, drawingId: string, input: UpdateSiteDrawingInput) =>
+  apiPatch<SiteDrawingWithCurrentRevision>(`${base(projectId)}/${drawingId}`, input);
+
 export const deleteSiteDrawing = (projectId: string, drawingId: string) =>
   apiDelete<{ message: string }>(`${base(projectId)}/${drawingId}`);
 
