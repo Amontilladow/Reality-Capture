@@ -57,11 +57,14 @@ describe('SiteDrawingsService', () => {
     const adapters = new SiteDrawingAdapterRegistry(localAdapter, sharePointAdapter);
     const create = jest.fn().mockResolvedValue(undefined);
     const notifications = { create } as unknown as NotificationsService;
-    const ocrExtractText = jest.fn().mockResolvedValue({ text: '', confidence: 0 });
-    const aiClient = { ocrExtractText } as unknown as AiClientService;
+    const extractDrawingStructure = jest.fn().mockResolvedValue({
+      pageCount: 1, pageWidth: 0, pageHeight: 0, pageRotationDegrees: 0,
+      regions: [], wholePageNativeText: '', wholePageOcrText: null, wholePageOcrConfidence: null,
+    });
+    const aiClient = { extractDrawingStructure } as unknown as AiClientService;
     return {
       svc: new SiteDrawingsService(db, storage, adapters, notifications, aiClient),
-      withTenant, storage, notificationsCreate: create, ocrExtractText,
+      withTenant, storage, notificationsCreate: create, extractDrawingStructure,
     };
   }
 
@@ -259,15 +262,18 @@ describe('SiteDrawingsService', () => {
       await expect(svc.extractFields(companyId, projectId, 'key.pdf')).rejects.toThrow(BadRequestException);
     });
 
-    it('returns null (not an error) when neither embedded text nor OCR can read anything -- manual entry stays the fallback', async () => {
+    it('returns null (not an error) when nothing at all can be read -- manual entry stays the fallback', async () => {
       const { svc } = makeService([single([{ id: projectId }])]);
       const fields = await svc.extractFields(companyId, projectId, 'key.pdf');
       expect(fields).toBeNull();
     });
 
-    it('falls back to OCR when the (empty, unparsable) buffer has no usable embedded text, and extracts real fields from it', async () => {
-      const { svc, ocrExtractText } = makeService([single([{ id: projectId }])]);
-      ocrExtractText.mockResolvedValue({ text: 'DRAWING NO: A-101\nREV: B', confidence: 0.9 });
+    it('falls back to the AI service\'s whole-page OCR text when nothing else (no title-block region, no native text) is usable', async () => {
+      const { svc, extractDrawingStructure } = makeService([single([{ id: projectId }])]);
+      extractDrawingStructure.mockResolvedValue({
+        pageCount: 1, pageWidth: 2000, pageHeight: 1500, pageRotationDegrees: 0,
+        regions: [], wholePageNativeText: '', wholePageOcrText: 'DRAWING NO: A-101\nREV: B', wholePageOcrConfidence: 0.9,
+      });
 
       const fields = await svc.extractFields(companyId, projectId, 'key.pdf');
 

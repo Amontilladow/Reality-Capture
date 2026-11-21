@@ -270,3 +270,94 @@ describe('extractTitleBlockFieldsFromCells', () => {
     expect(result?.revisionNumber).toBe('0');
   });
 });
+
+describe('fieldEvidence (Drawing Identification Engine replacement: per-field source location/method/evidence)', () => {
+  it('records a whole-page match\'s location as "whole_page" and its method as the extraction source', () => {
+    const result = extractTitleBlockFields('DRAWING NO: S-101\nREV: C\nTITLE: ROOF PLAN', 'embedded_text')!;
+    expect(result.fieldEvidence?.drawingNumber).toEqual({ location: 'whole_page', method: 'native_text', rawText: 'S-101', confidence: 0.85 });
+    expect(result.fieldEvidence?.revisionNumber).toEqual({ location: 'whole_page', method: 'native_text', rawText: 'C', confidence: 0.75 });
+  });
+
+  it('tags an OCR whole-page match\'s method as "ocr", distinct from a native-text match', () => {
+    const result = extractTitleBlockFields('DRAWING NO: S-101\nREV: C', 'ocr')!;
+    expect(result.fieldEvidence?.drawingNumber?.method).toBe('ocr');
+  });
+
+  it('records a cell-based match\'s exact row/col location, not "whole_page"', () => {
+    const rows = [['Drawing No: S-101', 'Rev: C', 'Drawing Title: ROOF PLAN']];
+    const result = extractTitleBlockFieldsFromCells(rows, 'embedded_text')!;
+    expect(result.fieldEvidence?.drawingNumber).toEqual({ location: 'row 0, col 0', method: 'native_text', rawText: 'S-101', confidence: 0.85 });
+    expect(result.fieldEvidence?.revisionNumber).toEqual({ location: 'row 0, col 1', method: 'native_text', rawText: 'C', confidence: 0.75 });
+    expect(result.fieldEvidence?.drawingTitle).toEqual({ location: 'row 0, col 2', method: 'native_text', rawText: 'ROOF PLAN', confidence: 0.7 });
+  });
+
+  it('records the correct adjacent-cell location for a label-above-value layout (next row, same column)', () => {
+    const rows = [
+      ['Drawing No:', 'Revision:'],
+      ['S-101', '00'],
+    ];
+    const result = extractTitleBlockFieldsFromCells(rows, 'embedded_text')!;
+    expect(result.fieldEvidence?.drawingNumber?.location).toBe('row 1, col 0');
+    expect(result.fieldEvidence?.revisionNumber?.location).toBe('row 1, col 1');
+  });
+
+  it('records discipline as derived from the drawing number, not an independent match', () => {
+    const result = extractTitleBlockFields('DRAWING NO: S-101\nREV: C', 'embedded_text')!;
+    expect(result.discipline).toBe('Structural');
+    expect(result.fieldEvidence?.discipline).toEqual({ location: 'derived_from_drawing_number', method: 'native_text', rawText: 'S-101', confidence: 0.85 });
+  });
+
+  it('has no evidence entry at all for a field that was never found', () => {
+    const result = extractTitleBlockFields('DRAWING NO: S-101', 'embedded_text')!;
+    expect(result.fieldEvidence?.drawingTitle).toBeUndefined();
+    expect(result.fieldEvidence?.projectName).toBeUndefined();
+  });
+
+  it('extracts an informational project name, labeled, whole-page', () => {
+    const result = extractTitleBlockFields('PROJECT: HARBOUR VIEW TOWER\nDRAWING NO: S-101\nREV: C', 'embedded_text')!;
+    expect(result.projectName).toBe('HARBOUR VIEW TOWER');
+    expect(result.fieldEvidence?.projectName).toEqual({ location: 'whole_page', method: 'native_text', rawText: 'HARBOUR VIEW TOWER', confidence: 0.6 });
+  });
+
+  it('extracts a labeled project name from its own cell', () => {
+    const rows = [['Drawing No: S-101', 'Project: HARBOUR VIEW TOWER']];
+    const result = extractTitleBlockFieldsFromCells(rows, 'embedded_text')!;
+    expect(result.projectName).toBe('HARBOUR VIEW TOWER');
+    expect(result.fieldEvidence?.projectName?.location).toBe('row 0, col 1');
+  });
+});
+
+describe('bare drawing-number pattern never matches a plain calendar date (Drawing Identification Engine replacement regression)', () => {
+  // A real false-positive risk discovered while building region-scoped
+  // matching: a dash-formatted date ("13-02-2026") coincidentally
+  // satisfies DRAWING_NUMBER_BARE's multi-segment shape (three
+  // dash-separated alphanumeric segments) exactly as well as a real
+  // drawing number like "M19-M4C-SD". Previously masked in whole-page
+  // text by other, usually-present labeled fields nearby; surfaced for
+  // real once a cell/region (e.g. a revision-history table's own "Date"
+  // column) could be scoped and matched on its own, with nothing else
+  // around to out-rank it.
+  it('never extracts a bare numeric date as a drawing number, on the whole-page path', () => {
+    expect(extractTitleBlockFields('13-02-2026\nsome other unrelated text', 'embedded_text')).toBeNull();
+  });
+
+  it('never extracts a bare numeric date as a drawing number, on the cell-based path', () => {
+    const rows = [['Rev.', 'Date'], ['00', '13-02-2026']];
+    expect(extractTitleBlockFieldsFromCells(rows, 'embedded_text')).toBeNull();
+  });
+
+  it('still extracts a real bare drawing number that merely LOOKS multi-segmented, not a date', () => {
+    // "M19-M4C-SD" has 3 dash-separated segments like the date above, but
+    // contains letters -- isNumericDateShape()'s regexes require purely
+    // numeric segments, so this is correctly accepted.
+    expect(extractTitleBlockFields('M19-M4C-SD appears here', 'embedded_text')?.drawingNumber).toBe('M19-M4C-SD');
+  });
+
+  it('still extracts a real bare drawing number shaped like an ISO date numerically but out of calendar range', () => {
+    // "99-99-9999" has the right shape but is not a real calendar date in
+    // either DD-MM or MM-DD reading -- isNumericDateShape() correctly
+    // reports false, so this is NOT rejected as a date and is accepted
+    // as a bare drawing-number-shaped match.
+    expect(extractTitleBlockFields('99-99-9999 appears here', 'embedded_text')?.drawingNumber).toBe('99-99-9999');
+  });
+});

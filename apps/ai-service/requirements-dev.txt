@@ -1,0 +1,4 @@
+# Test-only dependencies -- never installed in the production Docker
+# image (Dockerfile only COPYs and pip-installs requirements.txt).
+-r requirements.txt
+pytest==8.2.0

@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import search, assistant, progress, change_detection, reports, ingest, risk, ocr, gis_prep
+from app.routers import search, assistant, progress, change_detection, reports, ingest, risk, drawing_extraction, gis_prep
 from app.knowledge.vector_store import init_collections
 
 logging.basicConfig(level=logging.INFO)
@@ -50,7 +50,7 @@ app.include_router(change_detection.router, prefix="/change-detection", tags=["c
 app.include_router(reports.router,          prefix="/report",           tags=["reports"],        dependencies=_auth)
 app.include_router(ingest.router,           prefix="/ingest",           tags=["ingestion"],      dependencies=_auth)
 app.include_router(risk.router,             prefix="/risk",             tags=["risk"],           dependencies=_auth)
-app.include_router(ocr.router,              prefix="/ocr",              tags=["ocr"],            dependencies=_auth)
+app.include_router(drawing_extraction.router, prefix="/drawings",        tags=["drawings"],       dependencies=_auth)
 app.include_router(gis_prep.router,         prefix="/gis-prep",         tags=["gis-prep"],       dependencies=_auth)
 
 @app.on_event("startup")
