@@ -1,4 +1,10 @@
-import { AnimatedButton } from '../components/ui/AnimatedIcon';
+import aPaperclip from 'react-useanimations/lib/paperclip';
+import aCamera from 'react-useanimations/lib/camera';
+import aSend from 'react-useanimations/lib/send';
+import aCheckCircle from 'react-useanimations/lib/checkCircle';
+import aReject from 'react-useanimations/lib/xOctagon';
+import aReopen from 'react-useanimations/lib/rotateCcw';
+import { AnimatedButton, AnimatedLabel } from '../components/ui/AnimatedIcon';
 import aTrash from 'react-useanimations/lib/trash2';
 import aDownload from 'react-useanimations/lib/download';
 import { confirmDialog } from '../store/confirm.store';
@@ -271,13 +277,14 @@ export default function QaqcDetailPage() {
                 onChange={(e) => setResponseDraft(e.target.value)}
               />
               {respondMutation.isError && <p className="field-error">{apiErrorMessage(respondMutation.error)}</p>}
-              <button
+              <AnimatedButton
+                animation={aSend}
                 onClick={() => respondMutation.mutate()}
                 disabled={!responseDraft.trim() || respondMutation.isPending}
                 className="btn-primary !px-4 !py-2 "
               >
                 {respondMutation.isPending ? 'Submitting…' : 'Submit response'}
-              </button>
+              </AnimatedButton>
             </>
           )}
           {!record.response && !canRespond && (
@@ -325,27 +332,29 @@ export default function QaqcDetailPage() {
                 <div className="flex gap-2">
                   {!rejecting && (
                     <>
-                      <button
+                      <AnimatedButton
+                        animation={aCheckCircle}
                         onClick={() => confirmMutation.mutate('confirmed')}
                         disabled={confirmMutation.isPending}
                         className="btn-primary !px-4 !py-2 "
                       >
                         {confirmMutation.isPending ? 'Confirming…' : `Confirm & close ${shortLabel}`}
-                      </button>
-                      <button onClick={() => setRejecting(true)} className="btn-secondary !px-4 !py-2 ">
+                      </AnimatedButton>
+                      <AnimatedButton animation={aReject} onClick={() => setRejecting(true)} className="btn-secondary !px-4 !py-2 ">
                         Reject
-                      </button>
+                      </AnimatedButton>
                     </>
                   )}
                   {rejecting && (
                     <>
-                      <button
+                      <AnimatedButton
+                        animation={aReopen}
                         onClick={() => confirmMutation.mutate('rejected')}
                         disabled={!confirmComment.trim() || confirmMutation.isPending}
                         className="btn-primary !px-4 !py-2 "
                       >
                         {confirmMutation.isPending ? 'Sending back…' : 'Send back (reopen)'}
-                      </button>
+                      </AnimatedButton>
                       <button onClick={() => { setRejecting(false); setConfirmComment(''); }} className="btn-ghost !px-2 !py-2 ">
                         Cancel
                       </button>
@@ -471,8 +480,8 @@ function AttachmentSection({
               <option key={t} value={t}>{RFI_DOCUMENT_TYPE_LABELS[t]}</option>
             ))}
           </Listbox>
-          <label className="btn-secondary !px-4 !py-2 cursor-pointer inline-block">
-            + Add document
+          <AnimatedLabel animation={aPaperclip} className="btn-secondary !px-4 !py-2 cursor-pointer inline-flex">
+            Add document
             <input
               type="file"
               className="hidden"
@@ -482,7 +491,7 @@ function AttachmentSection({
                 e.target.value = '';
               }}
             />
-          </label>
+          </AnimatedLabel>
         </div>
       )}
     </div>
@@ -529,8 +538,8 @@ function CaptureSection({
       )}
       {uploadMutation.isError && <p className="field-error">{apiErrorMessage(uploadMutation.error)}</p>}
       {canUpload && (
-        <label className="btn-secondary !px-4 !py-2 cursor-pointer inline-block">
-          + Add photo
+        <AnimatedLabel animation={aCamera} className="btn-secondary !px-4 !py-2 cursor-pointer inline-flex">
+          Add photo
           <input
             type="file"
             accept="image/*"
@@ -541,7 +550,7 @@ function CaptureSection({
               e.target.value = '';
             }}
           />
-        </label>
+        </AnimatedLabel>
       )}
     </div>
   );

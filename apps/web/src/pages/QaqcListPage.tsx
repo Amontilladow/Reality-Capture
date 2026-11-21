@@ -1,3 +1,4 @@
+import aPlus from 'react-useanimations/lib/plusCircle';
 import { AnimatedButton } from '../components/ui/AnimatedIcon';
 import aTrash from 'react-useanimations/lib/trash2';
 import { confirmDialog } from '../store/confirm.store';
@@ -97,9 +98,9 @@ export default function QaqcListPage() {
               Back to QAQC
             </Link>
             {canCreate && (
-              <button onClick={() => setCreateOpen(true)} className="btn-primary">
-                + New {shortLabel}
-              </button>
+              <AnimatedButton animation={aPlus} onClick={() => setCreateOpen(true)} className="btn-primary">
+                New {shortLabel}
+              </AnimatedButton>
             )}
           </>
         }
