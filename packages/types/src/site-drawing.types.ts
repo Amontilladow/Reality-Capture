@@ -100,6 +100,17 @@ export interface SiteDrawingRevision {
   // 'internal' revisions, which already have their own distinct storageKey.
   sourceRevisionId?: string;
   sourceWebUrl?: string;
+  // Which external source (if any) actually produced THIS revision --
+  // distinct from site_drawings.sourceProvider/sourceFileId, which only
+  // ever recorded the drawing's ORIGINAL registering source and implicitly
+  // assumed a drawing has exactly one source forever. Set only for a
+  // sync-created revision (migration 087); undefined for a manually
+  // registered or RAR/ZIP-imported one, which has no external source file
+  // to track. Lets the sync job recognize a source file it has already
+  // reconciled onto ANY drawing, and lets a reviewer see which provider a
+  // CONFLICT-flagged cross-source match actually came from.
+  sourceProvider?: SiteDrawingSourceProvider;
+  sourceFileId?: string;
   fileSizeBytes?: number;
   supersedesRevisionId?: string;
   isSuperseded: boolean;
@@ -174,6 +185,10 @@ export interface SiteDrawingSyncLogEntry {
   drawingsSeen: number;
   drawingsCreated: number;
   revisionsCreated: number;
+  // A cross-source match (same drawing_number, different provider) left
+  // un-promoted pending a human decision in the Review Queue -- migration
+  // 087's own conflicts_created column.
+  conflictsCreated: number;
   errorMessage?: string;
   triggeredBy?: string;
 }

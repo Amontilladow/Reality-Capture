@@ -153,6 +153,10 @@ export interface SiteDrawingSyncOutcome {
   drawingsSeen: number;
   drawingsCreated: number;
   revisionsCreated: number;
+  // A cross-source match (same drawing_number, already registered from a
+  // different provider) left un-promoted pending a human decision in the
+  // Review Queue, instead of silently registered as a second drawing.
+  conflictsCreated: number;
 }
 // Triggers an immediate sync rather than waiting for the sync job's own
 // 15-minute schedule (SiteDrawingSyncService): 'sharepoint' is the

@@ -22,9 +22,12 @@ export type IdentityAssessment =
   | { verdict: 'title_conflict'; existingTitle: string; incomingTitle: string }
   | { verdict: 'uncertain'; reason: string };
 
-// Same normalization as reconcile()'s own titlesCompatible(): a difference
-// in case/whitespace alone is not a real conflict, anything else is.
-function titlesCompatible(a: string, b: string): boolean {
+// Same normalization SiteDrawingImportProcessor.reconcile() and
+// SiteDrawingSyncService.reconcileDrawing() both compare titles with: a
+// difference in case/whitespace alone is not a real conflict, anything
+// else is. Exported so the sync service's own cross-source identity check
+// (migration 087) reuses this exact rule instead of a second copy of it.
+export function titlesCompatible(a: string, b: string): boolean {
   const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
   return normalize(a) === normalize(b);
 }
