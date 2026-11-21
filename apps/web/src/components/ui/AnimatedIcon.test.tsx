@@ -9,7 +9,7 @@ vi.mock('react-useanimations', () => ({
     return props.render ? props.render({}, {}) : <span />;
   },
 }));
-import { WithAnimatedIcon, AnimatedButton } from './AnimatedIcon';
+import { WithAnimatedIcon, AnimatedButton, AnimatedLabel } from './AnimatedIcon';
 import { screen, fireEvent } from '@testing-library/react';
 
 function mockHover(canHover: boolean) {
@@ -56,5 +56,19 @@ describe('AnimatedButton', () => {
     rerender(<AnimatedButton animation={hoverIcon} onClick={onClick} disabled>New issue</AnimatedButton>);
     fireEvent.click(screen.getByRole('button', { name: 'New issue' }));
     expect(onClick).toHaveBeenCalledOnce();
+  });
+});
+
+describe('AnimatedLabel', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('still opens the file picker it wraps', () => {
+    mockHover(true);
+    const onChange = vi.fn();
+    render(<AnimatedLabel animation={hoverIcon} className="btn-secondary">Add photo<input type="file" className="hidden" onChange={onChange} /></AnimatedLabel>);
+    const input = screen.getByLabelText('Add photo') as HTMLInputElement;
+    expect(input.type).toBe('file');
+    fireEvent.change(input, { target: { files: [new File(['x'], 'a.jpg', { type: 'image/jpeg' })] } });
+    expect(onChange).toHaveBeenCalledOnce();
   });
 });

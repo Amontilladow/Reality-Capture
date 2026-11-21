@@ -1,3 +1,7 @@
+import aReject from 'react-useanimations/lib/xOctagon';
+import aCheckCircle from 'react-useanimations/lib/checkCircle';
+import aAlert from 'react-useanimations/lib/alertCircle';
+import aStart from 'react-useanimations/lib/arrowRightCircle';
 import { AnimatedButton } from './ui/AnimatedIcon';
 import aTrash from 'react-useanimations/lib/trash2';
 import { confirmDialog } from '../store/confirm.store';
@@ -83,19 +87,20 @@ export function QaInspectionDetailModal({
 
         <div className="flex flex-wrap gap-2 pt-2 border-t border-base-600">
           {QA_OUTCOMES.map((outcome) => (
-            <button
+            <AnimatedButton
               key={outcome}
+              animation={outcome === 'failed' ? aReject : outcome === 'passed' ? aCheckCircle : aAlert}
               onClick={() => outcomeMutation.mutate(outcome)}
               disabled={outcomeMutation.isPending || inspection.status === outcome}
               className="btn-secondary !px-4 !py-2 "
             >
               {QA_STATUS_LABELS[outcome]}
-            </button>
+            </AnimatedButton>
           ))}
           {inspection.status === 'scheduled' && (
-            <button onClick={() => statusMutation.mutate('in_progress')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 ">
+            <AnimatedButton animation={aStart} onClick={() => statusMutation.mutate('in_progress')} disabled={statusMutation.isPending} className="btn-secondary !px-4 !py-2 ">
               Start inspection
-            </button>
+            </AnimatedButton>
           )}
           <AnimatedButton animation={aTrash} interaction="hover"
             onClick={async () => { if (await confirmDialog('Delete this inspection?')) deleteMutation.mutate(); }}
