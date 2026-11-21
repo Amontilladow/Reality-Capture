@@ -68,20 +68,44 @@ from PIL import Image
 logger = logging.getLogger(__name__)
 
 # Matches ocr.py's own prior constant exactly (300 DPI: the commonly cited
-# floor for Tesseract to reliably segment small title-block text).
+# floor for Tesseract to reliably segment small title-block text). This
+# stays the API's own contracted coordinate space (every region/run this
+# service reports is in THIS scale) even though, below, the actual pixel
+# array used for grid DETECTION is deliberately rendered smaller on a
+# large sheet -- see grid_detection_scale()'s own comment.
 RASTERIZE_DPI = 300
 
-# A detected grid-line blob narrower or shorter than this (in PIXELS, at
-# RASTERIZE_DPI) is noise -- a single stray ruled line, a dimension tick
-# mark, part of a hatching pattern -- not a real title-block-sized grid.
-# Empirically generous (a real title block is rarely under half an inch
-# in either dimension at 300 DPI, i.e. 150px) specifically so this never
-# rejects a genuinely small title block; false candidates are filtered by
-# apps/api's own "does this contain a plausible drawing number" check
-# downstream, which is a far more reliable filter than a pixel-size
-# guess could ever be on its own.
-MIN_CANDIDATE_WIDTH_PX = 150
-MIN_CANDIDATE_HEIGHT_PX = 60
+# Real incident, confirmed in production right after this pipeline first
+# shipped: rendering a WHOLE page at a fixed 300 DPI, then holding
+# several same-sized intermediate arrays alive at once for grid
+# detection (binary/horiz/vert/grid/dilated), spiked memory enough to OOM
+# this service's 512MB container on a real uploaded drawing within
+# seconds of the request arriving. Standard engineering drawing sheet
+# sizes (A1, A0, ANSI D/E) are MUCH larger than the A3 fixtures this was
+# validated against -- at 300 DPI, an A0 sheet's single grayscale array
+# alone is ~140MB, and grid detection briefly holds several of those.
+# Capping the LONGEST side of the array used for grid detection bounds
+# that cost regardless of the real sheet's size, while native text
+# extraction (vector data, not pixels) and a per-region OCR crop (small
+# regardless of the sheet's overall size) are unaffected -- see
+# grid_detection_scale() and ocr_cropped_image() below.
+MAX_GRID_DETECTION_LONG_SIDE_PX = 2200
+
+# A detected grid-line blob physically smaller than this is noise -- a
+# single stray ruled line, a dimension tick mark, part of a hatching
+# pattern -- not a real title-block-sized grid. Expressed in INCHES, not
+# a fixed pixel count, because the array handed to detect_title_block_
+# candidates() can now be rendered at different effective resolutions
+# depending on the page's real size (see MAX_GRID_DETECTION_LONG_SIDE_PX
+# above) -- a fixed pixel threshold calibrated for 300 DPI would reject
+# genuine grids on a downscaled large sheet. Empirically generous (a
+# real title block is rarely under half an inch in either dimension)
+# specifically so this never rejects a genuinely small title block;
+# false candidates are filtered by apps/api's own "does this contain a
+# plausible drawing number" check downstream, which is a far more
+# reliable filter than a size guess could ever be on its own.
+MIN_CANDIDATE_WIDTH_INCHES = 0.5
+MIN_CANDIDATE_HEIGHT_INCHES = 0.2
 
 RunMethod = Literal['native', 'ocr']
 
@@ -127,7 +151,36 @@ def _binarize(gray: np.ndarray) -> np.ndarray:
     return binary
 
 
-def detect_title_block_candidates(gray: np.ndarray, page_width: int, page_height: int) -> list[GridRegion]:
+def grid_detection_scale(page_width_pt: float, page_height_pt: float, official_scale: float) -> float:
+    """The scale (pixels per PDF point) used to render the page for grid
+    DETECTION only -- bounded so the resulting array's longer side never
+    exceeds MAX_GRID_DETECTION_LONG_SIDE_PX, regardless of how large the
+    real sheet is (a title block's own region, once found, is converted
+    back to `official_scale` via rescale_region() below -- nothing
+    downstream ever sees this lower-resolution space). Never larger than
+    `official_scale` itself: a genuinely small page (A4, letter) renders
+    at the same resolution it always did, this only ever scales DOWN."""
+    longer_side_pt = max(page_width_pt, page_height_pt)
+    capped_scale = MAX_GRID_DETECTION_LONG_SIDE_PX / longer_side_pt
+    return min(official_scale, capped_scale)
+
+
+def rescale_region(region: GridRegion, from_scale: float, to_scale: float) -> GridRegion:
+    """Converts a region found in one pixel scale into another -- pure
+    arithmetic, no re-rendering. Used to bring a region detected on the
+    deliberately-downscaled grid-detection array (see
+    grid_detection_scale()) back into the API's official RASTERIZE_DPI-
+    based coordinate space, where every native text run is already
+    computed and where apps/api expects every reported coordinate to
+    live."""
+    ratio = to_scale / from_scale
+    return GridRegion(
+        left=round(region.left * ratio), top=round(region.top * ratio),
+        width=round(region.width * ratio), height=round(region.height * ratio),
+    )
+
+
+def detect_title_block_candidates(gray: np.ndarray, page_width: int, page_height: int, scale: float) -> list[GridRegion]:
     """
     Finds every bordered-grid-shaped region on the page from pixel data
     alone (morphological line detection: open with a long horizontal
@@ -144,12 +197,20 @@ def detect_title_block_candidates(gray: np.ndarray, page_width: int, page_height
     has the drawing-number-plausibility check this module deliberately
     doesn't) to pick the one that's actually the title block.
 
+    `scale` is whatever pixels-per-point `gray` was actually rendered at
+    (see grid_detection_scale()) -- used only to convert
+    MIN_CANDIDATE_WIDTH_INCHES/HEIGHT_INCHES into the right pixel count
+    for THIS array's own resolution, never assumed to be RASTERIZE_DPI.
+
     Ranked by a cheap heuristic only (distance from the nearest page
     edge, then size): title blocks are drawn near an edge/corner in
     virtually every real convention, but this is a tie-breaking ORDER
     HINT, never a hard filter -- every candidate found is returned, so a
     genuinely unusual layout still gets tried, just later.
     """
+    min_width_px = MIN_CANDIDATE_WIDTH_INCHES * 72 * scale
+    min_height_px = MIN_CANDIDATE_HEIGHT_INCHES * 72 * scale
+
     binary = _binarize(gray)
     h, w = binary.shape
     horiz_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (max(20, w // 40), 1))
@@ -163,7 +224,7 @@ def detect_title_block_candidates(gray: np.ndarray, page_width: int, page_height
     candidates: list[GridRegion] = []
     for contour in contours:
         x, y, cw, ch = cv2.boundingRect(contour)
-        if cw < MIN_CANDIDATE_WIDTH_PX or ch < MIN_CANDIDATE_HEIGHT_PX:
+        if cw < min_width_px or ch < min_height_px:
             continue
         candidates.append(GridRegion(left=x, top=y, width=cw, height=ch))
 
@@ -198,23 +259,27 @@ def native_text_runs_in_region(
     ]
 
 
-def ocr_region(gray: np.ndarray, region: GridRegion, padding_px: int = 10) -> list[TextRun]:
-    """Targeted OCR scoped to ONE candidate region's own crop (padded
-    slightly so a word right at the border isn't clipped mid-character) --
-    never the whole page. This is the only place pytesseract is invoked
-    outside of a last-resort whole-page fallback the router keeps
-    separate and only reaches for when no region produced anything at
-    all (brief: "do not use whole-page OCR as the primary extraction
-    strategy" -- here it's the targeted exception's own crop, not the
-    primary path, and the whole-page fallback stays the genuinely last
-    resort)."""
-    h, w = gray.shape
-    x0 = max(0, region.left - padding_px)
-    y0 = max(0, region.top - padding_px)
-    x1 = min(w, region.left + region.width + padding_px)
-    y1 = min(h, region.top + region.height + padding_px)
-    crop = _binarize_for_ocr(gray[y0:y1, x0:x1])
+def ocr_cropped_image(gray_crop: np.ndarray, offset_left: int, offset_top: int) -> list[TextRun]:
+    """Targeted OCR on an ALREADY-CROPPED small image -- a region's own
+    crop, rendered fresh and directly at full RASTERIZE_DPI by the
+    caller (this service's own router, via pypdfium2's own crop-render:
+    see drawing_extraction.py) rather than sliced out of one already-held
+    whole-page array. This is deliberate: re-rendering
+    just a region's own small bounding box costs the same small amount of
+    memory regardless of how large the overall page is, where slicing a
+    crop out of a full-page array requires holding that whole array in
+    memory first -- exactly the real OOM this service hit in production
+    on a large (A1/A0-class) sheet. Never the whole page; this is the
+    only place pytesseract is invoked outside of the genuine last-resort
+    whole-page fallback the router keeps separate (brief: "do not use
+    whole-page OCR as the primary extraction strategy").
 
+    `offset_left`/`offset_top` are this crop's own top-left corner in the
+    API's official pixel space (RASTERIZE_DPI-based) -- added back to
+    every recognized word's local-to-the-crop coordinates so every
+    returned TextRun still reports an absolute page position, exactly as
+    before."""
+    crop = _binarize_for_ocr(gray_crop)
     data = pytesseract.image_to_data(crop, output_type=pytesseract.Output.DICT)
     runs: list[TextRun] = []
     n = len(data['text'])
@@ -225,7 +290,7 @@ def ocr_region(gray: np.ndarray, region: GridRegion, padding_px: int = 10) -> li
             continue
         runs.append(TextRun(
             text=stripped,
-            left=x0 + data['left'][i], top=y0 + data['top'][i],
+            left=offset_left + data['left'][i], top=offset_top + data['top'][i],
             width=data['width'][i], height=data['height'][i],
             conf=float(conf), method='ocr',
         ))
@@ -242,6 +307,41 @@ def _binarize_for_ocr(gray_crop: np.ndarray) -> np.ndarray:
 
 def render_page_to_grayscale(pil_image: Image.Image) -> np.ndarray:
     return np.asarray(pil_image.convert('L'), dtype=np.uint8)
+
+
+def region_crop_margins_pt(
+    region: GridRegion, official_scale: float, page_width_pt: float, page_height_pt: float, padding_px: int = 10,
+) -> tuple[tuple[float, float, float, float], int, int]:
+    """Pure geometry: converts one region (in the API's official pixel
+    space, origin top-left) into the (left, bottom, right, top) MARGIN
+    AMOUNTS pypdfium2's own page.render(crop=...) expects, in PDF POINT
+    units -- so the router can re-render just that region's own small
+    area at full resolution instead of holding a full-page bitmap, no
+    matter how large the real page is (see ocr_cropped_image()'s own
+    comment on why this is the actual OOM fix).
+
+    Padding is added on every side (so a word right at a region's own
+    detected border isn't clipped mid-character) and clamped to the
+    page's own edges -- pypdfium2 does not support a negative crop
+    margin. Returns the margins alongside this crop's own top-left
+    corner, STILL in the official pixel space (`offset_left`/
+    `offset_top`): the caller adds these back to every OCR'd word's
+    crop-local coordinates so the result stays in one consistent,
+    absolute coordinate system regardless of how it was rendered."""
+    page_width_px = page_width_pt * official_scale
+    page_height_px = page_height_pt * official_scale
+
+    offset_left = max(0, round(region.left - padding_px))
+    offset_top = max(0, round(region.top - padding_px))
+    right_edge = min(page_width_px, region.left + region.width + padding_px)
+    bottom_edge = min(page_height_px, region.top + region.height + padding_px)
+
+    left_margin_pt = offset_left / official_scale
+    top_margin_pt = offset_top / official_scale
+    right_margin_pt = (page_width_px - right_edge) / official_scale
+    bottom_margin_pt = (page_height_px - bottom_edge) / official_scale
+
+    return (left_margin_pt, bottom_margin_pt, right_margin_pt, top_margin_pt), offset_left, offset_top
 
 
 def pdf_rect_to_pixel_run(

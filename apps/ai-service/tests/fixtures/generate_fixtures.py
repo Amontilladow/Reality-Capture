@@ -35,12 +35,23 @@ this engagement:
    (exact), not a guessed OSD value (Phase 2 already found OSD's own
    confidence unreliable on this kind of sparse, vector-drawing-style
    page).
+
+5. large_a0_sheet.pdf -- a full ISO A0 sheet (841 x 1189mm, the common
+   real engineering-drawing size -- much larger than the A3 the other
+   fixtures use). Reproduces a real production incident: rendering a
+   whole page this size at a fixed 300 DPI, then holding several
+   same-sized intermediate arrays alive for grid detection, OOM'd this
+   service's 512MB container within seconds of a real upload. Proves the
+   memory-bounded two-tier rendering fix (grid_detection_scale()) keeps
+   the array used for grid detection small regardless of the real
+   sheet's size, while the title block itself is still found and
+   correctly read.
 """
 import io
 import os
 
 from PIL import Image, ImageDraw, ImageFont
-from reportlab.lib.pagesizes import A3
+from reportlab.lib.pagesizes import A0, A3
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
@@ -147,6 +158,30 @@ def fixture_rotated_90(path):
     c.save()
 
 
+def fixture_large_a0_sheet(path):
+    """A full ISO A0 sheet -- the real engineering-drawing scale this
+    pipeline was actually OOMing on in production, not the much smaller
+    A3 the other fixtures use."""
+    w, h = A0
+    c = canvas.Canvas(path, pagesize=A0)
+    c.setFont('Helvetica', 14)
+    c.drawString(80, h - 80, 'GENERAL ARRANGEMENT - ROOF LEVEL (A0 SHEET)')
+    tb_w, tb_h = 500, 260
+    x0, y0 = w - tb_w - 60, 60
+    draw_grid_title_block(
+        c, x0, y0, tb_w, tb_h,
+        rows=[
+            ['Drawing No:', 'Rev:'],
+            ['M19-M4C-C0-PW-AX-SD-05740', 'A'],
+            ['Title:'],
+            ['Roof Plan - Steel Structure'],
+        ],
+        cols_per_row=[2, 2, 1, 1],
+    )
+    c.showPage()
+    c.save()
+
+
 def set_pdf_page_rotation(path, degrees):
     import pypdfium2 as pdfium
     pdf = pdfium.PdfDocument(path)
@@ -161,4 +196,5 @@ if __name__ == '__main__':
     fixture_scanned_no_native_text(f'{out}/scanned_no_native_text.pdf')
     fixture_rotated_90(f'{out}/rotated_90.pdf')
     set_pdf_page_rotation(f'{out}/rotated_90.pdf', 90)
+    fixture_large_a0_sheet(f'{out}/large_a0_sheet.pdf')
     print('fixtures written to', out)

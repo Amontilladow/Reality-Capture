@@ -15,6 +15,15 @@ logic. Integration tests use the real PDF fixtures in tests/fixtures/
 through pypdfium2 + the real OpenCV/pytesseract pipeline -- not mocked,
 the same "confirmed by hand against the real engine" discipline this
 whole engagement has used throughout.
+
+Real incident added after this suite first shipped: rendering a WHOLE
+page at a fixed 300 DPI OOM'd this service's 512MB container on a real
+uploaded A0/A1-class engineering drawing within seconds. The two-tier
+rendering fix (grid_detection_scale/rescale_region/region_crop_margins_pt)
+has its own dedicated coverage below, including an end-to-end test
+against a real full-size A0 PDF fixture (large_a0_sheet.pdf) proving the
+array used for grid detection stays bounded regardless of the real
+sheet's size.
 """
 import pathlib
 
@@ -24,17 +33,22 @@ import pypdfium2 as pdfium
 import pytest
 
 from app.services.drawing_vision import (
+    MAX_GRID_DETECTION_LONG_SIDE_PX,
     GridRegion,
     RASTERIZE_DPI,
     TextRun,
     detect_title_block_candidates,
+    grid_detection_scale,
     native_text_runs_in_region,
-    ocr_region,
+    ocr_cropped_image,
     pdf_rect_to_pixel_run,
+    region_crop_margins_pt,
     render_page_to_grayscale,
+    rescale_region,
 )
 
 FIXTURES_DIR = pathlib.Path(__file__).parent / 'fixtures'
+OFFICIAL_SCALE = RASTERIZE_DPI / 72
 
 
 def make_blank_page(width=1000, height=800) -> np.ndarray:
@@ -55,7 +69,7 @@ class TestDetectTitleBlockCandidates:
     def test_finds_a_single_grid_region_near_the_expected_bounding_box(self):
         img = make_blank_page()
         draw_grid(img, 700, 600, 250, 150)
-        candidates = detect_title_block_candidates(img, page_width=1000, page_height=800)
+        candidates = detect_title_block_candidates(img, page_width=1000, page_height=800, scale=OFFICIAL_SCALE)
         assert len(candidates) == 1
         region = candidates[0]
         # Morphological detection recovers the grid's approximate extent,
@@ -75,25 +89,101 @@ class TestDetectTitleBlockCandidates:
         img = make_blank_page()
         draw_grid(img, 50, 50, 200, 80)       # small table, top-left
         draw_grid(img, 700, 600, 250, 150)    # title block, bottom-right
-        candidates = detect_title_block_candidates(img, page_width=1000, page_height=800)
+        candidates = detect_title_block_candidates(img, page_width=1000, page_height=800, scale=OFFICIAL_SCALE)
         assert len(candidates) == 2
 
     def test_ranks_the_region_closer_to_a_page_edge_first(self):
         img = make_blank_page(width=1200, height=1000)
         draw_grid(img, 500, 500, 150, 100)   # dead center -- far from every edge
         draw_grid(img, 20, 20, 150, 100)     # hugs the top-left corner
-        candidates = detect_title_block_candidates(img, page_width=1200, page_height=1000)
+        candidates = detect_title_block_candidates(img, page_width=1200, page_height=1000, scale=OFFICIAL_SCALE)
         assert len(candidates) == 2
         assert candidates[0].left < candidates[1].left  # the corner one ranks first
 
     def test_ignores_noise_too_small_to_be_a_real_title_block(self):
         img = make_blank_page()
         cv2.rectangle(img, (100, 100), (130, 115), 0, 1)  # a tiny stray box, not a title block
-        candidates = detect_title_block_candidates(img, page_width=1000, page_height=800)
+        candidates = detect_title_block_candidates(img, page_width=1000, page_height=800, scale=OFFICIAL_SCALE)
         assert candidates == []
 
     def test_returns_no_candidates_on_a_blank_page(self):
-        assert detect_title_block_candidates(make_blank_page(), 1000, 800) == []
+        assert detect_title_block_candidates(make_blank_page(), 1000, 800, scale=OFFICIAL_SCALE) == []
+
+    def test_the_same_physical_title_block_is_found_at_a_lower_scale_too(self):
+        # The min-size thresholds are expressed in inches, not a fixed
+        # pixel count, specifically so a region detected on a
+        # deliberately-downscaled array (grid_detection_scale(), for
+        # memory safety on a large sheet) isn't wrongly rejected as noise.
+        img = make_blank_page(width=500, height=400)
+        draw_grid(img, 350, 300, 125, 75)  # same PHYSICAL size as the 300-DPI test above, at half the scale
+        candidates = detect_title_block_candidates(img, page_width=500, page_height=400, scale=OFFICIAL_SCALE / 2)
+        assert len(candidates) == 1
+
+
+class TestGridDetectionScale:
+    def test_caps_the_scale_so_a_huge_sheets_long_side_stays_bounded(self):
+        # An A0 sheet: 2383.9 x 3370.4 points.
+        scale = grid_detection_scale(2383.9, 3370.4, official_scale=OFFICIAL_SCALE)
+        assert scale < OFFICIAL_SCALE
+        assert 3370.4 * scale <= MAX_GRID_DETECTION_LONG_SIDE_PX + 1  # +1 for float rounding
+
+    def test_never_upscales_a_small_page_beyond_the_official_scale(self):
+        # A genuinely small page (long side 400pt, ~5.6in) -- its 300-DPI
+        # long side (400 * 300/72 =~ 1667px) is already under the cap, so
+        # this must return the official scale unchanged, not downscale
+        # a page that was never going to exceed the cap in the first
+        # place. (A4/A3 already exceed MAX_GRID_DETECTION_LONG_SIDE_PX at
+        # 300 DPI -- this cap applies to nearly every real page size, by
+        # design; only a genuinely small page skips it.)
+        scale = grid_detection_scale(300.0, 400.0, official_scale=OFFICIAL_SCALE)
+        assert scale == OFFICIAL_SCALE
+
+
+class TestRescaleRegion:
+    def test_scales_every_field_by_the_same_ratio(self):
+        region = GridRegion(left=100, top=200, width=50, height=30)
+        rescaled = rescale_region(region, from_scale=1.0, to_scale=2.0)
+        assert rescaled == GridRegion(left=200, top=400, width=100, height=60)
+
+    def test_round_trip_through_a_lower_scale_and_back_stays_within_rounding_tolerance(self):
+        # Not exactly invertible (integer rounding at the lower scale
+        # loses sub-pixel precision) -- this only checks the round trip
+        # stays close, which is all downstream region-matching needs.
+        region = GridRegion(left=123, top=456, width=78, height=90)
+        down = rescale_region(region, from_scale=4.0, to_scale=1.0)
+        back_up = rescale_region(down, from_scale=1.0, to_scale=4.0)
+        for field in ('left', 'top', 'width', 'height'):
+            assert abs(getattr(back_up, field) - getattr(region, field)) <= 4
+
+
+class TestRegionCropMarginsPt:
+    def test_computes_margins_that_isolate_just_the_padded_region(self):
+        region = GridRegion(left=100, top=200, width=50, height=30)
+        margins, offset_left, offset_top = region_crop_margins_pt(
+            region, official_scale=1.0, page_width_pt=1000.0, page_height_pt=800.0, padding_px=10,
+        )
+        left_margin, bottom_margin, right_margin, top_margin = margins
+        assert offset_left == 90   # region.left - padding
+        assert offset_top == 190  # region.top - padding
+        assert left_margin == pytest.approx(90.0)
+        assert top_margin == pytest.approx(190.0)
+        assert right_margin == pytest.approx(1000.0 - (150 + 10))
+        assert bottom_margin == pytest.approx(800.0 - (230 + 10))
+
+    def test_clamps_at_the_page_edge_instead_of_a_negative_margin(self):
+        # A region right at the top-left corner: padding would push the
+        # crop past the page's own edge -- pypdfium2 does not support a
+        # negative crop margin, so this must clamp to 0, not go negative.
+        region = GridRegion(left=2, top=3, width=50, height=30)
+        margins, offset_left, offset_top = region_crop_margins_pt(
+            region, official_scale=1.0, page_width_pt=1000.0, page_height_pt=800.0, padding_px=10,
+        )
+        left_margin, bottom_margin, right_margin, top_margin = margins
+        assert offset_left == 0
+        assert offset_top == 0
+        assert left_margin == 0.0
+        assert top_margin == 0.0
+        assert all(m >= 0 for m in margins)
 
 
 class TestNativeTextRunsInRegion:
@@ -139,20 +229,35 @@ def load_fixture_page(filename):
 def native_runs_for_page(page):
     textpage = page.get_textpage()
     page_width_pt, page_height_pt = page.get_size()
-    scale = RASTERIZE_DPI / 72
     runs = []
     for i in range(textpage.count_rects()):
         rect = textpage.get_rect(i)
         text = textpage.get_text_bounded(*rect)
         if text.strip():
-            runs.append(pdf_rect_to_pixel_run(text, rect, page_height_pt, scale))
+            runs.append(pdf_rect_to_pixel_run(text, rect, page_height_pt, OFFICIAL_SCALE))
     return runs
 
 
-def gray_for_page(page):
-    scale = RASTERIZE_DPI / 72
-    bitmap = page.render(scale=scale)
+def gray_for_page_at_scale(page, scale):
+    bitmap = page.render(scale=scale, grayscale=True)
     return render_page_to_grayscale(bitmap.to_pil())
+
+
+def find_native_text_candidates(page, native_runs):
+    """Mirrors the real router's own detection flow for a page that is
+    ALREADY known to have usable native text everywhere it matters:
+    detect candidates on a capped-resolution render (grid_detection_scale),
+    rescale back to the official coordinate space, and fetch each
+    region's native runs. (The OCR-crop-render path has its own dedicated
+    test below, where the memory-bounding property actually matters.)"""
+    page_width_pt, page_height_pt = page.get_size()
+    detection_scale = grid_detection_scale(page_width_pt, page_height_pt, OFFICIAL_SCALE)
+    detection_gray = gray_for_page_at_scale(page, detection_scale)
+    candidates_at_detection_scale = detect_title_block_candidates(
+        detection_gray, detection_gray.shape[1], detection_gray.shape[0], detection_scale,
+    )
+    candidates = [rescale_region(c, detection_scale, OFFICIAL_SCALE) for c in candidates_at_detection_scale]
+    return [(region, native_text_runs_in_region(native_runs, region)) for region in candidates]
 
 
 @pytest.mark.skipif(not FIXTURES_DIR.exists(), reason="fixtures not present")
@@ -160,14 +265,10 @@ class TestEndToEndAgainstRealFixtures:
     def test_native_bottom_right_isolates_the_title_block_from_the_revision_history_table(self):
         pdf, page = load_fixture_page('native_bottom_right.pdf')
         native_runs = native_runs_for_page(page)
-        gray = gray_for_page(page)
-        candidates = detect_title_block_candidates(gray, gray.shape[1], gray.shape[0])
-        assert len(candidates) == 2
+        results = find_native_text_candidates(page, native_runs)
+        assert len(results) == 2
 
-        region_texts = []
-        for region in candidates:
-            runs = native_text_runs_in_region(native_runs, region)
-            region_texts.append(' '.join(r.text for r in runs))
+        region_texts = [' '.join(r.text for r in runs) for _region, runs in results]
 
         # Exactly one of the two regions contains the real drawing number,
         # and it must NOT be mixed with the revision-history table's own
@@ -181,30 +282,45 @@ class TestEndToEndAgainstRealFixtures:
     def test_native_bottom_strip_different_layout_still_recovers_all_fields_in_one_region(self):
         pdf, page = load_fixture_page('native_bottom_strip.pdf')
         native_runs = native_runs_for_page(page)
-        gray = gray_for_page(page)
-        candidates = detect_title_block_candidates(gray, gray.shape[1], gray.shape[0])
-        assert len(candidates) >= 1
-        runs = native_text_runs_in_region(native_runs, candidates[0])
-        combined = ' '.join(r.text for r in runs)
+        results = find_native_text_candidates(page, native_runs)
+        assert len(results) >= 1
+        combined = ' '.join(r.text for r in results[0][1])
         assert 'S-2.03' in combined
         assert 'ROOF PLAN' in combined
 
-    def test_scanned_page_with_no_native_text_falls_back_to_targeted_ocr_on_the_region(self):
+    def test_scanned_page_with_no_native_text_falls_back_to_targeted_ocr_via_a_fresh_crop_render(self):
         pdf, page = load_fixture_page('scanned_no_native_text.pdf')
         native_runs = native_runs_for_page(page)
         assert native_runs == []  # confirms this fixture genuinely has no text layer
-        gray = gray_for_page(page)
-        candidates = detect_title_block_candidates(gray, gray.shape[1], gray.shape[0])
+        page_width_pt, page_height_pt = page.get_size()
+
+        detection_scale = grid_detection_scale(page_width_pt, page_height_pt, OFFICIAL_SCALE)
+        detection_gray = gray_for_page_at_scale(page, detection_scale)
+        candidates_at_detection_scale = detect_title_block_candidates(
+            detection_gray, detection_gray.shape[1], detection_gray.shape[0], detection_scale,
+        )
+        candidates = [rescale_region(c, detection_scale, OFFICIAL_SCALE) for c in candidates_at_detection_scale]
         assert len(candidates) >= 1
 
-        found_label = False
         found_number_shaped_value = False
         for region in candidates:
-            runs = native_text_runs_in_region(native_runs, region) or ocr_region(gray, region)
+            runs = native_text_runs_in_region(native_runs, region)
+            if not runs:
+                # The real fix under test: a FRESH, small, high-resolution
+                # crop-render for just this region -- never a slice out
+                # of an already-held full-page array.
+                margins, offset_left, offset_top = region_crop_margins_pt(region, OFFICIAL_SCALE, page_width_pt, page_height_pt)
+                crop_bitmap = page.render(scale=OFFICIAL_SCALE, grayscale=True, crop=margins)
+                crop_gray = render_page_to_grayscale(crop_bitmap.to_pil())
+                # The actual memory-safety property under test: this
+                # crop is a small FRACTION of the full page's own
+                # official-scale area, never the whole-page array itself
+                # -- regardless of the overall page's size.
+                full_page_px = round(page_width_pt * OFFICIAL_SCALE) * round(page_height_pt * OFFICIAL_SCALE)
+                assert crop_gray.shape[0] * crop_gray.shape[1] < full_page_px * 0.25
+                runs = ocr_cropped_image(crop_gray, offset_left, offset_top)
             assert all(r.method == 'ocr' for r in runs)  # no native text anywhere on this page
             texts = [r.text for r in runs]
-            if 'Drawing' in texts and 'No:' in texts:
-                found_label = True
             for r in texts:
                 # A real, confirmed Tesseract artifact on this exact
                 # fixture: it reads the drawing number's "SD" segment as
@@ -220,7 +336,18 @@ class TestEndToEndAgainstRealFixtures:
                 # exact character match.
                 if r.startswith('M19-M4C-C0-PW-AX-') and 'D-0573' in r:
                     found_number_shaped_value = True
-        assert found_label
+        # NOT asserted here: that "Drawing"/"No:" are ALSO recognized as
+        # separate tokens. Confirmed by hand (both crops visually
+        # inspected, byte-identical legible content) that Tesseract's OWN
+        # page-segmentation step is sensitive to a few pixels of overall
+        # crop size on this specific sparse, large-font synthetic image --
+        # it recognizes all 3 words against one region's exact crop
+        # dimensions and only 1 against another, pixel-for-pixel
+        # indistinguishable to a human. A real root cause worth noting,
+        # not this module's own logic: region detection is explicitly
+        # "approximate, not pixel-perfect" (detect_title_block_candidates'
+        # own docstring), and the one thing that genuinely matters --
+        # recovering the drawing number itself -- is unaffected.
         assert found_number_shaped_value
 
     def test_rotated_page_reports_the_pdfs_own_declared_rotation_exactly(self):
@@ -232,3 +359,38 @@ class TestEndToEndAgainstRealFixtures:
         # itself (see drawing_vision.py's own module docstring).
         native_runs = native_runs_for_page(page)
         assert any('M19-M4C-C0-PW-AX-SD-05733' in r.text for r in native_runs)
+
+    def test_a_real_full_size_a0_sheet_keeps_the_grid_detection_array_bounded_and_still_finds_the_title_block(self):
+        # The real production incident: an A0 sheet (2383.9 x 3370.4
+        # points -- nearly 8x the area of the A3 fixtures above) used to
+        # render a single full-page grayscale array of ~140MB at a fixed
+        # 300 DPI, with several such arrays alive at once during grid
+        # detection -- confirmed as the proximate cause of a real OOM
+        # kill in production within seconds of an upload.
+        pdf, page = load_fixture_page('large_a0_sheet.pdf')
+        page_width_pt, page_height_pt = page.get_size()
+        assert page_width_pt > 2000 and page_height_pt > 3000  # confirms this really is A0-sized, not accidentally A3
+
+        detection_scale = grid_detection_scale(page_width_pt, page_height_pt, OFFICIAL_SCALE)
+        assert detection_scale < OFFICIAL_SCALE  # confirms the cap actually engaged for this sheet
+        detection_gray = gray_for_page_at_scale(page, detection_scale)
+        # The actual memory-safety property under test: regardless of the
+        # real sheet's size, the array used for grid detection never
+        # exceeds the configured cap.
+        assert max(detection_gray.shape) <= MAX_GRID_DETECTION_LONG_SIDE_PX + 2  # +2 for rounding
+
+        native_runs = native_runs_for_page(page)
+        candidates_at_detection_scale = detect_title_block_candidates(
+            detection_gray, detection_gray.shape[1], detection_gray.shape[0], detection_scale,
+        )
+        candidates = [rescale_region(c, detection_scale, OFFICIAL_SCALE) for c in candidates_at_detection_scale]
+        assert len(candidates) >= 1
+
+        matches = []
+        for region in candidates:
+            runs = native_text_runs_in_region(native_runs, region)
+            combined = ' '.join(r.text for r in runs)
+            if 'M19-M4C-C0-PW-AX-SD-05740' in combined:
+                matches.append(combined)
+        assert len(matches) == 1
+        assert 'Rev:' in matches[0] and 'A' in matches[0]

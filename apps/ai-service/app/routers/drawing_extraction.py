@@ -8,10 +8,13 @@ from pydantic import BaseModel
 from app.services.drawing_vision import (
     RASTERIZE_DPI,
     detect_title_block_candidates,
+    grid_detection_scale,
     native_text_runs_in_region,
-    ocr_region,
+    ocr_cropped_image,
     pdf_rect_to_pixel_run,
+    region_crop_margins_pt,
     render_page_to_grayscale,
+    rescale_region,
     whole_page_ocr,
 )
 
@@ -112,22 +115,49 @@ async def extract_structured(req: DrawingExtractionRequest) -> DrawingExtraction
 
     textpage = page.get_textpage()
     whole_page_native_text = textpage.get_text_range()
-    scale = RASTERIZE_DPI / 72
+    # The API's own contracted coordinate space: every region/run this
+    # endpoint reports lives here, regardless of what (lower) resolution
+    # was actually rendered for grid detection below -- see
+    # grid_detection_scale()'s own comment for why those are now
+    # deliberately different on a large sheet.
+    official_scale = RASTERIZE_DPI / 72
+    page_width_px = round(page_width_pt * official_scale)
+    page_height_px = round(page_height_pt * official_scale)
+
     native_runs = []
     for i in range(textpage.count_rects()):
         rect = textpage.get_rect(i)
         text = textpage.get_text_bounded(*rect)
         if text.strip():
-            native_runs.append(pdf_rect_to_pixel_run(text, rect, page_height_pt, scale))
+            native_runs.append(pdf_rect_to_pixel_run(text, rect, page_height_pt, official_scale))
 
-    bitmap = page.render(scale=scale)
-    gray = render_page_to_grayscale(bitmap.to_pil())
-    page_height_px, page_width_px = gray.shape
+    # Real incident, confirmed in production: rendering the WHOLE page at
+    # a fixed 300 DPI OOM'd this service's 512MB container on a large
+    # (A1/A0-class) real engineering drawing sheet. This ONE render, at a
+    # resolution capped regardless of the real sheet's size (see
+    # grid_detection_scale()'s own comment), is the only full-page bitmap
+    # this endpoint ever holds in memory -- used for BOTH grid detection
+    # and, if truly needed, the whole-page-OCR last resort below. Native
+    # text extraction above needed no rasterization at all (vector data);
+    # a region actually needing OCR gets its own small, fresh, full-
+    # resolution crop-render further down, never sliced from this array.
+    detection_scale = grid_detection_scale(page_width_pt, page_height_pt, official_scale)
+    detection_bitmap = page.render(scale=detection_scale, grayscale=True)
+    detection_gray = render_page_to_grayscale(detection_bitmap.to_pil())
 
-    candidates = detect_title_block_candidates(gray, page_width_px, page_height_px)
+    candidates_at_detection_scale = detect_title_block_candidates(
+        detection_gray, detection_gray.shape[1], detection_gray.shape[0], detection_scale,
+    )
+    candidates = [rescale_region(c, detection_scale, official_scale) for c in candidates_at_detection_scale]
+
     regions: list[RegionWire] = []
     for region in candidates:
-        runs = native_text_runs_in_region(native_runs, region) or ocr_region(gray, region)
+        runs = native_text_runs_in_region(native_runs, region)
+        if not runs:
+            crop_margins, offset_left, offset_top = region_crop_margins_pt(region, official_scale, page_width_pt, page_height_pt)
+            crop_bitmap = page.render(scale=official_scale, grayscale=True, crop=crop_margins)
+            crop_gray = render_page_to_grayscale(crop_bitmap.to_pil())
+            runs = ocr_cropped_image(crop_gray, offset_left, offset_top)
         regions.append(RegionWire(
             left=region.left, top=region.top, width=region.width, height=region.height,
             runs=[TextRunWire(text=r.text, left=r.left, top=r.top, width=r.width, height=r.height, conf=r.conf, method=r.method) for r in runs],
@@ -137,7 +167,13 @@ async def extract_structured(req: DrawingExtractionRequest) -> DrawingExtraction
     whole_page_ocr_text = None
     whole_page_ocr_confidence = None
     if not any_region_has_runs and len(whole_page_native_text.strip()) < MIN_USABLE_NATIVE_TEXT_LENGTH:
-        whole_page_ocr_text, whole_page_ocr_confidence = whole_page_ocr(gray)
+        # The genuinely rare, deepest-last-resort path: reuses the SAME
+        # (deliberately capped-resolution) array already rendered above
+        # rather than a second, full-resolution whole-page render -- a
+        # real memory-vs-quality tradeoff accepted deliberately, only on
+        # a path that is rare by construction and was already a "worst
+        # case" cost in this pipeline's design.
+        whole_page_ocr_text, whole_page_ocr_confidence = whole_page_ocr(detection_gray)
 
     return DrawingExtractionResponse(
         page_count=page_count,
