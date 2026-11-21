@@ -17,6 +17,7 @@ import { resolveOrgMapping } from './extraction/org-mapping-lookup';
 import type { RegisterSiteDrawingDto } from './dto/register-drawing.dto';
 import type { RegisterSiteDrawingRevisionDto } from './dto/register-revision.dto';
 import type { CompleteOfflinePackageDto } from './dto/offline-package.dto';
+import type { UpdateSiteDrawingDto } from './dto/update-site-drawing.dto';
 
 const DRAWING_MAX_SIZE_BYTES = 200 * 1024 * 1024; // 200 MB: larger than the floor-plan drawings cap; real IFC/architectural PDF sets run bigger
 const DRAWING_ALLOWED_EXTENSIONS = new Set(['pdf']);
@@ -355,6 +356,44 @@ export class SiteDrawingsService {
         ? (await sql<SiteDrawingRevisionRow[]>`SELECT * FROM site_drawing_revisions WHERE id = ${drawing.currentRevisionId}`)[0]
         : undefined;
       return { ...toSiteDrawing(drawing), currentRevision: revision ? toSiteDrawingRevision(revision) : null };
+    });
+  }
+
+  // An authorized user's correction of a drawing already sitting in the
+  // main register -- not a pending-review item, just a plain mistake the
+  // extractor made that nobody caught until later. Same correction
+  // capability SiteDrawingImportService.resolveReview() already offers,
+  // made reachable outside the Review Queue (that flow only ever sees a
+  // revision while its extractionStatus is NEEDS_REVIEW/CONFLICT; once
+  // promoted into the register there was previously no way back in).
+  // COALESCE keeps every omitted field exactly as it was, same pattern
+  // resolveReview() itself uses.
+  async updateDrawing(companyId: string, projectId: string, drawingId: string, dto: UpdateSiteDrawingDto): Promise<SiteDrawingWithCurrentRevision> {
+    if (dto.drawingNumber === undefined && dto.drawingTitle === undefined && dto.revisionNumber === undefined) {
+      throw new BadRequestException('Provide at least one field to update.');
+    }
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+    return this.db.withTenant(companyId, async (sql) => {
+      const [drawing] = await sql<SiteDrawingRow[]>`SELECT * FROM site_drawings WHERE id = ${drawingId} AND project_id = ${projectId}`;
+      if (!drawing) throw new NotFoundException(`Drawing ${drawingId} not found.`);
+
+      const [updated] = await sql<SiteDrawingRow[]>`
+        UPDATE site_drawings SET
+          drawing_number = COALESCE(${dto.drawingNumber ?? null}, drawing_number),
+          drawing_title = COALESCE(${dto.drawingTitle ?? null}, drawing_title)
+        WHERE id = ${drawingId} RETURNING *
+      `;
+
+      const revision = updated.currentRevisionId
+        ? (dto.revisionNumber
+          ? (await sql<SiteDrawingRevisionRow[]>`
+              UPDATE site_drawing_revisions SET revision_number = ${dto.revisionNumber}, updated_at = now()
+              WHERE id = ${updated.currentRevisionId} RETURNING *
+            `)[0]
+          : (await sql<SiteDrawingRevisionRow[]>`SELECT * FROM site_drawing_revisions WHERE id = ${updated.currentRevisionId}`)[0])
+        : undefined;
+
+      return { ...toSiteDrawing(updated), currentRevision: revision ? toSiteDrawingRevision(revision) : null };
     });
   }
 
@@ -742,6 +781,7 @@ interface SiteDrawingRevisionRow {
   documentClassification: SiteDrawingRevision['documentClassification']; suitabilityCode: string | null;
   extractionStatus: SiteDrawingRevision['extractionStatus']; extractedFieldsRaw: SiteDrawingRevision['extractedFieldsRaw'] | null;
   importBatchId: string | null; reviewNotes: string | null;
+  sourceProvider: SiteDrawingRevision['sourceProvider'] | null; sourceFileId: string | null;
   createdAt: string; updatedAt: string;
 }
 
@@ -798,7 +838,8 @@ function toSiteDrawingRevision(r: SiteDrawingRevisionRow): SiteDrawingRevision {
     isSuperseded: r.isSuperseded, offlineEligibility: r.offlineEligibility, synchronizationStatus: r.synchronizationStatus,
     uploadedBy: r.uploadedBy ?? undefined, documentClassification: r.documentClassification, suitabilityCode: r.suitabilityCode ?? undefined,
     extractionStatus: r.extractionStatus, extractedFieldsRaw: r.extractedFieldsRaw ?? undefined, importBatchId: r.importBatchId ?? undefined,
-    reviewNotes: r.reviewNotes ?? undefined, createdAt: r.createdAt, updatedAt: r.updatedAt,
+    reviewNotes: r.reviewNotes ?? undefined, sourceProvider: r.sourceProvider ?? undefined, sourceFileId: r.sourceFileId ?? undefined,
+    createdAt: r.createdAt, updatedAt: r.updatedAt,
   };
 }
 

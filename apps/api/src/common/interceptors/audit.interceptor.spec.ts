@@ -79,6 +79,22 @@ describe('deriveAction', () => {
       .toEqual({ action: 'project.updated', resourceType: 'project' });
   });
 
+  // Write-access feature: correcting a drawing's identity fields the
+  // extractor already got wrong. The ROUTE_MAP entry is deliberately
+  // UUID-shaped (not the file's usual generic [^/]+ for a trailing :id)
+  // so it can't accidentally swallow a sibling literal-suffix route below.
+  it('labels a manual drawing-identity correction (PATCH :id), not the generic update fallback', () => {
+    expect(deriveAction('PATCH', '/api/v1/projects/project-1/site-drawings/3fa85f64-5717-4562-b3fc-2c963f66afa6'))
+      .toEqual({ action: 'site_drawing.updated', resourceType: 'site_drawing' });
+  });
+
+  it('does not let the UUID-shaped drawing-update pattern swallow a literal-suffix sibling route', () => {
+    expect(deriveAction('POST', '/api/v1/projects/project-1/site-drawings/upload-url'))
+      .not.toEqual({ action: 'site_drawing.updated', resourceType: 'site_drawing' });
+    expect(deriveAction('POST', '/api/v1/projects/project-1/site-drawings/extract-fields'))
+      .not.toEqual({ action: 'site_drawing.updated', resourceType: 'site_drawing' });
+  });
+
   it('falls back to the generic URL-derived label for a genuinely unmapped route', () => {
     expect(deriveAction('POST', '/api/v1/projects/project-1/submittals'))
       .toEqual({ action: 'submittals.created', resourceType: 'submittals' });

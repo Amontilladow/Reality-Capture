@@ -153,6 +153,10 @@ export interface SiteDrawingSyncOutcome {
   drawingsSeen: number;
   drawingsCreated: number;
   revisionsCreated: number;
+  // A cross-source match (same drawing_number, already registered from a
+  // different provider) left un-promoted pending a human decision in the
+  // Review Queue, instead of silently registered as a second drawing.
+  conflictsCreated: number;
 }
 // Triggers an immediate sync rather than waiting for the sync job's own
 // 15-minute schedule (SiteDrawingSyncService): 'sharepoint' is the
@@ -162,6 +166,17 @@ export const triggerSiteDrawingSync = (projectId: string, provider: 'sharepoint'
 
 export const getSiteDrawing = (projectId: string, drawingId: string) =>
   apiGet<SiteDrawingWithCurrentRevision>(`${base(projectId)}/${drawingId}`);
+
+export interface UpdateSiteDrawingInput {
+  drawingNumber?: string;
+  drawingTitle?: string;
+  revisionNumber?: string;
+}
+// Corrects a drawing already sitting plainly in the register -- the gap
+// resolveReview() doesn't cover (that flow only ever sees a revision
+// while it's still pending in the Review Queue).
+export const updateSiteDrawing = (projectId: string, drawingId: string, input: UpdateSiteDrawingInput) =>
+  apiPatch<SiteDrawingWithCurrentRevision>(`${base(projectId)}/${drawingId}`, input);
 
 export const deleteSiteDrawing = (projectId: string, drawingId: string) =>
   apiDelete<{ message: string }>(`${base(projectId)}/${drawingId}`);

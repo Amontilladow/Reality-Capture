@@ -1,6 +1,7 @@
 import { AnimatedButton } from '../ui/AnimatedIcon';
 import aTrash from 'react-useanimations/lib/trash2';
 import aDownload from 'react-useanimations/lib/download';
+import aEdit from 'react-useanimations/lib/edit';
 import { confirmDialog } from '../../store/confirm.store';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -15,6 +16,7 @@ import {
 import { computeContentHash, saveOfflinePackage, deleteOfflinePackage } from '../../lib/site-drawings-offline';
 import { SiteDrawingPdfViewer } from './SiteDrawingPdfViewer';
 import { AddRevisionModal } from './AddRevisionModal';
+import { EditSiteDrawingModal } from './EditSiteDrawingModal';
 import {
   WORKFLOW_STATUS_LABELS, WORKFLOW_STATUS_TONE, sourceProviderLabel, formatVerifiedAt, formatDate, formatFileSize,
   needsApprovalWarning, isConfirmedCurrent, DOCUMENT_CLASSIFICATION_LABELS, siteDrawingOverlay,
@@ -34,6 +36,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const [addRevisionOpen, setAddRevisionOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [tab, setTab] = useState<'viewer' | 'history'>('viewer');
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [viewingRevision, setViewingRevision] = useState<SiteDrawingRevision | null>(null);
@@ -146,10 +149,16 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
               <div><span className="text-xs text-ink-500 block">Source</span>{sourceProviderLabel(drawing.sourceProvider)}</div>
               <div><span className="text-xs text-ink-500 block">Last verified</span>{revision ? formatVerifiedAt(revision.lastVerifiedAt) : '—'}</div>
               {revision?.isSuperseded && <StatusBadge tone="neutral" label="Superseded" />}
+              <AnimatedButton animation={aEdit} interaction="hover"
+                onClick={() => setEditOpen(true)}
+                className="btn-secondary ml-auto"
+              >
+                Edit
+              </AnimatedButton>
               <AnimatedButton animation={aTrash} interaction="hover"
                 onClick={async () => { if (await confirmDialog('Delete this drawing and its entire revision history? This cannot be undone.')) deleteMutation.mutate(); }}
                 disabled={deleteMutation.isPending}
-                className="btn-secondary !text-danger ml-auto"
+                className="btn-secondary !text-danger"
               >
                 {deleteMutation.isPending ? 'Deleting…' : 'Delete drawing'}
               </AnimatedButton>
@@ -272,6 +281,9 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
 
       {addRevisionOpen && drawing && (
         <AddRevisionModal open onClose={() => setAddRevisionOpen(false)} projectId={projectId} drawingId={drawingId} drawingTitle={drawing.drawingTitle} />
+      )}
+      {editOpen && drawing && (
+        <EditSiteDrawingModal open onClose={() => setEditOpen(false)} projectId={projectId} drawing={drawing} />
       )}
     </>
   );
