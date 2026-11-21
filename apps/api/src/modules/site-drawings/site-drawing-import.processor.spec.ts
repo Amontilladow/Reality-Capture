@@ -3,14 +3,12 @@ import type { ExtractedDrawingFields } from '@engineeringos/types';
 import { SiteDrawingImportProcessor } from './site-drawing-import.processor';
 import type { DatabaseService } from '../../database/database.service';
 import type { StorageService } from '../storage/storage.service';
-import type { AiClientService } from '../ai-client/ai-client.service';
+import type { AiClientService, DrawingExtractionResult } from '../ai-client/ai-client.service';
 import type { SiteDrawingsService } from './site-drawings.service';
-import * as pdfTextExtractor from './extraction/pdf-text-extractor';
 import * as zipExtraction from './extraction/zip-extraction.util';
 import * as rarExtraction from './extraction/rar-extraction.util';
 import * as extractDrawingFieldsModule from './extraction/extract-drawing-fields';
 
-jest.mock('./extraction/pdf-text-extractor');
 jest.mock('./extraction/zip-extraction.util');
 jest.mock('./extraction/rar-extraction.util');
 
@@ -60,9 +58,35 @@ function makeProcessor(withTenantSteps: ((callback: WithTenantCallback) => unkno
     getReadUrl: jest.fn().mockResolvedValue('https://signed.example/abc.pdf'),
     deleteIfExists: jest.fn().mockResolvedValue(undefined),
   } as unknown as StorageService;
-  const aiClient = { ocrExtractText: jest.fn() } as unknown as AiClientService;
+  const aiClient = { extractDrawingStructure: jest.fn() } as unknown as AiClientService;
   const siteDrawings = { notifyProjectMembers: jest.fn().mockResolvedValue(undefined) } as unknown as SiteDrawingsService;
   return { processor: new SiteDrawingImportProcessor(db, storage, aiClient, siteDrawings), db, storage, aiClient, siteDrawings, withTenant };
+}
+
+// Drawing Identification Engine replacement: the AI service's single
+// unified response shape. `regions: []` drives extract-drawing-fields.ts
+// straight to its whole-page fallback (native text first, then OCR text
+// if provided) -- the same effective behavior the old, separate
+// embedded-text/OCR mocks exercised, now through the new pipeline's own
+// "no title-block region detected" branch. Tests that care specifically
+// about the title-block-region path are in extract-drawing-fields.spec.ts
+// and text-run-structure.spec.ts; these processor-level tests only need
+// realistic END values to flow through reconcile()'s own governance logic.
+function mockExtraction(
+  aiClient: AiClientService,
+  opts: { nativeText?: string; ocrText?: string | null; pageCount?: number },
+): void {
+  const result: DrawingExtractionResult = {
+    pageCount: opts.pageCount ?? 1,
+    pageWidth: 2000,
+    pageHeight: 1500,
+    pageRotationDegrees: 0,
+    regions: [],
+    wholePageNativeText: opts.nativeText ?? '',
+    wholePageOcrText: opts.ocrText ?? null,
+    wholePageOcrConfidence: opts.ocrText ? 0.8 : null,
+  };
+  (aiClient.extractDrawingStructure as jest.Mock).mockResolvedValue(result);
 }
 
 const batchRow = { id: batchId, storageKey: 'batch-key.pdf', originalFilename: 'A-101.pdf', sourceSystem: 'manual_link' as const, uploadedBy: 'user-1' };
@@ -85,10 +109,8 @@ describe('SiteDrawingImportProcessor', () => {
   // when run after Test 8, never in isolation).
   beforeEach(() => jest.restoreAllMocks());
 
-  it('skips OCR entirely when the embedded text layer is already usable', async () => {
+  it('extracts fields from the AI service\'s whole-page native text when no title-block region is detected', async () => {
     (zipExtraction.extractPdfEntriesFromZip as jest.Mock).mockResolvedValue({ entries: [{ filename: 'A-101.pdf', buffer: Buffer.from('x') }] });
-    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: 'DRAWING NO: A-101\nREV: B', tableRows: [], pageCount: 1 });
-    (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
 
     const { processor, aiClient, withTenant } = makeProcessor([
       single(undefined), // markStarted
@@ -98,17 +120,16 @@ describe('SiteDrawingImportProcessor', () => {
       multi([[], [], [{ id: 'drawing-1' }], [{ id: 'revision-1' }], []]),
       single(undefined), // finish
     ]);
+    mockExtraction(aiClient, { nativeText: 'DRAWING NO: A-101\nREV: B' });
 
     await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
 
-    expect(aiClient.ocrExtractText).not.toHaveBeenCalled();
+    expect(aiClient.extractDrawingStructure).toHaveBeenCalledTimes(1);
     expect(withTenant).toHaveBeenCalledTimes(4);
   });
 
-  it('calls the OCR fallback only when the embedded text layer has nothing usable, and feeds its result into title-block extraction', async () => {
+  it('uses the AI service\'s whole-page OCR text when native text was insufficient', async () => {
     (zipExtraction.extractPdfEntriesFromZip as jest.Mock).mockResolvedValue({ entries: [{ filename: 'scan.pdf', buffer: Buffer.from('x') }] });
-    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: '', pageCount: 1 });
-    (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(false);
 
     const { processor, aiClient, storage } = makeProcessor([
       single(undefined), // markStarted
@@ -116,18 +137,16 @@ describe('SiteDrawingImportProcessor', () => {
       multi([[], [], [{ id: 'drawing-1' }], [{ id: 'revision-1' }], []]), // reconcile: SELECT existing (none), INSERT drawing, INSERT revision, UPDATE
       single(undefined), // finish
     ]);
-    (aiClient.ocrExtractText as jest.Mock).mockResolvedValue({ text: 'DRAWING NO: M-301\nREV: A', confidence: 0.9 });
+    mockExtraction(aiClient, { nativeText: '', ocrText: 'DRAWING NO: M-301\nREV: A' });
 
     await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
 
     expect(storage.getReadUrl).toHaveBeenCalled();
-    expect(aiClient.ocrExtractText).toHaveBeenCalledWith(companyId, projectId, 'https://signed.example/abc.pdf', 1);
+    expect(aiClient.extractDrawingStructure).toHaveBeenCalledWith(companyId, projectId, 'https://signed.example/abc.pdf', 1);
   });
 
-  it('degrades to NEEDS_REVIEW (never throws, never fails the batch) when the OCR fallback itself fails', async () => {
+  it('degrades to NEEDS_REVIEW (never throws, never fails the batch) when the AI service extraction call itself fails', async () => {
     (zipExtraction.extractPdfEntriesFromZip as jest.Mock).mockResolvedValue({ entries: [{ filename: 'scan.pdf', buffer: Buffer.from('x') }] });
-    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: '', pageCount: 1 });
-    (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(false);
 
     const { processor, aiClient, db } = makeProcessor([
       single(undefined), // markStarted
@@ -137,23 +156,22 @@ describe('SiteDrawingImportProcessor', () => {
       multi([[], [], [{ id: 'drawing-1' }], [{ id: 'revision-1' }], []]),
       single(undefined), // finish
     ]);
-    (aiClient.ocrExtractText as jest.Mock).mockRejectedValue(new Error('ai-service down'));
+    (aiClient.extractDrawingStructure as jest.Mock).mockRejectedValue(new Error('ai-service down'));
 
     await expect(processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never)).resolves.toBeUndefined();
-    expect(db.withTenant).toHaveBeenCalledTimes(4); // the batch still completes (COMPLETED/PARTIAL), never aborted by the OCR failure
+    expect(db.withTenant).toHaveBeenCalledTimes(4); // the batch still completes (COMPLETED/PARTIAL), never aborted by the extraction failure
   });
 
   it('sends one notification per batch (not per file), excluding the uploader, summarizing the outcome', async () => {
     (zipExtraction.extractPdfEntriesFromZip as jest.Mock).mockResolvedValue({ entries: [{ filename: 'A-101.pdf', buffer: Buffer.from('x') }] });
-    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: 'DRAWING NO: A-101\nREV: B', tableRows: [], pageCount: 1 });
-    (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
 
-    const { processor, siteDrawings } = makeProcessor([
+    const { processor, aiClient, siteDrawings } = makeProcessor([
       single(undefined), // markStarted
       single([batchRow]), // getBatch
       multi([[], [], [{ id: 'drawing-1' }], [{ id: 'revision-1' }], []]), // reconcile: created
       single(undefined), // finish
     ]);
+    mockExtraction(aiClient, { nativeText: 'DRAWING NO: A-101\nREV: B' });
 
     await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
 
@@ -175,10 +193,8 @@ describe('SiteDrawingImportProcessor', () => {
     // (the single-PDF path), never through extractPdfEntriesFromZip --
     // that mock must therefore carry the SAME buffer being hashed here.
     const buffer = Buffer.from('identical file bytes');
-    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: '', pageCount: 1 });
-    (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(false);
 
-    const { processor, storage, db } = makeProcessor([
+    const { processor, storage, aiClient, db } = makeProcessor([
       single(undefined), // markStarted
       single([batchRow]), // getBatch
       // reconcile: SELECT existing (found), SELECT currentRevision (same content hash) -> duplicate_skipped, no INSERT
@@ -190,6 +206,7 @@ describe('SiteDrawingImportProcessor', () => {
     ]);
     (storage.download as jest.Mock).mockResolvedValue(buffer);
     (storage.getReadUrl as jest.Mock).mockResolvedValue('https://signed.example/abc.pdf');
+    mockExtraction(aiClient, { nativeText: '', ocrText: null });
 
     await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
 
@@ -204,10 +221,6 @@ describe('SiteDrawingImportProcessor', () => {
     // than the current one ('A'); both gates (Phase 1/2) must pass for
     // this to auto-promote at all.
     const buffer = Buffer.from('a real new revision of the drawing');
-    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({
-      text: 'DRAWING NO: A-101\nREV: B\nTITLE: Ground Floor Plan', tableRows: [], pageCount: 1,
-    });
-    (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
 
     const insertCalls: unknown[][] = [];
     const captureSql = (results: unknown[]) => (callback: WithTenantCallback) => {
@@ -216,7 +229,7 @@ describe('SiteDrawingImportProcessor', () => {
       return callback(sql);
     };
 
-    const { processor, db, storage } = makeProcessor([
+    const { processor, db, storage, aiClient } = makeProcessor([
       single(undefined), // markStarted
       single([batchRow]), // getBatch
       // reconcile: SELECT existing, SELECT currentRevision (rev 'A', different hash), SELECT usedRevisionNumbers (just 'A', no collision with 'B'), INSERT newRevision, supersede UPDATE, UPDATE current_revision_id
@@ -231,6 +244,7 @@ describe('SiteDrawingImportProcessor', () => {
       single(undefined), // finish
     ]);
     (storage.download as jest.Mock).mockResolvedValue(buffer);
+    mockExtraction(aiClient, { nativeText: 'DRAWING NO: A-101\nREV: B\nTITLE: Ground Floor Plan' });
 
     await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
 
@@ -250,8 +264,6 @@ describe('SiteDrawingImportProcessor', () => {
     // be preserved as a pending CONFLICT, with the existing drawing's
     // current revision left completely untouched.
     const buffer = Buffer.from('a different physical drawing with no readable title');
-    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: 'DRAWING NO: A-101', tableRows: [], pageCount: 1 });
-    (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
 
     const insertCalls: unknown[][] = [];
     const captureSql = (results: unknown[]) => (callback: WithTenantCallback) => {
@@ -260,7 +272,7 @@ describe('SiteDrawingImportProcessor', () => {
       return callback(sql);
     };
 
-    const { processor, storage } = makeProcessor([
+    const { processor, storage, aiClient } = makeProcessor([
       single(undefined), // markStarted
       single([batchRow]), // getBatch
       captureSql([
@@ -272,6 +284,7 @@ describe('SiteDrawingImportProcessor', () => {
       single(undefined), // finish
     ]);
     (storage.download as jest.Mock).mockResolvedValue(buffer);
+    mockExtraction(aiClient, { nativeText: 'DRAWING NO: A-101' });
 
     await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
 
@@ -294,10 +307,6 @@ describe('SiteDrawingImportProcessor', () => {
     // processed out of order (e.g. ZIP entry order, not real chronology)
     // must never become current.
     const buffer = Buffer.from('an older revision, uploaded/processed after the newer one');
-    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({
-      text: 'DRAWING NO: A-101\nREV: A\nTITLE: Ground Floor Plan', tableRows: [], pageCount: 1,
-    });
-    (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
 
     const insertCalls: unknown[][] = [];
     const captureSql = (results: unknown[]) => (callback: WithTenantCallback) => {
@@ -306,7 +315,7 @@ describe('SiteDrawingImportProcessor', () => {
       return callback(sql);
     };
 
-    const { processor, storage } = makeProcessor([
+    const { processor, storage, aiClient } = makeProcessor([
       single(undefined), // markStarted
       single([batchRow]), // getBatch
       captureSql([
@@ -318,6 +327,7 @@ describe('SiteDrawingImportProcessor', () => {
       single(undefined), // finish
     ]);
     (storage.download as jest.Mock).mockResolvedValue(buffer);
+    mockExtraction(aiClient, { nativeText: 'DRAWING NO: A-101\nREV: A\nTITLE: Ground Floor Plan' });
 
     await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
 
@@ -334,10 +344,8 @@ describe('SiteDrawingImportProcessor', () => {
     // second "UNVERIFIED"; it must be disambiguated and routed to review
     // instead of silently dropped.
     const buffer = Buffer.from('a different file, same failed-extraction fallback label');
-    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: '', pageCount: 1 });
-    (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(false);
 
-    const { processor, db, storage } = makeProcessor([
+    const { processor, db, storage, aiClient } = makeProcessor([
       single(undefined), // markStarted
       single([batchRow]), // getBatch
       // reconcile: SELECT existing, SELECT currentRevision ('UNVERIFIED', different hash), SELECT usedRevisionNumbers (just 'UNVERIFIED', collides), INSERT newRevision ('UNVERIFIED-v2'), supersede UPDATE, UPDATE current_revision_id
@@ -352,6 +360,7 @@ describe('SiteDrawingImportProcessor', () => {
       single(undefined), // finish
     ]);
     (storage.download as jest.Mock).mockResolvedValue(buffer);
+    mockExtraction(aiClient, { nativeText: '', ocrText: null });
 
     await expect(processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never)).resolves.toBeUndefined();
     expect(db.withTenant).toHaveBeenCalledTimes(4);
@@ -414,8 +423,6 @@ describe('SiteDrawingImportProcessor', () => {
     // confirmed by hand against production, `duplicate key value violates
     // unique constraint "site_drawing_revisions_drawing_id_revision_number_key"`.
     const buffer = Buffer.from('yet another reimport, different content, same failed-extraction fallback label');
-    (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: '', pageCount: 1 });
-    (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(false);
 
     const insertCalls: unknown[][] = [];
     const captureSql = (results: unknown[]) => (callback: WithTenantCallback) => {
@@ -424,7 +431,7 @@ describe('SiteDrawingImportProcessor', () => {
       return callback(sql);
     };
 
-    const { processor, db, storage } = makeProcessor([
+    const { processor, db, storage, aiClient } = makeProcessor([
       single(undefined), // markStarted
       single([batchRow]), // getBatch
       captureSql([
@@ -438,6 +445,7 @@ describe('SiteDrawingImportProcessor', () => {
       single(undefined), // finish
     ]);
     (storage.download as jest.Mock).mockResolvedValue(buffer);
+    mockExtraction(aiClient, { nativeText: '', ocrText: null });
 
     await expect(processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never)).resolves.toBeUndefined();
     expect(db.withTenant).toHaveBeenCalledTimes(4); // never aborted into the per-file error path
@@ -503,10 +511,6 @@ describe('SiteDrawingImportProcessor', () => {
       // recognized prefix+number), so compareRevisionOrder() can only
       // ever call it 'ambiguous' against any real current label.
       const buffer = Buffer.from('a real reimport whose own revision could not be read this time');
-      (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({
-        text: 'DRAWING NO: A-101\nTITLE: Ground Floor Plan', tableRows: [], pageCount: 1,
-      });
-      (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
 
       const insertCalls: unknown[][] = [];
       const captureSql = (results: unknown[]) => (callback: WithTenantCallback) => {
@@ -515,7 +519,7 @@ describe('SiteDrawingImportProcessor', () => {
         return callback(sql);
       };
 
-      const { processor, storage } = makeProcessor([
+      const { processor, storage, aiClient } = makeProcessor([
         single(undefined), // markStarted
         single([batchRow]), // getBatch
         captureSql([
@@ -527,6 +531,7 @@ describe('SiteDrawingImportProcessor', () => {
         single(undefined), // finish
       ]);
       (storage.download as jest.Mock).mockResolvedValue(buffer);
+      mockExtraction(aiClient, { nativeText: 'DRAWING NO: A-101\nTITLE: Ground Floor Plan' });
 
       await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
 
@@ -714,14 +719,6 @@ describe('SiteDrawingImportProcessor', () => {
       (zipExtraction.extractPdfEntriesFromZip as jest.Mock).mockResolvedValue({
         entries: [{ filename: 'multi-sheet.pdf', buffer: Buffer.from('x') }], skippedNonPdf: [], rejectedUnsafe: [],
       });
-      // A confident, complete-looking extraction -- drawing number, title
-      // AND revision all present -- but the file has 3 pages; only page 1
-      // was actually read, so this must still degrade to NEEDS_REVIEW
-      // rather than being reported as a clean, fully-confirmed read.
-      (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({
-        text: 'DRAWING NO: A-101\nREV: B\nTITLE: Ground Floor Plan', tableRows: [], pageCount: 3,
-      });
-      (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
 
       const insertCalls: unknown[][] = [];
       const captureSql = (results: unknown[]) => (callback: WithTenantCallback) => {
@@ -730,12 +727,17 @@ describe('SiteDrawingImportProcessor', () => {
         return callback(sql);
       };
 
-      const { processor } = makeProcessor([
+      const { processor, aiClient } = makeProcessor([
         single(undefined), // markStarted
         single([batchRow]), // getBatch
         captureSql([[], [], [{ id: 'drawing-1' }], [{ id: 'revision-1' }], []]), // new drawing: created
         single(undefined), // finish
       ]);
+      // A confident, complete-looking extraction -- drawing number, title
+      // AND revision all present -- but the file has 3 pages; only page 1
+      // was actually read, so this must still degrade to NEEDS_REVIEW
+      // rather than being reported as a clean, fully-confirmed read.
+      mockExtraction(aiClient, { nativeText: 'DRAWING NO: A-101\nREV: B\nTITLE: Ground Floor Plan', pageCount: 3 });
 
       await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
 

@@ -21,13 +21,12 @@ RUN mkdir -p /out \
 # ---- Stage 2: the service
 FROM python:3.12-slim
 WORKDIR /app
-# poppler-utils backs pdf2image's PDF-to-image rasterization for the OCR
-# fallback (Drawing Intelligence & Control, Decision 1) -- used here only
-# as an external CLI (pdftoppm/pdftocairo) invoked as a subprocess, never
-# linked into this Python process, so its GPL-2.0 license never extends
-# to this application's own code (the same "arm's length" reasoning
-# site-drawings' SharePointGraphClient applies to poppler on the Node side).
-RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng poppler-utils libpango-1.0-0 libpangocairo-1.0-0 && rm -rf /var/lib/apt/lists/*
+# tesseract-ocr backs the Drawing Intelligence Engine's targeted-OCR step
+# (app/services/drawing_vision.py) -- poppler-utils was removed here:
+# pypdfium2 now does PDF rasterization itself (Apache-2.0/BSD, replacing
+# pdf2image's poppler subprocess entirely), so nothing in this service
+# shells out to poppler any more.
+RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng libpango-1.0-0 libpangocairo-1.0-0 && rm -rf /var/lib/apt/lists/*
 # This container gets 0.5 CPU on Render's starter plan; torch/tokenizers
 # default to intra-op thread counts sized off the host's full core count,
 # which they can't see is cgroup-limited here, each thread carries its own

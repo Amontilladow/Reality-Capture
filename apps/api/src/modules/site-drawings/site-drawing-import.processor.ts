@@ -289,7 +289,8 @@ export class SiteDrawingImportProcessor {
     let baseExtractionStatus: 'CONFIRMED' | 'NEEDS_REVIEW' = fields && isConfidentExtraction(fields) ? 'CONFIRMED' : 'NEEDS_REVIEW';
 
     // Phase 6 (multi-page PDFs): this pipeline only ever reads page 1 (see
-    // extractEmbeddedText's own comment on why). A single-page file is
+    // extraction/extract-drawing-fields.ts's own comment on why). A
+    // single-page file is
     // exactly what every title block this architecture was built against
     // looks like; a multi-page one might be a multi-sheet set this
     // pipeline would otherwise silently treat as a single drawing with

@@ -1,4 +1,4 @@
-import type { ExtractedDrawingFields } from '@engineeringos/types';
+import type { DrawingFieldName, ExtractedDrawingFields, FieldEvidence, FieldExtractionMethod } from '@engineeringos/types';
 
 // Common title-block field patterns (brief section 3/Decision 3: "support
 // common drawing-number, title, revision and date patterns... do not
@@ -19,6 +19,14 @@ import type { ExtractedDrawingFields } from '@engineeringos/types';
 interface FieldMatch {
   value: string;
   confidence: number;
+  // Drawing Identification Engine replacement: WHERE this match was
+  // found, for the per-field evidence the brief asks for. Undefined for
+  // every match found by the whole-page functions below (there is no
+  // more specific location than "somewhere on the page"); set explicitly
+  // by the cell-scoped functions to "row R, col C". buildResult() below
+  // defaults an unset location to 'whole_page' when assembling evidence,
+  // so callers of THIS file never need to special-case the two paths.
+  location?: string;
 }
 
 // Drawing numbers in construction practice are short, structured codes:
@@ -61,6 +69,8 @@ const DRAWING_NUMBER_BARE = /\b([A-Z]{1,4}-\d{1,4}(?:\.\d{1,2})?|[A-Z0-9]{1,8}(?
 
 const REVISION_LABELED = /\brev(?:ision)?\.?\s*(?:no\.?)?\s*[:\-]?\s*([A-Z0-9]{1,3})\b/i;
 
+const PROJECT_LABELED = /\bproject\s*(?:no\.?|name|#)?\s*[:\-]?\s*([^\n\r]{3,120})/i;
+
 // A table-grid title block commonly puts a field's label and its value in
 // two ADJACENT cells (a label cell beside, or above, an otherwise-blank
 // value cell) rather than both in one cell -- confirmed by hand against a
@@ -73,7 +83,8 @@ const REVISION_LABELED = /\brev(?:ision)?\.?\s*(?:no\.?)?\s*[:\-]?\s*([A-Z0-9]{1
 const DRAWING_NUMBER_LABEL_ONLY = /^(?:drawing|dwg|sheet)\s*(?:no\.?|number|#)\s*[:\-]?$/i;
 const REVISION_LABEL_ONLY = /^rev(?:ision)?\.?\s*(?:no\.?)?\s*[:\-]?$/i;
 const TITLE_LABEL_ONLY = /^(?:drawing\s*)?title\s*[:\-]?$/i;
-const ANY_LABEL_ONLY_PATTERNS = [DRAWING_NUMBER_LABEL_ONLY, REVISION_LABEL_ONLY, TITLE_LABEL_ONLY];
+const PROJECT_LABEL_ONLY = /^project\s*(?:no\.?|name|#)?\s*[:\-]?$/i;
+const ANY_LABEL_ONLY_PATTERNS = [DRAWING_NUMBER_LABEL_ONLY, REVISION_LABEL_ONLY, TITLE_LABEL_ONLY, PROJECT_LABEL_ONLY];
 
 // A real "label row, then value row" layout (confirmed by hand: a
 // bordered grid whose top row is nothing but labels -- "Drawing No:",
@@ -82,8 +93,8 @@ const ANY_LABEL_ONLY_PATTERNS = [DRAWING_NUMBER_LABEL_ONLY, REVISION_LABEL_ONLY,
 // often ANOTHER LABEL, not that label's own value: there is no `validate`
 // function for revision/title (unlike the drawing number's digit check)
 // to reject that wrong candidate on its own. A real value should never
-// itself be nothing but one of these three known label shapes, so
-// rejecting a same-row/next-row candidate that matches ANY of them is a
+// itself be nothing but one of these known label shapes, so rejecting a
+// same-row/next-row candidate that matches ANY of them is a
 // general-purpose way to tell "this is someone else's label cell" apart
 // from "this is an actual value" regardless of which field is being
 // matched.
@@ -131,7 +142,20 @@ function matchLabeled(text: string, pattern: RegExp, confidence: number): FieldM
 // with no digits at all and falling through to the bare pattern catches
 // exactly that failure mode without needing real layout/position data.
 function isPlausibleDrawingNumber(value: string): boolean {
-  return /\d/.test(value);
+  if (!/\d/.test(value)) return false;
+  // A pure date ("13-02-2026") coincidentally satisfies the BARE
+  // multi-segment pattern too (three dash-separated numeric segments) --
+  // confirmed by hand as a real false-positive risk once per-region
+  // matching (the Drawing Identification Engine replacement) made a
+  // revision-history table's own "Date" column a standalone candidate on
+  // its own cell/region, with no other labeled text nearby to outrank
+  // it (previously masked in whole-page text by other, usually-present
+  // labeled fields). No real drawing number is formatted exactly like a
+  // calendar date, so a value that IS one is rejected outright, the same
+  // "fail closed, fall through to the next tier" treatment every other
+  // ambiguous-evidence case in this file already gets.
+  if (isNumericDateShape(value)) return false;
+  return true;
 }
 
 // A real production failure, confirmed by hand: a title block's own
@@ -148,14 +172,15 @@ function isPlausibleDrawingNumber(value: string): boolean {
 // falls through to no-revision-found (honest, review-routed) rather
 // than a wrong, confident-looking value -- the same defense
 // isPlausibleDrawingNumber already gives the drawing-number field.
-function isPlausibleRevision(value: string): boolean {
+export function isPlausibleRevision(value: string): boolean {
   return /^[A-Z0-9]{1,3}$/i.test(value.trim());
 }
 
 function extractDrawingNumber(text: string): FieldMatch | null {
   const labeled = matchLabeled(text, DRAWING_NUMBER_LABELED, 0.85);
   if (labeled && isPlausibleDrawingNumber(labeled.value)) return labeled;
-  return matchLabeled(text, DRAWING_NUMBER_BARE, 0.55);
+  const bare = matchLabeled(text, DRAWING_NUMBER_BARE, 0.55);
+  return bare && isPlausibleDrawingNumber(bare.value) ? bare : null;
 }
 
 function extractDiscipline(drawingNumber: string | undefined): string | undefined {
@@ -186,8 +211,16 @@ function isValidCalendarDate(year: number, month: number, day: number): boolean 
 // The numeric slash/dash pattern doesn't know if it's DD/MM or MM/DD
 // (both appear on consultant-issued drawings internationally), so a match
 // is accepted as long as EITHER reading is a real date -- only rejecting a
-// value where NEITHER order could possibly be valid.
-function isValidExtractedDate(value: string): boolean {
+// value where NEITHER order could possibly be valid. Deliberately strict
+// (ISO or fully-numeric slash/dash only, nothing else): used by
+// isPlausibleDrawingNumber() below on arbitrary matched text, where a
+// lenient check matters a great deal -- confirmed by hand that
+// `new Date(value)` (what isValidExtractedDate below uses for its OWN
+// separate, narrower purpose) parses plenty of non-date strings
+// "successfully" ("S-101", "M-301" all parse as SOME date to the native
+// Date constructor), which would make EVERY bare drawing number using
+// this shape look date-shaped.
+function isNumericDateShape(value: string): boolean {
   const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (iso) return isValidCalendarDate(Number(iso[1]), Number(iso[2]), Number(iso[3]));
 
@@ -196,10 +229,21 @@ function isValidExtractedDate(value: string): boolean {
     const [, a, b, year] = numeric;
     return isValidCalendarDate(Number(year), Number(a), Number(b)) || isValidCalendarDate(Number(year), Number(b), Number(a));
   }
+  return false;
+}
 
-  // The remaining two patterns are English month-name forms ("12 Mar
-  // 2025", "March 12, 2025"), which JS's Date constructor parses
-  // reliably; no day/month ambiguity to resolve since the month is named.
+// Only ever called on text that ALREADY matched one of DATE_PATTERNS'
+// own regexes (extractDate() below) -- the two patterns not covered by
+// isNumericDateShape() above are English month-name forms ("12 Mar
+// 2025", "March 12, 2025"), which JS's Date constructor parses reliably
+// and safely ONLY because the input is already known to be date-shaped
+// from matching one of those regexes first; no day/month ambiguity to
+// resolve since the month is named. Never call this on arbitrary
+// unconstrained text -- see isNumericDateShape()'s own comment on why.
+function isValidExtractedDate(value: string): boolean {
+  const iso = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const numeric = /^\d{1,2}[/-]\d{1,2}[/-]\d{4}$/.test(value);
+  if (iso || numeric) return isNumericDateShape(value);
   return !isNaN(new Date(value).getTime());
 }
 
@@ -218,13 +262,31 @@ function extractDate(text: string): string | undefined {
 // not found at all, same as an unrecognized layout.
 const DRAWING_NUMBER_CONFIDENCE_THRESHOLD = 0.5;
 
+// Drawing Identification Engine replacement: assembles the per-field
+// evidence map the brief asks for ("store the source location,
+// extraction method and supporting evidence for each field") from
+// whatever matches were found. A match with no `location` set (every
+// match the whole-page functions below produce) defaults to 'whole_page'
+// here -- the two extraction paths never need to special-case this
+// themselves.
+function buildFieldEvidence(
+  method: FieldExtractionMethod,
+  matches: Partial<Record<DrawingFieldName, FieldMatch | null | undefined>>,
+): Partial<Record<DrawingFieldName, FieldEvidence>> {
+  const evidence: Partial<Record<DrawingFieldName, FieldEvidence>> = {};
+  for (const [field, match] of Object.entries(matches) as [DrawingFieldName, FieldMatch | null | undefined][]) {
+    if (match) evidence[field] = { location: match.location ?? 'whole_page', method, rawText: match.value, confidence: match.confidence };
+  }
+  return evidence;
+}
+
 // Shared by extractTitleBlockFields() and extractTitleBlockFieldsFromCells()
 // below: both find the same shape of result (a drawing number plus
 // whatever else was found alongside it), just by searching different text
 // scopes.
 function buildResult(
   drawingNumberMatch: FieldMatch, revisionMatch: FieldMatch | null, titleMatch: FieldMatch | null,
-  issueDate: string | undefined, source: 'embedded_text' | 'ocr',
+  issueDateMatch: FieldMatch | null, projectMatch: FieldMatch | null, source: 'embedded_text' | 'ocr',
 ): ExtractedDrawingFields {
   // Overall confidence is the weakest link, not an average; a confident
   // drawing-number match next to a missing revision is still an uncertain
@@ -233,14 +295,30 @@ function buildResult(
   const confidences = [drawingNumberMatch.confidence, revisionMatch?.confidence ?? 0, titleMatch?.confidence ?? 0.5];
   const confidence = Math.min(...confidences) * (source === 'ocr' ? 0.85 : 1); // OCR is inherently less certain than the embedded text layer
 
+  const discipline = extractDiscipline(drawingNumberMatch.value);
+  const method: FieldExtractionMethod = source === 'ocr' ? 'ocr' : 'native_text';
+  const fieldEvidence = buildFieldEvidence(method, {
+    drawingNumber: drawingNumberMatch,
+    revisionNumber: revisionMatch,
+    drawingTitle: titleMatch,
+    issueDate: issueDateMatch,
+    projectName: projectMatch,
+  });
+  // discipline is DERIVED from drawingNumber, not matched independently --
+  // its own evidence says so explicitly rather than implying a second,
+  // independent extraction happened.
+  if (discipline) fieldEvidence.discipline = { location: 'derived_from_drawing_number', method, rawText: drawingNumberMatch.value, confidence: drawingNumberMatch.confidence };
+
   return {
     drawingNumber: drawingNumberMatch.value,
     drawingTitle: titleMatch?.value,
     revisionNumber: revisionMatch?.value,
-    issueDate,
-    discipline: extractDiscipline(drawingNumberMatch.value),
+    issueDate: issueDateMatch?.value,
+    projectName: projectMatch?.value,
+    discipline,
     source,
     confidence,
+    fieldEvidence,
   };
 }
 
@@ -255,16 +333,10 @@ export function extractTitleBlockFields(text: string, source: 'embedded_text' | 
 
   const revisionMatch = matchLabeled(text, REVISION_LABELED, 0.75);
   const titleMatch = matchLabeled(text, TITLE_LABELED, 0.7);
-  const issueDate = extractDate(text);
-  return buildResult(drawingNumberMatch, revisionMatch, titleMatch, issueDate, source);
-}
-
-function firstMatchAcrossCells(cells: string[], matcher: (cell: string) => FieldMatch | null): FieldMatch | null {
-  for (const cell of cells) {
-    const match = matcher(cell);
-    if (match) return match;
-  }
-  return null;
+  const projectMatch = matchLabeled(text, PROJECT_LABELED, 0.6);
+  const issueDateValue = extractDate(text);
+  const issueDateMatch = issueDateValue ? { value: issueDateValue, confidence: 1 } : null;
+  return buildResult(drawingNumberMatch, revisionMatch, titleMatch, issueDateMatch, projectMatch, source);
 }
 
 function cellAt(rows: string[][], r: number, c: number): string | undefined {
@@ -289,6 +361,9 @@ function cellAt(rows: string[][], r: number, c: number): string | undefined {
 // all. Either shape can win at any position; what matters is that a
 // labeled match (of any shape) from an earlier cell always outranks a
 // bare match from a later one.
+//
+// Every returned match carries its own `row R, col C` location, for the
+// per-field evidence buildResult() assembles.
 function matchLabeledAcrossCells(
   rows: string[][], combinedPattern: RegExp, labelOnlyPattern: RegExp, confidence: number, validate?: (value: string) => boolean,
 ): FieldMatch | null {
@@ -296,24 +371,44 @@ function matchLabeledAcrossCells(
     const row = rows[r];
     for (let c = 0; c < row.length; c++) {
       const combined = matchLabeled(row[c], combinedPattern, confidence);
-      if (combined && (!validate || validate(combined.value))) return combined;
+      if (combined && (!validate || validate(combined.value))) return { ...combined, location: `row ${r}, col ${c}` };
 
       if (labelOnlyPattern.test(row[c].trim())) {
         const sameRowNext = cellAt(rows, r, c + 1);
-        if (sameRowNext && !looksLikeLabelCell(sameRowNext) && (!validate || validate(sameRowNext))) return { value: sameRowNext, confidence };
+        if (sameRowNext && !looksLikeLabelCell(sameRowNext) && (!validate || validate(sameRowNext))) {
+          return { value: sameRowNext, confidence, location: `row ${r}, col ${c + 1}` };
+        }
 
         const nextRowSame = cellAt(rows, r + 1, c);
-        if (nextRowSame && !looksLikeLabelCell(nextRowSame) && (!validate || validate(nextRowSame))) return { value: nextRowSame, confidence };
+        if (nextRowSame && !looksLikeLabelCell(nextRowSame) && (!validate || validate(nextRowSame))) {
+          return { value: nextRowSame, confidence, location: `row ${r + 1}, col ${c}` };
+        }
       }
     }
   }
   return null;
 }
 
-function extractDrawingNumberFromCells(rows: string[][], flatCells: string[]): FieldMatch | null {
+// Tries `matcher` against every cell, row by row, left to right, and
+// tags whichever cell first matches with its own `row R, col C` location
+// -- the cell-based counterpart to a plain regex pass over flat text,
+// used for shapes (a bare drawing number, a date, anywhere) that don't
+// have a label to anchor a matchLabeledAcrossCells() search to.
+function firstMatchInRows(rows: string[][], matcher: (cell: string) => FieldMatch | null): FieldMatch | null {
+  for (let r = 0; r < rows.length; r++) {
+    for (let c = 0; c < rows[r].length; c++) {
+      const match = matcher(rows[r][c]);
+      if (match) return { ...match, location: `row ${r}, col ${c}` };
+    }
+  }
+  return null;
+}
+
+function extractDrawingNumberFromCells(rows: string[][]): FieldMatch | null {
   const labeled = matchLabeledAcrossCells(rows, DRAWING_NUMBER_LABELED, DRAWING_NUMBER_LABEL_ONLY, 0.85, isPlausibleDrawingNumber);
   if (labeled) return labeled;
-  return firstMatchAcrossCells(flatCells, (cell) => matchLabeled(cell, DRAWING_NUMBER_BARE, 0.55));
+  const bare = firstMatchInRows(rows, (cell) => matchLabeled(cell, DRAWING_NUMBER_BARE, 0.55));
+  return bare && isPlausibleDrawingNumber(bare.value) ? bare : null;
 }
 
 // A tempting next step here would be "guess the title from whichever
@@ -330,29 +425,34 @@ function extractDrawingNumberFromCells(rows: string[][], flatCells: string[]): F
 
 // The table-grid counterpart to extractTitleBlockFields() above: scopes
 // every field regex to one detected table cell's own text at a time
-// (pdf-parse's getTable(), via PdfTextResult.tableRows -- see that type's
-// own comment for why this is more reliable than matching across the
-// whole page, and why rows, not a flat cell list). A title block's label
-// and its value are visually always in the same bordered cell or an
-// immediately adjacent one, so confining the search this way makes the
-// cross-field contamination plain getText()-based matching is vulnerable
-// to structurally impossible for any two DIFFERENT fields, regardless of
-// how the PDF's content stream happened to serialize them. Returns null
-// (falls back to extractTitleBlockFields() against the whole page) when no
-// cell contains a plausible drawing number at all -- an untabled layout,
-// or a table that isn't actually the title block.
+// (either pdf-parse's getTable() vector-geometry detection, via
+// PdfTextResult.tableRows, or apps/ai-service's OpenCV-detected
+// title-block region + its own native-text/targeted-OCR runs, via
+// extraction/text-run-structure.ts's buildPseudoTableFromTextRuns() --
+// see PdfTextResult.tableRows's own comment for why rows, not a flat
+// cell list, are what make the second common layout below detectable at
+// all). A title block's label and its value are visually always in the
+// same bordered cell or an immediately adjacent one, so confining the
+// search this way makes the cross-field contamination plain text-based
+// matching is vulnerable to structurally impossible for any two
+// DIFFERENT fields, regardless of how the source serialized them.
+// Returns null (the caller falls back to extractTitleBlockFields()
+// against the whole page) when no cell contains a plausible drawing
+// number at all -- an untabled layout, or a table that isn't actually
+// the title block (e.g. a revision-history mini-table elsewhere on the
+// same page).
 export function extractTitleBlockFieldsFromCells(rows: string[][], source: 'embedded_text' | 'ocr'): ExtractedDrawingFields | null {
-  const flatCells = rows.flat();
-  const drawingNumberMatch = extractDrawingNumberFromCells(rows, flatCells);
+  const drawingNumberMatch = extractDrawingNumberFromCells(rows);
   if (!drawingNumberMatch || drawingNumberMatch.confidence < DRAWING_NUMBER_CONFIDENCE_THRESHOLD) return null;
 
   const revisionMatch = matchLabeledAcrossCells(rows, REVISION_LABELED, REVISION_LABEL_ONLY, 0.75, isPlausibleRevision);
   const titleMatch = matchLabeledAcrossCells(rows, TITLE_LABELED, TITLE_LABEL_ONLY, 0.7);
-  const issueDate = firstMatchAcrossCells(flatCells, (cell) => {
+  const projectMatch = matchLabeledAcrossCells(rows, PROJECT_LABELED, PROJECT_LABEL_ONLY, 0.6);
+  const issueDateMatch = firstMatchInRows(rows, (cell) => {
     const date = extractDate(cell);
     return date ? { value: date, confidence: 1 } : null;
-  })?.value;
-  return buildResult(drawingNumberMatch, revisionMatch, titleMatch, issueDate, source);
+  });
+  return buildResult(drawingNumberMatch, revisionMatch, titleMatch, issueDateMatch, projectMatch, source);
 }
 
 // The line between "trust this extraction enough to show it as confirmed"

@@ -2,21 +2,17 @@ import { Logger } from '@nestjs/common';
 import type { ExtractedDrawingFields } from '@engineeringos/types';
 import { StorageService } from '../../storage/storage.service';
 import { AiClientService } from '../../ai-client/ai-client.service';
-import { extractEmbeddedText, hasUsableEmbeddedText } from './pdf-text-extractor';
 import { extractTitleBlockFields, extractTitleBlockFieldsFromCells } from './title-block-extractor';
+import { buildPseudoTableFromTextRuns, type TextRun } from './text-run-structure';
+import { applyFieldVerification, extractSupplementaryRevisionFromHistoryTable, fillMissingFieldsFromSupplementarySources } from './verification';
 
 const logger = new Logger('extractDrawingFields');
 
-// Site Drawing Hub, extraction accuracy Phase 0: before this, there was
-// no way to tell WHICH path actually produced a given extraction in
-// production (table-cells, the whole-page fallback, OCR, or nothing at
-// all) without re-reading the file by hand -- the exact blind spot that
-// let the table-cell path silently never fire at all for months (see
-// rar-extraction.util.ts's sibling fix, pdf-parse's patched crash). One
-// structured log line per file is enough to answer, going forward and
-// from real data rather than a guess, how often each path actually runs
-// and how confident its results are.
-function logExtractionOutcome(label: string, path: 'table-cells' | 'whole-page' | 'ocr' | 'none', fields: ExtractedDrawingFields | null): void {
+// Site Drawing Hub, extraction accuracy Phase 0 (kept through the
+// Drawing Identification Engine replacement): one structured log line
+// per file is enough to answer, from real data rather than a guess, how
+// often each path actually runs and how confident its results are.
+function logExtractionOutcome(label: string, path: 'title-block-region' | 'whole-page' | 'none', fields: ExtractedDrawingFields | null): void {
   logger.log(
     `Extraction for "${label}": path=${path}, confidence=${fields?.confidence ?? 'n/a'}, `
     + `hasDrawingNumber=${Boolean(fields?.drawingNumber)}, hasRevision=${Boolean(fields?.revisionNumber)}, hasTitle=${Boolean(fields?.drawingTitle)}`,
@@ -25,24 +21,52 @@ function logExtractionOutcome(label: string, path: 'table-cells' | 'whole-page' 
 
 export interface DrawingFieldsExtractionResult {
   fields: ExtractedDrawingFields | null;
-  // Null only when even getInfo() failed (embedded-text extraction threw
-  // before it could report a page count at all) -- effectively "unknown",
+  // Null only when the AI service's own request failed outright (no
+  // page count could be reported at all) -- effectively "unknown",
   // never read as "single page" by a caller that cares about this (Site
   // Drawing Hub integrity hardening, Phase 6): a PDF with more than one
   // page may hold several independently-numbered sheets, which this
-  // pipeline only ever reads page 1 of (see extractEmbeddedText's own
-  // comment); callers that skip this field entirely and just read .fields
+  // pipeline only ever reads page 1 of (see the single aiClient call
+  // below). Callers that skip this field entirely and just read .fields
   // get the exact same behavior as before this existed.
   pageCount: number | null;
 }
 
+function regionSource(runs: TextRun[]): 'embedded_text' | 'ocr' {
+  // A region's runs are either ALL native or ALL targeted-OCR, never
+  // mixed (apps/ai-service's drawing_vision.py tries native text in a
+  // region first and only falls back to OCR when that region had none
+  // at all) -- checking for any OCR run is enough, but done rather than
+  // assuming the first run's method always represents the whole region.
+  return runs.some((run) => run.method === 'ocr') ? 'ocr' : 'embedded_text';
+}
+
+// Drawing Identification Engine replacement: a single call to
+// apps/ai-service's unified pipeline (native PDF text via pypdfium2,
+// OpenCV title-block grid detection, targeted OCR only where native text
+// is insufficient) replaces this function's previous two-path split
+// (a local embedded-text parse, then a separate OCR-fallback call).
+//
+// Every candidate title-block-shaped region the AI service found is
+// tried in its own ranked order, reconstructing each one's row/column
+// structure (text-run-structure.ts) and running it through the SAME
+// title-block field-matching engine (title-block-extractor.ts) the
+// system has always used -- unchanged by this replacement, since cell-
+// scoped matching is still what makes cross-field contamination
+// structurally impossible, regardless of whether a region's runs came
+// from native text or OCR. Only when NO region yields a plausible
+// drawing number at all does this fall back to whole-page matching
+// (native text first, the AI service's own whole-page OCR text only if
+// it computed one) -- the same "whole page is the last resort, never
+// the primary strategy" structure this pipeline has always had.
+//
 // Shared by SiteDrawingImportProcessor (a bulk ZIP/PDF import) and
 // SiteDrawingsService.extractFields() (a single manual upload via
-// "Register a drawing") -- same embedded-text-first, OCR-fallback pipeline
-// either way, so a drawing read the same way regardless of which path it
-// came in through. A failure anywhere here degrades to a null result
-// (manual entry required), never thrown: an extraction failure must not
-// block a drawing from being registered.
+// "Register a drawing") -- same pipeline either way, so a drawing read
+// the same way regardless of which path it came in through. A failure
+// anywhere here degrades to a null result (manual entry required),
+// never thrown: an extraction failure must not block a drawing from
+// being registered.
 export async function extractDrawingFields(
   storage: StorageService,
   aiClient: AiClientService,
@@ -53,37 +77,55 @@ export async function extractDrawingFields(
   label: string,
 ): Promise<DrawingFieldsExtractionResult> {
   let fields: ExtractedDrawingFields | null = null;
-  let hasUsableText = false;
   let pageCount: number | null = null;
   try {
-    const { text, tableRows, pageCount: pages } = await extractEmbeddedText(buffer);
-    pageCount = pages;
-    hasUsableText = hasUsableEmbeddedText(text);
-    if (hasUsableText) {
-      // Table-cell-scoped extraction first, when the page has a detected
-      // table (almost always the title block itself): structurally immune
-      // to one field's value landing on a different field, which plain
-      // whole-page matching below is not (see PdfTextResult.tableRows's
-      // own comment). Only when that finds no plausible drawing number at
-      // all -- no table on the page, or the table isn't the title block --
-      // does this fall back to the original whole-page regex pass.
-      const cellFields = extractTitleBlockFieldsFromCells(tableRows, 'embedded_text');
-      fields = cellFields ?? extractTitleBlockFields(text, 'embedded_text');
-      logExtractionOutcome(label, cellFields ? 'table-cells' : (fields ? 'whole-page' : 'none'), fields);
+    const readUrl = await storage.getReadUrl(storageKey, 300);
+    const result = await aiClient.extractDrawingStructure(companyId, projectId, readUrl, 1);
+    pageCount = result.pageCount;
+
+    let titleBlockFields: ExtractedDrawingFields | null = null;
+    let titleBlockRegionIndex = -1;
+    for (let i = 0; i < result.regions.length; i++) {
+      const region = result.regions[i];
+      if (region.runs.length === 0) continue;
+      const table = buildPseudoTableFromTextRuns(region.runs);
+      const candidate = extractTitleBlockFieldsFromCells(table, regionSource(region.runs));
+      if (candidate) {
+        titleBlockFields = candidate;
+        titleBlockRegionIndex = i;
+        break;
+      }
+    }
+
+    if (titleBlockFields) {
+      fields = titleBlockFields;
+      // A still-missing revision number can be filled from ANOTHER
+      // region that looks like a genuine revision-history table (never
+      // overriding the title block's own value -- see
+      // extractSupplementaryRevisionFromHistoryTable()'s and
+      // fillMissingFieldsFromSupplementarySources()'s own comments on
+      // why this precedence is structural, not a confidence comparison).
+      if (!fields.revisionNumber) {
+        for (let i = 0; i < result.regions.length; i++) {
+          if (i === titleBlockRegionIndex) continue;
+          const table = buildPseudoTableFromTextRuns(result.regions[i].runs);
+          const hint = extractSupplementaryRevisionFromHistoryTable(table);
+          if (hint) {
+            fields = fillMissingFieldsFromSupplementarySources(fields, { revisionNumber: hint });
+            break;
+          }
+        }
+      }
+      fields = applyFieldVerification(fields);
+      logExtractionOutcome(label, 'title-block-region', fields);
+    } else {
+      const wholePage = extractTitleBlockFields(result.wholePageNativeText, 'embedded_text')
+        ?? (result.wholePageOcrText ? extractTitleBlockFields(result.wholePageOcrText, 'ocr') : null);
+      fields = wholePage ? applyFieldVerification(wholePage) : null;
+      logExtractionOutcome(label, fields ? 'whole-page' : 'none', fields);
     }
   } catch (err) {
-    logger.warn(`Embedded-text extraction failed for "${label}": ${err instanceof Error ? err.message : String(err)}`);
-  }
-
-  if (!hasUsableText) {
-    try {
-      const readUrl = await storage.getReadUrl(storageKey, 300);
-      const ocrResult = await aiClient.ocrExtractText(companyId, projectId, readUrl, 1);
-      fields = extractTitleBlockFields(ocrResult.text, 'ocr');
-      logExtractionOutcome(label, fields ? 'ocr' : 'none', fields);
-    } catch (err) {
-      logger.warn(`OCR fallback failed for "${label}": ${err instanceof Error ? err.message : String(err)}`);
-    }
+    logger.warn(`Drawing structure extraction failed for "${label}": ${err instanceof Error ? err.message : String(err)}`);
   }
 
   return { fields, pageCount };

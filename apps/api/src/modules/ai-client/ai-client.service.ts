@@ -29,6 +29,69 @@ export interface IngestIssuePayload {
   locationName?: string | null;
 }
 
+// The raw shape apps/ai-service's /drawings/extract-structured actually
+// returns (snake_case: no camelCase conversion configured on that side).
+// Kept private to this file; extractDrawingStructure() below maps it
+// onto DrawingExtractionResult, this app's own normal convention.
+interface TextRunWire {
+  text: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  conf: number;
+  method: string; // 'native' | 'ocr'
+}
+interface RegionWire {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  runs: TextRunWire[];
+}
+interface DrawingExtractionWireResponse {
+  page_count: number;
+  page_width: number;
+  page_height: number;
+  page_rotation_degrees: number;
+  regions: RegionWire[];
+  whole_page_native_text: string;
+  whole_page_ocr_text?: string | null;
+  whole_page_ocr_confidence?: number | null;
+}
+
+export interface DrawingExtractionRegion {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  // Text run (@engineeringos/types) -- same shape extraction/
+  // text-run-structure.ts's buildPseudoTableFromTextRuns() consumes.
+  runs: { text: string; left: number; top: number; width: number; height: number; conf: number; method: 'native' | 'ocr' }[];
+}
+
+export interface DrawingExtractionResult {
+  pageCount: number;
+  pageWidth: number;
+  pageHeight: number;
+  // The PDF's own declared page rotation (exact, never a guessed OSD
+  // value) -- see apps/ai-service's drawing_vision.py module docstring
+  // for why. Reported for a caller that wants to flag a rotated page for
+  // review; nothing currently acts on it automatically.
+  pageRotationDegrees: number;
+  // Every candidate title-block-shaped grid region the AI service found,
+  // ranked (closest to a page edge, then largest) but not filtered --
+  // extract-drawing-fields.ts tries each in turn with its own
+  // drawing-number-plausibility check until one succeeds. Empty when no
+  // grid-shaped region was found at all.
+  regions: DrawingExtractionRegion[];
+  wholePageNativeText: string;
+  // Computed by the AI service only when truly nothing else produced
+  // any text at all; null when not attempted (the common case).
+  wholePageOcrText: string | null;
+  wholePageOcrConfidence: number | null;
+}
+
 /**
  * Talks to the Python AI service's ingestion endpoints so new captures and
  * issues become searchable (AI search, AI assistant) shortly after creation.
@@ -147,23 +210,49 @@ export class AiClientService {
   }
 
   /**
-   * OCR fallback for the Site Drawing Hub's extraction pipeline (Drawing
-   * Intelligence & Control, Decision 1): used only when a page's
-   * embedded text layer is missing/insufficient. pdfUrl must be a
-   * short-lived, already-authorized URL (StorageService.getReadUrl()),
-   * never a raw storage key or credential; the AI service fetches the
-   * bytes itself. Awaited and throws on failure, like the risk-briefing
-   * calls above; the caller (SiteDrawingImportProcessor) must catch and
-   * degrade to NEEDS_REVIEW rather than let an AI-service outage fail the
-   * whole import batch.
+   * Drawing Identification Engine replacement (Site Drawing Hub): the
+   * multi-stage page-vision pipeline (native-PDF-text extraction via
+   * pypdfium2, OpenCV title-block grid detection, targeted OCR only on
+   * the detected region) now lives entirely in apps/ai-service -- this
+   * is the single call that replaces the old embedded-text-local-parse
+   * + separate-OCR-fallback two-path split extract-drawing-fields.ts
+   * used to do itself. pdfUrl must be a short-lived, already-authorized
+   * URL (StorageService.getReadUrl()), never a raw storage key or
+   * credential; the AI service fetches the bytes itself. Awaited and
+   * throws on failure, like the risk-briefing calls above; the caller
+   * (extract-drawing-fields.ts) must catch and degrade to a null result
+   * (manual entry required) rather than let an AI-service outage fail
+   * the whole import batch.
+   *
+   * The AI service has no camelCase conversion configured (FastAPI/
+   * pydantic serialize using the declared Python field names as-is), so
+   * this maps its snake_case response onto this app's normal camelCase
+   * convention explicitly, same as every DB row mapper in this codebase
+   * already does for its own external shape.
    */
-  async ocrExtractText(companyId: string, projectId: string, pdfUrl: string, page = 1): Promise<{ text: string; confidence: number }> {
+  async extractDrawingStructure(companyId: string, projectId: string, pdfUrl: string, page = 1): Promise<DrawingExtractionResult> {
     const resp = await firstValueFrom(
-      this.http.post(`${this.baseUrl}/ocr/extract-text`, {
+      this.http.post<DrawingExtractionWireResponse>(`${this.baseUrl}/drawings/extract-structured`, {
         company_id: companyId, project_id: projectId, pdf_url: pdfUrl, page,
       }, { timeout: 30_000, headers: this.authHeaders }),
     );
-    return resp.data;
+    const data = resp.data;
+    return {
+      pageCount: data.page_count,
+      pageWidth: data.page_width,
+      pageHeight: data.page_height,
+      pageRotationDegrees: data.page_rotation_degrees,
+      regions: data.regions.map((region) => ({
+        left: region.left, top: region.top, width: region.width, height: region.height,
+        runs: region.runs.map((run) => ({
+          text: run.text, left: run.left, top: run.top, width: run.width, height: run.height,
+          conf: run.conf, method: run.method === 'native' ? 'native' : 'ocr',
+        })),
+      })),
+      wholePageNativeText: data.whole_page_native_text,
+      wholePageOcrText: data.whole_page_ocr_text ?? null,
+      wholePageOcrConfidence: data.whole_page_ocr_confidence ?? null,
+    };
   }
 
   deleteResource(collection: string, resourceId: string, companyId: string, projectId?: string): void {
