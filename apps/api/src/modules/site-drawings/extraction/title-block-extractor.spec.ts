@@ -189,6 +189,36 @@ describe('extractTitleBlockFieldsFromCells', () => {
     expect(result?.drawingNumber).toBe('M19-M4C-C0-PW-AX-SD-05713');
   });
 
+  it('rejects a revision-HISTORY table\'s own "Rev." column header paired with its "Date" column neighbor, never reporting "Date" as the revision', () => {
+    // Reproduces a real production bug found by hand against actual
+    // extracted title-block files: a revision-history log ("Rev. | Date
+    // | Reason For Issue", tracking every past issue of the drawing) is
+    // a separate small table that can appear anywhere on the page, and
+    // its own "Rev." column header is itself a bare REVISION_LABEL_ONLY
+    // match -- completely unrelated to the sheet's OWN current revision
+    // field. Pairing it with the next cell ("Date", that table's own
+    // next column header) produced a drawing whose revisionNumber was
+    // literally the word "Date". The real per-sheet revision field in
+    // the source file wasn't separately matchable at all (merged into
+    // an unrelated blob cell) -- the correct, honest result here is no
+    // revision found, not a wrong one.
+    //
+    // Row order below matches what pdf-parse's getTable() actually
+    // emits for the real file this reproduces (confirmed by hand): the
+    // history table's data rows come BEFORE its own header row, not
+    // after -- so "the row below the header" is the unrelated blob
+    // cell, never a coincidentally plausible-looking "00".
+    const rows = [
+      ['00', '------', '', 'ISSUED FOR APPROVAL'],
+      ['00', '13-02-2026', '', 'ISSUED FOR APPROVAL'],
+      ['Rev.', 'Date', '', 'Reason For Issue'],
+      ['Drawing No: M19-M4C-C0-PW-AX-SD-05731'],
+    ];
+    const result = extractTitleBlockFieldsFromCells(rows, 'embedded_text');
+    expect(result?.drawingNumber).toBe('M19-M4C-C0-PW-AX-SD-05731');
+    expect(result?.revisionNumber).toBeUndefined();
+  });
+
   it('pairs a bare label cell with the next cell as its value, for a layout where label and value are in separate adjacent cells of the SAME row', () => {
     // Confirmed by hand against a reproduction PDF built with a real
     // bordered grid (pdf-lib + pdf-parse's getTable()): a common title-

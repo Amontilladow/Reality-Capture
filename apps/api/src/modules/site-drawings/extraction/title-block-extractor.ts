@@ -134,6 +134,24 @@ function isPlausibleDrawingNumber(value: string): boolean {
   return /\d/.test(value);
 }
 
+// A real production failure, confirmed by hand: a title block's own
+// revision-HISTORY log (tracking every past issue -- "Rev. | Date |
+// Reason For Issue", not the sheet's OWN current revision value) is a
+// separate small table that can appear anywhere on the same page, and
+// its "Rev." column header is itself a bare REVISION_LABEL_ONLY match.
+// Pairing that header with the cell beside it (the "Date" column's own
+// header, not a revision value at all) via the same label-adjacency
+// logic every other field uses produced a drawing whose revision number
+// was literally the word "Date". REVISION_LABELED's own capture group
+// already bounds a real value to 1-3 alphanumeric characters; applying
+// that same shape check here rejects exactly this false positive and
+// falls through to no-revision-found (honest, review-routed) rather
+// than a wrong, confident-looking value -- the same defense
+// isPlausibleDrawingNumber already gives the drawing-number field.
+function isPlausibleRevision(value: string): boolean {
+  return /^[A-Z0-9]{1,3}$/i.test(value.trim());
+}
+
 function extractDrawingNumber(text: string): FieldMatch | null {
   const labeled = matchLabeled(text, DRAWING_NUMBER_LABELED, 0.85);
   if (labeled && isPlausibleDrawingNumber(labeled.value)) return labeled;
@@ -328,7 +346,7 @@ export function extractTitleBlockFieldsFromCells(rows: string[][], source: 'embe
   const drawingNumberMatch = extractDrawingNumberFromCells(rows, flatCells);
   if (!drawingNumberMatch || drawingNumberMatch.confidence < DRAWING_NUMBER_CONFIDENCE_THRESHOLD) return null;
 
-  const revisionMatch = matchLabeledAcrossCells(rows, REVISION_LABELED, REVISION_LABEL_ONLY, 0.75);
+  const revisionMatch = matchLabeledAcrossCells(rows, REVISION_LABELED, REVISION_LABEL_ONLY, 0.75, isPlausibleRevision);
   const titleMatch = matchLabeledAcrossCells(rows, TITLE_LABELED, TITLE_LABEL_ONLY, 0.7);
   const issueDate = firstMatchAcrossCells(flatCells, (cell) => {
     const date = extractDate(cell);
