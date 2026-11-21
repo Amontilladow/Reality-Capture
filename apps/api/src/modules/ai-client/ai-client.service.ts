@@ -29,6 +29,40 @@ export interface IngestIssuePayload {
   locationName?: string | null;
 }
 
+// The raw shape apps/ai-service's /ocr/extract-text actually returns
+// (snake_case: no camelCase conversion configured on that side). Kept
+// private to this file; ocrExtractText() below maps it onto
+// OcrExtractTextResult, this app's own normal convention.
+interface OcrWordWire { text: string; left: number; top: number; width: number; height: number; conf: number }
+interface OcrExtractTextWireResponse {
+  text: string;
+  confidence: number;
+  words?: OcrWordWire[];
+  page_width?: number;
+  page_height?: number;
+  rotation_detected_degrees?: number;
+  rotation_confidence?: number;
+}
+
+export interface OcrExtractTextResult {
+  text: string;
+  confidence: number;
+  // Tesseract's own per-word bounding boxes (pixels, at the service's own
+  // rasterization DPI) -- see extraction/ocr-structure.ts's
+  // buildPseudoTableFromOcrWords(), which reconstructs a title block's
+  // row/column layout from exactly this.
+  words: { text: string; left: number; top: number; width: number; height: number; conf: number }[];
+  pageWidth: number;
+  pageHeight: number;
+  // Tesseract's own orientation guess -- reported only, never acted on
+  // by the OCR service itself; see that service's own comment on why
+  // (its confidence was empirically unreliable on a sparse drawing-style
+  // page). A caller that wants to flag a likely-rotated page for human
+  // review can use this; nothing currently does.
+  rotationDetectedDegrees: number;
+  rotationConfidence: number;
+}
+
 /**
  * Talks to the Python AI service's ingestion endpoints so new captures and
  * issues become searchable (AI search, AI assistant) shortly after creation.
@@ -156,14 +190,33 @@ export class AiClientService {
    * calls above; the caller (SiteDrawingImportProcessor) must catch and
    * degrade to NEEDS_REVIEW rather than let an AI-service outage fail the
    * whole import batch.
+   *
+   * Engineering improvement assignment, Phase 2: `words` (Tesseract's own
+   * per-word bounding boxes) lets the caller reconstruct the page's row/
+   * column structure the same way the embedded-text path already does
+   * from pdf-parse's table geometry (extraction/ocr-structure.ts). The
+   * Python service has no camelCase conversion configured (FastAPI/
+   * pydantic serialize using the declared Python field names as-is), so
+   * this maps its snake_case response onto this app's normal camelCase
+   * convention explicitly, same as every DB row mapper in this codebase
+   * already does for its own external shape.
    */
-  async ocrExtractText(companyId: string, projectId: string, pdfUrl: string, page = 1): Promise<{ text: string; confidence: number }> {
+  async ocrExtractText(companyId: string, projectId: string, pdfUrl: string, page = 1): Promise<OcrExtractTextResult> {
     const resp = await firstValueFrom(
-      this.http.post(`${this.baseUrl}/ocr/extract-text`, {
+      this.http.post<OcrExtractTextWireResponse>(`${this.baseUrl}/ocr/extract-text`, {
         company_id: companyId, project_id: projectId, pdf_url: pdfUrl, page,
       }, { timeout: 30_000, headers: this.authHeaders }),
     );
-    return resp.data;
+    const data = resp.data;
+    return {
+      text: data.text,
+      confidence: data.confidence,
+      words: (data.words ?? []).map(w => ({ text: w.text, left: w.left, top: w.top, width: w.width, height: w.height, conf: w.conf })),
+      pageWidth: data.page_width ?? 0,
+      pageHeight: data.page_height ?? 0,
+      rotationDetectedDegrees: data.rotation_detected_degrees ?? 0,
+      rotationConfidence: data.rotation_confidence ?? 0,
+    };
   }
 
   deleteResource(collection: string, resourceId: string, companyId: string, projectId?: string): void {

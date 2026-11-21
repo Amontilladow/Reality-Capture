@@ -4,6 +4,7 @@ import { StorageService } from '../../storage/storage.service';
 import { AiClientService } from '../../ai-client/ai-client.service';
 import { extractEmbeddedText, hasUsableEmbeddedText } from './pdf-text-extractor';
 import { extractTitleBlockFields, extractTitleBlockFieldsFromCells } from './title-block-extractor';
+import { buildPseudoTableFromOcrWords } from './ocr-structure';
 
 const logger = new Logger('extractDrawingFields');
 
@@ -79,8 +80,15 @@ export async function extractDrawingFields(
     try {
       const readUrl = await storage.getReadUrl(storageKey, 300);
       const ocrResult = await aiClient.ocrExtractText(companyId, projectId, readUrl, 1);
-      fields = extractTitleBlockFields(ocrResult.text, 'ocr');
-      logExtractionOutcome(label, fields ? 'ocr' : 'none', fields);
+      // Engineering improvement assignment, Phase 2: same table-cells-first,
+      // whole-page-fallback structure as the embedded-text branch above,
+      // now that OCR has its own reconstructed cell geometry
+      // (ocr-structure.ts, built from Tesseract's own per-word bounding
+      // boxes) instead of only ever having flat text to regex against.
+      const ocrTableRows = buildPseudoTableFromOcrWords(ocrResult.words ?? []);
+      const ocrCellFields = extractTitleBlockFieldsFromCells(ocrTableRows, 'ocr');
+      fields = ocrCellFields ?? extractTitleBlockFields(ocrResult.text, 'ocr');
+      logExtractionOutcome(label, ocrCellFields ? 'table-cells' : (fields ? 'ocr' : 'none'), fields);
     } catch (err) {
       logger.warn(`OCR fallback failed for "${label}": ${err instanceof Error ? err.message : String(err)}`);
     }

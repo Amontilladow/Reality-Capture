@@ -20,6 +20,21 @@ router = APIRouter()
 # blocks typical of construction drawings.
 RASTERIZE_DPI = 300
 
+# Engineering improvement assignment, Phase 2: confirmed by hand against
+# two synthetic title-block fixtures (one genuinely upright, one rotated
+# 90 degrees) that image_to_osd's own confidence is NOT a reliable enough
+# signal to act on by itself: the upright page scored 2.38, the rotated
+# page scored 1.92 -- both low, with no clean separating threshold
+# visible from two data points, on a page type (sparse vector linework,
+# not prose) OSD is not well suited to in the first place. Auto-rotating
+# on this signal risks the worse failure: silently scrambling a page that
+# was already fine. So this router only ever REPORTS what OSD detected
+# (rotation_detected_degrees/rotation_confidence below) -- it never
+# rotates the image itself. The caller (apps/api's extraction pipeline)
+# decides whether a low-confidence rotation guess is worth surfacing as a
+# review flag; this is exactly the kind of threshold Phase 3's real
+# benchmark data should calibrate, not a number invented here.
+
 
 def _binarize_for_ocr(image: Image.Image) -> Image.Image:
     """
@@ -88,6 +103,37 @@ class OcrExtractRequest(BaseModel):
     page: int = 1
 
 
+class OcrWord(BaseModel):
+    """
+    One Tesseract-recognized word and its position on the rasterized page
+    (pixels, at RASTERIZE_DPI), straight from image_to_data -- the same
+    call this router already made for its own confidence average, now
+    also returned in full. Engineering improvement assignment, Phase 2:
+    "preserve text bounding boxes and coordinates" -- this is the one
+    piece of real geometric evidence Tesseract itself can give, and the
+    caller (apps/api's extraction pipeline) uses it to reconstruct a
+    title block's own row/column structure the same way the embedded-
+    text path already does from pdf-parse's vector-geometry table
+    detection (see pdf-text-extractor.ts's own comment on why cell
+    structure, not just flat text, is what title-block matching needs).
+    """
+    text: str
+    left: int
+    top: int
+    width: int
+    height: int
+    # Tesseract's own per-word confidence (0-100, its native scale --
+    # NOT normalized to 0-1 the way the page-level `confidence` field
+    # below is, so a caller can tell which scale it's reading without an
+    # extra flag). A single badly-recognized or merged word (e.g. two
+    # visually-adjacent tokens fused into one with no real space between
+    # them -- confirmed by hand against a synthetic fixture) reliably
+    # reports a noticeably lower confidence than its neighbors, which is
+    # exactly the signal a caller needs to down-weight that one word
+    # rather than trust the page average alone.
+    conf: float
+
+
 class OcrExtractResponse(BaseModel):
     text: str
     # Tesseract's own mean per-word confidence for the page, normalized to
@@ -95,6 +141,40 @@ class OcrExtractResponse(BaseModel):
     # one more signal alongside its own pattern-match confidence, never as
     # a standalone guarantee.
     confidence: float
+    # Phase 2 additions, all additive -- a caller on the old response
+    # shape (just text/confidence) keeps working unchanged.
+    words: list[OcrWord] = []
+    page_width: int = 0
+    page_height: int = 0
+    # Tesseract's own orientation-and-script-detection guess -- reported,
+    # never acted on (see this module's own header comment on why): the
+    # image OCR actually ran against is always the original, unrotated
+    # page, so every word's (left, top) above is always in that same
+    # original coordinate space, with nothing for a caller to re-derive.
+    # 0/0.0 when OSD could not be run at all (e.g. too little text to
+    # analyze -- a real, common outcome on a sparse vector-drawing page,
+    # not an error).
+    rotation_detected_degrees: int = 0
+    rotation_confidence: float = 0.0
+
+
+def _detect_rotation(image: Image.Image) -> tuple[int, float]:
+    """
+    OSD only -- much cheaper than a full word-level recognition pass, so
+    this adds one lightweight call on top of the single OCR pass below,
+    never a second one. Returns (detected rotation, OSD's own confidence);
+    never rotates or otherwise touches the image itself.
+    """
+    try:
+        osd = pytesseract.image_to_osd(image, output_type=pytesseract.Output.DICT)
+    except pytesseract.TesseractError as err:
+        # A real, common outcome on a sparse vector-drawing page (too
+        # little text for OSD to analyze at all) -- not every page
+        # failing OSD is a processing error; degrade to "no rotation
+        # detected" rather than failing the whole request over it.
+        logger.info("OCR: OSD could not determine orientation: %s", err)
+        return 0, 0.0
+    return int(osd.get("rotate", 0)) % 360, float(osd.get("orientation_conf", 0.0))
 
 
 @router.post("/extract-text", response_model=OcrExtractResponse)
@@ -116,7 +196,10 @@ async def extract_text(req: OcrExtractRequest) -> OcrExtractResponse:
     if not images:
         raise HTTPException(status_code=422, detail=f"page {req.page} does not exist in this PDF")
 
-    image = _binarize_for_ocr(images[0])
+    page_image = images[0]
+    detected_rotation, rotation_confidence = _detect_rotation(page_image)
+    image = _binarize_for_ocr(page_image)
+
     # image_to_string preserves line breaks (needed for the Node-side
     # title-block regexes, several of which anchor on end-of-line) --
     # image_to_data's per-word boxes do not, and would silently merge
@@ -124,10 +207,29 @@ async def extract_text(req: OcrExtractRequest) -> OcrExtractResponse:
     text = pytesseract.image_to_string(image)
 
     data = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)
+    n = len(data["text"])
     # Tesseract reports -1 confidence for a box it didn't actually
     # recognize as text (e.g. pure whitespace/layout boxes): excluded
-    # from the average rather than dragging it down for no real reason.
-    word_confidences = [c for c in data["conf"] if c is not None and int(c) >= 0]
+    # below (both from the page-average and from the returned word list)
+    # rather than dragging either down for no real reason. An empty/
+    # whitespace-only recognized string is excluded too -- it carries no
+    # position worth reconstructing structure from.
+    words: list[OcrWord] = []
+    word_confidences: list[int] = []
+    for i in range(n):
+        conf = data["conf"][i]
+        stripped = data["text"][i].strip()
+        if conf is None or int(conf) < 0 or not stripped:
+            continue
+        word_confidences.append(int(conf))
+        words.append(OcrWord(
+            text=stripped, left=data["left"][i], top=data["top"][i],
+            width=data["width"][i], height=data["height"][i], conf=float(conf),
+        ))
     confidence = (sum(word_confidences) / len(word_confidences) / 100.0) if word_confidences else 0.0
 
-    return OcrExtractResponse(text=text, confidence=confidence)
+    return OcrExtractResponse(
+        text=text, confidence=confidence, words=words,
+        page_width=image.width, page_height=image.height,
+        rotation_detected_degrees=detected_rotation, rotation_confidence=rotation_confidence,
+    )
