@@ -3,6 +3,11 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++
 RUN npm install -g pnpm@11.15.1
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+# See apps/api/Dockerfile's own comment on this line: pnpm-workspace.yaml's
+# patchedDependencies reads a file under patches/ directly during install,
+# so it must be copied before pnpm install runs here too -- this Dockerfile
+# installs from the same workspace root and the same lockfile.
+COPY patches/ ./patches/
 COPY packages/ ./packages/
 COPY apps/api/package.json ./apps/api/
 COPY apps/ifc-service/package.json ./apps/ifc-service/
