@@ -10,23 +10,35 @@ export const MIN_USABLE_TEXT_LENGTH = 20;
 export interface PdfTextResult {
   text: string;
   pageCount: number;
-  // Every cell of every vector-drawn table detected on the page (pdf-parse's
+  // Every row of every vector-drawn table detected on the page (pdf-parse's
   // getTable(): scans draw operators for rectangles/lines forming a grid,
   // then matches positioned text to cells by actual (x, y), not content-
-  // stream order), flattened across tables/rows into one list -- a title
-  // block's own cells, in practice, since that's normally the only bordered
-  // grid on a drawing sheet. A caller that scopes its field regexes to one
-  // cell's own text at a time is immune to the failure mode plain getText()
-  // has no defense against: a title-block field's label and value can be
-  // written to the PDF content stream in a different order than they're
-  // laid out visually (confirmed by hand against a reproduction fixture
-  // built the way CAD title-block attribute blocks commonly serialize --
-  // labels in one pass, values in another), so the token immediately
-  // following a label in the flattened text can genuinely belong to a
-  // different field entirely. Empty when the page has no detected table
-  // (a borderless or hand-drawn-rule title block) -- callers fall back to
-  // whole-page matching in that case, same as before this existed.
-  tableCells: string[];
+  // stream order), concatenated across tables into one list of rows -- a
+  // title block's own cells, in practice, since that's normally the only
+  // bordered grid on a drawing sheet. A caller that scopes its field
+  // regexes to one cell's own text at a time is immune to the failure mode
+  // plain getText() has no defense against: a title-block field's label
+  // and value can be written to the PDF content stream in a different
+  // order than they're laid out visually (confirmed by hand against a
+  // reproduction fixture built the way CAD title-block attribute blocks
+  // commonly serialize -- labels in one pass, values in another), so the
+  // token immediately following a label in flattened text can genuinely
+  // belong to a different field entirely.
+  //
+  // Deliberately kept as rows (string[][]), NOT flattened further into one
+  // flat string[]: a flat array can only ever recover a label/value pair
+  // that happen to be ADJACENT COLUMNS of the SAME row (array index N,
+  // N+1) -- confirmed by hand that it CANNOT recover the other common
+  // title-block shape, a label directly ABOVE its value in the SAME
+  // column of the NEXT row, because getTable() emits a whole row's cells
+  // contiguously before the next row's: flattening collapses "next row,
+  // same column" into "several cells later, if at all", indistinguishable
+  // from an unrelated cell. Preserving row boundaries is what lets a
+  // caller check both shapes explicitly instead of only ever getting the
+  // first by accident of array order. Empty when the page has no detected
+  // table (a borderless or hand-drawn-rule title block) -- callers fall
+  // back to whole-page matching in that case, same as before this existed.
+  tableRows: string[][];
 }
 
 // pdf-parse's getText() always appends a "-- N of M --" page-separator
@@ -85,14 +97,19 @@ export async function extractEmbeddedText(pdfBuffer: Buffer): Promise<PdfTextRes
     // going to cost (extractTitleBlockFieldsFromCells() returning null here
     // is the same, already-handled fallback path as a page with no table
     // at all; see this type's own comment above).
-    let tableCells: string[] = [];
+    let tableRows: string[][] = [];
     try {
       const tableResult = await parser.getTable({ partial: [1] });
-      tableCells = (tableResult.pages[0]?.tables ?? []).flatMap((table) => table.flat());
+      // Concatenating each table's OWN rows (table.flat() would instead
+      // flatten rows away entirely -- see this type's own comment on why
+      // that's the one thing not to do here); more than one detected
+      // table on a page just means more rows to search, not a reason to
+      // lose which cells share a row.
+      tableRows = (tableResult.pages[0]?.tables ?? []).flatMap((table) => table);
     } catch {
-      tableCells = [];
+      tableRows = [];
     }
-    return { text: stripPdfParseBoilerplate(textResult.text ?? ''), pageCount: info.total ?? 1, tableCells };
+    return { text: stripPdfParseBoilerplate(textResult.text ?? ''), pageCount: info.total ?? 1, tableRows };
   } finally {
     await parser.destroy();
   }

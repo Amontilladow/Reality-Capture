@@ -128,9 +128,13 @@ describe('extractTitleBlockFields', () => {
 });
 
 describe('extractTitleBlockFieldsFromCells', () => {
+  // These fixtures wrap each flat list of cells as a SINGLE row: they only
+  // ever rely on same-row (array-adjacent) behavior, which single-row
+  // framing preserves exactly. The row-above/row-below case gets its own,
+  // genuinely multi-row fixtures further down.
   it('extracts a labeled drawing number, revision and title each from their own cell', () => {
-    const cells = ['Drawing No: S-101', 'Rev: C', 'Drawing Title: GROUND FLOOR PLAN - STRUCTURAL LAYOUT', 'Date: 12/03/2025'];
-    const result = extractTitleBlockFieldsFromCells(cells, 'embedded_text');
+    const rows = [['Drawing No: S-101', 'Rev: C', 'Drawing Title: GROUND FLOOR PLAN - STRUCTURAL LAYOUT', 'Date: 12/03/2025']];
+    const result = extractTitleBlockFieldsFromCells(rows, 'embedded_text');
     expect(result?.drawingNumber).toBe('S-101');
     expect(result?.revisionNumber).toBe('C');
     expect(result?.drawingTitle).toBe('GROUND FLOOR PLAN - STRUCTURAL LAYOUT');
@@ -139,14 +143,14 @@ describe('extractTitleBlockFieldsFromCells', () => {
   });
 
   it('does not truncate a long labeled multi-segment drawing number combined with its label in one cell', () => {
-    const cells = ['Drawing No: M19-M4C-C0-PW-AX-SD-05729', 'Revision: 00'];
-    const result = extractTitleBlockFieldsFromCells(cells, 'embedded_text');
+    const rows = [['Drawing No: M19-M4C-C0-PW-AX-SD-05729', 'Revision: 00']];
+    const result = extractTitleBlockFieldsFromCells(rows, 'embedded_text');
     expect(result?.drawingNumber).toBe('M19-M4C-C0-PW-AX-SD-05729');
   });
 
   it('returns null when no cell contains a plausible drawing number', () => {
-    const cells = ['Checked By: J. Smith', 'Scale: 1:100', 'Notes: see general notes'];
-    expect(extractTitleBlockFieldsFromCells(cells, 'embedded_text')).toBeNull();
+    const rows = [['Checked By: J. Smith', 'Scale: 1:100', 'Notes: see general notes']];
+    expect(extractTitleBlockFieldsFromCells(rows, 'embedded_text')).toBeNull();
   });
 
   it('is immune to a bare-pattern-shaped token sitting in an unrelated cell (the AHU-04/SE45_01 regression)', () => {
@@ -158,14 +162,14 @@ describe('extractTitleBlockFieldsFromCells', () => {
     // every match to its own cell makes this impossible: the labeled match
     // in the drawing-number cell wins regardless of what unrelated text
     // lives in other cells of the same table.
-    const cells = [
+    const rows = [[
       'Drawing No: M-05713',
       'Drawing Title: GROUND FLOOR STEEL DOOR KEY PLAN',
       'Revision: 00',
       'Equipment Schedule: AHU-04, AHU-05',
       'Project Code: SE45_01',
-    ];
-    const result = extractTitleBlockFieldsFromCells(cells, 'embedded_text');
+    ]];
+    const result = extractTitleBlockFieldsFromCells(rows, 'embedded_text');
     expect(result?.drawingNumber).toBe('M-05713');
     expect(result?.drawingTitle).toBe('GROUND FLOOR STEEL DOOR KEY PLAN');
     expect(result?.revisionNumber).toBe('00');
@@ -174,42 +178,64 @@ describe('extractTitleBlockFieldsFromCells', () => {
   it('tries a labeled match across every cell before falling back to any bare match', () => {
     // The labeled drawing number lives in the LAST cell, a bare-pattern-
     // shaped token in the FIRST -- array order must not matter.
-    const cells = ['A-999', 'Checked By: J. Smith', 'Drawing No: S-101'];
-    const result = extractTitleBlockFieldsFromCells(cells, 'embedded_text');
+    const rows = [['A-999', 'Checked By: J. Smith', 'Drawing No: S-101']];
+    const result = extractTitleBlockFieldsFromCells(rows, 'embedded_text');
     expect(result?.drawingNumber).toBe('S-101');
   });
 
   it('rejects an implausible labeled match (no digits) in one cell and falls back to a bare match in another', () => {
-    const cells = ['Drawing No: Checked', 'M19-M4C-C0-PW-AX-SD-05713'];
-    const result = extractTitleBlockFieldsFromCells(cells, 'embedded_text');
+    const rows = [['Drawing No: Checked', 'M19-M4C-C0-PW-AX-SD-05713']];
+    const result = extractTitleBlockFieldsFromCells(rows, 'embedded_text');
     expect(result?.drawingNumber).toBe('M19-M4C-C0-PW-AX-SD-05713');
   });
 
-  it('pairs a bare label cell with the next cell as its value, for a layout where label and value are in separate adjacent cells', () => {
+  it('pairs a bare label cell with the next cell as its value, for a layout where label and value are in separate adjacent cells of the SAME row', () => {
     // Confirmed by hand against a reproduction PDF built with a real
     // bordered grid (pdf-lib + pdf-parse's getTable()): a common title-
     // block layout puts a field's label and its value in two separate
     // cells side by side, not combined in one cell's text. getTable()'s
-    // flattening walks a table row by row, left to right, so the value
-    // cell is the very next entry after its label cell in this array.
-    const cells = ['Drawing No:', 'S-101', 'Drawing Title:', 'GROUND FLOOR STEEL DOOR KEY PLAN', 'Revision:', '00', 'Equipment Schedule:', 'AHU-04'];
-    const result = extractTitleBlockFieldsFromCells(cells, 'embedded_text');
+    // row flattening walks a row's cells left to right, so the value
+    // cell is the very next entry after its label cell within that row.
+    const rows = [['Drawing No:', 'S-101', 'Drawing Title:', 'GROUND FLOOR STEEL DOOR KEY PLAN', 'Revision:', '00', 'Equipment Schedule:', 'AHU-04']];
+    const result = extractTitleBlockFieldsFromCells(rows, 'embedded_text');
     expect(result?.drawingNumber).toBe('S-101');
     expect(result?.drawingTitle).toBe('GROUND FLOOR STEEL DOOR KEY PLAN');
     expect(result?.revisionNumber).toBe('00');
   });
 
+  it('pairs a bare label cell with the cell directly below it in the NEXT row, same column -- a layout a flat cell list cannot recover at all', () => {
+    // Reproduces a real bug found by hand (not just a hypothetical): a
+    // bordered grid with ALL of one row's labels, then ALL of the next
+    // row's values -- confirmed against pdf-parse's actual getTable()
+    // output for a reproduction fixture laid out this way. A flattened
+    // cells: string[] (the previous shape of this data) makes "the next
+    // array entry" after a label be the NEXT COLUMN'S LABEL in the same
+    // row, never the value below it -- this layout was previously
+    // impossible to match correctly despite this file's own comment
+    // claiming to support "a label cell beside, OR ABOVE, an otherwise-
+    // blank value cell". Preserving row boundaries (tableRows: string[][])
+    // is what makes checking "next row, same column" possible at all.
+    const rows = [
+      ['Drawing No:', 'Revision:', 'Drawing Title:'],
+      ['S-101', '00', 'GROUND FLOOR STEEL DOOR KEY PLAN'],
+    ];
+    const result = extractTitleBlockFieldsFromCells(rows, 'embedded_text');
+    expect(result?.drawingNumber).toBe('S-101');
+    expect(result?.revisionNumber).toBe('00');
+    expect(result?.drawingTitle).toBe('GROUND FLOOR STEEL DOOR KEY PLAN');
+  });
+
   it('never invents a revision or title that is not actually present in any cell', () => {
-    const cells = ['DWG NO: M-301', 'Checked By: J. Smith'];
-    const result = extractTitleBlockFieldsFromCells(cells, 'embedded_text');
+    const rows = [['DWG NO: M-301', 'Checked By: J. Smith']];
+    const result = extractTitleBlockFieldsFromCells(rows, 'embedded_text');
     expect(result?.drawingNumber).toBe('M-301');
     expect(result?.revisionNumber).toBeUndefined();
     expect(result?.drawingTitle).toBeUndefined();
   });
 
   it('extracts a bare 1-2 digit drawing number from a labeled cell', () => {
-    const cells = ['Drawing No: 29', 'Revision: 0'];
-    const result = extractTitleBlockFieldsFromCells(cells, 'embedded_text');
+    const rows = [['Drawing No: 29', 'Revision: 0']];
+    const result = extractTitleBlockFieldsFromCells(rows, 'embedded_text');
     expect(result?.drawingNumber).toBe('29');
     expect(result?.revisionNumber).toBe('0');
   });

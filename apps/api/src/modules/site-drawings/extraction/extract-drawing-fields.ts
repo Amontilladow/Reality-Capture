@@ -7,6 +7,22 @@ import { extractTitleBlockFields, extractTitleBlockFieldsFromCells } from './tit
 
 const logger = new Logger('extractDrawingFields');
 
+// Site Drawing Hub, extraction accuracy Phase 0: before this, there was
+// no way to tell WHICH path actually produced a given extraction in
+// production (table-cells, the whole-page fallback, OCR, or nothing at
+// all) without re-reading the file by hand -- the exact blind spot that
+// let the table-cell path silently never fire at all for months (see
+// rar-extraction.util.ts's sibling fix, pdf-parse's patched crash). One
+// structured log line per file is enough to answer, going forward and
+// from real data rather than a guess, how often each path actually runs
+// and how confident its results are.
+function logExtractionOutcome(label: string, path: 'table-cells' | 'whole-page' | 'ocr' | 'none', fields: ExtractedDrawingFields | null): void {
+  logger.log(
+    `Extraction for "${label}": path=${path}, confidence=${fields?.confidence ?? 'n/a'}, `
+    + `hasDrawingNumber=${Boolean(fields?.drawingNumber)}, hasRevision=${Boolean(fields?.revisionNumber)}, hasTitle=${Boolean(fields?.drawingTitle)}`,
+  );
+}
+
 export interface DrawingFieldsExtractionResult {
   fields: ExtractedDrawingFields | null;
   // Null only when even getInfo() failed (embedded-text extraction threw
@@ -40,18 +56,20 @@ export async function extractDrawingFields(
   let hasUsableText = false;
   let pageCount: number | null = null;
   try {
-    const { text, tableCells, pageCount: pages } = await extractEmbeddedText(buffer);
+    const { text, tableRows, pageCount: pages } = await extractEmbeddedText(buffer);
     pageCount = pages;
     hasUsableText = hasUsableEmbeddedText(text);
     if (hasUsableText) {
       // Table-cell-scoped extraction first, when the page has a detected
       // table (almost always the title block itself): structurally immune
       // to one field's value landing on a different field, which plain
-      // whole-page matching below is not (see PdfTextResult.tableCells's
+      // whole-page matching below is not (see PdfTextResult.tableRows's
       // own comment). Only when that finds no plausible drawing number at
       // all -- no table on the page, or the table isn't the title block --
       // does this fall back to the original whole-page regex pass.
-      fields = extractTitleBlockFieldsFromCells(tableCells, 'embedded_text') ?? extractTitleBlockFields(text, 'embedded_text');
+      const cellFields = extractTitleBlockFieldsFromCells(tableRows, 'embedded_text');
+      fields = cellFields ?? extractTitleBlockFields(text, 'embedded_text');
+      logExtractionOutcome(label, cellFields ? 'table-cells' : (fields ? 'whole-page' : 'none'), fields);
     }
   } catch (err) {
     logger.warn(`Embedded-text extraction failed for "${label}": ${err instanceof Error ? err.message : String(err)}`);
@@ -62,6 +80,7 @@ export async function extractDrawingFields(
       const readUrl = await storage.getReadUrl(storageKey, 300);
       const ocrResult = await aiClient.ocrExtractText(companyId, projectId, readUrl, 1);
       fields = extractTitleBlockFields(ocrResult.text, 'ocr');
+      logExtractionOutcome(label, fields ? 'ocr' : 'none', fields);
     } catch (err) {
       logger.warn(`OCR fallback failed for "${label}": ${err instanceof Error ? err.message : String(err)}`);
     }

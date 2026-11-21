@@ -25,3 +25,5 @@ minimumReleaseAgeExclude:
 # single patch-version bump (2.0.7 -> 2.0.8), not a breaking change.
 overrides:
   proxy-addr: '>=2.0.8'
+patchedDependencies:
+  pdf-parse@2.4.5: patches/pdf-parse@2.4.5.patch
