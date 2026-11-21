@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import type { ExtractedDrawingFields } from '@engineeringos/types';
 import { SiteDrawingImportProcessor } from './site-drawing-import.processor';
 import type { DatabaseService } from '../../database/database.service';
 import type { StorageService } from '../storage/storage.service';
@@ -166,8 +167,9 @@ describe('SiteDrawingImportProcessor', () => {
   it('skips a reimport as a duplicate when its content hash matches the current revision, regardless of the extracted revision label', async () => {
     // Reproduces the real bug: extraction fails entirely for both the
     // original import and this reimport (same unreadable file), so both
-    // land on the revisionNumber fallback of '1' -- but that must never
-    // be the signal that decides duplicate-ness. Content hash is.
+    // land on the revisionNumber fallback (UNVERIFIED_REVISION_NUMBER) --
+    // but that must never be the signal that decides duplicate-ness.
+    // Content hash is.
     // batchRow.originalFilename is a bare .pdf, not a .zip, so the
     // processor reads this file's bytes straight from storage.download()
     // (the single-PDF path), never through extractPdfEntriesFromZip --
@@ -182,7 +184,7 @@ describe('SiteDrawingImportProcessor', () => {
       // reconcile: SELECT existing (found), SELECT currentRevision (same content hash) -> duplicate_skipped, no INSERT
       multi([
         [{ id: 'drawing-1', drawingTitle: 'A-101', currentRevisionId: 'revision-1' }],
-        [{ id: 'revision-1', revisionNumber: '1', contentHash: sha256(buffer) }],
+        [{ id: 'revision-1', revisionNumber: 'UNVERIFIED', contentHash: sha256(buffer) }],
       ]),
       single(undefined), // finish
     ]);
@@ -326,10 +328,11 @@ describe('SiteDrawingImportProcessor', () => {
 
   it('disambiguates and flags CONFLICT when content differs but extraction lands on the same revision label as the current revision', async () => {
     // Both the original import and this reimport failed extraction
-    // entirely and defaulted to revisionNumber '1' -- but the file content
-    // genuinely changed. The UNIQUE(drawing_id, revision_number)
-    // constraint means this can't be inserted as a second "1"; it must be
-    // disambiguated and routed to review instead of silently dropped.
+    // entirely and defaulted to the UNVERIFIED_REVISION_NUMBER fallback --
+    // but the file content genuinely changed. The UNIQUE(drawing_id,
+    // revision_number) constraint means this can't be inserted as a
+    // second "UNVERIFIED"; it must be disambiguated and routed to review
+    // instead of silently dropped.
     const buffer = Buffer.from('a different file, same failed-extraction fallback label');
     (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: '', pageCount: 1 });
     (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(false);
@@ -337,11 +340,11 @@ describe('SiteDrawingImportProcessor', () => {
     const { processor, db, storage } = makeProcessor([
       single(undefined), // markStarted
       single([batchRow]), // getBatch
-      // reconcile: SELECT existing, SELECT currentRevision ('1', different hash), SELECT usedRevisionNumbers (just '1', collides), INSERT newRevision ('1-v2'), supersede UPDATE, UPDATE current_revision_id
+      // reconcile: SELECT existing, SELECT currentRevision ('UNVERIFIED', different hash), SELECT usedRevisionNumbers (just 'UNVERIFIED', collides), INSERT newRevision ('UNVERIFIED-v2'), supersede UPDATE, UPDATE current_revision_id
       multi([
         [{ id: 'drawing-1', drawingTitle: 'A-101', currentRevisionId: 'revision-1' }],
-        [{ id: 'revision-1', revisionNumber: '1', contentHash: sha256(Buffer.from('the previous revision, same failed label')) }],
-        [{ revisionNumber: '1' }],
+        [{ id: 'revision-1', revisionNumber: 'UNVERIFIED', contentHash: sha256(Buffer.from('the previous revision, same failed label')) }],
+        [{ revisionNumber: 'UNVERIFIED' }],
         [{ id: 'revision-2' }],
         [],
         [],
@@ -401,15 +404,15 @@ describe('SiteDrawingImportProcessor', () => {
     // The real bug: the prior disambiguation logic only compared the
     // extracted/fallback revisionNumber against the CURRENT revision's own
     // label. A drawing reimported many times over this session had several
-    // now-superseded revisions sitting under it, one of them labeled '1'
-    // (a prior failed-extraction fallback) that was no longer current --
-    // the current revision was '2'. A later reimport, whose extraction
-    // also failed and fell back to '1', saw no collision against '2' and
-    // tried to insert a second revision_number '1' for the same drawing_id,
-    // which site_drawing_revisions' UNIQUE(drawing_id, revision_number)
-    // constraint rejected outright: confirmed by hand against production,
-    // `duplicate key value violates unique constraint
-    // "site_drawing_revisions_drawing_id_revision_number_key"`.
+    // now-superseded revisions sitting under it, one of them labeled
+    // UNVERIFIED (a prior failed-extraction fallback) that was no longer
+    // current -- the current revision was '2'. A later reimport, whose
+    // extraction also failed and fell back to UNVERIFIED, saw no collision
+    // against '2' and tried to insert a second revision_number UNVERIFIED
+    // for the same drawing_id, which site_drawing_revisions'
+    // UNIQUE(drawing_id, revision_number) constraint rejected outright:
+    // confirmed by hand against production, `duplicate key value violates
+    // unique constraint "site_drawing_revisions_drawing_id_revision_number_key"`.
     const buffer = Buffer.from('yet another reimport, different content, same failed-extraction fallback label');
     (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({ text: '', pageCount: 1 });
     (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(false);
@@ -426,8 +429,8 @@ describe('SiteDrawingImportProcessor', () => {
       single([batchRow]), // getBatch
       captureSql([
         [{ id: 'drawing-1', drawingTitle: 'A-101', currentRevisionId: 'revision-current' }], // SELECT existing
-        [{ id: 'revision-current', revisionNumber: '2', contentHash: sha256(Buffer.from('the current revision, different content')) }], // SELECT currentRevision ('2' -- no collision against the fallback '1' alone)
-        [{ revisionNumber: '2' }, { revisionNumber: '1' }], // SELECT usedRevisionNumbers: '1' was used by an OLDER, now-superseded revision
+        [{ id: 'revision-current', revisionNumber: '2', contentHash: sha256(Buffer.from('the current revision, different content')) }], // SELECT currentRevision ('2' -- no collision against the fallback UNVERIFIED alone)
+        [{ revisionNumber: '2' }, { revisionNumber: 'UNVERIFIED' }], // SELECT usedRevisionNumbers: UNVERIFIED was used by an OLDER, now-superseded revision
         [{ id: 'revision-new' }], // INSERT newRevision
         [], // supersede UPDATE
         [], // UPDATE current_revision_id
@@ -442,9 +445,129 @@ describe('SiteDrawingImportProcessor', () => {
     const revisionInsertCall = insertCalls.find((args) => (args[0] as string[]).join('?').includes('INSERT INTO site_drawing_revisions'));
     expect(revisionInsertCall).toBeDefined();
     // Column order: company_id, project_id, drawing_id, revision_number, ...
-    // -- args[4] is revision_number. Disambiguated to '1-v2' (not the
-    // colliding '1'), since '1' is taken but '1-v2' is free.
-    expect(revisionInsertCall![4]).toBe('1-v2');
+    // -- args[4] is revision_number. Disambiguated to 'UNVERIFIED-v2' (not
+    // the colliding 'UNVERIFIED'), since 'UNVERIFIED' is taken but
+    // 'UNVERIFIED-v2' is free.
+    expect(revisionInsertCall![4]).toBe('UNVERIFIED-v2');
+  });
+
+  // Engineering improvement assignment, Phase 1: the silent '1' default
+  // was indistinguishable from a genuinely-read value anywhere it
+  // displayed. These three tests cover exactly the three cases asked for:
+  // a missing revision, an otherwise-ambiguous one, and a genuinely
+  // extracted one -- proving the fallback is visible, never promotable,
+  // and never mistaken for (or mistakenly substituted over) real data.
+  describe('UNVERIFIED_REVISION_NUMBER fallback (no schema NULL available: revision_number is NOT NULL)', () => {
+    it('stores a missing revision as UNVERIFIED (never a fabricated numeric default), flags NEEDS_REVIEW, and preserves the original extraction verbatim', async () => {
+      const rawFields = { drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan', confidence: 0.9, source: 'embedded_text' as const };
+      jest.spyOn(extractDrawingFieldsModule, 'extractDrawingFields').mockResolvedValue({ fields: rawFields, pageCount: 1 });
+
+      const insertCalls: unknown[][] = [];
+      const captureSql = (results: unknown[]) => (callback: WithTenantCallback) => {
+        let i = 0;
+        const sql = withJson((...args: unknown[]) => { insertCalls.push(args); return Promise.resolve(results[i++] ?? []); });
+        return callback(sql);
+      };
+
+      const { processor } = makeProcessor([
+        single(undefined), // markStarted
+        single([batchRow]), // getBatch
+        captureSql([[], [], [{ id: 'drawing-1' }], [{ id: 'revision-1' }], []]), // reconcile: created
+        single(undefined), // finish
+      ]);
+
+      await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
+
+      const revisionInsertCall = insertCalls.find((args) => (args[0] as string[]).join('?').includes('INSERT INTO site_drawing_revisions'));
+      expect(revisionInsertCall).toBeDefined();
+      // Column order: company_id, project_id, drawing_id, revision_number,
+      // 'UNKNOWN' (literal workflow_status, not interpolated), issue_date,
+      // storage_key, file_size_bytes, content_hash, 'NOT_APPLICABLE'
+      // (literal, not interpolated), extraction_status, extracted_fields_raw, ...
+      // -- args[4] = revision_number, args[9] = extraction_status, args[10] = extracted_fields_raw.
+      expect(revisionInsertCall![4]).toBe('UNVERIFIED');
+      expect(revisionInsertCall![9]).toBe('NEEDS_REVIEW');
+      // The raw extraction (revisionNumber genuinely absent) is preserved
+      // exactly as read -- never silently rewritten to match the fallback
+      // stored in the authoritative revision_number column.
+      expect(revisionInsertCall![10]).toEqual(rawFields);
+      expect((revisionInsertCall![10] as ExtractedDrawingFields).revisionNumber).toBeUndefined();
+    });
+
+    it('never auto-promotes an UNVERIFIED revision over an existing one, even when title identity is confirmed -- chronology against a non-revision-shaped sentinel is always ambiguous', async () => {
+      // Title matches perfectly (identity CONFIRMED), which is the one
+      // gate real confidently-extracted revisions need to auto-promote.
+      // The other gate -- confident, strictly-newer chronology -- must
+      // still fail here, because UNVERIFIED cannot be parsed as any real
+      // revision shape at all (not pure-numeric, not a letter, not a
+      // recognized prefix+number), so compareRevisionOrder() can only
+      // ever call it 'ambiguous' against any real current label.
+      const buffer = Buffer.from('a real reimport whose own revision could not be read this time');
+      (pdfTextExtractor.extractEmbeddedText as jest.Mock).mockResolvedValue({
+        text: 'DRAWING NO: A-101\nTITLE: Ground Floor Plan', tableRows: [], pageCount: 1,
+      });
+      (pdfTextExtractor.hasUsableEmbeddedText as jest.Mock).mockReturnValue(true);
+
+      const insertCalls: unknown[][] = [];
+      const captureSql = (results: unknown[]) => (callback: WithTenantCallback) => {
+        let i = 0;
+        const sql = withJson((...args: unknown[]) => { insertCalls.push(args); return Promise.resolve(results[i++] ?? []); });
+        return callback(sql);
+      };
+
+      const { processor, storage } = makeProcessor([
+        single(undefined), // markStarted
+        single([batchRow]), // getBatch
+        captureSql([
+          [{ id: 'drawing-1', drawingTitle: 'Ground Floor Plan', currentRevisionId: 'revision-1' }], // SELECT existing
+          [{ id: 'revision-1', revisionNumber: 'B', contentHash: sha256(Buffer.from('the current revision')) }], // SELECT currentRevision
+          [{ revisionNumber: 'B' }], // SELECT usedRevisionNumbers -- no collision (UNVERIFIED not used yet)
+          [{ id: 'revision-pending' }], // INSERT newRevision (pending, not promoted)
+        ]),
+        single(undefined), // finish
+      ]);
+      (storage.download as jest.Mock).mockResolvedValue(buffer);
+
+      await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
+
+      // No promotion statements at all -- the existing current revision
+      // ('B') is left completely untouched, title match notwithstanding.
+      expect(insertCalls.some((args) => (args[0] as string[]).join('?').includes('UPDATE site_drawing_revisions SET is_superseded'))).toBe(false);
+      expect(insertCalls.some((args) => (args[0] as string[]).join('?').includes('UPDATE site_drawings SET current_revision_id'))).toBe(false);
+
+      const revisionInsertCall = insertCalls.find((args) => (args[0] as string[]).join('?').includes('INSERT INTO site_drawing_revisions'));
+      expect(revisionInsertCall![4]).toBe('UNVERIFIED');
+      expect(revisionInsertCall![9]).toBeNull(); // supersedes_revision_id: nothing was superseded
+      expect(revisionInsertCall![10]).toBe('CONFLICT');
+    });
+
+    it('a genuinely extracted revision "1" is stored and promoted exactly as read -- never replaced by or confused with the UNVERIFIED fallback', async () => {
+      const rawFields = { drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan', revisionNumber: '1', confidence: 0.9, source: 'embedded_text' as const };
+      jest.spyOn(extractDrawingFieldsModule, 'extractDrawingFields').mockResolvedValue({ fields: rawFields, pageCount: 1 });
+
+      const insertCalls: unknown[][] = [];
+      const captureSql = (results: unknown[]) => (callback: WithTenantCallback) => {
+        let i = 0;
+        const sql = withJson((...args: unknown[]) => { insertCalls.push(args); return Promise.resolve(results[i++] ?? []); });
+        return callback(sql);
+      };
+
+      const { processor } = makeProcessor([
+        single(undefined), // markStarted
+        single([batchRow]), // getBatch
+        captureSql([[], [], [{ id: 'drawing-1' }], [{ id: 'revision-1' }], []]), // reconcile: created
+        single(undefined), // finish
+      ]);
+
+      await processor.handleImportBatch({ data: { batchId, companyId, projectId } } as never);
+
+      const revisionInsertCall = insertCalls.find((args) => (args[0] as string[]).join('?').includes('INSERT INTO site_drawing_revisions'));
+      expect(revisionInsertCall![4]).toBe('1');
+      // A genuinely confident extraction (drawing number + revision both
+      // present, confidence above threshold) is CONFIRMED, not degraded
+      // just because its value happens to look like the old fallback used to.
+      expect(revisionInsertCall![9]).toBe('CONFIRMED');
+    });
   });
 
   // Site Drawing Hub integrity hardening, Phase 8: the exact scenario
