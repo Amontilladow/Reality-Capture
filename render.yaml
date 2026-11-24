@@ -324,13 +324,20 @@ services:
   #       sync: false
   #     - key: PORT
   #       value: 8003
-  #     # Sized for a 4 GB container: ~300 MB reserved for uvicorn/FastAPI overhead and OS/runtime margin, ~3200 MB safe budget for the m4adm subprocess, calibrated against the WORST measured ratio above (~20x), not the more optimistic 9x figure -- see GIS_PREP_MEMORY_REMEDIATION.md for the derivation and the benchmark evidence this is checked against.
+  #     # Sized for a 4 GB container: ~300 MB reserved for uvicorn/FastAPI overhead and OS/runtime
+  #     # margin, ~3200 MB safe budget for the m4adm subprocess. GIS_PREP_MEMORY_REMEDIATION.md's
+  #     # own benchmark measured ~24-33x (settling toward ~26x on 50-100 MB files) on a synthetic
+  #     # drawing -- WORSE than the ~9-19x this repo's prior real-drawing measurements found
+  #     # (DECISIONS.md D-034/D-035) -- so 120 MB (3200/26) is the honest safe upload cap against
+  #     # the evidence actually in hand, not the ~160 MB a 20x assumption would have given. 100 MB
+  #     # drawings fit with real margin; re-benchmark against actual customer drawings before
+  #     # raising this further, and re-tune all four values below from whatever that run shows.
   #     - key: GIS_PREP_MEMORY_LIMIT_MB
   #       value: 3200
   #     - key: GIS_PREP_ADDRESS_SPACE_LIMIT_MB
   #       value: 6000
   #     - key: GIS_PREP_MAX_UPLOAD_MB
-  #       value: 160
+  #       value: 120
   #     - key: GIS_PREP_TIMEOUT_S
   #       value: 1800
   #     # Other env vars this image needs (QDRANT_URL, embedding model, S3, DATABASE_URL, etc.) are irrelevant to

@@ -117,8 +117,56 @@ for 50-100 MB files.
 
 ## 4. Benchmark evidence
 
-See §7 (filled in from the actual benchmark run against both the pre-fix and post-fix code,
-using representative synthetic DXFs generated in-pipeline — see "Benchmark methodology" below).
+Run against the **real** `m4adm.pipeline.prepare()` end to end (not a synthetic memory
+micro-benchmark), on this machine (16 GB RAM, 4 cores — no container limit was imposed, so these
+are the engine's own real peak RSS numbers, not clipped by any cap), using the subprocess +
+`/proc/<pid>/status` VmRSS polling approach `gis_prep.py` already uses in production (polled every
+50ms here, finer than production's 100ms). Each row is one full job: load, classify, map layers,
+validate (~15 check categories), write and re-verify one output file.
+
+| File | Entities out | Before (this session's start) | | After (the two fixes in §3) | | Peak RSS reduction |
+|---|---|---|---|---|---|---|
+| | | peak RSS | wall time | peak RSS | wall time | |
+| 10 MB | 18,284 | 334.1 MB | 25.9 s | 314.4 MB | 28.7 s | 5.9% |
+| 50 MB | 90,468 | 1,348.3 MB | 141.2 s | 1,250.8 MB | 147.3 s | 7.2% |
+| 75 MB | 135,580 | 1,949.6 MB | 212.3 s | 1,788.1 MB | 228.6 s | 8.3% |
+| 100 MB | 180,690 | 2,606.8 MB | 276.7 s | 2,389.2 MB | 284.5 s | 8.3% |
+
+All four jobs, before and after, finished `returncode=0`, status `"Ready for review"`, with
+**identical entity counts and output sizes** (byte-for-byte on the 50/75/100 MB cases, 2 bytes
+different on 10 MB — a timestamp-like header field, not data) — confirming the memory fixes
+changed nothing observable about the result, only how much memory it took to produce it. Wall
+time is essentially unchanged (within noise; `gc.collect()` trades a little CPU time for less
+peak memory, as expected).
+
+**Measured inflation ratio on this benchmark: ~24-33x file size → peak RSS** (334/10, 1348/50,
+1950/75, 2607/100) — *worse* than the ~9-19x this repo's own `DECISIONS.md`/code comments
+previously measured on real drawings. This benchmark's regular, entity-dense grid of plots is a
+reasonable stand-in for a real site-plan-style drawing, but should be read as a plausible,
+not a guaranteed-worst-case, number — see §7's caveat on real architectural originals.
+
+**Against the mandatory acceptance criteria (brief §7):**
+1. *A 50 MB DXF processes successfully* — yes, here (1.25 GB peak, far outside the current
+   512 MB-shared-container budget — see §2/§5 for why that gap needs capacity, not more tuning).
+2. *A 100 MB DXF processes successfully within the configured worker resource limits* — succeeds
+   on an unconstrained host (2.39 GB peak); **does not** fit the *current* 512 MB shared
+   container's ~270 MB budget, nor would it fit even with every software fix in this pass applied
+   — this is the central, evidenced finding of this audit, not a gap left open by oversight.
+3. *Processing does not crash the main NestJS API* — true today and unchanged: the engine already
+   runs as an isolated subprocess, reached only over HTTP from a Bull processor; nothing here
+   runs inside the Node process.
+4. *Memory remains bounded rather than continuously increasing with every processed batch* — the
+   del/gc fix is specifically what keeps multi-category jobs from accumulating uncollected
+   cross-reference cycles across categories (verified: existing multi-category tests, e.g.
+   `["plot","roads","services"]`, plus the new `test_prepare_with_three_categories_...` test, all
+   pass unchanged).
+5-7. *Output geometry/coordinates/layer mapping/existing GIS output functionality* — unchanged:
+   100+ existing tests plus 5 new ones, all passing (§3), and this benchmark's own
+   entity-count/output-size equality check above.
+8-9. *Retry without duplicate outputs; worker restarts don't corrupt job state* — unchanged
+   existing behavior (atomic job-workspace rename, Bull's own retry/backoff) — not touched by
+   this pass, not re-verified beyond the existing test suite (`test_integrity.py`) passing.
+10. *Existing smaller DXF files continue to work* — yes, full existing suite green.
 
 ### Benchmark methodology
 
