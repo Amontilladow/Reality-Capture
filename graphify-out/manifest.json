@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "apps/ai-service/app/config.py": {
-    "mtime": 1794461377.388311,
-    "seen": 1795274602.9530363,
-    "ast_hash": "d0737f4bc62d9d0a8cc3cf003197f4e7",
+    "mtime": 1795504920.4179986,
+    "seen": 1795505523.4618518,
+    "ast_hash": "24487c51d8643da2444f7dcd54ed3e78",
     "semantic_hash": ""
   },
   "apps/ai-service/app/knowledge/__init__.py": {
@@ -1770,15 +1770,15 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/gis-prep/dto/gis-prep.dto.ts": {
-    "mtime": 1794203645.7724926,
-    "seen": 1795274602.9533489,
-    "ast_hash": "c90fcd03942d5f243e387db6c5aaaa7e",
+    "mtime": 1795504745.165988,
+    "seen": 1795505523.4673676,
+    "ast_hash": "961bdbbbe2d04287d2361121032a7fb6",
     "semantic_hash": ""
   },
   "apps/api/src/modules/gis-prep/gis-prep.controller.ts": {
-    "mtime": 1795024097.5101266,
-    "seen": 1795274602.9533498,
-    "ast_hash": "26e9cdc862e1e13909cdb089a0480cd7",
+    "mtime": 1795504758.7299888,
+    "seen": 1795505523.4673693,
+    "ast_hash": "fc61b5a1402c5334d9c8461e4544cc65",
     "semantic_hash": ""
   },
   "apps/api/src/modules/gis-prep/gis-prep.module.ts": {
@@ -1800,15 +1800,15 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/gis-prep/gis-prep.service.spec.ts": {
-    "mtime": 1795024097.5101266,
-    "seen": 1795274602.9533546,
-    "ast_hash": "11d55a5b6f706c9bfbf00d82af6641aa",
+    "mtime": 1795505013.310004,
+    "seen": 1795505523.4674358,
+    "ast_hash": "15dda0d251ad3451594cf42853e14b08",
     "semantic_hash": ""
   },
   "apps/api/src/modules/gis-prep/gis-prep.service.ts": {
-    "mtime": 1795024097.5101266,
-    "seen": 1795274602.953356,
-    "ast_hash": "ba05c76d698829161245ed18e04d6e7a",
+    "mtime": 1795504754.8739886,
+    "seen": 1795505523.467437,
+    "ast_hash": "7524593b3a3b59b33b829f2feefe8c32",
     "semantic_hash": ""
   },
   "apps/api/src/modules/health/health.controller.spec.ts": {
@@ -4686,9 +4686,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/lib/gis-prep.api.ts": {
-    "mtime": 1795024097.5101266,
-    "seen": 1795274602.9540668,
-    "ast_hash": "8e919dacf97ed18d839c736c058035b7",
+    "mtime": 1795504782.0259902,
+    "seen": 1795505523.48227,
+    "ast_hash": "a557ec8fb384988b4a9911c8423f6028",
     "semantic_hash": ""
   },
   "apps/web/src/lib/issue-constants.test.ts": {
@@ -5004,9 +5004,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/pages/GisPrepPage.tsx": {
-    "mtime": 1795192480.0058439,
-    "seen": 1795274602.9541683,
-    "ast_hash": "a35c6c37478bbf8cf4597bc2a5766544",
+    "mtime": 1795504909.813998,
+    "seen": 1795505523.4836874,
+    "ast_hash": "05a5e85889b4e3b12300a84424ead582",
     "semantic_hash": ""
   },
   "apps/web/src/pages/HelpPage.tsx": {
@@ -5328,9 +5328,9 @@
     "semantic_hash": ""
   },
   "packages/types/src/gis-prep.types.ts": {
-    "mtime": 1794461377.5603108,
-    "seen": 1795274602.9542334,
-    "ast_hash": "97ccf94bfd430ba263c635eb744becdd",
+    "mtime": 1795504704.8779857,
+    "seen": 1795505523.485273,
+    "ast_hash": "5ad13514c9c4302d18a5f73000d9992a",
     "semantic_hash": ""
   },
   "packages/types/src/ifc-processing.types.ts": {
@@ -5436,9 +5436,9 @@
     "semantic_hash": ""
   },
   "render.yaml": {
-    "mtime": 1795502141.3874674,
-    "seen": 1795502663.1784868,
-    "ast_hash": "f06cf51d907b996186b5e1b1b748db7c",
+    "mtime": 1795503462.999546,
+    "seen": 1795505523.485646,
+    "ast_hash": "9c00f5dc8e6192907c4b7d764f7e84d6",
     "semantic_hash": ""
   },
   "tools/bim-debug/extract-minimal-repro.cjs": {
@@ -6600,15 +6600,15 @@
     "semantic_hash": ""
   },
   "apps/web/src/lib/drawing-format.test.ts": {
-    "mtime": 1794461377.4363108,
-    "seen": 1795274602.9540563,
-    "ast_hash": "4ae6b34f5d0fe46c481a87fa8d487a89",
+    "mtime": 1795504888.4139967,
+    "seen": 1795505523.4820971,
+    "ast_hash": "d4868c94ca895129097034d3225539f1",
     "semantic_hash": ""
   },
   "apps/web/src/lib/drawing-format.ts": {
-    "mtime": 1794461377.4363108,
-    "seen": 1795274602.9540575,
-    "ast_hash": "0fa6bc2f81016688d73683149d9ab820",
+    "mtime": 1795504877.929996,
+    "seen": 1795505523.4821002,
+    "ast_hash": "6a7cbbb1d8882e4c14b8cd92453028aa",
     "semantic_hash": ""
   },
   "apps/web/src/lib/notification-socket.ts": {
@@ -7218,9 +7218,15 @@
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/docs/GIS_PREP_MEMORY_REMEDIATION.md": {
-    "mtime": 1795502489.711488,
-    "seen": 1795502663.1793354,
-    "ast_hash": "48c3459d3b78e2e6679f7d10deca8325",
+    "mtime": 1795503439.7155445,
+    "seen": 1795505523.4864347,
+    "ast_hash": "bddf6225ed0b3c59b0ff2bfcce93bdca",
+    "semantic_hash": ""
+  },
+  "apps/ai-service/tests/test_gis_prep_router.py": {
+    "mtime": 1795505142.1260116,
+    "seen": 1795505523.4623158,
+    "ast_hash": "14832ced32214a4133c741eee6e8eb71",
     "semantic_hash": ""
   },
   "pnpm-lock.yaml": {

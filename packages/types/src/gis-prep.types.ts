@@ -6,6 +6,26 @@
 export const GIS_PREP_PROFILES = ['sdd_planning', 'bdms_building'] as const;
 export type GisPrepProfile = (typeof GIS_PREP_PROFILES)[number];
 
+// The single source of truth for the maximum DXF/DWG upload size, shared by
+// the frontend (GisPrepPage.tsx: pre-upload check + the limit it displays)
+// and the API (gis-prep.service.ts: the post-upload size check before a job
+// is ever queued -- see that file's own comment on why the presigned PUT
+// itself can't enforce this). apps/ai-service's GIS_PREP_MAX_UPLOAD_MB
+// (Python, routers/gis_prep.py) is the SAME number, kept in sync by hand --
+// a Python service can't import a TS constant -- as the pipeline's own
+// safety-net check. "MB" here means 1024*1024 bytes everywhere in this
+// codebase's *_MB config (apps/ai-service/app/config.py and this value
+// alike), never decimal 1,000,000-byte MB.
+//
+// 30 MB, not the 500 MB this replaced: GIS_PREP_MEMORY_REMEDIATION.md's own
+// benchmark measured ~24-33x inflation from DXF file size to the engine's
+// peak resident memory, inside a 512 MB container shared with another
+// service -- 500 MB was never actually safe to process, only accepted by
+// the API before being handed to a service that would have rejected or
+// OOM'd on anything much past ~20-25 MB.
+export const GIS_PREP_MAX_UPLOAD_MB = 30;
+export const GIS_PREP_MAX_UPLOAD_BYTES = GIS_PREP_MAX_UPLOAD_MB * 1024 * 1024;
+
 // QUEUED/RUNNING/FAILED describe the platform job; READY/WARNINGS/BLOCKED
 // mirror the tool's own statuses ("Ready for review" / "Prepared with
 // warnings" / "Blocked ..."), whose exact wording is kept in statusLabel.

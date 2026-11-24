@@ -1,12 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
-import type { GisPrepCounts, GisPrepJob, GisPrepJobStatus, GisPrepOutputFile, GisPrepProfile, GisPrepSettings } from '@engineeringos/types';
+import {
+  GIS_PREP_MAX_UPLOAD_BYTES, GIS_PREP_MAX_UPLOAD_MB,
+  type GisPrepCounts, type GisPrepJob, type GisPrepJobStatus, type GisPrepOutputFile, type GisPrepProfile, type GisPrepSettings,
+} from '@engineeringos/types';
 import { DatabaseService } from '../../database/database.service';
 import { StorageService } from '../storage/storage.service';
 import { assertProfile } from './dto/gis-prep.dto';
 
-export const GIS_PREP_MAX_SIZE_BYTES = 500 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = new Set(['dxf', 'dwg']);
 
 export interface GisPrepQueueJob {
@@ -26,14 +28,24 @@ export class GisPrepService {
     @InjectQueue('gis-prep') private readonly queue: Queue<GisPrepQueueJob>,
   ) {}
 
-  async getUploadUrl(companyId: string, projectId: string, filename: string) {
+  async getUploadUrl(companyId: string, projectId: string, filename: string, declaredSizeBytes?: number) {
     await this.assertProjectBelongsToCompany(companyId, projectId);
     const ext = filename.split('.').pop()?.toLowerCase() ?? '';
     if (!ALLOWED_EXTENSIONS.has(ext)) {
       throw new BadRequestException(`File type ".${ext}" is not supported. Allowed: DXF, DWG.`);
     }
+    // Client-reported, so never the real enforcement (createJob()'s
+    // post-upload HEAD check below is) -- this only saves an obviously
+    // oversized file the time and bandwidth of a full upload it would be
+    // rejected for anyway.
+    if (declaredSizeBytes !== undefined && declaredSizeBytes > GIS_PREP_MAX_UPLOAD_BYTES) {
+      throw new BadRequestException(
+        `This drawing is ${(declaredSizeBytes / 1024 / 1024).toFixed(1)} MB, over the ${GIS_PREP_MAX_UPLOAD_MB} MB limit for `
+        + 'GIS preparation.',
+      );
+    }
     const key = this.storage.generateKey(companyId, projectId, 'gis-prep', filename);
-    const url = await this.storage.getUploadUrl(key, 'application/octet-stream', GIS_PREP_MAX_SIZE_BYTES);
+    const url = await this.storage.getUploadUrl(key, 'application/octet-stream', GIS_PREP_MAX_UPLOAD_BYTES);
     return { ...url, storageKey: key };
   }
 
@@ -49,9 +61,12 @@ export class GisPrepService {
     if (sizeBytes === null) {
       throw new BadRequestException('Uploaded file not found in storage. Complete the upload before creating the job.');
     }
-    if (sizeBytes > GIS_PREP_MAX_SIZE_BYTES) {
+    if (sizeBytes > GIS_PREP_MAX_UPLOAD_BYTES) {
       await this.storage.deleteIfExists(input.storageKey);
-      throw new BadRequestException(`Uploaded file (${(sizeBytes / 1024 / 1024).toFixed(1)} MB) exceeds the ${GIS_PREP_MAX_SIZE_BYTES / 1024 / 1024} MB limit. The upload has been rejected and removed.`);
+      throw new BadRequestException(
+        `This drawing is ${(sizeBytes / 1024 / 1024).toFixed(1)} MB, over the ${GIS_PREP_MAX_UPLOAD_MB} MB limit for `
+        + 'GIS preparation. The upload has been rejected and removed; it was never queued for processing.',
+      );
     }
     return this.insertAndQueue(companyId, projectId, userId, profile, input.originalFilename, input.storageKey, input.settings, null);
   }

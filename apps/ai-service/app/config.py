@@ -40,7 +40,13 @@ class Settings(BaseSettings):
     gis_prep_python: str = "/opt/m4adm/bin/python"
     gis_prep_memory_limit_mb: int = 270           # real memory (RSS) of the engine process (the service itself uses ~210 of 512 MB)
     gis_prep_address_space_limit_mb: int = 1536   # loose backstop only, see routers/gis_prep.py
-    gis_prep_max_upload_mb: int = 25
+    # The pipeline's own safety-net check (gis_prep.py streams the upload to
+    # disk and rejects it here before ever invoking the engine subprocess).
+    # Must match apps/api's GIS_PREP_MAX_UPLOAD_MB (packages/types/src/gis-
+    # prep.types.ts), the single source of truth this mirrors by hand -- a
+    # Python service can't import a TS constant. See that constant's own
+    # comment, and docs/GIS_30MB_CAPACITY_VALIDATION.md, for why this value.
+    gis_prep_max_upload_mb: int = 30
     gis_prep_timeout_s: int = 840
 
     class Config:

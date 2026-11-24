@@ -1,11 +1,24 @@
+import { GIS_PREP_MAX_UPLOAD_MB } from '@engineeringos/types';
+
 // What a chosen drawing file really is, judged by its first bytes rather than its name: a DWG starts with a version
 // code such as "AC1032", a text DXF with a "0 / SECTION" pair, a binary DXF with "AutoCAD Binary DXF".
 export type DrawingFormat = 'DWG' | 'DXF' | 'UNKNOWN';
 
-// What the cloud server can process. It has 512 MB, about 210 of them used by the service itself; loading a DXF takes
-// roughly 100 MB plus 9 MB per MB of file (measured on the M19B drawings), so DXFs over 18 MB are refused. A DWG
-// becomes a DXF about 5 to 6 times larger, so a DWG over about 3 MB lands past the limit too.
-export const CLOUD_DXF_LIMIT_MB = 18;
+// The DXF limit shown here MUST be the same number the API actually
+// enforces (gis-prep.service.ts's GIS_PREP_MAX_UPLOAD_BYTES) -- it used to
+// be a separate, hand-maintained "18 MB" guess that had drifted from what
+// was really enforced server-side (a real bug this now closes: a note
+// mentioning the wrong number is worse than no note at all). Re-exported
+// here under the old name so this file's own call sites don't all need
+// renaming, but it's GIS_PREP_MAX_UPLOAD_MB, not a second constant.
+export const CLOUD_DXF_LIMIT_MB = GIS_PREP_MAX_UPLOAD_MB;
+// DWG is a SEPARATE, narrower check: a DWG is converted to DXF server-side
+// first, and that CONVERTED file is what apps/ai-service's Dockerfile-baked
+// M4ADM_MAX_DXF_MB (18 MB, unrelated to GIS_PREP_MAX_UPLOAD_MB above -- see
+// that Dockerfile's own comment) is checked against, not the raw DWG
+// upload. A DWG becomes a DXF about 5 to 6 times larger (measured on the
+// M19B drawings), so a DWG over about 3 MB predictably fails THAT check --
+// this is a prediction shown early, not the enforcement itself.
 export const CLOUD_DWG_LIMIT_MB = 3;
 
 export function formatFromHead(head: string): DrawingFormat {
@@ -44,8 +57,11 @@ export function drawingNote(name: string, sizeBytes: number, format: DrawingForm
   if (format === 'DWG' && mb > CLOUD_DWG_LIMIT_MB) {
     return {
       tone: 'warn',
+      // 18 MB here is the server's separate post-conversion DXF cap
+      // (M4ADM_MAX_DXF_MB), not CLOUD_DXF_LIMIT_MB above -- see this
+      // file's own comment on why those are two different numbers.
       text: `DWG detected, ${mb.toFixed(1)} MB. A DWG becomes a DXF about 5 to 6 times larger, so this one will probably be ` +
-        `more than the ${CLOUD_DXF_LIMIT_MB} MB the cloud server can process, and the job will say so. Use the desktop tool for it.`,
+        'more than the 18 MB the cloud server can process once converted, and the job will say so. Use the desktop tool for it.',
     };
   }
   const mismatch = (format === 'DWG' && ext !== 'dwg') || (format === 'DXF' && ext !== 'dxf')
