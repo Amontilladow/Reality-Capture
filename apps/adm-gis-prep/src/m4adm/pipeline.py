@@ -12,6 +12,7 @@ Order of operations (each step logged to the job audit trail):
 """
 from __future__ import annotations
 
+import gc
 import json
 import os
 import re
@@ -264,6 +265,14 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
 
         # ---------------------------------------------------------------- validate prepared state
         records2 = classify_layout(doc)
+        # `records`/`in_scope`/`pts` (the pre-mapping, pre-fix classification and
+        # its derived point/entity lists) are never read again past this point --
+        # every later stage reads records2/target2 instead. On a large drawing
+        # these are proportional to entity count, so dropping the references now
+        # (rather than only when _run() returns) lets CPython's refcounting
+        # reclaim them immediately instead of holding them through the rest of
+        # validation, feature-building and per-category export below.
+        del records, in_scope, pts
         origin = fres.origin
         target2 = {r.handle: mres.entity_target.get(origin.get(r.handle, r.handle)) for r in records2}
         is_bdms = manifest.profile == "bdms_building"
@@ -307,6 +316,17 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
         prepared = ws.dir / "work" / "prepared_full.dxf"
         atomic_save_doc(doc, prepared)
         audit.record("prepared_full_written", file=str(prepared.relative_to(ws.dir)))
+        # `doc`/`records2`/`ctx`/`specs` are never read again past this point --
+        # build_output() below does its OWN fresh ezdxf.readfile(prepared) per
+        # category, so holding the ORIGINAL full-document object graph (easily
+        # the single largest thing in memory for the rest of this job, on a
+        # large drawing) through that entire multi-category export loop was
+        # pure waste. ezdxf's Drawing holds many owner/back-reference cycles,
+        # so CPython's refcounting alone won't reclaim it immediately on `del`
+        # -- gc.collect() forces that reclaim now, before the per-category
+        # loop's own fresh reads start competing for the same memory.
+        del doc, records2, ctx, specs
+        gc.collect()
         out_dir = ws.dir / "output"
         for cat in categories:
             token = manifest.categories[cat].file_token
@@ -316,6 +336,13 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
             info = build_output(prepared, spec, manifest, ws.job_id, src_hash_before, settings.purge_unused_blocks,
                                 settings.units_confirmed_metres)
             outputs.append(info)
+            # build_output()'s own `doc` (another full ezdxf Drawing, read
+            # fresh from `prepared`) is out of scope again by the time it
+            # returns, but is just as cyclic; reclaiming it NOW, between
+            # categories, is what keeps peak memory close to "one category's
+            # worth" instead of accumulating uncollected garbage across every
+            # category a job was asked to produce.
+            gc.collect()
             audit.record("output_written", **{k: v for k, v in info.items() if k != "changes"},
                          changes=info["changes"])
             for name in info.get("foreign_layers_remaining", []):
@@ -327,6 +354,7 @@ def _run(source: Path, settings: JobSettings, manifest: Manifest, tol, categorie
             stem = _output_stem(manifest, settings, "additional")
             spec = OutputSpec("additional", "additional", out_dir / f"{stem}.dxf", extra, [])
             info = build_output(prepared, spec, manifest, ws.job_id, src_hash_before, False, False)
+            gc.collect()
             info["note"] = ("Reference-only file, not a submission file: entities not mapped to a specified layer, "
                             "kept with their original layers so no information is lost.")
             outputs.append(info)

@@ -67,18 +67,26 @@ def sha256_file(path: Path) -> str:
 
 
 def identify(path: Path) -> FileIdentity:
-    """Identify the actual file format from its content, not its extension."""
+    """Identify the actual file format from its content, not its extension.
+
+    Reads only the first 4096 bytes for format sniffing and hashes the file
+    with the existing streaming sha256_file() -- NOT path.read_bytes(),
+    which previously held the entire file (up to 100 MB) in memory just to
+    sniff a handful of header bytes, before any of the real DXF-parsing
+    memory cost even begins. Real incident: this ran on every GIS
+    preparation job, on the full upload, as the very first step."""
     path = Path(path)
-    data = path.read_bytes()
-    head = data[:64]
-    ident = FileIdentity(path, "UNKNOWN", None, None, len(data), hashlib.sha256(data).hexdigest())
+    size = path.stat().st_size
+    with open(path, "rb") as fh:
+        head = fh.read(4096)
+    ident = FileIdentity(path, "UNKNOWN", None, None, size, sha256_file(path))
     if head[:6].startswith(b"AC10") and head[:6].decode("ascii", "replace")[2:6].isdigit():
         ident.format = "DWG"
         ident.version_code = head[:6].decode("ascii")
     elif head.startswith(b"AutoCAD Binary DXF"):
         ident.format = "DXF-BINARY"
     else:
-        text = data[:4096].decode("latin-1", "replace")
+        text = head.decode("latin-1", "replace")
         stripped = text.lstrip()
         if stripped.startswith("0") and "SECTION" in text[:200]:
             ident.format = "DXF-ASCII"
