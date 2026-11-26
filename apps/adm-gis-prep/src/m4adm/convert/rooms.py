@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import math
 import re
+from collections import Counter
 from dataclasses import dataclass, field
 
 from shapely import STRtree
@@ -30,12 +31,14 @@ from shapely.geometry.polygon import orient
 from shapely.ops import unary_union
 
 from m4adm.convert.settings import ConversionSettings
-from m4adm.convert.source import Prim, SourceModel, match
+from m4adm.convert.source import Prim, SourceModel, bounds, match
 
 HIGH = "AUTO_GENERATED_HIGH_CONFIDENCE"
 REVIEW = "GENERATED_REQUIRES_REVIEW"
 UNRESOLVED = "UNRESOLVED"
 NOT_GENERATED = "NOT_GENERATED"
+
+MIN_PLAN_M, MAX_PLAN_M = 2.0, 1500.0       # a building floor measures between a few metres and about a kilometre
 
 
 @dataclass
@@ -201,6 +204,11 @@ def find_openings(barrier, settings: ConversionSettings) -> list[Closure]:
 
 
 # --------------------------------------------------------------------------- detection
+def _top_layers(model: SourceModel, n: int = 8) -> str:
+    counts = Counter(p.layer for p in model.prims if p.kind in ("line", "area"))
+    return ", ".join(f"{name} ({c})" for name, c in counts.most_common(n)) or "none"
+
+
 def detect_rooms(model: SourceModel, settings: ConversionSettings) -> Detection:
     tol = settings.tolerances
     barrier_prims = [p for p in model.prims if p.kind in ("line", "area")
@@ -209,9 +217,22 @@ def detect_rooms(model: SourceModel, settings: ConversionSettings) -> Detection:
     barrier_layers = sorted({p.layer for p in barrier_prims})
     labels, label_layers = collect_labels(model.prims, settings)
     empty = Detection(barrier_layers, label_layers, 0, [], None, UNRESOLVED, "", [], labels, list(labels), 0)
+    # A drawing header that names the wrong unit (e.g. millimetres for a drawing made in metres) shrinks or inflates the
+    # whole plan: say so instead of reporting empty walls.
+    extent = bounds([p for p in model.prims if p.kind != "text"])
+    if extent is not None:
+        width, height = extent[2] - extent[0], extent[3] - extent[1]
+        if max(width, height) < MIN_PLAN_M or max(width, height) > MAX_PLAN_M:
+            empty.envelope_reason = (
+                f"With the units used ({model.unit_origin or 'unknown'}) the drawing measures {width:.3g} x {height:.3g} m, "
+                "which is not a plausible building floor. The drawing header probably names the wrong unit: set "
+                "Source units (m, cm or mm) to the unit the drawing was really made in and convert again.")
+            return empty
     if not barrier_prims:
-        empty.envelope_reason = ("No wall geometry found: no layer matched the wall/window role patterns. "
-                                 "Assign the wall layers in the conversion settings.")
+        top = _top_layers(model)
+        empty.envelope_reason = ("No wall geometry found: no layer matched the wall/window role patterns. Layers with "
+                                 f"geometry in this drawing: {top}. Enter the layer(s) that hold the walls in the "
+                                 "'Wall layers' field (names, * allowed) and convert again.")
         return empty
     lines, areas = [], [p.geom for p in barrier_prims if p.kind == "area"]
     for p in barrier_prims:
@@ -245,7 +266,9 @@ def detect_rooms(model: SourceModel, settings: ConversionSettings) -> Detection:
         det.envelope_reason = ("The exterior wall network does not enclose the floor: its largest closed outline "
                                f"({env.area:.1f} m2) is barely larger than the walls themselves "
                                f"({main.area:.1f} m2). Check for a gap in the exterior walls wider than "
-                               f"{tol.opening_max} m, or wall layers missing from the wall role.")
+                               f"{tol.opening_max} m, or wall layers missing from the wall role. Layers read as walls: "
+                               f"{', '.join(barrier_layers)}. Layers with the most geometry: {_top_layers(model)}. If the "
+                               "walls are on another layer, enter it in the 'Wall layers' field and convert again.")
         det.unplaced_labels = list(labels)
         return det
     det.envelope = env
