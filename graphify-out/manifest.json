@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "apps/ai-service/app/config.py": {
-    "mtime": 1795504920.4179986,
-    "seen": 1795505523.4618518,
-    "ast_hash": "24487c51d8643da2444f7dcd54ed3e78",
+    "mtime": 1795506375.434085,
+    "seen": 1795693164.120765,
+    "ast_hash": "83b231bcf0a6a5e0163934cde236f806",
     "semantic_hash": ""
   },
   "apps/ai-service/app/knowledge/__init__.py": {
@@ -1800,9 +1800,9 @@
     "semantic_hash": ""
   },
   "apps/api/src/modules/gis-prep/gis-prep.service.spec.ts": {
-    "mtime": 1795505013.310004,
-    "seen": 1795505523.4674358,
-    "ast_hash": "15dda0d251ad3451594cf42853e14b08",
+    "mtime": 1795692881.6673775,
+    "seen": 1795693164.1270971,
+    "ast_hash": "6b7e1e74fb28bf883761a41c0e580065",
     "semantic_hash": ""
   },
   "apps/api/src/modules/gis-prep/gis-prep.service.ts": {
@@ -5328,9 +5328,9 @@
     "semantic_hash": ""
   },
   "packages/types/src/gis-prep.types.ts": {
-    "mtime": 1795504704.8779857,
-    "seen": 1795505523.485273,
-    "ast_hash": "5ad13514c9c4302d18a5f73000d9992a",
+    "mtime": 1795506364.8220844,
+    "seen": 1795693164.1471524,
+    "ast_hash": "c40ebbaec91c9c1e61e9396b1043787a",
     "semantic_hash": ""
   },
   "packages/types/src/ifc-processing.types.ts": {
@@ -5568,9 +5568,9 @@
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/docs/DECISIONS.md": {
-    "mtime": 1795502394.6594825,
-    "seen": 1795502663.1792717,
-    "ast_hash": "66a7f7615182a2d43ee2a1408d2a8d61",
+    "mtime": 1795692987.2313838,
+    "seen": 1795693164.1481068,
+    "ast_hash": "b1710f5867de25eba8f84ac3d1aa84cd",
     "semantic_hash": ""
   },
   "apps/adm-gis-prep/docs/DISCREPANCIES.md": {
@@ -6600,9 +6600,9 @@
     "semantic_hash": ""
   },
   "apps/web/src/lib/drawing-format.test.ts": {
-    "mtime": 1795504888.4139967,
-    "seen": 1795505523.4820971,
-    "ast_hash": "d4868c94ca895129097034d3225539f1",
+    "mtime": 1795692865.1953764,
+    "seen": 1795693164.1438146,
+    "ast_hash": "b67580b28bfcf328c9646835fe62a7ad",
     "semantic_hash": ""
   },
   "apps/web/src/lib/drawing-format.ts": {
@@ -7227,6 +7227,12 @@
     "mtime": 1795505142.1260116,
     "seen": 1795505523.4623158,
     "ast_hash": "14832ced32214a4133c741eee6e8eb71",
+    "semantic_hash": ""
+  },
+  "apps/adm-gis-prep/docs/GIS_30MB_CAPACITY_VALIDATION.md": {
+    "mtime": 1795693053.9233878,
+    "seen": 1795693164.1481626,
+    "ast_hash": "e56715dd450361ff6e85de666605eaf1",
     "semantic_hash": ""
   },
   "pnpm-lock.yaml": {

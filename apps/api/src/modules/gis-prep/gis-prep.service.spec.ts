@@ -72,10 +72,13 @@ describe('GisPrepService', () => {
     expect(storage.deleteIfExists).toHaveBeenCalledWith(key);
   });
 
-  // The 30 MB boundary (GIS_PREP_MAX_UPLOAD_MB): just below accepts, exactly
-  // at it accepts (the check is strictly-greater-than, so the limit itself
-  // is still a valid upload), just above is rejected and removed.
-  it('accepts a file just below the 30 MB limit', async () => {
+  // The upload-size boundary (GIS_PREP_MAX_UPLOAD_MB, currently 8 MB -- see
+  // that constant's own comment): just below accepts, exactly at it accepts
+  // (the check is strictly-greater-than, so the limit itself is still a
+  // valid upload), just above is rejected and removed. Written against the
+  // constant, not a literal number, so it stays correct if that evidence-
+  // based value changes again.
+  it('accepts a file just below the upload limit', async () => {
     const { svc, queue, storage } = makeService([[{ id: projectId }], [row]]);
     (storage.getObjectSize as jest.Mock).mockResolvedValue(GIS_PREP_MAX_UPLOAD_BYTES - 1);
     await expect(svc.createJob(companyId, projectId, 'user-1', { storageKey: key, originalFilename: 'A.dxf', settings }))
@@ -84,7 +87,7 @@ describe('GisPrepService', () => {
     expect(storage.deleteIfExists).not.toHaveBeenCalled();
   });
 
-  it('accepts a file exactly at the 30 MB limit', async () => {
+  it('accepts a file exactly at the upload limit', async () => {
     const { svc, queue, storage } = makeService([[{ id: projectId }], [row]]);
     (storage.getObjectSize as jest.Mock).mockResolvedValue(GIS_PREP_MAX_UPLOAD_BYTES);
     await expect(svc.createJob(companyId, projectId, 'user-1', { storageKey: key, originalFilename: 'A.dxf', settings }))
@@ -93,7 +96,7 @@ describe('GisPrepService', () => {
     expect(storage.deleteIfExists).not.toHaveBeenCalled();
   });
 
-  it('rejects and removes a file one byte over the 30 MB limit, with an actionable message, before queuing anything', async () => {
+  it('rejects and removes a file one byte over the upload limit, with an actionable message, before queuing anything', async () => {
     const { svc, queue, storage } = makeService([[{ id: projectId }]]);
     (storage.getObjectSize as jest.Mock).mockResolvedValue(GIS_PREP_MAX_UPLOAD_BYTES + 1);
     await expect(svc.createJob(companyId, projectId, 'user-1', { storageKey: key, originalFilename: 'A.dxf', settings }))

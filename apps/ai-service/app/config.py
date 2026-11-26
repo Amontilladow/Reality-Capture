@@ -44,9 +44,10 @@ class Settings(BaseSettings):
     # disk and rejects it here before ever invoking the engine subprocess).
     # Must match apps/api's GIS_PREP_MAX_UPLOAD_MB (packages/types/src/gis-
     # prep.types.ts), the single source of truth this mirrors by hand -- a
-    # Python service can't import a TS constant. See that constant's own
-    # comment, and docs/GIS_30MB_CAPACITY_VALIDATION.md, for why this value.
-    gis_prep_max_upload_mb: int = 30
+    # Python service can't import a TS constant. 8, not 30: see that
+    # constant's own comment, and docs/GIS_30MB_CAPACITY_VALIDATION.md, for
+    # the benchmark evidence 30 MB is not safe on this 512 MB container.
+    gis_prep_max_upload_mb: int = 8
     gis_prep_timeout_s: int = 840
 
     class Config:

@@ -17,13 +17,20 @@ export type GisPrepProfile = (typeof GIS_PREP_PROFILES)[number];
 // codebase's *_MB config (apps/ai-service/app/config.py and this value
 // alike), never decimal 1,000,000-byte MB.
 //
-// 30 MB, not the 500 MB this replaced: GIS_PREP_MEMORY_REMEDIATION.md's own
-// benchmark measured ~24-33x inflation from DXF file size to the engine's
-// peak resident memory, inside a 512 MB container shared with another
-// service -- 500 MB was never actually safe to process, only accepted by
-// the API before being handed to a service that would have rejected or
-// OOM'd on anything much past ~20-25 MB.
-export const GIS_PREP_MAX_UPLOAD_MB = 30;
+// 8 MB, not the 500 MB this replaced, and not the 30 MB once proposed as an
+// operational target. GIS_30MB_CAPACITY_VALIDATION.md's own benchmark (5 to
+// 30 MB, in 5 MB steps, each measured twice) found peak RSS of 196 MB at
+// 5 MB, 313 MB at 10 MB, and 780 MB at 30 MB, against the engine's existing
+// GIS_PREP_MEMORY_LIMIT_MB=270 MB per-process watcher inside a shared
+// 512 MB container (apps/ai-service's own baseline already uses roughly
+// 180-210 MB of that). 30 MB measured at 780 MB peak -- more than the
+// ENTIRE container on its own, let alone alongside the service's own
+// baseline and any concurrent OCR/assistant activity. 8 MB is the largest
+// round number whose predicted peak RSS (this benchmark's own linear fit,
+// ~80 + 23.3*MB) stays under the EXISTING 270 MB watcher threshold with NO
+// other config change, leaving real margin rather than sitting exactly on
+// the line one real-world drawing's extra complexity could cross.
+export const GIS_PREP_MAX_UPLOAD_MB = 8;
 export const GIS_PREP_MAX_UPLOAD_BYTES = GIS_PREP_MAX_UPLOAD_MB * 1024 * 1024;
 
 // QUEUED/RUNNING/FAILED describe the platform job; READY/WARNINGS/BLOCKED
