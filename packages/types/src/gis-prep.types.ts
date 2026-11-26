@@ -39,6 +39,7 @@ export interface GisConvertSettings {
   metadata: Record<string, string>;
   source_units?: 'auto' | 'mm' | 'cm' | 'm';
   single_unit_number?: string;
+  wall_layers?: string[];
   floor_height?: string;
   building_number_of_floors?: string;
   building_height?: string;

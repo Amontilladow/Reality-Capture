@@ -19,6 +19,9 @@
     {% endif %}
     <label for="source_units">Drawing units</label>
     <select id="source_units" name="source_units"><option value="auto">From the drawing ($INSUNITS)</option><option value="mm">Millimetres</option><option value="cm">Centimetres</option><option value="m">Metres</option></select>
+    <label for="wall_layers">Wall layers (only if the drawing's walls are not found)</label>
+    <input id="wall_layers" type="text" name="wall_layers" placeholder="e.g. A-ARCH-KEYPLAN, A-WALL*" style="width:100%;max-width:640px">
+    <p class="hint">Layer names separated by commas; * matches any text. Leave empty to use the usual names (WALL, CURT_WALL ...). If a conversion stops with "No wall geometry found", the message lists the layers the drawing has.</p>
   </fieldset>
 
   <fieldset><legend>2. File name: Zone-Sector-Plot-Building-Floor</legend>

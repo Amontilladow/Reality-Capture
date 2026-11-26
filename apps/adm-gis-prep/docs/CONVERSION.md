@@ -131,6 +131,8 @@ These rules were added after the official QC rejected the first platform draft. 
 ## 6. Coordinates
 
 1. **Units** (stage B): scale only, from `$INSUNITS` or declared. Unknown units block the job.
+**Drawings that are read wrongly, and what the tool says.** (a) *Wrong unit in the header*: a drawing made in metres but marked millimetres (seen on a key plan, `$INSUNITS=4` with coordinates in UTM metres) would measure a few centimetres; the conversion now stops with "not a plausible building floor ... set Source units" (floor outlines outside 2 m - 1.5 km). (b) *Walls on a layer no default pattern matches* (the same key plan keeps 40,000 lines on one layer `A-ARCH-KEYPLAN`): the message lists the layers that hold geometry, and the **Wall layers** field (setting `wall_layers`, names with `*` allowed) replaces the default wall patterns. Whether the result is a usable single-floor draft still needs the engineer's review: a key plan holds many units on one layer.
+
 2. **Georeferencing** (stage G): a 2D similarity fitted to engineer control points. Source points are given in drawing units (as read in CAD), targets as UTM E/N metres. It is applied only when **every** check passes **and** `confirm_transformation` is set:
    - target CRS is EPSG:32639 or 32640;
    - at least 2 points (3+ recommended; two give no residual check);
