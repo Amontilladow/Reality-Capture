@@ -22,6 +22,9 @@
     <label for="wall_layers">Wall layers (only if the drawing's walls are not found)</label>
     <input id="wall_layers" type="text" name="wall_layers" placeholder="e.g. A-WALL*, S-WALL" style="width:100%;max-width:640px">
     <p class="hint">Layer names separated by commas; * matches any text. Leave empty to use the usual names (WALL, CURT_WALL ...). If a conversion stops with "No wall geometry found", the message lists the layers the drawing has.</p>
+    <label for="outline_layer">Building outline layer (only if the exterior is not closed linework, e.g. a curtain-wall facade)</label>
+    <input id="outline_layer" type="text" name="outline_layer" placeholder="e.g. BUILDING_OUTLINE" style="width:100%;max-width:640px">
+    <p class="hint">Draw the building edge as ONE closed polyline on this layer in CAD. It then becomes the Floor, Building Outline and Roof outline; the rooms still come from the walls. Leave empty to detect the outline from the walls.</p>
   </fieldset>
 
   <fieldset><legend>2. File name: Zone-Sector-Plot-Building-Floor</legend>

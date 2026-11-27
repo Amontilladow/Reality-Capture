@@ -72,7 +72,7 @@ const formKey = (projectId: string) => `gis-prep-form:${projectId}`;
 // Also never restored: what belongs to ONE drawing (its units, its control points, its wall layers). A leftover wall
 // layer from the previous drawing hides the walls of the next one.
 const NEVER_RESTORE: Partial<FormState> = { crsConfirmed: false, unitsConfirmed: false, units: 'auto', controlPoints: '' };
-const withoutDrawingSpecific = (f: FormState): FormState => ({ ...f, facts: { ...f.facts, wall_layers: '' } });
+const withoutDrawingSpecific = (f: FormState): FormState => ({ ...f, facts: { ...f.facts, wall_layers: '', outline_layer: '' } });
 
 // Values the drawing cannot provide; sent as conversion settings. Code-listed values (usage, drawing type) are
 // picked from the BDMS code lists; formats are checked before the job is sent (lib/bdms-inputs).
@@ -131,6 +131,7 @@ function buildSettings(f: FormState): GisPrepSettings | GisConvertSettings {
     return {
       mode: 'convert', profile: 'bdms_building', metadata, source_units: f.units,
       single_unit_number: f.unitNumber,
+      outline_layer: (f.facts.outline_layer ?? '').trim(),
       wall_layers: (f.facts.wall_layers ?? '').split(/[,;\n]/).map(n => n.trim()).filter(Boolean),
       floor_height: f.facts.floor_height ?? '',
       building_number_of_floors: f.facts.building_number_of_floors ?? '',
@@ -359,6 +360,13 @@ export default function GisPrepPage() {
                 <span>Wall layers (only if the walls are not found; names, * allowed)</span>
                 <input className="field-input text-xs !py-2" placeholder="A-ARCH-KEYPLAN" value={form.facts.wall_layers ?? ''}
                   onChange={e => setForm(f => ({ ...f, facts: { ...f.facts, wall_layers: e.target.value } }))} />
+              </label>
+            )}
+            {form.mode === 'convert' && (
+              <label className="text-xs text-ink-500 space-y-2">
+                <span>Building outline layer (only if the exterior is not closed linework; one closed polyline)</span>
+                <input className="field-input text-xs !py-2" placeholder="BUILDING_OUTLINE" value={form.facts.outline_layer ?? ''}
+                  onChange={e => setForm(f => ({ ...f, facts: { ...f.facts, outline_layer: e.target.value } }))} />
               </label>
             )}
             {form.mode === 'convert' && (

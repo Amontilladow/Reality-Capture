@@ -215,6 +215,25 @@ def _wall_layers_hint(model: SourceModel, settings: ConversionSettings) -> str:
             "Clear that field (it may be left over from another drawing) or enter a layer that exists here. ")
 
 
+def _drawn_outline(model: SourceModel, layer: str) -> tuple[Polygon | None, str]:
+    """The engineer's building outline: the largest closed polyline (or hatch) on the named layer."""
+    found = [p for p in model.prims if p.kind in ("line", "area") and match(p.layer, [layer])]
+    rings = []
+    for p in found:
+        g = p.geom
+        if p.kind == "area":
+            rings += polygons(g)
+        elif g.is_ring and len(g.coords) >= 4:
+            poly = Polygon(g.coords)
+            if poly.is_valid and poly.area > 0:
+                rings.append(poly)
+    if not rings:
+        what = f"{len(found)} line(s) but none of them closed" if found else "nothing"
+        return None, (f"The outline layer '{layer}' has {what}. Draw the building edge as ONE closed polyline on that "
+                      "layer in CAD (close it), save the DXF and convert again.")
+    return max(rings, key=lambda r: r.area), ""
+
+
 def _top_layers(model: SourceModel, n: int = 8) -> str:
     counts = Counter(p.layer for p in model.prims if p.kind in ("line", "area"))
     return ", ".join(f"{name} ({c})" for name, c in counts.most_common(n)) or "none"
@@ -224,7 +243,8 @@ def detect_rooms(model: SourceModel, settings: ConversionSettings) -> Detection:
     tol = settings.tolerances
     barrier_prims = [p for p in model.prims if p.kind in ("line", "area")
                      and match(p.layer, settings.roles["wall"] + settings.roles["window"])
-                     and not match(p.layer, settings.never_barrier)]
+                     and not match(p.layer, settings.never_barrier)
+                     and not (settings.outline_layer and match(p.layer, [settings.outline_layer]))]
     barrier_layers = sorted({p.layer for p in barrier_prims})
     labels, label_layers = collect_labels(model.prims, settings)
     empty = Detection(barrier_layers, label_layers, 0, [], None, UNRESOLVED, "", [], labels, list(labels), 0)
@@ -274,7 +294,15 @@ def detect_rooms(model: SourceModel, settings: ConversionSettings) -> Detection:
     det = Detection(barrier_layers, label_layers, max(0, raw_parts - merged_parts), closures, None, UNRESOLVED,
                     "", [], labels, [], 0, barrier=walls)
     det.barrier_outside = sum(1 for f, _ in filled if not f.intersects(env))
-    if env.area < main.area * 1.5:
+    drawn = None
+    if settings.outline_layer:
+        drawn, why = _drawn_outline(model, settings.outline_layer)
+        if drawn is None:
+            det.envelope_reason = why
+            det.unplaced_labels = list(labels)
+            return det
+        env = drawn
+    if drawn is None and env.area < main.area * 1.5:
         det.envelope_reason = (_wall_layers_hint(model, settings) +
                                "The exterior wall network does not enclose the floor: its largest closed outline "
                                f"({env.area:.1f} m2) is barely larger than the walls themselves "
@@ -287,9 +315,13 @@ def detect_rooms(model: SourceModel, settings: ConversionSettings) -> Detection:
     det.envelope = env
     det.envelope_status = HIGH
     det.envelope_reason = "Outer boundary of the closed exterior wall network."
+    if drawn is not None:
+        det.envelope_status = REVIEW
+        det.envelope_reason = (f"Taken from the closed polyline the engineer drew on layer '{settings.outline_layer}' "
+                               "(not detected from the walls): confirm it follows the real building edge.")
     hull = unary_union([p for p in parts]).convex_hull
     coverage = env.area / hull.area if hull.area else 1.0
-    if coverage < 0.6:
+    if drawn is None and coverage < 0.6:
         det.envelope_status = REVIEW
         det.envelope_reason = (f"The largest closed wall outline covers only {coverage:.0%} of the extent of the wall "
                                "geometry: the exterior walls may have a gap wider than a doorway, leaving part of the "
@@ -315,6 +347,19 @@ def detect_rooms(model: SourceModel, settings: ConversionSettings) -> Detection:
         touching = sum(1 for c in closures if c.line.distance(piece) < tol.gap_close)
         regions.append(Region(f"R{k + 1:03d}", grown, NOT_GENERATED, [], closures=touching))
     _classify(regions, labels, det, settings)
+    if drawn is not None:
+        # Floor between the drawn outline and the walls is open area, not a room: never generated as a Space. That
+        # covers a region touching the outline (it is not closed by walls: facade pieces, gaps) and a region that
+        # fills most of the floor.
+        edge = env.exterior
+        near = max(0.05, 2 * tol.gap_close)
+        for r in regions:
+            if r.status == NOT_GENERATED:
+                continue
+            if r.poly.area > 0.5 * env.area or r.poly.distance(edge) <= near:
+                r.status = NOT_GENERATED
+                r.reasons.append("open to the drawn building outline (not closed by walls), not a room: draw or "
+                                 "accept it by hand if it is one")
     det.regions = regions
     return det
 
