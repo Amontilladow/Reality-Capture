@@ -66,3 +66,25 @@ def test_leftover_wall_layers_entry_is_named_as_the_cause(tmp_path):
     res = _run(tmp_path, arch_floor(), wall_layers=["A-ARCH-KEYPLAN"])             # matches nothing in this drawing
     text = " ".join(res.report["blockers"])
     assert "'Wall layers' entry (A-ARCH-KEYPLAN) matches no layer" in text and "Clear that field" in text
+
+
+def test_detail_labels_are_centred_on_their_insertion_point_inside_the_room(tmp_path):
+    """The stacked attribute text sits in the middle of the polygon (it used to hang down and right of the point)."""
+    import ezdxf
+    from shapely.geometry import Point, Polygon
+    res = _run(tmp_path, arch_floor())
+    out = next(res.job_dir.rglob("output/*.dxf"))
+    msp = ezdxf.readfile(str(out)).modelspace()
+    polys = [Polygon([(p[0], p[1]) for p in e.get_points()]) for e in msp if e.dxftype() == "LWPOLYLINE" and e.dxf.layer == "Space"]
+    checked = 0
+    for ins in msp.query("INSERT"):
+        if ins.dxf.name != "SpaceDetail":
+            continue
+        at = (ins.dxf.insert.x, ins.dxf.insert.y)
+        ys = [a.dxf.align_point.y for a in ins.attribs]
+        xs = [a.dxf.align_point.x for a in ins.attribs]
+        assert all(abs(x - at[0]) < 1e-6 for x in xs)                      # centred horizontally on the point
+        assert abs(sum(ys) / len(ys) - at[1]) < 1e-6                       # stack centred vertically on the point
+        assert any(p.contains(Point(at)) for p in polys)                   # and the point is inside a Space
+        checked += 1
+    assert checked >= 2

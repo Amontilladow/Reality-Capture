@@ -14,12 +14,14 @@ from pathlib import Path
 import ezdxf
 from ezdxf.addons import importer
 from ezdxf.document import Drawing
+from ezdxf.enums import TextEntityAlignment
 from shapely.geometry import Point, Polygon
 from shapely.ops import polylabel
 
 from m4adm.convert.features import AttrValue, Feature
 from m4adm.rules import Manifest
 
+LABEL_HEIGHT, LABEL_LINE = 0.2, 0.3          # text height and line pitch of the Detail block labels (m)
 DRAFT_MARK = "M4 CONVERSION DRAFT - NOT REVIEWED - NOT ADM/DRM VALIDATED"
 
 
@@ -43,8 +45,12 @@ def _blocks_from_manifest(doc: Drawing, manifest: Manifest, names: set[str]) -> 
     for name in sorted(names):
         spec = manifest.blocks[name]
         b = doc.blocks.new(name)
+        n = len(spec.insert_order)
         for i, tag in enumerate(spec.insert_order):     # the official QC reads attributes by position
-            b.add_attdef(tag.upper(), (0, -0.3 * (i + 1)), dxfattribs={"height": 0.2})
+            # The lines are stacked and centred on the insertion point (the middle of the room), first tag on top, so
+            # the label sits in the middle of its polygon instead of hanging down and to the right of it.
+            d = b.add_attdef(tag.upper(), (0, 0), dxfattribs={"height": LABEL_HEIGHT})
+            d.set_placement((0, ((n - 1) / 2 - i) * LABEL_LINE), align=TextEntityAlignment.MIDDLE_CENTER)
 
 
 def _blocks_from_template(doc: Drawing, template: Path, names: set[str]) -> list[str]:
