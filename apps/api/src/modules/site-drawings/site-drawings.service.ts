@@ -555,6 +555,41 @@ export class SiteDrawingsService {
     return toSiteDrawingRevision(revision);
   }
 
+  // Batch counterpart to setWorkflowStatus(): applies the same
+  // document-control decision to every drawing's CURRENT revision across
+  // a whole import batch at once (e.g. clearing "Status unknown" on a
+  // just-imported set in one action), instead of one drawing at a time.
+  // Reuses setWorkflowStatus() per drawing so the update, audit trail and
+  // notification stay identical to the single-drawing path; one drawing
+  // with no current revision (or not found) just fails that one entry,
+  // mirroring bulkDelete()'s own per-item fault isolation.
+  async bulkSetWorkflowStatus(
+    companyId: string, projectId: string, drawingIds: string[], status: SiteDrawingWorkflowStatus, userId?: string,
+  ): Promise<{ updated: number; failed: number }> {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+    const rows = await this.db.withTenant(companyId, sql => sql<{ id: string; currentRevisionId: string | null }[]>`
+      SELECT id, current_revision_id FROM site_drawings WHERE project_id = ${projectId} AND id = ANY(${drawingIds})
+    `);
+    const currentRevisionIdByDrawing = new Map(rows.map((r) => [r.id, r.currentRevisionId]));
+
+    let updated = 0;
+    let failed = 0;
+    for (const drawingId of drawingIds) {
+      const revisionId = currentRevisionIdByDrawing.get(drawingId);
+      if (!revisionId) {
+        failed++;
+        continue;
+      }
+      try {
+        await this.setWorkflowStatus(companyId, projectId, drawingId, revisionId, status, userId);
+        updated++;
+      } catch {
+        failed++;
+      }
+    }
+    return { updated, failed };
+  }
+
   async getSourceHealth(companyId: string, projectId: string): Promise<SiteDrawingSourceHealth> {
     await this.assertProjectBelongsToCompany(companyId, projectId);
     const [lastLog] = await this.db.withTenant(companyId, sql => sql<{ startedAt: string; finishedAt: string | null; status: string | null }[]>`

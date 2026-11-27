@@ -14,6 +14,7 @@ import { RegisterSiteDrawingDto } from './dto/register-drawing.dto';
 import { CreateSiteDrawingOrgMappingDto } from './dto/org-mapping.dto';
 import { RegisterSiteDrawingRevisionDto } from './dto/register-revision.dto';
 import { SetSiteDrawingWorkflowStatusDto } from './dto/set-workflow-status.dto';
+import { BulkSetSiteDrawingWorkflowStatusDto } from './dto/bulk-set-workflow-status.dto';
 import { UpdateSiteDrawingDto } from './dto/update-site-drawing.dto';
 import { StartOfflinePackageDto, CompleteOfflinePackageDto } from './dto/offline-package.dto';
 import { TriggerSiteDrawingSyncDto } from './dto/trigger-sync.dto';
@@ -217,6 +218,13 @@ export class SiteDrawingsController {
     @Body() dto: SetSiteDrawingWorkflowStatusDto,
   ) {
     return { data: await this.svc.setWorkflowStatus(u.companyId, pid, id, revisionId, dto.workflowStatus, u.id), error: null };
+  }
+
+  @Post('bulk-workflow-status')
+  @RequireCategoryAction('drawings', 'approve', 'manage_project_records')
+  @ApiOperation({ summary: 'Set the document-control status on every current revision of a batch of drawings at once' })
+  async bulkSetWorkflowStatus(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: BulkSetSiteDrawingWorkflowStatusDto) {
+    return { data: await this.svc.bulkSetWorkflowStatus(u.companyId, pid, dto.ids, dto.workflowStatus, u.id), error: null };
   }
 
   @Get('revisions/:revisionId/download')

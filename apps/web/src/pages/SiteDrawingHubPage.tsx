@@ -13,7 +13,7 @@ import { apiErrorMessage } from '../lib/api';
 import { getProject } from '../lib/projects.api';
 import {
   listSiteDrawings, getSiteDrawingFilterOptions, getSiteDrawingSourceHealth, getSiteDrawingDashboardStats, listOfflinePackages,
-  revalidateOfflinePackage, listReviewQueue, exportSiteDrawingRegister, bulkDeleteSiteDrawings,
+  revalidateOfflinePackage, listReviewQueue, exportSiteDrawingRegister, bulkDeleteSiteDrawings, bulkSetSiteDrawingWorkflowStatus,
   type SiteDrawingFilters, type SiteDrawingWorkflowStatus,
 } from '../lib/site-drawings.api';
 import {
@@ -109,6 +109,19 @@ export default function SiteDrawingHubPage() {
 
   const bulkDeleteMutation = useMutation({
     mutationFn: () => bulkDeleteSiteDrawings(projectId!, [...selectedIds]),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['site-drawings', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['site-drawing-dashboard-stats', projectId] });
+      setSelectedIds(new Set());
+      setMobileSelecting(false);
+    },
+  });
+
+  // Batch status-setting: alongside (never instead of) the per-drawing
+  // picker in SiteDrawingDetailDrawer -- for clearing e.g. "Status
+  // unknown" across a whole just-imported batch in one action.
+  const bulkStatusMutation = useMutation({
+    mutationFn: (status: SiteDrawingWorkflowStatus) => bulkSetSiteDrawingWorkflowStatus(projectId!, [...selectedIds], status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['site-drawings', projectId] });
       queryClient.invalidateQueries({ queryKey: ['site-drawing-dashboard-stats', projectId] });
@@ -241,16 +254,33 @@ export default function SiteDrawingHubPage() {
         {!listQuery.isLoading && !listQuery.isError && (
           <>
             {selectedIds.size > 0 && (
-              <div className="flex items-center gap-2 tick-frame panel px-4 py-2">
+              <div className="flex items-center gap-2 tick-frame panel px-4 py-2 flex-wrap">
                 <span className="text-sm font-medium">{selectedIds.size} selected</span>
+                <span className="text-xs text-ink-500 ml-auto">Set status:</span>
+                <Listbox aria-label="Set status for selected drawings"
+                  value=""
+                  disabled={bulkStatusMutation.isPending}
+                  onChange={async (e) => {
+                    const status = e.target.value as SiteDrawingWorkflowStatus;
+                    if (!status) return;
+                    if (await confirmDialog(`Set ${selectedIds.size} selected drawing(s) to "${WORKFLOW_STATUS_LABELS[status]}"?`)) {
+                      bulkStatusMutation.mutate(status);
+                    }
+                  }}
+                  className="field-input w-auto text-xs !py-2"
+                >
+                  <option value="" hidden>{bulkStatusMutation.isPending ? 'Updating…' : 'Choose a status…'}</option>
+                  {Object.entries(WORKFLOW_STATUS_LABELS).map(([s, label]) => <option key={s} value={s}>{label}</option>)}
+                </Listbox>
                 <AnimatedButton animation={aTrash} interaction="hover"
                   onClick={async () => { if (await confirmDialog(`Delete ${selectedIds.size} drawing(s) and their entire revision history? This cannot be undone.`)) bulkDeleteMutation.mutate(); }}
                   disabled={bulkDeleteMutation.isPending}
-                  className="btn-danger !px-4 !py-2 text-sm ml-auto"
+                  className="btn-danger !px-4 !py-2 text-sm"
                 >
                   {bulkDeleteMutation.isPending ? 'Deleting…' : 'Delete selected'}
                 </AnimatedButton>
                 {bulkDeleteMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkDeleteMutation.error)}</span>}
+                {bulkStatusMutation.isError && <span className="text-xs text-danger">{apiErrorMessage(bulkStatusMutation.error)}</span>}
               </div>
             )}
 
