@@ -156,6 +156,15 @@ export class SiteDrawingsController {
     return { data: await this.svc.listOfflinePackages(u.companyId, u.id, pid), error: null };
   }
 
+  @Get('check-drawing-number')
+  @ApiOperation({ summary: 'Whether a drawing number is already used in this register -- a drawing number must be unique per project' })
+  async checkDrawingNumber(
+    @CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string,
+    @Query('drawingNumber') drawingNumber: string, @Query('excludeDrawingId') excludeDrawingId?: string,
+  ) {
+    return { data: await this.svc.checkDrawingNumberExists(u.companyId, pid, drawingNumber, excludeDrawingId), error: null };
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a drawing with its current revision' })
   async getDrawing(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {

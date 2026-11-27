@@ -1,11 +1,11 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDropzone, type FileRejection } from 'react-dropzone';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Modal } from '../ui/Modal';
 import { Alert } from '../ui/Alert';
 import { apiErrorMessage } from '../../lib/api';
 import {
-  uploadSiteDrawingFile, extractSiteDrawingFields, registerSiteDrawing,
+  uploadSiteDrawingFile, extractSiteDrawingFields, registerSiteDrawing, checkSiteDrawingNumberExists,
   SITE_DRAWING_WORKFLOW_STATUSES, type SiteDrawingWorkflowStatus,
 } from '../../lib/site-drawings.api';
 import { WORKFLOW_STATUS_LABELS } from './siteDrawingDisplay';
@@ -107,6 +107,22 @@ export function RegisterSiteDrawingModal({ open, onClose, projectId }: { open: b
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept: { 'application/pdf': ['.pdf'] }, maxFiles: 1 });
 
+  // A drawing number must be unique in this register -- checked live as
+  // the user types (debounced), so a collision is caught and blocked
+  // BEFORE they attempt the upload at all, not just surfaced as a 409
+  // after the fact.
+  const [debouncedDrawingNumber, setDebouncedDrawingNumber] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedDrawingNumber(drawingNumber.trim()), 400);
+    return () => clearTimeout(t);
+  }, [drawingNumber]);
+  const duplicateCheck = useQuery({
+    queryKey: ['site-drawing-number-exists', projectId, debouncedDrawingNumber],
+    queryFn: () => checkSiteDrawingNumberExists(projectId, debouncedDrawingNumber),
+    enabled: Boolean(debouncedDrawingNumber),
+  });
+  const isDuplicateNumber = Boolean(duplicateCheck.data?.exists);
+
   function reset() {
     setFile(null); setStorageKey(null); setUploadPhase('idle'); setExtractPhase('idle');
     setDrawingNumber(''); setDrawingTitle(''); setDiscipline(''); setBuildingOrZone('');
@@ -141,7 +157,8 @@ export function RegisterSiteDrawingModal({ open, onClose, projectId }: { open: b
   // "working" (either phase) is the only thing that blocks submission
   // beyond the required fields themselves.
   const canSubmit = Boolean(
-    file && uploadPhase === 'uploaded' && extractPhase !== 'working' && drawingNumber.trim() && drawingTitle.trim() && revisionNumber.trim(),
+    file && uploadPhase === 'uploaded' && extractPhase !== 'working' && drawingNumber.trim() && drawingTitle.trim() && revisionNumber.trim()
+    && !isDuplicateNumber,
   );
 
   return (
@@ -188,7 +205,16 @@ export function RegisterSiteDrawingModal({ open, onClose, projectId }: { open: b
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="field-label" htmlFor="sd-number">Drawing number</label>
-            <input id="sd-number" className="field-input" value={drawingNumber} onChange={(e) => setDrawingNumber(e.target.value)} />
+            <input
+              id="sd-number" className={`field-input ${isDuplicateNumber ? '!border-danger' : ''}`}
+              value={drawingNumber} onChange={(e) => setDrawingNumber(e.target.value)}
+            />
+            {isDuplicateNumber && (
+              <p className="field-error">
+                Drawing number "{drawingNumber.trim()}" is already in this register ("{duplicateCheck.data?.existingTitle}"). A drawing number must be unique --
+                use "Add Revision" on that existing drawing instead of registering a new one.
+              </p>
+            )}
           </div>
           <div>
             <label className="field-label" htmlFor="sd-revision">Revision</label>

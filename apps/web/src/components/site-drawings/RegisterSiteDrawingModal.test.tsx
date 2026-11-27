@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RegisterSiteDrawingModal } from './RegisterSiteDrawingModal';
@@ -16,6 +16,7 @@ const api = vi.hoisted(() => ({
   uploadSiteDrawingFile: vi.fn(),
   extractSiteDrawingFields: vi.fn(),
   registerSiteDrawing: vi.fn(),
+  checkSiteDrawingNumberExists: vi.fn(),
 }));
 vi.mock('../../lib/site-drawings.api', async (orig) => ({ ...(await orig<typeof import('../../lib/site-drawings.api')>()), ...api }));
 
@@ -49,7 +50,10 @@ function dropFile(root: HTMLElement, file: File) {
 const pdfFile = new File(['%PDF-1.4'], 'A-101.pdf', { type: 'application/pdf' });
 
 describe('RegisterSiteDrawingModal', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    api.checkSiteDrawingNumberExists.mockResolvedValue({ exists: false });
+  });
 
   it('upload failure: keeps the Register button disabled with an honest message and an explicit retry, never implying manual entry is possible', async () => {
     api.uploadSiteDrawingFile.mockRejectedValue(new Error('network error'));
@@ -137,5 +141,37 @@ describe('RegisterSiteDrawingModal', () => {
     resolveUpload({ storageKey: 'key-1' });
     await screen.findByText('Reading the drawing…');
     expect(screen.getByRole('button', { name: 'Register drawing' })).toBeDisabled();
+  });
+
+  it('blocks registering a drawing number already used by another drawing in this project, with a warning naming it', async () => {
+    api.uploadSiteDrawingFile.mockResolvedValue({ storageKey: 'key-1' });
+    api.extractSiteDrawingFields.mockResolvedValue(null);
+    api.checkSiteDrawingNumberExists.mockResolvedValue({ exists: true, existingDrawingId: 'drawing-2', existingTitle: 'Ground Floor Plan' });
+    renderIt();
+
+    await userEvent.upload(fileInput(), pdfFile);
+    await screen.findByText(/couldn't read this drawing automatically/i);
+    await userEvent.type(screen.getByLabelText('Drawing number'), 'A-101');
+    await userEvent.type(screen.getByLabelText('Revision'), 'A');
+
+    expect(await screen.findByText(/already in this register \("Ground Floor Plan"\)/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Register drawing' })).toBeDisabled();
+    expect(api.registerSiteDrawing).not.toHaveBeenCalled();
+  });
+
+  it('allows registering once a genuinely new, unused drawing number is entered', async () => {
+    api.uploadSiteDrawingFile.mockResolvedValue({ storageKey: 'key-1' });
+    api.extractSiteDrawingFields.mockResolvedValue(null);
+    api.checkSiteDrawingNumberExists.mockResolvedValue({ exists: false });
+    renderIt();
+
+    await userEvent.upload(fileInput(), pdfFile);
+    await screen.findByText(/couldn't read this drawing automatically/i);
+    await userEvent.type(screen.getByLabelText('Drawing number'), 'A-999');
+    await userEvent.type(screen.getByLabelText('Revision'), 'A');
+
+    await waitFor(() => expect(api.checkSiteDrawingNumberExists).toHaveBeenCalled());
+    expect(screen.queryByText(/already in this register/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Register drawing' })).toBeEnabled();
   });
 });

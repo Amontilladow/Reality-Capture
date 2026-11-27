@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Modal } from '../ui/Modal';
 import { apiErrorMessage } from '../../lib/api';
-import { updateSiteDrawing, type SiteDrawingWithCurrentRevision } from '../../lib/site-drawings.api';
+import { updateSiteDrawing, checkSiteDrawingNumberExists, type SiteDrawingWithCurrentRevision } from '../../lib/site-drawings.api';
 
 // The write-access gap the user hit directly: once a drawing has left the
 // Review Queue (or was never flagged for review at all), there was no way
@@ -17,6 +17,22 @@ export function EditSiteDrawingModal({ open, onClose, projectId, drawing }: {
   const [drawingNumber, setDrawingNumber] = useState(drawing.drawingNumber);
   const [drawingTitle, setDrawingTitle] = useState(drawing.drawingTitle);
   const [revisionNumber, setRevisionNumber] = useState(drawing.currentRevision?.revisionNumber ?? '');
+
+  // A drawing number must be unique in this register -- same live,
+  // debounced check as the Register modal, excluding this drawing's own
+  // row so leaving the number unchanged (or changing something else) is
+  // never flagged against itself.
+  const [debouncedDrawingNumber, setDebouncedDrawingNumber] = useState(drawingNumber.trim());
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedDrawingNumber(drawingNumber.trim()), 400);
+    return () => clearTimeout(t);
+  }, [drawingNumber]);
+  const duplicateCheck = useQuery({
+    queryKey: ['site-drawing-number-exists', projectId, debouncedDrawingNumber, drawing.id],
+    queryFn: () => checkSiteDrawingNumberExists(projectId, debouncedDrawingNumber, drawing.id),
+    enabled: Boolean(debouncedDrawingNumber),
+  });
+  const isDuplicateNumber = Boolean(duplicateCheck.data?.exists);
 
   const mutation = useMutation({
     mutationFn: () => updateSiteDrawing(projectId, drawing.id, {
@@ -33,7 +49,7 @@ export function EditSiteDrawingModal({ open, onClose, projectId, drawing }: {
   });
 
   const canSubmit = Boolean(
-    drawingNumber.trim() && drawingTitle.trim() && (!drawing.currentRevision || revisionNumber.trim()),
+    drawingNumber.trim() && drawingTitle.trim() && (!drawing.currentRevision || revisionNumber.trim()) && !isDuplicateNumber,
   );
 
   return (
@@ -44,7 +60,16 @@ export function EditSiteDrawingModal({ open, onClose, projectId, drawing }: {
         </p>
         <div>
           <label className="field-label" htmlFor="edit-drawing-number">Drawing number</label>
-          <input id="edit-drawing-number" className="field-input" value={drawingNumber} onChange={(e) => setDrawingNumber(e.target.value)} />
+          <input
+            id="edit-drawing-number" className={`field-input ${isDuplicateNumber ? '!border-danger' : ''}`}
+            value={drawingNumber} onChange={(e) => setDrawingNumber(e.target.value)}
+          />
+          {isDuplicateNumber && (
+            <p className="field-error">
+              Drawing number "{drawingNumber.trim()}" is already used by another drawing in this register ("{duplicateCheck.data?.existingTitle}").
+              A drawing number must be unique.
+            </p>
+          )}
         </div>
         <div>
           <label className="field-label" htmlFor="edit-drawing-title">Drawing title</label>

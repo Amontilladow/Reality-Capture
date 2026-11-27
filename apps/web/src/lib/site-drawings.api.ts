@@ -70,6 +70,14 @@ export interface RegisterSiteDrawingInput {
 export const registerSiteDrawing = (projectId: string, input: RegisterSiteDrawingInput) =>
   apiPost<SiteDrawingWithCurrentRevision>(base(projectId), input);
 
+// A drawing number must be unique within a project's register -- used as
+// the user types a number (Register/Edit modals) to warn and block
+// BEFORE a submit attempt, not just after a failed one.
+export const checkSiteDrawingNumberExists = (projectId: string, drawingNumber: string, excludeDrawingId?: string) =>
+  apiGet<{ exists: boolean; existingDrawingId?: string; existingTitle?: string }>(`${base(projectId)}/check-drawing-number`, {
+    params: { drawingNumber, excludeDrawingId },
+  });
+
 // Just the upload half (presigned URL, then PUT straight to storage) --
 // split out from uploadAndRegisterSiteDrawing below so the registration
 // modal can upload a dropped file immediately, run extraction against the

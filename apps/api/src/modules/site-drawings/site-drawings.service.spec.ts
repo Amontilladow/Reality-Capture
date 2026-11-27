@@ -1,4 +1,4 @@
-import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { SiteDrawingsService } from './site-drawings.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { StorageService } from '../storage/storage.service';
@@ -500,6 +500,8 @@ describe('SiteDrawingsService', () => {
     it('resolves originator/subcontractor from the project\'s org mapping when the caller left them blank', async () => {
       const { svc, withTenant } = makeService([
         single([{ id: projectId }]), // assertUploadedSizeWithinLimit -> getObjectSize doesn't call withTenant; this is assertProjectBelongsToCompany
+        single([{ id: projectId }]), // assertDrawingNumberAvailable -> checkDrawingNumberExists's own assertProjectBelongsToCompany
+        single([]), // checkDrawingNumberExists's own SELECT -- no existing drawing with this number
         multi([
           [{ pattern: 'A-', organizationName: 'Acme Consultants', role: 'originator' }], // resolveOrgMapping SELECT
           [{ id: drawingId, drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan' }], // INSERT drawing
@@ -512,12 +514,14 @@ describe('SiteDrawingsService', () => {
         drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan', revisionNumber: 'A', workflowStatus: 'UNDER_REVIEW', storageKey: 'key.pdf',
       });
 
-      expect(withTenant).toHaveBeenCalledTimes(2);
+      expect(withTenant).toHaveBeenCalledTimes(4);
     });
 
     it('lets an explicit originator/subcontractor on the DTO win over any org mapping', async () => {
       const { svc, withTenant } = makeService([
         single([{ id: projectId }]),
+        single([{ id: projectId }]), // assertDrawingNumberAvailable -> checkDrawingNumberExists's own assertProjectBelongsToCompany
+        single([]), // checkDrawingNumberExists's own SELECT -- no existing drawing with this number
         multi([
           [{ id: drawingId, drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan' }], // INSERT drawing (no mapping lookup -- both fields were explicit)
           [{ id: 'revision-1', workflowStatus: 'UNDER_REVIEW' }],
@@ -531,7 +535,19 @@ describe('SiteDrawingsService', () => {
       });
 
       // No resolveOrgMapping SELECT issued -- confirmed by the exact 3-statement multi() above being consumed without a 4th step.
-      expect(withTenant).toHaveBeenCalledTimes(2);
+      expect(withTenant).toHaveBeenCalledTimes(4);
+    });
+
+    it('rejects a drawing number already used by another drawing in this project', async () => {
+      const { svc } = makeService([
+        single([{ id: projectId }]), // assertUploadedSizeWithinLimit's own assertProjectBelongsToCompany
+        single([{ id: projectId }]), // assertDrawingNumberAvailable -> checkDrawingNumberExists's own assertProjectBelongsToCompany
+        single([{ id: 'other-drawing', drawingTitle: 'Some Other Title' }]), // an existing drawing already has this number
+      ]);
+
+      await expect(svc.registerDrawing(companyId, projectId, userId, {
+        drawingNumber: 'A-101', drawingTitle: 'Ground Floor Plan', revisionNumber: 'A', workflowStatus: 'UNDER_REVIEW', storageKey: 'key.pdf',
+      })).rejects.toThrow(ConflictException);
     });
   });
 
@@ -553,6 +569,8 @@ describe('SiteDrawingsService', () => {
     it('corrects drawingNumber/drawingTitle and the current revision\'s own revisionNumber in one call', async () => {
       const { svc, withTenant } = makeService([
         single([{ id: projectId }]), // assertProjectBelongsToCompany
+        single([{ id: projectId }]), // assertDrawingNumberAvailable -> checkDrawingNumberExists's own assertProjectBelongsToCompany
+        single([]), // checkDrawingNumberExists's own SELECT -- no OTHER drawing has this number
         multi([
           [{ id: drawingId, currentRevisionId: 'revision-1', drawingNumber: 'PR-169', drawingTitle: 'SE45_01' }], // SELECT drawing
           [{ id: drawingId, currentRevisionId: 'revision-1', drawingNumber: 'M19-M4C-C0-PW-AX-SD-05731', drawingTitle: 'Drainage Layout' }], // UPDATE drawing RETURNING *
@@ -566,7 +584,18 @@ describe('SiteDrawingsService', () => {
 
       expect(result.drawingNumber).toBe('M19-M4C-C0-PW-AX-SD-05731');
       expect(result.currentRevision?.revisionNumber).toBe('02');
-      expect(withTenant).toHaveBeenCalledTimes(2);
+      expect(withTenant).toHaveBeenCalledTimes(4);
+    });
+
+    it('rejects changing drawingNumber to one already used by ANOTHER drawing in this project', async () => {
+      const { svc } = makeService([
+        single([{ id: projectId }]), // assertProjectBelongsToCompany
+        single([{ id: projectId }]), // assertDrawingNumberAvailable -> checkDrawingNumberExists's own assertProjectBelongsToCompany
+        single([{ id: 'other-drawing', drawingTitle: 'Some Other Title' }]), // another drawing already has this number
+      ]);
+
+      await expect(svc.updateDrawing(companyId, projectId, drawingId, { drawingNumber: 'M19-M4C-C0-PW-AX-SD-05731' }))
+        .rejects.toThrow(ConflictException);
     });
 
     it('leaves the current revision\'s number untouched (just re-reads it) when only drawingTitle is corrected', async () => {

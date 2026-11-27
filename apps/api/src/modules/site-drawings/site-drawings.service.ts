@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   SiteDrawing, SiteDrawingRevision, SiteDrawingWithCurrentRevision, SiteDrawingWorkflowStatus,
   SiteDrawingOfflinePackage, SiteDrawingOfflinePackageStatus, SiteDrawingSourceHealth, ExtractedDrawingFields,
@@ -94,6 +94,7 @@ export class SiteDrawingsService {
   async registerDrawing(companyId: string, projectId: string, userId: string, dto: RegisterSiteDrawingDto): Promise<SiteDrawingWithCurrentRevision> {
     await this.assertProjectBelongsToCompany(companyId, projectId);
     const fileSizeBytes = await this.assertUploadedSizeWithinLimit(dto.storageKey);
+    await this.assertDrawingNumberAvailable(companyId, projectId, dto.drawingNumber);
 
     return this.db.withTenant(companyId, async (sql) => {
       // An explicit value on the DTO always wins; only resolved from the
@@ -374,6 +375,9 @@ export class SiteDrawingsService {
       throw new BadRequestException('Provide at least one field to update.');
     }
     await this.assertProjectBelongsToCompany(companyId, projectId);
+    if (dto.drawingNumber !== undefined) {
+      await this.assertDrawingNumberAvailable(companyId, projectId, dto.drawingNumber, drawingId);
+    }
     return this.db.withTenant(companyId, async (sql) => {
       const [drawing] = await sql<SiteDrawingRow[]>`SELECT * FROM site_drawings WHERE id = ${drawingId} AND project_id = ${projectId}`;
       if (!drawing) throw new NotFoundException(`Drawing ${drawingId} not found.`);
@@ -763,6 +767,48 @@ export class SiteDrawingsService {
         requiringAttention: Number(counts.requiringAttention), recentRevisionActivity: Number(recentRevisionActivity),
       };
     });
+  }
+
+  // A drawing number identifies a drawing -- it must never collide with
+  // ANOTHER drawing already in this project's register, regardless of
+  // whether its title or revision also happen to match (a differing
+  // title on a repeated number is still invalid: it means the number was
+  // mistyped, not that two different drawings may legitimately share
+  // one). Scoped case-insensitively and trimmed, so "S-101", "s-101" and
+  // " S-101 " are all read as the same number. Project-scoped only (not
+  // company-wide): different projects reusing the same numbering
+  // convention by coincidence is normal and not a collision.
+  //
+  // Application-level only, not a DB unique constraint: adding one now
+  // would risk failing the migration outright against any project that
+  // already has a pre-existing duplicate sitting in its register from
+  // before this check existed. This still fully blocks every NEW
+  // duplicate from here on, at both the single-drawing register/edit
+  // forms (registerDrawing/updateDrawing) and the live frontend check
+  // (checkDrawingNumberExists, used as a user types a number) -- the
+  // bulk ZIP/PDF import path's own identity-match/conflict-review system
+  // is untouched, since that's an existing, more nuanced reconciliation
+  // flow, not an unchecked gap like these two forms were.
+  async checkDrawingNumberExists(
+    companyId: string, projectId: string, drawingNumber: string, excludeDrawingId?: string,
+  ): Promise<{ exists: boolean; existingDrawingId?: string; existingTitle?: string }> {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+    const [existing] = await this.db.withTenant(companyId, sql => sql<{ id: string; drawingTitle: string }[]>`
+      SELECT id, drawing_title FROM site_drawings
+      WHERE project_id = ${projectId} AND lower(drawing_number) = lower(${drawingNumber.trim()})
+        AND (${excludeDrawingId ?? null}::uuid IS NULL OR id != ${excludeDrawingId ?? null})
+    `);
+    return existing ? { exists: true, existingDrawingId: existing.id, existingTitle: existing.drawingTitle } : { exists: false };
+  }
+
+  private async assertDrawingNumberAvailable(companyId: string, projectId: string, drawingNumber: string, excludeDrawingId?: string): Promise<void> {
+    const { exists, existingTitle } = await this.checkDrawingNumberExists(companyId, projectId, drawingNumber, excludeDrawingId);
+    if (exists) {
+      throw new ConflictException(
+        `Drawing number "${drawingNumber}" is already in this register ("${existingTitle}"). `
+        + 'A drawing number must be unique -- to add a new version of that drawing, use "Add Revision" on it instead of registering a new one.',
+      );
+    }
   }
 
   private async assertProjectBelongsToCompany(companyId: string, projectId: string): Promise<void> {
