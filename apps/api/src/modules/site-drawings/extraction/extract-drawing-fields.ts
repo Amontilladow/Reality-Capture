@@ -48,17 +48,33 @@ function regionSource(runs: TextRun[]): 'embedded_text' | 'ocr' {
 // (a local embedded-text parse, then a separate OCR-fallback call).
 //
 // Every candidate title-block-shaped region the AI service found is
-// tried in its own ranked order, reconstructing each one's row/column
-// structure (text-run-structure.ts) and running it through the SAME
-// title-block field-matching engine (title-block-extractor.ts) the
-// system has always used -- unchanged by this replacement, since cell-
-// scoped matching is still what makes cross-field contamination
-// structurally impossible, regardless of whether a region's runs came
-// from native text or OCR. Only when NO region yields a plausible
-// drawing number at all does this fall back to whole-page matching
-// (native text first, the AI service's own whole-page OCR text only if
-// it computed one) -- the same "whole page is the last resort, never
-// the primary strategy" structure this pipeline has always had.
+// tried, reconstructing each one's row/column structure (text-run-
+// structure.ts) and running it through the SAME title-block field-
+// matching engine (title-block-extractor.ts) the system has always
+// used -- unchanged by this replacement, since cell-scoped matching is
+// still what makes cross-field contamination structurally impossible,
+// regardless of whether a region's runs came from native text or OCR.
+//
+// Real production failure, confirmed by hand: a region that ISN'T the
+// title block at all -- a door-hardware/ironmongery schedule, in one
+// real case -- can still produce a non-null candidate once OCR'd (a
+// stray token in a huge schedule table happening to match the bare,
+// unlabeled drawing-number shape, e.g. "HS-05" inside "HS-05(EML)"),
+// with near-zero overall confidence (no plausible title or revision
+// found alongside it). Stopping at the FIRST non-null candidate, as
+// this used to, let that near-worthless match shadow a much better one
+// found in a LATER region (including the native-text-anchor fallback
+// below, which found the real "Drawing No:"/"Drawing Title"/"Revision"
+// trio with full confidence). Every region is tried now, and the
+// HIGHEST-CONFIDENCE candidate wins -- ties keep whichever came first,
+// preserving the AI service's own edge-distance-based ranking for the
+// common case where confidence alone doesn't distinguish them.
+//
+// Only when NO region yields a plausible drawing number at all does
+// this fall back to whole-page matching (native text first, the AI
+// service's own whole-page OCR text only if it computed one) -- the
+// same "whole page is the last resort, never the primary strategy"
+// structure this pipeline has always had.
 //
 // Shared by SiteDrawingImportProcessor (a bulk ZIP/PDF import) and
 // SiteDrawingsService.extractFields() (a single manual upload via
@@ -90,10 +106,9 @@ export async function extractDrawingFields(
       if (region.runs.length === 0) continue;
       const table = buildPseudoTableFromTextRuns(region.runs);
       const candidate = extractTitleBlockFieldsFromCells(table, regionSource(region.runs));
-      if (candidate) {
+      if (candidate && (!titleBlockFields || candidate.confidence > titleBlockFields.confidence)) {
         titleBlockFields = candidate;
         titleBlockRegionIndex = i;
-        break;
       }
     }
 

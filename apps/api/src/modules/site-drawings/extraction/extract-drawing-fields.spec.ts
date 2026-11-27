@@ -48,6 +48,45 @@ describe('extractDrawingFields', () => {
     expect(aiClient.extractDrawingStructure).toHaveBeenCalledWith('company-1', 'project-1', 'https://signed.example/abc.pdf', 1);
   });
 
+  it('prefers the highest-confidence region over the first non-null one -- the real "OCR\'d hardware schedule" case', async () => {
+    // Reproduces a real production failure, user-reported: a door-
+    // hardware/ironmongery schedule table (not the title block at all)
+    // got grid-detected as a candidate region, had no native text of its
+    // own, and once OCR'd, a stray token ("HS-05(EML)") happened to match
+    // the bare, unlabeled drawing-number shape -- a non-null but
+    // near-worthless candidate (confidence ~0: no plausible title or
+    // revision alongside it). Ranked BEFORE the real title block region
+    // in this scenario. Stopping at the first non-null candidate used to
+    // report "HS-05" with no title, instead of the real, fully-confident
+    // title-block match found in the next region.
+    const { storage, aiClient } = makeDeps({
+      regions: [
+        {
+          left: 0, top: 0, width: 300, height: 200,
+          runs: [
+            { text: 'HS-05(EML)', left: 10, top: 10, width: 100, height: 20, conf: 60, method: 'ocr' },
+            { text: 'Hinges, EuroArt', left: 10, top: 40, width: 150, height: 20, conf: 55, method: 'ocr' },
+          ],
+        },
+        {
+          left: 0, top: 250, width: 200, height: 150,
+          runs: [
+            { text: 'Drawing No: M19-M4C-C0-PW-AX-SD-05730', left: 10, top: 260, width: 220, height: 20, conf: 100, method: 'native' },
+            { text: 'Revision: 00', left: 10, top: 290, width: 100, height: 20, conf: 100, method: 'native' },
+            { text: 'Drawing Title: BS 90 Min Fire Rated Single Leaf Steel Door', left: 10, top: 320, width: 300, height: 20, conf: 100, method: 'native' },
+          ],
+        },
+      ],
+    });
+
+    const result = await extractDrawingFields(storage, aiClient, 'company-1', 'project-1', 'key.pdf', Buffer.from('x'), 'SD-05730.pdf');
+
+    expect(result.fields?.drawingNumber).toBe('M19-M4C-C0-PW-AX-SD-05730');
+    expect(result.fields?.revisionNumber).toBe('00');
+    expect(result.fields?.drawingTitle).toBe('BS 90 Min Fire Rated Single Leaf Steel Door');
+    expect(result.fields?.source).toBe('embedded_text');
+  });
+
   it('skips a region with no plausible drawing number and tries the next one -- the real "revision-history table found before the title block" case', async () => {
     const { storage, aiClient } = makeDeps({
       regions: [
