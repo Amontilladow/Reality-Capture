@@ -36,6 +36,12 @@ CRS_CHOICES = [
 ]
 
 
+def _unit_usage_terms(bdms) -> list[str]:
+    """UnitUsageType values the official QC accepts: UPC land-use terms from Level 2 or above (spec Appendix C)."""
+    level1 = set((bdms.codelists.get("upc_levels") or {}).get("level_1", []))
+    return [t for t in bdms.codelists.get("unit_usage_type", []) if t not in level1]
+
+
 def create_app(workspace: Path) -> FastAPI:
     workspace = Path(workspace)
     uploads = workspace / "uploads"
@@ -265,7 +271,7 @@ def create_app(workspace: Path) -> FastAPI:
         return TEMPLATES.TemplateResponse(request, "convert.html", ctx(
             request, error=error, uploads=uploaded_files(), conversions=list_conversions(),
             usage_categories=bdms.domains["usage_category_type"], usage_types=bdms.domains["usage_type"],
-            unit_types=bdms.domains["unit_type"], unit_classifications=bdms.domains["unit_classification_suggested"],
+            unit_types=bdms.domains["unit_type"], unit_usage_types=_unit_usage_terms(bdms), unit_classifications=bdms.domains["unit_classification_suggested"],
             drawing_types=bdms.domains["drawing_type"], dwg_ready=dwg.status() != STATUS_UNAVAILABLE,
             dwg_reader=dwg.describe() if dwg.executable else None))
 

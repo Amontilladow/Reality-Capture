@@ -9,6 +9,7 @@ import { StatusBadge } from '../components/ui/Badge';
 import type { StatusTone } from '../lib/status-tone';
 import { apiErrorMessage } from '../lib/api';
 import { getProject } from '../lib/projects.api';
+import { UNIT_USAGE_TYPES } from '../lib/unit-usage-types';
 import { loadSavedForm, saveForm } from '../lib/saved-form';
 import { detectDrawingFormat, drawingNote, type DrawingFormat } from '../lib/drawing-format';
 import {
@@ -82,7 +83,7 @@ const FACT_FIELDS = [
 const UNIT_FIELDS = [
   ['unit_type', 'Unit type (code list)', 'Residential', 'UnitType'],
   ['unit_classification', 'Unit classification', 'Apartment', 'UnitClassification'],
-  ['unit_usage_type', 'Unit usage type (code list)', 'Residential', 'UnitUsageType'],
+  ['unit_usage_type', 'Unit usage type (Level 2 or above)', 'Household Living', 'UnitUsageType'],
   ['unit_category', 'Unit category (optional)', '', 'UnitCategory'],
   ['unit_num_bedroom', 'Bedrooms', '2', 'UnitNumBedroom'], ['unit_num_bathroom', 'Bathrooms', '2', 'UnitNumBathroom'],
   ['unit_balconies_area', 'Balconies area, m2 (optional)', '', 'UnitBalconiesArea'],
@@ -96,7 +97,7 @@ const TITLE_FIELDS = [
 
 const CHOICES: Record<string, readonly string[]> = {
   building_usage_category: USAGE_CATEGORY_TYPES, building_usage_type: USAGE_TYPES,
-  unit_type: UNIT_TYPES, unit_usage_type: USAGE_TYPES, DrawingType: DRAWING_TYPES,
+  unit_type: UNIT_TYPES, DrawingType: DRAWING_TYPES,
 };
 const upper = (on: boolean, value: string) => (on ? value.toUpperCase() : value);
 
@@ -325,11 +326,13 @@ export default function GisPrepPage() {
                   ) : (
                     <input
                       className="field-input text-xs !py-2" placeholder={placeholder} value={form.facts[key] ?? ''}
+                      list={key === 'unit_usage_type' ? 'unit-usage-types' : undefined}
                       onChange={e => setForm(f => ({ ...f, facts: { ...f.facts, [key]: upper(UPPERCASE_FACTS.has(key), e.target.value) } }))}
                     />
                   )}
                 </label>
               ))}
+              <datalist id="unit-usage-types">{UNIT_USAGE_TYPES.map(t => <option key={t} value={t} />)}</datalist>
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

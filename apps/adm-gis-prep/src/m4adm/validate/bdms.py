@@ -384,10 +384,16 @@ def _code_lists(records, target, manifest: Manifest, col: Collector) -> None:
                         official_qc_error=f"Incorrect {tag} data entry found in BuildingDetail attribute block",
                         tag=tag, **_kw(r, "BuildingDetail"))
     usage = set(manifest.codelists.get("unit_usage_type", []))
+    level1 = set((manifest.codelists.get("upc_levels") or {}).get("level_1", []))
     classes = set(manifest.domains.get("unit_classification_suggested", []))
     for r in _details(records, target, "UnitDetail"):
         v = _val(r, "UnitUsageType")
-        if v and usage and v not in usage:
+        if v and v in level1:
+            col.add("DRM-ATT-44", f"UnitUsageType '{v}' is a Level 1 land-use term",
+                    "The spec (Appendix C) asks for a land-use term from Level 2 or above, for example 'Household Living'; "
+                    "the official QC reports a Level 1 term as an incorrect UnitUsageType.",
+                    **_kw(r, "UnitDetail"))
+        elif v and usage and v not in usage:
             ci = next((x for x in usage if x.lower() == v.lower()), None)
             col.add("DRM-ATT-44", f"UnitUsageType '{v}' is not a UPC land-use term"
                     + (f" (exact spelling: '{ci}')." if ci else "."),
