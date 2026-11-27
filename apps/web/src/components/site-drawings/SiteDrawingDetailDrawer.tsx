@@ -2,6 +2,7 @@ import { AnimatedButton } from '../ui/AnimatedIcon';
 import aTrash from 'react-useanimations/lib/trash2';
 import aDownload from 'react-useanimations/lib/download';
 import aEdit from 'react-useanimations/lib/edit';
+import aBell from 'react-useanimations/lib/notification4';
 import { confirmDialog } from '../../store/confirm.store';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,6 +12,7 @@ import { apiErrorMessage } from '../../lib/api';
 import {
   getSiteDrawing, listSiteDrawingRevisions, getSiteDrawingDownloadUrl, setSiteDrawingWorkflowStatus,
   startOfflinePackage, completeOfflinePackage, removeOfflinePackage, listOfflinePackages, deleteSiteDrawing,
+  getSiteDrawingNotifyMe, setSiteDrawingNotifyMe,
   SITE_DRAWING_WORKFLOW_STATUSES, type SiteDrawingWorkflowStatus, type SiteDrawingRevision,
 } from '../../lib/site-drawings.api';
 import { computeContentHash, saveOfflinePackage, deleteOfflinePackage } from '../../lib/site-drawings-offline';
@@ -45,6 +47,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
   const [offlineError, setOfflineError] = useState('');
 
   const drawingQuery = useQuery({ queryKey: ['site-drawing', projectId, drawingId], queryFn: () => getSiteDrawing(projectId, drawingId) });
+  const notifyMeQuery = useQuery({ queryKey: ['site-drawing-notify-me', projectId, drawingId], queryFn: () => getSiteDrawingNotifyMe(projectId, drawingId) });
   const revisionsQuery = useQuery({ queryKey: ['site-drawing-revisions', projectId, drawingId], queryFn: () => listSiteDrawingRevisions(projectId, drawingId) });
   const offlinePackagesQuery = useQuery({ queryKey: ['site-drawing-offline-packages', projectId], queryFn: () => listOfflinePackages(projectId) });
 
@@ -62,6 +65,13 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
       queryClient.invalidateQueries({ queryKey: ['site-drawing-revisions', projectId, drawingId] });
       queryClient.invalidateQueries({ queryKey: ['site-drawings', projectId] });
       queryClient.invalidateQueries({ queryKey: ['site-drawing-dashboard-stats', projectId] });
+    },
+  });
+
+  const notifyMeMutation = useMutation({
+    mutationFn: (notify: boolean) => setSiteDrawingNotifyMe(projectId, drawingId, notify),
+    onSuccess: (result) => {
+      queryClient.setQueryData(['site-drawing-notify-me', projectId, drawingId], result);
     },
   });
 
@@ -149,9 +159,17 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
               <div><span className="text-xs text-ink-500 block">Source</span>{sourceProviderLabel(drawing.sourceProvider)}</div>
               <div><span className="text-xs text-ink-500 block">Last verified</span>{revision ? formatVerifiedAt(revision.lastVerifiedAt) : '—'}</div>
               {revision?.isSuperseded && <StatusBadge tone="neutral" label="Superseded" />}
+              <AnimatedButton animation={aBell} interaction="hover"
+                onClick={() => notifyMeMutation.mutate(!(notifyMeQuery.data?.notifying ?? true))}
+                disabled={notifyMeQuery.isLoading || notifyMeMutation.isPending}
+                title={notifyMeQuery.data?.notifying === false ? 'Muted -- click to resume notifications for this drawing' : 'Notifying -- click to mute this drawing for yourself'}
+                className={`btn-secondary ml-auto ${notifyMeQuery.data?.notifying === false ? '!text-ink-500' : ''}`}
+              >
+                {notifyMeQuery.data?.notifying === false ? 'Notifications muted' : 'Notify me'}
+              </AnimatedButton>
               <AnimatedButton animation={aEdit} interaction="hover"
                 onClick={() => setEditOpen(true)}
-                className="btn-secondary ml-auto"
+                className="btn-secondary"
               >
                 Edit
               </AnimatedButton>
@@ -164,6 +182,7 @@ export function SiteDrawingDetailDrawer({ projectId, drawingId, onClose }: {
               </AnimatedButton>
             </div>
             {deleteMutation.isError && <p className="field-error">{apiErrorMessage(deleteMutation.error)}</p>}
+            {notifyMeMutation.isError && <p className="field-error">{apiErrorMessage(notifyMeMutation.error)}</p>}
 
             {revision && needsApprovalWarning(revision.workflowStatus) && (
               <div className="panel p-4 border border-warn/40 bg-warn/5 text-xs text-ink-100">

@@ -15,6 +15,7 @@ import { CreateSiteDrawingOrgMappingDto } from './dto/org-mapping.dto';
 import { RegisterSiteDrawingRevisionDto } from './dto/register-revision.dto';
 import { SetSiteDrawingWorkflowStatusDto } from './dto/set-workflow-status.dto';
 import { BulkSetSiteDrawingWorkflowStatusDto } from './dto/bulk-set-workflow-status.dto';
+import { SetSiteDrawingNotifyMeDto } from './dto/set-notify-me.dto';
 import { UpdateSiteDrawingDto } from './dto/update-site-drawing.dto';
 import { StartOfflinePackageDto, CompleteOfflinePackageDto } from './dto/offline-package.dto';
 import { TriggerSiteDrawingSyncDto } from './dto/trigger-sync.dto';
@@ -218,6 +219,20 @@ export class SiteDrawingsController {
     @Body() dto: SetSiteDrawingWorkflowStatusDto,
   ) {
     return { data: await this.svc.setWorkflowStatus(u.companyId, pid, id, revisionId, dto.workflowStatus, u.id), error: null };
+  }
+
+  @Get(':id/notify-me')
+  @ApiOperation({ summary: 'Whether the current user is watching this drawing (gets notified of its revisions/status changes)' })
+  async getNotifyMe(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string) {
+    return { data: { notifying: await this.svc.isWatchingDrawing(u.companyId, pid, id, u.id) }, error: null };
+  }
+
+  @Patch(':id/notify-me')
+  @ApiOperation({ summary: 'Toggle whether the current user is watching this drawing -- a personal preference, not a document-control decision' })
+  async setNotifyMe(
+    @CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Param('id') id: string, @Body() dto: SetSiteDrawingNotifyMeDto,
+  ) {
+    return { data: await this.svc.setWatchingDrawing(u.companyId, pid, id, u.id, dto.notify), error: null };
   }
 
   @Post('bulk-workflow-status')

@@ -219,6 +219,58 @@ describe('SiteDrawingsService', () => {
     });
   });
 
+  describe('notify-me (watchers)', () => {
+    describe('isWatchingDrawing', () => {
+      it('returns true (the default) when no mute row exists', async () => {
+        const { svc } = makeService([
+          single([{ id: projectId }]),
+          single([]), // SELECT ... site_drawing_notification_mutes -- no row
+        ]);
+        await expect(svc.isWatchingDrawing(companyId, projectId, drawingId, userId)).resolves.toBe(true);
+      });
+
+      it('returns false once a mute row exists', async () => {
+        const { svc } = makeService([
+          single([{ id: projectId }]),
+          single([{ '?column?': 1 }]), // a mute row was found
+        ]);
+        await expect(svc.isWatchingDrawing(companyId, projectId, drawingId, userId)).resolves.toBe(false);
+      });
+    });
+
+    describe('setWatchingDrawing', () => {
+      it('404s for a drawing outside this project', async () => {
+        const { svc } = makeService([
+          single([{ id: projectId }]),
+          multi([[]]), // SELECT id FROM site_drawings -- nothing matched
+        ]);
+        await expect(svc.setWatchingDrawing(companyId, projectId, drawingId, userId, false)).rejects.toThrow(NotFoundException);
+      });
+
+      it('muting deletes any existing mute-exception row (idempotent re-mute) and reports notifying:false', async () => {
+        const { svc, withTenant } = makeService([
+          single([{ id: projectId }]),
+          multi([
+            [{ id: drawingId }], // SELECT id FROM site_drawings
+            [], // DELETE/INSERT into site_drawing_notification_mutes
+          ]),
+        ]);
+        const result = await svc.setWatchingDrawing(companyId, projectId, drawingId, userId, false);
+        expect(result).toEqual({ notifying: false });
+        expect(withTenant).toHaveBeenCalledTimes(2);
+      });
+
+      it('re-enabling reports notifying:true', async () => {
+        const { svc } = makeService([
+          single([{ id: projectId }]),
+          multi([[{ id: drawingId }], []]),
+        ]);
+        const result = await svc.setWatchingDrawing(companyId, projectId, drawingId, userId, true);
+        expect(result).toEqual({ notifying: true });
+      });
+    });
+  });
+
   describe('getAuthorizedDownloadUrl', () => {
     it('throws NotFoundException for a revision outside the given project (no cross-project leak)', async () => {
       const { svc } = makeService([
