@@ -60,3 +60,9 @@ def test_level_1_unit_usage_type_is_flagged_like_the_official_qc(tmp_path):
         qc = next(res.job_dir.rglob("qc_report.json"))
         text = qc.read_text(encoding="utf-8")
         assert ("is a Level 1 land-use term" in text) is expect, (term, text[:300])
+
+
+def test_leftover_wall_layers_entry_is_named_as_the_cause(tmp_path):
+    res = _run(tmp_path, arch_floor(), wall_layers=["A-ARCH-KEYPLAN"])             # matches nothing in this drawing
+    text = " ".join(res.report["blockers"])
+    assert "'Wall layers' entry (A-ARCH-KEYPLAN) matches no layer" in text and "Clear that field" in text
