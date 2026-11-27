@@ -219,6 +219,50 @@ describe('extractTitleBlockFieldsFromCells', () => {
     expect(result?.revisionNumber).toBeUndefined();
   });
 
+  it('rejects a "Drawing Title" label paired with an ADJACENT field\'s own label+value pair, never reporting a project/drawing/revision reference as the title', () => {
+    // Reproduces a real production bug, user-reported against an actual
+    // imported drawing: on a real title block, the row/column
+    // reconstruction (text-run-structure.ts) paired the "Drawing Title"
+    // label with "Project No. PR-169" -- an entirely different field's
+    // own label+value pair -- instead of the real title text, because
+    // that was whatever cell the geometry-based row/column grouping
+    // placed next to it. The drawing number itself matched correctly;
+    // only the title was wrong, which previously surfaced as a false
+    // "drawing number collision" in the Review Queue (the existing
+    // drawing's real title didn't match this wrong one). Same class of
+    // bug as the "Rev."/"Date" case above, just a different field
+    // substituted in, and the same fix: reject a value that IS another
+    // field's own labeled shape and keep looking, rather than reporting
+    // it with confidence.
+    const rowsWithWrongNeighbor = [
+      ['Drawing No:', 'M19-M4C-C0-PW-AX-DD-16300'],
+      ['Drawing Title', 'Project No.: PR-169'],
+    ];
+    const result = extractTitleBlockFieldsFromCells(rowsWithWrongNeighbor, 'embedded_text');
+    expect(result?.drawingNumber).toBe('M19-M4C-C0-PW-AX-DD-16300');
+    expect(result?.drawingTitle).toBeUndefined();
+  });
+
+  it('keeps searching past a rejected title candidate and finds a later, genuine one', () => {
+    const rows = [
+      ['Drawing No:', 'M19-M4C-C0-PW-AX-DD-16300'],
+      ['Drawing Title', 'Project No.: PR-169'], // same-row neighbor: rejected
+      ['Revision: 00'], // next-row-same-column neighbor: also rejected
+      ['Drawing Title: Single Leaf Steel Door BS 90 Min Fire Rated'], // the real one, found elsewhere on the page
+    ];
+    const result = extractTitleBlockFieldsFromCells(rows, 'embedded_text');
+    expect(result?.drawingTitle).toBe('Single Leaf Steel Door BS 90 Min Fire Rated');
+  });
+
+  it('does not reject a genuine title that merely mentions "project" mid-sentence', () => {
+    const rows = [[
+      'Drawing No: M-05713',
+      'Drawing Title: New Project Office Extension - Ground Floor Plan',
+    ]];
+    const result = extractTitleBlockFieldsFromCells(rows, 'embedded_text');
+    expect(result?.drawingTitle).toBe('New Project Office Extension - Ground Floor Plan');
+  });
+
   it('pairs a bare label cell with the next cell as its value, for a layout where label and value are in separate adjacent cells of the SAME row', () => {
     // Confirmed by hand against a reproduction PDF built with a real
     // bordered grid (pdf-lib + pdf-parse's getTable()): a common title-

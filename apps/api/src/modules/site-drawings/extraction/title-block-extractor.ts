@@ -176,6 +176,25 @@ export function isPlausibleRevision(value: string): boolean {
   return /^[A-Z0-9]{1,3}$/i.test(value.trim());
 }
 
+// A real production failure, user-reported and confirmed by hand: unlike
+// the drawing number and revision, the title field had NO shape check of
+// its own, so a "Drawing Title" label ending up paired with the WRONG
+// neighboring cell didn't get the same "fail closed, keep looking"
+// treatment the other two fields already get (this is the exact same
+// class of bug isPlausibleRevision's own "Date" comment describes, just a
+// different wrong field substituted in: observed drawingTitle = "Project
+// No. PR-169", an entirely different field's own label+value pair, not
+// free-form title prose). Anchored to the START of the value (not merely
+// "contains the word project/drawing/revision somewhere"), so a genuine
+// title that happens to mention one of these words mid-sentence ("New
+// Project Office Extension - Ground Floor Plan") is never rejected --
+// only a value that IS, start to finish, another field's own labeled
+// shape is.
+const LOOKS_LIKE_ANOTHER_FIELD = /^(?:project\s*(?:no\.?|name|#)|drawing\s*(?:no\.?|number|#)|rev(?:ision)?\.?\s*(?:no\.?)?)\s*[:\-]?\s*\S/i;
+export function isPlausibleTitle(value: string): boolean {
+  return !LOOKS_LIKE_ANOTHER_FIELD.test(value.trim());
+}
+
 function extractDrawingNumber(text: string): FieldMatch | null {
   const labeled = matchLabeled(text, DRAWING_NUMBER_LABELED, 0.85);
   if (labeled && isPlausibleDrawingNumber(labeled.value)) return labeled;
@@ -332,7 +351,8 @@ export function extractTitleBlockFields(text: string, source: 'embedded_text' | 
   if (!drawingNumberMatch || drawingNumberMatch.confidence < DRAWING_NUMBER_CONFIDENCE_THRESHOLD) return null;
 
   const revisionMatch = matchLabeled(text, REVISION_LABELED, 0.75);
-  const titleMatch = matchLabeled(text, TITLE_LABELED, 0.7);
+  const titleCandidate = matchLabeled(text, TITLE_LABELED, 0.7);
+  const titleMatch = titleCandidate && isPlausibleTitle(titleCandidate.value) ? titleCandidate : null;
   const projectMatch = matchLabeled(text, PROJECT_LABELED, 0.6);
   const issueDateValue = extractDate(text);
   const issueDateMatch = issueDateValue ? { value: issueDateValue, confidence: 1 } : null;
@@ -446,7 +466,7 @@ export function extractTitleBlockFieldsFromCells(rows: string[][], source: 'embe
   if (!drawingNumberMatch || drawingNumberMatch.confidence < DRAWING_NUMBER_CONFIDENCE_THRESHOLD) return null;
 
   const revisionMatch = matchLabeledAcrossCells(rows, REVISION_LABELED, REVISION_LABEL_ONLY, 0.75, isPlausibleRevision);
-  const titleMatch = matchLabeledAcrossCells(rows, TITLE_LABELED, TITLE_LABEL_ONLY, 0.7);
+  const titleMatch = matchLabeledAcrossCells(rows, TITLE_LABELED, TITLE_LABEL_ONLY, 0.7, isPlausibleTitle);
   const projectMatch = matchLabeledAcrossCells(rows, PROJECT_LABELED, PROJECT_LABEL_ONLY, 0.6);
   const issueDateMatch = firstMatchInRows(rows, (cell) => {
     const date = extractDate(cell);
