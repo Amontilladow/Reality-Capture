@@ -8,6 +8,7 @@ import { ProviderFactory } from './providers/provider.factory';
 import { AiConnectionsService } from '../ai-connections/ai-connections.service';
 import { SiteRoleService } from '../../common/authorization/site-role.service';
 import { AI_SYSTEM_PROMPT } from './ai-system-prompt';
+import { ContextMarkupFilter, stripContextMarkup } from './answer-sanitizer';
 import type { AskAssistantDto } from './dto/ask-assistant.dto';
 import type { AIMessage, AIProvider, ToolDefinition } from './providers/ai-provider.interface';
 
@@ -350,20 +351,28 @@ export class AiService {
       let answer = '';
       let inputTokens: number | undefined;
       let outputTokens: number | undefined;
+      // Some models echo the <context> block back; keep that markup off the
+      // screen even though the text is streamed as it arrives.
+      const filter = new ContextMarkupFilter();
+      const emit = (text: string) => {
+        if (!text) return;
+        answer += text;
+        stream.onDelta(text);
+      };
       for await (const chunk of provider.streamResponse({ systemPrompt, messages, maxTokens: 1024, signal: stream.signal })) {
         if (chunk.type === 'text') {
-          answer += chunk.text;
-          stream.onDelta(chunk.text);
+          emit(filter.push(chunk.text));
         } else {
           inputTokens = chunk.inputTokens;
           outputTokens = chunk.outputTokens;
         }
       }
+      emit(filter.flush());
       return { answer, toolsUsed, inputTokens, outputTokens };
     }
 
     const { text, inputTokens, outputTokens } = await provider.generateResponse({ systemPrompt, messages, maxTokens: 1024 });
-    return { answer: text, toolsUsed, inputTokens, outputTokens };
+    return { answer: stripContextMarkup(text), toolsUsed, inputTokens, outputTokens };
   }
 
   // Owner request, following the plural-matching bug: "the assistant must
