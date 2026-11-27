@@ -404,4 +404,75 @@ describe('bare drawing-number pattern never matches a plain calendar date (Drawi
     // as a bare drawing-number-shaped match.
     expect(extractTitleBlockFields('99-99-9999 appears here', 'embedded_text')?.drawingNumber).toBe('99-99-9999');
   });
+
+  it('rejects a month-abbreviated date ("16-Nov-2026") as a drawing number, the same way a purely numeric date is rejected', () => {
+    // Real production bug, found by hand against an actual uploaded
+    // drawing: a date printed elsewhere on the sheet using a month
+    // abbreviation ("16-Nov-2026") -- not the sheet's own current
+    // revision date -- satisfies DRAWING_NUMBER_BARE's 3-dash-segment
+    // shape exactly like a numeric date does (isNumericDateShape() only
+    // recognizes numeric-only forms, so it let this one through), and
+    // was extracted as the drawingNumber itself.
+    expect(extractTitleBlockFields('16-Nov-2026 appears here', 'embedded_text')).toBeNull();
+  });
+});
+
+describe('real production file regression: P0059-K00555-M4C-RV01-00-SD-ST-000004 ("Dead Shutter Layout")', () => {
+  // Reproduces, cell for cell, the exact title-block region
+  // text-run-structure.ts reconstructed from a real uploaded drawing
+  // (confirmed by hand via apps/ai-service's own drawing_vision.py
+  // against the actual file). Two distinct bugs compounded here:
+  it('does not let "REV NO." (a bare label cell, no value in it at all) self-match its own trailing "NO" as a revision value', () => {
+    // REVISION_LABELED's "(?:no\.?)?" middle group is optional, so on a
+    // cell that is NOTHING BUT the label "REV NO." (the real value, "00",
+    // sits in the row below), the regex backtracks past that optional
+    // group and captures "NO" -- part of the label's own text -- as if
+    // it were the value. isPlausibleRevision('NO') doesn't catch this
+    // (2 letters is a shape a real revision could legitimately have).
+    const rows = [
+      ['DRAWING NO.', 'REV NO.'],
+      ['P0059-K00555-M4C-RV01-00-SD-ST-000004', '00'],
+    ];
+    const result = extractTitleBlockFieldsFromCells(rows, 'embedded_text');
+    expect(result?.revisionNumber).toBe('00');
+  });
+
+  it('finds a label-above-value pair even when the value\'s row has FEWER cells than the label\'s row', () => {
+    // text-run-structure.ts assigns a cell's column index per row
+    // independently (the Nth cell found reading that row left-to-right),
+    // not against a shared grid of x-coordinate bins. "TITLE:" at row 7,
+    // col 1 paired with its value alone on the next row (row 8, col 0 --
+    // nothing else on that line) was never found, because column 1
+    // doesn't exist on a single-cell row.
+    const rows = [
+      ['50mm Protection screed', 'TITLE:'],
+      ['DEAD SHUTTER LAYOUT'],
+      ['DRAWING NO.', 'REV NO.'],
+      ['P0059-K00555-M4C-RV01-00-SD-ST-000004', '00'],
+    ];
+    const result = extractTitleBlockFieldsFromCells(rows, 'embedded_text');
+    expect(result?.drawingTitle).toBe('DEAD SHUTTER LAYOUT');
+  });
+
+  it('extracts drawing number, revision and title all correctly together from the real file\'s own cell layout', () => {
+    const rows = [
+      ['125', 'ZONE:', 'Al Hudayriyat'],
+      ['1450', '475 200mm Thick Solid block Dead shutter(Stage-02) SECTOR NO: Al Hudayriyat Island', 'PLOT NO: TMP_PL7'],
+      ['PLOT ID:'],
+      ['550 200mm Thick Solid block Dead shutter(Stage-01)', 'SCALE:', '1:120 CO-M001 DRAWN BY:', 'M4'],
+      ['275', 'PROJECT ID : DATE:', 'B1N-2025-001669 11-11-2026', 'DRAWING SIZE: REVIEWED BY:', 'M4 A1'],
+      ['DISCIPLINE:'],
+      ['STRUCTURAL'],
+      ['50mm Protection screed', 'TITLE:'],
+      ['DEAD SHUTTER LAYOUT'],
+      ['DRAWING NO.', 'REV NO.'],
+      ['P0059-K00555-M4C-RV01-00-SD-ST-000004', '00'],
+      ['OFFICE USE ONLY :'],
+    ];
+    const result = extractTitleBlockFieldsFromCells(rows, 'embedded_text');
+    expect(result?.drawingNumber).toBe('P0059-K00555-M4C-RV01-00-SD-ST-000004');
+    expect(result?.revisionNumber).toBe('00');
+    expect(result?.drawingTitle).toBe('DEAD SHUTTER LAYOUT');
+    expect(isConfidentExtraction(result!)).toBe(true);
+  });
 });

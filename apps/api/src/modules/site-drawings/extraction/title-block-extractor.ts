@@ -155,7 +155,27 @@ function isPlausibleDrawingNumber(value: string): boolean {
   // "fail closed, fall through to the next tier" treatment every other
   // ambiguous-evidence case in this file already gets.
   if (isNumericDateShape(value)) return false;
+  // "16-Nov-2026" / "Nov-16-2026": a dash-separated date using an
+  // abbreviated month name instead of a numeric month coincidentally
+  // satisfies DRAWING_NUMBER_BARE's own 3-dash-segment shape too (each
+  // segment is just [A-Z0-9]{1,8}), the same way a pure-numeric date does
+  // -- confirmed by hand against a real production file: a date printed
+  // this way elsewhere on the sheet (a legend/revision-history date, not
+  // the sheet's own current revision) was extracted as the drawingNumber
+  // itself. isNumericDateShape() above only recognizes numeric-only date
+  // shapes (ISO, DD/MM/YYYY); nothing else in a real drawing number is
+  // ever a number-MonthAbbreviation-number triple, so this is rejected
+  // outright the same way.
+  if (isMonthAbbreviatedDateShape(value)) return false;
   return true;
+}
+
+const MONTH_ABBREVIATIONS = /^(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)$/i;
+function isMonthAbbreviatedDateShape(value: string): boolean {
+  const match = /^([A-Za-z0-9]{1,4})-([A-Za-z0-9]{1,4})-(\d{4})$/.exec(value);
+  if (!match) return false;
+  const [, a, b] = match;
+  return MONTH_ABBREVIATIONS.test(a) || MONTH_ABBREVIATIONS.test(b);
 }
 
 // A real production failure, confirmed by hand: a title block's own
@@ -390,18 +410,48 @@ function matchLabeledAcrossCells(
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r];
     for (let c = 0; c < row.length; c++) {
-      const combined = matchLabeled(row[c], combinedPattern, confidence);
-      if (combined && (!validate || validate(combined.value))) return { ...combined, location: `row ${r}, col ${c}` };
+      const cellText = row[c].trim();
+      const isLabelOnly = labelOnlyPattern.test(cellText);
 
-      if (labelOnlyPattern.test(row[c].trim())) {
+      // A cell that IS, in full, nothing but the label itself must never
+      // also be read as a combined "label: value" match. Real production
+      // bug, confirmed by hand: REVISION_LABELED's own "(?:no\.?)?"
+      // middle group is optional, so on a bare "REV NO." cell (no value
+      // present at all -- the real value sits in the next row, same
+      // column) the regex engine backtracks past that group and captures
+      // "NO" -- part of the label's OWN text -- as if it were the
+      // revision value, matching isPlausibleRevision('NO') by coincidence.
+      // Skipping the combined-pattern attempt entirely on a label-only
+      // cell falls through to the same-row/next-row handling below
+      // instead, exactly as if the combined pattern had found nothing.
+      if (!isLabelOnly) {
+        const combined = matchLabeled(row[c], combinedPattern, confidence);
+        if (combined && (!validate || validate(combined.value))) return { ...combined, location: `row ${r}, col ${c}` };
+      }
+
+      if (isLabelOnly) {
         const sameRowNext = cellAt(rows, r, c + 1);
         if (sameRowNext && !looksLikeLabelCell(sameRowNext) && (!validate || validate(sameRowNext))) {
           return { value: sameRowNext, confidence, location: `row ${r}, col ${c + 1}` };
         }
 
-        const nextRowSame = cellAt(rows, r + 1, c);
+        // Same column index in the next row, UNLESS that row has only one
+        // cell of its own: text-run-structure.ts assigns column indexes
+        // per row independently (the Nth cell found reading that row
+        // left-to-right), not against a shared grid of x-coordinate bins,
+        // so "same column" only lines up when both rows have the same
+        // cell count. Real production bug, confirmed by hand: a label at
+        // row R, col 1 ("TITLE:") with its value alone on the next row
+        // (row R+1, col 0 -- nothing else on that line) was never found,
+        // because col 1 doesn't exist on a single-cell row. A row with
+        // only one cell is unambiguous regardless of its index, so it's
+        // used directly; a row with two or more cells still requires the
+        // same index as before, since which of several cells is the real
+        // continuation can't be guessed from count alone.
+        const nextRow = rows[r + 1];
+        const nextRowSame = nextRow?.length === 1 ? nextRow[0]?.trim() : cellAt(rows, r + 1, c);
         if (nextRowSame && !looksLikeLabelCell(nextRowSame) && (!validate || validate(nextRowSame))) {
-          return { value: nextRowSame, confidence, location: `row ${r + 1}, col ${c}` };
+          return { value: nextRowSame, confidence, location: `row ${r + 1}, col ${nextRow?.length === 1 ? 0 : c}` };
         }
       }
     }
