@@ -162,3 +162,11 @@ def test_unit_details_entered_in_the_form_reach_the_draft(tmp_path):
     r = json.loads(next(report).read_text(encoding="utf-8"))
     text = json.dumps(r)
     assert "Apartment" in text and "A Owner" in text
+
+
+def test_unit_usage_suggestions_are_level_2_or_above(tmp_path):
+    import re
+    page = TestClient(create_app(tmp_path / "ws")).get("/convert").text
+    block = re.search(r'<datalist id="unit_usage_types">(.*?)</datalist>', page, re.S).group(1)
+    terms = re.findall(r'value="([^"]*)"', block)
+    assert "Household Living" in terms and "Residential" not in terms and "Commercial" not in terms

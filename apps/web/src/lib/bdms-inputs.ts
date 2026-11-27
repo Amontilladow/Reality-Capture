@@ -3,6 +3,8 @@
 // The lists and patterns are copied from apps/adm-gis-prep/rules/drm_bdms_v4.1.yaml (domains and file_name);
 // apps/adm-gis-prep/tests/test_web_inputs.py fails if they drift apart.
 
+import { UNIT_USAGE_LEVEL_1 } from './unit-usage-types';
+
 export const USAGE_CATEGORY_TYPES = [
   'Agricultural', 'Cultural', 'Commercial', 'CommercialResidential', 'Diplomatic', 'Educational', 'Governmental',
   'Health', 'Industrial', 'Recreational', 'Religious', 'Residential', 'Utility', 'PublicFacility', 'Undefined',
@@ -63,9 +65,12 @@ export function convertInputProblems(meta: Record<string, string>, facts: Record
     if (v(facts[key]) && !/^[0-9]+$/.test(v(facts[key]))) problems.push(`${label}: a whole number.`);
   }
   if (v(facts.unit_balconies_area) && !NUMBER.test(v(facts.unit_balconies_area))) problems.push('Balconies area: a number in m2.');
+  if ((UNIT_USAGE_LEVEL_1 as readonly string[]).includes(v(facts.unit_usage_type))) {
+    problems.push('Unit usage type: use a land-use term from Level 2 or above, e.g. Household Living (a Level 1 term such as Residential is rejected by the official QC).');
+  }
   const lists = [['building_usage_category', 'Usage category', USAGE_CATEGORY_TYPES],
     ['building_usage_type', 'Usage type', USAGE_TYPES], ['unit_type', 'Unit type', UNIT_TYPES],
-    ['unit_usage_type', 'Unit usage type', USAGE_TYPES], ['DrawingType', 'Drawing type', DRAWING_TYPES]] as const;
+    ['DrawingType', 'Drawing type', DRAWING_TYPES]] as const;
   for (const [key, label, list] of lists) {
     if (v(facts[key]) && !(list as readonly string[]).includes(v(facts[key]))) problems.push(`${label}: choose a value from the list.`);
   }

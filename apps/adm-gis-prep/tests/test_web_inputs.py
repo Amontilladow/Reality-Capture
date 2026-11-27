@@ -27,3 +27,19 @@ def test_web_id_patterns_match_the_manifest():
     fn = load_profile("bdms_building").filename
     assert re.search(r"const FLOOR_ID = /(.*?)/;", src).group(1) == fn["floor_id_regex"]
     assert re.search(r"const POSITIVE_INT = /(.*?)/;", src).group(1) == fn["building_id_regex"]
+
+
+def test_web_unit_usage_list_matches_the_manifest():
+    """UnitUsageType: UPC land-use terms from Level 2 or above (spec Appendix C); Level 1 terms are rejected by the QC."""
+    import yaml
+    src = (WEB.parent / "unit-usage-types.ts").read_text(encoding="utf-8")
+
+    def ts_list(name: str) -> list[str]:
+        body = re.search(rf"export const {name} = \[(.*?)\] as const;", src, re.S).group(1)
+        return [a or b for a, b in re.findall(r"'([^']*)'|\"([^\"]*)\"", body)]
+
+    cl = yaml.safe_load((Path(__file__).resolve().parents[1] / "rules" / "drm_bdms_v4.1_codelists.yaml").read_text(encoding="utf-8"))
+    level1 = cl["upc_levels"]["level_1"]
+    assert ts_list("UNIT_USAGE_LEVEL_1") == level1
+    assert ts_list("UNIT_USAGE_TYPES") == [t for t in cl["unit_usage_type"] if t not in set(level1)]
+    assert "Household Living" in ts_list("UNIT_USAGE_TYPES") and "Residential" not in ts_list("UNIT_USAGE_TYPES")

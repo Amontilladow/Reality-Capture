@@ -51,3 +51,12 @@ def test_wall_layers_do_not_touch_the_other_roles():
     s = ConversionSettings(wall_layers=["X"])
     assert s.roles["wall"] == ["X"] and "*GLAZ*" in s.roles["window"]
     assert "*WALL*" in ConversionSettings().roles["wall"]
+
+
+def test_level_1_unit_usage_type_is_flagged_like_the_official_qc(tmp_path):
+    import json
+    for term, expect in (("Residential", True), ("Household Living", False)):
+        res = _run(tmp_path / term.replace(" ", "_"), arch_floor(), unit_values={"UnitUsageType": term})
+        qc = next(res.job_dir.rglob("qc_report.json"))
+        text = qc.read_text(encoding="utf-8")
+        assert ("is a Level 1 land-use term" in text) is expect, (term, text[:300])

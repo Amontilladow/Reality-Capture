@@ -50,7 +50,7 @@
     <div class="row">
       <div><label for="unit_type">Unit type</label><select id="unit_type" name="unit_type"><option value="">-</option>{% for v in unit_types %}<option>{{ v }}</option>{% endfor %}</select></div>
       <div><label for="unit_classification">Unit classification</label><input id="unit_classification" type="text" name="unit_classification" list="unit_classifications" placeholder="Apartment"><datalist id="unit_classifications">{% for v in unit_classifications %}<option value="{{ v }}">{% endfor %}</datalist></div>
-      <div><label for="unit_usage_type">Unit usage type</label><select id="unit_usage_type" name="unit_usage_type"><option value="">-</option>{% for v in usage_types %}<option>{{ v }}</option>{% endfor %}</select></div>
+      <div><label for="unit_usage_type">Unit usage type (Level 2 or above, e.g. Household Living)</label><input id="unit_usage_type" type="text" name="unit_usage_type" list="unit_usage_types" placeholder="Household Living"><datalist id="unit_usage_types">{% for v in unit_usage_types %}<option value="{{ v }}">{% endfor %}</datalist></div>
       <div><label for="unit_category">Unit category (optional)</label><input id="unit_category" type="text" name="unit_category" maxlength="25"></div>
       <div><label for="unit_num_bedroom">Bedrooms</label><input id="unit_num_bedroom" type="text" name="unit_num_bedroom" placeholder="2" pattern="[0-9]+"></div>
       <div><label for="unit_num_bathroom">Bathrooms</label><input id="unit_num_bathroom" type="text" name="unit_num_bathroom" placeholder="2" pattern="[0-9]+"></div>
