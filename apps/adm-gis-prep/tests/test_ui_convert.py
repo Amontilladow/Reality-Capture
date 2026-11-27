@@ -170,3 +170,33 @@ def test_unit_usage_suggestions_are_level_2_or_above(tmp_path):
     block = re.search(r'<datalist id="unit_usage_types">(.*?)</datalist>', page, re.S).group(1)
     terms = re.findall(r'value="([^"]*)"', block)
     assert "Household Living" in terms and "Residential" not in terms and "Commercial" not in terms
+
+
+def test_entries_are_remembered_between_conversions_but_not_the_drawing_specific_ones(tmp_path):
+    ws = tmp_path / "ws"
+    client = TestClient(create_app(ws))
+    arch_floor().saveas(tmp_path / "plan.dxf")
+    data = {"zone_name": "khalifa city", "sector_number": "se45_01", "plot_number": "c8", "building_number": "1",
+            "floor_id": "f1", "single_unit_number": "1", "building_usage_type": "Household Living",
+            "unit_type": "Residential", "developer_name": "MASDAR", "date_of_drawing": "29-oct-2026",
+            "source_units": "mm", "wall_layers": "A-ARCH-KEYPLAN"}
+    res = client.post("/convert", files={"drawing": ("plan.dxf", (tmp_path / "plan.dxf").read_bytes())}, data=data,
+                      follow_redirects=False)
+    assert res.status_code == 303
+    page = client.get("/convert").text
+    assert 'name="zone_name" value="khalifa city"' in page or 'name="zone_name" value="KHALIFA CITY"' in page
+    assert 'name="sector_number" value="se45_01"' in page or 'name="sector_number" value="SE45_01"' in page
+    assert 'name="developer_name" value="MASDAR"' in page and 'name="single_unit_number" value="1"' in page
+    assert '<option selected>Household Living</option>' in page and '<option selected>Residential</option>' in page
+    assert "value=" not in page.split('name="wall_layers"')[1].split(">")[0]             # drawing-specific: not kept
+    assert "<option value=\"mm\" selected" not in page                                  # units: not kept
+    # a new app on the same workspace (a restart of the program) still has them
+    assert 'name="plot_number" value=' in TestClient(create_app(ws)).get("/convert").text
+    # and they can be cleared
+    assert client.post("/convert/forget", follow_redirects=False).status_code == 303
+    assert 'name="zone_name" value=""' in client.get("/convert").text
+
+
+def test_nothing_remembered_on_a_fresh_workspace(tmp_path):
+    page = TestClient(create_app(tmp_path / "ws")).get("/convert").text
+    assert 'name="zone_name" value=""' in page and "selected" not in page.split("<form")[1].split("</form>")[0]

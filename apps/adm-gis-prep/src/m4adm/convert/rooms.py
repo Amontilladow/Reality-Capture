@@ -204,6 +204,17 @@ def find_openings(barrier, settings: ConversionSettings) -> list[Closure]:
 
 
 # --------------------------------------------------------------------------- detection
+def _wall_layers_hint(model: SourceModel, settings: ConversionSettings) -> str:
+    """Said first when the engineer's 'Wall layers' entry matches no layer of this drawing (often a leftover from the
+    previous drawing: the web form remembers what was typed)."""
+    layers = {p.layer for p in model.prims if p.kind in ("line", "area")}
+    unmatched = [n for n in settings.wall_layers if not any(match(layer, [n]) for layer in layers)]
+    if not unmatched:
+        return ""
+    return (f"The 'Wall layers' entry ({', '.join(unmatched)}) matches no layer in this drawing, so no walls were read. "
+            "Clear that field (it may be left over from another drawing) or enter a layer that exists here. ")
+
+
 def _top_layers(model: SourceModel, n: int = 8) -> str:
     counts = Counter(p.layer for p in model.prims if p.kind in ("line", "area"))
     return ", ".join(f"{name} ({c})" for name, c in counts.most_common(n)) or "none"
@@ -230,7 +241,8 @@ def detect_rooms(model: SourceModel, settings: ConversionSettings) -> Detection:
             return empty
     if not barrier_prims:
         top = _top_layers(model)
-        empty.envelope_reason = ("No wall geometry found: no layer matched the wall/window role patterns. Layers with "
+        empty.envelope_reason = (_wall_layers_hint(model, settings) +
+                                 "No wall geometry found: no layer matched the wall/window role patterns. Layers with "
                                  f"geometry in this drawing: {top}. Enter the layer(s) that hold the walls in the "
                                  "'Wall layers' field (names, * allowed) and convert again.")
         return empty
@@ -263,7 +275,8 @@ def detect_rooms(model: SourceModel, settings: ConversionSettings) -> Detection:
                     "", [], labels, [], 0, barrier=walls)
     det.barrier_outside = sum(1 for f, _ in filled if not f.intersects(env))
     if env.area < main.area * 1.5:
-        det.envelope_reason = ("The exterior wall network does not enclose the floor: its largest closed outline "
+        det.envelope_reason = (_wall_layers_hint(model, settings) +
+                               "The exterior wall network does not enclose the floor: its largest closed outline "
                                f"({env.area:.1f} m2) is barely larger than the walls themselves "
                                f"({main.area:.1f} m2). Check for a gap in the exterior walls wider than "
                                f"{tol.opening_max} m, or wall layers missing from the wall role. Layers read as walls: "
