@@ -200,6 +200,13 @@ export const addSiteDrawingRevision = (projectId: string, drawingId: string, inp
 export const setSiteDrawingWorkflowStatus = (projectId: string, drawingId: string, revisionId: string, workflowStatus: SiteDrawingWorkflowStatus, reason?: string) =>
   apiPatch<SiteDrawingRevision>(`${base(projectId)}/${drawingId}/revisions/${revisionId}/workflow-status`, { workflowStatus, reason });
 
+// Batch counterpart: sets the same status on every selected drawing's
+// current revision at once (e.g. clearing "Status unknown" across a whole
+// just-imported batch), alongside -- not instead of -- the per-drawing
+// picker above.
+export const bulkSetSiteDrawingWorkflowStatus = (projectId: string, drawingIds: string[], workflowStatus: SiteDrawingWorkflowStatus, reason?: string) =>
+  apiPost<{ updated: number; failed: number }>(`${base(projectId)}/bulk-workflow-status`, { ids: drawingIds, workflowStatus, reason });
+
 // A fresh short-lived (15 min) presigned URL; never cached/reused past
 // that window (brief section 9). Callers should fetch this right before
 // opening the viewer or starting an offline download, not store it.

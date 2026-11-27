@@ -156,6 +156,69 @@ describe('SiteDrawingsService', () => {
     });
   });
 
+  describe('bulkSetWorkflowStatus', () => {
+    it('updates every drawing\'s current revision, reusing setWorkflowStatus per drawing', async () => {
+      const drawingA = 'drawing-a';
+      const drawingB = 'drawing-b';
+      const revisionA = 'revision-a';
+      const revisionB = 'revision-b';
+
+      const { svc, withTenant } = makeService([
+        single([{ id: projectId }]), // bulkSetWorkflowStatus's own assertProjectBelongsToCompany
+        single([
+          { id: drawingA, currentRevisionId: revisionA },
+          { id: drawingB, currentRevisionId: revisionB },
+        ]), // SELECT id, current_revision_id FROM site_drawings WHERE id = ANY(...)
+
+        // setWorkflowStatus(drawingA, revisionA)
+        single([{ id: projectId }]),
+        multi([
+          [{ id: revisionA, revisionNumber: 'A', workflowStatus: 'APPROVED' }],
+          [{ currentRevisionId: revisionA, drawingNumber: 'A-101', drawingTitle: 'Plan A' }],
+          [],
+        ]),
+        single([]), // notifyProjectMembers: no other members
+
+        // setWorkflowStatus(drawingB, revisionB)
+        single([{ id: projectId }]),
+        multi([
+          [{ id: revisionB, revisionNumber: 'B', workflowStatus: 'APPROVED' }],
+          [{ currentRevisionId: revisionB, drawingNumber: 'B-101', drawingTitle: 'Plan B' }],
+          [],
+        ]),
+        single([]), // notifyProjectMembers: no other members
+      ]);
+
+      const result = await svc.bulkSetWorkflowStatus(companyId, projectId, [drawingA, drawingB], 'APPROVED', userId);
+
+      expect(result).toEqual({ updated: 2, failed: 0 });
+      expect(withTenant).toHaveBeenCalledTimes(8);
+    });
+
+    it('counts a drawing with no current revision as failed, without blocking the rest of the batch', async () => {
+      const drawingA = 'drawing-a';
+      const drawingB = 'drawing-no-revision';
+      const revisionA = 'revision-a';
+
+      const { svc } = makeService([
+        single([{ id: projectId }]),
+        single([{ id: drawingA, currentRevisionId: revisionA }]), // drawingB not found / has no current revision
+
+        single([{ id: projectId }]),
+        multi([
+          [{ id: revisionA, revisionNumber: 'A', workflowStatus: 'REJECTED' }],
+          [{ currentRevisionId: revisionA, drawingNumber: 'A-101', drawingTitle: 'Plan A' }],
+          [],
+        ]),
+        single([]),
+      ]);
+
+      const result = await svc.bulkSetWorkflowStatus(companyId, projectId, [drawingA, drawingB], 'REJECTED', userId);
+
+      expect(result).toEqual({ updated: 1, failed: 1 });
+    });
+  });
+
   describe('getAuthorizedDownloadUrl', () => {
     it('throws NotFoundException for a revision outside the given project (no cross-project leak)', async () => {
       const { svc } = makeService([
