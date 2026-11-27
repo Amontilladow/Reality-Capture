@@ -200,6 +200,14 @@ export const addSiteDrawingRevision = (projectId: string, drawingId: string, inp
 export const setSiteDrawingWorkflowStatus = (projectId: string, drawingId: string, revisionId: string, workflowStatus: SiteDrawingWorkflowStatus, reason?: string) =>
   apiPatch<SiteDrawingRevision>(`${base(projectId)}/${drawingId}/revisions/${revisionId}/workflow-status`, { workflowStatus, reason });
 
+// Per-drawing "Notify me" toggle (watchers): whether the current user gets
+// notified of this drawing's revisions/status changes. Defaults to true
+// (the unchanged project-wide behavior) unless explicitly muted.
+export const getSiteDrawingNotifyMe = (projectId: string, drawingId: string) =>
+  apiGet<{ notifying: boolean }>(`${base(projectId)}/${drawingId}/notify-me`);
+export const setSiteDrawingNotifyMe = (projectId: string, drawingId: string, notify: boolean) =>
+  apiPatch<{ notifying: boolean }>(`${base(projectId)}/${drawingId}/notify-me`, { notify });
+
 // Batch counterpart: sets the same status on every selected drawing's
 // current revision at once (e.g. clearing "Status unknown" across a whole
 // just-imported batch), alongside -- not instead of -- the per-drawing

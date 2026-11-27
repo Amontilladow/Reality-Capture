@@ -189,11 +189,12 @@ export class SiteDrawingsService {
     });
 
     // Brief section 5: "Notify relevant users" when a new revision becomes
-    // current. Every project member, same as the brief's own wording (no
-    // narrower "watchers" concept exists on this register yet); called
-    // after the transaction commits, never nested inside it (notifications
-    // writes through its own withTenant call, a separate connection).
-    await this.notifyProjectMembers(companyId, projectId, userId, {
+    // current. Every project member watching this drawing (the default,
+    // unless they've explicitly muted it -- see notifyDrawingWatchers());
+    // called after the transaction commits, never nested inside it
+    // (notifications writes through its own withTenant call, a separate
+    // connection).
+    await this.notifyDrawingWatchers(companyId, projectId, drawingId, userId, {
       type: 'site_drawing_revision_added',
       title: `New revision ${dto.revisionNumber} for drawing ${result.drawingNumber}: ${result.drawingTitle}`,
       resourceType: 'site_drawing',
@@ -543,8 +544,11 @@ export class SiteDrawingsService {
 
     // Brief section 5: "Notify relevant users" on every status change --
     // an approval, a rejection, a withdrawal are all decisions the rest of
-    // the project needs to know about, not just the person who made them.
-    await this.notifyProjectMembers(companyId, projectId, userId, {
+    // the project needs to know about, unless they've muted this specific
+    // drawing (notifyDrawingWatchers()). bulkSetWorkflowStatus() calls this
+    // once per drawing, so a batch status change respects each drawing's
+    // own mutes too, with no extra wiring needed.
+    await this.notifyDrawingWatchers(companyId, projectId, drawingId, userId, {
       type: 'site_drawing_status_changed',
       title: `Drawing ${drawingNumber ?? drawingId} (${drawingTitle ?? ''}) revision ${revision.revisionNumber} is now ${workflowStatusLabel(status)}`,
       resourceType: 'site_drawing',
@@ -789,6 +793,66 @@ export class SiteDrawingsService {
     `);
     await Promise.all(
       members
+        .filter((m) => m.userId !== excludeUserId)
+        .map((m) => this.notifications.create(companyId, { ...input, category: 'drawing', userId: m.userId, projectId, createdBy: excludeUserId ?? null })),
+    );
+  }
+
+  // ── Per-drawing "Notify me" toggle (watchers) ───────────────────────────
+  // Default is unchanged from notifyProjectMembers() above -- every project
+  // member is watching every drawing unless they've explicitly muted it
+  // (site_drawing_notification_mutes holds only that exception, never a
+  // row for the default "watching" state; see migration 088's own
+  // comment). A personal preference, not a document-control decision: no
+  // RequireCategoryAction gate in the controller, same as
+  // NotificationsController's /preferences endpoints.
+
+  async isWatchingDrawing(companyId: string, projectId: string, drawingId: string, userId: string): Promise<boolean> {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+    const [mute] = await this.db.withTenant(companyId, sql => sql`
+      SELECT 1 FROM site_drawing_notification_mutes WHERE drawing_id = ${drawingId} AND user_id = ${userId}
+    `);
+    return !mute;
+  }
+
+  async setWatchingDrawing(companyId: string, projectId: string, drawingId: string, userId: string, notify: boolean): Promise<{ notifying: boolean }> {
+    await this.assertProjectBelongsToCompany(companyId, projectId);
+    await this.db.withTenant(companyId, async (sql) => {
+      const [drawing] = await sql`SELECT id FROM site_drawings WHERE id = ${drawingId} AND project_id = ${projectId}`;
+      if (!drawing) throw new NotFoundException(`Drawing ${drawingId} not found.`);
+
+      if (notify) {
+        await sql`DELETE FROM site_drawing_notification_mutes WHERE drawing_id = ${drawingId} AND user_id = ${userId}`;
+      } else {
+        await sql`
+          INSERT INTO site_drawing_notification_mutes (company_id, project_id, drawing_id, user_id)
+          VALUES (${companyId}, ${projectId}, ${drawingId}, ${userId})
+          ON CONFLICT (drawing_id, user_id) DO NOTHING
+        `;
+      }
+    });
+    return { notifying: notify };
+  }
+
+  // Same fan-out as notifyProjectMembers(), minus whoever has explicitly
+  // muted THIS drawing. Used for the two drawing-scoped notification types
+  // (a new revision, a workflow-status change) -- never for the
+  // batch-level import-completed notification, which isn't about any one
+  // drawing a mute could meaningfully apply to.
+  private async notifyDrawingWatchers(
+    companyId: string, projectId: string, drawingId: string, excludeUserId: string | undefined,
+    input: { type: string; title: string; resourceType: string; resourceId: string; priority?: NotificationPriority },
+  ): Promise<void> {
+    const watchers = await this.db.withTenant(companyId, sql => sql<{ userId: string }[]>`
+      SELECT pm.user_id FROM project_members pm
+      WHERE pm.project_id = ${projectId} AND pm.company_id = ${companyId}
+        AND NOT EXISTS (
+          SELECT 1 FROM site_drawing_notification_mutes m
+          WHERE m.drawing_id = ${drawingId} AND m.user_id = pm.user_id
+        )
+    `);
+    await Promise.all(
+      watchers
         .filter((m) => m.userId !== excludeUserId)
         .map((m) => this.notifications.create(companyId, { ...input, category: 'drawing', userId: m.userId, projectId, createdBy: excludeUserId ?? null })),
     );
