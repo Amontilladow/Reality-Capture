@@ -36,6 +36,16 @@ CRS_CHOICES = [
 ]
 
 
+# Entries kept between conversions. Not kept: what belongs to one drawing (the file, its units, its wall layers, control
+# points), because a leftover from the previous drawing silently changes how the next one is read.
+REMEMBERED = ("zone_name", "sector_number", "plot_number", "building_number", "floor_id", "single_unit_number",
+              "floor_height", "building_number_of_floors", "building_height", "building_usage_category",
+              "building_usage_type", "unit_type", "unit_classification", "unit_category", "unit_num_bedroom",
+              "unit_num_bathroom", "unit_balconies_area", "unit_usage_type", "unit_owner_name",
+              "unit_owner_nationality", "unit_owner_passport", "developer_name", "building_name",
+              "title_drawing_type", "date_of_drawing")
+
+
 def _unit_usage_terms(bdms) -> list[str]:
     """UnitUsageType values the official QC accepts: UPC land-use terms from Level 2 or above (spec Appendix C)."""
     level1 = set((bdms.codelists.get("upc_levels") or {}).get("level_1", []))
@@ -55,6 +65,22 @@ def create_app(workspace: Path) -> FastAPI:
     def ctx(request: Request, **kw):
         return {"request": request, "label": PROVISIONAL_LABEL, "version": __version__,
                 "spec_version": manifest.version, **kw}
+
+    saved_path = workspace / "form_defaults.json"
+
+    def load_saved() -> dict[str, str]:
+        try:
+            data = json.loads(saved_path.read_text(encoding="utf-8"))
+            return {k: str(v) for k, v in data.items() if k in REMEMBERED} if isinstance(data, dict) else {}
+        except (OSError, ValueError):
+            return {}
+
+    def remember(values: dict[str, str]) -> None:
+        """Keep the last entries so they are not typed again for every drawing (not the drawing-specific ones)."""
+        try:
+            saved_path.write_text(json.dumps({k: values.get(k, "").strip() for k in REMEMBERED}, indent=1), encoding="utf-8")
+        except OSError:
+            pass                              # not remembered; the conversion itself is unaffected
 
     def uploaded_files() -> list[dict]:
         out = []
@@ -271,9 +297,14 @@ def create_app(workspace: Path) -> FastAPI:
         return TEMPLATES.TemplateResponse(request, "convert.html", ctx(
             request, error=error, uploads=uploaded_files(), conversions=list_conversions(),
             usage_categories=bdms.domains["usage_category_type"], usage_types=bdms.domains["usage_type"],
-            unit_types=bdms.domains["unit_type"], unit_usage_types=_unit_usage_terms(bdms), unit_classifications=bdms.domains["unit_classification_suggested"],
+            saved=load_saved(), unit_types=bdms.domains["unit_type"], unit_usage_types=_unit_usage_terms(bdms), unit_classifications=bdms.domains["unit_classification_suggested"],
             drawing_types=bdms.domains["drawing_type"], dwg_ready=dwg.status() != STATUS_UNAVAILABLE,
             dwg_reader=dwg.describe() if dwg.executable else None))
+
+    @app.post("/convert/forget")
+    def forget_saved():
+        saved_path.unlink(missing_ok=True)
+        return RedirectResponse("/convert", status_code=303)
 
     @app.post("/convert")
     async def do_convert(
@@ -296,6 +327,7 @@ def create_app(workspace: Path) -> FastAPI:
         def back(message: str) -> RedirectResponse:
             return RedirectResponse(f"/convert?error={quote(message)}", status_code=303)
 
+        remember({k: v for k, v in locals().items() if k in REMEMBERED})
         source = await store_source(drawing, existing)
         if isinstance(source, str):
             return back(source)

@@ -20,54 +20,54 @@
     <label for="source_units">Drawing units</label>
     <select id="source_units" name="source_units"><option value="auto">From the drawing ($INSUNITS)</option><option value="mm">Millimetres</option><option value="cm">Centimetres</option><option value="m">Metres</option></select>
     <label for="wall_layers">Wall layers (only if the drawing's walls are not found)</label>
-    <input id="wall_layers" type="text" name="wall_layers" placeholder="e.g. A-ARCH-KEYPLAN, A-WALL*" style="width:100%;max-width:640px">
+    <input id="wall_layers" type="text" name="wall_layers" placeholder="e.g. A-WALL*, S-WALL" style="width:100%;max-width:640px">
     <p class="hint">Layer names separated by commas; * matches any text. Leave empty to use the usual names (WALL, CURT_WALL ...). If a conversion stops with "No wall geometry found", the message lists the layers the drawing has.</p>
   </fieldset>
 
   <fieldset><legend>2. File name: Zone-Sector-Plot-Building-Floor</legend>
     <div class="row">
-      <div><label for="zone_name">Zone name</label><input id="zone_name" type="text" name="zone_name" placeholder="KHALIFA CITY" oninput="this.value=this.value.toUpperCase()"></div>
-      <div><label for="sector_number">Sector</label><input id="sector_number" type="text" name="sector_number" placeholder="SE45_01" oninput="this.value=this.value.toUpperCase()"></div>
-      <div><label for="plot_number">Plot</label><input id="plot_number" type="text" name="plot_number" placeholder="C8" oninput="this.value=this.value.toUpperCase()"></div>
-      <div><label for="building_number">Building</label><input id="building_number" type="text" name="building_number" placeholder="1" pattern="[1-9][0-9]*"></div>
-      <div><label for="floor_id">Floor</label><input id="floor_id" type="text" name="floor_id" placeholder="G, F1, M1, B1" pattern="G|[FMB][1-9][0-9]*" oninput="this.value=this.value.toUpperCase()"></div>
-      <div><label for="single_unit_number">Unit number (the whole floor is one unit)</label><input id="single_unit_number" type="text" name="single_unit_number" placeholder="1" pattern="[1-9][0-9]*"></div>
+      <div><label for="zone_name">Zone name</label><input id="zone_name" type="text" name="zone_name" value="{{ saved.get('zone_name', '') }}" placeholder="KHALIFA CITY" oninput="this.value=this.value.toUpperCase()"></div>
+      <div><label for="sector_number">Sector</label><input id="sector_number" type="text" name="sector_number" value="{{ saved.get('sector_number', '') }}" placeholder="SE45_01" oninput="this.value=this.value.toUpperCase()"></div>
+      <div><label for="plot_number">Plot</label><input id="plot_number" type="text" name="plot_number" value="{{ saved.get('plot_number', '') }}" placeholder="C8" oninput="this.value=this.value.toUpperCase()"></div>
+      <div><label for="building_number">Building</label><input id="building_number" type="text" name="building_number" value="{{ saved.get('building_number', '') }}" placeholder="1" pattern="[1-9][0-9]*"></div>
+      <div><label for="floor_id">Floor</label><input id="floor_id" type="text" name="floor_id" value="{{ saved.get('floor_id', '') }}" placeholder="G, F1, M1, B1" pattern="G|[FMB][1-9][0-9]*" oninput="this.value=this.value.toUpperCase()"></div>
+      <div><label for="single_unit_number">Unit number (the whole floor is one unit)</label><input id="single_unit_number" type="text" name="single_unit_number" value="{{ saved.get('single_unit_number', '') }}" placeholder="1" pattern="[1-9][0-9]*"></div>
     </div>
-    <p class="hint">No hyphens inside a part (use _ instead). Capitals are applied for you.</p>
+    <p class="hint">No hyphens inside a part (use _ instead). Capitals are applied for you. The entries on this page are remembered for the next drawing; the drawing itself, its units and its wall layers are not.</p>
   </fieldset>
 
   <fieldset><legend>3. Building and floor facts the drawing cannot show</legend>
     <div class="row">
-      <div><label for="floor_height">Floor height (m)</label><input id="floor_height" type="text" name="floor_height" placeholder="3.6" pattern="[0-9]+(\.[0-9]+)?"></div>
-      <div><label for="building_number_of_floors">Number of floors (= floor files you submit for this building)</label><input id="building_number_of_floors" type="text" name="building_number_of_floors" placeholder="3" pattern="[1-9][0-9]*"></div>
-      <div><label for="building_height">Building height (m, from the roof plan)</label><input id="building_height" type="text" name="building_height" placeholder="15" pattern="[0-9]+(\.[0-9]+)?"></div>
-      <div><label for="building_usage_category">Usage category</label><select id="building_usage_category" name="building_usage_category"><option value="">-</option>{% for v in usage_categories %}<option>{{ v }}</option>{% endfor %}</select></div>
-      <div><label for="building_usage_type">Usage type</label><select id="building_usage_type" name="building_usage_type"><option value="">-</option>{% for v in usage_types %}<option>{{ v }}</option>{% endfor %}</select></div>
+      <div><label for="floor_height">Floor height (m)</label><input id="floor_height" type="text" name="floor_height" value="{{ saved.get('floor_height', '') }}" placeholder="3.6" pattern="[0-9]+(\.[0-9]+)?"></div>
+      <div><label for="building_number_of_floors">Number of floors (= floor files you submit for this building)</label><input id="building_number_of_floors" type="text" name="building_number_of_floors" value="{{ saved.get('building_number_of_floors', '') }}" placeholder="3" pattern="[1-9][0-9]*"></div>
+      <div><label for="building_height">Building height (m, from the roof plan)</label><input id="building_height" type="text" name="building_height" value="{{ saved.get('building_height', '') }}" placeholder="15" pattern="[0-9]+(\.[0-9]+)?"></div>
+      <div><label for="building_usage_category">Usage category</label><select id="building_usage_category" name="building_usage_category"><option value="">-</option>{% for v in usage_categories %}<option{{ " selected" if saved.get("building_usage_category") == v }}>{{ v }}</option>{% endfor %}</select></div>
+      <div><label for="building_usage_type">Usage type</label><select id="building_usage_type" name="building_usage_type"><option value="">-</option>{% for v in usage_types %}<option{{ " selected" if saved.get("building_usage_type") == v }}>{{ v }}</option>{% endfor %}</select></div>
     </div>
   </fieldset>
 
   <fieldset><legend>3b. Unit details (the unit number above; the drawing cannot show these)</legend>
     <div class="row">
-      <div><label for="unit_type">Unit type</label><select id="unit_type" name="unit_type"><option value="">-</option>{% for v in unit_types %}<option>{{ v }}</option>{% endfor %}</select></div>
-      <div><label for="unit_classification">Unit classification</label><input id="unit_classification" type="text" name="unit_classification" list="unit_classifications" placeholder="Apartment"><datalist id="unit_classifications">{% for v in unit_classifications %}<option value="{{ v }}">{% endfor %}</datalist></div>
-      <div><label for="unit_usage_type">Unit usage type (Level 2 or above, e.g. Household Living)</label><input id="unit_usage_type" type="text" name="unit_usage_type" list="unit_usage_types" placeholder="Household Living"><datalist id="unit_usage_types">{% for v in unit_usage_types %}<option value="{{ v }}">{% endfor %}</datalist></div>
-      <div><label for="unit_category">Unit category (optional)</label><input id="unit_category" type="text" name="unit_category" maxlength="25"></div>
-      <div><label for="unit_num_bedroom">Bedrooms</label><input id="unit_num_bedroom" type="text" name="unit_num_bedroom" placeholder="2" pattern="[0-9]+"></div>
-      <div><label for="unit_num_bathroom">Bathrooms</label><input id="unit_num_bathroom" type="text" name="unit_num_bathroom" placeholder="2" pattern="[0-9]+"></div>
-      <div><label for="unit_balconies_area">Balconies area (m2, optional)</label><input id="unit_balconies_area" type="text" name="unit_balconies_area" pattern="[0-9]+(\.[0-9]+)?"></div>
-      <div><label for="unit_owner_name">Owner name</label><input id="unit_owner_name" type="text" name="unit_owner_name" maxlength="50"></div>
-      <div><label for="unit_owner_nationality">Owner nationality</label><input id="unit_owner_nationality" type="text" name="unit_owner_nationality" maxlength="50"></div>
-      <div><label for="unit_owner_passport">Owner passport</label><input id="unit_owner_passport" type="text" name="unit_owner_passport" maxlength="25"></div>
+      <div><label for="unit_type">Unit type</label><select id="unit_type" name="unit_type"><option value="">-</option>{% for v in unit_types %}<option{{ " selected" if saved.get("unit_type") == v }}>{{ v }}</option>{% endfor %}</select></div>
+      <div><label for="unit_classification">Unit classification</label><input id="unit_classification" type="text" name="unit_classification" value="{{ saved.get('unit_classification', '') }}" list="unit_classifications" placeholder="Apartment"><datalist id="unit_classifications">{% for v in unit_classifications %}<option value="{{ v }}">{% endfor %}</datalist></div>
+      <div><label for="unit_usage_type">Unit usage type (Level 2 or above, e.g. Household Living)</label><input id="unit_usage_type" type="text" name="unit_usage_type" value="{{ saved.get('unit_usage_type', '') }}" list="unit_usage_types" placeholder="Household Living"><datalist id="unit_usage_types">{% for v in unit_usage_types %}<option value="{{ v }}">{% endfor %}</datalist></div>
+      <div><label for="unit_category">Unit category (optional)</label><input id="unit_category" type="text" name="unit_category" value="{{ saved.get('unit_category', '') }}" maxlength="25"></div>
+      <div><label for="unit_num_bedroom">Bedrooms</label><input id="unit_num_bedroom" type="text" name="unit_num_bedroom" value="{{ saved.get('unit_num_bedroom', '') }}" placeholder="2" pattern="[0-9]+"></div>
+      <div><label for="unit_num_bathroom">Bathrooms</label><input id="unit_num_bathroom" type="text" name="unit_num_bathroom" value="{{ saved.get('unit_num_bathroom', '') }}" placeholder="2" pattern="[0-9]+"></div>
+      <div><label for="unit_balconies_area">Balconies area (m2, optional)</label><input id="unit_balconies_area" type="text" name="unit_balconies_area" value="{{ saved.get('unit_balconies_area', '') }}" pattern="[0-9]+(\.[0-9]+)?"></div>
+      <div><label for="unit_owner_name">Owner name</label><input id="unit_owner_name" type="text" name="unit_owner_name" value="{{ saved.get('unit_owner_name', '') }}" maxlength="50"></div>
+      <div><label for="unit_owner_nationality">Owner nationality</label><input id="unit_owner_nationality" type="text" name="unit_owner_nationality" value="{{ saved.get('unit_owner_nationality', '') }}" maxlength="50"></div>
+      <div><label for="unit_owner_passport">Owner passport</label><input id="unit_owner_passport" type="text" name="unit_owner_passport" value="{{ saved.get('unit_owner_passport', '') }}" maxlength="25"></div>
     </div>
     <p class="hint">The unit area is taken from the drawing (the floor outline). Leave a field empty if you do not have it: the draft then lists it as missing and is not marked complete.</p>
   </fieldset>
 
   <fieldset><legend>4. Title block</legend>
     <div class="row">
-      <div><label for="developer_name">Developer name</label><input id="developer_name" type="text" name="developer_name" placeholder="MASDAR CITY"></div>
-      <div><label for="building_name">Building name</label><input id="building_name" type="text" name="building_name"></div>
-      <div><label for="title_drawing_type">Drawing type</label><select id="title_drawing_type" name="title_drawing_type"><option value="">-</option>{% for v in drawing_types %}<option>{{ v }}</option>{% endfor %}</select></div>
-      <div><label for="date_of_drawing">Date of drawing (DD-MON-YYYY)</label><input id="date_of_drawing" type="text" name="date_of_drawing" placeholder="29-OCT-2026" pattern="[0-9]{2}-[A-Za-z]{3}-[0-9]{4}" oninput="this.value=this.value.toUpperCase()"></div>
+      <div><label for="developer_name">Developer name</label><input id="developer_name" type="text" name="developer_name" value="{{ saved.get('developer_name', '') }}" placeholder="MASDAR CITY"></div>
+      <div><label for="building_name">Building name</label><input id="building_name" type="text" name="building_name" value="{{ saved.get('building_name', '') }}"></div>
+      <div><label for="title_drawing_type">Drawing type</label><select id="title_drawing_type" name="title_drawing_type"><option value="">-</option>{% for v in drawing_types %}<option{{ " selected" if saved.get("title_drawing_type") == v }}>{{ v }}</option>{% endfor %}</select></div>
+      <div><label for="date_of_drawing">Date of drawing (DD-MON-YYYY)</label><input id="date_of_drawing" type="text" name="date_of_drawing" value="{{ saved.get('date_of_drawing', '') }}" placeholder="29-OCT-2026" pattern="[0-9]{2}-[A-Za-z]{3}-[0-9]{4}" oninput="this.value=this.value.toUpperCase()"></div>
     </div>
   </fieldset>
 
@@ -77,7 +77,7 @@
     <label class="inline"><input type="checkbox" name="confirm_transformation" value="1"> I confirm the control points and want the drawing georeferenced</label>
   </details>
 
-  <p><button class="primary" type="submit">Convert to GIS draft</button> <span id="busy" class="muted">Converting - large drawings can take a few minutes. Keep this page open...</span></p>
+  <p><button class="primary" type="submit">Convert to GIS draft</button> <button type="submit" formaction="/convert/forget" formnovalidate formenctype="application/x-www-form-urlencoded" title="Empty the remembered entries">Clear remembered entries</button> <span id="busy" class="muted">Converting - large drawings can take a few minutes. Keep this page open...</span></p>
 </form>
 
 {% if conversions %}

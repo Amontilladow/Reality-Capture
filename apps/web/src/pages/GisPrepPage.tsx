@@ -69,7 +69,10 @@ const INITIAL: FormState = {
 // What was typed is kept per project in this browser. Confirmations (coordinate system / transformation, units)
 // are never restored: they must be given each time.
 const formKey = (projectId: string) => `gis-prep-form:${projectId}`;
-const NEVER_RESTORE: Partial<FormState> = { crsConfirmed: false, unitsConfirmed: false };
+// Also never restored: what belongs to ONE drawing (its units, its control points, its wall layers). A leftover wall
+// layer from the previous drawing hides the walls of the next one.
+const NEVER_RESTORE: Partial<FormState> = { crsConfirmed: false, unitsConfirmed: false, units: 'auto', controlPoints: '' };
+const withoutDrawingSpecific = (f: FormState): FormState => ({ ...f, facts: { ...f.facts, wall_layers: '' } });
 
 // Values the drawing cannot provide; sent as conversion settings. Code-listed values (usage, drawing type) are
 // picked from the BDMS code lists; formats are checked before the job is sent (lib/bdms-inputs).
@@ -156,7 +159,7 @@ function buildSettings(f: FormState): GisPrepSettings | GisConvertSettings {
 export default function GisPrepPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<FormState>(() => (projectId ? loadSavedForm(formKey(projectId), INITIAL, NEVER_RESTORE) : INITIAL));
+  const [form, setForm] = useState<FormState>(() => (projectId ? withoutDrawingSpecific(loadSavedForm(formKey(projectId), INITIAL, NEVER_RESTORE)) : INITIAL));
   const [file, setFile] = useState<File | null>(null);
   const [fileFormat, setFileFormat] = useState<DrawingFormat | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
