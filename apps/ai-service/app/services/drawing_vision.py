@@ -107,6 +107,17 @@ MAX_GRID_DETECTION_LONG_SIDE_PX = 2200
 MIN_CANDIDATE_WIDTH_INCHES = 0.5
 MIN_CANDIDATE_HEIGHT_INCHES = 0.2
 
+# Real incident, confirmed against an actual uploaded drawing: on a large
+# sheet whose own outer border frame is drawn close enough to a title
+# block to touch it, RETR_EXTERNAL's single-contour-per-connected-blob
+# behavior merges the two into one contour covering nearly the whole
+# page, hiding the real (much smaller) title block entirely. A title
+# block this large is never genuine, so any contour -- at any nesting
+# depth -- covering more than this fraction of the page is treated as a
+# border/frame, not a candidate; detect_title_block_candidates() instead
+# descends into it for the smaller grid structure nested inside.
+OVERSIZED_CANDIDATE_AREA_FRACTION = 0.5
+
 RunMethod = Literal['native', 'ocr']
 
 
@@ -220,10 +231,83 @@ def detect_title_block_candidates(gray: np.ndarray, page_width: int, page_height
     grid = cv2.bitwise_or(horiz_lines, vert_lines)
     dilated = cv2.dilate(grid, cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5)), iterations=2)
 
-    contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # RETR_TREE (not RETR_EXTERNAL) so a border/frame contour's nested
+    # structure is still visible even when the frame itself gets rejected
+    # below as oversized -- see OVERSIZED_CANDIDATE_AREA_FRACTION.
+    contours, hierarchy = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return []
+    hierarchy = hierarchy[0]
+    page_area = w * h
+
+    children_by_parent: dict[int, list[int]] = {}
+    for idx in range(len(contours)):
+        children_by_parent.setdefault(hierarchy[idx][3], []).append(idx)
+
+    def box_of(idx: int) -> tuple[int, int, int, int]:
+        return cv2.boundingRect(contours[idx])
+
+    def is_oversized(idx: int) -> bool:
+        _, _, cw, ch = box_of(idx)
+        return cw * ch > OVERSIZED_CANDIDATE_AREA_FRACTION * page_area
+
+    def resolve(idxs: list[int], under_rejected_ancestor: bool) -> list[tuple[int, int, int, int]]:
+        """Returns final candidate boxes for one sibling group. An
+        oversized contour (the sheet border, or -- one level further in
+        -- the blank interior area it encloses) is never itself a
+        candidate; its own children are resolved recursively instead,
+        each nested oversized ancestor peeled off in turn. Everything
+        else is a leaf.
+
+        At the top level (`under_rejected_ancestor` False), an ordinary
+        page's leaves ARE its final candidates, taken as-is: this must
+        reproduce RETR_EXTERNAL's old exact boxes for the common,
+        nothing-rejected case. Only leaves found one level INSIDE a
+        rejected ancestor get re-merged into their own local mask --
+        confined to just that one sibling group, never the whole page --
+        so a real grid's own fragmented lines recombine into one region
+        without chain-reacting into unrelated content elsewhere on the
+        page.
+        """
+        results: list[tuple[int, int, int, int]] = []
+        leaves: list[int] = []
+        for idx in idxs:
+            if is_oversized(idx):
+                results.extend(resolve(children_by_parent.get(idx, []), under_rejected_ancestor=True))
+            else:
+                leaves.append(idx)
+
+        if not under_rejected_ancestor:
+            results.extend(box_of(idx) for idx in leaves)
+        elif leaves:
+            local_mask = np.zeros_like(dilated)
+            for idx in leaves:
+                x, y, cw, ch = box_of(idx)
+                cv2.rectangle(local_mask, (x, y), (x + cw, y + ch), 255, thickness=-1)
+            merge_gap_px = max(10, round(min(w, h) * 0.01))
+            merge_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (merge_gap_px, merge_gap_px))
+            merged = cv2.dilate(local_mask, merge_kernel, iterations=1)
+            merged_contours, _ = cv2.findContours(merged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            for contour in merged_contours:
+                x, y, cw, ch = cv2.boundingRect(contour)
+                # A real title block's own fragmented lines re-merge into
+                # one compact region (the common case this re-merge step
+                # exists for). Content spread broadly across an entire
+                # sheet -- dimension lines, hatching, many unrelated
+                # detail boxes -- can instead re-merge back into another
+                # implausibly huge blob; that's never a title block
+                # either, so it's dropped here rather than kept as a
+                # candidate (there is no smaller structure left to
+                # descend into post-merge, unlike the original contour).
+                if cw * ch > OVERSIZED_CANDIDATE_AREA_FRACTION * page_area:
+                    continue
+                results.append((x, y, cw, ch))
+
+        return results
+
+    boxes = resolve(children_by_parent.get(-1, []), under_rejected_ancestor=False)
     candidates: list[GridRegion] = []
-    for contour in contours:
-        x, y, cw, ch = cv2.boundingRect(contour)
+    for x, y, cw, ch in boxes:
         if cw < min_width_px or ch < min_height_px:
             continue
         candidates.append(GridRegion(left=x, top=y, width=cw, height=ch))
@@ -235,6 +319,77 @@ def detect_title_block_candidates(gray: np.ndarray, page_width: int, page_height
 
     candidates.sort(key=lambda r: (edge_distance(r), -(r.width * r.height)))
     return candidates
+
+
+# Only `drawing no`/`drawing number`/`drawing title` are used as anchors in
+# detect_title_block_region_from_native_text() below -- unlike `revision`/
+# `rev.`, which can legitimately recur in an unrelated revision-history
+# mini-table elsewhere on the same sheet, these never appear outside the
+# title block itself.
+TITLE_BLOCK_TEXT_ANCHORS = ('drawing no', 'dwg no', 'drawing number', 'drawing title')
+
+# How far (pixels, at whatever scale native_runs was computed in -- always
+# official_scale/RASTERIZE_DPI in practice, since that's the only space
+# native text runs are ever reported in) a label's own value and the rest
+# of its title block's cells can plausibly sit from the label text itself.
+# Generous on purpose: this is a FALLBACK, tried only after
+# detect_title_block_candidates() already failed to produce a usable
+# candidate, so a wide net here costs nothing but a slightly larger
+# native-text lookup region.
+TEXT_ANCHOR_PADDING_PX = round(4 * RASTERIZE_DPI)
+
+
+def detect_title_block_region_from_native_text(native_runs: list[TextRun]) -> list[GridRegion]:
+    """A fallback candidate source, independent of
+    detect_title_block_candidates()'s pixel/contour approach entirely:
+    finds the title block by its own distinctive label text instead of
+    its border lines.
+
+    Real incident, confirmed against an actual uploaded drawing: on a
+    real, dense engineering-drawing sheet, a title block's own border can
+    be pixel-connected -- via a shared line, not just a shared corner --
+    to an entirely different, legitimately separate bordered table
+    elsewhere on the sheet (e.g. a reference-drawings list). Vision-based
+    contour detection cannot distinguish "one grid" from "two grids that
+    happen to share a line" from pixel data alone, however the contours
+    are grouped; this sidesteps that ambiguity completely by anchoring on
+    text content, which has no such ambiguity.
+    """
+    anchors = [
+        run for run in native_runs
+        if any(keyword in run.text.strip().lower() for keyword in TITLE_BLOCK_TEXT_ANCHORS)
+    ]
+    if not anchors:
+        return []
+
+    boxes = [
+        (
+            max(0, run.left - TEXT_ANCHOR_PADDING_PX),
+            max(0, run.top - TEXT_ANCHOR_PADDING_PX),
+            run.left + run.width + TEXT_ANCHOR_PADDING_PX,
+            run.top + run.height + TEXT_ANCHOR_PADDING_PX,
+        )
+        for run in anchors
+    ]
+
+    # Merge overlapping padded boxes (repeat until stable): multiple
+    # anchors belonging to the SAME title block collapse into one region;
+    # two anchors too far apart for the padding to bridge stay separate.
+    merged = True
+    while merged:
+        merged = False
+        for i in range(len(boxes)):
+            for j in range(i + 1, len(boxes)):
+                a, b = boxes[i], boxes[j]
+                if a[0] <= b[2] and b[0] <= a[2] and a[1] <= b[3] and b[1] <= a[3]:
+                    boxes[i] = (min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3]))
+                    boxes.pop(j)
+                    merged = True
+                    break
+            if merged:
+                break
+
+    return [GridRegion(left=x0, top=y0, width=x1 - x0, height=y1 - y0) for x0, y0, x1, y1 in boxes]
 
 
 def native_text_runs_in_region(

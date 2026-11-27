@@ -9,8 +9,14 @@ import { StorageService } from '../storage/storage.service';
 import { storedSettings, type GisPrepQueueJob } from './gis-prep.service';
 
 // A full drawing run (reading, checks, writing one DXF per dataset/floor)
-// can take minutes on large drawings.
-const SERVICE_TIMEOUT_MS = 15 * 60 * 1000;
+// can take minutes on large drawings. Kept comfortably ABOVE the GIS
+// preparation service's own GIS_PREP_TIMEOUT_S (apps/ai-service's
+// app/config.py / routers/gis_prep.py, 840s today): that service always
+// has its own clean, actionable timeout message ("took too long on this
+// server"); this one exists only as a backstop so a hung connection
+// doesn't block a Bull worker slot forever, and must never fire FIRST,
+// or the engineer sees a generic network abort instead of that message.
+const SERVICE_TIMEOUT_MS = 35 * 60 * 1000;
 
 const CONTENT_TYPES: Record<string, string> = {
   dxf: 'application/dxf', json: 'application/json', jsonl: 'application/x-ndjson',

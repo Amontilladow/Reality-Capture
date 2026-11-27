@@ -16,6 +16,7 @@ import {
 } from '../lib/bdms-inputs';
 import {
   getGisPrepJob, listGisPrepJobs, rerunGisPrepJob, uploadAndCreateGisPrepJob, deleteGisPrepJob, bulkDeleteGisPrepJobs,
+  GIS_PREP_MAX_UPLOAD_MB, GIS_PREP_MAX_UPLOAD_BYTES,
   type GisConvertSettings, type GisPrepJob, type GisPrepJobStatus, type GisPrepProfile, type GisPrepSettings,
 } from '../lib/gis-prep.api';
 import { Listbox } from '../components/ui/Listbox';
@@ -272,6 +273,12 @@ export default function GisPrepPage() {
               if (picked) detectDrawingFormat(picked).then(setFileFormat).catch(() => setFileFormat('UNKNOWN'));
             }}
           />
+          <p className="text-xs text-ink-500">Maximum {GIS_PREP_MAX_UPLOAD_MB} MB as DXF.</p>
+          {file && file.size > GIS_PREP_MAX_UPLOAD_BYTES && (
+            <p className="text-xs text-danger" role="alert">
+              {(file.size / 1024 / 1024).toFixed(1)} MB is over the {GIS_PREP_MAX_UPLOAD_MB} MB limit. This file will be rejected.
+            </p>
+          )}
           {file && fileFormat && (() => {
             const note = drawingNote(file.name, file.size, fileFormat);
             return <p className={`text-xs ${note.tone === 'warn' ? 'text-warn' : 'text-ink-500'}`} role="status">{note.text}</p>;
@@ -379,7 +386,11 @@ export default function GisPrepPage() {
             </>}
           </div>
           {formError && <p className="text-xs text-danger">{formError}</p>}
-          <button className="btn-primary" disabled={createMutation.isPending} onClick={() => createMutation.mutate()}>
+          <button
+            className="btn-primary"
+            disabled={createMutation.isPending || (!!file && file.size > GIS_PREP_MAX_UPLOAD_BYTES)}
+            onClick={() => createMutation.mutate()}
+          >
             {createMutation.isPending ? 'Uploading…' : form.mode === 'convert' ? 'Convert to GIS draft' : 'Prepare for GIS'}
           </button>
         </div>

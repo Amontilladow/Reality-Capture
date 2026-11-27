@@ -20,7 +20,7 @@ export class GisPrepController {
   @RequireCategoryAction('drawings', 'create', 'manage_project_records')
   @ApiOperation({ summary: 'Get a presigned URL to upload a DXF/DWG drawing for GIS preparation' })
   async getUploadUrl(@CurrentUser() u: AuthenticatedUser, @Param('projectId') pid: string, @Body() dto: GetGisPrepUploadUrlDto) {
-    return { data: await this.svc.getUploadUrl(u.companyId, pid, dto.filename), error: null };
+    return { data: await this.svc.getUploadUrl(u.companyId, pid, dto.filename, dto.declaredSizeBytes), error: null };
   }
 
   @Post('jobs')

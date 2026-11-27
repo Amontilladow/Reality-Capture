@@ -6,6 +6,33 @@
 export const GIS_PREP_PROFILES = ['sdd_planning', 'bdms_building'] as const;
 export type GisPrepProfile = (typeof GIS_PREP_PROFILES)[number];
 
+// The single source of truth for the maximum DXF/DWG upload size, shared by
+// the frontend (GisPrepPage.tsx: pre-upload check + the limit it displays)
+// and the API (gis-prep.service.ts: the post-upload size check before a job
+// is ever queued -- see that file's own comment on why the presigned PUT
+// itself can't enforce this). apps/ai-service's GIS_PREP_MAX_UPLOAD_MB
+// (Python, routers/gis_prep.py) is the SAME number, kept in sync by hand --
+// a Python service can't import a TS constant -- as the pipeline's own
+// safety-net check. "MB" here means 1024*1024 bytes everywhere in this
+// codebase's *_MB config (apps/ai-service/app/config.py and this value
+// alike), never decimal 1,000,000-byte MB.
+//
+// 8 MB, not the 500 MB this replaced, and not the 30 MB once proposed as an
+// operational target. GIS_30MB_CAPACITY_VALIDATION.md's own benchmark (5 to
+// 30 MB, in 5 MB steps, each measured twice) found peak RSS of 196 MB at
+// 5 MB, 313 MB at 10 MB, and 780 MB at 30 MB, against the engine's existing
+// GIS_PREP_MEMORY_LIMIT_MB=270 MB per-process watcher inside a shared
+// 512 MB container (apps/ai-service's own baseline already uses roughly
+// 180-210 MB of that). 30 MB measured at 780 MB peak -- more than the
+// ENTIRE container on its own, let alone alongside the service's own
+// baseline and any concurrent OCR/assistant activity. 8 MB is the largest
+// round number whose predicted peak RSS (this benchmark's own linear fit,
+// ~80 + 23.3*MB) stays under the EXISTING 270 MB watcher threshold with NO
+// other config change, leaving real margin rather than sitting exactly on
+// the line one real-world drawing's extra complexity could cross.
+export const GIS_PREP_MAX_UPLOAD_MB = 8;
+export const GIS_PREP_MAX_UPLOAD_BYTES = GIS_PREP_MAX_UPLOAD_MB * 1024 * 1024;
+
 // QUEUED/RUNNING/FAILED describe the platform job; READY/WARNINGS/BLOCKED
 // mirror the tool's own statuses ("Ready for review" / "Prepared with
 // warnings" / "Blocked ..."), whose exact wording is kept in statusLabel.

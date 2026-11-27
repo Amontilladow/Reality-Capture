@@ -290,6 +290,60 @@ services:
       - key: S3_BUCKET
         sync: false
 
+  # ── GIS Preparation worker (proposed, NOT yet live traffic) ─────────────
+  # Reverses D-034 (apps/adm-gis-prep/docs/DECISIONS.md): that decision
+  # co-hosted the engine inside engineeringos-ai-service specifically to
+  # avoid a paid instance for "about one job every 6 months", capping real
+  # usage at a 25 MB upload / 270 MB RSS budget (the shared 512 MB
+  # container's remaining headroom after the AI assistant's own ~210 MB).
+  # ezdxf's in-memory document model -- required by this engine's own
+  # cross-reference QC (layer/block/topology checks, in-place fixes,
+  # re-verified DXF rewrites; NOT a simple streaming extractor; see
+  # GIS_PREP_MEMORY_REMEDIATION.md) -- measured at ~15-19x a real
+  # architectural drawing's file size (this repo's own comments: 12 MB ->
+  # ~280 MB, 36 MB -> ~670 MB peak RSS). A 100 MB drawing can need ~2 GB;
+  # no amount of in-process optimization fits that in a 512 MB container
+  # shared with another service. This block is commented out of the
+  # `services:` list on purpose -- creating it is a real monthly cost and a
+  # reversal of a prior explicit cost decision, so it needs a human's
+  # go-ahead, not a Blueprint sync. To activate: un-comment this block,
+  # change `GIS_PREP_SERVICE_URL` below (on engineeringos-api) to
+  # `http://engineeringos-gis-prep-worker:8003/gis-prep`, verify the plan
+  # name against Render's current catalog (whatever maps to ~4 GB RAM at
+  # time of deploy -- "pro" as of this writing, NOT "starter"), and run a
+  # Blueprint sync.
+  # - type: pserv
+  #   name: engineeringos-gis-prep-worker
+  #   runtime: docker
+  #   dockerfilePath: apps/ai-service/Dockerfile   # same image as engineeringos-ai-service: same m4adm venv, same /gis-prep router; this service just gets dedicated, larger RAM and never serves OCR/assistant traffic
+  #   dockerContext: .
+  #   plan: pro        # ~4 GB RAM target (section 5/7 of the remediation brief); verify against Render's current plan table before applying
+  #   region: oregon
+  #   envVars:
+  #     - key: INTERNAL_SERVICE_SECRET
+  #       sync: false
+  #     - key: PORT
+  #       value: 8003
+  #     # Sized for a 4 GB container: ~300 MB reserved for uvicorn/FastAPI overhead and OS/runtime
+  #     # margin, ~3200 MB safe budget for the m4adm subprocess. GIS_PREP_MEMORY_REMEDIATION.md's
+  #     # own benchmark measured ~24-33x (settling toward ~26x on 50-100 MB files) on a synthetic
+  #     # drawing -- WORSE than the ~9-19x this repo's prior real-drawing measurements found
+  #     # (DECISIONS.md D-034/D-035) -- so 120 MB (3200/26) is the honest safe upload cap against
+  #     # the evidence actually in hand, not the ~160 MB a 20x assumption would have given. 100 MB
+  #     # drawings fit with real margin; re-benchmark against actual customer drawings before
+  #     # raising this further, and re-tune all four values below from whatever that run shows.
+  #     - key: GIS_PREP_MEMORY_LIMIT_MB
+  #       value: 3200
+  #     - key: GIS_PREP_ADDRESS_SPACE_LIMIT_MB
+  #       value: 6000
+  #     - key: GIS_PREP_MAX_UPLOAD_MB
+  #       value: 120
+  #     - key: GIS_PREP_TIMEOUT_S
+  #       value: 1800
+  #     # Other env vars this image needs (QDRANT_URL, embedding model, S3, DATABASE_URL, etc.) are irrelevant to
+  #     # this service's actual job (it only ever receives /gis-prep traffic) and are intentionally left at their
+  #     # Settings() class defaults rather than duplicated here.
+
   # ── IFC processing worker ───────────────────────────────────────────────
   - type: worker
     name: engineeringos-ifc-service

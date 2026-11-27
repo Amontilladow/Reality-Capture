@@ -1,4 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { GIS_PREP_MAX_UPLOAD_BYTES, GIS_PREP_MAX_UPLOAD_MB } from '@engineeringos/types';
 import { GisPrepService, toJob } from './gis-prep.service';
 import type { DatabaseService } from '../../database/database.service';
 import type { StorageService } from '../storage/storage.service';
@@ -69,6 +70,46 @@ describe('GisPrepService', () => {
     await expect(svc.createJob(companyId, projectId, 'user-1', { storageKey: key, originalFilename: 'A.dxf', settings }))
       .rejects.toBeInstanceOf(BadRequestException);
     expect(storage.deleteIfExists).toHaveBeenCalledWith(key);
+  });
+
+  // The upload-size boundary (GIS_PREP_MAX_UPLOAD_MB, currently 8 MB -- see
+  // that constant's own comment): just below accepts, exactly at it accepts
+  // (the check is strictly-greater-than, so the limit itself is still a
+  // valid upload), just above is rejected and removed. Written against the
+  // constant, not a literal number, so it stays correct if that evidence-
+  // based value changes again.
+  it('accepts a file just below the upload limit', async () => {
+    const { svc, queue, storage } = makeService([[{ id: projectId }], [row]]);
+    (storage.getObjectSize as jest.Mock).mockResolvedValue(GIS_PREP_MAX_UPLOAD_BYTES - 1);
+    await expect(svc.createJob(companyId, projectId, 'user-1', { storageKey: key, originalFilename: 'A.dxf', settings }))
+      .resolves.toMatchObject({ status: 'QUEUED' });
+    expect(queue.add).toHaveBeenCalled();
+    expect(storage.deleteIfExists).not.toHaveBeenCalled();
+  });
+
+  it('accepts a file exactly at the upload limit', async () => {
+    const { svc, queue, storage } = makeService([[{ id: projectId }], [row]]);
+    (storage.getObjectSize as jest.Mock).mockResolvedValue(GIS_PREP_MAX_UPLOAD_BYTES);
+    await expect(svc.createJob(companyId, projectId, 'user-1', { storageKey: key, originalFilename: 'A.dxf', settings }))
+      .resolves.toMatchObject({ status: 'QUEUED' });
+    expect(queue.add).toHaveBeenCalled();
+    expect(storage.deleteIfExists).not.toHaveBeenCalled();
+  });
+
+  it('rejects and removes a file one byte over the upload limit, with an actionable message, before queuing anything', async () => {
+    const { svc, queue, storage } = makeService([[{ id: projectId }]]);
+    (storage.getObjectSize as jest.Mock).mockResolvedValue(GIS_PREP_MAX_UPLOAD_BYTES + 1);
+    await expect(svc.createJob(companyId, projectId, 'user-1', { storageKey: key, originalFilename: 'A.dxf', settings }))
+      .rejects.toMatchObject({ message: expect.stringContaining(`${GIS_PREP_MAX_UPLOAD_MB} MB`) });
+    expect(storage.deleteIfExists).toHaveBeenCalledWith(key);
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('rejects an upload URL request whose declared size already exceeds the limit, before issuing a URL', async () => {
+    const { svc, storage } = makeService([[{ id: projectId }]]);
+    await expect(svc.getUploadUrl(companyId, projectId, 'plan.dxf', GIS_PREP_MAX_UPLOAD_BYTES + 1))
+      .rejects.toBeInstanceOf(BadRequestException);
+    expect(storage.getUploadUrl).not.toHaveBeenCalled();
   });
 
   it('re-runs on the same original drawing as a new job linked to its parent', async () => {

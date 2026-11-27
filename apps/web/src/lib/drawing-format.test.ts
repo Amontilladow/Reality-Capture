@@ -28,8 +28,8 @@ describe('drawing format', () => {
   it('warns about drawings the cloud server cannot hold, by the size that matters (the DXF)', () => {
     const bigDxf = drawingNote('plan.dxf', 35 * MB, 'DXF');
     expect(bigDxf.tone).toBe('warn');
-    expect(bigDxf.text).toMatch(/18 MB as DXF/);
-    expect(drawingNote('plan.dxf', 12 * MB, 'DXF').tone).toBe('info');
+    expect(bigDxf.text).toMatch(/8 MB as DXF/); // CLOUD_DXF_LIMIT_MB === GIS_PREP_MAX_UPLOAD_MB, the single enforced value
+    expect(drawingNote('plan.dxf', 5 * MB, 'DXF').tone).toBe('info');
     const bigDwg = drawingNote('plan.dwg', 8 * MB, 'DWG');       // the 8 MB drawing that becomes a 35 MB DXF
     expect(bigDwg.tone).toBe('warn');
     expect(bigDwg.text).toMatch(/5 to 6 times larger/);

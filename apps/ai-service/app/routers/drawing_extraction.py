@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from app.services.drawing_vision import (
     RASTERIZE_DPI,
     detect_title_block_candidates,
+    detect_title_block_region_from_native_text,
     grid_detection_scale,
     native_text_runs_in_region,
     ocr_cropped_image,
@@ -149,6 +150,12 @@ async def extract_structured(req: DrawingExtractionRequest) -> DrawingExtraction
         detection_gray, detection_gray.shape[1], detection_gray.shape[0], detection_scale,
     )
     candidates = [rescale_region(c, detection_scale, official_scale) for c in candidates_at_detection_scale]
+    # Fallback source, tried only after every vision-based candidate above
+    # (appended, never prepended): finds the title block by its own
+    # label text when its border is pixel-connected to another, unrelated
+    # bordered table on the same sheet -- see this function's own
+    # docstring for the real incident this covers.
+    candidates += detect_title_block_region_from_native_text(native_runs)
 
     regions: list[RegionWire] = []
     for region in candidates:
