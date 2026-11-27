@@ -116,8 +116,9 @@ def snap_vertices(feats: list[Feature], snap: float = 0.03) -> int:
                     coords[k] = (p.x, p.y)
                     changed = True
                     break
-        if changed:
-            poly = Polygon(_dedupe(coords))
+        ring = _dedupe(coords) if changed else []
+        if changed and len(ring) >= 3:                      # a door that snaps down to a point or a line is left as drawn
+            poly = Polygon(ring)
             if poly.is_valid and poly.area > 0:
                 f.poly = poly
                 moved += 1

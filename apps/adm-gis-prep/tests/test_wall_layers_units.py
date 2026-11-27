@@ -88,3 +88,31 @@ def test_detail_labels_are_centred_on_their_insertion_point_inside_the_room(tmp_
         assert any(p.contains(Point(at)) for p in polys)                   # and the point is inside a Space
         checked += 1
     assert checked >= 2
+
+
+def test_drawn_outline_layer_becomes_the_floor_outline_and_facade_pieces_are_not_rooms(tmp_path):
+    """A closed polyline on the outline layer is the Floor / BuildingOutline / Roof; regions that touch it are open
+    area (not closed by walls), never a Space."""
+    import ezdxf
+    from shapely.geometry import Polygon
+    doc = arch_floor()
+    doc.layers.add("BUILDING_OUTLINE")
+    # a rectangle 3 m outside the 12 x 8 m building (drawing units are mm)
+    doc.modelspace().add_lwpolyline([(-3000, -3000), (15000, -3000), (15000, 11000), (-3000, 11000)], close=True,
+                                    dxfattribs={"layer": "BUILDING_OUTLINE"})
+    res = _run(tmp_path, doc, outline_layer="BUILDING_OUTLINE")
+    out = ezdxf.readfile(str(next(res.job_dir.rglob("output/*.dxf")))).modelspace()
+    area = lambda e: Polygon([(p[0], p[1]) for p in e.get_points()]).area
+    floors = [area(e) for e in out if e.dxftype() == "LWPOLYLINE" and e.dxf.layer == "Floor"]
+    assert floors and abs(floors[0] - 18 * 14) < 0.5                       # 18 m x 14 m, as drawn
+    spaces = [e for e in out if e.dxftype() == "LWPOLYLINE" and e.dxf.layer == "Space"]
+    assert 2 <= len(spaces) <= 4 and all(area(e) < 0.5 * 18 * 14 for e in spaces)   # the two rooms, not the open ring
+
+
+def test_outline_layer_without_a_closed_polyline_says_what_to_do(tmp_path):
+    doc = arch_floor()
+    doc.layers.add("BUILDING_OUTLINE")
+    doc.modelspace().add_line((0, 0), (5000, 0), dxfattribs={"layer": "BUILDING_OUTLINE"})
+    res = _run(tmp_path, doc, outline_layer="BUILDING_OUTLINE")
+    text = " ".join(res.report["blockers"])
+    assert "BUILDING_OUTLINE" in text and "none of them closed" in text and "ONE closed polyline" in text

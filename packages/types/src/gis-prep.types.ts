@@ -67,6 +67,7 @@ export interface GisConvertSettings {
   source_units?: 'auto' | 'mm' | 'cm' | 'm';
   single_unit_number?: string;
   wall_layers?: string[];
+  outline_layer?: string;
   floor_height?: string;
   building_number_of_floors?: string;
   building_height?: string;

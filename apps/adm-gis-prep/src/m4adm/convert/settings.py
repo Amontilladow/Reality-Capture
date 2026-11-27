@@ -75,6 +75,10 @@ class ConversionSettings(BaseModel):
     # Layer names (wildcards allowed) the engineer says hold the walls. When given they replace the default wall
     # patterns: drawings such as key plans keep everything on one layer that no default pattern matches.
     wall_layers: list[str] = Field(default_factory=list)
+    # A closed polyline the engineer drew along the real building edge (name, * allowed). When given it IS the floor /
+    # building outline / roof outline, instead of the outline detected from the walls: for drawings whose exterior is
+    # not closed linework (curtain-wall facades). The rooms still come from the walls.
+    outline_layer: str = ""
     never_barrier: list[str] = Field(default_factory=lambda: list(DEFAULT_NEVER_BARRIER))
     room_number_pattern: str = r"^\s*\d{1,3}\s*[-./]\s*\d{1,4}[A-Z]?\s*$"
     tolerances: ConversionTolerances = Field(default_factory=ConversionTolerances)
