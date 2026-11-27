@@ -440,3 +440,25 @@ describe('DrawingsService H-1: same-company cross-project access is rejected', (
     await expect(svc.getPins(companyId, OTHER_PROJECT, drawingId)).rejects.toThrow(NotFoundException);
   });
 });
+
+describe('DrawingsService.getRevisionActivity', () => {
+  // Tenancy: the AI assistant's change counts must only ever see the session
+  // company's rows for the route project, exactly like findAll().
+  it('runs inside the tenant transaction and filters by the given project and company', async () => {
+    const rows = [{ id: 'd1', drawingNumber: 'A-1', revision: 'A' }];
+    const sql = jest.fn().mockResolvedValue(rows);
+    const db = { withTenant: jest.fn((_company: string, fn: (s: unknown) => unknown) => fn(sql)) } as unknown as DatabaseService;
+    const svc = new DrawingsService(db, {} as unknown as StorageService, {} as unknown as IssuesService);
+
+    await expect(svc.getRevisionActivity('company-1', 'project-1')).resolves.toBe(rows);
+
+    expect(db.withTenant).toHaveBeenCalledWith('company-1', expect.any(Function));
+    const [strings, ...values] = sql.mock.calls[0] as [TemplateStringsArray, ...unknown[]];
+    expect(values).toEqual(['project-1', 'company-1']);
+    const query = strings.join('?');
+    expect(query).toMatch(/d\.project_id = \?/);
+    expect(query).toMatch(/d\.company_id = \?/);
+    expect(query).not.toMatch(/is_current/);   // history needs superseded rows too
+    expect(query).toMatch(/LIMIT 5000/);
+  });
+});

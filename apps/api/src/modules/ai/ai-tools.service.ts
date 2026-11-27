@@ -12,6 +12,7 @@ import { QaqcService } from '../qaqc/qaqc.service';
 import { SubmittalsService } from '../submittals/submittals.service';
 import { TransmittalsService } from '../transmittals/transmittals.service';
 import { QaService } from '../qa/qa.service';
+import { summarizeDrawingActivity, type DrawingVersionRow } from './drawing-activity';
 
 export interface ToolResult {
   tool: string;
@@ -268,6 +269,17 @@ export class AiToolsService {
         isCurrent: d.isCurrent, linkedCaptureCount: d.linkedCaptureCount,
       })),
     };
+  }
+
+  // "How many drawings were revised / are new?": counts, not a listing.
+  // Tools here receive only the request context (the model picks a tool by
+  // name, not arguments), so instead of taking a date range this returns the
+  // same counts for several fixed windows (today / 7 days / 30 days / all
+  // time) plus a per-level breakdown, and the model reads off whichever
+  // the question asks about. All counting lives in summarizeDrawingActivity.
+  async getDrawingChanges(ctx: AssistantContext): Promise<ToolResult> {
+    const rows = await this.drawings.getRevisionActivity(ctx.companyId, ctx.projectId) as unknown as DrawingVersionRow[];
+    return { tool: 'getDrawingChanges', category: 'drawing', data: summarizeDrawingActivity(rows) };
   }
 
   async getRiskSummary(ctx: AssistantContext): Promise<ToolResult> {

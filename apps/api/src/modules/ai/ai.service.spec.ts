@@ -44,6 +44,8 @@ function makeService(opts: {
     getOpenInspections: jest.fn().mockResolvedValue({ tool: 'getOpenInspections', category: 'inspection', data: [] }),
     getHighRiskIssues: jest.fn().mockResolvedValue({ tool: 'getHighRiskIssues', category: 'risk', data: [] }),
     getRiskSummary: jest.fn().mockResolvedValue({ tool: 'getRiskSummary', category: 'risk', data: {} }),
+    getFloorPlanDetails: jest.fn().mockResolvedValue({ tool: 'getFloorPlanDetails', category: 'drawing', data: [] }),
+    getDrawingChanges: jest.fn().mockResolvedValue({ tool: 'getDrawingChanges', category: 'drawing', data: {} }),
   };
 
   const provider = {
@@ -119,6 +121,29 @@ describe('AiService.ask', () => {
     await svc.ask(user, 'project-1', { question: 'What are the top risks right now?' });
     expect(tools.getHighRiskIssues).toHaveBeenCalledTimes(1);
     expect(tools.getRiskSummary).toHaveBeenCalledTimes(1);
+  });
+
+  // "How many drawings got changed?" used to reach only getFloorPlanDetails,
+  // which lists current drawings and has no revision history, so it could
+  // never be answered. Change/count wording now goes to getDrawingChanges.
+  it.each([
+    'How many drawings on site hub got changed?',
+    'Which drawings were revised this week?',
+    'Any new drawings uploaded recently?',
+  ])('routes the drawing change/count question "%s" to getDrawingChanges', async (question) => {
+    const { svc, tools } = makeService();
+    await svc.ask(user, 'project-1', { question });
+    expect(tools.getDrawingChanges).toHaveBeenCalledWith(
+      expect.objectContaining({ companyId: 'company-1', projectId: 'project-1' }),
+    );
+    expect(tools.getFloorPlanDetails).not.toHaveBeenCalled();
+  });
+
+  it('keeps a plain drawings listing question on getFloorPlanDetails', async () => {
+    const { svc, tools } = makeService();
+    await svc.ask(user, 'project-1', { question: 'Show the floor plans for level 3.' });
+    expect(tools.getFloorPlanDetails).toHaveBeenCalledTimes(1);
+    expect(tools.getDrawingChanges).not.toHaveBeenCalled();
   });
 
   it('answers an allowed question, scoping tool calls to the authenticated company and route project', async () => {
