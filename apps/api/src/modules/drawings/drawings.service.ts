@@ -137,6 +137,22 @@ export class DrawingsService {
     return rows;
   }
 
+  // Every version row (current AND superseded) of every drawing in the
+  // project, oldest first, trimmed to what the AI assistant's change-activity
+  // summary needs (see modules/ai/drawing-activity.ts). findAll() can't serve
+  // this: it returns only is_current rows, so revision history is invisible.
+  // Same tenant + project scoping as findAll(); bounded like it, too.
+  async getRevisionActivity(companyId: string, projectId: string) {
+    return this.db.withTenant(companyId, sql => sql`
+      SELECT d.id, d.drawing_number, d.title, d.revision, d.created_at, l.name AS level_name
+      FROM drawings d
+      LEFT JOIN levels l ON l.id = d.level_id
+      WHERE d.project_id = ${projectId} AND d.company_id = ${companyId}
+      ORDER BY d.created_at ASC
+      LIMIT 5000
+    `);
+  }
+
   // H-1 fix (KNOWN_ISSUES_AND_REMEDIATION.md): previously scoped only by
   // company_id, so a user authorized for Project A could fetch Project B's
   // drawing (including the live presigned download URL this method

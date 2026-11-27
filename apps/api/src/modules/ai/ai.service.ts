@@ -99,7 +99,8 @@ const TOOL_CATALOG: ToolDefinition[] = [
   { name: 'getOpenInspections', description: 'QA inspections that are scheduled or in progress (not yet completed) on this project.' },
   { name: 'getOpenSnags', description: 'List of open snag/punch-list items on this project.' },
   { name: 'getSnagDetails', description: 'Full details of the specific snag item the user is currently viewing in the app.' },
-  { name: 'getFloorPlanDetails', description: 'Drawings/floor plans for this project.' },
+  { name: 'getFloorPlanDetails', description: 'Listing of the current drawings/floor plans for this project, per level. Not for counting changes.' },
+  { name: 'getDrawingChanges', description: 'How many drawings were revised or newly added (today, last 7 days, last 30 days, all time), per level, plus the most recent revisions with revision from/to. Use for "how many drawings changed / were revised / were updated / are new" questions.' },
   { name: 'getRiskSummary', description: "Executive summary of this project's risk posture." },
   { name: 'getHighRiskIssues', description: 'The highest-scoring risk items on this project.' },
   { name: 'getRiskForCurrentResource', description: 'Risk explanation for the specific issue/RFI/snag item the user is currently viewing -- only useful when the user is viewing one and asks something like "why is this high risk?".' },
@@ -153,7 +154,12 @@ function routeIntent(question: string, ctx: AssistantContext): Intent {
   if (/\bsubmittal(s)?\b/.test(q)) tools.push('getOpenSubmittals');
   if (/\btransmittal(s)?\b/.test(q)) tools.push('getRecentTransmittals');
   if (/\binspection(s)?\b/.test(q)) tools.push('getOpenInspections');
-  if (/\bfloor\s?plan|\bdrawing(s)?\b/.test(q)) tools.push('getFloorPlanDetails');
+  if (/\bfloor\s?plan|\bdrawing(s)?\b/.test(q)) {
+    // Counting / "what changed" questions need the revision history; plain
+    // "which drawings cover level 3?" keeps the current-drawings listing.
+    const asksAboutChange = /\b(chang\w*|revis\w*|updat\w*|modif\w*|amend\w*|new|upload\w*|how many|count|number of|latest|recent\w*)\b/.test(q);
+    tools.push(asksAboutChange ? 'getDrawingChanges' : 'getFloorPlanDetails');
+  }
   if (/\boverdue\b/.test(q)) tools.push('getOverdueItems');
   if (/\bprogress\b/.test(q)) tools.push('getProgressSummary');
   if (/\breport(s)?\b/.test(q)) tools.push('getLatestReports');
@@ -406,6 +412,7 @@ export class AiService {
         case 'getOpenSnags': return await this.tools.getOpenSnags(ctx);
         case 'getSnagDetails': return ctx.currentResourceId ? await this.tools.getSnagDetails(ctx, ctx.currentResourceId) : await this.tools.getOpenSnags(ctx);
         case 'getFloorPlanDetails': return await this.tools.getFloorPlanDetails(ctx);
+        case 'getDrawingChanges': return await this.tools.getDrawingChanges(ctx);
         case 'getRiskSummary': return await this.tools.getRiskSummary(ctx);
         case 'getRiskForCurrentResource': return await this.tools.getRiskForCurrentResource(ctx);
         case 'getProgressSummary': return await this.tools.getProgressSummary(ctx);

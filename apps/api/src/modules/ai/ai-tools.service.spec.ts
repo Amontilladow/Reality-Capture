@@ -23,7 +23,7 @@ function makeTools() {
   const progressReports = {};
   const documents = {};
   const projects = {};
-  const drawings = {};
+  const drawings = { getRevisionActivity: jest.fn().mockResolvedValue([]) };
   const aiClient = {};
   const qaqc = { findAll: jest.fn().mockResolvedValue({ data: [] }) };
   const submittals = { findAll: jest.fn().mockResolvedValue({ data: [] }) };
@@ -46,8 +46,31 @@ function makeTools() {
     qa as unknown as QaService,
   );
 
-  return { tools, rfis, issues, qaqc, submittals, transmittals, qa };
+  return { tools, rfis, issues, qaqc, submittals, transmittals, qa, drawings };
 }
+
+describe('AiToolsService.getDrawingChanges', () => {
+  it('reads revision history scoped to the session company and route project, and counts from it', async () => {
+    const { tools, drawings } = makeTools();
+    drawings.getRevisionActivity.mockResolvedValue([
+      { id: 'd1', drawingNumber: 'A-101', title: 'Plan', revision: 'A', createdAt: '2026-01-01T00:00:00Z', levelName: 'Ground' },
+      { id: 'd2', drawingNumber: 'A-101', title: 'Plan', revision: 'B', createdAt: '2026-01-05T00:00:00Z', levelName: 'Ground' },
+    ]);
+    const result = await tools.getDrawingChanges(ctx);
+    expect(drawings.getRevisionActivity).toHaveBeenCalledWith('company-1', 'project-1');
+    expect(result).toMatchObject({ tool: 'getDrawingChanges', category: 'drawing' });
+    const data = result.data as { totalDrawings: number; windows: { allTime: { drawingsRevised: number; revisionUploads: number } } };
+    expect(data.totalDrawings).toBe(1);
+    expect(data.windows.allTime).toMatchObject({ drawingsRevised: 1, revisionUploads: 1 });
+  });
+
+  it('returns zeros, not an error, for a project with no drawings', async () => {
+    const { tools } = makeTools();
+    const data = (await tools.getDrawingChanges(ctx)).data as { totalDrawings: number; windows: { allTime: unknown } };
+    expect(data.totalDrawings).toBe(0);
+    expect(data.windows.allTime).toEqual({ drawingsRevised: 0, revisionUploads: 0, newDrawings: 0 });
+  });
+});
 
 // CRITICAL regression: these three tools previously called their underlying
 // service methods WITHOUT the asking user's id, which silently disables
