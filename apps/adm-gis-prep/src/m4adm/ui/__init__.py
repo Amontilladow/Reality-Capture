@@ -284,7 +284,7 @@ def create_app(workspace: Path) -> FastAPI:
         unit_owner_passport: str = Form(""),
         developer_name: str = Form(""), building_name: str = Form(""),
         title_drawing_type: str = Form(""), date_of_drawing: str = Form(""),
-        source_units: str = Form("auto"),
+        source_units: str = Form("auto"), wall_layers: str = Form(""),
         control_points: str = Form(""), confirm_transformation: str = Form(""),
     ):
         def back(message: str) -> RedirectResponse:
@@ -308,7 +308,8 @@ def create_app(workspace: Path) -> FastAPI:
             settings = ConversionSettings(
                 metadata={"zone_name": up(zone_name), "sector_number": up(sector_number), "plot_number": up(plot_number),
                           "building_number": building_number.strip(), "floor_id": up(floor_id)},
-                source_units=source_units, single_unit_number=single_unit_number.strip(),
+                source_units=source_units, wall_layers=[n for n in re.split(r"[,;\n]", wall_layers) if n.strip()],
+                single_unit_number=single_unit_number.strip(),
                 floor_height=floor_height.strip(), building_number_of_floors=building_number_of_floors.strip(),
                 building_height=building_height.strip(), building_usage_category=building_usage_category.strip(),
                 building_usage_type=building_usage_type.strip(),

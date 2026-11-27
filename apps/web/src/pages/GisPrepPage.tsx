@@ -127,6 +127,7 @@ function buildSettings(f: FormState): GisPrepSettings | GisConvertSettings {
     return {
       mode: 'convert', profile: 'bdms_building', metadata, source_units: f.units,
       single_unit_number: f.unitNumber,
+      wall_layers: (f.facts.wall_layers ?? '').split(/[,;\n]/).map(n => n.trim()).filter(Boolean),
       floor_height: f.facts.floor_height ?? '',
       building_number_of_floors: f.facts.building_number_of_floors ?? '',
       building_height: f.facts.building_height ?? '',
@@ -345,6 +346,13 @@ export default function GisPrepPage() {
                   <option value="auto">From the drawing ($INSUNITS)</option>
                   <option value="mm">Millimetres</option><option value="cm">Centimetres</option><option value="m">Metres</option>
                 </Listbox>
+              </label>
+            )}
+            {form.mode === 'convert' && (
+              <label className="text-xs text-ink-500 space-y-2">
+                <span>Wall layers (only if the walls are not found; names, * allowed)</span>
+                <input className="field-input text-xs !py-2" placeholder="A-ARCH-KEYPLAN" value={form.facts.wall_layers ?? ''}
+                  onChange={e => setForm(f => ({ ...f, facts: { ...f.facts, wall_layers: e.target.value } }))} />
               </label>
             )}
             {form.mode === 'convert' && (

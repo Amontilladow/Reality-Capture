@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from m4adm.models import CRSSettings, Metadata
 
@@ -72,6 +72,9 @@ class ConversionSettings(BaseModel):
     # Coordinates: control points are given in SOURCE drawing units (as read in CAD) -> target E/N metres.
     crs: CRSSettings = Field(default_factory=CRSSettings)
     roles: dict[str, list[str]] = Field(default_factory=lambda: {k: list(v) for k, v in DEFAULT_ROLES.items()})
+    # Layer names (wildcards allowed) the engineer says hold the walls. When given they replace the default wall
+    # patterns: drawings such as key plans keep everything on one layer that no default pattern matches.
+    wall_layers: list[str] = Field(default_factory=list)
     never_barrier: list[str] = Field(default_factory=lambda: list(DEFAULT_NEVER_BARRIER))
     room_number_pattern: str = r"^\s*\d{1,3}\s*[-./]\s*\d{1,4}[A-Z]?\s*$"
     tolerances: ConversionTolerances = Field(default_factory=ConversionTolerances)
@@ -97,3 +100,11 @@ class ConversionSettings(BaseModel):
     # attribute tables and the report says so.
     template_path: str | None = None
     validate_output: bool = True
+
+    @model_validator(mode="after")
+    def _wall_layers_replace_the_wall_role(self):
+        names = [n.strip() for n in self.wall_layers if n and n.strip()]
+        self.wall_layers = names
+        if names:
+            self.roles = {**self.roles, "wall": names}
+        return self

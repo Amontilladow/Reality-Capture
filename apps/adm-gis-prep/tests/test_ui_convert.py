@@ -149,6 +149,7 @@ def test_unit_details_entered_in_the_form_reach_the_draft(tmp_path):
     import json
     client = TestClient(create_app(tmp_path / "ws"))
     page = client.get("/convert").text
+    assert 'name="wall_layers"' in page
     assert 'name="unit_type"' in page and 'name="unit_owner_passport"' in page and "Studio Flat" in page
     arch_floor().saveas(tmp_path / "plan.dxf")
     res = client.post("/convert", files={"drawing": ("plan.dxf", (tmp_path / "plan.dxf").read_bytes())}, data={
